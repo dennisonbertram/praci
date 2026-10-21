@@ -748,14 +748,14 @@ Source: `docs/ux-paths/meetings-voice/topics/wispr-flow-voice.md`
 **Plan status**: Settings, Voice overlay [exists]; transcription row, picker, key entry, verify, clear [planned: S1b; layout GAP, see discovery ambiguity 14 and 23]; consent text and re-prompt [planned: S1c; wording GAP: the plan gives only the idea, not the sentence]; call routing to record-and-upload and WAV [planned: S3b]; Flow provider [planned: S3a]; vocabulary [planned: S4].
 **Mockup screen**: docs/wispr-flow/mockup.html#screen-settings-voice (Connected), docs/wispr-flow/mockup.html#screen-consent (Prompt), docs/wispr-flow/mockup.html#screen-call (During a call)
 #### Steps
-1. Maya clicks the settings entry, then Voice → the overlay lists "Providers"; today there is a "Connected" mark and "Speak + transcribe" / "Speak only" labels per provider.
-2. She looks for where to pick a transcription provider → GAP: S1b says "a Settings, Voice row ... picks the provider and takes the key", with no position or label. She scrolls past "Speech model" and "Hear a sample".
-3. She chooses "Wispr Flow" in the row and pastes her key → a "verify" runs; button text unknown (GAP; existing pattern is "Connecting…" then "Connected {name}.").
-4. The key is valid → row shows Flow selected; the speech provider row still says OpenAI is connected for speaking (the plan: speech output keeps the existing provider; `null` means "use my voice provider").
-5. She clicks "Call Elio" → her consent is for the old disclosure version, so the AI data prompt appears once with the extended `voice` sentence (text near the cursor and workspace names may go to the transcription provider) [planned: S1c].
-6. She accepts → the call starts; the call recorder switches to 16 kHz mono WAV and uploads each utterance, even though Web Speech is available in her browser (S3b routing).
+1. Maya clicks the settings entry, then Voice → the overlay lists providers; "Wispr Flow" is a "Transcribe only" row (it appears only when the deployment has the Flow base URL setting).
+2. She taps the Flow row and pastes her key → the existing provider pane; under Connect one sentence reads "Sends your recordings and workspace names to Wispr Flow."
+3. She presses Connect → the field and button are disabled and a spinner shows; the sentence stays visible.
+4. The key verifies → consent for Flow is recorded; the row's status word is "Transcribing"; the speech provider row still says OpenAI is connected for speaking, and "This device" keeps the single checkmark.
+5. She clicks "Call Elio" → no consent prompt, because Connect was the consent act.
+6. The call starts; the call recorder switches to 16 kHz mono WAV and uploads each utterance, even though Web Speech is available in her browser (S3b routing).
 7. She says "ask Brightwell about the Halden invoice" → transcript shows both names spelled as in her workspace (bot name, contact, ticket title came from S4 vocabulary).
-8. She clears the selection later via the row → secret removed; transcription goes back to her voice provider; calls revert to the old routing.
+8. She clicks Disconnect on the Flow row later → secret removed; transcription goes back to her voice provider; calls revert to the old routing.
 #### Variations
 - Mobile: native picker and secure entry in `(settings)/voice.tsx` (assumption from AGENTS.md; plan says "web and mobile" only).
 - She declines the updated disclosure: GAP: discovery ambiguity 15; assumption is voice is blocked as today.
@@ -780,10 +780,10 @@ Source: `docs/ux-paths/meetings-voice/topics/wispr-flow-voice.md`
 #### Steps
 1. Tomas is in a call and speaks for a long stretch with no pause → utterance exceeds 6 minutes or 25 MB; request rejected before reaching Wispr; he sees a message (GAP: text).
 2. He tries again with a shorter sentence → works.
-3. Later in the day he hits the per-user daily cap → the transcription call is blocked with a message; Wispr is not called (message GAP: no text, no reset time, no cap number).
-4. He sees the call card has stopped hearing him; he does not know whether the call is dead or just transcription → GAP: where the message appears (call card, toast, transcript) is not defined.
+3. Later in the day he hits the per-user daily cap → the call card shows one line, "Daily voice limit reached. You can keep typing."; Wispr is not called; no reset time.
+4. The call stays open and the card keeps the composer; Mute is disabled while blocked; the client stops uploading his speech until the next call or the reset, and the caption shows once.
 5. He types in the composer to continue → works; typing is unaffected.
-6. He opens Settings, Voice, clears the selection → calls use the old provider again.
+6. He opens Settings, Voice, and presses Disconnect on the Flow row → calls use the old provider again.
 7. Next day his counter resets → no visible reset notice.
 #### Variations
 - Hosted deployment with pooled allowance: the cap reuses it if the hosted-service epic landed; otherwise a simple counter. Different users see different caps (not exposed).
@@ -805,8 +805,8 @@ Source: `docs/ux-paths/meetings-voice/topics/wispr-flow-voice.md`
 **Mockup screen**: docs/wispr-flow/mockup.html#screen-settings-voice (API access required)
 #### Steps
 1. Elena opens Settings, Voice → sees the existing provider list.
-2. She looks for Wispr Flow in the list or the new transcription row → either Flow is absent (S3a has not shipped) or it is present but unusable: plan does not choose.
-3. If present, she pastes her Flow consumer account token or password as a key → rejected by `verify`; wrong-key text is generic (GAP: it does not say she needs API access).
+2. She looks for Wispr Flow → on a deployment without the Flow base URL setting there is no Flow row; on one with it, the "Transcribe only" row is there and the app cannot tell whether she has API access.
+3. If present, she pastes her Flow consumer account token or password as a key and presses Connect → rejected: "Could not connect this voice provider"; Connect stays disabled until she edits the field; nothing is stored and no consent is recorded (GAP: the line does not say she needs API access; FX-52 and RX-34 accept this).
 4. She asks a bot "does Rakazo work with Flow?" → the Wispr Flow tile (MCP) exists for Flow meetings; it is not dictation, and may confuse her (two Flow-related surfaces: tile and Voice row).
 5. She gives up and dictates in the composer with the hotkey → works.
 #### Variations
@@ -929,12 +929,12 @@ Source: `docs/ux-paths/meetings-voice/topics/mobile.md`
 **Plan status**: Open Settings, Voice [exists]. Transcription row, picker, key entry, verify, clear [planned: Flow S1b]; layout and states: GAP (wispr-flow.md S1b says only "reuses the provider-picker pattern already there"; the mobile screen has no picker, only a flat list, and picking "This device" hides the key area). Whether Flow appears for a user without access: GAP.
 **Mockup screen**: docs/wispr-flow/mockup.html#screen-mobile (Voice, Picker, Wispr Flow key, Connected, API access required)
 #### Steps
-1. Lena opens Settings, Voice → "This device" row shows "On · Free, works offline"; the provider list sits below it with the first item selected only when "This device" is off.
-2. She looks for a place to choose how her speech is turned to text → today none exists. In the plan, a new row labelled by the plan (wording not given) appears. GAP: before or after "This device", under which heading, and whether it still shows when "This device" is on.
-3. She picks "Wispr Flow" → a key field appears. If this reuses the existing `TextInput` with `secureTextEntry`, the label would be "API key", the same label as the voice provider's field directly above. The screen would then have two fields called "API key" on one page.
-4. She pastes the key and taps "Connect" → `verify` runs; the plan names no busy text or error for a bad key (existing text on that screen is "Could not connect").
-5. The row shows "Connected" → speech replies still use "This device" (the plan: speech output keeps using the existing voice provider).
-6. Later she taps "Disconnect" for transcription → the secret is cleared and calls go back to "use my voice provider" (null selection).
+1. Lena opens Settings, Voice → "This device" row shows "On · Free, works offline"; the provider list sits below it as a real settings group (title-case header, rows of 52 pt or more), including a "Transcribe only" Flow row.
+2. She taps the Flow row → a key field (native secure field) and Connect appear; under Connect: "Sends your recordings and workspace names to Wispr Flow."
+3. She pastes the key and taps Connect (native action button) → field and button are disabled and an activity indicator shows; the sentence stays.
+4. A rejected key shows "Could not connect this voice provider"; Connect stays disabled until she edits the field; no consent is recorded.
+5. A valid key records consent; the row's status word is "Transcribing"; speech replies still use "This device", which keeps the single checkmark.
+6. Later she taps Disconnect on the Flow row → the secret is cleared and calls go back to the voice provider.
 #### Variations
 - Lena selects ElevenLabs as her voice provider after setting up Flow: the plan says the transcription selection is independent.
 - A user without API access: S3a and S3b are blocked; the row should not offer Flow. GAP: how the app knows (no `voice/catalog` flag is in the plan).
@@ -955,12 +955,12 @@ Source: `docs/ux-paths/meetings-voice/topics/mobile.md`
 **Mockup screen**: docs/wispr-flow/mockup.html#screen-mobile (Connected); call routing is not drawn
 #### Steps
 1. Lena taps the waveform "Call Elio" button in the message field → `startVoiceCall` runs `resolveVoiceCallPlan`.
-2. Today: because "This device" is on and native recognition is available, the plan is `device` and `voice/status` is not read. Her Flow selection is never consulted. With S3b: the plan must read the new `voice.status` field first, and the call must use the recorder path. GAP: the plan does not say which wins when she has chosen both "This device" and a server transcription provider.
-3. The call connects → `startCall` runs with `transcribe` true. In `openMic`, native recognition is tried first (`onDevice !== false`). S3b must reorder this so the recorder runs first; the plan says only "calls use the recorder and upload path even where ... native recognition is available".
-4. She speaks → `recordClip` records with the `HIGH_QUALITY` preset to `audio/m4a`, stops after 1.2 seconds of quiet or 30 seconds, and uploads. Flow wants 16 kHz WAV, at most 6 minutes or 25 MB, so S3b changes the preset for this provider only [unverified on device].
-5. The reply plays → the first spoken reply calls `ensureAiDataConsent` for `voice`. Because the disclosure version moved, an `Alert` titled "Share data with {name}?" appears mid-call with the extended voice sentence. The recipients named are the transcription provider's too [planned: Flow S1c].
-6. She taps "Not now" → the call mutes and holds for an explicit retry (`consentBlocked`). Her audio was already sent to Flow in step 4 without a prompt, because only the speech path asks for consent on mobile. GAP: S1c says context fields are sent only under current-version consent, but the audio itself still goes.
-7. She taps unmute and "Allow" → the call continues.
+2. With S3b the plan reads `voice.status` first and sees Flow as the transcription provider; "This device" stays on for speech only, and Flow wins for listening.
+3. The call connects → `startCall` runs with `transcribe` true; in `openMic` the recorder runs before native recognition for this provider.
+4. She speaks → `recordClip` records 16 kHz mono WAV, stops after 1.2 seconds of quiet or 30 seconds, and uploads [unverified on device].
+5. The reply plays → no consent prompt appears: consent for Flow was recorded at Connect.
+6. If she had switched off AI data sharing, the next call shows the existing consent prompt; "Not now" mutes the call and holds for an explicit retry, and no audio reaches Flow without consent (the server rejects it with the typed consent error).
+7. If the daily cap is reached, the caption shows "Daily voice limit reached. You can keep typing." once; the cap error does not count toward `MAX_TURN_FAILURES`, the call stays open for typing, and the phone stops uploading until the next call or the reset.
 #### Variations
 - Native recognition denied in iOS Settings and Flow not selected: the existing alert "Calls need transcription" (text: "Allow speech recognition in Settings, or connect ElevenLabs, OpenAI, or Fish Audio.") still omits Flow.
 - Call over cellular with a 6 minute uninterrupted turn: the mobile cap is 30 seconds per turn, so the Flow 6 minute limit is never reached from this path. The plan's "over 6 minutes is rejected" has no mobile trigger.

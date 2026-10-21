@@ -1,0 +1,71 @@
+{
+  "story": "STORY-MB-3",
+  "round": 2,
+  "verdict": "PASS",
+  "round1_dispositions": [
+    {
+      "id": "F-MB-3-1",
+      "sev": "high",
+      "status": "fixed",
+      "evidence": "To do sits above Connect mail; plan S5 specifies the mobile gate (inbox.tsx:102, :458, !list.enabled)."
+    },
+    {
+      "id": "F-MB-3-2",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Comment corrected, TodoCard is reused."
+    },
+    {
+      "id": "F-MB-3-3",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Row leaves at once as the code does. Undo still absent (N1)."
+    },
+    {
+      "id": "F-MB-3-4",
+      "sev": "low",
+      "status": "fixed",
+      "evidence": "Whole row is the target; rows are 62-85 pt."
+    },
+    {
+      "id": "F-MB-3-5",
+      "sev": "low",
+      "status": "obsolete",
+      "evidence": "Plan decision: source line is not tappable."
+    },
+    {
+      "id": "F-MB-3-6",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "Due dates Fri / Today (amber) / none still have no stated rule."
+    }
+  ],
+  "new_findings": [
+    {
+      "kind": "plan",
+      "severity": "medium",
+      "category": "happy-path",
+      "description": "Plan says a meeting row \"has no tap action, only the checkbox acts\", but the mockup completes the to-do when tapping anywhere on the row (verified). With no undo, an accidental tap on a row (scrolling, reading) completes it.",
+      "suggested_fix": "Choose: only the circle completes, with a 44 pt target around it, or keep whole-row and add undo.",
+      "screenshot": "screenshots/steps-syncing-empty-todos.png",
+      "plan_section": "Granola S5",
+      "catalog_ref": "NEW",
+      "id": "F2-MB-3-1",
+      "score": "warn",
+      "story_id": "STORY-MB-3"
+    },
+    {
+      "kind": "plan",
+      "severity": "low",
+      "category": "happy-path",
+      "description": "Consent-off state is not drawn on mobile; plan defers the component choice to S5.",
+      "suggested_fix": "Draw one frame with the existing AI-data-sharing control.",
+      "screenshot": null,
+      "plan_section": "Granola S5",
+      "catalog_ref": "NEW",
+      "id": "F2-MB-3-2",
+      "score": "warn",
+      "story_id": "STORY-MB-3"
+    }
+  ]
+}

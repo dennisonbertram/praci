@@ -1,0 +1,374 @@
+{
+  "mode": "inspect",
+  "images": [
+    "1440-light-integrations-detail.png",
+    "1440-light-api-key-reconnect.png",
+    "1440-light-api-key-connected.png",
+    "1440-light-agent-inject.png",
+    "1440-light-citation-open.png",
+    "1440-light-citation-confirm.png",
+    "1440-light-disconnect-after-full.png",
+    "375-light-api-key-empty.png"
+  ],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 47,
+      "costUsd": 0.152336,
+      "result": {
+        "verdict": "Not ready: the core connect → ask → cite flow is legible and admirably restrained, but three trust-critical states mislead — a rejected key still shows a green 'Synced' status, Delete never says where the meeting is deleted from, and after Disconnect the app keeps answering from retained meetings with almost no signal that sync stopped. Fix those plus the missing recovery link in the reconnect state before shipping.",
+        "findings": [
+          {
+            "level": "component",
+            "element": "'● Synced 42 meetings' status line with green dot",
+            "problem": "Green/healthy status is shown in the exact state where the key has been revoked and sync is broken. A first-time user reads 'all good, 42 synced' and may not understand anything is wrong, or whether 42 is current or stale.",
+            "norm": "Status color must match system state; a failed credential is a warning/error state, never green (Nielsen: visibility of system status, match with real world).",
+            "severity": "P0",
+            "screenshot": "1440-light-api-key-reconnect.png",
+            "fix": "Change to amber/red dot + 'Needs reconnect · Last synced 42 meetings' and add last-sync time; keep the count but frame it as historical."
+          },
+          {
+            "level": "component",
+            "element": "'Get a key in Granola ↗' link — absent in reconnect card",
+            "problem": "The link exists in the empty state but disappears precisely when the user needs a new key. Combined with 'Granola rejected this key', the recovery path is a dead end: user must guess where keys live in Granola.",
+            "norm": "Error states must preserve or strengthen the recovery action offered in the empty state; never remove the exit from an error.",
+            "severity": "P0",
+            "screenshot": "1440-light-api-key-reconnect.png",
+            "fix": "Restore 'Get a key in Granola ↗' beside the label, as in 1440-light-integrations-detail.png, in every non-connected state."
+          },
+          {
+            "level": "component",
+            "element": "'Granola rejected this key' + empty red-outlined field",
+            "problem": "Unclear whether the old key was cleared, is still stored, or must be fully replaced vs edited; no guidance on common causes (revoked, wrong workspace, non-Business plan). User cannot tell what to type differently on retry.",
+            "norm": "Error messages must state what happened, what state the input is in, and how to recover (WCAG 3.3 / error identification in text, not color alone).",
+            "severity": "P1",
+            "screenshot": "1440-light-api-key-reconnect.png",
+            "fix": "Add one line: 'Paste a new key — the old one was removed.' plus plan hint; pair red border with an icon/text so meaning isn't color-only."
+          },
+          {
+            "level": "component",
+            "element": "'Delete' button in citation popover",
+            "problem": "Scope is invisible: does Delete remove the meeting from Rakazo, from Granola, or just the citation? Placed next to 'Open in Granola', users will plausibly fear deleting the source of truth in Granola.",
+            "norm": "Destructive actions must name their object and scope at the point of action, especially across integrated systems.",
+            "severity": "P0",
+            "screenshot": "1440-light-citation-open.png",
+            "fix": "Label 'Delete from Rakazo…' and in the popover add 'Stored copy only — Granola is unchanged.'"
+          },
+          {
+            "level": "component",
+            "element": "Modal title 'Delete this meeting and its to-dos?'",
+            "problem": "The modal does not name which meeting (title/date hidden behind the scrim), does not say deletion is permanent/undoable, and does not state Granola itself is untouched. User confirms a cascade against an unnamed object.",
+            "norm": "Irreversible confirmations must identify the object, consequences, and reversibility (Material/Apple destructive-action guidance).",
+            "severity": "P0",
+            "screenshot": "1440-light-citation-confirm.png",
+            "fix": "Retitle 'Delete “Pricing review, 12 Oct” from Rakazo?' + body 'Its Inbox to-dos will also be deleted. This can't be undone. The meeting stays in Granola.'"
+          },
+          {
+            "level": "group",
+            "element": "Top card line 'Your data in Granola is not deleted.' after Disconnect",
+            "problem": "It answers the wrong anxiety. The screenshots below prove Rakazo keeps synced meetings, agent answers, and Inbox to-dos — yet the card only reassures about Granola. User who clicked Disconnect (no confirmation) can reasonably conclude their Rakazo data was wiped when they see an empty key form.",
+            "norm": "Post-action feedback must describe the actual resulting state of the user's data in this product first.",
+            "severity": "P0",
+            "screenshot": "1440-light-disconnect-after-full.png",
+            "fix": "Replace with 'Disconnected. 42 meetings and their to-dos stay in Rakazo; new meetings won't sync.' and add a transient toast with Undo/Reconnect."
+          },
+          {
+            "level": "group",
+            "element": "Agent chat answer (middle frame) with citation 'Pricing review, 12 Oct' after Disconnect",
+            "problem": "No banner, badge or staleness cue that the agent is now answering from a frozen, disconnected corpus. Nothing distinguishes this from live synced answers in 1440-light-agent-inject.png, so users will assume new meetings are included.",
+            "norm": "When a data source stops updating, downstream surfaces must disclose staleness at the point of consumption.",
+            "severity": "P1",
+            "screenshot": "1440-light-disconnect-after-full.png",
+            "fix": "Add a slim line above the composer: 'Granola disconnected — answers use meetings synced before today. Reconnect' with the Reconnect as a link."
+          },
+          {
+            "level": "component",
+            "element": "Red-outline 'Disconnect' button (top-right of connected card)",
+            "problem": "Per brief Disconnect has no confirmation, is instantly destructive to sync, yet is styled as a persistent, high-salience red action at card level equal to the primary content. One misclick silently stops all future sync with only the ambiguous line above as feedback.",
+            "norm": "Consequential, hard-to-notice-after-the-fact actions need either confirmation or guaranteed undo; destructive styling should not invite casual clicks.",
+            "severity": "P1",
+            "screenshot": "1440-light-api-key-connected.png",
+            "fix": "Demote to a text/tertiary 'Disconnect' under the agent row, or keep placement but fire an undoable toast ('Disconnected — Undo') for ~10s."
+          },
+          {
+            "level": "component",
+            "element": "API key text field (empty box, no placeholder/mask affordance)",
+            "problem": "Nothing signals this is a secret: no password masking, eye toggle, paste hint, or expected format. First-time users can't tell if they pasted correctly (or at all, if masked elsewhere), and shoulder-surfing risk is unaddressed. 'Connect' also appears grey/low-emphasis, implying disabled, even in states where typing is the only next step.",
+            "norm": "Credential inputs use type=password with show/hide, autocomplete=off, and a visibly enabled primary submit once input is valid (OWASP/WCAG input conventions).",
+            "severity": "P1",
+            "screenshot": "1440-light-integrations-detail.png",
+            "fix": "Use a masked password field with reveal toggle and placeholder 'grn_…'; make Connect a solid primary button that enables on non-empty input."
+          },
+          {
+            "level": "page",
+            "element": "Whole Granola detail page: 'Granola' heading + single key card",
+            "problem": "The page never says what connecting does — no mention of background sync, the Granola agent answering questions, or commitments becoming Inbox to-dos. A first-time founder is asked to paste a powerful API key into a vacuum, with only 'Business plan' as context. Value proposition and data-use disclosure are both missing at the consent moment.",
+            "norm": "Asking for a credential requires one plain sentence of benefit + what data flows, before the input (progressive disclosure still requires a value hook).",
+            "severity": "P1",
+            "screenshot": "1440-light-integrations-detail.png",
+            "fix": "Add one line under 'Granola': 'Syncs your meetings so the Granola agent can answer questions and turn commitments into Inbox to-dos.'"
+          },
+          {
+            "level": "component",
+            "element": "'Granola API key · Business plan' label",
+            "problem": "States the requirement but not the consequence: a non-Business user gets no preview of what happens with a free-plan key (rejected? which error?) and no link to upgrade/check plan. Predictable support-generating failure.",
+            "norm": "Eligibility constraints should be actionable at the point of entry, not discovered via failure.",
+            "severity": "P2",
+            "screenshot": "1440-light-integrations-detail.png",
+            "fix": "Make 'Business plan' a helper line: 'Requires Granola Business — check your plan ↗'."
+          },
+          {
+            "level": "group",
+            "element": "Connected card: 'Synced 42 meetings' + 'Granola agent' row",
+            "problem": "No last-synced time, no sync-in-progress affordance, no connected account/workspace or masked key identity — user can't verify the right Granola account is linked or whether sync is stuck. The 'Granola agent' row has no chevron/hover affordance yet duplicates the sidebar item; unclear if it's a link, a status, or decoration.",
+            "norm": "Connected integration cards show identity (account/masked key), freshness timestamp, and make navigable rows look navigable.",
+            "severity": "P1",
+            "screenshot": "1440-light-api-key-connected.png",
+            "fix": "Add 'Last synced 2 min ago · key …a3f9' and either give the agent row a 'Open →' affordance or remove it since the sidebar already carries it."
+          },
+          {
+            "level": "component",
+            "element": "Tool chips 'Searched meetings' / 'Read Vendor call, 16 Oct' + citation chip 'Vendor call, 16 Oct'",
+            "problem": "The meeting is named three times in ~40px of vertical space. The tool chips also expose system mechanics (progressive disclosure violation vs the product's own minimal-copy rule) while the actual citation chip — the one useful element — looks identical in weight to a status tag and gives no clickable affordance (no underline, icon, or hover cue).",
+            "norm": "Citations must be visually distinct and recognisably interactive; internal tool traces should collapse behind one disclosure.",
+            "severity": "P2",
+            "screenshot": "1440-light-agent-inject.png",
+            "fix": "Collapse tool trace to a single muted 'Searched 1 meeting' expander; restyle the citation as a true chip-link (e.g. orange-tinted or with ⎘/↗ cue) since orange is reserved for bot identity."
+          },
+          {
+            "level": "component",
+            "element": "Citation popover body: 'Dana Reyes, you' + 'Open in Granola ↗' + Delete",
+            "problem": "A citation's job is verification, but the popover contains zero evidence: no meeting title/date of its own (it relies on the chip behind it), no quoted excerpt, no timestamp in the meeting. 'Dana Reyes, you' is ambiguous — attendees? speakers? — and earns no place. User must leave the app to check the claim.",
+            "norm": "Citation popovers show source title, date, and the supporting excerpt so the claim is checkable in place (Perplexity/ChatGPT citation conventions).",
+            "severity": "P1",
+            "screenshot": "1440-light-citation-open.png",
+            "fix": "Show 'Pricing review · 12 Oct' as popover title plus 1–2 line excerpt ('…revised quote with the volume discount — Dana'), keep 'Open in Granola ↗', demote Delete to a low-emphasis footer action."
+          },
+          {
+            "level": "component",
+            "element": "Popover/modal dismissal and focus behaviour (implied by static frame)",
+            "problem": "No visible close (×) on the popover and no visible focus emphasis on either popover or the Delete modal; the modal's safe action 'Cancel' is neutral while 'Delete' is red-outline — keyboard default/Enter behaviour is unreadable, risking accidental confirmation of an irreversible cascade.",
+            "norm": "Overlays need an explicit close affordance, focus trapped with a safe default, and destructive confirm not as the default button (WCAG 2.1 focus visible/management).",
+            "severity": "P2",
+            "screenshot": "1440-light-citation-confirm.png",
+            "fix": "Add ×/Esc affordance, give Cancel initial focus, render Delete as solid red, and ensure a visible 2px focus ring on both."
+          },
+          {
+            "level": "group",
+            "element": "Inbox card 'Send Dana the revised pricing / From: Pricing review, 12 Oct'",
+            "problem": "The provenance line is plain grey text, not a link/chip — unlike the identical citation in chat, it's not actionable, so an Inbox user can't jump to the source meeting or act on it (e.g. delete/verify) without hunting in the agent.",
+            "norm": "Same entity, same component: a meeting reference should behave identically (and be tappable) everywhere it appears.",
+            "severity": "P2",
+            "screenshot": "1440-light-disconnect-after-full.png",
+            "fix": "Reuse the citation chip component for 'From: Pricing review, 12 Oct' so it opens the same popover."
+          },
+          {
+            "level": "layout",
+            "element": "Mobile card header: wrapped label vs 'Get a key in Granola ↗'",
+            "problem": "At 375px the label wraps to two lines while the link sits top-right and its '↗' orphan-wraps onto a second line alone. Alignment breaks, tap target fragments, and the external-link affordance visually detaches from its text.",
+            "norm": "≤400px headers stack label above link; icons must not wrap away from their label (white-space handling on link).",
+            "severity": "P2",
+            "screenshot": "375-light-api-key-empty.png",
+            "fix": "Stack: label line 1, link line 2 with '↗' set nowrap; or shorten mobile link to 'Get a key ↗'."
+          },
+          {
+            "level": "layout",
+            "element": "Detail page content column (card ~460px, right ~55% empty)",
+            "problem": "At 1440 the single narrow card pinned top-left leaves the majority of the canvas void with no secondary content (what the agent does, synced-meeting list, plan help). It reads as unfinished rather than minimal, and wastes the space that could solve the missing value-prop/freshness problems above.",
+            "norm": "Minimal ≠ empty: wide detail pages either center a narrow task column or add a restrained supporting column.",
+            "severity": "P3",
+            "screenshot": "1440-light-integrations-detail.png",
+            "fix": "Either center the card with the one-line value prop, or add a quiet right column: 'What syncs / What the agent can do' in muted text."
+          },
+          {
+            "level": "component",
+            "element": "Low-contrast grey text: 'Search', chip labels 'Searched meetings', 'From: …', agent placeholder 'Ask Granola agent'",
+            "problem": "Multiple functional strings are rendered in light/mid grey on off-white at small sizes; status is also carried by color alone (green dot, red border/text, orange 'G'). Screen-reader and low-vision users get no redundant cue, and several strings will fall under 4.5:1.",
+            "norm": "WCAG AA 4.5:1 for body text; never encode status by color alone.",
+            "severity": "P2",
+            "screenshot": "1440-light-agent-inject.png",
+            "fix": "Darken secondary text one step, add text/icon redundancy to every color-coded state ('Synced', 'Rejected'), keep orange for the bot mark only — not body text."
+          },
+          {
+            "level": "component",
+            "element": "Composer 'Ask Granola agent' (no send control visible)",
+            "problem": "A single bare input with no send button, hint, or Enter cue; first-time users on touch/Electron can't be sure how to submit, and there's no visible disabled/empty state logic.",
+            "norm": "Chat composers ship a visible submit affordance (arrow button) even when Enter also works.",
+            "severity": "P3",
+            "screenshot": "1440-light-agent-inject.png",
+            "fix": "Add a circular send button at the input's right end, enabled on text entry."
+          }
+        ],
+        "excellent": [
+          "Delete confirmation copy 'Delete this meeting and its to-dos?' (1440-light-citation-confirm.png) — naming the cascade consequence in the title is exactly right and rarer than it should be; it just needs the meeting's name added.",
+          "Citation chip format 'Pricing review, 12 Oct' / 'Vendor call, 16 Oct' (1440-light-agent-inject.png) — title + human date inline at the claim is the correct citation pattern and earns every character.",
+          "Connected state removes the key field entirely (1440-light-api-key-connected.png) — not re-displaying a stored secret is good security hygiene and keeps the card to two lines.",
+          "Orange discipline: the 'G' bot mark is the only saturated element across sidebar, cards and answers (all screens) — identity color is instantly learnable and never wasted on chrome.",
+          "Copy restraint on the empty card (1440-light-integrations-detail.png): label + one link + one button, zero marketing filler — the one missing sentence is the value prop, everything present earns its place.",
+          "Disconnect-after frames honestly retain agent answers and Inbox to-dos (1440-light-disconnect-after-full.png, middle/bottom frames) — keeping commitments actionable after disconnect is the right product behaviour; it only needs labelling."
+        ]
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 109,
+      "costUsd": 0.101242,
+      "result": {
+        "verdict": "The visual restraint, monochrome discipline, and progressive disclosure of the BOTS sidebar section are strong foundations, but critical state contradictions, misleading post-disconnect copy, broken popover anchoring, and mobile text-wrapping regressions prevent this flow from being shippable without revision.",
+        "findings": [
+          {
+            "level": "component",
+            "element": "Status indicator ('● Synced 42 meetings') in Needs Reconnect card",
+            "problem": "When the API key is revoked/rejected ('Needs reconnect'), the card still displays an active green status dot next to 'Synced 42 meetings', directly contradicting the red error border and 'Granola rejected this key' message below it.",
+            "norm": "Status indicators must reflect current system health; a broken or revoked authentication state cannot use a green/active indicator.",
+            "severity": "P0",
+            "screenshot": "1440-light-api-key-reconnect.png",
+            "fix": "Replace the green dot with an amber/red warning dot or pause icon, and update the status text to clarify that sync is paused (e.g., 'Sync paused · 42 meetings stored')."
+          },
+          {
+            "level": "component",
+            "element": "Post-disconnect status copy ('Your data in Granola is not deleted.')",
+            "problem": "After disconnecting, the card states 'Your data in Granola is not deleted.' This fails to answer the user's actual concern—what happened to the 42 synced meetings and Inbox to-dos inside Rakazo—or mistakenly says 'Granola' instead of 'Rakazo'. Since Disconnect executes immediately without a confirmation modal, the user has no way of knowing before or after clicking that their synced meetings are still stored in Rakazo.",
+            "norm": "Post-action feedback must accurately describe the state change inside the product (sync stopped, key removed, synced meetings retained in Rakazo).",
+            "severity": "P0",
+            "screenshot": "1440-light-disconnect-after-full.png",
+            "fix": "Change the post-disconnect notice to 'Sync stopped. 42 synced meetings are kept in Rakazo.' (and add a brief inline note or tooltip near Disconnect before clicking so the user knows disconnecting keeps existing meetings)."
+          },
+          {
+            "level": "component",
+            "element": "Citation popover ('Dana Reyes, you / Open in Granola / Delete')",
+            "problem": "The citation popover is horizontally anchored to the far left of the sentence ('You agreed to send...') roughly 250px away from the 'Pricing review, 12 Oct' citation chip at the far right that triggered it.",
+            "norm": "Popovers must visually anchor directly below or above their trigger element so the spatial relationship between trigger and content is unmistakable.",
+            "severity": "P1",
+            "screenshot": "1440-light-citation-open.png",
+            "fix": "Anchor the popover's top-left or top-right edge directly beneath the 'Pricing review, 12 Oct' citation chip."
+          },
+          {
+            "level": "component",
+            "element": "'Get a key in Granola ↗' link on mobile card",
+            "problem": "At 375px width, placing the label 'Granola API key · Business plan' and the link 'Get a key in Granola ↗' in a two-column horizontal row forces awkward wrapping on both sides, stranding the external link arrow ('↗') on a second line by itself.",
+            "norm": "External link icons must never wrap onto an orphan line separately from their link text, and narrow mobile cards should stack header metadata vertically when horizontal space is insufficient.",
+            "severity": "P1",
+            "screenshot": "375-light-api-key-empty.png",
+            "fix": "Bind the arrow to the last word with a non-breaking space ('Granola ↗') and stack 'Get a key in Granola ↗' below 'Granola API key · Business plan' at mobile widths."
+          },
+          {
+            "level": "component",
+            "element": "Missing 'Get a key in Granola ↗' link in Needs Reconnect state",
+            "problem": "When an existing API key is revoked ('Granola rejected this key'), the 'Get a key in Granola ↗' link that was present on the initial setup card is removed right when the user needs to generate a replacement key.",
+            "norm": "Recovery flows for expired or revoked credentials must retain direct links to the credential generation page.",
+            "severity": "P1",
+            "screenshot": "1440-light-api-key-reconnect.png",
+            "fix": "Keep the 'Get a key in Granola ↗' link aligned to the right of the 'Granola API key · Business plan' label in the reconnect state."
+          },
+          {
+            "level": "group",
+            "element": "AGENT CHAT frame after Disconnect",
+            "problem": "In the post-disconnect Agent Chat state, the 'Granola agent' header and the 'Ask Granola agent' input bar disappear completely, and there is no banner or status note indicating that Granola is disconnected. Since stored meetings are kept after disconnecting, it is unclear whether the user can still ask questions about past meetings or why the input field is gone.",
+            "norm": "Persistent chat views must keep their page header and input bar (or show a clear disabled state/banner) and inform the user when live background sync is no longer active.",
+            "severity": "P1",
+            "screenshot": "1440-light-disconnect-after-full.png",
+            "fix": "Restore the 'Granola agent' header and 'Ask Granola agent' input bar so users can continue querying stored meetings, and show a subtle muted notice that new meetings are not syncing."
+          },
+          {
+            "level": "page",
+            "element": "INTEGRATIONS CARD frame after Disconnect",
+            "problem": "After clicking Disconnect, the '← Integrations' back navigation link and the 'G Granola' page title header vanish from the page, leaving the API key card floating without page context or back-navigation.",
+            "norm": "Page-level headers and breadcrumb navigation must remain stable across component state transitions.",
+            "severity": "P1",
+            "screenshot": "1440-light-disconnect-after-full.png",
+            "fix": "Retain the '← Integrations' back link and 'G Granola' page header above the card after disconnecting."
+          },
+          {
+            "level": "component",
+            "element": "Tool chips ('Searched meetings', 'Read Vendor call, 16 Oct') vs. Citation chip ('Vendor call, 16 Oct')",
+            "problem": "The non-interactive process/tool chips above the message and the clickable citation chip inline at the end of the sentence use the exact same visual styling (same border, fill, typography, and padding), providing zero visual distinction that the citation chip is interactive and opens a popover.",
+            "norm": "Interactive citation triggers must be visually distinguishable from passive system/tool status pills.",
+            "severity": "P1",
+            "screenshot": "1440-light-agent-inject.png",
+            "fix": "Differentiate tool steps from citations—for example, render tool steps as borderless muted text lines (or with a small status icon) and give interactive citation chips a subtle link affordance, hover state, or source icon."
+          },
+          {
+            "level": "component",
+            "element": "'Delete' button in citation popover and confirmation modal ('Delete this meeting and its to-dos?')",
+            "problem": "Inside the citation popover, the button simply reads 'Delete', which is ambiguous in the context of a chat citation (could mean deleting the citation, the chat message, the meeting in Rakazo, or the meeting in Granola). Even the confirmation modal ('Delete this meeting and its to-dos?') does not clarify that deletion only removes the stored record from Rakazo and does not delete the meeting in Granola.",
+            "norm": "Destructive actions in synced integrations must explicitly state the target object and whether deletion affects only the local app or the upstream source.",
+            "severity": "P1",
+            "screenshot": "1440-light-citation-open.png",
+            "fix": "Label the popover action 'Delete meeting' and update the confirmation copy to 'Delete this meeting and its to-dos from Rakazo?'"
+          },
+          {
+            "level": "component",
+            "element": "'Disconnect' button styling in Connected and Reconnect cards",
+            "problem": "'Disconnect' uses the exact same red outline destructive styling as 'Delete' (which permanently deletes data), even though Disconnect is non-destructive (keeps all stored meetings and to-dos) and executes without confirmation. Additionally, in the 'Needs reconnect' state, showing both a prominent red 'Disconnect' button and a neutral 'Connect' button creates competing actions.",
+            "norm": "Reserve red destructive button treatments for actions that permanently destroy data; use neutral secondary styling for reversible or non-destructive unlinking actions.",
+            "severity": "P2",
+            "screenshot": "1440-light-api-key-connected.png",
+            "fix": "Style 'Disconnect' as a neutral secondary/muted button rather than destructive red."
+          },
+          {
+            "level": "component",
+            "element": "'Connect' button and empty API key input field",
+            "problem": "When the API key input is completely empty, the 'Connect' button looks identical to an active button and has the exact same white fill and light border as the text field above it, failing to communicate primary action hierarchy or disabled state prior to text entry.",
+            "norm": "Primary form submission buttons should visually distinguish between disabled (empty input) and active (populated input) states, and carry clear primary CTA contrast when ready to submit.",
+            "severity": "P2",
+            "screenshot": "1440-light-integrations-detail.png",
+            "fix": "Show 'Connect' in a muted/disabled state when the input is empty, and transition it to a high-contrast solid dark button ('#111' fill, white text) once a key is pasted."
+          },
+          {
+            "level": "component",
+            "element": "'Granola agent' item at the bottom of the Connected / Reconnect card",
+            "problem": "The orange 'G Granola agent' row inside the integration card looks identical to a static label and lacks any interactive affordance (such as an arrow, chevron, or button border) to indicate whether clicking it navigates to the agent chat.",
+            "norm": "Interactive navigation links inside status cards should include a directional affordance (e.g., '→' or chevron) to signal clickability.",
+            "severity": "P2",
+            "screenshot": "1440-light-api-key-connected.png",
+            "fix": "Add a right-arrow ('Granola agent →') or subtle row action affordance so users know they can click it to open the agent chat."
+          },
+          {
+            "level": "group",
+            "element": "Confirmation modal button alignment ('Cancel' / 'Delete')",
+            "problem": "In the 'Delete this meeting and its to-dos?' modal, the 'Cancel' and 'Delete' buttons are positioned slightly right of center—neither centered beneath the heading nor right-aligned with the text margin. Additionally, both buttons use white backgrounds with thin borders, giving the final destructive action no fill hierarchy over Cancel.",
+            "norm": "Modal action buttons should be consistently right-aligned with the content edge or centered as a symmetrical pair, with the primary destructive confirmation using a solid red fill.",
+            "severity": "P2",
+            "screenshot": "1440-light-citation-confirm.png",
+            "fix": "Right-align the button group with the right edge of the heading (or center both buttons evenly) and give 'Delete' a solid red fill with white text."
+          },
+          {
+            "level": "layout",
+            "element": "Chat column and input bar width ('Summarise my vendor call...' and 'Ask Granola agent')",
+            "problem": "In the agent chat view, the user message bubble and the bottom 'Ask Granola agent' input bar stop abruptly at roughly 68% of the main panel width, leaving an unbalanced blank column on the right side of the canvas.",
+            "norm": "Chat containers should either span the available main panel width (with comfortable padding) or be horizontally centered within the main pane.",
+            "severity": "P2",
+            "screenshot": "1440-light-agent-inject.png",
+            "fix": "Center the chat column within the main panel or expand the chat container to use consistent left and right padding."
+          },
+          {
+            "level": "component",
+            "element": "Source line in Inbox to-do ('From: Pricing review, 12 Oct')",
+            "problem": "In the Inbox view, the meeting reference 'From: Pricing review, 12 Oct' is rendered as plain muted text rather than using the interactive citation chip pattern ('Pricing review, 12 Oct') established in the agent chat.",
+            "norm": "Cross-referenced objects (synced meetings) should use consistent interactive chip affordances across surfaces so users can inspect or open the source meeting from their Inbox to-dos.",
+            "severity": "P3",
+            "screenshot": "1440-light-disconnect-after-full.png",
+            "fix": "Make 'Pricing review, 12 Oct' in the Inbox to-do item an interactive citation chip that opens the same meeting popover."
+          },
+          {
+            "level": "page",
+            "element": "Granola integration detail page before connecting",
+            "problem": "For a first-time user landing on the Granola detail page before connecting, there is no one-line summary explaining what connecting Granola actually does (syncs meetings in the background, enables the Granola agent, and adds meeting commitments to Inbox).",
+            "norm": "Integration setup screens should include a concise one-line value proposition so users understand what data will be accessed and what features will be unlocked before pasting an API key.",
+            "severity": "P3",
+            "screenshot": "1440-light-integrations-detail.png",
+            "fix": "Add a concise single-line description below the 'Granola' title or inside the card (e.g., 'Syncs your meetings to answer questions and extract Inbox to-dos.')."
+          }
+        ],
+        "excellent": [
+          "Strict color discipline: reserving the orange accent exclusively for bot avatars ('Granola agent') creates immediate visual recognition of agent touchpoints across the sidebar, integration card, and chat view.",
+          "Progressive disclosure in navigation: keeping the 'BOTS' section hidden in the left sidebar until Granola is connected ('1440-light-integrations-detail.png' vs. '1440-light-api-key-connected.png') keeps the initial workspace clean and uncluttered.",
+          "Clear inline prerequisite labeling ('Granola API key · Business plan' paired with 'Get a key in Granola ↗') prevents non-Business Granola users from wasting time troubleshooting unsupported keys."
+        ]
+      }
+    }
+  ]
+}

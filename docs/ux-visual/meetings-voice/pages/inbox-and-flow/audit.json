@@ -1,0 +1,11182 @@
+[
+ {
+  "key": "1440x900-dark-call-cap",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"E Elio Can you move my two o'c\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 4,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "18px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 2,
+     "13px/400": 4,
+     "13px/600": 1,
+     "11px/400": 1,
+     "11px/700": 1,
+     "18px/700": 1,
+     "13px/700": 1,
+     "12px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"E\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"E\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"During a callDaily limit reach\"",
+     "children": 2,
+     "widths": [
+      96,
+      130
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-dark-call-normal",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"E Elio Can you move my two o'c\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 6,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "18px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 2,
+     "13px/400": 5,
+     "13px/600": 1,
+     "11px/400": 1,
+     "11px/700": 1,
+     "18px/700": 1,
+     "13px/700": 1,
+     "12px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"E\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"E\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"During a callDaily limit reach\"",
+     "children": 2,
+     "widths": [
+      96,
+      130
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-dark-consent-x",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     6,
+     8,
+     10,
+     11,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     11,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      11
+     ],
+     [
+      11,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "13px",
+     "11px",
+     "15px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "13px/400": 3,
+     "13px/600": 1,
+     "11px/400": 3,
+     "11px/700": 1,
+     "15px/700": 1,
+     "13px/700": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "button.tgl \"Allow ElevenLabs\"",
+     "w": 34,
+     "h": 20
+    },
+    {
+     "el": "button.tgl \"Allow Wispr Flow\"",
+     "w": 34,
+     "h": 20
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"R\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-dark-flow-meetings-agent",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"Integrations Connected apps WW\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 9,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     18,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      18,
+      20
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 6,
+     "13px/400": 7,
+     "11px/400": 1,
+     "13px/600": 1,
+     "11px/700": 4,
+     "19px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Security sync, 14 Oct\"",
+     "w": 134,
+     "h": 21
+    },
+    {
+     "el": "a.cite \"Vendor call, 16 Oct\"",
+     "w": 121,
+     "h": 21
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"W\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"W\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"W\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"TileAgent answerInbox\"",
+     "children": 3,
+     "widths": [
+      46,
+      103,
+      57
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-dark-flow-meetings-inbox",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     7,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "13px/400": 6,
+     "11px/400": 1,
+     "13px/600": 1,
+     "11px/700": 2,
+     "19px/700": 1,
+     "12px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Start the security review\"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"W\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"TileAgent answerInbox\"",
+     "children": 3,
+     "widths": [
+      46,
+      103,
+      57
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-dark-flow-meetings-tile",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 5,
+     "13px/400": 5,
+     "11px/400": 1,
+     "13px/600": 3,
+     "11px/700": 2,
+     "19px/700": 1,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"W\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"TileAgent answerInbox\"",
+     "children": 3,
+     "widths": [
+      46,
+      103,
+      57
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-dark-inbox-consent",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px",
+     "14px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "13px/400": 5,
+     "13px/600": 1,
+     "11px/400": 1,
+     "11px/700": 1,
+     "19px/700": 1,
+     "14px/600": 1,
+     "12px/500": 2,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    },
+    {
+     "container": "div \"AllowNot now\"",
+     "children": 2,
+     "widths": [
+      57,
+      74
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-dark-inbox-empty",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "13px/400": 5,
+     "13px/600": 1,
+     "11px/400": 1,
+     "11px/700": 1,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-dark-inbox-mail",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     7,
+     8,
+     9,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     9,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 10,
+     "13px/400": 9,
+     "13px/600": 2,
+     "11px/400": 3,
+     "11px/700": 1,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/700": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Share the Q4 hiring plan with \"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Book a legal review of the ven\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    },
+    {
+     "container": "div.tabs \"Allacme@example.com\"",
+     "children": 2,
+     "widths": [
+      40,
+      149
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-dark-inbox-syncing",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "13px/400": 5,
+     "13px/600": 1,
+     "11px/400": 1,
+     "11px/700": 1,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-dark-inbox-todos",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     7,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 10,
+     "13px/400": 7,
+     "13px/600": 1,
+     "11px/400": 1,
+     "11px/700": 1,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Share the Q4 hiring plan with \"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Book a legal review of the ven\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-dark-settings-voice-connected",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 8,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 6,
+     "11px/400": 5,
+     "12px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      207,
+      208
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      460
+     ]
+    },
+    {
+     "container": "div \"Replace keyDisconnect\"",
+     "children": 2,
+     "widths": [
+      100,
+      91
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "1440x900-dark-settings-voice-default",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 9,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 6,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      207,
+      208
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      460
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow.sel \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "1440x900-dark-settings-voice-empty",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 7,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      207,
+      208
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      460
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "1440x900-dark-settings-voice-rejected",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 8,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      207,
+      208
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      460
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "1440x900-dark-settings-voice-verifying",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 6,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      207,
+      208
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      460
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "1440x900-light-call-cap",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"E Elio Can you move my two o'c\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 4,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "18px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 2,
+     "13px/400": 4,
+     "13px/600": 1,
+     "11px/400": 1,
+     "11px/700": 1,
+     "18px/700": 1,
+     "13px/700": 1,
+     "12px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"E\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"E\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"During a callDaily limit reach\"",
+     "children": 2,
+     "widths": [
+      96,
+      130
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-light-call-normal",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"E Elio Can you move my two o'c\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 6,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "18px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 2,
+     "13px/400": 5,
+     "13px/600": 1,
+     "11px/400": 1,
+     "11px/700": 1,
+     "18px/700": 1,
+     "13px/700": 1,
+     "12px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"E\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"E\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"During a callDaily limit reach\"",
+     "children": 2,
+     "widths": [
+      96,
+      130
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-light-consent-x",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     6,
+     8,
+     10,
+     11,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     11,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      11
+     ],
+     [
+      11,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "13px",
+     "11px",
+     "15px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "13px/400": 3,
+     "13px/600": 1,
+     "11px/400": 3,
+     "11px/700": 1,
+     "15px/700": 1,
+     "13px/700": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "button.tgl \"Allow ElevenLabs\"",
+     "w": 34,
+     "h": 20
+    },
+    {
+     "el": "button.tgl \"Allow Wispr Flow\"",
+     "w": 34,
+     "h": 20
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"R\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-light-flow-meetings-agent",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"Integrations Connected apps WW\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 9,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     18,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      18,
+      20
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 6,
+     "13px/400": 7,
+     "11px/400": 1,
+     "13px/600": 1,
+     "11px/700": 4,
+     "19px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Security sync, 14 Oct\"",
+     "w": 134,
+     "h": 21
+    },
+    {
+     "el": "a.cite \"Vendor call, 16 Oct\"",
+     "w": 121,
+     "h": 21
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"W\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"W\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"W\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"TileAgent answerInbox\"",
+     "children": 3,
+     "widths": [
+      46,
+      103,
+      57
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-light-flow-meetings-inbox",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     7,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "13px/400": 6,
+     "11px/400": 1,
+     "13px/600": 1,
+     "11px/700": 2,
+     "19px/700": 1,
+     "12px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Start the security review\"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"W\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"TileAgent answerInbox\"",
+     "children": 3,
+     "widths": [
+      46,
+      103,
+      57
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-light-flow-meetings-tile",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 5,
+     "13px/400": 5,
+     "11px/400": 1,
+     "13px/600": 3,
+     "11px/700": 2,
+     "19px/700": 1,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"W\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"TileAgent answerInbox\"",
+     "children": 3,
+     "widths": [
+      46,
+      103,
+      57
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-light-inbox-consent",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px",
+     "14px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "13px/400": 5,
+     "13px/600": 1,
+     "11px/400": 1,
+     "11px/700": 1,
+     "19px/700": 1,
+     "14px/600": 1,
+     "12px/500": 2,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    },
+    {
+     "container": "div \"AllowNot now\"",
+     "children": 2,
+     "widths": [
+      57,
+      74
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-light-inbox-empty",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "13px/400": 5,
+     "13px/600": 1,
+     "11px/400": 1,
+     "11px/700": 1,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-light-inbox-mail",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     7,
+     8,
+     9,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     9,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 10,
+     "13px/400": 9,
+     "13px/600": 2,
+     "11px/400": 3,
+     "11px/700": 1,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/700": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Share the Q4 hiring plan with \"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Book a legal review of the ven\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.due.warn \"Today\"",
+     "ratio": 3.64
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    },
+    {
+     "container": "div.tabs \"Allacme@example.com\"",
+     "children": 2,
+     "widths": [
+      40,
+      149
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-light-inbox-syncing",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "13px/400": 5,
+     "13px/600": 1,
+     "11px/400": 1,
+     "11px/700": 1,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-light-inbox-todos",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     7,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 10,
+     "13px/400": 7,
+     "13px/600": 1,
+     "11px/400": 1,
+     "11px/700": 1,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Share the Q4 hiring plan with \"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Book a legal review of the ven\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.due.warn \"Today\"",
+     "ratio": 3.64
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "1440x900-light-settings-voice-connected",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 8,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 6,
+     "11px/400": 5,
+     "12px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      207,
+      208
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.ok-t \"Connected\"",
+     "ratio": 4.06
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      460
+     ]
+    },
+    {
+     "container": "div \"Replace keyDisconnect\"",
+     "children": 2,
+     "widths": [
+      100,
+      91
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "1440x900-light-settings-voice-default",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 9,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 6,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      207,
+      208
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.ok-t \"Connected\"",
+     "ratio": 4.06
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      460
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow.sel \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "1440x900-light-settings-voice-empty",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 7,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      207,
+      208
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      460
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "1440x900-light-settings-voice-rejected",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 8,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      207,
+      208
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      460
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "1440x900-light-settings-voice-verifying",
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 6,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      207,
+      208
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      460
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "375x812-dark-call-cap",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.win \"SearchInboxBotsEElioIntegratio\"",
+     "w": 351,
+     "h": 300,
+     "fillPct": 9,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.pane \"E Elio Can you move my two o'c\"",
+     "w": 349,
+     "h": 298,
+     "fillPct": 9,
+     "pctOfViewport": 34
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     16,
+     22,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "18px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 2,
+     "18px/700": 1,
+     "13px/700": 1,
+     "13px/400": 1,
+     "12px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"E\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"During a callDaily limit reach\"",
+     "children": 2,
+     "widths": [
+      96,
+      130
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-dark-call-normal",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     16,
+     22,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "18px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 2,
+     "18px/700": 1,
+     "13px/700": 1,
+     "13px/400": 2,
+     "12px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"E\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"During a callDaily limit reach\"",
+     "children": 2,
+     "widths": [
+      96,
+      130
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-dark-consent-x",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     6,
+     8,
+     10,
+     11,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     11,
+     14
+    ],
+    "nearDupes": [
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      11
+     ],
+     [
+      11,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "15px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "15px/700": 1,
+     "13px/700": 2,
+     "11px/400": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "button.tgl \"Allow ElevenLabs\"",
+     "w": 34,
+     "h": 20
+    },
+    {
+     "el": "button.tgl \"Allow Wispr Flow\"",
+     "w": 34,
+     "h": 20
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-dark-flow-meetings-agent",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 6,
+     "11px/700": 2,
+     "19px/700": 1,
+     "13px/400": 3
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Security sync, 14 Oct\"",
+     "w": 134,
+     "h": 21
+    },
+    {
+     "el": "a.cite \"Vendor call, 16 Oct\"",
+     "w": 121,
+     "h": 21
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"W\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"W\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"TileAgent answerInbox\"",
+     "children": 3,
+     "widths": [
+      46,
+      103,
+      57
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-dark-flow-meetings-inbox",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     7,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/400": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Start the security review\"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"TileAgent answerInbox\"",
+     "children": 3,
+     "widths": [
+      46,
+      103,
+      57
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-dark-flow-meetings-tile",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 5,
+     "19px/700": 1,
+     "13px/400": 1,
+     "13px/600": 2,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"TileAgent answerInbox\"",
+     "children": 3,
+     "widths": [
+      46,
+      103,
+      57
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-dark-inbox-consent",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "14px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "19px/700": 1,
+     "14px/600": 1,
+     "13px/400": 2,
+     "12px/500": 2,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"AllowNot now\"",
+     "children": 2,
+     "widths": [
+      57,
+      74
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-dark-inbox-empty",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/400": 2,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-dark-inbox-mail",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     7,
+     8,
+     9,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     9,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 10,
+     "19px/700": 1,
+     "13px/600": 1,
+     "13px/400": 6,
+     "12px/600": 1,
+     "13px/700": 2,
+     "11px/400": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Share the Q4 hiring plan with \"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Book a legal review of the ven\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.tabs \"Allacme@example.com\"",
+     "children": 2,
+     "widths": [
+      40,
+      149
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-dark-inbox-syncing",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/400": 2,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-dark-inbox-todos",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     7,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 10,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/400": 4,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Share the Q4 hiring plan with \"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Book a legal review of the ven\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-dark-settings-voice-connected",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 8,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 6,
+     "11px/400": 5,
+     "12px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"Replace keyDisconnect\"",
+     "children": 2,
+     "widths": [
+      100,
+      91
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "375x812-dark-settings-voice-default",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 95,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 9,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 6,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow.sel \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "375x812-dark-settings-voice-empty",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 11,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 7,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "375x812-dark-settings-voice-rejected",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 38,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 8,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "375x812-dark-settings-voice-verifying",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 6,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "375x812-light-call-cap",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.win \"SearchInboxBotsEElioIntegratio\"",
+     "w": 351,
+     "h": 300,
+     "fillPct": 9,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.pane \"E Elio Can you move my two o'c\"",
+     "w": 349,
+     "h": 298,
+     "fillPct": 9,
+     "pctOfViewport": 34
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     16,
+     22,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "18px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 2,
+     "18px/700": 1,
+     "13px/700": 1,
+     "13px/400": 1,
+     "12px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"E\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"During a callDaily limit reach\"",
+     "children": 2,
+     "widths": [
+      96,
+      130
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-light-call-normal",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     16,
+     22,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "18px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 2,
+     "18px/700": 1,
+     "13px/700": 1,
+     "13px/400": 2,
+     "12px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"E\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"During a callDaily limit reach\"",
+     "children": 2,
+     "widths": [
+      96,
+      130
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-light-consent-x",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     6,
+     8,
+     10,
+     11,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     11,
+     14
+    ],
+    "nearDupes": [
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      11
+     ],
+     [
+      11,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "15px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "15px/700": 1,
+     "13px/700": 2,
+     "11px/400": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "button.tgl \"Allow ElevenLabs\"",
+     "w": 34,
+     "h": 20
+    },
+    {
+     "el": "button.tgl \"Allow Wispr Flow\"",
+     "w": 34,
+     "h": 20
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-light-flow-meetings-agent",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 6,
+     "11px/700": 2,
+     "19px/700": 1,
+     "13px/400": 3
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Security sync, 14 Oct\"",
+     "w": 134,
+     "h": 21
+    },
+    {
+     "el": "a.cite \"Vendor call, 16 Oct\"",
+     "w": 121,
+     "h": 21
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"W\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"W\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"TileAgent answerInbox\"",
+     "children": 3,
+     "widths": [
+      46,
+      103,
+      57
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-light-flow-meetings-inbox",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     7,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/400": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Start the security review\"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"TileAgent answerInbox\"",
+     "children": 3,
+     "widths": [
+      46,
+      103,
+      57
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-light-flow-meetings-tile",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 5,
+     "19px/700": 1,
+     "13px/400": 1,
+     "13px/600": 2,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"TileAgent answerInbox\"",
+     "children": 3,
+     "widths": [
+      46,
+      103,
+      57
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-light-inbox-consent",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "14px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "19px/700": 1,
+     "14px/600": 1,
+     "13px/400": 2,
+     "12px/500": 2,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"AllowNot now\"",
+     "children": 2,
+     "widths": [
+      57,
+      74
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-light-inbox-empty",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/400": 2,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-light-inbox-mail",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     7,
+     8,
+     9,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     9,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 10,
+     "19px/700": 1,
+     "13px/600": 1,
+     "13px/400": 6,
+     "12px/600": 1,
+     "13px/700": 2,
+     "11px/400": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Share the Q4 hiring plan with \"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Book a legal review of the ven\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.due.warn \"Today\"",
+     "ratio": 3.64
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.tabs \"Allacme@example.com\"",
+     "children": 2,
+     "widths": [
+      40,
+      149
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-light-inbox-syncing",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/400": 2,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-light-inbox-todos",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     7,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 10,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/400": 4,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Share the Q4 hiring plan with \"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Book a legal review of the ven\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.due.warn \"Today\"",
+     "ratio": 3.64
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "375x812-light-settings-voice-connected",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 8,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 6,
+     "11px/400": 5,
+     "12px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.ok-t \"Connected\"",
+     "ratio": 4.06
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"Replace keyDisconnect\"",
+     "children": 2,
+     "widths": [
+      100,
+      91
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "375x812-light-settings-voice-default",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 95,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 9,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 6,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.ok-t \"Connected\"",
+     "ratio": 4.06
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow.sel \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "375x812-light-settings-voice-empty",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 11,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 7,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "375x812-light-settings-voice-rejected",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 38,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 8,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "375x812-light-settings-voice-verifying",
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 6,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "768x1024-dark-call-cap",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Settings, Voice: Wispr Flow \"",
+     "w": 768,
+     "h": 438,
+     "fillPct": 7,
+     "pctOfViewport": 43
+    },
+    {
+     "el": "section#screen-call \"3 Voice call using Flow transc\"",
+     "w": 744,
+     "h": 370,
+     "fillPct": 8,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.win \"SearchInboxBotsEElioIntegratio\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 4,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"E Elio Can you move my two o'c\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 4,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     16,
+     22,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "18px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 2,
+     "18px/700": 1,
+     "13px/700": 1,
+     "13px/400": 1,
+     "12px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"E\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"During a callDaily limit reach\"",
+     "children": 2,
+     "widths": [
+      96,
+      130
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-dark-call-normal",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Settings, Voice: Wispr Flow \"",
+     "w": 768,
+     "h": 438,
+     "fillPct": 9,
+     "pctOfViewport": 43
+    },
+    {
+     "el": "section#screen-call \"3 Voice call using Flow transc\"",
+     "w": 744,
+     "h": 370,
+     "fillPct": 11,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.win \"SearchInboxBotsEElioIntegratio\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 7,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"E Elio Can you move my two o'c\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 7,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     16,
+     22,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "18px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 2,
+     "18px/700": 1,
+     "13px/700": 1,
+     "13px/400": 2,
+     "12px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"E\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"During a callDaily limit reach\"",
+     "children": 2,
+     "widths": [
+      96,
+      130
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-dark-consent-x",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Settings, Voice: Wispr Flow \"",
+     "w": 768,
+     "h": 429,
+     "fillPct": 11,
+     "pctOfViewport": 42
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     6,
+     8,
+     10,
+     11,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     11,
+     14
+    ],
+    "nearDupes": [
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      11
+     ],
+     [
+      11,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "15px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "15px/700": 1,
+     "13px/700": 2,
+     "11px/400": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "button.tgl \"Allow ElevenLabs\"",
+     "w": 34,
+     "h": 20
+    },
+    {
+     "el": "button.tgl \"Allow Wispr Flow\"",
+     "w": 34,
+     "h": 20
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-dark-flow-meetings-agent",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Settings, Voice: Wispr Flow \"",
+     "w": 768,
+     "h": 438,
+     "fillPct": 11,
+     "pctOfViewport": 43
+    },
+    {
+     "el": "div.win \"SearchInboxBotsWWispr Flow age\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 11,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"Integrations Connected apps WW\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 11,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 6,
+     "11px/700": 2,
+     "19px/700": 1,
+     "13px/400": 3
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Security sync, 14 Oct\"",
+     "w": 134,
+     "h": 21
+    },
+    {
+     "el": "a.cite \"Vendor call, 16 Oct\"",
+     "w": 121,
+     "h": 21
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"W\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"W\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"TileAgent answerInbox\"",
+     "children": 3,
+     "widths": [
+      46,
+      103,
+      57
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-dark-flow-meetings-inbox",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     7,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/400": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Start the security review\"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"TileAgent answerInbox\"",
+     "children": 3,
+     "widths": [
+      46,
+      103,
+      57
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-dark-flow-meetings-tile",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 5,
+     "19px/700": 1,
+     "13px/400": 1,
+     "13px/600": 2,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"TileAgent answerInbox\"",
+     "children": 3,
+     "widths": [
+      46,
+      103,
+      57
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-dark-inbox-consent",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "14px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "19px/700": 1,
+     "14px/600": 1,
+     "13px/400": 2,
+     "12px/500": 2,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    },
+    {
+     "container": "div \"AllowNot now\"",
+     "children": 2,
+     "widths": [
+      57,
+      74
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-dark-inbox-empty",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/400": 2,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-dark-inbox-mail",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     7,
+     8,
+     9,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     9,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 10,
+     "19px/700": 1,
+     "13px/600": 1,
+     "13px/400": 6,
+     "12px/600": 1,
+     "13px/700": 2,
+     "11px/400": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Share the Q4 hiring plan with \"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Book a legal review of the ven\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    },
+    {
+     "container": "div.tabs \"Allacme@example.com\"",
+     "children": 2,
+     "widths": [
+      40,
+      149
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-dark-inbox-syncing",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/400": 2,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-dark-inbox-todos",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     7,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 10,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/400": 4,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Share the Q4 hiring plan with \"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Book a legal review of the ven\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-dark-settings-voice-connected",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 8,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 6,
+     "11px/400": 5,
+     "12px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      410
+     ]
+    },
+    {
+     "container": "div \"Replace keyDisconnect\"",
+     "children": 2,
+     "widths": [
+      100,
+      91
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "768x1024-dark-settings-voice-default",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 9,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 6,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      410
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow.sel \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "768x1024-dark-settings-voice-empty",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 7,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      410
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "768x1024-dark-settings-voice-rejected",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 8,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      410
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "768x1024-dark-settings-voice-verifying",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 6,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      410
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "768x1024-light-call-cap",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Settings, Voice: Wispr Flow \"",
+     "w": 768,
+     "h": 438,
+     "fillPct": 7,
+     "pctOfViewport": 43
+    },
+    {
+     "el": "section#screen-call \"3 Voice call using Flow transc\"",
+     "w": 744,
+     "h": 370,
+     "fillPct": 8,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.win \"SearchInboxBotsEElioIntegratio\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 4,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"E Elio Can you move my two o'c\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 4,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     16,
+     22,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "18px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 2,
+     "18px/700": 1,
+     "13px/700": 1,
+     "13px/400": 1,
+     "12px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"E\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"During a callDaily limit reach\"",
+     "children": 2,
+     "widths": [
+      96,
+      130
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-light-call-normal",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Settings, Voice: Wispr Flow \"",
+     "w": 768,
+     "h": 438,
+     "fillPct": 9,
+     "pctOfViewport": 43
+    },
+    {
+     "el": "section#screen-call \"3 Voice call using Flow transc\"",
+     "w": 744,
+     "h": 370,
+     "fillPct": 11,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.win \"SearchInboxBotsEElioIntegratio\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 7,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"E Elio Can you move my two o'c\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 7,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     16,
+     22,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "18px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 2,
+     "18px/700": 1,
+     "13px/700": 1,
+     "13px/400": 2,
+     "12px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"E\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"During a callDaily limit reach\"",
+     "children": 2,
+     "widths": [
+      96,
+      130
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-light-consent-x",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Settings, Voice: Wispr Flow \"",
+     "w": 768,
+     "h": 429,
+     "fillPct": 11,
+     "pctOfViewport": 42
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     6,
+     8,
+     10,
+     11,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     11,
+     14
+    ],
+    "nearDupes": [
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      11
+     ],
+     [
+      11,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "15px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "15px/700": 1,
+     "13px/700": 2,
+     "11px/400": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "button.tgl \"Allow ElevenLabs\"",
+     "w": 34,
+     "h": 20
+    },
+    {
+     "el": "button.tgl \"Allow Wispr Flow\"",
+     "w": 34,
+     "h": 20
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-light-flow-meetings-agent",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Settings, Voice: Wispr Flow \"",
+     "w": 768,
+     "h": 438,
+     "fillPct": 11,
+     "pctOfViewport": 43
+    },
+    {
+     "el": "div.win \"SearchInboxBotsWWispr Flow age\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 11,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"Integrations Connected apps WW\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 11,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 6,
+     "11px/700": 2,
+     "19px/700": 1,
+     "13px/400": 3
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Security sync, 14 Oct\"",
+     "w": 134,
+     "h": 21
+    },
+    {
+     "el": "a.cite \"Vendor call, 16 Oct\"",
+     "w": 121,
+     "h": 21
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"W\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"W\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"TileAgent answerInbox\"",
+     "children": 3,
+     "widths": [
+      46,
+      103,
+      57
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-light-flow-meetings-inbox",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     7,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/400": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Start the security review\"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"TileAgent answerInbox\"",
+     "children": 3,
+     "widths": [
+      46,
+      103,
+      57
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-light-flow-meetings-tile",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 5,
+     "19px/700": 1,
+     "13px/400": 1,
+     "13px/600": 2,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"TileAgent answerInbox\"",
+     "children": 3,
+     "widths": [
+      46,
+      103,
+      57
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-light-inbox-consent",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "14px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "19px/700": 1,
+     "14px/600": 1,
+     "13px/400": 2,
+     "12px/500": 2,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    },
+    {
+     "container": "div \"AllowNot now\"",
+     "children": 2,
+     "widths": [
+      57,
+      74
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-light-inbox-empty",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/400": 2,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-light-inbox-mail",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     7,
+     8,
+     9,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     9,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 10,
+     "19px/700": 1,
+     "13px/600": 1,
+     "13px/400": 6,
+     "12px/600": 1,
+     "13px/700": 2,
+     "11px/400": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Share the Q4 hiring plan with \"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Book a legal review of the ven\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.due.warn \"Today\"",
+     "ratio": 3.64
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    },
+    {
+     "container": "div.tabs \"Allacme@example.com\"",
+     "children": 2,
+     "widths": [
+      40,
+      149
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-light-inbox-syncing",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/400": 2,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-light-inbox-todos",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     7,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 10,
+     "19px/700": 1,
+     "12px/600": 1,
+     "13px/400": 4,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Share the Q4 hiring plan with \"",
+     "w": 16,
+     "h": 16
+    },
+    {
+     "el": "input \"Book a legal review of the ven\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.due.warn \"Today\"",
+     "ratio": 3.64
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"SyncingEmptyWith to-dosConsent\"",
+     "children": 5,
+     "widths": [
+      71,
+      62,
+      93,
+      92,
+      112
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ {
+  "key": "768x1024-light-settings-voice-connected",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 8,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 6,
+     "11px/400": 5,
+     "12px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.ok-t \"Connected\"",
+     "ratio": 4.06
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      410
+     ]
+    },
+    {
+     "container": "div \"Replace keyDisconnect\"",
+     "children": 2,
+     "widths": [
+      100,
+      91
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "768x1024-light-settings-voice-default",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 9,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 6,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.ok-t \"Connected\"",
+     "ratio": 4.06
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      410
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow.sel \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "768x1024-light-settings-voice-empty",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 7,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      410
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "768x1024-light-settings-voice-rejected",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 8,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      410
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ },
+ {
+  "key": "768x1024-light-settings-voice-verifying",
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 7,
+     "19px/700": 1,
+     "13px/500": 2,
+     "13px/400": 6,
+     "11px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      29,
+      30
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"DefaultWispr Flow, no keyVerif\"",
+     "children": 5,
+     "widths": [
+      67,
+      131,
+      76,
+      88,
+      96
+     ]
+    },
+    {
+     "container": "div \"Providers ElevenLabsSpeak + tr\"",
+     "children": 2,
+     "widths": [
+      280,
+      410
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.prow \"ElevenLabsSpeak + transcribeCo\"",
+    "button.prow \"OpenAISpeak + transcribe\"",
+    "button.prow \"Fish AudioSpeak + transcribe\"",
+    "button.prow \"CartesiaSpeak only\"",
+    "button.prow.sel \"Wispr FlowTranscribe onlyConne\""
+   ]
+  }
+ }
+]

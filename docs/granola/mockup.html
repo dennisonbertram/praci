@@ -9,30 +9,34 @@ Mockup for docs/plans/granola.md. Sample data is invented (example.com). Light a
 Open a screen directly with mockup.html#screen-id. State pills switch the states of one screen.
 Author notes live in HTML comments, not in the frames. Everything inside a window or phone frame is product UI.
 The Granola weekly routine (S7, #443) is deferred and has no screen.
+D-1 (round 2): the shared design tokens are not changed. Colours below that differ from the tokens (muted text, warning, success, bot, iOS label, field border) are compliant local values: text at least 4.5:1, field borders at least 3:1. The shared tokens need the same change if the maintainer accepts D-1.
 -->
 <style>
 :root{
-  --background:#fafafa; --card:#fff; --muted:#f2f2f2; --muted-fg:#6b6b6b;
+  --background:#fafafa; --card:#fff; --muted:#f2f2f2; --muted-fg:#636363;
   --fg:#111; --border:#e6e6e6; --primary:#111; --primary-fg:#fff;
-  --sidebar:#f5f5f4; --sidebar-accent:#e9e9e7; --destructive:#c4352b; --warning:#b7791f; --success:#2f855a;
-  --bot:#e8743b; --scrim:rgba(0,0,0,.35);
-  --ios-bg:#f2f2f7; --ios-row:#fff; --ios-sep:#e3e3e8; --ios-label:#8a8a8e; --glass:rgba(255,255,255,.72);
+  --sidebar:#f5f5f4; --sidebar-accent:#e9e9e7; --destructive:#c4352b; --warning:#8f5a0a; --success:#276749;
+  --bot:#b9501c; --scrim:rgba(0,0,0,.35); --field:#8a8a8a;
+  --ios-bg:#f2f2f7; --ios-row:#fff; --ios-sep:#e3e3e8; --ios-label:#6c6c70; --glass:rgba(255,255,255,.72);
+  color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
     --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
     --sidebar:#141414; --sidebar-accent:#232323; --scrim:rgba(0,0,0,.6);
-    --destructive:#e5645a; --warning:#d9a441; --success:#4fb37f;
+    --destructive:#e5645a; --warning:#d9a441; --success:#4fb37f; --bot:#bd4f23; --field:#7a7a7a;
     --ios-bg:#000; --ios-row:#1c1c1e; --ios-sep:#38383a; --ios-label:#8e8e93; --glass:rgba(70,70,74,.62);
+    color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
   --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
   --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
   --sidebar:#141414; --sidebar-accent:#232323; --scrim:rgba(0,0,0,.6);
-  --destructive:#e5645a; --warning:#d9a441; --success:#4fb37f;
+  --destructive:#e5645a; --warning:#d9a441; --success:#4fb37f; --bot:#bd4f23; --field:#7a7a7a;
   --ios-bg:#000; --ios-row:#1c1c1e; --ios-sep:#38383a; --ios-label:#8e8e93; --glass:rgba(70,70,74,.62);
+  color-scheme:dark;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -74,11 +78,12 @@ a{color:inherit}
 .btn.pri{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
 .btn.pri:hover{opacity:.9}
 .btn{min-height:32px}
+.btn.kb{min-width:112px}
 .btn[disabled]{cursor:default;background:transparent;color:var(--muted-fg);border-color:var(--border);opacity:1}
 .btn.sm{padding:4px 12px;font-size:12px}
 .btn.bad{color:var(--destructive);border-color:var(--destructive);background:transparent}
 .btn.ghost{border-color:transparent;background:transparent;color:var(--muted-fg)}
-input.f,select.f{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card)}
+input.f,select.f{width:100%;padding:8px 10px;border:1px solid var(--field);border-radius:8px;background:var(--card)}
 .fld{display:block;margin:0 0 10px}.fld>span{display:block;font-size:12px;color:var(--muted-fg);margin-bottom:4px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .card.c-sm{padding:10px 14px;gap:4px}
@@ -98,7 +103,7 @@ input.f,select.f{width:100%;padding:8px 10px;border:1px solid var(--border);bord
 .dhead{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
 .back{color:var(--muted-fg);background:none;border:0;padding:0;margin-bottom:12px;min-height:32px}
 .cap{font-size:11px;color:var(--muted-fg);text-transform:uppercase;letter-spacing:.04em;margin:18px 0 6px}
-.fh{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.fh>span{font-size:12px;color:var(--muted-fg);margin-bottom:4px}.fh a{display:inline-flex;align-items:center;min-height:32px;margin:-8px 0;font-size:12px;color:var(--muted-fg)}
+.fh{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:0 8px}.fh>span{font-size:12px;color:var(--muted-fg);margin-bottom:4px}.fh a{display:inline-flex;align-items:center;min-height:32px;margin:-8px 0;font-size:12px;color:var(--muted-fg);white-space:nowrap}
 .agentlink{display:flex;width:fit-content;align-items:center;gap:8px;min-height:32px;text-decoration:none;font-weight:500}
 a.tile{text-decoration:none;color:inherit}
 .tabs{display:flex;gap:4px;margin:14px 0 10px}
@@ -112,8 +117,10 @@ a.tile{text-decoration:none;color:inherit}
 .bm .body{display:flex;flex-direction:column;gap:6px;min-width:0}
 .bm .who{font-weight:600}
 .tool{display:inline-flex;gap:6px;align-items:center;color:var(--muted-fg);font-size:12px;border:1px solid var(--border);border-radius:8px;padding:2px 8px;width:fit-content}
-.cite{display:inline-block;border:1px solid var(--border);background:var(--muted);border-radius:6px;padding:0 6px;font-size:12px;text-decoration:none;line-height:1.6}
-.cite:hover{background:var(--sidebar-accent)}
+.cite{display:inline-flex;align-items:center;min-height:32px;margin:2px 2px;vertical-align:middle;border:0;background:var(--sidebar-accent);color:var(--fg);border-radius:999px;padding:0 12px;font-size:12px;font-weight:500;text-decoration:none}
+.cite:hover{background:var(--border)}
+.anchor{position:relative;display:inline-block}
+.anchor .pop{position:absolute;top:100%;left:0;margin-top:6px;z-index:4;max-width:min(280px,calc(100vw - 72px))}
 .composer{margin-top:18px;max-width:640px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;color:var(--muted-fg);background:var(--card)}
 .pop{border:1px solid var(--border);background:var(--card);border-radius:10px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.14);width:fit-content;min-width:240px;display:flex;flex-direction:column;gap:2px}
 /* to-do card */
@@ -127,6 +134,12 @@ a.tile{text-decoration:none;color:inherit}
 .todo li .due{margin-left:auto;font-size:12px;color:var(--muted-fg);white-space:nowrap}
 .todo li .due.warn{color:var(--warning)}
 .todo input[type=checkbox]{width:16px;height:16px;margin:0;accent-color:var(--primary)}
+.cleared{display:none!important}
+.shim{background:linear-gradient(90deg,var(--muted-fg) 35%,var(--fg) 50%,var(--muted-fg) 65%) 0 0/250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shim 1.6s linear infinite}
+@keyframes shim{to{background-position:-150% 0}}
+.spin{width:16px;height:16px;border-radius:50%;border:2px solid var(--ios-sep);border-top-color:var(--ios-label);animation:spin .8s linear infinite;flex:none;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.shim,.spin{animation:none}.shim{color:var(--muted-fg);background:none}}
 .todo .empty{color:var(--muted-fg);padding:4px 0}
 /* switch */
 .tgl{width:34px;height:20px;border-radius:999px;background:var(--border);border:0;position:relative;flex:none}
@@ -136,34 +149,39 @@ a.tile{text-decoration:none;color:inherit}
 .tgl[aria-checked=true]::after{left:16px;background:var(--primary-fg)}
 /* iPhone */
 .phones{display:flex;gap:28px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
-.phonewrap{display:flex;flex-direction:column;gap:10px;align-items:center}
+.phonewrap{display:flex;flex-direction:column;gap:10px;align-items:center;width:390px;max-width:100%}
 .phonewrap .sw{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
 .phone{width:390px;height:780px;border:8px solid var(--fg);border-radius:52px;background:var(--ios-bg);position:relative;overflow:hidden;display:flex;flex-direction:column;font-family:-apple-system,"SF Pro Text",system-ui,sans-serif;font-size:17px;line-height:1.3}
 .phone::before{content:"";position:absolute;top:10px;left:50%;transform:translateX(-50%);width:110px;height:30px;border-radius:20px;background:#000;z-index:3}
 .sbar{display:flex;justify-content:space-between;padding:16px 30px 6px;font-weight:600;font-size:15px}
 .nav{display:flex;align-items:center;justify-content:space-between;padding:6px 16px;min-height:40px;color:var(--fg)}
 .nav .bk{color:var(--fg);font-size:17px}
-.glass{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--glass);backdrop-filter:blur(20px);box-shadow:0 1px 6px rgba(0,0,0,.14),inset 0 0 0 .5px rgba(128,128,128,.3);font-size:26px;line-height:1;padding-bottom:3px}
+.glass{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--glass);backdrop-filter:blur(20px);box-shadow:0 1px 6px rgba(0,0,0,.14),inset 0 0 0 .5px rgba(128,128,128,.3);font-size:26px;line-height:1;padding-bottom:3px}
 .nav .tt{font-weight:600}
 .large{font-size:34px;font-weight:700;letter-spacing:-.02em;padding:2px 20px 8px}
 .pbody{flex:1;overflow-y:auto;padding:0 16px 24px}
 .ig{background:var(--ios-row);border-radius:12px;overflow:hidden;margin:0 0 6px}
-.ih{font-size:13px;color:var(--ios-label);text-transform:uppercase;padding:14px 16px 6px}
+.ih{font-size:13px;color:var(--ios-label);padding:14px 16px 6px}
 .if{font-size:13px;color:var(--ios-label);padding:2px 16px 12px}
 .if.err-t{color:var(--destructive)}
-.ir{display:flex;align-items:center;gap:10px;padding:11px 16px;min-height:44px;border-top:1px solid var(--ios-sep)}
+.ir{display:flex;align-items:center;gap:10px;padding:11px 16px;min-height:52px;border-top:1px solid var(--ios-sep)}
 .ir:first-child{border-top:0}
 .ir .g{flex:1;min-width:0}
 .ir .tr{color:var(--ios-label);display:flex;gap:6px;align-items:center}
 .ir small{display:block;color:var(--ios-label);font-size:14px}
 .ir.link{justify-content:center;font-weight:500}
 .ir.dim{opacity:.4}
-.ir.td{cursor:pointer}
 .ir.dst{color:var(--destructive)}
 .ir input{border:0;background:transparent;width:100%;outline:0}
 .chev::after{content:"›";font-size:22px;color:var(--ios-label);line-height:1}
 .chk{color:var(--fg);font-weight:700}
-.circ{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--ios-label);flex:none;background:transparent;padding:0;margin-top:1px;pointer-events:none}
+.circ{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--ios-label);flex:none;background:transparent;padding:0}
+.chkhit{display:grid;place-items:center;width:44px;height:44px;margin:-10px 0 -10px -12px;border:0;background:transparent;padding:0;flex:none}
+.ir.td{align-items:flex-start}
+.nab{display:grid;place-items:center;min-height:48px;margin:12px 0 6px;border-radius:14px;background:var(--primary);color:var(--primary-fg);font-weight:600;border:0;width:100%;font-size:17px;gap:8px;grid-auto-flow:column;justify-content:center}
+.nab.dim{opacity:.4}
+.fl{font-size:13px;color:var(--ios-label)}
+.ir.fr{flex-direction:column;align-items:stretch;gap:2px;padding:8px 16px}
 .sw-ios{width:51px;height:31px;border-radius:999px;background:var(--ios-sep);position:relative;flex:none;border:0;padding:0}
 .sw-ios::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:.15s}
 .sw-ios[aria-checked=true]{background:var(--success)}
@@ -177,6 +195,7 @@ a.tile{text-decoration:none;color:inherit}
   .sh .sw{margin-left:0}
 }
 @media (max-width:430px){.phone{width:100%;max-width:390px}}
+@media (max-width:560px){.anchor{position:static}.anchor .pop{left:16px;right:16px;width:auto;max-width:none}}
 </style>
 </head>
 <body>
@@ -197,10 +216,12 @@ a.tile{text-decoration:none;color:inherit}
 <section class="screen" id="screen-integrations">
   <header class="sh"><h2>1 Integrations: Granola</h2>
     <div class="sw" role="group" aria-label="State">
-      <button class="pill on" data-s="new">Not connected</button><button class="pill" data-s="detail">Detail page</button><button class="pill" data-s="mcp">Sign-in only</button><button class="pill" data-s="key">Key connected</button>
+      <button class="pill on" data-s="new">Not connected</button><button class="pill" data-s="detail">Detail page</button><button class="pill" data-s="mcp">Sign-in only</button><button class="pill" data-s="key">Key connected</button><button class="pill" data-s="reconnect">Reconnect needed</button>
     </div></header>
   <!--
   FX-54: the tile shows one status line (the best connected route) and no "Add key" button; the tile already opens the detail page.
+  RX-42: a key that was revoked shows the tile line "Reconnect needed" with the warning colour, never "Synced". The tile of every connected state opens the detail page on screen 2 in the matching state.
+  RX-40: the detail page draws the existing MCP sign-in control ("Sign in with Granola") above the key card, so a user without a key (or on the free plan) reaches it. Screen 2 shows it in each state.
   The detail page has no "Live questions" or "Sync" group and no placeholder text. "Business plan" is a muted hint after the key field label (FX-24), on the detail page only.
   First-time state: a user with no meeting source has no Granola agent in the sidebar (FX-5: the agent appears when the first route connects).
   "Sign-in only" is the MCP-only story (including a free plan): the tile says Connected and the key card is still empty. "Key connected" is the key-only story (the MCP tile is not connected).
@@ -225,24 +246,33 @@ a.tile{text-decoration:none;color:inherit}
         <div data-st="detail" hidden>
           <button class="back" data-s="new">← Integrations</button>
           <div class="dhead"><span class="logo xl">G</span><h1 style="margin:0">Granola</h1></div>
+          <div class="card" style="max-width:460px;margin-top:14px"><div><button class="btn">Sign in with Granola</button></div></div>
           <div class="card" style="max-width:460px;margin-top:14px">
-            <label class="fld" style="margin:0"><span class="fh" style="display:flex"><span>Granola API key <span class="mut">· Business plan</span></span><a href="#screen-integrations">Get a key in Granola ↗</a></span><input class="f" type="password" autocomplete="off" aria-label="Granola API key"></label>
-            <div><button class="btn pri" disabled>Connect</button></div>
+            <label class="fld"><span class="fh" style="display:flex"><span>Granola API key <span class="mut">· Business plan</span></span><a href="#screen-api-key">Get a key in Granola ↗</a></span><input class="f" type="password" autocomplete="off" aria-label="Granola API key"></label>
+            <div><button class="btn pri kb" disabled>Connect</button></div>
+            <p class="mut" style="margin:8px 0 0;font-size:12px">Sends your meeting notes and transcripts to your AI model.</p>
           </div>
         </div>
       </div>
     </div>
   </div>
-  <div data-st="mcp key" hidden>
+  <div data-st="mcp key reconnect" hidden>
     <div class="win" data-sidebar="Integrations">
       <div class="pane">
         <h1>Integrations</h1>
         <p class="sub">Connected apps</p>
         <div class="grid">
-          <a class="card tile" href="#screen-api-key">
+          <a class="card tile" href="#screen-api-key" data-go="screen-api-key:mcp" data-st="mcp" hidden>
             <div class="top"><span class="logo">G</span><div><div class="nm">Granola</div><div class="ds">Meeting notes</div></div></div>
-            <div data-st="mcp"><span class="badge ok">Connected</span></div>
-            <div data-st="key" hidden><span class="badge ok">Synced 42 meetings</span></div>
+            <div><span class="badge ok">Connected</span></div>
+          </a>
+          <a class="card tile" href="#screen-api-key" data-go="screen-api-key:connected" data-st="key" hidden>
+            <div class="top"><span class="logo">G</span><div><div class="nm">Granola</div><div class="ds">Meeting notes</div></div></div>
+            <div><span class="badge ok">Synced 42 meetings</span></div>
+          </a>
+          <a class="card tile" href="#screen-api-key" data-go="screen-api-key:reconnect" data-st="reconnect" hidden>
+            <div class="top"><span class="logo">G</span><div><div class="nm">Granola</div><div class="ds">Meeting notes</div></div></div>
+            <div><span class="badge warn">Reconnect needed</span></div>
           </a>
           <div class="card">
             <div class="top"><span class="logo">S</span><div><div class="nm">Slack</div><div class="ds">acme-team.slack.com</div></div></div>
@@ -256,56 +286,41 @@ a.tile{text-decoration:none;color:inherit}
 
 <!-- 2 -->
 <section class="screen" id="screen-api-key">
-  <header class="sh"><h2>2 API key card</h2>
+  <header class="sh"><h2>2 Detail page: sign-in and API key card</h2>
     <div class="sw" role="group" aria-label="Card state">
-      <button class="pill on" data-s="empty">Empty</button><button class="pill" data-s="entering">Entering</button><button class="pill" data-s="verifying">Connecting</button><button class="pill" data-s="syncing">Syncing</button><button class="pill" data-s="connected">Connected</button><button class="pill" data-s="rejected">Key rejected</button><button class="pill" data-s="reconnect">Needs reconnect</button>
+      <button class="pill on" data-s="empty">Empty</button><button class="pill" data-s="entering">Entering</button><button class="pill" data-s="verifying">Connecting</button><button class="pill" data-s="offline">Offline</button><button class="pill" data-s="syncing">Syncing</button><button class="pill" data-s="connected">Connected</button><button class="pill" data-s="noagent">Agent removed</button><button class="pill" data-s="rejected">Key rejected</button><button class="pill" data-s="reconnect">Reconnect needed</button><button class="pill" data-s="disconnected">Disconnected</button><button class="pill" data-s="aioff">AI data sharing off</button><button class="pill" data-s="mcp">Sign-in only</button>
     </div></header>
   <!--
-  Strings from the plan: "Granola API key", "Connect", "Granola rejected this key", "Disconnect". New or changed copy for the PR to quote: "Syncing" (FX-27, same word on the Inbox card), "Business plan" (FX-24), the key link text "Get a key in Granola" (FX-25, shows only while the field is empty).
-  The status line is "Synced {n} meetings" with no relative time unless a sync is late or failed (FX-27). A 429 shows nothing (FX-29), so there is no rate-limited state and no "Granola is busy" line.
-  The rejection line clears when the user edits the field (FX-28). Typing in the empty field enables Connect.
-  needs_reconnect (FX-26): a key that worked earlier and was revoked keeps the status line and Disconnect, shows the rejection line over an editable field, and pasting a new key updates the same connection and reuses the same agent.
+  Strings from the plan: "Granola API key", "Connect", "Granola rejected this key", "Disconnect". New or changed copy for the PR to quote: "Syncing" (FX-27, same word as the Inbox card), "Business plan" (FX-24), the key link text "Get a key in Granola" (FX-25), "Reconnect needed" (RX-4), "Could not reach Granola" (RX-6), "Rakazo keeps your meetings and to-dos." (RX-2) and the consent sentence under Connect, "Sends your meeting notes and transcripts to your AI model." (RX-1).
+  RX-1: pressing Connect is the consent act, so the sentence sits under the button in every state where Connect shows, and the meeting-only user never meets the mail-worded Inbox prompt (screen 4).
+  RX-40: the existing MCP control "Sign in with Granola" is drawn above the key card in every state. In "Sign-in only" it reads Connected; the key card is still empty (free plan story).
+  The status line is "Synced {n} meetings" with no relative time unless a sync is late or failed (FX-27). A 429 shows nothing (FX-29).
+  RX-43: the key link shows while the field is empty or the rejection line shows. Editing the field clears the red border, aria-invalid and the error line together. After a rejection Connect stays disabled until the field is edited. Connect and "Connecting…" share one width.
+  RX-4/RX-42 (replaces FX-26's green "Synced"): a key revoked after it worked shows "Reconnect needed" with the warning dot, Disconnect, the rejection line over an editable field, Connect and the key link. Pasting a new key updates the same connection and reuses the same agent.
+  RX-2/RX-44: after Disconnect the card says Rakazo keeps the meetings and to-dos, above the empty key field. The agent link stays because the agent still answers from stored meetings. Reconnecting restores sync.
+  RX-46: the sidebar shows the Granola agent only once a route has connected (FX-5). "Agent removed" draws "Create agent" in place of the agent link; the sidebar loses the agent too.
   The agent link is the existing IntegrationAgentSection pattern (FX-6). It is drawn once the first Connect succeeds; the chat does not open by itself.
-  Only one status line is drawn when both routes are connected.
-  A network or 5xx failure on first Connect uses the existing generic error style; its wording is not drawn here.
+  Only one status line is drawn when both routes are connected. A 5xx failure uses the same "Could not reach Granola" line as a network failure.
   -->
-  <div class="win" data-sidebar="Integrations">
+  <div class="win" data-sidebar="Integrations" data-bots-st="syncing connected reconnect disconnected mcp aioff">
     <div class="pane">
       <button class="back">← Integrations</button>
       <div class="dhead"><span class="logo xl">G</span><h1 style="margin:0">Granola</h1></div>
+      <div data-st="empty entering verifying offline syncing connected noagent rejected reconnect disconnected aioff"><div class="card" style="max-width:460px;margin-top:14px"><div><button class="btn">Sign in with Granola</button></div></div></div>
+      <div data-st="mcp" hidden><div class="card" style="max-width:460px;margin-top:14px"><div class="pr" style="padding:0;border:0"><div class="grow"><span class="ok-t">●</span> Connected</div><button class="btn sm bad">Disconnect</button></div></div></div>
       <div class="card" style="max-width:460px;margin-top:14px">
-        <div data-st="empty">
-          <label class="fld"><span class="fh" style="display:flex"><span>Granola API key <span class="mut">· Business plan</span></span><a href="#screen-api-key">Get a key in Granola ↗</a></span><input class="f" type="password" autocomplete="off" aria-label="Granola API key"></label>
-          <button class="btn pri" disabled data-dim>Connect</button>
-        </div>
-        <div data-st="entering" hidden>
-          <label class="fld"><span>Granola API key <span class="mut">· Business plan</span></span><input class="f" type="password" value="grn_example_key_000000" autocomplete="off" aria-label="Granola API key"></label>
-          <button class="btn pri" data-s="verifying">Connect</button>
-        </div>
-        <div data-st="verifying" hidden data-auto="syncing">
-          <label class="fld"><span>Granola API key <span class="mut">· Business plan</span></span><input class="f" type="password" value="grn_example_key_000000" disabled aria-label="Granola API key"></label>
-          <button class="btn pri" disabled>Connecting…</button>
-        </div>
-        <div data-st="syncing" hidden data-auto="connected">
-          <div class="pr" style="padding:0;border:0"><div class="grow"><span class="mut">●</span> Syncing</div><button class="btn sm bad" data-s="empty">Disconnect</button></div>
-          <a class="agentlink" href="#screen-agent"><span class="av bot">G</span>Granola agent</a>
-        </div>
-        <div data-st="connected" hidden>
-          <div class="pr" style="padding:0;border:0"><div class="grow"><span class="ok-t">●</span> Synced 42 meetings</div><button class="btn sm bad" data-s="empty">Disconnect</button></div>
-          <a class="agentlink" href="#screen-agent"><span class="av bot">G</span>Granola agent</a>
-        </div>
-        <div data-st="rejected" hidden>
-          <label class="fld"><span>Granola API key <span class="mut">· Business plan</span></span><input class="f" type="password" value="grn_example_key_000000" autocomplete="off" aria-label="Granola API key" aria-invalid="true" style="border-color:var(--destructive)"></label>
-          <p role="alert" class="err-t" style="margin:0 0 8px">Granola rejected this key</p>
-          <button class="btn pri" data-s="verifying">Connect</button>
-        </div>
-        <div data-st="reconnect" hidden>
-          <div class="pr" style="padding:0;border:0"><div class="grow"><span class="ok-t">●</span> Synced 42 meetings</div><button class="btn sm bad" data-s="empty">Disconnect</button></div>
-          <label class="fld" style="margin-top:6px"><span>Granola API key <span class="mut">· Business plan</span></span><input class="f" type="password" autocomplete="off" aria-label="Granola API key" aria-invalid="true" style="border-color:var(--destructive)"></label>
-          <p role="alert" class="err-t" style="margin:0 0 8px">Granola rejected this key</p>
-          <button class="btn pri" disabled data-dim>Connect</button>
-          <a class="agentlink" href="#screen-agent" style="margin-top:6px"><span class="av bot">G</span>Granola agent</a>
-        </div>
+        <div data-st="empty" hidden><label class="fld"><span class="fh" style="display:flex"><span>Granola API key <span class="mut">· Business plan</span></span><a href="#screen-api-key">Get a key in Granola ↗</a></span><input class="f" type="password" autocomplete="off" aria-label="Granola API key"></label><button class="btn pri kb" disabled data-dim>Connect</button><p class="mut" style="margin:8px 0 0;font-size:12px">Sends your meeting notes and transcripts to your AI model.</p></div>
+        <div data-st="entering" hidden><label class="fld"><span class="fh" style="display:flex"><span>Granola API key <span class="mut">· Business plan</span></span></span><input class="f" type="password" autocomplete="off" aria-label="Granola API key" value="grn_example_key_000000"></label><button class="btn pri kb" data-s="verifying">Connect</button><p class="mut" style="margin:8px 0 0;font-size:12px">Sends your meeting notes and transcripts to your AI model.</p></div>
+        <div data-st="verifying" hidden data-auto="syncing"><label class="fld"><span class="fh" style="display:flex"><span>Granola API key <span class="mut">· Business plan</span></span></span><input class="f" type="password" autocomplete="off" aria-label="Granola API key" value="grn_example_key_000000" disabled></label><button class="btn pri kb" disabled><span class="shim">Connecting…</span></button><p class="mut" style="margin:8px 0 0;font-size:12px">Sends your meeting notes and transcripts to your AI model.</p></div>
+        <div data-st="offline" hidden><label class="fld"><span class="fh" style="display:flex"><span>Granola API key <span class="mut">· Business plan</span></span></span><input class="f" type="password" autocomplete="off" aria-label="Granola API key" value="grn_example_key_000000"></label><p role="alert" class="err-t" style="margin:0 0 8px">Could not reach Granola</p><button class="btn pri kb" data-s="verifying">Connect</button><p class="mut" style="margin:8px 0 0;font-size:12px">Sends your meeting notes and transcripts to your AI model.</p></div>
+        <div data-st="syncing" hidden data-auto="connected"><div class="pr" style="padding:0;border:0"><div class="grow"><span class="mut">●</span> <span class="shim">Syncing</span></div><button class="btn sm bad" data-s="disconnected">Disconnect</button></div><a class="agentlink" href="#screen-agent"><span class="av bot">G</span>Granola agent</a></div>
+        <div data-st="connected" hidden><div class="pr" style="padding:0;border:0"><div class="grow"><span class="ok-t">●</span> Synced 42 meetings</div><button class="btn sm bad" data-s="disconnected">Disconnect</button></div><a class="agentlink" href="#screen-agent"><span class="av bot">G</span>Granola agent</a></div>
+        <div data-st="noagent" hidden><div class="pr" style="padding:0;border:0"><div class="grow"><span class="ok-t">●</span> Synced 42 meetings</div><button class="btn sm bad" data-s="disconnected">Disconnect</button></div><div><button class="btn sm">Create agent</button></div></div>
+        <div data-st="rejected" hidden><label class="fld"><span class="fh" style="display:flex"><span>Granola API key <span class="mut">· Business plan</span></span><a href="#screen-api-key">Get a key in Granola ↗</a></span><input class="f" type="password" autocomplete="off" aria-label="Granola API key" value="grn_example_key_000000" aria-invalid="true" style="border-color:var(--destructive)"></label><p role="alert" class="err-t" style="margin:0 0 8px">Granola rejected this key</p><button class="btn pri kb" disabled data-dim>Connect</button><p class="mut" style="margin:8px 0 0;font-size:12px">Sends your meeting notes and transcripts to your AI model.</p></div>
+        <div data-st="reconnect" hidden><div class="pr" style="padding:0;border:0"><div class="grow"><span style="color:var(--warning)">●</span> Reconnect needed</div><button class="btn sm bad" data-s="disconnected">Disconnect</button></div><div style="margin-top:6px"><label class="fld"><span class="fh" style="display:flex"><span>Granola API key <span class="mut">· Business plan</span></span><a href="#screen-api-key">Get a key in Granola ↗</a></span><input class="f" type="password" autocomplete="off" aria-label="Granola API key" aria-invalid="true" style="border-color:var(--destructive)"></label></div><p role="alert" class="err-t" style="margin:0 0 8px">Granola rejected this key</p><button class="btn pri kb" disabled data-dim>Connect</button><p class="mut" style="margin:8px 0 0;font-size:12px">Sends your meeting notes and transcripts to your AI model.</p><a class="agentlink" href="#screen-agent"><span class="av bot">G</span>Granola agent</a></div>
+        <div data-st="disconnected" hidden><div class="mut">Rakazo keeps your meetings and to-dos.</div><label class="fld"><span class="fh" style="display:flex"><span>Granola API key <span class="mut">· Business plan</span></span><a href="#screen-api-key">Get a key in Granola ↗</a></span><input class="f" type="password" autocomplete="off" aria-label="Granola API key"></label><button class="btn pri kb" disabled data-dim>Connect</button><p class="mut" style="margin:8px 0 0;font-size:12px">Sends your meeting notes and transcripts to your AI model.</p><a class="agentlink" href="#screen-agent"><span class="av bot">G</span>Granola agent</a></div>
+        <div data-st="aioff" hidden><div class="pr" style="padding:0;border:0"><div class="grow"><span style="color:var(--warning)">●</span> <a href="#screen-consent" style="text-decoration:underline">AI data sharing off</a></div><button class="btn sm bad" data-s="disconnected">Disconnect</button></div><a class="agentlink" href="#screen-agent"><span class="av bot">G</span>Granola agent</a></div>
+        <div data-st="mcp" hidden><label class="fld"><span class="fh" style="display:flex"><span>Granola API key <span class="mut">· Business plan</span></span><a href="#screen-api-key">Get a key in Granola ↗</a></span><input class="f" type="password" autocomplete="off" aria-label="Granola API key"></label><button class="btn pri kb" disabled data-dim>Connect</button><p class="mut" style="margin:8px 0 0;font-size:12px">Sends your meeting notes and transcripts to your AI model.</p></div>
       </div>
     </div>
   </div>
@@ -349,45 +364,47 @@ a.tile{text-decoration:none;color:inherit}
 <section class="screen" id="screen-inbox">
   <header class="sh"><h2>4 Inbox with meeting to-dos</h2>
     <div class="sw" role="group" aria-label="State">
-      <button class="pill" data-s="syncing">Syncing</button><button class="pill" data-s="empty">Empty</button><button class="pill on" data-s="todos">With to-dos</button><button class="pill" data-s="consent">Consent off</button><button class="pill" data-s="mail">Mail connected</button>
+      <button class="pill" data-s="syncing">Syncing</button><button class="pill" data-s="empty">Empty</button><button class="pill on" data-s="todos">With to-dos</button><button class="pill" data-s="mail">Mail connected</button><button class="pill" data-s="consent">Mail, consent off</button>
     </div></header>
   <!--
   FX-14: with no mail account but a meeting source, the To do card sits above "Connect mail"; the full "No mail connected" page appears only when there is no meeting source.
-  Consent off: the existing InboxConsentPrompt pattern above "Connect mail" and no card. The text drawn is the existing prompt text (apps/web/src/components/AiDataSharing.tsx). It talks about mail; whether meetings need their own wording is an open plan question.
-  FX-20: while the first sync runs the card says "Syncing" (the same word as the Integrations card). "No follow-ups from meetings yet" shows only when a source is connected, consent is on and the first sync is done.
-  FX-15: with a mail account the to-dos are the same on every tab, so the card above the tabs' list is identical on All and on the account tab.
-  FX-21: the "From:" line is plain text (no meetings page). The sidebar Inbox badge stays mail-only. A to-do from a disconnected source looks like any other (see screen 6).
-  FX-22: if "From:" is a new string, the plan may drop it for meeting rows so the line reads "Pricing review, 12 Oct".
+  RX-1/RX-41: a meeting-only user never sees a consent prompt here: consent was given at Connect (screen 2). The mail-worded prompt (existing InboxConsentPrompt, apps/web/src/components/AiDataSharing.tsx) is drawn only in "Mail, consent off", for a user with a mail account; existing to-dos stay on the card.
+  FX-20: while the first sync runs the card says "Syncing" (the same word as the Integrations card, with the AI shimmer). "No follow-ups from meetings yet" shows when a source is connected, consent is on and the first sync is done, and again under the heading after the last to-do is ticked (RX-9, RX-47).
+  "AI data sharing off" (screen 2) is a status line that links to Settings, AI data sharing; "Reconnect needed" wins when both apply.
+  FX-15 / RX-9 (reverted for mail users): with a mail account the To do card sits below the account tabs. Each account tab lists that account's mail to-dos plus all meeting to-dos, and All lists everything; mail and meeting to-dos differ only in the detail line. Only a user with no mail account (no tabs) gets the card above "Connect mail".
+  FX-21 / RX-47: the detail line is plain text with no "From:" prefix (no meetings page). The sidebar Inbox badge stays mail-only. A to-do from a disconnected source looks like any other (see screen 6).
   Ticking a to-do fades the row out. The checkbox has a 32 px hit area.
   -->
   <div class="win" data-sidebar="Inbox">
     <div class="pane">
       <h1>Inbox</h1>
-      <div data-st="mail" hidden>
+      <div data-st="mail consent" hidden>
         <div class="tabs" role="tablist" aria-label="Accounts"><button class="tab" role="tab" aria-selected="true">All</button><button class="tab" role="tab" aria-selected="false">acme@example.com</button></div>
       </div>
       <div data-st="consent" hidden>
-        <div class="card" role="region" aria-labelledby="ic-h" style="max-width:640px;margin-top:14px">
+        <div class="card" role="region" aria-labelledby="ic-h" style="max-width:640px;margin-bottom:14px">
           <h2 id="ic-h" style="font-size:14px;margin:0;font-weight:600">Let Praci sort your mail</h2>
           <div>Senders, recipients, subjects and short previews go to the AI service that runs your bots (Anthropic).</div>
           <div style="display:flex;gap:8px"><button class="btn pri sm">Allow</button><button class="btn ghost sm">Not now</button></div>
         </div>
       </div>
-      <div class="card todo" role="region" aria-labelledby="td-h" style="max-width:640px;margin-top:14px" data-st="syncing empty todos mail" hidden>
+      <div class="card todo" role="region" aria-labelledby="td-h" style="max-width:640px;margin-top:14px" data-st="syncing empty todos mail consent" hidden>
         <h2 id="td-h">To do</h2>
-        <div class="empty" data-st="syncing" hidden>Syncing</div>
+        <div class="empty" data-st="syncing" hidden><span class="shim">Syncing</span></div>
         <div class="empty" data-st="empty" hidden>No follow-ups from meetings yet</div>
-        <ul data-st="todos mail">
-          <li><label class="hit"><input type="checkbox" aria-label="Send Dana the revised pricing"></label><div><div class="tx">Send Dana the revised pricing</div><small>From: Pricing review, 12 Oct</small></div><span class="due">Fri</span></li>
-          <li><label class="hit"><input type="checkbox" aria-label="Share the Q4 hiring plan with Priya"></label><div><div class="tx">Share the Q4 hiring plan with Priya</div><small>From: Weekly sync, 14 Oct</small></div><span class="due warn">Today</span></li>
-          <li><label class="hit"><input type="checkbox" aria-label="Book a legal review of the vendor MSA"></label><div><div class="tx">Book a legal review of the vendor MSA</div><small>From: Vendor call, 16 Oct</small></div></li>
+        <div class="empty" data-done hidden>No follow-ups from meetings yet</div>
+        <ul data-st="todos mail consent">
+          <li><label class="hit"><input type="checkbox" aria-label="Send Dana the revised pricing"></label><div><div class="tx">Send Dana the revised pricing</div><small>Pricing review, 12 Oct</small></div><span class="due">Fri</span></li>
+          <li><label class="hit"><input type="checkbox" aria-label="Share the Q4 hiring plan with Priya"></label><div><div class="tx">Share the Q4 hiring plan with Priya</div><small>Weekly sync, 14 Oct</small></div><span class="due warn">Today</span></li>
+          <li><label class="hit"><input type="checkbox" aria-label="Book a legal review of the vendor MSA"></label><div><div class="tx">Book a legal review of the vendor MSA</div><small>Vendor call, 16 Oct</small></div></li>
+          <li data-st="mail" hidden><label class="hit"><input type="checkbox" aria-label="Reply to Dana about the discount tiers"></label><div><div class="tx">Reply to Dana about the discount tiers</div><small>Re: Q4 pricing, 9 Oct</small></div><span class="due">Mon</span></li>
         </ul>
       </div>
       <div class="panel mail" style="max-width:640px;margin-top:14px" data-st="mail" hidden>
         <div class="pr"><div class="grow"><b>Dana Reyes</b><small>Re: Q4 pricing</small></div><span class="mut">9:12</span></div>
         <div class="pr"><div class="grow"><b>Priya Natarajan</b><small>Board pack draft</small></div><span class="mut">Yesterday</span></div>
       </div>
-      <div class="card" style="max-width:640px;margin-top:14px" data-st="syncing empty todos consent" hidden>
+      <div class="card" style="max-width:640px;margin-top:14px" data-st="syncing empty todos" hidden>
         <div>Connect Gmail to read, sort and answer your mail here.</div>
         <div><button class="btn">Connect mail</button></div>
       </div>
@@ -404,7 +421,8 @@ a.tile{text-decoration:none;color:inherit}
   <!--
   The plan has no meeting page. The chip opens a small popover with the attendees, one link that opens the note in Granola in a new tab, and "Delete" (FX-8, FX-59, D4). The title and date are not repeated: the chip already shows them (FX-13).
   A meeting with no source link (a Wispr Flow meeting) gets the same popover without the link row, so Delete stays reachable. This varies from FX-13's "not shown when a meeting has no link" because Delete lives here.
-  Delete is offered only to the person who connected the source; meetings are private to that user. Delete removes the meeting, its digest and its Inbox to-dos, behind the platform's standard confirmation. New copy for the PR to quote: "Delete", "Delete this meeting and its to-dos?", "Cancel".
+  Delete is offered only to the person who connected the source; meetings are private to that user. Delete removes the meeting, its digest and its Inbox to-dos, behind the platform's standard confirmation that names the meeting and says Granola's note is untouched (RX-3). New copy for the PR to quote: "Delete", Delete "{meeting title}"?, "Removes this meeting and its to-dos from Rakazo. Your note in Granola is not changed.", "Cancel".
+  RX-45: the popover is anchored directly under its chip. Citation chips are 32 px high, filled pills in the text colour, so they differ from the outlined tool chips by shape and weight as well as fill.
   A chip in an older answer that points at a deleted meeting is an open question for the plan (the tool result says the meeting no longer exists).
   -->
   <div class="win" data-sidebar="Granola agent">
@@ -412,17 +430,19 @@ a.tile{text-decoration:none;color:inherit}
       <div class="chat">
         <div class="bm"><span class="av bot">G</span><div class="body">
           <div>You agreed to send Dana a revised quote with the volume discount.
-            <button class="cite" style="font:inherit;font-size:12px;min-height:24px" data-s="open" aria-haspopup="dialog">Pricing review, 12 Oct</button></div>
-          <div class="pop" role="dialog" aria-label="Pricing review" data-st="open" hidden>
-            <span class="mut">Dana Reyes, you</span>
-            <a href="#screen-citation" style="display:inline-flex;align-items:center;min-height:32px">Open in Granola ↗</a>
-            <button class="btn sm bad" data-s="confirm" style="align-self:flex-start">Delete</button>
-          </div>
+            <span class="anchor"><button class="cite" data-s="open" aria-haspopup="dialog">Pricing review, 12 Oct</button>
+            <span class="pop" role="dialog" aria-label="Pricing review" data-st="open" hidden>
+              <span class="mut">Dana Reyes, you</span>
+              <a href="#screen-citation" style="display:inline-flex;align-items:center;min-height:32px">Open in Granola ↗</a>
+              <button class="btn sm bad" data-s="confirm" style="align-self:flex-start">Delete</button>
+            </span></span></div>
+          <div style="min-height:150px" aria-hidden="true"></div>
         </div></div>
       </div>
-      <div class="scrim" role="alertdialog" aria-label="Delete this meeting" data-st="confirm" hidden>
+      <div class="scrim" role="alertdialog" aria-label="Delete Pricing review" data-st="confirm" hidden>
         <div class="card" style="max-width:340px">
-          <b>Delete this meeting and its to-dos?</b>
+          <b>Delete "Pricing review"?</b>
+          <div class="mut">Removes this meeting and its to-dos from Rakazo. Your note in Granola is not changed.</div>
           <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" data-s="closed">Cancel</button><button class="btn bad" data-s="closed">Delete</button></div>
         </div>
       </div>
@@ -437,7 +457,7 @@ a.tile{text-decoration:none;color:inherit}
       <button class="pill on" data-s="before">Before</button><button class="pill" data-s="after">After</button>
     </div></header>
   <!--
-  FX-32 / D4: Disconnect has no confirmation dialog. It stops sync and removes the stored key. Stored meetings, digests and to-dos are kept, and reconnecting restores access to everything. The card shows the existing sentence "Your data in {name} is not deleted." above the empty key field. The agent keeps working on stored meetings and the to-dos stay, shown in the two frames below.
+  FX-32 / D4 / RX-2: Disconnect has no confirmation dialog. It stops sync and removes the stored key. Stored meetings, digests and to-dos are kept, and reconnecting restores access to everything. The card says "Rakazo keeps your meetings and to-dos." above the empty key field and keeps the agent link, because the agent still answers from stored meetings. Screen 2 draws the same card in its "Disconnected" state.
   The "After" state is three frames (FX-57): the Integrations card, the agent chat and the Inbox. The annotation labels above each frame are not product UI.
   -->
   <div data-st="before">
@@ -455,9 +475,11 @@ a.tile{text-decoration:none;color:inherit}
     <div class="win" data-sidebar="Integrations">
       <div class="pane">
         <div class="card" style="max-width:460px">
-          <div class="mut">Your data in Granola is not deleted.</div>
+          <div class="mut">Rakazo keeps your meetings and to-dos.</div>
           <label class="fld" style="margin:0"><span class="fh" style="display:flex"><span>Granola API key <span class="mut">· Business plan</span></span><a href="#screen-disconnect">Get a key in Granola ↗</a></span><input class="f" type="password" autocomplete="off" aria-label="Granola API key"></label>
-          <div><button class="btn pri" disabled>Connect</button></div>
+          <div><button class="btn pri kb" disabled>Connect</button></div>
+          <p class="mut" style="margin:0;font-size:12px">Sends your meeting notes and transcripts to your AI model.</p>
+          <a class="agentlink" href="#screen-agent"><span class="av bot">G</span>Granola agent</a>
         </div>
       </div>
     </div>
@@ -477,7 +499,7 @@ a.tile{text-decoration:none;color:inherit}
     <div class="win" data-sidebar="Inbox">
       <div class="pane">
         <h1>Inbox</h1>
-        <div class="card todo" role="region" aria-label="To do" style="max-width:640px;margin-top:14px"><h2>To do</h2><ul><li><label class="hit"><input type="checkbox" aria-label="Send Dana the revised pricing"></label><div><div class="tx">Send Dana the revised pricing</div><small>From: Pricing review, 12 Oct</small></div></li></ul></div>
+        <div class="card todo" role="region" aria-label="To do" style="max-width:640px;margin-top:14px"><h2>To do</h2><div class="empty" data-done hidden>No follow-ups from meetings yet</div><ul><li><label class="hit"><input type="checkbox" aria-label="Send Dana the revised pricing"></label><div><div class="tx">Send Dana the revised pricing</div><small>Pricing review, 12 Oct</small></div></li></ul></div>
       </div>
     </div>
   </div>
@@ -487,61 +509,37 @@ a.tile{text-decoration:none;color:inherit}
 <section class="screen" id="screen-mobile">
   <header class="sh"><h2>7 Mobile (iPhone)</h2></header>
   <!--
-  The frames stand for native SwiftUI/Expo UI: a grouped List, a SecureField row with the system keyboard, native back and Liquid Glass chrome (the round back button is a glass control; the system draws the real one).
-  FX-30 / FX-60: Granola is a dedicated row group on the Integrations screen with the secure key field and Connect drawn inline. There is no detail page and no generic "Add" button (which starts OAuth). The group shows only the key rows: no "Live questions", no "Sync" header.
-  FX-61: Connect is dimmed while the field is empty; the rejection line is the destructive colour; on tick the row leaves at once (inbox.tsx:260, no strike-through); the whole to-do row is the 44 pt target.
-  FX-60: the mobile Inbox already has TodoCard (apps/mobile/app/inbox.tsx:547). The work is to feed it meeting rows and make connectionId nullable in InboxTodoSchema. Zero-account layout (FX-14): the To do group sits above the "Connect mail" row. "{n} more" is the existing collapse of the to-do group.
-  The "Business plan" footer is the mobile counterpart of the detail-page hint (FX-24). The Granola key link and the agent link are web only for now (FX-6 leaves the mobile repair path for later).
-  Offline: a network failure on Connect uses the generic error style; the wording "Could not reach Granola" is a placeholder for the plan to decide.
+  The frames stand for native SwiftUI/Expo UI: a grouped List, a SecureField row with the system keyboard, native back and Liquid Glass chrome (the round back button is a glass control, 44 pt; the system draws the real one).
+  FX-30 / FX-60 / RX-50: Granola is a dedicated group on the Integrations screen with the secure key field and Connect drawn inline. There is no detail page and no generic "Add" button (which starts OAuth). The group is the real SettingsGroup: title-case 13 pt header, rows of 52 pt or more, and Connect as a NativeActionButton (a full-width prominent button under the group, with a progress indicator while connecting). The group shows only the key rows: no "Live questions", no "Sync" header.
+  RX-50: "Business plan" follows the field label, in every state where the field shows. No key link (no detail page). Connect is dimmed while the field is empty, and after a rejection until the key is edited; editing clears the error line. Connecting and Syncing show a progress indicator in the row. The back control and the checkbox are 44 pt.
+  RX-1/RX-41: the consent sentence follows Connect as the group footer. RX-42: "Reconnect needed" sits in one group with the key field under one header, with the warning dot. RX-2: after Disconnect the group says Rakazo keeps the meetings and to-dos.
+  RX-8/RX-49: only the checkbox completes a to-do (44 pt target); a tap elsewhere on the row does nothing. The row leaves at once when ticked (inbox.tsx:260, no strike-through). The detail line has no "From:" prefix (RX-47).
+  FX-60: the mobile Inbox already has TodoCard (apps/mobile/app/inbox.tsx:547). The work is to feed it meeting rows and make connectionId nullable in InboxTodoSchema. Zero-account layout (FX-14): the To do group sits above the "Connect mail" row, with no consent prompt (RX-1). "{n} more" is the existing collapse of the to-do group.
+  The Granola key link and the agent link are web only for now (FX-6 leaves the mobile repair path for later).
+  Offline: "Could not reach Granola" is the line from RX-6.
+  Colours: the iOS secondary label is a compliant local value (4.5:1), see the D-1 comment at the top.
   -->
   <div class="phones">
     <div class="phonewrap" data-scope>
       <div class="sw" role="group" aria-label="Key state">
-        <button class="pill on" data-s="empty">Empty</button><button class="pill" data-s="connecting">Connecting</button><button class="pill" data-s="syncing">Syncing</button><button class="pill" data-s="connected">Connected</button><button class="pill" data-s="rejected">Key rejected</button><button class="pill" data-s="reconnect">Needs reconnect</button><button class="pill" data-s="offline">Offline</button>
+        <button class="pill on" data-s="empty">Empty</button><button class="pill" data-s="connecting">Connecting</button><button class="pill" data-s="syncing">Syncing</button><button class="pill" data-s="connected">Connected</button><button class="pill" data-s="rejected">Key rejected</button><button class="pill" data-s="reconnect">Reconnect needed</button><button class="pill" data-s="aioff">AI data sharing off</button><button class="pill" data-s="offline">Offline</button><button class="pill" data-s="disconnected">Disconnected</button>
       </div>
       <div class="phone">
         <div class="sbar"><span>9:41</span><span>●●●</span></div>
-        <div class="nav"><span class="glass bk" role="button" aria-label="Back">‹</span><span class="tt"></span><span style="width:40px"></span></div>
+        <div class="nav"><span class="glass bk" role="button" aria-label="Back">‹</span><span class="tt"></span><span style="width:44px"></span></div>
         <div class="large">Integrations</div>
         <div class="pbody">
           <div class="ig"><div class="ir"><div class="g">Slack</div><div class="tr">Connected</div></div></div>
           <div class="ih">Granola</div>
-          <div class="ig" data-st="empty" hidden>
-            <div class="ir"><input type="password" autocomplete="off" placeholder="Granola API key" aria-label="Granola API key"></div>
-            <div class="ir link dim" data-dim role="button" tabindex="0">Connect</div>
-          </div>
-          <div class="if" data-st="empty">Business plan</div>
-          <div class="ig" data-st="connecting" hidden data-auto="syncing">
-            <div class="ir"><input type="password" value="grn_example_key_000000" disabled aria-label="Granola API key"></div>
-            <div class="ir link dim">Connecting…</div>
-          </div>
-          <div class="ig" data-st="syncing" hidden data-auto="connected">
-            <div class="ir"><div class="g">Syncing</div></div>
-            <div class="ir link dst" data-s="empty" role="button" tabindex="0">Disconnect</div>
-          </div>
-          <div class="ig" data-st="connected" hidden>
-            <div class="ir"><div class="g">Synced 42 meetings</div></div>
-            <div class="ir link dst" data-s="empty" role="button" tabindex="0">Disconnect</div>
-          </div>
-          <div class="ig" data-st="rejected" hidden>
-            <div class="ir"><input type="password" value="grn_example_key_000000" autocomplete="off" aria-label="Granola API key"></div>
-            <div class="ir link" data-s="connecting" role="button" tabindex="0">Connect</div>
-          </div>
-          <div class="if err-t" data-st="rejected" hidden>Granola rejected this key</div>
-          <div class="ig" data-st="reconnect" hidden>
-            <div class="ir"><div class="g">Synced 42 meetings</div></div>
-            <div class="ir link dst" data-s="empty" role="button" tabindex="0">Disconnect</div>
-          </div>
-          <div class="ig" data-st="reconnect" hidden>
-            <div class="ir"><input type="password" autocomplete="off" placeholder="Granola API key" aria-label="Granola API key"></div>
-            <div class="ir link dim" data-dim role="button" tabindex="0">Connect</div>
-          </div>
-          <div class="if err-t" data-st="reconnect" hidden>Granola rejected this key</div>
-          <div class="ig" data-st="offline" hidden>
-            <div class="ir"><input type="password" value="grn_example_key_000000" autocomplete="off" aria-label="Granola API key"></div>
-            <div class="ir link" data-s="connecting" role="button" tabindex="0">Connect</div>
-          </div>
-          <div class="if err-t" data-st="offline" hidden>Could not reach Granola</div>
+          <div data-st="empty" hidden><div class="ig"><div class="ir fr"><div class="fl">Granola API key <span>· Business plan</span></div><input type="password" autocomplete="off" aria-label="Granola API key"></div></div><div class="nab dim" data-dim role="button" tabindex="0">Connect</div><div class="if">Sends your meeting notes and transcripts to your AI model.</div></div>
+          <div data-st="connecting" hidden data-auto="syncing"><div class="ig"><div class="ir fr"><div class="fl">Granola API key <span>· Business plan</span></div><input type="password" autocomplete="off" aria-label="Granola API key" value="grn_example_key_000000" disabled></div></div><div class="nab dim"><span class="spin"></span>Connecting…</div><div class="if">Sends your meeting notes and transcripts to your AI model.</div></div>
+          <div data-st="syncing" hidden data-auto="connected"><div class="ig"><div class="ir"><span class="spin"></span><div class="g">Syncing</div></div></div><div class="ig"><div class="ir" style="justify-content:center;color:var(--destructive);font-weight:500" data-s="disconnected" role="button" tabindex="0">Disconnect</div></div></div>
+          <div data-st="connected" hidden><div class="ig"><div class="ir"><div class="g">Synced 42 meetings</div></div></div><div class="ig"><div class="ir" style="justify-content:center;color:var(--destructive);font-weight:500" data-s="disconnected" role="button" tabindex="0">Disconnect</div></div></div>
+          <div data-st="rejected" hidden><div class="ig"><div class="ir fr"><div class="fl">Granola API key <span>· Business plan</span></div><input type="password" autocomplete="off" aria-label="Granola API key" value="grn_example_key_000000" aria-invalid="true"></div></div><div class="if err-t">Granola rejected this key</div><div class="nab dim" data-dim role="button" tabindex="0">Connect</div><div class="if">Sends your meeting notes and transcripts to your AI model.</div></div>
+          <div data-st="reconnect" hidden><div class="ig"><div class="ir"><div class="g"><span style="color:var(--warning)">●</span> Reconnect needed</div></div><div class="ir fr"><div class="fl">Granola API key <span>· Business plan</span></div><input type="password" autocomplete="off" aria-label="Granola API key" aria-invalid="true"></div></div><div class="if err-t">Granola rejected this key</div><div class="nab dim" data-dim role="button" tabindex="0">Connect</div><div class="if">Sends your meeting notes and transcripts to your AI model.</div><div class="ig"><div class="ir" style="justify-content:center;color:var(--destructive);font-weight:500" data-s="disconnected" role="button" tabindex="0">Disconnect</div></div></div>
+          <div data-st="aioff" hidden><div class="ig"><div class="ir"><div class="g">Synced 42 meetings</div></div><div class="ir"><div class="g"><span style="color:var(--warning)">●</span> AI data sharing off</div><span class="chev"></span></div></div><div class="ig"><div class="ir" style="justify-content:center;color:var(--destructive);font-weight:500" data-s="disconnected" role="button" tabindex="0">Disconnect</div></div></div>
+          <div data-st="offline" hidden><div class="ig"><div class="ir fr"><div class="fl">Granola API key <span>· Business plan</span></div><input type="password" autocomplete="off" aria-label="Granola API key" value="grn_example_key_000000"></div></div><div class="if err-t">Could not reach Granola</div><div class="nab" data-s="connecting" role="button" tabindex="0">Connect</div><div class="if">Sends your meeting notes and transcripts to your AI model.</div></div>
+          <div data-st="disconnected" hidden><div class="if" style="padding-top:0">Rakazo keeps your meetings and to-dos.</div><div class="ig"><div class="ir fr"><div class="fl">Granola API key <span>· Business plan</span></div><input type="password" autocomplete="off" aria-label="Granola API key"></div></div><div class="nab dim" data-dim role="button" tabindex="0">Connect</div><div class="if">Sends your meeting notes and transcripts to your AI model.</div></div>
         </div>
         <div class="homebar"></div>
       </div>
@@ -552,18 +550,18 @@ a.tile{text-decoration:none;color:inherit}
       </div>
       <div class="phone">
         <div class="sbar"><span>9:41</span><span>●●●</span></div>
-        <div class="nav"><span></span><span class="tt"></span><span style="width:40px"></span></div>
+        <div class="nav"><span></span><span class="tt"></span><span style="width:44px"></span></div>
         <div class="large">Inbox</div>
         <div class="pbody">
           <div class="ih">To do</div>
-          <div class="ig" data-st="syncing" hidden><div class="ir"><div class="g mut">Syncing</div></div></div>
+          <div class="ig" data-st="syncing" hidden><div class="ir"><span class="spin"></span><div class="g mut">Syncing</div></div></div>
           <div class="ig" data-st="empty" hidden><div class="ir"><div class="g mut">No follow-ups from meetings yet</div></div></div>
           <div class="ig" data-st="todos">
-            <div class="ir td" role="button" tabindex="0"><button class="circ" aria-label="Send Dana the revised pricing" tabindex="-1"></button><div class="g"><div class="tx">Send Dana the revised pricing</div><small>From: Pricing review, 12 Oct</small></div><div class="tr">Fri</div></div>
-            <div class="ir td" role="button" tabindex="0"><button class="circ" aria-label="Share the Q4 hiring plan with Priya" tabindex="-1"></button><div class="g"><div class="tx">Share the Q4 hiring plan with Priya</div><small>From: Weekly sync, 14 Oct</small></div><div class="tr" style="color:var(--warning)">Today</div></div>
-            <div class="ir td" role="button" tabindex="0"><button class="circ" aria-label="Book a legal review of the vendor MSA" tabindex="-1"></button><div class="g"><div class="tx">Book a legal review of the vendor MSA</div><small>From: Vendor call, 16 Oct</small></div></div>
-            <div class="ir td extra" hidden role="button" tabindex="0"><button class="circ" aria-label="Send the security questionnaire" tabindex="-1"></button><div class="g"><div class="tx">Send the security questionnaire</div><small>From: Vendor call, 16 Oct</small></div></div>
-            <div class="ir td extra" hidden role="button" tabindex="0"><button class="circ" aria-label="Confirm the board date" tabindex="-1"></button><div class="g"><div class="tx">Confirm the board date</div><small>From: Weekly sync, 14 Oct</small></div></div>
+            <div class="ir td"><button class="chkhit" aria-label="Send Dana the revised pricing"><span class="circ"></span></button><div class="g"><div class="tx">Send Dana the revised pricing</div><small>Pricing review, 12 Oct</small></div><div class="tr">Fri</div></div>
+            <div class="ir td"><button class="chkhit" aria-label="Share the Q4 hiring plan with Priya"><span class="circ"></span></button><div class="g"><div class="tx">Share the Q4 hiring plan with Priya</div><small>Weekly sync, 14 Oct</small></div><div class="tr" style="color:var(--warning)">Today</div></div>
+            <div class="ir td"><button class="chkhit" aria-label="Book a legal review of the vendor MSA"><span class="circ"></span></button><div class="g"><div class="tx">Book a legal review of the vendor MSA</div><small>Vendor call, 16 Oct</small></div></div>
+            <div class="ir td extra" hidden><button class="chkhit" aria-label="Send the security questionnaire"><span class="circ"></span></button><div class="g"><div class="tx">Send the security questionnaire</div><small>Vendor call, 16 Oct</small></div></div>
+            <div class="ir td extra" hidden><button class="chkhit" aria-label="Confirm the board date"><span class="circ"></span></button><div class="g"><div class="tx">Confirm the board date</div><small>Weekly sync, 14 Oct</small></div></div>
             <div class="ir link more" role="button" tabindex="0">2 more</div>
           </div>
           <div class="ig" style="margin-top:12px" data-st="syncing empty todos"><div class="ir"><div class="g">Connect mail</div><span class="chev"></span></div></div>
@@ -583,47 +581,58 @@ a.tile{text-decoration:none;color:inherit}
     sc.querySelectorAll('[data-auto]').forEach(function(x){if(!x.hidden){var n=x.dataset.auto;setTimeout(function(){if(!x.hidden)setState(sc,n)},1200)}});
     sc.querySelectorAll('.todo li').forEach(function(li){li.classList.remove('fade','gone');var c=li.querySelector('input');if(c)c.checked=false});
     sc.querySelectorAll('.ir.td').forEach(function(r){r.classList.remove('gone');r.hidden=r.classList.contains('extra')});
+    sc.querySelectorAll('[data-done]').forEach(function(x){x.hidden=true});
     sc.querySelectorAll('.ir.more').forEach(function(r){r.hidden=false});
-    sc.querySelectorAll('[role=alert]').forEach(function(a){a.hidden=false});
+    sc.querySelectorAll('.cleared').forEach(function(a){a.classList.remove('cleared')});
+    sc.querySelectorAll('input[aria-invalid]').forEach(function(i){i.setAttribute('aria-invalid','true');i.style.borderColor=''});
     sc.querySelectorAll('[data-dim]').forEach(function(b){if(b.tagName==='BUTTON'){b.disabled=true;b.removeAttribute('data-s')}else{b.classList.add('dim');b.removeAttribute('data-s')}});
   }
   document.addEventListener('click',function(e){
-    var td=e.target.closest('.ir.td');
-    if(td){td.hidden=true;return}
+    var td=e.target.closest('.chkhit');
+    if(td){td.closest('.ir.td').hidden=true;return}
     var mo=e.target.closest('.ir.more');
     if(mo){mo.hidden=true;mo.parentNode.querySelectorAll('.extra').forEach(function(x){x.hidden=false});return}
     var tab=e.target.closest('.tab');
     if(tab){tab.parentNode.querySelectorAll('.tab').forEach(function(t){t.setAttribute('aria-selected',t===tab)})}
     var t=e.target.closest('[data-s]');
     if(t){if(t.tagName==='A')e.preventDefault();var sc=t.closest('[data-scope]')||t.closest('section');setState(sc,t.dataset.s);}
+    var g=e.target.closest('[data-go]');
+    if(g){var q=g.dataset.go.split(':');setState(document.getElementById(q[0]),q[1])}
     var th=e.target.closest('#theme');
     if(th){var r=document.documentElement;var dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;r.dataset.theme=dark?'light':'dark';}
   });
   document.addEventListener('change',function(e){
     var c=e.target.closest('.todo input[type=checkbox]');
-    if(c){var li=c.closest('li');li.classList.add('fade');setTimeout(function(){li.classList.add('gone')},320)}
+    if(c){var li=c.closest('li');li.classList.add('fade');setTimeout(function(){li.classList.add('gone');var card=li.closest('.todo');if(!card.querySelector('li:not(.gone):not([hidden])'))card.querySelector('[data-done]').hidden=false},320)}
   });
   document.addEventListener('input',function(e){
     var i=e.target;if(!i.matches('input[type=password]'))return;
-    var al=i.closest('[data-st]');
-    if(al){var a=al.querySelector('[role=alert]');if(a)a.hidden=true}
-    var b=(i.closest('[data-st]')||i.closest('.card')).querySelector('button[data-dim]');
-    if(b&&i.closest('#screen-api-key')){b.disabled=!i.value;if(i.value)b.dataset.s='verifying';else b.removeAttribute('data-s')}
     var ph=i.closest('.phone');
-    if(ph){var row=i.closest('.ig').querySelector('.ir.link[data-dim]');if(row){row.classList.toggle('dim',!i.value);if(i.value)row.dataset.s='connecting';else row.removeAttribute('data-s')}}
+    if(ph){
+      var blk=i.closest('[data-st]');
+      blk.querySelectorAll('.if.err-t').forEach(function(a){a.classList.add('cleared')});
+      var nb=blk.querySelector('.nab[data-dim]');
+      if(nb){nb.classList.toggle('dim',!i.value);if(i.value)nb.dataset.s='connecting';else nb.removeAttribute('data-s')}
+      return;
+    }
+    var al=i.closest('[data-st]');
+    if(al){var a=al.querySelector('[role=alert]');if(a)a.classList.add('cleared')}
+    i.removeAttribute('aria-invalid');i.style.borderColor='';
+    var b=(al||i.closest('.card')).querySelector('button[data-dim]');
+    if(b&&i.closest('#screen-api-key')){b.disabled=!i.value;if(i.value)b.dataset.s='verifying';else b.removeAttribute('data-s')}
   });
   document.querySelectorAll('.tgl,.sw-ios').forEach(function(b){b.addEventListener('click',function(){b.setAttribute('aria-checked',b.getAttribute('aria-checked')!=='true')})});
+  document.querySelectorAll('[data-sidebar]').forEach(function(w){
+    var a=w.dataset.sidebar,b0=w.dataset.bots,bots=(b0===undefined?'Granola agent':b0).split('|').filter(Boolean),bs=w.dataset.botsSt?' data-st="'+w.dataset.botsSt+'"':'';
+    var h='<div class="side"><div class="row" style="color:var(--muted-fg)">Search</div>'+
+      '<div class="row'+(a==='Inbox'?' active':'')+'">Inbox</div>'+(bots.length?'<div class="lbl"'+bs+'>Bots</div>':'');
+    bots.forEach(function(b){h+='<div class="row'+(a===b?' active':'')+'"'+bs+'><span class="av bot">'+b[0]+'</span>'+b+'</div>'});
+    h+='<div style="flex:1"></div><div class="row'+(a==='Integrations'?' active':'')+'">Integrations</div></div>';
+    w.insertAdjacentHTML('afterbegin',h);
+  });
   document.querySelectorAll('[data-scope],section.screen').forEach(function(sc){
     var on=sc.querySelector('.pill[data-s].on');
     if(on&&(sc.matches('[data-scope]')||!sc.querySelector('[data-scope]')))setState(sc,on.dataset.s);
-  });
-  document.querySelectorAll('[data-sidebar]').forEach(function(w){
-    var a=w.dataset.sidebar,b0=w.dataset.bots,bots=(b0===undefined?'Granola agent':b0).split('|').filter(Boolean);
-    var h='<div class="side"><div class="row" style="color:var(--muted-fg)">Search</div>'+
-      '<div class="row'+(a==='Inbox'?' active':'')+'">Inbox</div>'+(bots.length?'<div class="lbl">Bots</div>':'');
-    bots.forEach(function(b){h+='<div class="row'+(a===b?' active':'')+'"><span class="av bot">'+b[0]+'</span>'+b+'</div>'});
-    h+='<div style="flex:1"></div><div class="row'+(a==='Integrations'?' active':'')+'">Integrations</div></div>';
-    w.insertAdjacentHTML('afterbegin',h);
   });
 })();
 </script>

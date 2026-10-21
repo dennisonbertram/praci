@@ -1,0 +1,22 @@
+{
+  "story_id": "STORY-MX-7",
+  "result": "PASS",
+  "round1_status": [
+    {
+      "id": "F-MX-7-1",
+      "status": "obsolete",
+      "evidence": "Plan decides 'no warning UI' and adds the skill sentence about quoting instruction-like text."
+    },
+    {
+      "id": "F-MX-7-2",
+      "status": "obsolete",
+      "evidence": "Plan decides plain-text to-dos with no meeting link; S5 has a regression test for an instruction-like commitment."
+    },
+    {
+      "id": "F-MX-7-3",
+      "status": "fixed",
+      "evidence": "Sample injection string is no longer rendered (agent-inject.png)."
+    }
+  ],
+  "findings": []
+}
