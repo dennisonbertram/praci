@@ -34,6 +34,11 @@ export type CreateNotificationInput = Scope & {
   title: string;
   body?: string | null;
   link?: string | null;
+  /**
+   * An absolute URL to open outside the app. Stored in `link` only when the caller's `allow`
+   * accepts it, so this package knows no provider. Agent tools must never set it.
+   */
+  externalLink?: { url: string; allow: (url: string) => boolean };
   importance?: "info" | "attention";
   /** Sidebar status icon; omitted falls back to importance (attention is urgent, info is new). */
   kind?: NotificationKind;
@@ -72,6 +77,9 @@ function validate(input: CreateNotificationInput) {
     throw new NotificationValidationError(
       `Notification body must be at most ${NOTIFICATION_BODY_MAX} characters.`,
     );
+  }
+  if (input.externalLink && !input.externalLink.allow(input.externalLink.url)) {
+    throw new NotificationValidationError("Notification external link is not allowed.");
   }
   if (input.link && !isInAppPath(input.link)) {
     throw new NotificationValidationError("Notification link must be an in-app path.");
@@ -140,7 +148,7 @@ export async function createNotification(
         threadId: input.threadId ?? null,
         title,
         body,
-        link: input.link ?? null,
+        link: input.externalLink?.url ?? input.link ?? null,
         importance,
         kind: input.kind ?? null,
         dedupeKey,

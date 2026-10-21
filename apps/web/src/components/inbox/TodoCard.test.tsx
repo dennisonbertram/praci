@@ -107,3 +107,50 @@ it("opens the email a to-do came from", () => {
     false,
   );
 });
+
+const meetingTodo = (n: number, doneAt: string | null = null) => ({
+  ...todo(n, doneAt),
+  connectionId: null,
+  meetingId: `m${n}`,
+  detail: "Planning, Oct 19",
+});
+const source = { source: true, syncing: false, ready: true };
+
+it("shows a meeting to-do as plain text with only the checkbox to act on, and a hit area of 32px or more", () => {
+  act(() =>
+    root.render(<TodoCard todos={[meetingTodo(1)]} onChange={() => {}} onOpen={() => {}} />),
+  );
+  expect(document.querySelectorAll("button:not([role=checkbox])")).toHaveLength(0);
+  expect(document.querySelector("li")?.textContent).toContain("Todo 1");
+  expect(document.querySelector("li")?.textContent).toContain("Planning, Oct 19");
+  // The 16px box is padded by 8px above and below, so its target is 32px tall.
+  expect(document.querySelector("[role=checkbox]")?.className).toContain("after:-inset-y-2");
+});
+
+it("shows Syncing while the first sync runs, even with no to-dos", () => {
+  act(() =>
+    root.render(
+      <TodoCard todos={[]} meetings={{ ...source, syncing: true }} onChange={() => {}} />,
+    ),
+  );
+  expect(document.body.textContent).toContain("To do");
+  expect(document.body.textContent).toContain("Syncing");
+  expect(document.body.textContent).not.toContain("No follow-ups from meetings yet");
+});
+
+it("says there are no follow-ups only for a synced source with consent, including after the last one is done", () => {
+  const render = (todos: ReturnType<typeof meetingTodo>[], meetings?: typeof source) =>
+    act(() => root.render(<TodoCard todos={todos} meetings={meetings} onChange={() => {}} />));
+  render([], source);
+  expect(document.body.textContent).toContain("No follow-ups from meetings yet");
+  render([meetingTodo(1)], source);
+  expect(document.body.textContent).not.toContain("No follow-ups from meetings yet");
+  render([meetingTodo(1, "2026-10-17")], source);
+  expect(document.body.textContent).toContain("To do");
+  expect(document.body.textContent).toContain("No follow-ups from meetings yet");
+  // Without consent, or without a source, an empty card shows nothing.
+  render([], { ...source, ready: false });
+  expect(document.body.textContent).toBe("");
+  render([], undefined);
+  expect(document.body.textContent).toBe("");
+});

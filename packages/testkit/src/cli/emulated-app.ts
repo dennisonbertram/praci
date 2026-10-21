@@ -1,5 +1,5 @@
 import type { TransactionalEmail } from "@rakazo/adapter-kit";
-import type { EmulatedMcpServer, FinanceSyncDeps } from "@rakazo/adapters";
+import type { EmulatedMcpServer, FinanceSyncDeps, MeetingSourceRegistry } from "@rakazo/adapters";
 import { EmailEmulator, PipedreamConnector, ThirdPartyConnectorEmulator } from "@rakazo/adapters";
 import { createApp } from "../../../../apps/api/src/app.ts";
 import { createE2eComposio } from "./e2e-mail.js";
@@ -16,6 +16,8 @@ export async function createEmulatedApp(
     /** Extra emulated MCP servers by hostname, such as the demo's mock Carta. */
     mcpServers?: Record<string, EmulatedMcpServer>;
     cryptoFetch?: typeof fetch;
+    /** Meeting providers; the demo points Granola at its emulator. */
+    meetingSources?: MeetingSourceRegistry;
     /** Called with each transactional email (reset links, verification) the app sends. */
     onEmail?: (message: TransactionalEmail) => void;
   } = {},
@@ -41,6 +43,7 @@ export async function createEmulatedApp(
     email,
     ...(options.financeCallToolFor ? { financeCallToolFor: options.financeCallToolFor } : {}),
     ...(options.cryptoFetch ? { cryptoFetch: options.cryptoFetch } : {}),
+    ...(options.meetingSources ? { meetingSources: options.meetingSources } : {}),
     remoteConnectors: {
       fetch: thirdParties.fetch,
       resolveHostname: thirdParties.resolveHostname,

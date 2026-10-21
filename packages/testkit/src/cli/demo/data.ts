@@ -1,4 +1,5 @@
 import type { EmulatedMcpServer, EmulatedMessage } from "@rakazo/adapters";
+import type { SourceMeeting } from "@rakazo/contracts";
 import { FINANCE_MCP_ENDPOINTS } from "@rakazo/contracts";
 import { makePdf } from "../../../../adapters/src/data-room-test-fakes.js";
 import {
@@ -2382,3 +2383,69 @@ export const DEMO_SKILLS = [
     },
   },
 ] as const;
+
+/** The one key the demo's Granola emulator accepts. It is fake and works nowhere else. */
+export const DEMO_GRANOLA_KEY = "grn_demo_fake_key_0000";
+
+/** Meetings the demo's Granola emulator serves, so Connect has something to sync. Invented. */
+export function demoGranolaMeetings(now = new Date()): SourceMeeting[] {
+  const at = (daysAgo: number, hour: number) =>
+    new Date(now.getTime() - daysAgo * 24 * HOUR_MS + hour * HOUR_MS).toISOString();
+  const meeting = (
+    externalId: string,
+    title: string,
+    daysAgo: number,
+    summary: string,
+    lines: [string, string][],
+  ): SourceMeeting => ({
+    externalId,
+    title: `${MOCK_SUBJECT_PREFIX} ${title}`,
+    startedAt: at(daysAgo, -2),
+    endedAt: at(daysAgo, -1),
+    // The founder attends with her Founder mail address, a verified identity, so her own
+    // commitments become Inbox to-dos in the demo.
+    attendees: [
+      { name: DEMO_USER_NAME, email: "mock-founder@northwind.example.test" },
+      { name: "Priya Shah (Mock)", email: "mock-priya@northwind.example.test" },
+    ],
+    organizerEmail: "mock-founder@northwind.example.test",
+    sourceUrl: null,
+    folders: [],
+    summary,
+    privateNotes: "",
+    transcript: lines.map(([speaker, text]) => ({ speaker, text })),
+    updatedAt: at(daysAgo, -1),
+  });
+  return [
+    meeting(
+      "not_demo000000001",
+      "Pricing review",
+      1,
+      "Agreed to move the Pro plan to annual billing. Maya will send Priya the revised pricing table.",
+      [
+        [DEMO_USER_NAME, "I will send Priya the revised pricing table by Friday."],
+        ["Priya Shah (Mock)", "Great. Annual billing for Pro is settled, then."],
+      ],
+    ),
+    meeting(
+      "not_demo000000002",
+      "Hiring sync",
+      3,
+      "Two engineering candidates reach final round. Priya books the onsite loops.",
+      [
+        ["Priya Shah (Mock)", "I will book the onsite loops for both candidates."],
+        [DEMO_USER_NAME, "Thanks. I will review their take-home results tonight."],
+      ],
+    ),
+    meeting(
+      "not_demo000000003",
+      "Roadmap check-in",
+      8,
+      "Mobile launch moves to next quarter. Billing export ships first.",
+      [
+        [DEMO_USER_NAME, "Mobile slips to next quarter; the billing export goes first."],
+        ["Priya Shah (Mock)", "Understood. I will tell the pilot customers."],
+      ],
+    ),
+  ];
+}

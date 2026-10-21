@@ -3,9 +3,9 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 240 of 240
-- Web and shared components: 652
-- Mobile components: 137 in 94 files, mobile — native story pending
+- Web and shared component files with stories: 247 of 247
+- Web and shared components: 667
+- Mobile components: 138 in 95 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
 
@@ -96,6 +96,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ModelPreflightFeedback | [apps/web/src/components/ModelConnectionPreflightNotice.tsx](../../apps/web/src/components/ModelConnectionPreflightNotice.tsx) | [ModelConnectionPreflightNotice.stories.tsx](../../apps/web/src/components/ModelConnectionPreflightNotice.stories.tsx) | web |
 | NotificationSettingsSection | [apps/web/src/components/NotificationSettings.tsx](../../apps/web/src/components/NotificationSettings.tsx) | [NotificationSettings.stories.tsx](../../apps/web/src/components/NotificationSettings.stories.tsx) | web |
 | PageAgentIntro | [apps/web/src/components/PageAgentIntro.tsx](../../apps/web/src/components/PageAgentIntro.tsx) | [PageAgentIntro.stories.tsx](../../apps/web/src/components/PageAgentIntro.stories.tsx) | web |
+| PageAgentsRow | [apps/web/src/components/PageAgentsRow.tsx](../../apps/web/src/components/PageAgentsRow.tsx) | [PageAgentsRow.stories.tsx](../../apps/web/src/components/PageAgentsRow.stories.tsx) | web |
 | PageEmptyState | [apps/web/src/components/PageEmptyState.tsx](../../apps/web/src/components/PageEmptyState.tsx) | [PageEmptyState.stories.tsx](../../apps/web/src/components/PageEmptyState.stories.tsx) | web |
 | PageHeader | [apps/web/src/components/PageHeader.tsx](../../apps/web/src/components/PageHeader.tsx) | [PageHeader.stories.tsx](../../apps/web/src/components/PageHeader.stories.tsx) | web |
 | PdfViewer | [apps/web/src/components/PdfViewer.tsx](../../apps/web/src/components/PdfViewer.tsx) | [PdfViewer.stories.tsx](../../apps/web/src/components/PdfViewer.stories.tsx) | web |
@@ -223,15 +224,19 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ConnectAppsStep, OnboardingConnectApps | [apps/web/src/components/integrations/ConnectAppsStep.tsx](../../apps/web/src/components/integrations/ConnectAppsStep.tsx) | [ConnectAppsStep.stories.tsx](../../apps/web/src/components/integrations/ConnectAppsStep.stories.tsx) | web |
 | ConnectionDialog | [apps/web/src/components/integrations/ConnectionDialog.tsx](../../apps/web/src/components/integrations/ConnectionDialog.tsx) | [ConnectionDialog.stories.tsx](../../apps/web/src/components/integrations/ConnectionDialog.stories.tsx) | web |
 | CustomConnectionDialog | [apps/web/src/components/integrations/CustomConnectionDialog.tsx](../../apps/web/src/components/integrations/CustomConnectionDialog.tsx) | [CustomConnectionDialog.stories.tsx](../../apps/web/src/components/integrations/CustomConnectionDialog.stories.tsx) | web |
+| DevinConnectDialog | [apps/web/src/components/integrations/DevinConnectDialog.tsx](../../apps/web/src/components/integrations/DevinConnectDialog.tsx) | [DevinConnectDialog.stories.tsx](../../apps/web/src/components/integrations/DevinConnectDialog.stories.tsx) | web |
 | ExchangeConnectDialog | [apps/web/src/components/integrations/ExchangeConnectDialog.tsx](../../apps/web/src/components/integrations/ExchangeConnectDialog.tsx) | [ExchangeConnectDialog.stories.tsx](../../apps/web/src/components/integrations/ExchangeConnectDialog.stories.tsx) | web |
 | TileName, CryptoTile, AlchemyTile, ExchangeTile, FinanceSection | [apps/web/src/components/integrations/FinanceSection.tsx](../../apps/web/src/components/integrations/FinanceSection.tsx) | [FinanceSection.stories.tsx](../../apps/web/src/components/integrations/FinanceSection.stories.tsx) | web |
+| GranolaStatusLine, GranolaMeetingsCard | [apps/web/src/components/integrations/GranolaMeetingsCard.tsx](../../apps/web/src/components/integrations/GranolaMeetingsCard.tsx) | [GranolaMeetingsCard.stories.tsx](../../apps/web/src/components/integrations/GranolaMeetingsCard.stories.tsx) | web |
+| GranolaPage | [apps/web/src/components/integrations/GranolaPage.tsx](../../apps/web/src/components/integrations/GranolaPage.tsx) | [GranolaPage.stories.tsx](../../apps/web/src/components/integrations/GranolaPage.stories.tsx) | web |
 | Labeled, SetupDialog, IMessageSection | [apps/web/src/components/integrations/IMessageSection.tsx](../../apps/web/src/components/integrations/IMessageSection.tsx) | [IMessageSection.stories.tsx](../../apps/web/src/components/integrations/IMessageSection.stories.tsx) | web |
 | WritesSwitch, IntegrationAgentSection | [apps/web/src/components/integrations/IntegrationAgentSection.tsx](../../apps/web/src/components/integrations/IntegrationAgentSection.tsx) | [IntegrationAgentSection.stories.tsx](../../apps/web/src/components/integrations/IntegrationAgentSection.stories.tsx) | web |
 | IntegrationSetup | [apps/web/src/components/integrations/IntegrationSetup.tsx](../../apps/web/src/components/integrations/IntegrationSetup.tsx) | [IntegrationSetup.stories.tsx](../../apps/web/src/components/integrations/IntegrationSetup.stories.tsx) | web |
-| Card, OpenPageLink, UsedBy, McpCard, AppCard, SourceCard, AppTile, IntegrationsHome | [apps/web/src/components/integrations/IntegrationsHome.tsx](../../apps/web/src/components/integrations/IntegrationsHome.tsx) | [IntegrationsHome.stories.tsx](../../apps/web/src/components/integrations/IntegrationsHome.stories.tsx) | web |
+| Card, OpenPageLink, UsedBy, McpCard, GranolaKeyCard, AppCard, SourceCard, AppTile, IntegrationsHome | [apps/web/src/components/integrations/IntegrationsHome.tsx](../../apps/web/src/components/integrations/IntegrationsHome.tsx) | [IntegrationsHome.stories.tsx](../../apps/web/src/components/integrations/IntegrationsHome.stories.tsx) | web |
 | McpDetail | [apps/web/src/components/integrations/McpDetail.tsx](../../apps/web/src/components/integrations/McpDetail.tsx) | [McpDetail.stories.tsx](../../apps/web/src/components/integrations/McpDetail.stories.tsx) | web |
 | IntegrationTile, StatusBadge, AgentStack, AgentToggleList, CardHead, SectionTitle, SourceBadge | [apps/web/src/components/integrations/parts.tsx](../../apps/web/src/components/integrations/parts.tsx) | [parts.stories.tsx](../../apps/web/src/components/integrations/parts.stories.tsx) | web |
 | SignInStep | [apps/web/src/components/integrations/SignInStep.tsx](../../apps/web/src/components/integrations/SignInStep.tsx) | [SignInStep.stories.tsx](../../apps/web/src/components/integrations/SignInStep.stories.tsx) | web |
+| StoredMeetingsList | [apps/web/src/components/integrations/StoredMeetingsList.tsx](../../apps/web/src/components/integrations/StoredMeetingsList.tsx) | [StoredMeetingsList.stories.tsx](../../apps/web/src/components/integrations/StoredMeetingsList.stories.tsx) | web |
 
 ## Web components/legal
 
@@ -278,6 +283,8 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Figure, Summary, ConnectCartaDialog, CapTablePage | [apps/web/src/pages/CapTable.tsx](../../apps/web/src/pages/CapTable.tsx) | [CapTable.stories.tsx](../../apps/web/src/pages/CapTable.stories.tsx) | web |
 | ContactsPage | [apps/web/src/pages/Contacts.tsx](../../apps/web/src/pages/Contacts.tsx) | [Contacts.stories.tsx](../../apps/web/src/pages/Contacts.stories.tsx) | web |
 | FileInputButton, DataRoomPage | [apps/web/src/pages/DataRoom.tsx](../../apps/web/src/pages/DataRoom.tsx) | [DataRoom.stories.tsx](../../apps/web/src/pages/DataRoom.stories.tsx) | web |
+| DevinPage, Devin, DevinSkeleton | [apps/web/src/pages/Devin.tsx](../../apps/web/src/pages/Devin.tsx) | [Devin.stories.tsx](../../apps/web/src/pages/Devin.stories.tsx) | web |
+| Badge, Title, Question, PullRequests, DevinSessions | [apps/web/src/pages/devin/DevinSessions.tsx](../../apps/web/src/pages/devin/DevinSessions.tsx) | [DevinSessions.stories.tsx](../../apps/web/src/pages/devin/DevinSessions.stories.tsx) | web |
 | ExternalConversationSettings | [apps/web/src/pages/ExternalConversationSettings.tsx](../../apps/web/src/pages/ExternalConversationSettings.tsx) | [ExternalConversationSettings.stories.tsx](../../apps/web/src/pages/ExternalConversationSettings.stories.tsx) | web |
 | FinancePage, Dashboard, EmptyState, DashboardSkeleton, Overview, ShowAll, HoverRow, UpcomingRow, SubscriptionsTable | [apps/web/src/pages/Finance.tsx](../../apps/web/src/pages/Finance.tsx) | [Finance.stories.tsx](../../apps/web/src/pages/Finance.stories.tsx) | web |
 | AccountTable, CryptoGroup, FinanceAccountsPage, FinanceAccountPage | [apps/web/src/pages/finance/FinanceAccounts.tsx](../../apps/web/src/pages/finance/FinanceAccounts.tsx) | [FinanceAccounts.stories.tsx](../../apps/web/src/pages/finance/FinanceAccounts.stories.tsx) | web |
@@ -407,6 +414,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | GlassSurface | [apps/mobile/components/glass-surface.ios.tsx](../../apps/mobile/components/glass-surface.ios.tsx) | mobile — native story pending | mobile |
 | GlassSurface | [apps/mobile/components/glass-surface.tsx](../../apps/mobile/components/glass-surface.tsx) | mobile — native story pending | mobile |
 | GlassTitle | [apps/mobile/components/glass-title.ios.tsx](../../apps/mobile/components/glass-title.ios.tsx) | mobile — native story pending | mobile |
+| GranolaKeyGroup | [apps/mobile/components/granola-key-group.tsx](../../apps/mobile/components/granola-key-group.tsx) | mobile — native story pending | mobile |
 | GroupAvatar | [apps/mobile/components/group-avatar.tsx](../../apps/mobile/components/group-avatar.tsx) | mobile — native story pending | mobile |
 | ZoomableImage, ImageArtifactViewer | [apps/mobile/components/image-artifact-viewer.tsx](../../apps/mobile/components/image-artifact-viewer.tsx) | mobile — native story pending | mobile |
 | SearchRow | [apps/mobile/components/inbox-render-item.tsx](../../apps/mobile/components/inbox-render-item.tsx) | mobile — native story pending | mobile |

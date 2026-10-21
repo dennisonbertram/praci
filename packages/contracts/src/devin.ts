@@ -1,3 +1,5 @@
+import * as z from "zod";
+import { BotSchema } from "./domain.js";
 /** Devin's official remote MCP server (Streamable HTTP; the /sse endpoint is deprecated). */
 export const DEVIN_MCP_ENDPOINT = "https://mcp.devin.ai/mcp";
 
@@ -92,3 +94,40 @@ export function isDevinSessionUrl(value: string): boolean {
   )?.[1];
   return id !== undefined && value === devinSessionUrl(id);
 }
+
+export const DevinSessionSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  kind: z.enum(DEVIN_SESSION_KINDS),
+  status: z.string(),
+  statusDetail: z.string().nullable(),
+  question: z.string().nullable(),
+  prs: z.array(z.object({ url: z.string(), state: z.string() })),
+  origin: z.string(),
+  /** When Devin last changed the session (ISO 8601). */
+  updatedAt: z.string(),
+});
+export type DevinSessionView = z.infer<typeof DevinSessionSchema>;
+
+export const DevinSessionsOutputSchema = z.object({
+  connection: z.object({
+    status: z.enum(["none", "ok", "rejected", "connector_gone", "unreachable", "rate_limited"]),
+    /** The caller is a space owner: Connect, Reconnect and Disconnect apply. */
+    manage: z.boolean(),
+    canConnect: z.boolean(),
+    /** The connection runs in the caller's scope, so only the caller has its agent. */
+    isConnector: z.boolean(),
+    agentBotId: z.string().nullable(),
+  }),
+  fetchedAt: z.string().nullable(),
+  stale: z.boolean(),
+  partial: z.boolean(),
+  /** What the cache holds: needs_you, error, working, then the rest; newest first inside a group. */
+  sessions: z.array(DevinSessionSchema),
+});
+export type DevinSessionsOutput = z.infer<typeof DevinSessionsOutputSchema>;
+
+/** The connector's agent, or null for every other member. */
+export const DevinAgentOutputSchema = z.object({ bot: BotSchema }).nullable();
+
+export const DevinKeyInputSchema = z.object({ secret: z.string().trim().min(1).max(16384) });

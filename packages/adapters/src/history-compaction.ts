@@ -218,6 +218,9 @@ export interface CompactHistoryDeps {
 export async function compactHistory(deps: CompactHistoryDeps, threadId: string): Promise<void> {
   const thread = await deps.prisma.thread.findUniqueOrThrow({ where: { id: threadId } });
   if (!thread.botId) return;
+  // A thread holding meeting text is never summarized: the summary call would send it to a model
+  // whose consent this job does not check.
+  if (thread.meetingTaintedAt) return;
   const previousCursor = thread.historyCompactedUpToSeq;
   const previousGeneration = thread.historyCompactionGeneration;
   const previousSummary = thread.historyCompactionSummary?.trim() || null;

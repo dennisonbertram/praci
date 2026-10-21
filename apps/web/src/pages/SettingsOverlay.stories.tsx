@@ -33,7 +33,10 @@ const meta = {
       "models.credentials": mockModelCredentials,
       me: mockMe,
       "models.backups": [],
-      "voice.catalog": [],
+      "voice.catalog": [
+        { id: "sample-speech", name: "Sample Speech", description: "Demo", transcribe: true },
+        { id: "fish-audio", name: "Sample Fish", description: "Demo", transcribe: false },
+      ],
       "voice.credentials": [],
       "voice.status": {
         configured: false,
@@ -97,11 +100,12 @@ export const Memory: Story = {
   },
 };
 export const Voice: Story = { args: { initialSection: "voice" } };
-export const Usage: Story = { args: { initialSection: "usage" } };
-export const UsageEmpty: Story = { args: { initialSection: "usage", usage: null } };
+export const VoiceWithNotice: Story = {
+  args: { initialSection: "voice", notice: "Connect a voice provider to call Elio." },
+};
+export const GeneralWithoutUsage: Story = { args: { usage: null } };
 export const Billing: Story = { args: { initialSection: "billing", billingEnabled: true } };
 export const ComputerUnavailable: Story = {
   name: "Computer (sandbox not configured)",
   args: { initialSection: "computer", isDeploymentOwner: true, sandboxProvider: "none" },
 };
-export const Updates: Story = { args: { initialSection: "updates", isDeploymentOwner: true } };
