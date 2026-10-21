@@ -9,6 +9,7 @@ import type {
   InboxMoveOutput,
   InboxPile,
   InboxTodo,
+  InboxTodosOutput,
   MailActionsListOutput,
   MailActionUndoOutput,
   UnsubscribeInput,
@@ -73,10 +74,7 @@ export const refreshMailInbox = () =>
 export const getMailMessage = (messageId: string) => rpc<InboxMessage>("inbox/get", { messageId });
 
 export const listMailTodos = (connectionId?: string) =>
-  rpc<{ enabled: boolean; todos: InboxTodo[] }>(
-    "inbox/todos/list",
-    connectionId ? { connectionId } : {},
-  );
+  rpc<InboxTodosOutput>("inbox/todos/list", connectionId ? { connectionId } : {});
 
 export const completeMailTodo = (id: string) =>
   rpc<InboxTodo>("inbox/todos/setDone", { id, done: true });
