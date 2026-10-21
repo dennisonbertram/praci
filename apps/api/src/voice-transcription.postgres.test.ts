@@ -489,5 +489,34 @@ describePostgres("transcription selection (PostgreSQL)", () => {
       spy.mockRestore();
       await cleanup();
     });
+
+    it("builds the vocabulary on the server only for a provider that will receive it", async () => {
+      await prisma.bot.create({
+        data: { id: id("bot"), name: "Quokka Bot", userId: userA, spaceId, color: "#000000" },
+      });
+      const seen: unknown[] = [];
+      const spy = calls().mockImplementation(async (request) => {
+        seen.push(request.context);
+        return { text: "ok" };
+      });
+      const botQuery = vi.spyOn(prisma.bot, "findMany");
+      await select();
+      await transcribeVoice(deps(), actor(userA), audio);
+      expect(seen).toEqual([{ vocabulary: ["Quokka Bot"] }]);
+
+      seen.length = 0;
+      botQuery.mockClear();
+      const describeSpy = vi
+        .spyOn(ScriptedTranscriptionProvider.prototype, "describe")
+        .mockReturnValue({ capabilities: { usesContext: false } } as never);
+      await transcribeVoice(deps(), actor(userA), audio);
+      expect(seen).toEqual([undefined]);
+      expect(botQuery).not.toHaveBeenCalled();
+      describeSpy.mockRestore();
+      botQuery.mockRestore();
+      spy.mockRestore();
+      await prisma.bot.deleteMany({ where: { id: id("bot") } });
+      await cleanup();
+    });
   });
 });

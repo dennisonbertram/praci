@@ -829,7 +829,7 @@ export async function createApp(
   mountInboxAttachment(app, { prisma, mail }, loggedActor);
   mountDataRoomRoutes(app, { prisma, artifacts, jobs }, loggedActor);
   mountAccountExportDownload(app, { prisma, artifacts }, loggedActor);
-  mountVoiceHttpRoutes(app, { prisma, secrets }, (c) => loggedActor(c.req.raw));
+  mountVoiceHttpRoutes(app, { prisma, secrets, ticketBoardEnabled }, (c) => loggedActor(c.req.raw));
   mountWebhookHttpRoutes(app, { prisma, secrets, events, jobs });
   // Gmail push is off unless the deployment sets a Pub/Sub topic and service account.
   if (gmailPush) {
