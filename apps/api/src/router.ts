@@ -346,6 +346,7 @@ import {
   devinSessions,
   requireOwnerForActiveDevinRow,
 } from "./devin.js";
+import { dictationVocabulary } from "./dictation-vocabulary.js";
 import type { FinanceCryptoDeps } from "./finance.js";
 import {
   financeAccountDetail,
@@ -7938,6 +7939,14 @@ export function createRouter(deps: RouterDeps) {
       list: authed.runs.list.handler(async ({ context, input }) => ({
         runs: await listSpaceRuns(deps.prisma, context.actor, input.filter),
       })),
+    },
+    dictation: {
+      vocabulary: authed.dictation.vocabulary.handler(({ context }) =>
+        dictationVocabulary(
+          { prisma: deps.prisma, ticketBoardEnabled: deps.env?.ticketBoardEnabled },
+          context.actor,
+        ),
+      ),
     },
     voice: {
       agent: authed.voice.agent.handler(async ({ context }) => {
