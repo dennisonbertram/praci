@@ -4,6 +4,7 @@ import {
   recentFromIp,
   releaseThrottle,
   rotateToken,
+  setToken,
 } from "../src/db.js";
 import { sendConfirmation } from "../src/email.js";
 import { json, readPostBody } from "../src/http.js";
@@ -51,7 +52,8 @@ async function join(request: Request) {
     const token = generateToken();
     const tokenHash = hashToken(token);
 
-    let code = await withNewCode((fresh) => rotateToken(email, tokenHash, fresh));
+    let code = await withNewCode((fresh) => rotateToken(email, fresh));
+    const rotated = code !== null;
     if (code === null) {
       const refCode = normalizeRef(body.ref);
       const name = cleanField(body.name);
@@ -68,6 +70,7 @@ async function join(request: Request) {
       await releaseThrottle(email);
       return json(503, { error: "Unavailable" });
     }
+    if (rotated) await setToken(email, tokenHash);
     return json(200, { ok: true });
   } catch {
     return json(503, { error: "Unavailable" });

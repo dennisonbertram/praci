@@ -24,7 +24,8 @@ import "../styles/global.css";
         </div>
         <p id="joined" hidden></p>
       </div>
-      <p id="error" hidden>This link has expired. Join again to get a new one. <a href="/#hosted">Join the waitlist</a></p>
+      <p id="expired" hidden>This link has expired. Join again to get a new one. <a href="/#hosted">Join the waitlist</a></p>
+      <p id="error" hidden>Something went wrong. Try again.</p>
     </main>
     <script>
       const result = document.querySelector<HTMLElement>("#result")!;
@@ -33,13 +34,13 @@ import "../styles/global.css";
       const token = new URLSearchParams(location.search).get("token");
 
       async function load() {
-        if (!token) throw new Error();
+        if (!token) throw new Error("404");
         const response = await fetch("/api/me", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ token }),
         });
-        if (!response.ok) throw new Error();
+        if (!response.ok) throw new Error(String(response.status));
         const data = await response.json();
         document.querySelector("#standing")!.textContent = `You're #${data.position} of ${data.total}.`;
         link.value = data.referralUrl;
@@ -49,8 +50,8 @@ import "../styles/global.css";
         }
         result.hidden = false;
       }
-      load().catch(() => {
-        document.querySelector<HTMLElement>("#error")!.hidden = false;
+      load().catch((error: Error) => {
+        document.querySelector<HTMLElement>(error.message === "404" ? "#expired" : "#error")!.hidden = false;
       });
 
       document.querySelector("#copy")!.addEventListener("click", () => {

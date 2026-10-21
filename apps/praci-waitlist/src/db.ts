@@ -75,26 +75,27 @@ export async function insertSignup(
 }
 
 /**
- * Rotates the token of an existing signup (filling a missing referral code with `newCode`),
+ * Applies the resend throttle to an existing signup (filling a missing referral code with `newCode`),
  * at most once per throttle window. Returns the referral code, or null when the email is
  * unknown or was mailed too recently.
  */
-export async function rotateToken(
-  email: string,
-  tokenHash: string,
-  newCode: string,
-): Promise<string | null> {
+export async function rotateToken(email: string, newCode: string): Promise<string | null> {
   await ensureTable();
   const rows = await sql()`
     update hosted_signups
-    set status_token_hash = ${tokenHash},
-        referral_code = coalesce(referral_code, ${newCode}),
+    set referral_code = coalesce(referral_code, ${newCode}),
         confirmation_sent_at = now()
     where email = ${email}
       and (confirmation_sent_at is null
            or confirmation_sent_at < now() - make_interval(secs => ${RESEND_THROTTLE_SECONDS}))
     returning referral_code`;
   return rows[0] ? (rows[0].referral_code as string) : null;
+}
+
+/** Stores the new token once its email is sent, so a failed send keeps the old link valid. */
+export async function setToken(email: string, tokenHash: string): Promise<void> {
+  await sql()`
+    update hosted_signups set status_token_hash = ${tokenHash} where email = ${email}`;
 }
 
 /** Lifts the resend throttle after a failed send so the visitor can retry right away. */
@@ -135,13 +136,12 @@ export async function confirmAndRank(tokenHash: string): Promise<Standing | null
              coalesce(r.n, 0) as referrals
       from hosted_signups s
       left join refs r on r.code = s.referral_code
-      where s.confirmed_at is not null
     ),
     scored as (
       select *, base_rank - ${REFERRAL_BUMP} * referrals as score from base
     ),
     ranked as (
-      select *, row_number() over (order by score, created_at, id) as position,
+      select *, row_number() over (order by score, referrals desc, created_at, id) as position,
              count(*) over () as total
       from scored
     )
