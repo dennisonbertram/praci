@@ -352,7 +352,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     const bot = await ensureLegalAgent(api, a);
     const again = await ensureLegalAgent(api, a);
     expect(again.id).toBe(bot.id);
-    expect(bot).toMatchObject({ modelProvider: "openrouter", modelId: "meta/muse-spark-1.2" });
+    expect(bot).toMatchObject({ modelProvider: "openrouter", modelId: "meta/muse-wonder" });
     expect(await prisma.routine.count({ where: { botId: bot.id } })).toBe(1);
 
     const first = await legalScanNow(api, a);
@@ -398,8 +398,8 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
       resolveAi: async () => ({ model }) as never,
     });
     expect(
-      (await legalOverview(api({ provider: "openrouter", id: "meta/muse-spark-1.2" }), a)).model,
-    ).toEqual({ provider: "openrouter", id: "meta/muse-spark-1.2", isPreferred: true });
+      (await legalOverview(api({ provider: "openrouter", id: "meta/muse-wonder" }), a)).model,
+    ).toEqual({ provider: "openrouter", id: "meta/muse-wonder", isPreferred: true });
     expect(
       (await legalOverview(api({ provider: "openrouter", id: "openai/gpt-6-luna" }), a)).model,
     ).toEqual({ provider: "openrouter", id: "openai/gpt-6-luna", isPreferred: false });
@@ -420,14 +420,23 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     expect(bot.thinkingLevel).toBe("xhigh");
     expect(await prisma.run.count({ where: { botId: bot.id } })).toBe(0);
 
-    // An older agent with empty fields gets them; one the user changed keeps its choice.
+    // Choosing the system model leaves the model empty and it stays empty; an empty thinking level is filled.
     await prisma.bot.update({
       where: { id: bot.id },
       data: { modelProvider: null, modelId: null, thinkingLevel: null },
     });
     expect(await ensureLegalAgent(api, c)).toMatchObject({
-      modelId: "meta/muse-spark-1.2",
+      modelId: null,
       thinkingLevel: "xhigh",
+    });
+    // The model Legal was pinned to before Muse Wonder was never a choice, so it moves too.
+    await prisma.bot.update({
+      where: { id: bot.id },
+      data: { modelProvider: "openrouter", modelId: "meta/muse-spark-1.2" },
+    });
+    expect(await ensureLegalAgent(api, c)).toMatchObject({ modelId: "meta/muse-wonder" });
+    expect(await prisma.bot.findUniqueOrThrow({ where: { id: bot.id } })).toMatchObject({
+      modelId: "meta/muse-wonder",
     });
     await prisma.bot.update({
       where: { id: bot.id },
@@ -459,7 +468,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
       artifacts: {} as never,
       jobs: { enqueue: async () => {} } as never,
       resolveAi: async () =>
-        ({ model: { provider: "openrouter", id: "meta/muse-spark-1.2" } }) as never,
+        ({ model: { provider: "openrouter", id: "meta/muse-wonder" } }) as never,
     };
     const overview = await legalOverview(api, c);
     expect(overview.agent.botId).not.toBeNull();
@@ -971,10 +980,10 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     const waiting = await addItem(c, "waiting.txt", "A ready item nobody classified yet.", false);
     const queued: { name: string; payload: any }[] = [];
     const ai = {
-      model: { provider: "openrouter", id: "meta/muse-spark-1.2" },
+      model: { provider: "openrouter", id: "meta/muse-wonder" },
       embedder: null,
       embeddingModel: null,
-      recipients: [{ key: "r", name: "OpenRouter", detail: "meta/muse-spark-1.2" }],
+      recipients: [{ key: "r", name: "OpenRouter", detail: "meta/muse-wonder" }],
       consentKey: "data-room:legal-test",
       allowed: false,
     };

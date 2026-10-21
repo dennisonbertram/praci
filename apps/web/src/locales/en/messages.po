@@ -8768,10 +8768,6 @@ msgstr "Space changed. Reopen Models to load its backup list."
 msgid "Space changed. Reopen Models to save its backup list."
 msgstr "Space changed. Reopen Models to save its backup list."
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Space default"
-msgstr "Space default"
-
 #: src/pages/shell/dialogs.tsx
 msgid "Spaces"
 msgstr "Spaces"
@@ -9021,6 +9017,10 @@ msgstr "Syncing"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
 msgstr "System"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "System model"
+msgstr "System model"
 
 #: src/components/data-room/format.ts
 #: src/components/data-room/ProcessingStrip.tsx
@@ -9992,6 +9992,10 @@ msgstr "Uses Carta figures and asks before sending."
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Using the system model: {unavailableModel} isn't available"
+msgstr "Using the system model: {unavailableModel} isn't available"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Usual charge"

@@ -8768,10 +8768,6 @@ msgstr "स्पेस बदल गया। बैकअप सूची ल�
 msgid "Space changed. Reopen Models to save its backup list."
 msgstr "स्पेस बदल गया। बैकअप सूची सहेजने के लिए मॉडल फिर खोलें।"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Space default"
-msgstr "स्पेस डिफ़ॉल्ट"
-
 #: src/pages/shell/dialogs.tsx
 msgid "Spaces"
 msgstr ""
@@ -9021,6 +9017,10 @@ msgstr ""
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
 msgstr "सिस्टम"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "System model"
+msgstr ""
 
 #: src/components/data-room/format.ts
 #: src/components/data-room/ProcessingStrip.tsx
@@ -9992,6 +9992,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "{selectedProviderName} तक पहुँचने के लिए इस सर्वर के अपने {hostCredentialSource} क्रेडेंशियल का उपयोग करता है।"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Using the system model: {unavailableModel} isn't available"
+msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Usual charge"

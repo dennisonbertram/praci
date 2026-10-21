@@ -58,5 +58,11 @@ export function supplementPiModels(models: MutableModels): MutableModels {
     // Subscription transport keeps its own window; the account catalog may narrow it.
     contextWindow: sol?.contextWindow ?? 272000,
   });
+  // OpenRouter catalog entry "Meta: Muse Wonder" (2026-10-12); prices are USD per million tokens.
+  add("openrouter", "meta/muse-spark-1.3", {
+    id: "meta/muse-wonder",
+    name: "Meta: Muse Wonder",
+    cost: { input: 4, output: 20, cacheRead: 0.2, cacheWrite: 0 },
+  });
   return models;
 }
