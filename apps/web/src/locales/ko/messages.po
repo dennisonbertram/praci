@@ -223,9 +223,20 @@ msgstr "{0} 연결"
 msgid "{0} default"
 msgstr ""
 
+#. placeholder {0}: unknown.length
+#: src/pages/Investors.tsx
+msgid "{0} deliveries unknown"
+msgstr ""
+
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "{0} did not accept the sign-in."
+msgstr ""
+
+#. placeholder {0}: failed.length
+#. placeholder {0}: failed[0]?.name ?? ""
+#: src/pages/Investors.tsx
+msgid "{0} failed"
 msgstr ""
 
 #. placeholder {0}: rejected.length
@@ -299,6 +310,11 @@ msgstr ""
 #. placeholder {0}: bot.name
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} will still respond to direct mentions."
+msgstr ""
+
+#. placeholder {0}: unknown[0]?.name ?? ""
+#: src/pages/Investors.tsx
+msgid "{0}: delivery unknown"
 msgstr ""
 
 #. placeholder {0}: active.name
@@ -385,6 +401,10 @@ msgstr "{days}일 전"
 
 #: src/components/data-room/ItemDialogs.tsx
 msgid "{deadlines, plural, one {# deadline} other {# deadlines}}"
+msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "{delivered} of {total} sent"
 msgstr ""
 
 #: src/components/data-room/format.ts
@@ -568,6 +588,10 @@ msgstr ""
 msgid "{stepCount, plural, one {Working… · # tool} other {Working… · # tools}}"
 msgstr ""
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "{tbd} TBD left. Send anyway?"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "{title}, {label}"
 msgstr "{title}, {label}"
@@ -711,6 +735,10 @@ msgstr ""
 msgid "Action confirmations"
 msgstr "작업 실행 전 확인"
 
+#: src/components/investors/ActionItems.tsx
+msgid "Action items"
+msgstr ""
+
 #: src/components/cap-table/HoldingsTable.tsx
 #: src/pages/shell/composer.tsx
 msgid "Actions"
@@ -822,6 +850,10 @@ msgstr ""
 
 #: src/components/ContactDialog.tsx
 msgid "Add auditor"
+msgstr ""
+
+#: src/components/ContactDialog.tsx
+msgid "Add board member"
 msgstr ""
 
 #: src/pages/ModelBackupsSettings.tsx
@@ -1600,6 +1632,7 @@ msgstr ""
 msgid "Back to Inbox"
 msgstr ""
 
+#: src/pages/investors/UpdateEditor.tsx
 #: src/pages/Shell.tsx
 msgid "Back to Investors"
 msgstr ""
@@ -1690,6 +1723,15 @@ msgstr ""
 
 #: src/components/NotificationSettings.tsx
 msgid "Blocked. Allow notifications for this site in your browser settings."
+msgstr ""
+
+#: src/components/ContactDialog.tsx
+#: src/pages/Investors.tsx
+msgid "Board"
+msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Body"
 msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
@@ -1892,6 +1934,7 @@ msgstr "서버에 연결할 수 없습니다."
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/finance/FinanceCrypto.tsx
+#: src/pages/Investors.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -2145,6 +2188,10 @@ msgstr "봇 모양과 색을 고르거나 이미지를 업로드하세요"
 msgid "Choose a bot…"
 msgstr "Bot 선택…"
 
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Choose a Google Sheet"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Choose a new password"
 msgstr "새 비밀번호 선택"
@@ -2258,6 +2305,8 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/SignInStep.tsx
+#: src/pages/Investors.tsx
+#: src/pages/investors/UpdateEditor.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineEditor.tsx
@@ -2605,12 +2654,20 @@ msgstr "Executor 연결"
 msgid "Connect Gmail to read, sort and answer your mail here."
 msgstr ""
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Connect Gmail to send"
+msgstr ""
+
 #: src/pages/DataRoom.tsx
 msgid "Connect Gmail to send files"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Connect Gmail, Calendar and more in Integrations so bots can read your mail and files."
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Connect Google Drive"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -2801,7 +2858,15 @@ msgid "Could not change the default model"
 msgstr "기본 모델을 변경하지 못했습니다."
 
 #: src/pages/Investors.tsx
+msgid "Could not change the reminder"
+msgstr ""
+
+#: src/pages/Investors.tsx
 msgid "Could not change the source"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Could not check Google Drive"
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -2941,6 +3006,10 @@ msgstr "스킬을 삭제하지 못했습니다"
 msgid "Could not delete space"
 msgstr ""
 
+#: src/pages/Investors.tsx
+msgid "Could not delete the update"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "Could not delete this artifact."
 msgstr ""
@@ -2991,6 +3060,14 @@ msgstr "{name}을 다운로드하지 못했습니다. 다시 시도해 주세요
 
 #: src/components/computer/FilesApp.tsx
 msgid "Could not download file"
+msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Could not draft with the agent"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Could not duplicate"
 msgstr ""
 
 #: src/components/computer/FilesApp.tsx
@@ -3099,13 +3176,25 @@ msgstr "이 채팅을 불러오지 못했습니다."
 msgid "Could not load this file."
 msgstr "파일을 불러오지 못했습니다."
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Could not load this update"
+msgstr ""
+
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Could not load update status"
 msgstr "업데이트 상태를 불러올 수 없습니다"
 
+#: src/pages/Investors.tsx
+msgid "Could not load updates"
+msgstr ""
+
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Could not load voice settings"
 msgstr "음성 설정을 불러오지 못했습니다."
+
+#: src/pages/Investors.tsx
+msgid "Could not mark delivered"
+msgstr ""
 
 #: src/pages/BillingSettingsPanel.tsx
 #: src/pages/Paywall.tsx
@@ -3147,6 +3236,10 @@ msgstr "모델 서버에 연결하지 못했습니다."
 #: src/pages/Auth.tsx
 msgid "Could not reach the server"
 msgstr "서버에 연결할 수 없습니다"
+
+#: src/pages/Investors.tsx
+msgid "Could not read the sheet"
+msgstr ""
 
 #: src/components/data-room/ItemRows.tsx
 #: src/components/finance/StatementImport.tsx
@@ -3218,6 +3311,10 @@ msgstr "비밀번호를 재설정할 수 없습니다"
 
 #: src/lib/use-contact-notices.ts
 msgid "Could not restore {name}"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Could not retry"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -3308,6 +3405,10 @@ msgstr "재설정 이메일을 보낼 수 없습니다"
 msgid "Could not send that"
 msgstr "메시지를 보내지 못했습니다."
 
+#: src/pages/Investors.tsx
+msgid "Could not start an update"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Could not start sign-in."
 msgstr ""
@@ -3366,6 +3467,10 @@ msgstr "기본 기억 범위를 변경하지 못했습니다."
 
 #: src/components/computer/FilesApp.tsx
 msgid "Could not upload file"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Could not use the sheet"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
@@ -3732,6 +3837,10 @@ msgstr ""
 msgid "Delete the folder {0}?"
 msgstr ""
 
+#: src/pages/Investors.tsx
+msgid "Delete this update?"
+msgstr ""
+
 #: src/pages/shell/transcript.tsx
 msgid "deleted"
 msgstr "삭제됨"
@@ -3962,6 +4071,7 @@ msgstr ""
 #: src/components/tour/TourPopover.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
+#: src/pages/investors/UpdateEditor.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Done"
@@ -4004,6 +4114,9 @@ msgstr ""
 msgid "Downloading…"
 msgstr ""
 
+#: src/components/investors/ActionItems.tsx
+#: src/pages/Investors.tsx
+#: src/pages/investors/UpdateEditor.tsx
 #: src/pages/legal/LegalContracts.tsx
 msgid "Draft"
 msgstr ""
@@ -4028,6 +4141,21 @@ msgstr ""
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Draft skill"
 msgstr "작업 기술 초안"
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Draft with agent"
+msgstr ""
+
+#. placeholder {0}: day(update.createdAt)
+#. placeholder {0}: shortDay(draft.createdAt.slice(0, 10), new Date(), i18n.locale || "en")
+#: src/components/investors/ActionItems.tsx
+#: src/pages/Investors.tsx
+msgid "Drafted {0}"
+msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Drafting…"
+msgstr ""
 
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Drafts"
@@ -4070,6 +4198,7 @@ msgid "Due tomorrow"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
+#: src/pages/Investors.tsx
 msgid "Duplicate"
 msgstr "복제"
 
@@ -4339,6 +4468,7 @@ msgstr "실패"
 #: src/components/integrations/parts.tsx
 #: src/components/sidebar-glance.tsx
 #: src/pages/ActivityList.tsx
+#: src/pages/investors/UpdateEditor.tsx
 msgid "Failed"
 msgstr "실패"
 
@@ -4545,6 +4675,7 @@ msgstr ""
 #: src/components/data-room/FilterBar.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/ActivityList.tsx
+#: src/pages/investors/UpdateEditor.tsx
 msgid "From"
 msgstr ""
 
@@ -5168,6 +5299,7 @@ msgid "Keep contracts, board decks and investor documents in one place."
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/pages/investors/UpdateEditor.tsx
 msgid "Keep editing"
 msgstr ""
 
@@ -5224,6 +5356,10 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Last month, after fees"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Last read failed · Try again"
 msgstr ""
 
 #: src/pages/shell/transcript.tsx
@@ -5553,6 +5689,11 @@ msgstr ""
 msgid "Mark as unread"
 msgstr ""
 
+#: src/pages/Investors.tsx
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Mark delivered"
+msgstr ""
+
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark important"
 msgstr ""
@@ -5638,6 +5779,11 @@ msgstr "백업 모델은 최대 10개까지 추가할 수 있습니다."
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Maximum output tokens"
 msgstr "최대 출력 토큰 수"
+
+#: src/pages/Investors.tsx
+#: src/pages/investors/UpdateEditor.tsx
+msgid "May already be delivered. Send again?"
+msgstr ""
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "MCP endpoint"
@@ -5733,6 +5879,10 @@ msgstr ""
 #: src/pages/shell/transcript.tsx
 msgid "Message from {peer}"
 msgstr "{peer}의 메시지"
+
+#: src/pages/Investors.tsx
+msgid "Message the board"
+msgstr ""
 
 #: src/pages/shell/composer.tsx
 msgid "Message…"
@@ -5838,6 +5988,7 @@ msgid "Month to date"
 msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
+#: src/pages/Investors.tsx
 msgid "Monthly"
 msgstr "매월"
 
@@ -6127,6 +6278,10 @@ msgstr "새 스페이스"
 msgid "New ticket"
 msgstr ""
 
+#: src/pages/Investors.tsx
+msgid "New update"
+msgstr ""
+
 #: src/components/inbox/InboxRow.tsx
 msgid "Newsletter"
 msgstr ""
@@ -6207,6 +6362,11 @@ msgstr ""
 msgid "No bank accounts yet. Connect Mercury or Brex, or upload a bank statement, with Add account."
 msgstr ""
 
+#: src/pages/Investors.tsx
+#: src/pages/investors/UpdateEditor.tsx
+msgid "No board members yet"
+msgstr ""
+
 #: src/components/computer/TerminalApp.tsx
 msgid "No bot activity yet."
 msgstr "아직 봇 활동이 없습니다."
@@ -6244,6 +6404,10 @@ msgstr ""
 msgid "No documents here name a party"
 msgstr ""
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "no email"
+msgstr ""
+
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "No files found"
@@ -6262,6 +6426,7 @@ msgid "No group chats yet."
 msgstr "아직 그룹 채팅이 없습니다."
 
 #: src/pages/Investors.tsx
+#: src/pages/investors/UpdateEditor.tsx
 msgid "No investors yet"
 msgstr ""
 
@@ -6415,6 +6580,10 @@ msgstr ""
 msgid "No trigger"
 msgstr "트리거 없음"
 
+#: src/pages/Investors.tsx
+msgid "No updates yet"
+msgstr ""
+
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "No wallets yet. Add a wallet address to see its balances here."
 msgstr ""
@@ -6500,6 +6669,7 @@ msgid "Not now"
 msgstr "나중에"
 
 #: src/components/cap-table/CapTableEditor.tsx
+#: src/pages/investors/UpdateEditor.tsx
 msgid "Not saved"
 msgstr ""
 
@@ -6609,6 +6779,10 @@ msgstr "OAuth 연결 실패"
 msgid "Obligation"
 msgstr ""
 
+#: src/pages/Investors.tsx
+msgid "Off"
+msgstr ""
+
 #: src/components/integrations/IntegrationAgentSection.tsx
 msgid "Off: other agents reach {service} only through this agent."
 msgstr ""
@@ -6637,6 +6811,7 @@ msgstr ""
 #: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/components/investors/ActionItems.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
@@ -6937,6 +7112,11 @@ msgstr ""
 #: src/components/data-room/Preview.tsx
 #: src/pages/legal/LegalContracts.tsx
 msgid "Parties"
+msgstr ""
+
+#: src/pages/Investors.tsx
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Partly sent"
 msgstr ""
 
 #: src/components/ContactDialog.tsx
@@ -7254,6 +7434,10 @@ msgstr ""
 msgid "Quarter"
 msgstr ""
 
+#: src/pages/Investors.tsx
+msgid "Quarterly"
+msgstr ""
+
 #: src/pages/ActivityList.tsx
 msgid "Queued"
 msgstr "대기 중"
@@ -7323,6 +7507,11 @@ msgstr ""
 msgid "Reading {0} again"
 msgstr ""
 
+#. placeholder {0}: raw?.sourceRef?.name ?? ""
+#: src/pages/Investors.tsx
+msgid "Reading {0}…"
+msgstr ""
+
 #: src/components/data-room/DropZone.tsx
 msgid "Reading {done} of {total}"
 msgstr ""
@@ -7345,6 +7534,10 @@ msgstr ""
 
 #: src/components/data-room/format.ts
 msgid "Reading for {minutes} min"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Reading sheet…"
 msgstr ""
 
 #: src/components/data-room/format.ts
@@ -7413,6 +7606,10 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Receipts"
+msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Recipients"
 msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
@@ -7558,6 +7755,10 @@ msgstr ""
 
 #: src/pages/shell/transcript.tsx
 msgid "Remembered"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Reminder"
 msgstr ""
 
 #: src/components/ApprovalRulesSettings.tsx
@@ -7869,6 +8070,8 @@ msgstr ""
 #: src/components/data-room/DataRoomStats.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
+#: src/pages/Investors.tsx
+#: src/pages/investors/UpdateEditor.tsx
 #: src/pages/ModelBackupsSettings.tsx
 #: src/pages/shell/composer-error.tsx
 msgid "Retry"
@@ -8066,6 +8269,7 @@ msgstr "작업 공간을 저장하고 최신 소프트웨어를 설치합니다.
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/ExternalConversationSettings.tsx
+#: src/pages/investors/UpdateEditor.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Saved"
@@ -8104,6 +8308,7 @@ msgstr ""
 #: src/components/MailApprovalCard.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/GroupPanel.tsx
+#: src/pages/investors/UpdateEditor.tsx
 #: src/pages/ModelBackupsSettings.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
@@ -8316,6 +8521,7 @@ msgstr ""
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/pages/investors/UpdateEditor.tsx
 #: src/pages/shell/composer.tsx
 msgid "Send"
 msgstr "보내기"
@@ -8325,6 +8531,8 @@ msgid "Send <0>{linkCode}</0> to the line from your chat app within 10 minutes. 
 msgstr "10분 안에 채팅 앱에서 연결할 회선으로 <0>{linkCode}</0>를 보내세요. 연결되면 확인 답장을 받습니다."
 
 #: src/pages/Auth.tsx
+#: src/pages/Investors.tsx
+#: src/pages/investors/UpdateEditor.tsx
 msgid "Send again"
 msgstr ""
 
@@ -8336,6 +8544,10 @@ msgstr ""
 #: src/components/AskCard.tsx
 msgid "Send answer"
 msgstr "답변 보내기"
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Send anyway"
+msgstr ""
 
 #: src/components/AccountAccess.tsx
 msgid "Send deletion code"
@@ -8356,6 +8568,11 @@ msgstr ""
 #: src/components/data-room/SelectionBar.tsx
 #: src/components/data-room/SendToAgent.tsx
 msgid "Send to agent"
+msgstr ""
+
+#: src/pages/Investors.tsx
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Sending"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -8379,7 +8596,19 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
+#: src/pages/Investors.tsx
+#: src/pages/investors/UpdateEditor.tsx
 msgid "Sent"
+msgstr ""
+
+#. placeholder {0}: day(update.sentAt)
+#: src/pages/Investors.tsx
+msgid "Sent {0}"
+msgstr ""
+
+#: src/pages/Investors.tsx
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Sent to {count}"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -8978,6 +9207,7 @@ msgstr "보조 에이전트"
 
 #: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/pages/investors/UpdateEditor.tsx
 msgid "Subject"
 msgstr ""
 
@@ -9161,6 +9391,10 @@ msgstr ""
 msgid "the {month} statement"
 msgstr ""
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "The agent did not finish a draft"
+msgstr ""
+
 #. placeholder {0}: confirmingWrites?.displayName ?? name
 #: src/components/integrations/AppDetail.tsx
 msgid "The agent will be able to change your {0} data. It asks before each change."
@@ -9270,6 +9504,10 @@ msgstr "선택한 기억 서비스는 현재 빌드에서 사용할 수 없습�
 
 #: src/components/AiDataSharing.tsx
 msgid "The sender, subject and a preview of each message are sent to the AI model that runs your bots."
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "The sheet could not be read."
 msgstr ""
 
 #. placeholder {0}: shortDay(first.dueFor)
@@ -9478,6 +9716,7 @@ msgstr "역할"
 #: src/components/data-room/FilterBar.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/ActivityList.tsx
+#: src/pages/investors/UpdateEditor.tsx
 msgid "To"
 msgstr ""
 
@@ -9635,6 +9874,7 @@ msgstr ""
 #: src/pages/Contacts.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Investors.tsx
+#: src/pages/investors/UpdateEditor.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/Shell.tsx
 msgid "Try again"
@@ -9751,6 +9991,10 @@ msgstr ""
 msgid "Unknown"
 msgstr ""
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Unknown — check Sent mail"
+msgstr ""
+
 #: src/pages/KnowledgeSection.tsx
 msgid "Unknown bot"
 msgstr ""
@@ -9838,6 +10082,7 @@ msgid "Upcoming · 30 days"
 msgstr ""
 
 #: src/components/SoftwareUpdateSection.tsx
+#: src/pages/investors/UpdateEditor.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Update"
 msgstr "업데이트"
@@ -9858,6 +10103,10 @@ msgstr "업데이트 실패"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Update finished with errors"
 msgstr "오류와 함께 업데이트가 완료되었습니다"
+
+#: src/pages/Investors.tsx
+msgid "Update options"
+msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Update progress"
@@ -9881,6 +10130,7 @@ msgstr ""
 
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
+#: src/pages/Investors.tsx
 msgid "Updates"
 msgstr "업데이트"
 
@@ -9973,6 +10223,10 @@ msgstr ""
 msgid "Use a found model"
 msgstr "찾은 모델 중에서 선택"
 
+#: src/pages/Investors.tsx
+msgid "Use a Google Sheet"
+msgstr ""
+
 #: src/pages/Onboarding.tsx
 msgid "Use an API key instead"
 msgstr ""
@@ -9992,6 +10246,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Use this model"
 msgstr "이 모델 사용"
+
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Use this sheet"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Use your own key"
@@ -10369,7 +10627,7 @@ msgid "Writing a draft email"
 msgstr ""
 
 #: src/lib/slash-skills.ts
-msgid "Written from Finance, Carta and past updates."
+msgid "Written from Finance and your past updates."
 msgstr ""
 
 #: src/components/computer/TerminalApp.tsx

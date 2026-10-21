@@ -163,6 +163,37 @@ describePostgres("cap table snapshot (PostgreSQL)", () => {
       expect((await getCapTableSnapshot(prisma, owner))?.canUndo).toBe(false);
     });
 
+    it("a sheet write must name the chosen file and carry at least one holder", async () => {
+      const ref = { driveFileId: "file-2", name: "Cap table" };
+      const sheet = { ...input, source: "sheet" as const, companyName: "Sheet Co", sourceRef: ref };
+      // The source is still native here, so even a matching write is refused.
+      await expect(saveCapTableSnapshot(prisma, owner, sheet)).rejects.toBeInstanceOf(
+        CapTableSourceError,
+      );
+      await changeCapTableSource(prisma, owner, {
+        source: "sheet",
+        sourceRef: ref,
+        companyName: "Sheet Co",
+      });
+      await expect(
+        saveCapTableSnapshot(prisma, owner, {
+          ...sheet,
+          sourceRef: { driveFileId: "other-file", name: "Other" },
+        }),
+      ).rejects.toBeInstanceOf(CapTableSourceError);
+      await expect(
+        saveCapTableSnapshot(prisma, owner, { ...sheet, holders: [] }),
+      ).rejects.toBeInstanceOf(CapTableSourceError);
+      await expect(
+        saveCapTableSnapshot(prisma, owner, { ...sheet, sourceRef: null }),
+      ).rejects.toBeInstanceOf(CapTableSourceError);
+      await saveCapTableSnapshot(prisma, owner, sheet);
+      const saved = await getCapTableSnapshot(prisma, owner);
+      expect(saved?.source).toBe("sheet");
+      expect(saved?.sourceRef?.driveFileId).toBe("file-2");
+      expect(saved?.holders[0]?.name).toBe("Ada Fund");
+    });
+
     it("creates an empty typed-in table when there is none, and keeps spaces apart", async () => {
       await changeCapTableSource(prisma, otherSpace, { source: "native", companyName: "Other Co" });
       const created = await getCapTableSnapshot(prisma, otherSpace);

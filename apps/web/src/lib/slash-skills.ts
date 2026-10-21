@@ -42,10 +42,10 @@ export function slashSkillLabel(
           title: t`Monthly money review`,
           description: t`Spend, changes, and new or upcoming charges.`,
         };
-      case "carta-investor-update":
+      case "investor-update":
         return {
           title: t`Draft investor update`,
-          description: t`Written from Finance, Carta and past updates.`,
+          description: t`Written from Finance and your past updates.`,
         };
       case "carta-audit-response":
         return {

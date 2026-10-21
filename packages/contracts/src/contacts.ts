@@ -4,6 +4,7 @@ import { Id, IsoDate } from "./ids.js";
 export const ContactKindSchema = z.enum([
   "investor",
   "auditor",
+  "board",
   "customer",
   "vendor",
   "partner",

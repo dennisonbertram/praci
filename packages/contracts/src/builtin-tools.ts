@@ -66,6 +66,7 @@ export const BUILTIN_TOOL_NAMES = [
   "contacts_save",
   "cap_table_read",
   "cap_table_update",
+  "investor_update_draft",
   "drive_search",
   "drive_read",
   "drive_create_file",

@@ -33,7 +33,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 /** The most attachments one import call accepts. */
 const MAX_PICKS = 20;
 const GMAIL_PAGE = "/app/integrations/app/google/gmail";
-const DRIVE_PAGE = "/app/integrations/app/google/googledrive";
+export const DRIVE_PAGE = "/app/integrations/app/google/googledrive";
 const BOX_CONNECT = "/app/integrations?connect=box";
 
 type Attachment = InboxMessage["attachments"][number];

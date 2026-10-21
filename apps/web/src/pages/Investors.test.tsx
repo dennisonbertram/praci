@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { Contact } from "@rakazo/contracts";
+import type { Contact, InvestorUpdate } from "@rakazo/contracts";
 import { NotificationToaster, notificationToastManager } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { act } from "react";
@@ -33,6 +33,14 @@ const rpcMock = vi.hoisted(() => ({
   capTableSave: vi.fn(),
   changeSource: vi.fn(),
   undoSource: vi.fn(),
+  useSheet: vi.fn(),
+  updatesList: vi.fn(),
+  updatesSave: vi.fn(),
+  updatesRetry: vi.fn(),
+  updatesMarkDelivered: vi.fn(),
+  updatesDuplicate: vi.fn(),
+  updatesDelete: vi.fn(),
+  reminder: vi.fn(),
   folders: vi.fn(),
   folderCreate: vi.fn(),
   items: vi.fn(),
@@ -51,6 +59,16 @@ vi.mock("../lib/rpc", () => ({
       capTableSave: rpcMock.capTableSave,
       changeSource: rpcMock.changeSource,
       undoSource: rpcMock.undoSource,
+      useSheet: rpcMock.useSheet,
+      updates: {
+        list: rpcMock.updatesList,
+        save: rpcMock.updatesSave,
+        retry: rpcMock.updatesRetry,
+        markDelivered: rpcMock.updatesMarkDelivered,
+        duplicate: rpcMock.updatesDuplicate,
+        delete: rpcMock.updatesDelete,
+      },
+      reminder: rpcMock.reminder,
     },
     connections: { list: rpcMock.connections, catalog: rpcMock.catalog },
     dataRoom: {
@@ -167,6 +185,8 @@ beforeEach(() => {
     contact("c1", "Ada", "investor"),
     contact("c2", "Bo", "auditor"),
   ]);
+  rpcMock.updatesList.mockResolvedValue([]);
+  rpcMock.reminder.mockResolvedValue({ cadence: "monthly" });
   rpcMock.servers.mockResolvedValue([cartaServer]);
   rpcMock.capTable.mockResolvedValue({ snapshot: null, syncing: false });
   rpcMock.folders.mockResolvedValue([]);
@@ -239,10 +259,10 @@ it("lists investors and auditors in tabs", async () => {
   expect(container.querySelectorAll("h1")).toHaveLength(1);
   expect(container.querySelector("h1")?.closest("[data-page-header]")).not.toBeNull();
   expect(container.textContent).toContain("Ada");
-  expect(container.textContent).not.toContain("Bo");
+  expect(container.textContent).not.toContain("bo@example.test");
   await click(button("Auditors"));
   expect(container.textContent).not.toContain("Ada");
-  expect(container.textContent).toContain("Bo");
+  expect(container.textContent).toContain("bo@example.test");
   // Customers, vendors and the other kinds stay on the Contacts page.
   expect(button("Shareholders")).toBeUndefined();
 });
@@ -837,6 +857,110 @@ it("changes the source at once and keeps one Undo", async () => {
   expect(menuItem("Undo")).toBeUndefined();
 });
 
+// ---- Google Sheet source ----
+
+const sheetRef = { driveFileId: "file-1", name: "Cap table sheet" };
+const sheet = { ...carta, source: "sheet" as const, sourceRef: sheetRef };
+/** The empty table a switch to a sheet creates before the first read lands. */
+const emptySheet = { ...sheet, fullyDilutedShares: 0, holders: [], optionPoolAvailable: null };
+const sheetState = (
+  snapshot: object | null,
+  flags: { reading?: boolean; failed?: boolean } = {},
+) => ({
+  snapshot,
+  syncing: false,
+  reading: flags.reading ?? false,
+  lastReadFailed: flags.failed ?? false,
+});
+const driveConnected = [{ connectorId: "google", provider: "googledrive", status: "connected" }];
+
+it("offers Use a Google Sheet in the empty view, and Connect Google Drive when Drive is not connected", async () => {
+  rpcMock.servers.mockResolvedValue([]);
+  await show();
+  expect(button("Use a Google Sheet")).toBeDefined();
+  await click(button("Use a Google Sheet"));
+  expect(button("Connect Google Drive")).toBeDefined();
+  expect(rpcMock.useSheet).not.toHaveBeenCalled();
+  expect(rpcMock.driveList).not.toHaveBeenCalled();
+  // The table is unchanged: still the empty view.
+  expect(button("Type it in")).toBeDefined();
+});
+
+it("picks a sheet with the Drive picker and starts reading it", async () => {
+  rpcMock.servers.mockResolvedValue([]);
+  rpcMock.connections.mockResolvedValue(driveConnected);
+  rpcMock.driveList.mockResolvedValue({
+    files: [
+      {
+        id: "file-1",
+        name: "Cap table sheet",
+        mimeType: "application/vnd.google-apps.spreadsheet",
+        isFolder: false,
+      },
+    ],
+  });
+  rpcMock.useSheet.mockImplementation(async () => {
+    rpcMock.capTable.mockResolvedValue(sheetState(emptySheet, { reading: true }));
+    return sheetState(emptySheet, { reading: true });
+  });
+  await show();
+  await click(button("Use a Google Sheet"));
+  await click(
+    document.querySelector<HTMLElement>('[role="checkbox"][aria-label="Select Cap table sheet"]') ??
+      undefined,
+  );
+  await click(button("Use this sheet"));
+  expect(rpcMock.useSheet).toHaveBeenCalledWith(sheetRef);
+  expect(rpcMock.importDrive).not.toHaveBeenCalled();
+  // The first read: one line, no buttons.
+  expect(container.textContent).toContain("Reading Cap table sheet…");
+  expect(button("Type it in")).toBeUndefined();
+  expect(button("Connect Carta")).toBeUndefined();
+});
+
+it("shows Reading sheet while a read runs and keeps the old table", async () => {
+  rpcMock.capTable.mockResolvedValue(sheetState(sheet, { reading: true }));
+  await show();
+  expect(container.textContent).toContain("Reading sheet…");
+  expect(container.textContent).toContain("Ada Example");
+});
+
+it("reads a sheet from the source menu, which has Refresh without Carta", async () => {
+  rpcMock.servers.mockResolvedValue([]);
+  rpcMock.capTable.mockResolvedValue(sheetState(sheet));
+  rpcMock.refresh.mockResolvedValue({ ok: true });
+  await show();
+  expect(container.textContent).toContain("Sheet · as of");
+  await openSourceMenu();
+  await click(menuItem("Refresh"));
+  expect(rpcMock.refresh).toHaveBeenCalledTimes(1);
+});
+
+it("keeps the old table after a failed read and offers Try again in the menu", async () => {
+  rpcMock.capTable.mockResolvedValue(sheetState(sheet, { failed: true }));
+  rpcMock.refresh.mockResolvedValue({ ok: true });
+  await show();
+  expect(container.textContent).toContain("Ada Example");
+  const line = [...container.querySelectorAll<HTMLElement>("button")].find((b) =>
+    /Sheet · as of/.test(b.textContent ?? ""),
+  );
+  expect(line?.className).toContain("text-warning");
+  await openSourceMenu();
+  await click(menuItem("Last read failed · Try again"));
+  expect(rpcMock.refresh).toHaveBeenCalledTimes(1);
+});
+
+it("says the sheet could not be read when the first read fails", async () => {
+  rpcMock.capTable.mockResolvedValue(sheetState(emptySheet, { failed: true }));
+  rpcMock.refresh.mockResolvedValue({ ok: true });
+  await show();
+  expect(container.textContent).toContain("The sheet could not be read.");
+  expect(button("Type it in")).toBeDefined();
+  expect(container.querySelector("button[aria-haspopup=menu]")?.textContent).not.toContain("as of");
+  await click(button("Try again"));
+  expect(rpcMock.refresh).toHaveBeenCalledTimes(1);
+});
+
 // ---- documents ----
 
 const folder = (id: string, name: string, parentId: string | null) => ({
@@ -880,4 +1004,154 @@ it("lists the Finance / Cap Table documents and opens one in the Data room previ
 it("shows no Documents section when the folder is missing or empty", async () => {
   await show();
   expect(container.textContent).not.toContain("Documents");
+});
+
+// ---- updates and board ----
+
+const update = (over: Partial<InvestorUpdate> = {}): InvestorUpdate => ({
+  id: "u1",
+  audience: "investors",
+  subject: "Example Co · 2026-09 update",
+  period: "2026-09",
+  body: "Body",
+  status: "draft",
+  recipientContactIds: ["c1"],
+  fromConnectionId: null,
+  deliveries: [],
+  sentAt: null,
+  createdAt: "2026-10-01T09:00:00.000Z",
+  updatedAt: "2026-10-01T09:00:00.000Z",
+  ...over,
+});
+const partly = (deliveries: InvestorUpdate["deliveries"]) =>
+  update({
+    id: "u2",
+    subject: "Example Co · 2026-08 update",
+    status: "partly_sent",
+    sentAt: "2026-09-02T09:00:00.000Z",
+    deliveries,
+  });
+
+it("keeps a draft in Action items and in Updates until it is sent or deleted", async () => {
+  rpcMock.updatesList.mockResolvedValue([update()]);
+  await show();
+  const items = container.querySelector("[aria-label='Action items']");
+  expect(items?.textContent).toContain("Example Co · 2026-09 update");
+  expect(items?.textContent).toContain("Drafted");
+  expect(container.querySelector("[aria-label='Updates']")?.textContent).toContain("Draft");
+  rpcMock.updatesList.mockResolvedValue([
+    update({ status: "sent", sentAt: "2026-10-02T09:00:00.000Z" }),
+  ]);
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await show();
+  expect(container.querySelector("[aria-label='Action items']")).toBeNull();
+  expect(container.querySelector("[aria-label='Updates']")?.textContent).toContain("Sent");
+});
+
+it("starts an investors update with New update", async () => {
+  rpcMock.updatesSave.mockResolvedValue(update({ id: "new1" }));
+  await show();
+  await click(button("New update"));
+  expect(rpcMock.updatesSave).toHaveBeenCalledWith({ audience: "investors" });
+});
+
+it("starts a board update from the Board tab once a board contact exists", async () => {
+  rpcMock.updatesSave.mockResolvedValue(update({ id: "b1", audience: "board" }));
+  await show("/app/investors?kind=board");
+  expect(button("Message the board")).toBeUndefined();
+  rpcMock.list.mockResolvedValue([contact("c9", "Bea", "board")]);
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await show("/app/investors?kind=board");
+  await click(button("Message the board"));
+  expect(rpcMock.updatesSave).toHaveBeenCalledWith({ audience: "board" });
+});
+
+it("names the problem recipient on a Partly sent row and retries failed ones directly", async () => {
+  rpcMock.updatesList.mockResolvedValue([
+    partly([
+      { contactId: "c1", name: "Ada", state: "sent" },
+      { contactId: "c3", name: "Cyd", state: "failed" },
+    ]),
+  ]);
+  rpcMock.updatesRetry.mockResolvedValue(update());
+  await show();
+  const section = container.querySelector("[aria-label='Updates']");
+  expect(section?.textContent).toContain("Partly sent");
+  expect(section?.textContent).toContain("Cyd failed");
+  await click(button("Retry"));
+  expect(rpcMock.updatesRetry).toHaveBeenCalledWith({ id: "u2" });
+});
+
+it("asks before resending a delivery with an unknown result, and Mark delivered records it", async () => {
+  rpcMock.updatesList.mockResolvedValue([
+    partly([
+      { contactId: "c1", name: "Ada", state: "unknown" },
+      { contactId: "c3", name: "Cyd", state: "failed" },
+    ]),
+  ]);
+  rpcMock.updatesRetry.mockResolvedValue(update());
+  rpcMock.updatesMarkDelivered.mockResolvedValue(update());
+  await show();
+  expect(container.textContent).toContain("Ada: delivery unknown");
+  await click(button("Retry"));
+  expect(rpcMock.updatesRetry).not.toHaveBeenCalled();
+  expect(document.body.textContent).toContain("May already be delivered. Send again?");
+  await click(button("Mark delivered"));
+  expect(rpcMock.updatesMarkDelivered).toHaveBeenCalledWith({ id: "u2" });
+  await click(button("Retry"));
+  await click(button("Send again"));
+  expect(rpcMock.updatesRetry).toHaveBeenCalledWith({ id: "u2", resendUnknown: true });
+});
+
+it("shows a Sending row with its menu disabled, and Duplicate and Delete on a sent one", async () => {
+  rpcMock.updatesList.mockResolvedValue([
+    update({ id: "s1", subject: "Running", status: "sending" }),
+    update({ id: "s2", subject: "Done", status: "sent", sentAt: "2026-10-02T09:00:00.000Z" }),
+  ]);
+  rpcMock.updatesDuplicate.mockResolvedValue(update({ id: "s3" }));
+  rpcMock.updatesDelete.mockResolvedValue({ ok: true });
+  await show();
+  const running = container.querySelector<HTMLButtonElement>(
+    "button[aria-label='Actions for Running']",
+  );
+  expect(running?.disabled).toBe(true);
+  await click(
+    container.querySelector<HTMLElement>("button[aria-label='Actions for Done']") ?? undefined,
+  );
+  expect(menuItem("Duplicate")).toBeDefined();
+  await click(menuItem("Duplicate"));
+  expect(rpcMock.updatesDuplicate).toHaveBeenCalledWith({ id: "s2" });
+  await click(
+    container.querySelector<HTMLElement>("button[aria-label='Actions for Done']") ?? undefined,
+  );
+  await click(menuItem("Delete"));
+  await click(button("Delete"));
+  expect(rpcMock.updatesDelete).toHaveBeenCalledWith({ id: "s2" });
+});
+
+it("changes the Reminder from the Updates menu, with the current one ticked", async () => {
+  rpcMock.reminder.mockImplementation(async (input: { cadence?: string }) => ({
+    cadence: input.cadence ?? "monthly",
+  }));
+  await show();
+  await click(
+    container.querySelector<HTMLElement>("button[aria-label='Update options']") ?? undefined,
+  );
+  await click(
+    [...document.querySelectorAll<HTMLElement>("[role=menuitem]")].find(
+      (i) => i.textContent === "Reminder",
+    ),
+  );
+  const quarterly = [...document.querySelectorAll<HTMLElement>("[role=menuitemradio]")].find(
+    (i) => i.textContent === "Quarterly",
+  );
+  expect(
+    [...document.querySelectorAll("[role=menuitemradio]")]
+      .find((i) => i.textContent === "Monthly")
+      ?.getAttribute("aria-checked"),
+  ).toBe("true");
+  await click(quarterly);
+  expect(rpcMock.reminder).toHaveBeenCalledWith({ cadence: "quarterly" });
 });

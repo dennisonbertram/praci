@@ -38,6 +38,7 @@ vi.mock("../../lib/rpc", () => ({
   },
 }));
 
+import { DrivePicker } from "./ImportFromDrive";
 import { ImportSources } from "./ImportFromEmail";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -399,4 +400,42 @@ it("shows other Box errors without a Reconnect link", async () => {
   await choose("From Box");
   expect(document.body.textContent).toContain("rate limit");
   expect(reconnectLink()).toBeUndefined();
+});
+
+const spreadsheet = "application/vnd.google-apps.spreadsheet";
+
+it("in single-sheet mode returns the chosen sheet and imports nothing", async () => {
+  rpcMock.driveList.mockResolvedValue({
+    files: [
+      {
+        id: "d1",
+        name: "Contracts",
+        mimeType: "application/vnd.google-apps.folder",
+        isFolder: true,
+      },
+      file("s1", "Cap table", { mimeType: spreadsheet }),
+      file("s2", "Other sheet", { mimeType: spreadsheet }),
+      file("f1", "Plan.pdf"),
+    ],
+  });
+  const onPickSheet = vi.fn();
+  await act(async () => {
+    root.render(
+      <MemoryRouter>
+        <DrivePicker reconnectPath="/x" onClose={vi.fn()} onPickSheet={onPickSheet} />
+      </MemoryRouter>,
+    );
+  });
+  // Only a Google Sheet can be chosen: not a folder, not a PDF.
+  expect(box("Plan.pdf")?.hasAttribute("data-disabled")).toBe(true);
+  expect(box("Contracts")?.hasAttribute("data-disabled")).toBe(true);
+  expect(button("Use this sheet")?.hasAttribute("disabled")).toBe(true);
+  // One sheet at a time: ticking a second replaces the first.
+  await click(box("Cap table"));
+  await click(box("Other sheet"));
+  expect(box("Cap table")?.hasAttribute("data-checked")).toBe(false);
+  await click(box("Cap table"));
+  await click(button("Use this sheet"));
+  expect(onPickSheet).toHaveBeenCalledWith({ id: "s1", name: "Cap table" });
+  expect(rpcMock.importDrive).not.toHaveBeenCalled();
 });

@@ -69,3 +69,27 @@ export const BoxReconnect: Story = {
       },
     }),
 };
+
+/** Single-sheet mode (Investors, Use a Google Sheet): only Google Sheets can be ticked, one at a time. */
+export const ChooseSheet: Story = {
+  args: { onPickSheet: () => undefined },
+  beforeEach: () =>
+    mockRpc({
+      "dataRoom.driveList": {
+        files: [
+          ...driveFiles,
+          {
+            id: "4",
+            name: "Cap table",
+            mimeType: "application/vnd.google-apps.spreadsheet",
+            isFolder: false,
+          },
+        ],
+      },
+    }),
+  play: async () => {
+    await userEvent.click(
+      await within(document.body).findByRole("checkbox", { name: /select cap table/i }),
+    );
+  },
+};
