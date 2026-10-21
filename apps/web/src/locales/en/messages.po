@@ -1272,18 +1272,13 @@ msgstr "Approve this server to let your bot use its tools."
 msgid "Approved"
 msgstr "Approved"
 
-#: src/components/ConnectAppsButton.tsx
-#: src/components/integrations/AppDetail.tsx
-#: src/components/integrations/GranolaPage.tsx
-#: src/components/integrations/IntegrationsHome.tsx
-#: src/components/integrations/McpDetail.tsx
-#: src/pages/Shell.tsx
-msgid "Apps"
-msgstr "Apps"
-
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Apps with their own server"
 msgstr "Apps with their own server"
+
+#: src/pages/Shell.tsx
+msgid "apps, connections"
+msgstr "apps, connections"
 
 #: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -4976,6 +4971,15 @@ msgstr "Instruction"
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Integration options"
 msgstr "Integration options"
+
+#: src/components/ConnectAppsButton.tsx
+#: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/GranolaPage.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/McpDetail.tsx
+#: src/pages/Shell.tsx
+msgid "Integrations"
+msgstr "Integrations"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
