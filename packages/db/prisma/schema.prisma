@@ -1492,7 +1492,6 @@ model McpServer {
   financeSyncState      FinanceSyncState?
   devinConnectionState  DevinConnectionState?
   devinSessions         DevinSession[]
-
   meetings              Meeting[]
   meetingSyncState      MeetingSyncState?
 
