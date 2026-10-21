@@ -34,3 +34,9 @@ export const GRANOLA_API_BASE_URL = "https://public-api.granola.ai/v1";
 
 /** Connection.connectorId for a Granola API key. */
 export const GRANOLA_API_CONNECTOR_ID = "granola-api";
+
+/**
+ * The one Granola agent a user has, whichever route created it (the sign-in MCP server or the API
+ * key). One key per user, so the unique (spaceId, spawnKey) index keeps it a single agent.
+ */
+export const granolaAgentSpawnKey = (userId: string) => `integration-agent:granola:${userId}`;

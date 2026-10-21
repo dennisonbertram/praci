@@ -49,7 +49,7 @@ export function SidebarPagesGroup({
             data-testid="sidebar-pages-toggle"
             aria-expanded={!collapsed}
             aria-label={collapsed ? t`Expand ${title}` : t`Collapse ${title}`}
-            className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider text-muted-foreground/60 uppercase hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
+            className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider text-foreground/70 uppercase hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
             onClick={onToggle}
           >
             <span className="line-clamp-2 text-start break-words">{title}</span>
@@ -69,7 +69,7 @@ export function SidebarPagesGroup({
                     variant="ghost"
                     size="icon-sm"
                     aria-label={t`Page options`}
-                    className="text-muted-foreground/60 hover:text-foreground"
+                    className="text-muted-foreground hover:text-foreground"
                   />
                 }
               >

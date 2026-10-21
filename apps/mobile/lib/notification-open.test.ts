@@ -198,3 +198,27 @@ describe("notification space switch", () => {
     ).toBe("space-1");
   });
 });
+
+describe("a Devin session link", () => {
+  const url = "https://app.devin.ai/sessions/devin-0001";
+
+  it("opens the link rather than the thread, even when the payload names a bot", () => {
+    expect(
+      notificationOpenTarget({ surface: "devin", botId: "bot-1", link: url, spaceId: "space-2" }),
+    ).toEqual({ kind: "external", url });
+  });
+
+  it("ignores any other absolute link and keeps the bot thread", () => {
+    expect(notificationOpenTarget({ botId: "bot-1", link: "https://evil.example/x" })).toEqual({
+      pathname: "/thread",
+      params: { botId: "bot-1" },
+    });
+  });
+
+  it("leaves in-app /app/<botId> payloads as before", () => {
+    expect(notificationOpenTarget({ link: "/app/bot-3" })).toEqual({
+      pathname: "/thread",
+      params: { botId: "bot-3" },
+    });
+  });
+});

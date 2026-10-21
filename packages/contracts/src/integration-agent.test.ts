@@ -8,7 +8,12 @@ import {
 } from "./carta.js";
 import { DEVIN_MCP_ENDPOINT, DEVIN_READ_TOOLS, DEVIN_WRITE_TOOLS } from "./devin.js";
 import { FINANCE_READ_TOOLS } from "./finance.js";
-import { GRANOLA_BLOCKED_TOOLS, GRANOLA_MCP_ENDPOINT, GRANOLA_READ_TOOLS } from "./granola.js";
+import {
+  GRANOLA_BLOCKED_TOOLS,
+  GRANOLA_MCP_ENDPOINT,
+  GRANOLA_READ_TOOLS,
+  granolaAgentSpawnKey,
+} from "./granola.js";
 import {
   INTEGRATION_PRESETS,
   integrationAgentSpawnKey,
@@ -242,5 +247,31 @@ describe("Wispr Flow integration-agent preset", () => {
     expect(integrationPresetForEndpoint(WISPR_FLOW_MCP_ENDPOINT)).toBe(wispr);
     expect(integrationPresetForEndpoint(`${WISPR_FLOW_MCP_ENDPOINT}/`)).toBe(wispr);
     expect(integrationPresetForEndpoint("https://api.wisprflow.ai/other")).toBeUndefined();
+  });
+});
+
+describe("the one Granola agent", () => {
+  const server = {
+    id: "srv",
+    spaceId: "sp",
+    userId: "u1",
+    endpoint: GRANOLA_MCP_ENDPOINT,
+    agentBotId: "b1",
+  };
+  const bot = (spawnKey: string, userId = "u1") => ({
+    id: "b1",
+    spaceId: "sp",
+    userId,
+    spawnKey,
+    archivedAt: null,
+  });
+  it("serves a Granola server whether its spawn key is the user's or the server's", () => {
+    expect(isIntegrationAgentForServer(server, bot(granolaAgentSpawnKey("u1")))).toBe(true);
+    expect(isIntegrationAgentForServer(server, bot(integrationAgentSpawnKey("srv")))).toBe(true);
+  });
+  it("does not accept another user's Granola agent or any other server's", () => {
+    expect(isIntegrationAgentForServer(server, bot(granolaAgentSpawnKey("u2"), "u1"))).toBe(false);
+    const other = { ...server, endpoint: "https://api.brex.com/mcp" };
+    expect(isIntegrationAgentForServer(other, bot(granolaAgentSpawnKey("u1")))).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { DEVIN_MCP_ENDPOINT } from "@rakazo/contracts";
+import { DEVIN_MCP_ENDPOINT, devinSessionUrl } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -192,5 +192,168 @@ describePostgres("refreshDevinConnection (PostgreSQL)", () => {
     );
     expect(ids).toContain("old-day");
     expect(ids).not.toContain("old-week");
+  });
+
+  it("an unchanged waiting session never alerts, a new question alerts once with the session link, a session created and blocked between two refreshes alerts once, and a crash before recording does not alert twice", async () => {
+    const errors = JSON.parse(fixture("errors.json")) as Record<string, string>;
+    const reset = async () => {
+      await prisma.devinSession.deleteMany({ where: { serverId } });
+      await prisma.notification.deleteMany({ where: { spaceId } });
+      await prisma.devinConnectionState.update({
+        where: { serverId },
+        data: { lastSucceededAt: null, backoffUntil: null, rejectedAt: null, lastError: null },
+      });
+    };
+    const alerts = (extra: Record<string, unknown> = {}) =>
+      prisma.notification.findMany({ where: { spaceId, ...extra }, orderBy: { createdAt: "asc" } });
+    const line = (id: string, status: string, updated: number) =>
+      `- id=${id} title="Session ${id}" status=${status} created_at=1759000000 updated_at=${updated} origin=api\n`;
+    const message = (eventId: string, body: string) =>
+      `- event_id=${eventId} source=devin created_at=1 body="${body}"\n`;
+    const notify = vi.fn(async () => {});
+    let listing = "";
+    let reply = () => message("ev-1", "First question?");
+    const reads: string[] = [];
+    const callTool = vi.fn(async (_id: string, name: string, args: Record<string, unknown>) => {
+      if (name === "devin_session_search") return listing;
+      reads.push(String(args.session_id));
+      return reply();
+    });
+    const run = () =>
+      refreshDevinConnection(
+        { prisma, callTool, notificationEvents: { notify } as never },
+        serverId,
+      );
+    const bump = (minutes: number) =>
+      prisma.devinConnectionState.update({
+        where: { serverId },
+        data: { lastSucceededAt: new Date(Date.now() - minutes * 60_000) },
+      });
+
+    // The first successful refresh alerts for nothing, even with a session already waiting.
+    await reset();
+    listing = line("a-1", "running", 100) + line("w-0", "blocked", 100);
+    expect(await run()).toBe("refreshed");
+    expect(await alerts()).toHaveLength(0);
+
+    // A session turning to waiting alerts once, and two unchanged runs add nothing.
+    listing = line("a-1", "blocked", 200) + line("w-0", "blocked", 100);
+    expect(await run()).toBe("refreshed");
+    expect(await run()).toBe("refreshed");
+    expect(await run()).toBe("refreshed");
+    const [first] = await alerts();
+    expect(await alerts()).toHaveLength(1);
+    expect(first).toMatchObject({
+      userId,
+      spaceId,
+      surface: "devin",
+      title: "Devin needs input",
+      body: "Session a-1: First question?",
+      link: devinSessionUrl("a-1"),
+      kind: "needs_input",
+      importance: "attention",
+    });
+    expect(notify).toHaveBeenCalledTimes(1);
+    expect(notify).toHaveBeenCalledWith(
+      { spaceId, userId },
+      { id: first?.id, surface: "devin", importance: "attention" },
+    );
+
+    // A genuinely new message alerts again; a session created and blocked in between alerts once.
+    reply = () => message("ev-2", "Second question?");
+    listing =
+      line("a-1", "blocked", 300) + line("b-1", "blocked", 300) + line("w-0", "blocked", 100);
+    await run();
+    await run();
+    expect((await alerts()).map((n) => n.body)).toEqual([
+      "Session a-1: First question?",
+      "Session a-1: Second question?",
+      "Session b-1: Second question?",
+    ]);
+
+    // Working again, then asking again, alerts again.
+    listing = line("a-1", "running", 400) + line("b-1", "blocked", 300);
+    await run();
+    reply = () => message("ev-3", "Third question?");
+    listing = line("a-1", "blocked", 500) + line("b-1", "blocked", 300);
+    await run();
+    expect(await alerts()).toHaveLength(4);
+
+    // A failed read at the transition alerts with the fallback text; the later read adds no alert.
+    reply = () => {
+      throw new Error(errors["403"]);
+    };
+    listing = line("d-1", "blocked", 600) + line("b-1", "blocked", 300);
+    await run();
+    expect((await alerts()).at(-1)?.body).toBe("Session d-1 is waiting for your answer.");
+    reply = () => message("ev-9", "Why?");
+    await run();
+    expect(await alerts()).toHaveLength(5);
+    expect(
+      await prisma.devinSession.findUnique({
+        where: { serverId_sessionId: { serverId, sessionId: "d-1" } },
+      }),
+    ).toMatchObject({ lastMessageId: "ev-9", notifiedMessageId: "ev-9", question: "Why?" });
+
+    // A crash after the notification was stored and before it was recorded alerts once.
+    let crashed = false;
+    const crashing = new Proxy(prisma, {
+      get(target, key, receiver) {
+        const value = Reflect.get(target, key, receiver);
+        if (key !== "devinSession") return value;
+        return new Proxy(value, {
+          get(model, method, modelReceiver) {
+            if (method === "updateMany" && !crashed) {
+              crashed = true;
+              return async () => {
+                throw new Error("simulated crash");
+              };
+            }
+            return Reflect.get(model, method, modelReceiver);
+          },
+        });
+      },
+    });
+    reply = () => message("ev-20", "Crash?");
+    listing =
+      line("c-1", "blocked", 700) + line("b-1", "blocked", 300) + line("d-1", "blocked", 600);
+    await refreshDevinConnection({ prisma: crashing, callTool }, serverId).catch(() => undefined);
+    expect(crashed).toBe(true);
+    await run();
+    expect(await alerts({ body: { startsWith: "Session c-1" } })).toHaveLength(1);
+    expect(
+      (
+        await prisma.devinSession.findUniqueOrThrow({
+          where: { serverId_sessionId: { serverId, sessionId: "c-1" } },
+        })
+      ).notifiedMessageId,
+    ).toBe("ev-20");
+
+    // Help alerts switched off create nothing.
+    await prisma.notificationPreference.create({ data: { spaceId, userId, help: false } });
+    listing += line("e-1", "blocked", 800);
+    await run();
+    expect(await alerts({ body: { startsWith: "Session e-1" } })).toHaveLength(0);
+    await prisma.notificationPreference.deleteMany({ where: { spaceId, userId } });
+
+    // The first refresh after a key replacement is silent again.
+    const before = (await alerts()).length;
+    await prisma.devinSession.deleteMany({ where: { serverId } });
+    await prisma.devinConnectionState.update({
+      where: { serverId },
+      data: { lastSucceededAt: null },
+    });
+    await run();
+    expect(await alerts()).toHaveLength(before);
+
+    // A connector who left the space is alerted nobody.
+    await bump(5);
+    const member = await prisma.spaceMember.findFirstOrThrow({ where: { spaceId, userId } });
+    await prisma.spaceMember.delete({ where: { id: member.id } });
+    listing += line("f-1", "blocked", 900);
+    expect(await run()).toBe("connector_gone");
+    expect(await alerts()).toHaveLength(before);
+    await prisma.spaceMember.create({ data: { ...member } });
+    await prisma.devinConnectionState.update({ where: { serverId }, data: { lastError: null } });
   });
 });

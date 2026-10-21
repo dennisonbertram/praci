@@ -358,6 +358,45 @@ describePostgres("mail.sync job (PostgreSQL + Gmail emulator)", () => {
       ]);
     });
 
+    it("queues meeting digests after a sync only when digests can run, and never for a failed one", async () => {
+      const meeting = (externalId: string, digestStatus: string | null) =>
+        prisma.meeting.create({
+          data: {
+            spaceId,
+            userId,
+            provider: "granola",
+            externalId: `${externalId}-${suffix}`,
+            title: externalId,
+            startedAt: new Date(),
+            sourceUpdatedAt: new Date(),
+            digestStatus,
+          },
+        });
+      const waiting = await meeting("waiting", null);
+      await meeting("failed", "failed");
+      const digests = () => enqueued.filter((j) => j.name === "meetings.digest");
+      try {
+        for (const extra of [{}, { digestReady: async () => false }]) {
+          seed("run-digest-off", [message("a", 1)]);
+          const account = await connect("run-digest-off");
+          await request(account.id, "refresh");
+          enqueued = [];
+          await run(account, extra);
+          expect(digests()).toEqual([]);
+        }
+        seed("run-digest-on", [message("a", 1)]);
+        const account = await connect("run-digest-on");
+        await request(account.id, "refresh");
+        enqueued = [];
+        await run(account, { digestReady: async () => true });
+        expect(digests().map((j) => (j.payload as { meetingId: string }).meetingId)).toEqual([
+          waiting.id,
+        ]);
+      } finally {
+        await prisma.meeting.deleteMany({ where: { spaceId, userId } });
+      }
+    });
+
     it("syncs once more when a request arrives while the job runs, so a sent message is not left for the next poll", async () => {
       seed("run-solo2", [message("a", 1)]);
       await run(await connect("run-solo2"));

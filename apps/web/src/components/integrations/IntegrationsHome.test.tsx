@@ -20,8 +20,9 @@ const financeRpc = vi.hoisted(() => ({
   exchanges: vi.fn(),
 }));
 const messagingRpc = vi.hoisted(() => ({ get: vi.fn() }));
+const devinRpc = vi.hoisted(() => ({ sessions: vi.fn(), connect: vi.fn(), replaceKey: vi.fn() }));
 vi.mock("../../lib/rpc", () => ({
-  rpc: { finance: financeRpc, messagingSetup: messagingRpc },
+  rpc: { finance: financeRpc, messagingSetup: messagingRpc, devin: devinRpc },
 }));
 
 import { IntegrationsHome } from "./IntegrationsHome";
@@ -102,6 +103,10 @@ beforeEach(() => {
   });
   financeRpc.exchanges.mockResolvedValue([]);
   messagingRpc.get.mockRejectedValue(new Error("not owner"));
+  devinRpc.sessions.mockReset();
+  devinRpc.sessions.mockRejectedValue(new Error("not mocked"));
+  devinRpc.connect.mockReset();
+  devinRpc.replaceKey.mockReset();
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -192,16 +197,78 @@ it("offers Carta and opens its sign-in dialog", async () => {
   expect(document.body.textContent).toContain("Sign in with Carta");
 });
 
-it("offers Devin and opens the API key form", async () => {
+it("offers Devin and opens its own connect dialog, not the custom connection form", async () => {
   await show(data(true, false));
   const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Devin"]');
   expect(connect).not.toBeNull();
   await act(async () => connect?.click());
   expect(document.body.textContent).toContain(
-    "An org-scoped Devin service-user key (starts with cog_).",
+    "Connects Devin for everyone in this space. Read-only.",
   );
-  expect(document.querySelector('[aria-label="API key"]')).not.toBeNull();
-  expect(document.body.textContent).not.toContain("Sign in with Devin");
+  expect(document.querySelector('[aria-label="Organization service-user key"]')).not.toBeNull();
+  expect(document.querySelector('[aria-label="API key"]')).toBeNull();
+  expect(document.querySelector('input[aria-label="Server URL"]')).toBeNull();
+  expect(document.body.textContent).not.toContain("starts with cog_");
+});
+
+const devinServer = {
+  id: "s3",
+  name: "Devin",
+  endpoint: "https://mcp.devin.ai/mcp",
+} as unknown as IntegrationsData["servers"][number];
+const devinSessions = (status: string, manage = true, isConnector = manage) => ({
+  connection: { status, manage, canConnect: false, isConnector, agentBotId: null },
+  fetchedAt: null,
+  stale: false,
+  partial: false,
+  sessions: [],
+});
+
+it("shows a connected Devin with a way to its page", async () => {
+  devinRpc.sessions.mockResolvedValue(devinSessions("ok"));
+  await show({ ...data(true, true), servers: [devinServer] });
+  expect(container.querySelector('a[href="/app/devin"]')?.textContent).toBe("Open Devin");
+  expect(container.textContent).not.toContain("Needs reconnect");
+});
+
+it("marks a rejected Devin key as needing reconnect and lets an owner replace it", async () => {
+  devinRpc.sessions.mockResolvedValue(devinSessions("rejected"));
+  await show({ ...data(true, true), servers: [devinServer] });
+  expect(container.textContent).toContain("Needs reconnect");
+  expect(container.querySelector('a[href="/app/devin"]')).toBeNull();
+  const reconnect = [...container.querySelectorAll<HTMLButtonElement>("button")].find(
+    (button) => button.textContent === "Reconnect",
+  );
+  await act(async () => reconnect?.click());
+  devinRpc.replaceKey.mockResolvedValue({ ok: true });
+  const field = document.querySelector<HTMLInputElement>(
+    '[aria-label="Organization service-user key"]',
+  );
+  expect(field).not.toBeNull();
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(field, "k");
+    field?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () =>
+    document.querySelector<HTMLButtonElement>('button[type="submit"]')?.click(),
+  );
+  expect(devinRpc.replaceKey).toHaveBeenCalledWith({ secret: "k" });
+  expect(devinRpc.connect).not.toHaveBeenCalled();
+});
+
+it("treats a private Devin server as a plain one when another member connected the space", async () => {
+  devinRpc.sessions.mockResolvedValue(devinSessions("rejected", true, false));
+  await show({ ...data(true, true), servers: [devinServer] });
+  expect(container.textContent).not.toContain("Needs reconnect");
+  expect(container.querySelector('a[href="/app/devin"]')).toBeNull();
+});
+
+it("gives a demoted connector no Reconnect button when the Devin key is rejected", async () => {
+  devinRpc.sessions.mockResolvedValue(devinSessions("rejected", false, true));
+  await show({ ...data(true, true), servers: [devinServer] });
+  expect(container.textContent).toContain("Needs reconnect");
+  const buttons = [...container.querySelectorAll("button")].map((button) => button.textContent);
+  expect(buttons).not.toContain("Reconnect");
 });
 
 it("offers Box and asks for the Box app's client ID, secret and callback URL", async () => {
@@ -673,4 +740,76 @@ it("lists a connected app with its card when its name is searched", async () => 
   await show(value, "/app/integrations?q=notion");
   expect(container.querySelector('a[href*="notion"]')).not.toBeNull();
   expect(container.querySelector('[data-testid="no-apps"]')).toBeNull();
+});
+
+const granolaServer = {
+  id: "srv_granola",
+  name: "Granola",
+  transport: "http",
+  endpoint: "https://mcp.granola.ai/mcp",
+  oauthStatus: "connected",
+  oauthAttempted: false,
+  enabled: true,
+} as unknown as IntegrationsData["servers"][number];
+const keyRoute = (patch: Partial<NonNullable<IntegrationsData["meetings"]>> = {}) => ({
+  connectionId: "conn_1",
+  status: "connected" as const,
+  syncedThrough: "2026-10-20T10:00:00Z",
+  lastSyncedAt: null,
+  syncedCount: 4,
+  consentOff: false,
+  agentBotId: null,
+  ...patch,
+});
+
+it("shows one Granola status line: reconnect first, then AI data sharing off, then the key status", async () => {
+  await show({
+    ...data(true, true),
+    servers: [granolaServer],
+    meetings: keyRoute({ status: "needs_reconnect", consentOff: true }),
+  });
+  const text = container.textContent ?? "";
+  expect(text).toContain("Reconnect needed");
+  expect(text).not.toContain("AI data sharing off");
+  expect(text).not.toContain("Synced");
+  expect(container.querySelector('a[href="/app/integrations/granola"]')).not.toBeNull();
+});
+
+it("shows AI data sharing off, then Synced, then the sign-in badge on the Granola tile", async () => {
+  await show({
+    ...data(true, true),
+    servers: [granolaServer],
+    meetings: keyRoute({ consentOff: true }),
+  });
+  expect(container.textContent).toContain("AI data sharing off");
+  expect(container.textContent).not.toContain("Synced 4 meetings");
+  act(() => root.unmount());
+  container.remove();
+  await show({ ...data(true, true), servers: [granolaServer], meetings: keyRoute() });
+  expect(container.textContent).toContain("Synced 4 meetings");
+  act(() => root.unmount());
+  container.remove();
+  await show({
+    ...data(true, true),
+    servers: [granolaServer],
+    meetings: keyRoute({ status: "disconnected" }),
+  });
+  expect(container.textContent).not.toContain("Synced");
+  expect(container.textContent).toContain("Connected");
+});
+
+it("shows a Granola tile when only the key is connected, and opens the page from the Connect tile", async () => {
+  await show({ ...data(true, true), meetings: keyRoute() });
+  expect(container.textContent).toContain("Synced 4 meetings");
+  expect(container.querySelector('a[href="/app/integrations/granola"]')).not.toBeNull();
+  expect(container.querySelector('button[aria-label="Connect Granola"]')).toBeNull();
+  act(() => root.unmount());
+  container.remove();
+  await show(data(true, true));
+  await act(async () =>
+    (container.querySelector('button[aria-label="Connect Granola"]') as HTMLElement).click(),
+  );
+  expect(container.querySelector('[data-testid="where"]')?.textContent).toBe(
+    "/app/integrations/granola",
+  );
 });

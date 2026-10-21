@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+
+import { InboxTodosOutputSchema } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act, useEffect } from "react";
 import type { Root } from "react-dom/client";
@@ -282,9 +284,90 @@ const headerItems = () => {
 it("shows only Connect mail when no account is connected, and the button opens Integrations", async () => {
   listReply = () => inboxList({ accounts: [], agent: null });
   await render();
-  expect(procs()).toEqual(["inbox/list"]);
+  // The server decides whether a user with no mail has meeting follow-ups; here it has none.
+  expect(procs()).toEqual(["inbox/list", "inbox/todos/list"]);
+  expect(container.textContent).not.toContain("To do");
   await act(async () => button("Connect mail")?.click());
   expect(state.push).toHaveBeenCalledWith("/integrations");
+});
+
+const meetingTodo = (id: string, text: string) => ({
+  ...todo(id, text),
+  connectionId: null,
+  meetingId: `m-${id}`,
+  detail: "Planning, Oct 19",
+});
+const sourceOn = { source: true, syncing: false, ready: true };
+
+it("shows a meeting-only user's follow-ups above Connect mail, completable only by the checkbox", async () => {
+  listReply = () => inboxList({ accounts: [], agent: null, enabled: false });
+  todosReply = () => ({
+    enabled: true,
+    todos: [meetingTodo("t1", "Send the notes")],
+    meetings: sourceOn,
+  });
+  await render();
+  expect(container.textContent).toContain("To do");
+  expect(container.textContent).toContain("Send the notes");
+  expect(container.textContent).toContain("Planning, Oct 19");
+  expect(container.textContent?.indexOf("To do")).toBeLessThan(
+    container.textContent?.indexOf("Connect mail") ?? -1,
+  );
+  // The checkbox is the only control in the row.
+  expect(container.querySelectorAll('button[aria-label="Send the notes"]')).toHaveLength(1);
+  await act(async () =>
+    (container.querySelector('button[aria-label="Send the notes"]') as HTMLElement).click(),
+  );
+  expect(state.rpc).toHaveBeenCalledWith("inbox/todos/setDone", { id: "t1", done: true });
+  // The last one is done: the heading stays with the empty line.
+  expect(container.textContent).toContain("To do");
+  expect(container.textContent).toContain("No follow-ups from meetings yet");
+});
+
+it("shows Syncing while the first meeting sync runs", async () => {
+  listReply = () => inboxList({ accounts: [], agent: null });
+  todosReply = () => ({
+    enabled: true,
+    todos: [],
+    meetings: { source: true, syncing: true, ready: true },
+  });
+  await render();
+  expect(container.textContent).toContain("To do");
+  expect(container.textContent).toContain("Syncing");
+  expect(container.textContent).not.toContain("No follow-ups from meetings yet");
+});
+
+it("looks again every 5 seconds while meetings sync, and stops once the screen is gone", async () => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  listReply = () => inboxList({ accounts: [], agent: null });
+  todosReply = () => ({
+    enabled: true,
+    todos: [],
+    meetings: { source: true, syncing: true, ready: true },
+  });
+  await render();
+  const asked = () => procs().filter((proc) => proc === "inbox/todos/list").length;
+  const before = asked();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(5_100);
+  });
+  expect(asked()).toBe(before + 1);
+  await act(async () => root.unmount());
+  const after = asked();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(20_000);
+  });
+  expect(asked()).toBe(after);
+  root = createRoot(container);
+});
+
+it("parses a to-do reply whose connectionId is null", () => {
+  const parsed = InboxTodosOutputSchema.parse({
+    enabled: true,
+    todos: [meetingTodo("t1", "Send the notes")],
+    meetings: sourceOn,
+  });
+  expect(parsed.todos[0]?.connectionId).toBeNull();
 });
 
 it("hides the account picker for one account and shows it for two", async () => {
@@ -343,7 +426,7 @@ it("says No mail when accounts are connected and the synced list is empty", asyn
   expect(container.textContent).toContain("No mail");
 });
 
-it("lists, refreshes, then lists again, fetching to-dos only while triage is enabled", async () => {
+it("lists, refreshes, then lists again, asking for to-dos on the Important pile only", async () => {
   await render();
   expect(procs().filter((proc) => proc !== "inbox/todos/list")).toEqual([
     "inbox/list",
@@ -355,7 +438,8 @@ it("lists, refreshes, then lists again, fetching to-dos only while triage is ena
   state.rpc.mockClear();
   listReply = () => inboxList({ enabled: false });
   await act(async () => root.render(<InboxScreen key="disabled" />));
-  expect(procs()).not.toContain("inbox/todos/list");
+  // Meeting follow-ups do not depend on mail triage, so the server is still asked.
+  expect(procs()).toContain("inbox/todos/list");
 });
 
 it("removes a completed to-do at once and puts it back with an alert when the call fails", async () => {

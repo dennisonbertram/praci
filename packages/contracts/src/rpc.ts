@@ -58,6 +58,7 @@ import {
   AutoSortPlanSchema,
   AutoSortUndoOutputSchema,
 } from "./data-room-autosort.js";
+import { DevinAgentOutputSchema, DevinKeyInputSchema, DevinSessionsOutputSchema } from "./devin.js";
 import {
   ActionApprovalRuleSchema,
   ActionAutoReviewSettingsSchema,
@@ -231,6 +232,11 @@ import {
   LegalUpdateDeadlineInputSchema,
 } from "./legal.js";
 import { McpOauthClientSchema } from "./mcp.js";
+import {
+  MeetingConnectInputSchema,
+  MeetingsStatusSchema,
+  StoredMeetingsPageSchema,
+} from "./meetings.js";
 import {
   MessagingSetupSaveSchema,
   MessagingSetupStateSchema,
@@ -1290,6 +1296,8 @@ export const appContract = {
       z.object({
         financeRunwayMonths: z.number().nullable(),
         legalDueSoon: z.number().int(),
+        /** Devin sessions that need a person (waiting or failed) on the space's active connection. */
+        devinNeedsYou: z.number().int(),
         dataRoomWaiting: z.number().int(),
         /** Per agent with unseen notifications, the highest-priority kind. */
         botKinds: z.record(z.string(), NotificationKindSchema),
@@ -1312,6 +1320,10 @@ export const appContract = {
   },
   runs: {
     list: oc.input(z.object({ filter: z.enum(["active", "recent"]) })).output(RunsListOutputSchema),
+  },
+  /** Names that help a transcription provider spell: built per request, never stored. */
+  dictation: {
+    vocabulary: oc.output(z.array(z.string())),
   },
   voice: {
     agent: oc.output(BotSchema),
@@ -1456,6 +1468,33 @@ export const appContract = {
       apply: oc.input(AutoSortApplyInputSchema).output(AutoSortApplyOutputSchema),
       undo: oc.input(z.object({ batchId: Id })).output(AutoSortUndoOutputSchema),
     },
+  },
+  meetings: {
+    /** Checks the Granola key with one list call, stores it, connects, provisions the agent and queues a sync. Trims the key. Errors: "Granola rejected this key", "Could not reach Granola". */
+    connect: oc.input(MeetingConnectInputSchema).output(z.object({ ok: z.literal(true) })),
+    /** The caller's key route; null before a key was pasted. Never returns the key. */
+    status: oc.output(MeetingsStatusSchema),
+    /** Deletes the stored key and stops the sync; stored meetings and to-dos stay. */
+    disconnect: oc.output(z.object({ ok: z.literal(true) })),
+    /** Asks for a sync now (throttled). */
+    refresh: oc.output(z.object({ ok: z.literal(true) })),
+    /** The caller's stored meetings, newest first; a plain query that works with consent off and after disconnect. */
+    list: oc
+      .input(z.object({ cursor: z.string().max(200).optional() }))
+      .output(StoredMeetingsPageSchema),
+    /** Deletes one of the caller's meetings with its to-dos; sync does not bring it back. */
+    delete: oc.input(z.object({ meetingId: Id })).output(z.object({ ok: z.literal(true) })),
+  },
+  devin: {
+    /** Any member reads the space's cached sessions; a read older than a minute refreshes them first. */
+    sessions: oc.output(DevinSessionsOutputSchema),
+    /** The connector's agent (created once), or null for every other member. */
+    agent: oc.output(DevinAgentOutputSchema),
+    /** Space owners only. Checks the key before anything is kept. */
+    connect: oc.input(DevinKeyInputSchema).output(z.object({ ok: z.literal(true) })),
+    /** Space owners only. The old rows and key go; the acting owner becomes the connector. */
+    replaceKey: oc.input(DevinKeyInputSchema).output(z.object({ ok: z.literal(true) })),
+    disconnect: oc.output(z.object({ ok: z.literal(true) })),
   },
   legal: {
     /** Idempotent: creates the Legal agent and its daily scan routine; returns the bot to open in the side panel. */

@@ -13,7 +13,7 @@ for (const totalTokens of [201, null]) {
     const stamp = Date.now();
     await signup(page, `usage-total-${stamp}@rakazo.test`, "password12", "Usage totals");
     await completeOnboarding(page);
-    await openUserSettings(page, "usage");
+    await openUserSettings(page);
     await expect(page.getByTestId("usage-settings")).toContainText(
       `2 tasks done by your bots · ${totalTokens ?? "—"} tokens of AI text`,
     );
@@ -93,8 +93,11 @@ test("settings shell is two-pane and deep-links Models Memory Voice Usage", asyn
   await page.getByRole("button", { name: "Close voice settings" }).click();
   await expect(page.getByTestId("user-settings")).toHaveCount(0);
 
-  await openUserSettings(page, "usage");
-  await expect(page.getByTestId("user-settings")).toHaveAttribute("data-settings-section", "usage");
+  await openUserSettings(page);
+  await expect(page.getByTestId("user-settings")).toHaveAttribute(
+    "data-settings-section",
+    "general",
+  );
   await expect(page.getByTestId("usage-settings")).toBeVisible();
   await captureScreenshot(page, testInfo, "settings-shell-usage");
 });

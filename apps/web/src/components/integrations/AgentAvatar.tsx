@@ -11,6 +11,10 @@ export function AgentAvatar({
 }: ComponentProps<typeof BotAvatar> & { app?: AgentApp }) {
   if (!app) return <BotAvatar size={size} {...avatar} />;
   return (
-    <AppLogo name={app.name} logo={app.logo} size={size <= 24 ? "sm" : size <= 40 ? "md" : "lg"} />
+    <AppLogo
+      name={app.name}
+      logo={app.logo}
+      size={size <= 24 ? "sm" : size <= 36 ? "row" : size <= 40 ? "md" : "lg"}
+    />
   );
 }

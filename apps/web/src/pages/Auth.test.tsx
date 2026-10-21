@@ -39,6 +39,7 @@ vi.mock("../lib/auth", () => ({
   authClient: {
     signIn: { social: vi.fn(async () => ({})) },
     requestPasswordReset: vi.fn(async () => ({})),
+    resetPassword: vi.fn(async () => ({})),
   },
 }));
 vi.mock("../lib/rpc", () => ({ clearSpaceSelection: vi.fn() }));
@@ -48,6 +49,10 @@ const capabilities: AuthCapabilities = {
   passwordReset: false,
   resetUrl: null,
 };
+function setValue(input: HTMLInputElement, value: string) {
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
@@ -198,10 +203,34 @@ it("shows only the message and a new-link action for an invalid reset link", asy
       </MemoryRouter>,
     ),
   );
-  expect(host.textContent).toContain("This reset link is invalid or expired");
+  expect(host.querySelector("h1")?.textContent).toBe("Reset link expired");
   expect(host.querySelector("input")).toBeNull();
   expect(host.querySelector('button[type="submit"]')).toBeNull();
   expect(host.querySelector('a[href="/forgot-password"]')?.textContent).toBe("Request a new link");
+});
+
+it("swaps to the expired page when a typed link's token is rejected", async () => {
+  vi.mocked(authClient.resetPassword).mockResolvedValueOnce({
+    error: { code: "INVALID_TOKEN", message: "Invalid token" },
+  } as never);
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/reset-password?token=bad"]}>
+        <PasswordResetPage />
+      </MemoryRouter>,
+    ),
+  );
+  expect(host.querySelector("h1")?.textContent).toBe("Choose a new password");
+  await act(async () => {
+    for (const input of host.querySelectorAll("input")) setValue(input, "longenough1");
+  });
+  await act(async () => {
+    host
+      .querySelector("form")
+      ?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  expect(host.querySelector("h1")?.textContent).toBe("Reset link expired");
+  expect(host.querySelector("input")).toBeNull();
 });
 
 it("names the sign-in button Sign in and keeps room for an error line", async () => {
