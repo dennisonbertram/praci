@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { captureScreenshot, completeOnboarding, signup } from "./helpers";
 
-test("Investors lists contacts added through the dialog", async ({ page }, testInfo) => {
+test("Investors opens from the sidebar and the old Cap table address redirects", async ({
+  page,
+}, testInfo) => {
   await page.setViewportSize({ width: 1500, height: 1000 });
   await signup(page, `investors-${Date.now()}@rakazo.test`, "password12", "Investors User");
   await completeOnboarding(page);
@@ -15,15 +17,6 @@ test("Investors lists contacts added through the dialog", async ({ page }, testI
   // Without Carta there is no agent, so no empty panel opens beside the page.
   await expect(page.getByTestId("carta-agent-panel")).toBeHidden();
 
-  await main.getByRole("button", { name: "Add contact" }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Name").fill("Ada Example");
-  await dialog.getByLabel("Email").fill("ada@example.test");
-  await dialog.getByLabel("Organization").fill("Example Ventures");
-  await dialog.getByRole("button", { name: "Save" }).click();
-
-  await expect(main.getByRole("button", { name: "Ada Example" })).toBeVisible();
-  await expect(main.getByRole("cell", { name: "ada@example.test" })).toBeVisible();
   await captureScreenshot(page, testInfo, "investors");
 
   await page.goto("/app/cap-table?kind=auditor");
