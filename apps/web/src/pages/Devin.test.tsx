@@ -197,6 +197,10 @@ it("keeps the rows and offers Try again when a re-read fails, and shows only the
   await flush();
   expect(container.textContent).toContain("Could not load Devin sessions.");
   expect(table()).toBeTruthy();
+  // Try again over kept rows re-reads without dropping them.
+  rpcMock.sessions.mockImplementation(() => new Promise(() => {}));
+  await act(async () => button("Try again")!.click());
+  expect(table()).toBeTruthy();
 });
 
 it("re-reads every minute while visible and on focus, and tells the sidebar after each read", async () => {
@@ -212,4 +216,10 @@ it("re-reads every minute while visible and on focus, and tells the sidebar afte
   await act(async () => void window.dispatchEvent(new Event("focus")));
   expect(rpcMock.sessions).toHaveBeenCalledTimes(3);
   window.removeEventListener("rakazo:notifications-changed", changed);
+});
+
+it("does not call a partly read, empty listing an empty organization", async () => {
+  await show({ ...emptyOverview, partial: true });
+  expect(container.textContent).toContain("Some sessions could not be read.");
+  expect(container.textContent).not.toContain("No Devin sessions yet.");
 });

@@ -131,7 +131,7 @@ function Devin({ onConnect, onReconnect }: { onConnect?: () => void; onReconnect
     <div>
       {header}
       {query.error || failed ? (
-        <ErrorNotice message={t`Could not load Devin sessions.`} onRetry={query.retry} />
+        <ErrorNotice message={t`Could not load Devin sessions.`} onRetry={query.reload} />
       ) : null}
       {paused ? (
         <>
@@ -155,14 +155,14 @@ function Devin({ onConnect, onReconnect }: { onConnect?: () => void; onReconnect
           <Kpi title={t`Working`} value={working} />
         </div>
       ) : null}
-      {data.partial && sessions.length > 0 ? (
+      {data.partial && !paused ? (
         <p className="mb-3 text-xs text-muted-foreground">
           <Trans>Some sessions could not be read.</Trans>
         </p>
       ) : null}
       {sessions.length > 0 ? (
         <DevinSessions sessions={sessions} muted={paused} />
-      ) : !failed && !paused ? (
+      ) : !failed && !paused && !data.partial ? (
         <div className="flex flex-col items-center gap-2 py-10 text-center text-sm">
           <p className="text-muted-foreground">
             <Trans>No Devin sessions yet.</Trans>
