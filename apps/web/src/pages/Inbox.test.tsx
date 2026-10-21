@@ -73,14 +73,14 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
     onClose,
     onArchive,
     onMoveToInbox,
-    onAskAgent,
+    onAskAgentPanel,
     notice,
   }: {
     messageId: string | null;
     onClose: () => void;
     onArchive?: () => void;
     onMoveToInbox?: () => void;
-    onAskAgent?: () => Promise<unknown>;
+    onAskAgentPanel?: () => Promise<unknown>;
     notice?: ReactNode;
   }) =>
     messageId ? (
@@ -94,8 +94,8 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
             dialog archive
           </button>
         ) : null}
-        {onAskAgent ? (
-          <button type="button" onClick={() => void onAskAgent()}>
+        {onAskAgentPanel ? (
+          <button type="button" onClick={() => void onAskAgentPanel()}>
             dialog ask agent
           </button>
         ) : null}
@@ -631,14 +631,13 @@ it("marks an unread deep-linked message read once, and j and k never mark read",
   expect(rpcMock.markRead).not.toHaveBeenCalled();
 });
 
-it("Ask agent makes the agent for the open message and hands it to the shell", async () => {
+it("Ask agent makes the agent for the open message", async () => {
   const bot = { id: "bot-1", name: "Subject a" };
   rpcMock.askAgent.mockResolvedValue(bot);
   const onOpenAgent = vi.fn();
   const c = await render(["/app/inbox?mail=a"], undefined, { onOpenAgent });
   await click(byText(c, "dialog ask agent"));
   expect(rpcMock.askAgent).toHaveBeenCalledWith({ messageId: "a" });
-  expect(onOpenAgent).toHaveBeenCalledWith(bot);
 });
 
 it("offers no Ask agent without a shell to open the chat in", async () => {

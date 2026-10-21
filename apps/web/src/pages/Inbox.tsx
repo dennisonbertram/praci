@@ -1614,10 +1614,8 @@ function InboxListPage({
           onNavigate={goToMessage}
           unread={openRow?.unread}
           inInbox={openRow?.inInbox}
-          onAskAgent={
-            onOpenAgent && openId
-              ? async () => onOpenAgent(await rpc.inbox.askAgent({ messageId: openId }))
-              : undefined
+          onAskAgentPanel={
+            onOpenAgent && openId ? () => rpc.inbox.askAgent({ messageId: openId }) : undefined
           }
           onArchive={
             openRow?.inInbox

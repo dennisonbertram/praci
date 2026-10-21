@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 247 of 247
-- Web and shared components: 667
+- Web and shared component files with stories: 248 of 248
+- Web and shared components: 668
 - Mobile components: 138 in 95 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -200,9 +200,10 @@ Every rendered React component, grouped by area. A web or shared component file 
 | CleanupActionBar | [apps/web/src/components/inbox/CleanupActionBar.tsx](../../apps/web/src/components/inbox/CleanupActionBar.tsx) | [CleanupActionBar.stories.tsx](../../apps/web/src/components/inbox/CleanupActionBar.stories.tsx) | web |
 | CleanupHistory | [apps/web/src/components/inbox/CleanupHistory.tsx](../../apps/web/src/components/inbox/CleanupHistory.tsx) | [CleanupHistory.stories.tsx](../../apps/web/src/components/inbox/CleanupHistory.stories.tsx) | web |
 | CleanupSenderRow | [apps/web/src/components/inbox/CleanupSenderRow.tsx](../../apps/web/src/components/inbox/CleanupSenderRow.tsx) | [CleanupSenderRow.stories.tsx](../../apps/web/src/components/inbox/CleanupSenderRow.stories.tsx) | web |
+| EmailAgentPanel | [apps/web/src/components/inbox/EmailAgentPanel.tsx](../../apps/web/src/components/inbox/EmailAgentPanel.tsx) | [EmailAgentPanel.stories.tsx](../../apps/web/src/components/inbox/EmailAgentPanel.stories.tsx) | web |
 | InboxCleanup, OpenLink | [apps/web/src/components/inbox/InboxCleanup.tsx](../../apps/web/src/components/inbox/InboxCleanup.tsx) | [InboxCleanup.stories.tsx](../../apps/web/src/components/inbox/InboxCleanup.stories.tsx) | web |
 | InboxDigest | [apps/web/src/components/inbox/InboxDigest.tsx](../../apps/web/src/components/inbox/InboxDigest.tsx) | [InboxDigest.stories.tsx](../../apps/web/src/components/inbox/InboxDigest.stories.tsx) | web |
-| InboxMessageDialog, InboxMessage, SentMark, ThreadMessages, ThreadMessage | [apps/web/src/components/inbox/InboxMessageDialog.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.tsx) | [InboxEmailAgent.stories.tsx](../../apps/web/src/components/inbox/InboxEmailAgent.stories.tsx), [InboxMessageDialog.stories.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.stories.tsx) | web |
+| InboxMessageDialog, InboxMessage, SentMark, ThreadMessages, ThreadMessage | [apps/web/src/components/inbox/InboxMessageDialog.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.tsx) | [InboxMessageDialog.stories.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.stories.tsx) | web |
 | InboxPileTabs | [apps/web/src/components/inbox/InboxPileTabs.tsx](../../apps/web/src/components/inbox/InboxPileTabs.tsx) | [InboxPileTabs.stories.tsx](../../apps/web/src/components/inbox/InboxPileTabs.stories.tsx) | web |
 | InboxGroup, InboxRow | [apps/web/src/components/inbox/InboxRow.tsx](../../apps/web/src/components/inbox/InboxRow.tsx) | [InboxRow.stories.tsx](../../apps/web/src/components/inbox/InboxRow.stories.tsx) | web |
 | InboxSenderGroup | [apps/web/src/components/inbox/InboxSenderGroup.tsx](../../apps/web/src/components/inbox/InboxSenderGroup.tsx) | [InboxSenderGroup.stories.tsx](../../apps/web/src/components/inbox/InboxSenderGroup.stories.tsx) | web |
@@ -314,7 +315,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | OnboardingPage | [apps/web/src/pages/Onboarding.tsx](../../apps/web/src/pages/Onboarding.tsx) | [Onboarding.stories.tsx](../../apps/web/src/pages/Onboarding.stories.tsx) | web |
 | PaywallPage | [apps/web/src/pages/Paywall.tsx](../../apps/web/src/pages/Paywall.tsx) | [Paywall.stories.tsx](../../apps/web/src/pages/Paywall.stories.tsx) | web |
 | PeerMessagesOverlay | [apps/web/src/pages/PeerMessagesOverlay.tsx](../../apps/web/src/pages/PeerMessagesOverlay.tsx) | [PeerMessagesOverlay.stories.tsx](../../apps/web/src/pages/PeerMessagesOverlay.stories.tsx) | web |
-| ResizableSidePanel | [apps/web/src/pages/ResizableSidePanel.tsx](../../apps/web/src/pages/ResizableSidePanel.tsx) | [InboxEmailAgent.stories.tsx](../../apps/web/src/components/inbox/InboxEmailAgent.stories.tsx), [ResizableSidePanel.stories.tsx](../../apps/web/src/pages/ResizableSidePanel.stories.tsx) | web |
+| ResizableSidePanel | [apps/web/src/pages/ResizableSidePanel.tsx](../../apps/web/src/pages/ResizableSidePanel.tsx) | [ResizableSidePanel.stories.tsx](../../apps/web/src/pages/ResizableSidePanel.stories.tsx) | web |
 | RoutineListHeader, RoutineListRow, RoutineEditor, MessageTriggerCard, InboundTriggerCard | [apps/web/src/pages/RoutineEditor.tsx](../../apps/web/src/pages/RoutineEditor.tsx) | [RoutineEditor.stories.tsx](../../apps/web/src/pages/RoutineEditor.stories.tsx) | web |
 | RoutineRunHistory | [apps/web/src/pages/RoutineRunHistory.tsx](../../apps/web/src/pages/RoutineRunHistory.tsx) | [RoutineRunHistory.stories.tsx](../../apps/web/src/pages/RoutineRunHistory.stories.tsx) | web |
 | RoutineSchedule | [apps/web/src/pages/RoutineSchedule.tsx](../../apps/web/src/pages/RoutineSchedule.tsx) | [RoutineSchedule.stories.tsx](../../apps/web/src/pages/RoutineSchedule.stories.tsx) | web |
@@ -331,13 +332,13 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ReplyThumbnail, TimeSeparator, ComposerReplyPreview, ReplyLine | [apps/web/src/pages/shell/chat-context.tsx](../../apps/web/src/pages/shell/chat-context.tsx) | [chat-context.stories.tsx](../../apps/web/src/pages/shell/chat-context.stories.tsx) | web |
 | CommandPalette | [apps/web/src/pages/shell/command-palette.tsx](../../apps/web/src/pages/shell/command-palette.tsx) | [command-palette.stories.tsx](../../apps/web/src/pages/shell/command-palette.stories.tsx) | web |
 | ComposerError | [apps/web/src/pages/shell/composer-error.tsx](../../apps/web/src/pages/shell/composer-error.tsx) | [composer-error.stories.tsx](../../apps/web/src/pages/shell/composer-error.stories.tsx) | web |
-| Composer | [apps/web/src/pages/shell/composer.tsx](../../apps/web/src/pages/shell/composer.tsx) | [InboxEmailAgent.stories.tsx](../../apps/web/src/components/inbox/InboxEmailAgent.stories.tsx), [composer.stories.tsx](../../apps/web/src/pages/shell/composer.stories.tsx) | web |
+| Composer | [apps/web/src/pages/shell/composer.tsx](../../apps/web/src/pages/shell/composer.tsx) | [composer.stories.tsx](../../apps/web/src/pages/shell/composer.stories.tsx) | web |
 | NewSpaceDialog, RenameSpaceDialog, PickerInfoDialog, NewBotSectionDialog, RenameBotSectionDialog, ClearConversationDialog, DeleteBotDialog, DeleteItemDialog | [apps/web/src/pages/shell/dialogs.tsx](../../apps/web/src/pages/shell/dialogs.tsx) | [dialogs.stories.tsx](../../apps/web/src/pages/shell/dialogs.stories.tsx) | web |
 | GroupIntro | [apps/web/src/pages/shell/GroupIntro.tsx](../../apps/web/src/pages/shell/GroupIntro.tsx) | [GroupIntro.stories.tsx](../../apps/web/src/pages/shell/GroupIntro.stories.tsx) | web |
 | MentionIcon | [apps/web/src/pages/shell/mention-icon.tsx](../../apps/web/src/pages/shell/mention-icon.tsx) | [mention-icon.stories.tsx](../../apps/web/src/pages/shell/mention-icon.stories.tsx) | web |
 | ChoiceCard, OnboardingFocusQuestion, OnboardingFocusOptionHint, OnboardingFocusOptionLabel, AppConnectCard, ChartCanvas, ChartCanvasPlot, McpApprovalCard, ChartBlockView, ArtifactImage, ArtifactImageGrid | [apps/web/src/pages/shell/message-cards.tsx](../../apps/web/src/pages/shell/message-cards.tsx) | [message-cards.stories.tsx](../../apps/web/src/pages/shell/message-cards.stories.tsx) | web |
 | SidebarHeaderRow | [apps/web/src/pages/shell/sidebar-header-row.tsx](../../apps/web/src/pages/shell/sidebar-header-row.tsx) | [sidebar-header-row.stories.tsx](../../apps/web/src/pages/shell/sidebar-header-row.stories.tsx) | web |
-| ThreadMarkdown, UnreadDivider, Transcript, QuoteSelectionButton, MessageHoverActions, SpeakerHeader, MessageView | [apps/web/src/pages/shell/transcript.tsx](../../apps/web/src/pages/shell/transcript.tsx) | [InboxEmailAgent.stories.tsx](../../apps/web/src/components/inbox/InboxEmailAgent.stories.tsx), [transcript.stories.tsx](../../apps/web/src/pages/shell/transcript.stories.tsx) | web |
+| ThreadMarkdown, UnreadDivider, Transcript, QuoteSelectionButton, MessageHoverActions, SpeakerHeader, MessageView | [apps/web/src/pages/shell/transcript.tsx](../../apps/web/src/pages/shell/transcript.tsx) | [transcript.stories.tsx](../../apps/web/src/pages/shell/transcript.stories.tsx) | web |
 | Section, LinkRow, SpaceSearchResults | [apps/web/src/pages/SpaceSearch.tsx](../../apps/web/src/pages/SpaceSearch.tsx) | [SpaceSearch.stories.tsx](../../apps/web/src/pages/SpaceSearch.stories.tsx) | web |
 | VoiceSettingsOverlay | [apps/web/src/pages/VoiceSettingsOverlay.tsx](../../apps/web/src/pages/VoiceSettingsOverlay.tsx) | [VoiceSettingsOverlay.stories.tsx](../../apps/web/src/pages/VoiceSettingsOverlay.stories.tsx) | web |
 | WelcomePage | [apps/web/src/pages/Welcome.tsx](../../apps/web/src/pages/Welcome.tsx) | [Welcome.stories.tsx](../../apps/web/src/pages/Welcome.stories.tsx) | web |

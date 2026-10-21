@@ -452,3 +452,47 @@ export const DEMO_CONVERSATIONS: Record<string, { gapHours: number; turns: Turn[
     ],
   },
 };
+
+/**
+ * The email agent's chat for the Sam Ortiz thread ("Ask agent" on that email). It follows the thread
+ * card the agent starts with. The 4,600 figure is calculated, and the answer says so.
+ */
+export const DEMO_EMAIL_AGENT_CONVERSATION: { gapHours: number; turns: Turn[] } = {
+  gapHours: 0.02,
+  turns: [
+    user("Help me answer this."),
+    {
+      role: "bot",
+      blocks: [
+        steps(
+          ["Read the thread", "Read email thread"],
+          ["Read Carta", "Read Carta: Sam Ortiz"],
+          [
+            "Searched the Data room",
+            "Searched Data room: 4 found",
+            "Recapitalization Summary",
+            "Warrant Agreement",
+          ],
+          ["Read the Data room file", "Read Recapitalization Summary"],
+          ["Searched mail", "Searched mail: 3 found"],
+        ),
+        {
+          kind: "text",
+          text: `**1. Closing out.** Carta lists 18,400 Series Seed Preferred and a 2,000-share warrant for Sam. The Warrant Agreement lets the holder cancel it with written consent. I found no repurchase template or board consent. Tax treatment is a question for your counsel.
+
+**2. After the recap.** Carta's snapshot is from Sep 30, before the recap. The Recapitalization Summary sets a 1-for-4 reverse split, which gives **4,600 shares (calculated from the summary, not read from Carta)**. Seed Prime was offered to all 9 existing investors on Sep 8, including Sam. I found no reply from him.
+
+Draft reply:
+
+> Hi Sam,
+>
+> Your 18,400 preferred shares become 4,600 after the 1-for-4 reverse split. Seed Prime was offered to all existing investors, including you, on Sep 8.
+>
+> On closing out: we can do it either way. I will confirm which and send the paperwork this week.
+>
+> Maya`,
+        },
+      ],
+    },
+  ],
+};
