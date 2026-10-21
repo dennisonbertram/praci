@@ -4026,10 +4026,6 @@ msgstr "Due tomorrow"
 msgid "Duplicate"
 msgstr "Duplicate"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "e.g. Recruiting, Sales, Legal"
-msgstr "e.g. Recruiting, Sales, Legal"
-
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Each bot keeps its own"
 msgstr "Each bot keeps its own"
@@ -4378,10 +4374,6 @@ msgstr "Financing"
 msgid "Financing, {when}"
 msgstr "Financing, {when}"
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Find an app"
-msgstr "Find an app"
-
 #: src/lib/slash-skills.ts
 msgid "Find and summarize files in Box. Changes ask first."
 msgstr "Find and summarize files in Box. Changes ask first."
@@ -4700,6 +4692,10 @@ msgstr "Hang up, then enter the code on screen."
 #: src/pages/Inbox.tsx
 msgid "Has attachment"
 msgstr "Has attachment"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Has its own computer."
+msgstr "Has its own computer."
 
 #: src/pages/RoutineEditor.tsx
 msgid "header"
@@ -5807,10 +5803,6 @@ msgstr "More"
 msgid "More {0} actions"
 msgstr "More {0} actions"
 
-#: src/components/integrations/FinanceSection.tsx
-msgid "More {name} actions"
-msgstr "More {name} actions"
-
 #. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name
 #: src/components/data-room/ItemMenu.tsx
@@ -6090,6 +6082,10 @@ msgstr "Next deadline"
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Next message"
 msgstr "Next message"
+
+#: src/pages/RoutineEditor.tsx
+msgid "Next run {nextRun}"
+msgstr "Next run {nextRun}"
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "No {sourceName} cash accounts."
@@ -8426,6 +8422,10 @@ msgstr "Shareholders"
 msgid "Shares"
 msgstr "Shares"
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Shares one computer with your other bots."
+msgstr "Shares one computer with your other bots."
+
 #: src/pages/Artifacts.tsx
 msgid "Sheet"
 msgstr "Sheet"
@@ -9443,7 +9443,6 @@ msgid "Time zone updated"
 msgstr "Time zone updated"
 
 #: src/pages/Board.tsx
-#: src/pages/shell/bot-panel.tsx
 msgid "Title"
 msgstr "Title"
 
@@ -10214,6 +10213,10 @@ msgstr "What should I do first this week?"
 #: src/pages/RoutineEditor.tsx
 msgid "What should this routine do each time it runs?"
 msgstr "What should this routine do each time it runs?"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "What this bot handles"
+msgstr "What this bot handles"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "What to return"

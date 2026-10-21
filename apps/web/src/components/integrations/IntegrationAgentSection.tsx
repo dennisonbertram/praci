@@ -49,6 +49,7 @@ export function IntegrationAgentSection({
   onWrites,
   onShared,
   usedBy,
+  sharedLocked = false,
   idPrefix = "server",
 }: {
   service: string;
@@ -64,6 +65,8 @@ export function IntegrationAgentSection({
   onShared?: (on: boolean) => void;
   /** The per-agent list, shown while the connection is shared. */
   usedBy?: ReactNode;
+  /** The agent does not exist yet: the sharing switch shows its default so the rows below stay put. */
+  sharedLocked?: boolean;
   idPrefix?: string;
 }) {
   const { t } = useLingui();
@@ -101,7 +104,7 @@ export function IntegrationAgentSection({
               id={`${idPrefix}-shared`}
               aria-describedby={`${idPrefix}-shared-hint`}
               checked={shared}
-              disabled={disabled}
+              disabled={disabled || sharedLocked}
               onCheckedChange={onShared}
             />
             <Label htmlFor={`${idPrefix}-shared`}>

@@ -19,7 +19,7 @@ import {
   Textarea,
 } from "@rakazo/ui-web";
 import { ChevronRight } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { rpc } from "../../lib/rpc";
 import { isHiddenBuiltinSkill, slashSkillLabel } from "../../lib/slash-skills";
 import { errorText } from "../../lib/user-error";
@@ -74,6 +74,7 @@ export function BotSkillsSection({
   onSkillsChange: (skills: AgentSkillCatalogEntry[]) => void;
 }) {
   const { t } = useLingui();
+  const fieldId = useId();
   const [loading, setLoading] = useState(true);
   const [skills, setSkills] = useState<BotAgentSkill[]>([]);
   const [drafts, setDrafts] = useState<AgentSkillDraft[]>([]);
@@ -482,40 +483,68 @@ export function BotSkillsSection({
           ) : null}
           {creating ? (
             <>
-              <Input
-                aria-label={t`Name`}
-                placeholder={t`Name`}
-                disabled={busy}
-                value={skillName}
-                maxLength={80}
-                autoFocus
-                onChange={(event) => setSkillName(event.target.value)}
-                className="mt-2"
-                dir="auto"
-              />
-              <Input
-                aria-label={t`What it does and when to use it`}
-                placeholder={t`What it does and when to use it`}
-                disabled={busy}
-                value={skillDescription}
-                maxLength={2000}
-                onChange={(event) => setSkillDescription(event.target.value)}
-                className="mt-2"
-                dir="auto"
-              />
+              <label
+                htmlFor={`${fieldId}-name`}
+                className="mt-2 block text-[13px] text-muted-foreground"
+              >
+                <Trans>Name</Trans>
+                <Input
+                  id={`${fieldId}-name`}
+                  disabled={busy}
+                  value={skillName}
+                  maxLength={80}
+                  autoFocus
+                  onChange={(event) => setSkillName(event.target.value)}
+                  className="mt-1.5"
+                  dir="auto"
+                />
+              </label>
+              <label
+                htmlFor={`${fieldId}-about`}
+                className="mt-3 block text-[13px] text-muted-foreground"
+              >
+                <Trans>What it does and when to use it</Trans>
+                <Input
+                  id={`${fieldId}-about`}
+                  disabled={busy}
+                  value={skillDescription}
+                  maxLength={2000}
+                  onChange={(event) => setSkillDescription(event.target.value)}
+                  className="mt-1.5"
+                  dir="auto"
+                />
+              </label>
             </>
           ) : null}
-          <Textarea
-            aria-label={creating ? t`Instructions` : "SKILL.md"}
-            placeholder={creating ? t`Steps to follow` : undefined}
-            disabled={busy}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            rows={creating ? 6 : Math.min(20, Math.max(8, draft.split("\n").length + 1))}
-            readOnly={Boolean(open?.readOnly)}
-            className={creating ? "mt-2 w-full" : fieldClass}
-            dir="auto"
-          />
+          {creating ? (
+            <label
+              htmlFor={`${fieldId}-steps`}
+              className="mt-3 block text-[13px] text-muted-foreground"
+            >
+              <Trans>Instructions</Trans>
+              <Textarea
+                id={`${fieldId}-steps`}
+                placeholder={t`Steps to follow`}
+                disabled={busy}
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                rows={6}
+                className="mt-1.5 w-full"
+                dir="auto"
+              />
+            </label>
+          ) : (
+            <Textarea
+              aria-label="SKILL.md"
+              disabled={busy}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              rows={Math.min(20, Math.max(8, draft.split("\n").length + 1))}
+              readOnly={Boolean(open?.readOnly)}
+              className={fieldClass}
+              dir="auto"
+            />
+          )}
           <div className="mt-2 flex items-center gap-2">
             {!open?.readOnly ? (
               <Button
