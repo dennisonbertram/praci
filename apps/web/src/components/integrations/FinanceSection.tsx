@@ -25,7 +25,7 @@ import { AlchemyConnectDialog } from "./AlchemyConnectDialog";
 import { AppLogo } from "./AppLogo";
 import { BlockscoutConnectDialog } from "./BlockscoutConnectDialog";
 import { ExchangeConnectDialog } from "./ExchangeConnectDialog";
-import { IntegrationTile, StatusBadge } from "./parts";
+import { IntegrationTile, OPEN_LINK, PHONE_ROW, StatusBadge } from "./parts";
 
 /** False once the tile has unmounted, so a slow request does not set state afterwards. */
 function useMounted() {
@@ -41,14 +41,6 @@ function useMounted() {
 
 /** Same hover as the other integration tiles; `relative` anchors the stretched name link. */
 const TILE = "relative transition-colors hover:bg-muted/40";
-
-/** A tile with only Connect to offer is one row below 640px, Connect beside the name, like the app tiles. */
-const PHONE_ROW =
-  "max-sm:flex-row max-sm:items-center max-sm:p-3 max-sm:[&>:first-child]:flex-1 max-sm:[&>:nth-child(2)]:mt-0 max-sm:[&>:nth-child(2)]:shrink-0";
-
-/** The tile's one main link, like "Open Inbox" on Gmail. It never wraps. */
-const OPEN_LINK =
-  "relative z-10 ms-auto inline-flex h-7 pointer-coarse:h-11 shrink-0 items-center whitespace-nowrap rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted";
 
 /** The tile's one overflow menu: the optional key and other secondary actions live here. */
 function TileMenu({ label, children }: { label: string; children: ReactNode }) {
@@ -103,10 +95,7 @@ function CryptoTile({
   const [dialog, setDialog] = useState(false);
 
   return (
-    <IntegrationTile
-      data-testid="finance-tile-crypto"
-      className={`${TILE} ${hasKey || hasServer ? "" : PHONE_ROW}`}
-    >
+    <IntegrationTile data-testid="finance-tile-crypto" className={`${TILE} ${PHONE_ROW}`}>
       <div className="flex min-w-0 items-center gap-3">
         <AppLogo name="Blockscout" logo="/logos/blockscout.svg" />
         <div className="min-w-0">
@@ -125,7 +114,7 @@ function CryptoTile({
         {hasKey === null ? null : (
           <>
             {hasKey || hasServer ? (
-              <StatusBadge status="connected" />
+              <StatusBadge status="connected" quiet />
             ) : (
               // Nothing to connect: the first wallet added starts it. Not "Not connected".
               <span className="text-xs text-muted-foreground max-sm:hidden">
@@ -166,7 +155,7 @@ function AlchemyTile({ state, reload }: { state: AlchemyState | null; reload: ()
   return (
     <IntegrationTile
       data-testid="finance-tile-alchemy"
-      className={`${TILE} ${state?.connected || state?.lastError ? "" : PHONE_ROW}`}
+      className={`${TILE} ${state?.lastError ? "" : PHONE_ROW}`}
     >
       <div className="flex min-w-0 items-center gap-3">
         <AppLogo name="Alchemy" logo="/logos/alchemy.svg" />
@@ -180,7 +169,7 @@ function AlchemyTile({ state, reload }: { state: AlchemyState | null; reload: ()
       <div className={`${state?.connected ? "" : "mt-auto "}flex items-center gap-2`}>
         {state?.connected ? (
           <>
-            <StatusBadge status="connected" />
+            <StatusBadge status="connected" quiet />
             <Link to={financePath.crypto()} className={OPEN_LINK}>
               <Trans>Open</Trans>
             </Link>
@@ -242,10 +231,7 @@ function ExchangeTile({
 
   const connected = found?.connected === true;
   return (
-    <IntegrationTile
-      data-testid={`finance-tile-${provider}`}
-      className={`${TILE} ${connected ? "" : PHONE_ROW}`}
-    >
+    <IntegrationTile data-testid={`finance-tile-${provider}`} className={`${TILE} ${PHONE_ROW}`}>
       <div className="flex min-w-0 items-center gap-3">
         <AppLogo name={exchange.name} logo={exchange.logo} />
         <div className="min-w-0">
@@ -258,7 +244,7 @@ function ExchangeTile({
       <div className={`${connected ? "" : "mt-auto "}flex items-center gap-2`}>
         {connected ? (
           <>
-            <StatusBadge status="connected" />
+            <StatusBadge status="connected" quiet />
             <Link to={financePath.crypto()} className={OPEN_LINK}>
               <Trans>Open Finance</Trans>
             </Link>
@@ -439,7 +425,7 @@ export function FinanceSection({
             <IntegrationTile
               key={provider}
               data-testid={`finance-tile-${provider}`}
-              className={`${TILE} ${connected || reconnect || error ? "" : PHONE_ROW}`}
+              className={`${TILE} ${reconnect || error ? "" : PHONE_ROW}`}
             >
               <div className="flex min-w-0 items-center gap-3">
                 <AppLogo name={name} logo={logo} />
@@ -458,7 +444,7 @@ export function FinanceSection({
                 {busy === provider ? (
                   <StatusBadge status="connecting" />
                 ) : connected ? (
-                  <StatusBadge status="connected" />
+                  <StatusBadge status="connected" quiet />
                 ) : status === "needs_reconnect" ? (
                   <StatusBadge status="reconnect" />
                 ) : status === "error" ? (
@@ -509,7 +495,9 @@ export function FinanceSection({
                   {error}
                 </p>
               ) : null}
-              {connected ? extras?.[provider] : null}
+              {connected ? (
+                <div className="max-sm:hidden empty:hidden">{extras?.[provider]}</div>
+              ) : null}
             </IntegrationTile>
           );
         },
@@ -521,7 +509,9 @@ export function FinanceSection({
           manageTo={cryptoManageTo}
           reload={reload}
         >
-          {mode === "available" ? null : extras?.crypto}
+          {mode === "available" ? null : (
+            <div className="max-sm:hidden empty:hidden">{extras?.crypto}</div>
+          )}
         </CryptoTile>
       ) : null}
       {shown("alchemy") ? <AlchemyTile state={status.alchemy} reload={reload} /> : null}

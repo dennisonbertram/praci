@@ -84,12 +84,14 @@ describe("mock demo data", () => {
     expect(DEMO_CHIEF_DRAFT_V1.name).toBe(DEMO_CHIEF_DRAFT.name);
     for (const artifact of [DEMO_CHIEF_DRAFT_V1, ...DEMO_ARTIFACTS]) {
       expect(artifact.name).toContain("MOCK");
-      expect(artifact.text).toContain(MOCK_NOTE);
+      // A CSV stays pure rows; its MOCK name is the marker.
+      if (!artifact.name.endsWith(".csv")) expect(artifact.text).toContain(MOCK_NOTE);
     }
     expect(DEMO_ARCHIVED_BOT.description).toContain(MOCK_NOTE);
     for (const document of DEMO_DOCUMENTS) {
       expect(document.name).toContain("MOCK");
-      expect(document.text).toContain(MOCK_NOTE);
+      if (!document.name.endsWith(".csv")) expect(document.text).toContain(MOCK_NOTE);
+      else expect(document.text).not.toContain("MOCK DEMO DATA");
     }
   });
 

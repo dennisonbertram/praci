@@ -194,7 +194,7 @@ async function flush() {
 
 async function chooseModel(label: string) {
   const advanced = [...container.querySelectorAll("summary")].find(
-    (item) => item.querySelector("span")?.textContent?.trim() === "Advanced",
+    (item) => item.textContent?.trim() === "Advanced",
   );
   if (!advanced) throw new Error("Missing Advanced section");
   await act(async () => advanced.click());

@@ -331,7 +331,7 @@ const MAIL: Mail[] = [
     agoMs: 2.5 * DAY_MS,
     from: "Quinn Auditwell <quinn@auditwell.example.test>",
     subject: "Audit confirmation: Quill Capital Fund I holdings as of Sep 30",
-    text: "Hi Alex,\n\nAs part of the annual audit of Quill Capital Fund I (Mock), please confirm the fund's holdings in Northwind Robotics as of Sep 30, 2026:\n\n- SAFE, purchase amount $250,000, unconverted\n- No other securities\n\nA DocuSign envelope with this confirmation follows. Please reply with any differences by Oct 24.\n\nQuinn Auditwell\nAuditwell LLP (Mock)",
+    text: "Hi Maya,\n\nAs part of the annual audit of Quill Capital Fund I (Mock), please confirm the fund's holdings in Northwind Robotics as of Sep 30, 2026:\n\n- SAFE, purchase amount $250,000, unconverted\n- No other securities\n\nA DocuSign envelope with this confirmation follows. Please reply with any differences by Oct 24.\n\nQuinn Auditwell\nAuditwell LLP (Mock)",
     unread: true,
   },
   {
@@ -350,7 +350,7 @@ const MAIL: Mail[] = [
     to: ME,
     sent: true,
     subject: "Northwind Robotics: August investor update",
-    text: "Hi all,\n\nHighlights\n- Signed our second pilot customer (Beacon Retail).\n- Shipped firmware 2.3 with 18% faster picking.\n\nLowlights\n- A sensor supplier slipped two weeks.\n\nMetrics\n- Cash: $1.42M. Monthly burn: $72k. Runway: 19 months.\n\nAsks\n- Intros to warehouse operators in the Midwest.\n\nThanks,\nAlex",
+    text: "Hi all,\n\nHighlights\n- Signed our second pilot customer (Beacon Retail).\n- Shipped firmware 2.3 with 18% faster picking.\n\nLowlights\n- A sensor supplier slipped two weeks.\n\nMetrics\n- Cash: $1.42M. Monthly burn: $72k. Runway: 19 months.\n\nAsks\n- Intros to warehouse operators in the Midwest.\n\nThanks,\nMaya",
   },
   {
     thread: "investor-update-july",
@@ -359,7 +359,7 @@ const MAIL: Mail[] = [
     to: ME,
     sent: true,
     subject: "Northwind Robotics: July investor update",
-    text: "Hi all,\n\nHighlights\n- Closed the $250,000 Quill Capital SAFE.\n- Hired our first firmware engineer.\n\nLowlights\n- Pilot install took a week longer than planned.\n\nMetrics\n- Cash: $1.55M. Monthly burn: $68k. Runway: 22 months.\n\nAsks\n- Candidates for a senior firmware role.\n\nThanks,\nAlex",
+    text: "Hi all,\n\nHighlights\n- Closed the $250,000 Quill Capital SAFE.\n- Hired our first firmware engineer.\n\nLowlights\n- Pilot install took a week longer than planned.\n\nMetrics\n- Cash: $1.55M. Monthly burn: $68k. Runway: 22 months.\n\nAsks\n- Candidates for a senior firmware role.\n\nThanks,\nMaya",
   },
   {
     thread: "partner-intro",
@@ -381,7 +381,7 @@ const MAIL: Mail[] = [
     agoMs: 40 * DAY_MS,
     from: "Riley Testwell <riley@bookkeeping.example.test>",
     subject: "W-9 for the new vendor",
-    text: "Alex, can you send the W-9 for Globex Cloud (Mock) so I can file it?\n\nRiley",
+    text: "Maya, can you send the W-9 for Globex Cloud (Mock) so I can file it?\n\nRiley",
   },
   {
     thread: "support-ticket",
@@ -714,7 +714,7 @@ export function demoNewMail(now = new Date()): EmulatedMessage {
     from: "Priya Placeholder <priya@quill-capital.example.test>",
     to: ME,
     subject: `${MOCK_SUBJECT_PREFIX} Quick question on the hiring plan`,
-    text: `Hi Alex,\n\nBefore the LP call, can you confirm we still plan two engineering hires in Q4?\n\nPriya${FOOTER}`,
+    text: `Hi Maya,\n\nBefore the LP call, can you confirm we still plan two engineering hires in Q4?\n\nPriya${FOOTER}`,
   };
 }
 
@@ -1690,7 +1690,11 @@ const doc = (folder: string, name: string, text: string, kind: DemoDocument["kin
   name,
   kind,
   // "Acme Mock" reads as "Acme (Mock)", the form the parties take, so a model reading it agrees.
-  text: `MOCK DEMO DATA. ${text.replace(/ Mock\b/g, " (Mock)")} ${MOCK_NOTE}, not a real document.`,
+  // A CSV stays pure rows: the MOCK in its name is the marker, not a header or data row.
+  text:
+    kind === "csv"
+      ? text.replace(/ Mock\b/g, " (Mock)")
+      : `MOCK DEMO DATA. ${text.replace(/ Mock\b/g, " (Mock)")} ${MOCK_NOTE}, not a real document.`,
 });
 
 export const DEMO_DOCUMENTS: DemoDocument[] = [
@@ -1965,7 +1969,6 @@ ${MOCK_NOTE}: invented for UX testing.
 current,67621,24.2
 hire two engineers,101600,16.1
 cut tools 10%,60859,26.8
-${MOCK_NOTE},,
 `,
   },
   {
@@ -1979,7 +1982,6 @@ ${MOCK_NOTE},,
 2026-07,64900
 2026-08,66800
 2026-09,67600
-${MOCK_NOTE},
 `,
   },
   {
@@ -2001,10 +2003,9 @@ ${MOCK_NOTE}: invented for UX testing.
     text: `customer,stage,value_usd,next_step
 Halcyon Logistics (Mock),Won,120000,Q1 deployment kickoff
 Bolt Freight (Mock),Negotiation,60000,Resend the signed NDA
-Cascade Robotics (Mock),Won,0,Reseller onboarding
+Cascade Robotics (Mock),Won,30000,Reseller onboarding
 Pilot customer (Mock),Pilot,25000,Review results on Nov 6
 Orchard Fulfillment (Mock),Qualified,45000,Site visit
-${MOCK_NOTE},,,
 `,
   },
   {

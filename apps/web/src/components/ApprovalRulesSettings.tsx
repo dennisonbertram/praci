@@ -131,7 +131,10 @@ export function ApprovalRulesSettings() {
             ["purchase", purchaseId, t`Ask before purchases`],
           ] as const
         ).map(([kind, id, label]) => (
-          <div key={kind} className="flex items-start gap-3">
+          <div
+            key={kind}
+            className="flex items-start gap-3 pointer-coarse:min-h-11 pointer-coarse:items-center"
+          >
             <Switch
               id={id}
               data-testid={`approval-preset-${kind}`}
@@ -140,12 +143,15 @@ export function ApprovalRulesSettings() {
               disabled={loading || savingPreset !== null}
               onCheckedChange={(checked) => void setPreset(kind, checked)}
             />
-            <Label htmlFor={id} className="text-[14px] font-normal text-foreground/75">
+            <Label
+              htmlFor={id}
+              className="text-[14px] font-normal text-foreground/75 pointer-coarse:flex-1 pointer-coarse:self-stretch pointer-coarse:items-center"
+            >
               {label}
             </Label>
           </div>
         ))}
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-3 pointer-coarse:min-h-11 pointer-coarse:items-center">
           <Switch
             id={autoReviewId}
             data-testid="auto-review-toggle"
@@ -155,7 +161,10 @@ export function ApprovalRulesSettings() {
             onCheckedChange={(checked) => void toggleAutoReview(checked)}
           />
           <div>
-            <Label htmlFor={autoReviewId} className="text-[14px] font-normal text-foreground/75">
+            <Label
+              htmlFor={autoReviewId}
+              className="text-[14px] font-normal text-foreground/75 pointer-coarse:py-2"
+            >
               <Trans>Flag unexpected actions</Trans>
             </Label>
             {autoReview?.enabled && !autoReview.checkerAvailable ? (
