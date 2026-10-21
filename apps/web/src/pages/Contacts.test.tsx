@@ -308,3 +308,11 @@ it("shows the organization, else the email, under the name", async () => {
   );
   expect(under).toEqual(["Acme Corp", "cy@example.test"]);
 });
+
+it("lets the table fill the page and titles a long email", async () => {
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "customer")]);
+  await show();
+  const email = [...container.querySelectorAll("td")].find((td) => td.title.includes("@"));
+  expect(email?.title).toContain("@");
+  expect(container.querySelector(".max-w-5xl")).toBeNull();
+});

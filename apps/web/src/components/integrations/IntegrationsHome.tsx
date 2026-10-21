@@ -39,6 +39,7 @@ import {
 import { appReturnPath } from "../../lib/return-to";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
+import { PageHeader } from "../PageHeader";
 import { AppLogo } from "./AppLogo";
 import { ConnectAppDialog } from "./ConnectAppDialog";
 import { CustomConnectionDialog } from "./CustomConnectionDialog";
@@ -502,9 +503,7 @@ export function IntegrationsHome({
   return (
     <div className="rk-scroll h-full overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
       <div className="max-w-[1040px]">
-        <h1 className="text-lg font-semibold">
-          <Trans>Apps</Trans>
-        </h1>
+        <PageHeader title={<Trans>Apps</Trans>} className="mb-1" />
         <p className="mb-5 max-w-[640px] text-muted-foreground">
           <Trans>
             Connect the apps you use so your bots can read and act in them. You choose which bots
@@ -808,8 +807,12 @@ export function IntegrationsHome({
                   <Trans>Connect any other app by its address.</Trans>
                 </span>
               </div>
-              <Button variant="outline" onClick={() => setCustom({ url: "" })}>
-                <Trans>Add custom connection</Trans>
+              <Button
+                variant="outline"
+                aria-label={t`Add custom connection`}
+                onClick={() => setCustom({ url: "" })}
+              >
+                <Trans>Add</Trans>
               </Button>
             </div>
           </>

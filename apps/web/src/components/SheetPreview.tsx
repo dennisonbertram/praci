@@ -41,11 +41,12 @@ function csvCell(cell: Cell): Cell {
   return Number(cell);
 }
 
-/** "monthly_burn" and "monthlyBurn" read as "Monthly burn". */
+/** "monthly_burn" and "monthlyBurn" read as "Monthly burn"; a trailing currency code reads "Value (USD)". */
 function humanise(label: string): string {
   const words = label
     .replace(/[_-]+/g, " ")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/ (usd|eur|gbp)$/i, (_, code: string) => ` (${code.toUpperCase()})`)
     .trim();
   return words.charAt(0).toUpperCase() + words.slice(1);
 }

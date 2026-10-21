@@ -988,6 +988,9 @@ export function ShellPage() {
   useEffect(() => {
     if (!legalMode) setLegalAgentOpen(false);
   }, [legalMode]);
+  // Pages that name the workspace beside their title show it only when the user has several.
+  const pageSpaceName =
+    spaces.length > 1 ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name : undefined;
   const routeBot = resolveRouteBot({
     bots,
     botId,
@@ -5216,17 +5219,11 @@ export function ShellPage() {
             }
           />
         ) : contactsMode ? (
-          <ContactsPage
-            spaceName={
-              spaces.length > 1
-                ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
-                : undefined
-            }
-          />
+          <ContactsPage spaceName={pageSpaceName} />
         ) : artifactsMode ? (
           <ErrorBoundary fallback={<SectionLoadFailed />}>
             <Suspense fallback={null}>
-              <ArtifactsPage />
+              <ArtifactsPage spaceName={pageSpaceName} />
             </Suspense>
           </ErrorBoundary>
         ) : boardMode ? (
