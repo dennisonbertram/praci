@@ -186,7 +186,7 @@ it("shows a connected Carta by what it does, with a way to its page", async () =
   await show({ ...data(true, true), servers: [carta] });
   expect(container.textContent).toContain("Cap table, equity and investors");
   expect(container.textContent).not.toContain("mcp.app.carta.com");
-  expect(container.querySelector('a[href="/app/cap-table"]')?.textContent).toBe("Open Cap table");
+  expect(container.querySelector('a[href="/app/investors"]')?.textContent).toBe("Open Investors");
 });
 
 it("offers Carta and opens its sign-in dialog", async () => {
@@ -502,11 +502,11 @@ it("returns to the page that asked for the sign-in when its dialog closes", asyn
   await act(async () =>
     root.render(
       <MemoryRouter
-        initialEntries={["/app/integrations?q=carta&connect=carta&returnTo=/app/cap-table"]}
+        initialEntries={["/app/integrations?q=carta&connect=carta&returnTo=/app/investors"]}
       >
         <Routes>
           <Route path="/app/integrations" element={<IntegrationsHome data={data(true, false)} />} />
-          <Route path="/app/cap-table" element={<p>cap table page</p>} />
+          <Route path="/app/investors" element={<p>cap table page</p>} />
         </Routes>
       </MemoryRouter>,
     ),

@@ -228,12 +228,13 @@ export async function querySpaceSearch(
       id: string;
       threadId: string;
       seq: number;
+      createdAt: Date;
       blocks: Prisma.JsonValue;
       botId: string;
       botName: string;
     }>
   >`
-    SELECT m.id, m."threadId", m.seq, m.blocks, b.id AS "botId", b.name AS "botName"
+    SELECT m.id, m."threadId", m.seq, m."createdAt", m.blocks, b.id AS "botId", b.name AS "botName"
     FROM messages m
     INNER JOIN threads t ON t.id = m."threadId"
     INNER JOIN bots b ON b.id = t."botId"
@@ -251,6 +252,7 @@ export async function querySpaceSearch(
       botName: row.botName,
       messageId: row.id,
       seq: row.seq,
+      createdAt: row.createdAt.toISOString(),
       query,
       push: (hit) => pushInto(contentHits, hit, contentBudget),
     });
@@ -261,12 +263,13 @@ export async function querySpaceSearch(
       id: string;
       threadId: string;
       seq: number;
+      createdAt: Date;
       blocks: Prisma.JsonValue;
       groupId: string;
       groupName: string;
     }>
   >`
-    SELECT m.id, m."threadId", m.seq, m.blocks, g.id AS "groupId", g.name AS "groupName"
+    SELECT m.id, m."threadId", m.seq, m."createdAt", m.blocks, g.id AS "groupId", g.name AS "groupName"
     FROM messages m
     INNER JOIN threads t ON t.id = m."threadId"
     INNER JOIN chat_groups g ON g.id = t."groupId"
@@ -284,6 +287,7 @@ export async function querySpaceSearch(
       groupName: row.groupName,
       messageId: row.id,
       seq: row.seq,
+      createdAt: row.createdAt.toISOString(),
       query,
       push: (hit) => pushInto(contentHits, hit, contentBudget),
     });
@@ -301,6 +305,7 @@ function pushMessageHits(
     groupName?: string;
     messageId: string;
     seq: number;
+    createdAt: string;
     query: string;
     push: (hit: SearchHit) => void;
   },
@@ -322,6 +327,7 @@ function pushMessageHits(
         snippet: snippetAroundMatch(text, ctx.query),
         messageId: ctx.messageId,
         seq: ctx.seq,
+        createdAt: ctx.createdAt,
       });
       messageHit = true;
     }
@@ -334,6 +340,7 @@ function pushMessageHits(
           snippet: snippetAroundMatch(text, ctx.query),
           messageId: ctx.messageId,
           seq: ctx.seq,
+          createdAt: ctx.createdAt,
           url,
         });
       }
@@ -347,6 +354,7 @@ function pushMessageHits(
       snippet: ctx.query,
       messageId: ctx.messageId,
       seq: ctx.seq,
+      createdAt: ctx.createdAt,
     });
   }
 }

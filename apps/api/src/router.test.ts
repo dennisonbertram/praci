@@ -139,7 +139,7 @@ describe("account preferences", () => {
       name: "Test User",
       avatarStyle: "organic",
       timezone: null,
-      hiddenPages: ["legal", "cap-table"],
+      hiddenPages: ["legal", "investors"],
     });
 
     const { response } = await handler.handle(
@@ -148,7 +148,7 @@ describe("account preferences", () => {
         headers: { "content-type": "application/json" },
         // A userId in the body is ignored: the target is always the actor.
         body: JSON.stringify({
-          json: { hiddenPages: ["legal", "cap-table", "legal"], userId: "user-2" },
+          json: { hiddenPages: ["legal", "investors", "legal"], userId: "user-2" },
         }),
       }),
       { prefix: "/rpc", context: { actor } },
@@ -157,10 +157,26 @@ describe("account preferences", () => {
     expect(response.status).toBe(200);
     expect(update).toHaveBeenCalledWith({
       where: { id: "user-1" },
-      data: expect.objectContaining({ hiddenPages: ["legal", "cap-table"] }),
+      data: expect.objectContaining({ hiddenPages: ["legal", "investors"] }),
     });
     await expect(response.json()).resolves.toEqual({
-      json: expect.objectContaining({ hiddenPages: ["legal", "cap-table"] }),
+      json: expect.objectContaining({ hiddenPages: ["legal", "investors"] }),
+    });
+  });
+
+  it("saves the old cap-table hidden key as investors, once", async () => {
+    const { update, actor, handler } = preferencesDeps("organic");
+    await handler.handle(
+      new Request("http://127.0.0.1/rpc/preferences/update", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ json: { hiddenPages: ["cap-table", "legal", "investors"] } }),
+      }),
+      { prefix: "/rpc", context: { actor } },
+    );
+    expect(update).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      data: expect.objectContaining({ hiddenPages: ["investors", "legal"] }),
     });
   });
 

@@ -147,7 +147,7 @@ await pressControls(homeOf("sidebar-finance"), 24);
 for (const id of [
   "sidebar-inbox",
   "sidebar-legal",
-  "sidebar-cap-table",
+  "sidebar-investors",
   "sidebar-data-room",
   "sidebar-artifacts",
 ]) {

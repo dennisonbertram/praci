@@ -318,7 +318,7 @@ export function BotSkillsSection({
                 <Button
                   variant="ghost"
                   type="button"
-                  className="px-2.5 text-[13px] text-muted-foreground hover:text-foreground"
+                  className="-me-2.5 px-2.5 text-[13px] text-muted-foreground hover:text-foreground"
                 />
               }
             >

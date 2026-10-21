@@ -751,7 +751,7 @@ msgid "Add a local command"
 msgstr "Add a local command"
 
 #: src/components/AgentPanelIntro.tsx
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Add a model"
 msgstr "Add a model"
 
@@ -815,7 +815,7 @@ msgstr "Add credential"
 msgid "Add custom connection"
 msgstr "Add custom connection"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Add email"
 msgstr "Add email"
 
@@ -873,7 +873,7 @@ msgstr "Add to routine"
 msgid "Add wallet"
 msgstr "Add wallet"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Add your investors, auditors and counsel here. Contacts are your address book."
 msgstr "Add your investors, auditors and counsel here. Contacts are your address book."
 
@@ -955,9 +955,9 @@ msgid "AI data sharing off"
 msgstr "AI data sharing off"
 
 #: src/components/integrations/IntegrationsHome.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/Inbox.tsx
+#: src/pages/Investors.tsx
 msgid "All"
 msgstr "All"
 
@@ -1136,13 +1136,13 @@ msgstr "Always allowed"
 
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
+#: src/pages/Investors.tsx
 msgid "Amount"
 msgstr "Amount"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Amount raised"
 msgstr "Amount raised"
 
@@ -1342,7 +1342,6 @@ msgstr "Artifact"
 
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Artifacts"
 msgstr "Artifacts"
 
@@ -1483,7 +1482,7 @@ msgstr "Audience"
 msgid "Auditor"
 msgstr "Auditor"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Auditors"
 msgstr "Auditors"
 
@@ -1587,13 +1586,13 @@ msgstr "Back"
 msgid "Back to artifacts"
 msgstr "Back to artifacts"
 
-#: src/pages/Shell.tsx
-msgid "Back to Cap table"
-msgstr "Back to Cap table"
-
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Back to Inbox"
 msgstr "Back to Inbox"
+
+#: src/pages/Shell.tsx
+msgid "Back to Investors"
+msgstr "Back to Investors"
 
 #: src/pages/Auth.tsx
 msgid "Back to sign in"
@@ -1917,14 +1916,13 @@ msgstr "cancelled"
 msgid "Cancelled"
 msgstr "Cancelled"
 
-#: src/pages/CapTable.tsx
-#: src/pages/Shell.tsx
-msgid "Cap table"
-msgstr "Cap table"
-
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Cap table, equity and investors"
 msgstr "Cap table, equity and investors"
+
+#: src/pages/Shell.tsx
+msgid "cap table, equity, ownership, Carta"
+msgstr "cap table, equity, ownership, Carta"
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Card balance owed"
@@ -1942,11 +1940,11 @@ msgstr "Card payment · not spend"
 msgid "Cardholder"
 msgstr "Cardholder"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Carta is connected"
 msgstr "Carta is connected"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Carta is the service many startups use to record who owns shares, options and SAFEs. Connect it to see them here and to ask the Carta agent about them."
 msgstr "Carta is the service many startups use to record who owns shares, options and SAFEs. Connect it to see them here and to ask the Carta agent about them."
 
@@ -2052,7 +2050,6 @@ msgstr "Chart hidden while amounts are hidden"
 #: src/components/data-room/FilterBar.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Chat"
 msgstr "Chat"
 
@@ -2077,7 +2074,6 @@ msgid "Chat with your agents over iMessage from your Mac"
 msgstr "Chat with your agents over iMessage from your Mac"
 
 #: src/pages/Shell.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Chats"
 msgstr "Chats"
 
@@ -2208,9 +2204,9 @@ msgstr "Clear filter {label}"
 
 #: src/components/data-room/DataRoomStats.tsx
 #: src/pages/Artifacts.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
 #: src/pages/DataRoom.tsx
+#: src/pages/Investors.tsx
 msgid "Clear filters"
 msgstr "Clear filters"
 
@@ -2220,7 +2216,6 @@ msgstr "Clear formatting"
 
 #: src/components/ListControls.tsx
 #: src/pages/DataRoom.tsx
-#: src/pages/Shell.tsx
 msgid "Clear search"
 msgstr "Clear search"
 
@@ -2407,7 +2402,7 @@ msgstr "Command variable"
 msgid "Comment"
 msgstr "Comment"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Common share price"
 msgstr "Common share price"
 
@@ -2584,7 +2579,7 @@ msgstr "Connect API key"
 msgid "Connect Blockscout"
 msgstr "Connect Blockscout"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Connect Carta"
 msgstr "Connect Carta"
 
@@ -2806,7 +2801,7 @@ msgstr "Could not check stored credentials."
 msgid "Could not check teaching status. Refresh the view to continue."
 msgstr "Could not check teaching status. Refresh the view to continue."
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Could not check whether Carta is connected."
 msgstr "Could not check whether Carta is connected."
 
@@ -3016,8 +3011,8 @@ msgstr "Could not load bots. Reload to try again."
 msgid "Could not load commands"
 msgstr "Could not load commands"
 
-#: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
+#: src/pages/Investors.tsx
 msgid "Could not load contacts"
 msgstr "Could not load contacts"
 
@@ -3063,7 +3058,7 @@ msgstr "Could not load skill"
 msgid "Could not load the app list. Reload to try again."
 msgstr "Could not load the app list. Reload to try again."
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Could not load the cap table, so holdings are missing."
 msgstr "Could not load the cap table, so holdings are missing."
 
@@ -3142,7 +3137,7 @@ msgstr "Could not read this file. Delete it and upload it again."
 msgid "Could not reconnect"
 msgstr "Could not reconnect"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Could not refresh from Carta"
 msgstr "Could not refresh from Carta"
 
@@ -3914,7 +3909,6 @@ msgstr "Document date"
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/FolderDocuments.tsx
 #: src/pages/Shell.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Documents"
 msgstr "Documents"
 
@@ -4092,8 +4086,8 @@ msgstr "Edit wallet"
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/SelectionBar.tsx
 #: src/pages/Auth.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
+#: src/pages/Investors.tsx
 msgid "Email"
 msgstr "Email"
 
@@ -4200,10 +4194,6 @@ msgstr "Enter the URL, starting with https://."
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Equity"
 msgstr "Equity"
-
-#: src/pages/Shell.tsx
-msgid "equity, ownership, shares, options, Carta"
-msgstr "equity, ownership, shares, options, Carta"
 
 #: src/lib/devin-format.ts
 #: src/lib/roster-status.ts
@@ -4345,10 +4335,6 @@ msgstr "Fee"
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Fetching…"
 msgstr "Fetching…"
-
-#: src/pages/SpaceSearch.tsx
-msgid "File"
-msgstr "File"
 
 #: src/components/computer/FilesApp.tsx
 msgid "File is too large to upload."
@@ -4551,7 +4537,7 @@ msgstr "From email"
 msgid "From Google Drive"
 msgstr "From Google Drive"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "From the latest 409A valuation"
 msgstr "From the latest 409A valuation"
 
@@ -4567,7 +4553,7 @@ msgstr "Full screen"
 msgid "Fullscreen"
 msgstr "Fullscreen"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Fully diluted shares"
 msgstr "Fully diluted shares"
 
@@ -5065,7 +5051,8 @@ msgstr "Investor"
 msgid "Investor document"
 msgstr "Investor document"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
+#: src/pages/Shell.tsx
 msgid "Investors"
 msgstr "Investors"
 
@@ -5142,8 +5129,8 @@ msgid "Keyboard shortcuts"
 msgstr "Keyboard shortcuts"
 
 #: src/components/ContactDialog.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
+#: src/pages/Investors.tsx
 msgid "Kind"
 msgstr "Kind"
 
@@ -5298,10 +5285,6 @@ msgstr "Light"
 msgid "Linear"
 msgstr "Linear"
 
-#: src/pages/SpaceSearch.tsx
-msgid "Link"
-msgstr "Link"
-
 #: src/components/integrations/IMessageSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Link a chat app"
@@ -5453,7 +5436,7 @@ msgid "Lowercase letters, numbers, hyphens and underscores, starting with a lett
 msgstr "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 
 #: src/components/MailApprovalCard.tsx
-#: src/pages/SpaceSearch.tsx
+#: src/pages/Shell.tsx
 msgid "Mail"
 msgstr "Mail"
 
@@ -5670,7 +5653,6 @@ msgstr "Merge"
 #: src/components/MailApprovalCard.tsx
 #: src/pages/shell/chat-context.tsx
 #: src/pages/shell/composer.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Message"
 msgstr "Message"
 
@@ -5935,9 +5917,9 @@ msgstr "Mute"
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
 #: src/pages/GroupPanel.tsx
+#: src/pages/Investors.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-credentials.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -6143,7 +6125,7 @@ msgstr "No artifacts match these filters."
 msgid "No artifacts yet"
 msgstr "No artifacts yet"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "No auditors yet"
 msgstr "No auditors yet"
 
@@ -6217,7 +6199,7 @@ msgstr "No follow-ups from meetings yet"
 msgid "No group chats yet."
 msgstr "No group chats yet."
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "No investors yet"
 msgstr "No investors yet"
 
@@ -6239,15 +6221,11 @@ msgid "No mail matches this filter"
 msgstr "No mail matches this filter"
 
 #: src/pages/AccountSettingsOverlay.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
+#: src/pages/Investors.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
 msgstr "No matches"
-
-#: src/pages/SpaceSearch.tsx
-msgid "No matches in chats, pages, documents or artifacts."
-msgstr "No matches in chats, pages, documents or artifacts."
 
 #: src/pages/shell/composer.tsx
 msgid "No matches. Press Escape to send as typed."
@@ -6293,11 +6271,11 @@ msgstr "No net spend in the last 3 full months"
 msgid "No open deadlines."
 msgstr "No open deadlines."
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "No option grants in Carta"
 msgstr "No option grants in Carta"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "No other contacts yet"
 msgstr "No other contacts yet"
 
@@ -6329,7 +6307,6 @@ msgstr "No response from the server. Check the address."
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/shell/command-palette.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "No results"
 msgstr "No results"
 
@@ -6349,7 +6326,7 @@ msgstr "No runs yet"
 msgid "No rush"
 msgstr "No rush"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "No shareholders in Carta"
 msgstr "No shareholders in Carta"
 
@@ -6648,11 +6625,6 @@ msgstr "Open <0>{0}</0> to finish signing in."
 msgid "Open again"
 msgstr "Open again"
 
-#: src/components/integrations/IntegrationsHome.tsx
-#: src/components/integrations/McpDetail.tsx
-msgid "Open Cap table"
-msgstr "Open Cap table"
-
 #: src/pages/Artifacts.tsx
 msgid "Open chat"
 msgstr "Open chat"
@@ -6661,7 +6633,7 @@ msgstr "Open chat"
 msgid "Open computer settings"
 msgstr "Open computer settings"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Open Contacts"
 msgstr "Open Contacts"
 
@@ -6723,6 +6695,11 @@ msgstr "Open Inbox"
 msgid "Open integration sign-in"
 msgstr "Open integration sign-in"
 
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/McpDetail.tsx
+msgid "Open Investors"
+msgstr "Open Investors"
+
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Open link"
 msgstr "Open link"
@@ -6732,6 +6709,7 @@ msgstr "Open link"
 msgid "Open Models settings"
 msgstr "Open Models settings"
 
+#: src/components/PageHeader.tsx
 #: src/pages/Shell.tsx
 msgid "Open navigation"
 msgstr "Open navigation"
@@ -6789,7 +6767,7 @@ msgstr "Opening Praci…"
 msgid "Option pool ({poolFree} available)"
 msgstr "Option pool ({poolFree} available)"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Option pool available"
 msgstr "Option pool available"
 
@@ -6804,7 +6782,7 @@ msgstr "Optional"
 msgid "Optional faster balance reads"
 msgstr "Optional faster balance reads"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Options"
 msgstr "Options"
 
@@ -6846,8 +6824,8 @@ msgstr "Original message unavailable"
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
 #: src/lib/devin-format.ts
-#: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceTransaction.tsx
+#: src/pages/Investors.tsx
 msgid "Other"
 msgstr "Other"
 
@@ -6892,11 +6870,11 @@ msgid "Owner"
 msgstr "Owner"
 
 #: src/components/cap-table/OwnershipDonut.tsx
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Ownership"
 msgstr "Ownership"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Ownership by share class"
 msgstr "Ownership by share class"
 
@@ -6925,7 +6903,6 @@ msgstr "Page options"
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Pages"
 msgstr "Pages"
 
@@ -7274,7 +7251,7 @@ msgstr "Read"
 msgid "Read balances and transactions"
 msgstr "Read balances and transactions"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Read cap table"
 msgstr "Read cap table"
 
@@ -7322,7 +7299,7 @@ msgstr "Reading {done} of {total}"
 msgid "Reading a connected app"
 msgstr "Reading a connected app"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Reading Carta…"
 msgstr "Reading Carta…"
 
@@ -7409,7 +7386,7 @@ msgstr "Reconnect"
 msgid "Reconnect {name}"
 msgstr "Reconnect {name}"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Reconnect Carta"
 msgstr "Reconnect Carta"
 
@@ -7498,11 +7475,11 @@ msgstr "Redirect URI"
 msgid "Refresh"
 msgstr "Refresh"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Refresh from Carta"
 msgstr "Refresh from Carta"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Refresh from Carta. The Carta agent reads your cap table again."
 msgstr "Refresh from Carta. The Carta agent reads your cap table again."
 
@@ -7912,7 +7889,6 @@ msgstr "Rotate key"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Routine"
 msgstr "Routine"
 
@@ -7991,7 +7967,7 @@ msgstr "Runway scenarios"
 msgid "Safe"
 msgstr "Safe"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "SAFEs are not in the share counts"
 msgstr "SAFEs are not in the share counts"
 
@@ -8028,7 +8004,7 @@ msgstr "Save"
 msgid "Save {0} as a contact"
 msgstr "Save {0} as a contact"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Save as contact"
 msgstr "Save as contact"
 
@@ -8066,7 +8042,7 @@ msgid "Saved"
 msgstr "Saved"
 
 #. placeholder {0}: saved.name
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Saved {0}"
 msgstr "Saved {0}"
 
@@ -8138,8 +8114,8 @@ msgstr "Scroll sideways to see the whole graph."
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/AccountSettingsOverlay.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
+#: src/pages/Investors.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
@@ -8198,9 +8174,9 @@ msgstr "Search Drive"
 msgid "Search mail"
 msgstr "Search mail"
 
-#: src/pages/SpaceSearch.tsx
-msgid "Search mail for “{query}”"
-msgstr "Search mail for “{query}”"
+#: src/pages/Shell.tsx
+msgid "Search mail for “{q}”"
+msgstr "Search mail for “{q}”"
 
 #: src/pages/Inbox.tsx
 msgid "Search mail, e.g. from:sam has:attachment"
@@ -8251,12 +8227,8 @@ msgstr "Searching in {openFolderPath}"
 msgid "Searching your mail"
 msgstr "Searching your mail"
 
-#: src/pages/SpaceSearch.tsx
-msgid "Searching…"
-msgstr "Searching…"
-
-#: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
+#: src/pages/Investors.tsx
 msgid "Security"
 msgstr "Security"
 
@@ -8264,7 +8236,7 @@ msgstr "Security"
 msgid "See usage"
 msgstr "See usage"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "See who owns your company"
 msgstr "See who owns your company"
 
@@ -8454,16 +8426,16 @@ msgstr "Shared by all bots"
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr "Shared chat with 2-6 bots. They all reply in the same thread."
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Shareholder"
 msgstr "Shareholder"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Shareholders"
 msgstr "Shareholders"
 
 #: src/components/cap-table/OwnershipDonut.tsx
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Shares"
 msgstr "Shares"
 
@@ -8491,10 +8463,6 @@ msgstr "Show all {total}"
 #: src/components/HideAmountsToggle.tsx
 msgid "Show amounts"
 msgstr "Show amounts"
-
-#: src/pages/Shell.tsx
-msgid "Show computer"
-msgstr "Show computer"
 
 #: src/components/finance/ui.tsx
 msgid "Show finances for"
@@ -8574,7 +8542,7 @@ msgstr "Sign in again"
 msgid "Sign in to {appName} in the new window"
 msgstr "Sign in to {appName} in the new window"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Sign in to Carta again to see who owns your company"
 msgstr "Sign in to Carta again to see who owns your company"
 
@@ -9204,7 +9172,7 @@ msgstr "The bots you chose can use {0}."
 msgid "The Carta agent can now read your cap table."
 msgstr "The Carta agent can now read your cap table."
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "The Carta agent has not read your cap table yet."
 msgstr "The Carta agent has not read your cap table yet."
 
@@ -9212,7 +9180,7 @@ msgstr "The Carta agent has not read your cap table yet."
 msgid "The Carta agent loses access to Carta."
 msgstr "The Carta agent loses access to Carta."
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "The Carta agent needs a model before it can read your cap table."
 msgstr "The Carta agent needs a model before it can read your cap table."
 
@@ -9650,9 +9618,9 @@ msgstr "Try {name} again"
 #: src/components/ShellSkeleton.tsx
 #: src/lib/use-contact-notices.ts
 #: src/pages/ActivityList.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
 #: src/pages/Inbox.tsx
+#: src/pages/Investors.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/Shell.tsx
 msgid "Try again"
@@ -9708,7 +9676,7 @@ msgid "Types"
 msgstr "Types"
 
 #: src/components/cap-table/OwnershipDonut.tsx
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Unallocated pool"
 msgstr "Unallocated pool"
 
@@ -9878,8 +9846,8 @@ msgstr "Updated"
 
 #. placeholder {0}: formatRelativeTime(data.fetchedAt)
 #. placeholder {0}: formatRelativeTime(snapshot.updatedAt)
-#: src/pages/CapTable.tsx
 #: src/pages/Devin.tsx
+#: src/pages/Investors.tsx
 msgid "Updated {0}"
 msgstr "Updated {0}"
 
@@ -10433,7 +10401,7 @@ msgstr "You'll sign in to {0} in a new window."
 msgid "Your browser blocked the sign-in window"
 msgstr "Your browser blocked the sign-in window"
 
-#: src/pages/CapTable.tsx
+#: src/pages/Investors.tsx
 msgid "Your Carta sign-in ended. Sign in again to see holders here."
 msgstr "Your Carta sign-in ended. Sign in again to see holders here."
 

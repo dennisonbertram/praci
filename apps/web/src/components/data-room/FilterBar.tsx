@@ -14,7 +14,7 @@ import {
   PopoverTrigger,
 } from "@rakazo/ui-web";
 import { ChevronDown, Folder, FolderPlus, ListFilter, WandSparkles, X } from "lucide-react";
-import type { FormEvent, ReactElement } from "react";
+import type { FormEvent, ReactElement, ReactNode } from "react";
 import { useState } from "react";
 import { PickFilter, SearchField, SortControl, Tip } from "../ListControls";
 import { PAGE_GUTTER_X } from "../PageHeader";
@@ -226,6 +226,7 @@ export function FilterBar({
   sources,
   hasDates,
   statsView = false,
+  trailing,
   folders,
   folderId,
   onFolder,
@@ -259,6 +260,8 @@ export function FilterBar({
   hasDates: boolean;
   /** Stats count by the filters only: search and sort order a list, so they are left out. */
   statsView?: boolean;
+  /** The view toggles: on a phone they wait behind Filters, with Sort. */
+  trailing?: ReactNode;
 }) {
   const labels = sortLabels();
   const field = sort?.field ?? "relevance";
@@ -414,8 +417,17 @@ export function FilterBar({
           />
         ) : null}
       </div>
+      {trailing ? (
+        <div
+          className={`order-3 ms-auto flex items-center ${pillsOpen ? "" : "@max-[639px]/bd:hidden"} @min-[640px]/bd:hidden`}
+        >
+          {trailing}
+        </div>
+      ) : null}
       {statsView ? null : (
-        <div className="order-3 ms-auto flex h-8 shrink-0 items-center gap-0.5 @min-[960px]/bd:order-4">
+        <div
+          className={`order-3 ms-auto flex h-8 shrink-0 items-center gap-0.5 ${pillsOpen ? "" : "@max-[639px]/bd:hidden"} @min-[960px]/bd:order-4`}
+        >
           {/* Relevance has no direction, so the arrow only shows for a field sort. */}
           <SortControl
             fields={fields.map((name) => [name, labels[name]])}

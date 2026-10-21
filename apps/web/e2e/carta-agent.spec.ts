@@ -35,7 +35,7 @@ test("Carta uses the general Agent controls while retaining its specialized agen
   const share = section.getByRole("switch", { name: /Let other agents use/ });
   await expect(writes).not.toBeChecked();
   await expect(share).not.toBeChecked();
-  await expect(page.getByRole("link", { name: "Open Cap table" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Investors" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Create agent", exact: true })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "carta-agent-defaults");
   await writes.click();

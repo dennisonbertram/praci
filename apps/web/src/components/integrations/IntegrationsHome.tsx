@@ -53,7 +53,15 @@ import {
 } from "./FinanceSection";
 import { GranolaStatusLine, granolaLine } from "./GranolaMeetingsCard";
 import { IMessageSection } from "./IMessageSection";
-import { AgentStack, CardHead, IntegrationTile, SectionTitle, StatusBadge } from "./parts";
+import {
+  AgentStack,
+  CardHead,
+  IntegrationTile,
+  OPEN_LINK,
+  PHONE_ROW,
+  SectionTitle,
+  StatusBadge,
+} from "./parts";
 import type { IntegrationsData } from "./useIntegrations";
 import { agentsFor } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
@@ -69,9 +77,11 @@ function hostOf(value: string | null) {
   }
 }
 
-function Card({ children }: { children: ReactNode }) {
+function Card({ children, row }: { children: ReactNode; row?: boolean }) {
   return (
-    <IntegrationTile className="relative  transition-colors hover:bg-muted/40">
+    <IntegrationTile
+      className={`relative transition-colors hover:bg-muted/40 ${row ? PHONE_ROW : ""}`}
+    >
       {children}
     </IntegrationTile>
   );
@@ -80,19 +90,18 @@ function Card({ children }: { children: ReactNode }) {
 /** Opens the app page an integration feeds (Inbox, Cap table), like Mercury's "Open Finance". */
 function OpenPageLink({ to, children }: { to: string; children: ReactNode }) {
   return (
-    <Link
-      to={to}
-      className="relative z-10 ms-auto inline-flex h-7 pointer-coarse:h-11 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
-    >
+    <Link to={to} className={OPEN_LINK}>
       {children}
     </Link>
   );
 }
 
-function UsedBy({ bots }: { bots: ReturnType<typeof agentsFor> }) {
+function UsedBy({ bots, row }: { bots: ReturnType<typeof agentsFor>; row?: boolean }) {
   if (bots.length === 0) return null;
   return (
-    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+    <div
+      className={`flex items-center gap-2 text-[11px] text-muted-foreground ${row ? "max-sm:hidden" : ""}`}
+    >
       <Trans>Used by</Trans>
       <AgentStack bots={bots} />
     </div>
@@ -151,7 +160,7 @@ function McpCard({
   // The app page a known server feeds, opened from its card like Mercury's "Open Finance".
   const page =
     known?.id === "carta"
-      ? { to: "/app/cap-table", label: t`Open Cap table` }
+      ? { to: "/app/investors", label: t`Open Investors` }
       : devin
         ? { to: "/app/devin", label: t`Open Devin` }
         : undefined;
@@ -160,7 +169,7 @@ function McpCard({
   const keyStatus = data.meetings;
   const keyLine = granola && keyStatus ? granolaLine(keyStatus) : null;
   return (
-    <Card>
+    <Card row={status === "connected"}>
       <CardHead
         name={server.name}
         logo={known?.logo}
@@ -176,7 +185,7 @@ function McpCard({
         {keyLine && keyStatus ? (
           <GranolaStatusLine status={keyStatus} />
         ) : (
-          <StatusBadge status={status} />
+          <StatusBadge status={status} quiet />
         )}
         {page && status === "connected" ? (
           <OpenPageLink to={page.to}>{page.label}</OpenPageLink>
@@ -197,7 +206,10 @@ function McpCard({
           {reconnect.error}
         </p>
       ) : null}
-      <UsedBy bots={data.bots.filter((bot) => assigned.includes(bot.id))} />
+      <UsedBy
+        bots={data.bots.filter((bot) => assigned.includes(bot.id))}
+        row={status === "connected"}
+      />
       {reconnect.needsClient ? (
         <CustomConnectionDialog data={data} existingServer={server} onClose={reconnect.dismiss} />
       ) : null}
@@ -245,7 +257,7 @@ function AppCard({
     (item) => item.connectorId === app.connectorId && item.slug === app.provider,
   )?.description;
   return (
-    <Card>
+    <Card row={app.status === "connected"}>
       <CardHead
         name={app.name}
         logo={app.logo}
@@ -253,7 +265,7 @@ function AppCard({
         to={appPath({ connectorId: app.connectorId, slug: app.provider })}
       />
       <div className="mt-auto flex min-h-7 items-center gap-2">
-        <StatusBadge status={app.status} />
+        <StatusBadge status={app.status} quiet />
         {app.status === "connected" && app.provider.toUpperCase() === "GMAIL" ? (
           <OpenPageLink to="/app/inbox">
             <Trans>Open Inbox</Trans>
@@ -288,7 +300,10 @@ function AppCard({
           <Trans>Waiting for you to finish signing in.</Trans>
         </p>
       ) : (
-        <UsedBy bots={agentsFor(data.bots, working ? data.access[working.id] : undefined)} />
+        <UsedBy
+          bots={agentsFor(data.bots, working ? data.access[working.id] : undefined)}
+          row={app.status === "connected"}
+        />
       )}
     </Card>
   );
@@ -378,7 +393,7 @@ export function IntegrationsHome({
   const connectOnLoad = useRef(params.get("connect"));
   // /app/integrations?open=gmail shows that app's page, where its accounts can be removed or added.
   const openOnLoad = useRef(params.get("open"));
-  // ...&returnTo=/app/cap-table sends the founder back there when that dialog closes.
+  // ...&returnTo=/app/investors sends the founder back there when that dialog closes.
   const returnTo = useRef(appReturnPath(params.get("returnTo")));
   const navigate = useNavigate();
   const [visible, setVisible] = useState(CONNECTION_CATALOG_PAGE_SIZE);

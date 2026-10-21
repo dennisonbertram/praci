@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 251 of 251
-- Web and shared components: 677
+- Web and shared component files with stories: 250 of 250
+- Web and shared components: 675
 - Mobile components: 138 in 95 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -284,7 +284,6 @@ Every rendered React component, grouped by area. A web or shared component file 
 | BillingSettingsPanel | [apps/web/src/pages/BillingSettingsPanel.tsx](../../apps/web/src/pages/BillingSettingsPanel.tsx) | [BillingSettingsPanel.stories.tsx](../../apps/web/src/pages/BillingSettingsPanel.stories.tsx) | web |
 | BoardPage, TicketDialog | [apps/web/src/pages/Board.tsx](../../apps/web/src/pages/Board.tsx) | [Board.stories.tsx](../../apps/web/src/pages/Board.stories.tsx) | web |
 | BotContextMenu | [apps/web/src/pages/BotContextMenu.tsx](../../apps/web/src/pages/BotContextMenu.tsx) | [BotContextMenu.stories.tsx](../../apps/web/src/pages/BotContextMenu.stories.tsx) | web |
-| Figure, SafeNote, Summary, OwnershipSection, ConnectCartaDialog, CapTablePage | [apps/web/src/pages/CapTable.tsx](../../apps/web/src/pages/CapTable.tsx) | [CapTable.stories.tsx](../../apps/web/src/pages/CapTable.stories.tsx) | web |
 | ContactsPage | [apps/web/src/pages/Contacts.tsx](../../apps/web/src/pages/Contacts.tsx) | [Contacts.stories.tsx](../../apps/web/src/pages/Contacts.stories.tsx) | web |
 | FileInputButton, DataRoomPage | [apps/web/src/pages/DataRoom.tsx](../../apps/web/src/pages/DataRoom.tsx) | [DataRoom.stories.tsx](../../apps/web/src/pages/DataRoom.stories.tsx) | web |
 | DevinPage, Devin, DevinSkeleton | [apps/web/src/pages/Devin.tsx](../../apps/web/src/pages/Devin.tsx) | [Devin.stories.tsx](../../apps/web/src/pages/Devin.stories.tsx) | web |
@@ -302,6 +301,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | InboxPage, InboxListPage | [apps/web/src/pages/Inbox.tsx](../../apps/web/src/pages/Inbox.tsx) | [Inbox.stories.tsx](../../apps/web/src/pages/Inbox.stories.tsx) | web |
 | IntegrationsPage | [apps/web/src/pages/Integrations.tsx](../../apps/web/src/pages/Integrations.tsx) | [Integrations.stories.tsx](../../apps/web/src/pages/Integrations.stories.tsx) | web |
 | IntegrationSetupPage | [apps/web/src/pages/IntegrationSetup.tsx](../../apps/web/src/pages/IntegrationSetup.tsx) | [IntegrationSetup.stories.tsx](../../apps/web/src/pages/IntegrationSetup.stories.tsx) | web |
+| Figure, SafeNote, Summary, OwnershipSection, ConnectCartaDialog, InvestorsPage | [apps/web/src/pages/Investors.tsx](../../apps/web/src/pages/Investors.tsx) | [Investors.stories.tsx](../../apps/web/src/pages/Investors.stories.tsx) | web |
 | KnowledgeSection, SpaceMemorySection, MemoryDocumentList | [apps/web/src/pages/KnowledgeSection.tsx](../../apps/web/src/pages/KnowledgeSection.tsx) | [KnowledgeSection.stories.tsx](../../apps/web/src/pages/KnowledgeSection.stories.tsx) | web |
 | LegalPage, Legal, ModelBlockerNotice, GraphTab, LegalSkeleton | [apps/web/src/pages/Legal.tsx](../../apps/web/src/pages/Legal.tsx) | [Legal.stories.tsx](../../apps/web/src/pages/Legal.stories.tsx) | web |
 | NextDeadline, Title, Status, LegalContracts | [apps/web/src/pages/legal/LegalContracts.tsx](../../apps/web/src/pages/legal/LegalContracts.tsx) | [LegalContracts.stories.tsx](../../apps/web/src/pages/legal/LegalContracts.stories.tsx) | web |
@@ -342,7 +342,6 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ChoiceCard, OnboardingFocusQuestion, OnboardingFocusOptionHint, OnboardingFocusOptionLabel, AppConnectCard, ChartCanvas, ChartCanvasPlot, McpApprovalCard, ChartBlockView, ArtifactImage, ArtifactImageGrid | [apps/web/src/pages/shell/message-cards.tsx](../../apps/web/src/pages/shell/message-cards.tsx) | [message-cards.stories.tsx](../../apps/web/src/pages/shell/message-cards.stories.tsx) | web |
 | SidebarHeaderRow | [apps/web/src/pages/shell/sidebar-header-row.tsx](../../apps/web/src/pages/shell/sidebar-header-row.tsx) | [sidebar-header-row.stories.tsx](../../apps/web/src/pages/shell/sidebar-header-row.stories.tsx) | web |
 | ThreadMarkdown, UnreadDivider, Transcript, QuoteSelectionButton, MessageHoverActions, SpeakerHeader, MessageView | [apps/web/src/pages/shell/transcript.tsx](../../apps/web/src/pages/shell/transcript.tsx) | [transcript.stories.tsx](../../apps/web/src/pages/shell/transcript.stories.tsx) | web |
-| Section, LinkRow, SpaceSearchResults | [apps/web/src/pages/SpaceSearch.tsx](../../apps/web/src/pages/SpaceSearch.tsx) | [SpaceSearch.stories.tsx](../../apps/web/src/pages/SpaceSearch.stories.tsx) | web |
 | VoiceSettingsOverlay | [apps/web/src/pages/VoiceSettingsOverlay.tsx](../../apps/web/src/pages/VoiceSettingsOverlay.tsx) | [VoiceSettingsOverlay.stories.tsx](../../apps/web/src/pages/VoiceSettingsOverlay.stories.tsx) | web |
 | WelcomePage | [apps/web/src/pages/Welcome.tsx](../../apps/web/src/pages/Welcome.tsx) | [Welcome.stories.tsx](../../apps/web/src/pages/Welcome.stories.tsx) | web |
 | WindowChrome | [apps/web/src/pages/WindowChrome.tsx](../../apps/web/src/pages/WindowChrome.tsx) | [WindowChrome.stories.tsx](../../apps/web/src/pages/WindowChrome.stories.tsx) | web |
@@ -351,7 +350,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
-| App, SessionApp, LegacySetupRedirect, SignInRedirect, SessionUnavailable, AppFailed, GateFallback | [apps/web/src/App.tsx](../../apps/web/src/App.tsx) | [App.stories.tsx](../../apps/web/src/App.stories.tsx) | web |
+| App, SessionApp, LegacySetupRedirect, CapTableRedirect, SignInRedirect, SessionUnavailable, AppFailed, GateFallback | [apps/web/src/App.tsx](../../apps/web/src/App.tsx) | [App.stories.tsx](../../apps/web/src/App.stories.tsx) | web |
 
 ## Mobile app (screens)
 

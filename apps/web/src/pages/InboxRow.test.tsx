@@ -223,7 +223,7 @@ it("shows the row count beside a group heading, and no heading without a title",
       root.render(<InboxGroup title={title} rows={rows} onOpen={() => {}} onMark={undefined} />),
     );
   await show("Earlier");
-  expect(container.querySelector("h2")?.textContent).toBe("Earlier2");
+  expect(container.querySelector("h2")?.textContent).toBe("Earlier2 unread");
   await show(undefined);
   expect(container.querySelector("h2")).toBeNull();
 });

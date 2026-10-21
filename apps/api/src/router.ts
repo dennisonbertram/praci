@@ -1467,7 +1467,10 @@ export function createRouter(deps: RouterDeps) {
             timezone: input.timezone,
             tourSeenAt:
               input.tourSeen === undefined ? undefined : input.tourSeen ? new Date() : null,
-            hiddenPages: input.hiddenPages && [...new Set(input.hiddenPages)],
+            // A tab open across the cap-table rename may still send the old key.
+            hiddenPages: input.hiddenPages && [
+              ...new Set(input.hiddenPages.map((key) => (key === "cap-table" ? "investors" : key))),
+            ],
           },
         });
         return meDto(deps, context.actor);

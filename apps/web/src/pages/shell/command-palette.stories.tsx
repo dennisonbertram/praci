@@ -54,16 +54,39 @@ export const SearchFindsPage: Story = {
   },
 };
 
-export const SearchFindsContacts: Story = {
-  name: "Search lists matching contacts",
+export const SearchFindsContactsAndChats: Story = {
+  name: "Search shows why a contact and a chat matched",
   args: {
     searchLinks: async () => [
       {
         heading: "Contacts",
         entries: [
-          { id: "/app/contacts?q=Ada%20Example", label: "Ada Example" },
-          { id: "/app/contacts?q=Ben%20Sample", label: "Ben Sample" },
+          {
+            id: "/app/contacts?q=Ada%20Example",
+            label: "Ada Example",
+            detail: "Halcyon Logistics",
+          },
+          {
+            id: "/app/contacts?q=Ben%20Sample",
+            label: "Ben Sample",
+            detail: "ben@halcyon.example",
+          },
         ],
+      },
+      {
+        heading: "Chats",
+        entries: [
+          {
+            id: "/app/g/g1?m=m1",
+            label: "Leadership sync",
+            detail: "Halcyon security questionnaire is due Friday",
+            date: "Oct 3",
+          },
+        ],
+      },
+      {
+        heading: "Mail",
+        entries: [{ id: "/app/inbox?q=halcyon", label: "Search mail for “halcyon”" }],
       },
     ],
   },
