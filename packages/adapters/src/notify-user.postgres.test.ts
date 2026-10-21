@@ -13,6 +13,7 @@ describe("defaultNotificationSurface", () => {
     expect(defaultNotificationSurface("finance-agent:u")).toBe("finance");
     expect(defaultNotificationSurface("legal-agent:u")).toBe("legal");
     expect(defaultNotificationSurface("carta-agent:u")).toBe("investors");
+    expect(defaultNotificationSurface("investors-agent:u")).toBe("investors");
     expect(defaultNotificationSurface(null)).toBe("thread");
     expect(defaultNotificationSurface("integration-agent:x")).toBe("thread");
   });

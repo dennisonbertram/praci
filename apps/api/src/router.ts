@@ -184,6 +184,7 @@ import {
   isGranolaEndpoint,
   isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
+  isInvestorsAgentSpawnKey,
   isLegalAgentSpawnKey,
   isMailThreadAgentSpawnKey,
   isRetiredVoiceAgentSpawnKey,
@@ -441,6 +442,7 @@ import {
   setIntegrationExclusive,
 } from "./integration-agent.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
+import { ensureInvestorsAgent } from "./investors-agent.js";
 import {
   legalAgent,
   legalConsent,
@@ -2256,6 +2258,7 @@ export function createRouter(deps: RouterDeps) {
           isMailThreadAgentSpawnKey(input.spawnKey) ||
           isFinanceAgentSpawnKey(input.spawnKey) ||
           isLegalAgentSpawnKey(input.spawnKey) ||
+          isInvestorsAgentSpawnKey(input.spawnKey) ||
           isDataRoomAgentSpawnKey(input.spawnKey) ||
           isCartaAgentSpawnKey(input.spawnKey) ||
           isIntegrationAgentSpawnKey(input.spawnKey) ||
@@ -7389,6 +7392,13 @@ export function createRouter(deps: RouterDeps) {
       ),
       consentGrant: authed.legal.consentGrant.handler(({ context, input }) =>
         legalConsentGrant(legalDeps, context.actor, input),
+      ),
+    },
+    investors: {
+      agent: authed.investors.agent.handler(({ context }) =>
+        ensureInvestorsAgent({ repos }, context.actor).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        }),
       ),
     },
     carta: {

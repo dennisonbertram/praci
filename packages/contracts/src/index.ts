@@ -25,6 +25,7 @@ export * from "./ids.js";
 export * from "./inbox.js";
 export * from "./integration-agent.js";
 export * from "./integration-settings.js";
+export * from "./investors.js";
 export * from "./legal.js";
 export * from "./local-settings.js";
 export * from "./markdown-text.js";

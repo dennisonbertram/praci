@@ -1512,6 +1512,10 @@ export const appContract = {
     consent: oc.output(DataRoomConsentStatusSchema),
     consentGrant: oc.input(DataRoomConsentGrantInputSchema).output(DataRoomConsentStatusSchema),
   },
+  investors: {
+    /** Creates the Investors agent once (idempotent) and returns it. */
+    agent: oc.output(BotSchema),
+  },
   carta: {
     agent: oc.output(BotSchema),
     /** The Cap Table page's snapshot and whether the Carta agent is refreshing it. */

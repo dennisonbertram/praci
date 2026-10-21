@@ -1,5 +1,9 @@
 import type { AdapterContext, ToolProgress } from "@rakazo/adapter-kit";
-import { financeAgentSpawnKey, legalAgentSpawnKey } from "@rakazo/contracts";
+import {
+  financeAgentSpawnKey,
+  investorsAgentSpawnKey,
+  legalAgentSpawnKey,
+} from "@rakazo/contracts";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { BlueBubblesEmulator, createEmulatedBlueBubblesPlatform } from "./bluebubbles-emulator.js";
 import { ChatSdkMessagingSurface } from "./chat-sdk-surface.js";
@@ -341,12 +345,17 @@ describe("who gets the iMessage tools", () => {
         createEmulatedPhotonPlatform(photon),
       ]);
       expect(imessageLineProviders(both, null)).toEqual(["bluebubbles", "photon"]);
-      for (const key of [financeAgentSpawnKey("u1"), legalAgentSpawnKey("u1")]) {
+      for (const key of [
+        financeAgentSpawnKey("u1"),
+        legalAgentSpawnKey("u1"),
+        investorsAgentSpawnKey("u1"),
+      ]) {
         expect(imessageLineProviders(both, key)).toEqual(["bluebubbles"]);
       }
       const photonOnly = new ChatSdkMessagingSurface([createEmulatedPhotonPlatform(photon)]);
       expect(imessageLineProviders(photonOnly, financeAgentSpawnKey("u1"))).toEqual([]);
       expect(imessageLineProviders(photonOnly, legalAgentSpawnKey("u1"))).toEqual([]);
+      expect(imessageLineProviders(photonOnly, investorsAgentSpawnKey("u1"))).toEqual([]);
       // A Finance agent cannot reach a Photon thread even by naming it.
       const { run } = toolRunner(photonOnly, financeAgentSpawnKey("u1"));
       const thread = `photon:${Buffer.from(`any;-;${FRIEND}`).toString("base64url")}`;
