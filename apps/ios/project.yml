@@ -1,0 +1,70 @@
+name: Praci
+options:
+  bundleIdPrefix: com.rakazo
+  deploymentTarget:
+    iOS: "26.0"
+  groupSortPosition: top
+  generateEmptyDirectories: true
+configs:
+  Debug: debug
+  Release: release
+packages:
+  RakazoAPI:
+    path: Packages/RakazoAPI
+  RakazoCore:
+    path: Packages/RakazoCore
+  RakazoUI:
+    path: Packages/RakazoUI
+targets:
+  Praci:
+    type: application
+    platform: iOS
+    sources:
+      - Sources/Praci
+    dependencies:
+      - package: RakazoAPI
+      - package: RakazoCore
+      - package: RakazoUI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rakazo.app
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Praci
+        TARGETED_DEVICE_FAMILY: "1"
+      configs:
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: com.rakazo.app.dev
+        Release:
+          PRODUCT_BUNDLE_IDENTIFIER: com.rakazo.app
+    info:
+      path: Praci-Info.plist
+      properties:
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - rakazo
+        NSLocalNetworkUsageDescription: Connect to your Praci server on your local network.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+  PraciTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests/PraciTests
+    dependencies:
+      - target: Praci
+      - package: RakazoCore
+schemes:
+  Praci:
+    build:
+      targets:
+        Praci: all
+    test:
+      config: Debug
+      targets:
+        - PraciTests
+        - package: RakazoAPI/RakazoAPITests
+        - package: RakazoCore/RakazoCoreTests
+        - package: RakazoUI/RakazoUITests

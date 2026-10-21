@@ -9,11 +9,14 @@ export const legalAgentSpawnKey = (userId: string) => `legal-agent:${userId}`;
 export const isLegalAgentSpawnKey = (spawnKey: string | null | undefined) =>
   Boolean(spawnKey?.startsWith(legalAgentSpawnKey("")));
 
-/** The model the Legal agent runs on: Meta Muse Spark 1.2 via OpenRouter (never a -contributor SKU). */
+/**
+ * The model the Legal agent prefers: Meta Muse Wonder via OpenRouter (never a -contributor SKU).
+ * It is a default, not a rule: without that connection Legal runs on the system model.
+ */
 export const LEGAL_AGENT_MODEL = {
   provider: "openrouter",
-  id: "meta/muse-spark-1.2",
-  /** The level the model was benchmarked at; the catalog lists xhigh as supported for it. */
+  id: "meta/muse-wonder",
+  /** The highest effort level; the catalog lists xhigh as supported for it. */
   thinkingLevel: "xhigh",
 } as const;
 

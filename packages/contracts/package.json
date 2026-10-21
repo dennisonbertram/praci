@@ -20,6 +20,7 @@
     "zod": "4.6.2"
   },
   "devDependencies": {
+    "@orpc/server": "1.15.0",
     "typescript": "7.0.2",
     "vitest": "4.1.11"
   }

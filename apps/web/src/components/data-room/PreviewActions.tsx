@@ -66,10 +66,13 @@ export function FileViewer({
   item,
   file,
   fill = false,
+  height = "h-[60vh]",
 }: {
   item: DataRoomApiItem;
   file: FileUrl;
   fill?: boolean;
+  /** A PDF's height where it does not fill (a phone's sheet gives it less, so the details stay in view). */
+  height?: string;
 }) {
   if (!isShowable(item) || file.failed) {
     return (
@@ -92,7 +95,7 @@ export function FileViewer({
       // Hide the browser viewer's own Download and Print: the pane has Open and Download.
       src={`${file.url}#toolbar=0`}
       title={item.name}
-      className={`w-full shrink-0 rounded-md border border-border bg-muted ${fill ? "h-full" : "h-[60vh]"}`}
+      className={`w-full shrink-0 rounded-md border border-border bg-muted ${fill ? "h-full" : height}`}
     />
   ) : (
     <img

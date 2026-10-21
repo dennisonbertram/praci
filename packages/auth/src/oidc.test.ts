@@ -382,25 +382,35 @@ describe("OIDC callbacks", () => {
     expect(response.headers.get("location")).toContain("error=unable_to_link_account");
     expect(rows("account")).toHaveLength(1);
   });
-  it("hands the native browser callback to Expo with a valid bearer session", async () => {
-    setup();
-    const callback = await start(undefined, false, "rakazo://sign-in");
-    const authorize = `${issuer}/authorize?state=${new URL(`${origin}${callback}`).searchParams.get("state")}`;
-    const proxy = await request(
-      `/expo-authorization-proxy?${new URLSearchParams({ authorizationURL: authorize })}`,
-    );
-    expect(proxy.headers.get("location")).toBe(authorize);
-    const returned = await request(callback);
-    const destination = new URL(returned.headers.get("location")!);
-    expect(destination.protocol).toBe("rakazo:");
-    const signed = destination.searchParams
-      .get("cookie")!
-      .match(/(?:__Secure-)?better-auth\.session_token=([^;]+)/)![1]!;
-    cookies = "";
-    const session = await request("/get-session", undefined, decodeURIComponent(signed));
-    expect(session.status).toBe(200);
-    expect(await session.json()).toMatchObject({ user: { email: "sso@example.test" } });
-  });
+  it.each([
+    { callbackURL: "rakazo://sign-in", nativeAttempt: null },
+    {
+      callbackURL: "rakazo://sign-in?nativeAttempt=synthetic-attempt",
+      nativeAttempt: "synthetic-attempt",
+    },
+  ])(
+    "hands the native browser callback to Expo with a valid bearer session (%s)",
+    async ({ callbackURL, nativeAttempt }) => {
+      setup();
+      const callback = await start(undefined, false, callbackURL);
+      const authorize = `${issuer}/authorize?state=${new URL(`${origin}${callback}`).searchParams.get("state")}`;
+      const proxy = await request(
+        `/expo-authorization-proxy?${new URLSearchParams({ authorizationURL: authorize })}`,
+      );
+      expect(proxy.headers.get("location")).toBe(authorize);
+      const returned = await request(callback);
+      const destination = new URL(returned.headers.get("location")!);
+      expect(destination.protocol).toBe("rakazo:");
+      expect(destination.searchParams.get("nativeAttempt")).toBe(nativeAttempt);
+      const signed = destination.searchParams
+        .get("cookie")!
+        .match(/(?:__Secure-)?better-auth\.session_token=([^;]+)/)![1]!;
+      cookies = "";
+      const session = await request("/get-session", undefined, decodeURIComponent(signed));
+      expect(session.status).toBe(200);
+      expect(await session.json()).toMatchObject({ user: { email: "sso@example.test" } });
+    },
+  );
   it("enforces the allowlist before inserting a user", async () => {
     setup({ signupAllowlist: "allowed@example.test" });
     expect((await signIn()).headers.get("location")).toContain("error=EMAIL_NOT_ALLOWED");

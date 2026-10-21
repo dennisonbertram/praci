@@ -1362,6 +1362,10 @@ msgstr ""
 msgid "Ask about this"
 msgstr ""
 
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Ask about this email"
+msgstr ""
+
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Ask agent"
@@ -1527,7 +1531,6 @@ msgstr ""
 msgid "Auto-renews, {notice} days notice"
 msgstr ""
 
-#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 msgid "Auto-sort"
@@ -3509,6 +3512,10 @@ msgstr ""
 msgid "Credentials are encrypted and never sent to the model."
 msgstr "인증 정보는 암호화되며 모델에 전송되지 않습니다."
 
+#: src/components/AskCard.tsx
+msgid "Credentials requested:"
+msgstr ""
+
 #: src/pages/RoutineSchedule.tsx
 msgid "Cron expression"
 msgstr "Cron 표현식"
@@ -3622,6 +3629,7 @@ msgstr "기본값 ({0})"
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/integrations/StoredMeetingsList.tsx
 #: src/pages/Artifacts.tsx
@@ -4063,6 +4071,10 @@ msgstr "이메일"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Email & calendar"
+msgstr ""
+
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Email agent"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -5397,6 +5409,10 @@ msgstr ""
 msgid "Log out"
 msgstr "로그아웃"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Looking for changes"
+msgstr ""
+
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "Looks like spam"
 msgstr ""
@@ -5881,6 +5897,10 @@ msgstr ""
 
 #: src/components/inbox/CleanupHistory.tsx
 msgid "Moved {n} to trash"
+msgstr ""
+
+#: src/components/SecretRequestDialog.tsx
+msgid "Multi line"
 msgstr ""
 
 #: src/components/call/CallCard.tsx
@@ -6589,8 +6609,6 @@ msgid "Open {0}"
 msgstr "{0} 열기"
 
 #. placeholder {0}: active.name
-#. placeholder {0}: bot.name
-#: src/components/inbox/EmailAgentPanel.tsx
 #: src/pages/Shell.tsx
 msgid "Open {0} full screen"
 msgstr ""
@@ -6611,10 +6629,6 @@ msgstr ""
 msgid "Open again"
 msgstr ""
 
-#: src/pages/Artifacts.tsx
-msgid "Open chat"
-msgstr ""
-
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
 msgstr ""
@@ -6630,6 +6644,10 @@ msgstr ""
 
 #: src/components/legal/LegalGraph.tsx
 msgid "Open document"
+msgstr ""
+
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Open email agent full screen"
 msgstr ""
 
 #: src/components/markdown-link-prompt.tsx
@@ -7182,6 +7200,11 @@ msgstr ""
 msgid "Protected input"
 msgstr ""
 
+#: src/components/AskCard.tsx
+#: src/components/SecretRequestDialog.tsx
+msgid "Provide secret"
+msgstr ""
+
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Provider"
@@ -7284,6 +7307,18 @@ msgstr ""
 
 #: src/pages/Investors.tsx
 msgid "Reading Carta…"
+msgstr ""
+
+#: src/components/data-room/format.ts
+msgid "Reading for {days} d"
+msgstr ""
+
+#: src/components/data-room/format.ts
+msgid "Reading for {hours} h"
+msgstr ""
+
+#: src/components/data-room/format.ts
+msgid "Reading for {minutes} min"
 msgstr ""
 
 #: src/components/data-room/format.ts
@@ -7962,7 +7997,6 @@ msgstr ""
 msgid "Sandbox"
 msgstr ""
 
-#: src/components/AskCard.tsx
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/RenameAccountDialog.tsx
@@ -8227,19 +8261,19 @@ msgstr ""
 msgid "See your cash, burn and runway, pulled from your bank."
 msgstr ""
 
-#: src/components/inbox/InboxRow.tsx
-#: src/components/inbox/InboxSenderGroup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Select"
 msgstr ""
 
 #. placeholder {0}: file.name
+#. placeholder {0}: group.sender
 #. placeholder {0}: item.name
-#. placeholder {0}: row.subject
 #: src/components/data-room/DriveRow.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/inbox/CleanupSenderRow.tsx
+#: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 msgid "Select {0}"
 msgstr ""
 
@@ -8616,6 +8650,10 @@ msgstr ""
 msgid "Since {from}"
 msgstr ""
 
+#: src/components/SecretRequestDialog.tsx
+msgid "Single line"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Site"
 msgstr ""
@@ -8721,12 +8759,12 @@ msgstr ""
 msgid "Sort descending"
 msgstr ""
 
-#: src/components/ListControls.tsx
-msgid "Sort: {fieldLabel}"
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Sort every file in the Data room"
 msgstr ""
 
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "Sorting every file in the Data room"
+#: src/components/ListControls.tsx
+msgid "Sort: {fieldLabel}"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -8755,10 +8793,6 @@ msgstr "공간이 변경되었습니다. 백업 목록을 불러오려면 모델
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Space changed. Reopen Models to save its backup list."
 msgstr "공간이 변경되었습니다. 백업 목록을 저장하려면 모델 설정을 다시 여세요."
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Space default"
-msgstr "스페이스 기본값"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Spaces"
@@ -8950,6 +8984,7 @@ msgstr "보조 에이전트"
 msgid "Subject"
 msgstr ""
 
+#: src/components/SecretRequestDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Submit"
@@ -9009,6 +9044,10 @@ msgstr ""
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
 msgstr "시스템"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "System model"
+msgstr ""
 
 #: src/components/data-room/format.ts
 #: src/components/data-room/ProcessingStrip.tsx
@@ -9646,7 +9685,7 @@ msgid "Type"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Type here to find any chat, file or email."
+msgid "Type here to find any page, chat or email."
 msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx
@@ -9968,7 +10007,7 @@ msgstr "내 키 사용"
 msgid "Used by"
 msgstr ""
 
-#: src/components/AskCard.tsx
+#: src/components/SecretRequestDialog.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Username"
 msgstr ""
@@ -9980,6 +10019,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "이 서버의 자체 {hostCredentialSource} 자격 증명으로 {selectedProviderName}에 액세스합니다."
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Using the system model: {unavailableModel} isn't available"
+msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Usual charge"

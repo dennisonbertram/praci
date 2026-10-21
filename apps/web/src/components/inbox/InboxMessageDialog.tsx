@@ -116,7 +116,8 @@ export function InboxMessageDialog({
         showCloseButton={false}
         className={cn(
           "top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-[7.5vh] md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:translate-y-0 md:rounded-xl md:ring-1",
-          agentBot && "md:h-[85vh] md:w-[min(1152px,96vw)] md:flex-row md:gap-0",
+          agentBot &&
+            "md:left-[calc(50%_-_min(384px,47vw))] md:h-[85vh] md:w-[min(1152px,calc(50vw_+_min(384px,47vw)_-_2vw))] md:translate-x-0 md:flex-row md:gap-0",
           composing && "invisible",
         )}
       >
@@ -395,6 +396,33 @@ function InboxMessage({
                 <Trans>Move to Inbox</Trans>
               </Button>
             ) : null}
+            {onAskAgent || onAskAgentPanel ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={asking}
+                onClick={() => {
+                  setAsking(true);
+                  setAskError("");
+                  (onAskAgentPanel
+                    ? onAskAgentPanel().then((bot) => {
+                        // This message is gone if the user moved on or closed the dialog meanwhile.
+                        if (mounted.current) setAgentBot(bot);
+                      })
+                    : (onAskAgent?.() ?? Promise.resolve())
+                  ).then(
+                    () => setAsking(false),
+                    (cause) => {
+                      setAsking(false);
+                      setAskError(errorText(cause));
+                    },
+                  );
+                }}
+              >
+                <Bot aria-hidden="true" />
+                <Trans>Ask agent</Trans>
+              </Button>
+            ) : null}
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={<Button variant="outline" size="icon-sm" aria-label={t`More`} />}
@@ -414,31 +442,6 @@ function InboxMessage({
                   <DropdownMenuItem onClick={() => onRead(shownUnread)}>
                     {shownUnread ? <MailOpen aria-hidden="true" /> : <Mail aria-hidden="true" />}
                     {shownUnread ? <Trans>Mark read</Trans> : <Trans>Mark unread</Trans>}
-                  </DropdownMenuItem>
-                ) : null}
-                {onAskAgent || onAskAgentPanel ? (
-                  <DropdownMenuItem
-                    disabled={asking}
-                    onClick={() => {
-                      setAsking(true);
-                      setAskError("");
-                      (onAskAgentPanel
-                        ? onAskAgentPanel().then((bot) => {
-                            // This message is gone if the user moved on or closed the dialog meanwhile.
-                            if (mounted.current) setAgentBot(bot);
-                          })
-                        : (onAskAgent?.() ?? Promise.resolve())
-                      ).then(
-                        () => setAsking(false),
-                        (cause) => {
-                          setAsking(false);
-                          setAskError(errorText(cause));
-                        },
-                      );
-                    }}
-                  >
-                    <Bot aria-hidden="true" />
-                    <Trans>Ask agent</Trans>
                   </DropdownMenuItem>
                 ) : null}
               </DropdownMenuContent>

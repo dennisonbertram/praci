@@ -371,7 +371,11 @@ function fixture({
           ? where.id.in
               .filter((botId) => knownBots?.[botId] !== undefined)
               .map((botId) => ({ id: botId, audience: "internal" }))
-          : [],
+          : Object.entries(knownBots ?? {}).map(([id, spawnKey]) => ({
+              id,
+              name: id,
+              spawnKey,
+            })),
       ),
       findFirst: vi.fn(async ({ where }: { where?: { id?: string } } = {}) =>
         where?.id && knownBots?.[where.id] !== undefined
@@ -1547,6 +1551,120 @@ describe("Inbox agent mail without AI data sharing consent", () => {
       expect(f.results[1]).toEqual({ error: MAIL_CONSENT_DECLINED });
       expect(MAIL_CONSENT_DECLINED).not.toContain("Inbox");
       expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    });
+
+    describe("a question for the Inbox agent from the owner's chat", () => {
+      const ask = (trigger = "user") => {
+        sentBotMessages.calls.length = 0;
+        const f = fixture({
+          name: "message_bot",
+          builtin: true,
+          trigger,
+          rules: [{ effect: "always_allow", matchKind: "tool", matchValue: "message_bot" }],
+          knownBots: { "bot-inbox": inboxAgentSpawnKey("user-1") },
+        });
+        f.setCalls([
+          { args: { bot_id: "bot-inbox", message: "What needs a reply?" }, executionId: "c1" },
+        ]);
+        return f;
+      };
+
+      it("shows the Allow card in the asking chat before the Inbox agent is woken", async () => {
+        triage.needsConsent = true;
+        const f = ask();
+        await f.run();
+        expect(isApprovalPausedResult(f.results[0])).toBe(true);
+        expect(f.effects.map((effect) => effect.kind)).toContain("ai_consent");
+        expect(sentBotMessages.calls).toEqual([]);
+        const [{ blocks }] = f.pauseRunForInput.mock.calls[0] as unknown as [{ blocks: unknown[] }];
+        expect(blocks).toEqual([
+          expect.objectContaining({ kind: "ask", consent: { version: AI_DISCLOSURE_VERSION } }),
+        ]);
+      });
+
+      it("delivers the question once the owner has allowed it", async () => {
+        triage.needsConsent = true;
+        const f = ask();
+        await f.run();
+        triage.needsConsent = false;
+        f.effects.find((effect) => effect.kind === "ai_consent")!.status = "approved";
+        await f.run();
+        expect(sentBotMessages.calls).toHaveLength(1);
+      });
+
+      it("delivers the original question even if the model rewords it after Allow", async () => {
+        triage.needsConsent = true;
+        const f = ask();
+        await f.run();
+        triage.needsConsent = false;
+        f.effects.find((effect) => effect.kind === "ai_consent")!.status = "approved";
+        f.setCalls([
+          { args: { bot_id: "bot-inbox", message: "Reworded question" }, executionId: "c2" },
+        ]);
+        await f.run();
+        expect(sentBotMessages.calls).toHaveLength(1);
+        expect((sentBotMessages.calls[0]![3] as { message: string }).message).toBe(
+          "What needs a reply?",
+        );
+        // The saved question is used once; a later delegation in the run is the model's own.
+        f.setCalls([{ args: { bot_id: "bot-inbox", message: "Another one" }, executionId: "c3" }]);
+        await f.run();
+        expect((sentBotMessages.calls[1]![3] as { message: string }).message).toBe("Another one");
+      });
+
+      it("asks for consent, then approval, then delivers once for a marked thread", async () => {
+        triage.needsConsent = true;
+        sentBotMessages.calls.length = 0;
+        const f = fixture({
+          name: "message_bot",
+          builtin: true,
+          threadMarkedAtStart: true,
+          knownBots: { "bot-inbox": inboxAgentSpawnKey("user-1") },
+        });
+        f.setCalls([
+          { args: { bot_id: "bot-inbox", message: "What needs a reply?" }, executionId: "c1" },
+        ]);
+        await f.run();
+        const delegation = () => f.effects.find((effect) => effect.kind === "message_bot")!;
+        expect(f.effects.map((effect) => effect.kind)).toContain("ai_consent");
+        // Nothing is claimed while the consent card is open.
+        expect(delegation().status).toBe("intended");
+        triage.needsConsent = false;
+        f.effects.find((effect) => effect.kind === "ai_consent")!.status = "approved";
+        await f.run();
+        expect(f.pauseRunForInput).toHaveBeenCalledTimes(2);
+        expect(delegation().status).toBe("intended");
+        delegation().status = "approved";
+        await f.run();
+        expect(sentBotMessages.calls).toHaveLength(1);
+        expect(delegation().status).toBe("completed");
+      });
+
+      it("shows the card when the Inbox agent is addressed by name", async () => {
+        triage.needsConsent = true;
+        const f = ask();
+        f.setCalls([
+          { args: { confirm_name: "bot-inbox", message: "Any news?" }, executionId: "c1" },
+        ]);
+        await f.run();
+        expect(isApprovalPausedResult(f.results[0])).toBe(true);
+        expect(f.effects.map((effect) => effect.kind)).toContain("ai_consent");
+        expect(sentBotMessages.calls).toEqual([]);
+      });
+
+      it("delivers the question when mail is already allowed", async () => {
+        const f = ask();
+        await f.run();
+        expect(f.pauseRunForInput).not.toHaveBeenCalled();
+        expect(sentBotMessages.calls).toHaveLength(1);
+      });
+
+      it("still delivers a question asked from a background run", async () => {
+        triage.needsConsent = true;
+        const f = ask("routine");
+        await f.run();
+        expect(f.pauseRunForInput).not.toHaveBeenCalled();
+      });
     });
 
     it.each(["routine", "webhook", "messaging", "bot_message"])(

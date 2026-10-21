@@ -5,9 +5,10 @@ import type { ThreadMessage } from "@rakazo/contracts";
 import { commandVariableName } from "@rakazo/contracts";
 import { isApprovalAskBlock, isSecretAskBlock, selectedAskActionLabel } from "@rakazo/core";
 import { Button, Input } from "@rakazo/ui-web";
-import { Check, X } from "lucide-react";
+import { Check, KeyRound, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { errorText } from "../lib/user-error";
+import { SecretRequestDialog } from "./SecretRequestDialog";
 
 export type AskBlock = Extract<ThreadMessage["blocks"][number], { kind: "ask" }>;
 
@@ -84,8 +85,8 @@ export function AskCard({
 }) {
   const { t } = useLingui();
   const [editing, setEditing] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [answer, setAnswer] = useState("");
-  const [username, setUsername] = useState("");
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const questionId = useId();
@@ -96,6 +97,11 @@ export function AskCard({
   const secretInput = isSecretAskBlock(block);
   const loginInput = secretInput && block.credential?.auth.type === "login";
   const secretLabel = loginInput ? t`Password` : secretFieldLabel(block.purpose);
+  const secretName = block.credential
+    ? block.credential.auth.type === "command"
+      ? commandVariableName(block.credential.name)
+      : block.credential.name
+    : secretLabel;
 
   // The answer lands in the thread a moment after the click, and the re-render can drop focus to
   // the page. Put it back on the composer, but only for a card this reader just answered.
@@ -106,17 +112,16 @@ export function AskCard({
     document.querySelector<HTMLElement>("[data-composer-input]")?.focus();
   }, [block.status]);
 
-  async function submitAnswer(value: string) {
+  async function submitAnswer(value: string, secretUsername?: string) {
     if (submitting) return;
     if (secretInput ? value.length === 0 : !value.trim()) return;
-    const submitUsername = loginInput ? username.trim() : undefined;
+    const submitUsername = loginInput ? secretUsername?.trim() : undefined;
     if (loginInput && !submitUsername) return;
     const submitValue = secretInput ? value : value.trim();
     setPendingAction(secretInput ? "submit" : submitValue);
     setError(null);
     if (secretInput) {
-      setAnswer("");
-      setUsername("");
+      setDialogOpen(false);
     }
     try {
       await onAnswer(submitValue, submitUsername);
@@ -141,8 +146,16 @@ export function AskCard({
       role="group"
       aria-labelledby={questionId}
       data-testid={secretInput ? "secret-ask-card" : undefined}
-      className="w-xl max-w-full rounded-2xl border border-border bg-card px-5 py-4"
+      className="w-160 max-w-full rounded-2xl border border-border bg-card px-5 py-4"
     >
+      {secretInput && block.status !== "answered" && canAnswer ? (
+        <div className="mb-3 flex items-center gap-2 text-[13.5px] font-medium text-foreground">
+          <KeyRound aria-hidden className="size-4 text-muted-foreground" />
+          <span>
+            <Trans>Credentials requested:</Trans> <span className="font-mono">{secretName}</span>
+          </span>
+        </div>
+      ) : null}
       <div id={questionId} className="text-[15.5px] leading-[1.5] text-foreground">
         <ChatMarkdown>{block.text}</ChatMarkdown>
       </div>
@@ -256,42 +269,21 @@ export function AskCard({
             )}
         </div>
       ) : secretInput ? (
-        <form
-          className="mt-3.5 flex flex-col gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void submitAnswer(answer);
-          }}
-        >
-          {loginInput ? (
-            <Input
-              aria-label={t`Username`}
-              autoComplete="off"
-              spellCheck={false}
-              disabled={submitting}
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              placeholder={t`Username`}
-            />
-          ) : null}
-          <Input
-            aria-label={secretLabel}
-            type="password"
-            autoComplete="off"
-            spellCheck={false}
-            disabled={submitting}
-            value={answer}
-            onChange={(event) => setAnswer(event.target.value)}
-            placeholder={secretLabel}
-          />
-          <Button
-            type="submit"
-            className="self-start"
-            disabled={answer.length === 0 || (loginInput && !username.trim()) || submitting}
-          >
-            {submitting ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
+        <div className="mt-3.5 border-t border-border pt-3.5">
+          <Button disabled={submitting} onClick={() => setDialogOpen(true)}>
+            {submitting ? <Trans>Saving…</Trans> : <Trans>Provide secret</Trans>}
           </Button>
-        </form>
+          <SecretRequestDialog
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            name={secretName}
+            description={block.text}
+            login={loginInput}
+            onSubmit={(value, user) => {
+              void submitAnswer(value, user);
+            }}
+          />
+        </div>
       ) : editing ? (
         <form
           className="mt-3.5 flex flex-col gap-2"

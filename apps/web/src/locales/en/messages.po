@@ -1362,6 +1362,10 @@ msgstr "Ask a space owner to reconnect."
 msgid "Ask about this"
 msgstr "Ask about this"
 
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Ask about this email"
+msgstr "Ask about this email"
+
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Ask agent"
@@ -1527,7 +1531,6 @@ msgstr "Auto-renews"
 msgid "Auto-renews, {notice} days notice"
 msgstr "Auto-renews, {notice} days notice"
 
-#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 msgid "Auto-sort"
@@ -3509,6 +3512,10 @@ msgstr "Credentials"
 msgid "Credentials are encrypted and never sent to the model."
 msgstr "Credentials are encrypted and never sent to the model."
 
+#: src/components/AskCard.tsx
+msgid "Credentials requested:"
+msgstr "Credentials requested:"
+
 #: src/pages/RoutineSchedule.tsx
 msgid "Cron expression"
 msgstr "Cron expression"
@@ -3622,6 +3629,7 @@ msgstr "Default ({0})"
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/integrations/StoredMeetingsList.tsx
 #: src/pages/Artifacts.tsx
@@ -4064,6 +4072,10 @@ msgstr "Email"
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Email & calendar"
 msgstr "Email & calendar"
+
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Email agent"
+msgstr "Email agent"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Email and calendar"
@@ -5397,6 +5409,10 @@ msgstr "Local Server Settings"
 msgid "Log out"
 msgstr "Log out"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Looking for changes"
+msgstr "Looking for changes"
+
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "Looks like spam"
 msgstr "Looks like spam"
@@ -5882,6 +5898,10 @@ msgstr "Moved {0} to trash"
 #: src/components/inbox/CleanupHistory.tsx
 msgid "Moved {n} to trash"
 msgstr "Moved {n} to trash"
+
+#: src/components/SecretRequestDialog.tsx
+msgid "Multi line"
+msgstr "Multi line"
 
 #: src/components/call/CallCard.tsx
 msgid "Mute"
@@ -6589,8 +6609,6 @@ msgid "Open {0}"
 msgstr "Open {0}"
 
 #. placeholder {0}: active.name
-#. placeholder {0}: bot.name
-#: src/components/inbox/EmailAgentPanel.tsx
 #: src/pages/Shell.tsx
 msgid "Open {0} full screen"
 msgstr "Open {0} full screen"
@@ -6611,10 +6629,6 @@ msgstr "Open <0>{0}</0> to finish signing in."
 msgid "Open again"
 msgstr "Open again"
 
-#: src/pages/Artifacts.tsx
-msgid "Open chat"
-msgstr "Open chat"
-
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
 msgstr "Open computer settings"
@@ -6631,6 +6645,10 @@ msgstr "Open Devin"
 #: src/components/legal/LegalGraph.tsx
 msgid "Open document"
 msgstr "Open document"
+
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Open email agent full screen"
+msgstr "Open email agent full screen"
 
 #: src/components/markdown-link-prompt.tsx
 msgid "Open external link?"
@@ -7182,6 +7200,11 @@ msgstr "Promotions"
 msgid "Protected input"
 msgstr "Protected input"
 
+#: src/components/AskCard.tsx
+#: src/components/SecretRequestDialog.tsx
+msgid "Provide secret"
+msgstr "Provide secret"
+
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Provider"
@@ -7285,6 +7308,18 @@ msgstr "Reading a connected app"
 #: src/pages/Investors.tsx
 msgid "Reading Carta…"
 msgstr "Reading Carta…"
+
+#: src/components/data-room/format.ts
+msgid "Reading for {days} d"
+msgstr "Reading for {days} d"
+
+#: src/components/data-room/format.ts
+msgid "Reading for {hours} h"
+msgstr "Reading for {hours} h"
+
+#: src/components/data-room/format.ts
+msgid "Reading for {minutes} min"
+msgstr "Reading for {minutes} min"
 
 #: src/components/data-room/format.ts
 #: src/components/data-room/ProcessingStrip.tsx
@@ -7962,7 +7997,6 @@ msgstr "Sales & CRM"
 msgid "Sandbox"
 msgstr "Sandbox"
 
-#: src/components/AskCard.tsx
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/RenameAccountDialog.tsx
@@ -8227,19 +8261,19 @@ msgstr "See who owns your company"
 msgid "See your cash, burn and runway, pulled from your bank."
 msgstr "See your cash, burn and runway, pulled from your bank."
 
-#: src/components/inbox/InboxRow.tsx
-#: src/components/inbox/InboxSenderGroup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Select"
 msgstr "Select"
 
 #. placeholder {0}: file.name
+#. placeholder {0}: group.sender
 #. placeholder {0}: item.name
-#. placeholder {0}: row.subject
 #: src/components/data-room/DriveRow.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/inbox/CleanupSenderRow.tsx
+#: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 msgid "Select {0}"
 msgstr "Select {0}"
 
@@ -8616,6 +8650,10 @@ msgstr "since {0}"
 msgid "Since {from}"
 msgstr "Since {from}"
 
+#: src/components/SecretRequestDialog.tsx
+msgid "Single line"
+msgstr "Single line"
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Site"
 msgstr "Site"
@@ -8721,13 +8759,13 @@ msgstr "Sort ascending"
 msgid "Sort descending"
 msgstr "Sort descending"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Sort every file in the Data room"
+msgstr "Sort every file in the Data room"
+
 #: src/components/ListControls.tsx
 msgid "Sort: {fieldLabel}"
 msgstr "Sort: {fieldLabel}"
-
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "Sorting every file in the Data room"
-msgstr "Sorting every file in the Data room"
 
 #: src/pages/Inbox.tsx
 msgid "Sorting is taking longer than usual. Your mail is below."
@@ -8755,10 +8793,6 @@ msgstr "Space changed. Reopen Models to load its backup list."
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Space changed. Reopen Models to save its backup list."
 msgstr "Space changed. Reopen Models to save its backup list."
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Space default"
-msgstr "Space default"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Spaces"
@@ -8950,6 +8984,7 @@ msgstr "subagent"
 msgid "Subject"
 msgstr "Subject"
 
+#: src/components/SecretRequestDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Submit"
@@ -9009,6 +9044,10 @@ msgstr "Syncing"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
 msgstr "System"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "System model"
+msgstr "System model"
 
 #: src/components/data-room/format.ts
 #: src/components/data-room/ProcessingStrip.tsx
@@ -9646,8 +9685,8 @@ msgid "Type"
 msgstr "Type"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Type here to find any chat, file or email."
-msgstr "Type here to find any chat, file or email."
+msgid "Type here to find any page, chat or email."
+msgstr "Type here to find any page, chat or email."
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Type without recording"
@@ -9968,7 +10007,7 @@ msgstr "Use your own key"
 msgid "Used by"
 msgstr "Used by"
 
-#: src/components/AskCard.tsx
+#: src/components/SecretRequestDialog.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Username"
 msgstr "Username"
@@ -9980,6 +10019,10 @@ msgstr "Uses Carta figures and asks before sending."
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Using the system model: {unavailableModel} isn't available"
+msgstr "Using the system model: {unavailableModel} isn't available"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Usual charge"

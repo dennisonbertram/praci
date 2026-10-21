@@ -260,7 +260,7 @@ export function FilterBar({
   hasDates: boolean;
   /** Stats count by the filters only: search and sort order a list, so they are left out. */
   statsView?: boolean;
-  /** The view toggles: on a phone they wait behind Filters, with Sort. */
+  /** The view toggles: on a phone they sit in the folder row; Sort waits behind Filters. */
   trailing?: ReactNode;
 }) {
   const labels = sortLabels();
@@ -291,7 +291,13 @@ export function FilterBar({
     // Search and Sort share the first row; the filter pills wrap on a row of their own below, or,
     // given room, between the two. Sort never moves down among the pills.
     <div className={`flex flex-wrap items-start gap-1.5 pb-2.5 ${PAGE_GUTTER_X}`}>
-      {statsView ? null : (
+      {statsView ? (
+        // Where the search box is, so Filters stays at the right edge in every view.
+        <div
+          aria-hidden="true"
+          className="order-1 min-w-0 flex-1 basis-48 @min-[640px]/bd:hidden"
+        />
+      ) : (
         <SearchField
           className="order-1 min-w-0 flex-1 basis-48 @min-[640px]/bd:me-1.5 @min-[640px]/bd:w-80 @min-[640px]/bd:flex-none"
           value={query}
@@ -418,11 +424,7 @@ export function FilterBar({
         ) : null}
       </div>
       {trailing ? (
-        <div
-          className={`order-3 ms-auto flex items-center ${pillsOpen ? "" : "@max-[639px]/bd:hidden"} @min-[640px]/bd:hidden`}
-        >
-          {trailing}
-        </div>
+        <div className="order-3 ms-auto flex items-center @min-[640px]/bd:hidden">{trailing}</div>
       ) : null}
       {statsView ? null : (
         <div
