@@ -40,10 +40,6 @@ msgstr " (unread)"
 msgid " (urgent)"
 msgstr " (urgent)"
 
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "— tokens of AI text"
-msgstr "— tokens of AI text"
-
 #. placeholder {0}: statement.duplicateCount
 #: src/components/finance/StatementReviewCard.tsx
 msgid ", {0} already imported"
@@ -726,10 +722,6 @@ msgstr "Actions for space"
 msgid "Active"
 msgstr "Active"
 
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Active model"
-msgstr "Active model"
-
 #: src/components/computer/TerminalApp.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
@@ -832,10 +824,6 @@ msgstr "Add custom connection"
 msgid "Add email"
 msgstr "Add email"
 
-#: src/components/AutoFileEmailSetting.tsx
-msgid "Add email attachments to the Data room"
-msgstr "Add email attachments to the Data room"
-
 #. placeholder {0}: prefill.name
 #: src/components/ContactDialog.tsx
 msgid "Add email for {0}"
@@ -859,6 +847,10 @@ msgstr "Add item"
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add MCP server"
 msgstr "Add MCP server"
+
+#: src/components/AutoFileEmailSetting.tsx
+msgid "Add new email attachments automatically"
+msgstr "Add new email attachments automatically"
 
 #: src/components/AddSidebarPage.tsx
 msgid "Add page"
@@ -1060,6 +1052,10 @@ msgstr "Allow access above to start. The Legal agent then reads your Data room f
 #: src/pages/Legal.tsx
 msgid "Allow access first."
 msgstr "Allow access first."
+
+#: src/pages/Shell.tsx
+msgid "Allow access on the page to ask"
+msgstr "Allow access on the page to ask"
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -1384,8 +1380,14 @@ msgid "Ask about this"
 msgstr "Ask about this"
 
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/pages/legal/LegalDeadlines.tsx
 msgid "Ask agent"
 msgstr "Ask agent"
+
+#. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Ask agent about {0}"
+msgstr "Ask agent about {0}"
 
 #. placeholder {0}: rule.matchValue
 #: src/components/ApprovalRulesSettings.tsx
@@ -2479,10 +2481,6 @@ msgstr "Computers are available. Reload or open a bot to continue."
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
 msgstr "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
-
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Configured by deployment"
-msgstr "Configured by deployment"
 
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
@@ -3720,10 +3718,6 @@ msgstr "Denied"
 msgid "Deny"
 msgstr "Deny"
 
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Deployment default"
-msgstr "Deployment default"
-
 #: src/pages/Board.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -4713,6 +4707,14 @@ msgstr "Header value"
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Hear a sample"
 msgstr "Hear a sample"
+
+#: src/pages/Legal.tsx
+msgid "Help me with \"{title}\" on {contractTitle}, due {due}."
+msgstr "Help me with \"{title}\" on {contractTitle}, due {due}."
+
+#: src/pages/Legal.tsx
+msgid "Help me with \"{title}\", due {due}."
+msgstr "Help me with \"{title}\", due {due}."
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Hi, this is how I'll sound when I read replies out loud."
@@ -6335,7 +6337,6 @@ msgstr "No wallets yet. Add a wallet address to see its balances here."
 msgid "None"
 msgstr "None"
 
-#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "None yet"
 msgstr "None yet"
@@ -6876,7 +6877,6 @@ msgid "Party"
 msgstr "Party"
 
 #: src/components/AskCard.tsx
-#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Auth.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Password"
@@ -7641,6 +7641,7 @@ msgstr "Replace API key"
 
 #: src/components/integrations/FinanceSection.tsx
 #: src/pages/Legal.tsx
+#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Replace key"
 msgstr "Replace key"
@@ -9230,10 +9231,6 @@ msgstr "These saved settings can't be read. Remove it and add it again."
 #: src/pages/shell/working-label.ts
 msgid "Thinking"
 msgstr "Thinking"
-
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Thinking: {activeThinkingLabel}"
-msgstr "Thinking: {activeThinkingLabel}"
 
 #: src/components/AgentPanelIntro.tsx
 msgid "This agent needs a model before it can answer. Add one in Settings, Models."

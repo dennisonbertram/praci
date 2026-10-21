@@ -30,6 +30,7 @@ import {
   FIRST_BOT_SPAWN_KEY,
   isIntegrationAgentSpawnKey,
   LEGAL_AGENT_MODEL,
+  LEGAL_CONSENT_REQUIRED_MESSAGE,
   NOTIFICATION_KINDS,
   RunPhaseSchema,
 } from "@rakazo/contracts";
@@ -538,6 +539,8 @@ export function ShellPage() {
   const [legalAgentOpen, setLegalAgentOpen] = useState(false);
   const [creatingLegalAgent, setCreatingLegalAgent] = useState(false);
   const [legalAgentError, setLegalAgentError] = useState("");
+  // The Legal page reports whether it still lacks consent; its Allow is the only one, so the agent waits for it.
+  const [legalConsentMissing, setLegalConsentMissing] = useState(false);
   const [devinAgentOpen, setDevinAgentOpen] = useState(false);
   const [creatingDevinAgent, setCreatingDevinAgent] = useState(false);
   const [devinAgentError, setDevinAgentError] = useState("");
@@ -3159,6 +3162,12 @@ export function ShellPage() {
     if (!active && !creatingLegalAgent) void createLegalAgent();
   }
 
+  /** A row's Ask agent: opens the panel and sends the question. Before the agent exists it only creates it. */
+  function askLegalAgentAbout(question: string) {
+    askLegalAgent();
+    if (active) void sendMessage(question, [], newClientId());
+  }
+
   async function createCartaAgent() {
     setCreatingCartaAgent(true);
     setCartaAgentError("");
@@ -3698,7 +3707,17 @@ export function ShellPage() {
     .toUpperCase();
 
   const pinsList = !inGroup && !pageMode && botPins?.list ? botPins : null;
-  const composerDisabled = Boolean(recordingSkill) || pageAgentNeedsModel;
+  const legalWaitsForConsent = legalMode && legalConsentMissing;
+  const composerDisabled = Boolean(recordingSkill) || pageAgentNeedsModel || legalWaitsForConsent;
+  // A "needs your permission" error from before the page's Allow no longer applies once it is given.
+  const staleConsentError =
+    !legalWaitsForConsent &&
+    (sendError === LEGAL_CONSENT_REQUIRED_MESSAGE ||
+      displayedRunError === LEGAL_CONSENT_REQUIRED_MESSAGE);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the error becomes stale.
+  useEffect(() => {
+    if (staleConsentError) dismissComposerError();
+  }, [staleConsentError]);
   const paneAcceptsFiles = !pageMode && Boolean(active || activeGroup);
   function onPaneFileDrag(event: DragEvent<HTMLElement>) {
     if (!paneAcceptsFiles || !isUnclaimedFileDrag(event)) return setPaneDraggingFiles(false);
@@ -3908,6 +3927,9 @@ export function ShellPage() {
               activeName={inGroup ? (activeGroup?.name ?? activeSnapshot?.groupName) : active?.name}
               running={composerShowsStop(currentRuns)}
               disabled={composerDisabled}
+              disabledPlaceholder={
+                legalWaitsForConsent ? t`Allow access on the page to ask` : undefined
+              }
               pendingAttachments={activePendingAttachments}
               dataRoomItems={activeDataRoomItems}
               onRemoveDataRoomItem={removeDataRoomItem}
@@ -5148,88 +5170,86 @@ export function ShellPage() {
             </span>
             {rail ? null : <span className="text-[14.5px] text-foreground/90">{userName}</span>}
           </PopoverTrigger>
-          {menuOpen ? (
-            <PopoverContent
-              side="top"
-              align="start"
-              alignOffset={11}
-              role="menu"
-              className="w-[calc(316px-1.5rem)] max-w-[calc(100vw-3rem)] gap-0 p-1 data-closed:animate-none"
-            >
-              {bootstrapMe?.ticketBoardEnabled ? (
-                <Button
-                  role="menuitem"
-                  variant="ghost"
-                  className="w-full justify-start font-normal"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setMobileSidebarOpen(false);
-                    navigate("/app/board");
-                  }}
-                >
-                  <SquareKanban className="text-muted-foreground" strokeWidth={1.75} />
-                  <Trans>Task board</Trans>
-                </Button>
-              ) : null}
+          <PopoverContent
+            side="top"
+            align="start"
+            alignOffset={11}
+            role="menu"
+            className="w-[calc(316px-1.5rem)] max-w-[calc(100vw-3rem)] gap-0 p-1 data-closed:animate-none"
+          >
+            {bootstrapMe?.ticketBoardEnabled ? (
               <Button
                 role="menuitem"
                 variant="ghost"
                 className="w-full justify-start font-normal"
-                aria-label={t`Settings`}
-                onClick={() => {
-                  setMenuOpen(false);
-                  openSettings("general");
-                }}
-              >
-                <Settings className="text-muted-foreground" strokeWidth={1.75} />
-                <Trans>Settings</Trans>
-              </Button>
-              <Button
-                role="menuitem"
-                variant="ghost"
-                className="w-full justify-start font-normal"
-                data-testid="menu-integrations"
                 onClick={() => {
                   setMenuOpen(false);
                   setMobileSidebarOpen(false);
-                  navigate("/app/integrations");
+                  navigate("/app/board");
                 }}
               >
-                <LayoutGrid className="text-muted-foreground" strokeWidth={1.75} />
-                <Trans>Integrations</Trans>
+                <SquareKanban className="text-muted-foreground" strokeWidth={1.75} />
+                <Trans>Task board</Trans>
               </Button>
-              <HideAmountsMenuItem onDone={() => setMenuOpen(false)} />
-              <Button
-                role="menuitem"
-                variant="ghost"
-                className="w-full justify-start font-normal"
-                data-testid="take-tour"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setTourRestart(true);
-                }}
-              >
-                <Compass className="text-muted-foreground" strokeWidth={1.75} />
-                <Trans>Take the tour</Trans>
-              </Button>
-              <Separator className="my-1" />
-              <Button
-                role="menuitem"
-                variant="ghost"
-                className="w-full justify-start font-normal"
-                onClick={() =>
-                  void authClient.signOut().then(() => {
-                    clearAgentAppCache();
-                    clearSpaceSelection();
-                    navigate("/");
-                  })
-                }
-              >
-                <LogOut className="text-muted-foreground" strokeWidth={1.75} />
-                <Trans>Log out</Trans>
-              </Button>
-            </PopoverContent>
-          ) : null}
+            ) : null}
+            <Button
+              role="menuitem"
+              variant="ghost"
+              className="w-full justify-start font-normal"
+              aria-label={t`Settings`}
+              onClick={() => {
+                setMenuOpen(false);
+                openSettings("general");
+              }}
+            >
+              <Settings className="text-muted-foreground" strokeWidth={1.75} />
+              <Trans>Settings</Trans>
+            </Button>
+            <Button
+              role="menuitem"
+              variant="ghost"
+              className="w-full justify-start font-normal"
+              data-testid="menu-integrations"
+              onClick={() => {
+                setMenuOpen(false);
+                setMobileSidebarOpen(false);
+                navigate("/app/integrations");
+              }}
+            >
+              <LayoutGrid className="text-muted-foreground" strokeWidth={1.75} />
+              <Trans>Integrations</Trans>
+            </Button>
+            <HideAmountsMenuItem onDone={() => setMenuOpen(false)} />
+            <Button
+              role="menuitem"
+              variant="ghost"
+              className="w-full justify-start font-normal"
+              data-testid="take-tour"
+              onClick={() => {
+                setMenuOpen(false);
+                setTourRestart(true);
+              }}
+            >
+              <Compass className="text-muted-foreground" strokeWidth={1.75} />
+              <Trans>Take the tour</Trans>
+            </Button>
+            <Separator className="my-1" />
+            <Button
+              role="menuitem"
+              variant="ghost"
+              className="w-full justify-start font-normal"
+              onClick={() =>
+                void authClient.signOut().then(() => {
+                  clearAgentAppCache();
+                  clearSpaceSelection();
+                  navigate("/");
+                })
+              }
+            >
+              <LogOut className="text-muted-foreground" strokeWidth={1.75} />
+              <Trans>Log out</Trans>
+            </Button>
+          </PopoverContent>
         </Popover>
       </aside>
 
@@ -5487,6 +5507,8 @@ export function ShellPage() {
         ) : legalMode ? (
           <LegalPage
             onAskAgent={legalAgentOpen ? undefined : askLegalAgent}
+            onAskAbout={askLegalAgentAbout}
+            onConsentChange={setLegalConsentMissing}
             onOpenSettings={() => openSettings("models", LEGAL_AGENT_MODEL.provider)}
             settingsOpen={settingsOpen}
             spaces={spaces}

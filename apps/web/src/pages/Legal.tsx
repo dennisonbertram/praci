@@ -1,5 +1,6 @@
 import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
+import type { LegalDeadline } from "@rakazo/contracts";
 import { Button, cn, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -17,6 +18,7 @@ import { LegalConsentPrompt } from "../components/legal/ConsentPrompt";
 import { LegalGraphView } from "../components/legal/LegalGraph";
 import { PageHeader } from "../components/PageHeader";
 import { DATA_ROOM_PATH } from "../lib/data-room";
+import { fullDay } from "../lib/finance-format";
 import { daysBetween, todayIso } from "../lib/legal-format";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
@@ -28,6 +30,14 @@ const VIEWS = ["contracts", "deadlines", "graph"] as const;
 type View = (typeof VIEWS)[number];
 const LEGAL_PATH = "/app/legal";
 
+const deadlineQuestion = (deadline: LegalDeadline) => {
+  const { title, contractTitle } = deadline;
+  const due = fullDay(deadline.dueDate);
+  return contractTitle
+    ? t`Help me with "${title}" on ${contractTitle}, due ${due}.`
+    : t`Help me with "${title}", due ${due}.`;
+};
+
 /** How often the page re-reads the overview while a scan runs, and when it stops waiting. */
 const SCAN_POLL_MS = 4_000;
 const SCAN_WAIT_MS = 5 * 60_000;
@@ -35,6 +45,8 @@ const SCAN_WAIT_MS = 5 * 60_000;
 /** The Legal area at /app/legal: contracts, deadlines and the relationship graph the Legal agent keeps. */
 export function LegalPage({
   onAskAgent,
+  onAskAbout,
+  onConsentChange,
   onOpenSettings,
   settingsOpen = false,
   spaces,
@@ -42,6 +54,10 @@ export function LegalPage({
   onSwitchSpace,
 }: {
   onAskAgent?: () => void;
+  /** Sends the Legal agent a question about one row, opening its panel first. */
+  onAskAbout?: (question: string) => void;
+  /** Tells the shell whether Legal still lacks consent, so the agent's composer waits for the page's Allow. */
+  onConsentChange?: (missing: boolean) => void;
   /** Which company Legal shows, and how to switch, when the user has more than one space. */
   spaces?: FinanceSpace[];
   spaceId?: string;
@@ -56,7 +72,12 @@ export function LegalPage({
       value={{ onAskAgent, agentName: "Legal agent", spaces, spaceId, onSwitchSpace }}
     >
       <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
-        <Legal onOpenSettings={onOpenSettings} settingsOpen={settingsOpen} />
+        <Legal
+          onOpenSettings={onOpenSettings}
+          settingsOpen={settingsOpen}
+          onAskAbout={onAskAbout}
+          onConsentChange={onConsentChange}
+        />
       </div>
     </FinanceChromeProvider>
   );
@@ -65,9 +86,13 @@ export function LegalPage({
 function Legal({
   onOpenSettings,
   settingsOpen,
+  onAskAbout,
+  onConsentChange,
 }: {
   onOpenSettings?: () => void;
   settingsOpen: boolean;
+  onAskAbout?: (question: string) => void;
+  onConsentChange?: (missing: boolean) => void;
 }) {
   const overview = useFinanceQuery(() => rpc.legal.overview(), []);
   // A failed consent read must not hide the page; the agent reports when it cannot read documents.
@@ -91,6 +116,14 @@ function Legal({
   const lastRun = data?.agent.lastScanRun ?? null;
   const finishedWaiting = lastRun?.id === waitingFor && lastRun?.status !== "running";
   const running = lastRun?.status === "running" || (waitingFor !== null && !finishedWaiting);
+
+  const consentMissing = status?.allowed === false;
+  const reportConsent = useRef(onConsentChange);
+  reportConsent.current = onConsentChange;
+  useEffect(() => {
+    reportConsent.current?.(consentMissing);
+    return () => reportConsent.current?.(false);
+  }, [consentMissing]);
 
   const reload = useRef({ overview: overview.reload, consent: consent.reload });
   reload.current = { overview: overview.reload, consent: consent.reload };
@@ -358,6 +391,12 @@ function Legal({
               onChanged={overview.reload}
               onlyOverdue={onlyOverdue}
               onShowAll={() => setView("deadlines")}
+              // The agent cannot read documents until the page's Allow, so no question goes to it before.
+              onAsk={
+                onAskAbout && !consentMissing
+                  ? (deadline) => onAskAbout(deadlineQuestion(deadline))
+                  : undefined
+              }
             />
           ) : null}
           {view === "graph" ? <GraphTab /> : null}
