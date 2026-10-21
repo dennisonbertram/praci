@@ -486,7 +486,7 @@ Waves: S1 → (S2 ∥ S3a) → S3b → S4a → S4b → S5; S6 whenever a key is 
 - Alerts for Error or Suspended sessions or for a refused key (GAP-42); the page shows them.
 - A notification history (GAP-41); suppressing the toast while on the page (GAP-39); both devices buzzing (GAP-40).
 - Naming who started a session (Devin exposes an opaque `user_id` only).
-- Filters, sort controls, a refresh button, a waiting-time cue.
+- Filters, sort controls, a refresh button.
 - Splitting the refused-key message into "refused" and "could not reach" (GAP-38).
 - The letter-only Devin tile logo; the two connect-dialog shells for other integrations; the warning and success text contrast of the shared tokens.
 - Reusing the `CloudAgent` tables, poller or card.
