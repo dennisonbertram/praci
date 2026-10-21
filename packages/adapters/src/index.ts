@@ -50,6 +50,7 @@ export * from "./cloud-agent-service.js";
 export * from "./cloud-agent-tools.js";
 export * from "./cloud-agent-tools-select.js";
 export * from "./company-connection-reader.js";
+export * from "./company-document-source.js";
 export * from "./company-import-engine.js";
 export * from "./company-import-sources.js";
 export * from "./company-slack-source.js";

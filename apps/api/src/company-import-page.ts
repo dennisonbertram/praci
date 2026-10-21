@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import type { AdapterContext, CompanyConnectionReader } from "@rakazo/adapter-kit";
 import type {
+  CompanyDocumentReader,
   CompanyImportEngine,
   CompanySlackReader,
   CompanyTrackerReader,
@@ -19,6 +20,7 @@ import type {
 } from "@rakazo/contracts";
 import {
   CompanyDataRoomScopeSchema,
+  CompanyGenericScopeSchema,
   CompanyImportPlanSchema,
   CompanySourceKindSchema,
   CompanyTrackerScopeSchema,
@@ -35,6 +37,7 @@ type PageDeps = {
   reader?: CompanyConnectionReader;
   slack?: CompanySlackReader;
   tracker?: CompanyTrackerReader;
+  documents?: CompanyDocumentReader;
 };
 
 function sourceKind(provider: string): CompanyImportCatalog["sources"][number]["sourceKind"] {
@@ -125,6 +128,7 @@ async function sourcePlan(
   actor: Actor,
   source: CompanyImportSourceInput,
   tokenCap: number,
+  documents?: CompanyDocumentReader,
 ) {
   const normalizedScope = companySourceScope(source.sourceKind, source.scope);
   if (source.sourceKind === "data_room") {
@@ -137,7 +141,33 @@ async function sourcePlan(
     }
     return { normalizedScope, plan: planFor(itemCount, tokenCap) };
   }
-  return { normalizedScope, plan: planFor(null, tokenCap) };
+  const plan = planFor(null, tokenCap);
+  if (documents && (source.sourceKind === "notion" || source.sourceKind === "composio")) {
+    const tools = await documents.validate(
+      {
+        ...source,
+        id: `plan:${source.connectionId ?? source.sourceKind}`,
+        connectionId: source.connectionId ?? null,
+        scope: normalizedScope,
+      },
+      {
+        operationId: `company.import.plan:${source.connectionId ?? source.sourceKind}`,
+        traceId: `company.import.plan:${source.connectionId ?? source.sourceKind}`,
+        spaceId: actor.spaceId,
+        userId: actor.userId,
+        signal: new AbortController().signal,
+      },
+    );
+    const names =
+      source.sourceKind === "notion"
+        ? tools.tools.map((tool) => tool.name)
+        : CompanyGenericScopeSchema.parse(normalizedScope).tools.map((tool) => tool.name);
+    const perCallCosts = tools.tools
+      .filter((tool) => names.includes(tool.name) && tool.reportedCost)
+      .map((tool) => ({ toolName: tool.name, ...tool.reportedCost! }));
+    if (perCallCosts.length) return { normalizedScope, plan: { ...plan, perCallCosts } };
+  }
+  return { normalizedScope, plan };
 }
 
 export function createCompanyImportPage(deps: PageDeps) {
@@ -233,11 +263,15 @@ export function createCompanyImportPage(deps: PageDeps) {
       const gmail = kind === "gmail";
       const slack = kind === "slack";
       const github = kind === "github";
+      const notion = kind === "notion";
+      const generic = kind === "composio";
       hasGmail ||= gmail;
       const access = availableConnection(connection);
       const isSourceBlocked = blocked(kind, connection.id);
       let slackSupported = false;
       let trackerSupported = false;
+      let documentSupported = false;
+      let documentTools: NonNullable<CompanyImportCatalog["sources"][number]["tools"]> = [];
       if (slack && access && !isSourceBlocked && deps.slack) {
         try {
           slackSupported = await deps.slack.supports(
@@ -280,20 +314,68 @@ export function createCompanyImportPage(deps: PageDeps) {
           trackerSupported = false;
         }
       }
+      if ((notion || generic) && access && !isSourceBlocked && deps.documents) {
+        try {
+          const source = {
+            id: `catalog:${connection.id}`,
+            sourceKind: kind,
+            connectionId: connection.id,
+            scope: notion ? { reader: "notion", allTime: true } : { reader: "generic", tools: [] },
+          };
+          const tools = await deps.documents.listTools(source, {
+            operationId: "company.import.catalog",
+            traceId: `company.import.catalog:${connection.id}`,
+            spaceId: actor.spaceId,
+            userId: actor.userId,
+            signal: new AbortController().signal,
+          });
+          documentSupported = notion
+            ? [
+                "NOTION_SEARCH_NOTION_PAGE",
+                "NOTION_RETRIEVE_PAGE",
+                "NOTION_FETCH_BLOCK_CONTENTS",
+              ].every((name) => tools.some((tool) => tool.name === name))
+            : tools.some((tool) => tool.readOnly === true);
+          documentTools = tools
+            .filter((tool) => notion || tool.readOnly === true)
+            .map((tool) => ({
+              name: tool.name,
+              description:
+                notion && tool.name === "NOTION_SEARCH_NOTION_PAGE"
+                  ? `${tool.description} Search results are index-based and may be incomplete.`
+                  : tool.description,
+              inputSchema: tool.inputSchema,
+              ...(tool.reportedCost ? { reportedCost: tool.reportedCost } : {}),
+            }));
+        } catch {
+          documentSupported = false;
+          documentTools = [];
+        }
+      }
       sources.push({
         key: `${kind}:${connection.id}`,
         sourceKind: kind,
         connectionId: connection.id,
         label: connection.displayName,
-        available: (gmail || slackSupported || trackerSupported) && access && !isSourceBlocked,
+        available:
+          (gmail || slackSupported || trackerSupported || documentSupported) &&
+          access &&
+          !isSourceBlocked,
         reason:
           isSourceBlocked || !access
             ? "access_denied"
-            : gmail || slackSupported || trackerSupported
+            : gmail || slackSupported || trackerSupported || documentSupported
               ? null
               : "unsupported",
         itemCount: null,
-        defaultScope: github ? CompanyTrackerScopeSchema.parse({ reader: "github" }) : {},
+        defaultScope: github
+          ? CompanyTrackerScopeSchema.parse({ reader: "github" })
+          : notion
+            ? { reader: "notion", allTime: true }
+            : generic
+              ? { reader: "generic", tools: [] }
+              : {},
+        ...(documentTools.length ? { tools: documentTools } : {}),
         connectPath: gmail ? null : "/app/integrations",
       });
     }
@@ -410,7 +492,9 @@ export function createCompanyImportPage(deps: PageDeps) {
         source.sourceKind !== "gmail" &&
         source.sourceKind !== "slack" &&
         source.sourceKind !== "github" &&
-        source.sourceKind !== "mcp"
+        source.sourceKind !== "mcp" &&
+        source.sourceKind !== "notion" &&
+        source.sourceKind !== "composio"
       ) {
         throw new ORPCError("PRECONDITION_FAILED", { message: "Source is unsupported" });
       }
@@ -571,7 +655,7 @@ export function createCompanyImportPage(deps: PageDeps) {
           throw new ORPCError("FORBIDDEN", { message: "Source access is denied" });
         }
       }
-      const planned = await sourcePlan(deps.prisma, actor, source, input.tokenCap);
+      const planned = await sourcePlan(deps.prisma, actor, source, input.tokenCap, deps.documents);
       sources.push({ source, ...planned });
     }
     const created = await deps.engine.create(actor, {
@@ -643,12 +727,17 @@ export function createCompanyImportPage(deps: PageDeps) {
         });
         const current = CompanyImportPlanSchema.safeParse(source.plan);
         const itemCount = current.success ? current.data.itemCount : null;
-        const next = companyImportEstimate(itemCount, Number(run.tokenCap), {
-          itemsRead: usage._sum.itemsRead ?? 0,
-          tokensUsed: Number(
-            (usage._sum.inputTokensUsed ?? 0n) + (usage._sum.outputTokensUsed ?? 0n),
-          ),
-        });
+        const next = {
+          ...companyImportEstimate(itemCount, Number(run.tokenCap), {
+            itemsRead: usage._sum.itemsRead ?? 0,
+            tokensUsed: Number(
+              (usage._sum.inputTokensUsed ?? 0n) + (usage._sum.outputTokensUsed ?? 0n),
+            ),
+          }),
+          ...(current.success && current.data.perCallCosts
+            ? { perCallCosts: current.data.perCallCosts }
+            : {}),
+        };
         if (JSON.stringify(source.plan) !== JSON.stringify(next)) {
           await deps.prisma.companyImportSource.update({
             where: { id: source.id, spaceId: actor.spaceId, ownerUserId: actor.userId },

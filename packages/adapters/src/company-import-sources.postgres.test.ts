@@ -18,6 +18,7 @@ import type { PrismaClient } from "@rakazo/db";
 import { companyForActor, createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createCompanyConnectionReader } from "./company-connection-reader.js";
+import { createCompanyDocumentReader } from "./company-document-source.js";
 import { createCompanyImportEngine } from "./company-import-engine.js";
 import { createCompanySourceWorker } from "./company-import-sources.js";
 import { COMPANY_SLACK_READ_TOOLS, createCompanySlackReader } from "./company-slack-source.js";
@@ -410,7 +411,13 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
           : row.connectionId === connectionId,
       ),
     ).toBe(true);
-    expect(await prisma.companyEntity.count({ where: { spaceId, ownerUserId: userId } })).toBe(2);
+    const entities = await prisma.companyEntity.findMany({
+      where: { spaceId, ownerUserId: userId },
+      select: { displayName: true },
+    });
+    expect(entities.map((entity) => entity.displayName)).toEqual(
+      expect.arrayContaining(["Avery Chen", "Northwind Robotics"]),
+    );
     expect(await prisma.companyEdge.count({ where: { spaceId, ownerUserId: userId } })).toBe(1);
     expect(await prisma.companyEvent.count({ where: { spaceId, ownerUserId: userId } })).toBe(1);
     const avery = await prisma.companyEntity.findFirstOrThrow({
@@ -551,6 +558,9 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
     ).toBe(firstEvidence.length);
     expect(await prisma.companyEntity.count({ where: { spaceId, ownerUserId: userId } })).toBe(2);
     expect(await prisma.companyEvidence.count({ where: { spaceId, ownerUserId: userId } })).toBe(8);
+    expect(await prisma.companyEntity.count({ where: { spaceId, ownerUserId: userId } })).toBe(
+      entities.length,
+    );
     await engine.action(actor, secondCreated.runId, "discard");
     expect(await prisma.companyEvidence.count({ where: { spaceId, ownerUserId: userId } })).toBe(0);
     expect(await prisma.companyEntity.count({ where: { spaceId, ownerUserId: userId } })).toBe(0);
@@ -1294,5 +1304,196 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
     expect(completed.sources[0]?.itemsDiscovered).toBe(30);
     expect(completed.sources[0]?.itemsRead).toBe(30);
     expect(completionCalls - before).toBe(60);
+  });
+
+  it("persists Notion and selected generic documents through the scoped source worker", async () => {
+    const notionConnection = await prisma.connection.create({
+      data: {
+        spaceId,
+        userId,
+        connectorId: "composio",
+        provider: "notion",
+        displayName: "Synthetic Notion",
+        status: "connected",
+        providerRef: "synthetic-notion-account",
+        allAgents: true,
+        privateByDefault: false,
+      },
+    });
+    const genericConnection = await prisma.connection.create({
+      data: {
+        spaceId,
+        userId,
+        connectorId: "composio",
+        provider: "acme_crm",
+        displayName: "Synthetic CRM",
+        status: "connected",
+        providerRef: "synthetic-crm-account",
+        allAgents: true,
+        privateByDefault: false,
+      },
+    });
+    const notionPageId = "11111111-1111-4111-8111-111111111111";
+    const notionTools: ConnectorTool[] = [
+      {
+        name: "NOTION_SEARCH_NOTION_PAGE",
+        description: "Search pages",
+        inputSchema: {
+          type: "object",
+          properties: { filter_value: {}, page_size: {}, start_cursor: {} },
+        },
+        route: { connectorId: "composio", toolName: "NOTION_SEARCH_NOTION_PAGE" },
+      },
+      {
+        name: "NOTION_RETRIEVE_PAGE",
+        description: "Retrieve page metadata",
+        inputSchema: {
+          type: "object",
+          properties: { page_id: {} },
+          required: ["page_id"],
+        },
+        route: { connectorId: "composio", toolName: "NOTION_RETRIEVE_PAGE" },
+      },
+      {
+        name: "NOTION_FETCH_BLOCK_CONTENTS",
+        description: "Read page blocks",
+        inputSchema: {
+          type: "object",
+          properties: { block_id: {}, page_size: {}, start_cursor: {} },
+          required: ["block_id"],
+        },
+        route: { connectorId: "composio", toolName: "NOTION_FETCH_BLOCK_CONTENTS" },
+      },
+    ];
+    const genericTool: ConnectorTool = {
+      name: "ACME_LIST_RECORDS",
+      description: "Read selected records",
+      readOnly: true,
+      inputSchema: { type: "object", properties: {} },
+      route: { connectorId: "composio", toolName: "ACME_LIST_RECORDS" },
+    };
+    const calls: string[] = [];
+    const documents = createCompanyDocumentReader({
+      listTools: async (source: Parameters<CompanyConnectionReader["listTools"]>[0]) =>
+        source.sourceKind === "notion" ? notionTools : [genericTool],
+      callTool: async (
+        _source: Parameters<CompanyConnectionReader["callTool"]>[0],
+        name: Parameters<CompanyConnectionReader["callTool"]>[1],
+        args: Parameters<CompanyConnectionReader["callTool"]>[2],
+      ) => {
+        calls.push(name);
+        if (name === "NOTION_SEARCH_NOTION_PAGE")
+          return { results: [{ id: notionPageId }], has_more: false };
+        if (name === "NOTION_RETRIEVE_PAGE")
+          return {
+            id: args.page_id,
+            properties: { Name: { type: "title", title: [{ plain_text: "Northwind Robotics" }] } },
+          };
+        if (name === "NOTION_FETCH_BLOCK_CONTENTS")
+          return {
+            results: [
+              {
+                id: "22222222-2222-4222-8222-222222222222",
+                type: "paragraph",
+                paragraph: { rich_text: [{ plain_text: content }] },
+                has_children: false,
+              },
+            ],
+            has_more: false,
+          };
+        return { records: [{ title: "Northwind Robotics", text: content }] };
+      },
+    } as unknown as CompanyConnectionReader);
+    let extractionCalls = 0;
+    const extractor: CompanyExtractor = {
+      relevant: async () => true,
+      extract: async () => {
+        extractionCalls++;
+        return { extraction, model: { provider: "synthetic", model: "stub-extractor" } };
+      },
+    };
+    const worker = createCompanySourceWorker({ prisma, documents, extractor });
+    const jobs: JobPublisher = {
+      enqueue: async () => undefined,
+      cancel: async () => undefined,
+      close: async () => undefined,
+    };
+    const realtime = { publish: async () => undefined } as unknown as RealtimeFanout;
+    const engine = createCompanyImportEngine({
+      prisma,
+      jobs,
+      realtime,
+      resolveModel: async () => ({ provider: "synthetic", id: "synthetic-model" }),
+      worker,
+    });
+    const sources = [
+      {
+        sourceKind: "notion" as const,
+        connectionId: notionConnection.id,
+        scope: { reader: "notion" as const, allTime: true as const },
+      },
+      {
+        sourceKind: "composio" as const,
+        connectionId: genericConnection.id,
+        scope: {
+          reader: "generic" as const,
+          tools: [{ name: "ACME_LIST_RECORDS", args: {} }],
+        },
+      },
+    ];
+    const first = await engine.create(actor, { tokenCap: 1_000_000, sources });
+    await grantAll(engine, first.runId);
+    const firstProgress = await runToCompletion(engine, first.runId);
+    expect(firstProgress.status).toBe("completed");
+    expect(firstProgress.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ sourceKind: "notion", itemsDiscovered: 1, itemsRead: 1 }),
+        expect.objectContaining({ sourceKind: "composio", itemsDiscovered: 1, itemsRead: 1 }),
+      ]),
+    );
+
+    const evidence = await prisma.companyEvidence.findMany({
+      where: { extractorRunId: first.runId, spaceId, ownerUserId: userId },
+      select: { sourceKind: true, connectionId: true, factId: true, factKind: true },
+    });
+    expect(evidence).toHaveLength(8);
+    expect(new Set(evidence.map((row) => row.sourceKind))).toEqual(new Set(["notion", "composio"]));
+    expect(
+      evidence.every((row) =>
+        row.sourceKind === "notion"
+          ? row.connectionId === notionConnection.id
+          : row.connectionId === genericConnection.id,
+      ),
+    ).toBe(true);
+    expect(await prisma.companyImportEvidence.count({ where: { runId: first.runId } })).toBe(8);
+    expect(
+      calls.every((name) =>
+        [
+          "NOTION_SEARCH_NOTION_PAGE",
+          "NOTION_RETRIEVE_PAGE",
+          "NOTION_FETCH_BLOCK_CONTENTS",
+          "ACME_LIST_RECORDS",
+        ].includes(name),
+      ),
+    ).toBe(true);
+    expect(calls).not.toContain("ACME_CREATE_RECORD");
+    expect(await prisma.companyEntity.count({ where: { spaceId, ownerUserId: userId } })).toBe(2);
+    const firstPerson = evidence.find((row) => row.factKind === "entity")?.factId;
+    expect(
+      await companyForActor(prisma, {
+        ...actor,
+        userId: otherUserId,
+        email: `${otherUserId}@example.test`,
+      }).detail(firstPerson!),
+    ).toBeNull();
+
+    const second = await engine.create(actor, { tokenCap: 1_000_000, sources });
+    await grantAll(engine, second.runId);
+    const callsBeforeReplay = extractionCalls;
+    expect((await runToCompletion(engine, second.runId)).status).toBe("completed");
+    expect(extractionCalls).toBe(callsBeforeReplay);
+    expect(await prisma.companyEvidence.count({ where: { spaceId, ownerUserId: userId } })).toBe(8);
+    expect(await prisma.companyImportEvidence.count({ where: { runId: second.runId } })).toBe(8);
+    await expect(engine.progress({ ...actor, userId: otherUserId }, first.runId)).rejects.toThrow();
   });
 });

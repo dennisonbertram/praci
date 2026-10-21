@@ -3,11 +3,21 @@ import { Trans } from "@lingui/react/macro";
 import type { CompanyImportCatalogSource, CompanyImportChannels } from "@rakazo/contracts";
 import {
   CompanyDataRoomScopeSchema,
+  CompanyGenericScopeSchema,
   CompanyMailScopeSchema,
   CompanySlackScopeSchema,
 } from "@rakazo/contracts";
-import { Button, Checkbox, Dialog, DialogContent, DialogTitle, Input } from "@rakazo/ui-web";
+import {
+  Button,
+  Checkbox,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Input,
+  Textarea,
+} from "@rakazo/ui-web";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { rpc } from "../lib/rpc";
 
 export function CompanyImportScope({
@@ -23,7 +33,17 @@ export function CompanyImportScope({
   onClose: () => void;
   onSave: (scope: Record<string, unknown>) => void;
 }) {
+  useHideAmounts();
   const popup = useRef<HTMLDivElement>(null);
+  const generic = source.sourceKind === "composio";
+  const [toolArgs, setToolArgs] = useState<Record<string, string>>(() => {
+    const parsed = CompanyGenericScopeSchema.safeParse(scope);
+    return parsed.success
+      ? Object.fromEntries(
+          parsed.data.tools.map((tool) => [tool.name, JSON.stringify(tool.args, null, 2)]),
+        )
+      : {};
+  });
   const slack =
     source.sourceKind === "slack" ||
     (source.sourceKind === "mcp" && source.defaultScope.reader === "slack");
@@ -105,6 +125,27 @@ export function CompanyImportScope({
   );
   const [invalid, setInvalid] = useState(false);
   function save() {
+    if (generic) {
+      try {
+        const parsed = CompanyGenericScopeSchema.safeParse({
+          reader: "generic",
+          tools: Object.entries(toolArgs).map(([name, args]) => ({ name, args: JSON.parse(args) })),
+        });
+        if (
+          !parsed.success ||
+          parsed.data.tools.some(
+            (tool) => !source.tools?.some((candidate) => candidate.name === tool.name),
+          )
+        ) {
+          setInvalid(true);
+          return;
+        }
+        onSave(parsed.data);
+      } catch {
+        setInvalid(true);
+      }
+      return;
+    }
     const result =
       source.sourceKind === "data_room"
         ? CompanyDataRoomScopeSchema.safeParse({
@@ -157,6 +198,67 @@ export function CompanyImportScope({
             save();
           }}
         >
+          {generic && (
+            <fieldset className="space-y-4">
+              <legend className="mb-3 font-medium">
+                <Trans>Read tools</Trans>
+              </legend>
+              {source.tools?.map((tool) => (
+                <div key={tool.name} className="space-y-3">
+                  <label className="flex items-center gap-3" htmlFor={`company-tool-${tool.name}`}>
+                    <Checkbox
+                      id={`company-tool-${tool.name}`}
+                      checked={toolArgs[tool.name] !== undefined}
+                      onCheckedChange={(checked) =>
+                        setToolArgs((current) => {
+                          const next = { ...current };
+                          if (checked) next[tool.name] = "{}";
+                          else delete next[tool.name];
+                          return next;
+                        })
+                      }
+                    />
+                    <span className="break-all">{tool.name}</span>
+                  </label>
+                  {toolArgs[tool.name] !== undefined && (
+                    <div className="space-y-3 ps-7">
+                      <p className="text-sm text-muted-foreground">{tool.description}</p>
+                      {tool.reportedCost && (
+                        <p className="text-sm">
+                          {maskCurrencyWhenHidden(tool.reportedCost.description)}
+                          {tool.reportedCost.discount
+                            ? ` · ${maskCurrencyWhenHidden(tool.reportedCost.discount)}`
+                            : ""}
+                        </p>
+                      )}
+                      <label htmlFor={`company-args-${tool.name}`} className="grid gap-2 text-sm">
+                        <Trans>Arguments (JSON)</Trans>
+                        <Textarea
+                          id={`company-args-${tool.name}`}
+                          aria-label={t`Arguments for ${tool.name}`}
+                          value={toolArgs[tool.name]}
+                          onChange={(event) =>
+                            setToolArgs((current) => ({
+                              ...current,
+                              [tool.name]: event.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+                      <details className="text-sm">
+                        <summary className="cursor-pointer">
+                          <Trans>Argument schema</Trans>
+                        </summary>
+                        <pre className="mt-2 overflow-auto whitespace-pre-wrap break-all text-xs text-muted-foreground">
+                          {JSON.stringify(tool.inputSchema, null, 2)}
+                        </pre>
+                      </details>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </fieldset>
+          )}
           {slack && (
             <fieldset className="space-y-4">
               <legend className="mb-3 font-medium">
@@ -262,77 +364,82 @@ export function CompanyImportScope({
               )}
             </fieldset>
           )}
-          {source.sourceKind === "data_room" ? (
-            <fieldset className="space-y-4">
-              <legend className="mb-3 font-medium">
-                <Trans>Folders</Trans>
-              </legend>
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  aria-label={t`All folders`}
-                  checked={allFolders}
-                  onCheckedChange={setAllFolders}
-                />
-                <Trans>All folders</Trans>
-              </div>
-              {!allFolders &&
-                folders.map((folder) => (
-                  <div key={folder.id} className="flex items-center gap-3">
-                    <Checkbox
-                      aria-label={folder.name}
-                      checked={selected.includes(folder.id)}
-                      onCheckedChange={(checked) =>
-                        setSelected((ids) =>
-                          checked ? [...ids, folder.id] : ids.filter((id) => id !== folder.id),
-                        )
-                      }
+          {!generic &&
+            (source.sourceKind === "data_room" ? (
+              <fieldset className="space-y-4">
+                <legend className="mb-3 font-medium">
+                  <Trans>Folders</Trans>
+                </legend>
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    aria-label={t`All folders`}
+                    checked={allFolders}
+                    onCheckedChange={setAllFolders}
+                  />
+                  <Trans>All folders</Trans>
+                </div>
+                {!allFolders &&
+                  folders.map((folder) => (
+                    <div key={folder.id} className="flex items-center gap-3">
+                      <Checkbox
+                        aria-label={folder.name}
+                        checked={selected.includes(folder.id)}
+                        onCheckedChange={(checked) =>
+                          setSelected((ids) =>
+                            checked ? [...ids, folder.id] : ids.filter((id) => id !== folder.id),
+                          )
+                        }
+                      />
+                      {folder.name}
+                    </div>
+                  ))}
+              </fieldset>
+            ) : (
+              <fieldset className="space-y-4">
+                <legend className="mb-3 font-medium">
+                  <Trans>Date window</Trans>
+                </legend>
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    aria-label={t`All time`}
+                    checked={allTime}
+                    onCheckedChange={setAllTime}
+                  />
+                  <Trans>All time</Trans>
+                </div>
+                {!allTime && (
+                  <label htmlFor="company-import-scope-after" className="grid gap-2">
+                    <Trans>From</Trans>
+                    <Input
+                      id="company-import-scope-after"
+                      type="date"
+                      value={after}
+                      onChange={(e) => setAfter(e.target.value)}
                     />
-                    {folder.name}
-                  </div>
-                ))}
-            </fieldset>
-          ) : (
-            <fieldset className="space-y-4">
-              <legend className="mb-3 font-medium">
-                <Trans>Date window</Trans>
-              </legend>
-              <div className="flex items-center gap-3">
-                <Checkbox aria-label={t`All time`} checked={allTime} onCheckedChange={setAllTime} />
-                <Trans>All time</Trans>
-              </div>
-              {!allTime && (
-                <label htmlFor="company-import-scope-after" className="grid gap-2">
-                  <Trans>From</Trans>
+                  </label>
+                )}
+                <label htmlFor="company-import-scope-before" className="grid gap-2">
+                  <Trans>Before</Trans>
                   <Input
-                    id="company-import-scope-after"
+                    id="company-import-scope-before"
                     type="date"
-                    value={after}
-                    onChange={(e) => setAfter(e.target.value)}
+                    value={before}
+                    onChange={(e) => setBefore(e.target.value)}
                   />
                 </label>
-              )}
-              <label htmlFor="company-import-scope-before" className="grid gap-2">
-                <Trans>Before</Trans>
-                <Input
-                  id="company-import-scope-before"
-                  type="date"
-                  value={before}
-                  onChange={(e) => setBefore(e.target.value)}
-                />
-              </label>
-              {!slack && (
-                <label htmlFor="company-import-scope-labels" className="grid gap-2">
-                  <Trans>Label IDs</Trans>
-                  <Input
-                    id="company-import-scope-labels"
-                    value={labels}
-                    onChange={(e) => setLabels(e.target.value)}
-                    placeholder={t`INBOX, SENT`}
-                  />
-                </label>
-              )}
-            </fieldset>
-          )}
+                {!slack && (
+                  <label htmlFor="company-import-scope-labels" className="grid gap-2">
+                    <Trans>Label IDs</Trans>
+                    <Input
+                      id="company-import-scope-labels"
+                      value={labels}
+                      onChange={(e) => setLabels(e.target.value)}
+                      placeholder={t`INBOX, SENT`}
+                    />
+                  </label>
+                )}
+              </fieldset>
+            ))}
           {invalid && (
             <p role="alert" className="text-destructive">
               <Trans>Choose a valid scope</Trans>

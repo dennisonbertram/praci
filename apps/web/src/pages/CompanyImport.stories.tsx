@@ -66,6 +66,25 @@ function mocks(status?: string) {
   });
 }
 export const Sources: Story = { beforeEach: () => mocks() };
+export const PublishedCallRates: Story = {
+  beforeEach: () => {
+    mocks("draft");
+    const session = structuredClone(importSession);
+    session.sources[0] = {
+      ...session.sources[0]!,
+      label: "Connected workspace",
+      sourceKind: "composio",
+      scope: { reader: "generic", tools: [{ name: "WORKSPACE_LIST_DOCUMENTS", args: {} }] },
+      plan: {
+        ...session.sources[0]!.plan,
+        perCallCosts: [
+          { toolName: "WORKSPACE_LIST_DOCUMENTS", description: "$0.01 per successful call" },
+        ],
+      },
+    };
+    mockRpc({ "companyImport.session": session });
+  },
+};
 export const Trackers: Story = {
   beforeEach: () => {
     mocks();

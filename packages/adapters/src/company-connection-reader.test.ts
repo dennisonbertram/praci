@@ -234,6 +234,32 @@ describe("Company connection reader", () => {
     await expect(harness().reader.listTools(github, context)).rejects.toThrow();
   });
 
+  it("enforces the persisted generic tool selection and rejects writes", async () => {
+    const generic = {
+      ...source,
+      sourceKind: "composio",
+      scope: { reader: "generic", tools: [{ name: "list_records", args: { query: "synthetic" } }] },
+    };
+    const state = harness({
+      discover: () => [
+        managedTool("list_records", true),
+        managedTool("delete_records", false),
+        managedTool("COMPOSIO_MULTI_EXECUTE_TOOL", true),
+        managedTool("CREATE_RECORD", true),
+      ],
+    });
+    await expect(
+      state.reader.callTool(generic, "list_records", { query: "synthetic" }, context),
+    ).resolves.toEqual({ records: [] });
+    await expect(state.reader.callTool(generic, "delete_records", {}, context)).rejects.toThrow();
+    await expect(state.reader.callTool(generic, "unselected", {}, context)).rejects.toThrow();
+    await expect(
+      state.reader.callTool(generic, "COMPOSIO_MULTI_EXECUTE_TOOL", {}, context),
+    ).rejects.toThrow();
+    await expect(state.reader.callTool(generic, "CREATE_RECORD", {}, context)).rejects.toThrow();
+    expect(state.calls).toHaveLength(1);
+  });
+
   it.each(["composio", "pipedream"])("pins one %s account for direct read tools", async (id) => {
     const state = harness({ connectorId: id });
     const result = await state.reader.callTool(

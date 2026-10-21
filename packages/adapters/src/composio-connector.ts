@@ -54,6 +54,7 @@ function mapOneTool(item: unknown): ConnectorTool | undefined {
       description: String(fn.description ?? name),
       inputSchema: asObject(fn.parameters) ?? { type: "object", properties: {} },
       readOnly: explicitReadOnly(fn, raw),
+      reportedCost: reportedCost(fn, raw),
       route: { connectorId: "composio", toolName: name },
     };
   }
@@ -66,6 +67,7 @@ function mapOneTool(item: unknown): ConnectorTool | undefined {
       asObject(raw.inputSchema) ??
       asObject(raw.parameters) ?? { type: "object", properties: {} },
     readOnly: explicitReadOnly(raw),
+    reportedCost: reportedCost(raw),
     route: { connectorId: "composio", toolName: name },
   };
 }
@@ -73,13 +75,37 @@ function mapOneTool(item: unknown): ConnectorTool | undefined {
 function explicitReadOnly(...items: Record<string, unknown>[]): boolean | undefined {
   for (const item of items) {
     const annotations = asObject(item.annotations);
-    if (item.destructiveHint === true || annotations?.destructiveHint === true) return false;
+    const tags = asObject(item.tags);
+    if (
+      item.destructiveHint === true ||
+      annotations?.destructiveHint === true ||
+      tags?.destructiveHint === true ||
+      tags?.createHint === true ||
+      tags?.updateHint === true
+    )
+      return false;
     if (item.readOnly === false || annotations?.readOnlyHint === false) return false;
+    if (tags?.readOnlyHint === false) return false;
   }
   for (const item of items) {
     if (typeof item.readOnly === "boolean") return item.readOnly;
     const annotations = asObject(item.annotations);
     if (typeof annotations?.readOnlyHint === "boolean") return annotations.readOnlyHint;
+    const tags = asObject(item.tags);
+    if (typeof tags?.readOnlyHint === "boolean") return tags.readOnlyHint;
+  }
+  return undefined;
+}
+
+function reportedCost(...items: Record<string, unknown>[]) {
+  for (const item of items) {
+    const instant = asObject(item.instant);
+    const price = asObject(instant?.price);
+    if (typeof price?.description !== "string" || price.description.length === 0) continue;
+    return {
+      description: price.description,
+      ...(typeof price.discount === "string" ? { discount: price.discount } : {}),
+    };
   }
   return undefined;
 }
@@ -525,7 +551,141 @@ export class ComposioConnector implements ComposioProvider {
       Boolean(context.connectedAppAgentConnectionId),
     );
     const raw = await session.tools();
-    return asConnectorTools(raw);
+    const offered = asConnectorTools(raw);
+    if (!context.companyImportReadOnly) return offered;
+    return this.companyReadTools(session, offered, context);
+  }
+
+  private async companyReadTools(
+    session: ComposioSession,
+    offered: ConnectorTool[],
+    context: AdapterContext,
+    includePricing = true,
+  ): Promise<ConnectorTool[]> {
+    const rawByName = new Map<string, ConnectorTool>();
+    try {
+      const raw = await (
+        this.sdk().tools as unknown as {
+          getRawToolRouterSessionTools: (sessionId: string) => Promise<unknown>;
+        }
+      ).getRawToolRouterSessionTools(session.sessionId);
+      const items = Array.isArray(raw)
+        ? raw
+        : raw && typeof raw === "object" && Array.isArray((raw as { items?: unknown }).items)
+          ? ((raw as { items: unknown[] }).items ?? [])
+          : raw && typeof raw === "object" && Array.isArray((raw as { tools?: unknown }).tools)
+            ? ((raw as { tools: unknown[] }).tools ?? [])
+            : [];
+      const provider = context.connectedConnections?.find(
+        (connection) => connection.connectorId === "composio",
+      )?.externalId;
+      for (const item of items) {
+        if (!item || typeof item !== "object") continue;
+        const row = item as Record<string, unknown>;
+        const toolkit =
+          (row.toolkit && typeof row.toolkit === "object"
+            ? (row.toolkit as Record<string, unknown>).slug
+            : undefined) ??
+          row.toolkitSlug ??
+          row.toolkit_slug;
+        const name = String(
+          row.slug ??
+            row.name ??
+            (row.function && typeof row.function === "object"
+              ? (row.function as Record<string, unknown>).name
+              : "") ??
+            "",
+        );
+        if (!name) continue;
+        if (
+          typeof provider === "string" &&
+          ((typeof toolkit === "string" &&
+            composioSlugKey(toolkit) !== composioSlugKey(provider)) ||
+            (typeof toolkit !== "string" &&
+              !name
+                .toUpperCase()
+                .startsWith(`${provider.toUpperCase().replace(/[^A-Z0-9]+/g, "_")}_`)))
+        )
+          continue;
+        const mapped = asConnectorTools([item])[0];
+        if (mapped) rawByName.set(mapped.name, mapped);
+      }
+    } catch {
+      // Missing raw metadata leaves tools unclassified for generic reads.
+    }
+    const costs = includePricing
+      ? await this.companyToolCosts(
+          offered.map((tool) => tool.name),
+          context,
+        )
+      : new Map<string, NonNullable<ConnectorTool["reportedCost"]>>();
+    return offered.map((tool) => {
+      const rawTool = rawByName.get(tool.name);
+      const reportedCost = costs.get(tool.name) ?? rawTool?.reportedCost;
+      return {
+        ...tool,
+        ...(rawTool
+          ? {
+              description: rawTool.description,
+              inputSchema: rawTool.inputSchema,
+            }
+          : {}),
+        readOnly: rawTool?.readOnly,
+        ...(reportedCost ? { reportedCost } : {}),
+      };
+    });
+  }
+
+  private async companyToolCosts(names: string[], context: AdapterContext) {
+    const result = new Map<string, NonNullable<ConnectorTool["reportedCost"]>>();
+    if (!this.apiKey || names.length === 0 || typeof fetch !== "function") return result;
+    for (let offset = 0; offset < names.length; offset += 50) {
+      const batch = names.slice(offset, offset + 50);
+      try {
+        const response = await fetch(
+          `https://backend.composio.dev/api/v3.1/tools?tool_slugs=${encodeURIComponent(batch.join(","))}&include_pricing=true&limit=${batch.length}`,
+          { headers: { Authorization: `Bearer ${this.apiKey}`, "x-api-key": this.apiKey } },
+        );
+        if (!response.ok) continue;
+        const body = (await response.json()) as unknown;
+        const items =
+          body && typeof body === "object" && Array.isArray((body as { items?: unknown }).items)
+            ? ((body as { items: unknown[] }).items ?? [])
+            : [];
+        for (const item of items) {
+          if (!item || typeof item !== "object") continue;
+          const row = item as Record<string, unknown>;
+          const slug = typeof row.slug === "string" ? row.slug : undefined;
+          const toolkit =
+            (row.toolkit && typeof row.toolkit === "object"
+              ? (row.toolkit as Record<string, unknown>).slug
+              : undefined) ??
+            row.toolkitSlug ??
+            row.toolkit_slug;
+          const provider = context.connectedConnections?.find(
+            (connection) => connection.connectorId === "composio",
+          )?.externalId;
+          const wrongToolkit =
+            typeof provider === "string" &&
+            (typeof toolkit === "string"
+              ? composioSlugKey(toolkit) !== composioSlugKey(provider)
+              : !slug
+                  ?.toUpperCase()
+                  .startsWith(`${provider.toUpperCase().replace(/[^A-Z0-9]+/g, "_")}_`));
+          if (!slug || wrongToolkit) continue;
+          const instant = asObject(row.instant);
+          const price = asObject(instant?.price);
+          if (typeof price?.description !== "string" || !price.description) continue;
+          result.set(slug, {
+            description: price.description,
+            ...(typeof price.discount === "string" ? { discount: price.discount } : {}),
+          });
+        }
+      } catch {
+        // Pricing is optional display metadata and never affects read authorization.
+      }
+    }
+    return result;
   }
 
   async resolveCall(
@@ -602,9 +762,11 @@ export class ComposioConnector implements ComposioProvider {
       );
       if (call.route && (call.route.connectionId || call.route.discoveredReadOnly === true)) {
         // Fetched now, not at discovery: a read that has become a write must not run unasked.
-        const offered = new Map(
-          asConnectorTools(await session.tools()).map((tool) => [tool.name, tool]),
-        );
+        const listed = asConnectorTools(await session.tools());
+        const freshTools = context.companyImportReadOnly
+          ? await this.companyReadTools(session, listed, context, false)
+          : listed;
+        const offered = new Map(freshTools.map((tool) => [tool.name, tool]));
         const requested =
           call.tool !== COMPOSIO_MULTI_EXECUTE_TOOL
             ? [call.route.toolName ?? planned[0]?.tool ?? ""]
