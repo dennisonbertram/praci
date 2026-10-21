@@ -3330,6 +3330,7 @@ model CompanyEntity {
   status            String          @default("suggested")
   visibility        String          @default("private")
   lockedFields      String[]        @default([])
+  sourceClaimKeys   String[]        @default([])
   confirmedAt       DateTime?
   confirmedByUserId String?
   contactId         String?

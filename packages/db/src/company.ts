@@ -978,6 +978,7 @@ async function importEntity(
       : {}),
   });
   const key = sourceKey(input.evidence, claimFingerprint);
+  const importId = `company_${hash({ scope, input: input.entity, key }).slice(0, 24)}`;
   const aliases = entityAliases(input.entity, key);
   const evidenceRows = await db.companyEvidence.findMany({
     where: {
@@ -1001,7 +1002,20 @@ async function importEntity(
   const rejection = await findSuppression(db, scope, input.entity.kind, aliases);
   if (rejection) return { suppressed: true, record: null, rejectionId: rejection.id };
 
-  if (input.entity.kind === "person" && strongIdentifiers.length === 0 && !activeEvidence) {
+  const retainedClaim = activeEvidence
+    ? null
+    : await db.companyEntity.findFirst({
+        where: {
+          ...scope,
+          kind: input.entity.kind,
+          status: { not: "rejected" },
+          OR: [{ sourceClaimKeys: { has: key } }, { id: importId }],
+        },
+        select: { id: true },
+      });
+  const existingEvidence = activeEvidence ?? (retainedClaim ? { factId: retainedClaim.id } : null);
+
+  if (input.entity.kind === "person" && strongIdentifiers.length === 0 && !existingEvidence) {
     const sourceNameAlias = `person-source-name:${hash([
       sourceLocatorFromKey(key) ?? key,
       normalizeCompanyName(input.entity.displayName),
@@ -1034,8 +1048,6 @@ async function importEntity(
       return { deferred: true, record: null, candidateId };
     }
   }
-
-  const existingEvidence = activeEvidence;
 
   const matchingIdentifiers =
     input.entity.kind === "organisation"
@@ -1201,7 +1213,7 @@ async function importEntity(
     const originalEntityId = entityId;
     const existingEntity = await db.companyEntity.findFirstOrThrow({
       where: { ...scope, id: originalEntityId },
-      select: { attrs: true, displayName: true, lockedFields: true },
+      select: { attrs: true, displayName: true, lockedFields: true, sourceClaimKeys: true },
     });
     const existingMerge = await db.companyMerge.findFirst({
       where: { ...scope, sourceEntityId: originalEntityId },
@@ -1275,6 +1287,7 @@ async function importEntity(
         normalizedName: normalizeCompanyName(displayName),
         attrs: updatedAttrs as Prisma.InputJsonValue,
         confidence: input.entity.confidence,
+        sourceClaimKeys: [...new Set([...existingEntity.sourceClaimKeys, key])],
       },
     });
     const persistedIdentifiers = identifiers.filter(([, identityType, identityValue]) => {
@@ -1310,7 +1323,7 @@ async function importEntity(
     return mapEntity(db, scope, row);
   }
 
-  const id = `company_${hash({ scope, input: input.entity, key }).slice(0, 24)}`;
+  const id = importId;
   const row = await db.companyEntity.create({
     data: {
       id,
@@ -1320,6 +1333,7 @@ async function importEntity(
       normalizedName: normalizeCompanyName(input.entity.displayName),
       attrs: input.entity.attrs as Prisma.InputJsonValue,
       confidence: input.entity.confidence,
+      sourceClaimKeys: [key],
       contactId: input.entity.contactId ?? null,
       legalContractId: input.entity.legalContractId ?? null,
       dataRoomItemId: input.entity.dataRoomItemId ?? null,

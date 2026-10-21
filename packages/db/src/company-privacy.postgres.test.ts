@@ -800,6 +800,53 @@ describePostgres("company privacy controls (PostgreSQL)", () => {
     ).rejects.toMatchObject({ code: "not_found" });
   });
 
+  it("replays retained name-only facts after source disconnect and reconnect", async () => {
+    const company = companyForActor(prisma, owner);
+    const input = {
+      ...person("Retained name-only person", "retained-name-only", "unused@example.test"),
+      entity: {
+        kind: "person" as const,
+        displayName: "Retained name-only person",
+        attrs: {},
+        confidence: 0.9,
+      },
+    };
+    const retained = record(await company.importEntity(input));
+    await company.edit({
+      entityId: retained.id,
+      kind: "person",
+      displayName: "Owner corrected name",
+    });
+    await company.confirm(retained.id);
+    const legacyInput = {
+      entity: { ...input.entity, displayName: "Legacy retained person" },
+      evidence: evidence("legacy-retained-person", "legacy-retained-person-hash"),
+    };
+    const legacy = record(await company.importEntity(legacyInput));
+    await company.confirm(legacy.id);
+    await prisma.companyEntity.update({
+      where: { id: legacy.id },
+      data: { sourceClaimKeys: [] },
+    });
+    const source = { sourceKind: "slack" as const, connectionId: null, mcpServerId: null };
+    await company.sourceControl(source, false);
+    expect(await company.detail(retained.id)).toMatchObject({
+      displayName: "Owner corrected name",
+    });
+    await company.sourceControl(source, true);
+    expect(
+      await company.importEntity({
+        ...input,
+        entity: { ...input.entity, confidence: 0.7 },
+        evidence: { ...input.evidence, contentHash: "changed-reimport-hash" },
+      }),
+    ).toMatchObject({ id: retained.id, displayName: "Owner corrected name", status: "confirmed" });
+    expect(await company.importEntity(legacyInput)).toMatchObject({
+      id: legacy.id,
+      status: "confirmed",
+    });
+  });
+
   it("cascades Company state when its space is deleted", async () => {
     const company = companyForActor(prisma, otherSpaceOwner);
     const fact = record(
