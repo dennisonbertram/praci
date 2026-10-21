@@ -225,9 +225,12 @@ export async function autoGroupSidebar(
 ): Promise<SidebarSnapshot> {
   return prisma.$transaction(async (tx) => {
     const rows = await loadRows(tx, actor);
-    const unfiled = sidebarContainer(rows, null);
     const nameOf = new Map<Row, string>();
-    for (const row of unfiled) nameOf.set(row, autoGroupFolderName(row));
+    for (const row of sidebarContainer(rows, null)) {
+      const name = autoGroupFolderName(row);
+      if (name) nameOf.set(row, name);
+    }
+    const unfiled = [...nameOf.keys()];
     // A child follows its parent when the parent is moving too, so the tree stays together.
     for (const row of unfiled) {
       const parent = row.parentBotId

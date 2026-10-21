@@ -267,7 +267,7 @@ export function createFileDataRoomItem(
   return { fileItem, storeAndFile, requeueStuck, known, folderAt, dropBlob };
 }
 
-const QUERY_EMBED_TIMEOUT_MS = 10_000;
+const QUERY_EMBED_TIMEOUT_MS = 3_000;
 
 /**
  * The query's vector, only when an embedder exists and the user consented. Any failure means
