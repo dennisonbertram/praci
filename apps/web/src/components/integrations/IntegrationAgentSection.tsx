@@ -59,9 +59,10 @@ export function IntegrationAgentSection({
   disabled: boolean;
   /** Omitted when the agent can never make changes (Devin): the switch is not shown. */
   onWrites?: (on: boolean) => void;
-  onShared: (on: boolean) => void;
+  /** Omitted for read-only agents with no sharing choice (Granola): the toggle and list are not shown. */
+  onShared?: (on: boolean) => void;
   /** The per-agent list, shown while the connection is shared. */
-  usedBy: ReactNode;
+  usedBy?: ReactNode;
   idPrefix?: string;
 }) {
   const { t } = useLingui();
@@ -83,28 +84,31 @@ export function IntegrationAgentSection({
             idPrefix={idPrefix}
             hint={
               <Trans>
-                Off: the agent only reads. On: it can also make changes, and asks you before each one.
+                Off: the agent only reads. On: it can also make changes, and asks you before each
+                one.
               </Trans>
             }
           />
         ) : null}
-        <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-0.5">
-          <Switch
-            id={`${idPrefix}-shared`}
-            aria-describedby={`${idPrefix}-shared-hint`}
-            checked={shared}
-            disabled={disabled}
-            onCheckedChange={onShared}
-          />
-          <Label htmlFor={`${idPrefix}-shared`}>
-            <Trans>Let other agents use {service} directly</Trans>
-          </Label>
-          <p id={`${idPrefix}-shared-hint`} className="col-start-2 text-sm text-muted-foreground">
-            <Trans>Off: other agents reach {service} only through this agent.</Trans>
-          </p>
-        </div>
+        {onShared ? (
+          <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-0.5">
+            <Switch
+              id={`${idPrefix}-shared`}
+              aria-describedby={`${idPrefix}-shared-hint`}
+              checked={shared}
+              disabled={disabled}
+              onCheckedChange={onShared}
+            />
+            <Label htmlFor={`${idPrefix}-shared`}>
+              <Trans>Let other agents use {service} directly</Trans>
+            </Label>
+            <p id={`${idPrefix}-shared-hint`} className="col-start-2 text-sm text-muted-foreground">
+              <Trans>Off: other agents reach {service} only through this agent.</Trans>
+            </p>
+          </div>
+        ) : null}
       </div>
-      {shared ? (
+      {shared && onShared && usedBy ? (
         <>
           <Heading>
             <Trans>Used by</Trans>

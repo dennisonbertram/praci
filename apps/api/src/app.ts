@@ -18,6 +18,7 @@ import type {
   ConnectorRegistry,
   DestinationEmulator,
   FinanceSyncDeps,
+  MeetingSourceRegistry,
   RemoteConnectorDependencies,
 } from "@rakazo/adapters";
 import {
@@ -200,6 +201,8 @@ export async function createApp(
     financeCallToolFor?: FinanceSyncDeps["callToolFor"];
     /** Replaces the network for wallet balances, prices, ENS and exchange reads, so canned crypto data runs offline. */
     cryptoFetch?: typeof fetch;
+    /** Replaces the real meeting providers, so the demo and tests run Granola against its emulator. */
+    meetingSources?: MeetingSourceRegistry;
   } = {},
 ): Promise<AppHandles> {
   const {
@@ -217,6 +220,7 @@ export async function createApp(
     contextStrategy,
     financeCallToolFor: financeCallToolOverride,
     cryptoFetch,
+    meetingSources,
     ...envOverrides
   } = overrides;
   const env = { ...loadEnv(process.env), ...envOverrides };
@@ -600,6 +604,7 @@ export async function createApp(
     mail,
     mailWritesDisabled: env.mailWritesDisabled,
     gmailPush,
+    ...(meetingSources ? { meetingSources } : {}),
   });
   if (inMemoryJobs) {
     await inMemoryJobs.start(jobHandlers);
@@ -653,6 +658,7 @@ export async function createApp(
     mcp,
     // The same offline fake serves exchange reads (Coinbase, Kraken) and their prices.
     ...(cryptoFetch ? { exchangeFetch: cryptoFetch } : {}),
+    ...(meetingSources ? { meetingSources } : {}),
     parseStatement: async (file, scope) => {
       // Only a PDF from an unknown bank reaches the model, and only with the consent the Inbox
       // triage model already needs. Without it the parser says no model is configured.

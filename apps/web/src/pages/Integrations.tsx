@@ -1,7 +1,9 @@
 import { Route, Routes } from "react-router-dom";
 import { AppDetail } from "../components/integrations/AppDetail";
+import { GranolaPage } from "../components/integrations/GranolaPage";
 import { IntegrationsHome } from "../components/integrations/IntegrationsHome";
 import { McpDetail } from "../components/integrations/McpDetail";
+import { StoredMeetingsList } from "../components/integrations/StoredMeetingsList";
 import { useIntegrations } from "../components/integrations/useIntegrations";
 import { IntegrationSetupPage } from "./IntegrationSetup";
 
@@ -9,9 +11,11 @@ import { IntegrationSetupPage } from "./IntegrationSetup";
 export function IntegrationsPage({
   activeBotId,
   onOpenMessaging,
+  onOpenAiDataSharing,
 }: {
   activeBotId?: string;
   onOpenMessaging?: () => void;
+  onOpenAiDataSharing?: () => void;
 }) {
   const data = useIntegrations();
   return (
@@ -20,6 +24,11 @@ export function IntegrationsPage({
         path="app/:connectorId/:slug"
         element={<AppDetail data={data} activeBotId={activeBotId} />}
       />
+      <Route
+        path="granola"
+        element={<GranolaPage data={data} onOpenAiDataSharing={onOpenAiDataSharing} />}
+      />
+      <Route path="granola/meetings" element={<StoredMeetingsList />} />
       <Route path="mcp/:serverId" element={<McpDetail data={data} />} />
       <Route path="setup" element={<IntegrationSetupPage />} />
       <Route
