@@ -3,9 +3,10 @@ import type {
   CapabilityInstall,
   Connection,
   ConnectionCatalogItem,
+  DevinSessionsOutput,
   McpServer,
 } from "@rakazo/contracts";
-import { isCryptoEndpoint } from "@rakazo/contracts";
+import { isCryptoEndpoint, isDevinEndpoint } from "@rakazo/contracts";
 import { CONNECTION_CATALOG_PAGE_SIZE } from "@rakazo/core";
 import {
   AlertDialog,
@@ -43,6 +44,7 @@ import { PageHeader } from "../PageHeader";
 import { AppLogo } from "./AppLogo";
 import { ConnectAppDialog } from "./ConnectAppDialog";
 import { CustomConnectionDialog } from "./CustomConnectionDialog";
+import { DevinConnectDialog } from "./DevinConnectDialog";
 import {
   connectedFinanceKeys,
   FINANCE_TILE_COUNT,
@@ -94,19 +96,48 @@ function UsedBy({ bots }: { bots: ReturnType<typeof agentsFor> }) {
   );
 }
 
+/** The space's Devin connection, read once while a Devin card is shown. Null until it loads or if it fails. */
+function useDevinConnection(enabled: boolean) {
+  const [connection, setConnection] = useState<DevinSessionsOutput["connection"] | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    let live = true;
+    rpc.devin
+      .sessions()
+      .then((result) => live && setConnection(result.connection))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [enabled]);
+  return connection;
+}
+
 function McpCard({
   server,
   data,
   descriptions,
+  onReconnectDevin,
 }: {
   server: McpServer;
   data: IntegrationsData;
   /** What each first-party server does, shown instead of its raw address. */
   descriptions: Partial<Record<string, string>>;
+  onReconnectDevin: () => void;
 }) {
   const { t } = useLingui();
   const reconnect = useMcpReconnect(server.id, () => void data.refresh());
-  const status = reconnect.busy ? "connecting" : mcpStatus(server);
+  const isDevin = "endpoint" in server && isDevinEndpoint(server.endpoint);
+  const connection = useDevinConnection(isDevin);
+  // The space's connection is this card only for the connector's own server; a private Devin
+  // server kept from before is a plain MCP server and must not take the shared key's actions.
+  const devin =
+    connection?.isConnector && connection.agentBotId === (server.agentBotId ?? null)
+      ? connection
+      : null;
+  // A key Devin refused, or a connector who left, is fixed with a new key, not by signing in again.
+  const devinLapsed = devin?.status === "rejected" || devin?.status === "connector_gone";
+  const status = reconnect.busy ? "connecting" : devinLapsed ? "reconnect" : mcpStatus(server);
   const assigned = data.mcpAssignments
     .filter((entry) => entry.serverId === server.id)
     .map((entry) => entry.botId);
@@ -116,7 +147,11 @@ function McpCard({
       : undefined;
   // The app page a known server feeds, opened from its card like Mercury's "Open Finance".
   const page =
-    known?.id === "carta" ? { to: "/app/cap-table", label: t`Open Cap table` } : undefined;
+    known?.id === "carta"
+      ? { to: "/app/cap-table", label: t`Open Cap table` }
+      : devin
+        ? { to: "/app/devin", label: t`Open Devin` }
+        : undefined;
   return (
     <Card>
       <CardHead
@@ -135,12 +170,12 @@ function McpCard({
         {page && status === "connected" ? (
           <OpenPageLink to={page.to}>{page.label}</OpenPageLink>
         ) : null}
-        {status === "reconnect" ? (
+        {status === "reconnect" && (!devin || devin.manage) ? (
           <Button
             size="sm"
             className="relative z-10 ms-auto"
             disabled={reconnect.busy}
-            onClick={() => void reconnect.run()}
+            onClick={() => (devin ? onReconnectDevin() : void reconnect.run())}
           >
             <Trans>Reconnect</Trans>
           </Button>
@@ -326,8 +361,9 @@ export function IntegrationsHome({
     scope?: string;
     token?: boolean;
     apiKey?: boolean;
-    keyHint?: string;
   } | null>(null);
+  /** The Devin key dialog: connecting the space, or replacing a refused key. */
+  const [devinDialog, setDevinDialog] = useState<"connect" | "replace" | null>(null);
   const [removing, setRemoving] = useState<CapabilityInstall | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const labels: Record<CategoryFilter, string> = {
@@ -445,14 +481,12 @@ export function IntegrationsHome({
   }, [data.loaded]);
 
   function connectFirstParty(entry: (typeof FIRST_PARTY_MCP)[number]) {
+    if (entry.id === "devin") return setDevinDialog("connect");
     setCustom({
       url: entry.endpoint,
       service: entry.name,
       // Treg takes an API token, not a sign-in.
       ...(entry.id === "treg" ? { token: true } : {}),
-      ...("apiKey" in entry
-        ? { apiKey: true, keyHint: t`An org-scoped Devin service-user key (starts with cog_).` }
-        : {}),
       ...("oauthClient" in entry ? { oauthClient: true, scope: entry.scope } : {}),
     });
   }
@@ -549,6 +583,7 @@ export function IntegrationsHome({
                       server={server}
                       data={data}
                       descriptions={firstPartyDescription}
+                      onReconnectDevin={() => setDevinDialog("replace")}
                     />
                   ))}
                   {(wholeList && !searching ? data.sources : []).map((source) => (
@@ -849,8 +884,6 @@ export function IntegrationsHome({
           initialUrl={custom.url}
           service={custom.service}
           tokenSource={custom.token}
-          apiKey={custom.apiKey}
-          keyHint={custom.keyHint}
           oauthClient={custom.oauthClient}
           oauthScope={custom.scope}
           onClose={() => {
@@ -860,6 +893,9 @@ export function IntegrationsHome({
             if (back) navigate(back);
           }}
         />
+      ) : null}
+      {devinDialog ? (
+        <DevinConnectDialog mode={devinDialog} onClose={() => setDevinDialog(null)} />
       ) : null}
       <AlertDialog open={removing !== null} onOpenChange={(open) => !open && setRemoving(null)}>
         <AlertDialogContent>

@@ -5,6 +5,7 @@ import {
   cloudAgentsEnabled,
   inboxClassifierSelected,
   parseModelSecret,
+  queueMeetingDigests,
   selectConfiguredModel,
   TYPESAFE_CLASSIFIER_ID,
   toStringRecord,
@@ -311,6 +312,11 @@ export async function allowAiConsent(
         update: { version: current.version, grantedAt: new Date() },
       }),
     ),
+  );
+  // Granting consent lets stored meetings without a digest be digested; a lost enqueue is retried
+  // by the next trigger.
+  await queueMeetingDigests(deps, { spaceId: actor.spaceId, userId: actor.userId }).catch(
+    () => undefined,
   );
   return {
     ...current,

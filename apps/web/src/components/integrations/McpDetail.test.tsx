@@ -322,3 +322,9 @@ it("shows a Devin agent section without the changes switch, and Mercury with it"
   });
   expect(writesSwitch()).not.toBeNull();
 });
+
+it("says disconnecting Devin leaves its sessions running", async () => {
+  await show(false, "https://mcp.devin.ai/mcp");
+  await press("Remove Carta");
+  expect(document.body.textContent).toContain("Devin sessions are not affected.");
+});

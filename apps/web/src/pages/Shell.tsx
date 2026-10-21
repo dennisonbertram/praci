@@ -68,6 +68,7 @@ import {
   ArrowLeft,
   BookUser,
   ChartColumn,
+  CodeXml,
   Files,
   FileText,
   FolderOpen,
@@ -127,6 +128,7 @@ import { ComputerWorkspace } from "../components/computer/ComputerWorkspace";
 import type { SendTarget } from "../components/data-room/SendToAgent";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
 import { AgentAvatar } from "../components/integrations/AgentAvatar";
+import { DevinConnectDialog } from "../components/integrations/DevinConnectDialog";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
 import { canOfferHostComputer } from "../components/RunsOnPicker";
 import { OpeningSpace } from "../components/ShellSkeleton";
@@ -240,6 +242,7 @@ import type { ContextMenuPosition } from "./BotContextMenu";
 import { CapTablePage } from "./CapTable";
 import { ContactsPage } from "./Contacts";
 import { DataRoomPage } from "./DataRoom";
+import { DevinPage } from "./Devin";
 import { FinancePage } from "./Finance";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
 import { InboxPage } from "./Inbox";
@@ -484,6 +487,14 @@ export function ShellPage() {
   const [legalAgentOpen, setLegalAgentOpen] = useState(false);
   const [creatingLegalAgent, setCreatingLegalAgent] = useState(false);
   const [legalAgentError, setLegalAgentError] = useState("");
+  const [devinAgentOpen, setDevinAgentOpen] = useState(false);
+  const [creatingDevinAgent, setCreatingDevinAgent] = useState(false);
+  const [devinAgentError, setDevinAgentError] = useState("");
+  /** The connector's Devin agent: undefined until asked, null for everyone else. */
+  const [devinAgentId, setDevinAgentId] = useState<string | null | undefined>(undefined);
+  const [devinDialog, setDevinDialog] = useState<"connect" | "replace" | null>(null);
+  /** Remounts the Devin page after a key is accepted, so it shows the new connection at once. */
+  const [devinPageKey, setDevinPageKey] = useState(0);
   // The Carta agent panel remembers being collapsed, and starts collapsed on a phone, where it
   // would cover the page.
   const [cartaAgentCollapsed, setCartaAgentCollapsed] = useState(() => !wideScreen());
@@ -945,6 +956,7 @@ export function ShellPage() {
   const financeMode = useMatch("/app/finance/*") != null;
   const dataRoomMode = useMatch("/app/data-room") != null;
   const legalMode = useMatch("/app/legal") != null;
+  const devinMode = useMatch("/app/devin") != null;
   const artifactsMode = useMatch("/app/artifacts/*") != null;
   // The route exists only while bootstrap enables the board (see App).
   const boardMode = useMatch("/app/board") != null;
@@ -956,6 +968,7 @@ export function ShellPage() {
     inboxMode ||
     financeMode ||
     legalMode ||
+    devinMode ||
     capTableMode ||
     integrationsMode ||
     dataRoomMode ||
@@ -971,6 +984,9 @@ export function ShellPage() {
   useEffect(() => {
     if (!legalMode) setLegalAgentOpen(false);
   }, [legalMode]);
+  useEffect(() => {
+    if (!devinMode) setDevinAgentOpen(false);
+  }, [devinMode]);
   // Pages that name the workspace beside their title show it only when the user has several.
   const pageSpaceName =
     spaces.length > 1 ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name : undefined;
@@ -992,9 +1008,11 @@ export function ShellPage() {
             ? findDataRoomAgent(bots, userId)
             : legalMode
               ? findLegalAgent(bots, userId)
-              : capTableMode
-                ? findCartaAgent(bots, userId)
-                : routeBot.bot;
+              : devinMode
+                ? bots.find((bot) => bot.id === devinAgentId)
+                : capTableMode
+                  ? findCartaAgent(bots, userId)
+                  : routeBot.bot;
   /** The open bot's colour. A group or a missing bot has no `active`, so its thread stays monochrome. */
   const threadAccent = botAccentHex(active?.color);
   const [botPins, setBotPins] = useBotPins(active?.id, pinsSeq);
@@ -2000,6 +2018,11 @@ export function ShellPage() {
         label: t`Legal`,
         keywords: t`contracts, NDA, deadlines`,
         icon: <Scale {...icon} />,
+      },
+      {
+        id: "devin",
+        label: t`Devin`,
+        icon: <CodeXml {...icon} />,
       },
       {
         id: "cap-table",
@@ -3037,6 +3060,25 @@ export function ShellPage() {
     }
   }
 
+  async function createDevinAgent() {
+    setCreatingDevinAgent(true);
+    setDevinAgentError("");
+    try {
+      const agent = await rpc.devin.agent();
+      setDevinAgentId(agent?.bot.id ?? null);
+      await refreshBots();
+    } catch (error) {
+      setDevinAgentError(errorText(error, t`Could not create the Devin agent`));
+    } finally {
+      setCreatingDevinAgent(false);
+    }
+  }
+
+  function askDevinAgent() {
+    setDevinAgentOpen(true);
+    if (!active && !creatingDevinAgent) void createDevinAgent();
+  }
+
   function askLegalAgent() {
     setLegalAgentOpen(true);
     if (!active && !creatingLegalAgent) void createLegalAgent();
@@ -3104,6 +3146,22 @@ export function ShellPage() {
 
   const cartaSuggestions = [t`Who are our investors?`, t`Draft this month's investor update`];
   const cartaAgentIntro = t`The Carta agent reads your cap table from Carta and answers questions about it. Try one:`;
+  // The connector's agent is made on first visit, as the plan says; anyone else gets null.
+  useEffect(() => {
+    if (!devinMode) return;
+    let live = true;
+    rpc.devin
+      .agent()
+      .then(async (agent) => {
+        if (!live) return;
+        setDevinAgentId(agent?.bot.id ?? null);
+        if (agent) await refreshBots();
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [devinMode, bootstrapMe?.spaceId, refreshBots]);
   // The agent panel of the current page; null on bot and group routes, which have their own panels.
   const agentPanel = inboxMode
     ? {
@@ -3145,35 +3203,48 @@ export function ShellPage() {
             error: dataRoomAgentError,
             suggestions: dataRoomAgentSuggestions(),
           }
-        : legalMode
+        : devinMode
           ? {
-              name: "legal-agent",
-              testId: "legal-agent-panel",
-              open: legalAgentOpen,
-              collapse: () => setLegalAgentOpen(false),
-              collapseLabel: t`Collapse Legal agent`,
-              create: createLegalAgent,
-              createLabel: t`Create Legal agent`,
-              creating: creatingLegalAgent,
-              error: legalAgentError,
+              name: "devin-agent",
+              testId: "devin-agent-panel",
+              open: devinAgentOpen,
+              collapse: () => setDevinAgentOpen(false),
+              collapseLabel: t`Collapse Devin agent`,
+              create: createDevinAgent,
+              createLabel: t`Create Devin agent`,
+              creating: creatingDevinAgent,
+              error: devinAgentError,
+              suggestions: [t`Anything merged today?`, t`What did Devin do this week?`],
             }
-          : capTableMode
+          : legalMode
             ? {
-                name: "carta-agent",
-                testId: "carta-agent-panel",
-                // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
-                // Without Carta the agent can read nothing, so the page's Connect Carta card shows instead.
-                open: cartaPanel.open,
-                collapse: () => setCartaAgentCollapsedPref(true),
-                collapseLabel: t`Collapse Carta agent`,
-                // A failed creation is retried from the panel; the agent otherwise appears by itself.
-                create: cartaAgentError ? createCartaAgent : undefined,
-                createLabel: t`Try again`,
-                creating: creatingCartaAgent,
-                error: cartaAgentError,
-                suggestions: cartaSuggestions,
+                name: "legal-agent",
+                testId: "legal-agent-panel",
+                open: legalAgentOpen,
+                collapse: () => setLegalAgentOpen(false),
+                collapseLabel: t`Collapse Legal agent`,
+                create: createLegalAgent,
+                createLabel: t`Create Legal agent`,
+                creating: creatingLegalAgent,
+                error: legalAgentError,
               }
-            : null;
+            : capTableMode
+              ? {
+                  name: "carta-agent",
+                  testId: "carta-agent-panel",
+                  // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
+                  // Without Carta the agent can read nothing, so the page's Connect Carta card shows instead.
+                  open: cartaPanel.open,
+                  collapse: () => setCartaAgentCollapsedPref(true),
+                  collapseLabel: t`Collapse Carta agent`,
+                  // A failed creation is retried from the panel; the agent otherwise appears by itself.
+                  create: cartaAgentError ? createCartaAgent : undefined,
+                  createLabel: t`Try again`,
+                  creating: creatingCartaAgent,
+                  error: cartaAgentError,
+                  suggestions: cartaSuggestions,
+                }
+              : null;
   // The Carta agent opened full screen from its panel: same intro, and a way back to Cap table.
   const cartaAgentPage =
     !pageMode && !inGroup && active !== undefined && findCartaAgent(bots, userId)?.id === active.id;
@@ -3905,6 +3976,7 @@ export function ShellPage() {
         glance={glance}
         hideAmounts={hideAmounts}
         legalMode={legalMode}
+        devinMode={devinMode}
         capTableMode={capTableMode}
         contactsMode={contactsMode}
         dataRoomMode={dataRoomMode}
@@ -4244,6 +4316,13 @@ export function ShellPage() {
               if (selectSpace(spaceId)) window.location.assign("/app/legal");
             }}
           />
+        ) : devinMode ? (
+          <DevinPage
+            key={devinPageKey}
+            onAskAgent={devinAgentOpen ? undefined : askDevinAgent}
+            onConnect={() => setDevinDialog("connect")}
+            onReconnect={() => setDevinDialog("replace")}
+          />
         ) : capTableMode ? (
           <CapTablePage
             onShowAgent={cartaPanel.canShow ? () => setCartaAgentCollapsedPref(false) : undefined}
@@ -4347,7 +4426,13 @@ export function ShellPage() {
                   !inboxMode &&
                   (!capTableMode || activeSnapshot) ? (
                     <AgentPanelIntro
-                      description={capTableMode ? cartaAgentIntro : active.description}
+                      description={
+                        capTableMode
+                          ? cartaAgentIntro
+                          : devinMode
+                            ? t`Answers questions about what Devin is working on.`
+                            : active.description
+                      }
                       suggestions={agentPanel.suggestions ?? []}
                       onAddModel={pageAgentNeedsModel ? () => openSettings("models") : undefined}
                       disabled={sending}
@@ -5216,6 +5301,13 @@ export function ShellPage() {
       </Suspense>
 
       <Suspense fallback={null}>
+        {devinDialog ? (
+          <DevinConnectDialog
+            mode={devinDialog}
+            onConnected={() => setDevinPageKey((key) => key + 1)}
+            onClose={() => setDevinDialog(null)}
+          />
+        ) : null}
         {settingsOpen ? (
           <SettingsOverlay
             name={userName}

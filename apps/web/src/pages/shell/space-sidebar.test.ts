@@ -1,10 +1,17 @@
+// @vitest-environment jsdom
+
 import type { ReactNode } from "react";
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@lingui/core/macro", () => ({
+  t: (parts: TemplateStringsArray, ...values: unknown[]) =>
+    parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
   msg: (parts: TemplateStringsArray) => parts[0] ?? "",
   plural: (value: number, forms: { one: string; other: string }) =>
-    value === 1 ? forms.one : forms.other,
+    (value === 1 ? forms.one : forms.other).replace("#", String(value)),
 }));
 vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
@@ -17,6 +24,11 @@ import {
   sidebarGroupsForSpaces,
   spaceHoldingChat,
 } from "./space-sidebar";
+import { SidebarFixture } from "./space-sidebar.stories";
+
+function CurrentPath() {
+  return createElement("output", { "data-testid": "current-path" }, useLocation().pathname);
+}
 
 function chat(id: string, name: string) {
   return {
@@ -239,4 +251,60 @@ describe("spaceHoldingChat", () => {
   it("ignores the current space, whose chats the page already checked", () => {
     expect(spaceHoldingChat(spaces, "s1", "b1")).toBeNull();
   });
+});
+
+it("shows Devin's needs-you count and opens its page", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => {
+      root.render(
+        createElement(
+          MemoryRouter,
+          null,
+          createElement(
+            "div",
+            null,
+            createElement(SidebarFixture, {
+              mode: "expanded",
+              devinMode: true,
+              devinNeedsYou: 2,
+            }),
+            createElement(CurrentPath),
+          ),
+        ),
+      );
+    });
+
+    const link = container.querySelector<HTMLButtonElement>('[data-testid="sidebar-devin"]');
+    expect(link?.getAttribute("aria-current")).toBe("page");
+    expect(link?.getAttribute("aria-label")).toBe("Devin, 2 need you");
+    expect(link?.querySelector('[data-testid="glance-value"]')?.textContent).toBe("2");
+
+    await act(async () => {
+      link?.click();
+    });
+    expect(container.querySelector('[data-testid="current-path"]')?.textContent).toBe("/app/devin");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
 });

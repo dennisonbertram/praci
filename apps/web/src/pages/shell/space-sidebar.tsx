@@ -21,6 +21,7 @@ import {
   ChartColumn,
   ChevronDown,
   CircleAlert,
+  CodeXml,
   Compass,
   Files,
   FolderOpen,
@@ -336,11 +337,13 @@ export type SpaceSidebarProps = {
   glance: {
     financeRunwayMonths: number | null;
     legalDueSoon: number;
+    devinNeedsYou: number;
     dataRoomWaiting: number;
     botKinds: Record<string, (typeof NOTIFICATION_KINDS)[number]>;
   };
   hideAmounts: boolean;
   legalMode: boolean;
+  devinMode: boolean;
   capTableMode: boolean;
   contactsMode: boolean;
   dataRoomMode: boolean;
@@ -456,6 +459,7 @@ export function SpaceSidebar({
   glance,
   hideAmounts,
   legalMode,
+  devinMode,
   capTableMode,
   contactsMode,
   dataRoomMode,
@@ -705,6 +709,7 @@ export function SpaceSidebar({
               { key: "inbox", label: t`Inbox` },
               { key: "finance", label: t`Finance` },
               { key: "legal", label: t`Legal` },
+              { key: "devin", label: t`Devin` },
               { key: "cap-table", label: t`Cap table` },
               { key: "contacts", label: t`Contacts` },
               { key: "data-room", label: t`Data room` },
@@ -770,6 +775,29 @@ export function SpaceSidebar({
                   valueLabel: plural(glance.legalDueSoon, {
                     one: "# due soon",
                     other: "# due soon",
+                  }),
+                })}
+              />
+            )}
+            {hiddenPages.includes("devin") ? null : (
+              <SidebarPageLink
+                testId="sidebar-devin"
+                current={devinMode}
+                icon={<CodeXml size={15} strokeWidth={1.8} aria-hidden="true" />}
+                label={t`Devin`}
+                rail={rail}
+                onOpen={() => {
+                  setMobileSidebarOpen(false);
+                  navigate("/app/devin");
+                }}
+                // A count, never a dot: the page lists what needs you.
+                {...glanceBadge({
+                  unseen: 0,
+                  rail,
+                  value: glance.devinNeedsYou > 0 ? String(glance.devinNeedsYou) : undefined,
+                  valueLabel: plural(glance.devinNeedsYou, {
+                    one: "# needs you",
+                    other: "# need you",
                   }),
                 })}
               />

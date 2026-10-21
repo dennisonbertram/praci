@@ -73,7 +73,15 @@ const operationsGroup: Group = {
 
 type Mode = "expanded" | "rail" | "search" | "folder-roster";
 
-function SidebarFixture({ mode }: { mode: Mode }) {
+export function SidebarFixture({
+  mode,
+  devinMode = false,
+  devinNeedsYou = 0,
+}: {
+  mode: Mode;
+  devinMode?: boolean;
+  devinNeedsYou?: number;
+}) {
   const navigate = useNavigate();
   const sidebarRef = useRef<HTMLElement>(null);
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
@@ -152,12 +160,14 @@ function SidebarFixture({ mode }: { mode: Mode }) {
     financeMode: false,
     glance: {
       financeRunwayMonths: null,
+      devinNeedsYou,
       legalDueSoon: 0,
       dataRoomWaiting: 0,
       botKinds: {},
     },
     hideAmounts: false,
     legalMode: false,
+    devinMode,
     capTableMode: false,
     contactsMode: false,
     dataRoomMode: false,
@@ -256,4 +266,8 @@ export const Search: Story = {
 
 export const FolderAndRoster: Story = {
   render: () => <SidebarFixture mode="folder-roster" />,
+};
+
+export const DevinNeedsYou: Story = {
+  render: () => <SidebarFixture mode="expanded" devinMode devinNeedsYou={2} />,
 };
