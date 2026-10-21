@@ -344,6 +344,7 @@ import {
   assertNoOtherDevinConnection,
   devinAgent,
   devinConnect,
+  devinConnected,
   devinDisconnect,
   devinNeedsYouCount,
   devinReplaceKey,
@@ -7939,25 +7940,33 @@ export function createRouter(deps: RouterDeps) {
         counts: await unseenCounts(deps.prisma, context.actor),
       })),
       glance: authed.notifications.glance.handler(async ({ context }) => {
-        const [runwayMonths, legalDueSoon, devinNeedsYou, dataRoomWaiting, botKinds] =
-          await Promise.all([
-            financeRunwayMonths(financeDeps, context.actor),
-            legalDueSoonCount(legalDeps, context.actor, 7),
-            devinNeedsYouCount(devinDeps, context.actor),
-            // Failed items are the only ones the user can act on (retry or remove).
-            deps.prisma.dataRoomItem.count({
-              where: {
-                spaceId: context.actor.spaceId,
-                userId: context.actor.userId,
-                status: "failed",
-              },
-            }),
-            unseenBotKinds(deps.prisma, context.actor),
-          ]);
+        const [
+          runwayMonths,
+          legalDueSoon,
+          devinNeedsYou,
+          isDevinConnected,
+          dataRoomWaiting,
+          botKinds,
+        ] = await Promise.all([
+          financeRunwayMonths(financeDeps, context.actor),
+          legalDueSoonCount(legalDeps, context.actor, 7),
+          devinNeedsYouCount(devinDeps, context.actor),
+          devinConnected(devinDeps, context.actor),
+          // Failed items are the only ones the user can act on (retry or remove).
+          deps.prisma.dataRoomItem.count({
+            where: {
+              spaceId: context.actor.spaceId,
+              userId: context.actor.userId,
+              status: "failed",
+            },
+          }),
+          unseenBotKinds(deps.prisma, context.actor),
+        ]);
         return {
           financeRunwayMonths: runwayMonths,
           legalDueSoon,
           devinNeedsYou,
+          devinConnected: isDevinConnected,
           dataRoomWaiting,
           botKinds,
         };

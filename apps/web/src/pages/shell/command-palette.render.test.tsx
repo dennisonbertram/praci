@@ -120,15 +120,15 @@ it("ranks a name prefix over a word, a substring and a description match", () =>
   expect(paletteMatchScore("Chief", "fin")).toBeNull();
 });
 
-it("hides bots that only mention the search once something matches by name", async () => {
+it("finds a bot by its name or role, not by words in its description", async () => {
   await mount();
   await search("fin");
   // Chief only mentions "find" in its description; Finance and Finance agent match by name.
   expect(document.querySelector("[data-testid=command-palette-bot-b1]")).toBeNull();
   expect(document.querySelector("[data-testid=command-palette-bot-b3]")).not.toBeNull();
   await search("investor");
-  // With no name match, the description match is still offered.
-  expect(document.querySelector("[data-testid=command-palette-bot-b1]")).not.toBeNull();
+  // "investor" appears only in Chief's description, so Chief is not offered.
+  expect(document.querySelector("[data-testid=command-palette-bot-b1]")).toBeNull();
 });
 
 it("shows Pages above Bots before typing, and finds Legal by a keyword", async () => {
@@ -138,4 +138,12 @@ it("shows Pages above Bots before typing, and finds Legal by a keyword", async (
   expect(text.indexOf("Pages")).toBeLessThan(text.indexOf("Bots"));
   await search("nda");
   expect(document.body.textContent).toContain("Legal");
+});
+
+it("underlines the typed text in a result", async () => {
+  await mount();
+  await search("fin");
+  const marks = [...document.querySelectorAll("[data-testid=command-palette-list] mark")];
+  expect(marks.length).toBeGreaterThan(0);
+  expect(marks.every((mark) => mark.textContent?.toLowerCase() === "fin")).toBe(true);
 });

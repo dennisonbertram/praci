@@ -25,7 +25,6 @@ import { Link } from "react-router-dom";
 import { AccountAccess } from "../components/AccountAccess";
 import { AiDataSharingSection } from "../components/AiDataSharing";
 import { ApprovalRulesSettings } from "../components/ApprovalRulesSettings";
-import { AutoFileEmailSetting } from "../components/AutoFileEmailSetting";
 import { SuccessPop } from "../components/ai/primitives";
 import { ComputersUnavailableHint } from "../components/ComputersUnavailableHint";
 import { DataExportSection } from "../components/DataExport";
@@ -137,15 +136,7 @@ export function GeneralSettingsPanels({
   }
 
   return (
-    <div className="space-y-5">
-      <section className="rounded-xl border border-border px-4 py-4">
-        <h3 className="text-[15px] font-medium text-foreground">
-          <Trans>Account</Trans>
-        </h3>
-        <p className="mt-3 text-[14px] text-foreground/75">{name}</p>
-        {email ? <p className="mt-1 text-[13px] text-muted-foreground/70">{email}</p> : null}
-      </section>
-
+    <div className="@container space-y-5">
       {messagingEnabled && onOpenMessaging ? (
         <section className="rounded-xl border border-border px-4 py-4">
           <h3 className="text-[15px] font-medium text-foreground">
@@ -160,198 +151,221 @@ export function GeneralSettingsPanels({
         </section>
       ) : null}
 
-      <section className="rounded-xl border border-border px-4 py-4">
-        <h3 className="text-[15px] font-medium text-foreground">
-          <Trans>Appearance</Trans>
-        </h3>
-        <AppearancePicker
-          value={appearance}
-          onChange={(next) => {
-            setAppearance(next);
-            setUiAppearance(next);
-          }}
-        />
-        {/* The sidebar is a drawer below 1024px, where density does nothing. */}
-        <div className="mt-4 hidden lg:block">
-          <span id={sidebarDensityLabelId} className="text-[13px] text-foreground/75">
-            <Trans>Sidebar density</Trans>
-          </span>
-          <fieldset
-            aria-labelledby={sidebarDensityLabelId}
-            data-testid="bots-sidebar-density-select"
-            className="mt-2 grid min-w-0 grid-cols-2 gap-1 rounded-lg bg-muted p-1"
-          >
-            <Toggle
-              data-testid="bots-sidebar-density-comfortable"
-              pressed={sidebarDensity === "comfortable"}
-              onPressedChange={() => setBotsSidebarDensity("comfortable")}
-              className="text-[13px] aria-pressed:bg-primary aria-pressed:text-primary-foreground"
-            >
-              <Trans>Comfortable</Trans>
-            </Toggle>
-            <Toggle
-              data-testid="bots-sidebar-density-compact"
-              pressed={sidebarDensity === "compact"}
-              onPressedChange={() => setBotsSidebarDensity("compact")}
-              className="text-[13px] aria-pressed:bg-primary aria-pressed:text-primary-foreground"
-            >
-              <Trans>Compact</Trans>
-            </Toggle>
-          </fieldset>
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-border px-4 py-4">
-        <h3 className="text-[15px] font-medium text-foreground">
-          {timezone && onTimezoneChange ? (
-            <Trans>Language and time zone</Trans>
-          ) : (
-            <Trans>Language</Trans>
-          )}
-        </h3>
-        <UiLocalePicker value={locale} onChange={chooseLocale} />
-        {timezone && onTimezoneChange ? (
-          <TimezonePicker value={timezone} onChange={onTimezoneChange} />
-        ) : null}
-      </section>
-
-      <section
-        className="rounded-xl border border-border px-4 py-4"
-        data-testid="avatar-style-select"
-      >
-        <h3 className="text-[15px] font-medium text-foreground">
-          <Trans>Avatars</Trans>
-        </h3>
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          {(["organic", "robot"] as const).map((style) => (
-            <Toggle
-              key={style}
-              variant="outline"
-              pressed={style === avatarStyle}
-              disabled={avatarPending}
-              onPressedChange={() => void chooseAvatarStyle(style)}
-              data-testid={`avatar-style-${style}`}
-              className="h-auto justify-start gap-3 px-3.5 py-3 text-[14px] font-normal aria-pressed:border-foreground aria-pressed:ring-1 aria-pressed:ring-foreground"
-            >
-              <BotAvatar
-                color="#D9508A"
-                identity="avatar-style-preview"
-                size={32}
-                variant={style}
-              />
-              <span>{style === "robot" ? <Trans>Robot</Trans> : <Trans>Organic</Trans>}</span>
-            </Toggle>
-          ))}
-        </div>
-        {avatarError ? (
-          <p role="alert" className="mt-3 text-[12.5px] text-destructive">
-            {avatarError}
-          </p>
-        ) : null}
-      </section>
-
-      {isDeploymentOwner ? <DefaultRunsOnSection /> : null}
-
-      {isDeploymentOwner ? (
-        <section className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-4">
-          <div className="min-w-0">
+      {/* Two columns when the pane is wide, so General is not one long scroll. */}
+      <div className="grid items-start gap-5 @2xl:grid-cols-2">
+        <div className="min-w-0 space-y-5">
+          <section className="rounded-xl border border-border px-4 py-4">
             <h3 className="text-[15px] font-medium text-foreground">
-              <Trans>Server apps</Trans>
+              <Trans>Appearance</Trans>
             </h3>
-            <p className="mt-0.5 text-[13px] text-muted-foreground">
-              <Trans>Choose how apps connect for everyone on this server.</Trans>
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            aria-label={t`Open server apps`}
-            render={
-              <Link
-                to={`/app/integrations/setup?next=${encodeURIComponent(window.location.pathname + window.location.search)}`}
-              />
-            }
-          >
-            <Trans>Open</Trans>
-          </Button>
-        </section>
-      ) : null}
+            <AppearancePicker
+              value={appearance}
+              onChange={(next) => {
+                setAppearance(next);
+                setUiAppearance(next);
+              }}
+            />
+            {/* The sidebar is a drawer below 1024px, where density does nothing. */}
+            <div className="mt-4 hidden lg:block">
+              <span id={sidebarDensityLabelId} className="text-[13px] text-foreground/75">
+                <Trans>Sidebar density</Trans>
+              </span>
+              <fieldset
+                aria-labelledby={sidebarDensityLabelId}
+                data-testid="bots-sidebar-density-select"
+                className="mt-2 grid min-w-0 grid-cols-2 gap-1 rounded-lg bg-muted p-1"
+              >
+                <Toggle
+                  data-testid="bots-sidebar-density-comfortable"
+                  pressed={sidebarDensity === "comfortable"}
+                  onPressedChange={() => setBotsSidebarDensity("comfortable")}
+                  className="text-[13px] aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+                >
+                  <Trans>Comfortable</Trans>
+                </Toggle>
+                <Toggle
+                  data-testid="bots-sidebar-density-compact"
+                  pressed={sidebarDensity === "compact"}
+                  onPressedChange={() => setBotsSidebarDensity("compact")}
+                  className="text-[13px] aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+                >
+                  <Trans>Compact</Trans>
+                </Toggle>
+              </fieldset>
+            </div>
+          </section>
 
-      <DataExportSection />
-
-      <details data-testid="advanced-settings" className="group rounded-xl border border-border">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 text-[14px] text-foreground/75">
-          <span className="block text-[15px] text-foreground">
-            <Trans>Advanced</Trans>
-          </span>
-          <span aria-hidden="true" className="transition-transform group-open:rotate-90">
-            ›
-          </span>
-        </summary>
-        <div className="border-t border-border px-4 pb-5">
-          <div className="flex items-start gap-3 pt-5">
-            <Switch
-              id={streamRepliesId}
-              data-testid="response-streaming-toggle"
-              className="mt-0.5"
-              checked={streamReplies}
-              onCheckedChange={(checked) => {
-                setStreamReplies(checked);
-                setResponseStreamingPreference(checked ? "on" : "off");
-              }}
-            />
-            <Label htmlFor={streamRepliesId} className="text-[14px] font-normal text-foreground/75">
-              <Trans>Stream replies</Trans>
-            </Label>
-          </div>
-          <div className="flex items-start gap-3 pt-4">
-            <Switch
-              id={showToolActivityId}
-              data-testid="tool-activity-toggle"
-              className="mt-0.5"
-              checked={showToolActivity}
-              onCheckedChange={(checked) => {
-                setShowToolActivity(checked);
-                setToolActivityPreference(checked ? "on" : "off");
-              }}
-            />
-            <Label
-              htmlFor={showToolActivityId}
-              className="text-[14px] font-normal text-foreground/75"
-            >
-              <Trans>Show tool activity</Trans>
-            </Label>
-          </div>
-          <div className="flex items-start gap-3 pt-4">
-            <Switch
-              id={loadRemoteImagesId}
-              data-testid="remote-images-toggle"
-              className="mt-0.5"
-              checked={loadRemoteImages}
-              onCheckedChange={(checked) => {
-                setLoadRemoteImages(checked);
-                setRemoteImagesPreference(checked ? "on" : "off");
-              }}
-            />
-            <Label
-              htmlFor={loadRemoteImagesId}
-              className="text-[14px] font-normal text-foreground/75"
-            >
-              <Trans>Load web images automatically</Trans>
-            </Label>
-          </div>
+          <section className="rounded-xl border border-border px-4 py-4">
+            <h3 className="text-[15px] font-medium text-foreground">
+              {timezone && onTimezoneChange ? (
+                <Trans>Language and time zone</Trans>
+              ) : (
+                <Trans>Language</Trans>
+              )}
+            </h3>
+            <UiLocalePicker value={locale} onChange={chooseLocale} />
+            {timezone && onTimezoneChange ? (
+              <TimezonePicker value={timezone} onChange={onTimezoneChange} />
+            ) : null}
+          </section>
         </div>
-      </details>
+        <div className="min-w-0 space-y-5">
+          <section
+            className="rounded-xl border border-border px-4 py-4"
+            data-testid="avatar-style-select"
+          >
+            <h3 className="text-[15px] font-medium text-foreground">
+              <Trans>Avatars</Trans>
+            </h3>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              {(["organic", "robot"] as const).map((style) => (
+                <Toggle
+                  key={style}
+                  variant="outline"
+                  pressed={style === avatarStyle}
+                  disabled={avatarPending}
+                  onPressedChange={() => void chooseAvatarStyle(style)}
+                  data-testid={`avatar-style-${style}`}
+                  className="h-auto justify-start gap-3 px-3.5 py-3 text-[14px] font-normal aria-pressed:border-foreground aria-pressed:ring-1 aria-pressed:ring-foreground"
+                >
+                  <BotAvatar
+                    color="#D9508A"
+                    identity="avatar-style-preview"
+                    size={32}
+                    variant={style}
+                  />
+                  <span>{style === "robot" ? <Trans>Robot</Trans> : <Trans>Organic</Trans>}</span>
+                </Toggle>
+              ))}
+            </div>
+            {avatarError ? (
+              <p role="alert" className="mt-3 text-[12.5px] text-destructive">
+                {avatarError}
+              </p>
+            ) : null}
+          </section>
 
-      {children}
+          {isDeploymentOwner ? <DefaultRunsOnSection /> : null}
 
-      {/* Rare actions come last, below everything that loads on its own, so nothing above them moves. */}
-      {accountSecurity?.hasPassword && accountSecurity.passwordChangeEnabled !== false ? (
-        <ChangePasswordSection email={email} />
-      ) : null}
+          {isDeploymentOwner ? (
+            <section className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-4">
+              <div className="min-w-0">
+                <h3 className="text-[15px] font-medium text-foreground">
+                  <Trans>Server apps</Trans>
+                </h3>
+                <p className="mt-0.5 text-[13px] text-muted-foreground">
+                  <Trans>Choose how apps connect for everyone on this server.</Trans>
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                aria-label={t`Open server apps`}
+                render={
+                  <Link
+                    to={`/app/integrations/setup?next=${encodeURIComponent(window.location.pathname + window.location.search)}`}
+                  />
+                }
+              >
+                <Trans>Open</Trans>
+              </Button>
+            </section>
+          ) : null}
 
-      {/* Last, so a destructive action is never the first thing on the page. */}
-      <section data-testid="account-access" className="rounded-xl border border-border px-4 pb-4">
-        <AccountAccess onSecurity={setAccountSecurity} />
+          <details
+            data-testid="advanced-settings"
+            className="group rounded-xl border border-border"
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 text-[14px] text-foreground/75">
+              <span className="block text-[15px] text-foreground">
+                <Trans>Advanced</Trans>
+              </span>
+              <span aria-hidden="true" className="transition-transform group-open:rotate-90">
+                ›
+              </span>
+            </summary>
+            <div className="border-t border-border px-4 pb-5">
+              <div className="flex items-start gap-3 pt-5">
+                <Switch
+                  id={streamRepliesId}
+                  data-testid="response-streaming-toggle"
+                  className="mt-0.5"
+                  checked={streamReplies}
+                  onCheckedChange={(checked) => {
+                    setStreamReplies(checked);
+                    setResponseStreamingPreference(checked ? "on" : "off");
+                  }}
+                />
+                <Label
+                  htmlFor={streamRepliesId}
+                  className="text-[14px] font-normal text-foreground/75"
+                >
+                  <Trans>Stream replies</Trans>
+                </Label>
+              </div>
+              <div className="flex items-start gap-3 pt-4">
+                <Switch
+                  id={showToolActivityId}
+                  data-testid="tool-activity-toggle"
+                  className="mt-0.5"
+                  checked={showToolActivity}
+                  onCheckedChange={(checked) => {
+                    setShowToolActivity(checked);
+                    setToolActivityPreference(checked ? "on" : "off");
+                  }}
+                />
+                <Label
+                  htmlFor={showToolActivityId}
+                  className="text-[14px] font-normal text-foreground/75"
+                >
+                  <Trans>Show tool activity</Trans>
+                </Label>
+              </div>
+              <div className="flex items-start gap-3 pt-4">
+                <Switch
+                  id={loadRemoteImagesId}
+                  data-testid="remote-images-toggle"
+                  className="mt-0.5"
+                  checked={loadRemoteImages}
+                  onCheckedChange={(checked) => {
+                    setLoadRemoteImages(checked);
+                    setRemoteImagesPreference(checked ? "on" : "off");
+                  }}
+                />
+                <Label
+                  htmlFor={loadRemoteImagesId}
+                  className="text-[14px] font-normal text-foreground/75"
+                >
+                  <Trans>Load web images automatically</Trans>
+                </Label>
+              </div>
+            </div>
+          </details>
+
+          {children}
+        </div>
+      </div>
+
+      {/* Rare actions come last, below everything that loads on its own, so nothing above them moves.
+          Delete is last of all, so a destructive action is never the first thing on the page. */}
+      <section className="divide-y divide-border rounded-xl border border-border px-4">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-3">
+          <h3 className="text-[15px] font-medium text-foreground">
+            <Trans>Account</Trans>
+          </h3>
+          <p className="text-[14px] text-foreground/75">
+            {name}
+            {email ? (
+              <span className="ms-2 text-[13px] text-muted-foreground/70">{email}</span>
+            ) : null}
+          </p>
+        </div>
+        <DataExportSection />
+        {accountSecurity?.hasPassword && accountSecurity.passwordChangeEnabled !== false ? (
+          <ChangePasswordSection email={email} />
+        ) : null}
+        <div data-testid="account-access" className="pb-3">
+          <AccountAccess onSecurity={setAccountSecurity} />
+        </div>
       </section>
     </div>
   );
@@ -361,7 +375,6 @@ export function PrivacySettingsPanels() {
   return (
     <div className="space-y-5">
       <AiDataSharingSection />
-      <AutoFileEmailSetting />
       <section className="rounded-xl border border-border px-4 py-4">
         <ApprovalRulesSettings />
       </section>
@@ -392,12 +405,12 @@ export function UsageSettingsPanel({
             value={usage.runs}
             one="# task done by your bots"
             other="# tasks done by your bots"
-          />{" "}
-          ·{" "}
-          {tokens == null ? (
-            <Trans>— tokens of AI text</Trans>
-          ) : (
-            <Plural value={tokens} one="# token of AI text" other="# tokens of AI text" />
+          />
+          {tokens == null ? null : (
+            <>
+              {" · "}
+              <Plural value={tokens} one="# token of AI text" other="# tokens of AI text" />
+            </>
           )}
         </p>
       ) : null}
@@ -489,11 +502,14 @@ function ChangePasswordSection({ email }: { email?: string | null }) {
   }
 
   return (
-    <section className="rounded-xl border border-border px-4 py-4">
-      <h3 className="text-[15px] font-medium text-foreground">
-        <Trans>Password</Trans>
-      </h3>
-      <div className="mt-3 grid gap-3">
+    <details data-testid="change-password" className="group">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-3 text-[15px] font-medium text-foreground">
+        <Trans>Change password</Trans>
+        <span aria-hidden="true" className="transition-transform group-open:rotate-90">
+          ›
+        </span>
+      </summary>
+      <div className="grid gap-3 pb-1">
         <input
           type="text"
           name="username"
@@ -528,7 +544,7 @@ function ChangePasswordSection({ email }: { email?: string | null }) {
           {error}
         </p>
       ) : null}
-      <div className="mt-4 flex items-center gap-3">
+      <div className="mt-4 flex items-center gap-3 pb-4">
         <Button
           className="rounded-full"
           disabled={pending || currentPassword.length < 8 || newPassword.length < 8}
@@ -538,7 +554,7 @@ function ChangePasswordSection({ email }: { email?: string | null }) {
         </Button>
         {saved ? <SuccessPop label={t`Password updated`} /> : null}
       </div>
-    </section>
+    </details>
   );
 }
 

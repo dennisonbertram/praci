@@ -78,7 +78,7 @@ export function InboxDigest({
               >
                 {formatMailTime(row.receivedAt)}
               </time>
-              <Button variant="outline" size="xs" onClick={() => onOpen(row.id)}>
+              <Button variant="outline" size="sm" onClick={() => onOpen(row.id)}>
                 <Trans>Open</Trans>
               </Button>
             </div>

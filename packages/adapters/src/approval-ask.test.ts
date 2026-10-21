@@ -52,7 +52,7 @@ describe("describeApprovalAction money and generic tools", () => {
         { amount: 1200, accountId: "chk-1" },
         "Mercury",
       ),
-    ).toBe("Send $1,200.00 to a recipient from chk-1");
+    ).toBe("Send $1,200.00 to a recipient from an account");
     expect(describeApprovalAction("pay", { amount: "50", currency: "EUR" })).toContain("€50.00");
   });
 
@@ -381,14 +381,14 @@ describe("resolveMoneyNames", () => {
     expect(read).toHaveBeenCalledWith("getAccount", { accountId: "chk-1" });
   });
 
-  it("leaves a name out when its lookup fails, so the title shows the id", async () => {
+  it("leaves a name out when its lookup fails, so the title never shows the id", async () => {
     const names = await resolveMoneyNames(send, args, async (tool) => {
       if (tool === "getRecipient") throw new Error("not found");
       return { nickname: "Operating" };
     });
     expect(names).toEqual({ recipient: undefined, account: "Operating" });
     expect(describeApprovalAction(send, args, "Mercury", names)).toBe(
-      "Send $5.00 to rcp-9 from Operating",
+      "Send $5.00 to a recipient from Operating",
     );
   });
 

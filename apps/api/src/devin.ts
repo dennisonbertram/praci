@@ -357,6 +357,14 @@ export async function devinSessions(deps: DevinDeps, actor: Actor): Promise<Devi
   };
 }
 
+/** Whether the space has a Devin connection, whatever its health. */
+export async function devinConnected(
+  deps: Pick<DevinDeps, "prisma">,
+  actor: Actor,
+): Promise<boolean> {
+  return (await deps.prisma.devinConnectionState.count({ where: { spaceId: actor.spaceId } })) > 0;
+}
+
 /**
  * Sessions that need a person on the space's active connection. Zero while alerts are paused:
  * a rejected key or a connector who left.

@@ -4,7 +4,7 @@ import { useEffect, useId, useState } from "react";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
-/** Whether new mail attachments are filed into the Data room automatically. Saved on change. */
+/** Whether new mail attachments are filed into the Data room automatically. Saved on change; shown in the Email import dialog. */
 export function AutoFileEmailSetting() {
   const { t } = useLingui();
   const id = useId();
@@ -37,7 +37,7 @@ export function AutoFileEmailSetting() {
   }
 
   return (
-    <section className="rounded-xl border border-border px-4 py-4">
+    <div>
       <div className="flex items-start gap-3">
         <Switch
           id={id}
@@ -47,7 +47,7 @@ export function AutoFileEmailSetting() {
           onCheckedChange={(checked) => void change(checked)}
         />
         <Label htmlFor={id} className="text-[14px] font-normal text-foreground/75">
-          <Trans>Add email attachments to the Data room</Trans>
+          <Trans>Add new email attachments automatically</Trans>
         </Label>
       </div>
       {failed ? (
@@ -55,6 +55,6 @@ export function AutoFileEmailSetting() {
           {failed}
         </p>
       ) : null}
-    </section>
+    </div>
   );
 }

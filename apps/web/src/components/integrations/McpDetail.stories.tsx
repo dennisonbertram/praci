@@ -66,7 +66,7 @@ export const CartaWritesOn: Story = {
 };
 
 const mercury = (extra: Partial<McpServer> = {}) =>
-  mockServer("srv_1", "Mercury", { endpoint: "https://mcp.mercury.example.com/mcp", ...extra });
+  mockServer("srv_1", "Mercury", { endpoint: "https://mcp.mercury.com/mcp", ...extra });
 
 export const CanCreateAgent: Story = {
   parameters: { entry: "/app/integrations/mcp/srv_1" },

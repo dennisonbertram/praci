@@ -23,6 +23,7 @@ import { dataRoomImportStarted } from "../../lib/data-room";
 import { syncErrorText } from "../../lib/inbox-sync-error";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
+import { AutoFileEmailSetting } from "../AutoFileEmailSetting";
 import { DriveRow } from "./DriveRow";
 import { TOOLBAR_BUTTON, TOOLBAR_LABEL, ToolbarTip } from "./FilterBar";
 import { dateText, failedText, importedText, isNoiseImage } from "./format";
@@ -298,6 +299,7 @@ function EmailPicker({
             </div>
           ) : null}
         </div>
+        <AutoFileEmailSetting />
         <DialogFooter>
           <Button disabled={busy || picks.size === 0} onClick={() => void submit()}>
             {picks.size > 0

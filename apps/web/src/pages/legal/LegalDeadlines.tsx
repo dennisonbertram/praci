@@ -23,6 +23,7 @@ export function LegalDeadlines({
   today = todayIso(),
   onlyOverdue = false,
   onShowAll,
+  onAsk,
 }: {
   deadlines: LegalDeadline[];
   onChanged: () => void;
@@ -30,6 +31,8 @@ export function LegalDeadlines({
   /** Lists only the overdue deadlines, with a way back to all of them. */
   onlyOverdue?: boolean;
   onShowAll?: () => void;
+  /** Opens the Legal agent with this deadline as the question; without it no row offers Ask agent. */
+  onAsk?: (deadline: LegalDeadline) => void;
 }) {
   const [closing, setClosing] = useState<string | null>(null);
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
@@ -92,23 +95,19 @@ export function LegalDeadlines({
       ) : null}
     </p>
   ) : null;
-  // The slot keeps its height when the line goes, so the list below never jumps.
-  const undoBar = (
+  // Only while there is something to undo: an empty slot left a 40 px gap under the tabs.
+  const undoBar = undo ? (
     <div role="status" className="mb-2 flex h-8 items-center gap-2 text-sm">
-      {undo ? (
-        <>
-          {undo.status === "done" ? (
-            <Trans>Marked {maskCurrencyWhenHidden(undo.deadline.title)} done.</Trans>
-          ) : (
-            <Trans>Dismissed {maskCurrencyWhenHidden(undo.deadline.title)}.</Trans>
-          )}
-          <Button size="sm" variant="ghost" onClick={() => void reopen()}>
-            <Trans>Undo</Trans>
-          </Button>
-        </>
-      ) : null}
+      {undo.status === "done" ? (
+        <Trans>Marked {maskCurrencyWhenHidden(undo.deadline.title)} done.</Trans>
+      ) : (
+        <Trans>Dismissed {maskCurrencyWhenHidden(undo.deadline.title)}.</Trans>
+      )}
+      <Button size="sm" variant="ghost" onClick={() => void reopen()}>
+        <Trans>Undo</Trans>
+      </Button>
     </div>
-  );
+  ) : null;
   if (open.length === 0) {
     return (
       <div>
@@ -140,8 +139,23 @@ export function LegalDeadlines({
               className="flex flex-wrap items-start gap-x-4 gap-y-2 border-t border-border py-2.5"
             >
               <div className="min-w-0 flex-1 basis-64">
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <span className="font-medium">{maskCurrencyWhenHidden(deadline.title)}</span>
+                  {deadline.contractTitle ? (
+                    <span className="text-xs text-muted-foreground">
+                      {"· "}
+                      {deadline.dataRoomItemId ? (
+                        <Link
+                          to={`${DATA_ROOM_PATH}?item=${deadline.dataRoomItemId}`}
+                          className="hover:underline"
+                        >
+                          {maskCurrencyWhenHidden(deadline.contractTitle)}
+                        </Link>
+                      ) : (
+                        maskCurrencyWhenHidden(deadline.contractTitle)
+                      )}
+                    </span>
+                  ) : null}
                   {overdue ? (
                     <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-medium text-destructive">
                       {plural(late, { one: "Overdue by # day", other: "Overdue by # days" })}
@@ -157,18 +171,6 @@ export function LegalDeadlines({
                       )}
                     </span>
                   ) : null}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {deadline.contractTitle && deadline.dataRoomItemId ? (
-                    <Link
-                      to={`${DATA_ROOM_PATH}?item=${deadline.dataRoomItemId}`}
-                      className="hover:underline"
-                    >
-                      {maskCurrencyWhenHidden(deadline.contractTitle)}
-                    </Link>
-                  ) : (
-                    deadline.contractTitle && maskCurrencyWhenHidden(deadline.contractTitle)
-                  )}
                 </div>
                 {deadline.sourceQuote ? (
                   <blockquote className="mt-1 border-s-2 border-border ps-2 text-xs text-muted-foreground">
@@ -188,6 +190,16 @@ export function LegalDeadlines({
                 {fullDay(deadline.dueDate)}
               </time>
               <div className="flex gap-2">
+                {onAsk ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    aria-label={t`Ask agent about ${maskCurrencyWhenHidden(deadline.title)}`}
+                    onClick={() => onAsk(deadline)}
+                  >
+                    <Trans>Ask agent</Trans>
+                  </Button>
+                ) : null}
                 <Button
                   size="sm"
                   variant="outline"

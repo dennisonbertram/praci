@@ -7,7 +7,7 @@ const meta = {
   component: AutoFileEmailSetting,
   decorators: [
     (Story) => (
-      <div className="w-[480px]">
+      <div className="w-[480px] rounded-xl border border-border p-4">
         <Story />
       </div>
     ),

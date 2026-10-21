@@ -216,7 +216,8 @@ it("shows the row count beside a group heading, and no heading without a title",
     await act(async () => root.unmount());
     container.remove();
   });
-  const rows = [mail({ id: "a" }), mail({ id: "b" })];
+  // The heading counts unread mail, as the sidebar badge does; a read row adds nothing.
+  const rows = [mail({ id: "a" }), mail({ id: "b" }), mail({ id: "c", unread: false })];
   const show = (title?: string) =>
     act(async () =>
       root.render(<InboxGroup title={title} rows={rows} onOpen={() => {}} onMark={undefined} />),
