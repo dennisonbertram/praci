@@ -44,6 +44,8 @@ type ContactToolDeps = {
   scope: { spaceId: string; userId: string };
   /** The agent running the tool, from the run, never from model input. */
   botId?: string;
+  /** Which source cap_table_update writes as: the Investors agent reads the sheet, the Carta agent Carta. */
+  writer?: "carta" | "sheet";
 };
 
 export async function contactToolFromTool(
@@ -84,8 +86,9 @@ export async function contactToolFromTool(
       return { capTable: await getCapTableSnapshot(deps.prisma, deps.scope) };
     }
     if (name === "cap_table_update") {
-      // The tool writes as Carta; the model cannot name another source to get past the writer rule.
-      const input = CapTableSnapshotInputSchema.safeParse({ ...args, source: "carta" });
+      // The writer comes from the agent, never from the model, so it cannot name another source.
+      const writer = deps.writer ?? "carta";
+      const input = CapTableSnapshotInputSchema.safeParse({ ...args, source: writer });
       if (!input.success)
         return {
           error: input.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "),
@@ -94,7 +97,12 @@ export async function contactToolFromTool(
         await saveCapTableSnapshot(deps.prisma, deps.scope, input.data);
       } catch (error) {
         if (error instanceof CapTableSourceError)
-          return { error: "The cap table is not read from Carta, so nothing was changed." };
+          return {
+            error:
+              writer === "sheet"
+                ? "The cap table is not read from this sheet, or the update has no holders, so nothing was changed."
+                : "The cap table is not read from Carta, so nothing was changed.",
+          };
         throw error;
       }
       return { ok: true };

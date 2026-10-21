@@ -1,0 +1,627 @@
+P0: 0, P1: 1, P2: 21, P3: 9
+
+# Iteration 7 problems: fix clusters
+
+Sources: R1 to R3 (verify pass-6 clusters C1 to C31), J1 to J3 (journeys), FLOW, V1 to V3, all on the mock demo stack (checkout ad11f395d). Read: `docs/ux-flow/report.md`, `docs/ux-visual/problems.md` and iteration 1 to 6 `problems.md`. Items already decided or fixed are not raised again. A cluster that reopens an earlier one says so under 'Reopens'.
+
+Owner decisions respected (not raised): tour stays nine stops; Devin hidden until connected; the page is called Integrations and stays in the account menu; consent asked once per area; 44 px on coarse pointers (measured only with real touch emulation); Hide amounts in the user menu; Settings in five sections with a fixed height; palette is the one search surface; Legal row actions Ask agent / Done / Dismiss; Investors header carries only Ask; sidebar pages and chats are one roving tab stop; sidebar badges are exactly unread mail, Legal due soon and Data room failed.
+
+## Pass-6 clusters verified as met
+
+C1 mail consent card (PASS, R1), C2 Legal key banner (PASS), C9 chat rows and search (PASS), C10 touch targets (PASS in R1 and J3), C11 Cap table layout (PASS), C13 Inbox jumping (PASS, one small shift in C23), C14 failed Data room rows (PASS, age in C12), C17 Finance sub-pages (PASS, label clip in C5), C19 bot settings (PASS), C21 to C27, C30, C31 (PASS in R3), C28 partly (space-header collapse and silent space switch not exercised).
+Re-opened or partly met: C3 payments (see C10), C4 data sharing (C8), C5 Ask panels (C6), C6 tour (C13), C12 holder rows (C9), C15 toasts (C12), C16 reply with the agent (C2), C18 status vs work (C11, C25), C20 Integrations (C18), C23 Digest (C14), C7 and C29 (BLOCKED).
+
+## Environment caveats
+
+The host load average was 300 to 470 and the demo log shows more than 2,000 database pool timeouts, so load-time numbers are not used as evidence (see Deferred). The demo user is shared between walkers, so state flips (Mercury Allow changes turning itself off, chat messages not written by the walker) are treated as interference unless a solo repro exists.
+
+## Verification against the code (checkout ad11f395d)
+
+Confirmed: EmailAgentPanel.tsx:21-35 and :176 (draft button needs a pending mail_send card) and inbox-thread-agent.ts:16 (the agent is told to call mail_send, which is why C2 is P2); FirstRunTour.tsx:50 and onboarding.ts:122 (old page name); user-error.ts:21-31 (no 'Internal Server Error' pattern) and run-phase.ts:17 (raw phase name); inbox-sender-groups.ts:132 and InboxDigest.tsx:35-43 (7 day window, bare 'No mail'); Investors.tsx:912-956 (row opens the contact form); charts.tsx:575-583 (flip threshold 32 px against a label about 130 px wide); transcript.tsx:249-257 and :544-584 (divider scroll); AiDataSharing.tsx:166 (master switch uses anyAllowed) and Legal.tsx:311-322 (repeated sentences); approval-ask.ts:279-315 (fallback 'a recipient'); format.ts:98-105 (age from createdAt); DropZone.tsx:140 (toast stack position); SheetPreview.tsx:190 (text-start on every header); bot-panel.tsx:202 and :415 (local audience state); SecretRequestDialog.tsx:78 (Single line / Multi line tabs).
+Not verified (marked suspected in the cluster): why a delegate's approval leaves its sidebar row on 'Working' (C1), which intent value the Carta preview message carries (C11), whether the tag write fails or the page does not refresh (C22), the cause of the Mercury 'changes not enabled' flip (C10), the Settings-from-drawer close path (C21), the first-sync ordering in Inbox.tsx (C15), and all timings.
+
+Dropped or lowered after checking: J1-02 and V2-01 and V3-01 lowered from P1 to P2 (a real model gets a card, the Digest is secondary, the form is dismissible); J2-01 lowered from P1 to P2 (demo has no sandbox, database timeouts); J3-01 and V3-02 moved to Deferred (headless-only or load-confounded); V3-08 and V2-03 not filed (hit areas measured 44 px or more in R1 and J3); R2-08 and J1-03 dropped (see Deferred).
+
+## Clusters (ranked: P0, then P1, then severity x reach / effort)
+
+### C1 A page agent's approval cannot be found from where the user asked: Chief hands off an email send, replies with no link, and the Inbox agent row says Working (P1, rank 1, effort M)
+- Root cause: Chief's hand-off reply names no destination, and a pending approval in a delegate's chat does not change the delegate's sidebar row or add anything to Chief's thread. roster-status.ts maps only the waiting_input run status to 'Needs your answer'; whether a pending mail approval sets that status was not checked, so the row state is suspected. The 'needs approval' toast also stays over the open email panel that already shows the same card.
+- Findings: J3-12, R1-12
+- Found by: J3, R1
+- Evidence: J3-12 observed once at 375 px (cause suspected: apps/web/src/lib/roster-status.ts:12-26 only knows waiting_input; the reporter was unsure the card existed when the row was read). R1-12 observed on desktop.
+- Reach: Anyone who asks Chief to email, pay or file something: the delegate asks for approval in its own chat and she has no pointer to it.
+- Files:
+  - packages/adapters/src/executor.ts (the hand-off result Chief sees: when the delegate has a pending ask, add a link to that chat)
+  - apps/web/src/lib/roster-status.ts and the sidebar row in apps/web/src/pages/Shell.tsx (show 'Needs approval' while a delegate holds an approval card)
+  - apps/web/src/components/AppToaster.tsx (do not toast an approval that is already visible in the open panel)
+- Acceptance:
+  - Ask Chief to email an external address: Chief's reply contains a tap-through link to the Inbox agent chat (one tap from reply to the Mail approval card, 2 steps against 6 today).
+  - While the Mail approval card is pending, the Inbox agent sidebar row reads 'Needs approval' (or 'Needs your answer'), not 'Working...'.
+  - With the email panel open on the card, no 'needs approval' toast covers the panel header or Close.
+  - Unit test: roster label for a bot with a pending approval ask; executor test: hand-off result carries the delegate chat link.
+- Needs product decision: false
+- Dependencies / conflicts: Same files as C10 (executor.ts, which handles Chief reply links) and C26 (Shell.tsx sidebar rows). Land C1 first, then C10.
+- Reopens: Related to iteration 6 C3 (next steps after delegated work).
+
+### C2 Asking the email agent for a reply draft leaves plain text with no 'Reply with draft' button, and the panel opens empty with no feedback on the first click (P2, rank 2, effort S)
+- Root cause: latestPendingDraft (EmailAgentPanel.tsx:21-35) accepts only a pending mail_send ask block. The thread agent is told to call mail_send (inbox-thread-agent.ts:16), so a model that obeys gives a card; any model that answers with a text draft (the demo model does, and a real model can) leaves the user to copy and paste. The panel also opens empty and 'Reply' means two things (reply in chat, reply by email).
+- Findings: J1-02, R1-02, R2-01, R3-01, FLOW-04, V1-19, V2-10
+- Found by: J1, R1, R2, R3, FLOW, V1, V2
+- Evidence: Observed by 6 walkers; code confirmed at EmailAgentPanel.tsx:21-35 and :176. J1-02 was filed P1 but the card does appear when the model calls mail_send (inbox-thread-agent.ts:16 tells it to), so the severity is P2 here, the same call iteration 6 made.
+- Reach: Every reply drafted with the email agent: the main reason to open it.
+- Files:
+  - apps/web/src/components/inbox/EmailAgentPanel.tsx (offer 'Reply with draft' for the newest agent text reply when it follows a draft request; add a 'Draft a reply' starter chip in the empty panel; busy state on Ask agent)
+  - apps/web/src/components/inbox/InboxMessageDialog.tsx (grow the dialog from its centre when the panel opens; keep the panel beside the Reply composer)
+  - apps/web/src/components/inbox/EmailAgentPanel.tsx hover action 'Reply' (rename to 'Reply in chat' or hide it in this panel)
+- Acceptance:
+  - Agent answers a 'Draft a reply' request with plain text: a 'Reply with draft' button appears under it and one click puts the text in the Reply composer (open row, Ask agent, chip, Reply with draft, Send = 4 steps against 6 today).
+  - The empty panel shows a 'Draft a reply' chip; clicking it sends the request.
+  - After clicking Ask agent the button shows a spinner within 100 ms until the panel is visible.
+  - Opening the panel keeps the dialog centred (left and right margins within 8 px of each other at 1440).
+  - Component test: latest agent text reply after a draft request shows the button; a non-draft answer does not.
+- Needs product decision: false
+- Dependencies / conflicts: None with other iteration 7 clusters. EmailAgentPanel.tsx is also touched by the C1 consent card work already merged.
+- Reopens: Reopens iteration 6 C16 (criterion 'Reply with draft' not met).
+
+### C3 The Investors page is still called 'Cap table' in the tour, Chief's first message and the Integrations catalog (P2, rank 3, effort XS)
+- Root cause: The sidebar row, page title and palette were renamed to Investors, but three strings were not: FirstRunTour.tsx:50 ('who owns what in Cap table'), apps/api/src/onboarding.ts:122 ('keep an eye on cash and the cap table') and the Integrations catalog text ('Cap table, equity and investors', pinned by IntegrationsHome.test.tsx:187).
+- Findings: FLOW-01, J1-01, R1-07, V1-01, V3-09
+- Found by: FLOW, J1, R1, V1, V3
+- Evidence: Confirmed in code: FirstRunTour.tsx:50 and onboarding.ts:122 contain the old name. Observed by 5 walkers.
+- Reach: Every new user: the tour and the first Chief message are the first things she reads.
+- Files:
+  - apps/web/src/components/tour/FirstRunTour.tsx:50
+  - apps/api/src/onboarding.ts:122
+  - apps/web/src/components/integrations/IntegrationsHome.tsx and its test (catalog description)
+  - locale catalogs regenerated
+- Acceptance:
+  - grep of user-facing strings finds no 'Cap table' or 'cap table' that names the page (the 'cap table' ownership concept inside the Investors page may stay).
+  - Tour stop 5 and Chief's greeting use the word on the sidebar row.
+  - Palette search 'cap table' still finds Investors (keep the alias).
+- Needs product decision: false
+- Dependencies / conflicts: Touches FirstRunTour.tsx like C13; land C3 first (one line). The tab named 'Investors' inside the page is handled in C9.
+- Reopens: Not a reopen; the rename landed after iteration 6.
+
+### C4 A money approval card can name neither payee nor account in its headline (P2, rank 4, effort S)
+- Root cause: describeApprovalAction falls back to 'a recipient' and 'an account' (approval-ask.ts:315) whenever the name lookup in resolveMoneyNames (approval-ask.ts:279-301) fails or returns nothing; the ids appear only inside Details. The same flow shows names when the lookup works, so the card's quality depends on a silent lookup.
+- Findings: J2-02, J3-13
+- Found by: J2, J3
+- Evidence: Confirmed in code (fallback text at approval-ask.ts:315, catch returns undefined). Observed by 2 walkers on both desktop and phone. The lookup may fail only under load; the headline is still wrong when it does.
+- Reach: Every payment approval; this is the card that moves money.
+- Files:
+  - packages/adapters/src/approval-ask.ts:279-325 (when a lookup fails, put the id in the headline or add a visible 'Name not found' line)
+  - packages/adapters/src/approval-ask.test.ts (the test that pins the 'a recipient' wording)
+  - apps/web/src/components/AskCard.tsx (open Details by default for money cards)
+- Acceptance:
+  - With a failing recipient lookup the headline reads 'Send $1,200.00 to recipient_mock_acme from account chk-1111?' (ids shown), never 'to a recipient from an account'.
+  - With a working lookup the headline is unchanged and names both.
+  - Unit test for both lookups failing, one failing, and neither failing.
+- Needs product decision: false
+- Dependencies / conflicts: approval-ask.ts is also touched by C8 (consent card wording at line ~131); different functions.
+- Reopens: Follows iteration 6 C3, which added the lookup.
+
+### C5 The Financing label on the burn chart is cut at the right edge on Finance home; the category bar and the projection line cannot be read (P2, rank 5, effort S)
+- Root cause: charts.tsx:575-583 flips the label to the left only when the point is within 32 px of the right edge, but the label ('Financing, Oct ↑ $250,000' at 11 px) is about 130 px wide, so a middle-anchored label overflows by about 33 px when the point is 33 to 65 px from the edge. The Burn page is wider, so it fits there. The 'Where it went' bar uses grey shades for 10+ categories, and the dashed runway projection has no label.
+- Findings: R1-15, R2-05, J1-04, J2-08, V2-05, FLOW-06, V2-06, V2-15
+- Found by: R1, R2, J1, J2, V2, FLOW
+- Evidence: Code reason confirmed (the 32 px threshold against a label about half-130 px wide). Label clip observed by 6 walkers at 1440. V2-06 and V2-15 observed once each. FLOW-06's five-tile question stays deferred.
+- Reach: Everyone who opens Finance with a financing event; the clip is on the home page chart.
+- Files:
+  - apps/web/src/components/finance/charts.tsx:575-583 (measure the label against the plot width and anchor to the left of the point when it would overflow)
+  - the Burn 'Where it went' bar component in the same Finance components folder (top 4 to 5 categories plus 'Other', name on hover and focus)
+  - apps/web/src/pages/finance/Runway (label the dashed part 'Projected'; drop the duplicate Cash row)
+- Acceptance:
+  - At 1440 and at 375 the Financing label's right edge is inside the chart card (getBoundingClientRect check in a component test).
+  - The category bar has at most 6 segments, each with a name on hover and keyboard focus.
+  - The dashed projection has a 'Projected' label.
+- Needs product decision: false
+- Dependencies / conflicts: None. Finance page layout work is in C16 (different files).
+- Reopens: Reopens iteration 6 C17 (the 'Financing' clip was reported there as a new clip by R2).
+
+### C6 Ask panels on Finance, Data room and the Carta agent still open in the middle of old history at a NEW divider (P2, rank 6, effort S)
+- Root cause: transcript.tsx:249-257 and :544-584 scroll to the unread divider whenever the usual snap to the end leaves it above the viewport. That suits Chief's own thread, but a page-agent panel with an unread backlog (14 or 7 new messages) opens 726 to 2,411 px above the latest message. The pill count is correct.
+- Findings: R1-01, R2-11, J3-08
+- Found by: R1, R2, J3
+- Evidence: Confirmed in code (the divider scroll effect). Observed by R1 (gap 2,411/1,881/726 px, 0 px with nothing unread) and R2; J3-08 saw the new-messages pill covering the last message's actions.
+- Reach: Any docked Ask panel for a bot with unread replies; common after a few days.
+- Files:
+  - apps/web/src/pages/shell/transcript.tsx:249-257, :544-584 (anchor to the divider only in the user's own Chief thread; in docked page-agent panels scroll to the end)
+  - the new-messages pill in the same file (offset above the last message's action row)
+- Acceptance:
+  - Open the Finance Ask panel with 14 unread messages: distance from the last message to the bottom of the scroller is under 8 px, and the 'N new messages' pill is not shown.
+  - Chief's own thread still opens at its unread divider.
+  - At 375 the pill does not overlap the last message's '...' button.
+  - Transcript component test for both modes.
+- Needs product decision: false
+- Dependencies / conflicts: transcript.tsx is also touched by C17 (tables in the docked panel); land C6 first.
+- Reopens: Reopens iteration 6 C5 (criteria not met for Finance, Data room, Carta).
+
+### C7 Raw server text reaches the user: 'Internal Server Error', 'Internal server error' on a routine test, and 'Retrying: the database connection dropped...' in the sidebar (P2, rank 7, effort S)
+- Root cause: user-error.ts TECHNICAL_MESSAGE (lines 21-31) has no pattern for a bare 'Internal Server Error', so the string passes as human copy and the 'Could not run routine' fallback never shows. run-phase.ts:17 prints the phase name as received, and the retrying phase name is the raw error. The Inbox error line renders the same string.
+- Findings: J2-01, R3-04, R1-05
+- Found by: J2, R3, R1
+- Evidence: Confirmed in code (TECHNICAL_MESSAGE list has no such pattern; runPhaseLine prints name). Observed by 3 walkers. The 500s came from database pool timeouts on a loaded demo, which is environmental, but the raw text on screen is not.
+- Reach: Any user on any failure: every API 500 on Inbox, routines and chat status.
+- Files:
+  - packages/core/src/user-error.ts:21-31 (add /^internal server error\.?$/i and similar bare HTTP reason phrases)
+  - apps/web/src/lib/run-phase.ts:17-20 (show 'Retrying' without the raw name when the name looks technical)
+  - apps/web/src/pages/Inbox.tsx error line (short sentence 'Couldn't load mail. Try again')
+  - apps/web/src/pages/Shell.tsx:6151 (routine test run state: stop 'Starting' after the failure)
+- Acceptance:
+  - Unit test: userMessage('Internal Server Error') returns the caller's fallback; a plain sentence still passes.
+  - Sidebar row for a retrying bot reads 'Retrying' with no database wording.
+  - Routine Test run with a failing API shows 'Could not run routine' and the run row leaves 'Starting' within 5 s of the failure.
+- Needs product decision: false
+- Dependencies / conflicts: Inbox.tsx also touched by C14, C15 and C23; this cluster changes only the error line.
+- Reopens: Not a reopen.
+
+### C8 Settings and Legal still disagree about consent: the master switch reads ON when only some areas are allowed, Legal asks again with the same sentence, and the first scan needs a second click (P2, rank 8, effort S)
+- Root cause: AiDataSharing.tsx:166 sets the master switch to checked={anyAllowed}, so one allowed recipient shows 'For bots, mail, files and contracts' as on while Legal's own grant is missing. Legal.tsx:311-322 then shows an Allow card, a line repeating it ('Allow access above...') and, after Allow, 'Press Scan now...' on an empty Data room, and it keeps that line after a scan finished. The consent card names OpenRouter and 'Account settings' while Settings says the model and 'Privacy and approvals'.
+- Findings: R1-03, FLOW-03, R1-04, R1-09
+- Found by: R1, FLOW
+- Evidence: Confirmed in code (anyAllowed at AiDataSharing.tsx:166, the two sentences at Legal.tsx:311-322). R1-03 observed after two toggles by one walker (the cause of the lost Legal grant is unknown); FLOW-03 observed with a fresh user.
+- Reach: Every new user who opens Legal; the others who toggle the master switch.
+- Files:
+  - apps/web/src/components/AiDataSharing.tsx:160-175 (master switch state)
+  - apps/web/src/pages/Legal.tsx:197-225, :305-325 (remove the repeated sentence, scan once after Allow, show 'No deadlines found' with date and a note if mail or Drive search was unavailable)
+  - apps/web/src/components/legal/ConsentPrompt.tsx
+  - packages/adapters/src/approval-ask.ts:131 (consent card wording: same model and section names as Settings)
+- Acceptance:
+  - Fresh user: Legal shows one Allow; after Allow the first scan starts without another click (2 steps against 3).
+  - After a scan on an empty Data room the page says 'No deadlines found' with the date, not 'Press Scan now'.
+  - The master switch is ON only when every area is allowed; partly allowed reads as off or mixed and Advanced shows which.
+  - No consent card text contains 'OpenRouter' or 'Account settings' unless Settings uses the same words.
+- Needs product decision: true. When only some AI areas are allowed, should the master 'Allow AI models' switch show off (recommended: it then matches what works and Advanced shows the rest), or show on as it does now? The 'consent asked once per area' decision is kept either way.
+- Dependencies / conflicts: Legal.tsx header lines are also touched by C20 (Legal table); land C8 first. approval-ask.ts shared with C4.
+- Reopens: Reopens iteration 6 C4 (criterion 4: a Legal Allow leaves Settings looking off, now the reverse).
+
+### C9 Investors rows open an editable 'Save <name> as a contact' form; SAFE terms are not shown; the All tab hides SAFEs; the table is unreadable at 1920 (P2, rank 9, effort M)
+- Root cause: Investors.tsx:912-956 gives every holder that is not yet a contact an onOpen that opens the contact form (setEditing(openRow)); the pass-6 change only retitled the dialog. SAFE amount, cap and date have no read-only view (cap and date exist only in Notes). The All tab omits SAFE holders and the caption does not link to them. The table uses a flexible Name column, so Shares and Ownership sit about 1,000 px from the name at 1920.
+- Findings: V3-01, R2-04, J2-04, J2-11, V3-03, V3-22, FLOW-02, J2-14
+- Found by: V3, R2, J2, FLOW
+- Evidence: Confirmed in code (Investors.tsx:912-956). V3-01 and R2-04 observed; V3-01 was filed P1 but the form is dismissible and the explicit 'Save as contact' link exists, so P2. FLOW-02 and J2-14 are structure proposals, observed only as screenshots.
+- Reach: Everyone who opens Investors and clicks a row; every founder after a SAFE.
+- Files:
+  - apps/web/src/pages/Investors.tsx:523 (tab labels), :912-960 (row open), table column classes
+  - apps/web/src/components/ContactDialog (or the dialog used for Prefill): keep for contacts only
+  - a read-only holding card with SAFE amount, cap, date and an 'Add email' action (new component with story)
+- Acceptance:
+  - Clicking a non-contact holder opens a read-only holding card (shares or SAFE amount, cap, date); no 'Save as contact' form opens unless the Email cell link is clicked.
+  - The All tab caption links to the SAFEs ('4 SAFEs, $350,000: see ...').
+  - At 1920 the gap from Name to Ownership is under 400 px (table max width) and the Email column is not truncated while 7 of 9 rows are dashes.
+  - A total row shows ownership summing to 100%.
+  - Page-level test and a Storybook story for the new card; pnpm design-system updated.
+- Needs product decision: true. Should the Investors page keep the contact-kind tabs 'Auditors' and 'Other' and a tab also named 'Investors' (FLOW-02, J2-14)? Recommended: drop Auditors and Other, rename the tab 'SAFEs and funds', and link each row to its Contacts entry. The row-open and width fixes can proceed without the answer.
+- Dependencies / conflicts: Investors.tsx only; no other iteration 7 cluster edits it. Copy rename is C3.
+- Reopens: Reopens iteration 6 C12 (criteria on row open and SAFE terms not met).
+
+### C10 Chief's replies about payments, mail and Mercury still end without a useful link, and one Mercury refusal contradicted the page (P2, rank 10, effort S)
+- Root cause: The changes-off reply links to the Integrations list instead of the Mercury page (mcp-connector.ts around line 156); the payment reply ends 'Open Finance' although Finance has no pending request list; the mail-not-connected reply is a bare sentence. R1-11 (Chief said changes were off while the page showed them on) could not be reproduced and may be another walker toggling the shared demo.
+- Findings: R1-10, R1-13, J2-03, R1-11
+- Found by: R1, J2
+- Evidence: R1-10 observed by href (/app/integrations); J2-03 and R1-13 observed in text. R1-11 suspected only; J2 saw the same toggle flip and called it interference, so a solo repro is required before any code change for it.
+- Reach: Everyone who asks Chief to pay a bill or read mail before connecting.
+- Files:
+  - packages/adapters/src/mcp-connector.ts (~line 156: link /app/integrations/mcp/<id>)
+  - packages/adapters/src/executor.ts (mail-not-connected reply: add an 'Open Integrations' link; payment reply: no 'Open Finance' link unless a pending request is listed there)
+- Acceptance:
+  - Changes-off reply links to the Mercury page, not the list.
+  - 'Connect your email and I can check' includes a link to Integrations.
+  - No payment reply ends with a link to a page that shows nothing about the request.
+  - R1-11: solo repro on a clean demo slot with Allow changes on; if not reproducible, close it.
+- Needs product decision: false
+- Dependencies / conflicts: executor.ts also edited by C1; do C1 first.
+- Reopens: Reopens iteration 6 C3 (criterion on the Mercury link; approval card and no-accounts runway link unverified).
+
+### C11 A sidebar preview still shows a bot-to-bot instruction (Carta agent) and Activity previews show raw markdown (P2, rank 11, effort S)
+- Root cause: The preview fallback in packages/db/src/repos.ts:369-384 treats any received hand-off receipt that returns to a message as a delegate's answer unless its intent is 'request' or 'question', so an instruction-style message ('One required step from the investor-update playbook...') is chosen. Which intent value that message carries was not checked, so this is suspected. ActivityList.tsx:~457 prints the stored text without stripping markdown ('**Nor...').
+- Findings: R1-14, R2-03, V3-05
+- Found by: R1, R2, V3
+- Evidence: Observed by R1, R2 (sidebar) and V3 (markdown); code region confirmed (repos.ts:369-384, intent filter is a deny list), exact intent not confirmed.
+- Reach: Every bot row whose last message came from another bot.
+- Files:
+  - packages/db/src/repos.ts:369-390 (accept only receipts with an answer intent such as fyi or answer; skip the rest)
+  - packages/core/src/bot-messages.ts (intent type, to confirm the value set)
+  - apps/web/src/pages/ActivityList.tsx:~457 (strip markdown from the one-line preview)
+- Acceptance:
+  - A bot whose newest message is a peer 'request' or instruction shows its last human-facing line as preview.
+  - Repository test over receipts with each intent value.
+  - Activity preview contains no '**' or '#' characters for markdown input.
+- Needs product decision: false
+- Dependencies / conflicts: None.
+- Reopens: Reopens iteration 6 C18 (criterion: no peer-delivered instruction in previews).
+
+### C12 Data room: a notice toast covers the Ask composer, 'Reading for N min' counts from the first attempt, and a stuck file has no retry (P2, rank 12, effort S)
+- Root cause: The Data room short-toast stack (DropZone.tsx:140, fixed bottom-20 right) is separate from the top-right AppToaster, so it covers the Ask panel composer; readingAge (format.ts:98-105) takes the file's createdAt, so Try again shows 'Reading for 34 min'; a Reading row has no action after any delay (Delete exists only on Failed rows). The Auto-sort dialog shows a changing proposal and 14 s of 'Looking for changes' with no progress.
+- Findings: R2-02, R2-09, V3-06, R3-14, J2-09
+- Found by: R2, V3, R3, J2
+- Evidence: Confirmed in code (DropZone.tsx:140 positioning, readingAge uses createdAt). Observed by 5 walkers. 'Reading' stuck rows were seeded in the mock, so whether real files stall is unknown.
+- Reach: Everyone uploading files while an Ask panel is open; any stuck or retried file.
+- Files:
+  - apps/web/src/components/data-room/DropZone.tsx:140 and upload-toasts.ts (anchor top-right under the header, or reuse AppToaster)
+  - apps/web/src/components/data-room/format.ts:98-105 and ItemRows.tsx (count from the latest read start; after 10 min show 'Taking longer than usual' with Retry)
+  - apps/web/src/pages/DataRoom.tsx Auto-sort dialog (show the list only when final; a progress line after 10 s)
+- Acceptance:
+  - With the Ask panel open and a 'Reading ... again' toast, the toast does not overlap the composer or any card (bounding box check).
+  - Immediately after Try again the row reads under 2 minutes of age or no age.
+  - A file in Reading for over 10 minutes offers Retry.
+  - Auto-sort proposal does not change after it is shown.
+- Needs product decision: false
+- Dependencies / conflicts: DataRoom.tsx also in C27 (layout polish); do C12 first.
+- Reopens: Reopens iteration 6 C15 (toast) and C14 (Reading age).
+
+### C13 First-run tour: tooltips cover the rows they name, sit far from their target on a phone, restart after 'Ask Chief', and Skip drops the sample question (P2, rank 13, effort S)
+- Root cause: TourPopover places sidebar-stop tooltips over neighbouring rows (stop 1 over Pages and Inbox, stop 5 over Investors, Contacts and Data room); on a phone the card is fixed at the top or bottom regardless of the target (stop 9 card at y=16, target at y~760); tour completion is not recorded when 'Ask Chief' (stop 9) is used, so it starts again at 1/9 on the next page load (observed once); 'Skip tour' removes the 'Ask Chief' suggestion.
+- Findings: V1-02, V1-14, J1-09, R1-08, J1-07
+- Found by: V1, J1, R1
+- Evidence: Placement observed by 3 walkers; restart observed once (R1-08, cause suspected in FirstRunTour.tsx completion logic); J1-07 observed. The nine-stop owner decision is kept.
+- Reach: Every new user at stop 1 to 9.
+- Files:
+  - apps/web/src/components/tour/TourPopover.tsx and FirstRunTour.tsx (place beside the sidebar, one anchor x; at 375 anchor to the nearest side of the target)
+  - apps/web/src/pages/Shell.tsx:951-962 (mark the tour done when 'Ask Chief' is used)
+- Acceptance:
+  - At 1440 no tour tooltip overlaps a sidebar row other than its own target.
+  - At 375 the card is within 120 px of its highlighted target at all nine stops.
+  - After 'Ask Chief' the tour does not appear again after a reload.
+  - Tour test for completion state; Storybook story for the phone placement.
+- Needs product decision: true. Should 'Skip tour' on any stop leave 'Ask Chief' as a one-tap chip in the composer (recommended), so the first question is one tap after Skip? The nine-stop length stays.
+- Dependencies / conflicts: FirstRunTour.tsx also touched by C3 (stop 5 text); land C3 first. Shell.tsx also touched by C1, C21, C26.
+- Reopens: Reopens iteration 6 C6 (popovers cover content; Ask Chief completion).
+
+### C14 Inbox Digest says 'No mail' when the Newsletters pile has mail older than 7 days (P2, rank 14, effort XS)
+- Root cause: digestRows (inbox-sender-groups.ts:132) keeps the last 7 days only and InboxDigest.tsx:35-43 prints a bare 'No mail' when that is empty; the pile it summarises has 3 messages. The Digest toggle also keeps a filled pill while Newsletters is selected, so two controls look active.
+- Findings: V2-01, R3-02, R3-03
+- Found by: V2, R3
+- Evidence: Confirmed in code (days = 7 default; 'No mail' branch). Observed by 2 walkers on mock data where newsletters are 8 to 9 days old. V2-01 was filed P1; Digest is a secondary view and the pile is one click away, so P2.
+- Reach: Anyone who opens Digest with newsletters older than a week.
+- Files:
+  - apps/web/src/components/inbox/InboxDigest.tsx:35-43 ('No newsletters in the last 7 days' plus a link to the pile)
+  - apps/web/src/pages/Inbox.tsx:~1345, ~1539 (unpressed state outline only)
+  - packages/core/src/inbox-sender-groups.ts:132 (unchanged unless the window is widened)
+- Acceptance:
+  - Pile with 3 messages all older than 7 days: Digest says 'No newsletters in the last 7 days' and offers 'Show the pile'.
+  - With Newsletters selected only one of the two controls has a filled background.
+  - Digest by-sender lines and Archive-all Undo verified with newsletters under 7 days old (seed one) - this closes the BLOCKED part of iteration 6 C23.
+- Needs product decision: false
+- Dependencies / conflicts: Inbox.tsx is also edited by C7, C15 and C23 (different lines).
+- Reopens: Partly reopens iteration 6 C23 (criteria BLOCKED on the demo data).
+
+### C15 A user with no mail connected sees 'First sync can take a minute' and a skeleton for 15 to 25 s before 'No mail connected' (P2, rank 15, effort S)
+- Root cause: Inbox.tsx:1415-1425 shows the sync line and skeleton in the loading branch, and the 'Connect mail' empty state only after accounts are known; for a user with no account nothing is syncing, so the line is false until the accounts request returns.
+- Findings: R1-05, R3-05
+- Found by: R1, R3
+- Evidence: Observed by 2 walkers; the delay was inflated by database pool timeouts (more than 2,000 in the demo log) and a host load average above 400, but the wording is wrong regardless of speed. Cause suspected from Inbox.tsx:1410-1425; the order of the accounts request was not traced.
+- Reach: Every new user who opens Inbox before connecting Gmail.
+- Files:
+  - apps/web/src/pages/Inbox.tsx:1405-1430 (decide 'no mail connected' from the connections list before choosing the loading branch; show the sync line only for a connected account whose first sync is running)
+- Acceptance:
+  - Fresh user with no account: Inbox shows 'Connect mail' as soon as connections load, with no sync line.
+  - Connected account with an empty cache: 'First sync can take a minute' still shows.
+  - Component test for both states.
+- Needs product decision: false
+- Dependencies / conflicts: Inbox.tsx; see C7, C14, C23.
+- Reopens: Related to iteration 6 C7 (first sync, BLOCKED, still needs a real Gmail connection).
+
+### C16 Finance on narrow widths: the Similar-to chip is cut, a table in the Ask panel hides its Amount column, sub-page headers use three rows, and empty Finance has no Ask (P2, rank 16, effort M)
+- Root cause: Four layout gaps with no shared cause: the subscription chip does not wrap as a unit; the chat table renders at natural width (463 px in a 263 px panel) inside an overflow-auto wrapper with no cue; Burn and Runway headers stack menu, title row and Ask on separate rows at 375 (about 135 px of header); empty Finance omits the header Ask the other empty pages have. Runway KPI 'Run-out Oct 25, 2028' wraps when the panel is open.
+- Findings: J3-02, R3-06, J3-07, FLOW-10, J1-06, V2-13
+- Found by: J3, R3, FLOW, J1, V2
+- Evidence: All observed. Row-height inconsistency V2-13 and the unlabelled status dot J3-07 are P3.
+- Reach: Phone users of Finance and anyone reading Finance with the Ask panel docked.
+- Files:
+  - apps/web/src/pages/finance/* sub-page header and PageHeader.tsx (Ask on the title row, icon only at phone width)
+  - Finance subscriptions row chip component (wrap as a unit or truncate with a title)
+  - Runway KPI card date format (shorter at narrow widths)
+  - apps/web/src/pages/Finance.tsx empty state (header Ask)
+- Acceptance:
+  - At 375, Burn and Runway headers are one row and under 70 px before content.
+  - No chip is clipped at 375 (scrollWidth equals clientWidth on the row).
+  - Runway's four KPI values are each on one line with the Ask panel open at 1440.
+  - Empty Finance shows Ask in the header.
+  - The Finance home status dot has an accessible name.
+- Needs product decision: false
+- Dependencies / conflicts: Chart work is C5; chat tables are C17; none share files.
+- Reopens: Related to iteration 6 C22 (Finance header) which passed for the company name.
+
+### C17 Tables an agent posts in a docked Ask panel overflow their container and the key column is off screen (P2, rank 17, effort S)
+- Root cause: The transcript renders a markdown table at natural width (463 px) inside a 263 px overflow-auto wrapper (measured), with a '#' column and no scroll cue, so the Amount column is hidden and merchant names clip.
+- Findings: J1-05
+- Found by: J1
+- Evidence: Observed and measured by one walker; reproduces for any wide table in any docked panel. Wrapper location not traced.
+- Reach: Any agent reply with a table in the docked panel (Finance, Data room, Investors).
+- Files:
+  - the markdown table renderer used by apps/web/src/pages/shell/transcript.tsx (let cells wrap, drop index column in narrow containers, or add an edge fade scroll cue)
+- Acceptance:
+  - A 4-column table in a 263 px panel shows every column header without horizontal scrolling, or shows a visible scroll cue.
+  - Component test at a 263 px container.
+- Needs product decision: false
+- Dependencies / conflicts: transcript.tsx shared with C6.
+- Reopens: Not a reopen.
+
+### C18 Integrations: connected cards still differ in footer, 9 apps share one generic icon, descriptions truncate at 375, and the page shows grey tiles for several seconds (P2, rank 18, effort M)
+- Root cause: IntegrationsHome.tsx gives the menu and 'Used by' row only to some connected cards (Gmail, Carta, Mercury and Brex have no menu; Coinbase has no 'Used by'); Carta, Linear, Airtable, Treg, Devin, Granola, Wispr Flow and iMessage use a generic glyph; the 375 layout truncates descriptions and gives the 'Open Finance' button half the row; the catalog request leaves empty tiles for about 3 to 6 s; the Finance section lists Alchemy and Blockscout that Finance's Add account dialog does not.
+- Findings: R2-07, V1-05, V1-06, V1-07, FLOW-07, V1-16
+- Found by: R2, V1, FLOW
+- Evidence: Observed by 4 walkers. Load timing is inflated by the busy host (not counted as evidence).
+- Reach: Everyone who opens Integrations; phone users for V1-05.
+- Files:
+  - apps/web/src/components/integrations/IntegrationsHome.tsx (fixed footer slots: menu slot reserved, 'Used by' row height fixed; descriptions wrap to two lines; 'Open' button)
+  - integration logo assets for Carta, Linear, Airtable (or a letter tile)
+  - FinanceSection.tsx (hide Alchemy under a 'Developer' filter)
+- Acceptance:
+  - Every connected card has the same footer slots; button x offsets within a row differ by under 2 px.
+  - At 375 no description ends in an ellipsis for the connected list.
+  - No two apps share the generic glyph.
+  - Integrations page height at 375 stays at or below 1,610 px (pass 6 result).
+- Needs product decision: false
+- Dependencies / conflicts: None.
+- Reopens: Reopens iteration 6 C20 (footer and logo criteria not met).
+
+### C19 Artifacts: the spreadsheet preview left-aligns numeric headers, cards are 168 px tall on a phone, hover swaps the age for a trash icon, and the delete label includes the file extension (P2, rank 19, effort S)
+- Root cause: SheetPreview.tsx:190 gives every header text-start, while numeric cells are right-aligned (isNumericSheetCell exists); Artifacts.tsx cards keep an empty band between the icon row and the title at 375 and share the footer between age and trash; the delete button's name uses the full file name.
+- Findings: V3-04, V3-07, V3-12, V3-13, V3-20, R3-07
+- Found by: V3, R3
+- Evidence: V3-04 confirmed in code (text-start on every TableHead, line 190). Others observed once.
+- Reach: Anyone opening a generated sheet; phone users of Artifacts.
+- Files:
+  - apps/web/src/components/SheetPreview.tsx:190 (right-align headers for numeric columns)
+  - apps/web/src/pages/Artifacts.tsx:286-340 (reserve the Ask slot while loading; compact list row on narrow screens; overlay trash at the card corner; list view: right-align age, Type column; delete label uses the title)
+- Acceptance:
+  - In a sheet, the header of a numeric column is right-aligned (header right edge within 4 px of its cells').
+  - At 375 at least 6 artifact cards fit on one screen.
+  - Hovering a card does not change its age text.
+  - Delete button name is 'Delete <title>' without an extension.
+- Needs product decision: false
+- Dependencies / conflicts: None.
+- Reopens: Related to iteration 6 C21 (header shift); R3-07 shows the Ask button still moves Filters at 375.
+
+### C20 Legal: contract rows are 73 px tall, the 'not yet checked' link is always underlined and small, tabs are tight on a phone, and the Undo line does not name the contract and lasts 8 s (P2, rank 20, effort S)
+- Root cause: Contract and Parties columns are narrow (col w-[22%]) so cells wrap to 2 to 3 lines; the header link is an 18 px always-underlined inline link; LegalDeadlines.tsx:15 sets UNDO_MS = 8000 and the undo line (~line 118) uses a short title shared by four rows.
+- Findings: V2-07, V2-08, V2-14, J2-07
+- Found by: V2, J2
+- Evidence: Observed by 2 walkers; UNDO_MS value confirmed in the report's code reference (LegalDeadlines.tsx:15). A walker clicked Done on the wrong row because the Undo expired.
+- Reach: Everyone who uses Legal with more than a few contracts.
+- Files:
+  - apps/web/src/pages/Legal.tsx contracts table columns and header link
+  - apps/web/src/pages/legal/LegalDeadlines.tsx:15 and ~118 (full row title, Undo kept until the next action or 30 s)
+- Acceptance:
+  - With 10 contracts at 1440, rows are 44 px or less and at least 8 rows fit without scrolling.
+  - The Undo line after Done reads 'Marked <full row title> done. Undo' and stays at least 30 s.
+  - The header link has a 24 px hit area and underlines on hover only.
+- Needs product decision: false
+- Dependencies / conflicts: Legal.tsx shared with C8 (first-run text); do C8 first.
+- Reopens: Related to iteration 6 C29 (badge update after Done still BLOCKED: no overdue deadline in the demo).
+
+### C21 Settings opened from the phone drawer leaves the drawer open after Close, hiding the page (P2, rank 21, effort XS)
+- Root cause: The account menu in the drawer opens the Settings dialog without closing the drawer (Shell.tsx drawer state, mobileSidebarOpen near :861), so Close returns to a drawer covering the page.
+- Findings: J3-03
+- Found by: J3
+- Evidence: Observed at 375 once; drawer state variable located in Shell.tsx:861, close path not traced.
+- Reach: Phone users of Settings, Integrations and any dialog opened from the drawer.
+- Files:
+  - apps/web/src/pages/Shell.tsx (close the mobile drawer when a dialog opens from it)
+- Acceptance:
+  - At 375: open the drawer, open Settings, Close: the page is visible and the drawer is closed.
+  - Same check for the other dialogs opened from the drawer account menu.
+- Needs product decision: false
+- Dependencies / conflicts: Shell.tsx also in C1, C13, C26.
+- Reopens: Not a reopen.
+
+### C22 Data room agent says it tagged a file as an investor document with a party, but the list and preview still show 'Not tagged' (P2, rank 22, effort S)
+- Root cause: Unknown. The tag approval card was answered 'Approve' and the agent reported success, yet Preview.tsx:241 still reads 'Not tagged yet.' Either the write did not happen (the agent also said AI sharing was off when the file arrived) or the page did not re-read the item.
+- Findings: J2-05
+- Found by: J2
+- Evidence: Observed once on a shared demo; which side is wrong is unverified. Needs a solo repro before any change.
+- Reach: Anyone tagging through the Data room agent.
+- Files:
+  - apps/web/src/components/data-room/Preview.tsx:241 and the item query invalidation after a tag approval
+  - the Data room tag tool in apps/api/src (verify the write before the agent says it tagged)
+- Acceptance:
+  - Repro on a clean slot: approve a tag request; the list row and preview show the tag within 2 s.
+  - If the write fails, the agent says it could not tag.
+  - Regression test for the chosen fix.
+- Needs product decision: false
+- Dependencies / conflicts: None. Do not start before a repro (suspected).
+- Reopens: Not a reopen.
+
+### C23 Inbox layout moves while loading and the toolbar behaves differently with a filter; search results keep the pile tabs (P3, rank 23, effort M)
+- Root cause: The search box slides right (x 416 to 533) when the space name loads; the To do card loads after the list and pushes rows down (about 2 s) on a phone; the 'Northwind Robotics' label sits 4 px under the header; with an active filter the toolbar wraps right-aligned on a phone and the Filter button widens so Cleanup moves 100 px; the filter menu mixes three groupings in 17 items; search results keep the Important/Updates/Newsletters tabs and two Clear controls; the attachment preview shows arrows for a single attachment; Inbox content starts at x=356 while other pages start at 344.
+- Findings: R2-10, J3-04, V2-04, V2-11, V2-09, V3-17, V2-17, V3-14
+- Found by: R2, J3, V2, V3
+- Evidence: All observed once or twice; none blocks a task. R2 recorded the pass-6 C13 shift as small.
+- Reach: Daily Inbox users; mostly polish.
+- Files:
+  - apps/web/src/pages/Inbox.tsx (header slot widths, toolbar, search mode)
+  - apps/web/src/components/inbox/TodoCard.tsx (reserve height or skeleton)
+  - apps/web/src/components/inbox/MailAttachments.tsx (hide arrows for one attachment)
+- Acceptance:
+  - Search box x position changes by under 4 px between first paint and loaded.
+  - To do card region has reserved height on first paint (rows move under 8 px).
+  - Applying a filter does not move the Cleanup button more than 8 px.
+  - In search results the pile tabs are hidden and one Clear control remains.
+- Needs product decision: false
+- Dependencies / conflicts: Inbox.tsx shared with C7, C14, C15; do these after them.
+- Reopens: Partly reopens iteration 6 C13 (small shift remains).
+
+### C24 Bot settings: sections use three label weights, the Audience control can show a stale value, Save skill gives no feedback, and raw tool ids appear (P3, rank 24, effort S)
+- Root cause: bot-panel.tsx:202 keeps the audience in local state (useState(bot.audience)) and re-syncs only after a failed save (line 415), so the header tag and the control can disagree after a server change. Section labels, 'Disabled tools' (raw `web_search`), and the skills row (empty box, then 'Built-in skills (11)') are styled per section; Save skill greys the form for 5 to 9 s without a 'Saving...' label.
+- Findings: FLOW-12, V1-08b, V1-11, V1-18, J2-13
+- Found by: FLOW, V1, J2
+- Evidence: FLOW-12 confirmed in code (local useState and the sole re-sync at line 415); the rest observed once. R2-08 (Audience has no explanation) is dropped: V1 and R3 saw the explanation appear when External is chosen.
+- Reach: Anyone editing a bot.
+- Files:
+  - apps/web/src/pages/shell/bot-panel.tsx:202, :415 (derive audience from the bot prop)
+  - apps/web/src/pages/shell/BotSkillsSection.tsx (Saving... state on Save)
+  - bot settings section label style and Disabled tools names
+- Acceptance:
+  - Changing a bot's audience on the server updates the control within one poll.
+  - Save skill shows 'Saving...' within 200 ms and the skill appears or an error shows.
+  - One label style across all sections; Disabled tools shows readable names.
+- Needs product decision: false
+- Dependencies / conflicts: None.
+- Reopens: Related to iteration 6 C19 (passed).
+
+### C25 The Computer panel shows 'Computer is on' above an empty area with two labels and nothing else (P3, rank 25, effort XS)
+- Root cause: Shell.tsx computerStateLabel (~line 6822) and the computer pane render a header and 'Team Computer' labels for a computer with no output; the empty pane has no content or action.
+- Findings: R2-06, J2-12
+- Found by: R2, J2
+- Evidence: Observed by 2 walkers; code location from the reports, not opened.
+- Reach: Every new bot's Computer panel.
+- Files:
+  - apps/web/src/pages/Shell.tsx computerStateLabel (~6822) and the Computer panel component
+- Acceptance:
+  - A computer with no output shows one empty-state line or the pane is hidden.
+  - No panel shows a heading with nothing under it.
+- Needs product decision: false
+- Dependencies / conflicts: Shell.tsx shared with C1, C13, C21.
+- Reopens: Reopens iteration 6 C18 (empty Computer pane part).
+
+### C26 Activity panel and sidebar rows repeat each other and use different times and avatars (P3, rank 26, effort S)
+- Root cause: Activity re-lists the bots the sidebar rows already mark 'Needs your answer' and 'Working', shows the answer text instead of the question, stays open across pages and pushes the chat list down (only Chief visible at 1440x900); Activity rows use '1m ago' and chat rows use clock times; the Mercury agent has a different avatar in the sidebar and the chat header; repeated relay replies were seen once.
+- Findings: FLOW-05, V3-15, V2-16, V2-18
+- Found by: FLOW, V3, V2
+- Evidence: Observed once each; V2-18 may come from other walkers prompting the shared user and is unconfirmed.
+- Reach: Users who open Activity.
+- Files:
+  - apps/web/src/pages/ActivityList.tsx and the sidebar layout in Shell.tsx (cap Activity height with its own scroll; show the pending question; one time format)
+  - sidebar agent row icon versus chat header avatar
+- Acceptance:
+  - Activity at 1440x900 leaves at least 5 chat rows visible.
+  - A needs-you entry shows the question text.
+  - Same avatar for a bot in the sidebar and the chat header.
+- Needs product decision: false
+- Dependencies / conflicts: ActivityList.tsx shared with C11 (preview markdown).
+- Reopens: Not a reopen.
+
+### C27 Data room layout polish: view toggle and toolbar misaligned, columns jump between folders, empty markers differ (P3, rank 27, effort S)
+- Root cause: No shared cause. The List/Grid/Stats group sits 7 px lower than the filters on a phone; the dialog Close button sits 8 px above the other header actions; entering a folder adds a breadcrumb row (header moves 30 px) and drops the Status column (Type moves 80 px); the Parties column is hidden at 1440 with a 900 px threshold (ItemRows.tsx:171,174); empty values are '—', 'Not tagged' or blank; Sort sits alone in the Filters row at 375; 'Searchable 97%' is unclear; the folder tree footer has no separator.
+- Findings: J3-05, J3-06, V3-10, V3-11, V3-18, V3-19, V3-21, J2-10
+- Found by: J3, V3, J2
+- Evidence: All observed. V3-08 (row checkbox 18 px) is dropped here: R1 measured the Data room checkbox hit area as 46x46 and J3 probed about 44 px around the centre.
+- Reach: Daily Data room users.
+- Files:
+  - apps/web/src/components/data-room/ItemRows.tsx:171,174,725
+  - apps/web/src/components/data-room/PathBar.tsx
+  - apps/web/src/pages/DataRoom.tsx toolbar
+  - apps/web/src/components/data-room/PreviewActions.tsx header
+  - stats card label
+- Acceptance:
+  - Toolbar and header controls share one centre line (within 1 px) at 375 and 1440.
+  - Entering a folder moves the table header by under 4 px.
+  - Parties column shows at 1440, or parties appear under the name.
+  - One empty marker across Type, Tags and Status.
+- Needs product decision: false
+- Dependencies / conflicts: DataRoom.tsx and ItemRows.tsx shared with C12; do C12 first.
+- Reopens: Related to iteration 6 C24.
+
+### C28 Command palette: no 'No results' flash, type icons for search results, mail action first, ink accent (P3, rank 28, effort S)
+- Root cause: The palette shows 'No results' while the search is pending (about 1 s); page rows have icons but contacts, documents and chats do not; a result's snippet can repeat the query; 'Search mail for' is last after five groups; the active row and 'Working...'/'Needs your answer' use blue in a monochrome app.
+- Findings: R3-13, V3-16, V1-21
+- Found by: R3, V3, V1
+- Evidence: Observed once each.
+- Reach: Everyone who uses Cmd+K.
+- Files:
+  - apps/web/src/pages/shell/command-palette.tsx
+  - apps/web/src/lib/roster-status.ts consumers (status colour)
+- Acceptance:
+  - No 'No results' text appears while a search is in flight.
+  - Every result row has a type icon.
+  - 'Search mail for' is first when a query is typed.
+  - Active row uses ink, not blue.
+- Needs product decision: false
+- Dependencies / conflicts: None (roster colour edit touches Shell.tsx lightly).
+- Reopens: Related to iteration 6 C27 (passed).
+
+### C29 Accessibility and focus: unnamed aside, secret dialog focus, Hide amounts label flips, short desktop links, focus ring styles, show-password icon offset (P3, rank 29, effort S)
+- Root cause: ResizableSidePanel.tsx:81 renders an empty unnamed aside when closed; SecretRequestDialog.tsx:78 opens with focus on the Single line tab; the Hide amounts menu item changes its label and is also a checked checkbox; many desktop links are 16 to 19 px tall; three focus ring styles are used on sidebar controls; the show-password button is 4 px above the input centre (Auth.tsx:277); menu item heights differ (28, 33, 36 to 43 px).
+- Findings: R3-08, R3-09, J1-08, V2-12, V1-10, V1-08, V1-09, J3-07, V3-20
+- Found by: R3, J1, V2, V1, J3, V3
+- Evidence: Each observed or measured once. Desktop-pointer sizes are not used as touch-target evidence.
+- Reach: Keyboard and screen reader users; everyone for the menu and icon alignment.
+- Files:
+  - apps/web/src/pages/ResizableSidePanel.tsx:81
+  - apps/web/src/components/SecretRequestDialog.tsx:78
+  - account menu item in Shell.tsx (stable label 'Hide amounts', checked carries state)
+  - apps/web/src/pages/Auth.tsx:277
+  - sidebar row components (one focus-visible class)
+- Acceptance:
+  - No empty unnamed aside in the DOM when a panel is closed.
+  - Provide secret dialog opens with focus in the password field.
+  - Screen reader name of the Hide amounts item is stable.
+  - Show-password icon centre within 1 px of input centre.
+  - One focus ring style across sidebar controls.
+- Needs product decision: false
+- Dependencies / conflicts: SecretRequestDialog.tsx also in C30; Shell.tsx shared.
+- Reopens: Related to iteration 6 C30 (passed, with one unnamed aside left).
+
+### C30 Chat cards and the secret dialog: first-run card narrower than bubbles, repeated origin on the secret card, a single/multi-line choice before typing, a stale 'Answer the pending ask first' banner (P3, rank 30, effort S)
+- Root cause: AskCard.tsx gives the first-run choice card 420 px against 640 px bubbles; the secret card shows 'API key for api.example.test' and repeats the origin one line below; SecretRequestDialog.tsx:78 asks for Single line or Multi line before the field; the composer banner for thread-target.ts:767 stays until the next send after the card is answered. A draft that returned joined to a later message (R3-12) was seen once and may be a tool artifact.
+- Findings: R3-10, R3-11, FLOW-09, J2-06, V1-15, J3-14, R3-12
+- Found by: R3, FLOW, J2, V1, J3
+- Evidence: Observed once each; FLOW-09 read from code and the e2e spec only; R3-12 unconfirmed.
+- Reach: Every chat; the secret dialog only for Devin-style requests.
+- Files:
+  - apps/web/src/components/AskCard.tsx (shared card max width; origin shown once; first-run question copy)
+  - apps/web/src/components/SecretRequestDialog.tsx:78 (one field that becomes multi-line on pasted line breaks)
+  - apps/web/src/pages/shell/composer-error.tsx (clear the banner when the pending ask resolves)
+- Acceptance:
+  - First-run choice card is 640 px wide like bubbles.
+  - Secret card shows the origin once.
+  - Provide secret has no Single/Multi tabs; a pasted private key makes a textarea.
+  - After pressing Deny or Allow the 'Answer the pending ask first' banner disappears within 1 s.
+- Needs product decision: true. Remove the Single line / Multi line choice from the secret dialog (recommended: one field that grows when a multi-line value is pasted)? The dialog is new and was never shown to the owner in the demo.
+- Dependencies / conflicts: SecretRequestDialog.tsx shared with C29.
+- Reopens: Related to iteration 6 C31 (card width passed; first-run card still 420 px).
+
+### C31 Settings polish: three disclosure styles, unexplained single model switch, clipped fold, empty Memory page, flag switch with no explanation (P3, rank 31, effort S)
+- Root cause: 'Advanced' in AI data sharing is a bare summary without a marker (AiDataSharing.tsx:182-190) and holds one switch named 'GPT-6 Luna' with no description, while other folds use a triangle or chevron; selected states differ (ring vs filled pill); the General body is 683 px with 747 px of content and 'Delete account' is cut at the fold; the Memory page promises memory but shows one collapsed row; 'Flag unexpected actions' (ApprovalRulesSettings.tsx:168) has no line saying what it does; the notification switch is labelled 'Browser'.
+- Findings: V1-03, J3-11, V1-13, V1-04, V1-12, V1-17, V1-22, FLOW-08, R3-15
+- Found by: V1, J3, FLOW, R3
+- Evidence: Observed. The Advanced fold style is confirmed in code at AiDataSharing.tsx:182 (summary has no marker). The fixed Settings height is an owner decision and stays.
+- Reach: Anyone in Settings; none of this blocks a task.
+- Files:
+  - apps/web/src/components/AiDataSharing.tsx:182-200 (use the chevron-row disclosure used elsewhere)
+  - apps/web/src/components/ApprovalRulesSettings.tsx:168
+  - apps/web/src/components/NotificationSettings.tsx:66 ('Browser notifications')
+  - Settings dialog body fade at the fold
+- Acceptance:
+  - One disclosure component with a chevron across Settings and bot panel.
+  - 'Advanced' under AI data sharing shows a chevron; the model switch has a one-line purpose.
+  - A whole row ends at the fold or a fade shows more content below.
+  - 'Flag unexpected actions' has one explanatory line or is removed.
+- Needs product decision: true. Remove the 'Flag unexpected actions' switch until it does something the user can name (recommended), or keep it and add an explanation? Also: show a per-bot memory count on the Memory page, or move the page under Advanced?
+- Dependencies / conflicts: AiDataSharing.tsx shared with C8; do C8 first.
+- Reopens: Related to iteration 6 C25.
+
+## Deferred items (not in a cluster)
+- J3-01: Data room preview of a PDF is blank at 375. Seen only in headless Chromium with a 742-byte mock file that may not be a valid PDF. Same item as iteration 6 J3-11. Test on a real iPhone and a real PDF first; the suggested fallback ('Preview not available' with Download when the iframe is empty) is cheap if it reproduces. Filed P1 by the walker, P2 suspected here.
+- V3-02, R1-06, R3-05 (timing part), V1-23, V1-16 (timing), FLOW-07 (timing part): Load times of 8 to 120 s for first open, Cap table, Integrations and Chief threads. The demo log shows more than 2,000 database pool timeouts and the host load average was 300 to 470 during the walks. Not product defects until measured on an idle stack. V1-23's static 'Opening Praci...' line in index.html is cheap and can be added if a re-measure still shows a blank page.
+- V2-02: No attachment marker on Inbox rows. Known since iteration 1: the mail cache has no attachment field, so it needs a sync and schema change (grep finds no hasAttachment on the row model). Product call on whether to build it.
+- V2-03: To do checkboxes (20x20) on a phone: hit area unverified. Inbox row checkboxes passed in R1 (44x44) and J3 (about 44 px), so only the To do card needs a probe including the left side.
+- V3-08: Dropped: Data room row checkboxes are 18 px but R1 measured a 46x46 hit area.
+- FLOW-06: Finance first row has five tiles plus a second spend figure. Carried from iteration 6 FLOW-15; a test (Finance.test.tsx:359) pins Treasury yield in the row. Owner question still open: keep three tiles and move Crypto and Treasury yield to Accounts (recommended)?
+- FLOW-11: 'Save as skill' from a chat message. A feature, not a defect; the form route works in 6 steps.
+- J3-09: Demo seed inconsistency (60 days' notice vs 90 days). Fix in the seed data when convenient; not an app defect.
+- J1-03: Dropped: R1 observed 'Sending... Undo', 'Sending...', then 'Sent' with no empty frame, so iteration 6 C8 is met except criterion 2 (see C2).
+- R2-08: Dropped: the Audience explanation appears when External is chosen (V1 and R3 saw it); iteration 6 already dropped the same claim.
+- V1-20, J3-10: Integrations appears in the sidebar footer, the phone drawer and the account menu. The owner decided to keep it in the account menu; the footer and drawer entries were not part of that answer. Ask once: remove the footer entry?
+- V1-12 fixed height, V1-17: Settings fixed height is an owner decision; only the clipped fold is in C31.
+
+## BLOCKED stories
+- STORY-APP-309 (model sign-in false start) and STORY-APP-319 (model and 'Connect your apps' steps): the demo gives every user a default model and Connect is real OAuth.
+- Real OAuth Connect buttons and the connect popup closing: Gmail, Calendar, Carta (STORY-CAP-017/018, STORY-CAP-106), Mercury reconnect (STORY-FIN-022), Brex, Devin.
+- First Inbox sync after connecting Gmail (iteration 6 C7): needs a real Gmail connection; only the no-mail state was seen (C15).
+- Iteration 6 C23 Digest by-sender lines and Archive-all Undo: demo newsletters are 8 days old; covered by C14 acceptance after seeding.
+- Iteration 6 C29 Legal badge update after Done: the demo has no overdue deadline.
+- Iteration 6 C3 payment approval card with Allow changes on and the no-accounts runway link: stack too slow, Mercury thread never loaded in R1 (J2 did produce and answer cards, so the card itself works).
+- STORY-DRM-103/104/105 (protected zip, 12,000-file zip, unsafe paths) and STORY-DRM-109 steps 2, 6, 9 (drag and drop, 600 MB video): crafted files and drag and drop not driven.
+- Held 'Share with {name}?' card and secret card at phone width; Cleanup screen with senders; notice with a button under a dialog scrim; routine run Done vs working (no running routine); EUR row category total (no data).
+- Full-width email cards in chat and the Legal model fallback note: not triggered on the demo (R3 SKIPPED).
+- Real finger taps: agent-browser clicks do nothing under touch emulation, so J3 used DOM clicks; Mercury Allow once and Deny at about 42 px were estimated from an image, not measured.
+
+## Counts by severity
+- Clusters: 31 (P0 0, P1 1, P2 21, P3 9)
+- Raw findings (ids as written by the walkers): R1 15, R2 11, R3 15, J1 9, J2 14, J3 14, FLOW 12, V1 24, V2 18, V3 22 = 154. 141 distinct ids are in clusters; the rest are deferred, dropped or praise-only.
+- Clusters needing a product decision: C8, C9, C13, C30, C31
+- Clusters that reopen an earlier cluster whose criteria were not met: C2 (it6 C16), C5 (it6 C17), C6 (it6 C5), C8 (it6 C4), C9 (it6 C12), C10 (it6 C3), C11 (it6 C18), C12 (it6 C15 and C14), C13 (it6 C6), C14 (it6 C23), C18 (it6 C20), C25 (it6 C18).
+- P1: C1. Chief hands an email send to the Inbox agent, the approval card exists only in that agent's chat, and nothing points her to it. No P0 this pass: the pass-6 P0 (mail consent card) is verified as fixed. Most pass-6 P2 clusters passed; the repeats are the draft reply button, Ask panel scroll, the burn chart label, holder rows, and sidebar previews.

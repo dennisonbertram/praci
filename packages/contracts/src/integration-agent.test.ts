@@ -28,6 +28,18 @@ import { WISPR_FLOW_MCP_ENDPOINT } from "./wispr-flow.js";
 const mercury = INTEGRATION_PRESETS.mercury;
 const brex = INTEGRATION_PRESETS.brex;
 
+describe("Zernio preset data", () => {
+  it("has a closed read-only list and leaves linking to S3a", () => {
+    const preset = INTEGRATION_PRESETS.zernio;
+    expect(preset.allowedTools).toEqual(preset.reads);
+    expect(preset.allowedTools).toHaveLength(9);
+    expect(preset.forcedWrites).toEqual([]);
+    expect(preset).not.toHaveProperty("requiresAgent");
+    expect(preset.allowedTools).not.toContain("posts_create");
+    expect(preset.allowedTools).not.toContain("gtm_post");
+  });
+});
+
 describe("isReadTool", () => {
   it("reads on readOnlyHint true", () => {
     expect(isReadTool({ name: "anything", annotations: { readOnlyHint: true } })).toBe(true);

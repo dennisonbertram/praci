@@ -32,6 +32,7 @@ export async function taskCatalogFromTool(deps: TaskCatalogToolDeps, input: Task
   const [tasks, schedules, taughtSkills, skills] = await Promise.all([
     listScratchpadItems(deps, {
       spaceId: input.spaceId,
+      userId: input.userId,
       botId: input.botId,
       includeDone: false,
     }),

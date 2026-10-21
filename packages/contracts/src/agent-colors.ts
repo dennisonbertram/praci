@@ -8,6 +8,8 @@ const PAGE_AGENT_COLOR: Record<string, number> = {
   carta: 3,
   investors: 3,
   legal: 6,
+  // All seven palette entries are used; GTM deliberately shares this app colour.
+  gtm: 5,
 };
 
 /** The palette entry nearest each app's brand, keyed by lowercase app or provider name. */

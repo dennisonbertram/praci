@@ -1,0 +1,52 @@
+# Walk J3: phone width (375x812, touch emulation)
+
+Demo stack on :5381, signed in as the mock founder. Touch emulation was set through CDP (Emulation.setDeviceMetricsOverride mobile + setTouchEmulationEnabled); `pointer: coarse` was confirmed true and touch points 5. Screenshots: /tmp/uxloop7/J3/. No console errors seen. Page horizontal overflow was 0 on every screen.
+
+## Story verdicts
+
+| Story / journey | Verdict | Steps (actual/ideal) |
+|---|---|---|
+| Sign-in | PASS | 3 / 3 (email, password, Sign in) |
+| Sidebar drawer | PASS (J3-03, J3-10 minor) | 1 / 1 to open, 1 to reach a page |
+| Inbox triage (list, row More, Archive + Undo, open, Reply composer) | PASS (J3-04) | Archive 3 / 3; open+reply 3 / 3. Reply was not sent. |
+| Finance overview | PASS (J3-02, J3-07) | 2 / 2 |
+| Data room browse and preview | FAIL for preview (J3-01, J3-05, J3-06) | browse 2 / 2, preview 1 / 1 but body blank |
+| Agent chat with approval | PASS (J3-12, J3-13, J3-14) | Question card answered 3 / 3. Second pass: Chief prompt to email an external address, then open Inbox agent, review the Mail approval card, Send: 6 / 3 (the approval is in a different chat from where she asked). Mail card went Needs approval, Sending..., Sent, then the agent confirmed. Mercury money approval cards (Allow once / Deny) also viewed. |
+| Settings | PASS (J3-03, J3-11) | 3 / 3; General and Privacy and approvals checked |
+| Inbox Ask panel (extra) | PASS with J3-08 | 2 / 2 |
+
+## Touch targets (measured with pointer: coarse)
+Every visible button, tab and menu item measured 44 px or more on Inbox, Finance, Data room, the open message, the composer, a chat, and Settings. Small visual controls that looked under 44 px (list checkboxes 16x16, Settings switches 32x18) were probed with elementFromPoint: they respond about 22 px around their centre, so they pass. The To do checkboxes (20x20) were only probed to the right and below, not to the left, so their hit area is unverified. No touch-target finding.
+
+## Findings
+
+| id | sev | cat | page | what happened vs expected | evidence | suspected code | fix |
+|---|---|---|---|---|---|---|---|
+| J3-01 | P1 | bug | Data room preview | Observed: Preview dialog for "MOCK Term Sheet Draft - Quill Capital.pdf" shows a blank 300 px area under the title, with no loading, error or fallback text, 7 s after opening. The iframe src is a blob URL with `#toolbar=0`. Suspected: headless Chromium has no PDF viewer and the 742-byte mock file may not be a real PDF, so I could not tell whether a real device would render it. Expected: a visible fallback ("Preview not available", Download) when the viewer cannot show the file. | 14-preview.png, 14b-preview.png | Data room preview dialog (PDF iframe) | Show a fallback with Download when the iframe has no content or the file is not a valid PDF. |
+| J3-02 | P2 | visual | Finance, Subscriptions card | Observed: the "Similar to Cursor Seats (Mock)" chip on the Devin Agent Seats row is cut off at the right edge ("Similar to" clipped) and its remaining text wraps to a second line with a split outline. Expected: the chip wraps whole or truncates with an ellipsis. | 12-fin-b.png | Finance subscriptions row chip | Let the chip wrap as a unit on its own line, or truncate it with an ellipsis and a title. |
+| J3-03 | P2 | flow | Settings from the drawer | Observed: Settings opened from the account menu in the drawer; after Close the drawer is still open and the page behind is not visible. Expected: closing Settings returns her to the page she was on (or the drawer closes when Settings opens). | 22-afterset.png | Shell.tsx drawer / settings dialog | Close the mobile drawer when a dialog opens from it. |
+| J3-04 | P3 | visual | Inbox phone | Observed: the "Northwind Robotics" account label sits about 4 px under the header row, tighter than other gaps (same on Data room). The To do card loads in after the list and pushes all rows down (layout shift) about 2 s after opening. Expected: even spacing; reserved space for the To do card. | 05-inbox.png, 13b-dataroom.png | Inbox.tsx header, To do region | Add the standard gap under the label; reserve the To do height or a skeleton. |
+| J3-05 | P3 | visual | Data room toolbar | Observed: List, Grid, Stats buttons sit about 7 px lower than All items / New folder / Auto-sort in the same row (centre y 388 vs 374 in the screenshot) and are spaced wider. Two toolbar rows take about 235 px before the first file. Expected: one aligned row. | 13b-dataroom.png | Data room toolbar | Align the view-toggle group with `items-center` and the same height as the filter buttons. |
+| J3-06 | P3 | visual | Preview dialog header | Observed: the Close (X) button is 8 px higher (y 155) than Open in new tab, Download, Full screen, More (y 163). Expected: same row. | 14-preview.png; measured in DOM | Preview dialog header | Put X in the same flex row with `items-center`. |
+| J3-07 | P3 | a11y | Finance header | Observed: the green dot beside "Northwind Robotics" has no visible label, and the sync icon floats mid-row with a wide gap. Whether the dot has an aria-label was not checked. Expected: a status name ("Synced") and tighter grouping. | 11-finance.png | Finance header | Add aria-label/tooltip to the dot and group it with the sync button. |
+| J3-08 | P3 | visual | Inbox Ask panel | Observed: the "4 new messages" pill covers the last message's action row (the "..." button is half hidden), and the panel content has a 55 px left margin versus 38 px in the Chief chat. Expected: pill clears the actions; same gutters as other chats. | 23-ask.png | Inbox agent panel / chat scroll pill | Offset the pill above the last message actions; use the shared chat gutter. |
+| J3-09 | P3 | copy | Demo data | Observed: the email thread says section 9 asks for "60 days' notice instead of 30", while the Inbox agent summary says "90 days notice instead of 60". Mock data inconsistency, not an app bug. | 08-message.png, 23-ask.png | demo seed data | Align the seed thread and the agent summary. |
+| J3-10 | P3 | flow | Drawer | Observed: Integrations is a row in the drawer and also in the account menu (owner decision keeps it in the account menu). Two routes to the same page on phone. Note only. | 04-drawer.png, 19-acct.png | Sidebar footer | None needed if the drawer row is intended. |
+| J3-12 | P1 | flow | Chief to page-agent approval | Observed: Maya asked Chief to email an external address. Chief replied "I've asked the Inbox agent to send Priya a concise email... I can't confirm it's sent yet." with no link, and no approval card appeared in Chief. The Mail "Needs approval" card was only in the Inbox agent chat. At that moment the drawer row for Inbox agent read "Working..." (not "Needs your answer"), so a first-time user has no pointer to the card (whether the card already existed when the row was read is not certain). Expected: a link or card in Chief ("Review email") or a "Needs approval" row state. | 32-chat.png, 33-chat.png, 34-drawer.png, 36-inbox-agent.png | Chief delegation message; sidebar agent status | Show a "Needs approval" state on the agent's drawer row and a tap-through link in Chief's reply. |
+| J3-13 | P2 | copy | Mercury approval card | Observed: the pending card reads "Send $1,200.00 to a recipient from an account?"; the recipient and account appear only inside Details as raw ids (recipient_mock_acme, chk-1111). The card above it, already Approved, names "Acme Servo Supply (Mock)" and "MOCK Checking 1111". Expected: a money approval names who and from where in the headline. Likely the designed fallback when names are not resolved (the adapters test asserts this exact wording), so the gap is in resolving names. | 41-mercury.png, 42-details.png | packages/adapters/src/approval-ask (describeApprovalAction) | Resolve recipient and account names before building the card, or show the id-based Details open by default for money. |
+| J3-14 | P3 | visual | Mail approval card header | Observed: at 375 px the header "Mail Needs approval . priya@quillc..." truncates the recipient; the To field below shows it in full, so no information is lost. | 36-inbox-agent.png | AskCard / Mail approval header | None needed, or drop the address from the header since To is shown. |
+| J3-11 | P3 | a11y | Settings Privacy | Observed: "Advanced" under AI data sharing is plain grey text with no chevron, so it does not look tappable; I did not open it. | 21-privacy.png | Settings privacy section | Add a chevron or button styling. |
+
+## Excellent
+- Sign-in is clean at 375 px; fields and the primary button are full width and tall.
+- The drawer gives every page one clear tap, with the unread (12), overdue (1) and failed-file (1) badges as decided.
+- Inbox row More menu, Archive with an Undo toast, and the open message with labelled Reply / Archive / Ask agent buttons work well on a phone.
+- Finance KPI cards are uniform and read at a glance; no horizontal overflow.
+- The agent question card has big full-width answer buttons and shows "Answered: ..." afterward; the agent then asked the Carta agent and followed up.
+- Settings is one dropdown for sections; all switch hit areas are 44 px tall.
+
+## Second pass notes (touch targets, tooling)
+Touch emulation was applied again through CDP (coarse pointer true, 5 touch points, width 375). Measured on the Inbox agent chat with the approval card open: Edit 45x44, Show more 87x44, Send 56x44, Discard 72x44, card More 44x44, message React/Reply/More 44x44, Details disclosure 55x44; Mercury Allow once and Deny look about 42 CSS px tall (84 px in the 2x screenshot); this is an estimate from the image, not a DOM measurement, so it is not filed as a finding. Page overflow 0. Geometry audit reported no overflow spills; its "wrappedControls" hit on Edit/Send/Discard looks like a false positive (single-line buttons). Console: no errors. Tooling note: while touch emulation was on, `agent-browser click` did nothing (drawer did not open, first Send tap had no effect), so the second pass used DOM `.click()`. Real finger taps were therefore not exercised in this pass; the first pass used the same emulation.
+
+## Not covered
+Devin-style secret request and Provide secret dialog and the held "Share with {name}?" card were not reachable on the demo seed (no pending instance, no External bot) and so were not walked at phone width; Cleanup screen also not reached. The Mail approval was walked and sent to an invented address on the mock Gmail. Sending a reply was not done. Dark theme only (system setting).
