@@ -314,7 +314,7 @@ describe("mock demo data", () => {
       expect(message.subject).toMatch(/^(Re: )?\[MOCK\] /);
       expect(message.text).toContain(MOCK_NOTE);
     }
-    expect(new Set(messages.map((m) => m.threadId)).size).toBe(62);
+    expect(new Set(messages.map((m) => m.threadId)).size).toBe(63);
     expect(messages.some((m) => m.labels.includes("UNREAD"))).toBe(true);
     const redlines = messages.filter((m) => m.threadId.endsWith("msa-redlines"));
     expect(redlines).toHaveLength(4);
