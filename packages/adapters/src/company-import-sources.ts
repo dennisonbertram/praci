@@ -80,18 +80,23 @@ export function createCompanySourceWorker(deps: {
     context: CompanyImportWorkerContext,
   ) => {
     const scope = CompanyDataRoomScopeSchema.parse(source.scope);
-    const blockedConnections = await deps.prisma.companySourceBlock.findMany({
+    const sourceBlocks = await deps.prisma.companySourceBlock.findMany({
       where: {
         spaceId: context.actor.spaceId,
         ownerUserId: context.actor.userId,
         sourceKind: "data_room",
-        connectionId: { not: null },
       },
-      select: { connectionId: true },
+      select: { connectionId: true, mcpServerId: true },
     });
-    const allowedConnectionIds = blockedConnections.flatMap((row) =>
+    const blockedConnectionIds = sourceBlocks.flatMap((row) =>
       row.connectionId ? [row.connectionId] : [],
     );
+    if (
+      sourceBlocks.some((row) => row.connectionId === null && row.mcpServerId === null) ||
+      (source.connectionId && blockedConnectionIds.includes(source.connectionId))
+    )
+      throw new CompanyImportWorkerError("source_access_revoked");
+
     return {
       spaceId: context.actor.spaceId,
       userId: context.actor.userId,
@@ -123,7 +128,7 @@ export function createCompanySourceWorker(deps: {
                   status: "connected",
                   allAgents: true,
                   privateByDefault: false,
-                  ...(allowedConnectionIds.length ? { id: { notIn: allowedConnectionIds } } : {}),
+                  ...(blockedConnectionIds.length ? { id: { notIn: blockedConnectionIds } } : {}),
                 },
               },
             ],
