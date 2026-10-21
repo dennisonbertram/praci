@@ -3,11 +3,15 @@ import type { Actor, Bot } from "@rakazo/contracts";
 import {
   appAgentColor,
   cartaAgentSpawnKey,
+  GRANOLA_API_CONNECTOR_ID,
+  granolaAgentSpawnKey,
+  INTEGRATION_PRESETS,
   inboxAgentSpawnKey,
   integrationAgentSpawnKey,
   integrationPresetForEndpoint,
   isCartaEndpoint,
   isDevinEndpoint,
+  isGranolaEndpoint,
   isIntegrationAgentForServer,
 } from "@rakazo/contracts";
 import type { createRepos, PrismaClient } from "@rakazo/db";
@@ -65,12 +69,51 @@ async function connectedAppAgentName(
   return accounts > 1 && label ? `${service} agent (${label})` : `${service} agent`;
 }
 
-const connectedAppAgentInstructions = (connection: { displayName: string; provider: string }) =>
-  instructions(connection.displayName || connection.provider);
+const connectedAppAgentInstructions = (connection: {
+  connectorId: string;
+  displayName: string;
+  provider: string;
+}) =>
+  connection.connectorId === GRANOLA_API_CONNECTOR_ID
+    ? instructions("Granola", INTEGRATION_PRESETS.granola.instructions, true)
+    : instructions(connection.displayName || connection.provider);
+
+type AgentRef = Pick<Bot, "id" | "spawnKey">;
+
+/**
+ * The user's one live Granola agent: the agent linked to their Granola sign-in server, or the
+ * agent named by the Granola spawn key (the API key creates it). Null when there is none.
+ */
+export async function findGranolaAgent(
+  prisma: Pick<PrismaClient, "mcpServer" | "bot">,
+  actor: Actor,
+): Promise<AgentRef | null> {
+  const servers = await prisma.mcpServer.findMany({
+    where: { spaceId: actor.spaceId, userId: actor.userId, agentBotId: { not: null } },
+    select: { id: true, spaceId: true, userId: true, endpoint: true, agentBotId: true },
+  });
+  for (const server of servers.filter((row) => isGranolaEndpoint(row.endpoint))) {
+    const bot = await prisma.bot.findFirst({
+      where: { id: server.agentBotId as string, spaceId: actor.spaceId, userId: actor.userId },
+    });
+    if (bot && isIntegrationAgentForServer(server, bot)) return bot;
+  }
+  return prisma.bot.findFirst({
+    where: {
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      spawnKey: granolaAgentSpawnKey(actor.userId),
+      archivedAt: null,
+    },
+  });
+}
 
 export async function ensureConnectedAppAgent(
   deps: {
-    prisma: Pick<PrismaClient, "connection" | "botConnectionAccess" | "bot" | "$transaction">;
+    prisma: Pick<
+      PrismaClient,
+      "connection" | "botConnectionAccess" | "bot" | "mcpServer" | "$transaction"
+    >;
     repos: Pick<ReturnType<typeof createRepos>, "createBot">;
     archiveBot: (botId: string) => Promise<void>;
   },
@@ -80,10 +123,14 @@ export async function ensureConnectedAppAgent(
   const initial = await loadConnectedApp(deps.prisma, actor, connectionId);
   // A Gmail account is read and answered by the user's one Inbox agent, so it links there.
   const inbox = initial.connectorId === "google" && initial.provider === "gmail";
+  // A user has one Granola agent, whichever of the sign-in and the key came first.
+  const granola = initial.connectorId === GRANOLA_API_CONNECTOR_ID;
   const service = initial.displayName || initial.provider;
   const spawnKey = inbox
     ? inboxAgentSpawnKey(actor.userId)
-    : integrationAgentSpawnKey(connectionId);
+    : granola
+      ? granolaAgentSpawnKey(actor.userId)
+      : integrationAgentSpawnKey(connectionId);
   const link = (bot: Bot) =>
     deps.prisma.$transaction(async (tx) => {
       // One lock order everywhere: connection row, then the bot row, then grants.
@@ -93,7 +140,8 @@ export async function ensureConnectedAppAgent(
           id: bot.id,
           spaceId: actor.spaceId,
           userId: actor.userId,
-          spawnKey,
+          // The Granola agent may be the sign-in server's, made before the user-level key existed.
+          spawnKey: bot.spawnKey ?? spawnKey,
           archivedAt: null,
         },
         data: { updatedAt: new Date() },
@@ -151,16 +199,20 @@ export async function ensureConnectedAppAgent(
     });
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const existed = Boolean(
-      await deps.prisma.bot.findFirst({
-        where: { spaceId: actor.spaceId, userId: actor.userId, spawnKey, archivedAt: null },
-        select: { id: true },
-      }),
-    );
-    const bot = inbox
+    const reused = granola ? await findGranolaAgent(deps.prisma, actor) : null;
+    const existed =
+      Boolean(reused) ||
+      Boolean(
+        await deps.prisma.bot.findFirst({
+          where: { spaceId: actor.spaceId, userId: actor.userId, spawnKey, archivedAt: null },
+          select: { id: true },
+        }),
+      );
+    // createBot returns the existing bot for a spawn key, so a reused Granola agent comes back as is.
+    const bot: Bot = inbox
       ? await ensureInboxAgent(deps.repos, actor)
       : await deps.repos.createBot(actor, {
-          spawnKey,
+          spawnKey: reused?.spawnKey ?? spawnKey,
           name: await connectedAppAgentName(deps.prisma, actor, initial),
           title: "",
           description: `Your ${service} account`,
@@ -216,6 +268,9 @@ export const connectionAgentSpawnKeys = (
   integrationAgentSpawnKey(connection.id),
   ...(connection.connectorId === "google" && connection.provider === "gmail"
     ? [inboxAgentSpawnKey(actor.userId)]
+    : []),
+  ...(connection.connectorId === GRANOLA_API_CONNECTOR_ID
+    ? [granolaAgentSpawnKey(actor.userId)]
     : []),
 ];
 
@@ -393,22 +448,29 @@ export async function ensureIntegrationAgent(
         throw new ORPCError("CONFLICT", { message: "The integration changed; retry" });
       return tx.mcpServer.findFirstOrThrow({ where: scope(actor, server.id) });
     });
-  const spawnKey = integrationAgentSpawnKey(server.id);
+  // A user has one Granola agent: the sign-in reuses the one the API key made, and the reverse.
+  const granola = isGranolaEndpoint(server.endpoint);
+  const spawnKey = granola
+    ? granolaAgentSpawnKey(actor.userId)
+    : integrationAgentSpawnKey(server.id);
   for (let attempt = 0; attempt < 2; attempt++) {
-    const existed = Boolean(
-      await deps.prisma.bot.findFirst({
-        where: { spaceId: actor.spaceId, userId: actor.userId, spawnKey, archivedAt: null },
-        select: { id: true },
-      }),
-    );
+    const reused = granola ? await findGranolaAgent(deps.prisma, actor) : null;
+    const existed =
+      Boolean(reused) ||
+      Boolean(
+        await deps.prisma.bot.findFirst({
+          where: { spaceId: actor.spaceId, userId: actor.userId, spawnKey, archivedAt: null },
+          select: { id: true },
+        }),
+      );
     const bot = await deps.repos.createBot(actor, {
-      spawnKey: integrationAgentSpawnKey(server.id),
+      spawnKey: reused?.spawnKey ?? spawnKey,
       name: `${service} agent`,
       title: "",
       description: `Your ${service} account`,
       instructions: instructions(service, preset?.instructions, isDevinEndpoint(server.endpoint)),
       notifyOnFinish: true,
-      color: appAgentColor([service], integrationAgentSpawnKey(server.id)),
+      color: appAgentColor([service], spawnKey),
     });
     const linked = await link(bot).catch(async (error) => {
       // A bot this call made must not be left without a server; one that already existed is not ours to archive.

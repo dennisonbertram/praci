@@ -47,3 +47,31 @@ export type SourceMeeting = z.infer<typeof SourceMeetingSchema>;
 export function formatMeetingTranscript(lines: readonly MeetingTranscriptLine[]): string {
   return lines.map((l) => (l.speaker ? `${l.speaker}: ${l.text}` : l.text)).join("\n");
 }
+
+/** The Granola API-key route for the key card; never carries the key. Null until a key was pasted. */
+export const MeetingsStatusSchema = z
+  .object({
+    connectionId: z.string(),
+    /** `needs_reconnect`: Granola rejected the stored key during a sync. */
+    status: z.enum(["connected", "needs_reconnect", "disconnected"]),
+    /** Null until the first sync has finished ("Syncing"). */
+    syncedThrough: IsoDate.nullable(),
+    lastSyncedAt: IsoDate.nullable(),
+    /** Stored meetings of this user, whatever route synced them. */
+    syncedCount: z.number().int().nonnegative(),
+    /** The user's model has no AI-data consent, so the agent cannot read meetings. */
+    consentOff: z.boolean(),
+    agentBotId: z.string().nullable(),
+  })
+  .nullable();
+export type MeetingsStatus = z.infer<typeof MeetingsStatusSchema>;
+
+export const MeetingConnectInputSchema = z.object({ apiKey: z.string().max(512) });
+
+/** One stored meeting in the plain list: title and date only. */
+export const StoredMeetingSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  startedAt: IsoDate,
+});
+export type StoredMeeting = z.infer<typeof StoredMeetingSchema>;
