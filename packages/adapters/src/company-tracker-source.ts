@@ -161,6 +161,7 @@ const linearMilestone = z.object({
   title: z.string().min(1).max(500).optional(),
   description: z.string().max(200_000).nullable().optional(),
   dueDate: z.string().max(100).nullable().optional(),
+  targetDate: z.string().max(100).nullable().optional(),
   url: z.string().url().max(2048).optional(),
 });
 
@@ -218,7 +219,6 @@ type LinearToolSet = {
   milestoneArgs: {
     size?: string;
     cursor?: string;
-    offset?: string;
     project: string;
     fullList: boolean;
   };
@@ -270,12 +270,15 @@ function decode(value: unknown, depth = 0): unknown {
   if (Array.isArray(value)) return value;
   const current = record(value);
   const errorValue = current.error ?? current.message ?? current.content;
+  const hasError =
+    (typeof current.error === "string" && current.error.trim() !== "") ||
+    (typeof current.error === "object" && current.error !== null);
   const failed =
     current.successful === false ||
     current.ok === false ||
     current.isError === true ||
     Number(current.status ?? current.statusCode ?? current.status_code) === 429 ||
-    (typeof current.error === "object" && current.error !== null);
+    hasError;
   if (failed) {
     const errorText = JSON.stringify(errorValue ?? "").toLowerCase();
     if (
@@ -297,9 +300,48 @@ function decode(value: unknown, depth = 0): unknown {
   const keys = Object.keys(current);
   if (
     current.data !== undefined &&
-    keys.every((key) => ["data", "successful", "status", "statusCode", "status_code"].includes(key))
-  )
-    return decode(current.data, depth + 1);
+    current.successful === true &&
+    keys.every((key) =>
+      [
+        "data",
+        "successful",
+        "error",
+        "status",
+        "statusCode",
+        "status_code",
+        "hasNextPage",
+        "has_next_page",
+        "hasNext",
+        "has_next",
+        "hasMore",
+        "has_more",
+        "endCursor",
+        "end_cursor",
+        "nextCursor",
+        "next_cursor",
+        "next",
+        "pageInfo",
+        "page_info",
+        "pagination",
+        "response_metadata",
+        "meta",
+      ].includes(key),
+    )
+  ) {
+    const decoded = decode(current.data, depth + 1);
+    const metadata = Object.fromEntries(
+      keys
+        .filter(
+          (key) =>
+            !["data", "successful", "error", "status", "statusCode", "status_code"].includes(key),
+        )
+        .map((key) => [key, current[key]]),
+    );
+    if (Object.keys(metadata).length === 0) return decoded;
+    if (Array.isArray(decoded)) return { data: decoded, ...metadata };
+    const decodedRecord = recordMaybe(decoded);
+    return decodedRecord ? { ...decodedRecord, ...metadata } : { data: decoded, ...metadata };
+  }
   return current;
 }
 
@@ -327,8 +369,8 @@ function rows(value: unknown, keys: string[], max = PAGE_LIMIT): unknown[] {
       if (nested.data !== undefined) return rows(nested.data, ["nodes", "items", ...keys], max);
     }
   }
-  if (Array.isArray(current.data)) return rows(current.data, keys, max);
-  if (Array.isArray(current.result)) return rows(current.result, keys, max);
+  if (current.data !== undefined) return rows(current.data, keys, max);
+  if (current.result !== undefined) return rows(current.result, keys, max);
   throw new CompanyImportWorkerError("invalid_source_response");
 }
 
@@ -349,6 +391,7 @@ function listMetadata(value: unknown): {
   hasNext: boolean | undefined;
   next: string | null;
 } {
+  if (Array.isArray(value)) return { hasNext: undefined, next: null };
   const root = record(value);
   const data = recordMaybe(root.data);
   const result = recordMaybe(root.result);
@@ -446,23 +489,36 @@ function assertGitHubTool(tool: ConnectorTool | undefined, expected: string, arg
   )
     throw new CompanyImportWorkerError("unsupported_reader");
   const { properties, required } = jsonSchema(tool);
-  if (!args.every((arg) => arg in properties && required.includes(arg)))
+  if (!args.every((arg) => arg in properties) || required.some((arg) => !args.includes(arg)))
     throw new CompanyImportWorkerError("unsupported_reader");
   if (args.includes("per_page")) {
     const pageSize = record(properties.per_page);
-    const pageMaximum = Number(pageSize.maximum);
+    const pageMaximum = Number(pageSize.maximum ?? PAGE_LIMIT);
     const pageMinimum = Number(pageSize.minimum ?? 1);
     const page = recordMaybe(properties.page);
+    const pageMinimumValue = Number(page?.minimum ?? 1);
     if (
       !Number.isFinite(pageMaximum) ||
+      !Number.isFinite(pageMinimum) ||
       pageMaximum < pageMinimum ||
       pageMaximum < 1 ||
-      pageMaximum > PAGE_LIMIT ||
       pageMinimum > 1 ||
-      !["integer", "number"].includes(String(pageSize.type)) ||
-      (page &&
-        (!["integer", "number"].includes(String(page.type)) || Number(page.minimum ?? 1) > 1))
+      !["integer", "number"].includes(String(pageSize.type))
     )
+      throw new CompanyImportWorkerError("unsupported_reader");
+    if (
+      page &&
+      (!["integer", "number"].includes(String(page.type)) ||
+        !Number.isFinite(pageMinimumValue) ||
+        pageMinimumValue > 1 ||
+        (page.maximum !== undefined &&
+          (!Number.isFinite(Number(page.maximum)) || Number(page.maximum) < 1)))
+    )
+      throw new CompanyImportWorkerError("unsupported_reader");
+  }
+  if (expected === "GITHUB_LIST_ORGANIZATION_PROJECTS" && required.includes("after")) {
+    const type = record(properties.after).type;
+    if (!(Array.isArray(type) && type.includes("null")) && type !== "null")
       throw new CompanyImportWorkerError("unsupported_reader");
   }
   const requiredValues: Record<string, unknown> = {
@@ -522,23 +578,29 @@ function linearMilestoneArgs(tool: ConnectorTool): LinearToolSet["milestoneArgs"
   const { properties, required } = jsonSchema(tool);
   const size = ["limit", "first"].find((candidate) => candidate in properties);
   const cursor = ["cursor", "after"].find((candidate) => candidate in properties);
-  const offset = ["offset"].find((candidate) => candidate in properties);
+  if ("offset" in properties) throw new CompanyImportWorkerError("unsupported_reader");
   const description = (tool.description ?? "").toLowerCase();
   const fullList =
     /\b(?:all|complete|full)\s+(?:project\s+)?milestones\b|\breturns?\s+(?:the\s+)?(?:full|complete)\s+list\b/.test(
       description,
     );
   if (!cursor && !fullList) throw new CompanyImportWorkerError("unsupported_reader");
-  if (!size && !fullList && !offset) throw new CompanyImportWorkerError("unsupported_reader");
-  if (cursor && size && required.some((name) => ![project, size, cursor].includes(name)))
+  if (!size && !fullList) throw new CompanyImportWorkerError("unsupported_reader");
+  if (
+    cursor &&
+    required.includes(cursor) &&
+    !(() => {
+      const type = record(properties[cursor]).type;
+      return (Array.isArray(type) && type.includes("null")) || type === "null";
+    })()
+  )
     throw new CompanyImportWorkerError("unsupported_reader");
-  if (!cursor && required.some((name) => ![project, size, offset].includes(name)))
+  if (required.some((name) => ![project, size, cursor].includes(name)))
     throw new CompanyImportWorkerError("unsupported_reader");
   return {
     project,
     ...(size ? { size } : {}),
     ...(cursor ? { cursor } : {}),
-    ...(offset ? { offset } : {}),
     fullList,
   };
 }
@@ -573,7 +635,7 @@ function sourceRouteIsValid(source: CompanyImportSourceDescriptor) {
 }
 
 function safeUrl(value: unknown): string | null {
-  if (typeof value !== "string" || value.length > 2048) return null;
+  if (typeof value !== "string" || value.length > 2000) return null;
   try {
     const url = new URL(value);
     return url.protocol === "https:" || url.protocol === "http:" ? value : null;
@@ -584,17 +646,23 @@ function safeUrl(value: unknown): string | null {
 
 function linesDocument(id: string, title: string, lines: string[], sourceUrl: unknown): Document {
   const text = lines.filter(Boolean).join("\n");
-  const bounded = Buffer.from(text).subarray(0, 20_000);
-  let end = bounded.length;
-  while (end > 0 && (bounded[end]! & 0xc0) === 0x80) end--;
-  const limitedText = bounded.subarray(0, end).toString();
-  const titleBytes = Buffer.from(title).subarray(0, 1024);
-  let titleEnd = titleBytes.length;
-  while (titleEnd > 0 && (titleBytes[titleEnd]! & 0xc0) === 0x80) titleEnd--;
+  const textBytes = Buffer.from(text);
+  let end = Math.min(textBytes.length, 20_000);
+  while (end > 0 && end < textBytes.length && (textBytes[end]! & 0xc0) === 0x80) end--;
+  const limitedText = textBytes.subarray(0, end).toString();
+  const titleBytes = Buffer.from(title);
+  let titleEnd = Math.min(titleBytes.length, 1024);
+  while (titleEnd > 0 && titleEnd < titleBytes.length && (titleBytes[titleEnd]! & 0xc0) === 0x80)
+    titleEnd--;
   const limitedTitle = titleBytes.subarray(0, titleEnd).toString();
-  const snippetBytes = Buffer.from(limitedText).subarray(0, 1200);
-  let snippetEnd = snippetBytes.length;
-  while (snippetEnd > 0 && (snippetBytes[snippetEnd]! & 0xc0) === 0x80) snippetEnd--;
+  const snippetBytes = Buffer.from(limitedText);
+  let snippetEnd = Math.min(snippetBytes.length, 1200);
+  while (
+    snippetEnd > 0 &&
+    snippetEnd < snippetBytes.length &&
+    (snippetBytes[snippetEnd]! & 0xc0) === 0x80
+  )
+    snippetEnd--;
   return {
     id,
     title: limitedTitle,
@@ -622,13 +690,43 @@ function idString(value: string | number) {
   return String(value);
 }
 
-function githubPageArgs(tool: ConnectorTool, page: number, desiredPerPage: number) {
-  const schema = record(jsonSchema(tool).properties.per_page);
-  const maximum = Number(schema.maximum);
-  const minimum = Number(schema.minimum ?? 1);
-  if (!Number.isFinite(maximum) || maximum < minimum || maximum < 1)
+function githubPageArgs(
+  tool: ConnectorTool,
+  page: number,
+  desiredPerPage: number,
+): { page?: number; per_page: number } {
+  const { properties } = jsonSchema(tool);
+  if (!properties.per_page) throw new CompanyImportWorkerError("unsupported_reader");
+  const sizeSchema = record(properties.per_page);
+  const maximum = Math.min(PAGE_LIMIT, Number(sizeSchema.maximum ?? PAGE_LIMIT));
+  const minimum = Number(sizeSchema.minimum ?? 1);
+  if (!Number.isFinite(maximum) || !Number.isFinite(minimum) || maximum < minimum || maximum < 1)
     throw new CompanyImportWorkerError("unsupported_reader");
-  return { page, per_page: Math.max(minimum, Math.min(desiredPerPage, maximum)) };
+  const args: { page?: number; per_page: number } = {
+    per_page: Math.max(minimum, Math.min(desiredPerPage, maximum)),
+  };
+  if (properties.page) {
+    const schema = record(properties.page);
+    const minimum = Number(schema.minimum ?? 1);
+    const maximum = Number(schema.maximum ?? 1_000_000);
+    if (
+      !Number.isFinite(minimum) ||
+      !Number.isFinite(maximum) ||
+      maximum < minimum ||
+      page < minimum
+    )
+      throw new CompanyImportWorkerError("source_pagination_unavailable");
+    if (page > maximum) throw new CompanyImportWorkerError("source_pagination_unavailable");
+    args.page = page;
+  }
+  return args;
+}
+
+function githubCursorArgs(tool: ConnectorTool, cursor: string | null) {
+  const { required } = jsonSchema(tool);
+  if (cursor !== null) return { after: cursor };
+  if (required.includes("after")) return { after: null };
+  return {};
 }
 
 export function createCompanyTrackerReader(reader: CompanyConnectionReader) {
@@ -668,7 +766,11 @@ export function createCompanyTrackerReader(reader: CompanyConnectionReader) {
       list_projects: linearPageArgs(tools.list_projects),
       list_issues: linearPageArgs(tools.list_issues),
     };
-    const projectArg = inputArg(tools.get_project, ["projectId", "project_id", "id"], true);
+    const projectArg = inputArg(
+      tools.get_project,
+      ["projectId", "project_id", "id", "query"],
+      true,
+    );
     const issueArg = inputArg(tools.get_issue, ["issueId", "issue_id", "id"], true);
     const milestoneArgs = linearMilestoneArgs(tools.list_milestones);
     if (
@@ -882,7 +984,7 @@ export function createCompanyTrackerReader(reader: CompanyConnectionReader) {
         tools.projects,
         {
           org: state.org,
-          after: state.after ?? null,
+          ...githubCursorArgs(tools.projects, state.after ?? null),
           ...githubPageArgs(tools.projects, 1, 1),
         },
         context,
@@ -898,6 +1000,7 @@ export function createCompanyTrackerReader(reader: CompanyConnectionReader) {
       if (list.length && page.hasNext === undefined && !page.next)
         throw new CompanyImportWorkerError("source_pagination_unavailable");
       const project = list.length ? githubProject.parse(list[0]) : null;
+      const projectUrl = project ? safeUrl(project.url ?? project.html_url) : null;
       return {
         document: project
           ? linesDocument(
@@ -909,8 +1012,9 @@ export function createCompanyTrackerReader(reader: CompanyConnectionReader) {
                 `Name: ${project.title}`,
                 project.startDate ? `Start date: ${project.startDate}` : "",
                 project.targetDate ? `Target date: ${project.targetDate}` : "",
+                projectUrl ? `Tracker URL: ${projectUrl}` : "",
               ],
-              project.url ?? project.html_url,
+              projectUrl,
             )
           : null,
         nextCursor: page.next
@@ -1153,8 +1257,9 @@ export function createCompanyTrackerReader(reader: CompanyConnectionReader) {
             `Name: ${project.name}`,
             project.startDate ? `Start date: ${project.startDate}` : "",
             project.targetDate ? `Target date: ${project.targetDate}` : "",
+            safeUrl(project.url) ? `Tracker URL: ${safeUrl(project.url)}` : "",
           ],
-          project.url,
+          safeUrl(project.url),
         ),
         nextCursor: { ...state, phase: "milestones", token: null, offset: 0 },
         done: false,
@@ -1169,7 +1274,7 @@ export function createCompanyTrackerReader(reader: CompanyConnectionReader) {
       : PAGE_LIMIT;
     if (!Number.isFinite(maxSize) || maxSize < 1)
       throw new CompanyImportWorkerError("unsupported_reader");
-    const limit = milestonePlan.cursor || milestonePlan.offset ? 1 : Math.min(PAGE_LIMIT, maxSize);
+    const limit = milestonePlan.cursor ? 1 : Math.min(PAGE_LIMIT, maxSize);
     if (milestonePlan.size) args[milestonePlan.size] = limit;
     if (milestonePlan.cursor) {
       const required = jsonSchema(tool).required;
@@ -1177,7 +1282,6 @@ export function createCompanyTrackerReader(reader: CompanyConnectionReader) {
         args[milestonePlan.cursor] = state.token;
       else if (required.includes(milestonePlan.cursor)) args[milestonePlan.cursor] = null;
     }
-    if (milestonePlan.offset) args[milestonePlan.offset] = state.offset ?? 0;
     const result = await call(source, tool, args, context);
     const list = rows(result, ["milestones", "items", "nodes"], limit);
     if (milestonePlan.cursor) {
@@ -1197,6 +1301,7 @@ export function createCompanyTrackerReader(reader: CompanyConnectionReader) {
             `Title: ${title}`,
             milestone.description ? `Description: ${milestone.description}` : "",
             milestone.dueDate ? `Due date: ${milestone.dueDate}` : "",
+            milestone.targetDate ? `Target date: ${milestone.targetDate}` : "",
           ],
           milestone.url,
         ),
@@ -1234,6 +1339,7 @@ export function createCompanyTrackerReader(reader: CompanyConnectionReader) {
           `Title: ${title}`,
           milestone.description ? `Description: ${milestone.description}` : "",
           milestone.dueDate ? `Due date: ${milestone.dueDate}` : "",
+          milestone.targetDate ? `Target date: ${milestone.targetDate}` : "",
         ],
         milestone.url,
       ),

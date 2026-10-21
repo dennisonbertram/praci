@@ -3,7 +3,7 @@ import type { CompanyImportSession } from "@rakazo/contracts";
 import { importCatalog, importConsent, importSession } from "../src/pages/company-import-fixtures";
 import { captureScreenshot, completeOnboarding, signup } from "./helpers";
 
-test("Company tracker catalog uses the fixed all-access scope", async ({ page }) => {
+test("Company tracker catalog uses the fixed all-access scope", async ({ page }, testInfo) => {
   const sources = [
     {
       key: "github:tracker-connection",
@@ -58,6 +58,7 @@ test("Company tracker catalog uses the fixed all-access scope", async ({ page })
   await expect(page.getByRole("checkbox", { name: "GitHub", exact: true })).toBeChecked();
   await expect(page.getByRole("checkbox", { name: "Linear MCP", exact: true })).toBeChecked();
   await expect(page.getByText("All accessible items", { exact: true })).toHaveCount(2);
+  await captureScreenshot(page, testInfo, "company-tracker-sources");
   await page.getByRole("button", { name: "Review", exact: true }).click();
   await expect
     .poll(() => createInput)

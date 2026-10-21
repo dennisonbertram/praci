@@ -274,6 +274,102 @@ describePostgres("company foundation (PostgreSQL)", () => {
       }),
     ).toEqual({ identityValue: firstUrl });
 
+    const mergedRootUrl = "https://linear.example.test/project/merged-root";
+    const mergedRoot = persisted(
+      await company.importEntity(
+        project("Merged legacy project", mergedRootUrl, "merged-root", "h9"),
+      ),
+    );
+    const mergedChild = persisted(
+      await company.importEntity(
+        project("Merged legacy project", undefined, "merged-child", "h10"),
+      ),
+    );
+    await company.merge(mergedChild.id, mergedRoot.id);
+    const sameNameDifferentUrl = persisted(
+      await company.importEntity(
+        project(
+          "Merged legacy project",
+          "https://linear.example.test/project/different",
+          "different-merged-project",
+          "h11",
+        ),
+      ),
+    );
+    expect(sameNameDifferentUrl.id).not.toBe(mergedRoot.id);
+    expect(sameNameDifferentUrl.id).not.toBe(mergedChild.id);
+
+    const exactLegacyUrl = "https://linear.example.test/project/legacy-url";
+    const exactLegacy = persisted(
+      await company.importEntity(
+        project("Legacy URL project", exactLegacyUrl, "legacy-url", "h12"),
+      ),
+    );
+    await prisma.companyIdentity.deleteMany({
+      where: { spaceId, ownerUserId: userId, entityId: exactLegacy.id, identityType: "tracker" },
+    });
+    const exactLegacyReplay = persisted(
+      await company.importEntity(
+        project("Renamed legacy URL project", exactLegacyUrl, "legacy-url-replay", "h13"),
+      ),
+    );
+    expect(exactLegacyReplay.id).toBe(exactLegacy.id);
+    expect(
+      await prisma.companyIdentity.findFirst({
+        where: { spaceId, ownerUserId: userId, entityId: exactLegacy.id, identityType: "tracker" },
+        select: { identityValue: true },
+      }),
+    ).toEqual({ identityValue: exactLegacyUrl });
+
+    const ambiguousOne = persisted(
+      await company.importEntity(
+        project(
+          "Ambiguous legacy project",
+          "https://linear.example.test/project/one",
+          "amb-one",
+          "h14",
+        ),
+      ),
+    );
+    const ambiguousTwo = persisted(
+      await company.importEntity(
+        project(
+          "Ambiguous legacy project",
+          "https://linear.example.test/project/two",
+          "amb-two",
+          "h15",
+        ),
+      ),
+    );
+    await prisma.companyIdentity.deleteMany({
+      where: {
+        spaceId,
+        ownerUserId: userId,
+        entityId: { in: [ambiguousOne.id, ambiguousTwo.id] },
+        identityType: "tracker",
+      },
+    });
+    await prisma.companyEntity.updateMany({
+      where: { spaceId, ownerUserId: userId, id: { in: [ambiguousOne.id, ambiguousTwo.id] } },
+      data: { attrs: {} },
+    });
+    const ambiguousReplay = await company.importEntity(
+      project("Ambiguous legacy project", undefined, "ambiguous-replay", "h16"),
+    );
+    expect("deferred" in ambiguousReplay).toBe(false);
+    if (!("deferred" in ambiguousReplay) && !("suppressed" in ambiguousReplay)) {
+      expect(ambiguousReplay.id).not.toBe(ambiguousOne.id);
+      expect(ambiguousReplay.id).not.toBe(ambiguousTwo.id);
+    }
+    expect(
+      (await company.candidates()).some(
+        (candidate) =>
+          candidate.reason === "conflicting_strong_identities" &&
+          candidate.entityIds.includes(ambiguousOne.id) &&
+          candidate.entityIds.includes(ambiguousTwo.id),
+      ),
+    ).toBe(true);
+
     const legacy = persisted(
       await company.importEntity(project("Legacy Tracker", undefined, "legacy-project", "h4")),
     );

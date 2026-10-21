@@ -73,6 +73,20 @@ describe("company extraction safety", () => {
     expect(test.reservations.map((item) => item.maxOutputTokens)).toEqual([64, 6000]);
   });
 
+  it("includes a tracker project URL in the extraction request", async () => {
+    const trackerUrl = "https://linear.example.test/project/orion";
+    const test = fixture([{ entities: [], edges: [], events: [] }]);
+    await test.extractor.extract(
+      {
+        title: "Linear project Orion",
+        text: `Project ID: project-1\nName: Orion\nTracker URL: ${trackerUrl}`,
+      },
+      test.context,
+    );
+    expect(test.requests[0]?.prompt).toContain(trackerUrl);
+    expect(test.requests[0]?.tools).toEqual([]);
+  });
+
   it("rejects fabricated provenance, privileged fields and undeclared subjects", () => {
     expect(() =>
       validateCompanyExtraction(

@@ -2,9 +2,13 @@ import type {
   AdapterContext,
   CompanyConnectionReader,
   CompanyImportSourceDescriptor,
+  ConnectorCall,
+  ConnectorProvider,
   ConnectorTool,
 } from "@rakazo/adapter-kit";
+import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
+import { createCompanyConnectionReader } from "./company-connection-reader.js";
 import { createCompanyTrackerReader } from "./company-tracker-source.js";
 
 const githubSource: CompanyImportSourceDescriptor = {
@@ -52,6 +56,14 @@ const githubDefinitions: Record<string, string[]> = {
   ],
   GITHUB_LIST_ORGANIZATION_PROJECTS: ["org", "after", "per_page"],
 };
+const githubRequiredArguments: Record<string, string[]> = {
+  GITHUB_LIST_ORGANIZATION_MEMBERS: ["org"],
+  GITHUB_GET_A_USER: ["username"],
+  GITHUB_GET_A_REPOSITORY: ["owner", "repo"],
+  GITHUB_LIST_MILESTONES: ["owner", "repo"],
+  GITHUB_LIST_REPOSITORY_ISSUES: ["owner", "repo"],
+  GITHUB_LIST_ORGANIZATION_PROJECTS: ["org"],
+};
 
 function githubTools(): ConnectorTool[] {
   return Object.entries(githubDefinitions).map(([name, args]) => {
@@ -59,11 +71,11 @@ function githubTools(): ConnectorTool[] {
       args.map((key) => [
         key,
         key === "per_page"
-          ? { type: "integer", minimum: 1, maximum: 100 }
+          ? { type: "integer", minimum: 1 }
           : key === "page"
             ? { type: "integer", minimum: 1 }
             : key === "after"
-              ? { type: ["string", "null"] }
+              ? { type: "string" }
               : key === "state"
                 ? { type: "string", enum: ["all"] }
                 : key === "sort"
@@ -82,26 +94,56 @@ function githubTools(): ConnectorTool[] {
       name,
       description: name,
       readOnly: true,
-      inputSchema: { type: "object", properties, required: args },
+      inputSchema: {
+        type: "object",
+        properties,
+        required: githubRequiredArguments[name] ?? [],
+        additionalProperties: false,
+      },
       route: { connectorId: "composio", toolName: name },
     };
   });
+}
+
+function updateToolSchema(
+  tool: ConnectorTool,
+  changes: { properties?: Record<string, unknown>; required?: string[] },
+): ConnectorTool {
+  const schema = tool.inputSchema as {
+    properties: Record<string, unknown>;
+    [key: string]: unknown;
+  };
+  return {
+    ...tool,
+    inputSchema: {
+      ...schema,
+      ...changes,
+      ...(changes.properties
+        ? { properties: { ...schema.properties, ...changes.properties } }
+        : {}),
+    },
+  };
 }
 
 const linearDefinitions: Record<string, string[]> = {
   list_users: ["limit", "cursor"],
   list_teams: ["limit", "cursor"],
   list_projects: ["limit", "cursor"],
-  get_project: ["id"],
+  get_project: ["query"],
   list_issues: ["limit", "cursor"],
   get_issue: ["id"],
-  list_milestones: ["projectId", "limit", "cursor"],
+  list_milestones: ["project", "limit", "cursor"],
+};
+const linearRequiredArguments: Record<string, string[]> = {
+  get_project: ["query"],
+  get_issue: ["id"],
+  list_milestones: ["project"],
 };
 
 function linearTools(): ConnectorTool[] {
   return Object.entries(linearDefinitions).map(([name, args]) => ({
     name,
-    description: name === "list_milestones" ? "Returns the full list of milestones." : name,
+    description: name === "list_milestones" ? "List all milestones in a Linear project." : name,
     readOnly: true,
     inputSchema: {
       type: "object",
@@ -115,7 +157,8 @@ function linearTools(): ConnectorTool[] {
               : { type: "string" },
         ]),
       ),
-      required: args,
+      required: linearRequiredArguments[name] ?? args,
+      additionalProperties: false,
     },
     route: { connectorId: "mcp", toolName: name },
   }));
@@ -165,6 +208,174 @@ describe("Company tracker reader", () => {
     expect(state.calls).toHaveLength(0);
   });
 
+  it("rejects Linear milestone offset pagination without a supported cursor contract", async () => {
+    const tools = linearTools().map((tool) =>
+      tool.name === "list_milestones"
+        ? {
+            ...tool,
+            inputSchema: {
+              type: "object",
+              properties: {
+                project: { type: "string" },
+                offset: { type: "integer", minimum: 0 },
+              },
+              required: ["project"],
+              additionalProperties: false,
+            },
+          }
+        : tool,
+    );
+    const state = harness(() => null, { linear: true, tools });
+    await expect(state.tracker.supports(linearSource, context)).rejects.toMatchObject({
+      code: "unsupported_reader",
+    });
+  });
+
+  it("accepts optional documented GitHub inputs and rejects undeclared required inputs", async () => {
+    const state = harness(() => null);
+    await expect(state.tracker.supports(githubSource, context)).resolves.toBe(true);
+
+    const fallback = harness(() => ({ organizations: [], has_next: false }));
+    await fallback.tracker.discover(githubSource, null, 100, context);
+    expect(fallback.calls[0]?.args.per_page).toBe(100);
+
+    const stricterTools = githubTools().map((tool) =>
+      tool.name === "GITHUB_LIST_ORGANIZATIONS_FOR_THE_AUTHENTICATED_USER"
+        ? updateToolSchema(tool, {
+            properties: {
+              per_page: { type: "integer", minimum: 1, maximum: 40 },
+            },
+          })
+        : tool,
+    );
+    const stricter = harness(() => ({ organizations: [], has_next: false }), {
+      tools: stricterTools,
+    });
+    await stricter.tracker.discover(githubSource, null, 100, context);
+    expect(stricter.calls[0]?.args.per_page).toBe(40);
+
+    const unsafeTools = githubTools().map((tool) =>
+      tool.name === "GITHUB_LIST_ORGANIZATIONS_FOR_THE_AUTHENTICATED_USER"
+        ? updateToolSchema(tool, { required: ["unrecognized"] })
+        : tool,
+    );
+    const unsafe = harness(() => null, { tools: unsafeTools });
+    await expect(unsafe.tracker.supports(githubSource, context)).rejects.toMatchObject({
+      code: "unsupported_reader",
+    });
+
+    const requiredNonNullableAfter = githubTools().map((tool) =>
+      tool.name === "GITHUB_LIST_ORGANIZATION_PROJECTS"
+        ? updateToolSchema(tool, { required: ["org", "after"] })
+        : tool,
+    );
+    const invalidCursor = harness(() => null, { tools: requiredNonNullableAfter });
+    await expect(invalidCursor.tracker.supports(githubSource, context)).rejects.toMatchObject({
+      code: "unsupported_reader",
+    });
+  });
+
+  it("passes a null ProjectsV2 cursor only when the schema requires a nullable cursor", async () => {
+    const tools = githubTools().map((tool) =>
+      tool.name === "GITHUB_LIST_ORGANIZATION_PROJECTS"
+        ? updateToolSchema(tool, {
+            properties: { after: { type: ["string", "null"] } },
+            required: ["org", "after"],
+          })
+        : tool,
+    );
+    const state = harness(
+      () => ({
+        organization: { projectsV2: { nodes: [], pageInfo: { hasNextPage: false } } },
+      }),
+      { tools },
+    );
+    const result = await state.tracker.read(
+      githubSource,
+      { kind: "organization", id: 11, org: "northwind", phase: "projects", after: null },
+      context,
+    );
+    expect(result.done).toBe(true);
+    expect(state.calls[0]?.args).toEqual({ org: "northwind", after: null, per_page: 1 });
+    expect(state.calls[0]?.args).not.toHaveProperty("page");
+  });
+
+  it("decodes Composio envelopes and native arrays through the authorized connection reader", async () => {
+    const calls: ConnectorCall[] = [];
+    const connection = {
+      id: githubSource.connectionId,
+      connectorId: "composio",
+      provider: "github",
+      providerRef: "synthetic-account",
+      displayName: "Synthetic GitHub",
+      allAgents: true,
+      privateByDefault: false,
+      status: "connected",
+    };
+    const prisma = {
+      spaceMember: { findUnique: vi.fn(async () => ({ userId: context.userId })) },
+      companySourceBlock: { findMany: vi.fn(async () => []) },
+      connection: { findFirst: vi.fn(async () => connection) },
+    } as unknown as PrismaClient;
+    const connectors = {
+      discoverTools: vi.fn(async () => githubTools()),
+      execute: vi.fn(async function* (call: ConnectorCall) {
+        calls.push(call);
+        const denied = await call.beforeDispatch?.();
+        if (denied) {
+          yield { type: "error" as const, message: denied };
+          return;
+        }
+        const organizationPage = Number(call.args.page);
+        const data =
+          call.tool === "GITHUB_LIST_ORGANIZATIONS_FOR_THE_AUTHENTICATED_USER" &&
+          organizationPage === 1
+            ? JSON.stringify([{ id: 11, login: "northwind" }])
+            : JSON.stringify(
+                call.tool === "GITHUB_LIST_ORGANIZATIONS_FOR_THE_AUTHENTICATED_USER" &&
+                  organizationPage === 2
+                  ? [{ id: 12, login: "fabrikam" }]
+                  : [],
+              );
+        yield {
+          type: "result" as const,
+          data: {
+            successful: true,
+            data,
+            error: organizationPage === 2 ? "" : null,
+            ...(organizationPage === 2 ? { has_next: false } : {}),
+          },
+        };
+      }),
+    } as unknown as ConnectorProvider;
+    const reader = createCompanyConnectionReader({
+      prisma,
+      connectors,
+      mcp: {} as never,
+    });
+    const tracker = createCompanyTrackerReader(reader);
+
+    const first = await tracker.discover(githubSource, null, 1, context);
+    expect(first.units.map((unit) => unit.unitKey)).toEqual(["github:organization:11"]);
+    expect(first.nextCursor).toEqual({ phase: "organizations", page: 2 });
+    const second = await tracker.discover(githubSource, first.nextCursor, 1, context);
+    expect(second.units.map((unit) => unit.unitKey)).toEqual(["github:organization:12"]);
+    expect(second.nextCursor).toEqual({ phase: "repositories", page: 1 });
+    const third = await tracker.discover(githubSource, second.nextCursor, 1, context);
+    expect(third.done).toBe(true);
+
+    const organizationCalls = calls.filter(
+      (call) => call.tool === "GITHUB_LIST_ORGANIZATIONS_FOR_THE_AUTHENTICATED_USER",
+    );
+    expect(organizationCalls.map((call) => call.args)).toEqual([
+      { page: 1, per_page: 1 },
+      { page: 2, per_page: 1 },
+    ]);
+    expect(calls.every((call) => call.route?.connectionId === githubSource.connectionId)).toBe(
+      true,
+    );
+  });
+
   it("paginates GitHub discovery and ProjectsV2 while keeping cursors body-free", async () => {
     const state = harness((name, args) => {
       if (name === "GITHUB_LIST_ORGANIZATIONS_FOR_THE_AUTHENTICATED_USER") {
@@ -203,7 +414,7 @@ describe("Company tracker reader", () => {
                   },
                 ],
                 pageInfo:
-                  args.after === null
+                  args.after == null
                     ? { hasNextPage: true, endCursor: "opaque-page-token" }
                     : { hasNextPage: false, endCursor: null },
               },
@@ -264,9 +475,11 @@ describe("Company tracker reader", () => {
       "https://github.example.test/orgs/northwind/projects/3",
     );
     expect(state.calls.slice(-2).map((call) => call.args.after)).toEqual([
-      null,
+      undefined,
       "opaque-page-token",
     ]);
+    expect(state.calls.slice(-2)[0]?.args).toEqual({ org: "northwind", per_page: 1 });
+    expect(state.calls.slice(-2).every((call) => !("page" in call.args))).toBe(true);
   });
 
   it("hydrates GitHub members without personal profile fields and excludes pull requests", async () => {
@@ -392,7 +605,7 @@ describe("Company tracker reader", () => {
             structuredContent: {
               users: {
                 nodes:
-                  args.cursor === null
+                  args.cursor === undefined || args.cursor === null
                     ? [{ id: "user-1", name: "Morgan Vale", email: "morgan@example.test" }]
                     : [],
                 pageInfo: { hasNextPage: false, endCursor: null },
@@ -422,7 +635,7 @@ describe("Company tracker reader", () => {
             pageInfo: { hasNextPage: false },
           };
         if (name === "list_milestones")
-          return args.cursor === null
+          return args.cursor === undefined || args.cursor === null
             ? {
                 milestones: [
                   {
@@ -430,6 +643,7 @@ describe("Company tracker reader", () => {
                     title: "Launch",
                     description: "milestone details",
                     dueDate: "2026-05-06",
+                    targetDate: "2026-06",
                     url: "https://linear.example.test/milestone/1",
                     privateNested: "must not pass through",
                   },
@@ -443,7 +657,7 @@ describe("Company tracker reader", () => {
         if (name === "get_project")
           return {
             project: {
-              id: args.id,
+              id: args.query,
               name: "Orion",
               url: "https://linear.example.test/project/orion",
               startDate: "2026-04-01",
@@ -495,13 +709,20 @@ describe("Company tracker reader", () => {
       context,
     );
     expect(projectDocument.document?.text).toContain("Start date: 2026-04-01");
+    expect(projectDocument.document?.text).toContain(
+      "Tracker URL: https://linear.example.test/project/orion",
+    );
     expect(projectDocument.document?.text).not.toContain("must not be used");
     expect(projectDocument.nextCursor).toMatchObject({ phase: "milestones", id: "project-1" });
     const milestone = await state.tracker.read(linearSource, projectDocument.nextCursor, context);
     expect(milestone.document?.text).toContain("Due date: 2026-05-06");
+    expect(milestone.document?.text).toContain("Target date: 2026-06");
     expect(milestone.document?.text).not.toContain("privateNested");
     expect(milestone.nextCursor).toMatchObject({ token: "milestone-cursor" });
     expect(JSON.stringify(milestone.nextCursor)).not.toContain("milestone details");
+    expect(state.calls.find((call) => call.name === "get_project")?.args).toEqual({
+      query: "project-1",
+    });
     const exhausted = await state.tracker.read(linearSource, milestone.nextCursor, context);
     expect(exhausted.done).toBe(true);
     const issueDocument = await state.tracker.read(
@@ -579,5 +800,33 @@ describe("Company tracker reader", () => {
     await expect(
       state.tracker.discover(githubSource, { phase: "organizations", page: 1 }, 1, context),
     ).resolves.toMatchObject({ nextCursor: { phase: "organizations", page: 2 } });
+  });
+
+  it("truncates multibyte project text, titles, and snippets on UTF-8 boundaries", async () => {
+    const state = harness((name) =>
+      name === "GITHUB_LIST_REPOSITORY_ISSUES"
+        ? {
+            issues: [
+              {
+                id: 99,
+                title: "界".repeat(400),
+                body: "界".repeat(7000),
+                html_url: "https://github.example.test/issues/99",
+              },
+            ],
+            has_next: false,
+          }
+        : null,
+    );
+    const issue = await state.tracker.read(
+      githubSource,
+      { kind: "repository", id: 21, owner: "northwind", repo: "launch", phase: "issues" },
+      context,
+    );
+    const document = issue.document!;
+    expect(Buffer.byteLength(document.text)).toBeLessThanOrEqual(20_000);
+    expect(Buffer.byteLength(document.title)).toBeLessThanOrEqual(1024);
+    expect(Buffer.byteLength(document.snippet)).toBeLessThanOrEqual(1200);
+    expect(`${document.text}${document.title}${document.snippet}`).not.toContain("\uFFFD");
   });
 });

@@ -304,9 +304,10 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
     engine: Awaited<ReturnType<typeof createEngine>>,
     runId: string,
     advanceClock = false,
+    alreadyStarted = false,
   ) {
     const payload = { spaceId, userId, runId };
-    await engine.start(actor, runId);
+    if (!alreadyStarted) await engine.start(actor, runId);
     let lastProgress: unknown;
     for (let step = 0; step < 30; step++) {
       await engine.runJob(payload);
@@ -931,14 +932,14 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
       list_users: ["limit", "cursor"],
       list_teams: ["limit", "cursor"],
       list_projects: ["limit", "cursor"],
-      get_project: ["id"],
+      get_project: ["query"],
       list_issues: ["limit", "cursor"],
       get_issue: ["id"],
-      list_milestones: ["projectId", "limit", "cursor"],
+      list_milestones: ["project", "limit", "cursor"],
     };
     const makeTool = (name: string, args: string[], connectorId: "composio" | "mcp") => ({
       name,
-      description: name,
+      description: name === "list_milestones" ? "List all milestones in a Linear project." : name,
       readOnly: true,
       inputSchema: {
         type: "object",
@@ -949,12 +950,30 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
               ? { type: "integer", minimum: 1, maximum: 100 }
               : key === "page"
                 ? { type: "integer", minimum: 1 }
-                : key === "after" || key === "cursor"
-                  ? { type: ["string", "null"] }
-                  : { type: "string" },
+                : key === "after" && connectorId === "composio"
+                  ? { type: "string" }
+                  : key === "after" || key === "cursor"
+                    ? { type: ["string", "null"] }
+                    : { type: "string" },
           ]),
         ),
-        required: args,
+        required:
+          connectorId === "composio"
+            ? name === "GITHUB_LIST_ORGANIZATION_MEMBERS" ||
+              name === "GITHUB_LIST_ORGANIZATION_PROJECTS"
+              ? ["org"]
+              : name === "GITHUB_GET_A_USER"
+                ? ["username"]
+                : name === "GITHUB_GET_A_REPOSITORY" ||
+                    name === "GITHUB_LIST_MILESTONES" ||
+                    name === "GITHUB_LIST_REPOSITORY_ISSUES"
+                  ? ["owner", "repo"]
+                  : []
+            : name === "get_project" || name === "get_issue"
+              ? [args[0]!]
+              : name === "list_milestones"
+                ? ["project"]
+                : args,
       },
       route: { connectorId, toolName: name },
     });
@@ -965,6 +984,7 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
       makeTool(name, args, "mcp"),
     );
     const trackerCalls: string[] = [];
+    let memberReadAttempts = 0;
     const genericReader: CompanyConnectionReader = {
       listTools: async (source) => (source.sourceKind === "mcp" ? linearTools : githubTools),
       callTool: async (source, name: string, _args: Record<string, unknown>) => {
@@ -973,8 +993,12 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
           return { organizations: [{ id: 501, login: "northwind" }], has_next: false };
         if (name === "GITHUB_LIST_REPOSITORIES_FOR_THE_AUTHENTICATED_USER")
           return { repositories: [], has_next: false };
-        if (name === "GITHUB_LIST_ORGANIZATION_MEMBERS")
+        if (name === "GITHUB_LIST_ORGANIZATION_MEMBERS") {
+          memberReadAttempts++;
+          if (memberReadAttempts === 1)
+            throw Object.assign(new Error("HTTP 429 rate limit"), { status: 429 });
           return { members: [{ id: 77, login: "morgan" }], has_next: false };
+        }
         if (name === "GITHUB_LIST_ORGANIZATION_PROJECTS")
           return {
             organization: {
@@ -1030,9 +1054,11 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
       extractedDocuments.push(document.text);
       const emailSource = document.text.includes(`Work email: ${email}`);
       const githubSource = document.text.toLowerCase().includes("login: morgan");
+      const linearSource = document.text.includes("User ID: linear-user-1");
       const attrs = {
         ...(emailSource ? { workEmails: [email] } : {}),
         ...(githubSource ? { githubLogin: "morgan" } : {}),
+        ...(linearSource ? { linearId: "linear-user-1" } : {}),
       };
       const quote = document.text.includes("GitHub login: morgan")
         ? "GitHub login: morgan"
@@ -1097,14 +1123,82 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
       ],
     });
     await grantAll(engine, created.runId);
-    const progress = await runToCompletion(engine, created.runId, true);
+    const payload = { spaceId, userId, runId: created.runId };
+    vi.useFakeTimers({ toFake: ["Date"] });
+    let progress: Awaited<ReturnType<typeof engine.progress>>;
+    try {
+      await engine.start(actor, created.runId);
+      let rateLimitedUnitId: string | undefined;
+      for (let step = 0; step < 10 && !rateLimitedUnitId; step++) {
+        await engine.runJob(payload);
+        const waiting = await prisma.companyImportUnit.findMany({
+          where: { runId: created.runId, spaceId, ownerUserId: userId, status: "waiting" },
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            availableAt: true,
+            source: { select: { backoffUntil: true } },
+          },
+        });
+        for (const unit of waiting) {
+          const availableAt = Math.max(
+            unit.availableAt.getTime(),
+            unit.source.backoffUntil?.getTime() ?? 0,
+          );
+          if (availableAt > Date.now()) vi.setSystemTime(new Date(availableAt));
+          await engine.unitJob({ ...payload, unitId: unit.id });
+          const rateLimited = await prisma.companyImportUnit.findFirst({
+            where: {
+              id: unit.id,
+              runId: created.runId,
+              spaceId,
+              ownerUserId: userId,
+              status: "waiting",
+              lastError: "source_rate_limited",
+            },
+            select: {
+              id: true,
+              availableAt: true,
+              source: { select: { backoffUntil: true } },
+            },
+          });
+          if (rateLimited) {
+            rateLimitedUnitId = rateLimited.id;
+            const now = Date.now();
+            expect(rateLimited.availableAt.getTime() - now).toBeGreaterThanOrEqual(60_000);
+            expect(rateLimited.source.backoffUntil!.getTime() - now).toBeGreaterThanOrEqual(60_000);
+            const attemptsBeforeImmediateRetry = memberReadAttempts;
+            await engine.unitJob({ ...payload, unitId: rateLimited.id });
+            expect(memberReadAttempts).toBe(attemptsBeforeImmediateRetry);
+            const retryAt = Math.max(
+              rateLimited.availableAt.getTime(),
+              rateLimited.source.backoffUntil!.getTime(),
+            );
+            vi.setSystemTime(new Date(retryAt));
+            await engine.unitJob({ ...payload, unitId: rateLimited.id });
+            expect(memberReadAttempts).toBe(attemptsBeforeImmediateRetry + 1);
+            break;
+          }
+        }
+      }
+      expect(rateLimitedUnitId).toBeDefined();
+      progress = await runToCompletion(engine, created.runId, true, true);
+    } finally {
+      vi.useRealTimers();
+    }
     expect(progress.status).toBe("completed");
 
-    const person = await prisma.companyEntity.findFirstOrThrow({
+    const people = await prisma.companyEntity.findMany({
       where: { spaceId, ownerUserId: userId, kind: "person", displayName: "Morgan Vale" },
       select: { id: true, attrs: true },
     });
-    expect(person.attrs).toMatchObject({ workEmails: [email], githubLogin: "morgan" });
+    expect(people).toHaveLength(1);
+    const person = people[0]!;
+    expect(person.attrs).toMatchObject({
+      workEmails: [email],
+      githubLogin: "morgan",
+      linearId: "linear-user-1",
+    });
     const evidence = await prisma.companyEvidence.findMany({
       where: { spaceId, ownerUserId: userId, factKind: "entity", factId: person.id },
       select: { sourceKind: true, sourceItemId: true },
