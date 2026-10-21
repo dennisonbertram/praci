@@ -230,6 +230,15 @@ describe("extractItemText", () => {
       expect(rendered).toEqual([20]);
     });
 
+    it("does not send a long PDF with a normal text layer to vision, but still reads a long scan", async () => {
+      // 500 pages at 25 characters: the 200 pages read hold 5000 characters, under 20 per page of all 500.
+      const before = seen.length;
+      const text = await scan(seeing, makePdf("Clause text for the pages", 500));
+      expect(text).toContain("Clause text");
+      expect(seen.length).toBe(before);
+      expect(await scan(seeing, makePdf("", 500))).toBe("page 1\n\npage 2\n\npage 3");
+    });
+
     it("re-reads consent before rendering and before every page, and drops output if revoked", async () => {
       const calls = { render: 0, vision: 0 };
       let allowed = true;

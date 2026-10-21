@@ -3,7 +3,7 @@ import { getDocumentProxy } from "unpdf";
 type Item = { str: string; x: number; y: number; w: number };
 
 // A PDF is untrusted: its page count, coordinates and text volume are all attacker controlled.
-const MAX_PAGES = 200;
+export const MAX_PAGES = 200;
 const MAX_TEXT_CHARS = 2_000_000;
 const MAX_COLUMN = 200;
 
@@ -42,8 +42,10 @@ export async function extractPdfText(
     const text = rows.map(layoutRow).join("\n");
     total += text.length;
     if (partial) {
-      pages.push(text);
-      if (total >= opts.maxChars!) break;
+      // Count the "\n\n" the join adds, and cut the page that crosses the budget.
+      const room = opts.maxChars! - (total - text.length) - 2 * pages.length;
+      pages.push(text.slice(0, Math.max(0, room)));
+      if (text.length >= room) break;
       continue;
     }
     if (total > MAX_TEXT_CHARS) {
