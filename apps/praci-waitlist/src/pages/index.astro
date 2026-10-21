@@ -89,12 +89,13 @@ const github = "https://github.com/dennisonbertram/praci";
             body: JSON.stringify({
               email: email.value,
               contactNote: field("contactNote"),
+              ref: new URLSearchParams(location.search).get("ref") ?? undefined,
             }),
           });
           if (response.status === 429) throw new Error("Too many attempts. Try again later.");
           if (!response.ok) throw new Error();
           form.hidden = true;
-          status.textContent = "You are on the list. We will email you when the hosted version is ready.";
+          status.textContent = "Check your email for your place in line.";
         } catch (error) {
           status.textContent = (error as Error).message || "Something went wrong. Try again.";
           submit.disabled = false;
