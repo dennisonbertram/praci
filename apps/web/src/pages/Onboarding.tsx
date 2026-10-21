@@ -24,7 +24,6 @@ import {
 import {
   Button,
   Input,
-  ModelThinkingOptions,
   Select,
   SelectContent,
   SelectItem,
@@ -42,7 +41,6 @@ import {
 import { ShellSkeleton } from "../components/ShellSkeleton";
 import { useCopyText } from "../lib/copy-text";
 import type { ModelCatalogEntry } from "../lib/model-auth";
-import { thinkingLevelLabel } from "../lib/model-catalog";
 import type { ModelPreflightFailure } from "../lib/model-connection-preflight";
 import {
   classifyModelConnectionFailure,
@@ -59,7 +57,7 @@ import { errorText } from "../lib/user-error";
 const CHATGPT_PROVIDER = "openai-codex";
 const OPENROUTER_PROVIDER = "openrouter";
 const CUSTOM_MODEL_OPTION = "__rakazo_custom_model__";
-const DEFAULT_THINKING_LEVEL_OPTION = "__rakazo_default_thinking__";
+const _DEFAULT_THINKING_LEVEL_OPTION = "__rakazo_default_thinking__";
 const FIRST_BOT_NAME = "Chief";
 const FIRST_BOT_SPAWN_KEY = "onboarding:first";
 const FIRST_BOT_LOCK = "rakazo:onboarding-first-bot";

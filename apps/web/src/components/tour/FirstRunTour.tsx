@@ -87,5 +87,5 @@ export function FirstRunTour({
       doneLabel={t`Connect apps`}
       onDone={onConnectApps}
     />
-  );;
+  );
 }

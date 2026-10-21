@@ -240,9 +240,7 @@ export function AppConnectCard({
           <span className="block truncate text-[15px] font-medium text-foreground">
             {block.name}
           </span>
-          <span className="block text-[13px] text-muted-foreground">
-            {block.description}
-          </span>
+          <span className="block text-[13px] text-muted-foreground">{block.description}</span>
         </span>
         {status === "connected" ? (
           <SuccessPop label={t`Connected`} />

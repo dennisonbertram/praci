@@ -78,13 +78,17 @@ it("skips steps whose anchor is missing, walks Next and Back, and records Done",
 });
 
 it("records Skip tour", async () => {
-  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onConnectApps={vi.fn()} />));
+  await act(async () =>
+    root.render(<FirstRunTour open onClose={vi.fn()} onConnectApps={vi.fn()} />),
+  );
   await click("Skip tour");
   expect(update).toHaveBeenCalledWith({ tourSeen: true });
 });
 
 it("shows nothing and saves nothing when closed or when no anchor exists", async () => {
-  await act(async () => root.render(<FirstRunTour open={false} onClose={vi.fn()} onConnectApps={vi.fn()} />));
+  await act(async () =>
+    root.render(<FirstRunTour open={false} onClose={vi.fn()} onConnectApps={vi.fn()} />),
+  );
   expect(document.body.textContent).not.toContain("1/");
   for (const el of document.querySelectorAll("[data-tour]")) el.remove();
   const onClose = vi.fn();

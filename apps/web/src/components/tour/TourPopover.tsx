@@ -97,7 +97,10 @@ export function TourPopover({
             <Trans>Back</Trans>
           </Button>
         ) : null}
-        <Button size="sm" autoFocus onClick={() => {
+        <Button
+          size="sm"
+          autoFocus
+          onClick={() => {
             if (!last) return setIndex(index + 1);
             onFinish("done");
             onDone?.();
