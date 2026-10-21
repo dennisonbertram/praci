@@ -423,6 +423,13 @@ export const MessageBlock = z.discriminatedUnion("kind", [
     backgroundOrigin: z.boolean().optional(),
     /** Every hop of the chain began with the bot owner in a direct chat. Absent means unknown, so not trusted. */
     ownerOrigin: z.boolean().optional(),
+    /**
+     * The chain began with an external bot (or another Space's agent). Set by the server from the
+     * sender's stored audience or the incoming chain, only ever added along a chain, never from message text.
+     */
+    externalOrigin: z.boolean().optional(),
+    /** Name of the bot that started an external chain, from stored data, for the notice. */
+    externalOriginName: z.string().max(200).optional(),
   }),
 ]);
 export type MessageBlock = z.infer<typeof MessageBlock>;

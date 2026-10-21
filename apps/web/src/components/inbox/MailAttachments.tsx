@@ -379,7 +379,7 @@ export function MailAttachments({
               <Button
                 variant="outline"
                 title={attachment.filename}
-                className="h-9 max-w-56 justify-start gap-2 rounded-e-none px-2 text-start [&_svg]:size-4 [&_svg]:text-muted-foreground"
+                className="h-9 max-w-[min(100%,28rem)] justify-start gap-2 rounded-e-none px-2 text-start [&_svg]:size-4 [&_svg]:text-muted-foreground"
                 onClick={() => setOpen(index)}
               >
                 {kind === "image" && attachment.size <= THUMBNAIL_MAX_BYTES ? (

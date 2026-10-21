@@ -262,7 +262,13 @@ export async function messageConnectedAgent(
   }
   const targetThreadId = target.thread.id;
   const deliveryKey = input.deliveryKey ? `agent-message:${input.deliveryKey}` : undefined;
-  const wakePrompt = buildBotMessageWakePrompt({ from: sender, text: message });
+  // Every delivery from another Space is marked: those senders are not the owner's bots.
+  const wakePrompt = buildBotMessageWakePrompt({
+    from: sender,
+    text: message,
+    externalOrigin: true,
+    externalName: sender.name,
+  });
 
   let committed!: Awaited<ReturnType<typeof deliverTx>>;
   const deliverTx = () =>
@@ -296,6 +302,8 @@ export async function messageConnectedAgent(
         fromBotName: sender.name,
         text: message,
         hop,
+        externalOrigin: true,
+        externalOriginName: sender.name.slice(0, 200),
       };
       const outboundBlock: MessageBlock = {
         kind: "bot_message_sent",

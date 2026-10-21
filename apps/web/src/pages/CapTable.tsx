@@ -21,7 +21,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@rakazo/ui-web";
-import { PieChart, Plus, RefreshCw } from "lucide-react";
+import { ChevronDown, PieChart, Plus, RefreshCw } from "lucide-react";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
@@ -184,30 +185,29 @@ function joinRows(snapshot: Snapshot | null, contacts: Contact[]): Row[] {
 
 function Figure({ title, value, hint }: { title: string; value: string; hint?: string }) {
   return (
-    <Card size="sm" className="px-3.5">
+    <Card size="sm" className="px-3.5 py-2 @md/bd:py-3">
       <h2 className="text-xs font-semibold text-muted-foreground">{title}</h2>
       <div className="mt-1 text-[22px] font-semibold leading-tight tabular-nums">{value}</div>
-      {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
+      {/* The hint gives way on a phone, so the holders list starts higher. */}
+      {hint ? (
+        <p className="mt-0.5 hidden text-xs text-muted-foreground @md/bd:block">{hint}</p>
+      ) : null}
     </Card>
   );
 }
 
 /** SAFEs have an amount and no shares, so the donut and the All tab leave them out. */
 function SafeNote({ holders }: { holders: Snapshot["holders"] }) {
-  useHideAmounts();
   const safes = holders.filter(
     (holder) => /safe/i.test(holder.security) && holder.shares == null && holder.amountUsd != null,
   );
   if (safes.length === 0) return null;
-  const total = usd(safes.reduce((sum, holder) => sum + (holder.amountUsd ?? 0), 0));
   return (
     <Link
       to={{ search: "?kind=investor&security=SAFE" }}
-      className="mb-4 block pointer-coarse:flex pointer-coarse:min-h-11 pointer-coarse:items-center text-xs text-muted-foreground hover:text-foreground hover:underline"
+      className="block pointer-coarse:flex pointer-coarse:min-h-11 pointer-coarse:items-center text-xs text-muted-foreground hover:text-foreground hover:underline"
     >
-      <Trans>
-        SAFEs ({safes.length}, {total}) are not included until they convert
-      </Trans>
+      <Trans>SAFEs are not in the share counts</Trans>
     </Link>
   );
 }
@@ -216,7 +216,7 @@ function Summary({ snapshot }: { snapshot: Snapshot | null }) {
   useHideAmounts();
   const a = snapshot?.latest409a;
   return (
-    <div className="grid grid-cols-2 gap-3 @2xl:grid-cols-4 @4xl/bd:grid-cols-2 @4xl/bd:grid-rows-2">
+    <div className="grid grid-cols-2 gap-2 @md/bd:gap-3 @2xl:grid-cols-4 @4xl/bd:grid-cols-2 @4xl/bd:grid-rows-2">
       {snapshot ? (
         <>
           <Figure title={t`Fully diluted shares`} value={num(snapshot.fullyDilutedShares)} />
@@ -231,6 +231,25 @@ function Summary({ snapshot }: { snapshot: Snapshot | null }) {
       ) : (
         [0, 1, 2, 3].map((n) => <Skeleton key={n} className="h-[76px] w-full rounded-xl" />)
       )}
+    </div>
+  );
+}
+
+/** On a phone the donut waits behind one row, so the holders list starts near the top. */
+function OwnershipSection({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <Button
+        variant="outline"
+        className="w-full justify-between pointer-coarse:h-11 @md/bd:hidden"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        <Trans>Ownership by share class</Trans>
+        <ChevronDown aria-hidden="true" className={open ? "rotate-180" : undefined} />
+      </Button>
+      <div className={open ? "mt-2 @md/bd:mt-0" : "hidden @md/bd:block"}>{children}</div>
     </div>
   );
 }
@@ -562,12 +581,6 @@ export function CapTablePage({
                   </TooltipContent>
                 </Tooltip>
               ) : null}
-              {cartaConnected ? (
-                <Button onClick={addContact}>
-                  <Plus aria-hidden="true" />
-                  {isContactKind(filter) ? addKindLabel[filter] : <Trans>Add contact</Trans>}
-                </Button>
-              ) : null}
               {onShowAgent ? <AskBotButton botName="Carta agent" onClick={onShowAgent} /> : null}
             </>
           }
@@ -663,35 +676,15 @@ export function CapTablePage({
           </div>
         ) : cartaConnected ? (
           <>
-            {/* Wide enough, the figures sit beside the donut so the table gets the page's height. */}
-            {showHoldings && overview ? (
-              <div className="mb-4 grid gap-4 @4xl/bd:grid-cols-2">
-                <Summary snapshot={snapshot} />
-                {snapshot ? (
-                  <OwnershipDonut
-                    classes={snapshot.shareClasses}
-                    fullyDilutedShares={snapshot.fullyDilutedShares}
-                    holdings={snapshot.holders}
-                    optionPoolAvailable={snapshot.optionPoolAvailable}
-                  />
-                ) : null}
-              </div>
-            ) : null}
-            {snapshot && overview ? <SafeNote holders={snapshot.holders} /> : null}
-            {reading ? (
-              <p className="mb-3 text-sm text-muted-foreground">
-                <Trans>Reading Carta…</Trans>
-              </p>
-            ) : null}
-
+            {/* The tabs come first so they stay put when the summary comes and goes with the tab. */}
             <Tabs
               value={filter}
               onValueChange={(next) => setFilter(next as Filter)}
               className="mb-4"
             >
-              {/* Wraps onto a second row on a phone instead of hiding tabs past the edge. */}
+              {/* One row that scrolls sideways on a phone. */}
               <TabsList
-                className="max-w-full flex-wrap justify-start rounded-2xl group-data-horizontal/tabs:h-auto"
+                className="rk-scroll max-w-full justify-start overflow-x-auto rounded-2xl"
                 aria-label={t`Kind`}
               >
                 {filters.map((value) => (
@@ -706,9 +699,34 @@ export function CapTablePage({
               </TabsList>
             </Tabs>
 
+            {/* Wide enough, the figures sit beside the donut so the table gets the page's height. */}
+            {showHoldings && overview ? (
+              <div className="mb-3 grid gap-3 @md/bd:mb-4 @md/bd:gap-4 @4xl/bd:grid-cols-2">
+                <div className="flex flex-col gap-1">
+                  <Summary snapshot={snapshot} />
+                  {snapshot ? <SafeNote holders={snapshot.holders} /> : null}
+                </div>
+                {snapshot ? (
+                  <OwnershipSection>
+                    <OwnershipDonut
+                      classes={snapshot.shareClasses}
+                      fullyDilutedShares={snapshot.fullyDilutedShares}
+                      holdings={snapshot.holders}
+                      optionPoolAvailable={snapshot.optionPoolAvailable}
+                    />
+                  </OwnershipSection>
+                ) : null}
+              </div>
+            ) : null}
+            {reading ? (
+              <p className="mb-3 text-sm text-muted-foreground">
+                <Trans>Reading Carta…</Trans>
+              </p>
+            ) : null}
+
             {rows.length > 0 && !error ? (
               // Search takes the first row on a phone; Security and Sort wrap beneath it.
-              <div className="mb-4 flex flex-wrap items-center gap-1.5">
+              <div className="mb-4 flex max-w-5xl flex-wrap items-center gap-1.5">
                 <SearchField
                   className="w-full @md:w-72"
                   value={query}
@@ -813,6 +831,10 @@ export function CapTablePage({
                   >
                     <Trans>Clear filters</Trans>
                   </Button>
+                ) : filter === "all" ? (
+                  <Button variant="outline" size="sm" render={<Link to="/app/contacts" />}>
+                    <Trans>Open Contacts</Trans>
+                  </Button>
                 ) : !isContactKind(filter) ? null : (
                   <Button variant="outline" size="sm" onClick={addContact}>
                     <Plus aria-hidden="true" />
@@ -866,6 +888,17 @@ export function CapTablePage({
                       // "Options" under the kind "Options" says nothing new.
                       const holding = security === names[kind] ? null : security;
                       const empty = <span className="text-muted-foreground">{DASH}</span>;
+                      // A holder with no contact opens the card that saves it as one; the pool is no one.
+                      const openRow: Contact | Prefill | null =
+                        contact ??
+                        (holder && key !== "pool"
+                          ? {
+                              name,
+                              email: holder.email,
+                              organization,
+                              kind: kind === "investor" ? "investor" : "other",
+                            }
+                          : null);
                       const email = contact?.email ? (
                         contact.email
                       ) : !contact && kind === "investor" ? (
@@ -900,10 +933,10 @@ export function CapTablePage({
                           key={key}
                           data-contact-id={contact?.id}
                           className={`group-data-[compact]/table:h-11 [&>td]:py-0.5 [&>td:first-child]:ps-2 ${contact && contact.id === savedId ? SAVED_ROW_CLASS : ""}`}
-                          onOpen={contact ? () => setEditing(contact) : undefined}
+                          onOpen={openRow ? () => setEditing(openRow) : undefined}
                         >
                           <TableCell>
-                            {contact ? (
+                            {openRow ? (
                               <button
                                 type="button"
                                 title={name}

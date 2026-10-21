@@ -14,11 +14,7 @@ import {
 import { useCallback, useEffect, useId, useState } from "react";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
-import { LoadingState, Shimmer } from "../ai/primitives";
-
-/** The server plans for this many of the newest classified files. */
-const FILE_LIST_CAP = 300;
-export type AutoSortFile = { id: string; name: string };
+import { LoadingState } from "../ai/primitives";
 
 type Group = { type: AutoSortOperation["type"]; title: string };
 
@@ -52,13 +48,10 @@ function Row({
  * with every change ticked. Nothing changes until Apply, and Apply sends only the ticked ones.
  */
 export function AutoSortDialog({
-  files = [],
   onClose,
   onApplied,
   onOpenModels,
 }: {
-  /** The files the page has loaded; the list shows them while the plan is made. */
-  files?: AutoSortFile[];
   onClose: () => void;
   onApplied: (result: AutoSortApplyOutput) => void;
   /** Opens the Models settings, where a rejected key is replaced. */
@@ -69,8 +62,6 @@ export function AutoSortDialog({
   const [off, setOff] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
 
-  const listed = files.slice(0, FILE_LIST_CAP);
-  const more = files.length - listed.length;
   const load = useCallback(() => {
     setPlan(null);
     setError("");
@@ -152,30 +143,7 @@ export function AutoSortDialog({
             </div>
           ) : !plan ? (
             <div className="flex flex-col gap-2">
-              <LoadingState
-                label={
-                  files.length
-                    ? plural(files.length, {
-                        one: "Reviewing # file",
-                        other: "Reviewing # files",
-                      })
-                    : t`Auto-sort`
-                }
-              />
-              <ul className="flex flex-col gap-0.5 text-[13px]">
-                {listed.map(({ id, name }) => (
-                  <li key={id} className="flex items-baseline justify-between gap-3 px-2">
-                    <span className="min-w-0 truncate" title={name}>
-                      <Shimmer>{name}</Shimmer>
-                    </span>
-                  </li>
-                ))}
-                {more > 0 ? (
-                  <li className="px-2 text-xs text-muted-foreground">
-                    <Trans>+{more} more</Trans>
-                  </li>
-                ) : null}
-              </ul>
+              <LoadingState label={t`Sorting every file in the Data room`} />
             </div>
           ) : plan.operations.length === 0 && !reasonText ? (
             <p className="text-muted-foreground">
@@ -202,6 +170,15 @@ export function AutoSortDialog({
                     <Trans>Retry</Trans>
                   </Button>
                 </div>
+              ) : null}
+              {plan.operations.length > 1 ? (
+                <Row
+                  checked={chosen.length === plan.operations.length}
+                  onChange={(on) =>
+                    setOff(on ? new Set() : new Set(plan.operations.map((op) => op.key)))
+                  }
+                  title={t`Select all`}
+                />
               ) : null}
               {groups.map(({ type, title }) => {
                 const ops = plan.operations.filter((op) => op.type === type);

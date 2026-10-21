@@ -6,6 +6,7 @@ import { Button, Skeleton } from "@rakazo/ui-web";
 import { MASK } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { niceScale } from "../finance/charts";
+import { Tip } from "../ListControls";
 import { sourceLabel } from "./FilterBar";
 import { sizeText, typeLabel } from "./format";
 import type { Filters } from "./use-data-room-list";
@@ -122,20 +123,23 @@ function OverTime({
       <div className="flex h-32 items-stretch gap-px">
         <span className="me-1 self-start text-xs text-muted-foreground tabular-nums">{top}</span>
         {buckets.map((bucket) => (
-          <button
-            key={bucket.key}
-            type="button"
-            title={`${bucketLabel(bucket.key)}: ${bucket.count}`}
-            aria-label={`${bucketLabel(bucket.key)}: ${bucket.count}`}
-            onClick={() => onPick(bucket.key)}
-            className="group flex min-w-0 flex-1 flex-col items-center justify-end focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            {/* A few buckets would otherwise stretch to bars as wide as the page. */}
-            <span
-              className="w-full max-w-6 rounded-t-sm bg-foreground/70 group-hover:bg-foreground"
-              style={{ height: `${(bucket.count / top) * 100}%`, minHeight: bucket.count ? 2 : 0 }}
-            />
-          </button>
+          <Tip key={bucket.key} label={`${bucketLabel(bucket.key)}: ${bucket.count}`}>
+            <button
+              type="button"
+              aria-label={`${bucketLabel(bucket.key)}: ${bucket.count}`}
+              onClick={() => onPick(bucket.key)}
+              className="group flex min-w-0 flex-1 flex-col items-center justify-end focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              {/* A few buckets would otherwise stretch to bars as wide as the page. */}
+              <span
+                className="w-full max-w-6 rounded-t-sm bg-foreground/70 group-hover:bg-foreground"
+                style={{
+                  height: `${(bucket.count / top) * 100}%`,
+                  minHeight: bucket.count ? 2 : 0,
+                }}
+              />
+            </button>
+          </Tip>
         ))}
       </div>
       <div className="mt-1 flex justify-between ps-5 text-xs text-muted-foreground">

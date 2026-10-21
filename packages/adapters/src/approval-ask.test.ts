@@ -2,6 +2,7 @@ import { cartaAgentSpawnKey } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import {
   buildApprovalAskBlock,
+  buildConsentAskBlock,
   describeApprovalAction,
   isIntegrationAgentWrite,
   mailRequestIsValid,
@@ -64,9 +65,9 @@ describe("describeApprovalAction money and generic tools", () => {
     if (block.kind !== "ask") throw new Error("expected ask block");
     expect(block.text).toBe("Send $1,200.00 to Acme Supplies from Operating?");
     expect(block.text).not.toMatch(/rcp-9|chk-1|mcp__/);
-    // The raw tool id and ids stay, but only under Details.
+    // Details lists labelled rows, with no tool id and no raw JSON.
     expect(block.detailFolded).toBe(true);
-    expect(block.detail).toContain("tool: mcp__finance-mercury__requestSendMoney");
+    expect(block.detail).toBe("Amount: $1,200.00\nTo: Acme Supplies\nFrom account: Operating");
   });
 
   it("keeps hand-written titles", () => {
@@ -396,5 +397,18 @@ describe("resolveMoneyNames", () => {
     const read = vi.fn();
     expect(await resolveMoneyNames("mcp__x__updateTransaction", args, read)).toBeUndefined();
     expect(read).not.toHaveBeenCalled();
+  });
+});
+
+describe("buildConsentAskBlock", () => {
+  it("names the model and router in words, never the raw model id", () => {
+    const block = buildConsentAskBlock("e1", {
+      name: "OpenRouter",
+      detail: "openai/gpt-6-luna, forwarded to its provider",
+    });
+    expect(block).toMatchObject({
+      text: "Allow your mail to be sent to GPT-6 Luna (via OpenRouter)?",
+    });
+    expect(JSON.stringify(block)).not.toMatch(/openai\/|forwarded to its provider/);
   });
 });
