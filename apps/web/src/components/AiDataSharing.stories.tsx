@@ -11,8 +11,20 @@ const status = (allowed: boolean): AiConsentStatus => ({
   scope: "space_demo",
   version: "2026-01-01",
   recipients: [
-    { key: "model_a", name: "Demo Provider", use: "model", detail: "demo/model-a, forwarded to its provider", allowed },
-    { key: "model_b", name: "Demo Provider", use: "model", detail: "demo/model-b, forwarded to its provider", allowed: true },
+    {
+      key: "model_a",
+      name: "Demo Provider",
+      use: "model",
+      detail: "demo/model-a, forwarded to its provider",
+      allowed,
+    },
+    {
+      key: "model_b",
+      name: "Demo Provider",
+      use: "model",
+      detail: "demo/model-b, forwarded to its provider",
+      allowed: true,
+    },
     { key: "voice_a", name: "Demo Voice", use: "voice", detail: "Speech", allowed: false },
   ],
 });
