@@ -6,7 +6,7 @@ const instruction =
 const privateData =
   /\b(?:salary|compensation|performance review|immigration|passport|home address|personal phone|personal (?:e-?mail|address)|private (?:e-?mail|address)|home (?:e-?mail|address)|medical|diagnosis|health condition|birthday)\b/i;
 const emailToken = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
-const workAddressLabel = /\b(?:work|business|company)\s+(?:e-?mail|address)\b/i;
+const workAddressLabel = /\b(?:work|business|company)\s+(?:e-?mails?|addresses|address)\b/i;
 
 function emailsIn(text: string) {
   return text.match(emailToken)?.map((email) => email.toLowerCase()) ?? [];
@@ -18,8 +18,9 @@ function containsOnlyExplicitWorkEmails(line: string) {
   return matches.every((match) => {
     const start = match.index ?? 0;
     const segment = line.slice(previousEnd, start);
+    const continuesList = previousEnd > 0 && /^\s*(?:,\s*|and\s*)+$/i.test(segment);
     previousEnd = start + match[0].length;
-    return workAddressLabel.test(segment);
+    return workAddressLabel.test(segment) || continuesList;
   });
 }
 

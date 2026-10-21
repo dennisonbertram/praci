@@ -198,6 +198,16 @@ describe("company extraction safety", () => {
     };
     expect(validateCompanyExtraction(publicExtraction, publicWork)).toEqual(publicExtraction);
 
+    const aliases =
+      "Avery's work emails are avery@northwind.example, a.chen@northwind.example, and avery@gmail.com.";
+    expect(prepareCompanyDocument({ title: "Aliases", text: aliases }).text).toBe(aliases);
+    expect(
+      prepareCompanyDocument({
+        title: "Aliases",
+        text: "Work email: avery@northwind.example, contact another@private.example",
+      }).text,
+    ).toBe("");
+
     const privateLine = {
       title: "Appointment",
       text: `${publicWork.text}\nAvery's personal email: avery@private.example.`,
