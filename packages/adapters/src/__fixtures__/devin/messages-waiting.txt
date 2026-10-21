@@ -1,0 +1,5 @@
+# SYNTHETIC FIXTURE: invented data in the documented format, not a capture from Devin. Replaced by real captures in issue #516.
+# Oldest first.
+- event_id=ev-101 source=user created_at=1760000000 body="Please fix the login redirect loop."
+- event_id=ev-102 source=devin created_at=1760000100 body="Working on it."
+- event_id=ev-103 source=devin created_at=1760003600 body="Which environment should I test against?\nStaging or production?"

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import {
   CARTA_MCP_ENDPOINT,
   CARTA_READ_TOOLS,
@@ -1148,6 +1149,52 @@ describe("MCP connector session cache", () => {
     expect(state.initializations).toBe(3);
 
     await connector.close();
+  });
+});
+
+describe("MCP connector HTTP failures", () => {
+  it("puts the HTTP status in the error text of a call a server refuses", async () => {
+    // Synthetic fixture of the texts Devin's classifier reads (see devin-call-tool.test.ts).
+    const expected = JSON.parse(
+      readFileSync(new URL("./__fixtures__/devin/errors.json", import.meta.url), "utf8"),
+    ) as Record<string, string>;
+    for (const status of [401, 403, 429]) {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+          const request = input instanceof Request ? input : new Request(input, init);
+          const message = JSON.parse(await request.text()) as { id?: number; method?: string };
+          if (message.method === "initialize")
+            return Response.json({
+              jsonrpc: "2.0",
+              id: message.id,
+              result: {
+                protocolVersion: "2025-11-25",
+                capabilities: { tools: {} },
+                serverInfo: { name: "test", version: "1" },
+              },
+            });
+          if (message.method === "tools/call")
+            return new Response(JSON.stringify({ error: "refused" }), {
+              status,
+              headers: { "content-type": "application/json" },
+            });
+          return new Response(null, { status: 202 });
+        }),
+      );
+      const connector = new McpConnector({} as never, {} as never, { network: TEST_NETWORK });
+      const error = await connector
+        .callServerTool(
+          SERVER as never,
+          { spaceId: "w1", userId: "u1", signal: new AbortController().signal } as never,
+          "devin_session_search",
+          {},
+        )
+        .catch((caught: Error) => caught);
+      expect((error as Error).message).toBe(expected[String(status)]);
+      expect((error as Error).message).toMatch(new RegExp(`\\(HTTP ${status}\\)$`));
+      await connector.close();
+    }
   });
 });
 

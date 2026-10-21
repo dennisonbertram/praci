@@ -176,6 +176,17 @@ export function assignmentAllowsTool(
   return assignment.allowAllTools || (assignment.allowedTools as unknown[]).includes(toolName);
 }
 
+/**
+ * The SDK's HTTP transport keeps the response status in `error.code` and not in the message, and
+ * the sanitized text is all callers get. Append it so callers can tell a 401 from a 429.
+ */
+function withHttpStatus(error: unknown, message: string): string {
+  const code = (error as { code?: unknown } | null)?.code;
+  return typeof code === "number" && code >= 400 && code <= 599
+    ? `${message} (HTTP ${code})`
+    : message;
+}
+
 function reportAllowlistDrift(
   assignment: { allowAllTools: boolean; allowedTools: unknown; server: { slug: string } },
   offered: Array<{ name: string }>,
@@ -584,7 +595,7 @@ export class McpConnector implements ConnectorProvider {
     } catch (error) {
       const secrets = material ? oauthMaterialSecrets(material) : [];
       await this.evict(sessionKey);
-      throw new Error(sanitizeConnectorError(error, secrets));
+      throw new Error(withHttpStatus(error, sanitizeConnectorError(error, secrets)));
     }
     await options.beforeCall?.();
     try {
@@ -592,7 +603,7 @@ export class McpConnector implements ConnectorProvider {
     } catch (error) {
       const secrets = material ? oauthMaterialSecrets(material) : [];
       await this.evict(sessionKey);
-      throw new Error(sanitizeConnectorError(error, secrets));
+      throw new Error(withHttpStatus(error, sanitizeConnectorError(error, secrets)));
     }
   }
 

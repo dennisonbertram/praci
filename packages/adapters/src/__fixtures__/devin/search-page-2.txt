@@ -1,0 +1,3 @@
+# SYNTHETIC FIXTURE: invented data in the documented format, not a capture from Devin. Replaced by real captures in issue #516.
+- id=devin-0004 title="Migrate settings to the new schema" status=finished status_detail=finish created_at=1759800000 updated_at=1759850000 origin=linear prs=https://github.com/acme/api/pull/90[merged],https://github.com/acme/mobile/pull/14[closed]
+- id=devin-0005
