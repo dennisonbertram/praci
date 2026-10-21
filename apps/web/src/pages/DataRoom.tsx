@@ -544,7 +544,17 @@ export function DataRoomPage({
                   />
                 </>
               )}
-              {onAskAgent ? <AskBotButton botName="Data room agent" onClick={onAskAgent} /> : null}
+              {onAskAgent ? (
+                <AskBotButton
+                  botName="Data room agent"
+                  onClick={() => {
+                    // The agent panel takes the room the preview had.
+                    setPinned(null);
+                    setPreviewOpen(false);
+                    onAskAgent();
+                  }}
+                />
+              ) : null}
             </>
           }
         />
@@ -647,14 +657,13 @@ export function DataRoomPage({
                   onDismiss={importActivity.dismiss}
                   hideRunning={processing.active}
                 />
-                {processing.processing &&
-                (processing.active || processing.finished || processing.processing.failed > 0) ? (
+                {/* A file that could not be read is flagged on its row and by the sidebar badge. */}
+                {processing.processing && (processing.active || processing.finished) ? (
                   <ProcessingStrip
                     importing={processing.active ? importProgress(importActivity.imports) : null}
                     processing={processing.processing}
                     total={processing.total}
                     finished={!processing.active}
-                    onShowFailed={() => setFilters({ ...filters, status: "failed" })}
                   />
                 ) : null}
                 {searching && openFolderPath ? (

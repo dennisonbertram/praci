@@ -1613,9 +1613,9 @@ export function SpaceSidebar({
       <FirstRunTour
         open={tourOpen}
         onAsk={onTourAsk}
-        onClose={(me) => {
+        onClose={(me, byEscape) => {
           setTourRestart(false);
-          setMobileSidebarOpen(false);
+          if (!byEscape) setMobileSidebarOpen(false);
           setBootstrapMe((current) => me ?? (current && { ...current, tourSeen: true }));
         }}
       />

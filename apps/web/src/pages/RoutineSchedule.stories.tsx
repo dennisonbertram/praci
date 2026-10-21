@@ -14,6 +14,7 @@ const preset = (patch: Partial<CronPreset>): CronPreset => ({
   unit: "minutes",
   time: "9:00 AM",
   cron: "",
+  weekday: 1,
   ...patch,
 });
 
@@ -34,4 +35,7 @@ export const Interval: Story = {
 };
 export const Advanced: Story = {
   args: { value: preset({ freq: "Advanced", cron: "0 9 * * 1-5" }) },
+};
+export const EveryWeekFriday: Story = {
+  args: { value: preset({ freq: "Every week", weekday: 5 }) },
 };

@@ -233,6 +233,13 @@ export const VendorNewThisQuarter: Story = {
   beforeEach: () => mockRpc({ "finance.vendor": { ...vendor, monthlyAvgMonths: 3 } }),
 };
 
+/** A subscription shows the same per-month figure as its row in the Subscriptions list. */
+export const VendorSubscription: Story = {
+  render: () => <FinanceVendorPage keyName="acme-hosting" />,
+  beforeEach: () =>
+    mockRpc({ "finance.vendor": { ...vendor, isSubscription: true, monthlyUsual: true } }),
+};
+
 export const VendorNotFound: Story = {
   render: () => <FinanceVendorPage keyName="missing" />,
   beforeEach: () =>
