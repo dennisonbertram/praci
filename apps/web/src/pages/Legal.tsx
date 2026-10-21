@@ -154,18 +154,11 @@ function Legal({
   const blocker = data.modelBlocker;
   const needsConsent = status?.allowed === false;
   const scanDisabled = running || blocker !== null || needsConsent;
-  // Said next to a disabled Scan now, whatever the reason.
-  const scanReason = running
-    ? ""
-    : blocker === "own_key"
-      ? t`Needs your OpenRouter key.`
-      : blocker === "model_changed"
-        ? t`Needs Muse Spark 1.2.`
-        : status && needsConsent
-          ? status.recipients.length > 0
-            ? t`Allow access below first.`
-            : t`Connect a model in Settings first.`
-          : "";
+  // The banners below already explain the other reasons; only this one has none.
+  const scanReason =
+    !running && !blocker && status && needsConsent && status.recipients.length === 0
+      ? t`Connect a model in Settings first.`
+      : "";
   const { counts } = data;
   // Counted here so the tile and the row pills use the viewer's date, not the server's.
   const today = todayIso();
@@ -193,7 +186,7 @@ function Legal({
                   <Trans>Last scan failed</Trans>
                 )
               ) : lastScan && needsConsent ? (
-                <Trans>Last scan {lastScan}. Daily scans wait until you allow access.</Trans>
+                <Trans>Last scan {lastScan}</Trans>
               ) : lastScan ? (
                 data.agent.dailyScanActive ? (
                   <Trans>Last scan {lastScan}. Scans daily.</Trans>
