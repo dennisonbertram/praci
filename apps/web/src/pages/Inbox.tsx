@@ -238,9 +238,8 @@ function InboxListPage({
   const lastPicked = useRef<string | undefined>(undefined);
   // Sender groups opened in the Updates and Newsletters piles, by group key.
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
-  // The Newsletters pile read as one card per issue; it ends when another pile opens.
-  const [digest, setDigest] = useState(false);
-  useEffect(() => setDigest(false), [pile]);
+  // The Newsletters pile read as one card per issue. `?digest=1` keeps it in history, so Back leaves it.
+  const digest = params.get("digest") === "1";
   // The last pile counts the server sent; a filtered list carries none, so the Spam count stays.
   const [pileCounts, setPileCounts] = useState<InboxPileCounts | undefined>();
   const [help, setHelp] = useState(false);
@@ -859,7 +858,7 @@ function InboxListPage({
   const focusSearch = () => searchRef.current?.querySelector("input")?.focus();
   const clearFilters = () => {
     const next = new URLSearchParams(params);
-    for (const name of ["q", "filter", "category", "pile", "mail"]) next.delete(name);
+    for (const name of ["q", "filter", "category", "pile", "digest", "mail"]) next.delete(name);
     setParams(next);
   };
 
@@ -1012,20 +1011,22 @@ function InboxListPage({
       data-inbox-page
       className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-20 pt-2 md:px-7 md:pt-5 xl:px-10"
     >
-      <div className="sticky top-0 z-10 -mx-4 -mt-2 bg-background px-4 pt-2 md:-mx-7 md:-mt-5 md:px-7 md:pt-5 xl:-mx-10 xl:px-10">
+      {/* A sticky box sticks inside the scroller's padding, so -top cancels it: rows never show above the header. mb-2 keeps the cards below clear of it. */}
+      <div className="sticky -top-2 z-10 -mx-4 -mt-2 mb-2 bg-background px-4 pt-2 md:-top-5 md:-mx-7 md:-mt-5 md:px-7 md:pt-5 xl:-mx-10 xl:px-10">
         <PageHeader
+          compact
           title={<Trans>Inbox</Trans>}
           meta={
             <>
               {spaceName ? (
                 // The full name is in the hover title when the row is too short for it.
-                <span title={spaceName} className="truncate @2xl/ph:max-w-72">
+                <span title={spaceName} className="truncate @lg/ph:max-w-72">
                   {spaceName}
                 </span>
               ) : null}
               <form
                 ref={searchRef}
-                className="min-w-40 flex-1 basis-full @2xl/ph:basis-0"
+                className="min-w-40 flex-1 basis-full @lg/ph:basis-0"
                 onSubmit={(event) => {
                   event.preventDefault();
                   setParam("q", draft.trim());
@@ -1203,10 +1204,15 @@ function InboxListPage({
             {pile === "newsletters" ? (
               <Toggle
                 size="sm"
-                className="-mt-2 mb-4"
                 aria-label={t`Digest`}
+                className="-mt-2 mb-4 aria-pressed:bg-primary aria-pressed:text-primary-foreground"
                 pressed={digest}
-                onPressedChange={setDigest}
+                onPressedChange={(on) => {
+                  const next = new URLSearchParams(params);
+                  if (on) next.set("digest", "1");
+                  else next.delete("digest");
+                  setParams(next);
+                }}
               >
                 <Newspaper aria-hidden="true" />
               </Toggle>

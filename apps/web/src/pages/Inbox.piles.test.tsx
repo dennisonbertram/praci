@@ -231,6 +231,12 @@ describe("Newsletters digest", () => {
     expect(rowIds(c)).toContain(headerKey);
   });
 
+  it("reads the digest from ?digest=1, so a link or Back returns to it", async () => {
+    const c = await render("/app/inbox?pile=newsletters&digest=1");
+    expect(toggle(c)?.getAttribute("aria-pressed")).toBe("true");
+    expect(rowIds(c)).toEqual(["d1", "d2", "d3"]);
+  });
+
   it("opens an issue in the message viewer", async () => {
     const c = await render("/app/inbox?pile=newsletters");
     await click(toggle(c));
@@ -249,7 +255,7 @@ describe("Newsletters digest", () => {
   it("archives only the issues shown with Archive all, and Undo restores them", async () => {
     const c = await render("/app/inbox?pile=newsletters");
     await click(toggle(c));
-    await click(c.querySelector('button[aria-label="Archive all"]'));
+    await click(byText(c, "Archive all 3"));
     expect(rpcMock.archiveMany).toHaveBeenCalledWith({ messageIds: ["d1", "d2", "d3"] });
     const toast = c.querySelector('[role="status"]') as HTMLElement;
     expect(toast.textContent).toContain("Archived 3");

@@ -261,9 +261,7 @@ export function InboxCleanup({
             </p>
           ) : (
             <>
-              {selected.size > 0 ? (
-                <CleanupActionBar counts={counts} busy={busy} onApply={apply} />
-              ) : null}
+              <CleanupActionBar counts={counts} busy={busy} onApply={apply} />
               <label className="flex items-center gap-3 px-1 py-2 text-sm text-muted-foreground">
                 <Checkbox
                   className="relative after:absolute after:-inset-3.5"
