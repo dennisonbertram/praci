@@ -9147,9 +9147,10 @@ msgstr "Today"
 msgid "Token"
 msgstr "Token"
 
+#. placeholder {0}: formatBytes(attachment.size)
 #: src/components/inbox/MailAttachments.tsx
-msgid "Too large to preview"
-msgstr "Too large to preview"
+msgid "Too large to preview ({0})"
+msgstr "Too large to preview ({0})"
 
 #: src/components/data-room/Preview.tsx
 msgid "Too large to search inside"

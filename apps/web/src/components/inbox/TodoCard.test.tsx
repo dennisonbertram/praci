@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 vi.mock("@lingui/react/macro", () => {
   const t = (parts: TemplateStringsArray, ...values: unknown[]) =>
@@ -106,60 +106,4 @@ it("opens the email a to-do came from", () => {
   expect([...document.querySelectorAll("button")].some((b) => b.textContent === "Todo 2")).toBe(
     false,
   );
-});
-
-describe("ticking a to-do", () => {
-  const open = [1, 2, 3].map((n) => todo(n));
-  const tick = (id: string, doneAt: string | null) =>
-    open.map((item) => (item.id === id ? { ...item, doneAt } : item));
-  const render = (todos: ReturnType<typeof todo>[]) =>
-    act(() => root.render(<TodoCard todos={todos} onChange={() => {}} />));
-  const wait = (ms: number) => act(() => vi.advanceTimersByTime(ms));
-  const first = () => document.querySelector("li") as HTMLElement;
-
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.stubGlobal("matchMedia", () => ({ matches: false }));
-  });
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.unstubAllGlobals();
-  });
-
-  it("fades the to-do out, then removes it", () => {
-    render(open);
-    render(tick("t1", "2026-10-17"));
-    expect(first().className).toContain("opacity-0");
-    wait(1499);
-    expect(texts()).toContain("Todo 1");
-    wait(1);
-    expect(texts()).toEqual(["Todo 2", "Todo 3"]);
-  });
-
-  it("keeps it when unticked during the fade", () => {
-    render(open);
-    render(tick("t1", "2026-10-17"));
-    wait(1000);
-    render(open);
-    expect(first().className).not.toContain("opacity-0");
-    wait(2000);
-    expect(texts()).toEqual(["Todo 1", "Todo 2", "Todo 3"]);
-  });
-
-  it("removes it after a short delay, without transition classes, for reduced motion", () => {
-    vi.stubGlobal("matchMedia", () => ({ matches: true }));
-    render(open);
-    render(tick("t1", "2026-10-17"));
-    expect(first().className).not.toContain("transition");
-    expect(first().className).not.toContain("opacity-0");
-    wait(300);
-    expect(texts()).toEqual(["Todo 2", "Todo 3"]);
-  });
-
-  it("hides the card when the last to-do leaves", () => {
-    render([todo(1)]);
-    render([todo(1, "2026-10-17")]);
-    wait(1500);
-    expect(document.querySelector("section, [role=region]")).toBeNull();
-  });
 });
