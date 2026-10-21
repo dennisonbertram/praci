@@ -1,0 +1,341 @@
+{
+  "mode": "inspect",
+  "images": [
+    "1440-light-granola-key-empty.png",
+    "1440-light-granola-key-reconnect.png",
+    "1440-light-granola-key-rejected.png",
+    "1440-light-granola-inbox-todos.png",
+    "1440-light-granola-inbox-syncing.png",
+    "1440-light-wispr-voice-key.png",
+    "1440-light-wispr-voice-rejected.png",
+    "1440-dark-wispr-voice-connected.png"
+  ],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 57,
+      "costUsd": 0.185076,
+      "result": {
+        "verdict": "Strong native skeleton — inset grouped lists, masked keys, minimal copy, one-screen settings — but not shippable: the two core journeys mislead at the decision point. Granola shows connected and rejected simultaneously and gives a rejected free-plan user no recovery path; Wispr marks an unconnected provider as selected, then in Connected state makes the active provider indistinguishable from another merely-connected one. Inbox completion is destructive with no undo. Fix the P0 state semantics before polish.",
+        "findings": [
+          {
+            "level": "page",
+            "element": "Left phone: 'Synced 42 meetings' + 'Disconnect' group stacked directly above a second empty 'Granola API key' + 'Connect' group, footer 'Granola rejected this key'",
+            "problem": "Simultaneously connected and not connected. User cannot tell whether the 42 meetings are live, stale, or about to be replaced, whether they must Disconnect first, or whether the rejected key was the replacement. The second group also has no GRANOLA header, so it reads as an unrelated form.",
+            "norm": "iOS settings show one unambiguous status per service; a needs-reconnect state replaces the connected presentation and is labelled as such (e.g. 'Reconnect required — last synced…').",
+            "severity": "P0",
+            "screenshot": "1440-light-granola-key-reconnect.png",
+            "fix": "Collapse to a single GRANOLA group: status row 'Needs reconnect · Last synced 42 meetings', SecureField, Connect. Move Disconnect into that same group. Never show Synced and an empty key form as peers."
+          },
+          {
+            "level": "component",
+            "element": "Footer 'Granola rejected this key' (red, below Connect)",
+            "problem": "No cause and no next step. Per the brief the likely cause is a free plan, and the only hint anywhere is the bare footer 'Business plan' in the empty state — which never says a Business plan is required, so the user will paste the same key again and loop.",
+            "norm": "Error copy must state cause + recovery (Apple HIG: errors should be specific and offer a way forward); plan-gated features name the gate at the point of failure.",
+            "severity": "P0",
+            "screenshot": "1440-light-granola-key-rejected.png",
+            "fix": "Replace with cause-specific copy: 'This key was rejected. Granola API keys need a Business plan — check the plan or paste a different key.' Add a tappable 'Open Granola' / 'Where do I find my key?' row. Keep 'Business plan' from the empty state but expand it to 'Requires a Business plan'."
+          },
+          {
+            "level": "component",
+            "element": "Wispr Flow row in PROVIDERS: grey checkmark '✓' on 'Wispr Flow / Transcribe only' while the WISPR FLOW group below still shows an empty 'API key' field and a disabled 'Connect'",
+            "problem": "Checkmark conventionally means 'currently selected/active', yet this provider has no key and is not connected. The screen claims Wispr is the active transcription provider before verification — misleading exactly where the journey asks 'see which provider is active'.",
+            "norm": "SwiftUI List selection checkmark = current selection only; an unconfigured provider shows no checkmark (or a 'Set up' disclosure) until verified.",
+            "severity": "P0",
+            "screenshot": "1440-light-wispr-voice-key.png",
+            "fix": "Remove the checkmark until the key verifies. Show 'Not connected' trailing text like other rows, and only move the checkmark on successful Connect."
+          },
+          {
+            "level": "group",
+            "element": "PROVIDERS rows: 'ElevenLabs — Connected' and, in dark Connected state, 'Wispr Flow — Connected' (no checkmark anywhere)",
+            "problem": "Two providers both read 'Connected' and nothing indicates which one is actually transcribing/speaking. 'Connected' (has credentials) and 'Active' (in use) are conflated, using two different trailing treatments — text 'Connected' on ElevenLabs vs a checkmark on Wispr in the light key state.",
+            "norm": "One trailing vocabulary per concept: credential state as secondary text, active selection as checkmark, on every row consistently.",
+            "severity": "P0",
+            "screenshot": "1440-dark-wispr-voice-connected.png",
+            "fix": "Give every provider row both slots: trailing 'Connected' where a key exists AND a checkmark only on the active provider. In this dark state Wispr Flow should carry the checkmark; ElevenLabs should not imply it is in use."
+          },
+          {
+            "level": "group",
+            "element": "Inbox TO DO rows ('Send Dana the revised pricing', circle control at left) — whole-row tap completes and the row disappears at once, per brief, with no undo surface visible",
+            "problem": "A full-width row is also the natural tap target for opening the item; one accidental tap irreversibly deletes a follow-up. The small ~24pt circle suggests only the circle is the control, so the affordance and the hit area disagree.",
+            "norm": "Destructive/irreversible completion needs forgiveness: check-off animation + Undo toast (Mail/Reminders pattern), or restrict completion to the circle control.",
+            "severity": "P0",
+            "screenshot": "1440-light-granola-key-empty.png",
+            "fix": "Either make only the circle complete the to-do and tapping the row open the meeting, or keep whole-row completion but animate a strikethrough and show a 5-second 'Completed · Undo' toast. Do not vanish instantly."
+          },
+          {
+            "level": "component",
+            "element": "WISPR FLOW footer: 'Sends your recordings, text near the cursor and workspace names to Wispr Flow.' placed BELOW the 'Connect' row",
+            "problem": "This is the consent disclosure for the journey, but it sits after the action it governs, in small grey footer text. A user reads top-down, taps Connect, and has consented to sending recordings and cursor context without necessarily ever reading the sentence.",
+            "norm": "Privacy disclosures precede the consenting action and must be legible (HIG privacy guidance; App Store data-sharing expectations) — informed before, not after, the tap.",
+            "severity": "P0",
+            "screenshot": "1440-light-wispr-voice-key.png",
+            "fix": "Move the sentence above Connect (as the group footer under the key field), keep it at readable secondary size, and let Connect remain disabled until the field is non-empty. The sentence content itself is excellent — specific, not legalese."
+          },
+          {
+            "level": "component",
+            "element": "Footer 'Could not connect this voice provider' (red, below Connect)",
+            "problem": "Vaguer than the equivalent Granola error and diagnostically empty: was the key rejected, is the device offline, did verification time out? The user has no action except re-tapping Connect with the same masked key. The two features also use inconsistent error voices ('Granola rejected this key' vs 'Could not connect this voice provider').",
+            "norm": "Consistent, cause-specific error language across a product; distinguish auth failure from network failure (as Granola's own Offline state does).",
+            "severity": "P1",
+            "screenshot": "1440-light-wispr-voice-rejected.png",
+            "fix": "Use the parallel form: 'Wispr Flow rejected this key' for 401/403 and 'Could not reach Wispr Flow' offline, with the same red-footer placement as Granola."
+          },
+          {
+            "level": "component",
+            "element": "Footer 'Could not reach Granola' (red) with 'Connect' still fully enabled above a masked key",
+            "problem": "No Retry affordance distinct from Connect, no statement of whether to wait, check connection, or re-paste. Re-tapping Connect is the only path and the UI doesn't say the key itself is probably fine — users may delete a good key thinking it failed.",
+            "norm": "Transient network errors should say the input is not at fault and offer retry; auth and network errors must not share identical styling without wording that separates them.",
+            "severity": "P1",
+            "screenshot": "1440-light-granola-inbox-todos.png",
+            "fix": "Copy: 'Could not reach Granola. Your key was not checked — try again when you are back online.' Keep Connect as the retry but relabel it 'Try again' in this state."
+          },
+          {
+            "level": "component",
+            "element": "'Granola API key' SecureField row (placeholder state) and dotted '••••••••••••••••' entered state",
+            "problem": "On a phone the journey is paste-a-long-key, yet there is no Paste affordance, no clear (×) button on the filled field, no reveal toggle, and nothing telling a first-time user where the key comes from. Editing one wrong character in a fully masked field means clearing and re-pasting blind.",
+            "norm": "iOS SecureField conventions: offer Paste in the edit menu at minimum; API-key forms in Settings apps add a 'Paste' button and a clear button, plus a 'Get a key' link.",
+            "severity": "P1",
+            "screenshot": "1440-light-granola-key-rejected.png",
+            "fix": "Add a 'Paste' trailing button when empty, a clear button when filled, and a footer/link 'Get your key in Granola →'. Same treatment for the Wispr 'API key' field for consistency."
+          },
+          {
+            "level": "group",
+            "element": "Separate ungrouped row 'Connect mail  >' directly under the TO DO group in Inbox",
+            "problem": "The brief's promise is follow-ups appear even with no mail account, but a persistent 'Connect mail' upsell glued to the meeting to-dos implies mail is missing/incomplete here. In the Syncing state it is visually the only actionable row, inviting the user to fix sync by connecting mail.",
+            "norm": "Cross-sell rows must not sit adjacent to unrelated content in a way that implies dependency; empty/loading states should not present an unrelated CTA as the sole action.",
+            "severity": "P1",
+            "screenshot": "1440-light-granola-inbox-syncing.png",
+            "fix": "Separate it with a section header (e.g. 'MAIL') or move it below a spacer with explanatory footer 'Meeting follow-ups work without mail.' Keep it out of the Syncing state's immediate group."
+          },
+          {
+            "level": "component",
+            "element": "TO DO row '2 more' (centred bold, no chevron, no disclosure indicator)",
+            "problem": "Reads as a label, not a control. Nothing signals it expands in place, navigates, or loads — and it hides due items (possibly a 'Today' one) behind an ambiguous tap. Centred-text rows elsewhere in these mockups are buttons (Connect), so the user must guess this one is too.",
+            "norm": "Disclosure rows carry a chevron or 'Show all' phrasing with trailing count; tappable rows share one alignment/treatment system-wide.",
+            "severity": "P1",
+            "screenshot": "1440-light-granola-key-empty.png",
+            "fix": "Left-align as 'Show 2 more' with a chevron.down, matching Connect mail's disclosure language, or expand inline. Keep centred text reserved for button rows like Connect/Disconnect."
+          },
+          {
+            "level": "component",
+            "element": "Inbox Syncing state: single row 'Syncing' (grey text, no spinner, no skeleton rows) under a 'TO DO' header",
+            "problem": "'TO DO' header over one grey 'Syncing' row reads as an empty list that has finished loading — the user concludes there are no follow-ups and leaves. No activity indicator, no progress, no 'checking Granola' provenance.",
+            "norm": "iOS loading states use ProgressView/spinner or redacted skeletons; a bare text row is indistinguishable from content.",
+            "severity": "P1",
+            "screenshot": "1440-light-granola-inbox-syncing.png",
+            "fix": "Row with a leading spinner: 'Syncing meetings…' and 2–3 redacted placeholder to-do rows, or a centred ProgressView with the TO DO header suppressed until first results."
+          },
+          {
+            "level": "group",
+            "element": "PROVIDERS capability subtitles: 'Speak + transcribe' (ElevenLabs, OpenAI), 'Speak only' (Cartesia), 'Transcribe only' (Wispr Flow, checkmarked)",
+            "problem": "Selecting Wispr Flow silently drops the Speak capability with no indication of what then voices replies — 'This device / Free' at top is presumably the fallback but nothing connects the two. A user choosing Wispr for transcription may unknowingly change how the agent speaks.",
+            "norm": "When a selection removes a capability, the UI names the fallback or splits selection per capability (separate Transcription and Speech pickers).",
+            "severity": "P1",
+            "screenshot": "1440-light-wispr-voice-key.png",
+            "fix": "Either split PROVIDERS into 'TRANSCRIPTION' and 'SPEECH' groups, or add a footer when Wispr is chosen: 'Wispr Flow transcribes only. Speech will use This device.'"
+          },
+          {
+            "level": "component",
+            "element": "Circular glass back button '‹' above the large title on Integrations and Voice",
+            "problem": "The button renders at roughly 32–36pt — under the 44pt minimum the brief mandates — and as a floating circle detached from any navigation bar it competes with the Dynamic Island/status area. It is the only chrome on the Inbox phone by contrast (Inbox has no back button at all), so navigation model differs per tab without explanation.",
+            "norm": "44×44pt minimum hit targets (HIG); Liquid Glass toolbar buttons sit in the toolbar, sized to system back-button metrics, consistently across pushed screens.",
+            "severity": "P1",
+            "screenshot": "1440-light-granola-key-empty.png",
+            "fix": "Enlarge the glass button's hit area to 44pt (visual circle can stay smaller via content padding) and apply the same navigation treatment pattern wherever a screen is pushed."
+          },
+          {
+            "level": "component",
+            "element": "Due-date trailing labels 'Fri' (grey) and 'Today' (amber) on TO DO rows, with secondary line 'From: Pricing review, 12 Oct'",
+            "problem": "Inconsistent date grammar — weekday abbreviation vs relative 'Today' vs full '12 Oct' in the subtitle — and no overdue treatment: an item due 'Fri' viewed later has no red/overdue signal, while amber 'Today' implies warning without saying why. Grey 'Fri' and grey 'From:' text are also low-contrast at this size.",
+            "norm": "Reminders/Calendar convention: Today = coloured, overdue = red with the date shown, upcoming = neutral full date; secondary text stays at readable contrast (system secondaryLabel, not custom light grey).",
+            "severity": "P2",
+            "screenshot": "1440-light-granola-key-empty.png",
+            "fix": "Use one format: 'Today' amber, 'Fri 18 Oct' neutral, overdue in red with date. Raise the 'From:' line to system secondary colour/size (≥13pt, secondaryLabel)."
+          },
+          {
+            "level": "component",
+            "element": "'Slack — Connected' row (grey trailing text, no chevron) at top of Integrations",
+            "problem": "Dead-end row: it announces a status but offers no way to manage or disconnect Slack, unlike Granola's Disconnect row and unlike 'Connect mail >' which has a chevron. Three rows on one surface use three different interaction promises (chevron, destructive row, inert).",
+            "norm": "Settings rows that can be managed show disclosure; status-only rows are acceptable but the pattern must be consistent across integrations on the same screen.",
+            "severity": "P2",
+            "screenshot": "1440-light-granola-key-empty.png",
+            "fix": "Make Slack tappable to a detail with Disconnect (chevron), matching Granola's connected management, or group all integrations under one header with identical row grammar."
+          },
+          {
+            "level": "component",
+            "element": "Disabled 'Connect' row (centred light-grey text on white) in empty key states, both features",
+            "problem": "Disabled state is conveyed by faint grey alone — contrast well below readable, and it sits in a tappable-looking full-width row. First-time users tap it and get no feedback about why nothing happened (the reason, empty field, is one row up and unlabelled as required).",
+            "norm": "Disabled controls need ≥3:1 contrast for the label and the enabling condition should be self-evident; iOS buttons typically use tint at reduced opacity plus a footer hint.",
+            "severity": "P2",
+            "screenshot": "1440-light-wispr-voice-key.png",
+            "fix": "Keep Connect disabled but raise label contrast to system tertiary-with-opacity on a filled button style, and let the first tap on a disabled-looking row focus the key field / shake gently rather than dead-tap."
+          },
+          {
+            "level": "layout",
+            "element": "Voice screen as a whole (This device + 4 provider rows + WISPR FLOW key group + consent footer) at 390×780 with no keyboard shown",
+            "problem": "It exactly fills the screen statically, but the real journey opens the system keyboard on the key field — Connect and the consent footer will be pushed off or covered unless the list scrolls and keeps the focused group visible. The mockup gives no evidence of keyboard avoidance, and the consent-critical footer is the first thing lost.",
+            "norm": "Form screens must keep the focused field, primary action, and any consent text visible/ reachable above the keyboard (scroll-to-focus, keyboard-avoiding layout).",
+            "severity": "P2",
+            "screenshot": "1440-light-wispr-voice-key.png",
+            "fix": "Verify in the real build: focusing 'API key' scrolls the WISPR FLOW group above the keyboard with Connect and the data-sharing footer visible, or move Connect into the keyboard toolbar area. Re-check the longer Granola reconnect stack the same way."
+          },
+          {
+            "level": "component",
+            "element": "WISPR FLOW group in Connected (dark) state: lone salmon 'Disconnect' row, no masked key, no status row",
+            "problem": "Nothing confirms what is connected (no 'Connected' row, no key fragment like ••••1234), and there is no path to replace a key except destroying the connection first. In dark mode the salmon-on-dark-grey Disconnect is the only coloured element and reads more like an alert than a settings row. Granola's connected state shows 'Synced 42 meetings' as proof-of-life; Wispr shows none.",
+            "norm": "Connected states display verifiable status (account/key hint, last verified) and offer key replacement; destructive actions get a confirmation dialog stating consequences.",
+            "severity": "P2",
+            "screenshot": "1440-dark-wispr-voice-connected.png",
+            "fix": "Add a status row 'Connected · Key ••••last4' above Disconnect, allow tapping it to replace the key, and present a confirmation ('Disconnect Wispr Flow? Transcription will switch to This device.') on Disconnect — same dialog Granola's Disconnect needs."
+          },
+          {
+            "level": "component",
+            "element": "Section headers and footers: 'GRANOLA', 'PROVIDERS', 'WISPR FLOW', 'TO DO' and grey footers 'Business plan', 'Free', 'Speak + transcribe'",
+            "problem": "Small all-caps grey headers and grey secondary lines are rendered in a light custom grey noticeably weaker than system secondaryLabel — marginal for older users and in the dark screenshot where 'Transcribe only' under Wispr Flow nearly merges with the row background separators.",
+            "norm": "Use semantic system colours (secondaryLabel) and Dynamic Type sizes for headers/footers so contrast holds in light, dark, and increased-contrast modes.",
+            "severity": "P3",
+            "screenshot": "1440-dark-wispr-voice-connected.png",
+            "fix": "Bind all header/footer/secondary text to secondaryLabel and footnote/caption1 Dynamic Type styles; verify dark-mode contrast rather than hand-tuned greys."
+          }
+        ],
+        "excellent": [
+          "Textbook native structure throughout: SwiftUI inset grouped lists, large titles, section headers/footers — instantly familiar to an iOS user, and every settings surface fits one 390×780 screen with calm whitespace (1440-light-granola-key-empty.png, Integrations phone).",
+          "Keys are handled correctly as secrets: placeholder in empty state, fully masked '••••••••••••••••' once entered, in both Granola and Wispr flows (1440-light-granola-key-rejected.png; 1440-light-wispr-voice-rejected.png).",
+          "Destructive rows follow convention: 'Disconnect' in system red, centred, in its own row — unmistakable in Granola Connected and Wispr Connected states (1440-light-granola-key-reconnect.png).",
+          "Error placement is right even where copy is wrong: red plain-language line directly under the relevant group ('Granola rejected this key'), persistent with the field so the user can fix in place (1440-light-granola-key-rejected.png).",
+          "The Wispr consent sentence itself is exemplary copy: 'Sends your recordings, text near the cursor and workspace names to Wispr Flow.' — concrete data items, named recipient, no legalese (1440-light-wispr-voice-key.png).",
+          "Inbox to-dos carry provenance and due state at a glance — 'From: Pricing review, 12 Oct' under every item and an amber 'Today' — exactly the trust signals meeting-derived tasks need (1440-light-granola-key-empty.png, Inbox phone).",
+          "Copy discipline is admirable overall: 'Business plan', 'Synced 42 meetings', 'Transcribe only' — the instinct to say it in two words is right; the failures above are missing words, not excess ones."
+        ]
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 158,
+      "costUsd": 0.12936,
+      "result": {
+        "verdict": "Rakazo's mobile surfaces demonstrate rare visual discipline—its monochrome ink palette, native iOS inset-grouped lists, and reserved semantic colors (amber for 'Today', red for errors and destructive actions) feel calm and cohesive. However, several state-machine and interaction decisions break core user journeys: connecting a second voice provider erases the active-provider checkmark so the user cannot tell which provider is active; Granola's 'Needs reconnect' state renders two competing cards with contradictory statuses ('Synced 42 meetings' above an empty field claiming 'Granola rejected this key'); Granola drops its 'Business plan' footer the moment a key is rejected (when a free-plan user actually needs that hint); and full-row hair-trigger task completion with immediate disappearance and no undo creates severe accidental data loss on touch screens.",
+        "findings": [
+          {
+            "level": "group",
+            "element": "PROVIDERS list trailing accessories ('Connected' vs '✓') in Voice settings",
+            "problem": "The trailing slot of each provider row is overloaded to show both credential state ('Connected') and selection state ('✓'). In '1440-light-wispr-voice-key.png', ElevenLabs shows 'Connected' while Wispr Flow shows '✓'. Once Wispr Flow is connected in '1440-dark-wispr-voice-connected.png', its '✓' is replaced by 'Connected'. Now both ElevenLabs and Wispr Flow display 'Connected' and no row on the screen has a checkmark, making it impossible to tell which provider is currently active or whether ElevenLabs is still handling speech output alongside Wispr Flow's 'Transcribe only' input.",
+            "norm": "Selection state (which provider is currently active) and credential state (which providers have saved API keys) are orthogonal attributes and must not compete for the same single-value trailing accessory slot.",
+            "severity": "P0",
+            "screenshot": "1440-dark-wispr-voice-connected.png",
+            "fix": "Separate active selection from saved-key status: keep the trailing checkmark ('✓') exclusively for the currently active provider(s), and indicate configured status either inline in the subtitle (e.g., 'Transcribe only · Key saved' or 'Speak + transcribe · Connected') or via dedicated 'SPEAK' and 'TRANSCRIBE' selection rows if mixed providers are supported."
+          },
+          {
+            "level": "group",
+            "element": "GRANOLA section dual cards and error footer in 'Needs reconnect' state",
+            "problem": "In '1440-light-granola-key-reconnect.png', the GRANOLA section stacks two separate inset-grouped cards under one header: the top card says 'Synced 42 meetings' with a red 'Disconnect' action, while a second card directly below shows an empty 'Granola API key' field, a disabled 'Connect' row, and a red footer 'Granola rejected this key'. Showing a healthy-looking status ('Synced 42 meetings') simultaneously with 'Granola rejected this key' beneath a blank input field misleads the user into thinking they just submitted an empty key, and forces 'Disconnect' and 'Connect' to compete in the same section.",
+            "norm": "An integration in an expired/revoked credential state should present a single unified card that clearly states the saved credential failed while preserving prior sync context.",
+            "severity": "P0",
+            "screenshot": "1440-light-granola-key-reconnect.png",
+            "fix": "Consolidate into a single GRANOLA card: show 'Synced 42 meetings' with a trailing warning status or subtitle ('Key expired'), followed by the 'Granola API key' field, 'Reconnect' (or 'Update key'), and 'Disconnect', with a clear footer: 'Granola rejected your saved key. Enter a new key to resume syncing.'"
+          },
+          {
+            "level": "component",
+            "element": "TO DO task rows in Inbox (full-row tap-to-complete with immediate removal and no undo)",
+            "problem": "Each row in the TO DO group displays a leading circular checkbox ('○'), a multi-line task title, a meeting source citation ('From: Pricing review, 12 Oct'), and a due date. Because tapping anywhere on the row immediately completes and deletes the row with no undo, a user who taps the title or 'From: Pricing review, 12 Oct' expecting to inspect the meeting citation—or who makes an accidental thumb tap while scrolling—permanently loses the follow-up before they can even see what disappeared.",
+            "norm": "On touch screens, destructive or disappearing completion actions require either a constrained hit target (the 44x44pt leading checkbox circle) when rows carry secondary metadata, or an immediate undo mechanism (toast/banner or brief completion dwell before collapse).",
+            "severity": "P1",
+            "screenshot": "1440-light-granola-inbox-todos.png",
+            "fix": "Restrict instant completion to a generous 44x44pt hit target around the leading circle ('○')—or if the full row remains a completion toggle, play a ~400ms checked fill animation before collapsing the row and surface a transient bottom 'Completed · Undo' pill."
+          },
+          {
+            "level": "component",
+            "element": "GRANOLA section footer in 'Empty' vs 'Key rejected' states ('Business plan' requirement)",
+            "problem": "In '1440-light-granola-key-empty.png', the footer reads 'Business plan'. First, the two-word fragment is ambiguous about whether Rakazo or Granola requires a Business plan. Second, in '1440-light-granola-key-rejected.png', when a user pastes a key and Granola rejects it—where a free-plan Granola account is the primary cause—the 'Business plan' footer disappears and is replaced solely by 'Granola rejected this key'. The user loses the diagnostic hint at the exact moment their key fails.",
+            "norm": "Prerequisite constraints that commonly cause authentication or API key rejection must remain visible when the error state is triggered (matching how Wispr Flow retains its grey footer beneath the red error in '1440-light-wispr-voice-rejected.png').",
+            "severity": "P1",
+            "screenshot": "1440-light-granola-key-rejected.png",
+            "fix": "Clarify the footer copy to 'Requires Granola Business plan' in the empty state, and keep it visible below the red error line in the rejected state (or combine into 'Granola rejected this key. Requires a Granola Business plan.')."
+          },
+          {
+            "level": "component",
+            "element": "WISPR FLOW error footer ('Could not connect this voice provider')",
+            "problem": "In '1440-light-wispr-voice-rejected.png' ('Key rejected' state), the error message reads 'Could not connect this voice provider'. Unlike Granola—which cleanly separates 'Granola rejected this key' from 'Could not reach Granola'—this generic phrasing fails to tell the user that their API key was rejected rather than a network or service outage occurring.",
+            "norm": "Error messages for credential verification must distinguish between invalid/rejected API keys (user-fixable by re-pasting) and network/reachability failures.",
+            "severity": "P1",
+            "screenshot": "1440-light-wispr-voice-rejected.png",
+            "fix": "Use specific parallel copy matching the Granola pattern: 'Wispr Flow rejected this key' for 401/403 auth failures, and 'Could not reach Wispr Flow' for network errors."
+          },
+          {
+            "level": "component",
+            "element": "Masked API key SecureField ('••••••••••••••••••••') in rejected states",
+            "problem": "In '1440-light-granola-key-rejected.png' and '1440-light-wispr-voice-rejected.png', the rejected API key is shown as 20 masked dots with no clear ('×') button and no show/hide toggle. On iOS, editing or replacing a long pasted string inside a native SecureField without a clear button forces clumsy selection gestures, and masking prevents spotting an accidental trailing space or wrong clipboard paste.",
+            "norm": "API key fields on mobile should provide a trailing clear button ('xmark.circle.fill') when non-empty and/or an eye toggle to inspect pasted tokens upon rejection.",
+            "severity": "P1",
+            "screenshot": "1440-light-granola-key-rejected.png",
+            "fix": "Add a standard iOS trailing clear button ('xmark.circle.fill') inside the API key field whenever text is present so a rejected key can be cleared and re-pasted in one tap."
+          },
+          {
+            "level": "component",
+            "element": "'This device' row subtitle ('Free') vs 'PROVIDERS' capability subtitles in Voice settings",
+            "problem": "In '1440-light-wispr-voice-key.png', every row under PROVIDERS uses its subtitle to declare capability scope ('Speak + transcribe', 'Speak only', 'Transcribe only'), whereas 'This device' uses its subtitle to state price ('Free') without stating whether on-device voice supports speaking, transcribing, or both.",
+            "norm": "Peer options within the same selection screen should expose consistent decision attributes so a first-time user can compare capabilities across all choices.",
+            "severity": "P2",
+            "screenshot": "1440-light-wispr-voice-key.png",
+            "fix": "Include capability scope in the 'This device' subtitle alongside cost, e.g., 'Speak + transcribe · Free'."
+          },
+          {
+            "level": "component",
+            "element": "WISPR FLOW data-sharing disclosure footer in Connected state",
+            "problem": "In '1440-light-wispr-voice-key.png' and '1440-light-wispr-voice-rejected.png', the footer discloses 'Sends your recordings, text near the cursor and workspace names to Wispr Flow.' However, once connected in '1440-dark-wispr-voice-connected.png', this disclosure vanishes completely even though Wispr Flow is now actively receiving that data.",
+            "norm": "Privacy and data-sharing disclosures for third-party AI/voice processors should remain visible while the integration is connected and active.",
+            "severity": "P2",
+            "screenshot": "1440-dark-wispr-voice-connected.png",
+            "fix": "Keep the footer 'Sends your recordings, text near the cursor and workspace names to Wispr Flow.' beneath the WISPR FLOW card in the Connected state."
+          },
+          {
+            "level": "component",
+            "element": "'Syncing' row in Inbox ('TO DO' group)",
+            "problem": "In '1440-light-granola-inbox-syncing.png', the syncing state of the TO DO section is a plain muted gray text row reading 'Syncing' with no native iOS activity spinner (ProgressView). Because it uses the exact same color and typography as disabled button/placeholder text, it looks static or frozen rather than actively working.",
+            "norm": "Indeterminate loading states in iOS lists should pair status text with a standard system ProgressView spinner.",
+            "severity": "P2",
+            "screenshot": "1440-light-granola-inbox-syncing.png",
+            "fix": "Place a native iOS ProgressView() spinner alongside 'Syncing' (either leading or trailing in the row)."
+          },
+          {
+            "level": "component",
+            "element": "Row 3 ('Book a legal review of the vendor MSA') text wrapping and checkbox alignment in Inbox",
+            "problem": "In '1440-light-granola-inbox-todos.png', the third TO DO row ('Book a legal review of the vendor MSA') has no trailing due date, yet its title still wraps early before 'MSA', leaving a single-word orphan on line 2 and unused whitespace on the right. Additionally, on 3-line items (Row 2 and Row 3), the leading circle ('○') floats in the vertical center of the entire multi-line block rather than aligning with the first line of the title.",
+            "norm": "In multi-line task rows (iOS Reminders, Things 3), leading checkboxes and trailing due badges align to the first text line (or top of the title block) for clean vertical scanning, and text should expand to use available trailing width when no accessory badge is present.",
+            "severity": "P2",
+            "screenshot": "1440-light-granola-inbox-todos.png",
+            "fix": "Allow the task title to span the full available trailing width when no due-date label is present (so 'Book a legal review of the vendor MSA' fits cleanly without orphaning 'MSA'), and top-align the checkbox circle and due badge with the first line of the title."
+          },
+          {
+            "level": "component",
+            "element": "Slack row ('Slack   Connected') in Integrations",
+            "problem": "In '1440-light-granola-key-empty.png', the 'Slack' row shows 'Connected' on the trailing edge without a disclosure chevron ('>'), unlike 'Connect mail >' on the Inbox screen. This makes the Slack integration look like a non-interactive read-only status label with no way to inspect or disconnect it.",
+            "norm": "In iOS InsetGroupedListStyle settings screens, rows that open a detail view or action sheet to manage a connected service include a trailing disclosure indicator ('>').",
+            "severity": "P2",
+            "screenshot": "1440-light-granola-key-empty.png",
+            "fix": "Append a standard disclosure chevron ('Connected >') if tapping Slack opens management/disconnect options."
+          },
+          {
+            "level": "page",
+            "element": "Inbox screen navigation chrome and header positioning",
+            "problem": "In '1440-light-granola-inbox-todos.png' and '1440-light-granola-inbox-syncing.png', the Inbox screen has no top-left navigation button, no top-right settings/integrations button, and no bottom tab bar. As a result, a user on Inbox has no visible path to navigate to Integrations (to connect Granola) or back to the rest of the app, and the 'Inbox' large title sits ~48pt higher than 'Integrations' on the adjacent phone.",
+            "norm": "Every mobile screen must provide clear navigation chrome (either a back button if pushed, or a top-level navigation bar / tab bar if a root destination).",
+            "severity": "P2",
+            "screenshot": "1440-light-granola-inbox-todos.png",
+            "fix": "Include either the top-left Liquid Glass back/sidebar button or the app's primary navigation chrome so the user can move between Inbox and Integrations."
+          }
+        ],
+        "excellent": [
+          "Disciplined monochrome ink aesthetic across light and dark modes (`1440-light-granola-key-empty.png`, `1440-dark-wispr-voice-connected.png`), reserving chromatic color strictly for high-signal states: amber for 'Today' due dates and red for inline rejection errors and destructive 'Disconnect' actions.",
+          "Inline contextual expansion in Voice settings (`1440-light-wispr-voice-key.png`), surfacing the 'WISPR FLOW' API key card directly below the 'PROVIDERS' group on the same screen rather than forcing an extra navigation push.",
+          "Specific, plain-English privacy disclosure in `1440-light-wispr-voice-key.png` ('Sends your recordings, text near the cursor and workspace names to Wispr Flow.') that tells the user the exact three data types shared without generic legalese.",
+          "Clear diagnostic separation between authentication failure ('Granola rejected this key' in `1440-light-granola-key-rejected.png`) and network failure ('Could not reach Granola' in `1440-light-granola-inbox-todos.png`) rendered calmly in the section footer instead of disruptive modal alerts.",
+          "Scannable meeting follow-up provenance in Inbox (`1440-light-granola-inbox-todos.png`), pairing actionable task titles with 'From: Pricing review, 12 Oct' citations and a progressive-disclosure '2 more' row that keeps the card compact on a 390x780 viewport."
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+[
+  {
+    "id": "F-MX-6-1",
+    "kind": "plan",
+    "severity": "high",
+    "category": "error-handling",
+    "criterion": "Error messages / Feedback",
+    "score": "fail",
+    "description": "If S5 stops after pinning, the tile reads Connected, the Flow agent has a tighter tool list and no stored meetings, and nothing tells the user. Cross-meeting questions fail for Flow with no explanation.",
+    "expected": "State in S5 that if mapping fails the PR lists tools the pin removed; user-facing: at minimum the Flow tile must not imply stored meetings.",
+    "actual": "Tile identical to a fully working one.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-MX-6/screenshots/step-5.png",
+    "suggested_fix": "As catalog: PR documents removed tools; no user copy. Suggest the plan state explicitly that no 'synced' status is shown for Flow when S5 is stopped.",
+    "catalog_ref": "JF-15",
+    "plan_section": "Flow S5 #450 step 0",
+    "files_likely_involved": []
+  },
+  {
+    "id": "F-MX-6-2",
+    "kind": "plan",
+    "severity": "low",
+    "category": "consistency",
+    "criterion": "Component consistency",
+    "score": "warn",
+    "description": "Tile subtitle 'Meeting notes' is identical for Flow and Granola, so the tile does not hint at the difference (stored vs live) between the two.",
+    "expected": "Distinguishing cue only if relevant.",
+    "actual": "Same subtitle.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-MX-6/screenshots/step-5.png",
+    "suggested_fix": "Accept; the name is enough. No new copy.",
+    "catalog_ref": "NEW",
+    "plan_section": "Flow S5; Granola S6",
+    "files_likely_involved": []
+  }
+]

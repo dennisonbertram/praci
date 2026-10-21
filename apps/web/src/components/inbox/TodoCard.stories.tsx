@@ -100,8 +100,8 @@ export const SaveFails: Story = {
   },
 };
 
-/** Tick a to-do: it keeps its strike-through, fades, collapses, and leaves. Untick during the fade to keep it. */
-export const TickToFade: Story = {
+/** Tick a to-do: it stays in place, struck through, until the next visit. */
+export const TickStaysStruck: Story = {
   args: { todos },
   beforeEach: () => {
     mockRpc({

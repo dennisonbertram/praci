@@ -1,0 +1,13 @@
+{
+  "story_id": "STORY-IF-7",
+  "round": 3,
+  "result": "PASS",
+  "round2_status": [
+    {
+      "id": "F2-IF-7-01",
+      "status": "still-open",
+      "evidence": "'Open in Granola' may point at a note deleted in Granola; the plan has no text for it (only 'source link when one exists'). Low."
+    }
+  ],
+  "findings": []
+}

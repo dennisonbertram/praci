@@ -195,6 +195,8 @@ export const MessageBlock = z.discriminatedUnion("kind", [
     text: z.string(),
     approvalEffectId: Id.optional(),
     detail: z.string().optional(),
+    /** Show `detail` behind a "Details" disclosure (raw tool arguments), not open on the card. */
+    detailFolded: z.boolean().optional(),
     mail: MailApprovalSchema.optional(),
     /** An AI data sharing request: the card's Allow records consent for the disclosure `version`. */
     consent: z.object({ version: z.string() }).optional(),

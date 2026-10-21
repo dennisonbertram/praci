@@ -1,0 +1,47 @@
+{
+  "story": "STORY-WF-6",
+  "round": 3,
+  "verdict": "PASS",
+  "round2_dispositions": [
+    {
+      "id": "F2-WF-6-1",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Connected state shows \"Transcribing\" on the Flow row (green on web) while ElevenLabs keeps \"Connected\" (step-voice-connected.png); plan S3a states \"After Connect, Flow is the transcriber and its status word is Transcribing\"."
+    },
+    {
+      "id": "F2-WF-6-2",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "The consent-off effect (existing consent prompt on the next call) has no frame; only the AI data sharing toggles are drawn (step-consent.png). The plan calls it the existing prompt, so this stays low."
+    }
+  ],
+  "new_findings": [
+    {
+      "id": "F3-WF-6-1",
+      "kind": "plan",
+      "severity": "low",
+      "category": "happy-path",
+      "criterion": "Feedback",
+      "score": "warn",
+      "description": "Step 7 of the story (names from the workspace spelled correctly) has no visible frame. The call card shows only Elio's line, so the effect of vocabulary hints cannot be seen in the mockup or by a user.",
+      "expected": "The user can see that Flow transcribed the workspace names.",
+      "actual": "Call card caption is Elio's reply; no transcript of the user's utterance.",
+      "screenshot": "screenshots/step-call-normal.png",
+      "suggested_fix": "Optional: no change needed if the call card never shows the user's words today; keep as a note for the S4 manual checklist."
+    },
+    {
+      "id": "F3-WF-6-2",
+      "kind": "plan",
+      "severity": "low",
+      "category": "consistency",
+      "criterion": "Information stated once",
+      "score": "warn",
+      "description": "With Flow connected, ElevenLabs still reads \"Speak + transcribe\" and \"Connected\" while Flow reads \"Transcribing\". Two rows describe transcription and only one does it.",
+      "expected": "One row clearly says who transcribes.",
+      "actual": "ElevenLabs subtitle claims transcription; Flow status says it is the transcriber. The plan accepts this (\"still describe speech\").",
+      "screenshot": "screenshots/step-voice-connected.png",
+      "suggested_fix": "Low priority. The selected-row bar and \"Transcribing\" word already disambiguate."
+    }
+  ]
+}

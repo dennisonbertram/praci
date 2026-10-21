@@ -1,0 +1,68 @@
+[
+  {
+    "id": "F-MX-1-1",
+    "kind": "plan",
+    "severity": "medium",
+    "category": "happy-path",
+    "criterion": "Labels/copy",
+    "score": "warn",
+    "description": "Answers mix Granola and Flow meetings but the chips show only title and date, so the user cannot tell which tool a meeting came from.",
+    "expected": "Provider visible somewhere (chip or hover) or stated as not needed.",
+    "actual": "Chips identical for both providers (Wispr mockup, Agent answer).",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-MX-1/screenshots/step-3b.png",
+    "suggested_fix": "Have tool output carry provider; render it only in the chip hover/title, not as extra text.",
+    "catalog_ref": "JF-21",
+    "plan_section": "Granola S4 #440 Reading; Flow S5 #450",
+    "files_likely_involved": []
+  },
+  {
+    "id": "F-MX-1-2",
+    "kind": "plan",
+    "severity": "medium",
+    "category": "happy-path",
+    "criterion": "Primary CTA / Labels",
+    "score": "warn",
+    "description": "Agent names suggest vendor scope ('Wispr Flow agent', 'Granola agent') but every meeting-source agent sees all meetings, so the user may pick the 'wrong' agent or distrust the answer. NEW variant of JF-17: this arises with one agent per vendor, not only with two Granola agents.",
+    "expected": "Either one meeting agent, or a visible cue that scope is all meetings.",
+    "actual": "Two bots with different vendor names; the Wispr agent answers with a Granola meeting.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-MX-1/screenshots/step-3b.png",
+    "suggested_fix": "Decide whether the Flow and Granola agents merge into one 'Meetings' agent, or add one hint on first open. No new always-visible text.",
+    "catalog_ref": "NEW",
+    "plan_section": "Granola S6 Agent provisioning; Flow S5",
+    "files_likely_involved": []
+  },
+  {
+    "id": "F-MX-1-3",
+    "kind": "plan",
+    "severity": "low",
+    "category": "flow",
+    "criterion": "Dead ends",
+    "score": "warn",
+    "description": "Provider filter ('only Flow calls'), same-call comparison and the 90-day window are chat-only; the mockup draws nothing for steps 4 and 5, so the plan must say what the agent answers.",
+    "expected": "Defined answer wording for a provider filter and for 'same call recorded twice'.",
+    "actual": "No surface for steps 4 and 5.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-MX-1/screenshots/step-3b.png",
+    "suggested_fix": "Plan: one sentence each in the skill instructions; no UI.",
+    "catalog_ref": "NEW (links discovery ambiguity 20)",
+    "plan_section": "Granola S4 #440",
+    "files_likely_involved": []
+  },
+  {
+    "id": "F-MX-1-4",
+    "kind": "mockup",
+    "severity": "low",
+    "category": "visual",
+    "criterion": "Information stated once",
+    "score": "warn",
+    "description": "Author notes render as visible UI text inside the mockup ('...The answer does not say which is which.').",
+    "expected": "Annotations outside the product frame or in HTML comments.",
+    "actual": "Muted line under the answer inside the frame.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-MX-1/screenshots/step-3b.png",
+    "suggested_fix": "Move the note into an HTML comment or outside the frame.",
+    "catalog_ref": "NEW",
+    "plan_section": "wispr-flow mockup screen-flow-meetings",
+    "files_likely_involved": [
+      "docs/granola/mockup.html"
+    ]
+  }
+]

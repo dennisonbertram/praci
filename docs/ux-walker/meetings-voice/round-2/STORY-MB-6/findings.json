@@ -1,0 +1,40 @@
+{
+  "story": "STORY-MB-6",
+  "round": 2,
+  "verdict": "PASS",
+  "round1_dispositions": [
+    {
+      "id": "F-MB-6-1",
+      "sev": "high",
+      "status": "obsolete",
+      "evidence": "Consent prompt mid-call removed by D3; remaining call UI is existing."
+    },
+    {
+      "id": "F-MB-6-2",
+      "sev": "high",
+      "status": "fixed",
+      "evidence": "Audio cannot precede consent: Connect records it (plan S3a). Precedence in S3b. Mockup contradiction is MB-5 N1."
+    },
+    {
+      "id": "F-MB-6-3",
+      "sev": "low",
+      "status": "fixed",
+      "evidence": "Plan: alert names Flow only when the row is selectable."
+    }
+  ],
+  "new_findings": [
+    {
+      "kind": "plan",
+      "severity": "medium",
+      "category": "error-handling",
+      "description": "On mobile the daily cap surfaces as a failed turn; after repeated failures the call ends with the generic caption. The plan defines one caption line, not what happens to the call.",
+      "suggested_fix": "State in S3a that a cap error shows its message once and does not count toward ending the call, or that it ends with that message.",
+      "screenshot": null,
+      "plan_section": "Flow S3a",
+      "catalog_ref": "NEW",
+      "id": "F2-MB-6-1",
+      "score": "warn",
+      "story_id": "STORY-MB-6"
+    }
+  ]
+}

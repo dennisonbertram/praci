@@ -1,0 +1,13 @@
+{
+  "story_id": "STORY-MX-8",
+  "round": 3,
+  "result": "PASS",
+  "round2_status": [
+    {
+      "id": "F2-MX-8-01",
+      "status": "fixed",
+      "evidence": "Flow Inbox frame now shows the To do card above 'Connect Gmail...' and 'Connect mail', like the Granola frames (w-d-flow-meetings-inbox.png)."
+    }
+  ],
+  "findings": []
+}

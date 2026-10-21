@@ -1,0 +1,41 @@
+{
+  "story_id": "STORY-IF-5",
+  "result": "PASS",
+  "round1_status": [],
+  "findings": [
+    {
+      "id": "F2-IF-5-01",
+      "severity": "medium",
+      "category": "happy-path",
+      "criterion": "Labels/copy",
+      "score": "warn",
+      "kind": "plan",
+      "description": "The consent prompt text is about mail ('sort your mail', 'Senders, recipients, subjects') while for a meeting-only user the consent covers meeting transcripts and summaries. The plan lists this as an open question and keeps the existing text.",
+      "expected": "Prompt states what is sent for meetings when meetings are the reason it appears.",
+      "actual": "inbox-consent.png.",
+      "screenshot": "inbox-consent.png",
+      "suggested_fix": "Decide wording for the meeting-only case; the S5 PR must quote it under the AGENTS.md copy rule.",
+      "files_likely_involved": [],
+      "jf": "NEW",
+      "plan_section": "granola.md Open questions / S5",
+      "story_id": "STORY-IF-5"
+    },
+    {
+      "id": "F2-IF-5-02",
+      "severity": "low",
+      "category": "happy-path",
+      "criterion": "Consistency",
+      "score": "warn",
+      "kind": "plan",
+      "description": "Plan text says with consent off 'the consent prompt is the only thing shown', but the mockup (and its comment) draws the prompt above 'Connect mail'.",
+      "expected": "One rule in plan and mockup.",
+      "actual": "Prompt plus Connect mail card (inbox-consent.png).",
+      "screenshot": "inbox-consent.png",
+      "suggested_fix": "Align the plan sentence with FX-14 ('above Connect mail').",
+      "files_likely_involved": [],
+      "jf": null,
+      "plan_section": "granola.md S5 (Empty and in-progress states)",
+      "story_id": "STORY-IF-5"
+    }
+  ]
+}

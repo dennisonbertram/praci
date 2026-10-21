@@ -49,14 +49,7 @@ import {
   useFinanceStatus,
 } from "./FinanceSection";
 import { IMessageSection } from "./IMessageSection";
-import {
-  AgentStack,
-  CardHead,
-  IntegrationTile,
-  SectionTitle,
-  SourceBadge,
-  StatusBadge,
-} from "./parts";
+import { AgentStack, CardHead, IntegrationTile, SectionTitle, StatusBadge } from "./parts";
 import type { IntegrationsData } from "./useIntegrations";
 import { agentsFor } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
@@ -196,7 +189,6 @@ function AppCard({
       />
       <div className="mt-auto flex min-h-7 items-center gap-2">
         <StatusBadge status={app.status} />
-        <SourceBadge connectorId={app.connectorId} />
         {app.status === "connected" && app.provider.toUpperCase() === "GMAIL" ? (
           <OpenPageLink to="/app/inbox">
             <Trans>Open Inbox</Trans>
@@ -268,13 +260,11 @@ function SourceCard({
 }
 
 function AppTile({
-  connectorId = "",
   name,
   logo,
   description,
   onConnect,
 }: {
-  connectorId?: string;
   name: string;
   logo?: string | null;
   description?: string | null;
@@ -285,7 +275,6 @@ function AppTile({
     <IntegrationTile>
       <CardHead name={name} logo={logo} sub={description ?? undefined} />
       <div className="mt-auto flex items-center gap-2">
-        <SourceBadge connectorId={connectorId} />
         <Button
           size="sm"
           variant="outline"
@@ -395,7 +384,8 @@ export function IntegrationsHome({
       ) &&
       !data.sources.some((source) => isSameMcpEndpoint(source.source, entry.endpoint)),
   );
-  const otherMatches = showFinance || firstPartyMcp.length > 0;
+  const [chatMatches, setChatMatches] = useState(0);
+  const otherMatches = showFinance || firstPartyMcp.length > 0 || chatMatches > 0;
   const financeServerIds = data.financeSources.flatMap((source) =>
     source.serverId ? [source.serverId] : [],
   );
@@ -412,7 +402,19 @@ export function IntegrationsHome({
     (server) => !financeServerIds.includes(server.id) && server !== cryptoServer,
   );
   const filtering = Boolean(query.trim()) || category !== "all";
-  const hasConnected = apps.length + servers.length + data.sources.length + connectedKeys.size > 0;
+  // A chip alone narrows Connected to that category; a search hides it behind the flat results.
+  const chipOnly = category !== "all" && !query.trim();
+  const connectedApps = chipOnly
+    ? apps.filter(
+        (app) =>
+          data.catalog.find((item) => `${item.connectorId}:${item.slug}` === app.key)?.category ===
+          category,
+      )
+    : apps;
+  const wholeList = category === "all";
+  const hasConnected = chipOnly
+    ? connectedApps.length > 0 || (category === "finance" && connectedKeys.size > 0)
+    : apps.length + servers.length + data.sources.length + connectedKeys.size > 0;
   // Native Google items fill the catalog without a managed provider, so ask the setup state. Only
   // the deployment owner is told which providers are configured; a member (whose list is empty)
   // can tell from the catalog itself, and a failed call falls back to whether it has anything.
@@ -493,7 +495,7 @@ export function IntegrationsHome({
     <div className="rk-scroll h-full overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
       <div className="max-w-[1040px]">
         <h1 className="text-lg font-semibold">
-          <Trans>Integrations</Trans>
+          <Trans>Apps</Trans>
         </h1>
         <p className="mb-5 max-w-[640px] text-muted-foreground">
           <Trans>
@@ -519,13 +521,13 @@ export function IntegrationsHome({
         ) : null}
         {data.loaded ? (
           <>
-            {hasConnected && !filtering ? (
+            {hasConnected && (!filtering || chipOnly) ? (
               <>
                 <SectionTitle>
                   <Trans>Connected</Trans>
                 </SectionTitle>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
-                  {apps.map((app) => (
+                  {connectedApps.map((app) => (
                     <AppCard
                       key={app.key}
                       app={app}
@@ -534,7 +536,7 @@ export function IntegrationsHome({
                       onReconnect={retry}
                     />
                   ))}
-                  {servers.map((server) => (
+                  {(wholeList ? servers : []).map((server) => (
                     <McpCard
                       key={server.id}
                       server={server}
@@ -542,35 +544,37 @@ export function IntegrationsHome({
                       descriptions={firstPartyDescription}
                     />
                   ))}
-                  {data.sources.map((source) => (
+                  {(wholeList ? data.sources : []).map((source) => (
                     <SourceCard key={source.id} source={source} onRemove={setRemoving} />
                   ))}
-                  <FinanceSection
-                    mode="connected"
-                    sources={data.financeSources}
-                    status={financeStatus}
-                    onChanged={() => void data.refresh()}
-                    extras={{
-                      ...Object.fromEntries(
-                        data.financeSources.flatMap((source) =>
-                          source.serverId
-                            ? [
-                                [
-                                  source.provider,
-                                  <UsedBy key="used" bots={botsOn(source.serverId)} />,
-                                ],
-                              ]
-                            : [],
+                  {wholeList || category === "finance" ? (
+                    <FinanceSection
+                      mode="connected"
+                      sources={data.financeSources}
+                      status={financeStatus}
+                      onChanged={() => void data.refresh()}
+                      extras={{
+                        ...Object.fromEntries(
+                          data.financeSources.flatMap((source) =>
+                            source.serverId
+                              ? [
+                                  [
+                                    source.provider,
+                                    <UsedBy key="used" bots={botsOn(source.serverId)} />,
+                                  ],
+                                ]
+                              : [],
+                          ),
                         ),
-                      ),
-                      ...(cryptoServer
-                        ? { crypto: <UsedBy key="used" bots={botsOn(cryptoServer.id)} /> }
-                        : {}),
-                    }}
-                    cryptoManageTo={
-                      cryptoServer ? `/app/integrations/mcp/${cryptoServer.id}` : undefined
-                    }
-                  />
+                        ...(cryptoServer
+                          ? { crypto: <UsedBy key="used" bots={botsOn(cryptoServer.id)} /> }
+                          : {}),
+                      }}
+                      cryptoManageTo={
+                        cryptoServer ? `/app/integrations/mcp/${cryptoServer.id}` : undefined
+                      }
+                    />
+                  ) : null}
                 </div>
               </>
             ) : null}
@@ -621,7 +625,6 @@ export function IntegrationsHome({
                 {results.map((item) => (
                   <AppTile
                     key={`${item.connectorId}:${item.slug}`}
-                    connectorId={item.connectorId}
                     name={item.name}
                     logo={item.logo}
                     description={item.description}
@@ -707,7 +710,6 @@ export function IntegrationsHome({
                           {results.slice(0, visible).map((item) => (
                             <AppTile
                               key={`${item.connectorId}:${item.slug}`}
-                              connectorId={item.connectorId}
                               name={item.name}
                               logo={item.logo}
                               description={item.description}
@@ -776,7 +778,12 @@ export function IntegrationsHome({
               })}
 
               {category === "all" || category === "chat" ? (
-                <IMessageSection query={query} flat={filtering} onOpenMessaging={onOpenMessaging} />
+                <IMessageSection
+                  query={query}
+                  flat={filtering}
+                  onShown={setChatMatches}
+                  onOpenMessaging={onOpenMessaging}
+                />
               ) : null}
             </div>
 
@@ -790,7 +797,7 @@ export function IntegrationsHome({
                   <Trans>Add a custom connection</Trans>
                 </b>
                 <span className="text-muted-foreground">
-                  <Trans>Connect any app that offers an MCP server URL.</Trans>
+                  <Trans>Connect any other app by its address.</Trans>
                 </span>
               </div>
               <Button variant="outline" onClick={() => setCustom({ url: "" })}>

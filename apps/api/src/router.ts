@@ -163,6 +163,7 @@ import {
   appContract,
   BotSecretAuth,
   ComputerCommandSchema,
+  FIRST_BOT_SPAWN_KEY,
   foldComputerCommands,
   GOOGLE_DESKTOP_REDIRECT_URI,
   IntegrationProviderIdSchema,
@@ -1054,9 +1055,6 @@ function botSecretMetadataDto(row: {
     updatedAt: row.updatedAt.toISOString(),
   };
 }
-
-/** The bot first-run onboarding creates (Chief); see apps/web Onboarding. */
-const FIRST_BOT_SPAWN_KEY = "onboarding:first";
 
 const BOT_INTRO_PROMPT =
   "You were just created. In one reply, say what you understood your role to be from your title, description and instructions, and ask for anything you need to get started.";

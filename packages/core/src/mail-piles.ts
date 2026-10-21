@@ -52,7 +52,8 @@ export function pileFromCategory(category: string | null): InboxPile | null {
 }
 
 /**
- * The stored pile: the free rules win, except that a model verdict of spam, scam or suspicious always wins.
+ * The stored pile: the model's category decides when there is one, so a row's badge and its pile agree; the free
+ * header rules are the fallback. A rule pile of spam (Gmail's label) still wins over a non-spam verdict.
  * A user's Not spam choice (`notSpam`) overrides the model's spam verdict only; a rule pile of spam (Gmail's label) still counts.
  */
 export function resolvePile(
@@ -62,7 +63,8 @@ export function resolvePile(
 ): string | null {
   const modelPile = pileFromCategory(category);
   if (modelPile === "spam") return notSpam ? rulePile : "spam";
-  return rulePile ?? modelPile;
+  if (rulePile === "spam") return rulePile;
+  return modelPile ?? rulePile;
 }
 
 // ponytail: a short hand-picked list. A brand it lacks is only missed here and still reaches the model.

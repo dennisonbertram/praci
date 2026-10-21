@@ -1,0 +1,13 @@
+{
+  "story_id": "STORY-MX-3",
+  "round": 3,
+  "result": "OUTDATED",
+  "round2_status": [
+    {
+      "id": "F-MX-3-*",
+      "status": "obsolete",
+      "evidence": "All round-2 notes for this story were already 'obsolete'; S7 remains deferred."
+    }
+  ],
+  "findings": []
+}
