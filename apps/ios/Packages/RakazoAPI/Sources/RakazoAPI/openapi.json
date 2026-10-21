@@ -54050,11 +54050,21 @@
                         },
                         "syncing": {
                           "type": "boolean"
+                        },
+                        "reading": {
+                          "default": false,
+                          "type": "boolean"
+                        },
+                        "lastReadFailed": {
+                          "default": false,
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "snapshot",
-                        "syncing"
+                        "syncing",
+                        "reading",
+                        "lastReadFailed"
                       ],
                       "additionalProperties": false
                     }
@@ -54469,11 +54479,21 @@
                         },
                         "syncing": {
                           "type": "boolean"
+                        },
+                        "reading": {
+                          "default": false,
+                          "type": "boolean"
+                        },
+                        "lastReadFailed": {
+                          "default": false,
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "snapshot",
-                        "syncing"
+                        "syncing",
+                        "reading",
+                        "lastReadFailed"
                       ],
                       "additionalProperties": false
                     }
@@ -54797,11 +54817,21 @@
                         },
                         "syncing": {
                           "type": "boolean"
+                        },
+                        "reading": {
+                          "default": false,
+                          "type": "boolean"
+                        },
+                        "lastReadFailed": {
+                          "default": false,
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "snapshot",
-                        "syncing"
+                        "syncing",
+                        "reading",
+                        "lastReadFailed"
                       ],
                       "additionalProperties": false
                     }
@@ -55395,11 +55425,21 @@
                         },
                         "syncing": {
                           "type": "boolean"
+                        },
+                        "reading": {
+                          "default": false,
+                          "type": "boolean"
+                        },
+                        "lastReadFailed": {
+                          "default": false,
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "snapshot",
-                        "syncing"
+                        "syncing",
+                        "reading",
+                        "lastReadFailed"
                       ],
                       "additionalProperties": false
                     }
@@ -57545,6 +57585,320 @@
                         "sentAt",
                         "createdAt",
                         "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "402": {
+            "$ref": "#/components/responses/Http402"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "406": {
+            "$ref": "#/components/responses/Http406"
+          },
+          "408": {
+            "$ref": "#/components/responses/Http408"
+          },
+          "409": {
+            "$ref": "#/components/responses/Http409"
+          },
+          "410": {
+            "$ref": "#/components/responses/Http410"
+          },
+          "412": {
+            "$ref": "#/components/responses/Http412"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "422": {
+            "$ref": "#/components/responses/Http422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Http428"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "499": {
+            "$ref": "#/components/responses/Http499"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "501": {
+            "$ref": "#/components/responses/Http501"
+          },
+          "502": {
+            "$ref": "#/components/responses/Http502"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "504": {
+            "$ref": "#/components/responses/Http504"
+          },
+          "default": {
+            "$ref": "#/components/responses/OtherORPCError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/rpc/investors/useSheet": {
+      "post": {
+        "operationId": "rpc_investors_useSheet",
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": false,
+            "description": "Native clients send rakazo://; include the application origin for origin checks.",
+            "schema": {
+              "type": "string",
+              "example": "rakazo://"
+            }
+          },
+          {
+            "name": "x-rakazo-space-id",
+            "in": "header",
+            "required": false,
+            "description": "Optional selected space identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "json": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "type": "object",
+                    "properties": {
+                      "driveFileId": {
+                        "$ref": "#/components/schemas/RpcInvestorsUseSheetInputSchema0"
+                      },
+                      "name": {
+                        "$ref": "#/components/schemas/RpcInvestorsUseSheetInputSchema0"
+                      }
+                    },
+                    "required": [
+                      "driveFileId",
+                      "name"
+                    ]
+                  }
+                },
+                "required": [
+                  "json"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful RPC response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "json"
+                  ],
+                  "properties": {
+                    "json": {
+                      "$schema": "https://json-schema.org/draft/2020-12/schema",
+                      "type": "object",
+                      "properties": {
+                        "snapshot": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "companyName": {
+                                  "$ref": "#/components/schemas/RpcInvestorsUseSheetOutputSchema0"
+                                },
+                                "asOf": {
+                                  "type": "string",
+                                  "format": "date",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                },
+                                "fullyDilutedShares": {
+                                  "$ref": "#/components/schemas/RpcInvestorsUseSheetOutputSchema1"
+                                },
+                                "source": {
+                                  "default": "carta",
+                                  "type": "string",
+                                  "enum": [
+                                    "carta",
+                                    "sheet",
+                                    "native"
+                                  ]
+                                },
+                                "sourceRef": {
+                                  "default": null,
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "driveFileId": {
+                                          "$ref": "#/components/schemas/RpcInvestorsUseSheetOutputSchema0"
+                                        },
+                                        "name": {
+                                          "$ref": "#/components/schemas/RpcInvestorsUseSheetOutputSchema0"
+                                        }
+                                      },
+                                      "required": [
+                                        "driveFileId",
+                                        "name"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "amountRaisedUsd": {
+                                  "default": null,
+                                  "anyOf": [
+                                    {
+                                      "$ref": "#/components/schemas/RpcInvestorsUseSheetOutputSchema2"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "optionPoolAvailable": {
+                                  "default": null,
+                                  "anyOf": [
+                                    {
+                                      "$ref": "#/components/schemas/RpcInvestorsUseSheetOutputSchema1"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "latest409a": {
+                                  "default": null,
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "pricePerShareUsd": {
+                                          "$ref": "#/components/schemas/RpcInvestorsUseSheetOutputSchema2"
+                                        },
+                                        "date": {
+                                          "type": "string",
+                                          "format": "date",
+                                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                        }
+                                      },
+                                      "required": [
+                                        "pricePerShareUsd",
+                                        "date"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "shareClasses": {
+                                  "maxItems": 50,
+                                  "type": "array",
+                                  "items": {
+                                    "$ref": "#/components/schemas/RpcInvestorsUseSheetOutputSchema3"
+                                  }
+                                },
+                                "holders": {
+                                  "maxItems": 500,
+                                  "type": "array",
+                                  "items": {
+                                    "$ref": "#/components/schemas/RpcInvestorsUseSheetOutputSchema5"
+                                  }
+                                },
+                                "updatedAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                },
+                                "canUndo": {
+                                  "default": false,
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "companyName",
+                                "asOf",
+                                "fullyDilutedShares",
+                                "source",
+                                "sourceRef",
+                                "amountRaisedUsd",
+                                "optionPoolAvailable",
+                                "latest409a",
+                                "shareClasses",
+                                "holders",
+                                "updatedAt",
+                                "canUndo"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "syncing": {
+                          "type": "boolean"
+                        },
+                        "reading": {
+                          "default": false,
+                          "type": "boolean"
+                        },
+                        "lastReadFailed": {
+                          "default": false,
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "snapshot",
+                        "syncing",
+                        "reading",
+                        "lastReadFailed"
                       ],
                       "additionalProperties": false
                     }
@@ -99690,6 +100044,134 @@
         "format": "date-time",
         "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
       },
+      "RpcInvestorsUseSheetOutputSchema0": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
+      },
+      "RpcInvestorsUseSheetOutputSchema1": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "RpcInvestorsUseSheetOutputSchema2": {
+        "type": "number",
+        "minimum": 0
+      },
+      "RpcInvestorsUseSheetOutputSchema3": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "$ref": "#/components/schemas/RpcInvestorsUseSheetOutputSchema0"
+          },
+          "shares": {
+            "$ref": "#/components/schemas/RpcInvestorsUseSheetOutputSchema1"
+          },
+          "percent": {
+            "$ref": "#/components/schemas/RpcInvestorsUseSheetOutputSchema4"
+          }
+        },
+        "required": [
+          "name",
+          "shares",
+          "percent"
+        ],
+        "additionalProperties": false
+      },
+      "RpcInvestorsUseSheetOutputSchema4": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100
+      },
+      "RpcInvestorsUseSheetOutputSchema5": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "name": {
+            "$ref": "#/components/schemas/RpcInvestorsUseSheetOutputSchema0"
+          },
+          "email": {
+            "default": null,
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 320,
+                "format": "email",
+                "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "organization": {
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RpcInvestorsUseSheetOutputSchema0"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "security": {
+            "$ref": "#/components/schemas/RpcInvestorsUseSheetOutputSchema0"
+          },
+          "shares": {
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RpcInvestorsUseSheetOutputSchema1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "amountUsd": {
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RpcInvestorsUseSheetOutputSchema2"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "percent": {
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RpcInvestorsUseSheetOutputSchema4"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "organization",
+          "security",
+          "shares",
+          "amountUsd",
+          "percent"
+        ],
+        "additionalProperties": false
+      },
+      "RpcInvestorsUseSheetInputSchema0": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
+      },
       "RpcLegalAgentOutputSchema0": {
         "type": "string",
         "minLength": 1
@@ -100822,13 +101304,28 @@
         "type": "string",
         "minLength": 1
       },
+      "RpcScratchpadCreateOutputSchema1": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      },
       "RpcScratchpadListOutputSchema0": {
         "type": "string",
         "minLength": 1
       },
+      "RpcScratchpadListOutputSchema1": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      },
       "RpcScratchpadUpdateOutputSchema0": {
         "type": "string",
         "minLength": 1
+      },
+      "RpcScratchpadUpdateOutputSchema1": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
       },
       "RpcSearchQueryOutputSchema0": {
         "type": "object",
@@ -102367,21 +102864,6 @@
       "RpcVoiceAgentOutputSchema0": {
         "type": "string",
         "minLength": 1
-      },
-      "RpcScratchpadCreateOutputSchema1": {
-        "type": "string",
-        "format": "date-time",
-        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-      },
-      "RpcScratchpadListOutputSchema1": {
-        "type": "string",
-        "format": "date-time",
-        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-      },
-      "RpcScratchpadUpdateOutputSchema1": {
-        "type": "string",
-        "format": "date-time",
-        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
       }
     },
     "responses": {
