@@ -295,6 +295,33 @@ describe("company import engine", () => {
     );
   });
 
+  it("does not let a pending lease recovery delay a successful next page", async () => {
+    const { engine, jobs } = createHarness();
+    const now = new Date();
+    const claimExpiresAt = new Date(now.getTime() + 120_000);
+    const unit = {
+      id: "unit-1",
+      sourceId: "source-1",
+      availableAt: now,
+      source: { backoffUntil: null },
+    };
+    db.getCompanyImportRunForScheduling.mockResolvedValue({ status: "running" });
+    db.listCompanyImportUnitsForScheduling.mockResolvedValue([
+      { ...unit, status: "claimed", claimExpiresAt },
+    ]);
+    const payload = { spaceId: actor.spaceId, userId: actor.userId, runId: "run-1" };
+    await engine.runJob(payload);
+    db.listCompanyImportUnitsForScheduling.mockResolvedValue([
+      { ...unit, status: "waiting", claimExpiresAt: null },
+    ]);
+    await engine.runJob(payload);
+    const [recovery, nextPage] = vi.mocked(jobs.enqueue).mock.calls.map(([job]) => job);
+    expect(recovery?.availableAt).toEqual(claimExpiresAt);
+    expect(nextPage?.availableAt).toEqual(now);
+    expect(nextPage?.replaceKey).not.toEqual(recovery?.replaceKey);
+    expect(nextPage?.keepExisting).toBe(true);
+  });
+
   it.each([
     ["consent is revoked", { revokeConsentAfterCall: true }],
     ["the model recipient changes", { changeModelAfterCall: true }],

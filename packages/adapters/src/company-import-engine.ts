@@ -602,7 +602,10 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
         name: "company.import.unit",
         payload,
         availableAt,
-        replaceKey: `company-import-unit:${actor.spaceId}:${actor.userId}:${unit.id}`,
+        replaceKey:
+          unit.status === "claimed"
+            ? `company-import-unit-recovery:${actor.spaceId}:${actor.userId}:${unit.id}:${unit.claimExpiresAt?.getTime() ?? "unknown"}`
+            : `company-import-unit:${actor.spaceId}:${actor.userId}:${unit.id}`,
         keepExisting: true,
         maxAttempts: 1,
       });
