@@ -500,6 +500,8 @@ describe("thread answer delivery", () => {
           computer: null,
         }),
       },
+      // The answer handler first checks whether the card is a held bot-to-bot message.
+      message: { findFirst: vi.fn().mockResolvedValue(null) },
     } as unknown as PrismaClient;
     const deps = {
       prisma,

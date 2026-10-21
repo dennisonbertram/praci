@@ -3924,6 +3924,10 @@ msgstr "Don't count crypto"
 msgid "Don’t have an account?"
 msgstr "Don’t have an account?"
 
+#: src/components/AskCard.tsx
+msgid "Don't share"
+msgstr "Don't share"
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -6462,6 +6466,10 @@ msgstr "Not sent"
 msgid "Not sent. {text}"
 msgstr "Not sent. {text}"
 
+#: src/components/AskCard.tsx
+msgid "Not shared"
+msgstr "Not shared"
+
 #: src/components/inbox/InboxRow.tsx
 #: src/pages/Inbox.tsx
 msgid "Not spam"
@@ -8401,6 +8409,11 @@ msgstr "Setup help"
 msgid "Shape"
 msgstr "Shape"
 
+#: src/components/AskCard.tsx
+msgid "Share"
+msgstr "Share"
+
+#: src/components/AskCard.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Shared"
 msgstr "Shared"
