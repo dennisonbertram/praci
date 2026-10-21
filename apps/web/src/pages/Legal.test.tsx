@@ -490,12 +490,12 @@ it("keeps the page when a re-read fails, says so, and recovers on Try again", as
   expect(container.textContent).toContain("Master Services Agreement");
 });
 
-it("names the Legal agent on Ask and offers the Hide amounts switch", async () => {
+it("names the Legal agent on Ask, with no Hide amounts switch in the header", async () => {
   rpcMock.overview.mockResolvedValue(overview);
   await render(<LegalPage onAskAgent={() => {}} />);
   expect(button("Ask Legal agent")).toBeDefined();
   expect(button("Ask Finance agent")).toBeUndefined();
-  expect(container.querySelector('[data-testid="hide-amounts-toggle"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="hide-amounts-toggle"]')).toBeNull();
 });
 
 it("links the unchecked documents line to the Data room and the deadline tiles to Deadlines", async () => {

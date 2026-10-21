@@ -1118,10 +1118,6 @@ msgstr ""
 msgid "Amounts"
 msgstr ""
 
-#: src/components/HideAmountsToggle.tsx
-msgid "Amounts are hidden: money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show. A reply you write keeps the original amounts."
-msgstr ""
-
 #: src/lib/model-connection-preflight.ts
 msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "Hay una clave de API guardada para este proveedor, no un inicio de sesión por suscripción."
@@ -1638,6 +1634,10 @@ msgstr "Pantalla del bot"
 #: src/pages/Shell.tsx
 msgid "Bot screen preview"
 msgstr "Vista previa de la pantalla del bot"
+
+#: src/pages/BotContextMenu.tsx
+msgid "Bot settings"
+msgstr ""
 
 #: src/pages/IntegrationSetup.tsx
 msgid "Bot that gets the apps you connect here"
@@ -4555,10 +4555,6 @@ msgstr "Ocultar la transcripción"
 
 #: src/components/HideAmountsToggle.tsx
 msgid "Hides money amounts in finance, chat and email."
-msgstr ""
-
-#: src/components/HideAmountsToggle.tsx
-msgid "Hides money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show. A reply you write keeps the original amounts."
 msgstr ""
 
 #: src/lib/ticket-priority.ts
@@ -8098,7 +8094,6 @@ msgid "Set up app catalog"
 msgstr ""
 
 #: src/components/call/CallCard.tsx
-#: src/pages/BotContextMenu.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -8599,6 +8594,10 @@ msgstr ""
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Steps"
 msgstr "Pasos"
+
+#: src/components/ShellSkeleton.tsx
+msgid "Still opening…"
+msgstr ""
 
 #: src/pages/shell/transcript.tsx
 msgid "Still waiting on {service}"
@@ -9283,6 +9282,7 @@ msgstr ""
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
+#: src/components/ShellSkeleton.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
