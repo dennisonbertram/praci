@@ -55,6 +55,7 @@ export const Composer = memo(function Composer({
   artifactTarget,
   draftKey,
   activeName,
+  placeholder: placeholderText,
   running,
   disabled,
   disabledPlaceholder,
@@ -90,6 +91,8 @@ export const Composer = memo(function Composer({
   sentHistory = [],
 }: {
   activeName?: string;
+  /** Replaces "Message <name>" as the empty composer's hint. */
+  placeholder?: string;
   running: boolean;
   disabled?: boolean;
   /** Says why the composer is disabled, in place of the usual placeholder. */
@@ -1068,10 +1071,11 @@ export const Composer = memo(function Composer({
               showComposerPlaceholder
                 ? disabled && disabledPlaceholder
                   ? disabledPlaceholder
-                  : // On a phone the header already names the agent, and a long name wraps.
-                    activeName && !window.matchMedia?.("(max-width: 480px)").matches
-                    ? t`Message ${activeName}`
-                    : t`Message…`
+                  : (placeholderText ??
+                    // On a phone the header already names the agent, and a long name wraps.
+                    (activeName && !window.matchMedia?.("(max-width: 480px)").matches
+                      ? t`Message ${activeName}`
+                      : t`Message…`))
                 : undefined
             }
             aria-label={activeName ? t`Message ${activeName}` : t`Message`}

@@ -5808,6 +5808,29 @@ export function createRunExecutor(deps: ExecutorDeps) {
             );
           }
           if (name === "message_bot") {
+            // A question for the owner's Inbox agent runs in that agent's own chat, where the owner
+            // is not looking. Ask for mail consent here, in the chat they are in, before waking it.
+            if (run.trigger === "user" && typeof args.bot_id === "string") {
+              const target = await deps.prisma.bot.findFirst({
+                where: {
+                  id: args.bot_id,
+                  spaceId: run.spaceId,
+                  userId: run.userId,
+                  archivedAt: null,
+                },
+                select: { spawnKey: true },
+              });
+              if (isInboxAgentSpawnKey(target?.spawnKey)) {
+                const status = await triageStatus(
+                  { prisma: deps.prisma, resolveModel },
+                  { userId: bot.userId, spaceId: run.spaceId },
+                ).catch(() => null);
+                if (status?.blocked?.reason === "needs_consent") {
+                  const asked = await askMailConsent(status.blocked.recipient);
+                  if (asked) return asked;
+                }
+              }
+            }
             const sent = await messageBot(
               deps,
               { ...run, sourceMessageId: run.sourceMessageId },
@@ -8543,7 +8566,7 @@ export const MAIL_CONSENT_DECLINED =
 
 /** What the Inbox agent is told when AI data sharing for mail is off. */
 export const MAIL_CONSENT_OFF =
-  "AI data sharing is off for mail, so mail cannot be read or changed. Tell the user they can allow it again on the Inbox page.";
+  "The user has not allowed mail to be shared with the AI model, so mail cannot be read or changed. Tell them you need their permission first, and do not send them to another page.";
 
 /**
  * Puts how an approved mail_send or mail_draft ended on its card, so "Send" never reads as sent
