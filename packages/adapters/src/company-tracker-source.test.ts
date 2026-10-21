@@ -782,6 +782,63 @@ describe("Company tracker reader", () => {
     expect(state.calls.filter((call) => call.name === "list_milestones")).toHaveLength(100);
   });
 
+  it("requires terminal metadata when a Linear full-list request reaches its size cap", async () => {
+    const milestones = Array.from({ length: 100 }, (_, index) => ({
+      id: `milestone-${index + 1}`,
+      title: `Milestone ${index + 1}`,
+    }));
+    const tools = linearTools().map((tool) =>
+      tool.name === "list_milestones"
+        ? {
+            ...tool,
+            inputSchema: {
+              type: "object",
+              properties: {
+                project: { type: "string" },
+                limit: { type: "integer", maximum: 100 },
+              },
+              required: ["project", "limit"],
+              additionalProperties: false,
+            },
+          }
+        : tool,
+    );
+    const createState = (response: unknown) =>
+      harness(
+        (name, args) => {
+          if (name === "get_project") return { project: { id: args.query, name: "Orion" } };
+          if (name === "list_milestones") {
+            expect(args).toEqual({ project: "project-1", limit: 100 });
+            return response;
+          }
+          return null;
+        },
+        { linear: true, tools },
+      );
+    const withoutTerminalMetadata = createState({ milestones });
+    const project = await withoutTerminalMetadata.tracker.read(
+      linearSource,
+      { kind: "project", id: "project-1", phase: "project" },
+      context,
+    );
+    await expect(
+      withoutTerminalMetadata.tracker.read(linearSource, project.nextCursor, context),
+    ).rejects.toMatchObject({ code: "source_pagination_unavailable" });
+
+    const withTerminalMetadata = createState({ milestones, has_next: false });
+    const terminalProject = await withTerminalMetadata.tracker.read(
+      linearSource,
+      { kind: "project", id: "project-1", phase: "project" },
+      context,
+    );
+    const firstMilestone = await withTerminalMetadata.tracker.read(
+      linearSource,
+      terminalProject.nextCursor,
+      context,
+    );
+    expect(firstMilestone.document?.title).toBe("Linear milestone Milestone 1");
+  });
+
   it("rejects explicit continuation from a Linear full-list milestone tool", async () => {
     const tools = linearTools().map((tool) =>
       tool.name === "list_milestones"

@@ -1313,7 +1313,11 @@ export function createCompanyTrackerReader(reader: CompanyConnectionReader) {
       };
     }
     const metadata = listMetadata(result);
-    if (metadata.hasNext === true || metadata.next)
+    if (
+      metadata.hasNext === true ||
+      metadata.next ||
+      (milestonePlan.size && list.length === limit && metadata.hasNext !== false)
+    )
       throw new CompanyImportWorkerError("source_pagination_unavailable");
     const milestoneIds = list.map((row) => opaqueId.parse(record(row).id));
     const expected = state.milestoneIds?.[0];
