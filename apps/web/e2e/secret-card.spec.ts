@@ -32,15 +32,19 @@ test("renders masked secret card and saves without putting the value in chat", a
     await expect(page.getByPlaceholder(/Message/)).toBeVisible({ timeout: 15_000 });
   }
   await expect(card).toBeVisible({ timeout: 15_000 });
-  await expect(card.getByText("API key", { exact: true }).first()).toBeVisible();
+  await expect(card.getByText("Credentials requested:")).toBeVisible();
   await expect(card.getByText("https://api.example.test", { exact: true })).toBeVisible();
-  const secretField = card.getByLabel("API key");
-  await expect(secretField).toHaveAttribute("type", "password");
-  await expect(card.getByRole("button", { name: "Save", exact: true })).toBeVisible();
+  const open = card.getByRole("button", { name: "Provide secret", exact: true });
+  const dialog = page.getByRole("dialog");
+  const secretField = dialog.locator('input[type="password"]');
+  const submit = dialog.getByRole("button", { name: "Submit", exact: true });
+  await expect(open).toBeVisible();
+  await open.click();
+  await expect(secretField).toBeVisible();
+  await expect(submit).toBeDisabled();
   await captureScreenshot(page, testInfo, "secret-card");
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(card).toBeVisible();
   await expect(secretField).toBeVisible();
   await captureScreenshot(page, testInfo, "secret-card-narrow");
 
@@ -59,21 +63,21 @@ test("renders masked secret card and saves without putting the value in chat", a
     });
   });
   await secretField.fill(secretValue);
-  await card.getByRole("button", { name: "Save", exact: true }).click();
+  await submit.click();
   try {
-    await expect(secretField).toHaveValue("");
-    await expect(secretField).toBeDisabled();
+    await expect(dialog).toHaveCount(0);
     await expect(card.getByRole("button", { name: "Saving…", exact: true })).toBeDisabled();
   } finally {
     releaseFailure();
   }
   await expect(card.getByText("Could not submit this answer", { exact: true })).toBeVisible();
   await expect(page.getByText(secretValue)).toHaveCount(0);
-  await expect(secretField).toHaveValue("");
   await page.unroute("**/rpc/threads/answer");
 
+  await open.click();
+  await expect(secretField).toHaveValue("");
   await secretField.fill(secretValue);
-  await card.getByRole("button", { name: "Save", exact: true }).click();
+  await submit.click();
 
   await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(secretValue)).toHaveCount(0);

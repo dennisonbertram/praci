@@ -184,10 +184,10 @@ it("explains what artifacts are when the space has none", async () => {
   const page = await renderArtifacts();
   try {
     expect(page.container.textContent).toContain("No artifacts yet");
-    const open = [...page.container.querySelectorAll("a")].find((link) =>
-      link.textContent?.includes("Open chat"),
-    );
-    expect(open?.getAttribute("href")).toBe("/app");
+    // Nothing to filter or switch yet, and Ask in the header already opens the chat.
+    expect(page.container.textContent).not.toContain("Open chat");
+    expect(page.container.querySelector('[data-testid="artifacts-filters"]')).toBeNull();
+    expect(page.container.querySelector('[aria-label="Grid view"]')).toBeNull();
   } finally {
     await page.cleanup();
     vi.unstubAllGlobals();

@@ -288,6 +288,14 @@ export function BotSettings({
     ? modelOptionKey(selectedModel.provider, selectedModel.modelId)
     : "";
 
+  // A chosen model whose provider is not connected: runs use the system model instead.
+  const unavailableModel =
+    modelMetaReady &&
+    selectedModel &&
+    !connectedOptions.some((option) => option.key === selectedModelKey)
+      ? (catalogLabel(catalog, selectedModel.provider, selectedModel.modelId) ??
+        selectedModel.modelId)
+      : null;
   const effectiveProvider = selectedModel?.provider ?? me?.defaultProvider ?? null;
   const effectiveModelId = selectedModel?.modelId ?? me?.defaultModel ?? null;
   const effectiveEntry =
@@ -693,7 +701,7 @@ export function BotSettings({
                   {
                     value: "",
                     label:
-                      t`Space default` +
+                      t`System model` +
                       (me?.defaultModel
                         ? ` (${catalogLabel(catalog, me.defaultProvider, me.defaultModel) ?? me.defaultModel})`
                         : ""),
@@ -703,7 +711,7 @@ export function BotSettings({
                     ? [
                         {
                           value: selectedModelKey,
-                          label: selectedModel?.modelId ?? selectedModelKey,
+                          label: unavailableModel ?? selectedModel?.modelId ?? selectedModelKey,
                           provider: selectedModel?.provider,
                         },
                       ]
@@ -723,6 +731,11 @@ export function BotSettings({
                   });
                 }}
               />
+              {unavailableModel ? (
+                <span className="mt-1.5 block text-[12.5px] font-normal text-muted-foreground">
+                  {t`Using the system model: ${unavailableModel} isn't available`}
+                </span>
+              ) : null}
             </label>
             {thinkingOptions.length ? (
               <label htmlFor={`${ids}-thinking`} className={advancedLabelClass}>

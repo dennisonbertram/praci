@@ -228,6 +228,8 @@ export const Transcript = memo(function Transcript({
   const autoScrolling = useRef(false);
   const lastScrollTop = useRef<number | null>(null);
   const autoScrollTimer = useRef<number | undefined>(undefined);
+  // Until this time, a layout change keeps the "New" divider where the open scrolled it.
+  const dividerPinUntil = useRef(0);
   const jumpButtonRef = useRef<HTMLButtonElement>(null);
   const messageById = useMemo(
     () => new Map(messages.map((message) => [message.id, message])),
@@ -393,6 +395,15 @@ export const Transcript = memo(function Transcript({
     const element = scrollRef.current;
     if (!element || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
+      if (performance.now() < dividerPinUntil.current) {
+        // Rows measure themselves after the first paint and the thread shrinks; keep the divider at the top.
+        const row = element.querySelector("[data-unread-divider]");
+        const drift = row
+          ? row.getBoundingClientRect().top - element.getBoundingClientRect().top - 24
+          : 0;
+        if (Math.abs(drift) > 1) element.scrollTop += drift;
+        return;
+      }
       if (!following.current || jumpScrolling.current) return;
       if (element.scrollHeight - element.scrollTop - element.clientHeight > 1) {
         element.scrollTop = element.scrollHeight;
@@ -545,6 +556,7 @@ export const Transcript = memo(function Transcript({
         following.current = false;
         autoScrolling.current = false;
         element.scrollTop += offset - 24;
+        dividerPinUntil.current = performance.now() + 1500;
       }
       // A question waiting for an answer matters more than where the unread messages begin.
       const ask = answerableAskMessageId
@@ -559,6 +571,7 @@ export const Transcript = memo(function Transcript({
           following.current = false;
           autoScrolling.current = false;
           element.scrollTop += box.top - view.top - 24;
+          dividerPinUntil.current = 0;
         }
       }
       if (element) {
@@ -630,16 +643,19 @@ export const Transcript = memo(function Transcript({
         aria-live="polite"
         aria-relevant="additions"
         onPointerDown={(event) => {
+          dividerPinUntil.current = 0;
           lastScrollTop.current = event.currentTarget.scrollTop;
           autoScrolling.current = false;
           following.current = false;
         }}
         onTouchStart={(event) => {
+          dividerPinUntil.current = 0;
           lastScrollTop.current = event.currentTarget.scrollTop;
           autoScrolling.current = false;
           following.current = false;
         }}
         onWheel={(event) => {
+          dividerPinUntil.current = 0;
           if (event.deltaY < 0) {
             lastScrollTop.current = event.currentTarget.scrollTop;
             autoScrolling.current = false;
@@ -1706,45 +1722,49 @@ const MessageView = memo(function MessageView({
           );
         }
         if (block.kind === "ask") {
+          // A card after text in the same message sits one message-gap (20 px) below it.
+          const gap = i > 0 ? "mt-5" : undefined;
           if (block.mail && isApprovalAskBlock(block)) {
             return (
-              <MailApprovalCard
-                key={i}
-                mail={block.mail}
-                status={block.status === "answered" ? "answered" : "pending"}
-                answer={block.answer}
-                canAnswer={canAnswer}
-                botName={botToolControls?.editableBotName(message.botId)}
-                onAnswer={(text, username, mail) => onAnswer(message, text, username, mail)}
-                onOpenComposer={(failed) =>
-                  failed.connectionId
-                    ? botToolControls?.openComposer({
-                        connectionId: failed.connectionId,
-                        account: failed.account ?? "",
-                        to: failed.to,
-                        cc: failed.cc,
-                        bcc: failed.bcc,
-                        subject: failed.subject,
-                        body: failed.body,
-                      })
-                    : undefined
-                }
-                onDisableTool={
-                  message.botId
-                    ? (tool) => botToolControls!.disableTool(message.botId!, tool)
-                    : undefined
-                }
-              />
+              <div key={i} className={gap}>
+                <MailApprovalCard
+                  mail={block.mail}
+                  status={block.status === "answered" ? "answered" : "pending"}
+                  answer={block.answer}
+                  canAnswer={canAnswer}
+                  botName={botToolControls?.editableBotName(message.botId)}
+                  onAnswer={(text, username, mail) => onAnswer(message, text, username, mail)}
+                  onOpenComposer={(failed) =>
+                    failed.connectionId
+                      ? botToolControls?.openComposer({
+                          connectionId: failed.connectionId,
+                          account: failed.account ?? "",
+                          to: failed.to,
+                          cc: failed.cc,
+                          bcc: failed.bcc,
+                          subject: failed.subject,
+                          body: failed.body,
+                        })
+                      : undefined
+                  }
+                  onDisableTool={
+                    message.botId
+                      ? (tool) => botToolControls!.disableTool(message.botId!, tool)
+                      : undefined
+                  }
+                />
+              </div>
             );
           }
           return (
-            <AskCard
-              key={i}
-              block={block}
-              // A held message is answered without a waiting run, so it stays answerable.
-              canAnswer={canAnswer || block.share === true}
-              onAnswer={(text, username) => onAnswer(message, text, username)}
-            />
+            <div key={i} className={gap}>
+              <AskCard
+                block={block}
+                // A held message is answered without a waiting run, so it stays answerable.
+                canAnswer={canAnswer || block.share === true}
+                onAnswer={(text, username) => onAnswer(message, text, username)}
+              />
+            </div>
           );
         }
         if (block.kind === "cloud_agent") return <CloudAgentCard key={i} block={block} />;

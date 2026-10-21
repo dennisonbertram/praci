@@ -1,7 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { NotificationPreferences } from "@rakazo/contracts";
-import { Switch } from "@rakazo/ui-web";
-import { useEffect, useState } from "react";
+import { Label, Switch } from "@rakazo/ui-web";
+import { useEffect, useId, useState } from "react";
 import type { BrowserNotificationPermission } from "../lib/browser-notifications";
 import { requestBrowserNotificationPermission } from "../lib/browser-notifications";
 import { NOTIFICATION_SETTINGS_CHANGED } from "../lib/notification-delivery";
@@ -18,6 +18,7 @@ export function NotificationSettingsSection() {
   const [permission, setPermission] = useState(currentPermission);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const id = useId();
 
   useEffect(() => {
     let live = true;
@@ -62,16 +63,20 @@ export function NotificationSettingsSection() {
         </p>
       ) : null}
       <ul className="mt-3 flex flex-col gap-3">
-        <li className="flex items-center gap-3">
+        <li className="flex items-center gap-3 pointer-coarse:min-h-11">
           <Switch
+            id={`${id}-browser`}
             aria-label={t`Browser`}
             checked={permission === "granted" && prefs.channels.browser !== false}
             disabled={pending || browserBlocked}
             onCheckedChange={(on) => void setBrowser(on)}
           />
-          <span className="text-[14px] text-foreground/75">
+          <Label
+            htmlFor={`${id}-browser`}
+            className="text-[14px] font-normal text-foreground/75 pointer-coarse:self-stretch pointer-coarse:flex-1"
+          >
             <Trans>Browser</Trans>
-          </span>
+          </Label>
           {browserBlocked ? (
             <span className="text-[13px] text-muted-foreground">
               {permission === undefined ? (
@@ -83,29 +88,37 @@ export function NotificationSettingsSection() {
           ) : null}
         </li>
         {prefs.hasPhone ? (
-          <li className="flex items-center gap-3">
+          <li className="flex items-center gap-3 pointer-coarse:min-h-11">
             <Switch
+              id={`${id}-phone`}
               aria-label={t`Phone`}
               checked={prefs.channels.push !== false}
               disabled={pending}
               onCheckedChange={(on) => void save({ push: on })}
             />
-            <span className="text-[14px] text-foreground/75">
+            <Label
+              htmlFor={`${id}-phone`}
+              className="text-[14px] font-normal text-foreground/75 pointer-coarse:self-stretch pointer-coarse:flex-1"
+            >
               <Trans>Phone</Trans>
-            </span>
+            </Label>
           </li>
         ) : null}
         {prefs.hasImessage ? (
-          <li className="flex items-center gap-3">
+          <li className="flex items-center gap-3 pointer-coarse:min-h-11">
             <Switch
+              id={`${id}-imessage`}
               aria-label={t`iMessage`}
               checked={prefs.channels.imessage !== false}
               disabled={pending}
               onCheckedChange={(on) => void save({ imessage: on })}
             />
-            <span className="text-[14px] text-foreground/75">
+            <Label
+              htmlFor={`${id}-imessage`}
+              className="text-[14px] font-normal text-foreground/75 pointer-coarse:self-stretch pointer-coarse:flex-1"
+            >
               <Trans>iMessage</Trans>
-            </span>
+            </Label>
           </li>
         ) : null}
       </ul>

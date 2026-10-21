@@ -22,6 +22,13 @@ describe("current model compatibility", () => {
         ?.thinkingLevels,
     ).toEqual(["low", "medium", "high", "xhigh", "max"]);
   });
+  it("lists OpenRouter's Muse Wonder with thinking levels", () => {
+    const entry = listPiCatalog().find(
+      (item) => item.provider === "openrouter" && item.id === "meta/muse-wonder",
+    );
+    expect(entry?.label).toContain("Muse Wonder");
+    expect(entry?.thinkingLevels).toContain("xhigh");
+  });
   it("does not replace a provider library model when applying the supplement again", () => {
     const models = supplementPiModels(builtinModels());
     const model = models.getModel("anthropic", "claude-sonnet-5-5");
