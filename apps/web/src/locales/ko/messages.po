@@ -197,6 +197,11 @@ msgstr ""
 msgid "{0} (overdue)"
 msgstr ""
 
+#. placeholder {0}: selected.name
+#: src/pages/VoiceSettingsOverlay.tsx
+msgid "{0} API key"
+msgstr ""
+
 #. placeholder {0}: bot.name
 #: src/components/integrations/parts.tsx
 msgid "{0} can use {appName}"
@@ -1193,7 +1198,6 @@ msgstr "API가 다시 작동하지만 업데이트가 완료되지 않았습니�
 #: src/lib/localized-provider-hint.ts
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
-#: src/pages/VoiceSettingsOverlay.tsx
 msgid "API key"
 msgstr "API 키"
 
@@ -2451,15 +2455,16 @@ msgstr "이 브라우저 세션에서 URL에 연결할 수 있는지 확인한 �
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/shell/message-cards.tsx
-#: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect"
 msgstr "연결"
 
 #. placeholder {0}: exchange.name
 #. placeholder {0}: item.name
+#. placeholder {0}: selected.name
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect {0}"
 msgstr ""
 
@@ -4592,10 +4597,6 @@ msgstr ""
 msgid "Hide transcript"
 msgstr "대화 기록 숨기기"
 
-#: src/components/HideAmountsToggle.tsx
-msgid "Hides money amounts in finance, chat and email."
-msgstr ""
-
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "High"
@@ -5552,10 +5553,6 @@ msgstr "서버에서 찾은 모델"
 #: src/lib/model-connection-preflight.ts
 msgid "Models list OK. {modelCount, plural, one {# model} other {# models}} available. Chat was not tested."
 msgstr "모델 목록이 정상입니다. {modelCount, plural, one {모델 #개} other {모델 #개}}를 사용할 수 있습니다. 채팅은 테스트하지 않았습니다."
-
-#: src/components/HideAmountsToggle.tsx
-msgid "Money amounts are hidden in finance, chat and email."
-msgstr ""
 
 #: src/lib/billing.ts
 msgid "month"
@@ -6822,10 +6819,6 @@ msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
-msgstr ""
-
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "Praci keeps itself up to date. If an update ever needs you, it shows here."
 msgstr ""
 
 #: src/components/DataExport.tsx
@@ -9481,7 +9474,6 @@ msgstr ""
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
-#: src/pages/SettingsOverlay.tsx
 msgid "Updates"
 msgstr "업데이트"
 
@@ -9555,7 +9547,7 @@ msgstr ""
 msgid "URL"
 msgstr ""
 
-#: src/pages/SettingsOverlay.tsx
+#: src/pages/AccountSettingsOverlay.tsx
 msgid "Usage"
 msgstr "사용량"
 

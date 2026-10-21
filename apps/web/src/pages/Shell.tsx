@@ -3791,7 +3791,7 @@ export function ShellPage() {
                   return;
                 }
                 if (action === "settings-usage") {
-                  openSettings("usage");
+                  openSettings("general");
                 }
               }}
             />
