@@ -39,7 +39,7 @@ export function capTableToolsAllowed(
 }
 
 type ContactToolDeps = {
-  prisma: Pick<PrismaClient, "contact" | "capTableSnapshot">;
+  prisma: Pick<PrismaClient, "contact" | "capTableSnapshot" | "fundraiseRound">;
   /** From the run (the bot owner), never from model input. */
   scope: { spaceId: string; userId: string };
   /** The agent running the tool, from the run, never from model input. */
@@ -64,7 +64,8 @@ export async function contactToolFromTool(
       return { contacts };
     }
     if (name === "contacts_add") {
-      const { id: _id, ...rest } = args;
+      // The pipeline stage is the founder's to change from the Fundraising page, never an agent's.
+      const { id: _id, stage: _stage, checkSizeCents: _check, nextStep: _next, ...rest } = args;
       const input = ContactSaveInputSchema.safeParse(rest);
       if (!input.success) return { error: input.error.issues.map((i) => i.message).join("; ") };
       const { contact, created } = await addContactIfNew(
@@ -109,7 +110,8 @@ export async function contactToolFromTool(
     }
     if (name === "contacts_save") {
       // The tool never updates by id and never creates: it changes the contact with this email.
-      const { id: _id, ...rest } = args;
+      // The pipeline stage is the founder's to change from the Fundraising page, never an agent's.
+      const { id: _id, stage: _stage, checkSizeCents: _check, nextStep: _next, ...rest } = args;
       const input = ContactSaveInputSchema.safeParse(rest);
       if (!input.success) return { error: input.error.issues.map((i) => i.message).join("; ") };
       const existing = input.data.email

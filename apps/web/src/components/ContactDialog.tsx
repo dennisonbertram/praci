@@ -1,7 +1,7 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { Contact, ContactKind } from "@rakazo/contracts";
-import { ContactEmailSchema } from "@rakazo/contracts";
+import type { Contact, ContactKind, ContactStage } from "@rakazo/contracts";
+import { ContactEmailSchema, ContactStageSchema } from "@rakazo/contracts";
 import {
   Button,
   Dialog,
@@ -18,6 +18,7 @@ import {
 } from "@rakazo/ui-web";
 import type { FormEvent } from "react";
 import { useRef, useState } from "react";
+import { centsFromText } from "../lib/dollars-input";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
@@ -37,8 +38,19 @@ export const contactKindNames = (): Record<ContactKind, string> => ({
   partner: t`Partner`,
   advisor: t`Advisor`,
   legal: t`Legal`,
+  prospect: t`Prospect`,
   other: t`Other`,
 });
+
+export const contactStageNames = (): Record<ContactStage, string> => ({
+  target: t`Target`,
+  intro: t`Intro`,
+  meeting: t`Meeting`,
+  diligence: t`Diligence`,
+  committed: t`Committed`,
+  passed: t`Passed`,
+});
+
 export const contactAddLabels = (): Record<ContactKind, string> => ({
   investor: t`Add investor`,
   auditor: t`Add auditor`,
@@ -48,6 +60,7 @@ export const contactAddLabels = (): Record<ContactKind, string> => ({
   partner: t`Add contact`,
   advisor: t`Add contact`,
   legal: t`Add contact`,
+  prospect: t`Add prospect`,
   other: t`Add contact`,
 });
 
@@ -80,11 +93,20 @@ export function ContactDialog({
   );
   const [kind, setKind] = useState<ContactKind>(contact?.kind ?? prefill?.kind ?? "investor");
   const [notes, setNotes] = useState(contact?.notes ?? "");
+  const [stage, setStage] = useState<ContactStage>(contact?.stage ?? "target");
+  const [checkSize, setCheckSize] = useState(
+    contact?.checkSizeCents == null ? "" : String(contact.checkSizeCents / 100),
+  );
+  const [nextStep, setNextStep] = useState(contact?.nextStep ?? "");
+  const [checkSizeError, setCheckSizeError] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [emailError, setEmailError] = useState("");
   const emailInput = useRef<HTMLInputElement>(null);
   const names = contactKindNames();
+  const stageNames = contactStageNames();
+  // Stage, check size and next step belong to a prospect; the dialog is shared with the Contacts page.
+  const isProspect = kind === "prospect";
 
   const typedEmail = email.trim().toLowerCase();
   const sameEmail = typedEmail
@@ -114,6 +136,11 @@ export function ContactDialog({
       emailInput.current?.focus();
       return;
     }
+    const checkSizeCents = isProspect ? centsFromText(checkSize) : null;
+    if (checkSizeCents === undefined) {
+      setCheckSizeError(t`Enter an amount`);
+      return;
+    }
     void run(
       () =>
         rpc.contacts.save({
@@ -123,6 +150,7 @@ export function ContactDialog({
           organization: organization.trim() || null,
           kind,
           notes: notes.trim() || null,
+          ...(isProspect ? { stage, checkSizeCents, nextStep: nextStep.trim() || null } : {}),
         }),
       onSaved,
     );
@@ -231,6 +259,62 @@ export function ContactDialog({
                 ))}
               </NativeSelect>
             </div>
+            {isProspect ? (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="contact-stage">
+                    <Trans>Stage</Trans>
+                  </Label>
+                  <NativeSelect
+                    id="contact-stage"
+                    className="w-full"
+                    value={stage}
+                    onChange={(e) => setStage(e.target.value as ContactStage)}
+                  >
+                    {ContactStageSchema.options.map((value) => (
+                      <NativeSelectOption key={value} value={value}>
+                        {stageNames[value]}
+                      </NativeSelectOption>
+                    ))}
+                  </NativeSelect>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="contact-check-size">
+                    <Trans>Check size</Trans>
+                  </Label>
+                  <Input
+                    id="contact-check-size"
+                    inputMode="decimal"
+                    value={checkSize}
+                    aria-invalid={checkSizeError ? true : undefined}
+                    aria-describedby={checkSizeError ? "contact-check-size-error" : undefined}
+                    onChange={(e) => {
+                      setCheckSize(e.target.value);
+                      setCheckSizeError("");
+                    }}
+                  />
+                  {checkSizeError ? (
+                    <p
+                      id="contact-check-size-error"
+                      role="alert"
+                      className="text-sm text-destructive"
+                    >
+                      {checkSizeError}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="contact-next-step">
+                    <Trans>Next step</Trans>
+                  </Label>
+                  <Input
+                    id="contact-next-step"
+                    value={nextStep}
+                    onChange={(e) => setNextStep(e.target.value)}
+                  />
+                </div>
+              </>
+            ) : null}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="contact-notes">
                 <Trans>Notes</Trans>

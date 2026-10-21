@@ -191,6 +191,12 @@ import {
   FinanceStatementsOutputSchema,
   FinanceStatementUploadInputSchema,
 } from "./finance-statements.js";
+import {
+  FundraiseRoundSaveInputSchema,
+  FundraiseRoundSchema,
+  FundraisingOverviewSchema,
+  ProspectSaveInputSchema,
+} from "./fundraising.js";
 import { Id, IsoDate } from "./ids.js";
 import {
   CleanupArchiveInputSchema,
@@ -1570,6 +1576,19 @@ export const appContract = {
     reminder: oc
       .input(z.object({ cadence: InvestorReminderCadenceSchema.optional() }))
       .output(z.object({ cadence: InvestorReminderCadenceSchema })),
+  },
+  fundraising: {
+    overview: oc.output(FundraisingOverviewSchema),
+    round: {
+      /** Starts the round, or edits the open one when `id` is given; CONFLICT when a round is already open. */
+      save: oc.input(FundraiseRoundSaveInputSchema).output(FundraiseRoundSchema),
+      close: oc.input(z.object({ id: Id })).output(FundraiseRoundSchema),
+      /** CONFLICT while another round is open. */
+      reopen: oc.input(z.object({ id: Id })).output(FundraiseRoundSchema),
+    },
+    prospects: {
+      save: oc.input(ProspectSaveInputSchema).output(ContactSchema),
+    },
   },
   carta: {
     agent: oc.output(BotSchema),

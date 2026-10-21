@@ -58,13 +58,13 @@ export function useContactNotices(
 
   const deleted = (gone: Contact) => {
     reload();
-    const { name, email, organization, kind, notes } = gone;
+    const { name, email, organization, kind, notes, stage, checkSizeCents, nextStep } = gone;
     let restoring = false;
     const restore = () => {
       if (restoring) return;
       restoring = true;
       rpc.contacts
-        .save({ name, email, organization, kind, notes })
+        .save({ name, email, organization, kind, notes, stage, checkSizeCents, nextStep })
         .then((saved) => {
           toast(t`Restored ${name}`);
           reload();

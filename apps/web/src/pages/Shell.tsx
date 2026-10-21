@@ -87,6 +87,7 @@ import {
   FileText,
   FolderOpen,
   FolderPlus,
+  HandCoins,
   History,
   LayoutGrid,
   ListTodo,
@@ -292,6 +293,7 @@ import { ContactsPage } from "./Contacts";
 import { DataRoomPage } from "./DataRoom";
 import { DevinPage } from "./Devin";
 import { FinancePage } from "./Finance";
+import { FundraisingPage } from "./Fundraising";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
 import { InboxPage } from "./Inbox";
 import { InvestorsPage } from "./Investors";
@@ -1110,6 +1112,7 @@ export function ShellPage() {
   const boardMode = useMatch("/app/board") != null;
   const investorsMode = useMatch("/app/investors/*") != null;
   const investorUpdateMatch = useMatch("/app/investors/updates/:id");
+  const fundraisingMode = useMatch("/app/fundraising") != null;
   const contactsMode = useMatch("/app/contacts") != null;
   // Inbox, Finance, Legal, Data room, Cap Table and Integrations are pages of their own: no bot
   // route. Inbox, Finance, Legal and Cap Table keep their agent in a side panel.
@@ -1119,6 +1122,7 @@ export function ShellPage() {
     legalMode ||
     devinMode ||
     investorsMode ||
+    fundraisingMode ||
     integrationsMode ||
     dataRoomMode ||
     artifactsMode ||
@@ -1159,7 +1163,7 @@ export function ShellPage() {
               ? findLegalAgent(bots, userId)
               : devinMode
                 ? bots.find((bot) => bot.id === devinAgentId)
-                : investorsMode
+                : investorsMode || fundraisingMode
                   ? findInvestorsAgent(bots, userId)
                   : routeBot.bot;
   // A bot made with "New bot" opens with only its name until it has answered a message.
@@ -2192,6 +2196,12 @@ export function ShellPage() {
         // Words a founder may type for this page; matched along with the label.
         keywords: t`cap table, equity, ownership, Carta`,
         icon: <PieChart {...icon} />,
+      },
+      {
+        id: "fundraising",
+        label: t`Fundraising`,
+        keywords: t`safe, round, raise`,
+        icon: <HandCoins {...icon} />,
       },
       { id: "contacts", label: t`Contacts`, icon: <BookUser {...icon} /> },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
@@ -3277,16 +3287,18 @@ export function ShellPage() {
 
   // The Investors agent is made when the page first opens, with or without Carta.
   const investorsAgentAsked = useRef(false);
+  // Investors and Fundraising share the one Investors agent and its panel.
+  const investorsAgentPage = investorsMode || fundraisingMode;
   const hasInvestorsAgent = findInvestorsAgent(bots, userId) !== undefined;
   useEffect(() => {
-    if (!investorsMode || !initialBotsLoaded || !userId || hasInvestorsAgent) return;
+    if (!investorsAgentPage || !initialBotsLoaded || !userId || hasInvestorsAgent) return;
     if (investorsAgentAsked.current) return;
     investorsAgentAsked.current = true;
     void createInvestorsAgent();
   });
   useEffect(() => {
-    if (!investorsMode) investorsAgentAsked.current = false;
-  }, [investorsMode]);
+    if (!investorsAgentPage) investorsAgentAsked.current = false;
+  }, [investorsAgentPage]);
   // One collapsed preference (kept under its original Carta key) serves the Investors panel.
   const investorsPanel = cartaPanelState({
     connected: true,
@@ -3392,7 +3404,7 @@ export function ShellPage() {
                 creating: creatingLegalAgent,
                 error: legalAgentError,
               }
-            : investorsMode
+            : investorsAgentPage
               ? {
                   name: "investors-agent",
                   testId: "investors-agent-panel",
@@ -4304,6 +4316,7 @@ export function ShellPage() {
                 { key: "legal", label: t`Legal` },
                 ...(glance.devinConnected ? [{ key: "devin", label: t`Devin` }] : []),
                 { key: "investors", label: t`Investors` },
+                { key: "fundraising", label: t`Fundraising` },
                 { key: "contacts", label: t`Contacts` },
                 { key: "data-room", label: t`Data room` },
                 { key: "artifacts", label: t`Artifacts` },
@@ -4402,6 +4415,19 @@ export function ShellPage() {
                     navigate("/app/investors");
                   }}
                   {...glanceBadge({ unseen: unseen.investors ?? 0, rail })}
+                />
+              )}
+              {hiddenPages.includes("fundraising") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-fundraising"
+                  current={fundraisingMode}
+                  icon={<HandCoins size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Fundraising`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/fundraising");
+                  }}
                 />
               )}
               {hiddenPages.includes("contacts") ? null : (
@@ -5599,6 +5625,11 @@ export function ShellPage() {
             <UpdateEditor
               key={investorUpdateMatch.params.id}
               updateId={investorUpdateMatch.params.id}
+            />
+          ) : fundraisingMode ? (
+            <FundraisingPage
+              onShowAgent={investorsPanel.open ? undefined : askInvestorsAgent}
+              agentBusy={transcriptRunning}
             />
           ) : investorsMode ? (
             <InvestorsPage

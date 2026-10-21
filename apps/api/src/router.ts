@@ -240,6 +240,7 @@ import {
   ContactEmailTakenError,
   changeCapTableSource,
   claimEmptySpaceDeletionForMember,
+  closeRound,
   createExternalConversationRepos,
   createGroupRepos,
   createRepos,
@@ -253,6 +254,7 @@ import {
   deleteUnreferencedCredentialSecret,
   duplicateInvestorUpdate,
   ensureBoard,
+  FundraiseRoundOpenError,
   findDefaultModelCredential,
   findDefaultVoiceCredential,
   findModelCredential,
@@ -261,6 +263,7 @@ import {
   formatMessagingLinkCode,
   getCapTableSnapshot,
   getInvestorUpdate,
+  getFundraisingOverview,
   getNotificationPreferences,
   InvalidSpaceNameError,
   InvestorUpdateLockedError,
@@ -295,6 +298,7 @@ import {
   removeSidebarPage,
   renameSpaceForMember,
   renewSpaceDeletionClaim,
+  reopenRound,
   replaceSpaceBackupModels,
   restoreBotUnderComputerQuota,
   restoreSidebar,
@@ -307,7 +311,9 @@ import {
   saveCapTableSnapshot,
   saveContact,
   saveInvestorUpdate,
+  saveProspect,
   savePushToken,
+  saveRound,
   selectSpaceModelPreference,
   selectSpaceVoicePreference,
   setSidebarFolderCollapsed,
@@ -1064,6 +1070,14 @@ function investorUpdateError(error: unknown): never {
   if (error instanceof InvestorUpdateLockedError)
     throw new ORPCError("CONFLICT", { message: error.message });
   return contactNotFound(error);
+}
+
+function fundraisingError(error: unknown): never {
+  if (error instanceof IsolationError) throw new ORPCError("NOT_FOUND", { message: error.message });
+  if (error instanceof FundraiseRoundOpenError) {
+    throw new ORPCError("CONFLICT", { message: error.message });
+  }
+  throw error;
 }
 
 function contactNotFound(error: unknown): never {
@@ -7657,6 +7671,27 @@ export function createRouter(deps: RouterDeps) {
         await undoCapTableSource(deps.prisma, actorScope(context.actor));
         return capTableState(context.actor);
       }),
+    },
+    fundraising: {
+      overview: authed.fundraising.overview.handler(({ context }) =>
+        getFundraisingOverview(deps.prisma, actorScope(context.actor)),
+      ),
+      round: {
+        save: authed.fundraising.round.save.handler(({ context, input }) =>
+          saveRound(deps.prisma, actorScope(context.actor), input).catch(fundraisingError),
+        ),
+        close: authed.fundraising.round.close.handler(({ context, input }) =>
+          closeRound(deps.prisma, actorScope(context.actor), input.id).catch(fundraisingError),
+        ),
+        reopen: authed.fundraising.round.reopen.handler(({ context, input }) =>
+          reopenRound(deps.prisma, actorScope(context.actor), input.id).catch(fundraisingError),
+        ),
+      },
+      prospects: {
+        save: authed.fundraising.prospects.save.handler(({ context, input }) =>
+          saveProspect(deps.prisma, actorScope(context.actor), input).catch(fundraisingError),
+        ),
+      },
     },
     carta: {
       agent: authed.carta.agent.handler(({ context }) =>
