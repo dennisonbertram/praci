@@ -413,7 +413,7 @@ function Overview({
                           ? t`${sourceNames}, ${data.excludedNonUsdCount} non-USD not counted`
                           : undefined
                       }
-                      className="inline-flex min-w-0 items-center gap-1.5 rounded-full px-1.5 py-0.5 hover:text-foreground"
+                      className="rk-tap inline-flex min-w-0 items-center gap-1.5 rounded-full px-1.5 py-0.5 hover:text-foreground"
                     />
                   }
                 >
@@ -600,7 +600,7 @@ function Overview({
               <PeriodTabs value={period} onChange={setPeriod} />
               <Link
                 to={financePath.spend(period)}
-                className="text-lg font-semibold tabular-nums hover:underline"
+                className="rk-tap text-lg font-semibold tabular-nums hover:underline"
               >
                 {money(totals.currentCents)}
               </Link>
@@ -623,7 +623,10 @@ function Overview({
 
           <Section
             title={
-              <Link to={financePath.burn()} className="inline-flex items-center hover:underline">
+              <Link
+                to={financePath.burn()}
+                className="rk-tap inline-flex items-center hover:underline"
+              >
                 <Trans>Burn</Trans>
                 <ChevronRight aria-hidden="true" className="size-3" />
               </Link>

@@ -299,7 +299,7 @@ function Legal({
         <p className="-mt-2 mb-4 text-xs text-muted-foreground">
           <Link
             to={`${DATA_ROOM_PATH}?legal=unchecked`}
-            className="underline underline-offset-2 hover:text-foreground"
+            className="rk-tap underline underline-offset-2 hover:text-foreground"
           >
             {plural(counts.unreviewedDocuments, {
               one: "# Data room document not yet checked by Legal",
