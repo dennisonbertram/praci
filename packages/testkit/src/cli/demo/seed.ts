@@ -19,7 +19,7 @@ import {
 } from "@rakazo/db";
 import { makePdf } from "../../../../adapters/src/data-room-test-fakes.js";
 import type { Turn } from "./conversations.js";
-import { DEMO_CONVERSATIONS } from "./conversations.js";
+import { DEMO_CONVERSATIONS, DEMO_EMAIL_AGENT_CONVERSATION } from "./conversations.js";
 import {
   DEMO_ARCHIVED_BOT,
   DEMO_ARTIFACTS,
@@ -732,6 +732,26 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
           conversation,
           artifactIds,
           new Map(bots.map((bot) => [bot.name, bot.id])),
+        );
+      }
+      // The email agent for the Sam Ortiz thread: made the way Ask agent makes it, then its chat is written.
+      const sam = await db.prisma.cachedMailMessage.findFirst({
+        where: { spaceId, subject: { contains: "Notice of Stockholder Action" }, fromSelf: false },
+        orderBy: { receivedAt: "desc" },
+      });
+      if (sam) {
+        const agent = await session.rpc<{ id: string }>("inbox/askAgent", { messageId: sam.id });
+        await waitForIdleBot(db.prisma, agent.id);
+        const agentThread = await db.prisma.thread.findUniqueOrThrow({
+          where: { botId: agent.id },
+        });
+        await writeConversation(
+          db.prisma,
+          agentThread.id,
+          agent.id,
+          DEMO_EMAIL_AGENT_CONVERSATION,
+          artifactIds,
+          new Map(),
         );
       }
       const botId = (name: string) => bots.find((bot) => bot.name === name)?.id;

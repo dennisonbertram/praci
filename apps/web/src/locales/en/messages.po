@@ -2275,6 +2275,10 @@ msgstr "Close"
 msgid "Close {title}"
 msgstr "Close {title}"
 
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Close agent"
+msgstr "Close agent"
+
 #: src/components/ComposeEmail.tsx
 msgid "Close and remove"
 msgstr "Close and remove"
@@ -6597,6 +6601,8 @@ msgid "Open {0}"
 msgstr "Open {0}"
 
 #. placeholder {0}: active.name
+#. placeholder {0}: bot.name
+#: src/components/inbox/EmailAgentPanel.tsx
 #: src/pages/Shell.tsx
 msgid "Open {0} full screen"
 msgstr "Open {0} full screen"
@@ -6655,6 +6661,7 @@ msgstr "Open Finance"
 msgid "Open folder"
 msgstr "Open folder"
 
+#: src/components/inbox/EmailAgentPanel.tsx
 #: src/pages/Shell.tsx
 msgid "Open full screen"
 msgstr "Open full screen"
@@ -7705,6 +7712,10 @@ msgstr "Reply all"
 #: src/pages/shell/composer.tsx
 msgid "Reply cancelled"
 msgstr "Reply cancelled"
+
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Reply with draft"
+msgstr "Reply with draft"
 
 #. placeholder {0}: replyNameRef.current
 #: src/pages/shell/composer.tsx
