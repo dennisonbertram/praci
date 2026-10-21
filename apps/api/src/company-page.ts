@@ -42,8 +42,8 @@ export async function companyFact(
 ): Promise<CompanyFact | null> {
   const store = companyForActor(prisma, actor);
   if (input.kind === "entity") {
-    const record = await store.detail(input.id);
-    return record && companyFactIsVisible(record) ? { kind: "entity", record } : null;
+    const record = (await companyPage(prisma, actor)).entities.find((row) => row.id === input.id);
+    return record ? { kind: "entity", record } : null;
   }
   if (input.kind === "edge") {
     const record = await store.edgeDetail(input.id);

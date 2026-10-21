@@ -172,6 +172,10 @@ describePostgres("company page (PostgreSQL)", () => {
       await company.importEntity(inputFor(fact("nw-person-1"), { confidence: 0.4 })),
     );
     const rejected = entityId(await company.importEntity(inputFor(fact("nw-person-2"))));
+    await company.importEdge({
+      edge: { fromId: lowConfidence, toId: root, relation: "works_at", confidence: 0.95 },
+      evidence: rootInput.evidence,
+    });
     await company.reject(rejected, "Rejected synthetic company fact");
     expect(
       await company.importEntity(
@@ -190,6 +194,7 @@ describePostgres("company page (PostgreSQL)", () => {
       record: {
         status: "confirmed",
         attrs: { whatWeDo: "Owner-corrected Northwind description." },
+        edges: [],
       },
     });
     expect(await companyFact(prisma, owner, { kind: "entity", id: lowConfidence })).toBeNull();

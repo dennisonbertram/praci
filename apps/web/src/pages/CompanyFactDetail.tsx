@@ -7,7 +7,7 @@ import {
   CompanyEventEditInputSchema,
 } from "@rakazo/contracts";
 import { Badge, Button, Dialog, DialogContent, DialogTitle, Input, Textarea } from "@rakazo/ui-web";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { companyDate, companyFactTitle } from "../lib/company-format";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { rpc } from "../lib/rpc";
@@ -23,6 +23,7 @@ export function CompanyFactDetail({
   onChanged: () => void;
 }) {
   const id = useId();
+  const popupRef = useRef<HTMLDivElement>(null);
   const hidden = useHideAmounts();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(companyFactTitle(fact));
@@ -78,7 +79,12 @@ export function CompanyFactDetail({
         if (!open && !busy) onClose();
       }}
     >
-      <DialogContent className="inset-y-0 left-auto right-0 h-full max-h-screen w-full translate-x-0 translate-y-0 content-start overflow-y-auto rounded-none sm:max-w-lg">
+      <DialogContent
+        ref={popupRef}
+        initialFocus={popupRef}
+        tabIndex={-1}
+        className="inset-y-0 left-auto right-0 h-full max-h-screen w-full translate-x-0 translate-y-0 content-start overflow-y-auto rounded-none sm:max-w-lg"
+      >
         <DialogTitle className="pr-8">{maskCurrencyWhenHidden(companyFactTitle(fact))}</DialogTitle>
         <div className="flex items-center gap-2">
           <Badge variant="secondary">
@@ -118,19 +124,21 @@ export function CompanyFactDetail({
             ))}
           </dl>
         )}
-        {fact.kind === "entity" && fact.record.edges.length > 0 && (
-          <section className="space-y-2">
-            <h3 className="font-medium">
-              <Trans>Roles over time</Trans>
-            </h3>
-            {fact.record.edges.map((edge) => (
-              <p key={edge.id}>
-                {maskCurrencyWhenHidden(edge.role ?? edge.relation.replaceAll("_", " "))} ·{" "}
-                {companyDate(edge.startsOn)} — {companyDate(edge.endsOn)}
-              </p>
-            ))}
-          </section>
-        )}
+        {fact.kind === "entity" &&
+          fact.record.kind === "person" &&
+          fact.record.edges.length > 0 && (
+            <section className="space-y-2">
+              <h3 className="font-medium">
+                <Trans>Roles over time</Trans>
+              </h3>
+              {fact.record.edges.map((edge) => (
+                <p key={edge.id}>
+                  {maskCurrencyWhenHidden(edge.role ?? edge.relation.replaceAll("_", " "))} ·{" "}
+                  {companyDate(edge.startsOn)} — {companyDate(edge.endsOn)}
+                </p>
+              ))}
+            </section>
+          )}
         {fact.kind === "edge" && (
           <p>
             {companyDate(fact.record.startsOn)} — {companyDate(fact.record.endsOn)}

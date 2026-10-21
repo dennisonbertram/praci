@@ -27,14 +27,21 @@ export type CompanyPageData = z.infer<typeof CompanyPageSchema>;
 export function companyFactIsVisible(fact: {
   status: string;
   confidence: number;
-  evidence: { sourceKind: string; sourceItemId: string }[];
+  evidence: { sourceKind: string; sourceItemId: string; stance: string }[];
 }): boolean {
   if (fact.status === "rejected") return false;
   return (
     fact.status === "confirmed" ||
     fact.confidence >= 0.8 ||
-    fact.evidence.some((a) =>
-      fact.evidence.some((b) => a.sourceKind !== b.sourceKind && a.sourceItemId !== b.sourceItemId),
+    fact.evidence.some(
+      (a) =>
+        a.stance === "supports" &&
+        fact.evidence.some(
+          (b) =>
+            b.stance === "supports" &&
+            a.sourceKind !== b.sourceKind &&
+            a.sourceItemId !== b.sourceItemId,
+        ),
     )
   );
 }
