@@ -400,13 +400,15 @@ export class PiAgentRuntime implements AgentRuntime {
           getApiKey: hasBackups
             ? async () => activeStreamTarget.credentials?.accessToken ?? activeStreamTarget.apiKey
             : async () => apiKey,
-          transformContext: async (messages) =>
-            pruneComputerScreenshotContext(
+          transformContext: async (messages) => {
+            await request.beforeModelRequest?.();
+            return pruneComputerScreenshotContext(
               pruneStalePageStateContext(messages),
               hasBackups
                 ? activeStreamTarget.config.maxImagesPerPrompt
                 : request.model.maxImagesPerPrompt,
-            ),
+            );
+          },
           finishTurn: async (turn, turnSignal) => {
             await deliverFinishedShells(
               (text) => {
@@ -1488,11 +1490,13 @@ async function executeSubagent(host: ToolHost, executionId: string, args: Record
       hasBackups
         ? (selectedModel.credentials?.accessToken ?? selectedModel.apiKey)
         : selectedModel.apiKey,
-    transformContext: async (messages) =>
-      pruneComputerScreenshotContext(
+    transformContext: async (messages) => {
+      await host.request.beforeModelRequest?.();
+      return pruneComputerScreenshotContext(
         pruneStalePageStateContext(messages),
         requestModel.maxImagesPerPrompt,
-      ),
+      );
+    },
     initialState: {
       systemPrompt: [
         `You are a Praci subagent named "${name}".`,

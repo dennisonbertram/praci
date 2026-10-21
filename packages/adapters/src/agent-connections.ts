@@ -16,6 +16,7 @@ import {
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { currentBotMessageHop } from "./bot-messages.js";
+import { markMeetingTaintOnDelivery } from "./meeting-tools.js";
 
 export interface AgentConnectionDeps {
   prisma: PrismaClient;
@@ -302,6 +303,13 @@ export async function messageConnectedAgent(
         toBotName: target.name,
         text: message,
       };
+      await markMeetingTaintOnDelivery(tx, {
+        spaceId: run.spaceId,
+        userId: run.userId,
+        senderBotId: sender.id,
+        sourceThreadId: run.threadId,
+        targetThreadId,
+      });
       const inbound = await createThreadMessageInTransaction(tx, {
         threadId: targetThreadId,
         role: "user",

@@ -58,7 +58,12 @@ function deps(
       update: vi.fn().mockResolvedValue({}),
     },
     event: { create: vi.fn().mockResolvedValue({ seq: 7 }) },
-    thread: { update: vi.fn().mockResolvedValue({}) },
+    thread: {
+      update: vi.fn().mockResolvedValue({}),
+      findUnique: vi.fn().mockResolvedValue({ meetingTaintedAt: null }),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    mcpServer: { findMany: vi.fn().mockResolvedValue([]) },
   };
   let transactionAttempts = 0;
   const prisma = {
