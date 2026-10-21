@@ -854,7 +854,11 @@ export class McpConnector implements ConnectorProvider {
       // the secrets: the session never reached `sessions`. Sanitizing per caller would
       // cover only whoever looked first.
       if (!material) throw error;
-      throw new Error(sanitizeConnectorError(error, oauthMaterialSecrets(material)));
+      // Keep the transport's HTTP status for withHttpStatus.
+      throw Object.assign(
+        new Error(sanitizeConnectorError(error, oauthMaterialSecrets(material))),
+        { code: (error as { code?: unknown } | null)?.code },
+      );
     }
   }
 }
