@@ -1371,9 +1371,8 @@ msgstr ""
 msgid "Ask agent"
 msgstr ""
 
-#. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
 #: src/pages/legal/LegalDeadlines.tsx
-msgid "Ask agent about {0}"
+msgid "Ask agent about {name}"
 msgstr ""
 
 #. placeholder {0}: rule.matchValue
@@ -3860,9 +3859,8 @@ msgstr ""
 msgid "Dismiss"
 msgstr ""
 
-#. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
 #: src/pages/legal/LegalDeadlines.tsx
-msgid "Dismiss {0}"
+msgid "Dismiss {name}"
 msgstr ""
 
 #: src/pages/shell/composer-error.tsx
@@ -3930,6 +3928,7 @@ msgstr ""
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/components/sidebar-glance.tsx
 #: src/components/tour/TourPopover.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
@@ -4089,6 +4088,10 @@ msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Email and calendar"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Email chats"
 msgstr ""
 
 #: src/lib/user-error.ts
@@ -4300,6 +4303,7 @@ msgstr "失败"
 #: src/components/data-room/format.ts
 #: src/components/data-room/ItemRows.tsx
 #: src/components/integrations/parts.tsx
+#: src/components/sidebar-glance.tsx
 #: src/pages/ActivityList.tsx
 msgid "Failed"
 msgstr "失败"
@@ -4580,6 +4584,7 @@ msgid "Get notified when this bot finishes or needs input"
 msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
+#: src/lib/run-phase.ts
 msgid "Getting ready"
 msgstr ""
 
@@ -5475,9 +5480,8 @@ msgstr "管理消息设置"
 msgid "Manual setup required"
 msgstr ""
 
-#. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
 #: src/pages/legal/LegalDeadlines.tsx
-msgid "Mark {0} done"
+msgid "Mark {name} done"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
@@ -5647,6 +5651,11 @@ msgstr ""
 #: src/pages/shell/composer.tsx
 msgid "Message"
 msgstr "消息"
+
+#. placeholder {0}: activeName.replace(/…$/, "")
+#: src/pages/shell/composer.tsx
+msgid "Message {0}"
+msgstr ""
 
 #: src/pages/shell/composer.tsx
 msgid "Message {activeName}"
@@ -5944,6 +5953,7 @@ msgstr ""
 msgid "Needs attention"
 msgstr ""
 
+#: src/components/sidebar-glance.tsx
 #: src/lib/devin-format.ts
 #: src/pages/ActivityList.tsx
 msgid "Needs input"
@@ -5996,6 +6006,7 @@ msgstr ""
 msgid "new"
 msgstr ""
 
+#: src/components/sidebar-glance.tsx
 #: src/pages/shell/transcript.tsx
 msgid "New"
 msgstr ""
@@ -6869,6 +6880,7 @@ msgid "Page"
 msgstr ""
 
 #: src/components/PageAgentsRow.tsx
+#: src/pages/Shell.tsx
 msgid "Page agents"
 msgstr ""
 
@@ -8508,6 +8520,10 @@ msgstr ""
 msgid "Showing the emails it found"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Sidebar"
+msgstr ""
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Sidebar density"
 msgstr ""
@@ -8849,10 +8865,6 @@ msgstr "开始录制"
 #: src/pages/shell/transcript.tsx
 msgid "Starting"
 msgstr "正在开始"
-
-#: src/lib/run-phase.ts
-msgid "Starting the computer"
-msgstr ""
 
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/lib/roster-status.ts
@@ -9916,6 +9928,7 @@ msgstr ""
 msgid "Uploaded"
 msgstr ""
 
+#: src/components/sidebar-glance.tsx
 #: src/lib/ticket-priority.ts
 msgid "Urgent"
 msgstr ""
@@ -10096,6 +10109,10 @@ msgstr ""
 #: src/lib/roster-status.ts
 msgid "Waiting in line…"
 msgstr "排队等候…"
+
+#: src/pages/shell/transcript.tsx
+msgid "Waiting on {delegate}"
+msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Waiting…"

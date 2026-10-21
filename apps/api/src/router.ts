@@ -8012,6 +8012,7 @@ export function createRouter(deps: RouterDeps) {
           devinNeedsYou,
           isDevinConnected,
           dataRoomWaiting,
+          hasTicket,
           botKinds,
         ] = await Promise.all([
           financeRunwayMonths(financeDeps, context.actor),
@@ -8026,6 +8027,12 @@ export function createRouter(deps: RouterDeps) {
               status: "failed",
             },
           }),
+          deps.env?.ticketBoardEnabled
+            ? deps.prisma.ticket.findFirst({
+                where: { spaceId: context.actor.spaceId },
+                select: { id: true },
+              })
+            : null,
           unseenBotKinds(deps.prisma, context.actor),
         ]);
         return {
@@ -8034,6 +8041,7 @@ export function createRouter(deps: RouterDeps) {
           devinNeedsYou,
           devinConnected: isDevinConnected,
           dataRoomWaiting,
+          hasTickets: Boolean(hasTicket),
           botKinds,
         };
       }),

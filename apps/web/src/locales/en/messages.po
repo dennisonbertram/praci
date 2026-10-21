@@ -1371,10 +1371,9 @@ msgstr "Ask about this"
 msgid "Ask agent"
 msgstr "Ask agent"
 
-#. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
 #: src/pages/legal/LegalDeadlines.tsx
-msgid "Ask agent about {0}"
-msgstr "Ask agent about {0}"
+msgid "Ask agent about {name}"
+msgstr "Ask agent about {name}"
 
 #. placeholder {0}: rule.matchValue
 #: src/components/ApprovalRulesSettings.tsx
@@ -3860,10 +3859,9 @@ msgstr "Dismiss"
 msgid "Dismiss"
 msgstr "Dismiss"
 
-#. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
 #: src/pages/legal/LegalDeadlines.tsx
-msgid "Dismiss {0}"
-msgstr "Dismiss {0}"
+msgid "Dismiss {name}"
+msgstr "Dismiss {name}"
 
 #: src/pages/shell/composer-error.tsx
 msgid "Dismiss error"
@@ -3930,6 +3928,7 @@ msgstr "Don't share"
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/components/sidebar-glance.tsx
 #: src/components/tour/TourPopover.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
@@ -4090,6 +4089,10 @@ msgstr "Email & calendar"
 #: src/pages/shell/message-cards.tsx
 msgid "Email and calendar"
 msgstr "Email and calendar"
+
+#: src/pages/Shell.tsx
+msgid "Email chats"
+msgstr "Email chats"
 
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
@@ -4300,6 +4303,7 @@ msgstr "failed"
 #: src/components/data-room/format.ts
 #: src/components/data-room/ItemRows.tsx
 #: src/components/integrations/parts.tsx
+#: src/components/sidebar-glance.tsx
 #: src/pages/ActivityList.tsx
 msgid "Failed"
 msgstr "Failed"
@@ -4580,6 +4584,7 @@ msgid "Get notified when this bot finishes or needs input"
 msgstr "Get notified when this bot finishes or needs input"
 
 #: src/components/ComputerUpdateProgress.tsx
+#: src/lib/run-phase.ts
 msgid "Getting ready"
 msgstr "Getting ready"
 
@@ -5475,10 +5480,9 @@ msgstr "Manage messaging settings"
 msgid "Manual setup required"
 msgstr "Manual setup required"
 
-#. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
 #: src/pages/legal/LegalDeadlines.tsx
-msgid "Mark {0} done"
-msgstr "Mark {0} done"
+msgid "Mark {name} done"
+msgstr "Mark {name} done"
 
 #: src/pages/BotContextMenu.tsx
 msgid "Mark as read"
@@ -5647,6 +5651,11 @@ msgstr "Merge"
 #: src/pages/shell/composer.tsx
 msgid "Message"
 msgstr "Message"
+
+#. placeholder {0}: activeName.replace(/…$/, "")
+#: src/pages/shell/composer.tsx
+msgid "Message {0}"
+msgstr "Message {0}"
 
 #: src/pages/shell/composer.tsx
 msgid "Message {activeName}"
@@ -5944,6 +5953,7 @@ msgstr "Needs approval"
 msgid "Needs attention"
 msgstr "Needs attention"
 
+#: src/components/sidebar-glance.tsx
 #: src/lib/devin-format.ts
 #: src/pages/ActivityList.tsx
 msgid "Needs input"
@@ -5996,6 +6006,7 @@ msgstr "Never changes your account"
 msgid "new"
 msgstr "new"
 
+#: src/components/sidebar-glance.tsx
 #: src/pages/shell/transcript.tsx
 msgid "New"
 msgstr "New"
@@ -6869,6 +6880,7 @@ msgid "Page"
 msgstr "Page"
 
 #: src/components/PageAgentsRow.tsx
+#: src/pages/Shell.tsx
 msgid "Page agents"
 msgstr "Page agents"
 
@@ -8508,6 +8520,10 @@ msgstr "Showing the {shown} most connected of {total} items."
 msgid "Showing the emails it found"
 msgstr "Showing the emails it found"
 
+#: src/pages/Shell.tsx
+msgid "Sidebar"
+msgstr "Sidebar"
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Sidebar density"
 msgstr "Sidebar density"
@@ -8849,10 +8865,6 @@ msgstr "Start recording"
 #: src/pages/shell/transcript.tsx
 msgid "Starting"
 msgstr "Starting"
-
-#: src/lib/run-phase.ts
-msgid "Starting the computer"
-msgstr "Starting the computer"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/lib/roster-status.ts
@@ -9916,6 +9928,7 @@ msgstr "Upload to All items"
 msgid "Uploaded"
 msgstr "Uploaded"
 
+#: src/components/sidebar-glance.tsx
 #: src/lib/ticket-priority.ts
 msgid "Urgent"
 msgstr "Urgent"
@@ -10096,6 +10109,10 @@ msgstr "Waiting for you to finish signing in."
 #: src/lib/roster-status.ts
 msgid "Waiting in line…"
 msgstr "Waiting in line…"
+
+#: src/pages/shell/transcript.tsx
+msgid "Waiting on {delegate}"
+msgstr "Waiting on {delegate}"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Waiting…"

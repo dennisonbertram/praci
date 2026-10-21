@@ -374,7 +374,12 @@ export function createRepos(prisma: PrismaClient) {
               if (visible.has(message)) preview = previewFromBlocks(message.blocks);
               else {
                 const reply = message.blocks.find(
-                  (block) => block.kind === "bot_message_received" && block.returnToMessageId,
+                  (block) =>
+                    block.kind === "bot_message_received" &&
+                    block.returnToMessageId &&
+                    // A request or question is an instruction, not an answer.
+                    block.intent !== "request" &&
+                    block.intent !== "question",
                 );
                 if (reply) preview = previewFromBlocks([reply]);
               }
