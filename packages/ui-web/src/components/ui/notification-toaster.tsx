@@ -8,7 +8,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 export const MAX_VISIBLE_NOTIFICATION_TOASTS = 3;
-/** Phones have no room for a stack: one toast above the composer. */
+/** Phones have no room for a stack: one toast, docked at the top so it never covers the composer, an approval card or the drawer. */
 export const MAX_VISIBLE_NOTIFICATION_TOASTS_PHONE = 1;
 
 const PHONE_QUERY = "(max-width: 639px)";
@@ -109,7 +109,7 @@ function ToastBody({
   return (
     <button
       type="button"
-      className="flex w-full cursor-pointer items-start gap-3 rounded-xl p-4 pr-10 text-left outline-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring"
+      className="flex w-full cursor-pointer items-start gap-3 rounded-xl p-4 pr-10 pointer-coarse:pr-12 text-left outline-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring"
       onClick={async () => {
         const { href, onSeen } = toast.data ?? {};
         try {
@@ -196,7 +196,7 @@ function ToastList({
       {toast.data?.action ? (
         <Button
           size="sm"
-          className="me-10 shrink-0 self-center pointer-coarse:min-h-11 pointer-coarse:min-w-11"
+          className="me-10 pointer-coarse:me-12 shrink-0 self-center pointer-coarse:min-h-11 pointer-coarse:min-w-11"
           onClick={() => {
             toast.data?.action?.onClick();
             close(toast.id);
@@ -206,7 +206,7 @@ function ToastList({
         </Button>
       ) : null}
       <Toast.Close
-        className="absolute top-2 right-2 inline-flex size-6 cursor-pointer group-data-[has-action]:opacity-100 group-data-[has-action]:pointer-coarse:top-0 group-data-[has-action]:pointer-coarse:right-0 group-data-[has-action]:pointer-coarse:size-11 items-center justify-center rounded-sm text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
+        className="absolute top-2 right-2 inline-flex size-6 pointer-coarse:top-0 pointer-coarse:right-0 pointer-coarse:size-11 cursor-pointer items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         aria-label={dismissLabel}
       >
         <XIcon className="size-3.5" aria-hidden="true" />
@@ -291,8 +291,8 @@ export function NotificationToaster({
         <Toast.Viewport
           role="status"
           aria-live="polite"
-          // Bottom-right with 16 px side insets; lifted above the chat composer. Centred on phones.
-          className="group/viewport pointer-events-none fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+1rem))] z-50 w-[min(28rem,calc(100vw-2rem))] max-sm:right-auto max-sm:left-1/2 max-sm:-translate-x-1/2"
+          // Bottom-right with 16 px side insets, lifted above the chat composer. On phones: centred at the top.
+          className="group/viewport pointer-events-none fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+1rem))] z-50 w-[min(28rem,calc(100vw-2rem))] max-sm:top-[max(1rem,env(safe-area-inset-top))] max-sm:right-auto max-sm:bottom-auto max-sm:left-1/2 max-sm:-translate-x-1/2"
         >
           <ToastList onOpen={onOpen} dismissLabel={dismissLabel} formatTime={formatTime} />
         </Toast.Viewport>
