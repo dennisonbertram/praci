@@ -61,7 +61,7 @@ test("actions run by default while optional confirmations live in advanced user 
 
   await requestDestinationWrite(page, "write this to the destination crm as a note again");
   const allowOnce = page.getByRole("button", { name: "Allow once", exact: true });
-  const alwaysAllow = page.getByRole("button", { name: "Always allow this tool", exact: true });
+  const alwaysAllow = page.getByRole("button", { name: "Always allow this", exact: true });
   const deny = page.getByRole("button", { name: "Deny", exact: true });
   await expect(alwaysAllow).toBeVisible();
   await expect(deny).toBeVisible();
@@ -88,13 +88,13 @@ test("actions run by default while optional confirmations live in advanced user 
 
   await requestDestinationWrite(page, "write this to the destination crm once more");
   await page.getByRole("button", { name: "Allow once", exact: true }).click();
-  await expect(page.getByText("Allowed once", { exact: true })).toBeVisible();
+  await expect(page.getByText("Approved", { exact: true })).toBeVisible();
   await waitForRunIdle(page);
   await expectComposerReady(page);
   await captureScreenshot(page, testInfo, "55-action-confirmation-allowed-once");
 
   await requestDestinationWrite(page, "write this to the destination crm one final time");
-  await page.getByRole("button", { name: "Always allow this tool", exact: true }).click();
+  await page.getByRole("button", { name: "Always allow this", exact: true }).click();
   await expect(page.getByText("Always allowed", { exact: true })).toBeVisible();
   await waitForRunIdle(page);
   await expectComposerReady(page);

@@ -1,0 +1,67 @@
+[
+  {
+    "id": "F-STORY-001-01",
+    "story_id": "STORY-001",
+    "severity": "medium",
+    "category": "consistency",
+    "criterion": "Component consistency",
+    "score": "warn",
+    "description": "The Devin dialog (CustomConnectionDialog first-party mode) looks different from the generic ConnectionDialog used by other API-key apps: Devin has a text hint, a visible 'API key' label, no app tile, white footer; the generic one has an app letter tile in the header, a placeholder-only field, no label and a grey footer band. Both are 'Connect <app>' dialogs a few clicks apart.",
+    "expected": "One look for a connect-with-key dialog.",
+    "actual": "Two shells, widths 440px vs 385px, label vs placeholder.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-001/screenshots/extra-1-sb-integrations-connectiondialog--one-field.png",
+    "suggested_fix": "Pick one shell for API-key connects (or document why first-party differs); at least add the label to both.",
+    "files_likely_involved": [
+      "apps/web/src/components/integrations/CustomConnectionDialog.tsx",
+      "apps/web/src/components/integrations/ConnectionDialog.tsx"
+    ]
+  },
+  {
+    "id": "F-STORY-001-02",
+    "story_id": "STORY-001",
+    "severity": "medium",
+    "category": "happy-path",
+    "criterion": "Labels/copy",
+    "score": "warn",
+    "description": "Hint says what the key is, not where to create it. The generic ConnectionDialog already has a 'Where to find your key' help link pattern (story with-help-link-and-two-fields) but Devin's dialog has none.",
+    "expected": "A link to where the service-user key is created (reusing the help-link pattern).",
+    "actual": "No link; user must leave and search.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-001/screenshots/step-3.png",
+    "suggested_fix": "Pass the existing help link prop for Devin.",
+    "files_likely_involved": [
+      "apps/web/src/components/integrations/CustomConnectionDialog.tsx"
+    ]
+  },
+  {
+    "id": "F-STORY-001-03",
+    "story_id": "STORY-001",
+    "severity": "low",
+    "category": "visual",
+    "criterion": "Theme consistency",
+    "score": "warn",
+    "description": "No Devin tile story exists, so the tile could not be walked. Letter-only tiles (Brex, Demo CRM) sit next to logo tiles (Mercury, Alchemy, Coinbase), so a Devin 'D' tile will read as less official (per catalog). Observed on stand-in tiles only.",
+    "expected": "Logo or deliberate letter tile.",
+    "actual": "Unverified for Devin itself.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-001/screenshots/step-2.png",
+    "suggested_fix": "Add a Devin logo asset and a tile story.",
+    "files_likely_involved": [
+      "apps/web/src/components/integrations/AppLogo.tsx"
+    ]
+  },
+  {
+    "id": "F-STORY-001-04",
+    "story_id": "STORY-001",
+    "severity": "medium",
+    "category": "flow",
+    "criterion": "Dead ends",
+    "score": "warn",
+    "description": "Not observed (no story or mockup frame for the done view). Per catalog the done view says 'Devin connected' with 'Done' and no link to the new page, so the user lands back in the catalog.",
+    "expected": "'Open Devin' on the done view (as Carta does with 'Open Cap table').",
+    "actual": "Unverified; from catalog.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-001/screenshots/step-5.png",
+    "suggested_fix": "Add the link; decide auto-landing on /app/devin.",
+    "files_likely_involved": [
+      "apps/web/src/components/integrations/CustomConnectionDialog.tsx"
+    ]
+  }
+]

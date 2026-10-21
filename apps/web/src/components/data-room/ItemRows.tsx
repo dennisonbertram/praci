@@ -455,7 +455,7 @@ export function ListView({
   sortField?: SortField;
 }) {
   return (
-    <div className={cn(LIST_PAD, "max-w-300")}>
+    <div className={LIST_PAD}>
       <Table>
         <Columns />
         <ListHead sortField={sortField} />

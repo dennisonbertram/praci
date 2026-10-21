@@ -1,0 +1,53 @@
+[
+  {
+    "id": "F-STORY-010-01",
+    "story_id": "STORY-010",
+    "severity": "medium",
+    "category": "happy-path",
+    "criterion": "Primary CTA",
+    "score": "warn",
+    "description": "A needs-you row has no visible way to act. Only the title is a link; row hover underlines the title and the cursor is a pointer for the whole row, but only the title is clickable. The 'Open in Devin' wording exists only in the agent reply. A user who looks for a reply box sees only Ask, which cannot answer Devin.",
+    "expected": "Row action or link label that says the answer happens in Devin.",
+    "actual": "Title link only.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-010/screenshots/step-3.png",
+    "suggested_fix": "Add 'Open in Devin' text/icon on Needs-you rows or make the whole row a link.",
+    "files_likely_involved": [
+      "apps/web/src/pages/devin/",
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-010-02",
+    "story_id": "STORY-010",
+    "severity": "medium",
+    "category": "flow",
+    "criterion": "Dead ends",
+    "score": "warn",
+    "description": "After answering in Devin the page gives no sign the answer landed: 'Updated 1m ago' is static, there is no refresh control, and the refresh cadence is undecided. Not observed live (frame is static).",
+    "expected": "Refresh control or live status.",
+    "actual": "None drawn.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-010/screenshots/step-2.png",
+    "suggested_fix": "Add refresh; state cadence.",
+    "files_likely_involved": [
+      "apps/web/src/pages/devin/",
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-010-03",
+    "story_id": "STORY-010",
+    "severity": "suggestion",
+    "category": "flow",
+    "criterion": "Decision load",
+    "score": "warn",
+    "description": "No cue for how long a session has waited beyond the Updated column ('12m ago' vs '1h ago'); an old Needs you looks the same as a new one.",
+    "expected": "Older waits stand out or sort by wait.",
+    "actual": "Same style.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-010/screenshots/step-2.png",
+    "suggested_fix": "Optional: show waiting-since.",
+    "files_likely_involved": [
+      "apps/web/src/pages/devin/",
+      "docs/devin/mockup.html"
+    ]
+  }
+]

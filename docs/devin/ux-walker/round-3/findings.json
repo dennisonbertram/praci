@@ -1,0 +1,308 @@
+{
+ "round": 3,
+ "date": "2026-10-20",
+ "mockup": "docs/devin/mockup.html (v4)",
+ "method": "agent-browser session ux-walker-devin-r3 at 1440x900 light (dark checks on first visit and key rejected), switcher widths 1100, 900, 390, real browser widths 1100x800, 900x800, 390x844. Geometry audit run at each width: pageOverflowX 0, overflowSpills empty; 'wrappedControls' lists only td.dim.tab cells whose height is stretched by wrapped neighbours (false positives, text does not wrap); unevenRows list only mockup chrome and the dialog footers.",
+ "stories": [
+  "001",
+  "002",
+  "003",
+  "004",
+  "005",
+  "006",
+  "007",
+  "008",
+  "010",
+  "012",
+  "021",
+  "031",
+  "033",
+  "034"
+ ],
+ "previous_findings": [
+  {
+   "id": "F-STORY-001-01",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Dialog now has the 40px letter tile, title and a tinted footer (same anatomy as the generic connection dialog).",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-001/1440-dialog-empty.png"
+  },
+  {
+   "id": "F-STORY-001-03",
+   "status": "n/a",
+   "severity_now": "",
+   "evidence": "The Integrations catalog tile is an existing app surface, not part of the Devin page mockup; not observable here.",
+   "screenshot": ""
+  },
+  {
+   "id": "F-STORY-002-02",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Empty (Connect disabled), connecting and refused dialog states are drawn. The connecting frame lacks a visible cue; logged as F-STORY-001-06.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-001/1440-dialog-connecting-refused.png"
+  },
+  {
+   "id": "F-STORY-008-02",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "The number is stated once (tile). Group heading has no number, the dot has no number, the agent reply no longer repeats a count. Dot and per-row badges remain as presence signals.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-008/1440-glance-closed.png"
+  },
+  {
+   "id": "F-STORY-008-03",
+   "status": "n/a",
+   "severity_now": "",
+   "evidence": "Shared colour tokens (V10) are intentionally unchanged; not re-raised. Measured again: warning text rgb(183,121,31), success rgb(34,139,59) on the same surfaces.",
+   "screenshot": ""
+  },
+  {
+   "id": "F-STORY-008-04",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Dot is aria-hidden with screen-reader text 'new' (the real shell's pattern), per V1.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-008/1440-glance-closed.png"
+  },
+  {
+   "id": "F-STORY-008-05",
+   "status": "still present",
+   "severity_now": "low",
+   "evidence": "'Needs you 0' with other sessions present is still not drawn; Empty frame draws no tiles.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-005/1440-empty.png"
+  },
+  {
+   "id": "F-STORY-010-02",
+   "status": "n/a",
+   "severity_now": "",
+   "evidence": "Refetch after answering in Devin is planned behaviour; not observable in a static mockup. No refresh cue is drawn, which is consistent with the decision (no refresh button).",
+   "screenshot": ""
+  },
+  {
+   "id": "F-STORY-010-03",
+   "status": "still present",
+   "severity_now": "suggestion",
+   "evidence": "Wait time is still only the Updated column.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-010/1440-needs-you-rows.png"
+  },
+  {
+   "id": "F-STORY-012-02",
+   "status": "n/a",
+   "severity_now": "",
+   "evidence": "User bubbles use the chat-user token; the real UserTextBubble also uses bg-chat-user. Colour belongs to shared tokens (V10).",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-012/1440-panel-reply.png"
+  },
+  {
+   "id": "F-STORY-012-05",
+   "status": "still present",
+   "severity_now": "low",
+   "evidence": "Collapse icon measures 28x28 (above the 24px WCAG 2.2 minimum; it copies the real panel header).",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-012/1440-panel-reply.png"
+  },
+  {
+   "id": "F-STORY-012-06",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "'Panel: first Ask' frame shows the intro line and two suggestion buttons.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-012/1440-intro.png"
+  },
+  {
+   "id": "F-STORY-012-07",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "'I can't read that question. Open Add CSV export in Devin' is drawn. New inconsistency: F-STORY-012-09.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-012/1440-cant-read.png"
+  },
+  {
+   "id": "F-STORY-021-02",
+   "status": "still present",
+   "severity_now": "low",
+   "evidence": "Toast body when the question is unavailable is not drawn; only the full-question toast.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-021/1440-toast-over-inbox.png"
+  },
+  {
+   "id": "F-STORY-021-03",
+   "status": "n/a",
+   "severity_now": "",
+   "evidence": "Dot clearing rule is an undecided product decision (decision 8, GAP-05), not something the mockup shows. Dot is still drawn on the Devin link while on the page.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-008/1440-glance-closed.png"
+  },
+  {
+   "id": "F-STORY-033-03",
+   "status": "n/a",
+   "severity_now": "",
+   "evidence": "Overlay panel covers Pull request, Source and Updated at 1100 and 900; V9 decided to match the real shell. Status and title stay visible.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-012/900-panel-open.png"
+  },
+  {
+   "id": "F-STORY-033-04",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Real 390px viewport: dialog is 358px wide inside 16px gutters (left 16, right 374); no horizontal overflow (document scrollWidth equals 390).",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-001/browser-390-dialog-row.png"
+  },
+  {
+   "id": "F-STORY-033-05",
+   "status": "n/a",
+   "severity_now": "",
+   "evidence": "Decision: mobile gets push only; unchanged.",
+   "screenshot": ""
+  },
+  {
+   "id": "F-STORY-001-05",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Dialog reads 'Connects Devin for everyone in this space. Read-only.'; 'org-scoped' is gone.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-001/1440-dialog-empty.png"
+  },
+  {
+   "id": "F-STORY-002-04",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Ask is hidden on Not connected, Loading and Load error. It stays on Empty (agent exists) and Key rejected (see F-STORY-007-03).",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-004/1440-load-error.png"
+  },
+  {
+   "id": "F-STORY-002-05",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "'Not connected, a member who may not connect' frame: 'Ask a space owner to connect Devin.', no button.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-002/1440-not-connected-may-not.png"
+  },
+  {
+   "id": "F-STORY-007-02",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Stale frame: notice 'Devin rejected the key. Alerts are paused.', tile replaced by the notice, badges and titles muted, dot hidden, row times at least as old as the header.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-007/1440-key-rejected.png"
+  },
+  {
+   "id": "F-STORY-004-06",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Question wraps in full (three lines at the docked width), no clamp.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-012/1440-panel-reply.png"
+  },
+  {
+   "id": "F-STORY-010-04",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "'Answer in Devin' link is gone. The whole row is the target; row heights are 38px or more.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-010/1440-needs-you-rows.png"
+  },
+  {
+   "id": "F-STORY-010-05",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "One anchor per row (measured linksPerRow = 1); every cell of a row resolves to that anchor under elementFromPoint.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-010/1440-needs-you-rows.png"
+  },
+  {
+   "id": "F-STORY-021-04",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Toast frame is drawn over Inbox; the Devin page is not behind it.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-021/1440-toast-over-inbox.png"
+  },
+  {
+   "id": "F-STORY-033-06",
+   "status": "still present",
+   "severity_now": "low",
+   "evidence": "Top bar is hamburger-only and the 'Devin agent' label is gone (that half resolved), but under 1024px no needs-you signal is visible outside the drawer.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-033/900-populated.png"
+  },
+  {
+   "id": "F-STORY-008-06",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "One vocabulary: group and tile 'Needs you', badge 'Needs input' or 'Error', toast title 'Devin needs input'.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-021/1440-toast-over-inbox.png"
+  }
+ ],
+ "new_findings": [
+  {
+   "id": "F-STORY-001-06",
+   "severity": "low",
+   "category": "states",
+   "criterion": "Loading feedback",
+   "score": "warn",
+   "description": "The 'connecting' dialog frame shows Connect disabled with the label 'Connect' and no spinner or 'Connecting' text, so it reads like the empty state with a key typed. At 390px the description breaks at the hyphen ('Read-' / 'only.').",
+   "expected": "A visible in-progress cue; 'Read-only' kept together.",
+   "actual": "Grey Connect button, same label; hyphen wrap at narrow width.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-001/1440-dialog-connecting-refused.png",
+   "suggested_fix": "Label the button 'Connecting...' with the real spinner; use a non-breaking hyphen in 'Read-only'."
+  },
+  {
+   "id": "F-STORY-007-03",
+   "severity": "low",
+   "category": "state",
+   "criterion": "Controls that cannot work are hidden",
+   "score": "warn",
+   "description": "The key-rejected frame still shows Ask. With a rejected key the Devin agent cannot read sessions.",
+   "expected": "Ask hidden while the key is rejected, as on Not connected and Load error.",
+   "actual": "Ask visible at top right.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-007/1440-key-rejected.png",
+   "suggested_fix": "Hide Ask in the stale frame (V8 rule)."
+  },
+  {
+   "id": "F-STORY-007-04",
+   "severity": "low",
+   "category": "permissions",
+   "criterion": "Role-specific states",
+   "score": "warn",
+   "description": "The key-rejected frame shows Reconnect to everyone. A member who may not replace the shared connection is not given a variant, unlike the not-connected page.",
+   "expected": "A member variant: notice says who can reconnect, no button.",
+   "actual": "Reconnect shown, no variant drawn.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-007/1440-key-rejected.png",
+   "suggested_fix": "Draw a member variant of the notice without the button (GAP-54)."
+  },
+  {
+   "id": "F-STORY-010-06",
+   "severity": "suggestion",
+   "category": "a11y",
+   "criterion": "Focus indicator matches target",
+   "score": "warn",
+   "description": "Keyboard focus draws a 2px ring around the title only (about 159x18px) while the whole row is the target.",
+   "expected": "Ring around the row (focus-within) so the target and the indicator match.",
+   "actual": "Ring wraps the title text.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-010/1440-keyboard-focus-row-link.png",
+   "suggested_fix": "Outline the row on :focus-within and hide the title outline."
+  },
+  {
+   "id": "F-STORY-012-09",
+   "severity": "low",
+   "category": "consistency",
+   "criterion": "Mockup consistency",
+   "score": "warn",
+   "description": "Panel frame 'the agent cannot read the question' sits next to a table that displays that same question ('Should the export keep the legacy CSV column order?'). If the agent cannot read it, the page cannot either (GAP-01).",
+   "expected": "The row in that frame shows no question, or the agent answers it.",
+   "actual": "Page shows the question; agent says it cannot read it.",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-012/1440-cant-read.png",
+   "suggested_fix": "Drop the subtitle from the Add CSV export row in that frame, matching the GAP-01 fallback."
+  },
+  {
+   "id": "F-STORY-034-01",
+   "severity": "low",
+   "category": "mockup",
+   "criterion": "Interactive frame matches described behaviour",
+   "score": "warn",
+   "description": "Clicking Ask on 'First visit, panel closed' hides the Ask button (shell gets class open) but no panel appears because that frame has no dock; the first-open state is drawn only as a separate frame.",
+   "expected": "Ask opens the intro panel in the same frame.",
+   "actual": "Button vanishes, page unchanged (dock null).",
+   "screenshot": "docs/devin/ux-walker/round-3/STORY-034/1440-after-click-ask-first-visit.png",
+   "suggested_fix": "Give the first-visit frame the intro dock so the click shows it."
+  }
+ ],
+ "not_observable": [
+  "Click to real Devin (rows, toast, OS banner, phone push)",
+  "Refetch after answering in Devin (GAP-13)",
+  "Notification delivery and dot clearing (GAP-05)",
+  "Skeleton duration",
+  "Where to find your key link target"
+ ],
+ "totals": {
+  "previous_resolved": 16,
+  "previous_still_present": 5,
+  "previous_na": 7,
+  "new": 6,
+  "open_after_round_3": 11
+ }
+}

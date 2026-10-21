@@ -126,6 +126,8 @@ function breakdown(
 
 const ROW = 34;
 const legendHeight = (rows: number) => ROW * rows - 2;
+/** The breakdown legend shows this many rows and scrolls past them, so the card is not sized for the longest one. */
+const MAX_DRILL_ROWS = 5;
 /** Width of the side-by-side layout. Narrower containers stack the donuts. */
 const WIDE = 640;
 const MS = 400;
@@ -253,7 +255,7 @@ export function OwnershipDonut({
   // so opening never changes the card's height.
   const frameW = wide ? WIDE : width || 300;
   const cx = frameW / 2;
-  const drillRows = Math.max(1, ...drills.map((d) => d?.length ?? 0));
+  const drillRows = Math.min(MAX_DRILL_ROWS, Math.max(1, ...drills.map((d) => d?.length ?? 0)));
   const sA = wide ? ORIGINAL_SCALE.wide : ORIGINAL_SCALE.narrow;
   const sB = wide ? DRILL_SCALE.wide : DRILL_SCALE.narrow;
   const frameH = wide
@@ -275,7 +277,11 @@ export function OwnershipDonut({
     ? { x: 240, y: (frameH - legendHeight(slices.length)) / 2, w: 384 }
     : { x: 0, y: SIZE + 16, w: frameW };
   const drillLegend = wide
-    ? { x: 360, y: (frameH - legendHeight(drill?.length ?? 0)) / 2, w: 280 }
+    ? {
+        x: 360,
+        y: (frameH - legendHeight(Math.min(drill?.length ?? 0, MAX_DRILL_ROWS))) / 2,
+        w: 280,
+      }
     : { x: 0, y: DRILL_TOP + SIZE * sB + 12, w: frameW };
 
   /** Rotation that points the open slice at the breakdown donut; whole turns keep the spin short. */
@@ -486,8 +492,7 @@ export function OwnershipDonut({
                       {row}
                     </button>
                   ) : (
-                    // biome-ignore lint/a11y/noNoninteractiveTabindex: focus highlights the same slice as hover
-                    <div className={cls} tabIndex={0} {...on(i)}>
+                    <div className={cls} {...on(i)}>
                       {row}
                     </div>
                   )}
@@ -553,8 +558,9 @@ export function OwnershipDonut({
                 </div>
               </div>
               <ul
-                className="absolute grid gap-0.5 text-sm"
+                className="rk-scroll absolute grid content-start gap-0.5 overflow-y-auto text-sm"
                 style={{
+                  maxHeight: legendHeight(MAX_DRILL_ROWS),
                   left: drillLegend.x,
                   top: drillLegend.y,
                   width: drillLegend.w,
