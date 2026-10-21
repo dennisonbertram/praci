@@ -363,6 +363,10 @@ msgstr ""
 msgid "{count} months"
 msgstr ""
 
+#: src/components/data-room/SelectionBar.tsx
+msgid "{count} selected"
+msgstr ""
+
 #: src/lib/billing.ts
 msgid "{count} weeks"
 msgstr ""
@@ -2228,6 +2232,10 @@ msgstr ""
 msgid "Clear search"
 msgstr ""
 
+#: src/components/data-room/SelectionBar.tsx
+msgid "Clear selection"
+msgstr ""
+
 #: src/pages/shell/dialogs.tsx
 msgid "Clearing…"
 msgstr "Очистка…"
@@ -2597,6 +2605,10 @@ msgstr "Подключить Executor"
 msgid "Connect Gmail to read, sort and answer your mail here."
 msgstr ""
 
+#: src/pages/DataRoom.tsx
+msgid "Connect Gmail to send files"
+msgstr ""
+
 #: src/components/tour/FirstRunTour.tsx
 msgid "Connect Gmail, Calendar and other apps so agents can read your mail and files."
 msgstr ""
@@ -2946,6 +2958,11 @@ msgstr "Не удалось отклонить"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Could not dismiss this server"
+msgstr ""
+
+#. placeholder {0}: failed.join(", ")
+#: src/pages/DataRoom.tsx
+msgid "Could not download {0}"
 msgstr ""
 
 #. placeholder {0}: props.name
@@ -3932,6 +3949,7 @@ msgstr "Готово"
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/PreviewActions.tsx
+#: src/components/data-room/SelectionBar.tsx
 #: src/components/DataExport.tsx
 #: src/components/inbox/MailAttachments.tsx
 #: src/pages/Artifacts.tsx
@@ -6373,6 +6391,11 @@ msgstr ""
 msgid "Not attached, over the {MAX_COMPOSE_ATTACHMENT_MB} MB limit: {leftOutNames}. Download it from the original to share it another way."
 msgstr ""
 
+#. placeholder {0}: failed.join(", ")
+#: src/pages/DataRoom.tsx
+msgid "Not attached: {0}"
+msgstr ""
+
 #: src/components/data-room/FilterBar.tsx
 msgid "Not checked"
 msgstr ""
@@ -8211,10 +8234,11 @@ msgid "Select"
 msgstr ""
 
 #. placeholder {0}: file.name
+#. placeholder {0}: item.name
 #. placeholder {0}: row.subject
-#. placeholder {0}: sender.name
 #: src/components/data-room/DriveRow.tsx
 #: src/components/data-room/ImportFromEmail.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "Select {0}"
 msgstr ""
@@ -8240,6 +8264,7 @@ msgid "Self-custody"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/data-room/SelectionBar.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/MailApprovalCard.tsx

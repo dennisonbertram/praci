@@ -203,7 +203,7 @@ function SafeNote({ holders }: { holders: Snapshot["holders"] }) {
   return (
     <Link
       to={{ search: "?kind=investor&security=SAFE" }}
-      className="mb-4 block text-xs text-muted-foreground hover:text-foreground hover:underline"
+      className="mb-4 block pointer-coarse:flex pointer-coarse:min-h-11 pointer-coarse:items-center text-xs text-muted-foreground hover:text-foreground hover:underline"
     >
       <Trans>
         SAFEs ({safes.length}, {total}) are not included until they convert

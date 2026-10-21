@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 248 of 248
-- Web and shared components: 671
+- Web and shared component files with stories: 249 of 249
+- Web and shared components: 672
 - Mobile components: 138 in 95 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -177,6 +177,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | FileViewer, IconAction, PreviewActions, FullScreenPreview | [apps/web/src/components/data-room/PreviewActions.tsx](../../apps/web/src/components/data-room/PreviewActions.tsx) | [PreviewActions.stories.tsx](../../apps/web/src/components/data-room/PreviewActions.stories.tsx) | web |
 | ProcessingStrip | [apps/web/src/components/data-room/ProcessingStrip.tsx](../../apps/web/src/components/data-room/ProcessingStrip.tsx) | [ProcessingStrip.stories.tsx](../../apps/web/src/components/data-room/ProcessingStrip.stories.tsx) | web |
 | ResizableFolders | [apps/web/src/components/data-room/ResizableFolders.tsx](../../apps/web/src/components/data-room/ResizableFolders.tsx) | [FolderTree.stories.tsx](../../apps/web/src/components/data-room/FolderTree.stories.tsx) | web |
+| SelectionBar | [apps/web/src/components/data-room/SelectionBar.tsx](../../apps/web/src/components/data-room/SelectionBar.tsx) | [ItemRows.stories.tsx](../../apps/web/src/components/data-room/ItemRows.stories.tsx), [SelectionBar.stories.tsx](../../apps/web/src/components/data-room/SelectionBar.stories.tsx) | web |
 | SendToAgentMenu | [apps/web/src/components/data-room/SendToAgent.tsx](../../apps/web/src/components/data-room/SendToAgent.tsx) | [SendToAgent.stories.tsx](../../apps/web/src/components/data-room/SendToAgent.stories.tsx) | web |
 
 ## Web components/finance
