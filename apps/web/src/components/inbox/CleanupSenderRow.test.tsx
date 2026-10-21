@@ -66,6 +66,15 @@ it("ticks through the checkbox", async () => {
   expect(onToggle).toHaveBeenCalledTimes(1);
 });
 
+it("ticks when the sender name is tapped, so the whole row is the target", async () => {
+  const onToggle = vi.fn();
+  await show({ onToggle });
+  const name = [...document.querySelectorAll("span")].find((e) => e.textContent === sender.name);
+  await act(async () => name?.click());
+  expect(onToggle).toHaveBeenCalledTimes(1);
+  expect(document.querySelector("[data-sender]")?.tagName).toBe("LABEL");
+});
+
 it("flags a spam-like sender", async () => {
   await show({ sender: { ...sender, spamLike: true } });
   expect(document.body.textContent).toContain("Looks like spam");

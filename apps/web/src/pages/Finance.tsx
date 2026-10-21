@@ -117,40 +117,42 @@ export function FinancePage(chrome: FinanceChrome) {
   return (
     <FinanceChromeProvider value={chrome}>
       <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
-        {route.page === "dashboard" ? (
-          <Dashboard />
-        ) : route.page === "accounts" ? (
-          <FinanceAccountsPage source={route.source} unknownSource={route.unknownSource} />
-        ) : route.page === "account" ? (
-          <FinanceAccountPage id={route.id} />
-        ) : route.page === "burn" ? (
-          <FinanceBurnPage />
-        ) : route.page === "month" ? (
-          <FinanceMonthPage month={route.month} />
-        ) : route.page === "runway" ? (
-          <FinanceRunwayPage />
-        ) : route.page === "crypto" ? (
-          <FinanceCryptoPage />
-        ) : route.page === "spend" ? (
-          <FinanceSpendPage
-            period={route.period}
-            category={route.category}
-            range={route.range}
-            source={route.source ?? null}
-          />
-        ) : route.page === "category" ? (
-          <FinanceCategoryPage slug={route.slug} window={route.window} />
-        ) : route.page === "recurring" ? (
-          <FinanceRecurringPage keyName={route.key} />
-        ) : route.page === "vendor" ? (
-          <FinanceVendorPage keyName={route.key} />
-        ) : route.page === "transaction" ? (
-          <FinanceTransactionPage id={route.id} />
-        ) : route.page === "receipt" ? (
-          <FinanceReceiptPage id={route.id} />
-        ) : (
-          <FinanceNotFound />
-        )}
+        <div className="mx-auto max-w-[1440px]">
+          {route.page === "dashboard" ? (
+            <Dashboard />
+          ) : route.page === "accounts" ? (
+            <FinanceAccountsPage source={route.source} unknownSource={route.unknownSource} />
+          ) : route.page === "account" ? (
+            <FinanceAccountPage id={route.id} />
+          ) : route.page === "burn" ? (
+            <FinanceBurnPage />
+          ) : route.page === "month" ? (
+            <FinanceMonthPage month={route.month} />
+          ) : route.page === "runway" ? (
+            <FinanceRunwayPage />
+          ) : route.page === "crypto" ? (
+            <FinanceCryptoPage />
+          ) : route.page === "spend" ? (
+            <FinanceSpendPage
+              period={route.period}
+              category={route.category}
+              range={route.range}
+              source={route.source ?? null}
+            />
+          ) : route.page === "category" ? (
+            <FinanceCategoryPage slug={route.slug} window={route.window} />
+          ) : route.page === "recurring" ? (
+            <FinanceRecurringPage keyName={route.key} />
+          ) : route.page === "vendor" ? (
+            <FinanceVendorPage keyName={route.key} />
+          ) : route.page === "transaction" ? (
+            <FinanceTransactionPage id={route.id} />
+          ) : route.page === "receipt" ? (
+            <FinanceReceiptPage id={route.id} />
+          ) : (
+            <FinanceNotFound />
+          )}
+        </div>
       </div>
     </FinanceChromeProvider>
   );

@@ -28,20 +28,20 @@ export function CleanupSenderRow({
   const pileNames = { important: t`Important`, updates: t`Updates`, newsletters: t`Newsletters` };
   const readPercent = Math.round((sender.readCount / Math.max(sender.messageCount, 1)) * 100);
   return (
-    <div
+    // biome-ignore lint/a11y/noLabelWithoutControl: the Checkbox component renders the input inside this label
+    <label
       data-sender={sender.address}
-      className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 border-b border-foreground/10 px-1 py-2.5"
+      className="grid cursor-pointer min-h-11 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 border-b border-foreground/10 px-1 py-2.5 has-[:disabled]:cursor-default"
     >
       <Checkbox
-        className="relative after:absolute after:-inset-3.5"
         aria-label={t`Select ${sender.name}`}
         checked={checked}
         disabled={disabled}
         onCheckedChange={onToggle}
       />
       <div className="min-w-0">
-        <div className="flex min-w-0 items-baseline gap-2">
-          <span dir="auto" className="max-w-[70%] shrink-0 truncate text-[15px] font-semibold">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+          <span dir="auto" className="max-w-full shrink-0 truncate text-[15px] font-semibold">
             {sender.name}
           </span>
           <span dir="auto" className="min-w-0 truncate text-sm text-muted-foreground">
@@ -111,6 +111,6 @@ export function CleanupSenderRow({
           </>
         ) : null}
       </div>
-    </div>
+    </label>
   );
 }
