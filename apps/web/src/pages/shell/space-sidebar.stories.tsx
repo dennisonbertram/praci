@@ -85,7 +85,7 @@ const operationsGroup: Group = {
   createdAt: "2026-01-01T00:00:00.000Z",
 };
 
-type Mode = "expanded" | "rail" | "search" | "folder-roster";
+type Mode = "expanded" | "rail" | "search-trigger" | "folder-roster";
 
 export function SidebarFixture({
   mode,
@@ -105,11 +105,10 @@ export function SidebarFixture({
   const navigate = useNavigate();
   const sidebarRef = useRef<HTMLElement>(null);
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
-  const focusSearchOnExpand = useRef(false);
   const spaceMenuAnchor = useRef<HTMLElement>(null);
   const botMenuAnchor = useRef<HTMLElement>(null);
   const keepNoticeFor = useRef<string | null>(null);
-  const [query, setQuery] = useState(mode === "search" ? "ada" : "");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [archivedOpen, setArchivedOpen] = useState(false);
@@ -131,7 +130,6 @@ export function SidebarFixture({
   const fixtureBots = pageAgents ? [...bots, ...pageAgentBots] : bots;
   const [, setDeleteTarget] = useState<ReturnType<typeof makeBot> | null>(null);
   const [, setDeleteGroupTarget] = useState<typeof operationsGroup | null>(null);
-  const spaceQuery = query.trim();
   const rail = mode === "rail";
   const sidebarGroups = sidebarGroupsForSpaces(
     [
@@ -145,7 +143,7 @@ export function SidebarFixture({
         botSections: sections,
       },
     ],
-    spaceQuery,
+    "",
     "space_demo",
     "Personal",
   );
@@ -156,10 +154,8 @@ export function SidebarFixture({
     rail,
     sidebarDocked: true,
     mobileSidebarOpen,
-    focusSearchOnExpand,
     setBotsSidebarCollapsedPref: () => undefined,
-    query,
-    setQuery,
+    onOpenSearch: () => setSearchOpen(true),
     activityMode: false,
     toggleActivityMode: () => undefined,
     setMobileSidebarOpen,
@@ -173,7 +169,6 @@ export function SidebarFixture({
     setNewSpaceOpen,
     setPickerInfoTopic,
     sidebarScrollRef,
-    showSpaceSearch: mode === "search",
     collapsedSidebarSections: new Set<string>(),
     toggleSidebarSection: () => undefined,
     inboxMode: false,
@@ -194,15 +189,6 @@ export function SidebarFixture({
     contactsMode: false,
     dataRoomMode: false,
     artifactsMode: false,
-    spaceQuery,
-    searchHits: [],
-    searchLoading: false,
-    searchPages: [],
-    searchDocuments: [],
-    searchArtifacts: [],
-    openSearchResult: () => undefined,
-    jumpToSearchHit: async () => undefined,
-    openAppPage: () => undefined,
     sidebarLayout: { folders: ["folder_workspace"], containers: { [ROOT_CONTAINER]: [] } },
     sidebarDragLabel: () => "",
     dropSidebarItem: () => undefined,
@@ -271,6 +257,7 @@ export function SidebarFixture({
         </Button>
       ) : null}
       <SpaceSidebar {...props} />
+      {searchOpen ? <output data-testid="search-open">Command palette open</output> : null}
     </div>
   );
 }
@@ -283,8 +270,8 @@ export const Rail: Story = {
   render: () => <SidebarFixture mode="rail" />,
 };
 
-export const Search: Story = {
-  render: () => <SidebarFixture mode="search" />,
+export const SearchTrigger: Story = {
+  render: () => <SidebarFixture mode="search-trigger" />,
 };
 
 export const FolderAndRoster: Story = {

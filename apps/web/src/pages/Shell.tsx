@@ -13,7 +13,6 @@ import type {
   MessageReaction,
   ProductEvent,
   Routine,
-  SearchHit,
   SidebarSnapshot,
   Space,
   SpaceMemoryConfig,
@@ -134,6 +133,7 @@ import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/Err
 import { AgentAvatar } from "../components/integrations/AgentAvatar";
 import { DevinConnectDialog } from "../components/integrations/DevinConnectDialog";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
+import { PageNavContext } from "../components/PageHeader";
 import { RowsSkeleton } from "../components/RowsSkeleton";
 import { canOfferHostComputer } from "../components/RunsOnPicker";
 import { OpeningSpace, ThreadSkeleton } from "../components/ShellSkeleton";
@@ -265,12 +265,12 @@ import {
   routineNeedsOneShotArm,
 } from "./RoutineEditor";
 import type { SettingsSection } from "./SettingsOverlay";
-import type { SearchLink } from "./SpaceSearch";
 import type { PageRemoteUpdate } from "./shell/bot-page-panel";
 import { BotPagePanel } from "./shell/bot-page-panel";
 import { BotSettings } from "./shell/bot-panel";
 import { PinsList, PinsStrip, useBotPins } from "./shell/bot-pins";
-import { CommandPalette, isCommandPaletteHotkey } from "./shell/command-palette";
+import type { PaletteEntry } from "./shell/command-palette";
+import { CommandPalette, isCommandPaletteHotkey, plainSnippet } from "./shell/command-palette";
 import type { PendingAttachment } from "./shell/composer";
 import { Composer } from "./shell/composer";
 import {
@@ -392,6 +392,9 @@ function readCollapsedRosterParents(userId: string | null | undefined): Set<stri
   return readCollapsedIdSet(collapsedRosterParentsStorageKey(userId));
 }
 
+/** A non-chat search result: a Data room document, artifact or contact. */
+type SearchLink = { id: string; label: string; detail?: string };
+
 /** Data room files (by name and content) and artifacts matching a search; a failure only hides that group. */
 async function findDocumentsAndArtifacts(query: string) {
   const [documents, artifacts] = await Promise.all([
@@ -425,14 +428,58 @@ function findContacts(query: string): Promise<SearchLink[]> {
         .filter((c) =>
           [c.name, c.email, c.organization].some((v) => v?.toLowerCase().includes(needle)),
         )
+        .sort(
+          (a, b) =>
+            Number(b.name.toLowerCase().includes(needle)) -
+            Number(a.name.toLowerCase().includes(needle)),
+        )
         .slice(0, 5)
         .map((c) => ({
           id: c.name,
           label: c.name,
-          detail: c.organization ?? c.email ?? undefined,
+          // The field that matched, so a hit on "halcyon" shows why; else the usual second line.
+          detail:
+            [c.organization, c.email].find((v) => v?.toLowerCase().includes(needle)) ??
+            c.organization ??
+            c.email ??
+            undefined,
         })),
     )
     .catch((): SearchLink[] => []);
+}
+
+/** Chats with a matching message, once per chat: the newest match and its date. */
+function findChats(query: string) {
+  return rpc.search
+    .query({ q: query })
+    .then(({ hits }) => {
+      const seen = new Set<string>();
+      const entries: PaletteEntry[] = [];
+      for (const hit of hits) {
+        const chatId = hit.groupId ?? hit.botId;
+        const name = hit.groupName ?? hit.botName ?? hit.title;
+        if (!chatId || seen.has(chatId)) continue;
+        seen.add(chatId);
+        const params = new URLSearchParams();
+        if (hit.messageId) params.set("m", hit.messageId);
+        if (hit.routineId) params.set("routine", hit.routineId);
+        const search = params.toString();
+        const isChatText = hit.kind === "conversation" || hit.kind === "message";
+        entries.push({
+          id: `${hit.groupId ? `/app/g/${chatId}` : `/app/${chatId}`}${search ? `?${search}` : ""}`,
+          label: name,
+          detail: isChatText ? plainSnippet(hit.snippet) : hit.title,
+          date: hit.createdAt
+            ? new Date(hit.createdAt).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+              })
+            : undefined,
+        });
+      }
+      return entries.slice(0, 5);
+    })
+    .catch((): PaletteEntry[] => []);
 }
 
 export function ShellPage() {
@@ -516,9 +563,6 @@ export function ShellPage() {
     setInboxAgentCollapsed(readInboxAgentCollapsed(userId) || phone);
     setCartaAgentCollapsed(readCartaAgentCollapsed(userId) || phone);
   }, [userId]);
-  const [query, setQuery] = useState("");
-  const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
   const [snapshot, setSnapshot] = useState<ThreadSnapshot | null>(null);
   const snapshotRef = useRef<ThreadSnapshot | null>(null);
   const streamResponses = useSyncExternalStore(
@@ -707,6 +751,18 @@ export function ShellPage() {
     useState<ReadonlySet<string>>(readSeenRunErrorIds);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  // A page header with its own menu button replaces the shell's phone band above it.
+  const [headerMenus, setHeaderMenus] = useState(0);
+  const pageNav = useMemo(
+    () => ({
+      open: () => setMobileSidebarOpen(true),
+      claim: () => {
+        setHeaderMenus((n) => n + 1);
+        return () => setHeaderMenus((n) => n - 1);
+      },
+    }),
+    [],
+  );
   const sidebarDocked = useSidebarDocked();
   const sidebarRef = useRef<HTMLElement>(null);
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
@@ -725,12 +781,6 @@ export function ShellPage() {
   useEffect(() => {
     if (rail) sidebarScrollRef.current?.scrollTo({ top: 0 });
   }, [rail]);
-  const focusSearchOnExpand = useRef(false);
-  useEffect(() => {
-    if (botsSidebarCollapsed || !focusSearchOnExpand.current) return;
-    focusSearchOnExpand.current = false;
-    document.querySelector<HTMLInputElement>('[data-testid="sidebar-search"] input')?.focus();
-  }, [botsSidebarCollapsed]);
   const botsSidebarEdgeDragRef = useRef<{ startX: number; mode: "expand" | "collapse" } | null>(
     null,
   );
@@ -1753,8 +1803,8 @@ export function ShellPage() {
               },
             ]
           : [];
-    return sidebarGroupsForSpaces(sidebarSpaces, query, bootstrapMe?.spaceId, t`Personal`);
-  }, [bootstrapMe, botSections, bots, groups, spaces, query, t]);
+    return sidebarGroupsForSpaces(sidebarSpaces, "", bootstrapMe?.spaceId, t`Personal`);
+  }, [bootstrapMe, botSections, bots, groups, spaces, t]);
   // What the list shows now, so a drop can be turned into a move.
   const sidebarLayout = useMemo<SidebarLayout>(() => {
     const folders: string[] = [];
@@ -2020,8 +2070,6 @@ export function ShellPage() {
     },
     [userId],
   );
-  const spaceQuery = query.trim();
-  const showSpaceSearch = spaceQuery.length > 0;
 
   // App pages that search and the command palette can open (route under /app/).
   const appPages = useMemo(() => {
@@ -2073,31 +2121,23 @@ export function ShellPage() {
     () => appPages.filter((page) => !hiddenPages.includes(page.id)),
     [appPages, hiddenPages],
   );
-  // Matched by name, so "Finance" finds the Finance page and not only the Finance agent.
-  const searchPages = useMemo(() => {
-    const needle = spaceQuery.toLocaleLowerCase();
-    return needle
-      ? visiblePages.filter((page) =>
-          `${page.label} ${"keywords" in page ? page.keywords : ""}`
-            .toLocaleLowerCase()
-            .includes(needle),
-        )
-      : [];
-  }, [visiblePages, spaceQuery]);
-  const [searchDocuments, setSearchDocuments] = useState<SearchLink[]>([]);
-  const [searchArtifacts, setSearchArtifacts] = useState<SearchLink[]>([]);
-
   const searchPaletteLinks = useCallback(
     async (q: string) => {
-      const [found, contacts] = await Promise.all([findDocumentsAndArtifacts(q), findContacts(q)]);
+      const [found, contacts, chats] = await Promise.all([
+        findDocumentsAndArtifacts(q),
+        findContacts(q),
+        findChats(q),
+      ]);
       return [
         {
           heading: t`Contacts`,
           entries: contacts.map((c) => ({
             id: `/app/contacts?q=${encodeURIComponent(c.id)}`,
             label: c.label,
+            detail: c.detail,
           })),
         },
+        { heading: t`Chats`, entries: chats },
         {
           heading: t`Documents`,
           entries: found.documents.map((doc) => ({
@@ -2112,70 +2152,27 @@ export function ShellPage() {
             label: item.label,
           })),
         },
+        {
+          heading: t`Mail`,
+          entries: [
+            { id: `/app/inbox?q=${encodeURIComponent(q)}`, label: t`Search mail for “${q}”` },
+          ],
+        },
       ];
     },
     [t],
   );
 
   function openSearchResult(path: string) {
-    setQuery("");
     setMobileSidebarOpen(false);
     navigate(path);
   }
 
   /** Opens an entry of appPages; Settings is a dialog, not a route. */
   function openAppPage(id: string) {
-    setQuery("");
     setMobileSidebarOpen(false);
     if (id === "settings") openSettings("general");
     else navigate(`/app/${id}`);
-  }
-
-  useEffect(() => {
-    if (!showSpaceSearch) {
-      setSearchHits([]);
-      setSearchDocuments([]);
-      setSearchArtifacts([]);
-      setSearchLoading(false);
-      return;
-    }
-    const abort = new AbortController();
-    // Loading from the first keystroke, so "No matches" cannot show during the debounce.
-    setSearchLoading(true);
-    const timer = window.setTimeout(() => {
-      const docs = findDocumentsAndArtifacts(spaceQuery).then((found) => {
-        if (abort.signal.aborted) return;
-        setSearchDocuments(found.documents);
-        setSearchArtifacts(found.artifacts);
-      });
-      const chats = rpc.search
-        .query({ q: spaceQuery })
-        .then((result) => {
-          if (!abort.signal.aborted) setSearchHits(result.hits);
-        })
-        .catch(() => {
-          if (!abort.signal.aborted) setSearchHits([]);
-        });
-      void Promise.all([docs, chats]).finally(() => {
-        if (!abort.signal.aborted) setSearchLoading(false);
-      });
-    }, 200);
-    return () => {
-      abort.abort();
-      window.clearTimeout(timer);
-    };
-  }, [showSpaceSearch, spaceQuery]);
-
-  async function jumpToSearchHit(hit: SearchHit) {
-    setQuery("");
-    setSearchHits([]);
-    const params = new URLSearchParams();
-    if (hit.messageId) params.set("m", hit.messageId);
-    if (hit.routineId) params.set("routine", hit.routineId);
-    navigate({
-      pathname: hit.groupId ? `/app/g/${hit.groupId}` : `/app/${hit.botId}`,
-      search: params.toString() ? `?${params.toString()}` : undefined,
-    });
   }
 
   async function jumpToMessage(target: { botId?: string; groupId?: string; messageId: string }) {
@@ -4009,10 +4006,8 @@ export function ShellPage() {
         rail={rail}
         sidebarDocked={sidebarDocked}
         mobileSidebarOpen={mobileSidebarOpen}
-        focusSearchOnExpand={focusSearchOnExpand}
         setBotsSidebarCollapsedPref={setBotsSidebarCollapsedPref}
-        query={query}
-        setQuery={setQuery}
+        onOpenSearch={() => setCommandPaletteOpen(true)}
         activityMode={activityMode}
         toggleActivityMode={toggleActivityMode}
         setMobileSidebarOpen={setMobileSidebarOpen}
@@ -4026,7 +4021,6 @@ export function ShellPage() {
         setNewSpaceOpen={setNewSpaceOpen}
         setPickerInfoTopic={setPickerInfoTopic}
         sidebarScrollRef={sidebarScrollRef}
-        showSpaceSearch={showSpaceSearch}
         collapsedSidebarSections={collapsedSidebarSections}
         toggleSidebarSection={toggleSidebarSection}
         inboxMode={inboxMode}
@@ -4040,19 +4034,10 @@ export function ShellPage() {
         contactsMode={contactsMode}
         dataRoomMode={dataRoomMode}
         artifactsMode={artifactsMode}
-        spaceQuery={spaceQuery}
-        searchHits={searchHits}
-        searchLoading={searchLoading}
-        searchPages={searchPages}
-        searchDocuments={searchDocuments}
-        searchArtifacts={searchArtifacts}
         hiddenPages={hiddenPages}
         addedPages={addedPages}
         toggleHiddenPage={toggleHiddenPage}
         setAddedPages={setAddedPages}
-        openSearchResult={openSearchResult}
-        jumpToSearchHit={jumpToSearchHit}
-        openAppPage={openAppPage}
         sidebarLayout={sidebarLayout}
         sidebarDragLabel={sidebarDragLabel}
         dropSidebarItem={dropSidebarItem}
@@ -4161,286 +4146,289 @@ export function ShellPage() {
       )}
 
       {/* Keep the composer's z-index inside the chat so phone overlays like the side panel cover it. */}
-      <main
-        id={MAIN_CONTENT_ID}
-        tabIndex={-1}
-        aria-hidden={mobileSidebarOpen || undefined}
-        inert={mobileSidebarOpen}
-        data-dragging={paneDraggingFiles ? "files" : undefined}
-        onDragEnter={onPaneFileDrag}
-        onDragOver={onPaneFileDrag}
-        onDragLeave={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+      <PageNavContext.Provider value={pageNav}>
+        <main
+          id={MAIN_CONTENT_ID}
+          tabIndex={-1}
+          aria-hidden={mobileSidebarOpen || undefined}
+          inert={mobileSidebarOpen}
+          data-dragging={paneDraggingFiles ? "files" : undefined}
+          onDragEnter={onPaneFileDrag}
+          onDragOver={onPaneFileDrag}
+          onDragLeave={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+              setPaneDraggingFiles(false);
+          }}
+          onDrop={(event) => {
+            if (!paneAcceptsFiles || !isUnclaimedFileDrag(event)) return;
+            event.preventDefault();
             setPaneDraggingFiles(false);
-        }}
-        onDrop={(event) => {
-          if (!paneAcceptsFiles || !isUnclaimedFileDrag(event)) return;
-          event.preventDefault();
-          setPaneDraggingFiles(false);
-          if (!composerDisabled) onAttachmentPick(event.dataTransfer.files);
-        }}
-        className={`isolate flex min-w-0 flex-1 flex-col bg-background outline-none ${
-          paneDraggingFiles ? "ring-2 ring-inset ring-ring" : ""
-        }`}
-      >
-        {/* Inside main so the composer and its menus stay above it. As wide as the
-            12px phone gutter only, so it never covers a tappable control; the swipe
-            itself is detected on the shell root from a wider edge zone. */}
-        {!mobileSidebarOpen ? (
-          <div
-            data-testid="mobile-sidebar-swipe-edge"
-            aria-hidden="true"
-            className="absolute bottom-20 start-0 top-16 z-20 w-3 touch-none lg:hidden"
-          />
-        ) : null}
-        {/* Page modes keep only the navigation controls, so phones can still open the sidebar. */}
-        <div
-          className={`app-drag flex items-center justify-between px-3 lg:px-[22px] ${
-            pageMode
-              ? `${TOP_BAR_HEIGHT}${botsSidebarCollapsed ? "" : " lg:hidden"}`
-              : `border-b border-sidebar-border ${TOP_BAR_HEIGHT}`
+            if (!composerDisabled) onAttachmentPick(event.dataTransfer.files);
+          }}
+          className={`isolate flex min-w-0 flex-1 flex-col bg-background outline-none ${
+            paneDraggingFiles ? "ring-2 ring-inset ring-ring" : ""
           }`}
         >
-          <div className="flex min-w-0 items-center gap-2">
-            {/* Collapsed bots sidebar: this header is the leading edge for window chrome. */}
-            {showHeaderWindowChrome(botsSidebarCollapsed, sidebarDocked) && desktopBridge() ? (
-              <WindowChrome />
-            ) : null}
-            <button
-              type="button"
-              aria-label={t`Open navigation`}
-              onClick={() => setMobileSidebarOpen(true)}
-              className="app-no-drag grid h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent lg:hidden"
-            >
-              <Menu size={19} strokeWidth={1.7} />
-            </button>
-            {botsSidebarCollapsed ? (
+          {/* Inside main so the composer and its menus stay above it. As wide as the
+            12px phone gutter only, so it never covers a tappable control; the swipe
+            itself is detected on the shell root from a wider edge zone. */}
+          {!mobileSidebarOpen ? (
+            <div
+              data-testid="mobile-sidebar-swipe-edge"
+              aria-hidden="true"
+              className="absolute bottom-20 start-0 top-16 z-20 w-3 touch-none lg:hidden"
+            />
+          ) : null}
+          {/* Page modes keep only the navigation controls, so phones can still open the sidebar. */}
+          <div
+            className={`app-drag flex items-center justify-between px-3 lg:px-[22px] ${
+              pageMode
+                ? `${TOP_BAR_HEIGHT}${botsSidebarCollapsed ? "" : " lg:hidden"}${headerMenus > 0 ? " max-lg:hidden" : ""}`
+                : `border-b border-sidebar-border ${TOP_BAR_HEIGHT}`
+            }`}
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              {/* Collapsed bots sidebar: this header is the leading edge for window chrome. */}
+              {showHeaderWindowChrome(botsSidebarCollapsed, sidebarDocked) && desktopBridge() ? (
+                <WindowChrome />
+              ) : null}
               <button
                 type="button"
-                data-testid="restore-bots-sidebar"
-                aria-label={t`Show sidebar`}
-                title={t`Show sidebar`}
-                onClick={() => setBotsSidebarCollapsedPref(false)}
-                className="app-no-drag hidden h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent lg:grid"
+                aria-label={t`Open navigation`}
+                onClick={() => setMobileSidebarOpen(true)}
+                className="app-no-drag grid h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent lg:hidden"
               >
-                <PanelLeftOpen size={19} strokeWidth={1.7} aria-hidden="true" />
+                <Menu size={19} strokeWidth={1.7} />
               </button>
-            ) : null}
-            {pageMode ? null : (
-              <button
-                type="button"
-                data-testid="bot-settings-trigger"
-                onClick={() => setPanel(inGroup ? "group-settings" : "settings")}
-                className="app-no-drag flex min-w-0 items-center gap-3"
-              >
-                {inGroup ? (
-                  <GroupAvatar
-                    members={activeSnapshot?.members ?? activeGroup?.members ?? []}
-                    size={26}
-                  />
-                ) : active ? (
-                  <BotAvatar
-                    color={active.color}
-                    identity={active.id}
-                    size={26}
-                    status={active.status}
-                  />
-                ) : null}
-                <span className="min-w-0">
-                  <span
-                    className="block truncate text-[16px] font-medium text-foreground"
-                    dir="auto"
-                  >
-                    {inGroup
-                      ? (activeGroup?.name ?? activeSnapshot?.groupName ?? t`Group`)
-                      : (active?.name ?? (opening ? "" : t`Select a bot`))}
+              {botsSidebarCollapsed ? (
+                <button
+                  type="button"
+                  data-testid="restore-bots-sidebar"
+                  aria-label={t`Show sidebar`}
+                  title={t`Show sidebar`}
+                  onClick={() => setBotsSidebarCollapsedPref(false)}
+                  className="app-no-drag hidden h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent lg:grid"
+                >
+                  <PanelLeftOpen size={19} strokeWidth={1.7} aria-hidden="true" />
+                </button>
+              ) : null}
+              {pageMode ? null : (
+                <button
+                  type="button"
+                  data-testid="bot-settings-trigger"
+                  onClick={() => setPanel(inGroup ? "group-settings" : "settings")}
+                  className="app-no-drag flex min-w-0 items-center gap-3"
+                >
+                  {inGroup ? (
+                    <GroupAvatar
+                      members={activeSnapshot?.members ?? activeGroup?.members ?? []}
+                      size={26}
+                    />
+                  ) : active ? (
+                    <BotAvatar
+                      color={active.color}
+                      identity={active.id}
+                      size={26}
+                      status={active.status}
+                    />
+                  ) : null}
+                  <span className="min-w-0">
+                    <span
+                      className="block truncate text-[16px] font-medium text-foreground"
+                      dir="auto"
+                    >
+                      {inGroup
+                        ? (activeGroup?.name ?? activeSnapshot?.groupName ?? t`Group`)
+                        : (active?.name ?? (opening ? "" : t`Select a bot`))}
+                    </span>
                   </span>
-                </span>
-                {!inGroup && active?.audience === "external" ? <BotAudienceTag /> : null}
-              </button>
-            )}
+                  {!inGroup && active?.audience === "external" ? <BotAudienceTag /> : null}
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              {inGroup && !pageMode && activeGroup ? (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  data-testid="group-settings-button"
+                  title={t`Members and settings`}
+                  aria-label={t`Members and settings`}
+                  onClick={() => setPanel(panel === "group-settings" ? null : "group-settings")}
+                  data-active={panel === "group-settings" ? "" : undefined}
+                  className="app-no-drag data-active:bg-accent"
+                >
+                  <Users size={18} strokeWidth={1.6} className="text-foreground/75" />
+                </Button>
+              ) : null}
+              {!inGroup && !pageMode && active && pageBotId === active.id ? (
+                <button
+                  type="button"
+                  title={t`Page`}
+                  aria-label={t`Page`}
+                  onClick={() => setPanel(panel === "page" ? null : "page")}
+                  data-active={panel === "page" ? "" : undefined}
+                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+                >
+                  <FileText size={18} strokeWidth={1.6} className="text-foreground/75" />
+                </button>
+              ) : null}
+              {!inGroup && !pageMode && active && botPins?.list ? (
+                <button
+                  type="button"
+                  title={t`List`}
+                  aria-label={t`List`}
+                  onClick={() => setPanel(panel === "list" ? null : "list")}
+                  data-active={panel === "list" ? "" : undefined}
+                  className={`app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent ${panel === null ? "xl:hidden" : ""}`}
+                >
+                  <ListTodo size={18} strokeWidth={1.6} className="text-foreground/75" />
+                </button>
+              ) : null}
+              {!inGroup && !pageMode && active ? (
+                <button
+                  type="button"
+                  title={t`Computer and routines`}
+                  aria-label={t`Computer and routines`}
+                  onClick={() => {
+                    const next = panel === "computer" ? null : "computer";
+                    setPanel(next);
+                    if (next === "computer" && active) {
+                      // Refresh run/computer so Take control isn't stuck on a stale busyBotName.
+                      void refreshThread(active.id).catch(() => undefined);
+                    }
+                  }}
+                  data-active={panel === "computer" ? "" : undefined}
+                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+                >
+                  <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
+                </button>
+              ) : null}
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            {inGroup && !pageMode && activeGroup ? (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                data-testid="group-settings-button"
-                title={t`Members and settings`}
-                aria-label={t`Members and settings`}
-                onClick={() => setPanel(panel === "group-settings" ? null : "group-settings")}
-                data-active={panel === "group-settings" ? "" : undefined}
-                className="app-no-drag data-active:bg-accent"
-              >
-                <Users size={18} strokeWidth={1.6} className="text-foreground/75" />
+          {integrationsMode ? (
+            <ErrorBoundary fallback={<SectionLoadFailed />}>
+              <Suspense fallback={<RowsSkeleton className="p-6" />}>
+                <IntegrationsPage
+                  activeBotId={activeBotId.current}
+                  onOpenMessaging={() => setMessagingSettingsOpen(true)}
+                  onOpenAiDataSharing={() => openSettings("general")}
+                />
+              </Suspense>
+            </ErrorBoundary>
+          ) : dataRoomMode ? (
+            <DataRoomPage
+              onAskAgent={dataRoomAgentOpen ? undefined : askDataRoomAgent}
+              onOpenModelSettings={() => openSettings("models")}
+              agents={sendToAgentTargets}
+              onSendToAgent={(items, agent) => void sendFilesToAgent(items, agent)}
+              spaceName={
+                spaces.length > 1
+                  ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
+                  : undefined
+              }
+            />
+          ) : contactsMode ? (
+            <ContactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
+          ) : artifactsMode ? (
+            <ErrorBoundary fallback={<SectionLoadFailed />}>
+              <Suspense fallback={<RowsSkeleton className="p-6" />}>
+                <ArtifactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
+              </Suspense>
+            </ErrorBoundary>
+          ) : boardMode ? (
+            <ErrorBoundary fallback={<SectionLoadFailed />}>
+              <Suspense fallback={<RowsSkeleton className="p-6" />}>
+                <BoardPage embedded />
+              </Suspense>
+            </ErrorBoundary>
+          ) : financeMode ? (
+            <FinancePage
+              onAskAgent={financeAgentOpen ? undefined : askFinanceAgent}
+              spaces={spaces}
+              spaceId={bootstrapMe?.spaceId}
+              onSwitchSpace={(spaceId) => {
+                // Like opening another space's chat: the auth boundary changes, so reload. A detail
+                // page belongs to this space, so the other space opens on its dashboard.
+                if (selectSpace(spaceId)) window.location.assign("/app/finance");
+              }}
+            />
+          ) : legalMode ? (
+            <LegalPage
+              onAskAgent={legalAgentOpen ? undefined : askLegalAgent}
+              onAskAbout={askLegalAgentAbout}
+              onConsentChange={setLegalConsentMissing}
+              onOpenSettings={() => openSettings("models", LEGAL_AGENT_MODEL.provider)}
+              settingsOpen={settingsOpen}
+              spaces={spaces}
+              spaceId={bootstrapMe?.spaceId}
+              onSwitchSpace={(spaceId) => {
+                // Like Finance: the auth boundary changes, so reload on the other space's Legal page.
+                if (selectSpace(spaceId)) window.location.assign("/app/legal");
+              }}
+            />
+          ) : devinMode ? (
+            <DevinPage
+              key={devinPageKey}
+              onAskAgent={devinAgentOpen ? undefined : askDevinAgent}
+              onConnect={() => setDevinDialog("connect")}
+              onReconnect={() => setDevinDialog("replace")}
+            />
+          ) : capTableMode ? (
+            <CapTablePage
+              onShowAgent={cartaPanel.canShow ? () => setCartaAgentCollapsedPref(false) : undefined}
+              onCartaStatus={setCartaConnected}
+              onOpenModelSettings={() => openSettings("models")}
+              needsModel={bootstrapMe?.needsModel === true}
+              agentBusy={transcriptRunning}
+            />
+          ) : inboxMode ? (
+            <InboxPage
+              paused={false}
+              onShowAgent={
+                inboxAgentHidden
+                  ? () => {
+                      setInboxAgentCollapsedPref(false);
+                      setShowEmptyInboxAgent(true);
+                    }
+                  : undefined
+              }
+              onRefreshed={refreshInboxUnread}
+              onOpenAgent={async (bot) => {
+                await refreshBots();
+                setFocusComposerBotId(bot.id);
+                openBot(bot.id);
+              }}
+              onConnectMail={() => navigate("/app/integrations?connect=gmail&returnTo=/app/inbox")}
+              onReconnectMail={() => navigate("/app/integrations?open=gmail&returnTo=/app/inbox")}
+              onAllowMailRules={(connectionId) =>
+                navigate(
+                  appPath(
+                    { connectorId: "google", slug: "gmail" },
+                    { reconnect: connectionId, next: "/app/inbox?cleanup=1" },
+                  ),
+                )
+              }
+              spaceName={
+                spaces.length > 1
+                  ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
+                  : undefined
+              }
+            />
+          ) : opening ? (
+            <OpeningSpace />
+          ) : !active && !activeGroup ? (
+            <div className="grid flex-1 place-items-center">
+              <Button onClick={() => void createBot()}>
+                <Plus size={16} aria-hidden="true" />
+                <Trans>New bot</Trans>
               </Button>
-            ) : null}
-            {!inGroup && !pageMode && active && pageBotId === active.id ? (
-              <button
-                type="button"
-                title={t`Page`}
-                aria-label={t`Page`}
-                onClick={() => setPanel(panel === "page" ? null : "page")}
-                data-active={panel === "page" ? "" : undefined}
-                className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
-              >
-                <FileText size={18} strokeWidth={1.6} className="text-foreground/75" />
-              </button>
-            ) : null}
-            {!inGroup && !pageMode && active && botPins?.list ? (
-              <button
-                type="button"
-                title={t`List`}
-                aria-label={t`List`}
-                onClick={() => setPanel(panel === "list" ? null : "list")}
-                data-active={panel === "list" ? "" : undefined}
-                className={`app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent ${panel === null ? "xl:hidden" : ""}`}
-              >
-                <ListTodo size={18} strokeWidth={1.6} className="text-foreground/75" />
-              </button>
-            ) : null}
-            {!inGroup && !pageMode && active ? (
-              <button
-                type="button"
-                title={t`Computer and routines`}
-                onClick={() => {
-                  const next = panel === "computer" ? null : "computer";
-                  setPanel(next);
-                  if (next === "computer" && active) {
-                    // Refresh run/computer so Take control isn't stuck on a stale busyBotName.
-                    void refreshThread(active.id).catch(() => undefined);
-                  }
-                }}
-                data-active={panel === "computer" ? "" : undefined}
-                className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
-              >
-                <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
-              </button>
-            ) : null}
-          </div>
-        </div>
-        {integrationsMode ? (
-          <ErrorBoundary fallback={<SectionLoadFailed />}>
-            <Suspense fallback={<RowsSkeleton className="p-6" />}>
-              <IntegrationsPage
-                activeBotId={activeBotId.current}
-                onOpenMessaging={() => setMessagingSettingsOpen(true)}
-                onOpenAiDataSharing={() => openSettings("general")}
-              />
-            </Suspense>
-          </ErrorBoundary>
-        ) : dataRoomMode ? (
-          <DataRoomPage
-            onAskAgent={dataRoomAgentOpen ? undefined : askDataRoomAgent}
-            onOpenModelSettings={() => openSettings("models")}
-            agents={sendToAgentTargets}
-            onSendToAgent={(items, agent) => void sendFilesToAgent(items, agent)}
-            spaceName={
-              spaces.length > 1
-                ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
-                : undefined
-            }
-          />
-        ) : contactsMode ? (
-          <ContactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
-        ) : artifactsMode ? (
-          <ErrorBoundary fallback={<SectionLoadFailed />}>
-            <Suspense fallback={<RowsSkeleton className="p-6" />}>
-              <ArtifactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
-            </Suspense>
-          </ErrorBoundary>
-        ) : boardMode ? (
-          <ErrorBoundary fallback={<SectionLoadFailed />}>
-            <Suspense fallback={<RowsSkeleton className="p-6" />}>
-              <BoardPage embedded />
-            </Suspense>
-          </ErrorBoundary>
-        ) : financeMode ? (
-          <FinancePage
-            onAskAgent={financeAgentOpen ? undefined : askFinanceAgent}
-            spaces={spaces}
-            spaceId={bootstrapMe?.spaceId}
-            onSwitchSpace={(spaceId) => {
-              // Like opening another space's chat: the auth boundary changes, so reload. A detail
-              // page belongs to this space, so the other space opens on its dashboard.
-              if (selectSpace(spaceId)) window.location.assign("/app/finance");
-            }}
-          />
-        ) : legalMode ? (
-          <LegalPage
-            onAskAgent={legalAgentOpen ? undefined : askLegalAgent}
-            onAskAbout={askLegalAgentAbout}
-            onConsentChange={setLegalConsentMissing}
-            onOpenSettings={() => openSettings("models", LEGAL_AGENT_MODEL.provider)}
-            settingsOpen={settingsOpen}
-            spaces={spaces}
-            spaceId={bootstrapMe?.spaceId}
-            onSwitchSpace={(spaceId) => {
-              // Like Finance: the auth boundary changes, so reload on the other space's Legal page.
-              if (selectSpace(spaceId)) window.location.assign("/app/legal");
-            }}
-          />
-        ) : devinMode ? (
-          <DevinPage
-            key={devinPageKey}
-            onAskAgent={devinAgentOpen ? undefined : askDevinAgent}
-            onConnect={() => setDevinDialog("connect")}
-            onReconnect={() => setDevinDialog("replace")}
-          />
-        ) : capTableMode ? (
-          <CapTablePage
-            onShowAgent={cartaPanel.canShow ? () => setCartaAgentCollapsedPref(false) : undefined}
-            onCartaStatus={setCartaConnected}
-            onOpenModelSettings={() => openSettings("models")}
-            needsModel={bootstrapMe?.needsModel === true}
-            agentBusy={transcriptRunning}
-          />
-        ) : inboxMode ? (
-          <InboxPage
-            paused={false}
-            onShowAgent={
-              inboxAgentHidden
-                ? () => {
-                    setInboxAgentCollapsedPref(false);
-                    setShowEmptyInboxAgent(true);
-                  }
-                : undefined
-            }
-            onRefreshed={refreshInboxUnread}
-            onOpenAgent={async (bot) => {
-              await refreshBots();
-              setFocusComposerBotId(bot.id);
-              openBot(bot.id);
-            }}
-            onConnectMail={() => navigate("/app/integrations?connect=gmail&returnTo=/app/inbox")}
-            onReconnectMail={() => navigate("/app/integrations?open=gmail&returnTo=/app/inbox")}
-            onAllowMailRules={(connectionId) =>
-              navigate(
-                appPath(
-                  { connectorId: "google", slug: "gmail" },
-                  { reconnect: connectionId, next: "/app/inbox?cleanup=1" },
-                ),
-              )
-            }
-            spaceName={
-              spaces.length > 1
-                ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
-                : undefined
-            }
-          />
-        ) : opening ? (
-          <OpeningSpace />
-        ) : !active && !activeGroup ? (
-          <div className="grid flex-1 place-items-center">
-            <Button onClick={() => void createBot()}>
-              <Plus size={16} aria-hidden="true" />
-              <Trans>New bot</Trans>
-            </Button>
-          </div>
-        ) : (
-          threadView
-        )}
-      </main>
+            </div>
+          ) : (
+            threadView
+          )}
+        </main>
+      </PageNavContext.Provider>
 
       <CallCard onSettings={() => openSettings("voice")} />
 
@@ -4560,19 +4548,16 @@ export function ShellPage() {
                       }}
                     />
                   ) : null}
-                  {active ? (
+                  {/* The Monitor button in the chat header is the way back to the computer. */}
+                  {active && panel !== "settings" ? (
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={panel === "settings" ? t`Show computer` : t`Show settings`}
-                      onClick={() => setPanel(panel === "settings" ? "computer" : "settings")}
-                      className={panel === "settings" ? "text-foreground" : "text-muted-foreground"}
+                      aria-label={t`Show settings`}
+                      onClick={() => setPanel("settings")}
+                      className="text-muted-foreground"
                     >
-                      {panel === "settings" ? (
-                        <Monitor size={16} strokeWidth={1.7} />
-                      ) : (
-                        <Settings size={16} strokeWidth={1.7} />
-                      )}
+                      <Settings size={16} strokeWidth={1.7} />
                     </Button>
                   ) : null}
                   <Button

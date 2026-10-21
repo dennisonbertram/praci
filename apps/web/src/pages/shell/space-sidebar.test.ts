@@ -492,3 +492,64 @@ it("keeps one roster row tabbable and moves focus down with ArrowDown", async ()
     vi.unstubAllGlobals();
   }
 });
+
+it("opens the command palette from expanded and rail Search", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const render = (mode: "expanded" | "rail", key: string) =>
+    createElement(MemoryRouter, null, createElement(SidebarFixture, { mode, key }));
+  try {
+    await act(async () => root.render(render("expanded", "click")));
+    const input = container.querySelector<HTMLInputElement>('[data-testid="sidebar-search"] input');
+    await act(async () => input?.click());
+    expect(container.querySelector('[data-testid="search-open"]')).not.toBeNull();
+
+    await act(async () => root.render(render("expanded", "enter")));
+    const enterInput = container.querySelector<HTMLInputElement>(
+      '[data-testid="sidebar-search"] input',
+    );
+    await act(async () => {
+      enterInput?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect(container.querySelector('[data-testid="search-open"]')).not.toBeNull();
+
+    await act(async () => root.render(render("expanded", "space")));
+    const spaceInput = container.querySelector<HTMLInputElement>(
+      '[data-testid="sidebar-search"] input',
+    );
+    await act(async () => {
+      spaceInput?.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+    });
+    expect(container.querySelector('[data-testid="search-open"]')).not.toBeNull();
+
+    await act(async () => root.render(render("rail", "rail")));
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="sidebar-search-rail"]')?.click();
+    });
+    expect(container.querySelector('[data-testid="search-open"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="bots-sidebar"]')?.getAttribute("data-rail")).toBe(
+      "true",
+    );
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});

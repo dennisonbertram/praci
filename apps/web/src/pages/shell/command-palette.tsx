@@ -16,6 +16,12 @@ import {
 } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
+
+/** Chat snippets come from markdown replies; show them as plain text. */
+export function plainSnippet(text: string): string {
+  return text.replace(/\*\*|__|`/g, "");
+}
 
 function isApplePlatform() {
   if (typeof navigator === "undefined") return false;
@@ -81,7 +87,16 @@ function Highlight({ text, needle }: { text: string; needle: string }) {
 const SELECTED_ROW = "data-selected:bg-accent data-selected:shadow-[inset_3px_0_0_var(--ring)]";
 
 /** An app page (Inbox, Finance, ...) or a group chat the palette can open. */
-export type PaletteEntry = { id: string; label: string; keywords?: string; icon?: ReactNode };
+export type PaletteEntry = {
+  id: string;
+  label: string;
+  keywords?: string;
+  icon?: ReactNode;
+  /** Second line: the field or snippet that matched, highlighted. */
+  detail?: string;
+  /** Short date shown at the end of the row. */
+  date?: string;
+};
 
 export function CommandPalette({
   open,
@@ -107,6 +122,7 @@ export function CommandPalette({
   searchLinks?: (query: string) => Promise<{ heading: string; entries: PaletteEntry[] }[]>;
   onOpenPath?: (path: string) => void;
 }) {
+  useHideAmounts();
   const [search, setSearch] = useState("");
   const [modKey, setModKey] = useState("⌘");
 
@@ -296,9 +312,19 @@ export function CommandPalette({
             }}
             className={`items-center gap-3 rounded-xl! px-2.5 py-2 ${SELECTED_ROW}`}
           >
-            <span className="truncate font-medium text-foreground" dir="auto">
-              <Highlight text={entry.label} needle={needle} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-medium text-foreground" dir="auto">
+                <Highlight text={maskCurrencyWhenHidden(entry.label)} needle={needle} />
+              </span>
+              {entry.detail ? (
+                <span className="block truncate text-[13px] text-muted-foreground" dir="auto">
+                  <Highlight text={entry.detail} needle={needle} />
+                </span>
+              ) : null}
             </span>
+            {entry.date ? (
+              <span className="shrink-0 text-xs text-muted-foreground">{entry.date}</span>
+            ) : null}
           </CommandItem>
         ))}
       </CommandGroup>

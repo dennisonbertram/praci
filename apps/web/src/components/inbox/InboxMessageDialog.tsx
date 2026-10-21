@@ -278,7 +278,10 @@ function InboxMessage({
     <>
       <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col gap-2", agentBot && "md:pe-4")}>
         <div className="flex items-start gap-2">
-          <DialogTitle dir="auto" className="min-w-0 flex-1 text-xl leading-snug font-medium">
+          <DialogTitle
+            dir="auto"
+            className="min-w-0 flex-1 line-clamp-2 text-base leading-snug font-medium md:line-clamp-none md:text-xl"
+          >
             {title}
           </DialogTitle>
           {onNavigate && !gone ? (
