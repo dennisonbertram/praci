@@ -8,6 +8,7 @@ import type {
   FinanceSource,
   IntegrationSetupState,
   McpServer,
+  MeetingsStatus,
 } from "@rakazo/contracts";
 import { preferNativeGoogle } from "@rakazo/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -37,6 +38,8 @@ export type IntegrationsData = {
   /** Mercury and Brex, the first-party Finance integrations. */
   financeSources: FinanceSource[];
   setup: IntegrationSetupState | null;
+  /** The Granola API-key route; null before a key was pasted. */
+  meetings?: MeetingsStatus;
   /** The app catalog request failed, which is different from a server with no catalog. */
   catalogFailed: boolean;
   /** The server offers the by-domain catalog search. */
@@ -76,20 +79,33 @@ export function useIntegrations(): IntegrationsData {
   const refresh = useCallback(async () => {
     try {
       // A server without a managed catalog fails or returns nothing: custom connections still work.
-      const [catalog, connections, servers, bots, mcpAssignments, installs, setup, feed, finance] =
-        await Promise.all([
-          rpc.connections.catalog({}).catch(() => null),
-          rpc.connections.list().catch(() => []),
-          rpc.mcp.servers.list(),
-          rpc.bots.list(),
-          rpc.mcp.assignments.all().catch(() => []),
-          rpc.capabilities.list().catch(() => []),
-          rpc.integrationSetup.get().catch(() => null),
-          optionalCatalogFeedProbe(rpc.capabilities.catalogSearch({ query: "" })).catch(() => ({
-            enabled: false,
-          })),
-          rpc.finance.overview().catch(() => null),
-        ]);
+      const [
+        catalog,
+        connections,
+        servers,
+        bots,
+        mcpAssignments,
+        installs,
+        setup,
+        feed,
+        finance,
+        meetings,
+      ] = await Promise.all([
+        rpc.connections.catalog({}).catch(() => null),
+        rpc.connections.list().catch(() => []),
+        rpc.mcp.servers.list(),
+        rpc.bots.list(),
+        rpc.mcp.assignments.all().catch(() => []),
+        rpc.capabilities.list().catch(() => []),
+        rpc.integrationSetup.get().catch(() => null),
+        optionalCatalogFeedProbe(rpc.capabilities.catalogSearch({ query: "" })).catch(() => ({
+          enabled: false,
+        })),
+        rpc.finance.overview().catch(() => null),
+        Promise.resolve()
+          .then(() => rpc.meetings.status())
+          .catch(() => null),
+      ]);
       const live = connections.filter((row) => row.status !== "revoked");
       const effective = await rpc.connections
         .effectiveAccess()
@@ -130,6 +146,7 @@ export function useIntegrations(): IntegrationsData {
         ),
         financeSources: finance?.sources ?? [],
         setup,
+        meetings,
         feedEnabled: feed.enabled,
       });
     } catch (err) {

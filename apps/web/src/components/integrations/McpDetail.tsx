@@ -1,5 +1,10 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { financeProviderForEndpoint, isCartaEndpoint, isDevinEndpoint } from "@rakazo/contracts";
+import {
+  financeProviderForEndpoint,
+  isCartaEndpoint,
+  isDevinEndpoint,
+  isGranolaEndpoint,
+} from "@rakazo/contracts";
 import { Button, Input } from "@rakazo/ui-web";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
@@ -10,15 +15,26 @@ import { errorText } from "../../lib/user-error";
 import { ConfirmDialog, Heading } from "./AppDetail";
 import { AppLogo } from "./AppLogo";
 import { CustomConnectionDialog } from "./CustomConnectionDialog";
+import { GranolaMeetingsCard } from "./GranolaMeetingsCard";
 import { IntegrationAgentSection } from "./IntegrationAgentSection";
 import { AgentToggleList, StatusBadge } from "./parts";
 import type { IntegrationsData } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
 
-export function McpDetail({ data }: { data: IntegrationsData }) {
+export function McpDetail({
+  data,
+  serverId: forcedId,
+  onOpenAiDataSharing,
+}: {
+  data: IntegrationsData;
+  /** The Granola page picks its server itself instead of reading it from the route. */
+  serverId?: string;
+  onOpenAiDataSharing?: () => void;
+}) {
   const { t } = useLingui();
   const navigate = useNavigate();
-  const { serverId = "" } = useParams();
+  const params = useParams();
+  const serverId = forcedId ?? params.serverId ?? "";
   const server = data.servers.find((entry) => entry.id === serverId);
   const reconnect = useMcpReconnect(serverId, () => void data.refresh());
   const [draft, setDraft] = useState<string | null>(null);
@@ -126,6 +142,10 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
   const bank = Boolean(financeProviderForEndpoint(server.endpoint));
   const service = carta ? "Carta" : server.name;
   const agent = data.bots.find((bot) => bot.id === server.agentBotId);
+  const granola = isGranolaEndpoint(server.endpoint);
+  const keyRoute = granola ? (data.meetings ?? null) : null;
+  const bothRoutes =
+    Boolean(keyRoute && keyRoute.status !== "disconnected") && server.oauthStatus === "connected";
   const hasAgent = server.agentBotId !== null;
   const setWrites = (on: boolean) =>
     on
@@ -175,6 +195,11 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
             )}
             <div className="flex flex-wrap items-center gap-2.5 text-muted-foreground">
               <StatusBadge status={status} />
+              {bothRoutes ? (
+                <span>
+                  <Trans>Sign-in</Trans>
+                </span>
+              ) : null}
               {/* Carta is a known service; its MCP host means nothing to a founder. */}
               {carta ? null : (
                 <span>
@@ -243,7 +268,22 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
           </Button>
         </div>
 
-        {hasAgent && server.agentBotId ? (
+        {granola ? (
+          <div className="mt-6">
+            <GranolaMeetingsCard
+              status={keyRoute}
+              bothRoutes={bothRoutes}
+              agentName={
+                data.bots.find((bot) => bot.id === keyRoute?.agentBotId)?.name ?? t`Granola agent`
+              }
+              onChanged={() => void data.refresh()}
+              onOpenAiDataSharing={onOpenAiDataSharing}
+            />
+          </div>
+        ) : null}
+
+        {/* Once the key connection exists the agent link is drawn under its status, not here. */}
+        {hasAgent && server.agentBotId && !keyRoute ? (
           <IntegrationAgentSection
             service={service}
             agentName={agent?.name ?? t`${service} agent`}
@@ -251,7 +291,7 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
             writesEnabled={server.writesEnabled}
             shared={!server.agentExclusive}
             disabled={busy}
-            onWrites={isDevinEndpoint(server.endpoint) ? undefined : setWrites}
+            onWrites={isDevinEndpoint(server.endpoint) || granola ? undefined : setWrites}
             usedBy={usedBy}
             onShared={(shared) => void setShared(shared)}
           />
