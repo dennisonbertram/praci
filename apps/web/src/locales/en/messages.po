@@ -721,6 +721,7 @@ msgstr "Activity"
 
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/ModelBackupsSettings.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Add"
@@ -3762,6 +3763,10 @@ msgstr "Display name"
 msgid "Dividends"
 msgstr "Dividends"
 
+#: src/pages/Artifacts.tsx
+msgid "Doc"
+msgstr "Doc"
+
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Docker is configured but computers are not responding. Confirm the sandbox supervisor is running, then recreate the stack after changing .env."
 msgstr "Docker is configured but computers are not responding. Confirm the sandbox supervisor is running, then recreate the stack after changing .env."
@@ -6605,6 +6610,7 @@ msgstr "Owner"
 msgid "Ownership"
 msgstr "Ownership"
 
+#: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Page"
@@ -8127,6 +8133,10 @@ msgstr "Shareholders"
 #: src/pages/CapTable.tsx
 msgid "Shares"
 msgstr "Shares"
+
+#: src/pages/Artifacts.tsx
+msgid "Sheet"
+msgstr "Sheet"
 
 #: src/components/SheetPreview.tsx
 msgid "Sheets"
