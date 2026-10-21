@@ -21,6 +21,7 @@ export interface GranolaMeetingSourceOptions {
 const MIN_GAP_MS = 250;
 const MAX_RETRIES = 4;
 const PAGE_SIZE = 30;
+const MAX_BACKOFF_MS = 60_000;
 
 const User = z.object({ name: z.string().nullable().optional(), email: z.string() });
 const Summary = z.object({
@@ -58,11 +59,12 @@ const Note = z.object({
     .nullable(),
   attendees: z.array(User),
   folder_membership: z.array(z.object({ name: z.string() })),
-  summary_text: z.string().nullable().optional(),
-  summary_markdown: z.string().nullable().optional(),
-  private_notes_text: z.string().nullable().optional(),
-  private_notes_markdown: z.string().nullable().optional(),
-  transcript: z.array(TranscriptItem).nullable().optional(),
+  // The docs mark these required; null is allowed where they say so.
+  summary_text: z.string(),
+  summary_markdown: z.string().nullable(),
+  private_notes_text: z.string().nullable(),
+  private_notes_markdown: z.string().nullable(),
+  transcript: z.array(TranscriptItem).nullable(),
 });
 const TranscriptPage = z.object({
   transcript: z.array(TranscriptItem),
@@ -114,9 +116,9 @@ export function createGranolaMeetingSource(options: GranolaMeetingSourceOptions)
     const url = new URL(`${baseUrl}${path}`);
     for (const [k, v] of Object.entries(query)) url.searchParams.set(k, v);
     for (let attempt = 0; ; attempt++) {
-      const wait = Math.max(0, nextSlot - now());
-      nextSlot = Math.max(nextSlot, now()) + MIN_GAP_MS;
-      if (wait > 0) await sleep(wait);
+      // Re-check after waking: a 429 seen by another request may have moved the slot.
+      for (let wait = nextSlot - now(); wait > 0; wait = nextSlot - now()) await sleep(wait);
+      nextSlot = now() + MIN_GAP_MS;
       let res: Response;
       try {
         res = await doFetch(url, { headers: { authorization: `Bearer ${options.apiKey}` } });
@@ -125,7 +127,10 @@ export function createGranolaMeetingSource(options: GranolaMeetingSourceOptions)
       }
       if (res.status === 429) {
         const header = Number(res.headers.get("retry-after"));
-        const delay = Number.isFinite(header) && header > 0 ? header * 1000 : 1000 * 2 ** attempt;
+        const delay =
+          Number.isFinite(header) && header > 0
+            ? Math.min(header * 1000, MAX_BACKOFF_MS)
+            : Math.min(1000 * 2 ** attempt, MAX_BACKOFF_MS);
         if (attempt >= MAX_RETRIES)
           throw new MeetingSourceError("rate_limit", "Granola rate limit", delay);
         nextSlot = Math.max(nextSlot, now() + delay);
@@ -169,7 +174,9 @@ export function createGranolaMeetingSource(options: GranolaMeetingSourceOptions)
         ),
       );
       items.push(...body.transcript);
-      if (!body.hasMore || !body.cursor) return items;
+      if (!body.hasMore) return items;
+      if (!body.cursor || body.cursor === cursor)
+        throw new MeetingSourceError("mapping", "Granola paging did not advance");
       cursor = body.cursor;
     }
     throw new MeetingSourceError("mapping", "Transcript paging did not end");
@@ -187,6 +194,8 @@ export function createGranolaMeetingSource(options: GranolaMeetingSourceOptions)
       for (const n of page.notes)
         if (Number.isNaN(Date.parse(n.updated_at)))
           throw new MeetingSourceError("mapping", "Unexpected Granola response");
+      if (page.hasMore && (!page.cursor || page.cursor === filter.cursor))
+        throw new MeetingSourceError("mapping", "Granola paging did not advance");
       return {
         items: page.notes.map((n) => ({
           externalId: n.id,

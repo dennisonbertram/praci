@@ -149,4 +149,138 @@ describe("granola adapter", () => {
     expect(error.kind).toBe("unavailable");
     expect(error.message).not.toContain(KEY);
   });
+
+  describe("hardening", () => {
+    const json = (body: unknown, headers: Record<string, string> = {}, status = 200) =>
+      new Response(JSON.stringify(body), { status, headers });
+    const note = (id: string, over: Record<string, unknown> = {}) => ({
+      id,
+      object: "note",
+      title: "T",
+      owner: { name: null, email: "o@example.test" },
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-02T00:00:00Z",
+      deleted_at: null,
+      web_url: "https://notes.example.test/d/1",
+      calendar_event: null,
+      attendees: [],
+      folder_membership: [],
+      summary_text: "S",
+      summary_markdown: null,
+      private_notes_text: null,
+      private_notes_markdown: null,
+      transcript: null,
+      ...over,
+    });
+    const withFetch = (fetchImpl: typeof fetch, extra = {}) =>
+      createGranolaMeetingSource({
+        apiKey: KEY,
+        baseUrl: "http://x.test/v1",
+        fetch: fetchImpl,
+        ...extra,
+      });
+    const summary = { id: "not_a", updated_at: "2026-01-02T00:00:00Z" };
+
+    it("hasMore without a cursor is a mapping error, not a complete list", async () => {
+      const source = withFetch(async () => json({ notes: [summary], hasMore: true, cursor: null }));
+      expect(await source.list({}).catch((e) => e.kind)).toBe("mapping");
+    });
+
+    it("a cursor equal to the one sent is a mapping error", async () => {
+      const source = withFetch(async () => json({ notes: [summary], hasMore: true, cursor: "c1" }));
+      expect(await source.list({ cursor: "c1" }).catch((e) => e.kind)).toBe("mapping");
+    });
+
+    it("a stalled transcript cursor is a mapping error", async () => {
+      const source = withFetch(async (url) =>
+        String(url).includes("/transcript")
+          ? json({ transcript: [], hasMore: true, cursor: null })
+          : json({}, {}, 413),
+      );
+      // The bare note fetch after the 413 must succeed first.
+      let calls = 0;
+      const stalled = withFetch(async (url) => {
+        calls++;
+        if (String(url).includes("/transcript"))
+          return json({ transcript: [], hasMore: true, cursor: null });
+        return calls === 1 ? json({}, {}, 413) : json(note("not_a"));
+      });
+      expect(await stalled.get("not_a", { includeTranscript: true }).catch((e) => e.kind)).toBe(
+        "mapping",
+      );
+      expect(source).toBeDefined();
+    });
+
+    it("a note missing a field the docs require is a mapping error", async () => {
+      const { summary_text: _omit, ...partial } = note("not_a");
+      const source = withFetch(async () => json(partial));
+      expect(await source.get("not_a", { includeTranscript: false }).catch((e) => e.kind)).toBe(
+        "mapping",
+      );
+      const ok = withFetch(async () => json(note("not_a")));
+      expect((await ok.get("not_a", { includeTranscript: false })).summary).toBe("S");
+    });
+
+    it("clamps a huge Retry-After and uses the same value for the error", async () => {
+      const sleeps: number[] = [];
+      let clock = 0;
+      const source = withFetch(async () => json({}, { "retry-after": "999999" }, 429), {
+        now: () => clock,
+        sleep: async (ms: number) => {
+          sleeps.push(ms);
+          clock += ms;
+        },
+      });
+      const error = await source.list({}).catch((e) => e);
+      expect(error.kind).toBe("rate_limit");
+      expect(error.retryAfterMs).toBe(60_000);
+      expect(Math.max(...sleeps)).toBeLessThanOrEqual(60_000);
+    });
+
+    it("a negative Retry-After falls back to the default backoff", async () => {
+      const sleeps: number[] = [];
+      let clock = 0;
+      let calls = 0;
+      const source = withFetch(
+        async () =>
+          ++calls === 1
+            ? json({}, { "retry-after": "-5" }, 429)
+            : json({ notes: [], hasMore: false, cursor: null }),
+        {
+          now: () => clock,
+          sleep: async (ms: number) => {
+            sleeps.push(ms);
+            clock += ms;
+          },
+        },
+      );
+      await source.list({});
+      expect(sleeps).toEqual([1000]);
+    });
+
+    it("a queued request waits for a backoff that arrived while it slept", async () => {
+      let clock = 0;
+      const fetchTimes: number[] = [];
+      const source = withFetch(
+        async () => {
+          fetchTimes.push(clock);
+          return fetchTimes.length === 1
+            ? json({}, { "retry-after": "10" }, 429)
+            : json({ notes: [], hasMore: false, cursor: null });
+        },
+        {
+          now: () => clock,
+          // Wakes after a macrotask, so the first request's 429 is handled before the second wakes.
+          sleep: async (ms: number) => {
+            await new Promise((r) => setTimeout(r, 0));
+            clock += ms;
+          },
+        },
+      );
+      await Promise.all([source.list({}), source.list({})]);
+      expect(fetchTimes).toHaveLength(3);
+      expect(fetchTimes[1]).toBeGreaterThanOrEqual(10_000);
+      expect(fetchTimes[2]).toBeGreaterThanOrEqual(10_000);
+    });
+  });
 });

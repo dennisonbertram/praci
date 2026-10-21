@@ -19,7 +19,7 @@ const noteId = (externalId: string) => externalId;
 /**
  * Offline stand-in for the Granola public API endpoints the Meetings sync uses: list notes, get
  * note (with `include=transcript`, 413 TRANSCRIPT_TOO_LARGE) and the paged transcript. It encodes
- * only what docs.granola.ai states. A meeting's startedAt serves as created_at and as the
+ * only what docs.granola.ai states. The docs give no list order; this lists newest update first. A meeting's startedAt serves as created_at and as the
  * calendar event start.
  */
 export class GranolaApiEmulator {
@@ -44,8 +44,8 @@ export class GranolaApiEmulator {
     this.port = options.port ?? 0;
     this.meetings = [...options.meetings].sort(
       (a, b) =>
-        Date.parse(a.updatedAt) - Date.parse(b.updatedAt) ||
-        a.externalId.localeCompare(b.externalId),
+        Date.parse(b.updatedAt) - Date.parse(a.updatedAt) ||
+        b.externalId.localeCompare(a.externalId),
     );
   }
 
