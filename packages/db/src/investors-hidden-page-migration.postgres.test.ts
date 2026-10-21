@@ -26,6 +26,8 @@ describePostgres("Investors hidden-page migration (PostgreSQL)", () => {
     await client.query(`SET search_path TO "${schema}"`);
     await client.query(`
       CREATE TABLE "user" ("id" text PRIMARY KEY, "hiddenPages" text[] NOT NULL DEFAULT '{}');
+      CREATE TABLE "notifications" ("id" text PRIMARY KEY, "surface" text NOT NULL);
+      INSERT INTO "notifications" ("id", "surface") VALUES ('n1', 'cap-table'), ('n2', 'inbox');
       INSERT INTO "user" ("id", "hiddenPages") VALUES
         ('hides-cap-table', ARRAY['legal', 'cap-table']),
         ('hides-other', ARRAY['legal']),
@@ -49,5 +51,15 @@ describePostgres("Investors hidden-page migration (PostgreSQL)", () => {
       "hides-other": ["legal"],
       "hides-none": [],
     });
+  });
+
+  it("moves Carta notifications to the investors surface", async () => {
+    const { rows } = await client.query(
+      `SELECT "id", "surface" FROM "notifications" ORDER BY "id"`,
+    );
+    expect(rows).toEqual([
+      { id: "n1", surface: "investors" },
+      { id: "n2", surface: "inbox" },
+    ]);
   });
 });
