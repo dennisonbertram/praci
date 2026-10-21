@@ -5728,8 +5728,13 @@ export function createRouter(deps: RouterDeps) {
         if (input.permission && input.connectorId !== "google") {
           throw new ORPCError("BAD_REQUEST", { message: "This permission is only for Google" });
         }
+        // Composio and Pipedream finish by polling, so their sign-in window only has to close itself.
         const redirectUrl =
-          input.redirect === "desktop" ? GOOGLE_DESKTOP_REDIRECT_URI : `${deps.env.webOrigin}/app`;
+          input.redirect === "desktop"
+            ? GOOGLE_DESKTOP_REDIRECT_URI
+            : input.connectorId === "composio" || input.connectorId === "pipedream"
+              ? `${deps.env.webOrigin}/integrations/connected`
+              : `${deps.env.webOrigin}/app`;
         const connector =
           deps.integrationSettings &&
           (input.connectorId === "composio" ||
