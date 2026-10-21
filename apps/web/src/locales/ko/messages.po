@@ -1362,6 +1362,10 @@ msgstr ""
 msgid "Ask about this"
 msgstr ""
 
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Ask about this email"
+msgstr ""
+
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Ask agent"
@@ -4065,6 +4069,10 @@ msgstr "이메일"
 msgid "Email & calendar"
 msgstr ""
 
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Email agent"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Email and calendar"
 msgstr ""
@@ -6593,8 +6601,6 @@ msgid "Open {0}"
 msgstr "{0} 열기"
 
 #. placeholder {0}: active.name
-#. placeholder {0}: bot.name
-#: src/components/inbox/EmailAgentPanel.tsx
 #: src/pages/Shell.tsx
 msgid "Open {0} full screen"
 msgstr ""
@@ -6630,6 +6636,10 @@ msgstr ""
 
 #: src/components/legal/LegalGraph.tsx
 msgid "Open document"
+msgstr ""
+
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Open email agent full screen"
 msgstr ""
 
 #: src/components/markdown-link-prompt.tsx

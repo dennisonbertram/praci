@@ -1362,6 +1362,10 @@ msgstr "Ask a space owner to reconnect."
 msgid "Ask about this"
 msgstr "Ask about this"
 
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Ask about this email"
+msgstr "Ask about this email"
+
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Ask agent"
@@ -4065,6 +4069,10 @@ msgstr "Email"
 msgid "Email & calendar"
 msgstr "Email & calendar"
 
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Email agent"
+msgstr "Email agent"
+
 #: src/pages/shell/message-cards.tsx
 msgid "Email and calendar"
 msgstr "Email and calendar"
@@ -6593,8 +6601,6 @@ msgid "Open {0}"
 msgstr "Open {0}"
 
 #. placeholder {0}: active.name
-#. placeholder {0}: bot.name
-#: src/components/inbox/EmailAgentPanel.tsx
 #: src/pages/Shell.tsx
 msgid "Open {0} full screen"
 msgstr "Open {0} full screen"
@@ -6631,6 +6637,10 @@ msgstr "Open Devin"
 #: src/components/legal/LegalGraph.tsx
 msgid "Open document"
 msgstr "Open document"
+
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Open email agent full screen"
+msgstr "Open email agent full screen"
 
 #: src/components/markdown-link-prompt.tsx
 msgid "Open external link?"

@@ -121,7 +121,7 @@ it("closes from its header and opens the full chat from the name", async () => {
   await flush();
   act(() => button("Close agent")?.click());
   expect(onClose).toHaveBeenCalledTimes(1);
-  act(() => button("Open Thread agent full screen")?.click());
+  act(() => button("Open email agent full screen")?.click());
   expect(navigate).toHaveBeenCalledWith("/app/bot-1");
 });
 
