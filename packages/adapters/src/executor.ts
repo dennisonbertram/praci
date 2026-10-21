@@ -4864,6 +4864,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   prisma: deps.prisma,
                   scope: { spaceId: run.spaceId, userId: bot.userId },
                   botId: bot.id,
+                  writer: isInvestorsAgentSpawnKey(bot.spawnKey) ? "sheet" : "carta",
                 },
                 args,
               ),

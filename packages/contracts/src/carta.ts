@@ -104,6 +104,10 @@ export type CapTableSnapshot = z.infer<typeof CapTableSnapshotSchema>;
 export const CapTableStateSchema = z.object({
   snapshot: CapTableSnapshotSchema.nullable(),
   syncing: z.boolean(),
+  /** A Google Sheet read is running. */
+  reading: z.boolean().default(false),
+  /** The latest sheet read ended without a newer snapshot; the old table is kept. */
+  lastReadFailed: z.boolean().default(false),
 });
 export type CapTableState = z.infer<typeof CapTableStateSchema>;
 

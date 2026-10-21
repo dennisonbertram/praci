@@ -4642,12 +4642,18 @@ describe("Carta server guards", () => {
   it("refuses a refresh until a Carta server is signed in", async () => {
     for (const status of ["none", "reconnect"] as const) {
       const client = clientFor(
-        { mcpServer: { findMany: vi.fn().mockResolvedValue([cartaRow]) } },
+        {
+          mcpServer: { findMany: vi.fn().mockResolvedValue([cartaRow]) },
+          capTableSnapshot: { findUnique: vi.fn().mockResolvedValue(null) },
+        },
         status,
       );
       await expect(client.investors.refresh()).rejects.toThrow("Connect Carta first");
     }
-    const none = clientFor({ mcpServer: { findMany: vi.fn().mockResolvedValue([]) } });
+    const none = clientFor({
+      mcpServer: { findMany: vi.fn().mockResolvedValue([]) },
+      capTableSnapshot: { findUnique: vi.fn().mockResolvedValue(null) },
+    });
     await expect(none.investors.refresh()).rejects.toThrow("Connect Carta first");
   });
 
@@ -4661,6 +4667,17 @@ describe("Carta server guards", () => {
     );
     await expect(client.investors.refresh()).rejects.toThrow(
       "The cap table is not read from Carta",
+    );
+  });
+
+  it("refreshes a sheet table through the sheet read, not Carta", async () => {
+    // No file id is stored, so the sheet read refuses; Carta's "Connect Carta first" never shows.
+    const client = clientFor({
+      mcpServer: { findMany: vi.fn().mockResolvedValue([]) },
+      capTableSnapshot: { findUnique: vi.fn().mockResolvedValue({ source: "sheet", data: {} }) },
+    });
+    await expect(client.investors.refresh()).rejects.toThrow(
+      "The cap table is not read from a sheet",
     );
   });
 

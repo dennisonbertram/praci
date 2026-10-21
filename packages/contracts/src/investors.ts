@@ -6,11 +6,13 @@ export const isInvestorsAgentSpawnKey = (spawnKey: string | null | undefined) =>
 
 /**
  * The only built-in tools the Investors agent is offered. It never gets mail_send (mail goes out
- * from the page on the founder's click), cap_table_update, or any MCP or Composio tool. Each slice
- * that adds a tool for it adds the name here.
+ * from the page on the founder's click) or any MCP or Composio tool. cap_table_update writes only
+ * as the table's Google Sheet source (the database refuses it otherwise). Each slice that adds a
+ * tool for it adds the name here.
  */
 export const INVESTORS_AGENT_BUILTIN_TOOLS = [
   "cap_table_read",
+  "cap_table_update",
   "contacts_list",
   "contacts_add",
   "contacts_save",

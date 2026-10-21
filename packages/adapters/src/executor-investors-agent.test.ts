@@ -174,7 +174,7 @@ async function runInvestors(trigger = "user") {
 }
 
 describe("Investors agent runs", () => {
-  it("is offered only its fixed tools: no mail_send, cap_table_update, MCP or Composio tool", async () => {
+  it("is offered only its fixed tools: no mail_send, MCP or Composio tool", async () => {
     const { request, discoverTools } = await runInvestors();
     const names = (request?.tools ?? []).map((tool) => tool.name);
     const fixed = new Set<string>(INVESTORS_AGENT_BUILTIN_TOOLS);
@@ -183,7 +183,7 @@ describe("Investors agent runs", () => {
     expect(names).toEqual(
       expect.arrayContaining(["cap_table_read", "contacts_list", "search_data_room"]),
     );
-    for (const banned of ["mail_send", "cap_table_update", "mcp__carta__list", "COMPOSIO_SEARCH"]) {
+    for (const banned of ["mail_send", "mcp__carta__list", "COMPOSIO_SEARCH"]) {
       expect(names).not.toContain(banned);
     }
     expect(discoverTools).not.toHaveBeenCalled();

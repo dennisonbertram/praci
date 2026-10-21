@@ -215,6 +215,59 @@ export const TypedIn: Story = {
     }),
 };
 
+const sheetRef = { driveFileId: "sheet-file", name: "Cap table" };
+
+/** A sheet read over an earlier table: the source line says Reading sheet. */
+export const ReadingSheet: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [],
+      "investors.capTable": {
+        snapshot: { ...snapshot, source: "sheet" as const, sourceRef: sheetRef },
+        syncing: false,
+        reading: true,
+        lastReadFailed: false,
+      },
+    }),
+};
+
+/** The last read failed: the old table stays and the source line turns to the warning color. */
+export const SheetReadFailed: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [],
+      "investors.capTable": {
+        snapshot: { ...snapshot, source: "sheet" as const, sourceRef: sheetRef },
+        syncing: false,
+        reading: false,
+        lastReadFailed: true,
+      },
+    }),
+};
+
+/** The first read of a newly chosen sheet failed, so there is no table to show. */
+export const FirstSheetReadFailed: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [],
+      "investors.capTable": {
+        snapshot: {
+          ...snapshot,
+          source: "sheet" as const,
+          sourceRef: sheetRef,
+          holders: [],
+          fullyDilutedShares: 0,
+        },
+        syncing: false,
+        reading: false,
+        lastReadFailed: true,
+      },
+    }),
+};
+
 /** Right after a source switch the source menu offers Undo. */
 export const SwitchedSource: Story = {
   beforeEach: () =>
