@@ -4026,10 +4026,6 @@ msgstr ""
 msgid "Duplicate"
 msgstr "Duplicar"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "e.g. Recruiting, Sales, Legal"
-msgstr ""
-
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Each bot keeps its own"
 msgstr ""
@@ -4378,10 +4374,6 @@ msgstr ""
 msgid "Financing, {when}"
 msgstr ""
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Find an app"
-msgstr ""
-
 #: src/lib/slash-skills.ts
 msgid "Find and summarize files in Box. Changes ask first."
 msgstr ""
@@ -4699,6 +4691,10 @@ msgstr "Cuelga y luego ingresa el código en pantalla."
 
 #: src/pages/Inbox.tsx
 msgid "Has attachment"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Has its own computer."
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -5807,10 +5803,6 @@ msgstr ""
 msgid "More {0} actions"
 msgstr ""
 
-#: src/components/integrations/FinanceSection.tsx
-msgid "More {name} actions"
-msgstr ""
-
 #. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name
 #: src/components/data-room/ItemMenu.tsx
@@ -6089,6 +6081,10 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Next message"
+msgstr ""
+
+#: src/pages/RoutineEditor.tsx
+msgid "Next run {nextRun}"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -8426,6 +8422,10 @@ msgstr ""
 msgid "Shares"
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Shares one computer with your other bots."
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "Sheet"
 msgstr ""
@@ -9443,7 +9443,6 @@ msgid "Time zone updated"
 msgstr ""
 
 #: src/pages/Board.tsx
-#: src/pages/shell/bot-panel.tsx
 msgid "Title"
 msgstr "Título"
 
@@ -10214,6 +10213,10 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 msgid "What should this routine do each time it runs?"
 msgstr "¿Qué debe hacer esta rutina cada vez que se ejecute?"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "What this bot handles"
+msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "What to return"
