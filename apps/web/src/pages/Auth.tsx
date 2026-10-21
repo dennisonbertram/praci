@@ -171,7 +171,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           ) : null}
           <Link
             to="/sign-in"
-            className="inline-block font-medium text-foreground pointer-coarse:py-3.5"
+            className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5"
           >
             <Trans>Back to sign in</Trans>
           </Link>
@@ -244,6 +244,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                   placeholder={t`Your email address`}
                   type="email"
                   required
+                  aria-invalid={error ? true : undefined}
                   className={fieldClass}
                 />
               </div>
@@ -263,6 +264,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                       type={showPassword ? "text" : "password"}
                       required
                       minLength={8}
+                      aria-invalid={error ? true : undefined}
                       className={`${fieldClass} pr-12`}
                     />
                     <Button
@@ -327,7 +329,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     <Trans>Don’t have an account?</Trans>{" "}
                     <Link
                       to="/sign-up"
-                      className="inline-block font-medium text-foreground pointer-coarse:py-3.5"
+                      className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5"
                     >
                       <Trans>Sign up</Trans>
                     </Link>
@@ -337,7 +339,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     <Trans>Already have an account?</Trans>{" "}
                     <Link
                       to="/sign-in"
-                      className="inline-block font-medium text-foreground pointer-coarse:py-3.5"
+                      className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5"
                     >
                       <Trans>Sign in</Trans>
                     </Link>
@@ -345,7 +347,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                 ) : (
                   <Link
                     to="/sign-in"
-                    className="inline-block font-medium text-foreground pointer-coarse:py-3.5"
+                    className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5"
                   >
                     <Trans>Back to sign in</Trans>
                   </Link>
@@ -367,6 +369,7 @@ export function PasswordResetPage() {
   const [pending, setPending] = useState(false);
   const [complete, setComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tokenRejected, setTokenRejected] = useState(false);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -381,6 +384,8 @@ export function PasswordResetPage() {
     try {
       const result = await authClient.resetPassword({ newPassword: password, token });
       if (result.error) {
+        // A typed link with a bad token: show the expired page rather than a form that cannot work.
+        if (result.error.code === "INVALID_TOKEN") return setTokenRejected(true);
         setError(authErrorText(result.error, t`Could not reset password`));
         return;
       }
@@ -392,15 +397,15 @@ export function PasswordResetPage() {
     }
   }
 
-  const linkInvalid = Boolean(params.get("error")) || !params.get("token");
+  const linkInvalid = tokenRejected || Boolean(params.get("error")) || !params.get("token");
   return (
-    <AuthFrame onSubmit={submit} title={<Trans>Choose a new password</Trans>}>
+    <AuthFrame
+      onSubmit={submit}
+      title={linkInvalid ? <Trans>Reset link expired</Trans> : <Trans>Choose a new password</Trans>}
+    >
       {linkInvalid ? (
         <>
-          <p role="alert" className="w-full text-center text-destructive">
-            <Trans>This reset link is invalid or expired</Trans>
-          </p>
-          <Link to="/forgot-password" className="mt-6 font-medium">
+          <Link to="/forgot-password" className="font-medium">
             <Trans>Request a new link</Trans>
           </Link>
         </>
