@@ -206,7 +206,10 @@ describe("Newsletters digest", () => {
     row("d1", { receivedAt: daysAgo(1), pile: "newsletters", unread: true }),
     row("d3", { receivedAt: daysAgo(5), pile: "newsletters" }),
   ];
-  const toggle = (c: HTMLElement) => c.querySelector<HTMLElement>('button[aria-label="Digest"]');
+  const toggle = (c: HTMLElement) =>
+    [...c.querySelectorAll<HTMLElement>("button[aria-pressed]")].find(
+      (b) => b.textContent === "Digest",
+    ) ?? null;
   beforeEach(() => {
     rpcMock.list.mockImplementation(async (input: { pile?: string }) =>
       list(input.pile === "newsletters" ? issues : updates, {

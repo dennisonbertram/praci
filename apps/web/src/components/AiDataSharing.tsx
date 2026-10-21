@@ -87,7 +87,7 @@ export function InboxConsentPrompt({
   return (
     <ConsentCard
       id="inbox-consent"
-      className="mb-5"
+      className="mb-3 py-2"
       heading={<Trans>Let Praci sort your mail</Trans>}
       sends={
         <Trans>
