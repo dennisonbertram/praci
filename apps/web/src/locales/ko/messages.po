@@ -274,7 +274,7 @@ msgstr ""
 msgid "{0} rollup hours"
 msgstr ""
 
-#. placeholder {0}: runwayGlance(glance.financeRunwayMonths, hideAmounts)
+#. placeholder {0}: runwayGlance(glance.financeRunwayMonths)
 #: src/pages/Shell.tsx
 msgid "{0} runway"
 msgstr ""
@@ -612,6 +612,10 @@ msgstr ""
 msgid "3-mo avg, after revenue"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "3-mo change"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "A bit of everything"
 msgstr ""
@@ -838,6 +842,7 @@ msgid "Add email for {0}"
 msgstr ""
 
 #: src/components/data-room/DataRoomImportMenu.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/DataRoom.tsx
 msgid "Add files"
 msgstr ""
@@ -1572,6 +1577,10 @@ msgstr "아바타 스튜디오"
 msgid "Avatars"
 msgstr "아바타"
 
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Average per month"
+msgstr ""
+
 #: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/ImportFromDrive.tsx
@@ -2020,10 +2029,6 @@ msgstr "비밀번호 변경"
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Change settings, export your data or retake this tour from here."
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Change, 3 months"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -3905,7 +3910,7 @@ msgid "Documents"
 msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
-msgid "Documents over time"
+msgid "Documents by document date"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
@@ -5723,10 +5728,6 @@ msgstr ""
 msgid "Monthly"
 msgstr "매월"
 
-#: src/pages/finance/FinanceSpend.tsx
-msgid "Monthly avg"
-msgstr ""
-
 #: src/components/FinanceCards.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -6482,6 +6483,10 @@ msgstr "OAuth 연결 실패"
 msgid "Obligation"
 msgstr ""
 
+#: src/components/cap-table/OwnershipDonut.tsx
+msgid "of class"
+msgstr ""
+
 #: src/components/integrations/IntegrationAgentSection.tsx
 msgid "Off: other agents reach {service} only through this agent."
 msgstr ""
@@ -6618,6 +6623,7 @@ msgstr ""
 msgid "Open link"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/pages/shell/composer-error.tsx
 msgid "Open Models settings"
 msgstr ""
@@ -6673,6 +6679,10 @@ msgstr ""
 
 #: src/components/ShellSkeleton.tsx
 msgid "Opening Praci…"
+msgstr ""
+
+#: src/components/cap-table/OwnershipDonut.tsx
+msgid "Option pool ({poolFree} available)"
 msgstr ""
 
 #: src/pages/CapTable.tsx
@@ -9111,6 +9121,10 @@ msgstr ""
 msgid "The model could not sort your files."
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "The model provider did not accept your API key."
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "The model provider did not accept your API key. Check it in Settings > Models."
 msgstr ""
@@ -9402,6 +9416,10 @@ msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
 msgid "Top parties"
+msgstr ""
+
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Total"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -9749,6 +9767,7 @@ msgstr "업데이트 중…"
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Upload"

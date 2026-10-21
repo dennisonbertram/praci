@@ -120,9 +120,7 @@ function OverTime({
   return (
     <div>
       <div className="flex h-32 items-stretch gap-px">
-        <span className="me-1 self-start text-[10px] text-muted-foreground tabular-nums">
-          {top}
-        </span>
+        <span className="me-1 self-start text-xs text-muted-foreground tabular-nums">{top}</span>
         {buckets.map((bucket) => (
           <button
             key={bucket.key}
@@ -130,16 +128,17 @@ function OverTime({
             title={`${bucketLabel(bucket.key)}: ${bucket.count}`}
             aria-label={`${bucketLabel(bucket.key)}: ${bucket.count}`}
             onClick={() => onPick(bucket.key)}
-            className="group flex min-w-0 flex-1 flex-col justify-end focus-visible:outline-2 focus-visible:outline-ring"
+            className="group flex min-w-0 flex-1 flex-col items-center justify-end focus-visible:outline-2 focus-visible:outline-ring"
           >
+            {/* A few buckets would otherwise stretch to bars as wide as the page. */}
             <span
-              className="w-full rounded-t-sm bg-foreground/70 group-hover:bg-foreground"
+              className="w-full max-w-6 rounded-t-sm bg-foreground/70 group-hover:bg-foreground"
               style={{ height: `${(bucket.count / top) * 100}%`, minHeight: bucket.count ? 2 : 0 }}
             />
           </button>
         ))}
       </div>
-      <div className="mt-1 flex justify-between ps-5 text-[10px] text-muted-foreground">
+      <div className="mt-1 flex justify-between ps-5 text-xs text-muted-foreground">
         <span>{bucketLabel(buckets[0]?.key ?? "")}</span>
         <span>{bucketLabel(buckets.at(-1)?.key ?? "")}</span>
       </div>
@@ -245,7 +244,7 @@ export function DataRoomStats({
         <Card label={t`Failed`} value={String(stats.status.failed)} />
       </div>
       {stats.dates.buckets.length > 0 ? (
-        <Section title={t`Documents over time`}>
+        <Section title={t`Documents by document date`}>
           <OverTime dates={stats.dates} onPick={(key) => onPick(bucketRange(key))} />
         </Section>
       ) : null}

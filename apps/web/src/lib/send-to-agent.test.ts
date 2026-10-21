@@ -41,3 +41,21 @@ it("lists unarchived agents, most recently active first", () => {
   ]);
   expect(targets.map((target) => target.id)).toEqual(["new", "old"]);
 });
+
+it("lists the page agents first and leaves out email thread agents", () => {
+  const targets = sendTargets([
+    bot({ id: "recent", updatedAt: "2026-05-01T00:00:00.000Z" }),
+    bot({ id: "thread", spawnKey: "mail-thread:c1:t1", updatedAt: "2026-06-01T00:00:00.000Z" }),
+    bot({ id: "chief", spawnKey: "onboarding:first", updatedAt: "2026-01-01T00:00:00.000Z" }),
+    bot({ id: "finance", spawnKey: "finance-agent:u", updatedAt: "2026-01-01T00:00:00.000Z" }),
+    bot({ id: "legal", spawnKey: "legal-agent:u", updatedAt: "2026-01-01T00:00:00.000Z" }),
+    bot({ id: "dataroom", spawnKey: "data-room-agent:u", updatedAt: "2026-01-01T00:00:00.000Z" }),
+  ]);
+  expect(targets.map((target) => target.id)).toEqual([
+    "dataroom",
+    "legal",
+    "finance",
+    "chief",
+    "recent",
+  ]);
+});

@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
   Input,
 } from "@rakazo/ui-web";
-import { Box, ChevronDown, Download, HardDrive, Mail } from "lucide-react";
+import { Box, ChevronDown, Download, HardDrive, Mail, Plus, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { dataRoomImportStarted } from "../../lib/data-room";
@@ -330,12 +330,15 @@ export function ImportSources({
   ensureFolder,
   onDone,
   compact = false,
+  onUpload,
 }: {
   folderId: string | null;
   /** Finds or creates the folder to file into, when choosing a source (instead of `folderId`). */
   ensureFolder?: () => Promise<string>;
   onDone: (message: string, changed: boolean) => void;
   compact?: boolean;
+  /** Makes this the page's one add menu: "Add files", led by choosing files from this device. */
+  onUpload?: () => void;
 }) {
   const navigate = useNavigate();
   const here = encodeURIComponent(useLocation().pathname);
@@ -375,7 +378,8 @@ export function ImportSources({
       current = false;
     };
   }, []);
-  if (apps === null) return null;
+  // The add menu always offers the upload; the sources join it once their connections are known.
+  if (apps === null && !onUpload) return null;
   const choose = (source: Source, connected: boolean, connectPage: string) => {
     if (!connected) return navigate(connectPage);
     if (!ensureFolder) return setOpen(source);
@@ -389,13 +393,18 @@ export function ImportSources({
   return (
     <>
       <DropdownMenu>
-        <ToolbarTip label={t`Import`} compact={compact}>
+        <ToolbarTip label={onUpload ? t`Add files` : t`Import`} compact={compact}>
           <DropdownMenuTrigger
-            render={<Button variant="outline" className={compact ? TOOLBAR_BUTTON : undefined} />}
+            render={
+              <Button
+                variant={onUpload ? "default" : "outline"}
+                className={compact ? TOOLBAR_BUTTON : undefined}
+              />
+            }
           >
-            <Download aria-hidden="true" />
+            {onUpload ? <Plus aria-hidden="true" /> : <Download aria-hidden="true" />}
             <span className={compact ? TOOLBAR_LABEL : undefined}>
-              <Trans>Import</Trans>
+              {onUpload ? <Trans>Add files</Trans> : <Trans>Import</Trans>}
             </span>
             <ChevronDown
               aria-hidden="true"
@@ -404,22 +413,34 @@ export function ImportSources({
           </DropdownMenuTrigger>
         </ToolbarTip>
         <DropdownMenuContent align="end">
-          {apps.gmail.offered ? (
-            <DropdownMenuItem onClick={() => choose("email", apps.gmail.connected, GMAIL_PAGE)}>
+          {onUpload ? (
+            <DropdownMenuItem onClick={onUpload}>
+              <Upload aria-hidden="true" />
+              <Trans>Upload</Trans>
+            </DropdownMenuItem>
+          ) : null}
+          {apps?.gmail.offered ? (
+            <DropdownMenuItem
+              onClick={() => choose("email", apps?.gmail.connected ?? false, GMAIL_PAGE)}
+            >
               <Mail aria-hidden="true" />
               <Trans>Email</Trans>
             </DropdownMenuItem>
           ) : null}
-          {apps.drive.offered ? (
-            <DropdownMenuItem onClick={() => choose("drive", apps.drive.connected, DRIVE_PAGE)}>
+          {apps?.drive.offered ? (
+            <DropdownMenuItem
+              onClick={() => choose("drive", apps?.drive.connected ?? false, DRIVE_PAGE)}
+            >
               <HardDrive aria-hidden="true" />
               <Trans>Google Drive</Trans>
             </DropdownMenuItem>
           ) : null}
-          <DropdownMenuItem onClick={() => choose("box", apps.box, BOX_CONNECT)}>
-            <Box aria-hidden="true" />
-            <Trans>Box</Trans>
-          </DropdownMenuItem>
+          {apps ? (
+            <DropdownMenuItem onClick={() => choose("box", apps.box, BOX_CONNECT)}>
+              <Box aria-hidden="true" />
+              <Trans>Box</Trans>
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
       {open === "email" ? (

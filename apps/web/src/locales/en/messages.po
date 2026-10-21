@@ -274,7 +274,7 @@ msgstr "{0} of {1}"
 msgid "{0} rollup hours"
 msgstr "{0} rollup hours"
 
-#. placeholder {0}: runwayGlance(glance.financeRunwayMonths, hideAmounts)
+#. placeholder {0}: runwayGlance(glance.financeRunwayMonths)
 #: src/pages/Shell.tsx
 msgid "{0} runway"
 msgstr "{0} runway"
@@ -612,6 +612,10 @@ msgstr "0x… or name.eth"
 msgid "3-mo avg, after revenue"
 msgstr "3-mo avg, after revenue"
 
+#: src/pages/Finance.tsx
+msgid "3-mo change"
+msgstr "3-mo change"
+
 #: src/pages/shell/message-cards.tsx
 msgid "A bit of everything"
 msgstr "A bit of everything"
@@ -838,6 +842,7 @@ msgid "Add email for {0}"
 msgstr "Add email for {0}"
 
 #: src/components/data-room/DataRoomImportMenu.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/DataRoom.tsx
 msgid "Add files"
 msgstr "Add files"
@@ -1572,6 +1577,10 @@ msgstr "Avatar Studio"
 msgid "Avatars"
 msgstr "Avatars"
 
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Average per month"
+msgstr "Average per month"
+
 #: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/ImportFromDrive.tsx
@@ -2021,10 +2030,6 @@ msgstr "Change password"
 #: src/components/tour/FirstRunTour.tsx
 msgid "Change settings, export your data or retake this tour from here."
 msgstr "Change settings, export your data or retake this tour from here."
-
-#: src/pages/Finance.tsx
-msgid "Change, 3 months"
-msgstr "Change, 3 months"
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Changes your account"
@@ -3905,8 +3910,8 @@ msgid "Documents"
 msgstr "Documents"
 
 #: src/components/data-room/DataRoomStats.tsx
-msgid "Documents over time"
-msgstr "Documents over time"
+msgid "Documents by document date"
+msgstr "Documents by document date"
 
 #: src/components/finance/CountCryptoButton.tsx
 msgid "Don't count crypto"
@@ -5723,10 +5728,6 @@ msgstr "Month to date"
 msgid "Monthly"
 msgstr "Monthly"
 
-#: src/pages/finance/FinanceSpend.tsx
-msgid "Monthly avg"
-msgstr "Monthly avg"
-
 #: src/components/FinanceCards.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -6482,6 +6483,10 @@ msgstr "OAuth connection failed"
 msgid "Obligation"
 msgstr "Obligation"
 
+#: src/components/cap-table/OwnershipDonut.tsx
+msgid "of class"
+msgstr "of class"
+
 #: src/components/integrations/IntegrationAgentSection.tsx
 msgid "Off: other agents reach {service} only through this agent."
 msgstr "Off: other agents reach {service} only through this agent."
@@ -6618,6 +6623,7 @@ msgstr "Open Inbox"
 msgid "Open link"
 msgstr "Open link"
 
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/pages/shell/composer-error.tsx
 msgid "Open Models settings"
 msgstr "Open Models settings"
@@ -6674,6 +6680,10 @@ msgstr "Opening an email"
 #: src/components/ShellSkeleton.tsx
 msgid "Opening Praci…"
 msgstr "Opening Praci…"
+
+#: src/components/cap-table/OwnershipDonut.tsx
+msgid "Option pool ({poolFree} available)"
+msgstr "Option pool ({poolFree} available)"
 
 #: src/pages/CapTable.tsx
 msgid "Option pool available"
@@ -9111,6 +9121,10 @@ msgstr "the model"
 msgid "The model could not sort your files."
 msgstr "The model could not sort your files."
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "The model provider did not accept your API key."
+msgstr "The model provider did not accept your API key."
+
 #: src/lib/user-error.ts
 msgid "The model provider did not accept your API key. Check it in Settings > Models."
 msgstr "The model provider did not accept your API key. Check it in Settings > Models."
@@ -9403,6 +9417,10 @@ msgstr "Tools from an Executor server you run"
 #: src/components/data-room/DataRoomStats.tsx
 msgid "Top parties"
 msgstr "Top parties"
+
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Total"
+msgstr "Total"
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Total balance"
@@ -9749,6 +9767,7 @@ msgstr "Updating…"
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Upload"

@@ -318,7 +318,7 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
         <>
           <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-4">
             <Kpi
-              title={t`Monthly avg`}
+              title={t`Average per month`}
               value={money(data.monthlyAvgCents)}
               sub={plural(data.monthlyAvgMonths ?? 6, {
                 one: "Last full month",

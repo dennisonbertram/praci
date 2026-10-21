@@ -59,7 +59,7 @@ export function ProcessingStrip({
   });
   const failed =
     processing.failed > 0 ? (
-      <p className="whitespace-nowrap">
+      <span className="shrink-0 whitespace-nowrap">
         {onShowFailed ? (
           <Button variant="link" size="xs" className="h-auto p-0" onClick={onShowFailed}>
             {failedCount}
@@ -67,7 +67,7 @@ export function ProcessingStrip({
         ) : (
           failedCount
         )}
-      </p>
+      </span>
     ) : null;
   if (remaining === 0 && !importing) {
     return failed ? (
@@ -77,8 +77,9 @@ export function ProcessingStrip({
     ) : null;
   }
   return (
-    <div role="status" className={cn(row, "relative pb-2")}>
-      <div className="flex items-center gap-x-2">
+    <div role="status" className={cn(row, "relative", percent > 0 && "pb-2")}>
+      {/* One line at any width: only the file name gives way. */}
+      <div className="flex items-center gap-x-2 whitespace-nowrap">
         {importing ? (
           <>
             <Spinner aria-hidden="true" className="size-3.5" />
@@ -87,14 +88,23 @@ export function ProcessingStrip({
           </>
         ) : null}
         {remaining > 0 ? (
-          <Shimmer>
-            {plural(remaining, { one: "Processing # file", other: "Processing # files" })}
-          </Shimmer>
+          <span className="shrink-0">
+            <Shimmer>
+              {plural(remaining, { one: "Processing # file", other: "Processing # files" })}
+            </Shimmer>
+          </span>
         ) : null}
         {remaining > 0 && processing.current && doing ? (
           <span className="min-w-0 truncate">
             {doing} {maskCurrencyWhenHidden(processing.current)}
           </span>
+        ) : null}
+        {/* The same line as the count, so a failed file is one clickable number, not a second line. */}
+        {remaining > 0 && failed ? (
+          <>
+            <span aria-hidden="true">·</span>
+            {failed}
+          </>
         ) : null}
         {remaining > 0 ? (
           <Button
@@ -119,8 +129,8 @@ export function ProcessingStrip({
           ))}
         </ul>
       ) : null}
-      {failed}
-      {remaining > 0 ? (
+      {remaining > 0 ? null : failed}
+      {remaining > 0 && percent > 0 ? (
         <div
           role="progressbar"
           aria-label={t`Processing`}

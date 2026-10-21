@@ -73,8 +73,22 @@ afterEach(() => {
 });
 
 const flush = () => act(async () => void (await Promise.resolve()));
-const render = async (onApplied = vi.fn(), onClose = vi.fn(), files: AutoSortFile[] = []) => {
-  act(() => root.render(<AutoSortDialog files={files} onClose={onClose} onApplied={onApplied} />));
+const render = async (
+  onApplied = vi.fn(),
+  onClose = vi.fn(),
+  files: AutoSortFile[] = [],
+  onOpenModels?: () => void,
+) => {
+  act(() =>
+    root.render(
+      <AutoSortDialog
+        files={files}
+        onClose={onClose}
+        onApplied={onApplied}
+        onOpenModels={onOpenModels}
+      />,
+    ),
+  );
   await flush();
   return { onApplied, onClose };
 };
@@ -113,7 +127,7 @@ it("says Already tidy. when there is nothing to change, and shows an error with 
   autoSort.plan.mockResolvedValueOnce({ mode: "basic", operations: [] });
   await render();
   expect(document.body.textContent).toContain("Already tidy.");
-  expect(button("Apply").hasAttribute("disabled")).toBe(true);
+  expect(button("Apply")).toBeUndefined();
 
   autoSort.plan.mockRejectedValueOnce(new Error("boom")).mockResolvedValueOnce(plan);
   act(() => root.unmount());
@@ -144,6 +158,18 @@ it("does not call a plan with no model 'Already tidy.', and offers Retry", async
   expect(document.body.textContent).not.toContain("Already tidy.");
   expect(document.body.textContent).toContain("The model could not sort your files.");
   expect(button("Retry")).toBeTruthy();
+  expect(button("Apply")).toBeUndefined();
+});
+
+it("names a rejected key and opens the Models settings from the dialog", async () => {
+  autoSort.plan.mockResolvedValue({ mode: "basic", reason: "ai_rejected", operations: [] });
+  const openModels = vi.fn();
+  const { onClose } = await render(vi.fn(), vi.fn(), [], openModels);
+  expect(document.body.textContent).toContain("The model provider did not accept your API key.");
+  expect(button("Apply")).toBeUndefined();
+  act(() => button("Open Models settings").click());
+  expect(openModels).toHaveBeenCalledTimes(1);
+  expect(onClose).toHaveBeenCalled();
 });
 
 const names = ["plan.pdf", "Screenshot 2026-10-18 at 9.10.50 AM.png", "notes.txt"];

@@ -276,6 +276,7 @@ import { getToolActivityEnabled, subscribeToolActivity } from "../lib/tool-activ
 import { transcriptCanSnapAfterFrame, transcriptIsNearEnd } from "../lib/transcript-scroll";
 import { speaker } from "../lib/tts";
 import { useRememberedMessages } from "../lib/use-remembered-messages";
+import { useRunResumedAt } from "../lib/use-run-resumed-at";
 import { useSidebarGlance } from "../lib/use-sidebar-glance";
 import { errorText } from "../lib/user-error";
 import { workingActivity } from "../lib/working-activity";
@@ -720,7 +721,6 @@ export function ShellPage() {
     pathname,
     snapshot ? { botId: snapshot.botId ?? null, threadId: snapshot.threadId } : null,
   );
-  const hideAmounts = useHideAmounts();
   const [missingPath, setMissingPath] = useState<string | null>(null);
   const missingPathRef = useRef<string | null>(null);
   const markMissing = useCallback((path: string) => {
@@ -2380,8 +2380,10 @@ export function ShellPage() {
   const soleWorkingActivity = soleWorkingRun
     ? workingActivity(soleWorkingRun, activeSnapshot?.messages ?? [])
     : undefined;
+  const runResumedAt = useRunResumedAt(currentRuns);
   const workingStartedAt = soleWorkingRun
-    ? Date.parse(soleWorkingRun.startedAt ?? soleWorkingRun.createdAt)
+    ? (runResumedAt(soleWorkingRun.id) ??
+      Date.parse(soleWorkingRun.startedAt ?? soleWorkingRun.createdAt))
     : undefined;
   const composerRunning = currentRuns.some((run) => isActive(run.status));
   const runError = threadRunError(activeSnapshot, dismissedRunErrorIds);
@@ -4210,8 +4212,8 @@ export function ShellPage() {
                   {...glanceBadge({
                     unseen: unseen.finance ?? 0,
                     rail,
-                    value: runwayGlance(glance.financeRunwayMonths, hideAmounts),
-                    valueLabel: t`${runwayGlance(glance.financeRunwayMonths, hideAmounts)} runway`,
+                    value: runwayGlance(glance.financeRunwayMonths),
+                    valueLabel: t`${runwayGlance(glance.financeRunwayMonths)} runway`,
                   })}
                 />
               )}
@@ -5405,6 +5407,7 @@ export function ShellPage() {
         ) : dataRoomMode ? (
           <DataRoomPage
             onAskAgent={dataRoomAgentOpen ? undefined : askDataRoomAgent}
+            onOpenModelSettings={() => openSettings("models")}
             agents={sendToAgentTargets}
             onSendToAgent={(item, agent) => void sendFilesToAgent([item], agent)}
             spaceName={
