@@ -198,6 +198,16 @@ describe("company extraction safety", () => {
     };
     expect(validateCompanyExtraction(publicExtraction, publicWork)).toEqual(publicExtraction);
 
+    for (const text of [
+      "Work address: 12 Main Street; avery@gmail.com",
+      "Work email is unknown. Contact: avery@gmail.com",
+    ]) {
+      expect(prepareCompanyDocument({ title: "Contact", text }).text).toBe("");
+      expect(() => validateCompanyExtraction(publicExtraction, { title: "Contact", text })).toThrow(
+        "company_extraction_unverified_email",
+      );
+    }
+
     const aliases =
       "Avery's work emails are avery@northwind.example, a.chen@northwind.example, and avery@gmail.com.";
     expect(prepareCompanyDocument({ title: "Aliases", text: aliases }).text).toBe(aliases);

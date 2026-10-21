@@ -6,7 +6,8 @@ const instruction =
 const privateData =
   /\b(?:salary|compensation|performance review|immigration|passport|home address|personal phone|personal (?:e-?mail|address)|private (?:e-?mail|address)|home (?:e-?mail|address)|medical|diagnosis|health condition|birthday)\b/i;
 const emailToken = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
-const workAddressLabel = /\b(?:work|business|company)\s+(?:e-?mails?|addresses|address)\b/i;
+const workAddressLabel =
+  /\b(?:work|business|company)\s+e-?mails?(?:\s+address(?:es)?)?\s*(?:(?:is|are)\s*)?[:=-]?\s*$/i;
 
 function emailsIn(text: string) {
   return text.match(emailToken)?.map((email) => email.toLowerCase()) ?? [];
