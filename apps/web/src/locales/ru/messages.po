@@ -1197,6 +1197,14 @@ msgstr "Утвердить"
 msgid "Approve this server to let your bot use its tools."
 msgstr ""
 
+#: src/components/ConnectAppsButton.tsx
+#: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/McpDetail.tsx
+#: src/pages/Shell.tsx
+msgid "Apps"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Apps with their own server"
 msgstr ""
@@ -2426,7 +2434,7 @@ msgid "Connect Alchemy"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
-msgid "Connect any app that offers an MCP server URL."
+msgid "Connect any other app by its address."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4777,14 +4785,6 @@ msgstr "Инструкция"
 msgid "Integration options"
 msgstr "Параметры интеграции"
 
-#: src/components/ConnectAppsButton.tsx
-#: src/components/integrations/AppDetail.tsx
-#: src/components/integrations/IntegrationsHome.tsx
-#: src/components/integrations/McpDetail.tsx
-#: src/pages/Shell.tsx
-msgid "Integrations"
-msgstr "Интеграции"
-
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Interval"
@@ -4994,6 +4994,10 @@ msgstr ""
 msgid "Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
 msgstr ""
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Let other agents use {service} directly"
+msgstr ""
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Let Praci read documents"
 msgstr ""
@@ -5180,8 +5184,9 @@ msgstr ""
 msgid "Mail data from this account that Praci cached is removed."
 msgstr ""
 
+#. placeholder {0}: accountCount > 1 ? "these accounts" : "this account"
 #: src/components/integrations/AppDetail.tsx
-msgid "Mail data Praci cached from these accounts is removed."
+msgid "Mail data Praci cached from {0} is removed."
 msgstr ""
 
 #. placeholder {0}: status.sender
@@ -6276,6 +6281,10 @@ msgid "Obligation"
 msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Off: other agents reach {service} only through this agent."
+msgstr ""
+
+#: src/components/integrations/IntegrationAgentSection.tsx
 msgid "Off: the agent only reads. On: it can also make changes, and asks you before each one."
 msgstr ""
 
@@ -6428,7 +6437,7 @@ msgid "Open receipt"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
-msgid "Open server integrations"
+msgid "Open server apps"
 msgstr ""
 
 #: src/pages/shell/composer.tsx
@@ -8018,8 +8027,8 @@ msgstr ""
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/LocalSettings.tsx
-msgid "Server integrations"
-msgstr "Интеграции сервера"
+msgid "Server apps"
+msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
 msgid "Server password"
@@ -8074,10 +8083,6 @@ msgstr "Помощь по настройке"
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Shape"
 msgstr "Форма"
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Share with all agents"
-msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Shared"
