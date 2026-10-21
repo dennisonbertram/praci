@@ -92,6 +92,22 @@ describe("deniedConnectionIds", () => {
   });
 });
 
+describe("Composio Gmail linked to the Inbox agent", () => {
+  const inbox = { id: "inbox", spawnKey: "inbox-agent:user-1", archivedAt: null };
+  const rows = [
+    row("a", "connected", false, { agentBotId: "inbox", botAccess: grant("inbox") }),
+    row("b", "connected", false, { agentBotId: "inbox", botAccess: grant("inbox") }),
+  ];
+  it("is not denied to the Inbox agent, so its mail tools see both accounts", () => {
+    expect(deniedConnectionIds(rows).size).toBe(0);
+  });
+  it("lists the Inbox agent as able to use both accounts", () => {
+    const access = effectiveAccessByConnection(rows, [inbox]);
+    expect(access.a?.botIds).toEqual(["inbox"]);
+    expect(access.b?.botIds).toEqual(["inbox"]);
+  });
+});
+
 describe("effectiveAccessByConnection", () => {
   const bots = [
     { id: "chief", spawnKey: null, archivedAt: null },
@@ -172,7 +188,10 @@ describe("effectiveAccessByConnection", () => {
       "voice-agent:u1",
     ].map((spawnKey, i) => ({ id: `s${i}`, spawnKey, archivedAt: null }));
     const all = [...bots, ...special];
-    const slack = effectiveAccessByConnection([row("x", "connected", true)], all).x;
+    const slack = effectiveAccessByConnection(
+      [row("x", "connected", true, { provider: "slack" })],
+      all,
+    ).x;
     expect(slack?.botIds).toEqual(["chief", "other"]);
     const gmail = effectiveAccessByConnection(
       [row("g", "connected", true, { connectorId: "google", provider: "gmail" })],

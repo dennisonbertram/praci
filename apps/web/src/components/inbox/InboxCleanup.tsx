@@ -257,7 +257,9 @@ export function InboxCleanup({
           ) : null}
           {senders.length === 0 ? (
             <p className="py-8 text-sm text-muted-foreground">
-              <Trans>Nothing to clean up</Trans>
+              <Trans>
+                Nothing to clean up. People you have written to or saved as contacts are left out.
+              </Trans>
             </p>
           ) : (
             <>
