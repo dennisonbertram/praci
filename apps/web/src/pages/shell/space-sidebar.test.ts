@@ -273,26 +273,30 @@ it("shows Devin's needs-you count and opens its page", async () => {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
+  const renderSidebar = (devinConnected: boolean) =>
+    createElement(
+      MemoryRouter,
+      null,
+      createElement(
+        "div",
+        null,
+        createElement(SidebarFixture, {
+          mode: "expanded",
+          devinMode: true,
+          devinConnected,
+          devinNeedsYou: 2,
+        }),
+        createElement(CurrentPath),
+      ),
+    );
   try {
     await act(async () => {
-      root.render(
-        createElement(
-          MemoryRouter,
-          null,
-          createElement(
-            "div",
-            null,
-            createElement(SidebarFixture, {
-              mode: "expanded",
-              devinMode: true,
-              devinNeedsYou: 2,
-            }),
-            createElement(CurrentPath),
-          ),
-        ),
-      );
+      root.render(renderSidebar(false));
     });
 
+    expect(container.querySelector('[data-testid="sidebar-devin"]')).toBeNull();
+
+    await act(async () => root.render(renderSidebar(true)));
     const link = container.querySelector<HTMLButtonElement>('[data-testid="sidebar-devin"]');
     expect(link?.getAttribute("aria-current")).toBe("page");
     expect(link?.getAttribute("aria-label")).toBe("Devin, 2 need you");
@@ -369,7 +373,7 @@ it("navigates to Integrations from the account menu", async () => {
   }
 });
 
-it("expands folded page agents and keeps the active page agent visible", async () => {
+it("expands folded page agents only when asked, even with an active page agent", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("matchMedia", () => ({
     matches: false,
@@ -419,8 +423,50 @@ it("expands folded page agents and keeps the active page agent visible", async (
     const activeToggle = container.querySelector<HTMLButtonElement>(
       '[data-testid="sidebar-page-agents"]',
     );
+    expect(activeToggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(container.textContent).not.toContain("Inbox agent");
+
+    await act(async () => activeToggle?.click());
     expect(activeToggle?.getAttribute("aria-expanded")).toBe("true");
     expect(container.textContent).toContain("Inbox agent");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("keeps the sidebar resize handle out of the tab order", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => {
+      root.render(
+        createElement(MemoryRouter, null, createElement(SidebarFixture, { mode: "expanded" })),
+      );
+    });
+
+    const edge = container.querySelector<HTMLButtonElement>('[data-testid="bots-sidebar-edge"]');
+    expect(edge?.getAttribute("aria-label")).toBe("Resize sidebar");
+    expect(edge?.tabIndex).toBe(-1);
+    expect(edge?.hasAttribute("aria-pressed")).toBe(false);
   } finally {
     await act(async () => root.unmount());
     container.remove();

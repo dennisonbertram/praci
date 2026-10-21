@@ -16,9 +16,10 @@ import {
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { AskBotButton } from "../components/AskBotButton";
 import { ContactDialog, contactKindNames } from "../components/ContactDialog";
 import { PickFilter, SearchField } from "../components/ListControls";
-import { PageHeader } from "../components/PageHeader";
+import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { rpc } from "../lib/rpc";
 import { SAVED_ROW_CLASS, useContactNotices } from "../lib/use-contact-notices";
 import { errorText } from "../lib/user-error";
@@ -29,7 +30,13 @@ const matches = (contact: Contact, needle: string, kindName: string) =>
   );
 
 /** The people and companies the business works with, saved by the user or by their agents. */
-export function ContactsPage({ spaceName }: { spaceName?: string }) {
+export function ContactsPage({
+  spaceName,
+  onAskAgent,
+}: {
+  spaceName?: string;
+  onAskAgent?: () => void;
+}) {
   const [contacts, setContacts] = useState<Contact[] | null>(null);
   const [error, setError] = useState("");
   const [params, setParams] = useSearchParams();
@@ -75,164 +82,171 @@ export function ContactsPage({ spaceName }: { spaceName?: string }) {
   );
 
   return (
-    <div
-      ref={container}
-      className="@container/bd rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5"
-    >
-      <PageHeader
-        title={<Trans>Contacts</Trans>}
-        meta={
-          spaceName ? (
-            <span className="truncate" title={spaceName}>
-              {spaceName}
-            </span>
-          ) : null
-        }
-        actions={
-          <Button onClick={() => setEditing("new")}>
-            <Plus aria-hidden="true" />
-            <Trans>Add contact</Trans>
-          </Button>
-        }
-      />
-      {error ? (
-        <div role="alert" className="flex flex-col items-center gap-3 py-8 text-center text-sm">
-          <span className="text-destructive">{error}</span>
-          <Button variant="outline" size="sm" onClick={load}>
-            <Trans>Try again</Trans>
-          </Button>
-        </div>
-      ) : contacts === null ? (
-        <Skeleton className="h-40 w-full rounded-xl" />
-      ) : contacts.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">
-          <Trans>No contacts yet</Trans>
-        </p>
-      ) : (
-        <>
-          <div className="mb-4 flex flex-wrap items-center gap-1.5">
-            <SearchField
-              className="w-full @md:w-72"
-              value={query}
-              onChange={(next) => setParam("q", next)}
-              placeholder={t`Search`}
-              label={t`Search`}
-              name="contacts-search"
-            />
-            <PickFilter
-              label={t`Kind`}
-              value={kind}
-              options={(Object.keys(names) as ContactKind[]).map((value) => [value, names[value]])}
-              onChange={(next) => setParam("kind", next)}
-            />
-          </div>
-          {shown.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-8 text-center">
-              <p className="text-sm text-muted-foreground">
-                <Trans>No matches</Trans>
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setParams(
-                    (current) => {
-                      const updated = new URLSearchParams(current);
-                      updated.delete("q");
-                      updated.delete("kind");
-                      return updated;
-                    },
-                    { replace: true },
-                  );
-                  container.current
-                    ?.querySelector<HTMLInputElement>("input[name=contacts-search]")
-                    ?.focus();
-                }}
-              >
-                <Trans>Clear filters</Trans>
-              </Button>
-            </div>
-          ) : (
-            <div>
-              <Table compact className="table-fixed">
-                <TableHeader>
-                  <TableHeadRow>
-                    <TableHead>
-                      <Trans>Name</Trans>
-                    </TableHead>
-                    <TableHead className="hidden w-[30%] @md:table-cell">
-                      <Trans>Email</Trans>
-                    </TableHead>
-                    <TableHead className="hidden w-[24%] @lg:table-cell">
-                      <Trans>Organization</Trans>
-                    </TableHead>
-                    <TableHead className="w-28">
-                      <Trans>Kind</Trans>
-                    </TableHead>
-                  </TableHeadRow>
-                </TableHeader>
-                <TableBody>
-                  {shown.map((contact) => (
-                    <TableRow
-                      key={contact.id}
-                      data-contact-id={contact.id}
-                      className={contact.id === savedId ? SAVED_ROW_CLASS : ""}
-                      onOpen={() => setEditing(contact)}
-                    >
-                      <TableCell>
-                        <button
-                          type="button"
-                          title={contact.name}
-                          data-row-open
-                          className="block max-w-full truncate rounded-sm text-start font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-                        >
-                          {contact.name}
-                        </button>
-                        {/* Without room for the Email column, the organization or email shows here. */}
-                        <div className="truncate text-xs text-muted-foreground @md:hidden">
-                          {contact.organization ?? contact.email}
-                        </div>
-                      </TableCell>
-                      <TableCell
-                        className="hidden truncate @md:table-cell"
-                        title={contact.email ?? undefined}
-                      >
-                        {contact.email}
-                      </TableCell>
-                      <TableCell
-                        className="hidden truncate @lg:table-cell"
-                        title={contact.organization ?? undefined}
-                      >
-                        {contact.organization}
-                      </TableCell>
-                      <TableCell>{names[contact.kind]}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </>
-      )}
-      {editing ? (
-        <ContactDialog
-          key={editing === "new" ? "new" : editing.id}
-          contact={editing === "new" ? null : editing}
-          prefill={
-            editing === "new"
-              ? { name: "", email: null, organization: null, kind: kind ?? "other" }
-              : undefined
+    <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
+        <PageHeader
+          title={<Trans>Contacts</Trans>}
+          meta={
+            spaceName ? (
+              <span className="truncate" title={spaceName}>
+                {spaceName}
+              </span>
+            ) : null
           }
-          contacts={contacts ?? []}
-          onClose={() => setEditing(null)}
-          onSaved={(saved) => {
-            load();
-            setSavedId(saved.id);
-          }}
-          onDeleted={deleted}
-          onOpenContact={setEditing}
+          actions={
+            <>
+              <Button onClick={() => setEditing("new")}>
+                <Plus aria-hidden="true" />
+                <Trans>Add contact</Trans>
+              </Button>
+              {onAskAgent ? <AskBotButton botName="Chief" onClick={onAskAgent} /> : null}
+            </>
+          }
         />
-      ) : null}
+      </div>
+      <div ref={container} className={`rk-scroll flex-1 overflow-y-auto ${PAGE_GUTTER_X} pb-6`}>
+        {error ? (
+          <div role="alert" className="flex flex-col items-center gap-3 py-8 text-center text-sm">
+            <span className="text-destructive">{error}</span>
+            <Button variant="outline" size="sm" onClick={load}>
+              <Trans>Try again</Trans>
+            </Button>
+          </div>
+        ) : contacts === null ? (
+          <Skeleton className="h-40 w-full rounded-xl" />
+        ) : contacts.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            <Trans>No contacts yet</Trans>
+          </p>
+        ) : (
+          <>
+            <div className="mb-4 flex flex-wrap items-center gap-1.5">
+              <SearchField
+                className="w-full @md:w-72"
+                value={query}
+                onChange={(next) => setParam("q", next)}
+                placeholder={t`Search`}
+                label={t`Search`}
+                name="contacts-search"
+              />
+              <PickFilter
+                label={t`Kind`}
+                value={kind}
+                options={(Object.keys(names) as ContactKind[]).map((value) => [
+                  value,
+                  names[value],
+                ])}
+                onChange={(next) => setParam("kind", next)}
+              />
+            </div>
+            {shown.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
+                <p className="text-sm text-muted-foreground">
+                  <Trans>No matches</Trans>
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setParams(
+                      (current) => {
+                        const updated = new URLSearchParams(current);
+                        updated.delete("q");
+                        updated.delete("kind");
+                        return updated;
+                      },
+                      { replace: true },
+                    );
+                    container.current
+                      ?.querySelector<HTMLInputElement>("input[name=contacts-search]")
+                      ?.focus();
+                  }}
+                >
+                  <Trans>Clear filters</Trans>
+                </Button>
+              </div>
+            ) : (
+              <div>
+                <Table compact className="table-fixed">
+                  <TableHeader>
+                    <TableHeadRow>
+                      <TableHead className="ps-2">
+                        <Trans>Name</Trans>
+                      </TableHead>
+                      <TableHead className="hidden w-[30%] @md:table-cell">
+                        <Trans>Email</Trans>
+                      </TableHead>
+                      <TableHead className="hidden w-[24%] @lg:table-cell">
+                        <Trans>Organization</Trans>
+                      </TableHead>
+                      <TableHead className="w-28">
+                        <Trans>Kind</Trans>
+                      </TableHead>
+                    </TableHeadRow>
+                  </TableHeader>
+                  <TableBody>
+                    {shown.map((contact) => (
+                      <TableRow
+                        key={contact.id}
+                        data-contact-id={contact.id}
+                        className={contact.id === savedId ? SAVED_ROW_CLASS : ""}
+                        onOpen={() => setEditing(contact)}
+                      >
+                        <TableCell>
+                          <button
+                            type="button"
+                            title={contact.name}
+                            data-row-open
+                            className="block max-w-full truncate rounded-sm text-start font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            {contact.name}
+                          </button>
+                          {/* Without room for the Email column, the organization or email shows here. */}
+                          <div className="truncate text-xs text-muted-foreground @md:hidden">
+                            {contact.organization ?? contact.email}
+                          </div>
+                        </TableCell>
+                        <TableCell
+                          className="hidden truncate @md:table-cell"
+                          title={contact.email ?? undefined}
+                        >
+                          {contact.email}
+                        </TableCell>
+                        <TableCell
+                          className="hidden truncate @lg:table-cell"
+                          title={contact.organization ?? undefined}
+                        >
+                          {contact.organization}
+                        </TableCell>
+                        <TableCell>{names[contact.kind]}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </>
+        )}
+        {editing ? (
+          <ContactDialog
+            key={editing === "new" ? "new" : editing.id}
+            contact={editing === "new" ? null : editing}
+            prefill={
+              editing === "new"
+                ? { name: "", email: null, organization: null, kind: kind ?? "other" }
+                : undefined
+            }
+            contacts={contacts ?? []}
+            onClose={() => setEditing(null)}
+            onSaved={(saved) => {
+              load();
+              setSavedId(saved.id);
+            }}
+            onDeleted={deleted}
+            onOpenContact={setEditing}
+          />
+        ) : null}
+      </div>
     </div>
   );
 }

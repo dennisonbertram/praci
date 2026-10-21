@@ -90,12 +90,14 @@ type Mode = "expanded" | "rail" | "search" | "folder-roster";
 export function SidebarFixture({
   mode,
   devinMode = false,
+  devinConnected = false,
   devinNeedsYou = 0,
   pageAgents = false,
   activePageAgent = false,
 }: {
   mode: Mode;
   devinMode?: boolean;
+  devinConnected?: boolean;
   devinNeedsYou?: number;
   pageAgents?: boolean;
   activePageAgent?: boolean;
@@ -153,6 +155,8 @@ export function SidebarFixture({
     botsSidebarCollapsed: rail,
     rail,
     sidebarDocked: true,
+    computerOpen: false,
+    booting: false,
     mobileSidebarOpen,
     focusSearchOnExpand,
     setBotsSidebarCollapsedPref: () => undefined,
@@ -180,6 +184,7 @@ export function SidebarFixture({
     financeMode: false,
     glance: {
       financeRunwayMonths: null,
+      devinConnected,
       devinNeedsYou,
       legalDueSoon: 0,
       dataRoomWaiting: 0,
@@ -288,5 +293,5 @@ export const FolderAndRoster: Story = {
 };
 
 export const DevinNeedsYou: Story = {
-  render: () => <SidebarFixture mode="expanded" devinMode devinNeedsYou={2} />,
+  render: () => <SidebarFixture mode="expanded" devinMode devinConnected devinNeedsYou={2} />,
 };

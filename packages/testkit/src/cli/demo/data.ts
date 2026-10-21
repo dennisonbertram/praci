@@ -1130,6 +1130,9 @@ const DEMO_FINANCE_TOOLS = {
     getAccounts: obj({}),
     getTreasury: obj({}),
     getRecipients: obj({ limit: { type: "number" } }),
+    // Read by the approval card to name the payee and account behind a send-money request.
+    getRecipient: obj({ recipientId: str }, ["recipientId"]),
+    getAccount: obj({ accountId: str }, ["accountId"]),
     listTransactions: obj(
       {
         accountId: { type: "array", items: str },
@@ -1356,7 +1359,7 @@ export const DEMO_CONTACTS = [
     name: "Dana Counselor",
     email: "dana@halcyon-logistics.example.test",
     organization: "Halcyon Logistics (Mock)",
-    kind: "other" as const,
+    kind: "legal" as const,
     notes: `${MOCK_NOTE}: Halcyon's legal counsel.`,
   },
   {

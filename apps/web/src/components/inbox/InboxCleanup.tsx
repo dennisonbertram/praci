@@ -45,9 +45,12 @@ export function InboxCleanup({
   onBack,
   onRefreshed,
   onAllowMailRules,
+  onOpenNewsletters,
 }: {
   connectionId?: string;
   onBack: () => void;
+  /** Opens the Newsletters pile; the empty state offers it when that pile holds mail. */
+  onOpenNewsletters?: () => void;
   /** Starts the reconnect that grants permission to make Gmail filters for this account. */
   onAllowMailRules?: (connectionId: string) => void;
   /** Called after mail changed, so the sidebar can refresh its unread count. */
@@ -64,6 +67,7 @@ export function InboxCleanup({
   const [toast, setToast] = useState<{ text: string; batchIds: string[] } | null>(null);
   const [undoing, setUndoing] = useState<string>();
   const seeded = useRef(false);
+  const [newsletters, setNewsletters] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -91,6 +95,19 @@ export function InboxCleanup({
       setError(errorText(cause));
     }
   }, [connectionId]);
+
+  const empty = list !== null && list.senders.length === 0;
+  useEffect(() => {
+    if (!empty || !onOpenNewsletters) return;
+    let live = true;
+    rpc.inbox
+      .list({ ...(connectionId ? { connectionId } : {}) })
+      .then((out) => live && setNewsletters(out.pileCounts?.newsletters ?? 0))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [empty, onOpenNewsletters, connectionId]);
 
   useEffect(() => {
     seeded.current = false;
@@ -256,16 +273,27 @@ export function InboxCleanup({
             </p>
           ) : null}
           {senders.length === 0 ? (
-            <p className="py-8 text-sm text-muted-foreground">
-              <Trans>
-                Nothing to clean up. People you have written to or saved as contacts are left out.
-              </Trans>
-            </p>
+            <div className="flex flex-col items-start gap-2 py-8 text-sm text-muted-foreground">
+              <p>
+                <Trans>
+                  Nothing to clean up. People you have written to or saved as contacts are left out.
+                </Trans>
+              </p>
+              {newsletters > 0 && onOpenNewsletters ? (
+                <Button variant="outline" size="sm" onClick={onOpenNewsletters}>
+                  <Trans>Open Newsletters</Trans>
+                </Button>
+              ) : null}
+            </div>
           ) : (
             <>
               <CleanupActionBar counts={counts} busy={busy} onApply={apply} />
-              <label className="flex items-center gap-3 px-1 py-2 text-sm text-muted-foreground">
+              <label
+                htmlFor="cleanup-select-all"
+                className="flex items-center gap-3 px-1 py-2 text-sm text-muted-foreground"
+              >
                 <Checkbox
+                  id="cleanup-select-all"
                   className="relative after:absolute after:-inset-3.5"
                   checked={selected.size === senders.length}
                   disabled={busy}

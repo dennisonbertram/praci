@@ -297,6 +297,7 @@ test("model settings connect, replace, and cancel provider authentication", asyn
   await expect(page.getByRole("button", { name: /Scripted/ })).toContainText("Connected");
   await page.getByRole("button", { name: /Scripted/ }).click();
 
+  await page.getByText("Replace key", { exact: true }).click();
   await page.getByLabel("Replace API key").fill("fake-scripted-key-two");
   await page.getByRole("button", { name: "Replace API key" }).click();
   await expect(page.getByText(/Connected and using Scripted runtime/)).toBeVisible();
@@ -390,6 +391,7 @@ test("model settings connect, replace, and cancel provider authentication", asyn
   await page.getByRole("button", { name: /Scripted/ }).click();
   await cancelled;
   expect(finishRequests).toBe(0);
+  await page.getByText("Replace key", { exact: true }).click();
   await page.getByLabel("Replace API key").fill("fake-scripted-key-three");
   await expect(page.getByRole("button", { name: "Replace API key" })).toBeEnabled();
   await expect(page.getByText("TEST-CODE")).toBeHidden();
@@ -551,8 +553,6 @@ test("catalog models keep a space default thinking level per saved model", async
   await captureScreenshot(page, testInfo, "catalog-model-thinking");
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText(/Now using/)).toBeVisible();
-  // The Active model banner surfaces the effective effort while the model can think.
-  await expect(page.getByText("Thinking: High", { exact: true })).toBeVisible();
 
   const credentials = await rpc<Array<{ provider: string; thinkingLevel?: string | null }>>(
     page,

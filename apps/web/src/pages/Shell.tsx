@@ -27,7 +27,9 @@ import {
   ATTACHMENT_MAX_BYTES,
   ATTACHMENT_MAX_COUNT,
   DEFAULT_AVATAR_STYLE,
+  FIRST_BOT_SPAWN_KEY,
   LEGAL_AGENT_MODEL,
+  LEGAL_CONSENT_REQUIRED_MESSAGE,
   RunPhaseSchema,
 } from "@rakazo/contracts";
 import type { ComposerMention } from "@rakazo/core";
@@ -142,6 +144,7 @@ import { TeachRecordingChrome, TeachStopButton } from "../components/teach/Teach
 import { connectCardsOpen } from "../components/tour/FirstRunTour";
 import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import { useAgentApp } from "../lib/agent-app";
+import { artifactDisplayName } from "../lib/artifact-name";
 import type { ArtifactTarget } from "../lib/artifact-open";
 import { authClient } from "../lib/auth";
 import { takeInitialBootstrap } from "../lib/bootstrap";
@@ -150,7 +153,6 @@ import {
   subscribeBotsSidebarDensity,
 } from "../lib/bots-sidebar-density-pref";
 import {
-  BOTS_SIDEBAR_EDGE_DRAG_PX,
   readBotsSidebarCollapsed,
   readCartaAgentCollapsed,
   readInboxAgentCollapsed,
@@ -403,7 +405,7 @@ async function findDocumentsAndArtifacts(query: string) {
         result.items
           .filter((item) => matchesArtifactQuery(item, query))
           .slice(0, 5)
-          .map((item) => ({ id: item.id, label: item.name })),
+          .map((item) => ({ id: item.id, label: artifactDisplayName(item.name) })),
       )
       .catch((): SearchLink[] => []),
   ]);
@@ -490,6 +492,8 @@ export function ShellPage() {
   const [legalAgentOpen, setLegalAgentOpen] = useState(false);
   const [creatingLegalAgent, setCreatingLegalAgent] = useState(false);
   const [legalAgentError, setLegalAgentError] = useState("");
+  // The Legal page reports whether it still lacks consent; its Allow is the only one, so the agent waits for it.
+  const [legalConsentMissing, setLegalConsentMissing] = useState(false);
   const [devinAgentOpen, setDevinAgentOpen] = useState(false);
   const [creatingDevinAgent, setCreatingDevinAgent] = useState(false);
   const [devinAgentError, setDevinAgentError] = useState("");
@@ -498,9 +502,8 @@ export function ShellPage() {
   const [devinDialog, setDevinDialog] = useState<"connect" | "replace" | null>(null);
   /** Remounts the Devin page after a key is accepted, so it shows the new connection at once. */
   const [devinPageKey, setDevinPageKey] = useState(0);
-  // The Carta agent panel remembers being collapsed, and starts collapsed on a phone, where it
-  // would cover the page.
-  const [cartaAgentCollapsed, setCartaAgentCollapsed] = useState(() => !wideScreen());
+  // The Carta agent panel starts closed, like the other pages' agents, and remembers an explicit open.
+  const [cartaAgentCollapsed, setCartaAgentCollapsed] = useState(true);
   const [creatingCartaAgent, setCreatingCartaAgent] = useState(false);
   // Reported by the Cap Table page. Without Carta the agent has nothing to read, so its panel stays shut.
   const [cartaConnected, setCartaConnected] = useState(false);
@@ -725,9 +728,6 @@ export function ShellPage() {
     focusSearchOnExpand.current = false;
     document.querySelector<HTMLInputElement>('[data-testid="sidebar-search"] input')?.focus();
   }, [botsSidebarCollapsed]);
-  const botsSidebarEdgeDragRef = useRef<{ startX: number; mode: "expand" | "collapse" } | null>(
-    null,
-  );
   const [newSpaceOpen, setNewSpaceOpen] = useState(false);
   const [pickerInfoTopic, setPickerInfoTopic] = useState<"group" | "space" | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -743,7 +743,10 @@ export function ShellPage() {
     desktop.addEventListener("change", closeMobileSidebar);
     return () => desktop.removeEventListener("change", closeMobileSidebar);
   }, []);
-  const [activityMode, setActivityMode] = useState(readActivityMode);
+  // Phones open the drawer on the chat list; Activity there is one tap away.
+  const [activityMode, setActivityMode] = useState(
+    () => readActivityMode() && window.matchMedia(SIDEBAR_DOCKED_QUERY).matches,
+  );
   const toggleActivityMode = useCallback(() => {
     setActivityMode((on) => {
       const next = !on;
@@ -2031,11 +2034,10 @@ export function ShellPage() {
         keywords: t`contracts, NDA, deadlines`,
         icon: <Scale {...icon} />,
       },
-      {
-        id: "devin",
-        label: t`Devin`,
-        icon: <CodeXml {...icon} />,
-      },
+      // Only once Devin is connected; before that its Integrations card is the way in.
+      ...(glance.devinConnected
+        ? [{ id: "devin", label: t`Devin`, icon: <CodeXml {...icon} /> }]
+        : []),
       {
         id: "cap-table",
         label: t`Cap table`,
@@ -2064,7 +2066,7 @@ export function ShellPage() {
       },
       { id: "settings", label: t`Settings`, icon: <Settings {...icon} /> },
     ];
-  }, [t, bootstrapMe?.ticketBoardEnabled]);
+  }, [t, bootstrapMe?.ticketBoardEnabled, glance.devinConnected]);
   // A page hidden in Page options stays out of search and the command palette too.
   const visiblePages = useMemo(
     () => appPages.filter((page) => !hiddenPages.includes(page.id)),
@@ -2544,6 +2546,9 @@ export function ShellPage() {
   }, [active, groupId, inGroup, snapshot?.botId, snapshot?.groupId, snapshot?.threadId]);
 
   const openBot = useCallback((id: string) => navigate(`/app/${id}`), [navigate]);
+  // Contacts and Artifacts have no agent of their own: their Ask opens Chief, the first bot.
+  const chiefId = bots.find((bot) => bot.spawnKey === FIRST_BOT_SPAWN_KEY && !bot.archivedAt)?.id;
+  const askChief = chiefId ? () => openBot(chiefId) : undefined;
 
   async function startElioCall() {
     if (voiceCallStarting.current) return;
@@ -3107,6 +3112,12 @@ export function ShellPage() {
     if (!active && !creatingLegalAgent) void createLegalAgent();
   }
 
+  /** A row's Ask agent: opens the panel and sends the question. Before the agent exists it only creates it. */
+  function askLegalAgentAbout(question: string) {
+    askLegalAgent();
+    if (active) void sendMessage(question, [], newClientId());
+  }
+
   async function createCartaAgent() {
     setCreatingCartaAgent(true);
     setCartaAgentError("");
@@ -3646,7 +3657,16 @@ export function ShellPage() {
     .toUpperCase();
 
   const pinsList = !inGroup && !pageMode && botPins?.list ? botPins : null;
-  const composerDisabled = Boolean(recordingSkill) || pageAgentNeedsModel;
+  const legalWaitsForConsent = legalMode && legalConsentMissing;
+  const composerDisabled = Boolean(recordingSkill) || pageAgentNeedsModel || legalWaitsForConsent;
+  // A "needs your permission" error from before the page's Allow no longer applies once it is given.
+  const staleConsentError =
+    !legalWaitsForConsent &&
+    (sendError === LEGAL_CONSENT_REQUIRED_MESSAGE ||
+      displayedRunError === LEGAL_CONSENT_REQUIRED_MESSAGE);
+  useEffect(() => {
+    if (staleConsentError) dismissComposerError();
+  }, [staleConsentError]);
   const paneAcceptsFiles = !pageMode && Boolean(active || activeGroup);
   function onPaneFileDrag(event: DragEvent<HTMLElement>) {
     if (!paneAcceptsFiles || !isUnclaimedFileDrag(event)) return setPaneDraggingFiles(false);
@@ -3856,6 +3876,9 @@ export function ShellPage() {
               activeName={inGroup ? (activeGroup?.name ?? activeSnapshot?.groupName) : active?.name}
               running={composerShowsStop(currentRuns)}
               disabled={composerDisabled}
+              disabledPlaceholder={
+                legalWaitsForConsent ? t`Allow access on the page to ask` : undefined
+              }
               pendingAttachments={activePendingAttachments}
               dataRoomItems={activeDataRoomItems}
               onRemoveDataRoomItem={removeDataRoomItem}
@@ -3984,6 +4007,8 @@ export function ShellPage() {
         botsSidebarCollapsed={botsSidebarCollapsed}
         rail={rail}
         sidebarDocked={sidebarDocked}
+        computerOpen={computerOpen}
+        booting={booting}
         mobileSidebarOpen={mobileSidebarOpen}
         focusSearchOnExpand={focusSearchOnExpand}
         setBotsSidebarCollapsedPref={setBotsSidebarCollapsedPref}
@@ -4089,52 +4114,6 @@ export function ShellPage() {
         setTourRestart={setTourRestart}
         setBootstrapMe={setBootstrapMe}
       />
-
-      {/* The full-screen computer covers the sidebar, so its edge must not catch clicks there. */}
-      {computerOpen || booting ? null : (
-        <button
-          type="button"
-          data-testid="bots-sidebar-edge"
-          aria-label={botsSidebarCollapsed ? t`Show sidebar` : t`Hide sidebar`}
-          aria-pressed={!botsSidebarCollapsed}
-          className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 lg:block ${
-            botsSidebarCollapsed ? "start-12" : "start-[308px]"
-          }`}
-          onPointerDown={(event) => {
-            event.currentTarget.setPointerCapture(event.pointerId);
-            botsSidebarEdgeDragRef.current = {
-              startX: event.clientX,
-              mode: botsSidebarCollapsed ? "expand" : "collapse",
-            };
-          }}
-          onPointerMove={(event) => {
-            const drag = botsSidebarEdgeDragRef.current;
-            if (!drag) return;
-            const rtl =
-              typeof document !== "undefined" &&
-              document.documentElement.getAttribute("dir") === "rtl";
-            const delta = rtl ? drag.startX - event.clientX : event.clientX - drag.startX;
-            if (drag.mode === "expand" && delta >= BOTS_SIDEBAR_EDGE_DRAG_PX) {
-              botsSidebarEdgeDragRef.current = null;
-              setBotsSidebarCollapsedPref(false);
-            } else if (drag.mode === "collapse" && delta <= -BOTS_SIDEBAR_EDGE_DRAG_PX) {
-              botsSidebarEdgeDragRef.current = null;
-              setBotsSidebarCollapsedPref(true);
-            }
-          }}
-          onPointerUp={(event) => {
-            const drag = botsSidebarEdgeDragRef.current;
-            botsSidebarEdgeDragRef.current = null;
-            if (!drag) return;
-            if (Math.abs(event.clientX - drag.startX) < BOTS_SIDEBAR_EDGE_DRAG_PX) {
-              setBotsSidebarCollapsedPref(!botsSidebarCollapsed);
-            }
-          }}
-          onPointerCancel={() => {
-            botsSidebarEdgeDragRef.current = null;
-          }}
-        />
-      )}
 
       {/* Keep the composer's z-index inside the chat so phone overlays like the side panel cover it. */}
       <main
@@ -4317,11 +4296,11 @@ export function ShellPage() {
             }
           />
         ) : contactsMode ? (
-          <ContactsPage spaceName={pageSpaceName} />
+          <ContactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
         ) : artifactsMode ? (
           <ErrorBoundary fallback={<SectionLoadFailed />}>
             <Suspense fallback={null}>
-              <ArtifactsPage spaceName={pageSpaceName} />
+              <ArtifactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
             </Suspense>
           </ErrorBoundary>
         ) : boardMode ? (
@@ -4344,6 +4323,8 @@ export function ShellPage() {
         ) : legalMode ? (
           <LegalPage
             onAskAgent={legalAgentOpen ? undefined : askLegalAgent}
+            onAskAbout={askLegalAgentAbout}
+            onConsentChange={setLegalConsentMissing}
             onOpenSettings={() => openSettings("models", LEGAL_AGENT_MODEL.provider)}
             settingsOpen={settingsOpen}
             spaces={spaces}

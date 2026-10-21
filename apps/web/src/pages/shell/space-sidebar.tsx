@@ -48,7 +48,7 @@ import type {
   RefObject,
   SetStateAction,
 } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { NavigateFunction } from "react-router-dom";
 import { ConnectAppsButton } from "../../components/ConnectAppsButton";
 import { HideAmountsMenuItem } from "../../components/HideAmountsToggle";
@@ -72,6 +72,7 @@ import { FirstRunTour } from "../../components/tour/FirstRunTour";
 import type { AgentApp } from "../../lib/agent-app";
 import { clearAgentAppCache } from "../../lib/agent-app";
 import { authClient } from "../../lib/auth";
+import { BOTS_SIDEBAR_EDGE_DRAG_PX } from "../../lib/bots-sidebar-pref";
 import { maskCurrencyWhenHidden } from "../../lib/hide-amounts-preference";
 import { isUnclaimedFileDrag } from "../../lib/pending-attachments";
 import type { Panel } from "../../lib/right-panel-state";
@@ -315,6 +316,8 @@ export type SpaceSidebarProps = {
   botsSidebarCollapsed: boolean;
   rail: boolean;
   sidebarDocked: boolean;
+  computerOpen: boolean;
+  booting: boolean;
   mobileSidebarOpen: boolean;
   focusSearchOnExpand: RefObject<boolean>;
   setBotsSidebarCollapsedPref: (collapsed: boolean) => void;
@@ -343,6 +346,7 @@ export type SpaceSidebarProps = {
   glance: {
     financeRunwayMonths: number | null;
     legalDueSoon: number;
+    devinConnected: boolean;
     devinNeedsYou: number;
     dataRoomWaiting: number;
     botKinds: Record<string, (typeof NOTIFICATION_KINDS)[number]>;
@@ -437,6 +441,8 @@ export function SpaceSidebar({
   botsSidebarCollapsed,
   rail,
   sidebarDocked,
+  computerOpen,
+  booting,
   mobileSidebarOpen,
   focusSearchOnExpand,
   setBotsSidebarCollapsedPref,
@@ -538,6 +544,9 @@ export function SpaceSidebar({
 }: SpaceSidebarProps) {
   const { t } = useLingui();
   const [pageAgentsOpen, setPageAgentsOpen] = useState(false);
+  const botsSidebarEdgeDragRef = useRef<{ startX: number; mode: "expand" | "collapse" } | null>(
+    null,
+  );
   return (
     <aside
       ref={sidebarRef}
@@ -655,47 +664,38 @@ export function SpaceSidebar({
                 >
                   +
                 </PopoverTrigger>
-                {/* Unmount with the state change so the panel it opens never coexists with the menu. */}
-                {createMenuOpen ? (
-                  <PopoverContent
-                    align="end"
-                    className="app-no-drag w-auto gap-0 overflow-hidden p-0 data-closed:animate-none"
-                  >
-                    <BotCreatePicker
-                      bots={bots}
-                      onCreateBot={() => {
-                        setCreateMenuOpen(false);
-                        setMobileSidebarOpen(false);
-                        void createBot();
-                      }}
-                      onOpenBot={(id) => {
-                        setCreateMenuOpen(false);
-                        setMobileSidebarOpen(false);
-                        navigate(`/app/${id}`);
-                      }}
-                      onCreateGroup={() => {
-                        setCreateMenuOpen(false);
-                        setMobileSidebarOpen(false);
-                        setPanel("create-group");
-                      }}
-                      onCreateSpace={() => {
-                        setCreateMenuOpen(false);
-                        setMobileSidebarOpen(false);
-                        setNewSpaceOpen(true);
-                      }}
-                      onShowGroupInfo={() => {
-                        setCreateMenuOpen(false);
-                        setMobileSidebarOpen(false);
-                        setPickerInfoTopic("group");
-                      }}
-                      onShowSpaceInfo={() => {
-                        setCreateMenuOpen(false);
-                        setMobileSidebarOpen(false);
-                        setPickerInfoTopic("space");
-                      }}
-                    />
-                  </PopoverContent>
-                ) : null}
+                <PopoverContent
+                  align="end"
+                  className="app-no-drag w-auto gap-0 overflow-hidden p-0 data-closed:animate-none"
+                >
+                  <BotCreatePicker
+                    onCreateBot={() => {
+                      setCreateMenuOpen(false);
+                      setMobileSidebarOpen(false);
+                      void createBot();
+                    }}
+                    onCreateGroup={() => {
+                      setCreateMenuOpen(false);
+                      setMobileSidebarOpen(false);
+                      setPanel("create-group");
+                    }}
+                    onCreateSpace={() => {
+                      setCreateMenuOpen(false);
+                      setMobileSidebarOpen(false);
+                      setNewSpaceOpen(true);
+                    }}
+                    onShowGroupInfo={() => {
+                      setCreateMenuOpen(false);
+                      setMobileSidebarOpen(false);
+                      setPickerInfoTopic("group");
+                    }}
+                    onShowSpaceInfo={() => {
+                      setCreateMenuOpen(false);
+                      setMobileSidebarOpen(false);
+                      setPickerInfoTopic("space");
+                    }}
+                  />
+                </PopoverContent>
               </Popover>
             </div>
           )
@@ -785,7 +785,7 @@ export function SpaceSidebar({
                 })}
               />
             )}
-            {hiddenPages.includes("devin") ? null : (
+            {hiddenPages.includes("devin") || !glance.devinConnected ? null : (
               <SidebarPageLink
                 testId="sidebar-devin"
                 current={devinMode}
@@ -966,8 +966,7 @@ export function SpaceSidebar({
                 const pageAgentRows =
                   !rail && !folder && group.kind !== "pinned" ? nestedRows.filter(isPageAgent) : [];
                 const foldPageAgents = pageAgentRows.length >= 2;
-                const showPageAgents =
-                  pageAgentsOpen || pageAgentRows.some((row) => row.item.chat.id === active?.id);
+                const showPageAgents = pageAgentsOpen;
                 const displayRows: ((typeof nestedRows)[number] | { pageAgentsHeader: true })[] =
                   foldPageAgents
                     ? [
@@ -1633,89 +1632,132 @@ export function SpaceSidebar({
           </span>
           {rail ? null : <span className="text-[14.5px] text-foreground/90">{userName}</span>}
         </PopoverTrigger>
-        {menuOpen ? (
-          <PopoverContent
-            side="top"
-            align="start"
-            alignOffset={11}
-            role="menu"
-            className="w-[calc(316px-1.5rem)] max-w-[calc(100vw-3rem)] gap-0 p-1 data-closed:animate-none"
-          >
-            {bootstrapMe?.ticketBoardEnabled ? (
-              <Button
-                role="menuitem"
-                variant="ghost"
-                className="w-full justify-start font-normal"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setMobileSidebarOpen(false);
-                  navigate("/app/board");
-                }}
-              >
-                <SquareKanban className="text-muted-foreground" strokeWidth={1.75} />
-                <Trans>Task board</Trans>
-              </Button>
-            ) : null}
+        <PopoverContent
+          side="top"
+          align="start"
+          alignOffset={11}
+          role="menu"
+          className="w-[calc(316px-1.5rem)] max-w-[calc(100vw-3rem)] gap-0 p-1 data-closed:animate-none"
+        >
+          {bootstrapMe?.ticketBoardEnabled ? (
             <Button
               role="menuitem"
               variant="ghost"
               className="w-full justify-start font-normal"
-              aria-label={t`Settings`}
-              onClick={() => {
-                setMenuOpen(false);
-                openSettings("general");
-              }}
-            >
-              <Settings className="text-muted-foreground" strokeWidth={1.75} />
-              <Trans>Settings</Trans>
-            </Button>
-            <Button
-              role="menuitem"
-              variant="ghost"
-              className="w-full justify-start font-normal"
-              data-testid="menu-integrations"
               onClick={() => {
                 setMenuOpen(false);
                 setMobileSidebarOpen(false);
-                navigate("/app/integrations");
+                navigate("/app/board");
               }}
             >
-              <LayoutGrid className="text-muted-foreground" strokeWidth={1.75} />
-              <Trans>Integrations</Trans>
+              <SquareKanban className="text-muted-foreground" strokeWidth={1.75} />
+              <Trans>Task board</Trans>
             </Button>
-            <HideAmountsMenuItem onDone={() => setMenuOpen(false)} />
-            <Button
-              role="menuitem"
-              variant="ghost"
-              className="w-full justify-start font-normal"
-              data-testid="take-tour"
-              onClick={() => {
-                setMenuOpen(false);
-                setTourRestart(true);
-              }}
-            >
-              <Compass className="text-muted-foreground" strokeWidth={1.75} />
-              <Trans>Take the tour</Trans>
-            </Button>
-            <Separator className="my-1" />
-            <Button
-              role="menuitem"
-              variant="ghost"
-              className="w-full justify-start font-normal"
-              onClick={() =>
-                void authClient.signOut().then(() => {
-                  clearAgentAppCache();
-                  clearSpaceSelection();
-                  navigate("/");
-                })
-              }
-            >
-              <LogOut className="text-muted-foreground" strokeWidth={1.75} />
-              <Trans>Log out</Trans>
-            </Button>
-          </PopoverContent>
-        ) : null}
+          ) : null}
+          <Button
+            role="menuitem"
+            variant="ghost"
+            className="w-full justify-start font-normal"
+            aria-label={t`Settings`}
+            onClick={() => {
+              setMenuOpen(false);
+              openSettings("general");
+            }}
+          >
+            <Settings className="text-muted-foreground" strokeWidth={1.75} />
+            <Trans>Settings</Trans>
+          </Button>
+          <Button
+            role="menuitem"
+            variant="ghost"
+            className="w-full justify-start font-normal"
+            data-testid="menu-integrations"
+            onClick={() => {
+              setMenuOpen(false);
+              setMobileSidebarOpen(false);
+              navigate("/app/integrations");
+            }}
+          >
+            <LayoutGrid className="text-muted-foreground" strokeWidth={1.75} />
+            <Trans>Integrations</Trans>
+          </Button>
+          <HideAmountsMenuItem onDone={() => setMenuOpen(false)} />
+          <Button
+            role="menuitem"
+            variant="ghost"
+            className="w-full justify-start font-normal"
+            data-testid="take-tour"
+            onClick={() => {
+              setMenuOpen(false);
+              setTourRestart(true);
+            }}
+          >
+            <Compass className="text-muted-foreground" strokeWidth={1.75} />
+            <Trans>Take the tour</Trans>
+          </Button>
+          <Separator className="my-1" />
+          <Button
+            role="menuitem"
+            variant="ghost"
+            className="w-full justify-start font-normal"
+            onClick={() =>
+              void authClient.signOut().then(() => {
+                clearAgentAppCache();
+                clearSpaceSelection();
+                navigate("/");
+              })
+            }
+          >
+            <LogOut className="text-muted-foreground" strokeWidth={1.75} />
+            <Trans>Log out</Trans>
+          </Button>
+        </PopoverContent>
       </Popover>
+      {/* The full-screen computer covers the sidebar, so its edge must not catch clicks there. */}
+      {computerOpen || booting ? null : (
+        <button
+          type="button"
+          data-testid="bots-sidebar-edge"
+          aria-label={t`Resize sidebar`}
+          tabIndex={-1}
+          className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 lg:block ${
+            botsSidebarCollapsed ? "start-12" : "start-[308px]"
+          }`}
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId);
+            botsSidebarEdgeDragRef.current = {
+              startX: event.clientX,
+              mode: botsSidebarCollapsed ? "expand" : "collapse",
+            };
+          }}
+          onPointerMove={(event) => {
+            const drag = botsSidebarEdgeDragRef.current;
+            if (!drag) return;
+            const rtl =
+              typeof document !== "undefined" &&
+              document.documentElement.getAttribute("dir") === "rtl";
+            const delta = rtl ? drag.startX - event.clientX : event.clientX - drag.startX;
+            if (drag.mode === "expand" && delta >= BOTS_SIDEBAR_EDGE_DRAG_PX) {
+              botsSidebarEdgeDragRef.current = null;
+              setBotsSidebarCollapsedPref(false);
+            } else if (drag.mode === "collapse" && delta <= -BOTS_SIDEBAR_EDGE_DRAG_PX) {
+              botsSidebarEdgeDragRef.current = null;
+              setBotsSidebarCollapsedPref(true);
+            }
+          }}
+          onPointerUp={(event) => {
+            const drag = botsSidebarEdgeDragRef.current;
+            botsSidebarEdgeDragRef.current = null;
+            if (!drag) return;
+            if (Math.abs(event.clientX - drag.startX) < BOTS_SIDEBAR_EDGE_DRAG_PX) {
+              setBotsSidebarCollapsedPref(!botsSidebarCollapsed);
+            }
+          }}
+          onPointerCancel={() => {
+            botsSidebarEdgeDragRef.current = null;
+          }}
+        />
+      )}
     </aside>
   );
 }

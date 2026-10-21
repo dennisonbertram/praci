@@ -16,7 +16,7 @@ import { ConfirmDialog, Heading } from "./AppDetail";
 import { AppLogo } from "./AppLogo";
 import { CustomConnectionDialog } from "./CustomConnectionDialog";
 import { GranolaMeetingsCard } from "./GranolaMeetingsCard";
-import { IntegrationAgentSection } from "./IntegrationAgentSection";
+import { IntegrationAgentSection, WritesSwitch } from "./IntegrationAgentSection";
 import { AgentToggleList, StatusBadge } from "./parts";
 import type { IntegrationsData } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
@@ -42,6 +42,8 @@ export function McpDetail({
   const [confirmingWrites, setConfirmingWrites] = useState(false);
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
+  // The switch reads on from the moment the user confirms, until the server has answered.
+  const [writesPending, setWritesPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const back = (
@@ -273,6 +275,24 @@ export function McpDetail({
           </Button>
         </div>
 
+        {/* A bank can be allowed to make changes before its agent exists; confirming creates the agent. */}
+        {!hasAgent && bank ? (
+          <div className="mt-6 rounded-xl border border-border bg-card px-3.5 py-3">
+            <WritesSwitch
+              service={service}
+              checked={server.writesEnabled || writesPending}
+              disabled={busy || writesPending}
+              onChange={setWrites}
+              hint={
+                <Trans>
+                  Off: the agent only reads. On: it can also make changes, and asks you before each
+                  one.
+                </Trans>
+              }
+            />
+          </div>
+        ) : null}
+
         {granola ? (
           <div className="mt-6">
             <GranolaMeetingsCard
@@ -293,7 +313,7 @@ export function McpDetail({
             service={service}
             agentName={agent?.name ?? t`${service} agent`}
             agentHref={`/app/${server.agentBotId}`}
-            writesEnabled={server.writesEnabled}
+            writesEnabled={server.writesEnabled || writesPending}
             shared={!server.agentExclusive}
             disabled={busy}
             onWrites={isDevinEndpoint(server.endpoint) || granola ? undefined : setWrites}
@@ -361,12 +381,19 @@ export function McpDetail({
         confirm={t`Allow changes`}
         grant
         onCancel={() => setConfirmingWrites(false)}
-        onConfirm={() =>
+        onConfirm={() => {
+          setConfirmingWrites(false);
+          setWritesPending(true);
           void run(async () => {
-            await rpc.mcp.servers.setWrites({ id: server.id, enabled: true });
-            setConfirmingWrites(false);
-          }, t`Could not update changes`)
-        }
+            try {
+              // Writes belong to the agent, so a bank with none gets its agent first.
+              if (!hasAgent) await rpc.integrationAgents.create({ serverId: server.id });
+              await rpc.mcp.servers.setWrites({ id: server.id, enabled: true });
+            } finally {
+              setWritesPending(false);
+            }
+          }, t`Could not update changes`);
+        }}
       >
         <li>
           {carta ? (
