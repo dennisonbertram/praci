@@ -3022,8 +3022,8 @@ msgstr "차트를 만들지 못했습니다."
 msgid "Could not reset password"
 msgstr "비밀번호를 재설정할 수 없습니다"
 
-#: src/components/ContactNotice.tsx
-msgid "Could not restore {name}: {reason}. If you dismiss this, {name} stays deleted."
+#: src/lib/use-contact-notices.ts
+msgid "Could not restore {name}"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -3539,7 +3539,7 @@ msgstr "삭제됨"
 msgid "Deleted"
 msgstr ""
 
-#: src/components/ContactNotice.tsx
+#: src/lib/use-contact-notices.ts
 msgid "Deleted {name}"
 msgstr ""
 
@@ -3659,7 +3659,6 @@ msgid "Disconnecting…"
 msgstr "연결 해제 중…"
 
 #: src/components/ComputerUpdateProgress.tsx
-#: src/components/ContactNotice.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ImportActivity.tsx
 #: src/components/finance/StatementImport.tsx
@@ -3958,6 +3957,7 @@ msgstr "비밀번호를 입력하세요"
 msgid "Enter a username and password"
 msgstr ""
 
+#: src/components/ContactDialog.tsx
 #: src/lib/user-error.ts
 msgid "Enter a valid email"
 msgstr "올바른 이메일을 입력하세요"
@@ -7482,7 +7482,7 @@ msgstr "마지막으로 저장한 작업 공간을 복원합니다."
 msgid "Restore the last saved workspace. Unsaved work on the computer is lost."
 msgstr "마지막으로 저장된 작업 공간을 복원합니다. 컴퓨터에서 저장하지 않은 작업은 사라집니다."
 
-#: src/components/ContactNotice.tsx
+#: src/lib/use-contact-notices.ts
 msgid "Restored {name}"
 msgstr ""
 
@@ -9222,7 +9222,6 @@ msgid "Try {name} again"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
-#: src/components/ContactNotice.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
@@ -9232,6 +9231,7 @@ msgstr ""
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
+#: src/lib/use-contact-notices.ts
 #: src/pages/ActivityList.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
@@ -9315,13 +9315,13 @@ msgstr ""
 msgid "Undid {restored}, skipped {skipped}"
 msgstr ""
 
-#: src/components/ContactNotice.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
 #: src/components/inbox/CleanupHistory.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/MailOutbox.tsx
 #: src/components/sidebar-folders/SidebarUndoNotice.tsx
+#: src/lib/use-contact-notices.ts
 #: src/pages/Inbox.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Undo"

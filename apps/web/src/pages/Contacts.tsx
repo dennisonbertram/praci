@@ -17,10 +17,10 @@ import { Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ContactDialog, contactKindNames } from "../components/ContactDialog";
-import { ContactNotice, useContactNotices } from "../components/ContactNotice";
 import { PickFilter, SearchField } from "../components/ListControls";
 import { PageHeader } from "../components/PageHeader";
 import { rpc } from "../lib/rpc";
+import { SAVED_ROW_CLASS, useContactNotices } from "../lib/use-contact-notices";
 import { errorText } from "../lib/user-error";
 
 const matches = (contact: Contact, needle: string, kindName: string) =>
@@ -65,11 +65,7 @@ export function ContactsPage() {
   }, []);
   useEffect(load, [load]);
   const container = useRef<HTMLDivElement>(null);
-  const { notice, setNotice, savedId, setSavedId, deleted } = useContactNotices(
-    load,
-    container,
-    contacts,
-  );
+  const { savedId, setSavedId, deleted } = useContactNotices(load, container, contacts);
 
   const needle = query.trim().toLowerCase();
   const shown = (contacts ?? []).filter(
@@ -93,7 +89,7 @@ export function ContactsPage() {
         }
       />
       {error ? (
-        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
+        <div role="alert" className="flex flex-col items-center gap-3 py-8 text-center text-sm">
           <span className="text-destructive">{error}</span>
           <Button variant="outline" size="sm" onClick={load}>
             <Trans>Try again</Trans>
@@ -131,7 +127,7 @@ export function ContactsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() =>
+                onClick={() => {
                   setParams(
                     (current) => {
                       const updated = new URLSearchParams(current);
@@ -140,58 +136,68 @@ export function ContactsPage() {
                       return updated;
                     },
                     { replace: true },
-                  )
-                }
+                  );
+                  container.current
+                    ?.querySelector<HTMLInputElement>("input[name=contacts-search]")
+                    ?.focus();
+                }}
               >
                 <Trans>Clear filters</Trans>
               </Button>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableHeadRow>
-                  <TableHead>
-                    <Trans>Name</Trans>
-                  </TableHead>
-                  <TableHead className="hidden @md:table-cell">
-                    <Trans>Email</Trans>
-                  </TableHead>
-                  <TableHead className="hidden @lg:table-cell">
-                    <Trans>Organization</Trans>
-                  </TableHead>
-                  <TableHead className="w-28">
-                    <Trans>Kind</Trans>
-                  </TableHead>
-                </TableHeadRow>
-              </TableHeader>
-              <TableBody>
-                {shown.map((contact) => (
-                  <TableRow
-                    key={contact.id}
-                    data-contact-id={contact.id}
-                    className={contact.id === savedId ? "bg-muted" : ""}
-                  >
-                    <TableCell>
-                      <button
-                        type="button"
-                        title={contact.name}
-                        className="block max-w-full truncate text-start font-medium hover:underline focus-visible:underline focus-visible:outline-none"
-                        onClick={() => setEditing(contact)}
-                      >
-                        {contact.name}
-                      </button>
-                    </TableCell>
-                    <TableCell className="hidden truncate @md:table-cell">
-                      {contact.email}
-                    </TableCell>
-                    <TableCell className="hidden truncate @lg:table-cell">
-                      {contact.organization}
-                    </TableCell>
-                    <TableCell>{names[contact.kind]}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="max-w-5xl">
+              <Table compact className="table-fixed">
+                <TableHeader>
+                  <TableHeadRow>
+                    <TableHead>
+                      <Trans>Name</Trans>
+                    </TableHead>
+                    <TableHead className="hidden w-56 @md:table-cell">
+                      <Trans>Email</Trans>
+                    </TableHead>
+                    <TableHead className="hidden w-44 @lg:table-cell">
+                      <Trans>Organization</Trans>
+                    </TableHead>
+                    <TableHead className="w-28">
+                      <Trans>Kind</Trans>
+                    </TableHead>
+                  </TableHeadRow>
+                </TableHeader>
+                <TableBody>
+                  {shown.map((contact) => (
+                    <TableRow
+                      key={contact.id}
+                      data-contact-id={contact.id}
+                      className={contact.id === savedId ? SAVED_ROW_CLASS : ""}
+                      onOpen={() => setEditing(contact)}
+                    >
+                      <TableCell>
+                        <button
+                          type="button"
+                          title={contact.name}
+                          data-row-open
+                          className="block max-w-full truncate rounded-sm text-start font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          {contact.name}
+                        </button>
+                        {/* Without room for the Email column, the organization or email shows here. */}
+                        <div className="truncate text-xs text-muted-foreground @md:hidden">
+                          {contact.organization ?? contact.email}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden truncate @md:table-cell">
+                        {contact.email}
+                      </TableCell>
+                      <TableCell className="hidden truncate @lg:table-cell">
+                        {contact.organization}
+                      </TableCell>
+                      <TableCell>{names[contact.kind]}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </>
       )}
@@ -214,7 +220,6 @@ export function ContactsPage() {
           onOpenContact={setEditing}
         />
       ) : null}
-      <ContactNotice notice={notice} onDismiss={() => setNotice(null)} />
     </div>
   );
 }

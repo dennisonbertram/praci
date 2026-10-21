@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import type { Contact } from "@rakazo/contracts";
+import { NotificationToaster, notificationToastManager } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -105,6 +106,7 @@ async function show(url = "/app/cap-table", props: Parameters<typeof CapTablePag
     root.render(
       <MemoryRouter initialEntries={[url]}>
         <CapTablePage {...props} />
+        <NotificationToaster onOpen={() => {}} />
       </MemoryRouter>,
     ),
   );
@@ -134,6 +136,7 @@ beforeEach(() => {
   rpcMock.catalog.mockResolvedValue([]);
 });
 afterEach(() => {
+  act(() => notificationToastManager.close());
   setHideAmounts(false);
   vi.useRealTimers();
   act(() => root.unmount());
@@ -446,7 +449,7 @@ it("deletes a contact with an Undo that restores it", async () => {
   expect(document.body.textContent).not.toContain("Deleted Bo");
 });
 
-it("keeps the Deleted notice with Undo until it is dismissed", async () => {
+it("keeps the Deleted toast with Undo until it is dismissed", async () => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   rpcMock.remove.mockResolvedValue({ ok: true });
   await show();
@@ -455,7 +458,7 @@ it("keeps the Deleted notice with Undo until it is dismissed", async () => {
   await act(async () => vi.advanceTimersByTimeAsync(60_000));
   expect(document.body.textContent).toContain("Deleted Bo");
   expect(button("Undo")).toBeDefined();
-  await click(button("Dismiss"));
+  await click(document.querySelector<HTMLElement>('button[aria-label="Dismiss"]') ?? undefined);
   expect(document.body.textContent).not.toContain("Deleted Bo");
 });
 
@@ -466,10 +469,8 @@ it("keeps the contact restorable when Undo fails, and restores it on Try again",
   await click(button("Bo"));
   await click(button("Delete"));
   await click(button("Undo"));
-  expect(document.body.textContent).toContain("offline");
-  // The failure names the contact and says that dismissing loses it.
+  // The failure names the contact and offers to try again.
   expect(document.body.textContent).toContain("Could not restore Bo");
-  expect(document.body.textContent).toContain("Bo stays deleted");
   expect(button("Undo")).toBeUndefined();
   await click(button("Try again"));
   expect(rpcMock.save).toHaveBeenCalledTimes(2);
@@ -480,7 +481,7 @@ it("keeps the contact restorable when Undo fails, and restores it on Try again",
     kind: "auditor",
     notes: null,
   });
-  expect(document.body.textContent).not.toContain("offline");
+  expect(document.body.textContent).not.toContain("Could not restore Bo");
   expect(document.body.textContent).toContain("Restored Bo");
 });
 
@@ -494,12 +495,10 @@ it("confirms a save and closes the dialog with Cancel", async () => {
   await click(button("Add contact"));
   await typeInto("contact-name", "Cy");
   await click(button("Save"));
-  // The notice names the contact and sits after the table, so showing it never moves the rows.
-  const status = container.querySelector("[role=status]") as HTMLElement;
+  // The toast names the contact and floats over the page, so showing it never moves the rows.
+  const status = document.querySelector("[role=status]") as HTMLElement;
   expect(status.textContent).toContain("Saved Cy");
-  expect(status.closest(".fixed")).toBeNull();
-  const table = container.querySelector("table") as HTMLElement;
-  expect(table.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(status.closest(".fixed")).not.toBeNull();
 });
 
 it("scrolls the saved contact into view and marks its row", async () => {
@@ -521,7 +520,7 @@ it("scrolls the saved contact into view and marks its row", async () => {
   await flush();
   const row = container.querySelector('[data-contact-id="c3"]') as HTMLElement;
   expect(scrolled).toContain(row);
-  expect(row.className).toContain("bg-muted");
+  expect(row.className).toContain("bg-accent");
 });
 
 it("reads the kind filter from the URL and names the kind when it is empty", async () => {
@@ -591,10 +590,10 @@ it("lists only investors on the Investors tab and offers Add email only to inves
     ...container.querySelectorAll<HTMLButtonElement>("[data-testid=cap-table-email-cell] button"),
   ].filter((b) => b.textContent === "Add email");
   expect(adds).toHaveLength(1);
-  // A contact with no holding shows a dash, the same as a holder with no shares.
+  // A contact with no holding has nothing to show in Ownership, not an unlabelled dash.
   const rows = [...container.querySelectorAll("table:not(.sr-only) tbody tr")];
   const bo = rows.find((row) => row.textContent?.includes("Bo"));
-  expect(bo?.querySelectorAll("td")[4]?.textContent).toBe("—");
+  expect(bo?.querySelectorAll("td")[4]?.textContent).toBe("");
 });
 
 it("keeps the Kind column with or without Carta", async () => {
@@ -1107,4 +1106,21 @@ describe("search, filter and sort", () => {
     expect(text).not.toContain("100,000");
     expect(text).not.toContain("9,000");
   });
+});
+
+it("opens a contact from its row, and leaves a Carta-only row inert", async () => {
+  rpcMock.capTable.mockResolvedValue({
+    snapshot: { ...snapshot, holders: [holder("Carta Only", "Common", 100, 10)] },
+    syncing: false,
+  });
+  await show();
+  const rows = [...container.querySelectorAll("table:not(.sr-only) tbody tr")];
+  const carta = rows.find((row) => row.textContent?.includes("Carta Only")) as HTMLElement;
+  const bo = rows.find((row) => row.textContent?.includes("Bo")) as HTMLElement;
+  expect(carta.className).not.toContain("cursor-pointer");
+  await click(carta.querySelector("td") as HTMLElement);
+  expect(document.getElementById("contact-name")).toBeNull();
+  expect(bo.className).toContain("cursor-pointer");
+  await click(bo.querySelector("td:nth-child(3)") as HTMLElement);
+  expect((document.getElementById("contact-name") as HTMLInputElement).value).toBe("Bo");
 });

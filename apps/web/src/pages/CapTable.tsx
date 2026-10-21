@@ -42,7 +42,6 @@ import {
   contactAddLabels,
   contactKindNames as kindNames,
 } from "../components/ContactDialog";
-import { ContactNotice, useContactNotices } from "../components/ContactNotice";
 import { OwnershipDonut } from "../components/cap-table/OwnershipDonut";
 import { DataRoomImportMenu } from "../components/data-room/DataRoomImportMenu";
 import { FolderDocuments } from "../components/data-room/FolderDocuments";
@@ -58,6 +57,7 @@ import { useHideAmounts } from "../lib/hide-amounts-preference";
 import { FIRST_PARTY_MCP } from "../lib/integrations";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
+import { SAVED_ROW_CLASS, useContactNotices } from "../lib/use-contact-notices";
 import { errorText } from "../lib/user-error";
 
 /** The tabs: the Carta kinds and the contact kinds this page adds a button for. */
@@ -329,11 +329,7 @@ export function CapTablePage({
   }, []);
   useEffect(load, [load]);
   const container = useRef<HTMLDivElement>(null);
-  const { notice, setNotice, savedId, setSavedId, deleted } = useContactNotices(
-    load,
-    container,
-    contacts,
-  );
+  const { notify, savedId, setSavedId, deleted } = useContactNotices(load, container, contacts);
 
   const [capFailed, setCapFailed] = useState(false);
   const latestCap = useRef(0);
@@ -545,7 +541,7 @@ export function CapTablePage({
               folderPath={CAP_TABLE_FOLDER}
               onDone={(text, changed) => {
                 if (changed) window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
-                if (text) setNotice({ text });
+                if (text) notify(text);
               }}
             />
             <Button variant={cartaConnected ? "default" : "outline"} onClick={addContact}>
@@ -761,7 +757,7 @@ export function CapTablePage({
             <Button
               variant="outline"
               size="sm"
-              onClick={() =>
+              onClick={() => {
                 setParams(
                   (current) => {
                     const updated = new URLSearchParams(current);
@@ -770,8 +766,11 @@ export function CapTablePage({
                     return updated;
                   },
                   { replace: true },
-                )
-              }
+                );
+                container.current
+                  ?.querySelector<HTMLInputElement>("input[name=cap-table-search]")
+                  ?.focus();
+              }}
             >
               <Trans>Clear filters</Trans>
             </Button>
@@ -783,148 +782,152 @@ export function CapTablePage({
           )}
         </div>
       ) : (
-        // Fixed widths: the same columns, in the same places, with or without Carta and the panel.
-        // Without Carta's Shares and Ownership columns, Kind takes the space Email would leave empty.
-        <Table>
-          <TableHeader>
-            <TableHeadRow>
-              <TableHead className="@md:w-[48%] @lg:w-[25%]">
-                <Trans>Name</Trans>
-              </TableHead>
-              <TableHead className={`hidden @md:table-cell ${snapshot ? "" : "@lg:w-[45%]"}`}>
-                <Trans>Email</Trans>
-              </TableHead>
-              <TableHead className={`hidden @lg:table-cell ${snapshot ? "w-28" : ""}`}>
-                <Trans>Kind</Trans>
-              </TableHead>
-              {snapshot ? (
-                <>
-                  <TableHead className="hidden w-20 text-end @2xl:table-cell">
-                    <Trans>Shares</Trans>
-                  </TableHead>
-                  <TableHead className="w-20 pe-0 text-end">
-                    <Trans>Ownership</Trans>
-                  </TableHead>
-                </>
-              ) : null}
-            </TableHeadRow>
-          </TableHeader>
-          <TableBody>
-            {shown.map(({ key, contact, holder }) => {
-              const name = contact?.name ?? holder?.name ?? "";
-              const organization = contact?.organization ?? holder?.organization ?? null;
-              const kind = rowKind({ contact, holder });
-              const security = holder
-                ? holder.shares == null && holder.amountUsd != null
-                  ? `${holder.security}, ${usd(holder.amountUsd)}`
-                  : holder.security
-                : null;
-              // "Options" under the kind "Options" says nothing new.
-              const holding = security === names[kind] ? null : security;
-              const empty = <span className="text-muted-foreground">{DASH}</span>;
-              const email = contact?.email ? (
-                contact.email
-              ) : !contact && kind === "investor" ? (
-                <>
-                  {/* Carta's email shows as is; saving it makes the holder a contact. */}
-                  {holder?.email ? <div className="truncate">{holder.email}</div> : null}
-                  <Button
-                    variant="link"
-                    size="xs"
-                    className="h-auto px-0"
-                    onClick={() =>
-                      setEditing({
-                        name,
-                        email: holder?.email ?? null,
-                        organization,
-                        kind: "investor",
-                      })
-                    }
-                  >
-                    {holder?.email ? <Trans>Save as contact</Trans> : <Trans>Add email</Trans>}
-                  </Button>
-                </>
-              ) : holder?.email ? (
-                holder.email
-              ) : null;
-              return (
-                <TableRow
-                  key={key}
-                  data-contact-id={contact?.id}
-                  className={contact && contact.id === savedId ? "bg-muted" : ""}
-                >
-                  <TableCell>
-                    {contact ? (
-                      <button
-                        type="button"
-                        title={name}
-                        className="block max-w-full truncate text-start font-medium hover:underline focus-visible:underline focus-visible:outline-none"
-                        onClick={() => setEditing(contact)}
-                      >
-                        {name}
-                      </button>
-                    ) : (
-                      <span className="block truncate font-medium" title={name}>
-                        {name}
-                      </span>
-                    )}
-                    {/* Without room for the Kind column, the kind and holding show here. */}
-                    <div
-                      className="truncate text-xs text-muted-foreground @lg:hidden"
-                      title={holding ?? undefined}
+        // Name takes what the other columns leave. Columns drop in priority order as the page
+        // narrows: Email first (it moves under the name), then Kind, then Shares.
+        <div className="max-w-5xl">
+          <Table compact className="table-fixed">
+            <TableHeader>
+              <TableHeadRow>
+                <TableHead>
+                  <Trans>Name</Trans>
+                </TableHead>
+                <TableHead className="hidden w-56 @3xl:table-cell">
+                  <Trans>Email</Trans>
+                </TableHead>
+                <TableHead className="hidden w-28 @lg:table-cell">
+                  <Trans>Kind</Trans>
+                </TableHead>
+                {snapshot ? (
+                  <>
+                    <TableHead className="hidden w-20 text-end @md:table-cell">
+                      <Trans>Shares</Trans>
+                    </TableHead>
+                    <TableHead className="w-20 pe-0 text-end">
+                      <Trans>Ownership</Trans>
+                    </TableHead>
+                  </>
+                ) : null}
+              </TableHeadRow>
+            </TableHeader>
+            <TableBody>
+              {shown.map(({ key, contact, holder }) => {
+                const name = contact?.name ?? holder?.name ?? "";
+                const organization = contact?.organization ?? holder?.organization ?? null;
+                const kind = rowKind({ contact, holder });
+                const security = holder
+                  ? holder.shares == null && holder.amountUsd != null
+                    ? `${holder.security}, ${usd(holder.amountUsd)}`
+                    : holder.security
+                  : null;
+                // "Options" under the kind "Options" says nothing new.
+                const holding = security === names[kind] ? null : security;
+                const empty = <span className="text-muted-foreground">{DASH}</span>;
+                const email = contact?.email ? (
+                  contact.email
+                ) : !contact && kind === "investor" ? (
+                  <>
+                    {/* Carta's email shows as is; saving it makes the holder a contact. */}
+                    {holder?.email ? <div className="truncate">{holder.email}</div> : null}
+                    <Button
+                      variant="link"
+                      size="xs"
+                      className="h-auto px-0"
+                      onClick={() =>
+                        setEditing({
+                          name,
+                          email: holder?.email ?? null,
+                          organization,
+                          kind: "investor",
+                        })
+                      }
                     >
-                      {[names[kind], holding].filter(Boolean).join(" · ")}
-                    </div>
-                    {organization ? (
-                      <div className="truncate text-xs text-muted-foreground" title={organization}>
-                        {organization}
-                      </div>
-                    ) : null}
-                    {/* A phone has no room for the Email column, so the email shows here in full width. */}
-                    {email ? (
-                      <div
-                        data-testid="cap-table-row-email"
-                        className="truncate text-xs text-muted-foreground @md:hidden"
-                      >
-                        {email}
-                      </div>
-                    ) : null}
-                  </TableCell>
-                  <TableCell
-                    data-testid="cap-table-email-cell"
-                    className="hidden truncate text-muted-foreground @md:table-cell"
-                    title={contact?.email ?? holder?.email ?? undefined}
+                      {holder?.email ? <Trans>Save as contact</Trans> : <Trans>Add email</Trans>}
+                    </Button>
+                  </>
+                ) : holder?.email ? (
+                  holder.email
+                ) : null;
+                return (
+                  <TableRow
+                    key={key}
+                    data-contact-id={contact?.id}
+                    className={contact && contact.id === savedId ? SAVED_ROW_CLASS : ""}
+                    onOpen={contact ? () => setEditing(contact) : undefined}
                   >
-                    {email ?? empty}
-                  </TableCell>
-                  <TableCell className="hidden @lg:table-cell">
-                    <div className="truncate">{names[kind]}</div>
-                    {holding ? (
-                      <div className="truncate text-xs text-muted-foreground" title={holding}>
-                        {holding}
+                    <TableCell>
+                      {contact ? (
+                        <button
+                          type="button"
+                          title={name}
+                          data-row-open
+                          className="block max-w-full truncate rounded-sm text-start font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          {name}
+                        </button>
+                      ) : (
+                        <span className="block truncate font-medium" title={name}>
+                          {name}
+                        </span>
+                      )}
+                      {/* Without room for the Kind column, the kind and holding show here. */}
+                      <div
+                        className="truncate text-xs text-muted-foreground @lg:hidden"
+                        title={holding ?? undefined}
+                      >
+                        {[names[kind], holding].filter(Boolean).join(" · ")}
                       </div>
+                      {organization ? (
+                        <div
+                          className="truncate text-xs text-muted-foreground"
+                          title={organization}
+                        >
+                          {organization}
+                        </div>
+                      ) : null}
+                      {/* Without room for the Email column, the email shows here. */}
+                      {email ? (
+                        <div
+                          data-testid="cap-table-row-email"
+                          className="truncate text-xs text-muted-foreground @3xl:hidden"
+                        >
+                          {email}
+                        </div>
+                      ) : null}
+                    </TableCell>
+                    <TableCell
+                      data-testid="cap-table-email-cell"
+                      className="hidden truncate text-muted-foreground @3xl:table-cell"
+                      title={contact?.email ?? holder?.email ?? undefined}
+                    >
+                      {email ?? empty}
+                    </TableCell>
+                    <TableCell className="hidden @lg:table-cell">
+                      <div className="truncate">{names[kind]}</div>
+                      {holding ? (
+                        <div className="truncate text-xs text-muted-foreground" title={holding}>
+                          {holding}
+                        </div>
+                      ) : null}
+                    </TableCell>
+                    {snapshot ? (
+                      <>
+                        <TableCell className="hidden text-end tabular-nums @md:table-cell">
+                          {holder?.shares != null ? num(holder.shares) : holder ? empty : null}
+                        </TableCell>
+                        <TableCell className="pe-0 text-end tabular-nums">
+                          {holder?.percent != null ? pct(holder.percent) : holder ? empty : null}
+                        </TableCell>
+                      </>
                     ) : null}
-                  </TableCell>
-                  {snapshot ? (
-                    <>
-                      <TableCell className="hidden text-end tabular-nums @2xl:table-cell">
-                        {holder?.shares != null ? num(holder.shares) : empty}
-                      </TableCell>
-                      <TableCell className="pe-0 text-end tabular-nums">
-                        {holder?.percent != null ? pct(holder.percent) : empty}
-                      </TableCell>
-                    </>
-                  ) : null}
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       <FolderDocuments folderPath={CAP_TABLE_FOLDER} />
-
-      <ContactNotice notice={notice} onDismiss={() => setNotice(null)} />
 
       {connecting ? (
         <ConnectCartaDialog
@@ -934,7 +937,7 @@ export function CapTablePage({
           }}
           onFailed={(message) => {
             setConnecting(false);
-            setNotice({ text: message });
+            notify(message);
           }}
         />
       ) : null}
@@ -949,7 +952,7 @@ export function CapTablePage({
           onSaved={(saved) => {
             load();
             setSavedId(saved.id);
-            setNotice({ text: t`Saved ${saved.name}` });
+            notify(t`Saved ${saved.name}`);
           }}
           onDeleted={deleted}
           onOpenContact={setEditing}

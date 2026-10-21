@@ -3022,8 +3022,8 @@ msgstr "Diagramm konnte nicht angezeigt werden"
 msgid "Could not reset password"
 msgstr "Passwort konnte nicht zurückgesetzt werden"
 
-#: src/components/ContactNotice.tsx
-msgid "Could not restore {name}: {reason}. If you dismiss this, {name} stays deleted."
+#: src/lib/use-contact-notices.ts
+msgid "Could not restore {name}"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -3539,7 +3539,7 @@ msgstr "gelöscht"
 msgid "Deleted"
 msgstr ""
 
-#: src/components/ContactNotice.tsx
+#: src/lib/use-contact-notices.ts
 msgid "Deleted {name}"
 msgstr ""
 
@@ -3659,7 +3659,6 @@ msgid "Disconnecting…"
 msgstr "Verbindung wird getrennt…"
 
 #: src/components/ComputerUpdateProgress.tsx
-#: src/components/ContactNotice.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ImportActivity.tsx
 #: src/components/finance/StatementImport.tsx
@@ -3958,6 +3957,7 @@ msgstr "Gib ein Passwort ein"
 msgid "Enter a username and password"
 msgstr ""
 
+#: src/components/ContactDialog.tsx
 #: src/lib/user-error.ts
 msgid "Enter a valid email"
 msgstr "Gib eine gültige E-Mail-Adresse ein"
@@ -7482,7 +7482,7 @@ msgstr "Den zuletzt gespeicherten Arbeitsbereich wiederherstellen."
 msgid "Restore the last saved workspace. Unsaved work on the computer is lost."
 msgstr ""
 
-#: src/components/ContactNotice.tsx
+#: src/lib/use-contact-notices.ts
 msgid "Restored {name}"
 msgstr ""
 
@@ -9222,7 +9222,6 @@ msgid "Try {name} again"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
-#: src/components/ContactNotice.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
@@ -9232,6 +9231,7 @@ msgstr ""
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
+#: src/lib/use-contact-notices.ts
 #: src/pages/ActivityList.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
@@ -9315,13 +9315,13 @@ msgstr ""
 msgid "Undid {restored}, skipped {skipped}"
 msgstr ""
 
-#: src/components/ContactNotice.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
 #: src/components/inbox/CleanupHistory.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/MailOutbox.tsx
 #: src/components/sidebar-folders/SidebarUndoNotice.tsx
+#: src/lib/use-contact-notices.ts
 #: src/pages/Inbox.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Undo"

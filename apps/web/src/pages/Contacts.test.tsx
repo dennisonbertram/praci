@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import type { Contact } from "@rakazo/contracts";
+import { NotificationToaster, notificationToastManager } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -53,6 +54,7 @@ const show = async (url = "/app/contacts") => {
       <MemoryRouter initialEntries={[url]}>
         <ContactsPage />
         <Where />
+        <NotificationToaster onOpen={() => {}} />
       </MemoryRouter>,
     ),
   );
@@ -75,6 +77,7 @@ beforeEach(() => {
   root = createRoot(container);
 });
 afterEach(() => {
+  act(() => notificationToastManager.close());
   act(() => root.unmount());
   container.remove();
   vi.resetAllMocks();
@@ -214,4 +217,66 @@ it("editing the Email clears a duplicate-email error", async () => {
   expect(button("Open Cy")).toBeDefined();
   await typeInto(document.getElementById("contact-email") as HTMLInputElement, "cy2@example.test");
   expect(document.body.textContent).not.toContain("Another contact already has this email.");
+});
+
+it("opens a contact from any cell of its row", async () => {
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "other")]);
+  await show();
+  await click(container.querySelector("tbody td:nth-child(3)") as HTMLElement);
+  expect(document.getElementById("contact-name")).not.toBeNull();
+});
+
+it("focuses Search after Clear filters", async () => {
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "other")]);
+  await show("/app/contacts?q=zzz");
+  await click(button("Clear filters"));
+  expect(document.activeElement).toBe(container.querySelector("input[name=contacts-search]"));
+});
+
+it("focuses the restored contact's name after Undo", async () => {
+  const ada = contact("c1", "Ada", "other");
+  rpcMock.remove.mockResolvedValue({ ok: true });
+  rpcMock.save.mockResolvedValue({ ...ada, id: "c9" });
+  rpcMock.list.mockResolvedValue([ada]);
+  await show();
+  await click(container.querySelector("tbody button") as HTMLElement);
+  await click(button("Delete"));
+  rpcMock.list.mockResolvedValue([{ ...ada, id: "c9" }]);
+  await click(button("Undo"));
+  await flush();
+  expect(document.activeElement?.textContent).toBe("Ada");
+  expect(document.activeElement?.closest("tr")?.getAttribute("data-contact-id")).toBe("c9");
+});
+
+it("reports an invalid email under the field and focuses it, without saving", async () => {
+  rpcMock.list.mockResolvedValue([]);
+  await show();
+  await click(button("Add contact"));
+  await typeInto(document.getElementById("contact-name") as HTMLInputElement, "Cy");
+  const email = document.getElementById("contact-email") as HTMLInputElement;
+  await typeInto(email, "not an email");
+  await click(button("Save"));
+  expect(rpcMock.save).not.toHaveBeenCalled();
+  expect(email.getAttribute("aria-invalid")).toBe("true");
+  const message = document.getElementById(email.getAttribute("aria-describedby") ?? "");
+  expect(message?.textContent).toBe("Enter a valid email");
+  expect(document.activeElement).toBe(email);
+  await typeInto(email, "cy@example.test");
+  expect(email.getAttribute("aria-invalid")).toBeNull();
+});
+
+it("marks the Email invalid and focuses it when another contact has it", async () => {
+  const cy = contact("c2", "Cy", "vendor");
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "other"), cy]);
+  rpcMock.save.mockRejectedValue(new Error("Another contact already has this email."));
+  await show();
+  await click(container.querySelector("tbody button") as HTMLElement);
+  const email = document.getElementById("contact-email") as HTMLInputElement;
+  await typeInto(email, "cy@example.test");
+  await click(button("Save"));
+  expect(email.getAttribute("aria-invalid")).toBe("true");
+  expect(
+    document.getElementById(email.getAttribute("aria-describedby") ?? "")?.textContent,
+  ).toContain("Another contact already has this email.");
+  expect(document.activeElement).toBe(email);
 });

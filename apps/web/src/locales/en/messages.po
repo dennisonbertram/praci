@@ -3022,9 +3022,9 @@ msgstr "Could not render chart"
 msgid "Could not reset password"
 msgstr "Could not reset password"
 
-#: src/components/ContactNotice.tsx
-msgid "Could not restore {name}: {reason}. If you dismiss this, {name} stays deleted."
-msgstr "Could not restore {name}: {reason}. If you dismiss this, {name} stays deleted."
+#: src/lib/use-contact-notices.ts
+msgid "Could not restore {name}"
+msgstr "Could not restore {name}"
 
 #: src/pages/Shell.tsx
 msgid "Could not run routine"
@@ -3539,7 +3539,7 @@ msgstr "deleted"
 msgid "Deleted"
 msgstr "Deleted"
 
-#: src/components/ContactNotice.tsx
+#: src/lib/use-contact-notices.ts
 msgid "Deleted {name}"
 msgstr "Deleted {name}"
 
@@ -3659,7 +3659,6 @@ msgid "Disconnecting…"
 msgstr "Disconnecting…"
 
 #: src/components/ComputerUpdateProgress.tsx
-#: src/components/ContactNotice.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ImportActivity.tsx
 #: src/components/finance/StatementImport.tsx
@@ -3958,6 +3957,7 @@ msgstr "Enter a password"
 msgid "Enter a username and password"
 msgstr "Enter a username and password"
 
+#: src/components/ContactDialog.tsx
 #: src/lib/user-error.ts
 msgid "Enter a valid email"
 msgstr "Enter a valid email"
@@ -7482,7 +7482,7 @@ msgstr "Restore the last saved workspace."
 msgid "Restore the last saved workspace. Unsaved work on the computer is lost."
 msgstr "Restore the last saved workspace. Unsaved work on the computer is lost."
 
-#: src/components/ContactNotice.tsx
+#: src/lib/use-contact-notices.ts
 msgid "Restored {name}"
 msgstr "Restored {name}"
 
@@ -9222,7 +9222,6 @@ msgid "Try {name} again"
 msgstr "Try {name} again"
 
 #: src/components/ComposeEmail.tsx
-#: src/components/ContactNotice.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
@@ -9232,6 +9231,7 @@ msgstr "Try {name} again"
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
+#: src/lib/use-contact-notices.ts
 #: src/pages/ActivityList.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
@@ -9315,13 +9315,13 @@ msgstr "Undid {restored}"
 msgid "Undid {restored}, skipped {skipped}"
 msgstr "Undid {restored}, skipped {skipped}"
 
-#: src/components/ContactNotice.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
 #: src/components/inbox/CleanupHistory.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/MailOutbox.tsx
 #: src/components/sidebar-folders/SidebarUndoNotice.tsx
+#: src/lib/use-contact-notices.ts
 #: src/pages/Inbox.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Undo"
