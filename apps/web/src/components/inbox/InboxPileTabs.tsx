@@ -21,18 +21,18 @@ export function InboxPileTabs({
       value={value ?? null}
       onValueChange={(next) => onChange(next as InboxPile)}
     >
-      <TabsList className="max-w-full rounded-full">
-        <TabsTrigger value="important" className="rounded-full px-3">
+      <TabsList className="max-w-full rounded-full pointer-coarse:h-auto">
+        <TabsTrigger value="important" className="rounded-full px-3 pointer-coarse:h-11">
           {t`Important`}
         </TabsTrigger>
-        <TabsTrigger value="updates" className="rounded-full px-3">
+        <TabsTrigger value="updates" className="rounded-full px-3 pointer-coarse:h-11">
           {t`Updates`}
         </TabsTrigger>
-        <TabsTrigger value="newsletters" className="rounded-full px-3">
+        <TabsTrigger value="newsletters" className="rounded-full px-3 pointer-coarse:h-11">
           {t`Newsletters`}
         </TabsTrigger>
         {spam > 0 || value === "spam" ? (
-          <TabsTrigger value="spam" className="rounded-full px-3">
+          <TabsTrigger value="spam" className="rounded-full px-3 pointer-coarse:h-11">
             {t`Spam`}
             <span className="tabular-nums text-muted-foreground">{spam}</span>
           </TabsTrigger>

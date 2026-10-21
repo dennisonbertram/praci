@@ -146,7 +146,7 @@ export function AvatarStudioPopover({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="flex size-7 pointer-coarse:size-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               aria-label={t`Close`}
             >
               <X size={16} />
@@ -243,7 +243,7 @@ export function AvatarStudioPopover({
                         onClick={() => selectColor(color)}
                         aria-label={t`Color ${color}`}
                         aria-pressed={selected}
-                        className={`size-6 rounded-full border transition-transform hover:scale-110 active:scale-95 focus-visible:ring-2 focus-visible:ring-ring ${
+                        className={`size-8 rounded-full border transition-transform hover:scale-110 active:scale-95 focus-visible:ring-2 focus-visible:ring-ring ${
                           selected
                             ? "scale-105 border-transparent ring-2 ring-foreground ring-offset-2 ring-offset-popover"
                             : "border-border"
