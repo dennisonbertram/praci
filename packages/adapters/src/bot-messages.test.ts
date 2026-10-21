@@ -911,3 +911,58 @@ describe("an external bot messaging another bot", () => {
     expect(sent).toMatchObject({ ok: true, botId: "bot-other" });
   });
 });
+
+describe("the automatic result return and audience", () => {
+  const asked = [
+    {
+      kind: "bot_message_received",
+      fromBotId: "bot-caller",
+      fromBotName: "Caller",
+      text: "question",
+      hop: 1,
+      intent: "request",
+      returnToMessageId: "m0",
+    },
+  ];
+  const caller = (audience: string, externalMessageTargets: string[] = []) => ({
+    id: "bot-caller",
+    name: "Caller",
+    title: "",
+    audience,
+    externalMessageTargets,
+    thread: { id: "thread-caller" },
+  });
+  const reply = (harness: ReturnType<typeof deps>) =>
+    messageBot(
+      harness.deps,
+      { ...run, sourceMessageId: "msg-1" },
+      sender,
+      { bot_id: "bot-caller", message: "done", intent: "result" },
+      { allowTerminalSource: true },
+    );
+
+  it("returns to an internal caller", async () => {
+    const harness = deps({ bots: [caller("internal")], hopBlocks: asked });
+    expect((await reply(harness)).ok).toBe(true);
+  });
+
+  it("does not return to a caller that became external unless it may message the sender", async () => {
+    const blocked = deps({ bots: [caller("external")], hopBlocks: asked });
+    expect(await reply(blocked)).toEqual({ ok: false, error: EXTERNAL_MESSAGE_REFUSED });
+    expect(blocked.tx.task.create).not.toHaveBeenCalled();
+    const allowed = deps({
+      bots: [caller("external", ["bot-sender"])],
+      hopBlocks: asked,
+    });
+    expect((await reply(allowed)).ok).toBe(true);
+  });
+
+  it("an external sender cannot use the return to reach another external bot", async () => {
+    const harness = deps({
+      bots: [caller("external")],
+      hopBlocks: asked,
+      sender: { audience: "external", externalMessageTargets: [] },
+    });
+    expect(await reply(harness)).toEqual({ ok: false, error: EXTERNAL_MESSAGE_REFUSED });
+  });
+});

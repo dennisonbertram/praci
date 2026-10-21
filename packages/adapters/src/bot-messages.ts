@@ -124,6 +124,7 @@ export async function messageBot(
       title: true,
       spawnKey: true,
       audience: true,
+      externalMessageTargets: true,
       thread: { select: { id: true } },
     },
   });
@@ -131,7 +132,10 @@ export async function messageBot(
     ? allCandidates.filter(
         (candidate) =>
           (candidate.audience === "internal" && allowedTargets.has(candidate.id)) ||
-          (options?.allowTerminalSource === true && candidate.id === sourceContext?.fromBotId),
+          // The automatic return reaches its caller only while the caller is still internal.
+          (options?.allowTerminalSource === true &&
+            candidate.id === sourceContext?.fromBotId &&
+            candidate.audience === "internal"),
       )
     : allCandidates;
   const target = resolveBotAddress(candidates, {
@@ -158,6 +162,15 @@ export async function messageBot(
     externalSender &&
     !returnsToSender &&
     !(allowedTargets.has(target.id) && target.audience === "internal")
+  ) {
+    return { ok: false as const, error: EXTERNAL_MESSAGE_REFUSED };
+  }
+  // A result going back to a bot that is now external is delivered only if that bot's owner
+  // allowed it to message this sender; the caller's old standing as an internal bot is not enough.
+  if (
+    returnsToSender &&
+    target.audience === "external" &&
+    !target.externalMessageTargets.includes(sender.id)
   ) {
     return { ok: false as const, error: EXTERNAL_MESSAGE_REFUSED };
   }

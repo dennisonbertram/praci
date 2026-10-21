@@ -32,7 +32,9 @@ Deferred: open questions 6 (classifier key), 7 (pre-approved topics) and 8 (visi
 - Tool list: `EXTERNAL_BUILTIN_TOOLS` and `EXTERNAL_COMPUTER_TOOLS` in `packages/contracts/src/builtin-tools.ts`; `selectBuiltinToolsForRun` keeps only that closed list for an External bot, and the cross-Space agent-connection tools are not offered. The offered list is also what the executor enforces at call time.
 - Connectors: for an External bot, "all agents" access is ignored (`connectionRowsForAudience`). It reaches a connection only through an explicit `botAccess` row. The Integrations page's "who can use this" list follows the same rule.
 - Bot directory: an External bot's directory in its instructions lists only its allowlisted bots.
-- Protective prompt: `EXTERNAL_BOT_PROMPT`, appended last by `runIdentityInstruction`.
+- Protective prompt: `EXTERNAL_BOT_PROMPT`, appended by `withExternalBotPrompt` after the whole instruction string is assembled, so nothing follows it.
+- Automatic private context: an External run loads no bot or shared user memory, no semantic recall, no ticket context, no agent environment names, no connected-plugin list, no skills catalog or taught-skill list, no history-search guidance, and its instructions drop guidance for every tool it is not offered. It keeps its own scratchpad and page. Phase 2's chain mark must cover these same paths for Internal bots answering an External chain.
+- Automatic result return: a result goes back to its caller only while the caller is Internal, or is External and its owner allowed it to message the sender.
 - `message_bot`: `messageBot` reads the sender's audience and allowlist from the database. An External sender resolves targets only among its allowlisted Internal bots (and the caller it is answering); anything else, including a name that does not exist, gets the same fixed message so the refusal does not reveal which bots exist.
 - UI: an Audience row (Internal / External) in the bot settings, with the helper, "Can message" switches, a "Computer and browser" switch and the "Still has access to" line shown only for External; an "External" tag beside the bot name in the chat header.
 

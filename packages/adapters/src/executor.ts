@@ -47,6 +47,7 @@ import {
   BOT_NAME_MAX_LENGTH,
   BOT_TITLE_MAX_LENGTH,
   BotSecretName,
+  BUILTIN_TOOL_NAMES,
   botSecretSubmissionSchema,
   CLOUDFLARE_AI_GATEWAY_CONFIG_MESSAGE,
   COMPUTER_COMMAND_OUTPUT_MAX_CHARS,
@@ -1605,10 +1606,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
         runSecrets.push(...Object.values(agentEnvironment));
         // Encoded forms too: read_file redacts with these values before any shell command runs.
         runSecrets.push(...commandCredentialRedactions(initialBotCommandEnvironment));
-        const agentEnvironmentInstruction = formatAgentEnvironmentInstruction({
-          ...agentEnvironment,
-          ...initialBotCommandEnvironment,
-        });
+        const agentEnvironmentInstruction =
+          bot.audience === "external"
+            ? undefined
+            : formatAgentEnvironmentInstruction({
+                ...agentEnvironment,
+                ...initialBotCommandEnvironment,
+              });
         // modelPinned distinguishes the captured choice from an attempt's recorded model.
         const modelChoice = runModelChoice(run, bot);
         const hasModelOverride = Boolean(modelChoice.modelProvider && modelChoice.modelId);
@@ -1883,6 +1887,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           : undefined;
         const recallPromise =
           !voiceAgent &&
+          bot.audience !== "external" &&
           !meetingTaint &&
           threadContext.includeSemanticRecall &&
           semanticMemory &&
@@ -1909,7 +1914,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         ] = await Promise.all([
           discoveredPromise,
           loadCurrentTurnImages(deps, turnBlocks, context),
-          messagingChannelRun || voiceAgent
+          messagingChannelRun || voiceAgent || bot.audience === "external"
             ? Promise.resolve("")
             : loadAgentMemoryContext(deps.memory, bot.id, context),
           messagingChannelRun || voiceAgent
@@ -1919,6 +1924,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 botId: bot.id,
               }),
           messagingChannelRun ||
+          bot.audience === "external" ||
           !deps.ticketBoardEnabled ||
           (voiceAgent && !voiceWorkspaceReadAllowed)
             ? Promise.resolve(undefined)
@@ -2245,6 +2251,17 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const pageBrowserAllowed =
           graphical && browser.describe().capabilities.page && !heldForTakeover;
         const disabledBuiltinTools = disabledBuiltinToolSet(bot.disabledBuiltinTools);
+        // An external bot is told nothing about tools it is not offered, and gets none of the
+        // automatic private context (memory, tickets, recall, environment, connected apps).
+        const externalBot = bot.audience === "external";
+        const instructionDisabledTools = externalBot
+          ? new Set([
+              ...disabledBuiltinTools,
+              ...BUILTIN_TOOL_NAMES.filter(
+                (name) => !externalBotMayUseBuiltin(name, bot.externalComputerTools),
+              ),
+            ])
+          : disabledBuiltinTools;
         // Connected mail accounts of the bot owner, looked up once per run and never shared.
         // A Calendar or Drive agent sees only the account it is linked to.
         const visibleToIdentity = (id: string) =>
@@ -2763,11 +2780,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
           heldForTakeover,
           graphicalToolsAllowed,
           graphical,
-          disabled: disabledBuiltinTools,
+          disabled: instructionDisabledTools,
         });
         const dockerToolInstruction = dockerComputerToolInstruction(
           computer.kind,
-          disabledBuiltinTools,
+          instructionDisabledTools,
         );
         const computerInstruction = dockerToolInstruction
           ? `${baseComputerInstruction} ${dockerToolInstruction}`
@@ -6013,21 +6030,22 @@ export function createRunExecutor(deps: ExecutorDeps) {
           return finish({ error: `unknown tool ${name}` });
         };
 
-        const pluginLine = voiceAgent
-          ? undefined
-          : mailOnly
+        const pluginLine =
+          voiceAgent || bot.audience === "external"
             ? undefined
-            : legalOnly
-              ? legalEnabled
-                ? "Start with legal_unreviewed_documents, read each with read_data_room_item, and record what you find with the legal_* tools. Use mail_search and drive_search for legal documents that are not in the Data Room yet."
-                : undefined
-              : integrationAgent
-                ? undefined
-                : financeOnly
-                  ? financeAgentRunLine(financeEnabled, run.trigger)
-                  : connectedPlugins.length > 0
-                    ? `Connected plugins: ${connectedPlugins.map((row) => `${row.displayName} (${row.connectorId}:${row.provider})`).join(", ")}. Prefer those plugin tools over the computer browser or web search when reading app data (repos, releases, mail, calendar, and similar).`
-                    : "No plugins are connected yet.";
+            : mailOnly
+              ? undefined
+              : legalOnly
+                ? legalEnabled
+                  ? "Start with legal_unreviewed_documents, read each with read_data_room_item, and record what you find with the legal_* tools. Use mail_search and drive_search for legal documents that are not in the Data Room yet."
+                  : undefined
+                : integrationAgent
+                  ? undefined
+                  : financeOnly
+                    ? financeAgentRunLine(financeEnabled, run.trigger)
+                    : connectedPlugins.length > 0
+                      ? `Connected plugins: ${connectedPlugins.map((row) => `${row.displayName} (${row.connectorId}:${row.provider})`).join(", ")}. Prefer those plugin tools over the computer browser or web search when reading app data (repos, releases, mail, calendar, and similar).`
+                      : "No plugins are connected yet.";
         const taughtSkillIndex = savedSkills.slice(0, 20);
         const taughtSkillsLine =
           taughtSkillIndex.length > 0
@@ -6200,43 +6218,41 @@ export function createRunExecutor(deps: ExecutorDeps) {
               },
               prompt,
               contextStrategy,
-              instructions: userTurnInstructions({
-                botInstructions: runIdentityInstruction(
-                  bot,
-                  run.trigger,
-                  bot.spawnKey,
-                  bot.audience,
-                ),
-                voiceAgent,
-                groupContext,
-                messagingContext,
-                redactedMemoryContext: memoryContext
-                  ? redactSecrets(memoryContext, runSecrets)
-                  : undefined,
-                redactedScratchpadContext: scratchpadContext
-                  ? redactSecrets(scratchpadContext, runSecrets)
-                  : undefined,
-                redactedTicketContext: ticketContext
-                  ? redactSecrets(ticketContext, runSecrets)
-                  : undefined,
-                hasHistoricalContext: historicalContext.length > 0,
-                historyRetrievalEnabled: contextStrategy !== "current",
-                computerInstruction,
-                pageBrowserAllowed,
-                taskCatalogInstruction,
-                workspaceInstruction,
-                agentEnvironmentInstruction,
-                botDirectory,
-                pluginLine,
-                mailSearchGuidance: mailSkill.guidance,
-                dataRoomEnabled: dataRoomEnabled && !legalOnly,
-                agentSkillsLine,
-                taughtSkillsLine,
-                replyGuidance: runReplyGuidance(run.trigger),
-                disabledBuiltinTools,
-              })
-                .filter((instruction): instruction is string => Boolean(instruction))
-                .join("\n\n"),
+              instructions: withExternalBotPrompt(
+                userTurnInstructions({
+                  botInstructions: runIdentityInstruction(bot, run.trigger, bot.spawnKey),
+                  voiceAgent,
+                  groupContext,
+                  messagingContext,
+                  redactedMemoryContext: memoryContext
+                    ? redactSecrets(memoryContext, runSecrets)
+                    : undefined,
+                  redactedScratchpadContext: scratchpadContext
+                    ? redactSecrets(scratchpadContext, runSecrets)
+                    : undefined,
+                  redactedTicketContext: ticketContext
+                    ? redactSecrets(ticketContext, runSecrets)
+                    : undefined,
+                  hasHistoricalContext: historicalContext.length > 0,
+                  historyRetrievalEnabled: contextStrategy !== "current" && !externalBot,
+                  computerInstruction,
+                  pageBrowserAllowed,
+                  taskCatalogInstruction,
+                  workspaceInstruction,
+                  agentEnvironmentInstruction,
+                  botDirectory,
+                  pluginLine,
+                  mailSearchGuidance: mailSkill.guidance,
+                  dataRoomEnabled: dataRoomEnabled && !legalOnly && !externalBot,
+                  agentSkillsLine: externalBot ? undefined : agentSkillsLine,
+                  taughtSkillsLine: externalBot ? undefined : taughtSkillsLine,
+                  replyGuidance: runReplyGuidance(run.trigger),
+                  disabledBuiltinTools: instructionDisabledTools,
+                })
+                  .filter((instruction): instruction is string => Boolean(instruction))
+                  .join("\n\n"),
+                bot.audience,
+              ),
               history: runtimeHistory,
               currentTurnImages,
               tools,
@@ -7908,11 +7924,13 @@ export function runIdentityInstruction(
   bot: { name: string; title: string; description: string; instructions: string },
   trigger: string,
   spawnKey?: string | null,
-  audience?: string | null,
 ): string {
-  const identity = identityInstruction(bot, trigger, spawnKey);
-  // Code-owned and last, so editing the bot's own instructions cannot remove or outrank it.
-  return audience === "external" ? `${identity}\n\n${EXTERNAL_BOT_PROMPT}` : identity;
+  return identityInstruction(bot, trigger, spawnKey);
+}
+
+/** Code-owned and last in the whole instruction string, so nothing assembled after it can outrank it. */
+export function withExternalBotPrompt(instructions: string, audience?: string | null): string {
+  return audience === "external" ? `${instructions}\n\n${EXTERNAL_BOT_PROMPT}` : instructions;
 }
 
 /** The fixed protective prompt of an external bot. */
