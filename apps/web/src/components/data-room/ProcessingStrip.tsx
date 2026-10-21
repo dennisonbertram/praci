@@ -19,20 +19,17 @@ export function ProcessingStrip({
   total,
   finished = false,
   importing,
-  onShowFailed,
 }: {
   processing: DataRoomApiProcessing;
   total: number;
   finished?: boolean;
   /** Imports still running, shown ahead of the count on the same line. */
   importing?: { done: number; total: number } | null;
-  /** Lists only the files that could not be read. */
-  onShowFailed?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const remaining = processingRemaining(processing);
   const row = "border-b border-border px-3 py-1.5 text-xs text-muted-foreground";
-  if (finished && processing.failed === 0) {
+  if (finished) {
     return (
       <div role="status" className={row}>
         <span className="text-foreground">{t`All files processed`}</span>
@@ -53,29 +50,7 @@ export function ProcessingStrip({
       : processing.tagging
         ? t`Tagging`
         : null;
-  const failedCount = plural(processing.failed, {
-    one: "# couldn't be read",
-    other: "# couldn't be read",
-  });
-  const failed =
-    processing.failed > 0 ? (
-      <span className="shrink-0 whitespace-nowrap">
-        {onShowFailed ? (
-          <Button variant="link" size="xs" className="h-auto p-0" onClick={onShowFailed}>
-            {failedCount}
-          </Button>
-        ) : (
-          failedCount
-        )}
-      </span>
-    ) : null;
-  if (remaining === 0 && !importing) {
-    return failed ? (
-      <div role="status" className={row}>
-        {failed}
-      </div>
-    ) : null;
-  }
+  if (remaining === 0 && !importing) return null;
   return (
     <div role="status" className={cn(row, "relative", percent > 0 && "pb-2")}>
       {/* One line at any width: only the file name gives way. */}
@@ -98,13 +73,6 @@ export function ProcessingStrip({
           <span className="min-w-0 truncate">
             {doing} {maskCurrencyWhenHidden(processing.current)}
           </span>
-        ) : null}
-        {/* The same line as the count, so a failed file is one clickable number, not a second line. */}
-        {remaining > 0 && failed ? (
-          <>
-            <span aria-hidden="true">·</span>
-            {failed}
-          </>
         ) : null}
         {remaining > 0 ? (
           <Button
@@ -129,7 +97,6 @@ export function ProcessingStrip({
           ))}
         </ul>
       ) : null}
-      {remaining > 0 ? null : failed}
       {remaining > 0 && percent > 0 ? (
         <div
           role="progressbar"

@@ -47,7 +47,7 @@ export function FolderTree({
       ];
     next?.focus();
   }
-  const entry = (folder: DataRoomApiFolder | undefined, depth: number) => {
+  const entry = (folder: DataRoomApiFolder | undefined, depth: number, parent = false) => {
     const id = folder?.id;
     const name = folder?.name ?? t`All items`;
     return (
@@ -57,6 +57,8 @@ export function FolderTree({
         tabIndex={stop === id ? 0 : -1}
         aria-level={depth + 1}
         aria-selected={selected === id}
+        // The tree is always open, so a folder with subfolders is expanded.
+        aria-expanded={parent ? true : undefined}
         onClick={() => onSelect(id)}
         onContextMenu={(event) => {
           if (!folder || !onAction) return;
@@ -110,8 +112,10 @@ export function FolderTree({
         onKeyDown={onKeyDown}
         className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto py-2 pe-2"
       >
-        {entry(undefined, 0)}
-        {nodes.map(({ folder, depth }) => entry(folder, depth))}
+        {entry(undefined, 0, nodes.length > 0)}
+        {nodes.map(({ folder, depth }, n) =>
+          entry(folder, depth, (nodes[n + 1]?.depth ?? 0) > depth),
+        )}
       </div>
       {onNewFolder || onAutoSort ? (
         <div className="flex flex-col pe-2 pb-2">

@@ -109,3 +109,8 @@ it("turns a month or a year into the date range it covers", () => {
     docDateTo: "2024-12-31T23:59:59.999Z",
   });
 });
+
+it("leaves out the Sources card when every file has the same source", () => {
+  render({ ...manyDocuments, sources: [{ value: "upload", count: 3 }] });
+  expect(container.textContent).not.toContain("Sources");
+});

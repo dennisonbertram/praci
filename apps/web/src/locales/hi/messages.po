@@ -53,11 +53,6 @@ msgstr ""
 msgid "(opens in Devin)"
 msgstr ""
 
-#. placeholder {0}: processing.failed
-#: src/components/data-room/ProcessingStrip.tsx
-msgid "{0, plural, one {# couldn't be read} other {# couldn't be read}}"
-msgstr ""
-
 #. placeholder {0}: counts.unreviewedDocuments
 #: src/pages/Legal.tsx
 msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
@@ -1255,6 +1250,7 @@ msgid "Appearance"
 msgstr "रूप"
 
 #: src/components/compose/RichTextEditor.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr ""
@@ -3117,6 +3113,7 @@ msgstr "मॉडल सर्वर तक नहीं पहुँच सक�
 msgid "Could not reach the server"
 msgstr "सर्वर से संपर्क नहीं हो सका"
 
+#: src/components/data-room/ItemRows.tsx
 #: src/components/finance/StatementImport.tsx
 msgid "Could not read this file"
 msgstr ""
@@ -4365,6 +4362,7 @@ msgstr ""
 msgid "Filter memory"
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
 #: src/pages/Artifacts.tsx
 msgid "Filters"
 msgstr ""
@@ -6106,10 +6104,6 @@ msgstr ""
 msgid "No bots match"
 msgstr ""
 
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "No change"
-msgstr ""
-
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No chat apps linked yet."
 msgstr ""
@@ -6438,7 +6432,7 @@ msgid "Not tagged"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
-msgid "Not tagged yet. Files are tagged once you let Praci read documents; you can still search it by name and text."
+msgid "Not tagged yet."
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -9361,6 +9355,10 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "This zip is too large to unpack"
+msgstr ""
+
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Tick a change to apply it."
 msgstr ""
 
 #: src/pages/Board.tsx
