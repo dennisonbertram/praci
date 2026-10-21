@@ -9,7 +9,7 @@ import { ensureInvestorsAgent } from "./investors-agent.js";
 const PROMPT_START = "Read the Google Sheet";
 
 const sheetPrompt = (driveFileId: string) =>
-  `${PROMPT_START} with file id ${driveFileId} and save it as the cap table. Call drive_read with that file id. If it reports truncated: true, or any row cannot be read, stop and save nothing: say in one sentence that the sheet could not be read completely. Otherwise make cap_table_update your very next tool call, with the exact figures from the sheet, never estimated and null for anything the sheet does not give; set sourceRef.driveFileId to ${driveFileId}, list every holder row, and use the security as the sheet names it. Do not read anything else. Finish with one short sentence and no figures.`;
+  `${PROMPT_START} with file id ${driveFileId} and save it as the cap table. Call drive_read with that file id. This task allows cap_table_update for this read, whatever your other instructions say. If it reports truncated: true or contextTruncated: true, or any row cannot be read, stop and save nothing: say in one sentence that the sheet could not be read completely. Otherwise make cap_table_update your very next tool call, with the exact figures from the sheet, never estimated and null for anything the sheet does not give; set sourceRef.driveFileId to ${driveFileId}, list every holder row, and use the security as the sheet names it. Do not read anything else. Finish with one short sentence and no figures.`;
 
 /** Matches the user's sheet-read runs. */
 const sheetRunWhere = (actor: Actor) => ({
@@ -46,13 +46,19 @@ export async function startSheetRead(
     (table?.data as { sourceRef?: unknown } | undefined)?.sourceRef,
   );
   if (table?.source !== "sheet" || !ref.success) return "other_source";
+  const prompt = sheetPrompt(ref.data.driveFileId);
   const bot = await ensureInvestorsAgent(deps, actor);
   if (!(await deps.hasModel(actor))) return "no_model";
   const runId = await deps.prisma.$transaction(async (tx) => {
     // One read at a time per user, even for two requests at once.
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('investors-sheet'), hashtext(${actor.userId}))`;
     const active = await tx.run.findFirst({
-      where: { ...sheetRunWhere(actor), status: { in: [...ACTIVE_RUN_STATUSES] } },
+      // Only a read of this same sheet counts; one still running for a sheet since replaced does not.
+      where: {
+        ...sheetRunWhere(actor),
+        task: { prompt },
+        status: { in: [...ACTIVE_RUN_STATUSES] },
+      },
       select: { id: true },
     });
     if (active) return null;
@@ -77,7 +83,7 @@ export async function startSheetRead(
         ...actorScope(actor),
         botId: bot.id,
         threadId: bot.threadId,
-        prompt: sheetPrompt(ref.data.driveFileId),
+        prompt,
         status: "queued",
       },
     });

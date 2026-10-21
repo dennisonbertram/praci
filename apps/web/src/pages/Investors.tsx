@@ -652,6 +652,18 @@ export function InvestorsPage({
           </div>
         ) : null}
 
+        {driveMissing ? (
+          <div className="mb-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`${DRIVE_PAGE}?next=${encodeURIComponent("/app/investors")}`)}
+            >
+              <Trans>Connect Google Drive</Trans>
+            </Button>
+          </div>
+        ) : null}
+
         {!serversChecked || (cap === null && !capFailed) ? (
           <div className="flex flex-col gap-2" aria-busy="true">
             {[0, 1, 2].map((n) => (
@@ -746,16 +758,6 @@ export function InvestorsPage({
                 <Button variant="outline" onClick={() => void typeItIn()}>
                   <Trans>Type it in</Trans>
                 </Button>
-                {driveMissing ? (
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      navigate(`${DRIVE_PAGE}?next=${encodeURIComponent("/app/investors")}`)
-                    }
-                  >
-                    <Trans>Connect Google Drive</Trans>
-                  </Button>
-                ) : null}
               </div>
             )}
 
