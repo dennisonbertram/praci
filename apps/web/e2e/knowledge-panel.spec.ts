@@ -136,17 +136,12 @@ test("memory and skills are readable and editable in the app", async ({ page }, 
   await expect(builtinSkill.getByText("Built-in", { exact: true })).toBeVisible();
   await skills.getByRole("button", { name: "Add skill", exact: true }).click();
   await page.getByRole("menuitem", { name: "New skill", exact: true }).click();
+  await skills.getByLabel("Name", { exact: true }).fill("greet-politely");
+  await skills
+    .getByLabel("What it does and when to use it", { exact: true })
+    .fill("Say hello before anything else.");
   const editor = skills.locator("textarea");
-  await editor.fill(
-    [
-      "---",
-      "name: greet-politely",
-      "description: Say hello before anything else.",
-      "---",
-      "",
-      "Always open with a greeting.",
-    ].join("\n"),
-  );
+  await editor.fill("Always open with a greeting.");
   await captureScreenshot(page, testInfo, "81-knowledge-skill-editor");
   await skills.getByRole("button", { name: "Save", exact: true }).click();
   const skillRow = skills.getByRole("button", { name: /greet-politely/ });

@@ -1065,6 +1065,16 @@ export function ShellPage() {
                 : capTableMode
                   ? findCartaAgent(bots, userId)
                   : routeBot.bot;
+  // A bot made with "New bot" opens with only its name until it has answered a message.
+  useEffect(() => {
+    // The snapshot can still be the previous thread's for a render after the bot opens.
+    if (!namingBotId || active?.id !== namingBotId || snapshot?.botId !== namingBotId) return;
+    const messages = snapshot.messages;
+    const firstUser = messages.findIndex((message) => message.role === "user");
+    if (firstUser >= 0 && messages.slice(firstUser + 1).some((m) => m.role === "bot")) {
+      setNamingBotId(null);
+    }
+  }, [namingBotId, active?.id, snapshot]);
   /** The open bot's colour. A group or a missing bot has no `active`, so its thread stays monochrome. */
   const threadAccent = botAccentHex(active?.color);
   const [botPins, setBotPins] = useBotPins(active?.id, pinsSeq);
@@ -5114,9 +5124,10 @@ export function ShellPage() {
             setFocusComposerBotId(id);
             openBot(id);
           }}
-          onClose={(me) => {
+          onClose={(me, byEscape) => {
             setTourRestart(false);
-            setMobileSidebarOpen(false);
+            // Escape ends only the tour; the drawer it opened closes on the next press.
+            if (!byEscape) setMobileSidebarOpen(false);
             setBootstrapMe((current) => me ?? (current && { ...current, tourSeen: true }));
           }}
         />
@@ -5696,6 +5707,34 @@ export function ShellPage() {
             ) : null}
             {panel === "computer" && active ? (
               <div>
+                <RoutineListHeader
+                  onCreate={() => {
+                    setRoutineDraft(emptyRoutineDraft());
+                    setRoutineWebhookSecret(null);
+                    setEditingRoutine(null);
+                    setRoutineError(null);
+                    setPanel("routine");
+                  }}
+                />
+                {activeRoutines.map((routine) => {
+                  const routineRunning =
+                    snapshot?.run?.routineId === routine.id && isActive(snapshot.run.status);
+                  return (
+                    <RoutineListRow
+                      key={routine.id}
+                      routine={routine}
+                      running={routineRunning}
+                      onOpen={() => {
+                        setRoutineDraft(draftFromRoutine(routine));
+                        setRoutineWebhookSecret(null);
+                        setEditingRoutine(routine);
+                        setRoutineError(null);
+                        setPanel("routine");
+                      }}
+                      onStop={() => void stopRun()}
+                    />
+                  );
+                })}
                 <div
                   data-testid="computer-preview"
                   className={`group relative rounded-[14px] bg-background ${
@@ -5761,36 +5800,10 @@ export function ShellPage() {
                   ) : null}
                 </div>
                 <p className="mt-2 truncate text-[13.5px] text-muted-foreground" dir="auto">
-                  {t`${active.name}'s computer screen`}
+                  {/s$/i.test(active.name.trim())
+                    ? t`${active.name}' computer`
+                    : t`${active.name}'s computer`}
                 </p>
-                <RoutineListHeader
-                  onCreate={() => {
-                    setRoutineDraft(emptyRoutineDraft());
-                    setRoutineWebhookSecret(null);
-                    setEditingRoutine(null);
-                    setRoutineError(null);
-                    setPanel("routine");
-                  }}
-                />
-                {activeRoutines.map((routine) => {
-                  const routineRunning =
-                    snapshot?.run?.routineId === routine.id && isActive(snapshot.run.status);
-                  return (
-                    <RoutineListRow
-                      key={routine.id}
-                      routine={routine}
-                      running={routineRunning}
-                      onOpen={() => {
-                        setRoutineDraft(draftFromRoutine(routine));
-                        setRoutineWebhookSecret(null);
-                        setEditingRoutine(routine);
-                        setRoutineError(null);
-                        setPanel("routine");
-                      }}
-                      onStop={() => void stopRun()}
-                    />
-                  );
-                })}
               </div>
             ) : null}
             {panel === "create-group" ? (

@@ -11,6 +11,8 @@ const WEEKDAY_NAMES = [
   "Saturday",
 ] as const;
 
+export const CRON_WEEKDAY_NAMES = WEEKDAY_NAMES;
+
 export const ONCE_ROUTINE_CRON = "@once";
 
 export function isOneShotRoutineCron(cron: string): boolean {
@@ -51,6 +53,8 @@ export type CronPreset = {
   unit: CronUnit;
   time: string;
   cron: string;
+  /** Day of week for "Every week": 0 = Sunday ... 6 = Saturday. */
+  weekday: number;
 };
 
 export type CronPresetInput = {
@@ -59,10 +63,11 @@ export type CronPresetInput = {
   unit?: CronUnit;
   time?: string;
   cron?: string;
+  weekday?: number;
 };
 
 export function defaultCronPreset(): CronPreset {
-  return { freq: "Every day", n: 3, unit: "minutes", time: "9:00 AM", cron: "" };
+  return { freq: "Every day", n: 3, unit: "minutes", time: "9:00 AM", cron: "", weekday: 1 };
 }
 
 const INTERVAL_AMOUNTS = [1, 2, 3, 5, 10, 15, 30, 45];
@@ -97,7 +102,7 @@ export function cronFromPreset(input: CronPresetInput): string {
   }
   const { hour, minute } = parseClock(input.time ?? "9:00 AM");
   if (input.freq === "Weekdays") return `${minute} ${hour} * * ${WEEKDAYS}`;
-  if (input.freq === "Every week") return `${minute} ${hour} * * 1`;
+  if (input.freq === "Every week") return `${minute} ${hour} * * ${input.weekday ?? 1}`;
   if (input.freq === "Every month") return `${minute} ${hour} 1 * *`;
   return `${minute} ${hour} * * *`;
 }
@@ -145,8 +150,8 @@ export function presetFromCron(cron: string): CronPreset {
   if (day === "*" && dow === WEEKDAYS) {
     return { ...base, freq: "Weekdays", time };
   }
-  if (day === "*" && dow === "1") {
-    return { ...base, freq: "Every week", time };
+  if (day === "*" && /^[0-7]$/.test(dow)) {
+    return { ...base, freq: "Every week", time, weekday: Number(dow) % 7 };
   }
   if (day === "1" && dow === "*") {
     return { ...base, freq: "Every month", time };
@@ -171,7 +176,10 @@ export function describeCronPreset(preset: CronPreset): { lead: string; detail: 
     return { lead: "Weekdays", detail: `at ${preset.time}` };
   }
   if (preset.freq === "Every week") {
-    return { lead: "Every Monday", detail: `at ${preset.time}` };
+    return {
+      lead: `Every ${WEEKDAY_NAMES[preset.weekday] ?? "Monday"}`,
+      detail: `at ${preset.time}`,
+    };
   }
   if (preset.freq === "Every month") {
     return { lead: "Monthly", detail: `on the 1st at ${preset.time}` };
@@ -186,7 +194,7 @@ export function formatSchedule(preset: CronPreset): string {
 
 export function formatCron(cron: string): string {
   if (isOneShotRoutineCron(cron)) return "One-time";
-  // The editor presets only represent Monday; cron also aliases Sunday as 7.
+  // Cron aliases Sunday as 7.
   const weekly = /^(\d+)\s+(\d+)\s+\*\s+\*\s+([0-7])$/.exec(cron.trim());
   if (weekly && isCronClock(weekly[1] ?? "", weekly[2] ?? "")) {
     const time = formatClock(Number(weekly[2]), Number(weekly[1]));

@@ -53,11 +53,6 @@ msgstr ""
 msgid "(opens in Devin)"
 msgstr ""
 
-#. placeholder {0}: processing.failed
-#: src/components/data-room/ProcessingStrip.tsx
-msgid "{0, plural, one {# couldn't be read} other {# couldn't be read}}"
-msgstr ""
-
 #. placeholder {0}: counts.unreviewedDocuments
 #: src/pages/Legal.tsx
 msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
@@ -312,7 +307,12 @@ msgstr "{0} по-прежнему будет отвечать на прямые 
 
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
-msgid "{0}'s computer screen"
+msgid "{0}' computer"
+msgstr ""
+
+#. placeholder {0}: active.name
+#: src/pages/Shell.tsx
+msgid "{0}'s computer"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -1250,6 +1250,7 @@ msgid "Appearance"
 msgstr "Внешний вид"
 
 #: src/components/compose/RichTextEditor.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr ""
@@ -1418,7 +1419,7 @@ msgid "Ask before sending external email"
 msgstr "Спросите перед отправкой внешнего электронного письма"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Ask Chief anything. Agents ask before they send, pay or change anything."
+msgid "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -3112,6 +3113,7 @@ msgstr "Не удалось связаться с сервером модели.
 msgid "Could not reach the server"
 msgstr "Не удалось связаться с сервером"
 
+#: src/components/data-room/ItemRows.tsx
 #: src/components/finance/StatementImport.tsx
 msgid "Could not read this file"
 msgstr ""
@@ -3585,6 +3587,10 @@ msgstr ""
 #: src/pages/RoutineSchedule.tsx
 msgid "day"
 msgstr "день"
+
+#: src/pages/RoutineSchedule.tsx
+msgid "Day of week"
+msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Day-to-day work"
@@ -4356,6 +4362,7 @@ msgstr ""
 msgid "Filter memory"
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
 #: src/pages/Artifacts.tsx
 msgid "Filters"
 msgstr ""
@@ -4963,6 +4970,10 @@ msgstr "Ключ API экземпляра"
 #: src/pages/RoutineEditor.tsx
 msgid "Instruction"
 msgstr "Инструкция"
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Instructions"
+msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Integration options"
@@ -5782,6 +5793,10 @@ msgstr "Больше действий с компьютером"
 msgid "More filters"
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "More settings"
+msgstr ""
+
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/pages/shell/command-palette.tsx
@@ -5855,6 +5870,7 @@ msgstr "Выключить микрофон"
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-credentials.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Name"
 msgstr "Имя"
@@ -6083,10 +6099,6 @@ msgstr "Активности бота пока нет."
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "No bot uses {0} yet. Choose bots on its page."
-msgstr ""
-
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "No change"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -6417,7 +6429,7 @@ msgid "Not tagged"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
-msgid "Not tagged yet. Files are tagged once you let Praci read documents; you can still search it by name and text."
+msgid "Not tagged yet."
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -8819,6 +8831,10 @@ msgstr ""
 msgid "Steps"
 msgstr "Шаги"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Steps to follow"
+msgstr ""
+
 #: src/components/ShellSkeleton.tsx
 msgid "Still opening…"
 msgstr ""
@@ -9344,6 +9360,10 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "This zip is too large to unpack"
+msgstr ""
+
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Tick a change to apply it."
 msgstr ""
 
 #: src/pages/Board.tsx
@@ -10103,6 +10123,10 @@ msgstr ""
 
 #: src/lib/finance-agent.ts
 msgid "What is our runway?"
+msgstr ""
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "What it does and when to use it"
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx
