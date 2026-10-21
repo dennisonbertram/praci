@@ -3,8 +3,8 @@
 
 Rendered React components and native SwiftUI views, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 250 of 250
-- Web and shared components: 674
+- Web and shared component files with stories: 251 of 251
+- Web and shared components: 675
 - Mobile components: 138 in 95 files, mobile — native story pending
 - SwiftUI views: 3 in 2 files, native story pending
 
@@ -105,6 +105,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | RowsSkeleton | [apps/web/src/components/RowsSkeleton.tsx](../../apps/web/src/components/RowsSkeleton.tsx) | [RowsSkeleton.stories.tsx](../../apps/web/src/components/RowsSkeleton.stories.tsx) | web |
 | RunsOnPicker, DefaultRunsOnSection | [apps/web/src/components/RunsOnPicker.tsx](../../apps/web/src/components/RunsOnPicker.tsx) | [RunsOnPicker.stories.tsx](../../apps/web/src/components/RunsOnPicker.stories.tsx) | web |
 | SandboxedHtmlViewer | [apps/web/src/components/SandboxedHtmlViewer.tsx](../../apps/web/src/components/SandboxedHtmlViewer.tsx) | [SandboxedHtmlViewer.stories.tsx](../../apps/web/src/components/SandboxedHtmlViewer.stories.tsx) | web |
+| SecretRequestDialog | [apps/web/src/components/SecretRequestDialog.tsx](../../apps/web/src/components/SecretRequestDialog.tsx) | [SecretRequestDialog.stories.tsx](../../apps/web/src/components/SecretRequestDialog.stories.tsx) | web |
 | SheetPreview, SheetRow | [apps/web/src/components/SheetPreview.tsx](../../apps/web/src/components/SheetPreview.tsx) | [SheetPreview.stories.tsx](../../apps/web/src/components/SheetPreview.stories.tsx) | web |
 | OpeningSpace, ShellSkeleton, ThreadSkeleton | [apps/web/src/components/ShellSkeleton.tsx](../../apps/web/src/components/ShellSkeleton.tsx) | [ShellSkeleton.stories.tsx](../../apps/web/src/components/ShellSkeleton.stories.tsx) | web |
 | StatusMark | [apps/web/src/components/sidebar-glance.tsx](../../apps/web/src/components/sidebar-glance.tsx) | [SidebarPagesGroup.stories.tsx](../../apps/web/src/components/SidebarPagesGroup.stories.tsx), [sidebar-glance.stories.tsx](../../apps/web/src/components/sidebar-glance.stories.tsx) | web |
