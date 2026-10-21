@@ -1830,7 +1830,12 @@ describe("integration agent write tools", () => {
     const [{ blocks }] = f.pauseRunForInput.mock.calls[0] as unknown as [{ blocks: unknown[] }];
     const card = blocks[0] as { detail: string; actions: Array<{ id: string }> };
     expect(card.actions.map((a) => a.id)).toEqual(["allow", "deny"]);
-    expect(card.detail).toContain("requestSendMoney");
+    // A money request's card shows the amount, recipient and account in plain words, never the raw
+    // tool name or ids (arguments are absent in this test, so each reads "not given").
+    expect(card.detail).toContain("Amount: not given");
+    expect(card.detail).toContain("To: not given");
+    expect(card.detail).toContain("From account: not given");
+    expect(card.detail).not.toContain("requestSendMoney");
   });
 
   it("does not ask for a read", async () => {
