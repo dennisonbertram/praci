@@ -837,17 +837,28 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         order = Prisma.sql`r.rank DESC, r."itemId" ASC`;
       }
       const eligible = eligibleSql(actor, input.filters);
+      // An item with no chunks (a file that could not be read never reaches indexing) is still
+      // found by its name: the second leg matches the name of items that have no chunk at all.
       const keywordBest = Prisma.sql`
-        SELECT DISTINCT ON (c."itemId") c."itemId", c.ordinal, c.text,
-          max(ts_rank_cd(c.tsv, q.tsq)::float8) OVER (PARTITION BY c."itemId") AS rank
-        FROM data_room_chunks c
-        JOIN data_room_items i ON i.id = c."itemId", q
-        WHERE c."spaceId" = ${actor.spaceId} AND c."userId" = ${actor.userId}
-          AND ${eligible}
-          AND c.tsv @@ q.tsq
-        -- The item ranks by its best chunk, but its snippet comes from the text when the text
-        -- matches too: the name chunk (ordinal < 0) only says what the row already shows.
-        ORDER BY c."itemId", (c.ordinal < 0), ts_rank_cd(c.tsv, q.tsq) DESC, c.ordinal`;
+        SELECT * FROM (
+          (SELECT DISTINCT ON (c."itemId") c."itemId", c.ordinal, c.text,
+            max(ts_rank_cd(c.tsv, q.tsq)::float8) OVER (PARTITION BY c."itemId") AS rank
+          FROM data_room_chunks c
+          JOIN data_room_items i ON i.id = c."itemId", q
+          WHERE c."spaceId" = ${actor.spaceId} AND c."userId" = ${actor.userId}
+            AND ${eligible}
+            AND c.tsv @@ q.tsq
+          -- The item ranks by its best chunk, but its snippet comes from the text when the text
+          -- matches too: the name chunk (ordinal < 0) only says what the row already shows.
+          ORDER BY c."itemId", (c.ordinal < 0), ts_rank_cd(c.tsv, q.tsq) DESC, c.ordinal)
+          UNION ALL
+          (SELECT i.id AS "itemId", -1 AS ordinal, i.name AS text,
+            ts_rank_cd(n.tsv, q.tsq)::float8 AS rank
+          FROM data_room_items i, q,
+            LATERAL (SELECT to_tsvector('english', i.name || ' ' || regexp_replace(i.name, '[._/-]+', ' ', 'g')) AS tsv) n
+          WHERE ${eligible} AND n.tsv @@ q.tsq
+            AND NOT EXISTS (SELECT 1 FROM data_room_chunks c WHERE c."itemId" = i.id))
+        ) k`;
       const best = vectorLiteral
         ? Prisma.sql`
           kw AS (
