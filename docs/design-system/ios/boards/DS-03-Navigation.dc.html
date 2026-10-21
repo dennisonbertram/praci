@@ -115,7 +115,7 @@ a{color:#ECEBE6}a:hover{color:#ffffff}
           </div>
           <div style="position: absolute; left: 36px; top: 20px; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums">9:41</div>
           <div style="position: absolute; left: 50%; margin-left: -63px; top: 11px; width: 126px; height: 37px; border-radius: 19px; background: #000000" aria-hidden="true"></div>
-          <div style="position: absolute; left: 16px; right: 16px; top: 59px; height: 44px; display: flex; align-items: center">
+          <div style="position: absolute; left: 16px; right: 16px; top: 59px; height: 44px; display: flex; align-items: center; gap: 8px">
             <div style="flex: 1; display: flex"><div class="glass" style="border-radius: 22px"><button class="gbtn" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></button></div></div>
             <div class="glass" style="height: 44px; box-sizing: border-box; padding: 0 16px 0 10px; border-radius: 22px; display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 600"><svg width="24" height="24" viewBox="-15 -15 259 259" aria-hidden="true" style="flex-shrink: 0"><path d="M77.26 42.06Q114.27 -22.05 151.28 42.06L216.15 154.43Q253.17 218.53 179.14 218.53L49.4 218.53Q-24.62 218.53 12.39 154.43Z" fill="#F5A03C"></path><rect x="62" y="100" width="20" height="60" rx="10" fill="#1C1C1A"></rect><rect x="146" y="100" width="20" height="60" rx="10" fill="#1C1C1A"></rect></svg>Finance agent</div>
             <div style="flex: 1; display: flex; justify-content: flex-end"><div class="glass" style="border-radius: 22px; display: flex">
@@ -422,7 +422,7 @@ a{color:#ECEBE6}a:hover{color:#ffffff}
     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 24px; height: 220px; align-content: start">
       <sc-for list="{{spec8}}" as="c" hint-placeholder-count="6"><div><div style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: #C9C7C0; margin-bottom: 4px">{{c.h}}</div><div style="font-size: 13px; line-height: 1.5; color: #9C9A93">{{c.t}}</div></div></sc-for>
     </div>
-    <div style="margin-top: 20px; height: 70px; box-sizing: border-box; border: 1px solid #3B82F6; border-radius: 14px; padding: 12px 16px; font-size: 14px; line-height: 1.5; color: #ECEBE6">Recommendation: do not adopt a tab bar now. Rakazo is a stack with Home (agents and pages) as the root, and it has more top-level destinations (Inbox, Finance, Legal, Cap table, Data room, Artifacts, Personnel) than a tab bar holds without a More tab. Keep the stack. Revisit only if usage shows people returning to the same three places.</div>
+    <div style="margin-top: 20px; height: 70px; box-sizing: border-box; border: 1px solid #3B82F6; border-radius: 14px; padding: 12px 16px; font-size: 14px; line-height: 1.5; color: #ECEBE6">Recommendation: do not adopt a tab bar now. Praci is a stack with Home (agents and pages) as the root, and it has more top-level destinations (Inbox, Finance, Legal, Cap table, Data room, Artifacts, Personnel) than a tab bar holds without a More tab. Keep the stack. Revisit only if usage shows people returning to the same three places.</div>
     <div style="display: flex; gap: 24px; margin-top: 16px">
       <div>
         <div style="font-size: 12px; color: #9C9A93; margin-bottom: 8px">Option: normal</div>
@@ -459,9 +459,9 @@ a{color:#ECEBE6}a:hover{color:#ffffff}
   </div>
 
   <!-- 9. SHEET HEADER -->
-  <div style="height: 628px; flex-shrink: 0; box-sizing: border-box; border-top: 1px solid #2E2D2A; padding: 36px 0; display: flex; flex-direction: column; gap: 10px">
+  <div style="height: 678px; flex-shrink: 0; box-sizing: border-box; border-top: 1px solid #2E2D2A; padding: 36px 0; display: flex; flex-direction: column; gap: 10px">
     <div style="font-size: 20px; font-weight: 600">9. Sheet header (HeaderTextButton: Cancel / Done)</div>
-    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 24px; height: 220px; align-content: start">
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 24px; height: 270px; align-content: start">
       <sc-for list="{{spec9}}" as="c" hint-placeholder-count="8"><div><div style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: #C9C7C0; margin-bottom: 4px">{{c.h}}</div><div style="font-size: 13px; line-height: 1.5; color: #9C9A93">{{c.t}}</div></div></sc-for>
     </div>
     <div style="display: flex; gap: 20px; margin-top: 20px">
@@ -725,11 +725,11 @@ class Component extends DCLogic {
       ]),
 
       spec8: spec([
-        ['PURPOSE', 'Evaluation of the iOS 26 floating tab bar for Rakazo. It is shown for comparison; it is not part of the design.'],
+        ['PURPOSE', 'Evaluation of the iOS 26 floating tab bar for Praci. It is shown for comparison; it is not part of the design.'],
         ['ANATOMY', 'A glass capsule near the bottom with Home, Inbox and Artifacts (icon above a 10pt label; selected tab has a lighter pill), plus a separate Search circle at the trailing end.'],
         ['MINIMIZED', 'On scroll the bar can shrink to the selected tab and Search. Tapping the tab or scrolling to the top restores it. Apple documents minimizing for a bar with an accessory; the exact shape drawn here is our assumption.'],
         ['LAYER', 'Glass, floating above content, with content scrolling under it. Selected tab uses a lighter tint, not an accent color.'],
-        ['FIT PROBLEM', 'Rakazo reaches seven destinations (Inbox, Finance, Legal, Cap table, Data room, Artifacts, Personnel). A bar of three would push the rest into a More tab, which Apple tells apps to avoid.'],
+        ['FIT PROBLEM', 'Praci reaches seven destinations (Inbox, Finance, Legal, Cap table, Data room, Artifacts, Personnel). A bar of three would push the rest into a More tab, which Apple tells apps to avoid.'],
         ['DUO', 'The outer display puts bars in a side strip, so a bottom bar would be a second bar system. The inner display already has a sidebar.'],
         ['SF SYMBOLS', 'house, tray or envelope, doc.text, magnifyingglass.'],
         ['VERDICT', 'Keep the stack and sidebar. Search stays in the header search field on Home.']

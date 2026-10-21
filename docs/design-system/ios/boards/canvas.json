@@ -1,7 +1,7 @@
 {
   "v": 3,
   "createdOnFiles": { "v": 1, "at": "2026-10-19T12:00:00Z" },
-  "title": "Rakazo on iPhone Duo · Liquid Glass",
+  "title": "Praci on iPhone Duo · Liquid Glass",
   "launch": { "view": "canvas" },
   "pages": [
     { "id": "mockups", "name": "Duo mockups" },
@@ -406,7 +406,7 @@
     "t1": {
       "x": 0,
       "y": -300,
-      "text": "Rakazo · iPhone Duo · Liquid Glass",
+      "text": "Praci · iPhone Duo · Liquid Glass",
       "kind": "title1",
       "maxW": 2688,
       "page": "mockups"
@@ -414,7 +414,7 @@
     "t2": {
       "x": 0,
       "y": -300,
-      "text": "Rakazo iOS design system · Liquid Glass",
+      "text": "Praci iOS design system · Liquid Glass",
       "kind": "title1",
       "maxW": 10560,
       "page": "ds"

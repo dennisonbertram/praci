@@ -457,7 +457,7 @@ a{color:#ECEBE6}a:hover{color:#ffffff}
 <div class="sec">
   <div class="spec">
     <h2>Slider</h2>
-    <p><b>Purpose.</b> Pick a value on a continuous or stepped range (confidence threshold, playback speed, voice volume). Native SwiftUI <code>Slider</code> through <code>@expo/ui</code>. No Rakazo slider component exists yet; add one beside <code>native-switch.ios.tsx</code>.</p>
+    <p><b>Purpose.</b> Pick a value on a continuous or stepped range (confidence threshold, playback speed, voice volume). Native SwiftUI <code>Slider</code> through <code>@expo/ui</code>. No Praci slider component exists yet; add one beside <code>native-switch.ios.tsx</code>.</p>
     <p><b>Anatomy.</b> Track 6pt tall, capsule ends; filled part ink #F1F0EB, remainder #3A3935. Resting knob: 28pt light circle with a soft shadow. Row height 44pt (full target). Optional min/max labels 13pt muted, current value 15pt tabular right of the label.</p>
     <p><b>Dragging.</b> The knob grows into a 56 x 34pt glass lens that refracts the track under it. This is the one place glass sits in a control knob while a touch is held (transient control exception); it returns to the solid circle on release. The value readout stays visible above the thumb's reach, not under the finger.</p>
     <p><b>States.</b> default, dragging, focus, disabled (40%), stepped (tick marks), empty (value at minimum: no fill).</p>
@@ -484,7 +484,7 @@ a{color:#ECEBE6}a:hover{color:#ffffff}
 <div class="sec">
   <div class="spec">
     <h2>Stepper</h2>
-    <p><b>Purpose.</b> Nudge a small integer (retries, count, hours). Native SwiftUI <code>Stepper</code> through <code>@expo/ui</code>. No Rakazo component yet.</p>
+    <p><b>Purpose.</b> Nudge a small integer (retries, count, hours). Native SwiftUI <code>Stepper</code> through <code>@expo/ui</code>. No Praci component yet.</p>
     <p><b>Anatomy.</b> Capsule 96 x 36pt (each half 48 x 36, hit slop to 44), flat fill #2A2927, 1pt divider 18pt tall, <code>minus</code> and <code>plus</code> symbols 18pt. Label and current value sit in the row to the left; the value uses tabular numbers. Stepper is a control in a content row, so it is not glass.</p>
     <p><b>States.</b> default, pressed half (12% white), at minimum (minus disabled), at maximum (plus disabled), fully disabled (40%), focus. Press and hold repeats.</p>
     <p><b>SF Symbols.</b> <code>minus</code>, <code>plus</code>.</p>

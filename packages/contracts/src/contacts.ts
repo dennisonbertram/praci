@@ -1,7 +1,16 @@
 import * as z from "zod";
 import { Id, IsoDate } from "./ids.js";
 
-export const ContactKindSchema = z.enum(["investor", "auditor", "other"]);
+export const ContactKindSchema = z.enum([
+  "investor",
+  "auditor",
+  "customer",
+  "vendor",
+  "partner",
+  "advisor",
+  "legal",
+  "other",
+]);
 export type ContactKind = z.infer<typeof ContactKindSchema>;
 
 export const ContactSchema = z.object({

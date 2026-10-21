@@ -291,7 +291,14 @@ import {
 } from "./computer-tools.js";
 import { checkpointRunComputerWorkspace } from "./computer-workspace.js";
 import { redactConnectorPayload, sanitizeConnectorError } from "./connector-safety.js";
-import { CONTACT_TOOL_NAMES, contactToolFromTool, contactToolsAllowed } from "./contact-tools.js";
+import {
+  CAP_TABLE_TOOL_NAMES,
+  CONTACT_ONLY_TOOL_NAMES,
+  CONTACT_TOOL_NAMES,
+  capTableToolsAllowed,
+  contactToolFromTool,
+  contactToolsAllowed,
+} from "./contact-tools.js";
 import { formatCurrentTimeInstruction } from "./current-time.js";
 import { resolveDataRoomAi } from "./data-room-models.js";
 import {
@@ -2402,7 +2409,17 @@ export function createRunExecutor(deps: ExecutorDeps) {
           trigger: run.trigger,
           messagingChannelRun,
         });
-        const contactsEnabled = contactToolsAllowed({
+        const contactsEnabled =
+          !voiceAgent &&
+          contactToolsAllowed({
+            hasProvider: true,
+            groupId: thread.groupId,
+            runUserId: run.userId,
+            botUserId: bot.userId,
+            trigger: run.trigger,
+            messagingChannelRun,
+          });
+        const capTableEnabled = capTableToolsAllowed({
           hasProvider: true,
           groupId: thread.groupId,
           runUserId: run.userId,
@@ -2432,6 +2449,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             financeEnabled,
             legalEnabled,
             contactsEnabled,
+            capTableEnabled,
             messagingChannelRun,
             cartaAgent,
             integrationAgent: integrationAgent || appAgentIdentity,
@@ -4411,7 +4429,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
             };
             return finish(await legalToolFromTool(name, toolDeps, args));
           }
-          if (CONTACT_TOOL_NAMES.has(name) && contactsEnabled) {
+          if (
+            (CONTACT_ONLY_TOOL_NAMES.has(name) && contactsEnabled) ||
+            (CAP_TABLE_TOOL_NAMES.has(name) && capTableEnabled)
+          ) {
             return finish(
               await contactToolFromTool(
                 name,
@@ -6958,8 +6979,10 @@ export function selectBuiltinToolsForRun(options: {
   financeEnabled?: boolean;
   /** The run belongs to the owner's Legal agent: the Legal and Data Room tools are offered. */
   legalEnabled?: boolean;
-  /** The Carta agent on a run its owner started. */
+  /** The run's requester owns the bot: the contact tools are offered. */
   contactsEnabled?: boolean;
+  /** The Carta agent on a run its owner started: the Cap Table tools are offered. */
+  capTableEnabled?: boolean;
   messagingChannelRun: boolean;
   /** The Carta agent: no delegation to other bots, whose runs would skip its mail approval. */
   cartaAgent?: boolean;
@@ -6984,6 +7007,7 @@ export function selectBuiltinToolsForRun(options: {
       dataRoomEnabled: false,
       financeEnabled: false,
       contactsEnabled: false,
+      capTableEnabled: false,
     };
   const disabled = disabledBuiltinToolSet(options.disabledBuiltinTools);
   return selectCalendarTools(
@@ -7015,7 +7039,8 @@ export function selectBuiltinToolsForRun(options: {
       (options.dataRoomEnabled || !DATA_ROOM_TOOL_NAMES.has(tool.name)) &&
       (options.financeEnabled || !FINANCE_TOOL_NAMES.has(tool.name)) &&
       (options.legalEnabled || !LEGAL_GATED_TOOL_NAMES.has(tool.name)) &&
-      (options.contactsEnabled || !CONTACT_TOOL_NAMES.has(tool.name)) &&
+      (options.contactsEnabled || !CONTACT_ONLY_TOOL_NAMES.has(tool.name)) &&
+      (options.capTableEnabled || !CAP_TABLE_TOOL_NAMES.has(tool.name)) &&
       (options.dataRoomEnabled || !DATA_ROOM_TOOL_NAMES.has(tool.name)) &&
       !(
         (options.cartaAgent || options.integrationAgent) &&
