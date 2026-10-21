@@ -11,7 +11,7 @@ export function WelcomePage() {
       </div>
       <main className="flex flex-1 flex-col items-center justify-center gap-11 px-5 pb-[90px]">
         <div className="flex items-center gap-[18px] sm:gap-[26px]">
-          <div className="flex size-16 items-center justify-center gap-[9px] rounded-full bg-muted sm:size-[88px] sm:gap-[13px]">
+          <div className="flex size-16 items-center justify-center gap-[9px] rounded-full border-2 border-muted-foreground bg-muted sm:size-[88px] sm:gap-[13px]">
             <span className="h-[17px] w-2 rounded-full bg-primary sm:h-6 sm:w-[11px]" />
             <span className="h-[17px] w-2 rounded-full bg-primary sm:h-6 sm:w-[11px]" />
           </div>

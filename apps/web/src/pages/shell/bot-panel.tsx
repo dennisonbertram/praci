@@ -33,6 +33,7 @@ import {
   Textarea,
   Toggle,
 } from "@rakazo/ui-web";
+import { ChevronRight } from "lucide-react";
 import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { SuccessPop } from "../../components/ai/primitives";
 import { ErrorBoundary, SectionLoadFailed } from "../../components/ErrorBoundary";
@@ -644,13 +645,12 @@ export function BotSettings({
               event.currentTarget.scrollIntoView?.({ block: "start", behavior: "smooth" });
             }}
           >
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[14px] text-muted-foreground">
-              <span className="text-muted-foreground">
-                <Trans>Advanced</Trans>
-              </span>
-              <span aria-hidden="true" className="transition-transform group-open:rotate-90">
-                ›
-              </span>
+            <summary className={`${FOOTER_ROW} cursor-pointer list-none text-muted-foreground`}>
+              <Trans>Advanced</Trans>
+              <ChevronRight
+                aria-hidden="true"
+                className="size-4 transition-transform group-open:rotate-90"
+              />
             </summary>
             <ComputerModePicker
               value={computerMode}
@@ -835,17 +835,17 @@ export function BotSettings({
             {advancedOpened ? <BotCredentialsSection botId={bot.id} /> : null}
           </details>
           {error ? <p className="mt-2 text-[13px] text-destructive">{error}</p> : null}
-          <div className="mt-5 flex flex-col items-start gap-3">
+          <div className="mt-3 flex flex-col gap-3">
             <Button
               variant="ghost"
-              className="h-auto p-0 text-[14px] font-normal text-muted-foreground hover:bg-transparent hover:text-foreground"
+              className={`${FOOTER_ROW} h-auto p-0 font-normal text-muted-foreground hover:bg-transparent hover:text-foreground`}
               onClick={() => void onExport()}
             >
               <Trans>Export</Trans>
             </Button>
             <Button
               variant="ghost"
-              className="h-auto p-0 text-[14px] font-normal text-destructive hover:bg-transparent hover:text-destructive"
+              className={`${FOOTER_ROW} h-auto p-0 font-normal text-destructive hover:bg-transparent hover:text-destructive`}
               onClick={onClear}
             >
               <Trans>Clear conversation</Trans>
@@ -856,6 +856,9 @@ export function BotSettings({
     </div>
   );
 }
+
+/** The footer rows (Advanced, Export, Clear conversation) share one layout and right edge. */
+const FOOTER_ROW = "flex w-full items-center justify-between gap-3 text-[14px]";
 
 function sameStringList(left: readonly string[], right: readonly string[]) {
   return left.length === right.length && left.every((entry, index) => entry === right[index]);

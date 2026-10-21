@@ -18,6 +18,8 @@ export const SearchHitSchema = z
     artifactId: Id.optional(),
     routineId: Id.optional(),
     url: z.string().optional(),
+    /** When the matching message was sent (ISO 8601); set on message and link hits. */
+    createdAt: z.string().optional(),
   })
   .superRefine((input, ctx) => {
     const hasBot = Boolean(input.botId);
