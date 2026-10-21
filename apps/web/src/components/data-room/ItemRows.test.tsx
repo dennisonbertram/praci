@@ -568,7 +568,7 @@ it("lets a long file name wrap and keeps the Type column off narrow lists", () =
   );
 });
 
-it("shows why a failed file failed, and where it is, on its grid tile", async () => {
+it("shows why a failed file failed on its grid tile", async () => {
   await showGrid({
     status: "failed",
     error: "This file isn't a readable PDF",
@@ -576,7 +576,8 @@ it("shows why a failed file failed, and where it is, on its grid tile", async ()
   });
   const reason = container.querySelector('[data-testid="data-room-failed-reason"]');
   expect(reason?.textContent).toBe("This file isn't a readable PDF");
-  expect(container.querySelector('[data-testid="data-room-tile-meta"]')?.textContent).toContain(
+  // Failed tiles keep the same fields as the others: no folder line after the reason.
+  expect(container.querySelector('[data-testid="data-room-tile-meta"]')?.textContent).not.toContain(
     "Legal",
   );
 });

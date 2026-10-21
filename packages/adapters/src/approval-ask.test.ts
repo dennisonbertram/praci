@@ -65,9 +65,9 @@ describe("describeApprovalAction money and generic tools", () => {
     if (block.kind !== "ask") throw new Error("expected ask block");
     expect(block.text).toBe("Send $1,200.00 to Acme Supplies from Operating?");
     expect(block.text).not.toMatch(/rcp-9|chk-1|mcp__/);
-    // The raw tool id and ids stay, but only under Details.
+    // Details lists labelled rows, with no tool id and no raw JSON.
     expect(block.detailFolded).toBe(true);
-    expect(block.detail).toContain("tool: mcp__finance-mercury__requestSendMoney");
+    expect(block.detail).toBe("Amount: $1,200.00\nTo: Acme Supplies\nFrom account: Operating");
   });
 
   it("keeps hand-written titles", () => {

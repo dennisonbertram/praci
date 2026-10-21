@@ -23,14 +23,17 @@ import type { ReactElement } from "react";
 export function Tip({
   label,
   side,
+  disabled,
   children,
 }: {
   label: string;
   side?: "top" | "bottom" | "left" | "right";
+  /** Keeps the label hidden, for example while the control's own menu is open. */
+  disabled?: boolean;
   children: ReactElement;
 }) {
   return (
-    <Tooltip>
+    <Tooltip disabled={disabled}>
       <TooltipTrigger render={children} />
       <TooltipContent side={side}>{label}</TooltipContent>
     </Tooltip>

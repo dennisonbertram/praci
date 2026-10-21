@@ -20,6 +20,7 @@ import { AskBotButton } from "../components/AskBotButton";
 import { ContactDialog, contactKindNames } from "../components/ContactDialog";
 import { PickFilter, SearchField } from "../components/ListControls";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
+import { RowsSkeleton } from "../components/RowsSkeleton";
 import { rpc } from "../lib/rpc";
 import { SAVED_ROW_CLASS, useContactNotices } from "../lib/use-contact-notices";
 import { errorText } from "../lib/user-error";
@@ -113,7 +114,7 @@ export function ContactsPage({
             </Button>
           </div>
         ) : contacts === null ? (
-          <Skeleton className="h-40 w-full rounded-xl" />
+          <RowsSkeleton className="pt-2" />
         ) : contacts.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             <Trans>No contacts yet</Trans>
