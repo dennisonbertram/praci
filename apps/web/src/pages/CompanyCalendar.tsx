@@ -50,7 +50,6 @@ export function CompanyCalendar({
   };
   async function open(item: CompanyCalendarItem) {
     if (!item.fact) return;
-    setError("");
     try {
       const fact = await rpc.company.fact(item.fact);
       if (fact) onOpen(fact);
