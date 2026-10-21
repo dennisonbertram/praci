@@ -449,6 +449,22 @@ it("deletes a contact with an Undo that restores it", async () => {
   expect(document.body.textContent).not.toContain("Deleted Bo");
 });
 
+it("drops a deleted row and focuses the restored name after Undo, like Contacts", async () => {
+  const bo = contact("c2", "Bo", "auditor");
+  rpcMock.remove.mockResolvedValue({ ok: true });
+  rpcMock.save.mockResolvedValue({ ...bo, id: "c9" });
+  await show();
+  await click(button("Bo"));
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "investor")]);
+  await click(button("Delete"));
+  expect(container.querySelector('[data-contact-id="c2"]')).toBeNull();
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "investor"), { ...bo, id: "c9" }]);
+  await click(button("Undo"));
+  const row = container.querySelector('[data-contact-id="c9"]');
+  expect(row).not.toBeNull();
+  expect(document.activeElement).toBe(row?.querySelector("[data-row-open]"));
+});
+
 it("keeps the Deleted toast with Undo until it is dismissed", async () => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   rpcMock.remove.mockResolvedValue({ ok: true });
@@ -590,10 +606,12 @@ it("lists only investors on the Investors tab and offers Add email only to inves
     ...container.querySelectorAll<HTMLButtonElement>("[data-testid=cap-table-email-cell] button"),
   ].filter((b) => b.textContent === "Add email");
   expect(adds).toHaveLength(1);
-  // A contact with no holding has nothing to show in Ownership, not an unlabelled dash.
+  // A contact with no holding shows the table's dash in Ownership, hidden on phones where cards stay blank.
   const rows = [...container.querySelectorAll("table:not(.sr-only) tbody tr")];
   const bo = rows.find((row) => row.textContent?.includes("Bo"));
-  expect(bo?.querySelectorAll("td")[4]?.textContent).toBe("");
+  const cell = bo?.querySelectorAll("td")[4];
+  expect(cell?.textContent).toBe("—");
+  expect(cell?.querySelector("span")?.className).toContain("hidden");
 });
 
 it("keeps the Kind column with or without Carta", async () => {

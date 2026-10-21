@@ -912,10 +912,16 @@ export function CapTablePage({
                     {snapshot ? (
                       <>
                         <TableCell className="hidden text-end tabular-nums @md:table-cell">
-                          {holder?.shares != null ? num(holder.shares) : holder ? empty : null}
+                          {holder?.shares != null ? num(holder.shares) : empty}
                         </TableCell>
                         <TableCell className="pe-0 text-end tabular-nums">
-                          {holder?.percent != null ? pct(holder.percent) : holder ? empty : null}
+                          {holder?.percent != null ? (
+                            pct(holder.percent)
+                          ) : holder ? (
+                            empty
+                          ) : (
+                            <span className="hidden @md:inline">{empty}</span>
+                          )}
                         </TableCell>
                       </>
                     ) : null}
