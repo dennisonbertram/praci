@@ -478,7 +478,7 @@ export function BotSkillsSection({
           {open ? (
             <div className="flex items-center gap-2 pb-1">
               <div className="min-w-0 truncate text-[14px] text-foreground" dir="auto">
-                {open.name}
+                {slashSkillLabel(open).title}
               </div>
               <SkillSourceBadge source={open.source} origin={open.origin} />
             </div>
