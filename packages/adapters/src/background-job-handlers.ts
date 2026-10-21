@@ -33,6 +33,8 @@ import {
 } from "./data-room-jobs.js";
 import { resolveDataRoomAi } from "./data-room-models.js";
 import { runDataRoomZipUnpack } from "./data-room-zip-import.js";
+import type { DevinCallTool } from "./devin-call-tool.js";
+import { runDevinRefreshJob } from "./devin-refresh.js";
 import type { DriveFilesDeps } from "./drive-files.js";
 import { syncExchanges } from "./exchange-sync.js";
 import type { createRunExecutor } from "./executor.js";
@@ -71,6 +73,8 @@ export function createBackgroundJobHandlers(deps: {
   cloudAgent?: CloudAgentConnection | null;
   /** Read-tool caller for the user's Mercury and Brex servers; see `createFinanceCallToolFor`. */
   financeCallToolFor?: FinanceSyncDeps["callToolFor"];
+  /** Read-only Devin caller; without it `devin.refresh` does nothing. Every process that runs jobs must pass it. */
+  devinCallTool?: DevinCallTool;
   /** Deletes the blobs of removed Data room items and reads them for ingest. */
   artifacts?: ArtifactStore;
   /** Needed only to import Google Drive folders. */
@@ -210,6 +214,10 @@ export function createBackgroundJobHandlers(deps: {
       if (!deps.gmailPush) return;
       if (!deps.mail) throw new Error("Mail sync is not configured");
       await runMailWatchRenewal({ prisma: deps.prisma, mail: deps.mail, push: deps.gmailPush });
+    },
+    "devin.refresh": async (payload) => {
+      if (!deps.devinCallTool) return;
+      await runDevinRefreshJob({ prisma: deps.prisma, callTool: deps.devinCallTool }, payload);
     },
     "inbox.triage": async (payload) => {
       await runInboxTriage(

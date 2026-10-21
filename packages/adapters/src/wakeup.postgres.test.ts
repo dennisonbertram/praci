@@ -38,6 +38,7 @@ function handlers(overrides: Partial<BackgroundJobHandlers> = {}): BackgroundJob
     "mail.sync": vi.fn(async () => undefined),
     "mail.attachments": vi.fn(async () => undefined),
     "mail.watch.renew": vi.fn(async () => undefined),
+    "devin.refresh": vi.fn(async () => undefined),
     "finance.sync": vi.fn(async () => undefined),
     "dataroom.blob.delete": vi.fn(async () => undefined),
     "dataroom.ingest": vi.fn(async () => undefined),

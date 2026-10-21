@@ -1505,6 +1505,8 @@ model McpServer {
   financeTreasuryYields FinanceTreasuryYield[]
   financeBills          FinanceBill[]
   financeSyncState      FinanceSyncState?
+  devinConnectionState  DevinConnectionState?
+  devinSessions         DevinSession[]
   meetings              Meeting[]
   meetingSyncState      MeetingSyncState?
 
@@ -2842,6 +2844,57 @@ model ModelOAuthState {
   @@index([createdAt])
   @@index([userId, spaceId, provider])
   @@map("model_oauth_states")
+}
+
+/// The space's one active Devin connection: lease, backoff and health for the refresh operation.
+model DevinConnectionState {
+  serverId        String    @id
+  server          McpServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  /// One active connection per space.
+  spaceId         String    @unique
+  /// Fence: bumped on every claim and every management write.
+  version         Int       @default(0)
+  leaseToken      String?
+  leaseUntil      DateTime?
+  /// Null until the first successful refresh, and again after a key replacement.
+  lastSucceededAt DateTime?
+  complete        Boolean   @default(false)
+  skipped         Int       @default(0)
+  backoffUntil    DateTime?
+  backoffStep     Int       @default(0)
+  /// 401, or 403 on the listing; refresh stops until the key is replaced.
+  rejectedAt      DateTime?
+  /// rejected | connector_gone | unreachable | rate_limited
+  lastError       String?
+
+  @@map("devin_connection_states")
+}
+
+/// The last-seen state of one Devin session, read by the page and the alert step.
+model DevinSession {
+  id                String    @id @default(cuid())
+  serverId          String
+  server            McpServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  spaceId           String
+  sessionId         String
+  title             String
+  status            String
+  statusDetail      String?
+  kind              String
+  /// At most 500 characters.
+  question          String?
+  prs               Json      @default("[]")
+  origin            String
+  devinUpdatedAt    DateTime
+  /// Devin's latest message event_id, when read.
+  lastMessageId     String?
+  /// The identity the last alert was sent for.
+  notifiedMessageId String?
+  lastSeenAt        DateTime
+
+  @@unique([serverId, sessionId])
+  @@index([spaceId, kind])
+  @@map("devin_sessions")
 }
 
 // Meetings. Private to the user who connected the source; every query filters on spaceId and userId.
