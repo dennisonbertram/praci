@@ -6724,6 +6724,7 @@ msgstr "Open link"
 msgid "Open Models settings"
 msgstr "Open Models settings"
 
+#: src/components/PageHeader.tsx
 #: src/pages/Shell.tsx
 msgid "Open navigation"
 msgstr "Open navigation"

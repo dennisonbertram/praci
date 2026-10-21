@@ -9,7 +9,12 @@ import { Button, Input, Skeleton } from "@rakazo/ui-web";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { mcpStatus } from "../../lib/integrations";
+import {
+  FINANCE_PROVIDERS,
+  FIRST_PARTY_MCP,
+  isSameMcpEndpoint,
+  mcpStatus,
+} from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { ConfirmDialog, Heading } from "./AppDetail";
@@ -148,6 +153,11 @@ export function McpDetail({
   const carta = isCartaEndpoint(server.endpoint);
   const bank = Boolean(financeProviderForEndpoint(server.endpoint));
   const service = carta ? "Carta" : server.name;
+  // The same mark the list card shows.
+  const financeProvider = financeProviderForEndpoint(server.endpoint);
+  const logo =
+    FIRST_PARTY_MCP.find((entry) => isSameMcpEndpoint(server.endpoint, entry.endpoint))?.logo ??
+    FINANCE_PROVIDERS.find(({ provider }) => provider === financeProvider)?.logo;
   const agent = data.bots.find((bot) => bot.id === server.agentBotId);
   const granola = isGranolaEndpoint(server.endpoint);
   const keyRoute = granola ? (data.meetings ?? null) : null;
@@ -177,7 +187,7 @@ export function McpDetail({
       <div className="mx-auto max-w-[1040px]">
         {back}
         <div className="flex flex-wrap items-center gap-4">
-          <AppLogo name={server.name} size="xl" />
+          <AppLogo name={server.name} logo={logo} size="xl" />
           <div className="min-w-0">
             {draft === null ? (
               <h1 className="break-all text-xl font-semibold">{server.name}</h1>
