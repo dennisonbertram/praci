@@ -238,10 +238,7 @@ export function Preview({
         <p className="text-xs text-muted-foreground">{t`Couldn't classify`}</p>
       ) : isSettled(item.status) && !facets.docType ? (
         <p className="text-xs text-muted-foreground">
-          <Trans>
-            Not tagged yet. Files are tagged once you let Praci read documents; you can still search
-            it by name and text.
-          </Trans>
+          <Trans>Not tagged yet.</Trans>
         </p>
       ) : null}
       <dl className="grid grid-cols-[72px_1fr] gap-x-2 gap-y-1.5 text-sm">

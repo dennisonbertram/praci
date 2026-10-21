@@ -89,7 +89,7 @@ function BarRows({
         );
         const cls = "relative flex w-full items-center gap-2 px-2 py-1 text-sm";
         return (
-          <li key={row.key}>
+          <li key={row.key} title={`${row.label}: ${row.text ?? row.count}`}>
             {row.onPick ? (
               <button
                 type="button"
@@ -261,16 +261,19 @@ export function DataRoomStats({
             />
           </Section>
         ) : null}
-        <Section title={t`Sources`}>
-          <BarRows
-            rows={stats.sources.map(({ value, count }) => ({
-              key: value,
-              label: sourceLabel(value),
-              count,
-              onPick: () => onPick({ source: value }),
-            }))}
-          />
-        </Section>
+        {/* One source filters nothing, as with the Source filter: it is offered from two. */}
+        {stats.sources.length > 1 ? (
+          <Section title={t`Sources`}>
+            <BarRows
+              rows={stats.sources.map(({ value, count }) => ({
+                key: value,
+                label: sourceLabel(value),
+                count,
+                onPick: () => onPick({ source: value }),
+              }))}
+            />
+          </Section>
+        ) : null}
         {stats.parties.length > 0 ? (
           <Section title={t`Top parties`}>
             <BarRows

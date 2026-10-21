@@ -84,7 +84,7 @@ function AccountTable({ rows, owed }: { rows: AccountRow[]; owed?: boolean }) {
                   </span>
                 ) : null}
                 {pct ? (
-                  <span className="ms-1.5 rounded-full border border-border px-1.5 text-[10px] font-normal text-muted-foreground">
+                  <span className="ms-1.5 rounded-full border border-border px-1.5 text-[11px] font-normal text-muted-foreground">
                     {t`${pct} yield`}
                   </span>
                 ) : null}

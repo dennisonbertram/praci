@@ -4,6 +4,7 @@ import type {
   ThreadMessage,
   ThreadSnapshot,
 } from "@rakazo/contracts";
+import { MISSING_TOOL_FINAL_RESPONSE_ERROR } from "@rakazo/contracts";
 import { withLiveStreamingProgress } from "@rakazo/core";
 import { describe, expect, it } from "vitest";
 import {
@@ -873,6 +874,32 @@ describe("thread event reduction", () => {
     expect(threadRunError(failed)).toBe(
       "The model provider did not accept your API key. Check it in Settings > Models.",
     );
+  });
+
+  it("shows no missing-answer error once a delegate's reply is in the thread", () => {
+    const failed = {
+      ...threadRun("run-a"),
+      status: "failed" as const,
+      error: MISSING_TOOL_FINAL_RESPONSE_ERROR,
+    };
+    const reply = message(
+      "m-1",
+      [
+        {
+          kind: "bot_message_received",
+          fromBotId: "bot-2",
+          fromBotName: "Finance agent",
+          text: "Runway is 24 months.",
+        },
+      ],
+      4,
+    );
+    expect(threadRunError({ ...snapshot([]), run: failed })).toBe(
+      MISSING_TOOL_FINAL_RESPONSE_ERROR,
+    );
+    expect(threadRunError({ ...snapshot([reply]), run: failed })).toBeNull();
+    const other = { ...failed, error: "member exploded" };
+    expect(threadRunError({ ...snapshot([reply]), run: other })).toBe("member exploded");
   });
 
   it("keeps a dismissed failure for the transcript, and nothing while it is still shown", () => {

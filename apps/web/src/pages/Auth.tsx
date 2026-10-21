@@ -274,13 +274,13 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                       onClick={() => setShowPassword((shown) => !shown)}
                       aria-label={showPassword ? t`Hide password` : t`Show password`}
                       aria-pressed={showPassword}
-                      className="absolute inset-y-0 right-2 my-auto text-muted-foreground"
+                      className="absolute inset-y-0 right-0.5 my-auto size-11 text-muted-foreground"
                     >
                       {showPassword ? <EyeOff /> : <Eye />}
                     </Button>
                   </div>
                   {mode === "up" ? (
-                    <p className="mt-1.5 text-xs text-muted-foreground">
+                    <p className="mt-1.5 text-sm text-muted-foreground">
                       <Trans>At least 8 characters.</Trans>
                     </p>
                   ) : null}
@@ -288,7 +288,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     <div className="mt-0.5 text-right text-sm">
                       <Link
                         to="/forgot-password"
-                        className="inline-block py-1.5 font-medium text-foreground pointer-coarse:py-3.5"
+                        className="inline-block py-3 font-medium text-foreground"
                       >
                         <Trans>Forgot password?</Trans>
                       </Link>
