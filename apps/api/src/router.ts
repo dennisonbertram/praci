@@ -1354,7 +1354,10 @@ export function createRouter(deps: RouterDeps) {
   };
   /** Starts the sheet read and turns its refusals into the messages the page shows. */
   const readSheet = async (actor: Actor) => {
-    const result = await startSheetRead({ ...cartaSyncDeps, prisma: deps.prisma, jobs: deps.jobs }, actor).catch((error: unknown) => {
+    const result = await startSheetRead(
+      { ...cartaSyncDeps, prisma: deps.prisma, jobs: deps.jobs },
+      actor,
+    ).catch((error: unknown) => {
       throw mapSpaceLifecycleError(error);
     });
     if (result === "no_model")
