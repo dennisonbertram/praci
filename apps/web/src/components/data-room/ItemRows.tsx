@@ -615,6 +615,7 @@ export function GridView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
               </>
             )}
           </span>
+          {item.status === "failed" ? <RetryButton item={item} o={o} /> : null}
         </FileContext>
       ))}
     </ul>

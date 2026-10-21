@@ -1,0 +1,108 @@
+{
+  "story_id": "STORY-GS-1",
+  "result": "PASS",
+  "round1_status": [
+    {
+      "id": "F-GS-1-01",
+      "status": "fixed",
+      "evidence": "Step 4 'Syncing' state drawn, then 'Synced 42 meetings' (key-syncing.png, key-connected.png). Plan Surfaces: 'Syncing' until syncedThrough is set."
+    },
+    {
+      "id": "F-GS-1-02",
+      "status": "fixed",
+      "evidence": "'Granola agent' link on the Syncing and Connected card; plan: IntegrationAgentSection."
+    },
+    {
+      "id": "F-GS-1-03",
+      "status": "obsolete",
+      "evidence": "Two Disconnect buttons no longer exist: the detail page has one key card (plan FX-54)."
+    },
+    {
+      "id": "F-GS-1-04",
+      "status": "obsolete",
+      "evidence": "'Live questions' and 'Sync' labels removed from tile and detail page."
+    },
+    {
+      "id": "F-GS-1-05",
+      "status": "fixed",
+      "evidence": "'Not connected' tile and a sidebar without the Granola agent are drawn (int-new.png)."
+    },
+    {
+      "id": "F-GS-1-06",
+      "status": "fixed",
+      "evidence": "Inbox 'Mail connected' state draws mail rows plus the To do card (inbox-mail.png)."
+    },
+    {
+      "id": "F-GS-1-07",
+      "status": "fixed",
+      "evidence": "Disabled Connect is now a dim outline button (int-detail.png), clearly different from the enabled white button (key-entering.png)."
+    },
+    {
+      "id": "F-GS-1-08",
+      "status": "fixed",
+      "evidence": "Tile badge sits on one line (int-new.png, int-key.png)."
+    },
+    {
+      "id": "F-GS-1-09",
+      "status": "still-open",
+      "evidence": "Checkboxes now have a 32 px hit area (geometry: no small targets for checkboxes). Citation chips are still 21-24 px tall; narrowed to low, see F2-GS-1-01."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F2-GS-1-01",
+      "severity": "low",
+      "category": "visual",
+      "criterion": "Interactive sizing",
+      "score": "warn",
+      "kind": "mockup",
+      "description": "Citation chips are 21 to 24 px tall in agent answers, below the 32 px target.",
+      "expected": "Chip with at least 32 px hit area.",
+      "actual": "136x21 px (a.cite) in screen 3 and 136x24 px (button.cite) in screen 5.",
+      "screenshot": "agent-answer.png",
+      "suggested_fix": "Add vertical padding or a transparent hit area to .cite.",
+      "files_likely_involved": [
+        "docs/granola/mockup.html"
+      ],
+      "jf": null,
+      "plan_section": null,
+      "story_id": "STORY-GS-1"
+    },
+    {
+      "id": "F2-GS-1-02",
+      "severity": "low",
+      "category": "visual",
+      "criterion": "Layout / wrapped control",
+      "score": "warn",
+      "kind": "mockup",
+      "description": "'Get a key in Granola ↗' wraps its arrow onto a second line at 390 px (and the geometry audit flags it at 1280 px).",
+      "expected": "Link on one line (nowrap) at every width.",
+      "actual": "Arrow is orphaned in m390-int-detail.png and in the Disconnect After frame at 390 px.",
+      "screenshot": "m390-int-detail.png",
+      "suggested_fix": "white-space:nowrap on the link or let the label drop its arrow.",
+      "files_likely_involved": [
+        "docs/granola/mockup.html"
+      ],
+      "jf": null,
+      "plan_section": null,
+      "story_id": "STORY-GS-1"
+    },
+    {
+      "id": "F2-GS-1-03",
+      "severity": "low",
+      "category": "happy-path",
+      "criterion": "Feedback",
+      "score": "warn",
+      "kind": "plan",
+      "description": "While the first sync is still 'Syncing' the agent may not find a meeting from 80 days ago. The plan's list of literal 'nothing found' reasons has no 'still syncing' reason, so Maya may conclude Granola data is missing.",
+      "expected": "The tool reason says the first sync is still running.",
+      "actual": "granola.md Tool output lists: no synced meetings, older than the 90-day store, AI-data sharing off, teammate's agent. No 'sync still running'.",
+      "screenshot": "key-syncing.png",
+      "suggested_fix": "Add 'first sync still running' to the literal reasons in granola.md (Reading). No UI.",
+      "files_likely_involved": [],
+      "jf": null,
+      "plan_section": "granola.md Reading / Tool output and answers",
+      "story_id": "STORY-GS-1"
+    }
+  ]
+}

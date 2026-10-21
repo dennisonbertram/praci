@@ -197,7 +197,8 @@ function AttachmentView({
       {text}
     </div>
   );
-  if (attachment.size > PREVIEW_MAX_BYTES) return note(t`Too large to preview`);
+  if (attachment.size > PREVIEW_MAX_BYTES)
+    return note(t`Too large to preview (${formatBytes(attachment.size)})`);
   if (!showable)
     return note(t`Preview isn't available for this file type — download it to view it.`);
   if (kind === "sheet")
@@ -279,6 +280,7 @@ function AttachmentPreviewDialog({
   onAdd: (attachment: MailAttachmentItem) => void;
   onDownload: (attachment: MailAttachmentItem) => void;
 }) {
+  const downloadRef = useRef<HTMLButtonElement>(null);
   const attachment = attachments[index];
   if (!attachment) return null;
   const step = (by: number) => {
@@ -295,6 +297,8 @@ function AttachmentPreviewDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         onKeyDown={onKeyDown}
+        // Enter downloads the file; filing it to the Data room takes a deliberate click.
+        initialFocus={downloadRef}
         className="flex h-dvh max-h-none w-full max-w-none flex-col gap-2 rounded-none sm:max-w-none md:h-[85vh] md:w-[min(960px,94vw)] md:rounded-xl"
       >
         <div className="flex items-center gap-1 pe-8">
@@ -321,6 +325,7 @@ function AttachmentPreviewDialog({
           </DialogTitle>
           <DataRoomAction state={filed[attachment.id] ?? "idle"} onAdd={() => onAdd(attachment)} />
           <Button
+            ref={downloadRef}
             variant="outline"
             size="sm"
             aria-label={t`Download`}
@@ -363,6 +368,12 @@ export function MailAttachments({
       <ul aria-label={t`Attachments`} className="flex flex-wrap gap-2">
         {attachments.map((attachment, index) => {
           const kind = attachmentKind(attachment);
+          // Truncation takes the middle of the name, so the extension stays visible.
+          const dot = attachment.filename.lastIndexOf(".");
+          const [base, ext] =
+            dot > 0
+              ? [attachment.filename.slice(0, dot), attachment.filename.slice(dot)]
+              : [attachment.filename, ""];
           return (
             <li key={attachment.id} className="flex">
               <Button
@@ -376,7 +387,10 @@ export function MailAttachments({
                 ) : (
                   <KindIcon kind={kind} />
                 )}
-                <span className="truncate">{attachment.filename}</span>
+                <span className="flex min-w-0">
+                  <span className="truncate">{base}</span>
+                  <span className="shrink-0">{ext}</span>
+                </span>
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {formatBytes(attachment.size)}
                 </span>

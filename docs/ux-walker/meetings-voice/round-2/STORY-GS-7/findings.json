@@ -1,0 +1,91 @@
+{
+  "story_id": "STORY-GS-7",
+  "result": "PASS",
+  "round1_status": [
+    {
+      "id": "F-GS-7-01",
+      "status": "still-open",
+      "evidence": "A sentence is drawn ('Your data in Granola is not deleted.') but it describes Granola's copy; it does not say Rakazo keeps meetings and to-dos. The three frames show retention only through the layout. See F2-GS-7-01."
+    },
+    {
+      "id": "F-GS-7-02",
+      "status": "fixed",
+      "evidence": "Per-meeting Delete exists in the citation popover with a confirmation (cite-open.png, cite-confirm.png; decision D4). Bulk removal remains absent, see F2-GS-7-02."
+    },
+    {
+      "id": "F-GS-7-03",
+      "status": "obsolete",
+      "evidence": "Plan decides no confirmation: Disconnect is reversible and keeps all data, so one click is acceptable."
+    },
+    {
+      "id": "F-GS-7-04",
+      "status": "obsolete",
+      "evidence": "Plan Deliberate choices: a to-do from a disconnected source looks like any other."
+    },
+    {
+      "id": "F-GS-7-05",
+      "status": "fixed",
+      "evidence": "After state is three labelled frames with their own sidebars (disc-after.png, disc-after-2.png)."
+    },
+    {
+      "id": "F-GS-7-06",
+      "status": "fixed",
+      "evidence": "The annotation sentence is gone from the Inbox frame."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F2-GS-7-01",
+      "severity": "medium",
+      "category": "happy-path",
+      "criterion": "Labels/copy",
+      "score": "warn",
+      "kind": "plan",
+      "description": "After Disconnect the only line says Granola's data is not deleted. Ethan's question is whether Rakazo keeps his meetings and to-dos. The plan reuses the existing sentence by choice, so the person who expects Disconnect to remove access is still surprised when the agent answers.",
+      "expected": "One sentence that says what Rakazo keeps, or a recorded decision to accept the surprise.",
+      "actual": "'Your data in Granola is not deleted.' only (disc-after.png).",
+      "screenshot": "disc-after.png",
+      "suggested_fix": "Reword once, for example 'Your meetings and to-dos in Rakazo are kept.', and quote it in the S6 PR; or record the decision.",
+      "files_likely_involved": [],
+      "jf": "JF-7",
+      "plan_section": "granola.md Surfaces (Disconnect)",
+      "story_id": "STORY-GS-7"
+    },
+    {
+      "id": "F2-GS-7-02",
+      "severity": "medium",
+      "category": "happy-path",
+      "criterion": "Recovery",
+      "score": "warn",
+      "kind": "plan",
+      "description": "Delete is available per meeting only and only through a citation in an agent answer. A user who wants all stored meetings gone must ask about each meeting and delete one by one.",
+      "expected": "Plan states that bulk removal is out of scope, or offers account-level removal.",
+      "actual": "One 'Delete' per citation popover (cite-open.png).",
+      "screenshot": "cite-open.png",
+      "suggested_fix": "Record 'no bulk delete' as a decision in granola.md; revisit if users ask.",
+      "files_likely_involved": [],
+      "jf": null,
+      "plan_section": "granola.md S6 (meetings.delete)",
+      "story_id": "STORY-GS-7"
+    },
+    {
+      "id": "F2-GS-7-03",
+      "severity": "low",
+      "category": "visual",
+      "criterion": "Consistency",
+      "score": "warn",
+      "kind": "mockup",
+      "description": "Disconnect on the screen 2 key card returns to an empty card without the sentence 'Your data in Granola is not deleted.' that screen 6 shows after Disconnect.",
+      "expected": "Both screens show the same post-Disconnect card.",
+      "actual": "key-empty.png has no sentence; disc-after.png has it.",
+      "screenshot": "key-empty.png",
+      "suggested_fix": "Add the sentence to the 'empty after disconnect' variant or share one state.",
+      "files_likely_involved": [
+        "docs/granola/mockup.html"
+      ],
+      "jf": null,
+      "plan_section": null,
+      "story_id": "STORY-GS-7"
+    }
+  ]
+}

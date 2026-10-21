@@ -1,0 +1,46 @@
+{
+  "story": "STORY-MB-5",
+  "round": 4,
+  "verdict": "PASS",
+  "round3_dispositions": [
+    {
+      "id": "F3-MB-5-1",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "The key group and the Disconnect row now sit under a \"Wispr Flow\" group header (step-key.png, step-connected.png), per TX-16. The pushed-detail alternative was not adopted; decided."
+    },
+    {
+      "id": "F3-MB-5-2",
+      "sev": "low",
+      "status": "fixed",
+      "evidence": "\"Transcribing\" and \"Connected\" both render rgb(79,179,127) on the phone (measured), matching web (TX-18)."
+    },
+    {
+      "id": "F3-MB-5-3",
+      "sev": "low",
+      "status": "obsolete",
+      "evidence": "The reading of the phone checkmark is decided (RX-59)."
+    },
+    {
+      "id": "F-MB-5-6",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "Disconnect is a red row that acts at once; decided (FX-63)."
+    }
+  ],
+  "new_findings": [
+    {
+      "id": "F4-MB-5-1",
+      "kind": "mockup",
+      "severity": "low",
+      "category": "flow",
+      "criterion": "Native iOS",
+      "score": "warn",
+      "description": "In the Wispr Flow, key and Key rejected states the consent sentence (the footer under Connect) is below the bottom edge of the frame; the user has to scroll to read it. The mockup has no Typing state for this screen (Granola's phone frame got one in TX-13), so with the keyboard open the footer and possibly Connect would be hidden.",
+      "expected": "The consent footer is visible without scrolling, or a Typing state shows the list scrolled so the field, Connect and footer stay above the keyboard.",
+      "actual": "Footer clipped by the home indicator (step-key.png).",
+      "screenshot": "screenshots/step-key.png",
+      "suggested_fix": "Add a Typing state as on the Granola phone frame, or scroll the frame so the key group is in view."
+    }
+  ]
+}

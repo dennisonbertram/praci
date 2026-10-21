@@ -1,0 +1,46 @@
+{
+  "story": "STORY-MB-6",
+  "round": 3,
+  "verdict": "PASS",
+  "round2_dispositions": [
+    {
+      "id": "F-MB-6-1",
+      "sev": "high",
+      "status": "obsolete",
+      "evidence": "Consent prompt at call start was removed (D3)."
+    },
+    {
+      "id": "F-MB-6-2",
+      "sev": "high",
+      "status": "fixed",
+      "evidence": "Voice settings Connected frame shows the selection effect."
+    },
+    {
+      "id": "F-MB-6-3",
+      "sev": "low",
+      "status": "fixed",
+      "evidence": "Copy."
+    },
+    {
+      "id": "F2-MB-6-1",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Plan S3a: the cap error does not count toward MAX_TURN_FAILURES, the call stays open for typing, the caption shows once and uploads stop until the next call or the reset."
+    }
+  ],
+  "new_findings": [
+    {
+      "id": "F3-MB-6-1",
+      "kind": "mockup",
+      "severity": "low",
+      "category": "happy-path",
+      "criterion": "Feedback",
+      "score": "warn",
+      "description": "The phone has no frame for the one new call surface: the cap caption. Only the web call card is drawn. A native reviewer cannot judge how the line and the composer sit on the phone call screen.",
+      "expected": "A phone call frame with the caption and the composer.",
+      "actual": "Not drawn.",
+      "screenshot": "screenshots/step-connected.png",
+      "suggested_fix": "Add a phone call frame only if the native call screen differs; otherwise state in the plan that the caption uses the existing error caption."
+    }
+  ]
+}

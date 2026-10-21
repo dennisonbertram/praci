@@ -47,6 +47,19 @@ export const WithDetail: Story = {
   },
 };
 
+export const MoneyApprovalWithFoldedDetails: Story = {
+  args: {
+    block: ask({
+      text: "Review before Mercury: Request send money → $1,200.00",
+      detail:
+        'tool: mcp__finance-mercury__requestSendMoney\narguments: {\n  "amount": 1200,\n  "accountId": "acct-demo"\n}',
+      detailFolded: true,
+      approvalEffectId: "effect_money",
+      actions: approvalActions,
+    }),
+  },
+};
+
 export const Answered: Story = { args: { block: ask({ status: "answered", answer: "approved" }) } };
 
 export const NoLongerActive: Story = { args: { canAnswer: false } };

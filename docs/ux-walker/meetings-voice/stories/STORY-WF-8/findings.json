@@ -1,0 +1,50 @@
+[
+  {
+    "id": "F-WF-8-1",
+    "kind": "plan",
+    "severity": "high",
+    "category": "flow",
+    "criterion": "Dead ends",
+    "score": "fail",
+    "description": "A user without API access is shown Flow as selectable, must paste a consumer key to find out, and ends on 'API access required' with no next step.",
+    "expected": "List Flow only once S3a ships (as JF-13 recommends), or say it before the key field.",
+    "actual": "Select lists Flow; error appears after Connect; Connect stays active.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-WF-8/screenshots/step-2.png",
+    "suggested_fix": "As JF-13: do not list Flow until S3a ships; if the mockup state is kept, say so in the plan and PR copy justification.",
+    "catalog_ref": "JF-13",
+    "plan_section": "Flow S1b/S3a",
+    "files_likely_involved": []
+  },
+  {
+    "id": "F-WF-8-2",
+    "kind": "plan",
+    "severity": "medium",
+    "category": "error-handling",
+    "criterion": "Error messages",
+    "score": "warn",
+    "description": "The error says what is missing but nothing about the composer hotkey, which already works for dictation.",
+    "expected": "Message plus pointer, or none if the option is absent.",
+    "actual": "'API access required' only.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-WF-8/screenshots/step-2.png",
+    "suggested_fix": "If kept, drop the pointer to keep copy minimal; the preferred fix is hiding Flow until S3a.",
+    "catalog_ref": "JF-13",
+    "plan_section": "Flow S1b",
+    "files_likely_involved": []
+  },
+  {
+    "id": "F-WF-8-3",
+    "kind": "plan",
+    "severity": "low",
+    "category": "happy-path",
+    "criterion": "Labels/copy",
+    "score": "warn",
+    "description": "'API access required' is new copy beyond the plan.",
+    "expected": "PR quotes and justifies copy.",
+    "actual": "Drawn.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-WF-8/screenshots/step-2.png",
+    "suggested_fix": "As JF-33.",
+    "catalog_ref": "JF-33",
+    "plan_section": "AGENTS.md copy rule",
+    "files_likely_involved": []
+  }
+]

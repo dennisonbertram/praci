@@ -1,0 +1,13 @@
+{
+  "story_id": "STORY-MX-1",
+  "round": 4,
+  "result": "PASS",
+  "round3_status": [
+    {
+      "id": "F3-MX-1-01",
+      "status": "fixed",
+      "evidence": "All Granola mockup chips now carry title=\"Granola\" (checked in the HTML and in the agent and citation frames)."
+    }
+  ],
+  "findings": []
+}

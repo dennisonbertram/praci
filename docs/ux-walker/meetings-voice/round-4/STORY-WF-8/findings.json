@@ -1,0 +1,14 @@
+{
+  "story": "STORY-WF-8",
+  "round": 4,
+  "verdict": "PASS",
+  "round3_dispositions": [
+    {
+      "id": "F2-WF-8-1",
+      "sev": "medium",
+      "status": "still-open",
+      "evidence": "A consumer Flow Pro user with no API access still meets the generic \"Could not connect this voice provider\" with no next step (step-voice-rejected.png). Decided in D3 and the fix lists (M-11, one error line); kept as a known journey weakness, not re-raised and not a high finding."
+    }
+  ],
+  "new_findings": []
+}

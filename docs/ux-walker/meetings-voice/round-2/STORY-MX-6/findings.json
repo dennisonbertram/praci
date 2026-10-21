@@ -1,0 +1,54 @@
+{
+  "story_id": "STORY-MX-6",
+  "result": "PASS",
+  "round1_status": [
+    {
+      "id": "F-MX-6-1",
+      "status": "still-open",
+      "evidence": "Plan keeps 'no user-facing copy' for the stop case. The tile reads 'Connected' either way. Reduced to medium because the stop case is conditional and Flow shows no sync claim; see F2-MX-6-01."
+    },
+    {
+      "id": "F-MX-6-2",
+      "status": "still-open",
+      "evidence": "Both tiles read 'Meeting notes'. Low, see F2-MX-6-02."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F2-MX-6-01",
+      "severity": "medium",
+      "category": "happy-path",
+      "criterion": "Feedback",
+      "score": "warn",
+      "kind": "plan",
+      "description": "If S5 stops after pinning, a user who asks the Flow agent a cross-meeting question gets live-MCP answers only; the Granola agent cannot see Flow calls and nothing says why. The plan decides on silence.",
+      "expected": "Recorded decision, plus the agent's literal reason when it has no meetings tools.",
+      "actual": "Plan: 'no user-facing copy'.",
+      "screenshot": "flow-tile.png",
+      "suggested_fix": "Add one sentence to the Flow preset instructions for the stopped case.",
+      "files_likely_involved": [],
+      "jf": "NEW",
+      "plan_section": "wispr-flow.md S5",
+      "story_id": "STORY-MX-6"
+    },
+    {
+      "id": "F2-MX-6-02",
+      "severity": "low",
+      "category": "visual",
+      "criterion": "Consistency",
+      "score": "warn",
+      "kind": "mockup",
+      "description": "Flow and Granola tiles show the same subtitle 'Meeting notes' and the same 'Connected' badge although one syncs and one may not.",
+      "expected": "Subtitle or badge hints the route.",
+      "actual": "Identical tiles.",
+      "screenshot": "flow-tile.png",
+      "suggested_fix": "Optional.",
+      "files_likely_involved": [
+        "docs/granola/mockup.html"
+      ],
+      "jf": null,
+      "plan_section": null,
+      "story_id": "STORY-MX-6"
+    }
+  ]
+}

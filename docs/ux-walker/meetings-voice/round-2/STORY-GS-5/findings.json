@@ -1,0 +1,69 @@
+{
+  "story_id": "STORY-GS-5",
+  "result": "PASS",
+  "round1_status": [
+    {
+      "id": "F-GS-5-01",
+      "status": "fixed",
+      "evidence": "needs_reconnect keeps the status line and Disconnect and shows an editable field (key-reconnect.png), as plan Surfaces describes."
+    },
+    {
+      "id": "F-GS-5-02",
+      "status": "fixed",
+      "evidence": "Agent side: the skill adds 'last synced {date}' when the connection is needs_reconnect (granola.md Tool output). The missing notification remains; see F2-GS-5-02."
+    },
+    {
+      "id": "F-GS-5-03",
+      "status": "fixed",
+      "evidence": "Plan: pasting a new key updates the same connection and reuses the same agent; the field plus Connect is the replace action."
+    },
+    {
+      "id": "F-GS-5-04",
+      "status": "fixed",
+      "evidence": "Field is editable in both rejected and reconnect states (verified)."
+    },
+    {
+      "id": "F-GS-5-05",
+      "status": "fixed",
+      "evidence": "No explanatory sentence is rendered under the card."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F2-GS-5-01",
+      "severity": "medium",
+      "category": "happy-path",
+      "criterion": "Feedback",
+      "score": "warn",
+      "kind": "mockup",
+      "description": "In needs_reconnect the status row stays a green dot with 'Synced 42 meetings' and no time, although the plan says the relative time shows when the sync is late or failed.",
+      "expected": "Status shows a neutral dot and the last sync time, for example 'Synced 42 meetings, 3 days ago'.",
+      "actual": "Green dot, no time (key-reconnect.png and mob-key-reconnect.png).",
+      "screenshot": "key-reconnect.png",
+      "suggested_fix": "Draw the relative time and a non-green dot in the reconnect state, web and mobile.",
+      "files_likely_involved": [
+        "docs/granola/mockup.html"
+      ],
+      "jf": null,
+      "plan_section": "granola.md Surfaces (In progress / needs_reconnect)",
+      "story_id": "STORY-GS-5"
+    },
+    {
+      "id": "F2-GS-5-02",
+      "severity": "medium",
+      "category": "happy-path",
+      "criterion": "Feedback",
+      "score": "warn",
+      "kind": "plan",
+      "description": "The Integrations tile in needs_reconnect is not drawn. The tile shows one status line (best connected route), so it may keep showing 'Synced 42 meetings' while the key is dead. The plan defines no in-app notice for needs_reconnect either.",
+      "expected": "Tile line or badge reflects that the key needs attention, or the plan states it stays unchanged.",
+      "actual": "Only the 'Key connected' tile is drawn (int-key.png).",
+      "screenshot": "int-key.png",
+      "suggested_fix": "Decide and draw the tile for needs_reconnect; record 'no notification' as a decision if intended.",
+      "files_likely_involved": [],
+      "jf": "JF-5",
+      "plan_section": "granola.md Surfaces (tile status line)",
+      "story_id": "STORY-GS-5"
+    }
+  ]
+}

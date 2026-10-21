@@ -1,0 +1,34 @@
+{
+  "story_id": "STORY-MX-1",
+  "round": 3,
+  "result": "PASS",
+  "round2_status": [
+    {
+      "id": "F2-MX-1-01",
+      "status": "still-open",
+      "evidence": "Flow chips now carry title attributes (Wispr Flow / Granola); touch users still cannot hover, and the Granola mockup's chips have no title (see new finding)."
+    },
+    {
+      "id": "F2-MX-1-02",
+      "status": "still-open",
+      "evidence": "Two agents with vendor-sounding names that both answer everything; nothing in the UI says so. Plan accepts ('agent name is not a scope'). Low."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F3-MX-1-01",
+      "severity": "low",
+      "category": "clarity",
+      "criterion": "Consistency",
+      "score": "warn",
+      "kind": "mockup",
+      "description": "Granola mockup citation chips have no title attribute, while the Flow mockup chips do. The plan says every meeting-source agent sees all meetings, so the Granola agent can cite a Flow call and its chip needs the provider title too.",
+      "expected": "The journey step has a drawn, unambiguous surface.",
+      "actual": "Granola mockup citation chips have no title attribute, while the Flow mockup chips do. The plan says every meeting-source agent sees all meetings, so the Granola agent can cite a Flow call and its chip needs the provider title too.",
+      "screenshot": "g-d-agent-answer.png",
+      "suggested_fix": "Add title=\"Granola\" / title=\"Wispr Flow\" to the chips in docs/granola/mockup.html agent and citation frames.",
+      "files_likely_involved": [],
+      "jf": "NEW"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "story": "STORY-WF-8",
+  "round": 2,
+  "verdict": "PASS",
+  "round1_dispositions": [
+    {
+      "id": "F-WF-8-1",
+      "sev": "high",
+      "status": "fixed",
+      "evidence": "Flow is no longer offered where the deployment lacks Flow (plan S3a), and the \"API access required\" state is removed. Residual dead end: a user in a Flow-enabled deployment without personal access gets the generic error (N1, medium)."
+    },
+    {
+      "id": "F-WF-8-2",
+      "sev": "medium",
+      "status": "obsolete",
+      "evidence": "No \"API access required\" message exists; the hotkey pointer was dropped on purpose."
+    },
+    {
+      "id": "F-WF-8-3",
+      "sev": "low",
+      "status": "obsolete",
+      "evidence": "That copy is deleted."
+    }
+  ],
+  "new_findings": [
+    {
+      "kind": "plan",
+      "severity": "medium",
+      "category": "flow",
+      "description": "A user without Wispr API access in a deployment that has Flow configured meets a rejected key with the generic line and no next step. The plan accepts this (\"the app cannot know\").",
+      "suggested_fix": "Accept, or add one clause to the PR copy review if support questions show up. Not a blocker.",
+      "screenshot": "screenshots/../../STORY-WF-6/screenshots/step-rejected.png",
+      "plan_section": "Flow S3a",
+      "catalog_ref": "NEW",
+      "id": "F2-WF-8-1",
+      "score": "warn",
+      "story_id": "STORY-WF-8"
+    }
+  ]
+}

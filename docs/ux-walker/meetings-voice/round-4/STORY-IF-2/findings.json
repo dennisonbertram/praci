@@ -1,0 +1,13 @@
+{
+  "story_id": "STORY-IF-2",
+  "round": 4,
+  "result": "PASS",
+  "round3_status": [
+    {
+      "id": "F3-IF-2-01",
+      "status": "fixed",
+      "evidence": "Two account tabs are drawn and switching shows each account mail to-dos plus all meeting to-dos (g-d-inbox-mail-tab-acme.png, g-d-inbox-mail-tab-founder.png)."
+    }
+  ],
+  "findings": []
+}

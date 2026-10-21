@@ -1,0 +1,70 @@
+[
+  {
+    "id": "F-MX-3-1",
+    "kind": "plan",
+    "severity": "high",
+    "category": "happy-path",
+    "criterion": "Recovery",
+    "score": "fail",
+    "description": "No drawn way to see routine-written memory entries as a list or to delete one; the routine message lists entries but has no per-entry action, and forget_memory is removed from the agent.",
+    "expected": "Memory view for bot scope with per-entry delete, linked from the routine message.",
+    "actual": "Thread message only.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-MX-3/screenshots/step-4.png",
+    "suggested_fix": "State in S7 that routine entries appear in the existing memory screen and can be deleted there; keep the thread message as the only new surface.",
+    "catalog_ref": "JF-9",
+    "plan_section": "Granola S7",
+    "files_likely_involved": []
+  },
+  {
+    "id": "F-MX-3-2",
+    "kind": "plan",
+    "severity": "medium",
+    "category": "error-handling",
+    "criterion": "Recovery",
+    "score": "warn",
+    "description": "Switch meaning is undrawn: off = paused or removed, and whether agent provisioning recreates a removed routine.",
+    "expected": "Off pauses; the row stays; provisioning never recreates.",
+    "actual": "Switch only.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-MX-3/screenshots/step-4.png",
+    "suggested_fix": "State in S7: the switch pauses the routine; removal sticks.",
+    "catalog_ref": "JF-9 (stop-the-routine half)",
+    "plan_section": "Granola S7",
+    "files_likely_involved": []
+  },
+  {
+    "id": "F-MX-3-3",
+    "kind": "mockup",
+    "severity": "low",
+    "category": "consistency",
+    "criterion": "Component consistency",
+    "score": "warn",
+    "description": "This agent page has no composer, while the same Granola agent page on the Agent answers screen shows 'Ask Granola agent'.",
+    "expected": "Same agent page drawn the same way.",
+    "actual": "No composer on the routine screen.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-MX-3/screenshots/step-4.png",
+    "suggested_fix": "Add the composer or note the omission in a comment.",
+    "catalog_ref": "NEW",
+    "plan_section": "granola mockup screen-routine",
+    "files_likely_involved": [
+      "docs/granola/mockup.html"
+    ]
+  },
+  {
+    "id": "F-MX-3-4",
+    "kind": "mockup",
+    "severity": "low",
+    "category": "a11y",
+    "criterion": "Interactive sizing",
+    "score": "warn",
+    "description": "Routine switch measures about 36x20 px.",
+    "expected": "Target at least 32-44 px tall on the clickable row.",
+    "actual": "20 px tall switch.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-MX-3/screenshots/step-4.png",
+    "suggested_fix": "Make the whole routine row the hit area.",
+    "catalog_ref": "NEW",
+    "plan_section": "granola mockup screen-routine",
+    "files_likely_involved": [
+      "docs/granola/mockup.html"
+    ]
+  }
+]
