@@ -1,0 +1,6 @@
+{
+  "_synthetic": "Invented data, not a capture from Devin: the text McpConnector.callServerTool throws when a fake HTTP server answers a call with this status and the body {\"error\":\"refused\"}. Replaced by real captures in issue #516.",
+  "401": "Streamable HTTP error: Error POSTing to endpoint: {\"error\":\"refused\"} (HTTP 401)",
+  "403": "Streamable HTTP error: Error POSTing to endpoint: {\"error\":\"refused\"} (HTTP 403)",
+  "429": "Streamable HTTP error: Error POSTing to endpoint: {\"error\":\"refused\"} (HTTP 429)"
+}

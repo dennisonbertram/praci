@@ -19,7 +19,10 @@ const financeRpc = vi.hoisted(() => ({
   crypto: vi.fn(),
   exchanges: vi.fn(),
 }));
-vi.mock("../../lib/rpc", () => ({ rpc: { finance: financeRpc } }));
+const messagingRpc = vi.hoisted(() => ({ get: vi.fn() }));
+vi.mock("../../lib/rpc", () => ({
+  rpc: { finance: financeRpc, messagingSetup: messagingRpc },
+}));
 
 import { IntegrationsHome } from "./IntegrationsHome";
 import type { IntegrationsData } from "./useIntegrations";
@@ -98,6 +101,7 @@ beforeEach(() => {
     alchemy: { connected: false, lastError: null },
   });
   financeRpc.exchanges.mockResolvedValue([]);
+  messagingRpc.get.mockRejectedValue(new Error("not owner"));
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -526,7 +530,7 @@ it("still lists native Google apps when the managed catalog is not set up", asyn
   expect(container.querySelector('[aria-label="Connect gmail"]')).not.toBeNull();
 });
 
-it("labels Composio and Pipedream tiles, catalog and connected, but not Google or MCP tiles", async () => {
+it("shows no vendor name on any tile", async () => {
   const value = data(true, true);
   value.catalog = [
     ...value.catalog,
@@ -557,8 +561,7 @@ it("labels Composio and Pipedream tiles, catalog and connected, but not Google o
   ];
   value.servers = [zernioServer];
   await show(value);
-  const labels = [...container.querySelectorAll("[data-source]")].map((el) => el.textContent);
-  expect(labels.sort()).toEqual(["via Composio", "via Composio", "via Pipedream"]);
+  expect(container.textContent).not.toContain("via ");
 });
 
 const composioGmail = (over: Record<string, unknown> = {}) => ({
@@ -618,4 +621,56 @@ it("lists results as one flat grid without headings and hides Connected while se
   expect(headings).not.toContain("Apps");
   expect(headings).not.toContain("Connected");
   expect(container.textContent).toContain("Slack");
+});
+
+it("does not say 'No apps match' while iMessage tiles match the search", async () => {
+  messagingRpc.get.mockResolvedValue({
+    canConfigure: true,
+    providers: [
+      { id: "photon", fields: {}, configured: false, active: false, webhookUrl: "http://x/p" },
+      { id: "bluebubbles", fields: {}, configured: false, active: false, webhookUrl: "http://x/b" },
+    ],
+  });
+  await show(data(true, true), "/app/integrations?q=imessage");
+  expect(container.textContent).toContain("iMessage");
+  expect(container.querySelector('[data-testid="no-apps"]')).toBeNull();
+});
+
+it("still says 'No apps match' when nothing matches", async () => {
+  await show(data(true, true), "/app/integrations?q=zzzz");
+  expect(container.querySelector('[data-testid="no-apps"]')).not.toBeNull();
+});
+
+it("keeps matching connected apps visible while a category chip is active", async () => {
+  const value = data(true, true);
+  value.catalog = [
+    ...value.catalog,
+    { ...google("notion"), connectorId: "composio", name: "Notion", category: "docs_files" },
+  ];
+  value.connections = [
+    composioGmail(),
+    composioGmail({ id: "n1", provider: "notion", displayName: "Notion" }),
+  ];
+  await show(value, "/app/integrations");
+  const chip = [...container.querySelectorAll("fieldset button")].find(
+    (b) => b.textContent === "Docs & files",
+  ) as HTMLElement;
+  await act(async () => chip.click());
+  const connected = [...container.querySelectorAll("h2")].find(
+    (h) => h.textContent === "Connected",
+  );
+  expect(connected).toBeDefined();
+  expect(container.querySelector('a[href*="notion"]')).not.toBeNull();
+  expect(container.querySelector('a[href*="gmail"]')).toBeNull();
+});
+
+it("lists a connected app with its card when its name is searched", async () => {
+  const value = data(true, true);
+  value.catalog = [
+    { ...google("notion"), connectorId: "composio", name: "Notion", category: "docs_files" },
+  ];
+  value.connections = [composioGmail({ id: "n1", provider: "notion", displayName: "Notion" })];
+  await show(value, "/app/integrations?q=notion");
+  expect(container.querySelector('a[href*="notion"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="no-apps"]')).toBeNull();
 });

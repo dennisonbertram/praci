@@ -247,7 +247,8 @@ it("shows artifacts as a table in list view and as cards in grid view, and remem
     await act(async () => button("List view")?.click());
     expect(page.container.querySelectorAll("[data-testid='artifact-row']")).toHaveLength(2);
     const headings = [...page.container.querySelectorAll("th")].map((th) => th.textContent);
-    expect(headings).toEqual(expect.arrayContaining(["Name", "Bot", "Added", "Size"]));
+    expect(headings).toEqual(expect.arrayContaining(["Name", "Added", "Size"]));
+    expect(headings).not.toContain("Bot");
     expect(page.container.querySelector("tr a")?.getAttribute("href")).toBe(
       "/app/artifacts/artifact-1",
     );
@@ -308,5 +309,64 @@ it("shows delete on touch for card and row buttons", async () => {
   } finally {
     await page.cleanup();
     vi.unstubAllGlobals();
+  }
+});
+
+it("offers only bots that own artifacts and shows the title without its extension", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }));
+  const { takeInitialBootstrap } = await import("../lib/bootstrap");
+  const bot = (id: string, name: string) => ({ id, name, color: "", status: "idle" });
+  vi.mocked(takeInitialBootstrap).mockResolvedValueOnce({
+    bots: [bot("b1", "Chief"), bot("b2", "Scribe"), bot("b3", "Idle bot")],
+  } as never);
+  api.listSpace.mockResolvedValue({
+    items: [
+      { ...artifact("Board Deck.md", "a1"), botId: "b1" },
+      { ...artifact("Notes.csv", "a2"), botId: "b2" },
+    ],
+    nextCursor: null,
+  });
+  const page = await renderArtifacts();
+  try {
+    await act(async () => {
+      [...page.container.querySelectorAll("button")]
+        .find((b) => b.textContent?.includes("Filters"))
+        ?.click();
+    });
+    const options = [
+      ...(page.container.querySelectorAll("select[aria-label='Filter by bot'] option") ?? []),
+    ];
+    expect(options.map((o) => o.textContent)).toEqual(["All bots", "Chief", "Scribe"]);
+    expect(page.container.textContent).toContain("Board Deck");
+    expect(page.container.textContent).not.toContain("Board Deck.md");
+  } finally {
+    await page.cleanup();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("labels cards Doc and Sheet and gives a sheet its own icon", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  api.listSpace.mockResolvedValue({
+    items: [artifact("Memo.md", "a1"), { ...artifact("Burn.csv", "a2"), mimeType: "text/csv" }],
+    nextCursor: null,
+  });
+  const page = await renderArtifacts();
+  try {
+    const cards = [...page.container.querySelectorAll("a[href^='/app/artifacts/']")];
+    expect(cards.map((c) => c.textContent)).toEqual([
+      expect.stringContaining("Doc"),
+      expect.stringContaining("Sheet"),
+    ]);
+    expect(page.container.textContent).not.toMatch(/\b(MD|CSV)\b/);
+    expect(cards[0]?.querySelector("svg path")).not.toBeNull();
+    expect(cards[1]?.querySelector("svg rect")).not.toBeNull();
+  } finally {
+    await page.cleanup();
   }
 });

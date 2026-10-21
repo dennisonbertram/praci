@@ -1,0 +1,4 @@
+# SYNTHETIC FIXTURE: invented data in the documented format, not a capture from Devin. Replaced by real captures in issue #516.
+# Oldest first.
+- event_id=ev-201 source=user created_at=1759800000 body="Migrate the settings tables."
+- event_id=ev-202 source=devin created_at=1759850000 body="Done. Opened two pull requests."

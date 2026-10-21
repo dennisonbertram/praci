@@ -9,7 +9,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "@rakazo/ui-web";
-import { Info, Lock, Plus, Users } from "lucide-react";
+import { Info, Lock, Plus, Search, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 
 export function BotCreatePicker({
@@ -46,9 +46,12 @@ export function BotCreatePicker({
   return (
     <div data-testid="bot-create-picker" className="w-[min(320px,calc(100vw-2rem))]">
       <label className="flex items-center gap-2 border-b border-border px-3 py-2">
-        <span className="shrink-0 text-[13px] text-muted-foreground">
-          <Trans>To:</Trans>
-        </span>
+        <Search
+          size={14}
+          strokeWidth={1.8}
+          aria-hidden="true"
+          className="shrink-0 text-muted-foreground"
+        />
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}

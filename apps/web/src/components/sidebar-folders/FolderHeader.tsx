@@ -32,6 +32,7 @@ export function FolderHeader({
   onRename,
   onCancelRename,
   onDelete,
+  takenNames = [],
 }: {
   id: string;
   name: string;
@@ -49,6 +50,8 @@ export function FolderHeader({
   onRename: (name: string) => void;
   onCancelRename: () => void;
   onDelete: () => void;
+  /** Names of the other folders; a rename to one of them stays open with an error. */
+  takenNames?: string[];
 }) {
   const { t } = useLingui();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -64,7 +67,12 @@ export function FolderHeader({
       } ${dnd?.dropsFolder ? "border-t-2 border-ring" : ""} data-drop-into:bg-sidebar-accent data-drop-into:ring-2 data-drop-into:ring-ring`}
     >
       {editing ? (
-        <FolderNameInput name={name} onSubmit={onRename} onCancel={onCancelRename} />
+        <FolderNameInput
+          name={name}
+          takenNames={takenNames}
+          onSubmit={onRename}
+          onCancel={onCancelRename}
+        />
       ) : (
         <button
           type="button"
@@ -138,10 +146,12 @@ export function FolderHeader({
 /** Edits the name in place: Enter or leaving the field saves, Escape cancels. */
 function FolderNameInput({
   name,
+  takenNames,
   onSubmit,
   onCancel,
 }: {
   name: string;
+  takenNames: string[];
   onSubmit: (name: string) => void;
   onCancel: () => void;
 }) {
@@ -150,32 +160,46 @@ function FolderNameInput({
   const [done, setDone] = useState(false);
   // The menu that opened this field returns focus to its button as it closes; take it back.
   const openedAt = useRef(performance.now());
+  const [duplicate, setDuplicate] = useState(false);
   const finish = (value: string) => {
     if (done) return;
-    setDone(true);
     const next = value.trim();
+    if (takenNames.includes(next) && next !== name) {
+      setDuplicate(true);
+      return;
+    }
+    setDone(true);
     if (!next || next === name) onCancel();
     else onSubmit(next);
   };
   return (
-    <Input
-      autoFocus
-      defaultValue={name}
-      maxLength={60}
-      aria-label={t`Rename`}
-      className="mx-1 h-7 flex-1 text-[13px]"
-      onFocus={(event) => event.currentTarget.select()}
-      onBlur={(event) => {
-        if (performance.now() - openedAt.current < 300) event.currentTarget.focus();
-        else finish(event.currentTarget.value);
-      }}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") finish(event.currentTarget.value);
-        if (event.key === "Escape") {
-          setDone(true);
-          onCancel();
-        }
-      }}
-    />
+    <div className="min-w-0 flex-1">
+      <Input
+        autoFocus
+        aria-invalid={duplicate || undefined}
+        defaultValue={name}
+        maxLength={60}
+        aria-label={t`Rename`}
+        className="mx-1 h-7 w-[calc(100%-0.5rem)] text-[13px]"
+        onFocus={(event) => event.currentTarget.select()}
+        onBlur={(event) => {
+          if (performance.now() - openedAt.current < 300) event.currentTarget.focus();
+          else finish(event.currentTarget.value);
+        }}
+        onChange={() => setDuplicate(false)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") finish(event.currentTarget.value);
+          if (event.key === "Escape") {
+            setDone(true);
+            onCancel();
+          }
+        }}
+      />
+      {duplicate ? (
+        <p role="alert" className="px-2.5 pt-0.5 text-[12px] text-destructive">
+          {t`A folder with that name already exists`}
+        </p>
+      ) : null}
+    </div>
   );
 }

@@ -43,6 +43,7 @@ import {
   computerSupportsTerminal,
   computerSupportsUpdate,
   computerUpdateView,
+  createDevinCallTool,
   createFaviconResolver,
   createTicket,
   createVoiceProvider,
@@ -141,6 +142,7 @@ import {
   actorScope,
   BotSecretAuth,
   ComputerCommandSchema,
+  FIRST_BOT_SPAWN_KEY,
   foldComputerCommands,
   GOOGLE_DESKTOP_REDIRECT_URI,
   IntegrationProviderIdSchema,
@@ -301,6 +303,17 @@ import {
 } from "./connection-oauth.js";
 import { createDataRoomService } from "./data-room.js";
 import { ensureDataRoomAgent } from "./data-room-agent.js";
+import type { DevinDeps } from "./devin.js";
+import {
+  assertNoOtherDevinConnection,
+  devinAgent,
+  devinConnect,
+  devinDisconnect,
+  devinNeedsYouCount,
+  devinReplaceKey,
+  devinSessions,
+  requireOwnerForActiveDevinRow,
+} from "./devin.js";
 import {
   financeAccountDetail,
   financeAccounts,
@@ -456,12 +469,15 @@ import {
   threadSnapshotForReader,
 } from "./thread-target.js";
 import {
+  clearTranscription,
   disconnectVoiceCredential,
+  findTranscriptionSelection,
   listVoiceCatalog,
   loadDefaultVoiceCredential,
   loadVoiceCredential,
   persistVoiceCredential,
   prepareVoice,
+  setTranscription,
   toVoiceCredential,
   toVoiceStatus,
   updateVoiceSpeechModel,
@@ -616,6 +632,7 @@ function computerContext(actor: Actor, botId: string, operationId: string): Adap
 }
 
 const EXCLUSIVE_SERVER_MESSAGE = "This integration is used only by its agent.";
+const RECONNECT_DEVIN_MESSAGE = "Use Reconnect on the Devin page to replace the key.";
 
 function mcpServerDto(
   row: {
@@ -937,9 +954,6 @@ function botSecretMetadataDto(row: {
   };
 }
 
-/** The bot first-run onboarding creates (Chief); see apps/web Onboarding. */
-const FIRST_BOT_SPAWN_KEY = "onboarding:first";
-
 const BOT_INTRO_PROMPT =
   "You were just created. In one reply, say what you understood your role to be from your title, description and instructions, and ask for anything you need to get started.";
 
@@ -1086,6 +1100,49 @@ export function createRouter(deps: RouterDeps) {
       bot,
       computerContext(actor, bot.id, "archive"),
     );
+  };
+  /**
+   * Creates a server's integration agent and, in one step, makes the server exclusive to it and
+   * read-only, and only while the agent is active: an archive in between would otherwise leave a
+   * marked server shared. Writes stay off for every new server; the owner turns them on, and each
+   * call then needs its card.
+   */
+  const provisionExclusiveAgent = async (actor: Actor, serverId: string) => {
+    const { bot } = await ensureIntegrationAgent(
+      { prisma: deps.prisma, repos, archiveBot: (botId) => archiveActorBot(actor, botId) },
+      actor,
+      serverId,
+    );
+    const server = await deps.prisma.$transaction(async (tx) => {
+      const active = await tx.bot.updateMany({
+        where: { id: bot.id, ...actorScope(actor), archivedAt: null },
+        data: { updatedAt: new Date() },
+      });
+      const marked = active.count
+        ? await tx.mcpServer.updateMany({
+            where: { id: serverId, ...actorScope(actor), agentBotId: bot.id },
+            data: { agentExclusive: true, agentProvisionedAt: new Date(), writesEnabled: false },
+          })
+        : { count: 0 };
+      if (!marked.count) throw new ORPCError("CONFLICT", { message: "The agent changed; retry" });
+      return tx.mcpServer.findFirstOrThrow({ where: { id: serverId, ...actorScope(actor) } });
+    });
+    return { bot, server };
+  };
+  const devinDeps: DevinDeps = {
+    prisma: deps.prisma,
+    jobs: deps.jobs,
+    secrets: deps.secrets,
+    mcp: deps.mcp ?? {
+      listServerTools: () => Promise.reject(new Error("MCP is not available")),
+    },
+    callTool:
+      deps.devinCallTool ??
+      (deps.mcp
+        ? createDevinCallTool(deps.prisma, deps.mcp)
+        : () => Promise.reject(new Error("MCP is not available"))),
+    provisionAgent: async (actor, serverId) => (await provisionExclusiveAgent(actor, serverId)).bot,
+    archiveBot: archiveActorBot,
   };
   const onboardingDeps = { prisma: deps.prisma, events: deps.events, connectors: deps.connectors };
   const mcpOAuth = deps.mcpOAuth ?? new McpOAuthBroker(deps.prisma, deps.secrets);
@@ -4657,6 +4714,10 @@ export function createRouter(deps: RouterDeps) {
             context.actor,
             deps,
           );
+          await assertNoOtherDevinConnection(deps.prisma, context.actor, {
+            endpoint: "endpoint" in input ? input.endpoint : null,
+            enabled: input.enabled,
+          });
           const secretPayload = buildMcpCredentialBlob(input);
           const stored = secretPayload
             ? await deps.secrets.put(
@@ -4728,39 +4789,7 @@ export function createRouter(deps: RouterDeps) {
             // Every other new server gets its agent too, best-effort: a failure keeps the server
             // and Create agent stays the repair path. Only Devin must have one.
             try {
-              const { bot } = await ensureIntegrationAgent(
-                {
-                  prisma: deps.prisma,
-                  repos,
-                  archiveBot: (botId) => archiveActorBot(context.actor, botId),
-                },
-                context.actor,
-                row.id,
-              );
-              // Exclusive, marked and read-only in one step, and only while the agent is active: an
-              // archive in between would otherwise leave a marked server shared. Writes stay off
-              // for every new server; the owner turns them on, and each call then needs its card.
-              const linked = await deps.prisma.$transaction(async (tx) => {
-                const active = await tx.bot.updateMany({
-                  where: { id: bot.id, ...actorScope(context.actor), archivedAt: null },
-                  data: { updatedAt: new Date() },
-                });
-                const marked = active.count
-                  ? await tx.mcpServer.updateMany({
-                      where: { id: row.id, ...actorScope(context.actor), agentBotId: bot.id },
-                      data: {
-                        agentExclusive: true,
-                        agentProvisionedAt: new Date(),
-                        writesEnabled: false,
-                      },
-                    })
-                  : { count: 0 };
-                if (!marked.count)
-                  throw new ORPCError("CONFLICT", { message: "The agent changed; retry" });
-                return tx.mcpServer.findFirstOrThrow({
-                  where: { id: row.id, ...actorScope(context.actor) },
-                });
-              });
+              const { server: linked } = await provisionExclusiveAgent(context.actor, row.id);
               return mcpServerDto(linked, await mcpOAuth.statusFor(linked, context.actor));
             } catch (error) {
               if (preset?.requiresAgent) throw error;
@@ -4770,6 +4799,15 @@ export function createRouter(deps: RouterDeps) {
           return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
         }),
         update: authed.mcp.servers.update.handler(async ({ context, input }) => {
+          // The space's Devin connection is an owner's to change, and its key only through Reconnect.
+          if (await requireOwnerForActiveDevinRow(deps.prisma, context.actor, input.id)) {
+            const next = "config" in input ? input.config : input;
+            if (
+              ("secret" in next && next.secret) ||
+              ("clearCredential" in next && next.clearCredential)
+            )
+              throw new ORPCError("BAD_REQUEST", { message: RECONNECT_DEVIN_MESSAGE });
+          }
           for (let attempt = 0; attempt < 5; attempt++) {
             const { existing, existingSecret } = await deps.prisma.$transaction(async (tx) => {
               const existing = await tx.mcpServer.findFirst({
@@ -4823,6 +4861,12 @@ export function createRouter(deps: RouterDeps) {
             if (existing.endpoint !== nextEndpoint) {
               await assertMcpRemoteEndpoint(nextEndpoint, context.actor, deps);
             }
+            await assertNoOtherDevinConnection(
+              deps.prisma,
+              context.actor,
+              { endpoint: nextEndpoint, enabled: config.enabled },
+              existing.id,
+            );
             const update = buildMcpUpdateMaterial(existingMaterial, config, {
               clearOAuth: existing.endpoint !== nextEndpoint,
               // A stored key belongs to one host: a new origin gets only credentials sent with it.
@@ -4959,6 +5003,10 @@ export function createRouter(deps: RouterDeps) {
           return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
         }),
         remove: authed.mcp.servers.remove.handler(async ({ context, input }) => {
+          if (await requireOwnerForActiveDevinRow(deps.prisma, context.actor, input.id)) {
+            await devinDisconnect(devinDeps, context.actor, input.id);
+            return { ok: true as const };
+          }
           const server = await deps.prisma.mcpServer.findFirst({
             where: {
               id: input.id,
@@ -7017,6 +7065,24 @@ export function createRouter(deps: RouterDeps) {
         ),
       },
     },
+    devin: {
+      sessions: authed.devin.sessions.handler(({ context }) =>
+        devinSessions(devinDeps, context.actor),
+      ),
+      agent: authed.devin.agent.handler(({ context }) => devinAgent(devinDeps, context.actor)),
+      connect: authed.devin.connect.handler(async ({ context, input }) => {
+        await devinConnect(devinDeps, context.actor, input.secret);
+        return { ok: true as const };
+      }),
+      replaceKey: authed.devin.replaceKey.handler(async ({ context, input }) => {
+        await devinReplaceKey(devinDeps, context.actor, input.secret);
+        return { ok: true as const };
+      }),
+      disconnect: authed.devin.disconnect.handler(async ({ context }) => {
+        await devinDisconnect(devinDeps, context.actor);
+        return { ok: true as const };
+      }),
+    },
     legal: {
       agent: authed.legal.agent.handler(({ context }) =>
         legalAgent(legalDeps, context.actor).catch((error: unknown) => {
@@ -7645,20 +7711,28 @@ export function createRouter(deps: RouterDeps) {
         counts: await unseenCounts(deps.prisma, context.actor),
       })),
       glance: authed.notifications.glance.handler(async ({ context }) => {
-        const [runwayMonths, legalDueSoon, dataRoomWaiting, botKinds] = await Promise.all([
-          financeRunwayMonths(financeDeps, context.actor),
-          legalDueSoonCount(legalDeps, context.actor, 7),
-          // Failed items are the only ones the user can act on (retry or remove).
-          deps.prisma.dataRoomItem.count({
-            where: {
-              spaceId: context.actor.spaceId,
-              userId: context.actor.userId,
-              status: "failed",
-            },
-          }),
-          unseenBotKinds(deps.prisma, context.actor),
-        ]);
-        return { financeRunwayMonths: runwayMonths, legalDueSoon, dataRoomWaiting, botKinds };
+        const [runwayMonths, legalDueSoon, devinNeedsYou, dataRoomWaiting, botKinds] =
+          await Promise.all([
+            financeRunwayMonths(financeDeps, context.actor),
+            legalDueSoonCount(legalDeps, context.actor, 7),
+            devinNeedsYouCount(devinDeps, context.actor),
+            // Failed items are the only ones the user can act on (retry or remove).
+            deps.prisma.dataRoomItem.count({
+              where: {
+                spaceId: context.actor.spaceId,
+                userId: context.actor.userId,
+                status: "failed",
+              },
+            }),
+            unseenBotKinds(deps.prisma, context.actor),
+          ]);
+        return {
+          financeRunwayMonths: runwayMonths,
+          legalDueSoon,
+          devinNeedsYou,
+          dataRoomWaiting,
+          botKinds,
+        };
       }),
       subscribe: authed.notifications.subscribe.handler(async function* ({ context }) {
         const follow = deps.notificationEvents.follow(context.actor, context.signal);
@@ -7698,8 +7772,15 @@ export function createRouter(deps: RouterDeps) {
       catalog: authed.voice.catalog.handler(async () => listVoiceCatalog()),
       status: authed.voice.status.handler(async ({ context }) => {
         const cred = await findDefaultVoiceCredential(deps.prisma, context.actor);
-        return toVoiceStatus(cred);
+        const selection = await findTranscriptionSelection(deps, context.actor);
+        return toVoiceStatus(cred, selection?.provider ?? null);
       }),
+      setTranscription: authed.voice.setTranscription.handler(async ({ context, input }) =>
+        setTranscription(deps, context.actor, { ...input, signal: context.signal }),
+      ),
+      clearTranscription: authed.voice.clearTranscription.handler(async ({ context }) =>
+        clearTranscription(deps, context.actor),
+      ),
       credentials: authed.voice.credentials.handler(async ({ context }) => {
         const rows = await deps.prisma.userVoiceCredential.findMany({
           where: { userId: context.actor.userId },
@@ -7762,7 +7843,8 @@ export function createRouter(deps: RouterDeps) {
             { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
           ),
         );
-        return toVoiceStatus(cred);
+        const selection = await findTranscriptionSelection(deps, context.actor);
+        return toVoiceStatus(cred, selection?.provider ?? null);
       }),
       setSpeechModel: authed.voice.setSpeechModel.handler(async ({ context, input }) =>
         updateVoiceSpeechModel(deps, context.actor, input),

@@ -21,6 +21,10 @@ export const LEGAL_AGENT_MODEL = {
 export const LEGAL_MODEL_REQUIRED_MESSAGE =
   "The Legal agent runs only on Muse Spark 1.2, which needs your own OpenRouter key. Add it in Settings > Models > OpenRouter.";
 
+/** Shown when a Legal run stops because the user has not yet allowed it to read their documents. */
+export const LEGAL_CONSENT_REQUIRED_MESSAGE =
+  "Legal needs your permission to read your documents before it can run.";
+
 /** Name of the Legal agent's daily routine. */
 export const LEGAL_SCAN_ROUTINE_NAME = "Daily legal scan";
 
@@ -36,6 +40,8 @@ export const LEGAL_AGENT_BUILTIN_TOOLS = [
   "legal_link",
   "legal_query",
   "mail_search",
+  "contacts_list",
+  "contacts_add",
   "mail_grep",
   "mail_get",
   "drive_search",

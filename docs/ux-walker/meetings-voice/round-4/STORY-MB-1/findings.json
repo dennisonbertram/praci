@@ -1,0 +1,34 @@
+{
+  "story": "STORY-MB-1",
+  "round": 4,
+  "verdict": "PASS",
+  "round3_dispositions": [
+    {
+      "id": "F3-MB-1-1",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "The empty, typing, disconnected and reconnect-needed key fields show the placeholder \"API key\" (step-empty.png, step-typing.png). One state still lacks it, see F4-MB-2-1."
+    },
+    {
+      "id": "F3-MB-1-2",
+      "sev": "low",
+      "status": "fixed",
+      "evidence": "\"Rakazo keeps your meetings and to-dos.\" is now the first row of the group (step-disconnected.png)."
+    }
+  ],
+  "new_findings": [
+    {
+      "id": "F4-MB-1-1",
+      "kind": "mockup",
+      "severity": "low",
+      "category": "visual",
+      "criterion": "Typography",
+      "score": "warn",
+      "description": "In the Disconnected state the first row \"Rakazo keeps your meetings and to-dos.\" breaks at the hyphen of \"to-dos\", leaving \"dos.\" alone on the second line.",
+      "expected": "The sentence breaks at a word boundary that keeps \"to-dos\" together.",
+      "actual": "\"...meetings and to-\" / \"dos.\" (step-disconnected.png).",
+      "screenshot": "screenshots/step-disconnected.png",
+      "suggested_fix": "Use a non-breaking hyphen (to&#8209;dos) or let the row text wrap before \"to-dos\"."
+    }
+  ]
+}

@@ -59,3 +59,41 @@ it("asks when a new routine runs in plain words, without webhook or GitHub jargo
   expect(names).toContain("Choose when it runs");
   expect(names).not.toContain("Add trigger");
 });
+
+it("lets an existing routine's time zone be changed in Advanced", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const el = document.body.appendChild(document.createElement("div"));
+  const root = createRoot(el);
+  const noop = () => undefined;
+  const onChange = vi.fn();
+  await act(async () =>
+    root.render(
+      <RoutineEditor
+        draft={{ ...emptyRoutineDraft(), timezone: "America/Chicago" }}
+        onChange={onChange}
+        editing={{ id: "routine-1", timezone: "America/Chicago" } as Routine}
+        timezone="America/Chicago"
+        webhook={{ path: "/hook", secret: null, configured: false }}
+        githubPath="/gh"
+        messageProviders={[]}
+        saving={false}
+        running={false}
+        error={null}
+        onBack={noop}
+        onClose={noop}
+        onSave={noop}
+        onTestRun={noop}
+        onDelete={noop}
+        onEnsureWebhook={async () => undefined}
+      />,
+    ),
+  );
+  await act(async () => {
+    (el.querySelector('button[aria-label="Advanced"]') as HTMLButtonElement).click();
+  });
+  const select = document.querySelector("select") as HTMLSelectElement;
+  expect(select.value).toBe("America/Chicago");
+  await act(async () => root.unmount());
+  el.remove();
+  vi.unstubAllGlobals();
+});

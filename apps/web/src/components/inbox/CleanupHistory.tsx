@@ -27,7 +27,7 @@ export function CleanupHistory({
   // A hand-picked selection is the plain case and says nothing.
   const reasons: Partial<Record<MailAction["reason"], string>> = {
     cleanup: t`Cleanup`,
-    skip_inbox: t`Skip inbox`,
+    skip_inbox: t`Archive future mail`,
   };
   return (
     <section aria-labelledby="cleanup-history" className="mt-8">
@@ -58,14 +58,20 @@ export function CleanupHistory({
             >
               {formatMailTime(action.createdAt)}
             </time>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={action.undone || busyBatchId === action.batchId}
-              onClick={() => onUndo(action.batchId)}
-            >
-              <Trans>Undo</Trans>
-            </Button>
+            {action.undone ? (
+              <span className="text-xs text-muted-foreground">
+                <Trans>Undone</Trans>
+              </span>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busyBatchId === action.batchId}
+                onClick={() => onUndo(action.batchId)}
+              >
+                <Trans>Undo</Trans>
+              </Button>
+            )}
           </li>
         ))}
       </ul>

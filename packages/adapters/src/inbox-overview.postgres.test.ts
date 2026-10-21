@@ -281,6 +281,26 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
     expect(result.needsReplyListed).toBe("complete: all 12 messages that need a reply are listed");
   });
 
+  it("leaves out a sender the user marked as noise, as the Inbox page's Needs reply group does", async () => {
+    const t = await harness({
+      a: [message("ask-1", 0.1), message("ask-2", 0.2, { from: "Promo <promo@example.test>" })],
+    });
+    await t.overview();
+    await t.triage("ask-1", { needsReply: true, priority: "normal" });
+    await t.triage("ask-2", { needsReply: true, priority: "normal" });
+    await prisma.inboxSenderFeedback.create({
+      data: {
+        spaceId: t.scope.spaceId,
+        userId: t.scope.userId,
+        senderAddress: "promo@example.test",
+        mark: "noise",
+      },
+    });
+    const result = await t.overview();
+    expect(result.needsReply).toHaveLength(1);
+    expect(result.accounts[0]?.needsReply).toBe(1);
+  });
+
   it("reads the cache without calling Gmail again inside the sync throttle", async () => {
     const t = await harness({ a: [message("m1", 1)] });
     await t.overview();

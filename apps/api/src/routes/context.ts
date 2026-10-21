@@ -15,6 +15,7 @@ import type {
   CodexLiveCatalog,
   ComposioProvider,
   ConnectorRegistry,
+  DevinCallTool,
   FaviconResolver,
   FinanceSyncDeps,
   IntegrationProviderSettings,
@@ -80,6 +81,8 @@ export interface RouterDeps {
   financeCallToolFor?: FinanceSyncDeps["callToolFor"];
   /** Reruns a pin's saved read-only tool call on refresh; unset where MCP is off. */
   mcp?: Pick<McpConnector, "callServerTool" | "listServerTools">;
+  /** Replaces the read-only Devin caller built from `mcp`; tests pass a fake. */
+  devinCallTool?: DevinCallTool;
   /** Reads an uploaded bank statement; wired in app.ts. */
   parseStatement?: ParseStatement;
   financeCrypto?: FinanceCryptoDeps;

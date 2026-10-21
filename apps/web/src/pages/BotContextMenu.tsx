@@ -134,7 +134,7 @@ export function BotContextMenu({
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={onEdit}>
           <Pencil />
-          {isGroup ? t`Group settings` : t`Settings`}
+          {isGroup ? t`Group settings` : t`Bot settings`}
         </DropdownMenuItem>
         {onRoutines && !isGroup ? (
           <DropdownMenuItem onClick={onRoutines}>

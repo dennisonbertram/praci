@@ -50,6 +50,25 @@ export function activeSpaceFirst<T extends { id: string }>(
   return [...active, ...spaces.filter((space) => space.id !== activeId)];
 }
 
+/** The id of another space that holds this bot or group, so a link pasted from there can switch to it. */
+export function spaceHoldingChat(
+  spaces: readonly {
+    id: string;
+    bots: readonly { id: string }[];
+    groups: readonly { id: string }[];
+  }[],
+  currentSpaceId: string,
+  chatId: string,
+): string | null {
+  const holder = spaces.find(
+    (space) =>
+      space.id !== currentSpaceId &&
+      (space.bots.some((bot) => bot.id === chatId) ||
+        space.groups.some((group) => group.id === chatId)),
+  );
+  return holder?.id ?? null;
+}
+
 /** What a block of the list is: the whole space, its heading alone, pinned, a folder or the rest. */
 export type SidebarBlockKind = "space" | "head" | "pinned" | "folder" | "root";
 

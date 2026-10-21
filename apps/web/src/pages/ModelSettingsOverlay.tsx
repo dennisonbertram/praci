@@ -44,6 +44,7 @@ import {
   ModelThinkingOptions,
   NativeSelect,
   NativeSelectOption,
+  Skeleton,
 } from "@rakazo/ui-web";
 import { Check, ChevronDown, Copy, X } from "lucide-react";
 import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from "react";
@@ -69,6 +70,8 @@ import { useModelOAuthSignIn } from "../lib/use-model-oauth-signin";
 import { useOpenRouterSignIn } from "../lib/use-openrouter-signin";
 import { errorText } from "../lib/user-error";
 import { ModelBackupsSettings } from "./ModelBackupsSettings";
+
+const COMMON_PROVIDERS = ["anthropic", "openai", "google", "openrouter", "xai", "mistral"];
 
 export function ModelSettingsOverlay({
   onClose,
@@ -104,6 +107,7 @@ export function ModelSettingsOverlay({
     field.focus({ preventScroll: true });
   });
   const [providerQuery, setProviderQuery] = useState("");
+  const [showAllProviders, setShowAllProviders] = useState(false);
   const [modelId, setModelId] = useState("");
   const modelIdRef = useRef(modelId);
   modelIdRef.current = modelId;
@@ -232,10 +236,15 @@ export function ModelSettingsOverlay({
   }
 
   useEffect(() => {
+    // A superseded first load resolves with nothing; only the live one ends loading.
+    let live = true;
     void refresh()
       .catch((err: unknown) => setError(errorText(err, t`Could not load model settings`)))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (live) setLoading(false);
+      });
     return () => {
+      live = false;
       refreshRevisionRef.current += 1;
       modelProbe.invalidate();
     };
@@ -309,6 +318,11 @@ export function ModelSettingsOverlay({
         : filteredGroups.filter((group) => !connectedProviderIds.has(group.id)),
     [searching, filteredGroups, connectedProviderIds],
   );
+  // Browsing starts with the well-known providers; the long tail sits behind "More".
+  const shownOtherGroups =
+    searching || showAllProviders
+      ? otherGroups
+      : otherGroups.filter((group) => COMMON_PROVIDERS.includes(group.id) || group.id === provider);
   const modelsForProvider = catalog.filter((entry) => entry.provider === provider);
   const selected = modelsForProvider.find((entry) => entry.id === modelId) ?? modelsForProvider[0];
   selectedLabelRef.current = selected?.label;
@@ -1251,7 +1265,6 @@ export function ModelSettingsOverlay({
       </div>
 
       <EmbeddingModelField />
-      <AutoFileEmailField />
 
       <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden px-6 py-6 sm:px-8 min-[1040px]:flex-row">
         <div className="flex min-h-0 shrink-0 flex-col min-[1040px]:w-[310px]">
@@ -1284,8 +1297,23 @@ export function ModelSettingsOverlay({
                     ) : null}
                   </>
                 ) : null}
-                {otherGroups.map((group) => renderProviderRow(group, false))}
+                {shownOtherGroups.map((group) => renderProviderRow(group, false))}
+                {shownOtherGroups.length < otherGroups.length ? (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start rounded-none px-3.5 text-muted-foreground"
+                    onClick={() => setShowAllProviders(true)}
+                  >
+                    <Trans>More</Trans>
+                  </Button>
+                ) : null}
               </>
+            ) : loading ? (
+              <div data-testid="provider-skeleton" className="space-y-2 p-3.5">
+                <Skeleton className="h-5 w-full" />
+                <Skeleton className="h-5 w-full" />
+                <Skeleton className="h-5 w-full" />
+              </div>
             ) : (
               <p className="px-3.5 py-4 text-[13px] text-muted-foreground">
                 <Trans>No providers found.</Trans>
@@ -1537,11 +1565,7 @@ export function ModelSettingsOverlay({
                 </>
               )}
             </>
-          ) : loading ? (
-            <p className="text-muted-foreground">
-              <Trans>Loading model catalog…</Trans>
-            </p>
-          ) : (
+          ) : loading ? null : (
             <p className="text-muted-foreground">
               <Trans>No model catalog is available.</Trans>
             </p>
@@ -1675,57 +1699,6 @@ function EmbeddingModelField() {
         </p>
       ) : null}
     </details>
-  );
-}
-
-/** Whether new mail attachments are filed into the Data room automatically. Saved on change. */
-function AutoFileEmailField() {
-  const { t } = useLingui();
-  const [enabled, setEnabled] = useState(true);
-  const [loaded, setLoaded] = useState(false);
-  const [failed, setFailed] = useState<string | null>(null);
-
-  useEffect(() => {
-    let live = true;
-    rpc.models
-      .autoFileEmail()
-      .then((result) => {
-        if (!live) return;
-        setEnabled(result.enabled);
-        setLoaded(true);
-      })
-      .catch(() => undefined);
-    return () => {
-      live = false;
-    };
-  }, []);
-
-  async function change(next: boolean) {
-    setFailed(null);
-    try {
-      setEnabled((await rpc.models.setAutoFileEmail({ enabled: next })).enabled);
-    } catch (err) {
-      setFailed(errorText(err, t`Could not save the setting`));
-    }
-  }
-
-  return (
-    <div className="mx-6 mt-3 text-[13px] text-muted-foreground sm:mx-8">
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={enabled}
-          disabled={!loaded}
-          onChange={(event) => void change(event.target.checked)}
-        />
-        <Trans>Add email attachments to the Data room</Trans>
-      </label>
-      {failed ? (
-        <p className="mt-1 text-sm text-destructive" role="alert">
-          {failed}
-        </p>
-      ) : null}
-    </div>
   );
 }
 

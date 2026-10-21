@@ -4,7 +4,7 @@ Code read only, from `AppDetail.tsx`, `IntegrationAgentSection.tsx`, `McpDetail.
 
 ## Walk preconditions (mock demo stack)
 
-- **Notion is not seeded or emulated.** `seed.ts` and `data.ts` mention no Notion. The only connected apps (Composio) are two Gmail emulator accounts (`connections/begin` with `GMAIL`; a "sales" account is the second one). Coinbase is a Finance exchange connection, not an Integrations app. STORY-CA-1 to 4 are written for Notion. On the demo stack, walk them on the Gmail "Sales" app page, or add a Notion fixture to the Composio emulator first. Whether the Gmail row offers the same "Create agent" button is UNVERIFIED: the button shows for any connected account without an agent (`AppDetail.tsx`), and no Gmail exception was seen in the code.
+- **Notion is not seeded or emulated.** `seed.ts` and `data.ts` mention no Notion. The only connected apps (Composio) are two Gmail emulator accounts (`connections/begin` with `GMAIL`; a "sales" account is the second one). Coinbase is a Finance exchange connection, not an Integrations app. STORY-APP-391 to 4 are written for Notion. On the demo stack, walk them on the Gmail "Sales" app page, or add a Notion fixture to the Composio emulator first. Whether the Gmail row offers the same "Create agent" button is UNVERIFIED: the button shows for any connected account without an agent (`AppDetail.tsx`), and no Gmail exception was seen in the code.
 - **Carta is seeded** as "Carta (MOCK DEMO)" on `CARTA_MCP_ENDPOINT`, signed in with a mock login, plus the Carta agent (`carta/agent`) and a mock cap table (unless `DEMO_NO_MODEL=1`). Its tools answer from the emulator, `demoCarta()`, which exposes only read tools. A write (`mutate` / `call_tool`) can be approved in the UI but the emulator's result is UNVERIFIED.
 - The demo is built by calling the API, not by running the migration, so the migrated defaults (agent linked, Only this agent on, Allow changes off) are read from the code defaults. Check them on screen.
 - Sending mail needs the Gmail emulator and a configured model. The Carta agent keeps the Gmail and Drive tools.
@@ -28,7 +28,7 @@ The Agent section text is identical on both pages: heading **Agent**, link to th
 
 ---
 
-## STORY-CA-1: Create a Notion agent and read its default state
+## STORY-APP-391: Create a Notion agent and read its default state
 **Type**: medium
 **Topic**: Connected-app agents (Composio app page)
 **Persona**: Maya, founder of the mock company, who connected Notion to keep company notes and wants one assistant that handles it.
@@ -58,12 +58,12 @@ The Agent section text is identical on both pages: heading **Agent**, link to th
 
 ---
 
-## STORY-CA-2: Allow changes in Notion and approve one write
+## STORY-APP-392: Allow changes in Notion and approve one write
 **Type**: long
 **Topic**: Connected-app agents, write approval
 **Persona**: Maya, wants the agent to add a page for the weekly update.
 **Goal**: Turn on changes safely and approve one single change.
-**Preconditions**: STORY-CA-1 done; Notion agent exists with changes off. A model is configured.
+**Preconditions**: STORY-APP-391 done; Notion agent exists with changes off. A model is configured.
 **Ideal path**: 7 steps: switch, confirm, ask, read the card, approve, check the result, optionally switch off. The confirmation and the approval card are both required, so none can be dropped.
 **Alternate paths**: Ask for a change first while changes are off; the agent should say it cannot write. Turn changes off while an approval is pending.
 
@@ -88,18 +88,18 @@ The Agent section text is identical on both pages: heading **Agent**, link to th
 
 ---
 
-## STORY-CA-3: "Only this agent" versus the "Used by" list
+## STORY-APP-393: "Only this agent" versus the "Used by" list
 **Type**: medium
 **Topic**: Connected-app agents, sharing
 **Persona**: Maya, who also has a general assistant and the Inbox agent.
 **Goal**: Make Notion usable only through its own agent, then undo that.
-**Preconditions**: A Notion account with an agent (STORY-CA-1), plus at least two other bots in Agents.
+**Preconditions**: A Notion account with an agent (STORY-APP-391), plus at least two other bots in Agents.
 **Ideal path**: 3 steps for the exclusive switch round trip: on, check, off. Used by is not part of the linked-account page, so Maya cannot do this from Used by.
 **Alternate paths**: Before creating the agent, use the **Used by** toggles to assign Notion to specific bots (the original flow).
 
 ### Steps
 1. Before creating an agent, scroll to **Used by** on the Notion page → a list of agents with a toggle each (AgentToggleList). Switch one off; the change saves ("Could not update bot access" on failure).
-2. Click **Create agent** (STORY-CA-1) → the row now shows the Agent card, and **Used by** disappears from that row (for the linked account). The other bots' access is kept but is ignored by the agent.
+2. Click **Create agent** (STORY-APP-391) → the row now shows the Agent card, and **Used by** disappears from that row (for the linked account). The other bots' access is kept but is ignored by the agent.
 3. Turn on **Only this agent** → the switch is on; per README, access becomes `allAgents = false` plus one row for the agent. Ask the general assistant "What is in Notion?" → it should ask the Notion agent rather than reading Notion itself.
 4. Turn **Only this agent** off → previous sharing is restored exactly (nothing was deleted). Open Used by in this state: there is none on this page for the linked account. Maya must find out who has access some other way. This is a gap.
 5. Compare with the MCP page for Carta: **Used by** stays visible under the Agent section and, when exclusive, lists only the agent (`usedBy` filter).
@@ -115,7 +115,7 @@ The Agent section text is identical on both pages: heading **Agent**, link to th
 
 ---
 
-## STORY-CA-4: Carta page Agent section and its defaults
+## STORY-CAP-006: Carta page Agent section and its defaults (folded into the existing story of this id, updated 2026-10-20)
 **Type**: short
 **Topic**: Carta on the shared Agent controls
 **Persona**: Maya, who connected Carta for the Cap Table.
@@ -143,12 +143,12 @@ The Agent section text is identical on both pages: heading **Agent**, link to th
 
 ---
 
-## STORY-CA-5: Turn on Carta changes and read the confirmation
+## STORY-CAP-027: Turn on Carta changes and read the confirmation (folded into the existing story of this id, updated 2026-10-20)
 **Type**: short
 **Topic**: Carta writes, consent
 **Persona**: Maya, who wants the agent to prepare an option grant.
 **Goal**: Enable changes in Carta consciously.
-**Preconditions**: STORY-CA-4. Mock Carta emulator exposes read tools only, so writes are not testable end to end. UNVERIFIED.
+**Preconditions**: STORY-CAP-006. Mock Carta emulator exposes read tools only, so writes are not testable end to end. UNVERIFIED.
 **Ideal path**: 2 steps: click the switch, click **Allow changes**.
 **Alternate paths**: Cancel; or ask the agent for a change first and let it tell her to use the switch.
 
@@ -170,7 +170,7 @@ The Agent section text is identical on both pages: heading **Agent**, link to th
 
 ---
 
-## STORY-CA-6: The Carta agent sends an investor email, one approval per message
+## STORY-APP-394: The Carta agent sends an investor email, one approval per message
 **Type**: long
 **Topic**: Carta agent, outbound mail approval
 **Persona**: Maya, wants to send the quarterly investor update.
@@ -200,7 +200,7 @@ The Agent section text is identical on both pages: heading **Agent**, link to th
 
 ---
 
-## STORY-CA-7: Compare the two Agent pages for one concept
+## STORY-APP-395: Compare the two Agent pages for one concept
 **Type**: short
 **Topic**: Consistency across app page and MCP page
 **Persona**: Maya, a founder who sees both a Carta page and a Notion page.

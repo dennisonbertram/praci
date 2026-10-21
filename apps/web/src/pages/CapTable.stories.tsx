@@ -1,6 +1,5 @@
 import type { Contact } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { userEvent, within } from "storybook/test";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { CapTablePage } from "./CapTable";
 
@@ -11,6 +10,7 @@ const contact = (id: string, name: string, kind: Contact["kind"], organization: 
   organization,
   kind,
   notes: null,
+  addedBy: null,
   createdAt: "2026-10-15T00:00:00.000Z",
   updatedAt: "2026-10-15T00:00:00.000Z",
 });
@@ -277,21 +277,4 @@ export const WithDocuments: Story = {
         nextCursor: null,
       },
     }),
-};
-
-/** The Import menu open: Email, Google Drive and Box, with Box not yet connected. */
-export const ImportMenuOpen: Story = {
-  beforeEach: () =>
-    mockRpc({
-      "contacts.list": contacts,
-      "mcp.servers.list": [cartaServer],
-      "connections.list": [],
-      "connections.catalog": [
-        { connectorId: "google", slug: "gmail" },
-        { connectorId: "google", slug: "googledrive" },
-      ],
-    }),
-  play: async ({ canvasElement }) => {
-    await userEvent.click(await within(canvasElement).findByRole("button", { name: "Import" }));
-  },
 };

@@ -58,6 +58,7 @@ import {
   AutoSortPlanSchema,
   AutoSortUndoOutputSchema,
 } from "./data-room-autosort.js";
+import { DevinAgentOutputSchema, DevinKeyInputSchema, DevinSessionsOutputSchema } from "./devin.js";
 import {
   ActionApprovalRuleSchema,
   ActionAutoReviewSettingsSchema,
@@ -1290,6 +1291,8 @@ export const appContract = {
       z.object({
         financeRunwayMonths: z.number().nullable(),
         legalDueSoon: z.number().int(),
+        /** Devin sessions that need a person (waiting or failed) on the space's active connection. */
+        devinNeedsYou: z.number().int(),
         dataRoomWaiting: z.number().int(),
         /** Per agent with unseen notifications, the highest-priority kind. */
         botKinds: z.record(z.string(), NotificationKindSchema),
@@ -1318,6 +1321,11 @@ export const appContract = {
     catalog: oc.output(z.array(VoiceCatalogEntrySchema)),
     status: oc.output(VoiceStatusSchema),
     credentials: oc.output(z.array(VoiceCredentialSchema)),
+    /** Select a transcription provider with its own key. The key is never returned. */
+    setTranscription: oc
+      .input(z.object({ provider: z.string().min(1), apiKey: z.string().min(8) }))
+      .output(z.object({ provider: z.string() })),
+    clearTranscription: oc.output(z.object({ ok: z.literal(true) })),
     connect: oc
       .input(
         z.object({
@@ -1451,6 +1459,17 @@ export const appContract = {
       apply: oc.input(AutoSortApplyInputSchema).output(AutoSortApplyOutputSchema),
       undo: oc.input(z.object({ batchId: Id })).output(AutoSortUndoOutputSchema),
     },
+  },
+  devin: {
+    /** Any member reads the space's cached sessions; a read older than a minute refreshes them first. */
+    sessions: oc.output(DevinSessionsOutputSchema),
+    /** The connector's agent (created once), or null for every other member. */
+    agent: oc.output(DevinAgentOutputSchema),
+    /** Space owners only. Checks the key before anything is kept. */
+    connect: oc.input(DevinKeyInputSchema).output(z.object({ ok: z.literal(true) })),
+    /** Space owners only. The old rows and key go; the acting owner becomes the connector. */
+    replaceKey: oc.input(DevinKeyInputSchema).output(z.object({ ok: z.literal(true) })),
+    disconnect: oc.output(z.object({ ok: z.literal(true) })),
   },
   legal: {
     /** Idempotent: creates the Legal agent and its daily scan routine; returns the bot to open in the side panel. */

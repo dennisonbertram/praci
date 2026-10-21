@@ -19,12 +19,13 @@ import {
   Toggle,
 } from "@rakazo/ui-web";
 import { ChevronDown } from "lucide-react";
-import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
 import { AccountAccess } from "../components/AccountAccess";
 import { AiDataSharingSection } from "../components/AiDataSharing";
 import { ApprovalRulesSettings } from "../components/ApprovalRulesSettings";
+import { AutoFileEmailSetting } from "../components/AutoFileEmailSetting";
 import { SuccessPop } from "../components/ai/primitives";
 import { ComputersUnavailableHint } from "../components/ComputersUnavailableHint";
 import { DataExportSection } from "../components/DataExport";
@@ -68,6 +69,8 @@ export type SettingsGeneralProps = {
   messagingEnabled?: boolean;
   onOpenMessaging?: () => void;
   isDeploymentOwner?: boolean;
+  /** Usage and update cards, shown above the rarely used password and delete actions. */
+  children?: ReactNode;
 };
 
 export function GeneralSettingsPanels({
@@ -80,6 +83,7 @@ export function GeneralSettingsPanels({
   messagingEnabled = false,
   onOpenMessaging,
   isDeploymentOwner = false,
+  children,
 }: SettingsGeneralProps) {
   const { t } = useLingui();
   const [accountSecurity, setAccountSecurity] = useState<AccountSecurity | null>(null);
@@ -142,10 +146,6 @@ export function GeneralSettingsPanels({
         {email ? <p className="mt-1 text-[13px] text-muted-foreground/70">{email}</p> : null}
       </section>
 
-      {accountSecurity?.hasPassword && accountSecurity.passwordChangeEnabled !== false ? (
-        <ChangePasswordSection email={email} />
-      ) : null}
-
       {messagingEnabled && onOpenMessaging ? (
         <section className="rounded-xl border border-border px-4 py-4">
           <h3 className="text-[15px] font-medium text-foreground">
@@ -160,12 +160,6 @@ export function GeneralSettingsPanels({
         </section>
       ) : null}
 
-      <AiDataSharingSection />
-
-      <NotificationSettingsSection />
-
-      <DataExportSection />
-
       <section className="rounded-xl border border-border px-4 py-4">
         <h3 className="text-[15px] font-medium text-foreground">
           <Trans>Appearance</Trans>
@@ -177,20 +171,21 @@ export function GeneralSettingsPanels({
             setUiAppearance(next);
           }}
         />
-        <div className="mt-4 flex items-center justify-between gap-3">
+        {/* The sidebar is a drawer below 1024px, where density does nothing. */}
+        <div className="mt-4 hidden lg:block">
           <span id={sidebarDensityLabelId} className="text-[13px] text-foreground/75">
             <Trans>Sidebar density</Trans>
           </span>
           <fieldset
             aria-labelledby={sidebarDensityLabelId}
             data-testid="bots-sidebar-density-select"
-            className="grid min-w-0 grid-cols-2 gap-1 rounded-lg bg-muted p-1"
+            className="mt-2 grid min-w-0 grid-cols-2 gap-1 rounded-lg bg-muted p-1"
           >
             <Toggle
               data-testid="bots-sidebar-density-comfortable"
               pressed={sidebarDensity === "comfortable"}
               onPressedChange={() => setBotsSidebarDensity("comfortable")}
-              className="text-[13px] aria-pressed:bg-background aria-pressed:shadow-sm"
+              className="text-[13px] aria-pressed:bg-primary aria-pressed:text-primary-foreground"
             >
               <Trans>Comfortable</Trans>
             </Toggle>
@@ -198,7 +193,7 @@ export function GeneralSettingsPanels({
               data-testid="bots-sidebar-density-compact"
               pressed={sidebarDensity === "compact"}
               onPressedChange={() => setBotsSidebarDensity("compact")}
-              className="text-[13px] aria-pressed:bg-background aria-pressed:shadow-sm"
+              className="text-[13px] aria-pressed:bg-primary aria-pressed:text-primary-foreground"
             >
               <Trans>Compact</Trans>
             </Toggle>
@@ -208,16 +203,15 @@ export function GeneralSettingsPanels({
 
       <section className="rounded-xl border border-border px-4 py-4">
         <h3 className="text-[15px] font-medium text-foreground">
-          <Trans>Language</Trans>
+          {timezone && onTimezoneChange ? (
+            <Trans>Language and time zone</Trans>
+          ) : (
+            <Trans>Language</Trans>
+          )}
         </h3>
         <UiLocalePicker value={locale} onChange={chooseLocale} />
         {timezone && onTimezoneChange ? (
-          <>
-            <h3 className="mt-5 text-[15px] font-medium text-foreground">
-              <Trans>Time zone</Trans>
-            </h3>
-            <TimezonePicker value={timezone} onChange={onTimezoneChange} />
-          </>
+          <TimezonePicker value={timezone} onChange={onTimezoneChange} />
         ) : null}
       </section>
 
@@ -237,7 +231,7 @@ export function GeneralSettingsPanels({
               disabled={avatarPending}
               onPressedChange={() => void chooseAvatarStyle(style)}
               data-testid={`avatar-style-${style}`}
-              className="h-auto justify-start gap-3 px-3.5 py-3 text-[14px] font-normal"
+              className="h-auto justify-start gap-3 px-3.5 py-3 text-[14px] font-normal aria-pressed:border-foreground aria-pressed:ring-1 aria-pressed:ring-foreground"
             >
               <BotAvatar
                 color="#D9508A"
@@ -262,7 +256,7 @@ export function GeneralSettingsPanels({
         <section className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-4">
           <div className="min-w-0">
             <h3 className="text-[15px] font-medium text-foreground">
-              <Trans>Server integrations</Trans>
+              <Trans>Server apps</Trans>
             </h3>
             <p className="mt-0.5 text-[13px] text-muted-foreground">
               <Trans>Choose how apps connect for everyone on this server.</Trans>
@@ -270,7 +264,7 @@ export function GeneralSettingsPanels({
           </div>
           <Button
             variant="outline"
-            aria-label={t`Open server integrations`}
+            aria-label={t`Open server apps`}
             render={
               <Link
                 to={`/app/integrations/setup?next=${encodeURIComponent(window.location.pathname + window.location.search)}`}
@@ -281,6 +275,8 @@ export function GeneralSettingsPanels({
           </Button>
         </section>
       ) : null}
+
+      <DataExportSection />
 
       <details data-testid="advanced-settings" className="group rounded-xl border border-border">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 text-[14px] text-foreground/75">
@@ -343,9 +339,15 @@ export function GeneralSettingsPanels({
               <Trans>Load web images automatically</Trans>
             </Label>
           </div>
-          <ApprovalRulesSettings />
         </div>
       </details>
+
+      {children}
+
+      {/* Rare actions come last, below everything that loads on its own, so nothing above them moves. */}
+      {accountSecurity?.hasPassword && accountSecurity.passwordChangeEnabled !== false ? (
+        <ChangePasswordSection email={email} />
+      ) : null}
 
       {/* Last, so a destructive action is never the first thing on the page. */}
       <section data-testid="account-access" className="rounded-xl border border-border px-4 pb-4">
@@ -355,9 +357,21 @@ export function GeneralSettingsPanels({
   );
 }
 
+export function PrivacySettingsPanels() {
+  return (
+    <div className="space-y-5">
+      <AiDataSharingSection />
+      <AutoFileEmailSetting />
+      <section className="rounded-xl border border-border px-4 py-4">
+        <ApprovalRulesSettings />
+      </section>
+      <NotificationSettingsSection />
+    </div>
+  );
+}
+
 export function UsageSettingsPanel({
   usage,
-  panelRef,
 }: {
   usage?: {
     runs: number;
@@ -365,18 +379,15 @@ export function UsageSettingsPanel({
     outputTokens: number | null;
     totalTokens?: number | null;
   } | null;
-  panelRef?: RefObject<HTMLDivElement | null>;
 }) {
   const tokens = usage?.totalTokens;
   return (
-    <div
-      ref={panelRef}
-      tabIndex={-1}
-      data-testid="usage-settings"
-      className="rounded-xl border border-border px-4 py-4 outline-none"
-    >
+    <section data-testid="usage-settings" className="rounded-xl border border-border px-4 py-4">
+      <h3 className="text-[15px] font-medium text-foreground">
+        <Trans>Usage</Trans>
+      </h3>
       {usage ? (
-        <p className="text-[14px] text-foreground/75">
+        <p className="mt-3 text-[14px] text-foreground/75">
           <Plural
             value={usage.runs}
             one="# task done by your bots"
@@ -390,10 +401,10 @@ export function UsageSettingsPanel({
           )}
         </p>
       ) : null}
-      <p className={`text-[12.5px] text-muted-foreground/80 ${usage ? "mt-2" : ""}`}>
+      <p className="mt-2 text-[12.5px] text-muted-foreground/80">
         <Trans>Model spend uses your provider keys.</Trans>
       </p>
-    </div>
+    </section>
   );
 }
 
@@ -430,14 +441,11 @@ export function UpdatesSettingsPanel({
   isDeploymentOwner?: boolean;
 }) {
   return (
-    <div className="space-y-5">
-      {/* Both sections can render nothing (hosted installs), so the tab is never blank. */}
-      <p className="text-[13.5px] text-muted-foreground">
-        <Trans>Praci keeps itself up to date. If an update ever needs you, it shows here.</Trans>
-      </p>
+    <>
+      {/* Both sections render nothing on hosted installs. */}
       <DesktopUpdateSection />
       <SoftwareUpdateSection isDeploymentOwner={isDeploymentOwner} />
-    </div>
+    </>
   );
 }
 
@@ -587,7 +595,7 @@ function AppearancePicker({
           data-testid={`ui-appearance-${option.value}`}
           pressed={option.value === value}
           onPressedChange={() => onChange(option.value)}
-          className="text-[13px] aria-pressed:bg-background aria-pressed:shadow-sm"
+          className="text-[13px] aria-pressed:bg-primary aria-pressed:text-primary-foreground"
         >
           {option.label}
         </Toggle>
@@ -645,7 +653,7 @@ function TimezonePicker({
     <div className="mt-3">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
-          render={<Button variant="outline" className="w-full justify-between font-normal" />}
+          render={<Button variant="outline" className="h-9 w-full justify-between font-normal" />}
           aria-label={t`Time zone`}
           disabled={pending !== null}
         >

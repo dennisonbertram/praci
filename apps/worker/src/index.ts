@@ -19,6 +19,7 @@ import {
   createBackgroundJobHandlers,
   createCloudAgentConnection,
   createConnectorStack,
+  createDevinCallTool,
   createFinanceCallToolFor,
   createJobReconciler,
   createMessagingContextLoader,
@@ -51,6 +52,7 @@ import {
   reconcileCloudAgents,
   reconcileComputerUpdates,
   reconcileDataRoom,
+  reconcileMeetingSyncs,
   resolveDeploymentModel,
   resolvePiSessionRoot,
   resolveSandboxProvider,
@@ -266,6 +268,7 @@ async function main() {
     messaging,
     cloudAgent,
     financeCallToolFor: createFinanceCallToolFor(prisma, mcp),
+    devinCallTool: createDevinCallTool(prisma, mcp),
     artifacts,
     connectors: stack.connector,
     boxAccessToken: boxAccessToken(mcpOAuth),
@@ -313,6 +316,7 @@ async function main() {
     reconcileCloudAgents: () => reconcileCloudAgents({ prisma, jobs, cloudAgent }),
     reconcileComputerUpdates: () => reconcileComputerUpdates({ prisma, jobs }),
     reconcileDataRoom: () => reconcileDataRoom({ prisma, jobs }),
+    reconcileMeetings: () => reconcileMeetingSyncs({ prisma, jobs }),
   });
   reconciler.start();
 

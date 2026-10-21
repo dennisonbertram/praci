@@ -35,6 +35,8 @@ export function buildApprovalAskBlock(
     imessage?: { recipient: string; line: string; disclosure?: string };
     /** A repeating schedule in plain words and local time, with its whole prompt. */
     schedule?: { summary: string; detail: string };
+    /** Who and which account a money request names, looked up from the provider (see resolveMoneyNames). */
+    moneyNames?: MoneyNames;
   },
 ): MessageBlock {
   const summary =
@@ -43,12 +45,14 @@ export function buildApprovalAskBlock(
       toolName,
       options?.imessage ? { ...args, to: options.imessage.recipient } : args,
       options?.serviceName,
+      options?.moneyNames,
     );
   const fullDetail =
     options?.fullMail ||
     options?.integrationWriteTool !== undefined ||
     options?.imessage ||
     options?.schedule;
+  const fullDetailOpen = options?.fullMail || options?.imessage || options?.schedule;
   const detail = options?.schedule
     ? [options.reviewReason?.trim(), options.schedule.detail].filter(Boolean).join("\n")
     : options?.imessage
@@ -69,11 +73,18 @@ export function buildApprovalAskBlock(
     approvalEffectId: effectId,
     text: truncate(
       redactSecrets(
-        toolName === "create_space" ? `${summary}?` : `Review before ${summary}`,
+        toolName === "create_space" || isSendMoney(toolName)
+          ? `${summary}?`
+          : `Review before ${summary}`,
         secrets,
       ),
       MAX_APPROVAL_SUMMARY_LENGTH,
     ),
+    // Raw tool arguments sit behind a Details disclosure; a card the person reads to decide stays open.
+    detailFolded:
+      (options?.integrationWriteTool !== undefined || isSendMoney(toolName)) && !fullDetailOpen
+        ? true
+        : undefined,
     // A full mail send shows every recipient and the whole body, never a cut-off one.
     detail: safeDetail
       ? fullDetail
@@ -231,12 +242,51 @@ function fullMailDetail(args: Record<string, unknown>, reviewReason?: string): s
   return lines.join("\n");
 }
 
+/** A bank's request to send money, whichever server slug the tool sits under. */
+const isSendMoney = (toolName: string) => /(^|__)requestSendMoney$/.test(toolName);
+
+export type MoneyNames = { recipient?: string; account?: string };
+
+/**
+ * The names behind a send-money request's recipientId and accountId, read with the provider's own
+ * read tools through `read`. A failed or empty lookup leaves that name out, so the card says
+ * "a recipient" rather than an id. The caller caches lookups for the same id.
+ */
+export async function resolveMoneyNames(
+  toolName: string,
+  args: Record<string, unknown>,
+  read: (tool: "getRecipient" | "getAccount", args: Record<string, string>) => Promise<unknown>,
+): Promise<MoneyNames | undefined> {
+  if (!isSendMoney(toolName)) return undefined;
+  const nameOf = async (tool: "getRecipient" | "getAccount", key: string, id: unknown) => {
+    if (typeof id !== "string" || !id) return undefined;
+    try {
+      const row = (await read(tool, { [key]: id })) as Record<string, unknown> | undefined;
+      // An account goes by its nickname; a payee by its legal name.
+      const name = tool === "getAccount" ? row?.nickname || row?.name : row?.name || row?.nickname;
+      return typeof name === "string" && name.trim() ? name.trim() : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  const [recipient, account] = await Promise.all([
+    nameOf("getRecipient", "recipientId", args.recipientId),
+    nameOf("getAccount", "accountId", args.accountId),
+  ]);
+  return { recipient, account };
+}
+
 /** What the approval is for, in words; never a raw tool name for mail. */
 export function describeApprovalAction(
   toolName: string,
   args: Record<string, unknown>,
   serviceName?: string,
+  moneyNames?: MoneyNames,
 ): string {
+  if (isSendMoney(toolName)) {
+    const amount = args.amount == null ? "money" : formatAmount(args.amount, args.currency);
+    return `Send ${amount} to ${moneyNames?.recipient ?? "a recipient"} from ${moneyNames?.account ?? "an account"}`;
+  }
   if (toolName === "mail_send" || toolName === "mail_draft") {
     const [first, ...rest] = strings(args.to);
     const to = first ? ` to ${first}${rest.length ? ` and ${rest.length} more` : ""}` : "";
@@ -312,9 +362,22 @@ function formatApprovalDetail(
 function pickScopeLabel(args: Record<string, unknown>): string | undefined {
   for (const key of ["to", "title", "collection", "subject", "amount"]) {
     const value = args[key];
-    if (value != null && value !== "") return String(value);
+    if (value == null || value === "") continue;
+    return key === "amount" ? formatAmount(value, args.currency) : String(value);
   }
   return undefined;
+}
+
+/** "1200" becomes "$1,200.00"; a value that is not a number, or an unknown currency, stays as written. */
+function formatAmount(value: unknown, currency: unknown): string {
+  const number = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(number) || typeof value === "boolean") return String(value);
+  const code = typeof currency === "string" && /^[A-Za-z]{3}$/.test(currency) ? currency : "USD";
+  try {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: code }).format(number);
+  } catch {
+    return String(value);
+  }
 }
 
 function truncate(value: string, maxLength: number): string {

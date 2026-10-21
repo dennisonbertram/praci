@@ -33,6 +33,8 @@ import {
 } from "./data-room-jobs.js";
 import { resolveDataRoomAi } from "./data-room-models.js";
 import { runDataRoomZipUnpack } from "./data-room-zip-import.js";
+import type { DevinCallTool } from "./devin-call-tool.js";
+import { runDevinRefreshJob } from "./devin-refresh.js";
 import type { DriveFilesDeps } from "./drive-files.js";
 import { syncExchanges } from "./exchange-sync.js";
 import type { createRunExecutor } from "./executor.js";
@@ -46,6 +48,9 @@ import { runInboxTriage } from "./inbox-triage.js";
 import { runMailAttachmentFiling } from "./mail-attachment-filing.js";
 import { runMailSyncJob } from "./mail-sync-job.js";
 import { expireMailSearch } from "./mail-tools.js";
+import { createMeetingSourceRegistry } from "./meeting-source-registry.js";
+import type { MeetingSourceRegistry } from "./meeting-sync-job.js";
+import { runMeetingSyncJob } from "./meeting-sync-job.js";
 import type { MemoryProviderResolver } from "./memory-provider-factory.js";
 import { deliverMessagingOutbound, mirrorMessagingOutbound } from "./messaging-delivery.js";
 import { deliverDueNotifications } from "./notification-outbox.js";
@@ -71,6 +76,8 @@ export function createBackgroundJobHandlers(deps: {
   cloudAgent?: CloudAgentConnection | null;
   /** Read-tool caller for the user's Mercury and Brex servers; see `createFinanceCallToolFor`. */
   financeCallToolFor?: FinanceSyncDeps["callToolFor"];
+  /** Read-only Devin caller; without it `devin.refresh` does nothing. Every process that runs jobs must pass it. */
+  devinCallTool?: DevinCallTool;
   /** Deletes the blobs of removed Data room items and reads them for ingest. */
   artifacts?: ArtifactStore;
   /** Needed only to import Google Drive folders. */
@@ -83,6 +90,8 @@ export function createBackgroundJobHandlers(deps: {
   mail?: MailProvider;
   /** MAIL_WRITES_DISABLED: the `mail.sync` job then archives nothing for skip-inbox senders. */
   mailWritesDisabled?: boolean;
+  /** Provider to MeetingSource for `meetings.sync`; omitted means the real providers. The demo and tests pass emulator-backed entries. */
+  meetingSources?: MeetingSourceRegistry;
   /** Gmail push settings; absent means polling only, and the watch renewal job does nothing. */
   gmailPush?: GmailPushConfig;
 }): BackgroundJobHandlers {
@@ -114,6 +123,8 @@ export function createBackgroundJobHandlers(deps: {
         resolveDataRoomAi({ prisma: deps.prisma, resolveModel: deps.executor.resolveModel }, scope),
     };
   };
+
+  const meetingSources = deps.meetingSources ?? createMeetingSourceRegistry();
 
   return {
     "run.continue": async (payload) => {
@@ -198,6 +209,18 @@ export function createBackgroundJobHandlers(deps: {
         payload,
       );
     },
+    "meetings.sync": (payload) =>
+      runMeetingSyncJob(
+        {
+          prisma: deps.prisma,
+          jobs: deps.jobs,
+          secrets: deps.secretStore,
+          registry: meetingSources,
+        },
+        payload,
+      ),
+    // The digest slice fills this in; until then a queued digest is a no-op.
+    "meetings.digest": async () => {},
     "mail.attachments": async (payload) => {
       const { mail, artifacts } = deps;
       if (!mail || !artifacts) throw new Error("Mail attachment filing is not configured");
@@ -210,6 +233,10 @@ export function createBackgroundJobHandlers(deps: {
       if (!deps.gmailPush) return;
       if (!deps.mail) throw new Error("Mail sync is not configured");
       await runMailWatchRenewal({ prisma: deps.prisma, mail: deps.mail, push: deps.gmailPush });
+    },
+    "devin.refresh": async (payload) => {
+      if (!deps.devinCallTool) return;
+      await runDevinRefreshJob({ prisma: deps.prisma, callTool: deps.devinCallTool }, payload);
     },
     "inbox.triage": async (payload) => {
       await runInboxTriage(

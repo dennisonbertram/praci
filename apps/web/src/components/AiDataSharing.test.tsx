@@ -21,6 +21,7 @@ vi.mock("@rakazo/ui-web", () => ({
       {children}
     </button>
   ),
+  Skeleton: (props: React.ComponentProps<"div">) => <div data-skeleton {...props} />,
   Card: ({ children }: { children?: ReactNode }) => <section>{children}</section>,
   cn: (...names: unknown[]) => names.filter(Boolean).join(" "),
   Switch: ({
@@ -95,10 +96,11 @@ it("names the recipient and allows exactly its key when the user presses Allow",
   );
 
   expect(container.querySelector("h2")?.textContent).toBe("Let Praci sort your mail");
-  // The recipient stays named, so consent stays accurate.
+  // One sentence naming what is sent, with no vendor name in it.
   expect(container.textContent).toContain(
-    "Senders, recipients, subjects and short previews go to the AI service that runs your bots (OpenRouter).",
+    "The sender, subject and a preview of each message are sent to the AI model that runs your bots.",
   );
+  expect(container.textContent).not.toContain("OpenRouter");
   expect(onAllowed).not.toHaveBeenCalled();
   expect(consent.allowRecipient).not.toHaveBeenCalled();
 
@@ -152,11 +154,21 @@ it("lists only model recipients, each off until the user turns it on, with the s
   expect(
     switches.map((s) => [s.getAttribute("aria-label"), s.getAttribute("aria-checked")]),
   ).toEqual([
-    ["Allow OpenRouter, vendor/model", "true"],
+    ["Allow model", "true"],
     ["Allow TypeSafe", "false"],
   ]);
   expect(container.textContent).toContain(AI_DATA_DISCLOSURES.model);
   expect(container.textContent).not.toContain("ElevenLabs");
+});
+
+it("holds its place with a skeleton until the status loads, then says what off does", async () => {
+  let resolve: (status: AiConsentStatus) => void = () => undefined;
+  consent.aiConsentStatus.mockReturnValue(new Promise((r) => (resolve = r)));
+  await render(<AiDataSharingSection />);
+  expect(container.querySelector("[data-skeleton]")).not.toBeNull();
+  await act(async () => resolve(statusOf()));
+  expect(container.querySelector("[data-skeleton]")).toBeNull();
+  expect(container.textContent).toContain("Bots cannot use a model until you allow it.");
 });
 
 it("tells two models from the same provider apart", async () => {
@@ -180,16 +192,15 @@ it("tells two models from the same provider apart", async () => {
   );
   await render(<AiDataSharingSection />);
   const rows = [...container.querySelectorAll("li")];
+  // Labelled by purpose, with the model as secondary text and no vendor caption.
   expect(rows.map((r) => r.textContent)).toEqual([
-    "OpenRouter" + "vendor/alpha, forwarded",
-    "OpenRouter" + "vendor/beta, forwarded",
+    "Bots, mail, files and contracts" + "alpha",
+    "Bots, mail, files and contracts" + "beta",
   ]);
+  expect(container.textContent).not.toContain("OpenRouter");
   expect(
     [...container.querySelectorAll('[role="switch"]')].map((s) => s.getAttribute("aria-label")),
-  ).toEqual([
-    "Allow OpenRouter, vendor/alpha, forwarded",
-    "Allow OpenRouter, vendor/beta, forwarded",
-  ]);
+  ).toEqual(["Allow alpha", "Allow beta"]);
 });
 
 it("revokes only the switched-off recipient and allows only the switched-on one", async () => {
@@ -202,14 +213,12 @@ it("revokes only the switched-off recipient and allows only the switched-on one"
   );
   await render(<AiDataSharingSection />);
 
-  await click(container.querySelector('[aria-label="Allow OpenRouter, vendor/model"]'));
+  await click(container.querySelector('[aria-label="Allow model"]'));
   expect(consent.revokeRecipient).toHaveBeenCalledExactlyOnceWith("model-key");
   expect(consent.allowRecipient).not.toHaveBeenCalled();
-  expect(
-    container
-      .querySelector('[aria-label="Allow OpenRouter, vendor/model"]')
-      ?.getAttribute("aria-checked"),
-  ).toBe("false");
+  expect(container.querySelector('[aria-label="Allow model"]')?.getAttribute("aria-checked")).toBe(
+    "false",
+  );
 
   await click(container.querySelector('[aria-label="Allow TypeSafe"]'));
   expect(consent.allowRecipient).toHaveBeenCalledExactlyOnceWith("typesafe-key");
@@ -222,7 +231,7 @@ it("tells an open Inbox to reload once a switch changes", async () => {
   window.addEventListener("rakazo:inbox-changed", changed);
   await render(<AiDataSharingSection />);
   expect(changed).not.toHaveBeenCalled();
-  await click(container.querySelector('[aria-label="Allow OpenRouter, vendor/model"]'));
+  await click(container.querySelector('[aria-label="Allow model"]'));
   expect(changed).toHaveBeenCalledTimes(1);
   window.removeEventListener("rakazo:inbox-changed", changed);
 });

@@ -8,6 +8,7 @@ import {
   isServerUnreachable,
   isTechnicalErrorMessage,
   KEY_REJECTED_PATTERN,
+  plainRunError,
   providerErrorMessage,
   threadRunError,
   userErrorMessage,
@@ -226,5 +227,16 @@ describe("isInternalRunError", () => {
     expect(isInternalRunError("boom\n    at Object.run (/srv/app/index.js:10:5)")).toBe(true);
     expect(isInternalRunError("x".repeat(301))).toBe(true);
     expect(isInternalRunError("Couldn't reach muse-spark-1.3. Try again.")).toBe(false);
+  });
+});
+
+describe("plainRunError", () => {
+  const copy = { keyRejected: "KEY", generic: "GENERIC" };
+  it("hides a provider 401 JSON body", () => {
+    expect(plainRunError('401: {"message":"User not found.","code":401}', copy)).toBe("KEY");
+  });
+  it("hides stack-trace text and keeps human messages", () => {
+    expect(plainRunError("x".repeat(400), copy)).toBe("GENERIC");
+    expect(plainRunError("Allow it on the Legal page.", copy)).toBe("Allow it on the Legal page.");
   });
 });

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import type { Contact } from "@rakazo/contracts";
+import { NotificationToaster, notificationToastManager } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -72,7 +73,6 @@ vi.mock("../components/integrations/useIntegrations", () => ({
   }),
 }));
 
-import { DATA_ROOM_CHANGED } from "../lib/data-room";
 import { setHideAmounts } from "../lib/hide-amounts-preference";
 import { CapTablePage, rowKind } from "./CapTable";
 
@@ -85,6 +85,7 @@ const contact = (id: string, name: string, kind: Contact["kind"]): Contact => ({
   organization: null,
   kind,
   notes: null,
+  addedBy: null,
   createdAt: "2026-10-15T00:00:00.000Z",
   updatedAt: "2026-10-15T00:00:00.000Z",
 });
@@ -104,6 +105,7 @@ async function show(url = "/app/cap-table", props: Parameters<typeof CapTablePag
     root.render(
       <MemoryRouter initialEntries={[url]}>
         <CapTablePage {...props} />
+        <NotificationToaster onOpen={() => {}} />
       </MemoryRouter>,
     ),
   );
@@ -133,6 +135,7 @@ beforeEach(() => {
   rpcMock.catalog.mockResolvedValue([]);
 });
 afterEach(() => {
+  act(() => notificationToastManager.close());
   setHideAmounts(false);
   vi.useRealTimers();
   act(() => root.unmount());
@@ -260,8 +263,45 @@ it("shows the summary, ownership legend and joined investors", async () => {
   expect(text).toContain("SAFE, $250,000");
   // amount raised is null; the SAFE holder has no shares or percent
   expect(text).toContain("—");
-  // Bo is a contact with no holding and is still listed
-  expect(text).toContain("Bo");
+  // Bo is a contact with no holding: not under All, but under their own tab and in a search.
+  expect(container.querySelector("table:not(.sr-only)")?.textContent).not.toContain("Bo");
+  await click(button("Auditors"));
+  expect(container.querySelector("table:not(.sr-only)")?.textContent).toContain("Bo");
+});
+
+it("shows a skeleton, not the contacts-only layout, until the cap table has loaded", async () => {
+  let resolve: (value: unknown) => void = () => {};
+  rpcMock.capTable.mockReturnValue(new Promise((r) => (resolve = r)));
+  await show();
+  expect(container.querySelector("[role=tablist]")).toBeNull();
+  expect(container.querySelector("[aria-busy=true]")).not.toBeNull();
+  await act(async () => resolve({ snapshot, syncing: false }));
+  expect(container.querySelector("[role=tablist]")).not.toBeNull();
+  expect(container.querySelector("[aria-busy=true]")).toBeNull();
+});
+
+it("says contacts do not change Carta only for a contact that is on the cap table", async () => {
+  rpcMock.list.mockResolvedValue([
+    contact("c1", "Ada", "investor"),
+    contact("c2", "Bo", "auditor"),
+  ]);
+  rpcMock.capTable.mockResolvedValue({
+    snapshot: { ...snapshot, holders: [{ ...snapshot.holders[0], email: "ada@example.test" }] },
+    syncing: false,
+  });
+  await show();
+  const open = (name: string) =>
+    click(
+      [...container.querySelectorAll<HTMLElement>("tbody button")].find(
+        (b) => b.textContent === name,
+      ),
+    );
+  await open("Ada");
+  expect(document.body.textContent).toContain("do not change Carta");
+  await click(button("Cancel"));
+  await click(button("Auditors"));
+  await open("Bo");
+  expect(document.body.textContent).not.toContain("do not change Carta");
 });
 
 it("lists the unallocated option pool as a row so the Ownership column adds up", async () => {
@@ -445,7 +485,23 @@ it("deletes a contact with an Undo that restores it", async () => {
   expect(document.body.textContent).not.toContain("Deleted Bo");
 });
 
-it("keeps the Deleted notice with Undo until it is dismissed", async () => {
+it("drops a deleted row and focuses the restored name after Undo, like Contacts", async () => {
+  const bo = contact("c2", "Bo", "auditor");
+  rpcMock.remove.mockResolvedValue({ ok: true });
+  rpcMock.save.mockResolvedValue({ ...bo, id: "c9" });
+  await show();
+  await click(button("Bo"));
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "investor")]);
+  await click(button("Delete"));
+  expect(container.querySelector('[data-contact-id="c2"]')).toBeNull();
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "investor"), { ...bo, id: "c9" }]);
+  await click(button("Undo"));
+  const row = container.querySelector('[data-contact-id="c9"]');
+  expect(row).not.toBeNull();
+  expect(document.activeElement).toBe(row?.querySelector("[data-row-open]"));
+});
+
+it("keeps the Deleted toast with Undo until it is dismissed", async () => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   rpcMock.remove.mockResolvedValue({ ok: true });
   await show();
@@ -454,7 +510,7 @@ it("keeps the Deleted notice with Undo until it is dismissed", async () => {
   await act(async () => vi.advanceTimersByTimeAsync(60_000));
   expect(document.body.textContent).toContain("Deleted Bo");
   expect(button("Undo")).toBeDefined();
-  await click(button("Dismiss"));
+  await click(document.querySelector<HTMLElement>('button[aria-label="Dismiss"]') ?? undefined);
   expect(document.body.textContent).not.toContain("Deleted Bo");
 });
 
@@ -465,10 +521,8 @@ it("keeps the contact restorable when Undo fails, and restores it on Try again",
   await click(button("Bo"));
   await click(button("Delete"));
   await click(button("Undo"));
-  expect(document.body.textContent).toContain("offline");
-  // The failure names the contact and says that dismissing loses it.
+  // The failure names the contact and offers to try again.
   expect(document.body.textContent).toContain("Could not restore Bo");
-  expect(document.body.textContent).toContain("Bo stays deleted");
   expect(button("Undo")).toBeUndefined();
   await click(button("Try again"));
   expect(rpcMock.save).toHaveBeenCalledTimes(2);
@@ -479,7 +533,7 @@ it("keeps the contact restorable when Undo fails, and restores it on Try again",
     kind: "auditor",
     notes: null,
   });
-  expect(document.body.textContent).not.toContain("offline");
+  expect(document.body.textContent).not.toContain("Could not restore Bo");
   expect(document.body.textContent).toContain("Restored Bo");
 });
 
@@ -493,12 +547,10 @@ it("confirms a save and closes the dialog with Cancel", async () => {
   await click(button("Add contact"));
   await typeInto("contact-name", "Cy");
   await click(button("Save"));
-  // The notice names the contact and sits after the table, so showing it never moves the rows.
-  const status = container.querySelector("[role=status]") as HTMLElement;
+  // The toast names the contact and floats over the page, so showing it never moves the rows.
+  const status = document.querySelector("[role=status]") as HTMLElement;
   expect(status.textContent).toContain("Saved Cy");
-  expect(status.closest(".fixed")).toBeNull();
-  const table = container.querySelector("table") as HTMLElement;
-  expect(table.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(status.closest(".fixed")).not.toBeNull();
 });
 
 it("scrolls the saved contact into view and marks its row", async () => {
@@ -520,7 +572,7 @@ it("scrolls the saved contact into view and marks its row", async () => {
   await flush();
   const row = container.querySelector('[data-contact-id="c3"]') as HTMLElement;
   expect(scrolled).toContain(row);
-  expect(row.className).toContain("bg-muted");
+  expect(row.className).toContain("bg-accent");
 });
 
 it("reads the kind filter from the URL and names the kind when it is empty", async () => {
@@ -539,7 +591,10 @@ it("explains where ownership comes from when Carta is not connected", async () =
   expect(container.textContent).toContain("See who owns your company");
   // A founder new to Carta learns what it is, and that the page works without it.
   expect(container.textContent).toContain("Carta is the service many startups use");
-  expect(container.textContent).toContain("Not on Carta?");
+  // Nothing else competes with the prompt: no tabs, search, table or Add contact.
+  expect(container.querySelector("[role=tablist]")).toBeNull();
+  expect(container.querySelector("input[type=search]")).toBeNull();
+  expect(container.textContent).not.toContain("Add contact");
   await act(async () => root.unmount());
   root = createRoot(container);
   rpcMock.servers.mockResolvedValue([{ ...cartaServer, oauthStatus: "reconnect" }]);
@@ -590,10 +645,13 @@ it("lists only investors on the Investors tab and offers Add email only to inves
     ...container.querySelectorAll<HTMLButtonElement>("[data-testid=cap-table-email-cell] button"),
   ].filter((b) => b.textContent === "Add email");
   expect(adds).toHaveLength(1);
-  // A contact with no holding shows a dash, the same as a holder with no shares.
+  // A contact with no holding shows the table's dash in Ownership, hidden on phones where cards stay blank.
+  await click(button("Auditors"));
   const rows = [...container.querySelectorAll("table:not(.sr-only) tbody tr")];
   const bo = rows.find((row) => row.textContent?.includes("Bo"));
-  expect(bo?.querySelectorAll("td")[4]?.textContent).toBe("—");
+  const cell = bo?.querySelectorAll("td")[4];
+  expect(cell?.textContent).toBe("—");
+  expect(cell?.querySelector("span")?.className).toContain("hidden");
 });
 
 it("keeps the Kind column with or without Carta", async () => {
@@ -649,10 +707,7 @@ it("hides dollar amounts but keeps shares and ownership in place while amounts a
   for (const shown of ["10,000,000", "1,000,000", "10.00%", "70.00%"])
     expect(text).toContain(shown);
   expect(text).toContain("Example Ventures");
-  await click(
-    button("Show amounts") ??
-      (document.querySelector("[data-testid=hide-amounts-toggle]") as HTMLElement),
-  );
+  await act(async () => setHideAmounts(false));
   expect(container.textContent).toContain("250,000");
 });
 
@@ -688,8 +743,6 @@ it("reloads contacts and the cap table when the agent finishes a chat turn", asy
 });
 
 it("shows an error with Try again when the Carta connection check fails", async () => {
-  // The page and the Import menu each read the servers once.
-  rpcMock.servers.mockRejectedValueOnce(new Error("offline"));
   rpcMock.servers.mockRejectedValueOnce(new Error("offline"));
   await show();
   const text = container.textContent ?? "";
@@ -764,6 +817,27 @@ it("filters Carta's shareholders and option grants on their own tabs", async () 
   await click(button("Options"));
   expect(container.textContent).toContain("Granted options");
   expect(container.textContent).not.toContain("Founder Person");
+});
+
+it("lists only investors, auditors and other contacts, plus holders joined from Carta", async () => {
+  const joined = { ...holder("Joined Holder", "Common", 100, 1), email: "carol@example.test" };
+  rpcMock.list.mockResolvedValue([
+    contact("c1", "Ada", "investor"),
+    contact("c2", "Bo", "vendor"),
+    contact("c3", "Cy", "legal"),
+    contact("c4", "Carol", "customer"),
+  ]);
+  rpcMock.capTable.mockResolvedValue({
+    snapshot: { ...snapshot, holders: [joined] },
+    syncing: false,
+  });
+  await show("/app/cap-table?kind=investor");
+  const rows = container.querySelector("table:not(.sr-only) tbody")?.textContent ?? "";
+  expect(rows).toContain("Ada");
+  expect(rows).not.toContain("Bo");
+  expect(rows).not.toContain("Cy");
+  await click(button("All"));
+  expect(container.querySelector("table:not(.sr-only) tbody")?.textContent).toContain("Carol");
 });
 
 it("keeps an option grant on Options when a contact with the holder's email is Other", async () => {
@@ -876,41 +950,19 @@ it("shows no Documents section when the folder is missing or empty", async () =>
   expect(container.textContent).not.toContain("Documents");
 });
 
-it("files an import into Finance / Cap Table, creating the folder when it is missing", async () => {
-  rpcMock.connections.mockResolvedValue([
-    { connectorId: "google", provider: "googledrive", status: "connected" },
-  ]);
-  rpcMock.catalog.mockResolvedValue([{ connectorId: "google", slug: "googledrive" }]);
-  rpcMock.folders.mockResolvedValue([folder("fin", "Finance", null)]);
-  rpcMock.folderCreate.mockResolvedValue(folder("cap", "Cap Table", "fin"));
-  rpcMock.driveList.mockResolvedValue({
-    files: [{ id: "g1", name: "Plan.pdf", mimeType: "application/pdf", isFolder: false, size: 10 }],
-  });
-  rpcMock.importDrive.mockResolvedValue({ imported: 1, duplicates: 0, failed: 0 });
-  const changed = vi.fn();
-  window.addEventListener(DATA_ROOM_CHANGED, changed);
+it("leaves importing files to the Data room: the header has no Import or Add files", async () => {
   await show();
-  await click(document.querySelector<HTMLElement>('[aria-haspopup="menu"]') ?? undefined);
-  await click(
-    [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
-      (el) => el.textContent === "Google Drive",
-    ),
-  );
-  expect(rpcMock.folderCreate).toHaveBeenCalledWith({ name: "Cap Table", parentId: "fin" });
-  await click(
-    document.querySelector<HTMLElement>('[role="checkbox"][aria-label="Select Plan.pdf"]') ??
-      undefined,
-  );
-  await click([...document.querySelectorAll("button")].find((b) => b.textContent === "Import 1"));
-  expect(rpcMock.importDrive).toHaveBeenCalledWith({
-    fileIds: ["g1"],
-    driveFolderIds: [],
-    folderId: "cap",
-  });
-  await flush();
-  // The Documents list under the table reloads on this event.
-  expect(changed).toHaveBeenCalled();
-  window.removeEventListener(DATA_ROOM_CHANGED, changed);
+  const labels = [...container.querySelectorAll("button")].map((b) => b.textContent);
+  expect(labels).not.toContain("Import");
+  expect(labels).not.toContain("Add files");
+});
+
+it("shows a skeleton, not the contacts layout, until the Carta check ends", async () => {
+  rpcMock.servers.mockReturnValue(new Promise(() => {}));
+  await show();
+  expect(container.querySelector("[aria-busy=true]")).not.toBeNull();
+  expect(container.querySelector("[role=tablist]")).toBeNull();
+  expect(container.querySelector("table")).toBeNull();
 });
 
 describe("search, filter and sort", () => {
@@ -1066,7 +1118,9 @@ describe("search, filter and sort", () => {
 
   it("flips direction and writes the sort to the URL", async () => {
     await showAt("/app/cap-table");
-    await click(document.querySelector<HTMLElement>("button[aria-label=Descending]") ?? undefined);
+    await click(
+      document.querySelector<HTMLElement>("button[aria-label='Sort ascending']") ?? undefined,
+    );
     expect(search$).toContain("dir=asc");
     expect(search$).toContain("sort=percent");
     expect(rowNames().slice(0, 3)).toEqual(["Two", "Nine", "Ten"]);
@@ -1080,4 +1134,25 @@ describe("search, filter and sort", () => {
     expect(text).not.toContain("100,000");
     expect(text).not.toContain("9,000");
   });
+});
+
+it("opens a contact from its row, and leaves a Carta-only row inert", async () => {
+  rpcMock.capTable.mockResolvedValue({
+    snapshot: { ...snapshot, holders: [holder("Carta Only", "Common", 100, 10)] },
+    syncing: false,
+  });
+  await show();
+  const carta = [...container.querySelectorAll("table:not(.sr-only) tbody tr")].find((row) =>
+    row.textContent?.includes("Carta Only"),
+  ) as HTMLElement;
+  expect(carta.className).not.toContain("cursor-pointer");
+  await click(carta.querySelector("td") as HTMLElement);
+  expect(document.getElementById("contact-name")).toBeNull();
+  await click(button("Auditors"));
+  const bo = [...container.querySelectorAll("table:not(.sr-only) tbody tr")].find((row) =>
+    row.textContent?.includes("Bo"),
+  ) as HTMLElement;
+  expect(bo.className).toContain("cursor-pointer");
+  await click(bo.querySelector("td:nth-child(3)") as HTMLElement);
+  expect((document.getElementById("contact-name") as HTMLInputElement).value).toBe("Bo");
 });

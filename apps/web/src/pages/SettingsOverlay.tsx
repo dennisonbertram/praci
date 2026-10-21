@@ -1,14 +1,21 @@
 import { useLingui } from "@lingui/react/macro";
 import type { AvatarStyle, SpaceMemoryConfig } from "@rakazo/contracts";
-import { Button, Dialog, DialogClose, DialogContent, DialogTitle } from "@rakazo/ui-web";
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+  NativeSelect,
+  NativeSelectOption,
+} from "@rakazo/ui-web";
 import {
   Brain,
-  CloudDownload,
   Cpu,
   CreditCard,
-  Gauge,
   Monitor,
   Settings,
+  ShieldCheck,
   Volume2,
   XIcon,
 } from "lucide-react";
@@ -19,6 +26,7 @@ import { useHasDesktopUpdates } from "../components/DesktopUpdates";
 import {
   ComputerSettingsPanel,
   GeneralSettingsPanels,
+  PrivacySettingsPanels,
   UpdatesSettingsPanel,
   UsageSettingsPanel,
 } from "./AccountSettingsOverlay";
@@ -29,13 +37,12 @@ import { VoiceSettingsOverlay } from "./VoiceSettingsOverlay";
 
 export type SettingsSection =
   | "general"
+  | "privacy"
   | "models"
   | "memory"
   | "voice"
-  | "usage"
   | "computer"
-  | "billing"
-  | "updates";
+  | "billing";
 
 type NavItem = {
   id: SettingsSection;
@@ -50,6 +57,7 @@ export function SettingsOverlay({
   onUsageOpen,
   initialSection = "general",
   modelProvider,
+  notice,
   avatarStyle,
   onAvatarStyleChange,
   timezone,
@@ -77,6 +85,8 @@ export function SettingsOverlay({
   initialSection?: SettingsSection;
   /** Models opens on this provider with its own-key form open (the Legal page's "Add your OpenRouter key"). */
   modelProvider?: string;
+  /** Why Settings opened; shown at the top of the pane. */
+  notice?: string;
   avatarStyle: AvatarStyle;
   onAvatarStyleChange: (style: AvatarStyle) => Promise<void>;
   timezone?: string;
@@ -94,7 +104,6 @@ export function SettingsOverlay({
 }) {
   const { t } = useLingui();
   const panelRef = useRef<HTMLDivElement>(null);
-  const usageRef = useRef<HTMLDivElement>(null);
   const [section, setSection] = useState<SettingsSection>(initialSection);
   const [memoryBusy, setMemoryBusy] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
@@ -129,9 +138,6 @@ export function SettingsOverlay({
     if (!billingEnabled && section === "billing") setSection("general");
   }, [billingEnabled, section]);
   const hasDesktopUpdates = useHasDesktopUpdates();
-  useEffect(() => {
-    if (!isDeploymentOwner && !hasDesktopUpdates && section === "updates") setSection("general");
-  }, [isDeploymentOwner, hasDesktopUpdates, section]);
 
   useEffect(() => {
     if (section !== "computer") releaseComputerRecovery();
@@ -139,24 +145,17 @@ export function SettingsOverlay({
   useEffect(() => () => window.clearTimeout(recoveryHoldTimer.current), []);
 
   useEffect(() => {
-    if (section === "usage") {
-      onUsageOpen();
-      usageRef.current?.focus();
-    }
+    if (section === "general") onUsageOpen();
   }, [section, onUsageOpen]);
 
   const navItems: NavItem[] = [
     { id: "general", label: t`General`, icon: Settings },
+    { id: "privacy", label: t`Privacy and approvals`, icon: ShieldCheck },
     { id: "models", label: t`Models`, icon: Cpu },
     { id: "memory", label: t`Memory`, icon: Brain },
     { id: "voice", label: t`Voice`, icon: Volume2 },
-    { id: "usage", label: t`Usage`, icon: Gauge },
     ...(showComputer ? [{ id: "computer" as const, label: t`Computer`, icon: Monitor }] : []),
     ...(billingEnabled ? [{ id: "billing" as const, label: t`Billing`, icon: CreditCard }] : []),
-    // Only deployment owners and the desktop app have anything to update.
-    ...(isDeploymentOwner || hasDesktopUpdates
-      ? [{ id: "updates" as const, label: t`Updates`, icon: CloudDownload }]
-      : []),
   ];
 
   const sectionTitle =
@@ -202,17 +201,35 @@ export function SettingsOverlay({
         data-testid="user-settings"
         data-settings-section={section}
         showCloseButton={false}
-        initialFocus={() =>
-          section === "usage" ? (usageRef.current ?? panelRef.current) : panelRef.current
-        }
-        // One size for every section, so switching tabs never resizes the dialog.
-        className="flex h-[min(760px,calc(100%-2rem))] max-h-[calc(100%-2rem)] w-[min(1080px,calc(100%-2rem))] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-h-[calc(100%-5rem)] sm:max-w-[1080px]"
+        aria-modal="true"
+        initialFocus={() => panelRef.current}
+        // Models needs the full height for its two panes; other sections size to their content.
+        className={`flex max-h-[calc(100%-2rem)] w-[min(1080px,calc(100%-2rem))] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-h-[calc(100%-5rem)] sm:max-w-[1080px] ${
+          section === "models" ? "h-[min(760px,calc(100%-2rem))]" : ""
+        }`}
       >
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+          {/* A phone cannot fit every section in a strip, so it gets a select. */}
+          <div className="border-b border-border px-4 py-3 md:hidden">
+            <NativeSelect
+              data-testid="settings-nav-select"
+              aria-label={t`Settings`}
+              className="w-full"
+              value={section}
+              disabled={panelBusy}
+              onChange={(event) => setSection(event.target.value as SettingsSection)}
+            >
+              {navItems.map((item) => (
+                <NativeSelectOption key={item.id} value={item.id}>
+                  {item.label}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </div>
           <nav
             data-testid="settings-nav"
             aria-label={t`Settings`}
-            className="flex shrink-0 flex-row flex-wrap gap-1 border-b border-border px-3 py-3 md:w-[200px] md:flex-col md:flex-nowrap md:overflow-y-auto md:border-b-0 md:border-e md:px-3 md:py-4"
+            className="hidden shrink-0 gap-1 border-border md:flex md:w-[200px] md:flex-col md:overflow-y-auto md:border-e md:px-3 md:py-4"
           >
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -225,9 +242,9 @@ export function SettingsOverlay({
                   aria-current={active ? "page" : undefined}
                   disabled={panelBusy}
                   onClick={() => setSection(item.id)}
-                  className={`flex shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[13.5px] transition-colors disabled:pointer-events-none disabled:opacity-50 ${
+                  className={`flex shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 pointer-coarse:min-h-11 text-start text-[13.5px] transition-colors disabled:pointer-events-none disabled:opacity-50 ${
                     active
-                      ? "bg-muted text-foreground"
+                      ? "bg-foreground/10 font-medium text-foreground"
                       : "text-muted-foreground hover:bg-accent hover:text-foreground"
                   }`}
                 >
@@ -279,11 +296,14 @@ export function SettingsOverlay({
                     onOpenMessaging ? () => leaveSettings(onOpenMessaging) : undefined
                   }
                   isDeploymentOwner={isDeploymentOwner}
-                />
+                >
+                  <UsageSettingsPanel usage={usage} />
+                  {isDeploymentOwner || hasDesktopUpdates ? (
+                    <UpdatesSettingsPanel isDeploymentOwner={isDeploymentOwner} />
+                  ) : null}
+                </GeneralSettingsPanels>
               ) : null}
-              {section === "usage" ? (
-                <UsageSettingsPanel usage={usage} panelRef={usageRef} />
-              ) : null}
+              {section === "privacy" ? <PrivacySettingsPanels /> : null}
               {section === "computer" && showComputer ? (
                 <ComputerSettingsPanel
                   sandboxProvider={sandboxProvider}
@@ -295,9 +315,6 @@ export function SettingsOverlay({
                 />
               ) : null}
               {section === "billing" && billingEnabled ? <BillingSettingsPanel /> : null}
-              {section === "updates" ? (
-                <UpdatesSettingsPanel isDeploymentOwner={isDeploymentOwner} />
-              ) : null}
               {section === "models" ? (
                 <ModelSettingsOverlay
                   embedded
@@ -313,6 +330,11 @@ export function SettingsOverlay({
                   onConfigChange={onMemoryConfigChange}
                   onBusyChange={setMemoryBusy}
                 />
+              ) : null}
+              {notice && section === "voice" ? (
+                <p role="status" className="mx-6 mb-3 text-sm text-muted-foreground sm:mx-8">
+                  {notice}
+                </p>
               ) : null}
               {section === "voice" ? (
                 <VoiceSettingsOverlay embedded onClose={requestClose} onBusyChange={setVoiceBusy} />

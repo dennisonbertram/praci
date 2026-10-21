@@ -673,7 +673,42 @@ export interface VoiceTranscribeRequest {
    * one language into lookalike words of another.
    */
   language?: string;
+  /** Neutral hints a provider may use to spell names and fit the app. Optional and capped. */
+  context?: TranscriptionContext;
   signal?: AbortSignal;
+}
+
+export interface TranscriptionContext {
+  appKind?: "email" | "ai" | "other";
+  /** Names and terms the speaker is likely to say. */
+  vocabulary?: string[];
+  /** Text before the cursor, for providers that adapt to it. */
+  beforeText?: string;
+}
+
+export interface TranscriptionCapabilities {
+  /** True when the provider uses `context`; others ignore it. */
+  usesContext: boolean;
+}
+
+export const MAX_TRANSCRIPTION_VOCABULARY = 100;
+export const MAX_TRANSCRIPTION_VOCABULARY_ITEM_CHARS = 64;
+export const MAX_TRANSCRIPTION_BEFORE_TEXT_CHARS = 1000;
+
+/** Trim a context to the caps. Vocabulary keeps the first items; beforeText keeps the end nearest the cursor. */
+export function capTranscriptionContext(context: TranscriptionContext): TranscriptionContext {
+  const out: TranscriptionContext = {};
+  if (context.appKind) out.appKind = context.appKind;
+  if (context.vocabulary) {
+    out.vocabulary = context.vocabulary
+      .map((word) => word.trim().slice(0, MAX_TRANSCRIPTION_VOCABULARY_ITEM_CHARS))
+      .filter(Boolean)
+      .slice(0, MAX_TRANSCRIPTION_VOCABULARY);
+  }
+  if (context.beforeText !== undefined) {
+    out.beforeText = context.beforeText.slice(-MAX_TRANSCRIPTION_BEFORE_TEXT_CHARS);
+  }
+  return out;
 }
 
 export interface BackgroundJobPayloads {
@@ -713,7 +748,19 @@ export interface BackgroundJobPayloads {
   };
   /** Renews the Gmail push watches that are close to expiring; run daily by the worker's cron. */
   "mail.watch.renew": Record<string, never>;
+  /** Refreshes the space's Devin sessions; run every two minutes by cron without a payload (every connection), or for the one server named. */
+  "devin.refresh": { serverId?: string };
   /** Syncs a user's finance accounts and transactions from their Mercury and Brex servers; one queued job per user and space. */
+  /** Names exactly one source: a Connection or an MCP server. */
+  "meetings.sync": {
+    spaceId: string;
+    userId: string;
+    provider: string;
+    connectionId?: string;
+    mcpServerId?: string;
+  };
+  /** Extracts commitments from a stored meeting; the handler is filled in by the digest slice. */
+  "meetings.digest": { spaceId: string; userId: string; meetingId: string };
   "finance.sync": { userId: string; spaceId: string };
   /** Removes a deleted Data room item's blob. Idempotent: a missing blob is success. */
   "dataroom.blob.delete": { spaceId: string; storageKey: string };
@@ -1224,6 +1271,25 @@ export class MailProviderError extends Error {
   ) {
     super(message);
     this.name = "MailProviderError";
+  }
+}
+
+export type MeetingSourceErrorKind =
+  | "auth"
+  | "mapping"
+  | "rate_limit"
+  | "unavailable"
+  | "not_found";
+
+/** A meeting source failed. The message is a short reason, never a vendor payload. */
+export class MeetingSourceError extends Error {
+  constructor(
+    readonly kind: MeetingSourceErrorKind,
+    message: string,
+    readonly retryAfterMs?: number,
+  ) {
+    super(message);
+    this.name = "MeetingSourceError";
   }
 }
 

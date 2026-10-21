@@ -6,7 +6,7 @@ import { commandVariableName } from "@rakazo/contracts";
 import { isApprovalAskBlock, isSecretAskBlock, selectedAskActionLabel } from "@rakazo/core";
 import { Button, Input } from "@rakazo/ui-web";
 import { Check, X } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { errorText } from "../lib/user-error";
 
 export type AskBlock = Extract<ThreadMessage["blocks"][number], { kind: "ask" }>;
@@ -25,7 +25,7 @@ function formatAnsweredState(
   if (!approval) return t`Answered: ${selectedAskActionLabel(answer, actions)}`;
   if (outcome === "created") return t`Created`;
   if (outcome === "cancelled") return t`Cancelled`;
-  if (answer === "allow") return t`Allowed once`;
+  if (answer === "allow") return t`Approved`;
   if (answer === "always") return t`Always allowed`;
   if (answer === "deny") return t`Denied`;
   return t`Answered: ${answer}`;
@@ -57,7 +57,7 @@ function approvalActionLabel(
   if (outcome === "created") return t`Create space`;
   if (outcome === "cancelled") return t`Cancel`;
   if (id === "allow") return t`Allow once`;
-  if (id === "always") return t`Always allow this tool`;
+  if (id === "always") return t`Always allow this`;
   if (id === "deny") return t`Deny`;
   return fallback;
 }
@@ -83,6 +83,7 @@ export function AskCard({
   const [username, setUsername] = useState("");
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const questionId = useId();
   const submitting = pendingAction !== null;
   const approvalActions = isApprovalAskBlock(block) ? block.actions : undefined;
   const askActions = block.actions;
@@ -104,6 +105,8 @@ export function AskCard({
     }
     try {
       await onAnswer(submitValue, submitUsername);
+      // The card's buttons vanish with the answer; keep the keyboard in the conversation.
+      if (approvalActions) document.querySelector<HTMLElement>("[data-composer-input]")?.focus();
     } catch (err) {
       // A secret answer's failure may echo the secret, so never show its message.
       setError(
@@ -117,11 +120,14 @@ export function AskCard({
   }
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: a fieldset brings its own border and sizing to a card
     <div
+      role="group"
+      aria-labelledby={questionId}
       data-testid={secretInput ? "secret-ask-card" : undefined}
       className="max-w-full rounded-2xl border border-border bg-card px-5 py-4"
     >
-      <div className="text-[15.5px] leading-[1.5] text-foreground">
+      <div id={questionId} className="text-[15.5px] leading-[1.5] text-foreground">
         <ChatMarkdown>{block.text}</ChatMarkdown>
       </div>
       {secretInput && block.credential ? (
@@ -136,6 +142,15 @@ export function AskCard({
       ) : null}
       {block.detail && block.consent ? (
         <p className="mt-2 text-[13px] text-muted-foreground">{block.detail}</p>
+      ) : block.detail && !secretInput && block.detailFolded ? (
+        <details className="mt-3 text-[13px] text-muted-foreground">
+          <summary className="w-fit cursor-pointer">
+            <Trans>Details</Trans>
+          </summary>
+          <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-muted px-3.5 py-3 font-mono text-[12.5px] leading-[1.7]">
+            {block.detail}
+          </pre>
+        </details>
       ) : block.detail && !secretInput ? (
         <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-muted px-3.5 py-3 font-mono text-[12.5px] leading-[1.7] text-muted-foreground">
           {block.detail}
@@ -172,23 +187,55 @@ export function AskCard({
         </div>
       ) : askActions?.length ? (
         <div className="mt-3.5 space-y-1.5">
-          {askActions.map((action) => (
-            <Button
-              key={action.id}
-              variant={approvalActions && action.id === "allow" ? "default" : "outline"}
-              className="h-auto w-full justify-start whitespace-normal px-3.5 py-3 text-start font-normal"
-              disabled={submitting}
-              onClick={() => void submitAnswer(action.id)}
-            >
-              {pendingAction === action.id ? (
-                <Trans>Sending…</Trans>
-              ) : approvalActions ? (
-                approvalActionLabel(action.id, action.label, action.outcome, Boolean(block.consent))
+          {[...askActions]
+            .sort(
+              (a, b) =>
+                Number(approvalActions && a.id === "always") -
+                Number(approvalActions && b.id === "always"),
+            )
+            .map((action) =>
+              // A standing permission is a quiet text action under the one-off answers.
+              approvalActions && action.id === "always" ? (
+                <div key={action.id} className="flex flex-wrap items-baseline gap-x-2 px-1 pt-1">
+                  <Button
+                    variant="link"
+                    className="h-auto p-0"
+                    disabled={submitting}
+                    onClick={() => void submitAnswer(action.id)}
+                  >
+                    {pendingAction === action.id ? (
+                      <Trans>Sending…</Trans>
+                    ) : (
+                      approvalActionLabel(action.id, action.label)
+                    )}
+                  </Button>
+                  <span className="text-[13px] text-muted-foreground">
+                    <Trans>Won't ask again for this kind of action.</Trans>
+                  </span>
+                </div>
               ) : (
-                action.label
-              )}
-            </Button>
-          ))}
+                <Button
+                  key={action.id}
+                  variant={approvalActions && action.id === "allow" ? "default" : "outline"}
+                  className="h-auto w-full justify-start whitespace-normal px-3.5 py-3 text-start font-normal"
+                  disabled={submitting}
+                  onClick={() => void submitAnswer(action.id)}
+                >
+                  {pendingAction === action.id ? (
+                    <Trans>Sending…</Trans>
+                  ) : approvalActions ? (
+                    approvalActionLabel(
+                      action.id,
+                      action.label,
+                      action.outcome,
+                      Boolean(block.consent),
+                    )
+                  ) : (
+                    action.label
+                  )}
+                </Button>
+              ),
+            )}
         </div>
       ) : secretInput ? (
         <form

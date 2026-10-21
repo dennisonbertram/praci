@@ -37,7 +37,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { timezoneLabel } from "../lib/local-timezone";
 import {
   connectedModelOptions,
@@ -75,13 +75,6 @@ const SCHEDULE_PRESETS: CronFreq[] = [
   "Advanced",
 ];
 
-const COMING_SOON = [
-  { id: "teams", label: () => t`Teams message` },
-  { id: "linear", label: () => t`Linear issue` },
-  { id: "sentry", label: () => t`Sentry alert` },
-  { id: "pagerduty", label: () => t`PagerDuty incident` },
-] as const;
-
 export type RoutineDraftState = {
   name: string;
   prompt: string;
@@ -94,6 +87,8 @@ export type RoutineDraftState = {
   /** Empty runs this routine on the bot's model. */
   modelKey: string;
   thinkingLevel: string;
+  /** Empty keeps the routine's zone, or the account zone for a new routine. */
+  timezone: string;
 };
 
 export function emptyRoutineDraft(): RoutineDraftState {
@@ -108,6 +103,7 @@ export function emptyRoutineDraft(): RoutineDraftState {
     runAtLocal: "",
     modelKey: "",
     thinkingLevel: "",
+    timezone: "",
   };
 }
 
@@ -126,6 +122,7 @@ export function draftFromRoutine(routine: Routine): RoutineDraftState {
         ? modelOptionKey(routine.modelProvider, routine.modelId)
         : "",
     thinkingLevel: routine.thinkingLevel ?? "",
+    timezone: routine.timezone,
   };
 }
 
@@ -279,13 +276,26 @@ export function RoutineEditor({
     []
   ).filter((level) => level !== "off");
   const defaultThinkingLevel = selectedCredential?.thinkingLevel ?? "medium";
+  const zone = draft.timezone || timezone;
+  const zones = Intl.supportedValuesOf("timeZone");
   const slackAvailable = messageProviders.includes("slack");
-  const slackDisabledReasonId = `${fieldId}-slack-disabled-reason`;
   const hasTriggers =
     draft.schedules.length > 0 ||
     draft.webhookEnabled ||
     draft.githubEnabled ||
     Boolean(draft.messageProvider);
+  // Flash "Saved" when a save finishes without an error.
+  const [justSaved, setJustSaved] = useState(false);
+  const wasSaving = useRef(false);
+  useEffect(() => {
+    if (wasSaving.current && !saving && !error) {
+      setJustSaved(true);
+      const timer = setTimeout(() => setJustSaved(false), 2000);
+      wasSaving.current = saving;
+      return () => clearTimeout(timer);
+    }
+    wasSaving.current = saving;
+  }, [saving, error]);
   const canTest = Boolean(editing) && !saving && !running;
   const needsOneShotArm =
     editing != null && routineNeedsOneShotArm(editing, draft.schedules.map(cronFromPreset));
@@ -401,8 +411,8 @@ export function RoutineEditor({
       <div className="mt-5 text-sm text-muted-foreground">
         <div className="flex items-baseline gap-2">
           <Trans>When to run</Trans>
-          <span className="text-xs text-muted-foreground/70" title={timezone}>
-            {timezoneLabel(timezone)}
+          <span className="text-xs text-muted-foreground/70" title={zone}>
+            {timezoneLabel(zone)}
           </span>
           <Popover>
             <PopoverTrigger
@@ -417,7 +427,7 @@ export function RoutineEditor({
               }
             >
               <SlidersHorizontal />
-              {draft.modelKey ? (
+              {draft.modelKey || (editing && zone !== editing.timezone) ? (
                 <span
                   aria-hidden
                   className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-muted-foreground"
@@ -425,7 +435,26 @@ export function RoutineEditor({
               ) : null}
             </PopoverTrigger>
             <PopoverContent align="end" className="w-96 max-w-[calc(100vw-2rem)] p-4">
-              <label htmlFor={`${fieldId}-model`} className="block text-sm text-muted-foreground">
+              <label htmlFor={`${fieldId}-zone`} className="block text-sm text-muted-foreground">
+                <Trans>Time zone</Trans>
+                <NativeSelect
+                  id={`${fieldId}-zone`}
+                  className="mt-2 w-full"
+                  value={zone}
+                  onChange={(event) => onChange({ ...draft, timezone: event.target.value })}
+                >
+                  {(zones.includes(zone) ? zones : [zone, ...zones]).map((name) => (
+                    <NativeSelectOption key={name} value={name}>
+                      {name}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              </label>
+
+              <label
+                htmlFor={`${fieldId}-model`}
+                className="mt-5 block text-sm text-muted-foreground"
+              >
                 <Trans>Model</Trans>
                 <NativeSelect
                   id={`${fieldId}-model`}
@@ -559,7 +588,7 @@ export function RoutineEditor({
             <Plus />
             <Trans>Choose when it runs</Trans>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="top">
+          <DropdownMenuContent side="bottom">
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <Clock />
@@ -574,38 +603,15 @@ export function RoutineEditor({
               </DropdownMenuSubContent>
             </DropdownMenuSub>
 
-            <span className="block" title={slackAvailable ? undefined : t`Slack not enabled`}>
+            {slackAvailable ? (
               <DropdownMenuItem
-                disabled={draft.messageProvider === "slack" || !slackAvailable}
-                aria-describedby={slackAvailable ? undefined : slackDisabledReasonId}
+                disabled={draft.messageProvider === "slack"}
                 onClick={() => addMessageProvider("slack")}
               >
                 <MessageSquare />
                 <Trans>Slack message</Trans>
               </DropdownMenuItem>
-              {!slackAvailable ? (
-                <span id={slackDisabledReasonId} className="sr-only">
-                  <Trans>Slack not enabled</Trans>
-                </span>
-              ) : null}
-            </span>
-
-            {COMING_SOON.map((item) => (
-              <span
-                key={item.id}
-                className="block"
-                title={item.id === "teams" ? t`Teams not enabled` : t`Coming soon`}
-              >
-                <DropdownMenuItem disabled>
-                  <span
-                    aria-hidden
-                    className="inline-block size-3.5 rounded-[4px]"
-                    style={{ background: comingSoonColor(item.id), opacity: 0.55 }}
-                  />
-                  {item.label()}
-                </DropdownMenuItem>
-              </span>
-            ))}
+            ) : null}
 
             {/* Developer triggers stay available, one level down, so founders see plain choices first. */}
             <DropdownMenuSub>
@@ -636,7 +642,7 @@ export function RoutineEditor({
 
       <div className="mt-5">
         <Button disabled={saving || running || !hasTriggers} onClick={onSave}>
-          {saving ? t`Saving…` : t`Save`}
+          {saving ? t`Saving…` : justSaved ? t`Saved` : t`Save`}
         </Button>
       </div>
       {error ? (
@@ -788,18 +794,5 @@ function schedulePresetLabel(freq: CronFreq): string {
       return t`Advanced...`;
     default:
       return freq;
-  }
-}
-
-function comingSoonColor(id: string): string {
-  switch (id) {
-    case "teams":
-      return "#6264A7";
-    case "linear":
-      return "#5E6AD2";
-    case "sentry":
-      return "#A467FD";
-    default:
-      return "#06AC38";
   }
 }

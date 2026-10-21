@@ -1,0 +1,483 @@
+{
+  "mode": "inspect",
+  "images": [
+    "PG-A-Compose.png",
+    "PG-A-Cleanup.png",
+    "PG-A-InboxMessage.png",
+    "Sheet.png",
+    "Split.png",
+    "Inner-Message.png"
+  ],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 79,
+      "costUsd": 0.2550152,
+      "result": {
+        "verdict": "Not ready to build: the core triage loop is legible and error/undo coverage is unusually thorough, but primary actions are hidden in an unlabeled side strip and behind title/gesture/more menus, send/archive controls stay visually active in invalid or disabled states, irreversible Unsubscribe is bundled into Cleanup, and outer vs inner siblings give the same job different controls. A first-time, one-handed founder will struggle to find Reply, Send, Cleanup and Unsubscribe, and can take irreversible or duplicate-send actions by mistake.",
+        "findings": [
+          {
+            "level": "component",
+            "element": "White up-arrow Send button, bottom-left",
+            "problem": "Send is an unlabeled icon floating far from the body and recipient fields; in 'Send disabled: no recipient' and 'Sending' it is replaced or greyed with no text explanation. In the keyboard-open frame it floats alone above the keyboard. A first-time user cannot confidently identify it as Send or know why it is unavailable.",
+            "norm": "iOS Mail/Gmail keep a labeled or conventionally placed Send affordance in the nav/toolbar and explain disabled state; primary actions must be recognizable without learning a custom strip.",
+            "severity": "P1",
+            "screenshot": "PG-A-Compose.png",
+            "fix": "Use a labeled 'Send' pill in the top-right or above-keyboard toolbar, keep its position constant across states, and add helper text such as 'Add a recipient to send' when disabled."
+          },
+          {
+            "level": "component",
+            "element": "'ana@@example' To chip with 'Not a valid address' plus still-white Send arrow",
+            "problem": "The address is correctly flagged in red, but the Send arrow remains fully white/active, implying the message can still be sent to an invalid recipient.",
+            "norm": "Form validation must disable the submit action until the blocking error is corrected and tie the disabled state visibly to the error.",
+            "severity": "P0",
+            "screenshot": "PG-A-Compose.png",
+            "fix": "Disable and dim Send while any recipient chip is invalid, keep focus in the To field, and announce 'Fix the highlighted address to send'."
+          },
+          {
+            "level": "component",
+            "element": "'Sending is off for me@example.test / Turn on' banner with active Send arrow",
+            "problem": "In the 'Mail changes off' frame the banner says sending is off, yet Send remains the same bright active control as in valid Compose. The conflicting signals invite a tap that cannot succeed.",
+            "norm": "A system-level disabled capability must propagate to every dependent action; banners must change action state, not merely inform.",
+            "severity": "P1",
+            "screenshot": "PG-A-Compose.png",
+            "fix": "Disable Send while mail changes are off, change its label to unavailable, and make 'Turn on' the sole primary action until sending is restored."
+          },
+          {
+            "level": "component",
+            "element": "'Reply ⌄' title and its Reply / Reply all / Forward menu",
+            "problem": "Reply mode is changed from a tiny chevron in the screen title. This hides Reply all and Forward behind a non-standard title interaction and duplicates the Reply menu already offered from the message view.",
+            "norm": "Reply, Reply all and Forward are message actions in a reply toolbar/menu, not title metadata; mode switching must be discoverable and consistent.",
+            "severity": "P1",
+            "screenshot": "PG-A-Compose.png",
+            "fix": "Remove the title chevron. Enter compose in the chosen mode from the message Reply menu and show the chosen mode as static text with recipient fields reflecting it."
+          },
+          {
+            "level": "group",
+            "element": "From / To / Cc,Bcc / Subject field stack",
+            "problem": "From has a chevron, Cc,Bcc is a collapsed chevron row, and recipient chips sit in fields of inconsistent height. In the Cc-suggestions frame the expanded Cc field suddenly appears without a clear transition, so users cannot predict how to add Cc/Bcc or which account they send from.",
+            "norm": "Mail compose keeps From, To, Cc/Bcc as a predictable stacked form with explicit expansion and identical row treatment.",
+            "severity": "P2",
+            "screenshot": "PG-A-Compose.png",
+            "fix": "Keep row heights and chevron placement identical in every state, label the collapsed row 'Cc / Bcc', and animate expansion in place when tapped."
+          },
+          {
+            "level": "group",
+            "element": "'We couldn't confirm this sent. Check Sent before sending again. / Open Sent / Send again' banner",
+            "problem": "The duplicate-send risk is handled in copy, but 'Open Sent' and 'Send again' are tiny same-weight inline actions side by side; the dangerous action is as easy to hit as the safe check on a phone.",
+            "norm": "Unknown-outcome errors must make the safe verification path primary and gate the duplicate-risk action.",
+            "severity": "P1",
+            "screenshot": "PG-A-Compose.png",
+            "fix": "Make 'Open Sent' the filled primary button, move 'Send again' to a secondary confirmation that warns a duplicate may be sent, and enlarge both hit targets."
+          },
+          {
+            "level": "page",
+            "element": "Compose body area below the first lines of text",
+            "problem": "Most Compose, Reply and Edit-draft frames leave roughly half the screen as empty dark space below a few lines of body text and the '…' chip, with no quoted-thread context, formatting or signature cues. Density is far lower than the Inbox list on sibling screens.",
+            "norm": "A compose surface should give the editor the available height, show quoted context for replies, and keep the send path in the reachable thumb zone.",
+            "severity": "P2",
+            "screenshot": "PG-A-Compose.png",
+            "fix": "Let the body editor fill the space above the keyboard/toolbar, show collapsed quoted text for Reply, and pin Send plus attachment in a bottom toolbar."
+          },
+          {
+            "level": "component",
+            "element": "Cleanup '⌄' overflow button opening single item 'Skip inbox for future mail'",
+            "problem": "Next to 'Archive 101 emails' and 'Unsubscribe' sits an unexplained chevron button that opens one floating option. Users cannot tell whether Skip inbox is an alternative to, or a modifier of, Archive/Unsubscribe, or whether it applies per sender.",
+            "norm": "Overflow menus need a recognizable 'more' affordance and options grouped by consequence; bulk-mail controls must state scope before acting.",
+            "severity": "P1",
+            "screenshot": "PG-A-Cleanup.png",
+            "fix": "Replace the chevron with a labeled 'More' button, open a sheet listing each option with scope and reversibility, and show which senders it applies to."
+          },
+          {
+            "level": "group",
+            "element": "Confirm sheet 'Clean up 3 senders?' with primary 'Archive and unsubscribe'",
+            "problem": "The sheet lists reversible Archive ('Undo brings them back') directly above irreversible Unsubscribe ('can't be undone'), then offers only the combined 'Archive and unsubscribe' primary. There is no way from this confirmation to archive without also permanently unsubscribing.",
+            "norm": "Irreversible actions must never be bundled as the default with reversible ones; destructive consent must be separately and explicitly opted into.",
+            "severity": "P0",
+            "screenshot": "PG-A-Cleanup.png",
+            "fix": "Split the confirmation: primary 'Archive 101 emails', a separate unchecked 'Also unsubscribe from 3 senders — can't be undone' toggle, and require the toggle before the combined action enables."
+          },
+          {
+            "level": "component",
+            "element": "'Archiving 40 of 101' progress state",
+            "problem": "Progress is only small grey text above an 'Archiving' spinner button. There is no progress bar, percentage, per-sender status or estimate, so a 101-email job looks frozen except for changing numerals between frames.",
+            "norm": "Long-running bulk operations show a determinate progress indicator, completed/total counts and a clearly available Cancel.",
+            "severity": "P2",
+            "screenshot": "PG-A-Cleanup.png",
+            "fix": "Add a determinate progress bar with '40 of 101 emails' and keep Cancel as a distinct secondary button; mark each sender row as it completes."
+          },
+          {
+            "level": "page",
+            "element": "Cleanup sender list (5 rows: Example Weekly through Pilot Community)",
+            "problem": "Only five high-volume senders are shown with no Select all, sort control or counts summary, and the lower half of the screen is empty. Bulk-cleaning a real newsletter backlog requires inspecting senders one screen at a time with no way to act on all of them.",
+            "norm": "Bulk triage tools provide select-all, sort by volume/recency and a running total before commitment.",
+            "severity": "P2",
+            "screenshot": "PG-A-Cleanup.png",
+            "fix": "Add 'Select all' with total email count, a sort menu (Most emails / Most recent), and let the list use the full height."
+          },
+          {
+            "level": "component",
+            "element": "Done state 'Undo' button above 'Unsubscribing from 3 senders can't be undone'",
+            "problem": "A prominent Undo pill sits directly over text saying part of the operation cannot be undone. Users will reasonably tap Undo expecting full reversal and only restore archived mail, potentially believing subscriptions were also restored.",
+            "norm": "Undo labels must name exactly what will be reversed when an operation is only partially reversible.",
+            "severity": "P1",
+            "screenshot": "PG-A-Cleanup.png",
+            "fix": "Relabel the button 'Undo archive only' and pair it with '101 emails will return; 3 unsubscribes will stay in History'."
+          },
+          {
+            "level": "component",
+            "element": "Side-strip icons on Message: back chevron, bin/archive glyph, curved Reply arrow",
+            "problem": "The two message actions in the strip are unlabeled icons. The top glyph reads as Trash while the post-action banner and list swipe call the same operation Archive. Reply, the founder's main job, is only a small curved arrow on the left edge — poor for right-thumb one-handed use.",
+            "norm": "Archive and Delete must use distinct, consistently named icons; primary Reply must be labeled and reachable in the thumb zone (iOS Mail uses a bottom reply arrow with a toolbar).",
+            "severity": "P1",
+            "screenshot": "PG-A-InboxMessage.png",
+            "fix": "Use one Archive tray glyph everywhere with a text label or tooltip, keep Delete separate if it exists, and add a labeled Reply button in a bottom toolbar."
+          },
+          {
+            "level": "group",
+            "element": "Thread header '2 earlier' with Ana Ruiz / You collapsed rows",
+            "problem": "Earlier messages collapse into two thin rows with tiny right chevrons and one-line previews, while the latest message expands below with no divider or 'Latest' marker. It is unclear whether tapping a row expands in place, navigates away, or whether the expanded text belongs to Ana Ruiz's Oct 19 row.",
+            "norm": "Thread views show clear collapsed/expanded states, sender-date headers per message, and visible separators between messages.",
+            "severity": "P2",
+            "screenshot": "PG-A-InboxMessage.png",
+            "fix": "Label the section 'Earlier in thread', keep a sender/date header attached to the expanded message, and expand/collapse in place with a rotating chevron."
+          },
+          {
+            "level": "page",
+            "element": "'After Archive: next message opens' — Intro: design partner with 'Archived / Undo' banner",
+            "problem": "Archiving instantly replaces Re: Pilot timeline with a different sender and subject, leaving only a transient bottom banner as orientation. A triaging founder can easily start reading or reply to Jordan Lee believing it is still Ana Ruiz's thread.",
+            "norm": "Auto-advance after archive is a valid triage pattern, but the context change must be unmistakable and reversible from the new context.",
+            "severity": "P2",
+            "screenshot": "PG-A-InboxMessage.png",
+            "fix": "Animate the transition, flash the new subject/sender, and keep 'Archived Re: Pilot timeline — Undo' in the banner until dismissed or timed out."
+          },
+          {
+            "level": "component",
+            "element": "Bottom-left chat bubble button on Message with failure banner 'Inbox agent didn't respond'",
+            "problem": "The agent entry point is a single speech-bubble icon with no label, prompt field or hint of what to ask; the failure banner offers 'Try again' but still gives no way to see or edit what was asked.",
+            "norm": "AI assistant entry points must signal purpose and show the pending request when an agent call fails.",
+            "severity": "P1",
+            "screenshot": "PG-A-InboxMessage.png",
+            "fix": "Label the button 'Ask Inbox agent', open a sheet showing the user's question with Retry and Edit actions when the agent fails."
+          },
+          {
+            "level": "group",
+            "element": "Inbox list grouping: 'Needs reply 3' (Ana Ruiz, Jordan Lee, Northwind Support) followed by 'Today' and 'Earlier'",
+            "problem": "The first three rows are grouped by need rather than time yet carry today's times, then a 'Today' section restarts chronology. The same message could belong to both schemes, so users cannot tell if the list is sorted by priority or date, and unread dots appear only on Today rows, not on Needs-reply rows.",
+            "norm": "A list uses one primary sort with explicit section semantics; unread state must be applied uniformly regardless of section.",
+            "severity": "P1",
+            "screenshot": "Sheet.png",
+            "fix": "Keep one chronological list with 'Needs reply' as a filter chip or pin badges on rows, and apply the same unread dot treatment in every section."
+          },
+          {
+            "level": "component",
+            "element": "Swipe-left Archive reveal (white 'Archive' block over Example Weekly)",
+            "problem": "Archive exists only as a hidden swipe; the revealed white block covers most of the row, clips its text ('3:02 PM / nd more'), and there is no visible button alternative. Press-and-hold instead offers only 'Mark unread / Spam', teaching users that secondary menus omit the primary action.",
+            "norm": "Gesture-only actions need a discoverable equivalent (visible action, edit mode or context menu parity) per iOS HIG swipe-action conventions.",
+            "severity": "P1",
+            "screenshot": "Sheet.png",
+            "fix": "Add Archive to the press-and-hold menu and to a row '…' menu, use a standard partial swipe-action width that does not clip row text, and hint the swipe on first use."
+          },
+          {
+            "level": "group",
+            "element": "Left side control strip: back, Search, filter, Compose pencil, '…', Cleanup (in PG-A-Cleanup.png) vs '…' only (in Sheet.png)",
+            "problem": "All navigation and creation actions are unlabeled icons stacked in a narrow strip beside the Dynamic Island, with '9:41' under the island pill eating content width and truncating every row. Worse, Cleanup appears as a labeled strip button in PG-A-Cleanup but is absent from the same strip in Sheet, so the bulk-clean entry point moves between siblings.",
+            "norm": "Persistent navigation must be labeled or universally conventional, stable in position across sibling screens, and must not consume list width needed for content.",
+            "severity": "P1",
+            "screenshot": "Sheet.png",
+            "fix": "Fix one strip layout for all outer-display screens: Search, Filter, Cleanup and Compose in the same slots with icon+micro-label, and disclose anything remaining behind '…' consistently."
+          },
+          {
+            "level": "component",
+            "element": "Consent screen 'Let the Inbox agent read your mail? / Allow / Not now'",
+            "problem": "The consent copy promises sorting and draft replies and 'You approve anything it sends', but never states what mail is read, whether content leaves the device, retention, or how to revoke. 'Not now' consequence is unstated — does Inbox still work without the agent?",
+            "norm": "Mail-reading consent requires specific scope, data-use and revocation disclosure, and a clear description of the degraded mode after declining.",
+            "severity": "P1",
+            "screenshot": "Sheet.png",
+            "fix": "Add bullet scope (which account, read-only vs draft creation), a privacy link, where to revoke in Settings, and text under 'Not now' such as 'Use Inbox without the agent'."
+          },
+          {
+            "level": "group",
+            "element": "Sidebar PERSONNEL (Chief, Finance agent, Carta agent, Legal agent) above PAGES (Finance, Legal, Cap table…)",
+            "problem": "Finance and Legal each appear twice — as an 'agent' chat and as a 'page' — with near-identical names and no explanation of the difference. 'Ask Finance agent opened' then shows '‹ Back to Finance', implying the agent lives inside the page, contradicting the sidebar's flat list.",
+            "norm": "Navigation must have mutually exclusive, clearly labeled destinations; an entity and its chat cannot be sibling items with the same name.",
+            "severity": "P1",
+            "screenshot": "Split.png",
+            "fix": "Make Finance and Legal single destinations whose page header contains an 'Ask agent' action, or rename sidebar items explicitly to 'Finance — page' and 'Finance agent — chat' with distinct icons."
+          },
+          {
+            "level": "component",
+            "element": "Inbox '…' More menu revealing floating 'Cleanup' pill",
+            "problem": "On the inner display, Cleanup — a headline job for this persona — is hidden behind an unlabeled '…' button at the bottom of the right strip and appears as a single floating pill over the mail list. It has no count, icon label context or placement parallel to the outer display.",
+            "norm": "Top tasks (bulk clean newsletters) deserve a first-class, persistently visible entry with consistent placement across form factors.",
+            "severity": "P1",
+            "screenshot": "Split.png",
+            "fix": "Put a permanent 'Cleanup' button with sender/email count in the Inbox header toolbar on both displays; remove it from the More menu or keep it there as a duplicate shortcut."
+          },
+          {
+            "level": "component",
+            "element": "Finance placeholders 'Synced [TIME]', 'Runway now [N] mo', 'Cash today [AMOUNT]' and unlabeled Monthly burn bars",
+            "problem": "The Finance page ships literal template tokens and a 12-month bar chart with month labels but no values, units or axis. A founder cannot read runway or burn — the page's entire purpose — and cannot tell real data from unfinished mock content.",
+            "norm": "Data pages must show real formatted values with units, sync time and chart scales; placeholder tokens must never be the visible UI.",
+            "severity": "P2",
+            "screenshot": "Split.png",
+            "fix": "Replace tokens with formatted sample data ('6.2 mo', currency amounts, 'Synced 9:41 AM'), add a y-axis or value-on-tap for the burn chart, and keep placeholders only in design files."
+          },
+          {
+            "level": "page",
+            "element": "'Reply, inner flat' full-pane Reply vs 'Reply, half-folded' overlay Reply",
+            "problem": "Two reply layouts exist for the same job: flat Reply replaces the message entirely (original ask and both attachments disappear, only subject remains), while half-folded keeps only a two-line summary of Ana's message. Neither lets the founder re-read the full request or open attachments while composing.",
+            "norm": "Split-view reply should preserve reference context — the source message scrollable above or beside the editor, as in iPad Mail compose sheets.",
+            "severity": "P1",
+            "screenshot": "Inner-Message.png",
+            "fix": "Standardize on one pattern: compose as a sheet/card over the still-scrollable message with attachments accessible, and use it in both folded states with the full thread one tap away."
+          },
+          {
+            "level": "group",
+            "element": "Inner Cleanup pane: floating 'Cleanup' pill above 'Archive 101 emails' and no Unsubscribe button",
+            "problem": "On the inner display the Cleanup pane shows a stray floating 'Cleanup' pill directly above the Archive button, and the 'Unsubscribe' button and '⌄' menu present in PG-A-Cleanup's 'Senders ticked' state are gone. The same selection offers fewer, different actions depending on which display is open.",
+            "norm": "Feature and action parity across folded states; a screen must not retain menu artifacts once the menu's action has opened.",
+            "severity": "P1",
+            "screenshot": "Inner-Message.png",
+            "fix": "Dismiss the Cleanup menu pill when the pane opens and restore the identical action bar — Archive, Unsubscribe, More — used on the outer display."
+          },
+          {
+            "level": "layout",
+            "element": "Inner 'Inbox zero': left pane success state beside a completely empty black right pane",
+            "problem": "Half of the 890pt inner display is void — only the right side strip icons remain. The success moment wastes the large canvas and offers no next step toward Finance, Legal or the agents.",
+            "norm": "Empty states on large canvases should use the space for orientation and the next valuable action rather than leaving a dead pane.",
+            "severity": "P2",
+            "screenshot": "Inner-Message.png",
+            "fix": "Show a workspace summary in the right pane at inbox zero (needs-attention items, Finance runway, Legal deadlines) or collapse to a single centered Inbox-zero view."
+          },
+          {
+            "level": "layout",
+            "element": "Side control strip position: left of content on outer frames, right of content on inner frames, with '9:41' migrating with it",
+            "problem": "The strip holding Back, Archive, Reply, '…' and agent chat flips sides between Sheet/PG-A-InboxMessage (left) and Split/Inner-Message (right), and the primary strip actions sit at mid-height rather than in a bottom thumb zone. Muscle memory built on one display actively misleads on the other, contradicting the one-handed brief.",
+            "norm": "Persistent controls keep a stable position across size classes; frequent actions belong in the bottom thumb arc for one-handed phone use.",
+            "severity": "P1",
+            "screenshot": "Inner-Message.png",
+            "fix": "Anchor one control model: bottom toolbar for Back/Archive/Reply/Ask on both displays (or a strip that stays on the same side), and reserve the island-adjacent strip for status only."
+          }
+        ],
+        "excellent": [
+          "PG-A-Compose.png — Discard flow: leaving a changed draft or typed new message always raises 'Save draft / Discard / Keep editing' with Discard in red; unsaved work is never silently lost.",
+          "PG-A-Compose.png — 'Send result unknown' banner explicitly warns 'Check Sent before sending again' instead of blindly encouraging a resend; this is the correct handling of ambiguous sends.",
+          "PG-A-Cleanup.png — Cleanup confirmation quantifies impact before acting ('Archive 101 emails', 'Unsubscribe from 3 senders') and states reversibility per action; History preserves an audit trail with Undo on today's run.",
+          "PG-A-InboxMessage.png — 'After Archive: next message opens' with a persistent 'Archived / Undo' banner is exactly the fast-triage loop the persona needs, and Archive failure keeps the user on the message with 'Couldn't archive / Try again'.",
+          "Sheet.png — State coverage is exemplary: Inbox zero with 'Synced 9:41 AM', first-sync skeletons, 'Gmail needs to reconnect' with last-sync time, 'Changes to mail are off' with Turn on, and No mail account with a single 'Connect Gmail' action.",
+          "Split.png — Sidebar clearly separates Activity/Inbox counts ('1 needs you', '3 need reply') from PERSONNEL and PAGES, and pins 'Alex Morgan' with settings at the bottom, giving constant where-am-I orientation.",
+          "Inner-Message.png — Selected Ana Ruiz row is visibly highlighted in the list pane and 'Needs reply' correctly decrements 3 → 2 after archive, closing the feedback loop between action and list state."
+        ]
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 185,
+      "costUsd": 0.145406,
+      "result": {
+        "verdict": "Praci demonstrates strong systems thinking around AI-assisted email triage and edge-case recovery (such as ambiguous send states and reversible vs. irreversible bulk cleanup confirmations), but suffers from critical cross-screen inconsistencies, missing master-detail states on the inner display, broken layout states when popovers or keyboards appear, and omitted core email actions that block a founder from reaching Inbox Zero efficiently.",
+        "findings": [
+          {
+            "level": "page",
+            "element": "Finance dashboard and Ask Finance agent chat (`Finance, 1/3 + 2/3` and `Ask Finance agent opened`)",
+            "problem": "Raw template tokens (`Synced [TIME]`, `[N] mo`, `[AMOUNT]`, and `About [N] months at the current burn`) are left unpopulated in the main Finance view and chat response, even though the sidebar immediately to the left shows populated data (`6 mo runway`).",
+            "norm": "Mockups and production UI surfaces must use realistic, internally consistent data across master and detail panes.",
+            "severity": "P0",
+            "screenshot": "Split.png",
+            "fix": "Replace all bracketed placeholders (`[TIME]`, `[N]`, `[AMOUNT]`) with concrete values matching the sidebar (`6 mo`, `$1.42M`, `Synced 9:41 AM`)."
+          },
+          {
+            "level": "page",
+            "element": "Cleanup detail pane (`Cleanup`, bottom-right frame)",
+            "problem": "On the inner display, the Cleanup view is missing the `Unsubscribe` button, the overflow options button (`v` for 'Skip inbox for future mail'), the History button, and any Close/Back affordance to exit Cleanup—And a stale `Cleanup` popover menu from the `...` button remains stuck floating over the `Pilot Community` row.",
+            "norm": "Feature parity must be maintained (or enhanced, never reduced) when moving from a compact outer screen to a larger inner split screen, and trigger popovers must dismiss once their target view opens.",
+            "severity": "P0",
+            "screenshot": "Inner-Message.png",
+            "fix": "Dismiss the floating `Cleanup` popover upon entering Cleanup, add a header close/back button and History icon to the Cleanup pane, and include both `Archive 101 emails` and `Unsubscribe` plus the overflow menu in the bottom action bar to match `PG-A-Cleanup.png`."
+          },
+          {
+            "level": "layout",
+            "element": "Search, Filter, and Compose controls in split view (`Message selected`, `Reply, inner flat`, `Reply, half-folded`, `After Archive` vs `Inbox zero`)",
+            "problem": "Whenever a message is open on the inner display, `Search mail`, `Filter`, and `Compose` vanish from both the left Inbox column and the right control strip because the strip is hijacked by message-level actions (`Archive`, `Reply`). Ironically, the `Filter` button only reappears in the `Inbox zero` state when there are zero emails left to filter.",
+            "norm": "In a master-detail split view, list-level actions (Search, Filter, New Message) must remain persistently accessible alongside detail-pane actions.",
+            "severity": "P0",
+            "screenshot": "Inner-Message.png",
+            "fix": "Keep the `Search mail` field, `Filter` icon, and `Compose` button anchored in the left `Inbox` pane header across all split-view states, reserving the right hardware control strip for detail-pane actions."
+          },
+          {
+            "level": "group",
+            "element": "Cc autocomplete state (`Cc suggestions`)",
+            "problem": "When typing `Jor |` in the `Cc` field and showing the `Jordan Lee` suggestion card, the `Subject` row (`Re: Pilot timeline`) and the entire message body (`Hi Ana, Thursday works...`) disappear from the screen instead of being pushed down or overlaid.",
+            "norm": "Autocomplete menus must overlay or push down adjacent form fields without unmounting the subject line and message body.",
+            "severity": "P1",
+            "screenshot": "PG-A-Compose.png",
+            "fix": "Render the `Jordan Lee` autocomplete suggestion as a floating popover over the `Subject` and body fields (or push them down smoothly) while keeping the rest of the draft visible."
+          },
+          {
+            "level": "component",
+            "element": "Context menu on unread message (`Press and hold: Spam menu`)",
+            "problem": "In `Press and hold: Spam menu`, the user long-presses `Example Weekly`, which already displays a white unread indicator dot on the left, yet the context menu offers `Mark unread` instead of `Mark read`.",
+            "norm": "Stateful context menu actions must reflect the current read/unread state of the target item.",
+            "severity": "P1",
+            "screenshot": "Sheet.png",
+            "fix": "Change the action label to `Mark read` (with an open circle or envelope icon) when invoked on an unread thread, and reserve `Mark unread` for read threads."
+          },
+          {
+            "level": "component",
+            "element": "Email list row typography (`Inbox` list across all frames)",
+            "problem": "Read emails (`Ana Ruiz`, `Jordan Lee`, `Northwind Support`, `Deals Daily`, `Rivera Studio`) use the exact same bold white typography for both sender name and subject line as unread emails (`Acme Payroll`, `Example Weekly`), relying solely on a small left margin dot to indicate unread status.",
+            "norm": "Email clients differentiate unread from read messages using typographic weight and color contrast so users can scan read state without hunting for margin dots.",
+            "severity": "P1",
+            "screenshot": "Sheet.png",
+            "fix": "Use regular (non-bold) weight and slightly muted secondary text color for the sender and subject of read messages, reserving bold bright-white text and the left dot for unread messages (or messages in `Needs reply` if intentional, with a distinct visual treatment)."
+          },
+          {
+            "level": "component",
+            "element": "Master Inbox list active selection (`Message selected`, `Reply, inner flat`, `Reply, half-folded`, `After Archive`)",
+            "problem": "In all split-view frames where an email is open on the right (`Ana Ruiz` in Frames 1–3, `Jordan Lee` in Frame 4), the corresponding row in the left Inbox list has no active background highlight or selection indicator.",
+            "norm": "Master-detail split layouts require a clear selected state on the active list row so users maintain spatial orientation in the queue.",
+            "severity": "P1",
+            "screenshot": "Inner-Message.png",
+            "fix": "Apply a subtle elevated surface fill (`#262626`) and rounded container highlight to the active row in the left Inbox list matching the active state used in the `Split.png` sidebar."
+          },
+          {
+            "level": "component",
+            "element": "`Draft ready` banner in `Message selected` (`Inner-Message.png`) and `Reply menu` (`PG-A-InboxMessage.png`)",
+            "problem": "The `Ana Ruiz — Re: Pilot timeline` row displays a `Draft ready` pill in the Inbox list, and shows a `Draft ready / [Review draft]` card in `PG-A-InboxMessage.png` (Frame 1), but that card completely disappears in `Inner-Message.png` (`Message selected`) and in `PG-A-InboxMessage.png` (`Reply menu`).",
+            "norm": "AI draft status must be consistent between the list item badge and the open message view across both outer and inner displays.",
+            "severity": "P1",
+            "screenshot": "Inner-Message.png",
+            "fix": "Display the `Draft ready / [Review draft]` banner at the top of the `Re: Pilot timeline` message body in `Inner-Message.png` (`Message selected`) and keep it visible when opening the `Reply menu` in `PG-A-InboxMessage.png`."
+          },
+          {
+            "level": "group",
+            "element": "Inner display reply composer (`Reply, inner flat` and `Reply, half-folded`)",
+            "problem": "When replying on the inner display, there is no attachment (`paperclip`) button, no `Cc, Bcc` field, no `From` address selector, and no chevron on `Reply` to switch to `Reply all` or `Forward`—all of which exist on the smaller outer display (`PG-A-Compose.png`).",
+            "norm": "Composing or replying on the larger inner display must support attachments, CC/BCC recipients, and reply-type switching.",
+            "severity": "P1",
+            "screenshot": "Inner-Message.png",
+            "fix": "Add the `Reply v` dropdown affordance, collapsible `Cc, Bcc` row, and an attachment (`paperclip`) button to both `Reply, inner flat` and `Reply, half-folded`."
+          },
+          {
+            "level": "group",
+            "element": "Bottom action bar and confirmation sheet (`Senders ticked` vs `Confirm: archive and unsubscribe`)",
+            "problem": "In `Senders ticked`, the two side-by-side buttons are labeled `Archive 101 emails` and `Unsubscribe`. However, `Confirm: archive and unsubscribe` shows a combined action (`Archive 101 emails` + `Unsubscribe from 3 senders` -> `Archive and unsubscribe`). It is unclear whether tapping `Unsubscribe` secretly archives all 101 emails as well, or how the combined confirmation was triggered.",
+            "norm": "Button labels must accurately predict the action they trigger; if a button performs both archiving and unsubscribing, its label must say so.",
+            "severity": "P1",
+            "screenshot": "PG-A-Cleanup.png",
+            "fix": "Clarify the button labeling in `Senders ticked`: either label the secondary CTA `Archive & unsubscribe` if it performs both, or make `Unsubscribe` an independent toggle/action so the user knows whether existing emails will be archived."
+          },
+          {
+            "level": "page",
+            "element": "Sender list header and rows (`Nothing selected`, `Senders ticked`)",
+            "problem": "Cleanup provides no `Select all` / `Deselect all` control and no way to tap a sender row to preview which emails will be archived before committing.",
+            "norm": "Bulk triage tools must provide both a batch select/deselect shortcut and a way to inspect the underlying items in a group before bulk deletion or archiving.",
+            "severity": "P1",
+            "screenshot": "PG-A-Cleanup.png",
+            "fix": "Add a `Select all` action in the top-right of the `Cleanup` header, and allow tapping the sender text/count area (separate from the left checkbox) to preview the sender's emails."
+          },
+          {
+            "level": "group",
+            "element": "Discard prompt on existing draft (`Edit draft, changed: discard prompt`)",
+            "problem": "When closing an existing draft after editing it, the action sheet offers `Save draft`, `Discard`, and `Keep editing`—identical to a brand-new unsaved message (`New message, typed: discard prompt`). It is ambiguous whether `Discard` deletes the entire pre-existing draft or merely reverts the unsaved edits made during this session.",
+            "norm": "Destructive prompts when editing an existing resource must distinguish between discarding unsaved changes (`Discard changes`) and deleting the resource (`Delete draft`).",
+            "severity": "P1",
+            "screenshot": "PG-A-Compose.png",
+            "fix": "In `Edit draft, changed: discard prompt`, change `Discard` to `Discard changes` (or provide an explicit `Delete draft` option if full deletion is intended) and remove the sheet drag-grabber handle at the top of the modal prompt."
+          },
+          {
+            "level": "group",
+            "element": "Bottom toast / snackbar positioning (`Archived, Undo` and `Archive failed, row stays`)",
+            "problem": "The floating bottom toast (`Archived / Undo` and `Couldn't archive / Try again`) sits directly over the `Rivera Studio` email row, slicing horizontally through the middle of the text `Draft logos attached — Three directions to review` with no bottom gradient mask or scroll inset.",
+            "norm": "Floating snackbars should either sit over a bottom fade scrim or add bottom content inset padding so the last list item remains readable and tappable.",
+            "severity": "P2",
+            "screenshot": "Sheet.png",
+            "fix": "Add bottom scroll padding equal to the toast height plus safe area, and apply a subtle bottom-edge gradient fade behind the floating toast bar."
+          },
+          {
+            "level": "component",
+            "element": "Send button state in `Mail changes off` and `Not sent`",
+            "problem": "In `Mail changes off`, the banner states `Sending is off for me@example.test`, yet the bottom-left Send button (`↑`) remains bright white (enabled) instead of dimmed like in `Send disabled: no recipient`. Meanwhile, in `Not sent`, the circular icon button crams the text string `Retry` inside a 44pt circle instead of keeping an icon and placing `Retry` in the inline error banner like `Send result unknown`.",
+            "norm": "Primary action buttons must visually disable when preconditions fail, and circular rail buttons meant for icons should not switch to cramped text labels.",
+            "severity": "P2",
+            "screenshot": "PG-A-Compose.png",
+            "fix": "Dim/disable the `↑` Send button in `Mail changes off` until the user taps `Turn on`, and in `Not sent`, move the `Retry` text button inside the inline alert banner (matching `Send result unknown` and `Archive failed`)."
+          },
+          {
+            "level": "group",
+            "element": "`Cc, Bcc` row visibility (`New message, keyboard open`, `Send disabled: no recipient`, `Sending`, `Not sent`, `Send result unknown`, `Mail changes off`)",
+            "problem": "The `Cc, Bcc` row present in `New message` (Frame 1) disappears in all subsequent `New message` frames once text is entered or the keyboard opens, with no chevron on the `To` row to expand it again.",
+            "norm": "Users must be able to add CC/BCC recipients at any point while composing a message, not only before typing the body.",
+            "severity": "P2",
+            "screenshot": "PG-A-Compose.png",
+            "fix": "Keep the collapsible `Cc, Bcc` row (or a `Cc/Bcc` disclosure button on the right side of the `To` field) accessible in all compose states."
+          },
+          {
+            "level": "component",
+            "element": "Quoted thread expansion pill (`...`) in `Edit draft`, `Cc suggestions`, and `Invalid address`",
+            "problem": "While `Reply` (Frame 2) includes a `...` button below the body to view the quoted thread being replied to, `Edit draft` (Frame 4) for the exact same `Re: Pilot timeline` thread omits the `...` button, preventing the user from checking the original message while editing a draft.",
+            "norm": "Draft replies must retain access to the quoted parent thread just like live replies.",
+            "severity": "P2",
+            "screenshot": "PG-A-Compose.png",
+            "fix": "Include the `...` quoted-thread toggle below the draft body in `Edit draft` and all related reply-draft states."
+          },
+          {
+            "level": "component",
+            "element": "Cleanup entry point in side control strip (`Inbox, Cleanup in the strip` in `PG-A-Cleanup.png` vs `Sheet.png` and `Split.png`)",
+            "problem": "In `PG-A-Cleanup.png` Frame 1, the side control strip has a dedicated button with a crammed 8pt `Cleanup` text label inside the circle, whereas in `Sheet.png` and `Split.png` that exact slot is an unlabeled `...` icon button that opens a popover menu.",
+            "norm": "Navigation entry points and side-rail button styles must be consistent across screens; icon-only circular rails should not mix micro-labeled buttons with unlabeled icons.",
+            "severity": "P2",
+            "screenshot": "PG-A-Cleanup.png",
+            "fix": "Standardize on the `...` button (or a clean icon-only broom/checklist button without cramped micro-text) across `PG-A-Cleanup.png`, `Sheet.png`, and `Split.png`."
+          },
+          {
+            "level": "component",
+            "element": "Popover menu alignment (`Inbox, More menu`)",
+            "problem": "When tapping the `...` button in the right control strip, the `Cleanup` popover renders ~60pt to the left of the rail, floating in the middle of the `Example Weekly` row with no visual anchor to the `...` button that opened it.",
+            "norm": "Popover menus must anchor directly adjacent to their trigger button (within 8–12pt) so the spatial relationship is clear.",
+            "severity": "P2",
+            "screenshot": "Split.png",
+            "fix": "Right-align the `Cleanup` popover pill so its right edge sits 8pt to the left of the `...` button in the control strip."
+          },
+          {
+            "level": "group",
+            "element": "Navigation hierarchy and duplicate chat button (`Ask Finance agent opened`)",
+            "problem": "When opening the Finance agent chat from the Finance page, the left sidebar highlights `PERSONNEL -> Finance agent` as a top-level destination while the detail pane simultaneously shows `< Back to Finance` at the top, and the bottom-right control strip still displays the `💬` chat button right next to the chat input's `↑` send button.",
+            "norm": "A view should not simultaneously present itself as a top-level sidebar selection and a child drill-down with a back breadcrumb, nor show a redundant 'open chat' FAB while already in a full-screen chat.",
+            "severity": "P2",
+            "screenshot": "Split.png",
+            "fix": "When viewing `Finance agent` as a child of `Finance` (or via the bottom-right agent button), either keep `Finance` selected in the sidebar and show the agent as a split/drawer panel, or hide the redundant bottom-right `💬` button when already inside an agent chat."
+          },
+          {
+            "level": "component",
+            "element": "Overflow menu button (`v`) and History button (`🕒`) in `PG-A-Cleanup.png`",
+            "problem": "The bottom-right overflow button in `Cleanup` uses a downward-pointing chevron (`v`) even though it is at the bottom edge of the screen and opens an upward popover (`Skip inbox for future mail`). Additionally, the History clock button (`🕒`) in the left rail disappears in the `Done` state right after a cleanup completes, then reappears in `Empty`.",
+            "norm": "Directional chevrons should match popover direction (or use `...`), and history navigation should remain visible immediately after an action creates a history entry.",
+            "severity": "P3",
+            "screenshot": "PG-A-Cleanup.png",
+            "fix": "Change the bottom-right `v` icon to an upward chevron (`^`) or `...`, and keep the History (`🕒`) button visible in the `Done` state."
+          },
+          {
+            "level": "component",
+            "element": "Thread count label (`Thread`, Frame 4) and recipient header (`Message`, Frame 1)",
+            "problem": "In `Thread`, the static caption `2 earlier` sits above two already-visible collapsed message rows (`Oct 17` and `Oct 18`), making it look as if there are 2 additional hidden messages above them. Also, `to me` under the sender's name has no disclosure chevron to inspect full sender/CC addresses.",
+            "norm": "Thread counts should only appear as interactive expand buttons when messages are actually hidden, and email headers must allow inspecting full recipient and sender addresses.",
+            "severity": "P3",
+            "screenshot": "PG-A-InboxMessage.png",
+            "fix": "Remove the redundant `2 earlier` label when all earlier messages in the thread are already listed, and add a subtle chevron (`to me v`) to inspect full email headers."
+          }
+        ],
+        "excellent": [
+          "High-signal AI triage grouping in the Inbox (`Needs reply 3` section paired with semantic status pills like `Draft ready`, `Needs attention`, `Newsletter`, and `Junk` in `Sheet.png` and `Split.png`) lets a busy founder scan and prioritize messages immediately.",
+          "Best-in-class destructive confirmation copy in `PG-A-Cleanup.png` (`Confirm: archive and unsubscribe`), which explicitly contrasts the reversible action (`Archive 101 emails — Undo brings them back`) against the permanent action (`Unsubscribe from 3 senders — Unsubscribing can't be undone`) before execution.",
+          "Thorough handling of real-world network and state edge cases across `PG-A-Compose.png` and `Sheet.png`, particularly `Send result unknown` ('We couldn't confirm this sent. Check Sent before sending again' with a direct `Open Sent` action to prevent duplicate emails) and live batch progress (`Archiving 40 of 101`) with cancellation.",
+          "Fast single-handed triage flow in `PG-A-InboxMessage.png` (`After Archive: next message opens`) and `Inner-Message.png` (`After Archive`) that automatically advances to the next message while keeping an inline `Archived [Undo]` bar accessible.",
+          "Thoughtful `Reply, half-folded` posture in `Inner-Message.png` that keeps the incoming email readable in the upper half of the detail pane while docking the reply composer in the lower half."
+        ]
+      }
+    }
+  ]
+}

@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "./client.js";
 import { createDb } from "./client.js";
 import {
-  addContact,
+  addContactIfNew,
   ContactEmailTakenError,
   deleteContact,
   listContacts,
@@ -56,22 +56,96 @@ describePostgres("contacts (PostgreSQL)", () => {
     await close();
   });
 
-  it("addContact creates, then refuses an email the user already has", async () => {
-    const first = await addContact(prisma, mine, {
+  it("addContactIfNew creates once and never changes an existing contact", async () => {
+    const first = await addContactIfNew(prisma, mine, {
       name: "Add One",
       email: "add-one@example.test",
+      kind: "vendor",
     });
-    expect(first.name).toBe("Add One");
-    await expect(
-      addContact(prisma, mine, { name: "Dup", email: "add-one@example.test" }),
-    ).rejects.toBeInstanceOf(ContactEmailTakenError);
-    const other = await addContact(prisma, sameSpace, {
+    expect(first.created).toBe(true);
+    const again = await addContactIfNew(prisma, mine, {
+      name: "Renamed",
+      email: "add-one@example.test",
+      kind: "other",
+      notes: "new note",
+    });
+    expect(again.created).toBe(false);
+    expect(again.contact).toEqual(first.contact);
+    const byName = await addContactIfNew(prisma, mine, {
+      name: "No Email",
+      organization: "Acme Corp",
+    });
+    const sameName = await addContactIfNew(prisma, mine, {
+      name: "no email",
+      organization: "ACME CORP",
+    });
+    const otherOrg = await addContactIfNew(prisma, mine, {
+      name: "No Email",
+      organization: "Other Co",
+    });
+    expect(sameName.created).toBe(false);
+    expect(sameName.contact.id).toBe(byName.contact.id);
+    expect(otherOrg.created).toBe(true);
+    const other = await addContactIfNew(prisma, sameSpace, {
       name: "Mine",
       email: "add-one@example.test",
     });
-    expect(other.email).toBe("add-one@example.test");
-    await deleteContact(prisma, mine, first.id);
-    await deleteContact(prisma, sameSpace, other.id);
+    expect(other.created).toBe(true);
+    for (const [owner, id] of [
+      [mine, first.contact.id],
+      [mine, byName.contact.id],
+      [mine, otherOrg.contact.id],
+      [sameSpace, other.contact.id],
+    ] as const)
+      await deleteContact(prisma, owner, id);
+  });
+
+  it("records the agent that added a contact, finds notes, and forgets the agent when it is deleted", async () => {
+    const bot = await prisma.bot.create({
+      data: { spaceId: mine.spaceId, userId: mine.userId, name: "Chief", color: "#000000" },
+    });
+    const added = await addContactIfNew(
+      prisma,
+      mine,
+      { name: "Agent Found", notes: "outside counsel for the lease" },
+      bot.id,
+    );
+    expect(added.contact.addedBy).toEqual({ id: bot.id, name: "Chief" });
+    const byHand = await saveContact(prisma, mine, { name: "By Hand" });
+    expect(byHand.addedBy).toBeNull();
+    // An update keeps the agent.
+    const edited = await saveContact(prisma, mine, { id: added.contact.id, name: "Agent Found 2" });
+    expect(edited.addedBy).toEqual({ id: bot.id, name: "Chief" });
+    // Text search covers notes.
+    expect((await listContacts(prisma, mine, { text: "LEASE" })).map((c) => c.id)).toEqual([
+      added.contact.id,
+    ]);
+    // Another user in the same space never sees it.
+    expect(await listContacts(prisma, sameSpace, { text: "lease" })).toEqual([]);
+    await prisma.bot.delete({ where: { id: bot.id } });
+    const [after] = await listContacts(prisma, mine, { text: "lease" });
+    expect(after?.addedBy).toBeNull();
+    await deleteContact(prisma, mine, added.contact.id);
+    await deleteContact(prisma, mine, byHand.id);
+  });
+
+  it("addContactIfNew matches an email exactly and an empty organization as none", async () => {
+    const dotted = await addContactIfNew(prisma, mine, {
+      name: "Dot",
+      email: "al.ice@example.test",
+    });
+    const underscore = await addContactIfNew(prisma, mine, {
+      name: "Under",
+      email: "al_ice@example.test",
+    });
+    expect(underscore.created).toBe(true);
+    const first = await addContactIfNew(prisma, mine, { name: "Blank Org", organization: "" });
+    const again = await addContactIfNew(prisma, mine, { name: "Blank Org", organization: "" });
+    expect(first.created).toBe(true);
+    expect(again.created).toBe(false);
+    expect(again.contact.id).toBe(first.contact.id);
+    for (const row of [dotted, underscore, first])
+      await deleteContact(prisma, mine, row.contact.id);
   });
 
   it("refuses to create a contact whose email another contact has, and leaves it unchanged", async () => {
@@ -96,6 +170,24 @@ describePostgres("contacts (PostgreSQL)", () => {
       organization: "Example Capital",
       notes: "Lead",
     });
+  });
+
+  it("clears notes and organization given null, and keeps them when omitted", async () => {
+    const saved = await saveContact(prisma, sameSpace, {
+      name: "Clear Me",
+      organization: "Org",
+      notes: "keep?",
+    });
+    const kept = await saveContact(prisma, sameSpace, { id: saved.id, name: "Clear Me" });
+    expect(kept).toMatchObject({ organization: "Org", notes: "keep?" });
+    const cleared = await saveContact(prisma, sameSpace, {
+      id: saved.id,
+      name: "Clear Me",
+      organization: null,
+      notes: null,
+    });
+    expect(cleared).toMatchObject({ organization: null, notes: null });
+    await deleteContact(prisma, sameSpace, saved.id);
   });
 
   it("ignores extra actor fields such as email", async () => {

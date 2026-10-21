@@ -62,14 +62,15 @@ it("shows a cleanup or skip-inbox reason and nothing for a plain selection", asy
   ]);
   const rows = [...document.querySelectorAll("li")].map((li) => li.textContent ?? "");
   expect(rows[0]).toContain("Cleanup");
-  expect(rows[1]).toContain("Skip inbox");
+  expect(rows[1]).toContain("Archive future mail");
   expect(rows[2]).not.toContain("Cleanup");
-  expect(rows[2]).not.toContain("Skip inbox");
+  expect(rows[2]).not.toContain("Archive future mail");
 });
 
-it("marks automatic actions and disables Undo once undone", async () => {
+it("marks automatic actions and shows Undone instead of Undo once undone", async () => {
   await show([action({ kind: "skip_inbox", source: "auto", undone: true, senderCount: 1 })]);
   expect(document.body.textContent).toContain("Skipped inbox for 31");
   expect(document.body.textContent).toContain("Automatic");
-  expect(document.querySelector("li button")?.hasAttribute("disabled")).toBe(true);
+  expect(document.querySelector("li button")).toBeNull();
+  expect(document.querySelector("li")?.textContent).toContain("Undone");
 });

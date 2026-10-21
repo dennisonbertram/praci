@@ -11,6 +11,7 @@ import {
 } from "@rakazo/adapters";
 import type { Actor, AiConsentQuery, AiConsentStatus, AiRecipient } from "@rakazo/contracts";
 import { AI_DISCLOSURE_VERSION, AI_PRIVACY_URL } from "@rakazo/contracts";
+import type { PrismaClient } from "@rakazo/db";
 import {
   findDefaultModelCredential,
   findDefaultVoiceCredential,
@@ -43,6 +44,7 @@ export async function aiConsentStatus(
     memory,
     settings,
     consents,
+    transcription,
   ] = await Promise.all([
     modelsEnabled
       ? deps.prisma.spaceModelPreference.findMany({
@@ -102,6 +104,9 @@ export async function aiConsentStatus(
     deps.prisma.aiDataConsent.findMany({
       where: { userId: actor.userId, spaceId: actor.spaceId, version: AI_DISCLOSURE_VERSION },
     }),
+    uses.includes("voice") && !query.uses
+      ? deps.prisma.transcriptionSelection.findUnique({ where: { userId: actor.userId } })
+      : null,
   ]);
   const allowed = new Set(consents.map((row) => row.recipientKey));
   const recipients = new Map<string, AiRecipient>();
@@ -220,6 +225,9 @@ export async function aiConsentStatus(
   }
   for (const voice of voices)
     add(aiRecipient({ provider: voice.credential.provider, use: "voice" }));
+  // A selected transcription provider receives dictation audio, so it is a recipient of its own.
+  // It is listed in settings discovery only, not in targeted checks such as speech playback.
+  if (transcription) add(aiRecipient({ provider: transcription.provider, use: "voice" }));
   if (memory)
     add(
       aiRecipient({
@@ -249,6 +257,25 @@ export async function aiConsentStatus(
     privacyUrl: deps.env.privacyPolicyUrl ?? AI_PRIVACY_URL,
     recipients: [...recipients.values()],
   };
+}
+
+/** Whether this user has consented to sending voice data to the provider. A provider that shares nothing outside the app has no recipient and needs none. */
+export async function hasVoiceConsent(
+  prisma: PrismaClient,
+  actor: Actor,
+  provider: string,
+): Promise<boolean> {
+  const recipient = aiRecipient({ provider, use: "voice" });
+  if (!recipient) return true;
+  const count = await prisma.aiDataConsent.count({
+    where: {
+      userId: actor.userId,
+      spaceId: actor.spaceId,
+      recipientKey: recipient.key,
+      version: AI_DISCLOSURE_VERSION,
+    },
+  });
+  return count > 0;
 }
 
 export async function allowAiConsent(

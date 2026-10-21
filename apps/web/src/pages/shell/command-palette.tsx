@@ -70,7 +70,7 @@ function ranked<T>(items: readonly T[], score: (item: T) => number | null): T[] 
 const SELECTED_ROW = "data-selected:bg-accent data-selected:shadow-[inset_3px_0_0_var(--ring)]";
 
 /** An app page (Inbox, Finance, ...) or a group chat the palette can open. */
-export type PaletteEntry = { id: string; label: string; icon?: ReactNode };
+export type PaletteEntry = { id: string; label: string; keywords?: string; icon?: ReactNode };
 
 export function CommandPalette({
   open,
@@ -81,6 +81,8 @@ export function CommandPalette({
   groups = [],
   onSelectPage = () => undefined,
   onSelectGroup = () => undefined,
+  searchLinks,
+  onOpenPath = () => undefined,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -90,6 +92,9 @@ export function CommandPalette({
   groups?: PaletteEntry[];
   onSelectPage?: (id: string) => void;
   onSelectGroup?: (id: string) => void;
+  /** Documents and artifacts matching the text; entry ids are the routes they open. */
+  searchLinks?: (query: string) => Promise<{ heading: string; entries: PaletteEntry[] }[]>;
+  onOpenPath?: (path: string) => void;
 }) {
   const [search, setSearch] = useState("");
   const [modKey, setModKey] = useState("⌘");
@@ -103,8 +108,26 @@ export function CommandPalette({
   }, [open]);
 
   const needle = search.trim().toLowerCase();
+  const [linkGroups, setLinkGroups] = useState<{ heading: string; entries: PaletteEntry[] }[]>([]);
+  useEffect(() => {
+    if (!needle || !searchLinks) {
+      setLinkGroups([]);
+      return;
+    }
+    let stale = false;
+    const timer = window.setTimeout(() => {
+      searchLinks(needle)
+        .then((groups) => !stale && setLinkGroups(groups))
+        .catch(() => !stale && setLinkGroups([]));
+    }, 200);
+    return () => {
+      stale = true;
+      window.clearTimeout(timer);
+    };
+  }, [needle, searchLinks]);
   const botScore = (bot: Bot) => paletteMatchScore(bot.name, needle, botSearchText(bot));
-  const entryScore = (entry: PaletteEntry) => paletteMatchScore(entry.label, needle);
+  const entryScore = (entry: PaletteEntry) =>
+    paletteMatchScore(entry.label, needle, entry.keywords);
   const shownPages = needle ? ranked(pages, entryScore) : pages;
   const shownGroups = needle ? ranked(groups, entryScore) : groups;
   const filteredBots = useMemo(() => {
@@ -135,7 +158,7 @@ export function CommandPalette({
         }))
         .sort((a, b) => a.score - b.score)
         .map((entry) => entry.section)
-    : (["bots", "groups", "pages"] as const);
+    : (["pages", "bots", "groups"] as const);
 
   useEffect(() => {
     if (!open) return;
@@ -244,12 +267,34 @@ export function CommandPalette({
     </CommandGroup>
   ) : null;
 
+  const linksGroups = linkGroups
+    .filter((group) => group.entries.length > 0)
+    .map((group) => (
+      <CommandGroup key={group.heading} heading={group.heading}>
+        {group.entries.map((entry) => (
+          <CommandItem
+            key={entry.id}
+            value={`link:${entry.id}`}
+            onSelect={() => {
+              onOpenPath(entry.id);
+              onOpenChange(false);
+            }}
+            className={`items-center gap-3 rounded-xl! px-2.5 py-2 ${SELECTED_ROW}`}
+          >
+            <span className="truncate font-medium text-foreground" dir="auto">
+              {entry.label}
+            </span>
+          </CommandItem>
+        ))}
+      </CommandGroup>
+    ));
+
   return (
     <CommandDialog
       open={open}
       onOpenChange={onOpenChange}
       title={t`Go to`}
-      description={t`Search pages, bots and groups`}
+      description={t`Search pages, bots, groups, documents and artifacts`}
       className="sm:max-w-xl"
     >
       <Command
@@ -262,6 +307,7 @@ export function CommandPalette({
           onValueChange={setSearch}
           placeholder={t`Search`}
           data-testid="command-palette-search"
+          autoFocus
         />
         <CommandList className="max-h-[min(24rem,60vh)]" data-testid="command-palette-list">
           <CommandEmpty>
@@ -272,6 +318,7 @@ export function CommandPalette({
               {section === "bots" ? botsGroup : section === "groups" ? groupsGroup : pagesGroup}
             </Fragment>
           ))}
+          {linksGroups}
         </CommandList>
       </Command>
     </CommandDialog>

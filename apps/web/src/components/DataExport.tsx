@@ -68,21 +68,34 @@ export function DataExportSection() {
           <p role="status" className="text-[13px] text-muted-foreground">
             <Trans>Preparing… {job.progress}%</Trans>
           </p>
+        ) : pending ? (
+          <p role="status" className="text-[13px] text-muted-foreground">
+            <Trans>Preparing…</Trans>
+          </p>
+        ) : job?.status === "failed" ? (
+          <p className="text-[13px] text-destructive">
+            <Trans>The export failed. Try again.</Trans>
+          </p>
         ) : job?.status === "ready" ? (
           <p className="text-[13px] text-muted-foreground">
             <Trans>Ready until {i18n.date(new Date(job.expiresAt), { dateStyle: "medium" })}</Trans>
           </p>
         ) : null}
       </div>
-      {running ? null : job?.status === "ready" ? (
-        <Button
-          aria-label={t`Download`}
-          render={
-            <a href={`/api/account/exports/${encodeURIComponent(job.id)}/download`} download />
-          }
-        >
-          <Trans>Download</Trans>
-        </Button>
+      {running ? null : job?.status === "ready" && !pending ? (
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" onClick={() => void request()}>
+            <Trans>Request new export</Trans>
+          </Button>
+          <Button
+            aria-label={t`Download`}
+            render={
+              <a href={`/api/account/exports/${encodeURIComponent(job.id)}/download`} download />
+            }
+          >
+            <Trans>Download</Trans>
+          </Button>
+        </div>
       ) : (
         <Button variant="outline" disabled={pending} onClick={() => void request()}>
           <Trans>Request export</Trans>

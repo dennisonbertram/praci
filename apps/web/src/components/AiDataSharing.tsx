@@ -2,30 +2,32 @@ import { i18n } from "@lingui/core";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { AiConsentStatus, AiRecipient } from "@rakazo/contracts";
 import { AI_DATA_DISCLOSURES } from "@rakazo/contracts";
-import { Button, Card, cn, Switch } from "@rakazo/ui-web";
+import { Button, Card, cn, Skeleton, Switch } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { aiConsentStatus, allowRecipient, revokeRecipient } from "../lib/ai-consent";
 import { INBOX_CHANGED_EVENT } from "../lib/inbox-message-cache";
 import { errorText } from "../lib/user-error";
 
-/** A card that asks once for consent: a heading, what is sent where, and one Allow button. */
+/** The one card that asks for AI data sharing, in one row: what Praci would read, a sentence, Allow. */
 export function ConsentCard({
   id,
   heading,
-  children,
   onAllow,
   onDismiss,
+  sends,
   className,
 }: {
   /** Prefix for the heading's id, unique on the page. */
   id: string;
+  /** Names the area, e.g. "Let Praci sort your mail". */
   heading: ReactNode;
-  children: ReactNode;
   /** Rejects with the reason to show. */
   onAllow: () => Promise<unknown>;
   /** Not now: when given, a second button hides the card for this visit. */
   onDismiss?: () => void;
+  /** What is sent, when the area sends something narrower than "the text". */
+  sends?: ReactNode;
   className?: string;
 }) {
   const [pending, setPending] = useState(false);
@@ -41,18 +43,17 @@ export function ConsentCard({
     <Card
       size="sm"
       role="region"
-      className={cn("gap-1 px-3.5", className)}
+      className={cn("flex-row flex-wrap items-center gap-x-3 gap-y-1 px-3.5", className)}
       aria-labelledby={`${id}-heading`}
     >
-      <h2 id={`${id}-heading`} className="text-sm font-medium">
-        {heading}
-      </h2>
-      <p className="text-xs text-muted-foreground">{children}</p>
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
+      <div className="flex min-w-0 flex-1 basis-64 flex-col">
+        <h2 id={`${id}-heading`} className="text-sm font-medium">
+          {heading}
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          {sends ?? <Trans>The text is sent to the AI model that runs your bots.</Trans>}
         </p>
-      ) : null}
+      </div>
       <div className="flex gap-2">
         <Button size="sm" disabled={pending} onClick={allow}>
           <Trans>Allow</Trans>
@@ -63,6 +64,11 @@ export function ConsentCard({
           </Button>
         ) : null}
       </div>
+      {error ? (
+        <p role="alert" className="basis-full text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
     </Card>
   );
 }
@@ -78,27 +84,31 @@ export function InboxConsentPrompt({
   /** Not now: hides the prompt for this visit; it shows again next time. */
   onDismiss?: () => void;
 }) {
-  const { name } = recipient;
   return (
     <ConsentCard
       id="inbox-consent"
       className="mb-5"
       heading={<Trans>Let Praci sort your mail</Trans>}
+      sends={
+        <Trans>
+          The sender, subject and a preview of each message are sent to the AI model that runs your
+          bots.
+        </Trans>
+      }
       onAllow={() => allowRecipient(recipient.key).then(onAllowed)}
       onDismiss={onDismiss}
-    >
-      <Trans>
-        Senders, recipients, subjects and short previews go to the AI service that runs your bots (
-        {name}).
-      </Trans>
-    </ConsentCard>
+    />
   );
 }
+
+/** "vendor/gpt-6-luna, forwarded to its provider" -> "gpt-6-luna". */
+const modelLabel = (detail: string) => detail.split(",")[0]?.split("/").pop()?.trim() ?? "";
 
 /** One switch per AI model that receives data; hidden when there is none or it cannot load. */
 export function AiDataSharingSection() {
   const { t } = useLingui();
-  const [recipients, setRecipients] = useState<AiRecipient[]>([]);
+  // null until the first read, so the section holds its place instead of appearing late.
+  const [recipients, setRecipients] = useState<AiRecipient[] | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const show = (status: AiConsentStatus) =>
@@ -107,12 +117,13 @@ export function AiDataSharingSection() {
     let live = true;
     aiConsentStatus()
       .then((status) => live && show(status))
-      .catch(() => {});
+      .catch(() => live && setRecipients([]));
     return () => {
       live = false;
     };
   }, []);
 
+  if (recipients === null) return <Skeleton aria-busy="true" className="h-[132px] rounded-xl" />;
   if (recipients.length === 0) return null;
   const set = (recipient: AiRecipient, allowed: boolean) => {
     setPending(true);
@@ -132,6 +143,9 @@ export function AiDataSharingSection() {
         <Trans>AI data sharing</Trans>
       </h3>
       <p className="mt-1 text-[13px] text-muted-foreground">{i18n._(AI_DATA_DISCLOSURES.model)}</p>
+      <p className="mt-1 text-[13px] text-muted-foreground">
+        <Trans>Bots cannot use a model until you allow it.</Trans>
+      </p>
       {error ? (
         <p role="alert" className="mt-2 text-sm text-destructive">
           {error}
@@ -139,20 +153,20 @@ export function AiDataSharingSection() {
       ) : null}
       <ul className="mt-3 flex flex-col gap-3">
         {recipients.map((recipient) => {
-          const { name, detail } = recipient;
+          const model = modelLabel(recipient.detail) || recipient.name;
           return (
             <li key={recipient.key} className="flex items-center gap-3">
               <Switch
-                aria-label={detail ? t`Allow ${name}, ${detail}` : t`Allow ${name}`}
+                aria-label={t`Allow ${model}`}
                 checked={recipient.allowed}
                 disabled={pending}
                 onCheckedChange={(allowed) => set(recipient, allowed)}
               />
               <span className="flex min-w-0 flex-col">
-                <span className="text-[14px] text-foreground/75">{name}</span>
-                {detail ? (
-                  <span className="text-[12.5px] text-muted-foreground">{detail}</span>
-                ) : null}
+                <span className="text-[14px] text-foreground/75">
+                  <Trans>Bots, mail, files and contracts</Trans>
+                </span>
+                <span className="text-[12.5px] text-muted-foreground">{model}</span>
               </span>
             </li>
           );

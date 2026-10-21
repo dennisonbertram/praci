@@ -16,6 +16,7 @@ import {
   FINANCE_MCP_ENDPOINTS,
 } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
+import { DEMO_CONVERSATIONS } from "./conversations.js";
 import {
   DEMO_ARCHIVED_BOT,
   DEMO_ARTIFACTS,
@@ -23,6 +24,7 @@ import {
   DEMO_CAP_TABLE,
   DEMO_CHIEF_DRAFT,
   DEMO_CHIEF_DRAFT_V1,
+  DEMO_CHIEF_HISTORY,
   DEMO_COMPANY,
   DEMO_CONTACTS,
   DEMO_DOCUMENT_FACETS,
@@ -62,6 +64,17 @@ describe("mock demo data", () => {
     expect(DEMO_BOTS.map((bot) => bot.name)).toContain(DEMO_WAITING_RUN.botName);
     expect(DEMO_WAITING_RUN.intro.startsWith(MOCK_NOTE)).toBe(true);
     expect(DEMO_WAITING_RUN.question.endsWith("?")).toBe(true);
+  });
+
+  it("quotes only the Finance page's cash, burn and runway in chats and artifacts", () => {
+    const texts = [
+      ...DEMO_CHIEF_HISTORY.map((m) => m.text),
+      ...DEMO_ARTIFACTS.map((a) => a.text),
+      JSON.stringify(DEMO_CONVERSATIONS),
+    ].join("\n");
+    // An older invented set (8.9 months from $412,000 cash) once contradicted Finance.
+    expect(texts).not.toMatch(/412,000|8\.9 months|46,000/);
+    expect(texts).toContain("$1,633,221");
   });
 
   it("labels every contact and document as mock", () => {
@@ -115,7 +128,7 @@ describe("mock demo data", () => {
     expect(table.companyName).toBe(DEMO_COMPANY);
     expect(table.optionPoolAvailable).toBe(600_000);
     expect(table.safes.map((safe: { amountUsd: number }) => safe.amountUsd)).toEqual([
-      250_000, 50_000,
+      250_000, 50_000, 25_000, 25_000,
     ]);
 
     expect(
@@ -234,7 +247,9 @@ describe("mock demo data", () => {
       legalFolder.map((d) => d.name).sort(),
     );
     // One overdue and one upcoming hand-made deadline, so both states show.
-    expect(DEMO_LEGAL.manualDeadlines.map((d) => Math.sign(d.dueInDays)).sort()).toEqual([-1, 1]);
+    const signs = DEMO_LEGAL.manualDeadlines.map((d) => Math.sign(d.dueInDays));
+    expect(signs).toContain(-1);
+    expect(signs).toContain(1);
   });
 
   it("seeds no bot that competes with the Legal agent", () => {
@@ -297,7 +312,7 @@ describe("mock demo data", () => {
       expect(message.subject).toMatch(/^(Re: )?\[MOCK\] /);
       expect(message.text).toContain(MOCK_NOTE);
     }
-    expect(new Set(messages.map((m) => m.threadId)).size).toBe(31);
+    expect(new Set(messages.map((m) => m.threadId)).size).toBe(62);
     expect(messages.some((m) => m.labels.includes("UNREAD"))).toBe(true);
     const redlines = messages.filter((m) => m.threadId.endsWith("msa-redlines"));
     expect(redlines).toHaveLength(4);
@@ -490,7 +505,7 @@ describe("mock demo data", () => {
   it("matches the story catalog's seed: Maya Chen, six artifacts and a working run off the group", () => {
     expect(DEMO_USER_NAME).toBe("Maya Chen (Mock)");
     // The investor update draft is seeded on top of these, as a second version.
-    expect(DEMO_ARTIFACTS).toHaveLength(5);
+    expect(DEMO_ARTIFACTS).toHaveLength(9);
     expect(DEMO_RUNNING_RUN.bot.description).toContain(MOCK_NOTE);
     expect(DEMO_RUNNING_RUN.prompt).toContain("mock");
     expect(DEMO_BOTS.map((bot) => bot.name)).not.toContain(DEMO_RUNNING_RUN.bot.name);

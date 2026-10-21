@@ -32,6 +32,7 @@ import {
   createBlueBubblesPollState,
   createCloudAgentConnection,
   createConnectorStack,
+  createDevinCallTool,
   createFinanceCallToolFor,
   createGmailPushVerifier,
   createJobReconciler,
@@ -74,6 +75,7 @@ import {
   piSessionsRoot,
   reconcileCloudAgents,
   reconcileComputerUpdates,
+  reconcileMeetingSyncs,
   removeAccountExportBlobs,
   removePiUserSessions,
   resolveEnsName,
@@ -583,6 +585,7 @@ export async function createApp(
     deploymentModelConfigured: env.deploymentModelConfigured,
     messaging,
     cloudAgent,
+    devinCallTool: createDevinCallTool(prisma, mcp),
     financeCallToolFor: financeCallToolOverride ?? createFinanceCallToolFor(prisma, mcp),
     artifacts,
     connectors: stack.connector,
@@ -608,6 +611,7 @@ export async function createApp(
         notificationEvents,
         reconcileCloudAgents: () => reconcileCloudAgents({ prisma, jobs, cloudAgent }),
         reconcileComputerUpdates: () => reconcileComputerUpdates({ prisma, jobs }),
+        reconcileMeetings: () => reconcileMeetingSyncs({ prisma, jobs }),
       })
     : undefined;
   reconciler?.start();

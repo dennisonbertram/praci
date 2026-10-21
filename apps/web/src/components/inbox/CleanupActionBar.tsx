@@ -10,7 +10,7 @@ import {
 } from "@rakazo/ui-web";
 import { Archive, Ellipsis } from "lucide-react";
 
-/** The choices for the ticked senders, each with the number of conversations it touches. */
+/** The choices for the ticked senders, each with the number of conversations it touches. A choice that touches nothing, such as Unsubscribe when no ticked sender has a link, is left out. */
 export function CleanupActionBar({
   counts,
   busy = false,
@@ -26,24 +26,18 @@ export function CleanupActionBar({
     <div className="sticky top-0 z-20 mb-2 flex flex-wrap items-center gap-2 bg-background py-2">
       <Button size="sm" disabled={off("archive")} onClick={() => onApply("archive")}>
         {busy ? <Spinner aria-hidden="true" /> : <Archive aria-hidden="true" />}
-        {t`Archive ${counts.archive}`}
+        {counts.archive > 0 ? t`Archive ${counts.archive}` : t`Archive`}
       </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={off("unsubscribe")}
-        onClick={() => onApply("unsubscribe")}
-      >
-        {t`Unsubscribe ${counts.unsubscribe}`}
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={off("skip_inbox")}
-        onClick={() => onApply("skip_inbox")}
-      >
-        {t`Skip inbox ${counts.skip_inbox}`}
-      </Button>
+      {counts.unsubscribe > 0 ? (
+        <Button variant="outline" size="sm" disabled={busy} onClick={() => onApply("unsubscribe")}>
+          {t`Unsubscribe ${counts.unsubscribe}`}
+        </Button>
+      ) : null}
+      {counts.skip_inbox > 0 ? (
+        <Button variant="outline" size="sm" disabled={busy} onClick={() => onApply("skip_inbox")}>
+          {t`Archive future mail ${counts.skip_inbox}`}
+        </Button>
+      ) : null}
       <DropdownMenu>
         <DropdownMenuTrigger
           render={<Button variant="outline" size="icon-sm" disabled={busy} aria-label={t`More`} />}

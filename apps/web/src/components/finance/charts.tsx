@@ -226,7 +226,7 @@ export function LineChart({
                       key={i}
                       x={x(i)}
                       y={height - 6}
-                      textAnchor="middle"
+                      textAnchor={i === values.length - 1 && x(i) > width - 24 ? "end" : "middle"}
                       className="fill-muted-foreground"
                       fontSize={10}
                     >
@@ -377,9 +377,7 @@ export function BurnLines({
         const start = (p: [number, number] | undefined) =>
           `M${p?.[0].toFixed(1)},${p?.[1].toFixed(1)}`;
         const hasRevenue = series.some((m) => m.revenueCents > 0);
-        const hasFinancing = series.some((m) => m.financingCents > 0);
         const rev = line((m) => m.revenueCents);
-        const fin = line((m) => m.financingCents);
         const area = (pts: [number, number][], segs: string[]) =>
           `${start(pts[0])}${segs.join("")}L${pts.at(-1)?.[0].toFixed(1)},${base}L${pts[0]?.[0].toFixed(1)},${base}Z`;
         const shown = active === null ? null : series[active];
@@ -482,17 +480,6 @@ export function BurnLines({
                     strokeLinecap="round"
                   />
                 ) : null}
-                {hasFinancing ? (
-                  <path
-                    data-testid="burn-financing-line"
-                    d={`${start(fin[0])}${monotoneSegments(fin).join("")}`}
-                    fill="none"
-                    className="stroke-foreground"
-                    strokeWidth={1.25}
-                    strokeDasharray="1 4"
-                    strokeLinecap="round"
-                  />
-                ) : null}
               </>
             ) : null}
             {series.map((m, i) =>
@@ -581,9 +568,10 @@ export function BurnLines({
                 <text
                   key={m.start}
                   data-testid="financing-clipped"
-                  x={cx(i)}
+                  // A label centred on the last point would run past the right edge.
+                  x={cx(i) > width - 32 ? width - 2 : cx(i)}
                   y={top - 6}
-                  textAnchor="middle"
+                  textAnchor={cx(i) > width - 32 ? "end" : "middle"}
                   className="fill-foreground"
                   fontSize={10}
                 >

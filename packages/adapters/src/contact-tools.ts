@@ -6,42 +6,39 @@ import {
 } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import {
-  addContact,
+  addContactIfNew,
   ContactEmailTakenError,
   getCapTableSnapshot,
   listContacts,
   saveCapTableSnapshot,
   saveContact,
 } from "@rakazo/db";
-import { mailToolsAllowed, OWNER_INITIATED_TRIGGERS } from "./mail-tools.js";
+import { mailToolsAllowed } from "./mail-tools.js";
 
-/** The Carta agent's own-data tools: the user's contacts and their Cap Table page. */
-export const CONTACT_TOOL_NAMES = new Set([
-  "contacts_list",
-  "contacts_add",
-  "contacts_save",
-  "cap_table_read",
-  "cap_table_update",
-]);
+/** The user's important contacts, offered to every agent on an owner-started run. */
+export const CONTACT_ONLY_TOOL_NAMES = new Set(["contacts_list", "contacts_add", "contacts_save"]);
 
-/** Only the Carta agent, on a run its owner started (a direct message or their own routine). */
-export function contactToolsAllowed(
-  options: Parameters<typeof mailToolsAllowed>[0] & {
-    botSpawnKey: string | null | undefined;
-    trigger: string;
-  },
+/** The Carta agent's Cap Table page tools. */
+export const CAP_TABLE_TOOL_NAMES = new Set(["cap_table_read", "cap_table_update"]);
+
+export const CONTACT_TOOL_NAMES = new Set([...CONTACT_ONLY_TOOL_NAMES, ...CAP_TABLE_TOOL_NAMES]);
+
+/** Any agent, on a run its owner started (a direct message or their own routine). */
+export const contactToolsAllowed = mailToolsAllowed;
+
+/** Only the Carta agent, on a run its owner started. */
+export function capTableToolsAllowed(
+  options: Parameters<typeof mailToolsAllowed>[0] & { botSpawnKey: string | null | undefined },
 ): boolean {
-  return (
-    isCartaAgentSpawnKey(options.botSpawnKey) &&
-    OWNER_INITIATED_TRIGGERS.has(options.trigger) &&
-    mailToolsAllowed(options)
-  );
+  return isCartaAgentSpawnKey(options.botSpawnKey) && mailToolsAllowed(options);
 }
 
 type ContactToolDeps = {
   prisma: Pick<PrismaClient, "contact" | "capTableSnapshot">;
   /** From the run (the bot owner), never from model input. */
   scope: { spaceId: string; userId: string };
+  /** The agent running the tool, from the run, never from model input. */
+  botId?: string;
 };
 
 export async function contactToolFromTool(
@@ -63,7 +60,19 @@ export async function contactToolFromTool(
       const { id: _id, ...rest } = args;
       const input = ContactSaveInputSchema.safeParse(rest);
       if (!input.success) return { error: input.error.issues.map((i) => i.message).join("; ") };
-      return { contact: await addContact(deps.prisma, deps.scope, input.data) };
+      const { contact, created } = await addContactIfNew(
+        deps.prisma,
+        deps.scope,
+        input.data,
+        deps.botId,
+      );
+      return created
+        ? { contact }
+        : {
+            contact,
+            alreadySaved: true,
+            note: `Already saved as ${contact.kind}; nothing was changed. Use contacts_save to change the kind.`,
+          };
     }
     if (name === "cap_table_read") {
       // What the Cap Table page shows, so the agent can answer from it without Carta.

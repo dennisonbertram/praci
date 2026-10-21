@@ -240,7 +240,7 @@ test("remote members skip server setup and keep direct MCP connections", async (
   await captureScreenshot(page, testInfo, "remote-member-mcp");
   await page.goto("/integrations/setup");
   await page.waitForURL(/\/app/);
-  await expect(page.getByRole("heading", { name: "Server integrations" })).toBeHidden();
+  await expect(page.getByRole("heading", { name: "Server apps" })).toBeHidden();
 });
 
 test("configured server owners manage providers from settings", async ({ page }, testInfo) => {
@@ -270,11 +270,11 @@ test("configured server owners manage providers from settings", async ({ page },
   await page.getByTestId("user-menu-trigger").click();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   const settings = page.getByTestId("user-settings");
-  const link = settings.getByRole("link", { name: "Open server integrations", exact: true });
+  const link = settings.getByRole("link", { name: "Open server apps", exact: true });
   await expect(link).toBeVisible();
   await captureScreenshot(page, testInfo, "server-integrations-settings");
   await link.click();
-  await expect(page.getByRole("heading", { name: "Server integrations" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Server apps" })).toBeVisible();
   // It opens inside the app: Settings closes and the sidebar stays.
   await expect(settings).toBeHidden();
   await expect(page.getByTestId("bots-sidebar")).toBeVisible();

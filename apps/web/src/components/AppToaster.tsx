@@ -1,5 +1,5 @@
 import type { NotificationDto } from "@rakazo/contracts";
-import { BotAvatar, NotificationToaster } from "@rakazo/ui-web";
+import { NotificationToaster } from "@rakazo/ui-web";
 import { useEffect, useRef } from "react";
 import { useMatch, useNavigate } from "react-router-dom";
 import { lookupAgentApp } from "../lib/agent-app";
@@ -8,8 +8,8 @@ import { i18n } from "../lib/i18n";
 import {
   attentionFromDto,
   deliverNotification,
-  failureShownInOpenChat,
   NOTIFICATION_SETTINGS_CHANGED,
+  resultShownInOpenChat,
 } from "../lib/notification-delivery";
 import { followNotifications } from "../lib/notification-stream";
 import { formatRelativeTime } from "../lib/relative-time";
@@ -76,8 +76,12 @@ export function AppToaster() {
         changed: announceChange,
         sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
         deliver: async (n) =>
-          // The open chat already shows its own failure above the composer.
-          failureShownInOpenChat(n, openBotIdRef.current)
+          // The open chat already shows its own failure or reply.
+          resultShownInOpenChat(
+            n,
+            openBotIdRef.current,
+            document.visibilityState === "visible" && document.hasFocus(),
+          )
             ? "skipped"
             : deliverNotification(
                 {

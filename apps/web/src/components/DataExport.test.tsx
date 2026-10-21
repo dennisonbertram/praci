@@ -83,8 +83,8 @@ it("polls while preparing and shows the download and expiry when ready", async (
   const link = host.querySelector("a");
   expect(link?.getAttribute("href")).toBe("/api/account/exports/exp%201/download");
   expect(host.querySelector("h3")?.textContent).toBe("Export my data");
-  expect(host.querySelectorAll("button, a")).toHaveLength(1);
-  expect(host.textContent).toContain("Download");
+  expect(host.querySelector("a")?.textContent).toBe("Download");
+  expect(host.textContent).toContain("Request new export");
   expect(host.textContent).toContain("Ready until 2030-01-08");
   const calls = latest.mock.calls.length;
   await act(async () => vi.advanceTimersByTimeAsync(6000));
@@ -95,7 +95,28 @@ it("shows the button again after a failed export and reports a request error", a
   latest.mockResolvedValue(job({ status: "failed", progress: 30 }));
   request.mockRejectedValue(new Error("boom"));
   await mount();
+  expect(host.textContent).toContain("The export failed. Try again.");
   expect(host.querySelector("button")?.textContent).toBe("Request export");
   await act(async () => host.querySelector("button")?.click());
   expect(host.querySelector("[role=alert]")).not.toBeNull();
+});
+
+it("says Preparing right after the click, before the server answers", async () => {
+  latest.mockResolvedValue(null);
+  request.mockReturnValue(new Promise(() => {}));
+  await mount();
+  await act(async () => host.querySelector("button")?.click());
+  expect(host.querySelector("[role=status]")?.textContent).toBe("Preparing…");
+});
+
+it("offers a new export when one is ready", async () => {
+  latest.mockResolvedValue(job({}));
+  request.mockResolvedValue(job({ status: "running", progress: 0 }));
+  await mount();
+  const again = [...host.querySelectorAll("button")].find(
+    (b) => b.textContent === "Request new export",
+  );
+  await act(async () => again?.click());
+  expect(request).toHaveBeenCalledOnce();
+  expect(host.textContent).toContain("Preparing… 0%");
 });

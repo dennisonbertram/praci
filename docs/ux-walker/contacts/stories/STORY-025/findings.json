@@ -1,0 +1,19 @@
+[
+  {
+    "id": "F-025-01",
+    "story_id": "STORY-025",
+    "severity": "high",
+    "category": "happy-path",
+    "criterion": "Confirmations / Recovery: changes need approval",
+    "score": "fail",
+    "description": "contacts_save ran with no approval card in all three runs (Quinn kind change, Ada kind change, Ada again in the three-action request). The chat intro says 'Agents ask before they send, pay or change anything' and the catalog expects a 'Save contact' card.",
+    "expected": "An approval card titled Save contact with name, email, organization, kind and notes appears and the run waits.",
+    "actual": "Label 'Saving a contact' shows, then Chief replies 'Updated Ada Example ... from legal to investor.' For Ada the model first asked 'Yes, change to investor / No, keep legal' (a chat quick reply, not an approval card); for Quinn and in the three-action request it asked nothing.",
+    "screenshot": "docs/ux-walker/contacts/stories/STORY-025/screenshots/step-3.png",
+    "suggested_fix": "Confirm whether the demo stack runs with approvals off. If not, route contacts_save through the approval gate.",
+    "files_likely_involved": [
+      "apps/api/src/agents/action-approval.ts",
+      "apps/api/src/agents/contacts-tools.ts"
+    ]
+  }
+]

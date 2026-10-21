@@ -33,6 +33,7 @@ const items = [
   base({ id: "art_pdf", name: "Sample report.pdf", mimeType: "application/pdf", botId: null }),
   base({ id: "art_img", name: "Sample chart.png", mimeType: "image/png" }),
   base({ id: "art_bin", name: "archive.zip", mimeType: "application/zip" }),
+  base({ id: "art_csv", name: "Monthly burn.csv", mimeType: "text/csv" }),
   base({
     id: "art_long",
     name: "A very long artifact name that will not fit on a single line of the card",

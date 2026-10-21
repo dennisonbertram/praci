@@ -20,6 +20,7 @@ import {
 import { ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { rpc } from "../../lib/rpc";
+import { isHiddenBuiltinSkill, slashSkillLabel } from "../../lib/slash-skills";
 import { errorText } from "../../lib/user-error";
 
 export function SkillSourceBadge({
@@ -101,11 +102,26 @@ export function BotSkillsSection({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [newId, setNewId] = useState<string | null>(null);
+  const knownIds = useRef<Set<string> | null>(null);
   const generation = useRef(0);
   const selection = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const onChange = useRef(onSkillsChange);
   onChange.current = onSkillsChange;
+
+  /** Stores a loaded list and marks a skill that was not there before, so a save is visible. */
+  function applyList(list: BotAgentSkill[]) {
+    const known = knownIds.current;
+    if (known) setNewId(list.find((skill) => !known.has(skill.id))?.id ?? null);
+    knownIds.current = new Set(list.map((skill) => skill.id));
+    setSkills(list);
+  }
+
+  useEffect(() => {
+    if (newId)
+      document.querySelector(`[data-skill-id="${newId}"]`)?.scrollIntoView?.({ block: "nearest" });
+  }, [newId]);
 
   async function refresh() {
     const current = ++generation.current;
@@ -114,7 +130,7 @@ export function BotSkillsSection({
       rpc.agentSkills.drafts(),
     ]);
     if (current !== generation.current) return;
-    setSkills(list);
+    applyList(list);
     setDrafts(pending);
     onChange.current(list.filter((skill) => skill.enabled));
   }
@@ -125,7 +141,7 @@ export function BotSkillsSection({
     void Promise.all([rpc.agentSkills.forBot({ botId }), rpc.agentSkills.drafts()])
       .then(([list, pending]) => {
         if (current !== generation.current) return;
-        setSkills(list);
+        applyList(list);
         setDrafts(pending);
         setLoading(false);
         setError(null);
@@ -256,6 +272,45 @@ export function BotSkillsSection({
   }
 
   const editorOpen = creating || open;
+  const builtins = skills.filter(
+    (entry) => entry.source === "builtin" && !isHiddenBuiltinSkill(entry),
+  );
+
+  function renderSkill(entry: BotAgentSkill) {
+    const label = slashSkillLabel(entry);
+    return (
+      <div
+        key={entry.id}
+        data-skill-id={entry.id}
+        className={`flex items-center gap-2 rounded-lg ${entry.id === newId ? "bg-accent/60" : ""}`}
+      >
+        <Button
+          variant="ghost"
+          type="button"
+          disabled={busy}
+          onClick={() => void openSkill(entry)}
+          className="h-auto min-w-0 flex-1 justify-start whitespace-normal px-2.5 py-2.5 text-start block"
+        >
+          <span className="flex w-full items-center gap-2">
+            <span className="min-w-0 truncate text-[14px] text-foreground" dir="auto">
+              {label.title}
+            </span>
+            {entry.source === "builtin" ? null : (
+              <SkillSourceBadge source={entry.source} origin={entry.origin} />
+            )}
+          </span>
+          <span className="mt-0.5 block truncate text-[12.5px] text-muted-foreground" dir="auto">
+            {label.description}
+          </span>
+        </Button>
+        <Switch
+          checked={entry.enabled}
+          aria-label={t`Use ${label.title}`}
+          onCheckedChange={(checked) => void toggle(entry, checked)}
+        />
+      </div>
+    );
+  }
   return (
     <section className="mt-6" data-testid="bot-skills">
       <div className="flex items-center justify-between gap-3">
@@ -332,7 +387,7 @@ export function BotSkillsSection({
             onClick={() => void importUrl()}
             className="rounded-lg bg-muted px-3 py-1.5 text-[13px] text-foreground disabled:opacity-50"
           >
-            <Trans>Save</Trans>
+            {busy ? <Trans>Fetching…</Trans> : <Trans>Save</Trans>}
           </Button>
           <Button
             variant="ghost"
@@ -404,36 +459,20 @@ export function BotSkillsSection({
         </div>
       ) : null}
       {!editorOpen && !urlOpen ? (
-        <div className="max-h-72 overflow-y-auto" data-testid="bot-skills-list">
-          {skills.map((entry) => (
-            <div key={entry.id} className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                type="button"
-                disabled={busy}
-                onClick={() => void openSkill(entry)}
-                className="h-auto min-w-0 flex-1 justify-start whitespace-normal px-2.5 py-2.5 text-start block"
-              >
-                <span className="flex w-full items-center gap-2">
-                  <span className="min-w-0 truncate text-[14px] text-foreground" dir="auto">
-                    {entry.name}
-                  </span>
-                  <SkillSourceBadge source={entry.source} origin={entry.origin} />
-                </span>
-                <span
-                  className="mt-0.5 block truncate text-[12.5px] text-muted-foreground"
-                  dir="auto"
-                >
-                  {entry.description}
-                </span>
-              </Button>
-              <Switch
-                checked={entry.enabled}
-                aria-label={t`Use ${entry.name}`}
-                onCheckedChange={(checked) => void toggle(entry, checked)}
-              />
-            </div>
-          ))}
+        <div data-testid="bot-skills-list">
+          {skills.filter((entry) => entry.source !== "builtin").map(renderSkill)}
+          {builtins.length > 0 ? (
+            <details className="group">
+              <summary className="flex cursor-pointer list-none items-center gap-2 px-2.5 py-2 text-[13px] text-muted-foreground">
+                <ChevronRight
+                  aria-hidden
+                  className="size-3.5 shrink-0 transition-transform group-open:rotate-90 rtl:-scale-x-100"
+                />
+                <Trans>Built-in skills ({builtins.length})</Trans>
+              </summary>
+              {builtins.map(renderSkill)}
+            </details>
+          ) : null}
         </div>
       ) : null}
       {editorOpen ? (
@@ -441,7 +480,7 @@ export function BotSkillsSection({
           {open ? (
             <div className="flex items-center gap-2 pb-1">
               <div className="min-w-0 truncate text-[14px] text-foreground" dir="auto">
-                {open.name}
+                {slashSkillLabel(open).title}
               </div>
               <SkillSourceBadge source={open.source} origin={open.origin} />
             </div>

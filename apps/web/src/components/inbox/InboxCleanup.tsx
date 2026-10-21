@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
+  Checkbox,
   Skeleton,
 } from "@rakazo/ui-web";
 import { ArrowLeft } from "lucide-react";
@@ -261,6 +262,21 @@ export function InboxCleanup({
           ) : (
             <>
               <CleanupActionBar counts={counts} busy={busy} onApply={apply} />
+              <label className="flex items-center gap-3 px-1 py-2 text-sm text-muted-foreground">
+                <Checkbox
+                  className="relative after:absolute after:-inset-3.5"
+                  checked={selected.size === senders.length}
+                  disabled={busy}
+                  onCheckedChange={(on) =>
+                    setSelected(
+                      on
+                        ? new Set(senders.map((s) => senderKey(s.connectionId, s.address)))
+                        : new Set(),
+                    )
+                  }
+                />
+                <Trans>Select all</Trans>
+              </label>
               {onAllowMailRules && needPermission.length > 0 ? (
                 <div className="flex flex-wrap gap-x-4 py-1 text-xs text-muted-foreground">
                   {needPermission.map((account) => (

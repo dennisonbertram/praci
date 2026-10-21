@@ -1,10 +1,12 @@
 import { cartaAgentSpawnKey } from "@rakazo/contracts";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   buildApprovalAskBlock,
+  describeApprovalAction,
   isIntegrationAgentWrite,
   mailRequestIsValid,
   normalizeMailEdits,
+  resolveMoneyNames,
 } from "./approval-ask.js";
 
 describe("buildApprovalAskBlock tool identity", () => {
@@ -15,18 +17,18 @@ describe("buildApprovalAskBlock tool identity", () => {
   };
 
   it("names the service, so two servers with the same tool get different titles", () => {
-    const a = ask("mcp__finance-mercury__requestSendMoney", "Mercury");
-    const b = ask("mcp__finance-other__requestSendMoney", "Other Bank");
-    expect(a.text).toBe("Review before Mercury: Request send money → 5");
-    expect(b.text).toBe("Review before Other Bank: Request send money → 5");
+    const a = ask("mcp__finance-mercury__requestPayment", "Mercury");
+    const b = ask("mcp__finance-other__requestPayment", "Other Bank");
+    expect(a.text).toBe("Review before Mercury: Request payment → $5.00");
+    expect(b.text).toBe("Review before Other Bank: Request payment → $5.00");
   });
 
   it("always shows the exact fully qualified tool id in the detail", () => {
-    expect(ask("mcp__finance-mercury__requestSendMoney", "Mercury").detail).toContain(
-      "tool: mcp__finance-mercury__requestSendMoney",
+    expect(ask("mcp__finance-mercury__requestPayment", "Mercury").detail).toContain(
+      "tool: mcp__finance-mercury__requestPayment",
     );
-    expect(ask("mcp__finance-other__requestSendMoney", "Other Bank").detail).toContain(
-      "tool: mcp__finance-other__requestSendMoney",
+    expect(ask("mcp__finance-other__requestPayment", "Other Bank").detail).toContain(
+      "tool: mcp__finance-other__requestPayment",
     );
     expect(ask("gmail_send_email").detail).toContain("tool: gmail_send_email");
   });
@@ -35,10 +37,55 @@ describe("buildApprovalAskBlock tool identity", () => {
     const space = buildApprovalAskBlock("e1", "create_space", { name: "Ops" }, []);
     if (space.kind !== "ask") throw new Error("expected ask block");
     expect(space.detail ?? "").not.toContain("tool:");
-    expect(ask("mcp__finance-mercury__requestSendMoney", "Mercury").actions).toContainEqual({
+    expect(ask("mcp__finance-mercury__requestPayment", "Mercury").actions).toContainEqual({
       id: "always",
       label: "Always allow this tool",
     });
+  });
+});
+
+describe("describeApprovalAction money and generic tools", () => {
+  it("shows an amount with its currency symbol", () => {
+    expect(
+      describeApprovalAction(
+        "mcp__finance-mercury__requestSendMoney",
+        { amount: 1200, accountId: "chk-1" },
+        "Mercury",
+      ),
+    ).toBe("Send $1,200.00 to a recipient from an account");
+    expect(describeApprovalAction("pay", { amount: "50", currency: "EUR" })).toContain("€50.00");
+  });
+
+  it("names the recipient and account on a send-money request, never their ids", () => {
+    const args = { amount: 1200, recipientId: "rcp-9", accountId: "chk-1" };
+    const block = buildApprovalAskBlock("e1", "mcp__finance-mercury__requestSendMoney", args, [], {
+      moneyNames: { recipient: "Acme Supplies", account: "Operating" },
+    });
+    if (block.kind !== "ask") throw new Error("expected ask block");
+    expect(block.text).toBe("Send $1,200.00 to Acme Supplies from Operating?");
+    expect(block.text).not.toMatch(/rcp-9|chk-1|mcp__/);
+    // The raw tool id and ids stay, but only under Details.
+    expect(block.detailFolded).toBe(true);
+    expect(block.detail).toContain("tool: mcp__finance-mercury__requestSendMoney");
+  });
+
+  it("keeps hand-written titles", () => {
+    expect(describeApprovalAction("contacts_save", { name: "Ann" })).toBe("Save contact “Ann”");
+  });
+
+  it("folds raw integration arguments behind Details, but not a mail body", () => {
+    const write = buildApprovalAskBlock("e1", "mcp__m__x", { amount: 1 }, [], {
+      integrationWriteTool: "x",
+    });
+    const mail = buildApprovalAskBlock(
+      "e1",
+      "mail_send",
+      { to: ["a@b.test"], subject: "s", body: "b" },
+      [],
+      { fullMail: true },
+    );
+    expect(write.kind === "ask" && write.detailFolded).toBe(true);
+    expect(mail.kind === "ask" && mail.detailFolded).toBeFalsy();
   });
 });
 
@@ -247,8 +294,8 @@ describe("mail approval payload", () => {
       return block.kind === "ask" ? block.text : "";
     };
     expect(text("mail_send")).toBe("Review before sending email to Jana <jana@example.test>");
-    expect(text("mcp__finance-mercury__requestSendMoney")).toBe(
-      "Review before Request send money → Jana <jana@example.test>",
+    expect(text("mcp__finance-mercury__requestTransferMoney")).toBe(
+      "Review before Request transfer money → Jana <jana@example.test>",
     );
     expect(text("mail_draft")).toBe("Review before saving a draft to Jana <jana@example.test>");
   });
@@ -313,5 +360,41 @@ describe("mail approval hardening", () => {
     expect(mailRequestIsValid("mail_send", { ...stored, cc: ["extra@example.test"] })).toBe(false);
     expect(mailRequestIsValid("mail_send", { subject: "s", body: "b" })).toBe(false);
     expect(mailRequestIsValid("mail_draft", { subject: "s", body: "b" })).toBe(true);
+  });
+});
+
+describe("resolveMoneyNames", () => {
+  const send = "mcp__finance-mercury__requestSendMoney";
+  const args = { amount: 5, recipientId: "rcp-9", accountId: "chk-1" };
+
+  it("reads the payee's name and the account's nickname", async () => {
+    const read = vi.fn(async (tool: string) =>
+      tool === "getRecipient"
+        ? { name: "Acme Supplies", nickname: "acme" }
+        : { name: "Mercury Checking ••1234", nickname: "Operating" },
+    );
+    expect(await resolveMoneyNames(send, args, read)).toEqual({
+      recipient: "Acme Supplies",
+      account: "Operating",
+    });
+    expect(read).toHaveBeenCalledWith("getRecipient", { recipientId: "rcp-9" });
+    expect(read).toHaveBeenCalledWith("getAccount", { accountId: "chk-1" });
+  });
+
+  it("leaves a name out when its lookup fails, so the title falls back to words", async () => {
+    const names = await resolveMoneyNames(send, args, async (tool) => {
+      if (tool === "getRecipient") throw new Error("not found");
+      return { nickname: "Operating" };
+    });
+    expect(names).toEqual({ recipient: undefined, account: "Operating" });
+    expect(describeApprovalAction(send, args, "Mercury", names)).toBe(
+      "Send $5.00 to a recipient from Operating",
+    );
+  });
+
+  it("does not look anything up for other tools", async () => {
+    const read = vi.fn();
+    expect(await resolveMoneyNames("mcp__x__updateTransaction", args, read)).toBeUndefined();
+    expect(read).not.toHaveBeenCalled();
   });
 });

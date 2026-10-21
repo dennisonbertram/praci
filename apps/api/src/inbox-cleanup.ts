@@ -23,6 +23,7 @@ import {
   SenderRuleStatusSchema,
 } from "@rakazo/contracts";
 import {
+  isCleanupListed,
   isCleanupPreselected,
   planUnsubscribe,
   rankCleanupSenders,
@@ -152,7 +153,7 @@ export async function inboxCleanupList(
   if (ids.length === 0) return { accounts, senders: [], syncedAt: null };
 
   const where = { spaceId: actor.spaceId, userId: actor.userId, connectionId: { in: ids } };
-  const [decisions, stats, feedback, states] = await Promise.all([
+  const [decisions, stats, feedback, states, contacts] = await Promise.all([
     prisma.mailSenderDecision.findMany({ where }),
     prisma.mailSenderStat.findMany({ where: { ...where, messageCount: { gt: 0 } } }),
     prisma.inboxSenderFeedback.findMany({
@@ -160,7 +161,13 @@ export async function inboxCleanupList(
       select: { senderAddress: true, mark: true },
     }),
     prisma.mailSyncState.findMany({ where: { connectionId: { in: ids } } }),
+    prisma.contact.findMany({
+      where: { spaceId: actor.spaceId, userId: actor.userId, email: { not: null } },
+      select: { email: true },
+    }),
   ]);
+  // Someone saved in Contacts is not clutter, so Cleanup does not suggest them.
+  const saved = new Set(contacts.map((c) => c.email?.toLowerCase()));
   // A sender the user skips stays listed after its mail is archived, so the decision can be undone.
   // The same goes for a sender with a learned pile, so it can be forgotten.
   const skipped = [
@@ -178,6 +185,17 @@ export async function inboxCleanupList(
     if (!stat) return [];
     const decision = decisionOf.get(key(fact.connectionId, fact.address));
     const skipInbox = Boolean(decision?.skipInboxAt);
+    const learnedPile = parsePile(stat.learnedPile);
+    // A skipped or learned sender stays listed so the decision can be undone.
+    if (saved.has(fact.address) && !skipInbox && learnedPile === null) return [];
+    if (
+      !isCleanupListed({
+        messageCount: stat.messageCount,
+        priorContact: stat.priorContact,
+        keep: skipInbox || learnedPile !== null,
+      })
+    )
+      return [];
     const rule = SenderRuleStatusSchema.safeParse(decision?.ruleStatus);
     const plan = planUnsubscribe(fact.signals, fact.spamLike);
     return [
@@ -204,7 +222,7 @@ export async function inboxCleanupList(
         skipInbox,
         unsubscribeStatus: parseStatus(decision?.unsubscribeStatus),
         ...(skipInbox && rule.success ? { rule: rule.data } : {}),
-        learnedPile: parsePile(stat.learnedPile),
+        learnedPile,
       },
     ];
   });

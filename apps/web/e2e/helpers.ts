@@ -114,15 +114,7 @@ export async function createBotFromPicker(
 /** Open the user Settings overlay, optionally switching to a sidebar section. */
 export async function openUserSettings(
   page: Page,
-  section?:
-    | "general"
-    | "models"
-    | "memory"
-    | "voice"
-    | "usage"
-    | "computer"
-    | "billing"
-    | "updates",
+  section?: "general" | "models" | "memory" | "voice" | "computer" | "billing",
 ) {
   await page.getByTestId("user-menu-trigger").click();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
@@ -156,7 +148,7 @@ export async function createNamedBot(
 export async function openIntegrations(page: Page) {
   await page.getByTestId("sidebar-integrations").click();
   await expect(page).toHaveURL(/\/app\/integrations$/);
-  await expect(page.getByRole("heading", { name: "Integrations", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Apps", level: 1 })).toBeVisible();
 }
 
 /** Runs the connect dialog for a managed app through sign-in, agent choice and the done step. */

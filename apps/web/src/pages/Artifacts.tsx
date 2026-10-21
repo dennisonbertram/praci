@@ -1,3 +1,4 @@
+import { t as translate } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Artifact, ArtifactVersion, Bot } from "@rakazo/contracts";
 
@@ -15,8 +16,6 @@ import {
   Button,
   NativeSelect,
   NativeSelectOption,
-  parseBotAvatar,
-  resolvePersonaColorDef,
   Skeleton,
   Table,
   TableBody,
@@ -60,12 +59,32 @@ const LIST_PAGE_SIZE = 60;
 
 type ArtifactSummary = Artifact & { versionCount: number };
 
+/** The type badge already says "MD" or "CSV", so the title drops the extension. */
+function displayName(name: string): string {
+  return name.replace(/\.[A-Za-z0-9]{1,5}$/, "") || name;
+}
+
+const isSheet = (mimeType: string) => /csv|spreadsheet|excel/.test(mimeType);
+
+/** Plain words for the card badge: Maya knows a Doc, a Sheet and a Page, not MD, CSV and HTML. */
+function kindLabel(mimeType: string): string {
+  if (mimeType === "text/html") return translate`Page`;
+  if (mimeType === "text/markdown") return translate`Doc`;
+  if (isSheet(mimeType)) return translate`Sheet`;
+  return mimeBadgeLabel(mimeType);
+}
+
+/** The saved choice; with none, a phone gets the list (one card fills most of its screen). */
 function readViewMode(): ViewMode {
+  const phone =
+    typeof window.matchMedia === "function" && window.matchMedia("(max-width: 767px)").matches;
   try {
-    return window.localStorage.getItem(VIEW_MODE_STORAGE_KEY) === "list" ? "list" : "grid";
+    const saved = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+    if (saved === "list" || saved === "grid") return saved;
   } catch {
-    return "grid";
+    // No storage: use the default below.
   }
+  return phone ? "list" : "grid";
 }
 
 function writeViewMode(mode: ViewMode): void {
@@ -89,7 +108,7 @@ function matchesCalendarDateFilter(iso: string, filter: DateFilter, now: Date): 
   return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
 }
 
-export function ArtifactsPage() {
+export function ArtifactsPage({ spaceName }: { spaceName?: string }) {
   const { artifactId } = useParams<{ artifactId?: string }>();
   const navigate = useNavigate();
   const { t } = useLingui();
@@ -101,6 +120,8 @@ export function ArtifactsPage() {
   const loadingMoreRef = useRef(false);
   const listingGenerationRef = useRef(0);
   const [activeBotId, setActiveBotId] = useState<string | null>(null);
+  // Bots that own at least one artifact. Only grows, so filtering to one bot keeps the others listed.
+  const [ownerBotIds, setOwnerBotIds] = useState<ReadonlySet<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>(readViewMode);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -168,7 +189,30 @@ export function ArtifactsPage() {
     setMaximized(false);
   }, [artifactId]);
 
-  const botsById = useMemo(() => new Map(bots.map((bot) => [bot.id, bot])), [bots]);
+  useEffect(() => {
+    if (!items) return;
+    setOwnerBotIds((prev) => {
+      const next = new Set(prev);
+      for (const item of items) if (item.botId) next.add(item.botId);
+      return next.size === prev.size ? prev : next;
+    });
+  }, [items]);
+
+  // The filter panel only matters while browsing; opening an artifact gives the viewer the space.
+  useEffect(() => {
+    if (artifactId) setFiltersOpen(false);
+  }, [artifactId]);
+
+  const ownerBots = useMemo(
+    () => bots.filter((bot) => ownerBotIds.has(bot.id)),
+    [bots, ownerBotIds],
+  );
+
+  // Every card would show the same author when one bot made them all, so names appear only for several.
+  const botsById = useMemo(
+    () => new Map(ownerBots.length > 1 ? bots.map((bot) => [bot.id, bot]) : []),
+    [bots, ownerBots],
+  );
 
   const filteredItems = useMemo(() => {
     if (!items) return null;
@@ -239,6 +283,13 @@ export function ArtifactsPage() {
       <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
         <PageHeader
           title={<Trans>Artifacts</Trans>}
+          meta={
+            spaceName ? (
+              <span className="truncate" title={spaceName}>
+                {spaceName}
+              </span>
+            ) : null
+          }
           actions={
             <>
               {/* Filters act on the list, so they go when an open document hides it (phone, maximized). */}
@@ -315,17 +366,21 @@ export function ArtifactsPage() {
             <NativeSelectOption value="week">{t`This week`}</NativeSelectOption>
             <NativeSelectOption value="month">{t`This month`}</NativeSelectOption>
           </NativeSelect>
-          <FilterChip active={activeBotId === null} onClick={() => setActiveBotId(null)}>
-            <Trans>All bots</Trans>
-          </FilterChip>
-          {bots.map((bot) => (
-            <BotFilterChip
-              key={bot.id}
-              bot={bot}
-              active={activeBotId === bot.id}
-              onClick={() => setActiveBotId(bot.id)}
-            />
-          ))}
+          {ownerBots.length > 1 ? (
+            <NativeSelect
+              aria-label={t`Filter by bot`}
+              className="w-auto text-[13px]"
+              value={activeBotId ?? ""}
+              onChange={(event) => setActiveBotId(event.target.value || null)}
+            >
+              <NativeSelectOption value="">{t`All bots`}</NativeSelectOption>
+              {ownerBots.map((bot) => (
+                <NativeSelectOption key={bot.id} value={bot.id}>
+                  {bot.name}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          ) : null}
         </div>
       ) : null}
 
@@ -507,12 +562,13 @@ function ArtifactTable({
 }) {
   const { t } = useLingui();
   const navigate = useNavigate();
+  const showBot = botsById.size > 0;
   return (
     <div className={PAGE_GUTTER_X}>
       <Table>
         <colgroup>
           <col />
-          <col className={`${MID_COLUMN} w-40`} />
+          {showBot ? <col className={`${MID_COLUMN} w-40`} /> : null}
           <col className={`${MID_COLUMN} w-28`} />
           <col className={`${MID_COLUMN} w-24`} />
           <col className="w-9" />
@@ -525,9 +581,11 @@ function ArtifactTable({
             <TableHead>
               <Trans>Name</Trans>
             </TableHead>
-            <TableHead className={MID_COL}>
-              <Trans>Bot</Trans>
-            </TableHead>
+            {showBot ? (
+              <TableHead className={MID_COL}>
+                <Trans>Bot</Trans>
+              </TableHead>
+            ) : null}
             <TableHead className={MID_COL}>
               <Trans>Added</Trans>
             </TableHead>
@@ -559,7 +617,7 @@ function ArtifactTable({
                         className="truncate font-medium"
                         title={artifact.name}
                       >
-                        {artifact.name}
+                        {displayName(artifact.name)}
                       </Link>
                       {/* Where the Bot, Added and Size columns are hidden (a narrow pane), they go under the name. */}
                       <span
@@ -582,21 +640,23 @@ function ArtifactTable({
                     ) : null}
                   </div>
                 </TableCell>
-                <TableCell className={`${MID_COL} text-muted-foreground`}>
-                  {bot ? (
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      <BotAvatar
-                        color={bot.color}
-                        identity={bot.id}
-                        size={16}
-                        status={bot.status}
-                      />
-                      <span className="truncate">{bot.name}</span>
-                    </span>
-                  ) : (
-                    "—"
-                  )}
-                </TableCell>
+                {showBot ? (
+                  <TableCell className={`${MID_COL} text-muted-foreground`}>
+                    {bot ? (
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <BotAvatar
+                          color={bot.color}
+                          identity={bot.id}
+                          size={16}
+                          status={bot.status}
+                        />
+                        <span className="truncate">{bot.name}</span>
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                ) : null}
                 <TableCell className={`${MID_COL} truncate text-muted-foreground tabular-nums`}>
                   {formatRelativeTime(artifact.createdAt)}
                 </TableCell>
@@ -763,65 +823,6 @@ function IndexPane({
   );
 }
 
-function FilterChip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors ${
-        active
-          ? "bg-primary text-primary-foreground"
-          : "border border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function useBotColorHex(bot: Bot): string {
-  return useMemo(() => {
-    const parsed = parseBotAvatar(bot.color, bot.id);
-    const effectiveId = bot.id || parsed.color || "agent";
-    return resolvePersonaColorDef(effectiveId, parsed.color).hex;
-  }, [bot.color, bot.id]);
-}
-
-function BotFilterChip({
-  bot,
-  active,
-  onClick,
-}: {
-  bot: Bot;
-  active: boolean;
-  onClick: () => void;
-}) {
-  const hex = useBotColorHex(bot);
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{ backgroundColor: active ? `${hex}26` : undefined, borderColor: `${hex}66` }}
-      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] font-medium transition-colors ${
-        active
-          ? "text-foreground"
-          : "text-muted-foreground hover:bg-accent/40 hover:text-accent-foreground"
-      }`}
-    >
-      <BotAvatar color={bot.color} identity={bot.id} size={16} status={bot.status} />
-      <span className="max-w-[120px] truncate">{bot.name}</span>
-    </button>
-  );
-}
-
 function ArtifactCard({
   artifact,
   bot,
@@ -850,12 +851,12 @@ function ArtifactCard({
               </span>
             ) : null}
             <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-semibold text-muted-foreground">
-              {mimeBadgeLabel(artifact.mimeType)}
+              {kindLabel(artifact.mimeType)}
             </span>
           </div>
         </div>
         <div className="min-w-0">
-          <div className="truncate text-[15px] font-semibold">{artifact.name}</div>
+          <div className="truncate text-[15px] font-semibold">{displayName(artifact.name)}</div>
           {artifact.description ? (
             <div className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">
               {artifact.description}
@@ -911,7 +912,9 @@ function ArtifactRow({
           <span className="grid h-6 w-6 shrink-0 place-items-center rounded-[7px] bg-accent text-accent-foreground">
             <ArtifactMimeIcon mimeType={artifact.mimeType} small />
           </span>
-          <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">{artifact.name}</span>
+          <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">
+            {displayName(artifact.name)}
+          </span>
           {artifact.versionCount > 1 ? (
             <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10.5px] font-semibold text-muted-foreground">
               {`v${artifact.version}`}
@@ -968,6 +971,11 @@ function ArtifactMimeIcon({ mimeType, small }: { mimeType: string; small?: boole
         <>
           <polyline points="8 6 2 12 8 18" />
           <polyline points="16 6 22 12 16 18" />
+        </>
+      ) : isSheet(mimeType) ? (
+        <>
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <path d="M3 10h18M3 15h18M9 4v16" />
         </>
       ) : (
         <>
@@ -1061,7 +1069,7 @@ function PreviewPane({
             <Skeleton className="h-5 w-48 max-w-full" />
           ) : (
             <h2 className="truncate text-[16px] font-semibold">
-              {state.status === "ready" ? state.artifact.name : t`Artifact`}
+              {state.status === "ready" ? displayName(state.artifact.name) : t`Artifact`}
             </h2>
           )}
           {state.status === "ready" && state.artifact.description ? (

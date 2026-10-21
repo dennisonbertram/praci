@@ -7,7 +7,7 @@ import { FileText, RotateCw, Trash2, X } from "lucide-react";
 import type { KeyboardEvent, PointerEvent, ReactNode } from "react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { canPreviewImage, canPreviewPdf } from "../../lib/data-room";
+import { canPreviewImage } from "../../lib/data-room";
 import { MASK } from "../../lib/finance-format";
 import {
   getHideAmounts,
@@ -146,12 +146,13 @@ export function Preview({
 }) {
   const [error, setError] = useState("");
   const { facets } = item;
-  const hidden = useHideAmounts();
+  // Only a picture can't be masked; text and PDF previews stay readable.
+  const hidden = useHideAmounts() && canPreviewImage(item);
   const amount = amountText(item);
   const { width, handle } = usePaneWidth();
   const [fullScreen, setFullScreen] = useState(false);
   const sheet = item.status !== "failed" && canPreviewSpreadsheet(item.name, item.mimeType);
-  const showFile = !sheet && !(hidden && (canPreviewImage(item) || canPreviewPdf(item)));
+  const showFile = !sheet && !hidden;
   const file = useFileUrl(item, showFile);
   const canFullScreen =
     item.status !== "failed" && (sheet || (showFile && isShowable(item) && !file.failed));
@@ -206,23 +207,23 @@ export function Preview({
       <h3 className="break-words text-[15px] font-semibold">{item.name}</h3>
       {sheet ? (
         <div className="h-[50vh] shrink-0 overflow-hidden rounded-md border border-border">
-          <SheetPreview key={item.id} source={{ dataRoomItemId: item.id }} />
+          <SheetPreview key={item.id} source={{ dataRoomItemId: item.id }} name={item.name} />
         </div>
-      ) : hidden && (canPreviewImage(item) || canPreviewPdf(item)) ? (
-        <p className="text-sm text-muted-foreground">
-          {canPreviewImage(item)
-            ? t`Image hidden while amounts are hidden`
-            : t`Hidden while amounts are hidden`}
-        </p>
-      ) : (
+      ) : hidden ? (
+        <p className="text-sm text-muted-foreground">{t`Image hidden while amounts are hidden`}</p>
+      ) : item.status === "failed" ? null : (
         <FileViewer item={item} file={file} />
       )}
       {item.status === "failed" ? (
-        <div className="flex flex-col gap-1 text-sm">
+        <div className="flex flex-col items-start gap-1.5 text-sm">
           <p className="font-medium text-destructive">
             <Trans>Couldn't read this file</Trans>
           </p>
           {item.error ? <p className="text-muted-foreground">{item.error}</p> : null}
+          <Button size="sm" onClick={() => onAction("retry", item)}>
+            <RotateCw aria-hidden="true" />
+            <Trans>Try again</Trans>
+          </Button>
         </div>
       ) : !isSettled(item.status) ? (
         <p className="text-sm text-muted-foreground">
@@ -286,14 +287,8 @@ export function Preview({
         </Field>
         <Field label={t`Size`}>{sizeText(item.size)}</Field>
       </dl>
-      {/* Try again and Delete for a file that can't be read; Open and Download are in the header. */}
+      {/* Delete for a file that can't be read; Try again is under the heading, Open and Download in the header. */}
       <div className="flex flex-col gap-1.5">
-        {item.status === "failed" ? (
-          <Button onClick={() => onAction("retry", item)}>
-            <RotateCw aria-hidden="true" />
-            <Trans>Try again</Trans>
-          </Button>
-        ) : null}
         {item.status === "failed" ? (
           <Button
             variant="ghost"

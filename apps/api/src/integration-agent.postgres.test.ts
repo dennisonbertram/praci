@@ -871,8 +871,27 @@ describePostgres("integration agents (PostgreSQL)", () => {
       );
       expect(created.agentBotId).toBeTruthy();
       expect(created).toMatchObject({ agentExclusive: true, writesEnabled: false });
+      const devinAgent = await prisma.bot.findUniqueOrThrow({ where: { id: created.agentBotId! } });
+      expect(devinAgent.instructions).not.toContain("Allow changes");
       const again = await client(a).integrationAgents.create({ serverId: created.id });
       expect(again.botId).toBe(created.agentBotId);
+    });
+
+    it("rejects turning writes on for a Devin server, and leaves Mercury unchanged", async () => {
+      const created = await devinClient(async () => []).mcp.servers.create(
+        input(`devin-ro-${suffix}`),
+      );
+      await expect(
+        client(a).mcp.servers.setWrites({ id: created.id, enabled: true }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(await prisma.mcpServer.findUniqueOrThrow({ where: { id: created.id } })).toMatchObject(
+        { writesEnabled: false },
+      );
+      const mercury = await mkServer(userA, `ro-mercury-${suffix}`, "https://mcp.mercury.com/mcp");
+      await client(a).integrationAgents.create({ serverId: mercury.id });
+      await expect(
+        client(a).mcp.servers.setWrites({ id: mercury.id, enabled: true }),
+      ).resolves.toMatchObject({ writesEnabled: true });
     });
 
     describe("other new servers", () => {

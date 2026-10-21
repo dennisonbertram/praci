@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
+  accountTimezone,
   localTimezone,
   markTimezoneReported,
   timezoneLabel,
@@ -48,5 +49,16 @@ describe("timezoneToReport", () => {
     expect(timezoneToReport({ ...me, timezone: "Asia/Tokyo" }, "Europe/Paris")).toBeNull();
     markTimezoneReported("other-user", "Europe/Paris");
     expect(timezoneToReport({ ...me, timezone: "Asia/Tokyo" }, "Europe/Paris")).toBeNull();
+  });
+});
+
+describe("accountTimezone", () => {
+  it("prefers the saved account zone over the browser zone", () => {
+    expect(accountTimezone({ timezone: "America/Los_Angeles" })).toBe("America/Los_Angeles");
+  });
+
+  it("falls back to the browser zone when none is saved", () => {
+    expect(accountTimezone({ timezone: null })).toBe(localTimezone());
+    expect(accountTimezone(null)).toBe(localTimezone());
   });
 });

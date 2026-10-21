@@ -145,7 +145,7 @@ const connectedOverview = (over: Partial<FinanceOverview> = {}): FinanceOverview
         key: "acme-hosting",
         name: "Acme Hosting",
         monthlyCents: 50_000,
-        trendCents: [40_000, 45_000, 50_000],
+        trendCents: [40_000, 40_000, 45_000, 50_000],
         lastChargeAt: "2026-10-01T00:00:00.000Z",
         overlapGroup: null,
         paidWith: [{ provider: "brex", kind: "card", name: "Card", lastFour: "0001" }],
@@ -310,10 +310,10 @@ it("notes non-USD transactions only when some are left out", async () => {
   root = createRoot(container);
   await show("/app/finance");
   await flush();
-  expect(container.textContent).toContain("3 non-USD not counted");
+  expect(container.querySelector('a[aria-label*="3 non-USD not counted"]')).not.toBeNull();
 });
 
-it("sends the Reconnect chip to Integrations instead of connecting", async () => {
+it("sends Reconnect to Integrations instead of connecting", async () => {
   const base = connectedOverview();
   rpcMock.overview.mockResolvedValue({
     ...base,
@@ -324,9 +324,7 @@ it("sends the Reconnect chip to Integrations instead of connecting", async () =>
   });
   await show("/app/finance");
   await flush();
-  const chip = container.querySelector('a[aria-label="Reconnect Mercury"]');
-  expect(chip?.getAttribute("href")).toBe("/app/integrations?category=finance");
-  // More than a dot: a line says the figures stopped updating, with a Reconnect button.
+  // The header shows the problem as a warning dot; a line says the figures stopped updating, with a Reconnect button.
   const banner = [...container.querySelectorAll('[role="status"]')].find((n) =>
     n.textContent?.includes("Mercury needs you to sign in again"),
   );
@@ -337,7 +335,36 @@ it("sends the Reconnect chip to Integrations instead of connecting", async () =>
   expect(rpcMock.connect).not.toHaveBeenCalled();
 });
 
-it("links each source chip to Accounts filtered to that source", async () => {
+it("names the other subscription an overlapping one is similar to", async () => {
+  const base = connectedOverview();
+  const [acme] = base.subscriptions.items;
+  const items = [
+    { ...(acme as (typeof base.subscriptions.items)[number]), overlapGroup: "hosting" },
+    {
+      ...(acme as (typeof base.subscriptions.items)[number]),
+      key: "globex",
+      name: "Globex Cloud",
+      overlapGroup: "hosting",
+    },
+  ];
+  rpcMock.overview.mockResolvedValue({ ...base, subscriptions: { ...base.subscriptions, items } });
+  await show("/app/finance");
+  await flush();
+  expect(container.textContent).toContain("Similar to Globex Cloud");
+  expect(container.textContent).toContain("Similar to Acme Hosting");
+  expect(container.textContent).not.toContain("overlaps");
+});
+
+it("puts Treasury yield in the KPI row, not alone below the tables", async () => {
+  rpcMock.overview.mockResolvedValue(connectedOverview());
+  await show("/app/finance");
+  await flush();
+  const kpi = [...container.querySelectorAll("h2")].find((h) => h.textContent === "Treasury yield");
+  expect(kpi?.closest("a")?.textContent).toContain("$911");
+  expect(kpi?.closest("a")?.textContent).toContain("Last month, after fees");
+});
+
+it("shows the connected sources and the sync time as one link to Accounts", async () => {
   const base = connectedOverview();
   rpcMock.overview.mockResolvedValue({
     ...base,
@@ -345,14 +372,10 @@ it("links each source chip to Accounts filtered to that source", async () => {
   });
   await show("/app/finance");
   await flush();
-  const hrefs = [...container.querySelectorAll('a[aria-label$=" accounts"]')].map((a) => [
-    a.getAttribute("aria-label"),
-    a.getAttribute("href"),
-  ]);
-  expect(hrefs).toEqual([
-    ["Mercury accounts", "/app/finance/accounts?source=mercury"],
-    ["Brex accounts", "/app/finance/accounts?source=brex"],
-  ]);
+  const status = [...container.querySelectorAll('a[href="/app/finance/accounts"]')].find((a) =>
+    a.textContent?.includes("Mercury"),
+  );
+  expect(status?.textContent).toMatch(/^Mercury, Brex · synced /);
 });
 
 it("links the header to Accounts and offers Add Brex when only Mercury is connected", async () => {
@@ -412,7 +435,7 @@ it("hides Cash and Runway when only Brex is connected, and still shows spend", a
   expect(container.querySelector('a[href="/app/finance/runway"]')).toBeNull();
   expect(container.textContent).not.toContain("Runway");
   expect(container.textContent).not.toContain("Cash");
-  expect(container.textContent).toContain("Spent Oct 1");
+  expect(container.textContent).toContain("Spent so far this month · Oct 1");
   expect(container.textContent).toContain("Monthly burn");
   expect(container.textContent).toContain("Add Mercury");
 });
@@ -635,10 +658,10 @@ it("labels the subscription figures by what they measure", async () => {
   await show("/app/finance");
   await flush();
   const heads = [...container.querySelectorAll("thead th")].map((th) => th.textContent);
-  expect(heads).toContain("Per month");
+  expect(heads).toContain("Usual per month");
   expect(heads).toContain("Change, 3 months");
   expect(heads).not.toContain("Typical month");
-  expect(container.querySelector('th[title*="vendor page"]')?.textContent).toBe("Per month");
+  expect(container.querySelector('th[title*="vendor page"]')?.textContent).toBe("Usual per month");
 });
 
 it("offers Ask only while the panel is closed", async () => {
@@ -671,17 +694,18 @@ it("shows Syncing on a click even when the refresh answers at once", async () =>
   rpcMock.overview.mockResolvedValue(connectedOverview());
   await show("/app/finance");
   await flush();
-  // The label that is shown; the other one only holds its width so the chips do not move.
   const status = () =>
-    [...container.querySelectorAll('[aria-hidden="false"]')].map((n) => n.textContent).join("");
+    [...container.querySelectorAll('a[href="/app/finance/accounts"]')].find((a) =>
+      a.textContent?.includes("Mercury"),
+    )?.textContent;
   const refresh = button(/^Refresh$/);
   await act(async () => refresh?.click());
-  expect(status()).toBe("Syncing…");
+  expect(status()).toContain("syncing…");
   // While syncing the button is unavailable but keeps focus (a disabled button would drop it).
   expect(refresh?.getAttribute("aria-disabled")).toBe("true");
   expect(refresh?.disabled).toBe(false);
   await act(() => new Promise((resolve) => setTimeout(resolve, 900)));
-  expect(status()).toMatch(/^Updated /);
+  expect(status()).toContain("synced");
 });
 
 it("shows an error with Try again when the dashboard cannot load", async () => {
@@ -791,24 +815,13 @@ const spendTransaction = (hasReceipt: boolean): FinanceTransactionOutput => ({
   vendorIsSubscription: true,
 });
 
-it("keeps a deep trail on one line on a narrow screen: Finance, …, the page before and this one", async () => {
+it("ends the trail at the page before the heading, so the page name is not shown twice", async () => {
   rpcMock.transaction.mockResolvedValue(spendTransaction(false));
   await show("/app/finance/transaction/t1");
   await flush();
   const items = [...container.querySelectorAll("nav li")] as HTMLElement[];
-  expect(items.map((li) => li.textContent)).toEqual([
-    "Finance/…/",
-    "Subscriptions/",
-    "Acme Hosting/",
-    "Oct 2 · $42.00",
-  ]);
-  // Only Subscriptions folds into the ellipsis below the container's md width.
-  expect(items.map((li) => li.className.includes("hidden @md:flex"))).toEqual([
-    false,
-    true,
-    false,
-    false,
-  ]);
+  expect(items.map((li) => li.textContent)).toEqual(["Finance/", "Subscriptions/", "Acme Hosting"]);
+  expect(items.some((li) => li.className.includes("hidden @md:flex"))).toBe(false);
 });
 
 it("shows No receipt without an upload action when a charge has no receipt", async () => {
@@ -822,7 +835,7 @@ it("shows No receipt without an upload action when a charge has no receipt", asy
   // and amount, so the merchant is not named twice.
   expect(container.querySelector('nav a[href="/app/finance/vendor/acme-hosting"]')).not.toBeNull();
   expect(container.querySelector("nav")?.textContent?.replace(/\s+/g, " ")).toBe(
-    "Finance/…/Subscriptions/Acme Hosting/Oct 2 · $42.00",
+    "Finance/Subscriptions/Acme Hosting",
   );
   const external = container.querySelector('a[href="https://dashboard.example.test/expenses/e1"]');
   expect(external?.getAttribute("rel")).toContain("noopener");
@@ -862,7 +875,7 @@ it("links a charge with a receipt to the receipt page, which fetches the link on
   expect(container.querySelector("img")?.getAttribute("src")).toBe(
     "https://files.example.test/r.png",
   );
-  expect(container.querySelector("nav")?.textContent).toContain("Receipt");
+  expect(container.querySelector("nav")?.textContent).toContain("Finance");
 });
 
 it("does not render a non-https vendor link", async () => {
@@ -975,9 +988,9 @@ it("shows the Crypto card only when the overview has crypto, apart from cash", a
   const card = container.querySelector('a[href="/app/finance/crypto"]');
   expect(card?.textContent).toContain("$123,456");
   expect(card?.textContent).toContain("2 unpriced");
-  // One row of four on desktop: crypto shares the grid with the other stat cards.
+  // One row on desktop: crypto shares the grid with the other stat cards.
   const grid = card?.parentElement;
-  expect(grid?.className).toContain("@3xl:grid-cols-4");
+  expect(grid?.className).toContain("@5xl:grid-cols-5");
   expect(grid?.querySelector('a[href="/app/finance/accounts"]')).not.toBeNull();
   expect(container.querySelector('a[href="/app/finance/accounts"]')?.textContent).toBe(cashBefore);
 });
@@ -1434,7 +1447,7 @@ it("shortens a space name by the words every space's name starts with", () => {
 
 it("says whether crypto counts toward runway", () => {
   expect(cryptoSubtitle("bank", 0)).toBe("Not in runway");
-  expect(cryptoSubtitle("stablecoins", 0)).toBe("Stablecoins in runway");
+  expect(cryptoSubtitle("stablecoins", 0, "$77,000")).toBe("$77,000 stablecoins in runway");
   expect(cryptoSubtitle("all", 2)).toBe("Counted in runway · 2 unpriced");
 });
 

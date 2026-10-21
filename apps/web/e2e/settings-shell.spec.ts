@@ -13,7 +13,7 @@ for (const totalTokens of [201, null]) {
     const stamp = Date.now();
     await signup(page, `usage-total-${stamp}@rakazo.test`, "password12", "Usage totals");
     await completeOnboarding(page);
-    await openUserSettings(page, "usage");
+    await openUserSettings(page);
     await expect(page.getByTestId("usage-settings")).toContainText(
       `2 tasks done by your bots · ${totalTokens ?? "—"} tokens of AI text`,
     );
@@ -36,7 +36,7 @@ test("settings shell is two-pane and deep-links Models Memory Voice Usage", asyn
   await page.getByTestId("user-menu-trigger").click();
   const menu = page.locator('[data-slot="popover-content"]');
   await expect(menu.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
-  await expect(menu.getByRole("button", { name: "Usage", exact: true })).toBeVisible();
+  await expect(menu.getByRole("button", { name: "Usage", exact: true })).toHaveCount(0);
   await expect(menu.getByRole("button", { name: "Log out", exact: true })).toBeVisible();
   await expect(menu.getByRole("button", { name: "Models", exact: true })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "settings-account-menu-lean");
@@ -93,8 +93,11 @@ test("settings shell is two-pane and deep-links Models Memory Voice Usage", asyn
   await page.getByRole("button", { name: "Close voice settings" }).click();
   await expect(page.getByTestId("user-settings")).toHaveCount(0);
 
-  await openUserSettings(page, "usage");
-  await expect(page.getByTestId("user-settings")).toHaveAttribute("data-settings-section", "usage");
+  await openUserSettings(page);
+  await expect(page.getByTestId("user-settings")).toHaveAttribute(
+    "data-settings-section",
+    "general",
+  );
   await expect(page.getByTestId("usage-settings")).toBeVisible();
   await captureScreenshot(page, testInfo, "settings-shell-usage");
 });

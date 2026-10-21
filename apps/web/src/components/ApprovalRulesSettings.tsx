@@ -28,6 +28,8 @@ function describeRule(rule: ActionApprovalRule): string {
 export function ApprovalRulesSettings() {
   const { t } = useLingui();
   const autoReviewId = useId();
+  const emailId = useId();
+  const purchaseId = useId();
   const [rules, setRules] = useState<ActionApprovalRule[]>([]);
   const [autoReview, setAutoReview] = useState<ActionAutoReviewSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,29 +58,35 @@ export function ApprovalRulesSettings() {
     void refresh();
   }, []);
 
-  async function setPreset(matchValue: "email" | "purchase") {
+  const presetRule = (matchValue: "email" | "purchase") =>
+    rules.find(
+      (rule) =>
+        rule.effect === "require_approval" &&
+        rule.matchKind === "category" &&
+        rule.matchValue === matchValue,
+    );
+
+  async function setPreset(matchValue: "email" | "purchase", on: boolean) {
     if (loading || savingPreset) return;
-    if (
-      rules.some(
-        (rule) =>
-          rule.effect === "require_approval" &&
-          rule.matchKind === "category" &&
-          rule.matchValue === matchValue,
-      )
-    ) {
-      return;
-    }
+    const existing = presetRule(matchValue);
     setSavingPreset(matchValue);
     setError(null);
     try {
-      const saved = await rpc.approvalRules.set({
-        effect: "require_approval",
-        matchKind: "category",
-        matchValue,
-      });
-      setRules((current) => [...current, saved]);
+      if (!on) {
+        if (existing) {
+          await rpc.approvalRules.remove({ id: existing.id });
+          setRules((current) => current.filter((rule) => rule.id !== existing.id));
+        }
+      } else if (!existing) {
+        const saved = await rpc.approvalRules.set({
+          effect: "require_approval",
+          matchKind: "category",
+          matchValue,
+        });
+        setRules((current) => [...current, saved]);
+      }
     } catch (err) {
-      setError(errorText(err, t`Could not save rule`));
+      setError(errorText(err, on ? t`Could not save rule` : t`Could not remove rule`));
     } finally {
       setSavingPreset(null);
     }
@@ -107,45 +115,55 @@ export function ApprovalRulesSettings() {
     }
   }
 
+  // The two switches show their own rules; the list holds the rest.
+  const shown = [presetRule("email"), presetRule("purchase")];
+  const listedRules = rules.filter((rule) => !shown.includes(rule));
+
   return (
-    <div data-testid="action-confirmation-settings" className="pt-5">
+    <div data-testid="action-confirmation-settings">
       <h3 className="text-[15px] font-medium text-foreground">
         <Trans>Action confirmations</Trans>
       </h3>
-      <div className="mt-4 flex flex-col items-start gap-2">
-        <Button
-          variant="outline"
-          disabled={loading || savingPreset !== null}
-          onClick={() => void setPreset("email")}
-        >
-          <Trans>Ask before sending external email</Trans>
-        </Button>
-        <Button
-          variant="outline"
-          disabled={loading || savingPreset !== null}
-          onClick={() => void setPreset("purchase")}
-        >
-          <Trans>Ask before purchases</Trans>
-        </Button>
-      </div>
-      <div className="mt-5 flex items-start gap-3">
-        <Switch
-          id={autoReviewId}
-          data-testid="auto-review-toggle"
-          className="mt-0.5"
-          checked={autoReview?.enabled ?? false}
-          disabled={loading || savingAutoReview || !autoReview}
-          onCheckedChange={(checked) => void toggleAutoReview(checked)}
-        />
-        <div>
-          <Label htmlFor={autoReviewId} className="text-[14px] font-normal text-foreground/75">
-            <Trans>Flag unexpected actions</Trans>
-          </Label>
-          {autoReview?.enabled && !autoReview.checkerAvailable ? (
-            <p className="mt-1 text-[13px] text-muted-foreground">
-              <Trans>Add a model in Settings to use this.</Trans>
-            </p>
-          ) : null}
+      <div className="mt-4 flex flex-col gap-3">
+        {(
+          [
+            ["email", emailId, t`Ask before sending external email`],
+            ["purchase", purchaseId, t`Ask before purchases`],
+          ] as const
+        ).map(([kind, id, label]) => (
+          <div key={kind} className="flex items-start gap-3">
+            <Switch
+              id={id}
+              data-testid={`approval-preset-${kind}`}
+              className="mt-0.5"
+              checked={presetRule(kind) !== undefined}
+              disabled={loading || savingPreset !== null}
+              onCheckedChange={(checked) => void setPreset(kind, checked)}
+            />
+            <Label htmlFor={id} className="text-[14px] font-normal text-foreground/75">
+              {label}
+            </Label>
+          </div>
+        ))}
+        <div className="flex items-start gap-3">
+          <Switch
+            id={autoReviewId}
+            data-testid="auto-review-toggle"
+            className="mt-0.5"
+            checked={autoReview?.enabled ?? false}
+            disabled={loading || savingAutoReview || !autoReview}
+            onCheckedChange={(checked) => void toggleAutoReview(checked)}
+          />
+          <div>
+            <Label htmlFor={autoReviewId} className="text-[14px] font-normal text-foreground/75">
+              <Trans>Flag unexpected actions</Trans>
+            </Label>
+            {autoReview?.enabled && !autoReview.checkerAvailable ? (
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                <Trans>Add a model in Settings to use this.</Trans>
+              </p>
+            ) : null}
+          </div>
         </div>
       </div>
       {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
@@ -153,9 +171,9 @@ export function ApprovalRulesSettings() {
         <p className="mt-4 text-[13px] text-muted-foreground">
           <Trans>Loading rules…</Trans>
         </p>
-      ) : rules.length > 0 ? (
+      ) : listedRules.length > 0 ? (
         <ul className="mt-4 space-y-2">
-          {rules.map((rule) => (
+          {listedRules.map((rule) => (
             <li
               key={rule.id}
               className="flex items-center justify-between gap-3 rounded-lg border border-border px-3.5 py-2"

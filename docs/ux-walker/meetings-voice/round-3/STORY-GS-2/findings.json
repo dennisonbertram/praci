@@ -1,0 +1,28 @@
+{
+  "story_id": "STORY-GS-2",
+  "round": 3,
+  "result": "PASS",
+  "round2_status": [
+    {
+      "id": "F2-GS-2-01",
+      "status": "fixed",
+      "evidence": "Link 'Get a key in Granola' is visible in the rejected state and after editing (script: links = ['Get a key in Granola'] in both). One line for all causes remains by plan decision (Surfaces, Errors), so a typo and an expired key still read the same; accepted."
+    },
+    {
+      "id": "F2-GS-2-02",
+      "status": "fixed",
+      "evidence": "Web 'Offline' frame and mobile 'Offline' frame both show 'Could not reach Granola' (plan Errors: same on web and mobile)."
+    },
+    {
+      "id": "F2-GS-2-03",
+      "status": "still-open",
+      "evidence": "No reveal control on the masked field in the plan or either mockup. Low, accepted by the plan's secure-field rule."
+    },
+    {
+      "id": "F2-GS-2-04",
+      "status": "fixed",
+      "evidence": "Script: after typing, aria-invalid is null and the alert is gone."
+    }
+  ],
+  "findings": []
+}

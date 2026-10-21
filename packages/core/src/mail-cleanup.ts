@@ -22,6 +22,17 @@ export interface CleanupCandidate {
   skipInbox: boolean;
 }
 
+/** Cleanup lists bulk-looking senders only: enough mail and none the user has written back to. Senders the user already decided on stay listed (`keep`) so the decision can be undone. */
+export function isCleanupListed(sender: {
+  messageCount: number;
+  priorContact: boolean | null;
+  keep: boolean;
+}): boolean {
+  return (
+    sender.keep || (sender.messageCount >= CLEANUP_MIN_MESSAGES && sender.priorContact !== true)
+  );
+}
+
 /** Newsletter or non-updates bulk (receipts and alerts are updates), rarely read, never written to, not marked important, not spam-like, not already skipped. */
 export function isCleanupPreselected(sender: CleanupCandidate): boolean {
   const bulk =

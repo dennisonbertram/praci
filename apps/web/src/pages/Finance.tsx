@@ -3,7 +3,6 @@ import { Trans } from "@lingui/react/macro";
 import type {
   FinanceOverview,
   FinanceProvider,
-  FinanceSource,
   SpendPeriod,
   UpcomingItem,
 } from "@rakazo/contracts";
@@ -44,7 +43,7 @@ import {
   BreakdownRows,
   BurnLegend,
   Chevron,
-  CompanyAndEye,
+  CompanyMenu,
   cashSubtitle,
   ErrorNotice,
   FinanceChromeProvider,
@@ -117,40 +116,42 @@ export function FinancePage(chrome: FinanceChrome) {
   return (
     <FinanceChromeProvider value={chrome}>
       <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
-        {route.page === "dashboard" ? (
-          <Dashboard />
-        ) : route.page === "accounts" ? (
-          <FinanceAccountsPage source={route.source} unknownSource={route.unknownSource} />
-        ) : route.page === "account" ? (
-          <FinanceAccountPage id={route.id} />
-        ) : route.page === "burn" ? (
-          <FinanceBurnPage />
-        ) : route.page === "month" ? (
-          <FinanceMonthPage month={route.month} />
-        ) : route.page === "runway" ? (
-          <FinanceRunwayPage />
-        ) : route.page === "crypto" ? (
-          <FinanceCryptoPage />
-        ) : route.page === "spend" ? (
-          <FinanceSpendPage
-            period={route.period}
-            category={route.category}
-            range={route.range}
-            source={route.source ?? null}
-          />
-        ) : route.page === "category" ? (
-          <FinanceCategoryPage slug={route.slug} window={route.window} />
-        ) : route.page === "recurring" ? (
-          <FinanceRecurringPage keyName={route.key} />
-        ) : route.page === "vendor" ? (
-          <FinanceVendorPage keyName={route.key} />
-        ) : route.page === "transaction" ? (
-          <FinanceTransactionPage id={route.id} />
-        ) : route.page === "receipt" ? (
-          <FinanceReceiptPage id={route.id} />
-        ) : (
-          <FinanceNotFound />
-        )}
+        <div className="mx-auto max-w-[1440px]">
+          {route.page === "dashboard" ? (
+            <Dashboard />
+          ) : route.page === "accounts" ? (
+            <FinanceAccountsPage source={route.source} unknownSource={route.unknownSource} />
+          ) : route.page === "account" ? (
+            <FinanceAccountPage id={route.id} />
+          ) : route.page === "burn" ? (
+            <FinanceBurnPage />
+          ) : route.page === "month" ? (
+            <FinanceMonthPage month={route.month} />
+          ) : route.page === "runway" ? (
+            <FinanceRunwayPage />
+          ) : route.page === "crypto" ? (
+            <FinanceCryptoPage />
+          ) : route.page === "spend" ? (
+            <FinanceSpendPage
+              period={route.period}
+              category={route.category}
+              range={route.range}
+              source={route.source ?? null}
+            />
+          ) : route.page === "category" ? (
+            <FinanceCategoryPage slug={route.slug} window={route.window} />
+          ) : route.page === "recurring" ? (
+            <FinanceRecurringPage keyName={route.key} />
+          ) : route.page === "vendor" ? (
+            <FinanceVendorPage keyName={route.key} />
+          ) : route.page === "transaction" ? (
+            <FinanceTransactionPage id={route.id} />
+          ) : route.page === "receipt" ? (
+            <FinanceReceiptPage id={route.id} />
+          ) : (
+            <FinanceNotFound />
+          )}
+        </div>
       </div>
     </FinanceChromeProvider>
   );
@@ -249,7 +250,7 @@ function EmptyState({ cryptoCents, onAdd }: { cryptoCents: number | null; onAdd:
   return (
     <div>
       {/* The page title stays where every page has it, with the empty state under it. */}
-      <PageHeader title={<Trans>Finance</Trans>} meta={<CompanyAndEye />} />
+      <PageHeader title={<Trans>Finance</Trans>} meta={<CompanyMenu />} />
       <PageEmptyState
         icon={FINANCE_PROVIDERS.map(({ provider, name, logo }) => (
           <AppLogo key={provider} name={name} logo={logo} size="lg" />
@@ -291,34 +292,6 @@ function DashboardSkeleton() {
       <Skeleton className="h-56" />
       <Skeleton className="h-40" />
     </div>
-  );
-}
-
-function SourceChip({ source }: { source: FinanceSource }) {
-  const name = providerName(source.provider);
-  const chip =
-    "inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground hover:border-foreground hover:text-foreground";
-  const dot =
-    source.status === "ok"
-      ? "bg-success"
-      : source.status === "error"
-        ? "bg-destructive"
-        : "bg-warning";
-  const dotEl = <span aria-hidden="true" className={`size-1.5 rounded-full ${dot}`} />;
-  return source.status === "needs_reconnect" ? (
-    <Link to={CONNECT_PATH} className={chip} aria-label={t`Reconnect ${name}`}>
-      {dotEl}
-      {name}
-    </Link>
-  ) : (
-    <Link
-      to={financePath.accounts(source.provider)}
-      className={chip}
-      aria-label={t`${name} accounts`}
-    >
-      {dotEl}
-      {name}
-    </Link>
   );
 }
 
@@ -364,6 +337,7 @@ function Overview({
 
   const [allBreakdown, setAllBreakdown] = useState(false);
   const [allUpcoming, setAllUpcoming] = useState(false);
+  const [allSubs, setAllSubs] = useState(false);
   const totals = data.spendTotals[period];
   const change = changeText(totals.changePct);
   const burning = data.burn.monthlyCents > 0;
@@ -397,7 +371,13 @@ function Overview({
   const quarter = Math.floor((Number(totals.start.slice(5, 7)) - 1) / 3) + 1;
   const year = totals.start.slice(0, 4);
   const soFar =
-    period === "quarter" ? t`Q${quarter} so far` : period === "year" ? t`${year} so far` : null;
+    period === "quarter"
+      ? t`Q${quarter} so far`
+      : period === "year"
+        ? t`${year} so far`
+        : period === "month"
+          ? t`Spent so far this month`
+          : null;
   const previousRange = range({ start: totals.previousStart, end: totals.previousEnd });
   const bars = data.cashSeries[period];
   const barGranularity = BAR_GRANULARITY[period];
@@ -406,6 +386,16 @@ function Overview({
   const yieldAmount = data.treasuryYieldLastMonth
     ? money(data.treasuryYieldLastMonth.netCents)
     : "";
+  // Burn is always there; Cash and Runway need cash accounts; Crypto and Treasury yield need data.
+  const kpiCount =
+    1 + (hasCash ? 2 : 0) + (data.crypto ? 1 : 0) + (data.treasuryYieldLastMonth ? 1 : 0);
+  const connected = data.sources.filter((source) => source.status !== "not_connected");
+  const sourceNames = connected.map((source) => providerName(source.provider)).join(", ");
+  const sourceDot = connected.some((source) => source.status === "error")
+    ? "bg-destructive"
+    : connected.some((source) => source.status === "needs_reconnect")
+      ? "bg-warning"
+      : "bg-success";
   const showSkeleton = syncing && data.lastSyncedAt === null;
   const updated = data.lastSyncedAt ? formatRelativeTime(data.lastSyncedAt) : "";
 
@@ -415,24 +405,37 @@ function Overview({
         title={<Trans>Finance</Trans>}
         meta={
           <>
-            <CompanyAndEye>
-              {/* Both labels share one cell, so the chips beside them do not move when it changes. */}
-              <span className={cn("grid", !syncing && !updated && "hidden")}>
-                <span
-                  aria-hidden={!syncing}
-                  className={cn("col-start-1 row-start-1", syncing ? "" : "invisible")}
+            <CompanyMenu>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Link
+                      to={financePath.accounts()}
+                      aria-label={
+                        data.excludedNonUsdCount > 0
+                          ? t`${sourceNames}, ${data.excludedNonUsdCount} non-USD not counted`
+                          : undefined
+                      }
+                      className="inline-flex min-w-0 items-center gap-1.5 rounded-full px-1.5 py-0.5 hover:text-foreground"
+                    />
+                  }
                 >
-                  <Trans>Syncing…</Trans>
-                </span>
-                {updated ? (
                   <span
-                    aria-hidden={syncing}
-                    className={cn("col-start-1 row-start-1", syncing ? "invisible" : "")}
-                  >
-                    <Trans>Updated {updated}</Trans>
+                    aria-hidden="true"
+                    className={`size-1.5 shrink-0 rounded-full ${sourceDot}`}
+                  />
+                  <span className="truncate">
+                    {syncing
+                      ? t`${sourceNames} · syncing…`
+                      : updated
+                        ? t`${sourceNames} · synced ${updated}`
+                        : sourceNames}
                   </span>
+                </TooltipTrigger>
+                {data.excludedNonUsdCount > 0 ? (
+                  <TooltipContent>{t`${data.excludedNonUsdCount} non-USD not counted`}</TooltipContent>
                 ) : null}
-              </span>
+              </Tooltip>
               <Tooltip>
                 <TooltipTrigger
                   render={
@@ -453,19 +456,7 @@ function Overview({
                   <Trans>Refresh</Trans>
                 </TooltipContent>
               </Tooltip>
-            </CompanyAndEye>
-            {data.excludedNonUsdCount > 0 ? (
-              <span className="text-[11px] text-muted-foreground">
-                {t`${data.excludedNonUsdCount} non-USD not counted`}
-              </span>
-            ) : null}
-            <div className="flex gap-1">
-              {data.sources
-                .filter((source) => source.status !== "not_connected")
-                .map((source) => (
-                  <SourceChip key={source.provider} source={source} />
-                ))}
-            </div>
+            </CompanyMenu>
             {missing.length > 0 ? (
               // One way to connect: the same Add account dialog as the empty state.
               <Button
@@ -517,7 +508,13 @@ function Overview({
           <div
             // Two per row when narrow; an odd last card takes the whole row instead of sitting alone.
             className={`grid grid-cols-2 gap-3 [&>:last-child:nth-child(odd)]:col-span-2 @3xl:[&>:last-child:nth-child(odd)]:col-span-1 ${
-              hasCash ? (data.crypto ? "@3xl:grid-cols-4" : "@3xl:grid-cols-3") : "@3xl:grid-cols-2"
+              kpiCount >= 5
+                ? "@3xl:grid-cols-3 @5xl:grid-cols-5"
+                : kpiCount === 4
+                  ? "@3xl:grid-cols-4"
+                  : kpiCount === 3
+                    ? "@3xl:grid-cols-3"
+                    : "@3xl:grid-cols-2"
             }`}
           >
             {hasCash ? (
@@ -583,8 +580,17 @@ function Overview({
                 sub={cryptoSubtitle(
                   otherCounted > 0 ? "all" : stablecoins > 0 ? "stablecoins" : "bank",
                   data.crypto.unpricedTokenCount,
+                  money(heldStablecoins),
                 )}
                 to={financePath.crypto()}
+              />
+            ) : null}
+            {data.treasuryYieldLastMonth ? (
+              <Kpi
+                title={t`Treasury yield`}
+                value={yieldAmount}
+                sub={t`Last month, after fees`}
+                to={financePath.accounts()}
               />
             ) : null}
           </div>
@@ -599,7 +605,11 @@ function Overview({
                 {money(totals.currentCents)}
               </Link>
               <span className="text-[11px] text-muted-foreground">
-                {soFar ? t`${soFar} · spent ${spentRange}` : t`Spent ${spentRange}`}
+                {soFar
+                  ? period === "month"
+                    ? t`${soFar} · ${spentRange}`
+                    : t`${soFar} · spent ${spentRange}`
+                  : t`Spent ${spentRange}`}
                 {sameAsBefore(totals) ? null : (
                   <>
                     {" · "}
@@ -750,34 +760,29 @@ function Overview({
                 </div>
               ) : (
                 <>
-                  <SubscriptionsTable subs={subs} />
-                  <div className="border-t border-border pt-2 text-xs text-muted-foreground">
-                    {plural(subs.items.length, {
-                      one: "# subscription",
-                      other: "# subscriptions",
-                    })}{" "}
-                    · {t`${monthlyTotal}/mo`}
+                  <SubscriptionsTable
+                    subs={subs}
+                    rows={allSubs ? subs.items : subs.items.slice(0, MAX_ROWS)}
+                  />
+                  <div className="flex items-center justify-between border-t border-border pt-2 text-xs text-muted-foreground">
+                    <span>
+                      {plural(subs.items.length, {
+                        one: "# subscription",
+                        other: "# subscriptions",
+                      })}{" "}
+                      · {t`${monthlyTotal}/mo`}
+                    </span>
+                    <ShowAll
+                      total={subs.items.length}
+                      cap={MAX_ROWS}
+                      expanded={allSubs}
+                      onToggle={() => setAllSubs((v) => !v)}
+                    />
                   </div>
                 </>
               )}
             </Section>
           </BackHere>
-
-          {data.treasuryYieldLastMonth ? (
-            <Link
-              to={financePath.accounts()}
-              className="w-fit rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-foreground"
-            >
-              <Section title={<Trans>Treasury yield</Trans>} className="hover:ring-foreground/30">
-                <div className="text-lg font-semibold tabular-nums">
-                  {t`${yieldAmount} last month`}
-                </div>
-                <div className="text-[11px] text-muted-foreground">
-                  <Trans>after fees</Trans>
-                </div>
-              </Section>
-            </Link>
-          ) : null}
         </div>
       )}
     </div>
@@ -785,12 +790,17 @@ function Overview({
 }
 
 /** What the Crypto figure means for runway, as the Cash card says what it adds up. */
-export function cryptoSubtitle(counted: "bank" | "stablecoins" | "all", unpriced: number): string {
+export function cryptoSubtitle(
+  counted: "bank" | "stablecoins" | "all",
+  unpriced: number,
+  stablecoins = "",
+): string {
+  // The figure above counts all crypto, so name the part that is in runway.
   const scope =
     counted === "all"
       ? t`Counted in runway`
       : counted === "stablecoins"
-        ? t`Stablecoins in runway`
+        ? t`${stablecoins} stablecoins in runway`
         : t`Not in runway`;
   return unpriced > 0 ? t`${scope} · ${unpriced} unpriced` : scope;
 }
@@ -901,11 +911,26 @@ export function UpcomingRow({ item }: { item: UpcomingItem }) {
   );
 }
 
-function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }) {
+/** The other subscription in the same overlap group (the list is largest first), named. */
+function similarTo(
+  items: FinanceOverview["subscriptions"]["items"],
+  sub: { key: string; overlapGroup: string | null },
+) {
+  const other = items.find((o) => o.overlapGroup === sub.overlapGroup && o.key !== sub.key);
+  return other ? t`Similar to ${other.name}` : null;
+}
+
+function SubscriptionsTable({
+  subs,
+  rows,
+}: {
+  subs: FinanceOverview["subscriptions"];
+  rows: FinanceOverview["subscriptions"]["items"];
+}) {
   useHideAmounts();
   const rowProps = useRowNavigate();
   return (
-    <Table compact>
+    <Table compact className="max-w-3xl">
       <TableHeader>
         <TableHeadRow>
           <TableHead>
@@ -913,9 +938,9 @@ function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }
           </TableHead>
           <TableHead
             className="text-end"
-            title={t`Usual charge scaled to a month. A vendor page shows the average of actual spend.`}
+            title={t`Usual charge scaled to a month; usage-based vendors use the last 3 months. A vendor page shows the average of actual spend over the months it names.`}
           >
-            <Trans>Per month</Trans>
+            <Trans>Usual per month</Trans>
           </TableHead>
           <TableHead className="text-end hidden @md:table-cell">
             <Trans>Change, 3 months</Trans>
@@ -927,8 +952,9 @@ function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }
         </TableHeadRow>
       </TableHeader>
       <TableBody>
-        {subs.items.map((sub) => {
+        {rows.map((sub) => {
           const paidWith = paidWithLabel(sub.paidWith);
+          const similar = sub.overlapGroup ? similarTo(subs.items, sub) : null;
           const name = sub.name;
           return (
             <TableRow
@@ -944,9 +970,9 @@ function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }
                 >
                   {sub.name}
                 </HereLink>
-                {sub.overlapGroup ? (
+                {similar ? (
                   <span className="ms-1.5 rounded-full border border-border px-1.5 text-[10px] font-normal text-muted-foreground">
-                    <Trans>overlaps</Trans>
+                    {similar}
                   </span>
                 ) : null}
                 {paidWith ? (
@@ -960,7 +986,7 @@ function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }
               </TableCell>
               <TableCell className="text-end tabular-nums">{money(sub.monthlyCents)}</TableCell>
               <TableCell className="hidden w-[90px] whitespace-nowrap text-end tabular-nums text-muted-foreground @md:table-cell">
-                {trendText(sub.trendCents) ?? "—"}
+                {trendText(sub.trendCents)}
               </TableCell>
               <TableCell className="hidden whitespace-nowrap text-end text-muted-foreground @md:table-cell">
                 {shortDay(sub.lastChargeAt)}

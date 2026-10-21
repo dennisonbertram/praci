@@ -1,0 +1,2 @@
+# SYNTHETIC FIXTURE: invented data in the documented format, not a capture from Devin. Replaced by real captures in issue #516.
+id=devin-0001 title="Fix login redirect loop" status=running status_detail=waiting_for_user url=https://app.devin.ai/sessions/devin-0001 summary="Reproduced the loop; waiting for the target environment."

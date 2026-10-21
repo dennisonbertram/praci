@@ -57,7 +57,8 @@ export function IntegrationAgentSection({
   writesEnabled: boolean;
   shared: boolean;
   disabled: boolean;
-  onWrites: (on: boolean) => void;
+  /** Omitted when the agent can never make changes (Devin): the switch is not shown. */
+  onWrites?: (on: boolean) => void;
   onShared: (on: boolean) => void;
   /** The per-agent list, shown while the connection is shared. */
   usedBy: ReactNode;
@@ -73,28 +74,34 @@ export function IntegrationAgentSection({
         <Link to={agentHref} className="w-fit text-sm font-medium hover:underline">
           {agentName}
         </Link>
-        <WritesSwitch
-          service={service}
-          checked={writesEnabled}
-          disabled={disabled}
-          onChange={onWrites}
-          idPrefix={idPrefix}
-          hint={
-            <Trans>
-              Off: the agent only reads. On: it can also make changes, and asks you before each one.
-            </Trans>
-          }
-        />
-        <div className="flex items-center gap-2">
+        {onWrites ? (
+          <WritesSwitch
+            service={service}
+            checked={writesEnabled}
+            disabled={disabled}
+            onChange={onWrites}
+            idPrefix={idPrefix}
+            hint={
+              <Trans>
+                Off: the agent only reads. On: it can also make changes, and asks you before each one.
+              </Trans>
+            }
+          />
+        ) : null}
+        <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-0.5">
           <Switch
             id={`${idPrefix}-shared`}
+            aria-describedby={`${idPrefix}-shared-hint`}
             checked={shared}
             disabled={disabled}
             onCheckedChange={onShared}
           />
           <Label htmlFor={`${idPrefix}-shared`}>
-            <Trans>Share with all agents</Trans>
+            <Trans>Let other agents use {service} directly</Trans>
           </Label>
+          <p id={`${idPrefix}-shared-hint`} className="col-start-2 text-sm text-muted-foreground">
+            <Trans>Off: other agents reach {service} only through this agent.</Trans>
+          </p>
         </div>
       </div>
       {shared ? (

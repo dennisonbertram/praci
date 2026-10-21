@@ -219,6 +219,7 @@ function setup(
     financeExchangeSnapshot: t("financeExchangeSnapshot"),
   };
   const enqueue = vi.fn(async () => undefined);
+  const createBot = vi.fn(async () => ({ id: "finance-bot" }));
   const beginMcpOAuth = vi.fn(async (input: { serverId: string }) => ({
     status: "authorization_required" as const,
     sessionId: "session-1",
@@ -229,13 +230,13 @@ function setup(
   const deps = {
     prisma,
     jobs: { enqueue },
-    repos: { createBot: vi.fn() },
+    repos: { createBot },
     mcpOAuth: { statusFor },
     beginMcpOAuth,
     callToolFor,
     now: () => NOW,
   } as unknown as FinanceDeps;
-  return { prisma, deps, enqueue, beginMcpOAuth, statusFor, callToolFor };
+  return { prisma, deps, enqueue, beginMcpOAuth, statusFor, callToolFor, createBot };
 }
 
 beforeEach(() => vi.clearAllMocks());
@@ -608,6 +609,24 @@ describe("finance connect", () => {
     });
   });
 
+  it("creates the Finance agent with the server so Chief has a teammate for money questions", async () => {
+    const { deps, prisma, createBot } = setup();
+    await financeConnect(deps, a, input);
+    expect(createBot).toHaveBeenCalledWith(
+      a,
+      expect.objectContaining({ spawnKey: financeAgentSpawnKey(a.userId) }),
+    );
+    expect(prisma.botMcpServer.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          botId: "finance-bot",
+          serverId: "srv-1",
+          allowAllTools: false,
+        }),
+      }),
+    );
+  });
+
   it("reuses a disabled server and turns it back on instead of creating a second one", async () => {
     const { deps, prisma } = setup({ mcpServer: [server(a, { enabled: false })] });
     const out = await financeConnect(deps, a, input);
@@ -659,11 +678,12 @@ describe("finance connect", () => {
   });
 
   it("gives an existing Finance agent the new server, read tools only", async () => {
-    const { deps, prisma } = setup({
+    const { deps, prisma, createBot } = setup({
       bot: [
         { id: "bot-1", ...scope(a), spawnKey: financeAgentSpawnKey("user-a"), archivedAt: null },
       ],
     });
+    createBot.mockResolvedValue({ id: "bot-1" });
     await financeConnect(deps, a, input);
     expect(prisma.botMcpServer.upsert).toHaveBeenCalledWith(
       expect.objectContaining({

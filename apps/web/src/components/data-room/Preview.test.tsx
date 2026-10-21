@@ -90,25 +90,26 @@ it("replaces the picture with a note, and never fetches it, while amounts are hi
   expect(container.querySelector("img")?.getAttribute("src")).toBe("blob:receipt");
 });
 
-it("disables Open, with a reason, while amounts are hidden", async () => {
+it("keeps a PDF readable and openable while amounts are hidden, but not an image", async () => {
   const pdf = { ...receipt, mimeType: "application/pdf" } as DataRoomApiItem;
-  const show = () =>
+  const show = (item: DataRoomApiItem) =>
     act(async () => {
       root.render(
-        <Preview item={pdf} folderPath="" onAction={() => undefined} onClose={() => undefined} />,
+        <Preview item={item} folderPath="" onAction={() => undefined} onClose={() => undefined} />,
       );
     });
   const openButton = () =>
     container.querySelector<HTMLButtonElement>('button[aria-label="Open in new tab"]');
-  await show();
-  expect(openButton()?.disabled).toBe(false);
   await act(async () => setHideAmounts(true));
+  await show(pdf);
+  expect(openButton()?.disabled).toBe(false);
+  expect(container.textContent).not.toContain("hidden while amounts are hidden");
+  await show(receipt);
   expect(openButton()?.disabled).toBe(true);
-  expect(container.textContent).toContain("Hidden while amounts are hidden");
-  expect(container.querySelector('button[aria-label="Full screen"]')).toBeNull();
+  expect(container.textContent).toContain("Image hidden while amounts are hidden");
 });
 
-it("leads a failed file with Try again, and keeps Delete as a quieter button", async () => {
+it("shows no file frame for a failed file, with Try again under the heading and Delete below", async () => {
   const onAction = vi.fn();
   const failed = { ...receipt, mimeType: "application/pdf", status: "failed", error: "Not a PDF" };
   await act(async () => {
@@ -116,10 +117,17 @@ it("leads a failed file with Try again, and keeps Delete as a quieter button", a
       <Preview item={failed} folderPath="" onAction={onAction} onClose={() => undefined} />,
     );
   });
-  const buttons = Array.from(container.querySelectorAll("aside > div:last-child > button"));
-  expect(buttons.map((button) => button.textContent)).toEqual(["Try again", "Delete"]);
-  act(() => (buttons[0] as HTMLButtonElement).click());
+  expect(container.querySelector("iframe, object, embed")).toBeNull();
+  const retry = Array.from(container.querySelectorAll("button")).find(
+    (button) => button.textContent === "Try again",
+  );
+  expect(retry).toBeDefined();
+  // It follows the failure message, ahead of the details.
+  expect(retry?.previousElementSibling?.textContent).toBe("Not a PDF");
+  act(() => retry?.click());
   expect(onAction).toHaveBeenCalledWith("retry", failed);
+  const last = Array.from(container.querySelectorAll("aside > div:last-child > button"));
+  expect(last.map((button) => button.textContent)).toEqual(["Delete"]);
 });
 
 it("keeps showing the summary while a renamed file is re-indexed", async () => {
@@ -222,13 +230,13 @@ const show = (item: DataRoomApiItem) =>
     );
   });
 
-it("frames a PDF with the browser viewer, and hides it while amounts are hidden", async () => {
+it("frames a PDF with the browser viewer, and keeps it while amounts are hidden", async () => {
   const pdf = { ...receipt, name: "nda.pdf", mimeType: "application/pdf" };
   await show(pdf);
   expect(imageUrl).toHaveBeenCalledWith({ id: "r1", mimeType: "application/pdf" });
   expect(container.querySelector("iframe")?.getAttribute("src")).toBe("blob:receipt#toolbar=0");
   await act(async () => setHideAmounts(true));
-  expect(container.querySelector("iframe")).toBeNull();
+  expect(container.querySelector("iframe")).not.toBeNull();
 });
 
 it("shows a skeleton while loading, and the file icon for other types or a failed read", async () => {

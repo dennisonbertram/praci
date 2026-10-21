@@ -30,7 +30,11 @@ vi.mock("@rakazo/ui-web", () => ({
   AlertDialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
 }));
 
-import { RenameSpaceDialog } from "./dialogs";
+const memoryList = vi.hoisted(() => vi.fn());
+vi.mock("../../lib/rpc", () => ({ rpc: { memory: { list: memoryList } } }));
+
+import type { Bot } from "@rakazo/contracts";
+import { DeleteBotDialog, RenameBotSectionDialog, RenameSpaceDialog } from "./dialogs";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -98,5 +102,58 @@ describe("RenameSpaceDialog", () => {
     });
     await submit("Support");
     expect(container.textContent).toContain("Space deletion is already in progress");
+  });
+});
+
+describe("RenameBotSectionDialog", () => {
+  it("refuses a name another folder already has without sending it", async () => {
+    const onConfirm = vi.fn(async () => undefined);
+    await act(async () => {
+      root.render(
+        <RenameBotSectionDialog
+          section={{ name: "Ops" }}
+          takenNames={["Ops", "Sales"]}
+          onCancel={() => undefined}
+          onConfirm={onConfirm}
+        />,
+      );
+    });
+    await submit("Sales");
+    expect(container.textContent).toContain("A folder with that name already exists");
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+});
+
+describe("DeleteBotDialog", () => {
+  const bot = { id: "bot_1", name: "Helper" } as Bot;
+  async function renderDelete() {
+    await act(async () => {
+      root.render(
+        <DeleteBotDialog bot={bot} onCancel={() => undefined} onConfirm={async () => undefined} />,
+      );
+    });
+  }
+
+  it("skips the memory question for a bot with no memories", async () => {
+    memoryList.mockResolvedValue([]);
+    await renderDelete();
+    expect(memoryList).toHaveBeenCalledWith({ botId: "bot_1", scope: "bot" });
+    expect(container.textContent).toContain("Delete Helper?");
+    expect(container.textContent).not.toContain("What about its memories?");
+  });
+
+  it("skips the memory question when the only document is the new-bot heading", async () => {
+    memoryList.mockResolvedValue([{ id: "m1", content: "# Helper\n\n" }]);
+    await renderDelete();
+    expect(container.textContent).not.toContain("What about its memories?");
+  });
+
+  it("asks when the bot has memories, and when they cannot be checked", async () => {
+    memoryList.mockResolvedValue([{ id: "m1", content: "# Helper\n\nPrefers short replies." }]);
+    await renderDelete();
+    expect(container.textContent).toContain("What about its memories?");
+    memoryList.mockRejectedValue(new Error("offline"));
+    await renderDelete();
+    expect(container.textContent).toContain("What about its memories?");
   });
 });

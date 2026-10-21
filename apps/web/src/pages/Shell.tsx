@@ -70,10 +70,12 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Separator,
   Spinner,
 } from "@rakazo/ui-web";
 import {
   ArrowLeft,
+  BookUser,
   ChartColumn,
   ChevronDown,
   CircleAlert,
@@ -82,7 +84,6 @@ import {
   FileText,
   FolderOpen,
   FolderPlus,
-  Gauge,
   History,
   LayoutGrid,
   ListTodo,
@@ -167,7 +168,7 @@ import { glanceBadge, runwayGlance, StatusMark } from "../components/sidebar-gla
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
-import { FirstRunTour } from "../components/tour/FirstRunTour";
+import { connectCardsOpen, FirstRunTour } from "../components/tour/FirstRunTour";
 import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
 import type { ArtifactTarget } from "../lib/artifact-open";
@@ -208,7 +209,7 @@ import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-pref
 import { findInboxAgent } from "../lib/inbox-agent";
 import { appPath } from "../lib/integrations";
 import { findLegalAgent } from "../lib/legal-agent";
-import { localTimezone, markTimezoneReported, timezoneToReport } from "../lib/local-timezone";
+import { accountTimezone, markTimezoneReported, timezoneToReport } from "../lib/local-timezone";
 import { parseModelOptionKey } from "../lib/model-catalog";
 import { createAgentSendWatch } from "../lib/outbox";
 import {
@@ -276,6 +277,7 @@ import { workingActivity } from "../lib/working-activity";
 import { ActivityList } from "./ActivityList";
 import type { ContextMenuPosition } from "./BotContextMenu";
 import { CapTablePage } from "./CapTable";
+import { ContactsPage } from "./Contacts";
 import { DataRoomPage } from "./DataRoom";
 import { FinancePage } from "./Finance";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
@@ -315,7 +317,12 @@ import {
 } from "./shell/dialogs";
 import { GroupIntro } from "./shell/GroupIntro";
 import { SidebarHeaderRow, TOP_BAR_HEIGHT } from "./shell/sidebar-header-row";
-import { activeSpaceFirst, commitSpaceRename, sidebarGroupsForSpaces } from "./shell/space-sidebar";
+import {
+  activeSpaceFirst,
+  commitSpaceRename,
+  sidebarGroupsForSpaces,
+  spaceHoldingChat,
+} from "./shell/space-sidebar";
 import { AppNavigateContext, Transcript, UnreadDivider } from "./shell/transcript";
 import { WindowChrome } from "./WindowChrome";
 
@@ -414,6 +421,49 @@ function readCollapsedSidebarSections(userId: string | null | undefined): Set<st
 
 function readCollapsedRosterParents(userId: string | null | undefined): Set<string> {
   return readCollapsedIdSet(collapsedRosterParentsStorageKey(userId));
+}
+
+/** Data room files (by name and content) and artifacts matching a search; a failure only hides that group. */
+async function findDocumentsAndArtifacts(query: string) {
+  const [documents, artifacts] = await Promise.all([
+    rpc.dataRoom
+      .search({ query, limit: 5 })
+      .then((result): SearchLink[] =>
+        result.results.map(({ item }) => ({ id: item.id, label: item.name })),
+      )
+      .catch((): SearchLink[] => []),
+    // ponytail: matches the 60 newest artifacts by name and description; a server query when spaces hold more.
+    rpc.artifacts
+      .listSpace({ limit: 60 })
+      .then((result): SearchLink[] =>
+        result.items
+          .filter((item) => matchesArtifactQuery(item, query))
+          .slice(0, 5)
+          .map((item) => ({ id: item.id, label: item.name })),
+      )
+      .catch((): SearchLink[] => []),
+  ]);
+  return { documents, artifacts };
+}
+
+/** Contacts whose name, email or organization contain the text. */
+function findContacts(query: string): Promise<SearchLink[]> {
+  const needle = query.toLowerCase();
+  return rpc.contacts
+    .list({})
+    .then((list) =>
+      list
+        .filter((c) =>
+          [c.name, c.email, c.organization].some((v) => v?.toLowerCase().includes(needle)),
+        )
+        .slice(0, 5)
+        .map((c) => ({
+          id: c.name,
+          label: c.name,
+          detail: c.organization ?? c.email ?? undefined,
+        })),
+    )
+    .catch((): SearchLink[] => []);
 }
 
 export function ShellPage() {
@@ -664,6 +714,8 @@ export function ShellPage() {
   useEffect(() => setSettingsOpen(false), [pathname]);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
   const [settingsModelProvider, setSettingsModelProvider] = useState<string | undefined>();
+  /** Why Settings opened, shown at the top of its pane (Call Elio without a voice provider). */
+  const [settingsNotice, setSettingsNotice] = useState<string | undefined>();
   const [messagingSettingsOpen, setMessagingSettingsOpen] = useState(false);
   const [messagingSurfaceEnabled, setMessagingSurfaceEnabled] = useState(false);
   const [messagingProviders, setMessagingProviders] = useState<string[]>([]);
@@ -773,6 +825,29 @@ export function ShellPage() {
   const [initialBotsLoaded, setInitialBotsLoaded] = useState(false);
   const [bootstrapMe, setBootstrapMe] = useState<Me | null>();
   const [tourRestart, setTourRestart] = useState(false);
+  const tourQuestion = useRef(false);
+  // The tour waits for the first-run focus question, so its popovers never cover the choices.
+  const firstQuestionOpen = Boolean(
+    snapshot?.messages.some((message) =>
+      message.blocks.some(
+        (block) =>
+          block.kind === "choice" &&
+          block.question === "What do you want me on first?" &&
+          !block.answerId,
+      ),
+    ),
+  );
+  // It also waits for the Connect cards, so two prompts never compete; writing a message skips them.
+  const tourOpen =
+    tourRestart ||
+    (bootstrapMe?.tourSeen === false &&
+      bots.length > 0 &&
+      !firstQuestionOpen &&
+      !connectCardsOpen(snapshot?.messages ?? []));
+  // On a phone the tour points into the sidebar drawer, so open it while the tour runs.
+  useEffect(() => {
+    if (tourOpen && !window.matchMedia("(min-width: 1024px)").matches) setMobileSidebarOpen(true);
+  }, [tourOpen]);
   const activeSpaceId = bootstrapMe?.spaceId;
   const agentAppFor = useAgentApp(
     userId,
@@ -916,6 +991,7 @@ export function ShellPage() {
   // The route exists only while bootstrap enables the board (see App).
   const boardMode = useMatch("/app/board") != null;
   const capTableMode = useMatch("/app/cap-table/*") != null;
+  const contactsMode = useMatch("/app/contacts") != null;
   // Inbox, Finance, Legal, Data room, Cap Table and Integrations are pages of their own: no bot
   // route. Inbox, Finance, Legal and Cap Table keep their agent in a side panel.
   const pageMode =
@@ -926,6 +1002,7 @@ export function ShellPage() {
     integrationsMode ||
     dataRoomMode ||
     artifactsMode ||
+    contactsMode ||
     boardMode;
   useEffect(() => {
     if (!financeMode) setFinanceAgentOpen(false);
@@ -936,6 +1013,9 @@ export function ShellPage() {
   useEffect(() => {
     if (!legalMode) setLegalAgentOpen(false);
   }, [legalMode]);
+  // Pages that name the workspace beside their title show it only when the user has several.
+  const pageSpaceName =
+    spaces.length > 1 ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name : undefined;
   const routeBot = resolveRouteBot({
     bots,
     botId,
@@ -944,7 +1024,7 @@ export function ShellPage() {
     applied: botsListApplied.current,
   });
   const active =
-    inGroup || integrationsMode || artifactsMode || boardMode
+    inGroup || integrationsMode || artifactsMode || contactsMode || boardMode
       ? undefined
       : inboxMode
         ? findInboxAgent(bots, userId)
@@ -1360,6 +1440,16 @@ export function ShellPage() {
           !bootstrap.spaces.some((space) => space.hasContent)
         ) {
           navigate("/onboarding", { replace: true });
+          return;
+        }
+        // A link from another of the person's spaces switches to that space and reloads.
+        const otherSpaceId = spaceHoldingChat(
+          bootstrap.spaces,
+          bootstrap.me.spaceId,
+          groupId ?? botId ?? "",
+        );
+        if (otherSpaceId && selectSpace(otherSpaceId)) {
+          window.location.assign(window.location.pathname);
           return;
         }
         if (groupId) {
@@ -1948,31 +2038,83 @@ export function ShellPage() {
       { id: "inbox", label: t`Inbox`, icon: <Mail {...icon} /> },
       { id: "finance", label: t`Finance`, icon: <ChartColumn {...icon} /> },
       {
+        id: "legal",
+        label: t`Legal`,
+        keywords: t`contracts, NDA, deadlines`,
+        icon: <Scale {...icon} />,
+      },
+      {
         id: "cap-table",
         label: t`Cap table`,
         // Words a founder may type for this page; matched along with the label.
         keywords: t`equity, ownership, shares, options, Carta`,
         icon: <PieChart {...icon} />,
       },
+      { id: "contacts", label: t`Contacts`, icon: <BookUser {...icon} /> },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
-      { id: "integrations", label: t`Integrations`, icon: <LayoutGrid {...icon} /> },
       { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
+      ...(bootstrapMe?.ticketBoardEnabled
+        ? [
+            {
+              id: "board",
+              label: t`Task board`,
+              keywords: t`tasks, tickets`,
+              icon: <SquareKanban {...icon} />,
+            },
+          ]
+        : []),
+      { id: "integrations", label: t`Apps`, icon: <LayoutGrid {...icon} /> },
       { id: "settings", label: t`Settings`, icon: <Settings {...icon} /> },
     ];
-  }, [t]);
+  }, [t, bootstrapMe?.ticketBoardEnabled]);
+  // A page hidden in Page options stays out of search and the command palette too.
+  const visiblePages = useMemo(
+    () => appPages.filter((page) => !hiddenPages.includes(page.id)),
+    [appPages, hiddenPages],
+  );
   // Matched by name, so "Finance" finds the Finance page and not only the Finance agent.
   const searchPages = useMemo(() => {
     const needle = spaceQuery.toLocaleLowerCase();
     return needle
-      ? appPages.filter((page) =>
+      ? visiblePages.filter((page) =>
           `${page.label} ${"keywords" in page ? page.keywords : ""}`
             .toLocaleLowerCase()
             .includes(needle),
         )
       : [];
-  }, [appPages, spaceQuery]);
+  }, [visiblePages, spaceQuery]);
   const [searchDocuments, setSearchDocuments] = useState<SearchLink[]>([]);
   const [searchArtifacts, setSearchArtifacts] = useState<SearchLink[]>([]);
+
+  const searchPaletteLinks = useCallback(
+    async (q: string) => {
+      const [found, contacts] = await Promise.all([findDocumentsAndArtifacts(q), findContacts(q)]);
+      return [
+        {
+          heading: t`Contacts`,
+          entries: contacts.map((c) => ({
+            id: `/app/contacts?q=${encodeURIComponent(c.id)}`,
+            label: c.label,
+          })),
+        },
+        {
+          heading: t`Documents`,
+          entries: found.documents.map((doc) => ({
+            id: `/app/data-room?item=${encodeURIComponent(doc.id)}`,
+            label: doc.label,
+          })),
+        },
+        {
+          heading: t`Artifacts`,
+          entries: found.artifacts.map((item) => ({
+            id: `/app/artifacts/${encodeURIComponent(item.id)}`,
+            label: item.label,
+          })),
+        },
+      ];
+    },
+    [t],
+  );
 
   function openSearchResult(path: string) {
     setQuery("");
@@ -1997,44 +2139,25 @@ export function ShellPage() {
       return;
     }
     const abort = new AbortController();
+    // Loading from the first keystroke, so "No matches" cannot show during the debounce.
+    setSearchLoading(true);
     const timer = window.setTimeout(() => {
-      setSearchLoading(true);
-      // Data room files by name and content; a failure only hides this group.
-      void rpc.dataRoom
-        .search({ query: spaceQuery, limit: 5 })
-        .then((result) => {
-          if (abort.signal.aborted) return;
-          setSearchDocuments(result.results.map(({ item }) => ({ id: item.id, label: item.name })));
-        })
-        .catch(() => {
-          if (!abort.signal.aborted) setSearchDocuments([]);
-        });
-      // ponytail: matches the 60 newest artifacts by name and description; a server query when spaces hold more.
-      void rpc.artifacts
-        .listSpace({ limit: 60 })
-        .then((result) => {
-          if (abort.signal.aborted) return;
-          setSearchArtifacts(
-            result.items
-              .filter((item) => matchesArtifactQuery(item, spaceQuery))
-              .slice(0, 5)
-              .map((item) => ({ id: item.id, label: item.name })),
-          );
-        })
-        .catch(() => {
-          if (!abort.signal.aborted) setSearchArtifacts([]);
-        });
-      void rpc.search
+      const docs = findDocumentsAndArtifacts(spaceQuery).then((found) => {
+        if (abort.signal.aborted) return;
+        setSearchDocuments(found.documents);
+        setSearchArtifacts(found.artifacts);
+      });
+      const chats = rpc.search
         .query({ q: spaceQuery })
         .then((result) => {
           if (!abort.signal.aborted) setSearchHits(result.hits);
         })
         .catch(() => {
           if (!abort.signal.aborted) setSearchHits([]);
-        })
-        .finally(() => {
-          if (!abort.signal.aborted) setSearchLoading(false);
         });
+      void Promise.all([docs, chats]).finally(() => {
+        if (!abort.signal.aborted) setSearchLoading(false);
+      });
     }, 200);
     return () => {
       abort.abort();
@@ -2422,6 +2545,7 @@ export function ShellPage() {
     if (voiceCallStarting.current) return;
     if (!voiceStatus?.ready) {
       openSettings("voice");
+      setSettingsNotice(t`Connect a voice provider to call Elio.`);
       return;
     }
     const originBotId = activeBotId.current;
@@ -3108,6 +3232,7 @@ export function ShellPage() {
   function openSettings(section: SettingsSection = "general", modelProvider?: string) {
     setSettingsSection(section);
     setSettingsModelProvider(modelProvider);
+    setSettingsNotice(undefined);
     setSettingsOpen(true);
   }
 
@@ -3479,9 +3604,20 @@ export function ShellPage() {
   }
   useEffect(() => {
     if (!focusComposerBotId || active?.id !== focusComposerBotId) return;
-    document.querySelector<HTMLTextAreaElement>("textarea[name='chat-message']")?.focus();
+    const input = document.querySelector<HTMLTextAreaElement>("textarea[name='chat-message']");
+    input?.focus();
+    // The tour's last step leaves a sample question to send or edit; an existing draft stays.
+    if (input && tourQuestion.current && !input.value) {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(
+        input,
+        t`What should I do first this week?`,
+      );
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.select();
+    }
+    tourQuestion.current = false;
     setFocusComposerBotId(null);
-  }, [active?.id, focusComposerBotId]);
+  }, [active?.id, focusComposerBotId, t]);
   const threadView = (
     <>
       {cartaAgentPage ? (
@@ -3701,7 +3837,7 @@ export function ShellPage() {
                   return;
                 }
                 if (action === "settings-usage") {
-                  openSettings("usage");
+                  openSettings("general");
                 }
               }}
             />
@@ -3888,6 +4024,7 @@ export function ShellPage() {
                   <PopoverTrigger
                     className="app-no-drag flex h-8 w-8 items-center justify-center text-[21px] text-muted-foreground/70 hover:text-foreground/75"
                     title={t`Create`}
+                    aria-label={t`Create`}
                     data-testid="create-menu-trigger"
                     data-tour="create-menu"
                   >
@@ -3939,143 +4076,166 @@ export function ShellPage() {
             )
           }
         />
+        {/* While searching, matching pages are listed with the results instead. */}
+        {(showSpaceSearch && !rail) || bootstrapMe === undefined ? null : (
+          // Waiting for the account (undefined) keeps pages the user hid from flashing in.
+          // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
+          <div className="flex max-h-[40vh] shrink-0 flex-col overflow-y-auto px-2.5">
+            <SidebarPagesGroup
+              title={t`Pages`}
+              collapsed={collapsedSidebarSections.has("pages")}
+              rail={rail}
+              onToggle={() => toggleSidebarSection("pages")}
+              pages={[
+                { key: "inbox", label: t`Inbox` },
+                { key: "finance", label: t`Finance` },
+                { key: "legal", label: t`Legal` },
+                { key: "cap-table", label: t`Cap table` },
+                { key: "contacts", label: t`Contacts` },
+                { key: "data-room", label: t`Data room` },
+                { key: "artifacts", label: t`Artifacts` },
+                ...addedPages,
+              ]}
+              hidden={hiddenPages}
+              onToggleHidden={toggleHiddenPage}
+            >
+              {hiddenPages.includes("inbox") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-inbox"
+                  current={inboxMode}
+                  icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Inbox`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/inbox");
+                  }}
+                  {...glanceBadge({
+                    unseen: unseen.inbox ?? 0,
+                    value: inboxUnread > 0 ? String(inboxUnread) : undefined,
+                    valueLabel: plural(inboxUnread, { one: "# unread", other: "# unread" }),
+                    rail,
+                  })}
+                />
+              )}
+              {hiddenPages.includes("finance") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-finance"
+                  current={financeMode}
+                  icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Finance`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/finance");
+                  }}
+                  {...glanceBadge({
+                    unseen: unseen.finance ?? 0,
+                    rail,
+                    value: runwayGlance(glance.financeRunwayMonths, hideAmounts),
+                    valueLabel: t`${runwayGlance(glance.financeRunwayMonths, hideAmounts)} runway`,
+                  })}
+                />
+              )}
+              {hiddenPages.includes("legal") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-legal"
+                  current={legalMode}
+                  icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Legal`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/legal");
+                  }}
+                  {...glanceBadge({
+                    unseen: unseen.legal ?? 0,
+                    rail,
+                    value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
+                    valueLabel: plural(glance.legalDueSoon, {
+                      one: "# due soon",
+                      other: "# due soon",
+                    }),
+                  })}
+                />
+              )}
+              {hiddenPages.includes("cap-table") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-cap-table"
+                  current={capTableMode}
+                  icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Cap table`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/cap-table");
+                  }}
+                  {...glanceBadge({ unseen: unseen["cap-table"] ?? 0, rail })}
+                />
+              )}
+              {hiddenPages.includes("contacts") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-contacts"
+                  current={contactsMode}
+                  icon={<BookUser size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Contacts`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/contacts");
+                  }}
+                />
+              )}
+              {hiddenPages.includes("data-room") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-data-room"
+                  current={dataRoomMode}
+                  icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Data room`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/data-room");
+                  }}
+                  {...glanceBadge({
+                    unseen: unseen["data-room"] ?? 0,
+                    rail,
+                    value: glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
+                    valueLabel: plural(glance.dataRoomWaiting, {
+                      one: "# waiting",
+                      other: "# waiting",
+                    }),
+                  })}
+                />
+              )}
+              {hiddenPages.includes("artifacts") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-artifacts"
+                  current={artifactsMode}
+                  // Not the Data room's folder icon: these are files bots made.
+                  icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Artifacts`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/artifacts");
+                  }}
+                  {...glanceBadge({ unseen: unseen.artifacts ?? 0, rail })}
+                />
+              )}
+              <SidebarPages
+                rail={rail}
+                hidden={hiddenPages}
+                onListed={setAddedPages}
+                onOpen={() => setMobileSidebarOpen(false)}
+              />
+            </SidebarPagesGroup>
+          </div>
+        )}
         <div
           ref={sidebarScrollRef}
           className="rk-scroll rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5"
         >
-          {/* While searching, matching pages are listed with the results instead. */}
-          {showSpaceSearch && !rail ? null : (
-            // Inside the scroll area, so on a short screen the chats are never squeezed out.
-            <div className="flex shrink-0 flex-col">
-              <SidebarPagesGroup
-                title={t`Pages`}
-                collapsed={collapsedSidebarSections.has("pages")}
-                rail={rail}
-                onToggle={() => toggleSidebarSection("pages")}
-                pages={[
-                  { key: "inbox", label: t`Inbox` },
-                  { key: "finance", label: t`Finance` },
-                  { key: "legal", label: t`Legal` },
-                  { key: "cap-table", label: t`Cap table` },
-                  { key: "data-room", label: t`Data room` },
-                  { key: "artifacts", label: t`Artifacts` },
-                  ...addedPages,
-                ]}
-                hidden={hiddenPages}
-                onToggleHidden={toggleHiddenPage}
-              >
-                {hiddenPages.includes("inbox") ? null : (
-                  <SidebarPageLink
-                    testId="sidebar-inbox"
-                    current={inboxMode}
-                    icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
-                    label={t`Inbox`}
-                    rail={rail}
-                    onOpen={() => {
-                      setMobileSidebarOpen(false);
-                      navigate("/app/inbox");
-                    }}
-                    {...glanceBadge({
-                      unseen: unseen.inbox ?? 0,
-                      value: inboxUnread > 0 ? String(inboxUnread) : undefined,
-                      valueLabel: plural(inboxUnread, { one: "# unread", other: "# unread" }),
-                      rail,
-                    })}
-                  />
-                )}
-                {hiddenPages.includes("finance") ? null : (
-                  <SidebarPageLink
-                    testId="sidebar-finance"
-                    current={financeMode}
-                    icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
-                    label={t`Finance`}
-                    rail={rail}
-                    onOpen={() => {
-                      setMobileSidebarOpen(false);
-                      navigate("/app/finance");
-                    }}
-                    {...glanceBadge({
-                      unseen: unseen.finance ?? 0,
-                      rail,
-                      value: runwayGlance(glance.financeRunwayMonths, hideAmounts),
-                    })}
-                  />
-                )}
-                {hiddenPages.includes("legal") ? null : (
-                  <SidebarPageLink
-                    testId="sidebar-legal"
-                    current={legalMode}
-                    icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
-                    label={t`Legal`}
-                    rail={rail}
-                    onOpen={() => {
-                      setMobileSidebarOpen(false);
-                      navigate("/app/legal");
-                    }}
-                    {...glanceBadge({
-                      unseen: unseen.legal ?? 0,
-                      rail,
-                      value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
-                    })}
-                  />
-                )}
-                {hiddenPages.includes("cap-table") ? null : (
-                  <SidebarPageLink
-                    testId="sidebar-cap-table"
-                    current={capTableMode}
-                    icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
-                    label={t`Cap table`}
-                    rail={rail}
-                    onOpen={() => {
-                      setMobileSidebarOpen(false);
-                      navigate("/app/cap-table");
-                    }}
-                    {...glanceBadge({ unseen: unseen["cap-table"] ?? 0, rail })}
-                  />
-                )}
-                {hiddenPages.includes("data-room") ? null : (
-                  <SidebarPageLink
-                    testId="sidebar-data-room"
-                    current={dataRoomMode}
-                    icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
-                    label={t`Data room`}
-                    rail={rail}
-                    onOpen={() => {
-                      setMobileSidebarOpen(false);
-                      navigate("/app/data-room");
-                    }}
-                    {...glanceBadge({
-                      unseen: unseen["data-room"] ?? 0,
-                      rail,
-                      value:
-                        glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
-                    })}
-                  />
-                )}
-                {hiddenPages.includes("artifacts") ? null : (
-                  <SidebarPageLink
-                    testId="sidebar-artifacts"
-                    current={artifactsMode}
-                    // Not the Data room's folder icon: these are files bots made.
-                    icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
-                    label={t`Artifacts`}
-                    rail={rail}
-                    onOpen={() => {
-                      setMobileSidebarOpen(false);
-                      navigate("/app/artifacts");
-                    }}
-                    {...glanceBadge({ unseen: unseen.artifacts ?? 0, rail })}
-                  />
-                )}
-                <SidebarPages
-                  rail={rail}
-                  hidden={hiddenPages}
-                  onListed={setAddedPages}
-                  onOpen={() => setMobileSidebarOpen(false)}
-                />
-              </SidebarPagesGroup>
-            </div>
-          )}
           {showSpaceSearch && !rail ? (
             <SpaceSearchResults
               query={spaceQuery}
@@ -4092,8 +4252,11 @@ export function ShellPage() {
               onSelectDocument={(id) =>
                 openSearchResult(`/app/data-room?item=${encodeURIComponent(id)}`)
               }
-              onSearchMail={() =>
-                openSearchResult(`/app/inbox?q=${encodeURIComponent(spaceQuery)}`)
+              // A page name is a navigation query, so the mail row would only be a second answer.
+              onSearchMail={
+                searchPages.length
+                  ? undefined
+                  : () => openSearchResult(`/app/inbox?q=${encodeURIComponent(spaceQuery)}`)
               }
             />
           ) : (
@@ -4155,11 +4318,7 @@ export function ShellPage() {
                     name: group.relabeled ? `${group.title} (${group.spaceName})` : group.title,
                   };
                   return (
-                    <div
-                      key={group.key}
-                      data-sidebar-group={group.key}
-                      data-sidebar-current={group.current ? "" : undefined}
-                    >
+                    <div key={group.key} data-sidebar-group={group.key}>
                       {rail ? (
                         <div
                           className={
@@ -4188,6 +4347,7 @@ export function ShellPage() {
                           onRename={(name) => void renameFolder(folder, name)}
                           onCancelRename={() => setEditingFolderId(null)}
                           onDelete={() => void deleteFolder(folder)}
+                          takenNames={botSections.map((section) => section.name)}
                         />
                       ) : null}
                       {!rail && !folder && (group.title || hasSpaceActions) ? (
@@ -4202,6 +4362,7 @@ export function ShellPage() {
                             <button
                               type="button"
                               aria-current={group.current ? "true" : undefined}
+                              data-sidebar-current={group.current ? "" : undefined}
                               title={group.relabeled ? group.spaceName : undefined}
                               className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-muted-foreground/60"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
                               onClick={() => {
@@ -4355,6 +4516,7 @@ export function ShellPage() {
                                   <div
                                     ref={row.setNodeRef}
                                     data-drops-before={row.dropsBefore ? "" : undefined}
+                                    data-tour={selected ? "sidebar-chat" : undefined}
                                     className={`group/row relative mb-1 data-drops-before:border-t-2 data-drops-before:border-ring ${
                                       !rail && (folder || group.kind === "pinned") ? "ms-3" : ""
                                     }`}
@@ -4776,9 +4938,17 @@ export function ShellPage() {
           />
         </div>
         <FirstRunTour
-          open={tourRestart || (bootstrapMe?.tourSeen === false && bots.length > 0)}
+          open={tourOpen}
+          onAsk={() => {
+            const id = active?.id ?? bots[0]?.id;
+            if (!id) return;
+            tourQuestion.current = true;
+            setFocusComposerBotId(id);
+            openBot(id);
+          }}
           onClose={(me) => {
             setTourRestart(false);
+            setMobileSidebarOpen(false);
             setBootstrapMe((current) => me ?? (current && { ...current, tourSeen: true }));
           }}
         />
@@ -4801,10 +4971,12 @@ export function ShellPage() {
               side="top"
               align="start"
               alignOffset={11}
+              role="menu"
               className="w-[calc(316px-1.5rem)] max-w-[calc(100vw-3rem)] gap-0 p-1 data-closed:animate-none"
             >
               {bootstrapMe?.ticketBoardEnabled ? (
                 <Button
+                  role="menuitem"
                   variant="ghost"
                   className="w-full justify-start font-normal"
                   onClick={() => {
@@ -4818,6 +4990,7 @@ export function ShellPage() {
                 </Button>
               ) : null}
               <Button
+                role="menuitem"
                 variant="ghost"
                 className="w-full justify-start font-normal"
                 aria-label={t`Settings`}
@@ -4831,6 +5004,7 @@ export function ShellPage() {
               </Button>
               <HideAmountsMenuItem onDone={() => setMenuOpen(false)} />
               <Button
+                role="menuitem"
                 variant="ghost"
                 className="w-full justify-start font-normal"
                 data-testid="take-tour"
@@ -4842,19 +5016,9 @@ export function ShellPage() {
                 <Compass className="text-muted-foreground" strokeWidth={1.75} />
                 <Trans>Take the tour</Trans>
               </Button>
+              <Separator className="my-1" />
               <Button
-                variant="ghost"
-                className="w-full justify-start font-normal"
-                aria-label={t`Usage`}
-                onClick={() => {
-                  setMenuOpen(false);
-                  openSettings("usage");
-                }}
-              >
-                <Gauge className="text-muted-foreground" strokeWidth={1.75} />
-                <Trans>Usage</Trans>
-              </Button>
-              <Button
+                role="menuitem"
                 variant="ghost"
                 className="w-full justify-start font-normal"
                 onClick={() =>
@@ -5097,10 +5261,12 @@ export function ShellPage() {
                 : undefined
             }
           />
+        ) : contactsMode ? (
+          <ContactsPage spaceName={pageSpaceName} />
         ) : artifactsMode ? (
           <ErrorBoundary fallback={<SectionLoadFailed />}>
             <Suspense fallback={null}>
-              <ArtifactsPage />
+              <ArtifactsPage spaceName={pageSpaceName} />
             </Suspense>
           </ErrorBoundary>
         ) : boardMode ? (
@@ -5271,7 +5437,11 @@ export function ShellPage() {
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-[13.5px] text-muted-foreground">
                   {panel === "settings" ? (
-                    <Trans>Settings</Trans>
+                    active ? (
+                      t`${active.name} settings`
+                    ) : (
+                      <Trans>Settings</Trans>
+                    )
                   ) : panel === "page" ? (
                     <Trans>Page</Trans>
                   ) : panel === "list" ? (
@@ -5303,7 +5473,11 @@ export function ShellPage() {
                       onClick={() => setPanel(panel === "settings" ? "computer" : "settings")}
                       className={panel === "settings" ? "text-foreground" : "text-muted-foreground"}
                     >
-                      <Settings size={16} strokeWidth={1.7} />
+                      {panel === "settings" ? (
+                        <Monitor size={16} strokeWidth={1.7} />
+                      ) : (
+                        <Settings size={16} strokeWidth={1.7} />
+                      )}
                     </Button>
                   ) : null}
                   <Button
@@ -5502,7 +5676,7 @@ export function ShellPage() {
                 draft={routineDraft}
                 onChange={setRoutineDraft}
                 editing={editingRoutine}
-                timezone={editingRoutine?.timezone ?? localTimezone()}
+                timezone={editingRoutine?.timezone ?? accountTimezone(bootstrapMe)}
                 webhook={{
                   path:
                     typeof window !== "undefined"
@@ -5537,6 +5711,10 @@ export function ShellPage() {
                     !routineDraft.messageProvider
                   ) {
                     setRoutineError(t`Add a schedule, webhook, GitHub, or message trigger`);
+                    return;
+                  }
+                  if (!routineDraft.prompt.trim()) {
+                    setRoutineError(t`Write what this routine should do each time it runs.`);
                     return;
                   }
                   const saveRequest = ++routineSaveRequest.current;
@@ -5581,12 +5759,16 @@ export function ShellPage() {
                       saved = await rpc.routines.update({
                         routineId: targetRoutine.id,
                         name: routineDraft.name || t`Routine`,
-                        prompt: routineDraft.prompt || t`Check in.`,
+                        prompt: routineDraft.prompt.trim(),
                         crons,
                         active: armOneShot ? true : routineDraft.active,
                         webhookEnabled: routineDraft.webhookEnabled,
                         githubEnabled: routineDraft.githubEnabled,
                         messageProvider: routineDraft.messageProvider,
+                        ...(routineDraft.timezone &&
+                        routineDraft.timezone !== targetRoutine.timezone
+                          ? { timezone: routineDraft.timezone }
+                          : {}),
                         ...(routineModel.modelProvider !== targetRoutine.modelProvider ||
                         routineModel.modelId !== targetRoutine.modelId ||
                         routineModel.thinkingLevel !== targetRoutine.thinkingLevel
@@ -5598,9 +5780,9 @@ export function ShellPage() {
                       saved = await rpc.routines.create({
                         botId: targetBotId,
                         name: routineDraft.name || t`Routine`,
-                        prompt: routineDraft.prompt || t`Check in.`,
+                        prompt: routineDraft.prompt.trim(),
                         crons,
-                        timezone: localTimezone(),
+                        timezone: routineDraft.timezone || accountTimezone(bootstrapMe),
                         active: routineDraft.active,
                         notify: true,
                         webhookEnabled: routineDraft.webhookEnabled,
@@ -5970,6 +6152,9 @@ export function ShellPage() {
         {renameSectionTarget ? (
           <RenameBotSectionDialog
             section={renameSectionTarget.section}
+            takenNames={(
+              spaces.find((space) => space.id === renameSectionTarget.spaceId)?.botSections ?? []
+            ).map((section) => section.name)}
             onCancel={() => setRenameSectionTarget(null)}
             onConfirm={async (name) => {
               await rpc.botSections.update(
@@ -6001,7 +6186,7 @@ export function ShellPage() {
             setMobileSidebarOpen(false);
             navigate(`/app/${id}`);
           }}
-          pages={appPages}
+          pages={visiblePages}
           groups={groups.map((group) => ({
             id: group.id,
             label: group.name,
@@ -6012,6 +6197,8 @@ export function ShellPage() {
             setMobileSidebarOpen(false);
             navigate(`/app/g/${id}`);
           }}
+          searchLinks={searchPaletteLinks}
+          onOpenPath={openSearchResult}
         />
 
         {newSpaceOpen ? (
@@ -6091,6 +6278,7 @@ export function ShellPage() {
             onUsageOpen={refreshUsage}
             initialSection={settingsSection}
             modelProvider={settingsModelProvider}
+            notice={settingsNotice}
             avatarStyle={bootstrapMe?.avatarStyle ?? DEFAULT_AVATAR_STYLE}
             isDeploymentOwner={bootstrapMe?.isDeploymentOwner === true}
             billingEnabled={bootstrapMe?.billingEnabled === true}
@@ -6107,7 +6295,7 @@ export function ShellPage() {
               const nextMe = await rpc.preferences.update({ avatarStyle });
               setBootstrapMe(nextMe);
             }}
-            timezone={bootstrapMe?.timezone ?? localTimezone()}
+            timezone={accountTimezone(bootstrapMe)}
             onTimezoneChange={async (timezone) => {
               setBootstrapMe(await rpc.preferences.update({ timezone }));
             }}

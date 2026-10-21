@@ -4,5 +4,7 @@
     "rootDir": "src",
     "noEmit": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Imports the fake from testkit, which lies outside this package's rootDir; vitest still runs it.
+  "exclude": ["src/meeting-source.conformance.test.ts"]
 }

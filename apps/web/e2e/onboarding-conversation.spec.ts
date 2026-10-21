@@ -41,17 +41,14 @@ test("focus choice suggests apps and preserves a completed connection", async ({
   );
   expect(cardBoxes[1].top - cardBoxes[0].bottom).toBeGreaterThanOrEqual(8);
   expect(cardBoxes[2].top - cardBoxes[1].bottom).toBeGreaterThanOrEqual(8);
-  await page
-    .getByTestId("transcript")
-    .getByText("Authorize all three and I’ll start pulling the picture together.")
-    .scrollIntoViewIfNeeded();
+  await slackCard(page).scrollIntoViewIfNeeded();
   await page.mouse.move(1, 1);
   await captureScreenshot(page, testInfo, "02-app-suggestions");
-  const authorizeButton = slackCard(page).getByRole("button", { name: "Authorize" });
+  const authorizeButton = slackCard(page).getByRole("button", { name: "Connect", exact: true });
   const restingBackground = await authorizeButton.evaluate(
     (button) => getComputedStyle(button).backgroundColor,
   );
-  // The Authorize button is the shared outline Button variant, whose hover fill is bg-muted.
+  // The Connect button is the shared outline Button variant, whose hover fill is bg-muted.
   const hoverBackground = await authorizeButton.evaluate((button) => {
     const probe = document.createElement("span");
     probe.style.backgroundColor = "var(--muted)";

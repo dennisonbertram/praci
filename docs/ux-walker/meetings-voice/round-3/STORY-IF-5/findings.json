@@ -1,0 +1,34 @@
+{
+  "story_id": "STORY-IF-5",
+  "round": 3,
+  "result": "PASS",
+  "round2_status": [
+    {
+      "id": "F2-IF-5-01",
+      "status": "fixed",
+      "evidence": "Plan decides Connect records consent and a meeting-only user never sees the mail prompt; the Granola card shows the consent sentence (g-d-api-key-empty.png)."
+    },
+    {
+      "id": "F2-IF-5-02",
+      "status": "fixed",
+      "evidence": "Plan now says the prompt stays for users with a mail account; the mockup draws it above the To do card, consistent."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F3-IF-5-01",
+      "severity": "low",
+      "category": "state",
+      "criterion": "State coverage",
+      "score": "warn",
+      "kind": "plan",
+      "description": "What the Inbox shows after 'Not now' is neither drawn nor defined: do the meeting to-dos stay, and does the prompt come back?",
+      "expected": "The journey step has a drawn, unambiguous surface.",
+      "actual": "What the Inbox shows after 'Not now' is neither drawn nor defined: do the meeting to-dos stay, and does the prompt come back?",
+      "screenshot": "g-d-inbox-consent.png",
+      "suggested_fix": "Add one sentence to the plan (S5): after 'Not now' the To do card still shows existing meeting to-dos and the prompt is not shown again in that session.",
+      "files_likely_involved": [],
+      "jf": "NEW"
+    }
+  ]
+}

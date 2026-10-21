@@ -1,0 +1,120 @@
+{
+  "story": "STORY-MB-5",
+  "round": 3,
+  "verdict": "PASS",
+  "round2_dispositions": [
+    {
+      "id": "F-MB-5-1",
+      "sev": "high",
+      "status": "obsolete",
+      "evidence": "Picker removed by D3."
+    },
+    {
+      "id": "F-MB-5-2",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Flow row shows no status until connected; no check is moved (step-key.png, step-connected.png)."
+    },
+    {
+      "id": "F-MB-5-3",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Real grouped rows of 52 pt or more."
+    },
+    {
+      "id": "F-MB-5-4",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Verifying has a spinner."
+    },
+    {
+      "id": "F-MB-5-5",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Footer sentence placement."
+    },
+    {
+      "id": "F-MB-5-6",
+      "sev": "medium",
+      "status": "still-open",
+      "evidence": "Disconnect is still a red row that acts at once; the plan is silent for Flow. Downgraded to low."
+    },
+    {
+      "id": "F-MB-5-7",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Rejected state drawn."
+    },
+    {
+      "id": "F-MB-5-8",
+      "sev": "low",
+      "status": "fixed",
+      "evidence": "Copy."
+    },
+    {
+      "id": "F-MB-5-9",
+      "sev": "low",
+      "status": "fixed",
+      "evidence": "Layout."
+    },
+    {
+      "id": "F2-MB-5-1",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "\"This device\" keeps the single checkmark in list, key, verifying, rejected and connected; \"works offline\" drops only when connected; the Flow row never takes the check (all five screenshots)."
+    },
+    {
+      "id": "F2-MB-5-2",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "See F-MB-5-6."
+    },
+    {
+      "id": "F2-MB-5-3",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "Back control is 44 pt now (fixed). Subtitles are 14 px (native secondary text is 15 pt) and the status bar is dots; frame chrome only."
+    }
+  ],
+  "new_findings": [
+    {
+      "id": "F3-MB-5-1",
+      "kind": "mockup",
+      "severity": "medium",
+      "category": "flow",
+      "criterion": "Dead ends / one way per task (iOS detail pattern)",
+      "score": "warn",
+      "description": "When the Flow row is tapped, the key field, Connect and the footer appear below the entire providers list with no header, and the row itself shows no selected state. After connecting, the red Disconnect row sits below the list. ElevenLabs is also Connected, so it is not clear which provider Disconnect acts on. iOS convention is to push a detail screen titled \"Wispr Flow\" that holds the field, Connect, footer and Disconnect.",
+      "expected": "Controls sit with the row they act on, or on a pushed detail screen.",
+      "actual": "Key field and Disconnect are detached from the Flow row and look like they belong to the list or to ElevenLabs.",
+      "screenshot": "screenshots/step-key.png, screenshots/step-connected.png",
+      "suggested_fix": "Push a Flow detail screen (native NavigationLink) or put the key rows and Disconnect in a group with a \"Wispr Flow\" header directly under its row."
+    },
+    {
+      "id": "F3-MB-5-2",
+      "kind": "mockup",
+      "severity": "low",
+      "category": "consistency",
+      "criterion": "Component consistency",
+      "score": "warn",
+      "description": "On the phone the trailing status words \"Transcribing\" and \"Connected\" both render grey rgb(142,142,147). A selector `.ir .tr` overrides the success colour, while the web pane shows \"Transcribing\" in green. The plan lists the success \"Transcribing\" text in its contrast acceptance.",
+      "expected": "Same colour semantics on web and phone.",
+      "actual": "Grey on phone (measured), green on web.",
+      "screenshot": "screenshots/step-connected.png",
+      "suggested_fix": "Raise specificity of `.ok-t` inside `.ir .tr`, or decide the phone uses secondary label for all status words and say so in the plan."
+    },
+    {
+      "id": "F3-MB-5-3",
+      "kind": "plan",
+      "severity": "low",
+      "category": "happy-path",
+      "criterion": "Labels",
+      "score": "warn",
+      "description": "The \"This device\" row is a checkmark row in its own group with no header. Next to \"Free\" the checkmark does not say what it selects (speech output). With Flow connected, a user may read the check as \"this device transcribes\".",
+      "expected": "A label such as \"Speech\" on the group, or a footer.",
+      "actual": "Unlabelled checkmark group, existing screen.",
+      "screenshot": "screenshots/step-connected.png",
+      "suggested_fix": "Low priority; consider a group header only if the existing screen has one."
+    }
+  ]
+}

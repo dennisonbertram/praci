@@ -91,9 +91,9 @@ const renderSorted = (sort: { field: "createdAt"; direction: "desc" } | null) =>
 
 it("shows the sort direction only for a field sort, never for Relevance", () => {
   renderSorted(null);
-  expect(container.querySelector('button[aria-label="Descending"]')).toBeNull();
+  expect(container.querySelector('button[aria-label="Sort ascending"]')).toBeNull();
   renderSorted({ field: "createdAt", direction: "desc" });
-  expect(container.querySelector('button[aria-label="Descending"]')).not.toBeNull();
+  expect(container.querySelector('button[aria-label="Sort ascending"]')).not.toBeNull();
 });
 
 it("names the open folder by its own name on the picker, with the full path as its title", () => {
