@@ -1,4 +1,5 @@
 export { DestinationEmulator, McpEmulator } from "@rakazo/adapters";
+export { FakeMeetingSource } from "./fake-meeting-source.js";
 
 export function sessionCookieHeader(response: Response) {
   const cookies = response.headers.getSetCookie?.() ?? [];
