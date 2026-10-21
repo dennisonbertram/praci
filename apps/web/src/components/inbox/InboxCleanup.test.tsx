@@ -96,8 +96,7 @@ const click = (el: Element | null | undefined) =>
   act(async () => {
     el?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
-const boxes = () =>
-  [...document.querySelectorAll<HTMLElement>("[data-sender] [role='checkbox']")];
+const boxes = () => [...document.querySelectorAll<HTMLElement>("[data-sender] [role='checkbox']")];
 const selectAll = () =>
   [...document.querySelectorAll<HTMLElement>("label")]
     .find((l) => l.textContent === "Select all")
@@ -156,23 +155,23 @@ describe("InboxCleanup", () => {
     expect(button("Archive 10")).toBeDefined();
     await click(boxes()[1]);
     expect(button("Archive 4")).toBeDefined();
-    expect(button("Skip inbox 4")).toBeDefined();
+    expect(button("Archive future mail 4")).toBeDefined();
     await click(boxes()[0]);
-    expect(button(/^Archive/)).toBeUndefined();
+    expect(button("Archive")?.hasAttribute("disabled")).toBe(true);
   });
 
-  it("shows the action bar only while a sender is ticked, and Select all ticks and clears every row", async () => {
+  it("keeps the action bar in place, disabled while nothing is ticked, and Select all ticks and clears every row", async () => {
     rpcMock.list.mockResolvedValue(
       output([sender("a@lists.example.test", { preselected: false }), friend]),
     );
     await render();
-    expect(button(/^Archive/)).toBeUndefined();
+    expect(button("Archive")?.hasAttribute("disabled")).toBe(true);
     await click(selectAll());
     expect(checked()).toEqual(["true", "true"]);
     expect(button("Archive 6")).toBeDefined();
     await click(selectAll());
     expect(checked()).toEqual(["false", "false"]);
-    expect(button(/^Archive/)).toBeUndefined();
+    expect(button("Archive")?.hasAttribute("disabled")).toBe(true);
   });
 
   it("archives the ticked senders, then offers Undo that reverses the batch", async () => {
@@ -286,7 +285,7 @@ describe("InboxCleanup", () => {
     expect(rpcMock.archive).not.toHaveBeenCalled();
   });
 
-  it("leaves spam-like senders unticked, out of Skip inbox and Unsubscribe, and flagged", async () => {
+  it("leaves spam-like senders unticked, out of Archive future mail and Unsubscribe, and flagged", async () => {
     const spam = sender("win@promo.example.test", {
       spamLike: true,
       preselected: false,
@@ -297,7 +296,7 @@ describe("InboxCleanup", () => {
     expect(checked()).toEqual(["false", "true"]);
     expect(document.body.textContent).toContain("Looks like spam");
     await click(boxes()[0]);
-    expect(button("Skip inbox 4")).toBeDefined();
+    expect(button("Archive future mail 4")).toBeDefined();
     expect(button("Unsubscribe 4")).toBeDefined();
   });
 
@@ -305,7 +304,7 @@ describe("InboxCleanup", () => {
     const skipping = sender("news@lists.example.test", { skipInbox: true, preselected: false });
     rpcMock.list.mockResolvedValueOnce(output([news])).mockResolvedValue(output([skipping]));
     await render();
-    await click(button("Skip inbox 4"));
+    await click(button("Archive future mail 4"));
     expect(rpcMock.archive).toHaveBeenCalledWith(expect.objectContaining({ kind: "skip_inbox" }));
     expect(document.body.textContent).toContain("Skipping inbox for 1 sender");
     expect(document.body.textContent).toContain("Skipping");

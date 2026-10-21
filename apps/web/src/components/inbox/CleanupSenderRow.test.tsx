@@ -13,6 +13,11 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
+vi.mock("@lingui/core/macro", () => ({
+  plural: (n: number, forms: { one: string; other: string }) =>
+    (n === 1 ? forms.one : forms.other).replace("#", String(n)),
+}));
+
 import { CleanupSenderRow } from "./CleanupSenderRow";
 
 const sender: CleanupSender = {
@@ -51,8 +56,7 @@ it("shows the name, address, message count, read rate and last date", async () =
   const content = document.body.textContent ?? "";
   expect(content).toContain("Northwind Weekly");
   expect(content).toContain("news@lists.example.test");
-  expect(content).toContain("20");
-  expect(content).toContain("5% read");
+  expect(content).toContain("20 emails, 5% read, last ");
   expect(document.querySelector("time")?.getAttribute("datetime")).toBe(sender.lastReceivedAt);
 });
 

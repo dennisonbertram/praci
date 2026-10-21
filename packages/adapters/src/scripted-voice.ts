@@ -23,6 +23,7 @@ export const SCRIPTED_VOICE_CATALOG_ENTRY = {
   name: "Scripted",
   description: "Deterministic fixture for tests. No billed speech.",
   transcribe: true,
+  speech: true,
 } as const;
 
 export class ScriptedVoiceProvider implements VoiceProvider {

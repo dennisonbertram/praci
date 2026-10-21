@@ -74,6 +74,11 @@ msgstr ""
 msgid "{0, plural, one {# earlier message} other {# earlier messages}}"
 msgstr ""
 
+#. placeholder {0}: sender.messageCount
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "{0, plural, one {# email} other {# emails}}"
+msgstr ""
+
 #. placeholder {0}: items.length
 #: src/components/FinanceCards.tsx
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
@@ -432,10 +437,6 @@ msgstr "vor {minutes} Min."
 msgid "{monthlyTotal}/mo"
 msgstr ""
 
-#: src/pages/Finance.tsx
-msgid "{name} accounts"
-msgstr ""
-
 #: src/components/integrations/AppDetail.tsx
 msgid "{name} agent"
 msgstr ""
@@ -520,6 +521,23 @@ msgstr ""
 msgid "{sourceName} spend"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "{sourceNames} · synced {updated}"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "{sourceNames} · syncing…"
+msgstr ""
+
+#. placeholder {0}: data.excludedNonUsdCount
+#: src/pages/Finance.tsx
+msgid "{sourceNames}, {0} non-USD not counted"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "{stablecoins} stablecoins in runway"
+msgstr ""
+
 #: src/components/ToolActivityDisclosure.tsx
 msgid "{stepCount, plural, one {Done · # tool} other {Done · # tools}}"
 msgstr ""
@@ -546,10 +564,6 @@ msgstr "{workingBotName} arbeitet"
 
 #: src/pages/Finance.tsx
 msgid "{year} so far"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "{yieldAmount} last month"
 msgstr ""
 
 #. placeholder {0}: mention.name
@@ -912,10 +926,6 @@ msgstr ""
 msgid "Advisor"
 msgstr ""
 
-#: src/pages/Finance.tsx
-msgid "after fees"
-msgstr ""
-
 #: src/components/integrations/IntegrationAgentSection.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Agent"
@@ -1017,6 +1027,10 @@ msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Allow access first."
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -1234,6 +1248,7 @@ msgstr ""
 msgid "Apps with their own server"
 msgstr ""
 
+#: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/InboxSenderGroup.tsx
@@ -1248,8 +1263,18 @@ msgstr "Archivieren"
 msgid "Archive {0}"
 msgstr ""
 
+#. placeholder {0}: rows.length
 #: src/components/inbox/InboxDigest.tsx
-msgid "Archive all"
+msgid "Archive all {0}"
+msgstr ""
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Archive future mail"
+msgstr ""
+
+#. placeholder {0}: counts.skip_inbox
+#: src/components/inbox/CleanupActionBar.tsx
+msgid "Archive future mail {0}"
 msgstr ""
 
 #: src/pages/shell/transcript.tsx
@@ -1672,6 +1697,10 @@ msgstr ""
 msgid "Bots are working"
 msgstr "Bots arbeiten"
 
+#: src/components/AiDataSharing.tsx
+msgid "Bots cannot use a model until you allow it."
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Bots lose access to its tools."
 msgstr ""
@@ -1690,11 +1719,15 @@ msgid "Bots run on"
 msgstr ""
 
 #: src/pages/Welcome.tsx
-msgid "Bots that run your inbox, cash,<0/>cap table and investor documents."
+msgid "Bots that run your inbox, cash, cap table and investor documents."
 msgstr ""
 
 #: src/pages/Paywall.tsx
 msgid "Bots with their own computer and browser"
+msgstr ""
+
+#: src/components/AiDataSharing.tsx
+msgid "Bots, mail, files and contracts"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -1783,6 +1816,7 @@ msgstr ""
 msgid "Can't reach the server."
 msgstr "Server nicht erreichbar."
 
+#: src/components/AccountAccess.tsx
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
@@ -1847,7 +1881,6 @@ msgid "Cap table, equity and investors"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
-#: src/pages/finance/FinanceBurn.tsx
 msgid "Card balance owed"
 msgstr ""
 
@@ -2026,10 +2059,6 @@ msgstr ""
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Check for updates"
 msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Check in."
-msgstr "Melde dich."
 
 #: src/lib/model-connection-preflight.ts
 msgid "Check the API key or sign-in, then test again."
@@ -2480,10 +2509,6 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Connect API key"
 msgstr "API-Schlüssel verbinden"
-
-#: src/components/ConnectAppsButton.tsx
-msgid "Connect apps"
-msgstr ""
 
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 msgid "Connect Blockscout"
@@ -3756,10 +3781,6 @@ msgstr ""
 msgid "Documents over time"
 msgstr ""
 
-#: src/pages/Finance.tsx
-msgid "Does a similar job to another subscription"
-msgstr ""
-
 #: src/components/finance/CountCryptoButton.tsx
 msgid "Don't count crypto"
 msgstr ""
@@ -4231,7 +4252,6 @@ msgstr ""
 
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
-#: src/pages/finance/FinanceBurn.tsx
 msgid "Financing"
 msgstr ""
 
@@ -4552,7 +4572,6 @@ msgstr "Hallo, so klinge ich, wenn ich Antworten vorlese."
 msgid "Hidden folders"
 msgstr ""
 
-#: src/components/data-room/Preview.tsx
 #: src/components/inbox/MailAttachments.tsx
 msgid "Hidden while amounts are hidden"
 msgstr ""
@@ -4637,6 +4656,10 @@ msgid "I read your bank and card accounts and answer questions about cash, spend
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx
+msgid "I read your Data room for contracts and deadlines and answer questions about them."
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
 msgid "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
 msgstr ""
 
@@ -4673,16 +4696,13 @@ msgstr ""
 msgid "Image upload area"
 msgstr "Bild-Upload-Bereich"
 
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/NotificationSettings.tsx
 msgid "iMessage"
 msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
-msgid "iMessage (BlueBubbles)"
-msgstr ""
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "iMessage (Photon)"
+msgid "iMessage on your Mac"
 msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
@@ -4737,10 +4757,6 @@ msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "In"
-msgstr ""
-
-#: src/pages/finance/FinanceBurn.tsx
-msgid "In cash, not counted as burn"
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
@@ -4928,6 +4944,10 @@ msgstr ""
 msgid "Largest files"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "last"
+msgstr ""
+
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Last 90 days"
@@ -4941,16 +4961,16 @@ msgstr ""
 msgid "Last month vs 3 mo ago"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Last month, after fees"
+msgstr ""
+
 #: src/pages/shell/transcript.tsx
 msgid "Last run failed: {failedNote}"
 msgstr ""
 
 #: src/pages/shell/transcript.tsx
 msgid "Last run failed."
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Last scan {lastScan}"
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -5756,7 +5776,6 @@ msgstr ""
 msgid "new"
 msgstr ""
 
-#: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/transcript.tsx
 msgid "New"
 msgstr ""
@@ -6141,6 +6160,10 @@ msgstr ""
 msgid "Normal"
 msgstr ""
 
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Not a real deadline: hide it"
+msgstr ""
+
 #: src/components/compose/RecipientField.tsx
 msgid "Not a valid email address"
 msgstr ""
@@ -6165,10 +6188,6 @@ msgstr ""
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Not connected"
 msgstr "Nicht verbunden"
-
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Not counted"
-msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Not counted in cash"
@@ -6580,10 +6599,6 @@ msgstr ""
 msgid "Overdue"
 msgstr ""
 
-#: src/pages/Finance.tsx
-msgid "overlaps"
-msgstr ""
-
 #: src/pages/Board.tsx
 msgid "Owner"
 msgstr ""
@@ -6724,10 +6739,6 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Per month"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -7088,7 +7099,6 @@ msgid "Reconnect"
 msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
-#: src/pages/Finance.tsx
 msgid "Reconnect {name}"
 msgstr ""
 
@@ -7466,6 +7476,10 @@ msgid "Reset computer?"
 msgstr ""
 
 #: src/pages/Auth.tsx
+msgid "Reset link expired"
+msgstr ""
+
+#: src/pages/Auth.tsx
 msgid "Reset password"
 msgstr "Passwort zurücksetzen"
 
@@ -7547,7 +7561,6 @@ msgstr "Zurück zu Praci"
 
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
-#: src/pages/finance/FinanceBurn.tsx
 msgid "Revenue"
 msgstr ""
 
@@ -7814,6 +7827,10 @@ msgstr ""
 
 #: src/pages/DataRoom.tsx
 msgid "Search all items"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Search and follow Devin sessions. Read-only."
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -8281,6 +8298,11 @@ msgstr ""
 msgid "Signed out. Reconnect to keep reading this account's mail."
 msgstr ""
 
+#. placeholder {0}: other.name
+#: src/pages/Finance.tsx
+msgid "Similar to {0}"
+msgstr ""
+
 #. placeholder {0}: shortDay(card.from)
 #: src/components/FinanceCards.tsx
 msgid "since {0}"
@@ -8322,15 +8344,6 @@ msgstr "Überspringen"
 
 #: src/components/integrations/ConnectAppsStep.tsx
 msgid "Skip for now"
-msgstr ""
-
-#: src/components/inbox/CleanupHistory.tsx
-msgid "Skip inbox"
-msgstr ""
-
-#. placeholder {0}: counts.skip_inbox
-#: src/components/inbox/CleanupActionBar.tsx
-msgid "Skip inbox {0}"
 msgstr ""
 
 #: src/lib/localized-provider-hint.ts
@@ -8474,10 +8487,6 @@ msgstr ""
 msgid "Spend, changes, and new or upcoming charges."
 msgstr ""
 
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Spending minus revenue, 3-mo avg"
-msgstr ""
-
 #: src/pages/Finance.tsx
 msgid "Spent {spentRange}"
 msgstr ""
@@ -8507,10 +8516,6 @@ msgstr ""
 msgid "Stablecoins count as cash in this runway; other crypto does not."
 msgstr ""
 
-#: src/pages/Finance.tsx
-msgid "Stablecoins in runway"
-msgstr ""
-
 #: src/components/finance/CountCryptoButton.tsx
 msgid "Stablecoins only"
 msgstr ""
@@ -8521,10 +8526,6 @@ msgstr ""
 
 #: src/pages/Paywall.tsx
 msgid "Start {trialDays}-day free trial"
-msgstr ""
-
-#: src/lib/slash-skills.ts
-msgid "Start and follow Devin sessions. Each one asks first."
 msgstr ""
 
 #: src/components/teach/TeachComputerOverlay.tsx
@@ -8650,10 +8651,6 @@ msgstr ""
 msgid "Subscriptions / mo"
 msgstr ""
 
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Subtracted from burn"
-msgstr ""
-
 #: src/lib/slash-skills.ts
 msgid "Suggests categories for uncategorized transactions."
 msgstr ""
@@ -8677,10 +8674,6 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Switching…"
 msgstr "Wird gewechselt…"
-
-#: src/pages/Finance.tsx
-msgid "Syncing…"
-msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
@@ -8706,6 +8699,10 @@ msgstr ""
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
 msgid "Task board"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "tasks, tickets"
 msgstr ""
 
 #: src/components/data-room/format.ts
@@ -8900,6 +8897,10 @@ msgstr "Der Anbieter drosselt die Anfragen."
 msgid "The selected memory provider is not available in this build."
 msgstr "Der ausgewählte Erinnerungsanbieter ist in diesem Build nicht verfügbar."
 
+#: src/components/AiDataSharing.tsx
+msgid "The sender, subject and a preview of each message are sent to the AI model that runs your bots."
+msgstr ""
+
 #. placeholder {0}: shortDay(first.dueFor)
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "the statement through {0}"
@@ -9028,10 +9029,6 @@ msgstr "Dieser Anbieter ist noch nicht verbunden."
 msgid "This removes the connection from every space."
 msgstr ""
 
-#: src/pages/Auth.tsx
-msgid "This reset link is invalid or expired"
-msgstr "Dieser Link zum Zurücksetzen ist ungültig oder abgelaufen"
-
 #: src/pages/shell/message-cards.tsx
 msgid "This server cannot be assigned without a bot."
 msgstr "Dieser Server kann ohne Bot nicht zugewiesen werden."
@@ -9090,6 +9087,7 @@ msgid "Time of day"
 msgstr "Uhrzeit"
 
 #: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/RoutineEditor.tsx
 msgid "Time zone"
 msgstr ""
 
@@ -9220,7 +9218,6 @@ msgid "Trash"
 msgstr ""
 
 #: src/pages/Finance.tsx
-#: src/pages/finance/FinanceBurn.tsx
 msgid "Treasury yield"
 msgstr ""
 
@@ -9478,7 +9475,6 @@ msgstr ""
 msgid "Updated {0}"
 msgstr ""
 
-#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/shell/bot-credentials.tsx
 #: src/pages/shell/bot-pins.tsx
@@ -9621,7 +9617,11 @@ msgid "Uses this server's own {hostCredentialSource} credentials to access {sele
 msgstr "Verwendet die eigenen {hostCredentialSource}-Zugangsdaten dieses Servers für den Zugriff auf {selectedProviderName}."
 
 #: src/pages/Finance.tsx
-msgid "Usual charge scaled to a month. A vendor page shows the average of actual spend."
+msgid "Usual charge scaled to a month; usage-based vendors use the last 3 months. A vendor page shows the average of actual spend over the months it names."
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Usual per month"
 msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
@@ -9794,6 +9794,10 @@ msgid "What bots remember by default"
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx
+msgid "What deadlines are coming up?"
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
 msgid "What did we spend last month?"
 msgstr ""
 
@@ -9857,6 +9861,14 @@ msgstr ""
 msgid "Which bots can use {appName}?"
 msgstr ""
 
+#: src/components/PageAgentIntro.tsx
+msgid "Which contracts have the highest value?"
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
+msgid "Which contracts renew in the next 90 days?"
+msgstr ""
+
 #: src/lib/data-room-agent.ts
 msgid "Which documents mention renewal?"
 msgstr ""
@@ -9900,6 +9912,10 @@ msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Write"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Write what this routine should do each time it runs."
 msgstr ""
 
 #: src/pages/shell/transcript.tsx

@@ -65,7 +65,7 @@ async function mount(next: MessagingSetupState) {
 
 it("shows both tiles to the owner and nothing to anyone else", async () => {
   const host = await mount(state());
-  expect(host.textContent).toContain("iMessage (Photon)");
+  expect(host.textContent).toContain("iMessage");
   expect(host.textContent).toContain("Chat with your agents over iMessage from your Mac");
   expect(host.textContent).toContain("Needs a server restart");
   act(() => root?.unmount());
@@ -77,7 +77,7 @@ it("shows both tiles to the owner and nothing to anyone else", async () => {
 it("shows saved and server-set secrets without values, and warns about a public URL", async () => {
   await mount(state());
   const edit = document.querySelector<HTMLButtonElement>(
-    'button[aria-label="Edit iMessage (BlueBubbles)"]',
+    'button[aria-label="Edit iMessage on your Mac"]',
   )!;
   await act(async () => edit.click());
   const dialog = document.body.textContent ?? "";
@@ -103,7 +103,7 @@ it("reports a failed connection test", async () => {
   messagingSetup.test.mockResolvedValue({ ok: false, error: "BlueBubbles /ping returned 401" });
   await act(async () =>
     document
-      .querySelector<HTMLButtonElement>('button[aria-label="Edit iMessage (BlueBubbles)"]')!
+      .querySelector<HTMLButtonElement>('button[aria-label="Edit iMessage on your Mac"]')!
       .click(),
   );
   const test = [...document.querySelectorAll("button")].find(
@@ -116,7 +116,7 @@ it("reports a failed connection test", async () => {
 const openEdit = async () =>
   act(async () =>
     document
-      .querySelector<HTMLButtonElement>('button[aria-label="Edit iMessage (BlueBubbles)"]')!
+      .querySelector<HTMLButtonElement>('button[aria-label="Edit iMessage on your Mac"]')!
       .click(),
   );
 const button = (name: string) =>

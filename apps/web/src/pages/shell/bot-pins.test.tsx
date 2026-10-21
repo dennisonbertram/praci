@@ -105,7 +105,7 @@ describe("PinsStrip", () => {
     expect(onPins).toHaveBeenCalledWith(refreshed);
   });
 
-  it("masks every figure in a pin while amounts are hidden, keeping the unit", async () => {
+  it("masks the money in a pin while amounts are hidden, keeping runway months", async () => {
     setHideAmounts(true);
     try {
       await render(
@@ -123,9 +123,9 @@ describe("PinsStrip", () => {
       const text = container.textContent ?? "";
       expect(text).toContain("$•••");
       expect(text).toContain("of $••• goal");
-      expect(text).toContain("••• mo");
+      expect(text).toContain("24.2 mo");
       expect(text).toContain("On track");
-      expect(text).not.toMatch(/\d/);
+      expect(text).not.toContain("1,633");
     } finally {
       setHideAmounts(false);
     }

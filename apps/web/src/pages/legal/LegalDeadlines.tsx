@@ -196,6 +196,7 @@ export function LegalDeadlines({
                   size="sm"
                   variant="ghost"
                   disabled={closing === deadline.id}
+                  title={t`Not a real deadline: hide it`}
                   aria-label={t`Dismiss ${maskCurrencyWhenHidden(deadline.title)}`}
                   onClick={() => void close(deadline, "dismissed")}
                 >

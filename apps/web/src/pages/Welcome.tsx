@@ -19,25 +19,21 @@ export function WelcomePage() {
             Praci
           </h1>
         </div>
-        <p className="max-w-[600px] text-center text-[27px] leading-[1.4] text-foreground/75">
-          <Trans>
-            Bots that run your inbox, cash,
-            <br />
-            cap table and investor documents.
-          </Trans>
+        <p className="max-w-[600px] text-balance text-center text-[27px] leading-[1.4] text-foreground/75">
+          <Trans>Bots that run your inbox, cash, cap table and investor documents.</Trans>
         </p>
         <div className="flex flex-wrap items-center justify-center gap-2">
           <button
             type="button"
             onClick={() => navigate("/sign-up")}
-            className="app-no-drag rounded-full bg-accent px-[34px] py-[15px] text-[19px] text-foreground transition hover:scale-[1.04] hover:bg-accent"
+            className="app-no-drag rounded-full bg-primary px-[34px] py-[15px] text-[19px] text-primary-foreground transition hover:scale-[1.04] hover:bg-primary"
           >
             <Trans>Sign up</Trans>
             <span aria-hidden="true">&nbsp;&nbsp;→</span>
           </button>
           <Link
             to="/sign-in"
-            className="app-no-drag rounded-full px-[34px] py-[15px] text-[19px] text-foreground/75 transition hover:text-foreground"
+            className="app-no-drag rounded-full px-[34px] py-4 text-[19px] text-foreground/75 transition hover:text-foreground"
           >
             <Trans>Sign in</Trans>
           </Link>

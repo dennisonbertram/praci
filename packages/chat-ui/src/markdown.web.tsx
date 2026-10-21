@@ -38,7 +38,7 @@ import {
 } from "./markdown";
 import { useMarkdownLinkCopy } from "./markdown-link-prompt";
 import { MarkdownTable, MarkdownTableSourceContext } from "./markdown-table";
-import { currencyMatches, isRunwayLabel, maskCurrencyText, maskRunwayCell } from "./mask-currency";
+import { currencyMatches, maskCurrencyText } from "./mask-currency";
 
 function preserveSkippedTableText() {
   return (tree: HastNode) => {
@@ -78,27 +78,6 @@ const BLOCK_TAGS = new Set([
   "table",
 ]);
 
-const textOf = (n: HastNode): string =>
-  n.type === "text" ? (n.value ?? "") : (n.children ?? []).map(textOf).join("");
-const textNodes = (n: HastNode): HastNode[] =>
-  n.type === "text" ? [n] : (n.children ?? []).flatMap(textNodes);
-const rowsOf = (n: HastNode): HastNode[] =>
-  n.tagName === "tr" ? [n] : (n.children ?? []).flatMap(rowsOf);
-
-/** Table cells are separate blocks, so `Runway | 9.2 months` has no runway sentence. Mask the value
- * cells of a row whose first cell says runway, or of a column whose header does. */
-function maskRunwayCells(table: HastNode) {
-  const rows = rowsOf(table).map((tr) => (tr.children ?? []).filter((c) => c.tagName));
-  const header = rows[0]?.map((c) => isRunwayLabel(textOf(c))) ?? [];
-  rows.forEach((cells, r) => {
-    const rowLabel = r > 0 && cells[0] && isRunwayLabel(textOf(cells[0]));
-    cells.forEach((cell, i) => {
-      if (r > 0 && ((rowLabel && i > 0) || header[i]))
-        for (const t of textNodes(cell)) t.value = maskRunwayCell(t.value ?? "");
-    });
-  });
-}
-
 /** Masks currency in the page text. A run is one block's text across inline nodes, so `$**1,200**` is caught. Also alt and title. */
 function maskAmounts() {
   return (tree: HastNode) => {
@@ -126,7 +105,6 @@ function maskAmounts() {
         if (typeof v === "string")
           node.properties = { ...node.properties, [key]: maskCurrencyText(v) };
       }
-      if (node.tagName === "table") maskRunwayCells(node);
       const block = node.tagName !== undefined && BLOCK_TAGS.has(node.tagName);
       let current = run;
       if (block) {

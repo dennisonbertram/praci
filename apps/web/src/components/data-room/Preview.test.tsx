@@ -90,22 +90,23 @@ it("replaces the picture with a note, and never fetches it, while amounts are hi
   expect(container.querySelector("img")?.getAttribute("src")).toBe("blob:receipt");
 });
 
-it("disables Open, with a reason, while amounts are hidden", async () => {
+it("keeps a PDF readable and openable while amounts are hidden, but not an image", async () => {
   const pdf = { ...receipt, mimeType: "application/pdf" } as DataRoomApiItem;
-  const show = () =>
+  const show = (item: DataRoomApiItem) =>
     act(async () => {
       root.render(
-        <Preview item={pdf} folderPath="" onAction={() => undefined} onClose={() => undefined} />,
+        <Preview item={item} folderPath="" onAction={() => undefined} onClose={() => undefined} />,
       );
     });
   const openButton = () =>
     container.querySelector<HTMLButtonElement>('button[aria-label="Open in new tab"]');
-  await show();
-  expect(openButton()?.disabled).toBe(false);
   await act(async () => setHideAmounts(true));
+  await show(pdf);
+  expect(openButton()?.disabled).toBe(false);
+  expect(container.textContent).not.toContain("hidden while amounts are hidden");
+  await show(receipt);
   expect(openButton()?.disabled).toBe(true);
-  expect(container.textContent).toContain("Hidden while amounts are hidden");
-  expect(container.querySelector('button[aria-label="Full screen"]')).toBeNull();
+  expect(container.textContent).toContain("Image hidden while amounts are hidden");
 });
 
 it("shows no file frame for a failed file, with Try again under the heading and Delete below", async () => {
@@ -229,13 +230,13 @@ const show = (item: DataRoomApiItem) =>
     );
   });
 
-it("frames a PDF with the browser viewer, and hides it while amounts are hidden", async () => {
+it("frames a PDF with the browser viewer, and keeps it while amounts are hidden", async () => {
   const pdf = { ...receipt, name: "nda.pdf", mimeType: "application/pdf" };
   await show(pdf);
   expect(imageUrl).toHaveBeenCalledWith({ id: "r1", mimeType: "application/pdf" });
   expect(container.querySelector("iframe")?.getAttribute("src")).toBe("blob:receipt#toolbar=0");
   await act(async () => setHideAmounts(true));
-  expect(container.querySelector("iframe")).toBeNull();
+  expect(container.querySelector("iframe")).not.toBeNull();
 });
 
 it("shows a skeleton while loading, and the file icon for other types or a failed read", async () => {

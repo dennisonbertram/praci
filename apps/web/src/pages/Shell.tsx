@@ -85,6 +85,7 @@ import {
   Plus,
   Scale,
   Settings,
+  SquareKanban,
   Trash2,
   Users,
   WandSparkles,
@@ -136,6 +137,7 @@ import { SidebarUndoNotice } from "../components/sidebar-folders/SidebarUndoNoti
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
+import { connectCardsOpen } from "../components/tour/FirstRunTour";
 import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import { useAgentApp } from "../lib/agent-app";
 import type { ArtifactTarget } from "../lib/artifact-open";
@@ -402,6 +404,26 @@ async function findDocumentsAndArtifacts(query: string) {
   return { documents, artifacts };
 }
 
+/** Contacts whose name, email or organization contain the text. */
+function findContacts(query: string): Promise<SearchLink[]> {
+  const needle = query.toLowerCase();
+  return rpc.contacts
+    .list({})
+    .then((list) =>
+      list
+        .filter((c) =>
+          [c.name, c.email, c.organization].some((v) => v?.toLowerCase().includes(needle)),
+        )
+        .slice(0, 5)
+        .map((c) => ({
+          id: c.name,
+          label: c.name,
+          detail: c.organization ?? c.email ?? undefined,
+        })),
+    )
+    .catch((): SearchLink[] => []);
+}
+
 export function ShellPage() {
   const { t } = useLingui();
   const { botId, groupId } = useParams();
@@ -650,6 +672,8 @@ export function ShellPage() {
   useEffect(() => setSettingsOpen(false), [pathname]);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
   const [settingsModelProvider, setSettingsModelProvider] = useState<string | undefined>();
+  /** Why Settings opened, shown at the top of its pane (Call Elio without a voice provider). */
+  const [settingsNotice, setSettingsNotice] = useState<string | undefined>();
   const [messagingSettingsOpen, setMessagingSettingsOpen] = useState(false);
   const [messagingSurfaceEnabled, setMessagingSurfaceEnabled] = useState(false);
   const [messagingProviders, setMessagingProviders] = useState<string[]>([]);
@@ -771,8 +795,13 @@ export function ShellPage() {
       ),
     ),
   );
+  // It also waits for the Connect cards, so two prompts never compete; writing a message skips them.
   const tourOpen =
-    tourRestart || (bootstrapMe?.tourSeen === false && bots.length > 0 && !firstQuestionOpen);
+    tourRestart ||
+    (bootstrapMe?.tourSeen === false &&
+      bots.length > 0 &&
+      !firstQuestionOpen &&
+      !connectCardsOpen(snapshot?.messages ?? []));
   // On a phone the tour points into the sidebar drawer, so open it while the tour runs.
   useEffect(() => {
     if (tourOpen && !window.matchMedia("(min-width: 1024px)").matches) setMobileSidebarOpen(true);
@@ -1979,10 +2008,20 @@ export function ShellPage() {
       { id: "contacts", label: t`Contacts`, icon: <BookUser {...icon} /> },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
       { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
+      ...(bootstrapMe?.ticketBoardEnabled
+        ? [
+            {
+              id: "board",
+              label: t`Task board`,
+              keywords: t`tasks, tickets`,
+              icon: <SquareKanban {...icon} />,
+            },
+          ]
+        : []),
       { id: "integrations", label: t`Apps`, icon: <LayoutGrid {...icon} /> },
       { id: "settings", label: t`Settings`, icon: <Settings {...icon} /> },
     ];
-  }, [t]);
+  }, [t, bootstrapMe?.ticketBoardEnabled]);
   // A page hidden in Page options stays out of search and the command palette too.
   const visiblePages = useMemo(
     () => appPages.filter((page) => !hiddenPages.includes(page.id)),
@@ -2004,8 +2043,15 @@ export function ShellPage() {
 
   const searchPaletteLinks = useCallback(
     async (q: string) => {
-      const found = await findDocumentsAndArtifacts(q);
+      const [found, contacts] = await Promise.all([findDocumentsAndArtifacts(q), findContacts(q)]);
       return [
+        {
+          heading: t`Contacts`,
+          entries: contacts.map((c) => ({
+            id: `/app/contacts?q=${encodeURIComponent(c.id)}`,
+            label: c.label,
+          })),
+        },
         {
           heading: t`Documents`,
           entries: found.documents.map((doc) => ({
@@ -2048,24 +2094,25 @@ export function ShellPage() {
       return;
     }
     const abort = new AbortController();
+    // Loading from the first keystroke, so "No matches" cannot show during the debounce.
+    setSearchLoading(true);
     const timer = window.setTimeout(() => {
-      setSearchLoading(true);
-      void findDocumentsAndArtifacts(spaceQuery).then((found) => {
+      const docs = findDocumentsAndArtifacts(spaceQuery).then((found) => {
         if (abort.signal.aborted) return;
         setSearchDocuments(found.documents);
         setSearchArtifacts(found.artifacts);
       });
-      void rpc.search
+      const chats = rpc.search
         .query({ q: spaceQuery })
         .then((result) => {
           if (!abort.signal.aborted) setSearchHits(result.hits);
         })
         .catch(() => {
           if (!abort.signal.aborted) setSearchHits([]);
-        })
-        .finally(() => {
-          if (!abort.signal.aborted) setSearchLoading(false);
         });
+      void Promise.all([docs, chats]).finally(() => {
+        if (!abort.signal.aborted) setSearchLoading(false);
+      });
     }, 200);
     return () => {
       abort.abort();
@@ -2452,8 +2499,8 @@ export function ShellPage() {
   async function startElioCall() {
     if (voiceCallStarting.current) return;
     if (!voiceStatus?.ready) {
-      setSendError(t`Connect a voice provider to call Elio.`);
       openSettings("voice");
+      setSettingsNotice(t`Connect a voice provider to call Elio.`);
       return;
     }
     const originBotId = activeBotId.current;
@@ -3140,6 +3187,7 @@ export function ShellPage() {
   function openSettings(section: SettingsSection = "general", modelProvider?: string) {
     setSettingsSection(section);
     setSettingsModelProvider(modelProvider);
+    setSettingsNotice(undefined);
     setSettingsOpen(true);
   }
 
@@ -4614,6 +4662,10 @@ export function ShellPage() {
                     setRoutineError(t`Add a schedule, webhook, GitHub, or message trigger`);
                     return;
                   }
+                  if (!routineDraft.prompt.trim()) {
+                    setRoutineError(t`Write what this routine should do each time it runs.`);
+                    return;
+                  }
                   const saveRequest = ++routineSaveRequest.current;
                   routineSavePending.current = true;
                   setSavingRoutine(true);
@@ -4656,12 +4708,16 @@ export function ShellPage() {
                       saved = await rpc.routines.update({
                         routineId: targetRoutine.id,
                         name: routineDraft.name || t`Routine`,
-                        prompt: routineDraft.prompt || t`Check in.`,
+                        prompt: routineDraft.prompt.trim(),
                         crons,
                         active: armOneShot ? true : routineDraft.active,
                         webhookEnabled: routineDraft.webhookEnabled,
                         githubEnabled: routineDraft.githubEnabled,
                         messageProvider: routineDraft.messageProvider,
+                        ...(routineDraft.timezone &&
+                        routineDraft.timezone !== targetRoutine.timezone
+                          ? { timezone: routineDraft.timezone }
+                          : {}),
                         ...(routineModel.modelProvider !== targetRoutine.modelProvider ||
                         routineModel.modelId !== targetRoutine.modelId ||
                         routineModel.thinkingLevel !== targetRoutine.thinkingLevel
@@ -4673,9 +4729,9 @@ export function ShellPage() {
                       saved = await rpc.routines.create({
                         botId: targetBotId,
                         name: routineDraft.name || t`Routine`,
-                        prompt: routineDraft.prompt || t`Check in.`,
+                        prompt: routineDraft.prompt.trim(),
                         crons,
-                        timezone: accountTimezone(bootstrapMe),
+                        timezone: routineDraft.timezone || accountTimezone(bootstrapMe),
                         active: routineDraft.active,
                         notify: true,
                         webhookEnabled: routineDraft.webhookEnabled,
@@ -5171,6 +5227,7 @@ export function ShellPage() {
             onUsageOpen={refreshUsage}
             initialSection={settingsSection}
             modelProvider={settingsModelProvider}
+            notice={settingsNotice}
             avatarStyle={bootstrapMe?.avatarStyle ?? DEFAULT_AVATAR_STYLE}
             isDeploymentOwner={bootstrapMe?.isDeploymentOwner === true}
             billingEnabled={bootstrapMe?.billingEnabled === true}

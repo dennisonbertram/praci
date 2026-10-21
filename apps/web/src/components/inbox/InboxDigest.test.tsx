@@ -86,14 +86,14 @@ it("opens the issue from its Open button", async () => {
 it("archives everything shown with Archive all", async () => {
   const onArchiveAll = vi.fn();
   await show({ rows: [row("a")], onArchiveAll });
-  await act(async () => button("Archive all")?.click());
+  await act(async () => button("Archive all 1")?.click());
   expect(onArchiveAll).toHaveBeenCalledTimes(1);
 });
 
 it("shows No mail and no Archive all when there is nothing to show", async () => {
   await show();
   expect(document.body.textContent).toContain("No mail");
-  expect(button("Archive all")).toBeUndefined();
+  expect(button("Archive all 0")).toBeUndefined();
 });
 
 it("shows placeholders while loading", async () => {

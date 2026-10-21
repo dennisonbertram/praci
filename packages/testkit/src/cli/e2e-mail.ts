@@ -188,6 +188,12 @@ export function createE2eComposio(
       return result;
     }
 
+    // The base emulator answers GMAIL_ tools from its own three-message mailbox, not the one the
+    // Inbox lists. Without them an agent reads mail through the mail tools, which use that one.
+    override async discoverTools(...args: Parameters<ComposioEmulator["discoverTools"]>) {
+      return (await super.discoverTools(...args)).filter((tool) => !tool.name.startsWith("GMAIL_"));
+    }
+
     override async proxy(request: ConnectorProxyRequest) {
       if (rateLimited.has(request.accountRef)) {
         const message = "Quota exceeded for quota metric 'Queries'";

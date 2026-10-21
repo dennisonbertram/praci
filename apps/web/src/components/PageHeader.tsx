@@ -20,11 +20,14 @@ export function PageHeader({
   meta,
   actions,
   className,
+  compact = false,
 }: {
   title: ReactNode;
   meta?: ReactNode;
   actions?: ReactNode;
   className?: string;
+  /** Keeps the meta on the title's line down to a narrower pane (512px, not 672px). */
+  compact?: boolean;
 }) {
   return (
     <div
@@ -42,7 +45,12 @@ export function PageHeader({
       {meta ? (
         <div
           data-page-header-meta
-          className="order-3 flex min-w-0 basis-full flex-wrap items-center gap-x-2 gap-y-1 pb-2 text-xs text-muted-foreground @2xl/ph:order-2 @2xl/ph:basis-0 @2xl/ph:flex-1 @2xl/ph:flex-nowrap @2xl/ph:pb-0"
+          className={cn(
+            "order-3 flex min-w-0 basis-full flex-wrap items-center gap-x-2 gap-y-1 pb-2 text-xs text-muted-foreground",
+            compact
+              ? "@lg/ph:order-2 @lg/ph:basis-0 @lg/ph:flex-1 @lg/ph:flex-nowrap @lg/ph:pb-0"
+              : "@2xl/ph:order-2 @2xl/ph:basis-0 @2xl/ph:flex-1 @2xl/ph:flex-nowrap @2xl/ph:pb-0",
+          )}
         >
           {meta}
         </div>
@@ -52,7 +60,8 @@ export function PageHeader({
           className={cn(
             // min-h, not h: when the actions cannot share the title's line they drop to their own
             // line and wrap there, right-aligned.
-            "order-2 ms-auto flex min-h-10 min-w-0 max-w-full flex-wrap items-center justify-end gap-2 @2xl/ph:order-3",
+            "order-2 ms-auto flex min-h-10 min-w-0 max-w-full flex-wrap items-center justify-end gap-2",
+            compact ? "@lg/ph:order-3" : "@2xl/ph:order-3",
           )}
         >
           {actions}

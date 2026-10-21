@@ -32,3 +32,6 @@ export const ReadOnly: Story = {};
 export const ChangesAllowed: Story = { args: { writesEnabled: true } };
 export const Shared: Story = { args: { writesEnabled: true, shared: true } };
 export const Saving: Story = { args: { disabled: true } };
+export const NoChangesSwitch: Story = {
+  args: { service: "Devin", agentName: "Devin agent", onWrites: undefined },
+};

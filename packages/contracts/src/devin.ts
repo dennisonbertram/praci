@@ -36,3 +36,59 @@ export const DEVIN_WRITE_TOOLS = [
   "devin_knowledge_manage",
   "devin_schedule_manage",
 ] as const;
+
+/** The only interact actions the page may call; every other action changes a session. */
+export const DEVIN_INTERACT_READ_ACTIONS = ["get", "get_messages"] as const;
+
+export const DEVIN_SESSION_KINDS = [
+  "needs_you",
+  "working",
+  "finished",
+  "error",
+  "suspended",
+  "unknown",
+] as const;
+export type DevinSessionKind = (typeof DEVIN_SESSION_KINDS)[number];
+
+/**
+ * Design 9 of docs/plans/devin.md. Every value is an assumption until a real capture confirms the
+ * vocabulary (#516). A kind matches when the session's status or status detail is listed;
+ * DEVIN_KIND_ORDER makes `needs_you` win over any other match.
+ */
+export const DEVIN_KIND_VALUES: Record<
+  Exclude<DevinSessionKind, "unknown">,
+  { statuses: readonly string[]; details: readonly string[] }
+> = {
+  needs_you: { statuses: ["blocked"], details: ["waiting_for_user", "awaiting_user_input"] },
+  error: { statuses: ["error", "failed", "expired", "terminated"], details: [] },
+  working: { statuses: ["working", "running", "resumed", "resume_requested"], details: [] },
+  finished: { statuses: ["finished", "completed", "sleeping"], details: ["finish", "sleep"] },
+  suspended: {
+    statuses: ["suspended", "suspend_requested", "suspend_requested_frontend"],
+    details: [],
+  },
+};
+export const DEVIN_KIND_ORDER = ["needs_you", "error", "working", "finished", "suspended"] as const;
+
+export const DEVIN_APP_ORIGIN = "https://app.devin.ai";
+const DEVIN_SESSION_ID = /^[A-Za-z0-9_-]{1,128}$/;
+const DEVIN_SESSION_PATH = /^\/sessions\/([A-Za-z0-9_-]{1,128})$/;
+
+/** Whether `id` is a session id this app will put in a link. */
+export function isDevinSessionId(id: string): boolean {
+  return DEVIN_SESSION_ID.test(id);
+}
+
+/** The canonical link to a session in Devin. Built from the id, never stored. */
+export function devinSessionUrl(id: string): string {
+  if (!isDevinSessionId(id)) throw new Error("Invalid Devin session id");
+  return `${DEVIN_APP_ORIGIN}/sessions/${id}`;
+}
+
+/** True only for exactly the URL `devinSessionUrl` builds. */
+export function isDevinSessionUrl(value: string): boolean {
+  const id = DEVIN_SESSION_PATH.exec(
+    value.startsWith(DEVIN_APP_ORIGIN) ? value.slice(DEVIN_APP_ORIGIN.length) : "",
+  )?.[1];
+  return id !== undefined && value === devinSessionUrl(id);
+}

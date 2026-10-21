@@ -142,8 +142,14 @@ describe("DeleteBotDialog", () => {
     expect(container.textContent).not.toContain("What about its memories?");
   });
 
+  it("skips the memory question when the only document is the new-bot heading", async () => {
+    memoryList.mockResolvedValue([{ id: "m1", content: "# Helper\n\n" }]);
+    await renderDelete();
+    expect(container.textContent).not.toContain("What about its memories?");
+  });
+
   it("asks when the bot has memories, and when they cannot be checked", async () => {
-    memoryList.mockResolvedValue([{ id: "m1" }]);
+    memoryList.mockResolvedValue([{ id: "m1", content: "# Helper\n\nPrefers short replies." }]);
     await renderDelete();
     expect(container.textContent).toContain("What about its memories?");
     memoryList.mockRejectedValue(new Error("offline"));
