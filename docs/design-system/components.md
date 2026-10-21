@@ -4,7 +4,7 @@
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 247 of 247
-- Web and shared components: 668
+- Web and shared components: 669
 - Mobile components: 138 in 95 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -329,7 +329,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | PinsStrip, ItemRow, PinsList | [apps/web/src/pages/shell/bot-pins.tsx](../../apps/web/src/pages/shell/bot-pins.tsx) | [bot-pins.stories.tsx](../../apps/web/src/pages/shell/bot-pins.stories.tsx) | web |
 | SkillSourceBadge, BotSkillsSection | [apps/web/src/pages/shell/BotSkillsSection.tsx](../../apps/web/src/pages/shell/BotSkillsSection.tsx) | [BotSkillsSection.stories.tsx](../../apps/web/src/pages/shell/BotSkillsSection.stories.tsx) | web |
 | ReplyThumbnail, TimeSeparator, ComposerReplyPreview, ReplyLine | [apps/web/src/pages/shell/chat-context.tsx](../../apps/web/src/pages/shell/chat-context.tsx) | [chat-context.stories.tsx](../../apps/web/src/pages/shell/chat-context.stories.tsx) | web |
-| CommandPalette | [apps/web/src/pages/shell/command-palette.tsx](../../apps/web/src/pages/shell/command-palette.tsx) | [command-palette.stories.tsx](../../apps/web/src/pages/shell/command-palette.stories.tsx) | web |
+| Highlight, CommandPalette | [apps/web/src/pages/shell/command-palette.tsx](../../apps/web/src/pages/shell/command-palette.tsx) | [command-palette.stories.tsx](../../apps/web/src/pages/shell/command-palette.stories.tsx) | web |
 | ComposerError | [apps/web/src/pages/shell/composer-error.tsx](../../apps/web/src/pages/shell/composer-error.tsx) | [composer-error.stories.tsx](../../apps/web/src/pages/shell/composer-error.stories.tsx) | web |
 | Composer | [apps/web/src/pages/shell/composer.tsx](../../apps/web/src/pages/shell/composer.tsx) | [composer.stories.tsx](../../apps/web/src/pages/shell/composer.stories.tsx) | web |
 | NewSpaceDialog, RenameSpaceDialog, PickerInfoDialog, NewBotSectionDialog, RenameBotSectionDialog, ClearConversationDialog, DeleteBotDialog, DeleteItemDialog | [apps/web/src/pages/shell/dialogs.tsx](../../apps/web/src/pages/shell/dialogs.tsx) | [dialogs.stories.tsx](../../apps/web/src/pages/shell/dialogs.stories.tsx) | web |

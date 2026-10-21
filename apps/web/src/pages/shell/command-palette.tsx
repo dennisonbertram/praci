@@ -15,16 +15,12 @@ import {
   Kbd,
 } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 function isApplePlatform() {
   if (typeof navigator === "undefined") return false;
   // platform is deprecated but still the most reliable Apple check in browsers.
   return /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent);
-}
-
-function botSearchText(bot: Bot) {
-  return `${bot.name} ${bot.title} ${bot.description} ${bot.preview}`.toLowerCase();
 }
 
 function botSubtitle(bot: Bot) {
@@ -64,6 +60,21 @@ function ranked<T>(items: readonly T[], score: (item: T) => number | null): T[] 
     .filter((entry): entry is { item: T; score: number } => entry.score !== null)
     .sort((a, b) => a.score - b.score)
     .map((entry) => entry.item);
+}
+
+/** The typed text inside a result, underlined so a result shows why it matched. */
+function Highlight({ text, needle }: { text: string; needle: string }) {
+  const at = needle ? text.toLowerCase().indexOf(needle) : -1;
+  if (at < 0) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, at)}
+      <mark className="bg-transparent text-inherit underline decoration-2 underline-offset-2">
+        {text.slice(at, at + needle.length)}
+      </mark>
+      {text.slice(at + needle.length)}
+    </>
+  );
 }
 
 /** The row Enter opens: data-selected's bg-muted barely shows on the popover, so mark it. */
@@ -125,23 +136,25 @@ export function CommandPalette({
       window.clearTimeout(timer);
     };
   }, [needle, searchLinks]);
-  const botScore = (bot: Bot) => paletteMatchScore(bot.name, needle, botSearchText(bot));
+  // A bot is found by its name or role, never by words in its description.
+  const botScore = (bot: Bot) => paletteMatchScore(bot.name, needle, bot.title);
   const entryScore = (entry: PaletteEntry) =>
     paletteMatchScore(entry.label, needle, entry.keywords);
   const shownPages = needle ? ranked(pages, entryScore) : pages;
   const shownGroups = needle ? ranked(groups, entryScore) : groups;
-  const filteredBots = useMemo(() => {
-    if (!needle) return bots;
-    const matches = ranked(bots, (bot) => paletteMatchScore(bot.name, needle, botSearchText(bot)));
-    // Description-only matches are noise once anything matches by name.
-    const nameMatched =
-      shownPages.length > 0 ||
-      shownGroups.length > 0 ||
-      matches.some((bot) => paletteMatchScore(bot.name, needle) !== null);
-    return nameMatched
-      ? matches.filter((bot) => paletteMatchScore(bot.name, needle) !== null)
-      : matches;
-  }, [bots, needle, shownPages.length, shownGroups.length]);
+  const filteredBots = useMemo(
+    () => (needle ? ranked(bots, (bot) => paletteMatchScore(bot.name, needle, bot.title)) : bots),
+    [bots, needle],
+  );
+  // A fade over the last row while more results wait below the visible ones.
+  // Kept in state: the dialog mounts the list after the first render that opens it.
+  const [listEl, setListEl] = useState<HTMLDivElement | null>(null);
+  const [moreBelow, setMoreBelow] = useState(false);
+  const measureList = useCallback(() => {
+    setMoreBelow(!!listEl && listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight > 4);
+  }, [listEl]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-measure when the results change
+  useEffect(measureList, [measureList, needle, filteredBots, shownPages, shownGroups, linkGroups]);
   // While searching, the section with the best match comes first, so Enter opens it.
   const best = (score: number | null | undefined) => score ?? Number.POSITIVE_INFINITY;
   const sectionOrder = needle
@@ -200,7 +213,7 @@ export function CommandPalette({
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 items-center gap-2">
                 <span className="truncate font-medium text-foreground" dir="auto">
-                  {bot.name}
+                  <Highlight text={bot.name} needle={needle} />
                 </span>
                 {titleTag ? (
                   <Badge
@@ -242,7 +255,7 @@ export function CommandPalette({
         >
           <span className="grid size-8 place-items-center">{group.icon}</span>
           <span className="truncate font-medium text-foreground" dir="auto">
-            {group.label}
+            <Highlight text={group.label} needle={needle} />
           </span>
         </CommandItem>
       ))}
@@ -261,7 +274,9 @@ export function CommandPalette({
           className={`items-center gap-3 rounded-xl! px-2.5 py-2 ${SELECTED_ROW}`}
         >
           <span className="grid size-8 place-items-center text-muted-foreground">{page.icon}</span>
-          <span className="truncate font-medium text-foreground">{page.label}</span>
+          <span className="truncate font-medium text-foreground">
+            <Highlight text={page.label} needle={needle} />
+          </span>
         </CommandItem>
       ))}
     </CommandGroup>
@@ -282,7 +297,7 @@ export function CommandPalette({
             className={`items-center gap-3 rounded-xl! px-2.5 py-2 ${SELECTED_ROW}`}
           >
             <span className="truncate font-medium text-foreground" dir="auto">
-              {entry.label}
+              <Highlight text={entry.label} needle={needle} />
             </span>
           </CommandItem>
         ))}
@@ -309,7 +324,12 @@ export function CommandPalette({
           data-testid="command-palette-search"
           autoFocus
         />
-        <CommandList className="max-h-[min(24rem,60vh)]" data-testid="command-palette-list">
+        <CommandList
+          ref={setListEl}
+          onScroll={measureList}
+          className="max-h-[min(24rem,60vh)]"
+          data-testid="command-palette-list"
+        >
           <CommandEmpty>
             <Trans>No results</Trans>
           </CommandEmpty>
@@ -320,6 +340,27 @@ export function CommandPalette({
           ))}
           {linksGroups}
         </CommandList>
+        {moreBelow ? (
+          <div
+            aria-hidden="true"
+            data-testid="command-palette-fade"
+            className="pointer-events-none -mt-12 h-12 bg-gradient-to-t from-popover to-transparent"
+          />
+        ) : null}
+        <div
+          aria-hidden="true"
+          className="flex items-center gap-4 border-t border-border px-3 py-2 text-xs text-muted-foreground max-sm:hidden"
+        >
+          <span className="flex items-center gap-1.5">
+            <Kbd>↑</Kbd>
+            <Kbd>↓</Kbd>
+            <Trans>Move</Trans>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Kbd>↵</Kbd>
+            <Trans>Open</Trans>
+          </span>
+        </div>
       </Command>
     </CommandDialog>
   );

@@ -5799,6 +5799,7 @@ msgstr "More settings"
 
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/pages/shell/command-palette.tsx
 msgid "Move"
 msgstr "Move"
 
@@ -6099,10 +6100,6 @@ msgstr "No bot activity yet."
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "No bot uses {0} yet. Choose bots on its page."
 msgstr "No bot uses {0} yet. Choose bots on its page."
-
-#: src/pages/shell/bot-picker.tsx
-msgid "No bots match"
-msgstr "No bots match"
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No chat apps linked yet."
@@ -6536,6 +6533,7 @@ msgstr "Only if the server does not use sign-in"
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/command-palette.tsx
 #: src/pages/shell/transcript.tsx
 msgid "Open"
 msgstr "Open"
@@ -7718,6 +7716,10 @@ msgstr "Resize folders"
 msgid "Resize panel"
 msgstr "Resize panel"
 
+#: src/pages/Shell.tsx
+msgid "Resize sidebar"
+msgstr "Resize sidebar"
+
 #: src/components/integrations/IMessageSection.tsx
 msgid "Restart the Praci server to start using iMessage."
 msgstr "Restart the Praci server to start using iMessage."
@@ -8035,7 +8037,6 @@ msgstr "Scroll sideways to see the whole graph."
 #: src/pages/Contacts.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Shell.tsx
-#: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/command-palette.tsx
 msgid "Search"
 msgstr "Search"
@@ -8394,6 +8395,10 @@ msgstr "Show computer"
 #: src/components/finance/ui.tsx
 msgid "Show finances for"
 msgstr "Show finances for"
+
+#: src/components/SidebarPagesGroup.tsx
+msgid "Show in sidebar"
+msgstr "Show in sidebar"
 
 #: src/components/inbox/TodoCard.tsx
 #: src/components/MailApprovalCard.tsx
