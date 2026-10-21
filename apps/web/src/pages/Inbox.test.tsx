@@ -766,6 +766,32 @@ it("says it is reading the mail during the first sync and asks the server a few 
   }
 });
 
+it("says a first sync can take a minute after 5 s, and shows the consent prompt while it runs", async () => {
+  vi.useFakeTimers();
+  try {
+    rpcMock.list.mockResolvedValue(
+      list([], {
+        enabled: false,
+        triageBlocked: {
+          reason: "needs_consent",
+          recipient: { key: "k", name: "Model" },
+        } as never,
+      }),
+    );
+    rpcMock.refresh.mockImplementation(async () => ({ syncing: true }));
+    const c = await render();
+    expect(c.textContent).toContain("Reading your mail…");
+    expect(c.textContent).not.toContain("First sync can take a minute");
+    expect(c.querySelector("[data-consent-prompt]")).not.toBeNull();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(c.textContent).toContain("First sync can take a minute");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 it("shows nothing from the first sort until it and its to-dos have landed, then changes once", async () => {
   rpcMock.list.mockResolvedValue(list([row("a"), row("b")], { triagePending: true }));
   const c = await render();

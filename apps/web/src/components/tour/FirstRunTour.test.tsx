@@ -142,7 +142,12 @@ it("is a complete tour, top to bottom, ending on the composer", async () => {
   expect(document.body.textContent).toContain("9/9");
   expect(seen[0]).toContain("find any page, chat");
   expect(seen[6]).toContain("Ask Chief");
+  expect(seen[1]).toContain("create a bot");
+  // New users already ask before email and purchases, so the tour sends nobody to Settings.
+  expect(seen[6]).not.toContain("Settings");
   expect(seen[7]).toContain("Connect Gmail");
+  expect(seen[7]).toContain("bots");
+  expect(seen.join(" ")).not.toMatch(/agent|apps/i);
   expect(seen[8]).toContain("retake this tour");
   expect(button("Done")).toBeTruthy();
   expect(button("Ask Chief")).toBeTruthy();

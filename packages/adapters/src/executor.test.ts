@@ -1271,6 +1271,7 @@ describe("directoryDescription", () => {
     expect(line).toContain("Do not write a reply to the user until its answer arrives");
     expect(line).toContain("quote the figures in your reply yourself");
     expect(line).toContain("[Open Finance](/app/finance)");
+    expect(line).toContain("no accounts are connected yet");
     expect(line).not.toContain("instead of messaging it");
   });
 
@@ -1281,6 +1282,7 @@ describe("directoryDescription", () => {
     });
     expect(integration).toContain("Message it with message_bot");
     expect(integration).toContain("give the user the answer yourself");
+    expect(integration).toContain("[Open Integrations](/app/integrations)");
     expect(integration).not.toContain("instead of messaging it");
   });
 

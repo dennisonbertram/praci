@@ -155,10 +155,8 @@ export function ContactDialog({
           <DialogTitle>
             {contact ? (
               <Trans>Edit contact</Trans>
-            ) : prefill?.name && prefill.email ? (
-              <Trans>Save {prefill.name} as a contact</Trans>
             ) : prefill?.name ? (
-              <Trans>Add email for {prefill.name}</Trans>
+              <Trans>Save {prefill.name} as a contact</Trans>
             ) : prefill?.kind ? (
               contactAddLabels()[prefill.kind]
             ) : (

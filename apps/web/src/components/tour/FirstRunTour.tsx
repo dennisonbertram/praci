@@ -15,7 +15,7 @@ export function FirstRunTour({
   onAsk,
 }: {
   open: boolean;
-  /** The last step's "Ask Chief": finishes the tour and opens Chief with a sample question. */
+  /** The last step's "Ask Chief": finishes the tour, opens Chief and sends a sample question. */
   onAsk: () => void;
   /** Called as soon as the tour ends; `byEscape` when the Escape key ended it. */
   onClose: (me: Me | null, byEscape?: boolean) => void;
@@ -32,7 +32,7 @@ export function FirstRunTour({
       {
         id: "create",
         anchor: '[data-tour="create-menu"]',
-        text: t`Press + to create an agent or a group chat.`,
+        text: t`Press + to create a bot or a group chat.`,
       },
       {
         id: "inbox",
@@ -52,17 +52,17 @@ export function FirstRunTour({
       {
         id: "files",
         anchor: '[data-tour="sidebar-data-room"]',
-        text: t`Upload files for agents to use. Artifacts holds what agents make.`,
+        text: t`Upload files for bots to use. Artifacts holds what bots make.`,
       },
       {
         id: "chat",
         anchor: '[data-tour="sidebar-chat"]',
-        text: t`Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings.`,
+        text: t`Ask Chief anything.`,
       },
       {
         id: "apps",
         anchor: '[data-tour="sidebar-integrations"]',
-        text: t`Connect Gmail, Calendar and other apps so agents can read your mail and files.`,
+        text: t`Connect Gmail, Calendar and more in Integrations so bots can read your mail and files.`,
       },
       {
         id: "account",

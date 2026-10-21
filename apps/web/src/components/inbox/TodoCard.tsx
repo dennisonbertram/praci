@@ -48,11 +48,14 @@ export function TodoCard({
   ).length;
   const dueLabel = (dueOn: string, days: number) => {
     if (days === 0) return t`Today`;
+    if (days === 1) return t`Tomorrow`;
     const [year = 0, month = 1, day = 1] = dueOn.split("-").map(Number);
     const date = new Date(year, month - 1, day);
     return date.toLocaleDateString(
       lingui.locale || "en",
-      days > 0 && days <= 6 ? { weekday: "short" } : { month: "short", day: "numeric" },
+      days > 0 && days <= 6
+        ? { weekday: "short", month: "short", day: "numeric" }
+        : { month: "short", day: "numeric" },
     );
   };
   const setDone = (todo: InboxTodo, done: boolean) => {

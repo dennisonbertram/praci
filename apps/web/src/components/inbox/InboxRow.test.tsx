@@ -74,6 +74,16 @@ it("shows a compact label dot in the narrow pane that names the label", async ()
   expect(dot?.className).toContain("@md:hidden");
 });
 
+it("lets Tab reach the revealed row actions once the row has focus", async () => {
+  await show();
+  const archive = () => document.querySelector<HTMLElement>('button[aria-label="Archive"]');
+  expect(archive()?.tabIndex).toBe(-1);
+  await act(async () => document.querySelector<HTMLElement>("button[data-row-id]")?.focus());
+  expect(archive()?.tabIndex).toBe(0);
+  await act(async () => document.querySelector<HTMLElement>("button[data-row-id]")?.blur());
+  expect(archive()?.tabIndex).toBe(-1);
+});
+
 it("gives the More trigger a larger touch target on coarse pointers", async () => {
   await show();
   expect(document.querySelector('button[aria-label="More"]')?.className).toContain(

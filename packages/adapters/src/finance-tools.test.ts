@@ -1,5 +1,5 @@
 import type { MessageBlock } from "@rakazo/contracts";
-import { financeAgentSpawnKey } from "@rakazo/contracts";
+import { financeAgentSpawnKey, investorsAgentSpawnKey } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import { selectBuiltinToolsForRun } from "./executor.js";
 import type { FinanceToolDeps } from "./finance-tools.js";
@@ -688,6 +688,7 @@ describe("offering the tools", () => {
     expect(financeToolsAllowed({ ...base, trigger: "routine" })).toBe(true);
     // An ordinary owner bot never gets them.
     expect(financeToolsAllowed({ ...base, botSpawnKey: null })).toBe(false);
+    expect(financeToolsAllowed({ ...base, botSpawnKey: investorsAgentSpawnKey("u") })).toBe(true);
     expect(financeToolsAllowed({ ...base, botSpawnKey: "inbox-agent:u" })).toBe(false);
     // Another user's connected agent reaches the Finance agent with the owner's userId.
     expect(financeToolsAllowed({ ...base, trigger: "bot_message" })).toBe(false);
