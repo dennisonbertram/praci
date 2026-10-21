@@ -56,22 +56,22 @@ it("names the file being worked on and never mentions failed files", () => {
     root.render(
       <ProcessingStrip
         processing={{
-          reading: 1,
+          reading: 3,
           indexing: 0,
           tagging: 0,
           failed: 1,
           current: "Board minutes.pdf",
         }}
-        total={2}
+        total={3}
       />,
     ),
   );
   const text = container.textContent ?? "";
-  expect(text).toContain("Processing 1 file");
+  expect(text).toContain("Processing 3 files");
   expect(text).toContain("Reading Board minutes.pdf");
   expect(text).not.toContain("couldn't be read");
   act(() => (container.querySelector("button") as HTMLButtonElement).click());
-  expect(container.querySelector("ul")?.textContent).toBe("Reading text1");
+  expect(container.querySelector("ul")?.textContent).toBe("Reading text3");
 });
 
 it("shows nothing when only failed files remain: the row and the sidebar badge carry it", () => {
@@ -122,19 +122,41 @@ it("keeps the strip on one line, and draws no bar before any progress", () => {
     root.render(
       <ProcessingStrip
         processing={{
-          reading: 1,
+          reading: 3,
           indexing: 0,
           tagging: 0,
           failed: 1,
           current: "Board minutes.pdf",
         }}
-        total={1}
+        total={3}
       />,
     ),
   );
   const line = container.querySelector('[role="status"] > div');
   expect(container.querySelectorAll('[role="status"] > *')).toHaveLength(1);
-  expect(line?.textContent).toContain("Processing 1 file");
+  expect(line?.textContent).toContain("Processing 3 files");
   expect(line?.className).toContain("whitespace-nowrap");
   expect(container.querySelector('[role="progressbar"]')).toBeNull();
+});
+
+it("shows nothing for one or two files: their rows already say Reading", () => {
+  act(() =>
+    root.render(
+      <ProcessingStrip
+        processing={{ reading: 2, indexing: 0, tagging: 0, failed: 0, current: "a.pdf" }}
+        total={2}
+      />,
+    ),
+  );
+  expect(container.textContent).toBe("");
+  act(() =>
+    root.render(
+      <ProcessingStrip
+        processing={{ reading: 0, indexing: 0, tagging: 0, failed: 0, current: null }}
+        total={2}
+        finished
+      />,
+    ),
+  );
+  expect(container.textContent).toBe("");
 });

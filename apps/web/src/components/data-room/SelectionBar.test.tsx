@@ -13,7 +13,7 @@ import { SelectionBar } from "./SelectionBar";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-it("shows nothing until a row is ticked, then Download, Send and Clear", () => {
+it("shows nothing until a row is ticked, then Download, Email, Send to agent and Clear", () => {
   const el = document.createElement("div");
   const root = createRoot(el);
   const onDownload = vi.fn();
@@ -21,10 +21,16 @@ it("shows nothing until a row is ticked, then Download, Send and Clear", () => {
   const onClear = vi.fn();
   act(() => root.render(<SelectionBar count={0} {...{ onDownload, onSend, onClear }} />));
   expect(el.textContent).toBe("");
-  act(() => root.render(<SelectionBar count={3} {...{ onDownload, onSend, onClear }} />));
+  const agents = [{ id: "b1", name: "Ada", color: "#6366f1" }];
+  const onSendToAgent = vi.fn();
+  act(() =>
+    root.render(
+      <SelectionBar count={3} {...{ onDownload, onSend, onClear, agents, onSendToAgent }} />,
+    ),
+  );
   const buttons = [...el.querySelectorAll("button")];
-  expect(buttons.map((b) => b.textContent)).toEqual(["Download", "Send", ""]);
-  for (const b of buttons) act(() => b.click());
+  expect(buttons.map((b) => b.textContent)).toEqual(["Download", "Email", "Send to agent", ""]);
+  for (const b of buttons.filter((b) => b.textContent !== "Send to agent")) act(() => b.click());
   expect([onDownload, onSend, onClear].map((f) => f.mock.calls.length)).toEqual([1, 1, 1]);
   act(() => root.unmount());
 });

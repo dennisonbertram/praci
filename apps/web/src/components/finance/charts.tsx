@@ -35,6 +35,19 @@ export function niceRange(min: number, max: number): { step: number; top: number
   };
 }
 
+/**
+ * A balance line whose values stay close together would be flat on an axis that starts at $0, so
+ * its axis starts at the nearest step below the lowest value. Other lines keep `niceRange`.
+ */
+function lineRange(min: number, max: number) {
+  if (min > 0 && max - min < max / 2) {
+    const { step } = niceScale(max - min);
+    const floor = Math.floor(min / step) * step;
+    return { step, floor, top: Math.max(floor + step, Math.ceil(max / step) * step) };
+  }
+  return niceRange(min, Math.max(max, 0));
+}
+
 /** Monochrome fills for stacked segments and their legend swatches; index 0 is darkest. */
 export const shade = (index: number) =>
   `color-mix(in srgb, var(--foreground) ${[100, 78, 60, 46, 34, 24, 16][index % 7]}%, var(--card))`;
@@ -192,10 +205,10 @@ export function LineChart({
         const left = axes ? 46 : 4;
         const right = axes ? 10 : 4;
         const top = axes ? 10 : 4;
-        const bottom = axes ? 22 : 4;
+        const bottom = axes ? 30 : 4;
         const maxValue = Math.max(...values, 0);
         // A balance can dip below zero; the axis reaches down to it instead of clipping the line.
-        const scale = niceRange(Math.min(...values), maxValue);
+        const scale = lineRange(Math.min(...values), maxValue);
         const hi = axes ? scale.top : maxValue;
         const lo = axes ? scale.floor : Math.min(...values);
         const x = (i: number) =>

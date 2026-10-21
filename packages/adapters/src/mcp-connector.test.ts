@@ -1632,7 +1632,9 @@ describe("MCP connector integration agents", () => {
   it("gives the agent reads, and writes only while writesEnabled is on", async () => {
     const { connector, state, call, names, assignment } = await setup("agent-1", agentBot, {});
     expect(await names()).toEqual(["getAccounts", "annotatedRead"]);
-    expect(await call("requestSendMoney")).toMatchObject([{ type: "error" }]);
+    expect(await call("requestSendMoney")).toMatchObject([
+      { type: "error", message: expect.stringContaining("(/app/integrations/mcp/server-1)") },
+    ]);
     expect(state.calls).toEqual([]);
     assignment.server.writesEnabled = true; // read fresh on every call
     expect(await names()).toEqual(["getAccounts", "requestSendMoney", "mystery", "annotatedRead"]);

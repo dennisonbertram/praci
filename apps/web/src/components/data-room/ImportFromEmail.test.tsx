@@ -120,7 +120,7 @@ it("lists Email, Google Drive and Box in one Import menu", async () => {
   rpcMock.servers.mockResolvedValue([{ id: "s1", name: "Box", endpoint: "https://mcp.box.com" }]);
   await render([{ connectorId: "google", provider: "gmail", status: "connected" }]);
   expect(button("Import from email")).toBeUndefined();
-  expect(await menuItems()).toEqual(["Email", "Google Drive", "Box"]);
+  expect(await menuItems()).toEqual(["From email", "From Google Drive", "From Box"]);
 });
 
 it("moves through the menu with the keyboard and opens the focused item", async () => {
@@ -131,7 +131,7 @@ it("moves through the menu with the keyboard and opens the focused item", async 
   await act(async () => {
     trigger?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
   });
-  const first = item("Email") as HTMLElement;
+  const first = item("From email") as HTMLElement;
   expect(document.activeElement).toBe(first);
   await act(async () => {
     first.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
@@ -143,7 +143,7 @@ it("moves through the menu with the keyboard and opens the focused item", async 
 
 it("sends a not connected Email item to the Gmail page", async () => {
   await render([{ connectorId: "google", provider: "gmail", status: "pending" }]);
-  await choose("Email");
+  await choose("From email");
   expect(document.querySelector('[data-testid="where"]')?.textContent).toBe(
     "/app/integrations/app/google/gmail",
   );
@@ -151,7 +151,7 @@ it("sends a not connected Email item to the Gmail page", async () => {
 
 it("imports the ticked attachment into the open folder", async () => {
   await render([{ connectorId: "google", provider: "gmail", status: "connected" }]);
-  await choose("Email");
+  await choose("From email");
   expect(rpcMock.list).toHaveBeenCalledWith({ filter: "attachment" });
   expect(button("Import")?.disabled).toBe(true);
   // The switch that files new attachments automatically lives here, not in Settings.
@@ -170,7 +170,7 @@ it("imports the ticked attachment into the open folder", async () => {
 it("says so when everything picked was already imported", async () => {
   rpcMock.importEmail.mockResolvedValue({ imported: 0, duplicates: 1, failed: 0 });
   await render([{ connectorId: "google", provider: "gmail", status: "connected" }]);
-  await choose("Email");
+  await choose("From email");
   await click(fileBox("invoice.pdf"));
   await click(button("Import 1 file"));
   expect(onDone).toHaveBeenCalledWith("Already in the Data room", true);
@@ -178,13 +178,13 @@ it("says so when everything picked was already imported", async () => {
 
 it("treats a Composio-style Gmail connection as connected", async () => {
   await render([{ connectorId: "composio", provider: " GMAIL ", status: "connected" }]);
-  expect(await menuItems()).toContain("Email");
+  expect(await menuItems()).toContain("From email");
 });
 
 it("keeps the picker open and says how many files failed", async () => {
   rpcMock.importEmail.mockResolvedValue({ imported: 1, duplicates: 0, failed: 2 });
   await render([{ connectorId: "google", provider: "gmail", status: "connected" }]);
-  await choose("Email");
+  await choose("From email");
   await click(fileBox("invoice.pdf"));
   await click(button("Import 1 file"));
   expect(onDone).toHaveBeenCalledWith("Imported 1 file", true);
@@ -199,7 +199,7 @@ it("shows a mail error instead of an empty list, with a reconnect link", async (
     rows: [],
   });
   await render([{ connectorId: "google", provider: "gmail", status: "connected" }]);
-  await choose("Email");
+  await choose("From email");
   expect(document.body.textContent).toContain("Gmail needs to be reconnected.");
   expect(document.body.textContent).not.toContain("No files found");
   expect(
@@ -217,7 +217,7 @@ it("stops offering unticked boxes once 20 files are picked", async () => {
     })),
   });
   await render([{ connectorId: "google", provider: "gmail", status: "connected" }]);
-  await choose("Email");
+  await choose("From email");
   const boxes = () =>
     Array.from(document.body.querySelectorAll<HTMLElement>('[role="checkbox"]')).slice(1);
   for (const box of boxes().slice(0, 20)) await click(box);
@@ -228,12 +228,12 @@ it("stops offering unticked boxes once 20 files are picked", async () => {
 
 it("leaves Email out of the menu when the server does not offer Gmail and it is not connected", async () => {
   await render([], offers("googledrive"));
-  expect(await menuItems()).toEqual(["Google Drive", "Box"]);
+  expect(await menuItems()).toEqual(["From Google Drive", "From Box"]);
 });
 
 it("keeps Email for a connected account even if the catalog omits it", async () => {
   await render([{ connectorId: "google", provider: "gmail", status: "connected" }], []);
-  expect(await menuItems()).toContain("Email");
+  expect(await menuItems()).toContain("From email");
 });
 
 const gmailConnected = [{ connectorId: "google", provider: "gmail", status: "connected" }];
@@ -266,7 +266,7 @@ it("lists only messages that carry real documents, leaving out signature picture
         : [file("b1", "tiny.png", "image/png", 800)],
   }));
   await render(gmailConnected);
-  await choose("Email");
+  await choose("From email");
   expect(document.body.textContent).toContain("Invoice");
   expect(document.body.textContent).not.toContain("Just a logo");
   expect(fileBox("invoice.pdf")).not.toBeNull();
@@ -276,7 +276,7 @@ it("lists only messages that carry real documents, leaving out signature picture
 it("selects every file of a message from the message checkbox", async () => {
   rpcMock.get.mockResolvedValue({ attachments: [file("a1", "a.pdf"), file("a2", "b.pdf")] });
   await render(gmailConnected);
-  await choose("Email");
+  await choose("From email");
   await click(document.body.querySelector('[aria-label="Select Invoice"]'));
   expect(button("Import 2 files")).toBeDefined();
   await click(button("Import 2 files"));
@@ -293,7 +293,7 @@ it("marks files already in the Data room as ticked and cannot be changed", async
   rpcMock.get.mockResolvedValue({ attachments: [file("a1", "a.pdf"), file("a2", "b.pdf")] });
   rpcMock.imported.mockResolvedValue({ files: [{ messageId: "m1", attachmentId: "a1" }] });
   await render(gmailConnected);
-  await choose("Email");
+  await choose("From email");
   expect(rpcMock.imported).toHaveBeenCalledWith({ messageIds: ["m1"] });
   expect(document.body.textContent).toContain("In Data room");
   const done = fileBox("a.pdf") as HTMLElement;
@@ -311,7 +311,7 @@ it("shows the empty state when no message has documents", async () => {
     rows: [],
   });
   await render(gmailConnected);
-  await choose("Email");
+  await choose("From email");
   await settle();
   expect(document.body.textContent).toContain("No files found");
   expect(document.body.textContent).not.toContain("Loading…");
@@ -320,14 +320,14 @@ it("shows the empty state when no message has documents", async () => {
 it("shows the loading text while mail loads", async () => {
   rpcMock.list.mockReturnValue(new Promise(() => undefined));
   await render(gmailConnected);
-  await choose("Email");
+  await choose("From email");
   expect(document.body.textContent).toContain("Loading…");
 });
 
 it("shows an error when mail cannot be loaded", async () => {
   rpcMock.list.mockRejectedValue(new Error("boom"));
   await render(gmailConnected);
-  await choose("Email");
+  await choose("From email");
   expect(document.body.querySelector(".text-destructive")).not.toBeNull();
   expect(document.body.textContent).not.toContain("No files found");
 });

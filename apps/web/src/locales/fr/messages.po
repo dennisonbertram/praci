@@ -74,6 +74,11 @@ msgstr ""
 msgid "{0, plural, one {# email} other {# emails}}"
 msgstr ""
 
+#. placeholder {0}: glance.dataRoomWaiting
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# file failed} other {# files failed}}"
+msgstr ""
+
 #. placeholder {0}: items.length
 #: src/components/FinanceCards.tsx
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
@@ -104,11 +109,6 @@ msgstr ""
 msgid "{0, plural, one {# task done by your bots} other {# tasks done by your bots}}"
 msgstr ""
 
-#. placeholder {0}: glance.dataRoomWaiting
-#: src/pages/Shell.tsx
-msgid "{0, plural, one {# waiting} other {# waiting}}"
-msgstr ""
-
 #. placeholder {0}: rows.length
 #: src/pages/Inbox.tsx
 msgid "{0, plural, one {#+ result} other {#+ results}}"
@@ -137,11 +137,6 @@ msgstr ""
 #. placeholder {0}: data.monthlyAvgMonths ?? 6
 #: src/pages/finance/FinanceSpend.tsx
 msgid "{0, plural, one {Last full month} other {Last # full months}}"
-msgstr ""
-
-#. placeholder {0}: files.length
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "{0, plural, one {Reviewing # file} other {Reviewing # files}}"
 msgstr ""
 
 #. placeholder {0}: filteredRecent.length
@@ -237,10 +232,8 @@ msgstr ""
 msgid "{0} handling"
 msgstr "Gestion de {0}"
 
-#. placeholder {0}: months.toFixed(0)
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
-#: src/components/sidebar-glance.tsx
 msgid "{0} mo"
 msgstr ""
 
@@ -264,11 +257,6 @@ msgstr ""
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} rollup hours"
 msgstr "{0} heures de regroupement"
-
-#. placeholder {0}: runwayGlance(glance.financeRunwayMonths)
-#: src/pages/Shell.tsx
-msgid "{0} runway"
-msgstr ""
 
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
@@ -602,7 +590,6 @@ msgid "* So far"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
-#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "+{more} more"
 msgstr ""
@@ -816,7 +803,6 @@ msgid "Add connected models to use them as backups."
 msgstr "Ajoutez des modèles connectés pour les utiliser comme modèles de secours."
 
 #: src/components/ContactDialog.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
 msgid "Add contact"
 msgstr ""
@@ -1372,10 +1358,6 @@ msgstr ""
 msgid "Ask {botName}"
 msgstr ""
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Ask a question"
-msgstr ""
-
 #: src/pages/Devin.tsx
 msgid "Ask a space owner to connect Devin."
 msgstr ""
@@ -1428,6 +1410,10 @@ msgstr "Demander avant les achats"
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Ask before sending external email"
 msgstr "Demander avant d'envoyer un e-mail externe"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Ask Chief"
+msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
@@ -1791,7 +1777,6 @@ msgid "Bots, mail, files and contracts"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
-#: src/components/data-room/ImportFromEmail.tsx
 msgid "Box"
 msgstr ""
 
@@ -4106,7 +4091,7 @@ msgid "Edit wallet"
 msgstr ""
 
 #: src/components/ContactDialog.tsx
-#: src/components/data-room/ImportFromEmail.tsx
+#: src/components/data-room/SelectionBar.tsx
 #: src/pages/Auth.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
@@ -4549,10 +4534,16 @@ msgstr ""
 msgid "From another app (advanced)"
 msgstr ""
 
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "From Box"
+msgstr ""
+
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/data-room/Preview.tsx
 msgid "From email"
 msgstr ""
 
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/data-room/Preview.tsx
 msgid "From Google Drive"
 msgstr ""
@@ -4573,7 +4564,6 @@ msgstr ""
 msgid "Fullscreen"
 msgstr "Plein écran"
 
-#: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Fully diluted shares"
 msgstr ""
@@ -4674,7 +4664,6 @@ msgid "Google apps"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
-#: src/components/data-room/ImportFromEmail.tsx
 msgid "Google Drive"
 msgstr ""
 
@@ -5398,6 +5387,7 @@ msgstr "Chargement des fournisseurs vocaux…"
 #: src/App.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/ui.tsx
+#: src/components/RowsSkeleton.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
 #: src/pages/finance/FinanceTransaction.tsx
@@ -6577,7 +6567,6 @@ msgid "Off: other agents reach {service} only through this agent."
 msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
-#: src/components/integrations/McpDetail.tsx
 msgid "Off: the agent only reads. On: it can also make changes, and asks you before each one."
 msgstr ""
 
@@ -6653,6 +6642,10 @@ msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Open Contacts"
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -6884,6 +6877,10 @@ msgstr ""
 #: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Ownership"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Ownership by share class"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -7977,9 +7974,8 @@ msgstr ""
 msgid "Safe"
 msgstr ""
 
-#. placeholder {0}: safes.length
 #: src/pages/CapTable.tsx
-msgid "SAFEs ({0}, {total}) are not included until they convert"
+msgid "SAFEs are not in the share counts"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -8283,6 +8279,8 @@ msgstr "Sélectionnez un bot"
 msgid "Select a connected model"
 msgstr "Sélectionnez un modèle connecté"
 
+#: src/components/data-room/AutoSortDialog.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Select all"
 msgstr ""
@@ -8296,7 +8294,6 @@ msgid "Self-custody"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
-#: src/components/data-room/SelectionBar.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/MailApprovalCard.tsx
@@ -8337,6 +8334,7 @@ msgstr "Envoyer le lien de réinitialisation"
 msgid "Send saved draft"
 msgstr ""
 
+#: src/components/data-room/SelectionBar.tsx
 #: src/components/data-room/SendToAgent.tsx
 msgid "Send to agent"
 msgstr ""
@@ -8754,6 +8752,10 @@ msgstr ""
 
 #: src/components/ListControls.tsx
 msgid "Sort: {fieldLabel}"
+msgstr ""
+
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Sorting every file in the Data room"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -9904,7 +9906,6 @@ msgstr "Mise à jour en cours…"
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/FilterBar.tsx
-#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Upload"
@@ -9921,6 +9922,10 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed"
+msgstr ""
+
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Upload files"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx

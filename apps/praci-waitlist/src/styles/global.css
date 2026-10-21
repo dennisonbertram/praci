@@ -278,3 +278,12 @@ section.works {
   letter-spacing: -0.02em;
   line-height: 24px;
 }
+
+.row {
+  display: flex;
+  gap: 8px;
+  max-width: 420px;
+}
+.row input {
+  flex: 1;
+}

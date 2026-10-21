@@ -79,3 +79,26 @@ export const LongContent: Story = {
     ]),
   },
 };
+
+/** The transcript gives the cards its full width; this frame is wide so the one-line layout shows. */
+export const Wide: Story = {
+  args: { block: block(emails) },
+  decorators: [
+    (Story) => (
+      <div className="@container w-[1200px] max-w-full">
+        <Story />
+      </div>
+    ),
+  ],
+};
+
+export const Phone: Story = {
+  args: { block: block(emails) },
+  decorators: [
+    (Story) => (
+      <div className="@container w-[375px] max-w-full">
+        <Story />
+      </div>
+    ),
+  ],
+};

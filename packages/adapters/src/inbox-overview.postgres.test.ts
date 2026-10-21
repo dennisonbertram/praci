@@ -48,6 +48,7 @@ type Overview = {
   }>;
   needsReply: string[];
   needsReplyListed: string;
+  incomplete?: string;
   todos: string[];
   recent: string[];
 };
@@ -339,6 +340,9 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
     expect(result.accounts[0]).toMatchObject({ sync: "failed" });
     expect(result.accounts[0]?.lastSyncedAt).not.toBeNull();
     expect(result.recent.join("\n")).toContain("Cached subject");
+    // The reply must lead with the failure, so the list is not called complete.
+    expect(result.incomplete).toContain('Begin your reply with "I could not read');
+    expect(result.needsReplyListed).toMatch(/^incomplete/);
   });
 
   it("never shows another user's mail or to-dos, or an account the owner no longer has", async () => {

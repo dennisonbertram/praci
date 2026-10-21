@@ -10,7 +10,7 @@ import type { Actor } from "@rakazo/contracts";
 import { DataRoomApiFiltersSchema } from "@rakazo/contracts";
 import { clampInt } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
-import { createDataRoomRepos, IsolationError } from "@rakazo/db";
+import { createDataRoomRepos, eligibleWhere, IsolationError } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import {
   createFileDataRoomItem,
@@ -142,7 +142,19 @@ async function search(deps: DataRoomToolDeps, actor: Actor, args: Record<string,
     limit: clampInt(args.limit, 1, MAX_RESULTS, DEFAULT_RESULTS),
     ...(await dataRoomQueryVector(deps.resolveAi, actor, query)),
   });
+  // A file still being read or indexed cannot match yet; say so, so "nothing found" is not final.
+  const indexing = await deps.prisma.dataRoomItem.count({
+    where: {
+      ...eligibleWhere(actor, { excludeConnectionIds: filters.excludeConnectionIds }),
+      status: { in: ["pending", "extracting", "classifying", "indexing"] },
+    },
+  });
   return {
+    ...(indexing
+      ? {
+          note: `${indexing} ${indexing === 1 ? "file is" : "files are"} still being indexed, so results may be incomplete. Tell the user and suggest asking again shortly.`,
+        }
+      : {}),
     results: page.results.map(({ item, snippet }) => ({
       id: item.id,
       name: item.name,
