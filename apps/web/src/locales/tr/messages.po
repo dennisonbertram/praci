@@ -6074,6 +6074,10 @@ msgstr ""
 msgid "No folder"
 msgstr ""
 
+#: src/components/inbox/TodoCard.tsx
+msgid "No follow-ups from meetings yet"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No group chats yet."
 msgstr ""
@@ -8812,6 +8816,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Switching…"
 msgstr "Geçiliyor…"
+
+#: src/components/inbox/TodoCard.tsx
+msgid "Syncing"
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
