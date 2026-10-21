@@ -9,6 +9,7 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, net, session, shell } from "
 import type { AppDocumentState } from "./app-document-state.js";
 import { APP_DOCUMENT_STATE_SCRIPT } from "./app-document-state.js";
 import { createAppOpener } from "./app-opener.js";
+import { buildApplicationMenuTemplate } from "./application-menu.js";
 import type { ElectronAutoUpdater } from "./auto-update.js";
 import { DesktopUpdateController, LAUNCH_CHECK_DELAY_MS } from "./auto-update.js";
 import { openBrowserAuth } from "./browser-auth.js";
@@ -660,64 +661,13 @@ async function showLocalSettings() {
 }
 
 function installApplicationMenu() {
-  const localSettings: Electron.MenuItemConstructorOptions = {
-    id: "local-server-settings",
-    label: "Local Server Settings…",
-    accelerator: "CmdOrCtrl+,",
-    click: () => {
-      void showLocalSettings();
-    },
-  };
-  const changeServer: Electron.MenuItemConstructorOptions = {
-    id: "change-rakazo-server",
-    label: "Change Praci Server…",
-    accelerator: "CmdOrCtrl+Shift+K",
-    click: () => showSetupWindow(),
-  };
-  const stopStack: Electron.MenuItemConstructorOptions = {
-    id: "stop-local-stack",
-    label: "Stop Local Stack",
-    // The stack keeps running after quit (bots are always on); this is the explicit off switch.
-    click: () => {
+  const template = buildApplicationMenuTemplate(process.platform, app.name, {
+    openLocalSettings: () => void showLocalSettings(),
+    changeServer: () => showSetupWindow(),
+    stopLocalStack: () => {
       if (currentSetup?.mode === "new") void localStack.stop();
     },
-  };
-  const template: Electron.MenuItemConstructorOptions[] =
-    process.platform === "darwin"
-      ? [
-          {
-            label: app.name,
-            submenu: [
-              { role: "about" },
-              { type: "separator" },
-              localSettings,
-              changeServer,
-              stopStack,
-              { type: "separator" },
-              { role: "hide" },
-              { role: "hideOthers" },
-              { role: "unhide" },
-              { type: "separator" },
-              { role: "quit" },
-            ],
-          },
-          { role: "editMenu" },
-          { role: "windowMenu" },
-        ]
-      : [
-          {
-            label: "File",
-            submenu: [
-              localSettings,
-              changeServer,
-              stopStack,
-              { type: "separator" },
-              { role: "quit" },
-            ],
-          },
-          { role: "editMenu" },
-          { role: "windowMenu" },
-        ];
+  });
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 

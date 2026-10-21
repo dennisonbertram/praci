@@ -691,6 +691,14 @@ describe("offering the tools", () => {
     expect(financeToolsAllowed({ ...base, botSpawnKey: "inbox-agent:u" })).toBe(false);
     // Another user's connected agent reaches the Finance agent with the owner's userId.
     expect(financeToolsAllowed({ ...base, trigger: "bot_message" })).toBe(false);
+    // Chief relaying the owner's own question may read the figures; the executor sets this only
+    // for an owner-originated message from the owner's own bot.
+    expect(financeToolsAllowed({ ...base, trigger: "bot_message", ownerAgentPeer: true })).toBe(
+      true,
+    );
+    expect(
+      financeToolsAllowed({ ...base, trigger: "bot_message", ownerAgentPeer: true, groupId: "g" }),
+    ).toBe(false);
     expect(financeToolsAllowed({ ...base, trigger: "messaging" })).toBe(false);
     expect(financeToolsAllowed({ ...base, messagingChannelRun: true })).toBe(false);
     expect(financeToolsAllowed({ ...base, groupId: "g" })).toBe(false);

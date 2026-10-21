@@ -99,7 +99,14 @@ export function AutoSortDialog({
       .plan()
       .then((next: AutoSortPlan) => {
         setPlan(next);
-        setOff(new Set());
+        // Files already in a folder are left alone unless ticked; loose ones are the point.
+        setOff(
+          new Set(
+            next.operations
+              .filter((op) => op.type === "move_item" && op.fromFolderId !== null)
+              .map((op) => op.key),
+          ),
+        );
       })
       .catch((cause: unknown) => setError(errorText(cause)));
   }, []);
@@ -221,16 +228,30 @@ export function AutoSortDialog({
               ) : null}
               {groups.map(({ type, title }) => {
                 const ops = plan.operations.filter((op) => op.type === type);
+                // Moves read by where they go, not as one flat list.
+                const destinations =
+                  type === "move_item"
+                    ? [...new Set(ops.flatMap((op) => (op.type === "move_item" ? [op.to] : [])))]
+                    : [null];
                 return ops.length ? (
                   <section key={type} aria-label={title} className="flex flex-col">
                     <h3 className="px-2 pb-1 text-xs font-medium text-muted-foreground">{title}</h3>
-                    {ops.map((op) => (
-                      <Row
-                        key={op.key}
-                        checked={!off.has(op.key)}
-                        onChange={(on) => toggle(op.key, on)}
-                        {...describe(op)}
-                      />
+                    {destinations.map((to) => (
+                      <div key={to ?? type} className="flex flex-col">
+                        {to !== null ? (
+                          <h4 className="px-2 pt-1 text-xs text-muted-foreground">{to}</h4>
+                        ) : null}
+                        {ops
+                          .filter((op) => to === null || (op.type === "move_item" && op.to === to))
+                          .map((op) => (
+                            <Row
+                              key={op.key}
+                              checked={!off.has(op.key)}
+                              onChange={(on) => toggle(op.key, on)}
+                              {...describe(op)}
+                            />
+                          ))}
+                      </div>
                     ))}
                   </section>
                 ) : null;
@@ -244,7 +265,7 @@ export function AutoSortDialog({
             <Trans>Cancel</Trans>
           </Button>
           <Button type="button" disabled={busy || revealing || chosen.length === 0} onClick={apply}>
-            <Trans>Apply</Trans>
+            {plural(chosen.length, { one: "Apply # change", other: "Apply # changes" })}
           </Button>
         </DialogFooter>
       </DialogContent>

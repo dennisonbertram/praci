@@ -1,0 +1,85 @@
+[
+  {
+    "id": "F-STORY-008-01",
+    "story_id": "STORY-008",
+    "severity": "medium",
+    "category": "hierarchy",
+    "criterion": "Importance encoding",
+    "score": "warn",
+    "description": "Needs you is the only thing the user came for, yet its tile has the same style as Working, PRs open and ACUs; badge weights are all thin outlines (amber, grey, green) so the two Needs-you rows are found by position only. Squint test: the black dot in the sidebar pops more than the tile.",
+    "expected": "Needs you tile or badge visibly the strongest.",
+    "actual": "Four equal tiles; outline badges of equal weight.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-008/screenshots/step-3.png",
+    "suggested_fix": "Strengthen the Needs you tile or badge (ink fill or amber tint), keep others quiet.",
+    "files_likely_involved": [
+      "apps/web/src/pages/devin/",
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-008-02",
+    "story_id": "STORY-008",
+    "severity": "medium",
+    "category": "hierarchy",
+    "criterion": "Information stated once",
+    "score": "warn",
+    "description": "The Needs-you fact is stated four times in the 1440px frame: dot, tile (2), two badges, and again in the agent reply. Catalog says notifications repeat it too.",
+    "expected": "Each role distinct, fewer repeats on the page itself.",
+    "actual": "Dot + tile + badges + panel reply.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-008/screenshots/step-4.png",
+    "suggested_fix": "Keep dot and badges; consider dropping the tile count or making it the filter.",
+    "files_likely_involved": [
+      "apps/web/src/pages/devin/",
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-008-03",
+    "story_id": "STORY-008",
+    "severity": "medium",
+    "category": "a11y",
+    "criterion": "Color contrast",
+    "score": "warn",
+    "description": "Measured contrast on the light page: warning text 3.48:1, success text 4.17:1 (12px badge text) against #fafaf8; both below 4.5. Destructive 4.62:1 passes. Existing 'Active' badge in Legal uses the same success token, so this is systemic.",
+    "expected": "4.5:1 for small text.",
+    "actual": "3.48:1 and 4.17:1.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-008/screenshots/step-4.png",
+    "suggested_fix": "Darken warning and success text tokens for small text.",
+    "files_likely_involved": [
+      "packages/ui-tokens/"
+    ]
+  },
+  {
+    "id": "F-STORY-008-04",
+    "story_id": "STORY-008",
+    "severity": "low",
+    "category": "a11y",
+    "criterion": "Alt text",
+    "score": "warn",
+    "description": "The sidebar dot is a span with aria-label and no role, so many screen readers will not announce '2 need you'. Real sidebar dot behaviour not checked in a story.",
+    "expected": "Name exposed (role=img or visually hidden text).",
+    "actual": "aria-label on a plain span.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-008/screenshots/step-1.png",
+    "suggested_fix": "Use a visually hidden label.",
+    "files_likely_involved": [
+      "apps/web/src/components/shell/SidebarPageLink.tsx"
+    ]
+  },
+  {
+    "id": "F-STORY-008-05",
+    "story_id": "STORY-008",
+    "severity": "low",
+    "category": "error-handling",
+    "criterion": "Empty states",
+    "score": "warn",
+    "description": "Zero state (Needs you 0, no badges, dot gone) is not drawn. Real Legal draws zero tiles (sb-legal-page--needs-consent.png).",
+    "expected": "Zero frame.",
+    "actual": "Not drawn.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-008/screenshots/step-3.png",
+    "suggested_fix": "Add frame.",
+    "files_likely_involved": [
+      "apps/web/src/pages/devin/",
+      "docs/devin/mockup.html"
+    ]
+  }
+]
