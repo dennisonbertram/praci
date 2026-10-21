@@ -18,9 +18,11 @@ function formatAnsweredState(
   outcome?: "created" | "cancelled",
   actions?: AskBlock["actions"],
   consent?: boolean,
+  share?: boolean,
 ): string {
   if (secret) return t`Saved`;
   if (!answer) return t`Answered`;
+  if (share && approval) return answer === "allow" ? t`Shared` : t`Not shared`;
   if (consent && approval) return answer === "allow" ? t`Allowed` : t`Not now`;
   if (!approval) return t`Answered: ${selectedAskActionLabel(answer, actions)}`;
   if (outcome === "created") return t`Created`;
@@ -51,7 +53,10 @@ function approvalActionLabel(
   fallback: string,
   outcome?: "created" | "cancelled",
   consent?: boolean,
+  share?: boolean,
 ): string {
+  if (share && id === "allow") return t`Share`;
+  if (share && id === "deny") return t`Don't share`;
   if (consent && id === "allow") return t`Allow`;
   if (consent && id === "deny") return t`Not now`;
   if (outcome === "created") return t`Create space`;
@@ -188,6 +193,7 @@ export function AskCard({
                 outcome,
                 askActions,
                 Boolean(block.consent),
+                Boolean(block.share),
               )}
             </div>
           );
@@ -240,6 +246,7 @@ export function AskCard({
                       action.label,
                       action.outcome,
                       Boolean(block.consent),
+                      Boolean(block.share),
                     )
                   ) : (
                     action.label

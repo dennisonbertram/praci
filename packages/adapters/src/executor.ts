@@ -115,6 +115,7 @@ import {
   nextCronDateAcross,
   nextFence,
   ownsLine,
+  PrivateFragments,
   parseSkillMd,
   plainRunError,
   planActionGate,
@@ -535,6 +536,19 @@ import {
 import { VOICE_WORKSPACE_TOOL_NAMES, voiceAgentToolFromTool } from "./voice-agent-tools.js";
 import { createWebProvider } from "./web-provider-factory.js";
 import { webFetchFromTool, webSearchFromTool } from "./web-tools.js";
+
+/** Tools whose result is public to anyone: what a web page says. Every other result is private. */
+const PUBLIC_RESULT_TOOLS = new Set(["web_search", "web_fetch"]);
+/** Results that carry nothing to protect (the model's own words, or only a status). */
+const NO_FRAGMENT_TOOLS = new Set([
+  "message_bot",
+  "message_user",
+  "notify_user",
+  "ask_user",
+  "skill_read",
+  "show_image",
+  "render_plot",
+]);
 
 export const READ_ONLY_AGENT_TOOLS = new Set([
   "imessage_list_conversations",
@@ -1582,6 +1596,44 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 ...loadedMessages.flatMap((message) => message.blocks as MessageBlock[]),
               ]);
         const externalTaint = () => externalChain !== undefined;
+        // What this run read from private sources, and what is public to a recipient (the external
+        // person's own words, web pages). A message to an external bot that repeats a private
+        // fragment is held for the owner instead of sent.
+        const privateFragments = new PrivateFragments();
+        let chainFragmentsLoaded: Promise<void> | undefined;
+        const loadChainFragments = () => {
+          chainFragmentsLoaded ??= (async () => {
+            const received = [
+              ...(run.trigger === "bot_message" && peerMessage
+                ? [peerMessage as MessageBlock]
+                : []),
+              ...loadedMessages.flatMap((message) => message.blocks as MessageBlock[]),
+            ].filter((block) => block.kind === "bot_message_received");
+            if (received.length === 0) return;
+            const senders = await deps.prisma.bot.findMany({
+              where: {
+                id: { in: [...new Set(received.map((block) => block.fromBotId))] },
+                spaceId: run.spaceId,
+                userId: run.userId,
+              },
+              select: { id: true, audience: true },
+            });
+            const internal = new Set(
+              senders.filter((sender) => sender.audience !== "external").map((sender) => sender.id),
+            );
+            for (const block of received) {
+              // An internal bot's answer is private; an external bot's request, or a message from
+              // another Space, is the other side's own text.
+              if (internal.has(block.fromBotId)) privateFragments.addPrivate(block.text);
+              else privateFragments.addPublic(block.text);
+            }
+          })();
+          return chainFragmentsLoaded;
+        };
+        const outboundFragments = async () => {
+          await loadChainFragments();
+          return privateFragments;
+        };
         // No automatic private context for an external bot, or for any bot answering an external chain.
         const restrictedContext = bot.audience === "external" || externalChain !== undefined;
         // The wake prompt carries the reply body (already escaped); mark that body as meeting text too.
@@ -2013,7 +2065,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               { id: bot.id, name: bot.name },
               `Could not complete the delegated request: ${message}`,
               "status",
-              { forceUnread: true, externalChain },
+              { forceUnread: true, externalChain, outbound: outboundFragments },
             ).catch((error) => getLogger().error("bot message failure return", error));
           }
           if (!failed.continuationRunId) {
@@ -3005,6 +3057,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
         ) => {
           try {
             const result = await applyToolCall(name, args, executionId, route, observer);
+            if (!isToolPauseResult(result) && !NO_FRAGMENT_TOOLS.has(name)) {
+              const text = JSON.stringify(result);
+              if (PUBLIC_RESULT_TOOLS.has(name)) privateFragments.addPublic(text);
+              else privateFragments.addPrivate(text);
+            }
             const settle = settleReadEffect.get(executionId);
             if (settle && !isToolPauseResult(result)) {
               await settle(result).catch((error: unknown) =>
@@ -5830,6 +5887,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 ownerAgentsOnly: isBackgroundRunTrigger(run.trigger),
                 ownerOrigin: ownerOriginRun,
                 externalChain,
+                outbound: outboundFragments,
               },
             );
             if (!sent.ok) return finish({ error: sent.error });
@@ -6727,7 +6785,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                     { id: bot.id, name: bot.name },
                     stuckText,
                     "result",
-                    { forceUnread: true, externalChain },
+                    { forceUnread: true, externalChain, outbound: outboundFragments },
                   ).catch((error) => getLogger().error("bot message loop-guard return", error));
                 }
                 runAbortController?.abort();
@@ -6974,7 +7032,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               { id: bot.id, name: bot.name },
               botMessageOutcome.text,
               botMessageOutcome.intent,
-              { externalChain },
+              { externalChain, outbound: outboundFragments },
             ).catch((error) => getLogger().error("bot message result return", error));
           }
           const notifyBody = completionNotificationPreview(text);

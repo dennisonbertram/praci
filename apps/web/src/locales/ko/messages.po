@@ -3930,6 +3930,10 @@ msgstr ""
 msgid "Don’t have an account?"
 msgstr "계정이 없나요?"
 
+#: src/components/AskCard.tsx
+msgid "Don't share"
+msgstr ""
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -6485,6 +6489,10 @@ msgstr ""
 msgid "Not sent. {text}"
 msgstr ""
 
+#: src/components/AskCard.tsx
+msgid "Not shared"
+msgstr ""
+
 #: src/components/inbox/InboxRow.tsx
 #: src/pages/Inbox.tsx
 msgid "Not spam"
@@ -8429,6 +8437,11 @@ msgstr "설정 도움말"
 msgid "Shape"
 msgstr "모양"
 
+#: src/components/AskCard.tsx
+msgid "Share"
+msgstr ""
+
+#: src/components/AskCard.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Shared"
 msgstr "함께 사용"

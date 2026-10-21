@@ -45,6 +45,7 @@ import type {
 } from "@rakazo/adapters";
 import {
   acquireComputerExecutionLease,
+  answerBotShare,
   applyCodexLiveCatalog,
   applyPendingSenderRules,
   applyTeachingDesktopInput,
@@ -79,6 +80,7 @@ import {
   enqueueTakeoverContinuation,
   ensureComputerWorkspaceLayout,
   expireComputerControl,
+  findBotShareEffect,
   forgetBotSecret,
   getBotPage,
   getBotPins,
@@ -3183,6 +3185,22 @@ export function createRouter(deps: RouterDeps) {
                 getLogger().error("thread answer enqueue", error);
               }),
           );
+          return { ok: true as const };
+        }
+        // A held bot-to-bot message is answered without a waiting run: Share delivers the stored
+        // text once, Don't share delivers nothing. The card says which; the client sends no text.
+        const scope = {
+          spaceId: context.actor.spaceId,
+          userId: context.actor.userId,
+          threadId: target.threadId,
+        };
+        if (await findBotShareEffect(deps.prisma, scope, input)) {
+          const shared = await answerBotShare(deps, scope, input);
+          if (!shared) {
+            throw new ORPCError("CONFLICT", {
+              message: "This prompt is no longer awaiting an answer",
+            });
+          }
           return { ok: true as const };
         }
         const answered = await deps.events.answerRunInput({

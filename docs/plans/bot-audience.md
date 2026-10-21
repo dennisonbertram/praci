@@ -1,6 +1,6 @@
 # Bot audience: Internal / External
 
-Status: phases 1 and 2 built; phase 3 next; the classifier (phase 4) and mobile (phase 5) are deferred. File and line references are to `origin/main` at f7390bb72 and were read directly; lines move, so use the function names to find things.
+Status: phases 1 to 3 built; the classifier (phase 4) and mobile (phase 5) are deferred. File and line references are to `origin/main` at f7390bb72 and were read directly; lines move, so use the function names to find things.
 
 ## Summary
 
@@ -46,6 +46,16 @@ Deferred: open questions 6 (classifier key), 7 (pre-approved topics) and 8 (visi
 - Gate: `externalTaintedCall` makes every call outside `EXTERNAL_TAINT_FREE_TOOLS` (`ask_user`, `skill_read`) ask on a card with no "Always allow", no money-name or mail-account lookups, and the first reason line "Requested by an external bot". Read-only tools (mail_search and similar) no longer skip the gate in a marked run, and their effect is settled after the call so a retry returns the stored result. `message_bot` asks too, as the plan says; this over-asks for External to Chief to Finance and can be loosened later.
 - Automatic private context: the plan wanted reads to ask first; injected context cannot ask, so a run answering a marked chain gets none of it (the safer choice): no bot or shared user memory, ticket context, semantic recall, agent environment names, connected-plugin list, or compacted summary of the thread. Backup models stay as they were. `run_subagent` and `request_takeover` are not offered in a marked run.
 - Known gap: the marked bot's own earlier thread history (for example Chief's chat with the owner) is still in its context window. The notice and the approval card cover disclosure; phase 3's outbound check is the control that sees what leaves. Trimming that history is a follow-up.
+
+### What phase 3 built (differences from the design text)
+
+- Spike result: a held-share card can be created from `returnBotMessageOutcome` with no live run. It is one effect row and one ordinary chat message written in a transaction, so the automatic return, an explicit `message_bot`, and the reconciler all hold through the same `messageBot` path. The card is answered without a waiting run (`threads.answer` finds a card with `share: true` first), so the existing run-pause code is untouched.
+- Record: a run keeps a `PrivateFragments` set. Every tool result except web pages and a short list of status-only tools is private; web results and the external person's own words are public; answers from internal bots in the run's history window are private. Nothing is written to the database, so a crash or the reconciler return has no record and is held (fail closed).
+- Check: `checkOutbound` (core, deterministic, offline) runs on every message whose target is an External bot, from `message_bot` and from the automatic result return. Caught: email addresses (any case, inside links), numbers of four or more digits in any separator style (a bare year is ignored), names a tool returned under a name field or in a `Name <email>` header (any case and spacing), and copied passages of eight or more words. Not caught: paraphrase, spelled-out or scaled numbers ("sixty thousand", "$60k", "1.2M"), obfuscated addresses, names spelled differently, one-word names, and anything the run never read through a tool (including memory the model recalls from its own thread history). A fragment that also appears in public text is never flagged. Messages to an Internal bot are not checked; the relay to the External bot is.
+- Hold: the message is not sent. One `bot_message_share` effect (idempotent per run, recipient and exact text) holds it, a card "Share with {name}?" shows the exact text in the sender's chat, the owner is notified (the title names the bot and the body only the recipient, never the text), and the External bot receives the fixed words "This needs the owner's approval before it can be shared."
+- Answer: Share claims the effect (intended to executing, one update), delivers the stored text with the original call's options and a delivery key, then completes it; a replay, a second Share, or a late Don't share is refused. The client sends no text, so nothing can be edited in. Don't share delivers only "That isn't available." A failed delivery returns the effect to intended so the owner can retry.
+- Cross-Space deliveries (`message_agent`) are not checked here; they are marked External since phase 2.
+- Classifier (phase 4) is not built; `checkOutbound` is the single place it would add holds.
 
 ## Problem and threat model
 

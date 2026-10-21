@@ -19,6 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as AiConsentModule from "./ai-consent.js";
 import { DENIED_ACTION_MESSAGE, isApprovalPausedResult } from "./approval-effect.js";
 import { BlueBubblesEmulator, createEmulatedBlueBubblesPlatform } from "./bluebubbles-emulator.js";
+import type { MessageBotOptions } from "./bot-messages.js";
 import { MAX_SHARED_MEMORY_CHARS } from "./builtin-tools.js";
 import { ChatSdkMessagingSurface } from "./chat-sdk-surface.js";
 import { ConnectorRegistry } from "./composio-connector.js";
@@ -217,7 +218,7 @@ function fixture({
   mail?: unknown;
   /** The messaging dep, as createMessagingContextLoader builds it. */
   messaging?: unknown;
-  afterCall?: (index: number) => void;
+  afterCall?: (index: number) => void | Promise<void>;
   builtin?: boolean;
   disabledBuiltinTools?: string[];
   audience?: "internal" | "external";
@@ -529,7 +530,7 @@ function fixture({
         call.executionId,
       );
       results.push(result);
-      afterCall?.(results.length - 1);
+      await afterCall?.(results.length - 1);
       if (isApprovalPausedResult(result)) return;
     }
     yield { type: "done" as const, text: "Done" };
@@ -3758,5 +3759,28 @@ describe("runs that began with an external bot", () => {
     const open = await run([]);
     expect(JSON.stringify([open.instructions, open.history])).toContain("PRIVATE-USER-MEMORY-FACT");
     expect(open.instructions).not.toContain("Security notice");
+  });
+});
+
+describe("what a run read is checked before it reaches an external bot", () => {
+  it("records private tool results, so a later message repeating one is held", async () => {
+    sentBotMessages.calls.length = 0;
+    const f: ReturnType<typeof fixture> = fixture({
+      name: "demo_get_item",
+      afterCall: async () => {
+        await f.request()!.executeTool!(
+          "message_bot",
+          { bot_id: "bot-ext", message: "Write to priya@halcyon.example" },
+          "send-1",
+        );
+      },
+    });
+    f.setCalls([{ args: { id: "Priya Shah <priya@halcyon.example>" }, executionId: "read-1" }]);
+    await f.run();
+    const options = sentBotMessages.calls.at(-1)![4] as MessageBotOptions;
+    const fragments = await options.outbound!();
+    // The connector read is private: its email is flagged in any case, an unrelated one is not.
+    expect(fragments.matches("PRIYA@HALCYON.EXAMPLE")).toContain("email");
+    expect(fragments.matches("support@halcyon.example")).toEqual([]);
   });
 });

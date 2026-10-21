@@ -1,11 +1,18 @@
+import { createHash } from "node:crypto";
 import { runContinueJob } from "@rakazo/adapter-kit";
 import type { BotMessageIntent, MessageBlock } from "@rakazo/contracts";
-import { isOwnerAgentSpawnKey } from "@rakazo/contracts";
+import {
+  BOT_SHARE_EFFECT_KIND,
+  BOT_SHARE_HELD_MESSAGE,
+  isOwnerAgentSpawnKey,
+} from "@rakazo/contracts";
+import type { PrivateFragments } from "@rakazo/core";
 import {
   BOT_MESSAGE_MAX_LENGTH,
   botMessageContext,
   botMessageHopExhausted,
   buildBotMessageWakePrompt,
+  checkOutbound,
   clampBotMessage,
   nextBotMessageHop,
   resolveBotAddress,
@@ -20,6 +27,7 @@ import {
 import { getLogger } from "@rakazo/logging";
 import type { ExecutorDeps } from "./executor.js";
 import { markMeetingTaintOnDelivery } from "./meeting-tools.js";
+import { notifyThreadEvent } from "./run-notification.js";
 
 /**
  * The hop the current run sits at, read back from the message that woke this
@@ -69,8 +77,43 @@ export async function loadBotMessageContext(
 export const EXTERNAL_MESSAGE_REFUSED =
   "You can only message the bots your owner has chosen for you.";
 
+export type MessageBotOptions = {
+  allowTerminalSource?: boolean;
+  forceUnread?: boolean;
+  ownerAgentsOnly?: boolean;
+  ownerOrigin?: boolean;
+  /** The sending run's own mark (from its history window), which the stored chain may not carry. */
+  externalChain?: { name?: string };
+  /**
+   * What the sending run read from private sources. Needed to send to an external bot: a message
+   * to one goes out only if it repeats none of it, and with no snapshot it is held.
+   */
+  outbound?: () => Promise<PrivateFragments>;
+  /** The owner approved this exact text on a card: skip the outbound check. */
+  approvedShare?: boolean;
+  /** A fixed server-written message (never model text): skip the outbound check. */
+  serverText?: boolean;
+  /** The sending run may be in any state (a held message is answered long after its run ended). */
+  anyRunState?: boolean;
+};
+
+export type MessageBotResult =
+  | { ok: false; error: string }
+  | {
+      ok: true;
+      botId: string;
+      name: string;
+      delivered: string;
+      note: string;
+      replayed?: true;
+      held?: true;
+    };
+
+type BotMessageDeps = Pick<ExecutorDeps, "prisma" | "events" | "jobs"> &
+  Partial<Pick<ExecutorDeps, "notificationEvents">>;
+
 export async function messageBot(
-  deps: Pick<ExecutorDeps, "prisma" | "events" | "jobs">,
+  deps: BotMessageDeps,
   run: {
     id: string;
     spaceId: string;
@@ -87,15 +130,8 @@ export async function messageBot(
     intent?: BotMessageIntent;
     deliveryKey?: string;
   },
-  options?: {
-    allowTerminalSource?: boolean;
-    forceUnread?: boolean;
-    ownerAgentsOnly?: boolean;
-    ownerOrigin?: boolean;
-    /** The sending run's own mark (from its history window), which the stored chain may not carry. */
-    externalChain?: { name?: string };
-  },
-) {
+  options?: MessageBotOptions,
+): Promise<MessageBotResult> {
   const message = String(input.message ?? "").trim();
   if (!message) return { ok: false as const, error: "message is required" };
   if (message.length > BOT_MESSAGE_MAX_LENGTH) {
@@ -192,6 +228,17 @@ export async function messageBot(
     };
   }
 
+  // Anything on its way to an external bot is checked against what this run read from private
+  // sources. A flagged message is not sent: the owner sees it on a card and the external bot is
+  // told, in fixed words, that it needs approval.
+  if (target.audience === "external" && !options?.approvedShare && !options?.serverText) {
+    const fragments = options?.outbound ? await options.outbound() : undefined;
+    // No snapshot means the run's reads are unknown, so the message is held.
+    if (!fragments || !checkOutbound({ text: message, fragments }).allow) {
+      return holdShare(deps, run, sender, target, message, intent, options);
+    }
+  }
+
   const targetThreadId = target.thread.id;
 
   // A tool call can be re-executed after a lease expiry, so a delivery has to be
@@ -271,9 +318,11 @@ export async function messageBot(
             threadId: run.threadId,
             botId: run.botId,
             userId: run.userId,
-            status: options?.allowTerminalSource
-              ? { in: ["completed", "failed", "cancelled"] }
-              : "running",
+            status: options?.anyRunState
+              ? { in: ["running", "completed", "failed", "cancelled"] }
+              : options?.allowTerminalSource
+                ? { in: ["completed", "failed", "cancelled"] }
+                : "running",
           },
           select: { id: true },
         });
@@ -303,7 +352,7 @@ export async function messageBot(
           botId: run.botId,
           runId: run.id,
           markUnread: options?.forceUnread === true,
-          allowCancelledRun: options?.allowTerminalSource === true,
+          allowCancelledRun: options?.allowTerminalSource === true || options?.anyRunState === true,
         });
         const inboundBlock: MessageBlock = {
           kind: "bot_message_received",
@@ -381,7 +430,7 @@ export async function messageBot(
           botId: run.botId,
           type: "thread.message.created",
           runId: run.id,
-          allowCancelledRun: options?.allowTerminalSource === true,
+          allowCancelledRun: options?.allowTerminalSource === true || options?.anyRunState === true,
           payload: { messageId: outbound.id, role: "bot", blocks: [outboundBlock] },
         });
         return {
@@ -426,9 +475,157 @@ export async function messageBot(
   };
 }
 
+/**
+ * Hold a message for the owner instead of sending it. One durable effect per (run, recipient,
+ * exact text) and a card in the sender's own chat; both are written without a live run, so the
+ * automatic result return, which runs after the model has stopped, can hold too. The external bot
+ * gets a fixed server-written message so it can tell the person. Nothing the model wrote reaches
+ * it until the owner approves this exact text (see answerBotShare).
+ */
+async function holdShare(
+  deps: BotMessageDeps,
+  run: {
+    id: string;
+    spaceId: string;
+    threadId: string;
+    botId: string;
+    userId: string;
+    sourceMessageId?: string | null;
+  },
+  sender: { id: string; name: string },
+  target: { id: string; name: string },
+  message: string,
+  intent: BotMessageIntent,
+  options?: MessageBotOptions,
+): Promise<MessageBotResult> {
+  const idempotencyKey = `bot-share:${run.id}:${createHash("sha256")
+    .update(`${target.id}\0${message}`)
+    .digest("hex")
+    .slice(0, 40)}`;
+  const heldResult = {
+    ok: true as const,
+    botId: target.id,
+    name: target.name,
+    held: true as const,
+    delivered: BOT_SHARE_HELD_MESSAGE,
+    note: `This needs the owner's approval before it can be shared with ${target.name}. ${target.name} was told so and nothing else was sent.`,
+  };
+  const terminal = options?.allowTerminalSource === true || options?.anyRunState === true;
+  let created: { effectId: string; seq: number } | undefined;
+  try {
+    created = await withTransactionRetry(() =>
+      deps.prisma.$transaction(async (tx) => {
+        const existing = await tx.externalEffect.findUnique({ where: { idempotencyKey } });
+        if (existing) return undefined;
+        const effect = await tx.externalEffect.create({
+          data: {
+            spaceId: run.spaceId,
+            runId: run.id,
+            kind: BOT_SHARE_EFFECT_KIND,
+            idempotencyKey,
+            status: "intended",
+            request: {
+              fromBotId: sender.id,
+              toBotId: target.id,
+              text: message,
+              intent,
+              replay: {
+                allowTerminalSource: options?.allowTerminalSource === true,
+                forceUnread: options?.forceUnread === true,
+                ownerAgentsOnly: options?.ownerAgentsOnly === true,
+                ownerOrigin: options?.ownerOrigin === true,
+                externalChain: options?.externalChain ?? null,
+              },
+            },
+          },
+        });
+        const blocks: MessageBlock[] = [
+          {
+            kind: "ask",
+            approvalEffectId: effect.id,
+            share: true,
+            text: `Share with ${target.name}?`,
+            detail: message,
+            status: "pending",
+            actions: [
+              { id: "allow", label: "Share" },
+              { id: "deny", label: "Don't share" },
+            ],
+          },
+        ];
+        const card = await createThreadMessageInTransaction(tx, {
+          threadId: run.threadId,
+          role: "bot",
+          blocks,
+          botId: run.botId,
+          runId: run.id,
+          markUnread: true,
+          allowCancelledRun: terminal,
+        });
+        const event = await appendEventInTransaction(tx, {
+          spaceId: run.spaceId,
+          threadId: run.threadId,
+          botId: run.botId,
+          type: "thread.message.created",
+          runId: run.id,
+          allowCancelledRun: terminal,
+          payload: { messageId: card.id, role: "bot", blocks },
+        });
+        return { effectId: effect.id, seq: event.seq };
+      }),
+    );
+  } catch (error) {
+    // A concurrent retry created it first: the card already exists.
+    if (!isUniqueViolation(error)) throw error;
+  }
+  if (!created) {
+    const existing = await deps.prisma.externalEffect.findUnique({ where: { idempotencyKey } });
+    // Already shared, or the owner said no: do not hold again or send anything.
+    if (existing?.status === "completed") {
+      return { ...heldResult, held: undefined, note: `Already sent to ${target.name}.` };
+    }
+    return heldResult;
+  }
+  await deps.events.notify(run.threadId, created.seq).catch((error) => {
+    getLogger().error("held share realtime notification", error);
+  });
+  // Tell the owner; the body names the recipient only, never the held text.
+  try {
+    await notifyThreadEvent(
+      deps.prisma,
+      deps.notificationEvents,
+      { ...run, botId: run.botId },
+      {
+        kind: "help",
+        title: `${sender.name} needs approval`,
+        body: `Share with ${target.name}?`,
+        botId: run.botId,
+        threadId: run.threadId,
+      },
+      `${created.effectId}\nshare`,
+    );
+  } catch (error) {
+    getLogger().error("held share notification", error);
+  }
+  const told = await messageBot(
+    deps,
+    run,
+    sender,
+    {
+      bot_id: target.id,
+      message: BOT_SHARE_HELD_MESSAGE,
+      intent,
+      deliveryKey: `share-held:${created.effectId}`,
+    },
+    { ...options, serverText: true, outbound: undefined },
+  );
+  if (!told.ok) return told;
+  return heldResult;
+}
+
 /** Return a delegated run's terminal outcome unless it already sent one explicitly. */
 export async function returnBotMessageOutcome(
-  deps: Pick<ExecutorDeps, "prisma" | "events" | "jobs">,
+  deps: BotMessageDeps,
   run: {
     id: string;
     spaceId: string;
@@ -440,7 +637,11 @@ export async function returnBotMessageOutcome(
   sender: { id: string; name: string },
   text: string,
   intent: "result" | "status" = "result",
-  options?: { forceUnread?: boolean; externalChain?: { name?: string } },
+  options?: {
+    forceUnread?: boolean;
+    externalChain?: { name?: string };
+    outbound?: () => Promise<PrivateFragments>;
+  },
 ) {
   const source = await loadBotMessageContext(deps.prisma, run.sourceMessageId);
   if (!source) {
@@ -486,6 +687,7 @@ export async function returnBotMessageOutcome(
       allowTerminalSource: true,
       forceUnread: options?.forceUnread,
       externalChain: options?.externalChain,
+      outbound: options?.outbound,
     },
   );
   if (outcome.ok) await markBotOutcomeReturned(deps.prisma, run.id);
