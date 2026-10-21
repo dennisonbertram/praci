@@ -812,7 +812,6 @@ msgid "Add connected models to use them as backups."
 msgstr "Add connected models to use them as backups."
 
 #: src/components/ContactDialog.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
 msgid "Add contact"
 msgstr "Add contact"
@@ -4569,7 +4568,6 @@ msgstr "Full screen"
 msgid "Fullscreen"
 msgstr "Fullscreen"
 
-#: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Fully diluted shares"
 msgstr "Fully diluted shares"
@@ -6647,6 +6645,10 @@ msgstr "Open chat"
 msgid "Open computer settings"
 msgstr "Open computer settings"
 
+#: src/pages/CapTable.tsx
+msgid "Open Contacts"
+msgstr "Open Contacts"
+
 #: src/pages/Legal.tsx
 msgid "Open deadlines"
 msgstr "Open deadlines"
@@ -6877,6 +6879,10 @@ msgstr "Owner"
 #: src/pages/CapTable.tsx
 msgid "Ownership"
 msgstr "Ownership"
+
+#: src/pages/CapTable.tsx
+msgid "Ownership by share class"
+msgstr "Ownership by share class"
 
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
@@ -7965,10 +7971,9 @@ msgstr "Runway scenarios"
 msgid "Safe"
 msgstr "Safe"
 
-#. placeholder {0}: safes.length
 #: src/pages/CapTable.tsx
-msgid "SAFEs ({0}, {total}) are not included until they convert"
-msgstr "SAFEs ({0}, {total}) are not included until they convert"
+msgid "SAFEs are not in the share counts"
+msgstr "SAFEs are not in the share counts"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Sales & CRM"
