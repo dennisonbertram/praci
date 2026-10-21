@@ -294,3 +294,20 @@ it("renders a toast without an action as before: one button for the card, no act
   expect(cards()[0]?.hasAttribute("data-has-action")).toBe(false);
   expect(cards()[0]?.querySelectorAll("button")).toHaveLength(2);
 });
+
+it("caps the column of Undo toasts so the newest one stays reachable", async () => {
+  await mount();
+  await addUndo(5);
+  const column = cards()[0]?.parentElement as HTMLElement;
+  expect(column.className).toContain("max-h-");
+  expect(column.className).toContain("overflow-y-auto");
+  expect(cards()[0]?.textContent).toContain("Deleted 5");
+});
+
+it("reserves the peek of the rear sheets above the front toast", async () => {
+  await mount();
+  await add(3);
+  const stack = cards()[0]?.parentElement as HTMLElement;
+  // jsdom measures no heights, so the front is 0px and two rear sheets reserve 2 x 16px.
+  expect(stack.style.getPropertyValue("--stack")).toBe("32px");
+});

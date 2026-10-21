@@ -148,6 +148,12 @@ function ToastList({
   const heights = visible.map((t) => t.height || 0);
   const fanned = heights.reduce((sum, h) => sum + h, 0) + GAP_PX * Math.max(0, visible.length - 1);
   // Offset of each toast from the bottom when fanned out.
+  // A closing toast's height is 0 during its exit, so the front is the first one still open.
+  const frontIndex = visible.findIndex((t) => t.transitionStatus !== "ending");
+  const front = frontIndex < 0 ? 0 : heights[frontIndex] || 0;
+  // Rear sheets stick up above the front one by PEEK_PX each; the wrapper reserves that too.
+  const PEEK_PX = 16;
+  const rear = Math.max(0, visible.filter((t) => t.transitionStatus !== "ending").length - 1);
   const offsets = heights.map((_, i) => heights.slice(0, i).reduce((sum, h) => sum + h, 0));
   const renderCard = (
     toast: ToastItem,
@@ -196,7 +202,7 @@ function ToastList({
   return (
     <>
       {actions.length > 0 ? (
-        <div className="mb-2 flex flex-col gap-2">
+        <div className="pointer-events-auto mb-2 flex max-h-[40vh] flex-col gap-2 overflow-y-auto">
           {actions.map((toast) =>
             renderCard(
               toast,
@@ -207,10 +213,11 @@ function ToastList({
       ) : null}
       {visible.length > 0 ? (
         <div
-          className="relative group-data-[expanded]/viewport:h-[var(--fanned)] h-[var(--front)] transition-[height] duration-300"
+          className="relative group-data-[expanded]/viewport:h-[var(--fanned)] h-[var(--stack)] transition-[height] duration-300"
           style={
             {
-              "--front": `${heights[0] || 0}px`,
+              "--front": `${front}px`,
+              "--stack": `${front + rear * PEEK_PX}px`,
               "--fanned": `${fanned}px`,
             } as CSSProperties
           }
