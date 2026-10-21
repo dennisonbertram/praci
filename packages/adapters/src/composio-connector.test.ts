@@ -1,6 +1,8 @@
 import type { AdapterContext, ConnectorEvent, ConnectorTool } from "@rakazo/adapter-kit";
+import type { PrismaClient } from "@rakazo/db";
 import { createLogger, createTestSink, installLogger } from "@rakazo/logging";
 import { describe, expect, it, vi } from "vitest";
+import { createCompanyConnectionReader } from "./company-connection-reader.js";
 import { composioToolkitDirectory } from "./composio-catalog-cache.js";
 import {
   asConnectorTools,
@@ -29,6 +31,9 @@ const composioSdkState = vi.hoisted(() => ({
   executeResult: null as null | { data: Record<string, unknown>; error: string | null },
   failTools: null as null | string[],
   githubReadOnlyHint: undefined as boolean | undefined,
+  slackToolName: "SLACK_FETCH_CONVERSATION_HISTORY",
+  slackReadOnlyHint: undefined as boolean | undefined,
+  slackDestructiveHint: undefined as boolean | undefined,
   logIds: null as null | string[],
   connectedAccounts: {
     list: async (_query?: Record<string, unknown>) => ({ items: [] as Array<{ id: string }> }),
@@ -107,8 +112,13 @@ vi.mock("@composio/core", () => ({
       }
 
       const scopedToCanonicalGithub = toolkits.includes("GITHUB");
+      const scopedToSlack = toolkits.includes("SLACK");
       const session = {
-        sessionId: scopedToCanonicalGithub ? "github-session" : "unscoped-session",
+        sessionId: scopedToCanonicalGithub
+          ? "github-session"
+          : scopedToSlack
+            ? "slack-session"
+            : "unscoped-session",
         tools: async () =>
           scopedToCanonicalGithub
             ? [
@@ -124,7 +134,31 @@ vi.mock("@composio/core", () => ({
                   },
                 },
               ]
-            : [],
+            : scopedToSlack
+              ? [
+                  {
+                    type: "function",
+                    function: {
+                      name: composioSdkState.slackToolName,
+                      description: "Synthetic Slack tool",
+                      parameters: { type: "object", properties: {} },
+                      ...(composioSdkState.slackReadOnlyHint === undefined &&
+                      composioSdkState.slackDestructiveHint === undefined
+                        ? {}
+                        : {
+                            annotations: {
+                              ...(composioSdkState.slackReadOnlyHint === undefined
+                                ? {}
+                                : { readOnlyHint: composioSdkState.slackReadOnlyHint }),
+                              ...(composioSdkState.slackDestructiveHint === undefined
+                                ? {}
+                                : { destructiveHint: composioSdkState.slackDestructiveHint }),
+                            },
+                          }),
+                    },
+                  },
+                ]
+              : [],
         execute: async (tool: string, args: Record<string, unknown>) => {
           composioSdkState.executions.push({ tool, args });
           const failed = composioSdkState.failTools?.includes(tool) ?? false;
@@ -167,15 +201,21 @@ describe("composio tool mapping", () => {
   });
 
   it("preserves only explicit read-only metadata from Composio tools", () => {
-    const [read, write, unknown] = asConnectorTools([
+    const [read, write, unknown, destructive] = asConnectorTools([
       { slug: "GMAIL_FETCH_EMAILS", readOnly: true },
       { slug: "GMAIL_SEND_EMAIL", annotations: { readOnlyHint: false } },
       { slug: "GMAIL_OTHER" },
+      {
+        slug: "SLACK_FETCH_CONVERSATION_HISTORY",
+        readOnly: true,
+        annotations: { destructiveHint: true },
+      },
     ]);
 
     expect(read?.readOnly).toBe(true);
     expect(write?.readOnly).toBe(false);
     expect(unknown?.readOnly).toBeUndefined();
+    expect(destructive?.readOnly).toBe(false);
   });
 
   it("retains provider route metadata independently of the tool name", async () => {
@@ -362,6 +402,117 @@ describe("composio tool mapping", () => {
       composioSdkState.connectedAccounts.list = previous;
     };
   }
+
+  it("dispatches a missing-annotation Slack read through the pinned Company reader", async () => {
+    composioSdkState.created.length = 0;
+    composioSdkState.executions.length = 0;
+    composioSdkState.sessions.clear();
+    composioToolkitDirectory.invalidate();
+    composioSdkState.slackToolName = "SLACK_FETCH_CONVERSATION_HISTORY";
+    composioSdkState.slackReadOnlyHint = undefined;
+    composioSdkState.slackDestructiveHint = undefined;
+    const restore = stubActiveAccounts(["ca-slack"]);
+    const slackConnection = {
+      id: "connection-slack",
+      connectorId: "composio",
+      provider: "slack",
+      providerRef: "ca-slack",
+      displayName: "Synthetic Slack",
+      allAgents: true,
+      privateByDefault: false,
+      status: "connected",
+    };
+    const prisma = {
+      spaceMember: { findUnique: async () => ({ userId: "user-1" }) },
+      companySourceBlock: { findMany: async () => [] },
+      connection: { findFirst: async () => slackConnection },
+    } as unknown as PrismaClient;
+    const reader = createCompanyConnectionReader({
+      prisma,
+      connectors: new ComposioConnector(),
+      mcp: {} as never,
+    });
+    const source = {
+      id: "source-slack",
+      sourceKind: "slack",
+      connectionId: slackConnection.id,
+      scope: {},
+    };
+    const context: AdapterContext = {
+      operationId: "company-slack-dispatch",
+      traceId: "company-slack-dispatch",
+      spaceId: "space-1",
+      userId: "user-1",
+      signal: new AbortController().signal,
+    };
+    try {
+      await expect(
+        reader.callTool(source, "SLACK_FETCH_CONVERSATION_HISTORY", {}, context),
+      ).resolves.toMatchObject({ data: { ok: true } });
+      expect(composioSdkState.created).toContainEqual(
+        expect.objectContaining({
+          userId: "user-1",
+          config: expect.objectContaining({
+            connectedAccounts: { SLACK: ["ca-slack"] },
+          }),
+        }),
+      );
+      expect(composioSdkState.executions.map(({ tool }) => tool)).toEqual([
+        "SLACK_FETCH_CONVERSATION_HISTORY",
+      ]);
+
+      composioSdkState.executions.length = 0;
+      composioSdkState.slackReadOnlyHint = false;
+      await expect(
+        reader.callTool(source, "SLACK_FETCH_CONVERSATION_HISTORY", {}, context),
+      ).rejects.toThrow("Company tool is not an approved read");
+      const directEvents: ConnectorEvent[] = [];
+      const directContext = {
+        ...context,
+        connectedAppAgentConnectionId: slackConnection.id,
+        connectedConnections: [
+          {
+            id: slackConnection.id,
+            connectorId: "composio",
+            externalId: slackConnection.provider,
+            providerRef: "ca-slack",
+            displayName: "Synthetic Slack",
+          },
+        ],
+      } as AdapterContext;
+      for await (const event of new ComposioConnector().execute(
+        {
+          tool: "SLACK_FETCH_CONVERSATION_HISTORY",
+          args: {},
+          executionId: "company-slack-explicit-false",
+          route: {
+            connectorId: "composio",
+            connectionId: slackConnection.id,
+            toolName: "SLACK_FETCH_CONVERSATION_HISTORY",
+            discoveredReadOnly: true,
+          },
+          authorizeUnannotatedRead: () => true,
+        },
+        directContext,
+      ))
+        directEvents.push(event);
+      expect(directEvents.some((event) => event.type === "error")).toBe(true);
+      expect(composioSdkState.executions).toEqual([]);
+
+      composioSdkState.slackToolName = "SLACK_SEND_MESSAGE";
+      composioSdkState.slackReadOnlyHint = true;
+      await expect(reader.listTools(source, context)).resolves.toEqual([]);
+      await expect(reader.callTool(source, "SLACK_SEND_MESSAGE", {}, context)).rejects.toThrow(
+        "Company tool is not an approved read",
+      );
+      expect(composioSdkState.executions).toEqual([]);
+    } finally {
+      restore();
+      composioSdkState.slackToolName = "SLACK_FETCH_CONVERSATION_HISTORY";
+      composioSdkState.slackReadOnlyHint = undefined;
+      composioSdkState.slackDestructiveHint = undefined;
+    }
+  });
 
   it("returns directory metadata without opening an actor session", async () => {
     const previous = composioSdkState.connectedAccounts.list;

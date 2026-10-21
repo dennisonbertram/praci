@@ -293,6 +293,8 @@ export interface ConnectorCall {
   connectionId?: string;
   executionId: string;
   route?: ConnectorRoute;
+  /** Server-only authorization for a freshly offered tool with no read-only annotation. */
+  authorizeUnannotatedRead?: (tool: ConnectorTool) => boolean;
   /**
    * Re-reads the durable state that authorizes this call (writes switch, agent link, exclusivity)
    * and returns a message to refuse with, or null. A connector with provider setup (sessions,

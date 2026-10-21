@@ -1,7 +1,12 @@
 import { createHash } from "node:crypto";
 import type {
+  AdapterContext,
+  CompanyExtractor,
   CompanyImportWorkerContext,
+  ConnectorCall,
+  ConnectorProvider,
   ConnectorProxyRequest,
+  ConnectorTool,
   JobPublisher,
   ManagedConnectorProvider,
   RealtimeFanout,
@@ -9,9 +14,11 @@ import type {
 import type { Actor } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { companyForActor, createDb } from "@rakazo/db";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { createCompanyConnectionReader } from "./company-connection-reader.js";
 import { createCompanyImportEngine } from "./company-import-engine.js";
 import { createCompanySourceWorker } from "./company-import-sources.js";
+import { COMPANY_SLACK_READ_TOOLS, createCompanySlackReader } from "./company-slack-source.js";
 import type { EmulatedMessage } from "./gmail-api-emulator.js";
 import { GmailApiEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
@@ -290,7 +297,11 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
     });
   }
 
-  async function runToCompletion(engine: Awaited<ReturnType<typeof createEngine>>, runId: string) {
+  async function runToCompletion(
+    engine: Awaited<ReturnType<typeof createEngine>>,
+    runId: string,
+    advanceClock = false,
+  ) {
     const payload = { spaceId, userId, runId };
     await engine.start(actor, runId);
     let lastProgress: unknown;
@@ -299,9 +310,20 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
       const waiting = await prisma.companyImportUnit.findMany({
         where: { runId, spaceId, ownerUserId: userId, status: "waiting" },
         orderBy: { createdAt: "asc" },
-        select: { id: true },
+        select: {
+          id: true,
+          availableAt: true,
+          source: { select: { backoffUntil: true } },
+        },
       });
-      for (const unit of waiting) await engine.unitJob({ ...payload, unitId: unit.id });
+      for (const unit of waiting) {
+        const availableAt = Math.max(
+          unit.availableAt.getTime(),
+          unit.source.backoffUntil?.getTime() ?? 0,
+        );
+        if (advanceClock && availableAt > Date.now()) vi.setSystemTime(new Date(availableAt));
+        await engine.unitJob({ ...payload, unitId: unit.id });
+      }
       const progress = await engine.progress(actor, runId);
       lastProgress = progress;
       if (["completed", "failed", "cancelled", "discarded"].includes(progress.status))
@@ -531,6 +553,280 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
     await expect(
       engine.progress({ ...actor, userId: "different-owner" }, created.runId),
     ).rejects.toThrow();
+  });
+
+  it("merges Slack and Gmail evidence for one owner person with source-specific provenance", async () => {
+    const quote = "Morgan Vale joined Northwind Robotics on 2024-04-02.";
+    const timestamp = "1712016000.000001";
+    const gmailAccountRef = `morgan-mailbox-${suffix}`;
+    const slackEmail = "morgan@northwind.example";
+    const gmailEmulator = new GmailApiEmulator({
+      now: new Date("2024-04-03T12:00:00.000Z"),
+      mailboxes: {
+        [gmailAccountRef]: {
+          address: "owner@example.test",
+          messages: [
+            {
+              id: "morgan-gmail-1",
+              date: "2024-04-02T12:00:00.000Z",
+              labels: ["INBOX"],
+              from: `Morgan Vale <${slackEmail}>`,
+              to: "owner@example.test",
+              subject: "Northwind update",
+              snippet: quote,
+              text: `${quote}\nWork email: ${slackEmail}`,
+            },
+          ],
+        },
+      },
+    });
+    const gmailConnection = await prisma.connection.create({
+      data: {
+        spaceId,
+        userId,
+        connectorId: "emulator",
+        provider: "gmail",
+        displayName: "Synthetic Morgan mailbox",
+        status: "connected",
+        providerRef: gmailAccountRef,
+        allAgents: true,
+        privateByDefault: false,
+      },
+    });
+    const slackConnection = await prisma.connection.create({
+      data: {
+        spaceId,
+        userId,
+        connectorId: "composio",
+        provider: "slack",
+        displayName: "Synthetic Slack",
+        status: "connected",
+        providerRef: "synthetic-slack-account",
+        allAgents: true,
+        privateByDefault: false,
+      },
+    });
+    const argumentNames = [
+      "types",
+      "limit",
+      "cursor",
+      "channel",
+      "oldest",
+      "latest",
+      "inclusive",
+      "ts",
+      "user",
+    ];
+    const slackTools: ConnectorTool[] = COMPANY_SLACK_READ_TOOLS.slice(0, 5).map((name) => ({
+      name,
+      description: name,
+      inputSchema: {
+        type: "object",
+        properties: Object.fromEntries(argumentNames.map((key) => [key, {}])),
+      },
+      route: { connectorId: "composio", toolName: name },
+    }));
+    const slackCalls: string[] = [];
+    const provider = {
+      discoverTools: async (received: AdapterContext) => {
+        expect(received.connectedAppAgentConnectionId).toBe(slackConnection.id);
+        return slackTools;
+      },
+      async *execute(call: ConnectorCall) {
+        const fresh = slackTools.find((tool) => tool.name === call.tool);
+        if (
+          !fresh ||
+          fresh.readOnly === false ||
+          (fresh.readOnly !== true && call.authorizeUnannotatedRead?.(fresh) !== true)
+        ) {
+          yield { type: "error" as const, message: "Company source authorization changed" };
+          return;
+        }
+        const denied = await call.beforeDispatch?.();
+        if (denied) {
+          yield { type: "error" as const, message: denied };
+          return;
+        }
+        slackCalls.push(call.tool);
+        const data =
+          call.tool === "SLACK_RETRIEVE_CONVERSATION_INFORMATION"
+            ? { channel: { id: "CPUBLIC1", name: "general", is_channel: true, is_private: false } }
+            : call.tool === "SLACK_FETCH_CONVERSATION_HISTORY"
+              ? {
+                  messages: [
+                    {
+                      ts: timestamp,
+                      text: quote,
+                      user: "USYNTHETIC1",
+                      reply_count: 0,
+                    },
+                  ],
+                }
+              : {
+                  user: {
+                    id: "USYNTHETIC1",
+                    profile: { real_name: "Morgan Vale", email: slackEmail },
+                  },
+                };
+        yield { type: "result" as const, data };
+      },
+    } as unknown as ConnectorProvider;
+    const reader = createCompanyConnectionReader({
+      prisma,
+      connectors: provider,
+      mcp: {} as never,
+    });
+    const slack = createCompanySlackReader(reader);
+    const mailConnector = {
+      proxy: async (request: ConnectorProxyRequest) =>
+        gmailEmulator.handle(request.accountRef, request.url, request.method, request.body),
+    } as unknown as ManagedConnectorProvider;
+    const mail = createMailProvider({
+      prisma,
+      connectors: { managed: () => mailConnector },
+      sleep: async () => undefined,
+      random: () => 0,
+    });
+    const extractor: CompanyExtractor = {
+      relevant: async () => true,
+      extract: async () => ({
+        extraction: {
+          entities: [
+            {
+              ref: "morgan",
+              entity: {
+                kind: "person",
+                displayName: "Morgan Vale",
+                attrs: { workEmails: [slackEmail] },
+                confidence: 0.95,
+              },
+              quote,
+            },
+          ],
+          edges: [],
+          events: [],
+        },
+        model: { provider: "synthetic", model: "stub-extractor" },
+      }),
+    };
+    const worker = createCompanySourceWorker({ prisma, mail, slack, extractor });
+    const jobs: JobPublisher = {
+      enqueue: async () => undefined,
+      cancel: async () => undefined,
+      close: async () => undefined,
+    };
+    const realtime = { publish: async () => undefined } as unknown as RealtimeFanout;
+    const engine = createCompanyImportEngine({
+      prisma,
+      jobs,
+      realtime,
+      resolveModel: async () => ({ provider: "synthetic", id: "synthetic-model" }),
+      worker,
+    });
+    const created = await engine.create(actor, {
+      tokenCap: 1_000_000,
+      sources: [
+        {
+          sourceKind: "gmail",
+          connectionId: gmailConnection.id,
+          scope: { allTime: true, labelIds: ["INBOX"] },
+        },
+        {
+          sourceKind: "slack",
+          connectionId: slackConnection.id,
+          scope: { channelIds: ["CPUBLIC1"], allTime: true },
+        },
+      ],
+    });
+    await grantAll(engine, created.runId);
+    vi.useFakeTimers({ toFake: ["Date"] });
+    let progress: Awaited<ReturnType<typeof engine.progress>>;
+    try {
+      progress = await runToCompletion(engine, created.runId, true);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(progress.status).toBe("completed");
+
+    const people = await prisma.companyEntity.findMany({
+      where: { spaceId, ownerUserId: userId, kind: "person", displayName: "Morgan Vale" },
+      select: { id: true, attrs: true },
+    });
+    expect(people).toHaveLength(1);
+    expect(people[0]?.attrs).toMatchObject({ workEmails: [slackEmail] });
+    const evidence = await prisma.companyEvidence.findMany({
+      where: {
+        spaceId,
+        ownerUserId: userId,
+        factKind: "entity",
+        factId: people[0]!.id,
+        extractorRunId: created.runId,
+      },
+      select: {
+        sourceKind: true,
+        connectionId: true,
+        sourceItemId: true,
+        sourceKey: true,
+        contentHash: true,
+        quote: true,
+      },
+    });
+    const sourceRows = await prisma.companyImportSource.findMany({
+      where: { runId: created.runId, spaceId, ownerUserId: userId },
+      select: { sourceKind: true, connectionId: true, sourceKey: true },
+    });
+    const slackTitle = `Slack #general · ${new Date(Number(timestamp) * 1000).toISOString()}`;
+    const slackText = [
+      "Slack user: USYNTHETIC1",
+      "Author: Morgan Vale",
+      `Work email: ${slackEmail}`,
+      quote,
+    ].join("\n");
+    const expectedHashes = {
+      slack: createHash("sha256").update(`${slackTitle}\n${slackText}`).digest("hex"),
+      gmail: createHash("sha256")
+        .update(`Northwind update\n${quote}\nWork email: ${slackEmail}`)
+        .digest("hex"),
+    };
+    expect(evidence).toHaveLength(2);
+    expect(evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceKind: "gmail",
+          connectionId: gmailConnection.id,
+          sourceItemId: "morgan-gmail-1",
+          contentHash: expectedHashes.gmail,
+          quote,
+        }),
+        expect.objectContaining({
+          sourceKind: "slack",
+          connectionId: slackConnection.id,
+          sourceItemId: `CPUBLIC1:${timestamp}`,
+          contentHash: expectedHashes.slack,
+          quote,
+        }),
+      ]),
+    );
+    expect(sourceRows).toHaveLength(2);
+    expect(sourceRows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ sourceKind: "gmail", connectionId: gmailConnection.id }),
+        expect.objectContaining({ sourceKind: "slack", connectionId: slackConnection.id }),
+      ]),
+    );
+    expect(
+      await prisma.companyEntity.count({
+        where: { spaceId, ownerUserId: otherUserId, kind: "person", displayName: "Morgan Vale" },
+      }),
+    ).toBe(0);
+    expect(
+      await prisma.companyEvidence.count({
+        where: { spaceId, ownerUserId: otherUserId, factKind: "entity", factId: people[0]!.id },
+      }),
+    ).toBe(0);
+    expect(slackCalls.length).toBeGreaterThan(0);
+    expect(slackCalls.every((name) => COMPANY_SLACK_READ_TOOLS.includes(name as never))).toBe(true);
+    expect(gmailEmulator.requests.every((request) => request.method === "GET")).toBe(true);
   });
 
   it("samples 25 real Data Room items then continues the same run without rereading them", async () => {

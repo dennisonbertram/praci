@@ -35,7 +35,6 @@ const connection = {
   provider: "crm",
   providerRef: "account-1",
   displayName: "Synthetic CRM",
-  externalId: "external-1",
   allAgents: true,
   privateByDefault: false,
   status: "connected",
@@ -54,22 +53,31 @@ function managedTool(name = "list_records", readOnly?: boolean): ConnectorTool {
 function harness(
   options: {
     connectorId?: string;
+    provider?: string;
     connectionLookup?: () => unknown;
     discover?: () => ConnectorTool[];
     blockRows?: unknown[];
+    memberLookup?: () => unknown;
+    mcpEndpoint?: string;
+    mcpTools?: () => unknown[];
   } = {},
 ) {
   const selectedConnection = {
     ...connection,
     connectorId: options.connectorId ?? connection.connectorId,
+    provider: options.provider ?? connection.provider,
   };
   const findConnection = vi.fn(async () =>
     options.connectionLookup ? options.connectionLookup() : selectedConnection,
   );
   const findBlocks = vi.fn(async () => options.blockRows ?? []);
+  const findMember = vi.fn(async () =>
+    options.memberLookup ? options.memberLookup() : { userId: context.userId },
+  );
   const prisma = {
     companySourceBlock: { findMany: findBlocks },
     connection: { findFirst: findConnection },
+    spaceMember: { findUnique: findMember },
   } as unknown as PrismaClient;
   const calls: ConnectorCall[] = [];
   let dispatched = 0;
@@ -79,6 +87,8 @@ function harness(
       expect.objectContaining({
         id: source.connectionId,
         connectorId: selectedConnection.connectorId,
+        externalId: selectedConnection.provider,
+        providerRef: selectedConnection.providerRef,
       }),
     ]);
     expect(only).toEqual([selectedConnection.connectorId]);
@@ -107,7 +117,7 @@ function harness(
     spaceId: context.spaceId,
     userId: context.userId,
     enabled: true,
-    endpoint: "https://synthetic.example.test/mcp",
+    endpoint: options.mcpEndpoint ?? "https://synthetic.example.test/mcp",
     secretId: "synthetic-secret-reference",
     revision: 3,
     name: "Synthetic MCP",
@@ -144,20 +154,24 @@ function harness(
     bot: { findFirst: findBot },
     botMcpServer: { findFirst: findAssignment },
   });
-  const mcpList = vi.fn(async () => [
-    {
-      name: "get_records",
-      description: "Read synthetic records",
-      inputSchema: argsSchema,
-      annotations: { readOnlyHint: true },
-    },
-    {
-      name: "delete_records",
-      description: "Delete synthetic records",
-      inputSchema: argsSchema,
-      annotations: { readOnlyHint: true },
-    },
-  ]);
+  const mcpList = vi.fn(async () =>
+    options.mcpTools
+      ? options.mcpTools()
+      : [
+          {
+            name: "get_records",
+            description: "Read synthetic records",
+            inputSchema: argsSchema,
+            annotations: { readOnlyHint: true },
+          },
+          {
+            name: "delete_records",
+            description: "Delete synthetic records",
+            inputSchema: argsSchema,
+            annotations: { readOnlyHint: true },
+          },
+        ],
+  );
   const mcpCall = vi.fn(
     async (
       _server: unknown,
@@ -178,6 +192,7 @@ function harness(
     reader: createCompanyConnectionReader({ prisma, connectors, mcp }),
     prisma,
     findConnection,
+    findMember,
     discoverTools,
     calls,
     get dispatched() {
@@ -236,6 +251,71 @@ describe("Company connection reader", () => {
     expect(state.dispatched).toBe(0);
   });
 
+  it("classifies prefixed reads and canonical preset reads without widening writes", async () => {
+    const state = harness({
+      discover: () => [
+        managedTool("linear-list-issues", true),
+        managedTool("CRM_FETCH_RECORDS", true),
+        managedTool("CRM_CREATE_RECORDS", true),
+        managedTool("CRM_GET_API_STATUS", true),
+        managedTool("search_tools", true),
+        managedTool("CRM_LIST_ISSUES_AND_CREATE", true),
+      ],
+    });
+    await expect(state.reader.listTools(source, context)).resolves.toEqual([
+      expect.objectContaining({ name: "linear-list-issues" }),
+      expect.objectContaining({ name: "CRM_FETCH_RECORDS" }),
+    ]);
+
+    const mcpSource = {
+      id: "box-source",
+      sourceKind: "mcp",
+      connectionId: null,
+      mcpServerId: "server-1",
+      scope: {},
+    };
+    const preset = harness({
+      mcpEndpoint: "https://mcp.box.com/mcp",
+      mcpTools: () => [
+        { name: "search_files_keyword", inputSchema: argsSchema },
+        {
+          name: "create_folder",
+          inputSchema: argsSchema,
+          annotations: { readOnlyHint: true },
+        },
+      ],
+    });
+    await expect(preset.reader.listTools(mcpSource, context)).resolves.toEqual([
+      expect.objectContaining({ name: "search_files_keyword", readOnly: true }),
+    ]);
+  });
+
+  it("supplies a server classifier for only the selected missing-annotation Slack read", async () => {
+    const state = harness({
+      provider: "slack",
+      discover: () => [
+        managedTool("SLACK_FETCH_CONVERSATION_HISTORY"),
+        managedTool("SLACK_SEND_MESSAGE", true),
+      ],
+    });
+    const slackSource = { ...source, sourceKind: "slack" };
+    await state.reader.callTool(
+      slackSource,
+      "SLACK_FETCH_CONVERSATION_HISTORY",
+      { query: "synthetic" },
+      context,
+    );
+    const authorize = state.calls[0]?.authorizeUnannotatedRead;
+    expect(authorize?.(managedTool("SLACK_FETCH_CONVERSATION_HISTORY"))).toBe(true);
+    expect(authorize?.(managedTool("SLACK_SEND_MESSAGE", true))).toBe(false);
+    expect(
+      authorize?.({
+        ...managedTool("SLACK_FETCH_CONVERSATION_HISTORY"),
+        route: { connectorId: "pipedream", toolName: "SLACK_FETCH_CONVERSATION_HISTORY" },
+      }),
+    ).toBe(false);
+  });
+
   it("stops dispatch when a selected connection is revoked after discovery", async () => {
     let checks = 0;
     const state = harness({
@@ -245,6 +325,19 @@ describe("Company connection reader", () => {
       state.reader.callTool(source, "list_records", { query: "synthetic" }, context),
     ).rejects.toThrow("Connected source access is denied");
     expect(state.findConnection).toHaveBeenCalledTimes(2);
+    expect(state.dispatched).toBe(0);
+  });
+
+  it("stops dispatch when space membership is revoked after discovery", async () => {
+    let checks = 0;
+    const state = harness({
+      memberLookup: () => (checks++ < 2 ? { userId: context.userId } : null),
+    });
+    await expect(state.reader.listTools(source, context)).resolves.toHaveLength(1);
+    await expect(
+      state.reader.callTool(source, "list_records", { query: "synthetic" }, context),
+    ).rejects.toThrow("Company source access is denied");
+    expect(state.findMember).toHaveBeenCalledTimes(3);
     expect(state.dispatched).toBe(0);
   });
 

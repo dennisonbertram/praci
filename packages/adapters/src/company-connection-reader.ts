@@ -30,10 +30,106 @@ type ReaderDeps = {
 };
 
 const MIN_RETRY_MS = 60_000;
-const SAFE_NAME =
-  /^(?:list|get|fetch|retrieve|read|search|find|lookup|describe|inspect|query|count|check|download|view|show)(?:[-_.A-Za-z0-9:]*)$/i;
 const WRAPPER_NAME =
   /(?:execute|multi|batch|router|proxy|api_call|generic_api|tool_call|search[_-]?(?:tools|catalog)|list[_-]?tools|control|\bapi\b|\bhttp\b|request)/i;
+const WRAPPER_NAME_PARTS = new Set([
+  "api",
+  "batch",
+  "catalog",
+  "control",
+  "http",
+  "multi",
+  "proxy",
+  "request",
+  "router",
+  "tool",
+  "tools",
+]);
+const SAFE_NAME_VERBS = new Set([
+  "list",
+  "get",
+  "fetch",
+  "retrieve",
+  "read",
+  "search",
+  "find",
+  "lookup",
+  "describe",
+  "inspect",
+  "query",
+  "count",
+  "check",
+  "download",
+  "view",
+  "show",
+]);
+const WRITE_NAME_VERBS = new Set([
+  "accept",
+  "add",
+  "archive",
+  "assign",
+  "approve",
+  "buy",
+  "cancel",
+  "charge",
+  "checkout",
+  "close",
+  "commit",
+  "connect",
+  "copy",
+  "create",
+  "delete",
+  "deploy",
+  "disable",
+  "deny",
+  "disconnect",
+  "enable",
+  "edit",
+  "execute",
+  "forward",
+  "grant",
+  "insert",
+  "invite",
+  "join",
+  "link",
+  "mark",
+  "merge",
+  "modify",
+  "move",
+  "open",
+  "patch",
+  "pay",
+  "post",
+  "publish",
+  "purchase",
+  "put",
+  "register",
+  "react",
+  "reject",
+  "remove",
+  "rename",
+  "replace",
+  "reply",
+  "reset",
+  "revoke",
+  "run",
+  "schedule",
+  "send",
+  "set",
+  "share",
+  "start",
+  "stop",
+  "submit",
+  "subscribe",
+  "trigger",
+  "unassign",
+  "unlink",
+  "unsubscribe",
+  "update",
+  "upload",
+  "write",
+  "upsert",
+]);
 
 function denied(message = "Company source access is not available"): never {
   throw new CompanyImportWorkerError(message);
@@ -67,6 +163,14 @@ function slackToolAllowed(name: string) {
   return (COMPANY_SLACK_READ_TOOLS as readonly string[]).includes(name);
 }
 
+function toolNameTokens(name: string) {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
 function stableValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(stableValue);
   if (!value || typeof value !== "object") return value;
@@ -95,25 +199,40 @@ function managedRouteMatches(tool: ConnectorTool, row: { id: string; connectorId
   );
 }
 
-function readToolAllowed(source: CompanyImportSourceDescriptor, tool: ConnectorTool) {
+function readToolAllowed(
+  source: CompanyImportSourceDescriptor,
+  tool: ConnectorTool,
+  endpoint = tool.route?.endpoint,
+) {
   if (tool.route?.discoveredReadOnly === false) return false;
+  if (tool.readOnly === false) return false;
   if (
     source.sourceKind === "slack" ||
     (source.sourceKind === "mcp" && source.scope.reader === "slack")
   ) {
-    return slackToolAllowed(tool.name) && tool.readOnly !== false;
+    return slackToolAllowed(tool.name);
   }
-  if (tool.readOnly === false || WRAPPER_NAME.test(tool.name)) return false;
-  const preset = integrationPresetForEndpoint(tool.route?.endpoint);
+  const preset = integrationPresetForEndpoint(endpoint);
+  if (preset) {
+    return isReadTool(
+      { name: tool.name, annotations: { readOnlyHint: tool.readOnly === true } },
+      preset,
+    );
+  }
+  const tokens = toolNameTokens(tool.name);
+  const hasReadVerb = tokens.some((token) => SAFE_NAME_VERBS.has(token));
+  const approvalName = `list_${tool.name
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[^a-zA-Z0-9_]+/g, "_")}`;
   if (
-    preset &&
-    !isReadTool({ name: tool.name, annotations: { readOnlyHint: tool.readOnly === true } }, preset)
-  ) {
+    WRAPPER_NAME.test(tool.name) ||
+    tokens.some((token) => WRAPPER_NAME_PARTS.has(token)) ||
+    tokens.some((token) => WRITE_NAME_VERBS.has(token)) ||
+    tokens.some((token) => ["and", "or", "then"].includes(token)) ||
+    connectorToolRequiresApproval(approvalName)
+  )
     return false;
-  }
-  if (preset) return true;
-  if (connectorToolRequiresApproval(tool.name.replace(/([a-z0-9])([A-Z])/g, "$1_$2"))) return false;
-  return tool.readOnly === true && SAFE_NAME.test(tool.name);
+  return tool.readOnly === true && hasReadVerb;
 }
 
 function retryError(error: unknown): CompanyImportWorkerError {
@@ -142,7 +261,7 @@ function connectionContext(
   const connected: ConnectedConnector = {
     id: row.id,
     connectorId: row.connectorId,
-    externalId: row.externalId ?? row.provider,
+    externalId: row.provider,
     displayName: row.displayName,
     ...(row.providerRef ? { providerRef: row.providerRef } : {}),
   };
@@ -155,6 +274,11 @@ function connectionContext(
 
 export function createCompanyConnectionReader(deps: ReaderDeps): CompanyConnectionReader {
   async function sourceBlock(source: CompanyImportSourceDescriptor, context: AdapterContext) {
+    const member = await deps.prisma.spaceMember.findUnique({
+      where: { spaceId_userId: { spaceId: context.spaceId, userId: context.userId } },
+      select: { userId: true },
+    });
+    if (!member) denied("Company source access is denied");
     const rows = await deps.prisma.companySourceBlock.findMany({
       where: { spaceId: context.spaceId, ownerUserId: context.userId },
       select: { sourceKind: true, connectionId: true, mcpServerId: true, sourceKey: true },
@@ -180,7 +304,6 @@ export function createCompanyConnectionReader(deps: ReaderDeps): CompanyConnecti
         provider: true,
         providerRef: true,
         displayName: true,
-        externalId: true,
         allAgents: true,
         privateByDefault: true,
         status: true,
@@ -256,8 +379,16 @@ export function createCompanyConnectionReader(deps: ReaderDeps): CompanyConnecti
             description: tool.description ?? "",
             inputSchema: (tool.inputSchema ?? {}) as Record<string, unknown>,
             readOnly: isReadTool(tool, integrationPresetForEndpoint(assignment.server.endpoint)),
+            route: {
+              connectorId: "mcp",
+              toolName: tool.name,
+              endpoint: assignment.server.endpoint ?? undefined,
+            },
           };
-          return candidate.readOnly && readToolAllowed(source, candidate);
+          return (
+            candidate.readOnly &&
+            readToolAllowed(source, candidate, assignment.server.endpoint ?? undefined)
+          );
         })
         .map((tool) => ({
           name: tool.name,
@@ -367,6 +498,10 @@ export function createCompanyConnectionReader(deps: ReaderDeps): CompanyConnecti
       args,
       executionId: executionId(source),
       route,
+      authorizeUnannotatedRead: (fresh) =>
+        fresh.name === name &&
+        managedRouteMatches(fresh, listed.row) &&
+        readToolAllowed(source, fresh),
       beforeDispatch: async () => {
         const current = await listManaged(source, context);
         const live = current.tools.find((candidate) => candidate.name === name);
@@ -375,7 +510,6 @@ export function createCompanyConnectionReader(deps: ReaderDeps): CompanyConnecti
           current.row.id !== route.connectionId ||
           current.row.connectorId !== route.connectorId ||
           current.row.provider !== listed.row.provider ||
-          current.row.externalId !== listed.row.externalId ||
           current.row.providerRef !== listed.row.providerRef ||
           fingerprint({
             route: live.route,
