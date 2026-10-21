@@ -404,34 +404,6 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
       (await legalOverview(api({ provider: "openrouter", id: "openai/gpt-6-luna" }), a)).model,
     ).toEqual({ provider: "openrouter", id: "openai/gpt-6-luna", isPreferred: false });
     expect((await legalOverview(api(null), a)).model).toBeNull();
-    // Why it cannot run on Muse Spark: no key of the user's own, or the agent was set to another model.
-    expect(
-      (await legalOverview(api({ provider: "openrouter", id: "meta/muse-spark-1.2" }), a))
-        .modelBlocker,
-    ).toBeNull();
-    expect(
-      (await legalOverview(api({ provider: "openrouter", id: "openai/gpt-6-luna" }), a))
-        .modelBlocker,
-    ).toBe("own_key");
-    expect((await legalOverview(api(null), a)).modelBlocker).toBe("own_key");
-    const bot = await prisma.bot.findFirstOrThrow({
-      where: { userId: a.userId, spawnKey: legalAgentSpawnKey(a.userId) },
-    });
-    await prisma.bot.update({
-      where: { id: bot.id },
-      data: { modelProvider: "openrouter", modelId: "openai/gpt-6-luna" },
-    });
-    try {
-      expect(
-        (await legalOverview(api({ provider: "openrouter", id: "openai/gpt-6-luna" }), a))
-          .modelBlocker,
-      ).toBe("model_changed");
-    } finally {
-      await prisma.bot.update({
-        where: { id: bot.id },
-        data: { modelProvider: "openrouter", modelId: "meta/muse-spark-1.2" },
-      });
-    }
   });
 
   it("starts the Legal agent at xhigh, fills empty model fields on an old agent, and never starts a run", async () => {

@@ -68,9 +68,7 @@ import {
   isMailAgentSpawnKey,
   isVoiceAgentSpawnKey,
   LEGAL_AGENT_BUILTIN_TOOLS,
-  LEGAL_AGENT_MODEL,
   LEGAL_CONSENT_REQUIRED_MESSAGE,
-  LEGAL_MODEL_REQUIRED_MESSAGE,
   OPENAI_COMPATIBLE_PROVIDER_ID,
   RunPhaseSchema,
   VOICE_AGENT_BUILTIN_TOOLS,
@@ -2112,22 +2110,6 @@ export function createRunExecutor(deps: ExecutorDeps) {
             { kind: "text", text: MEETING_CONSENT_REQUIRED_MESSAGE },
           ]).catch((error) => getLogger().error("meeting consent notice", error));
           await failRunBeforeModel(MEETING_CONSENT_REQUIRED_MESSAGE);
-          return;
-        }
-        if (
-          legalOnly &&
-          (runModelProvider !== LEGAL_AGENT_MODEL.provider || runModelId !== LEGAL_AGENT_MODEL.id)
-        ) {
-          // Fixed rule, for quality: the Legal agent runs on Muse Spark 1.2 and nothing else. A run
-          // that resolved to another model (no OpenRouter key, so the default took over) ends here.
-          // The web chat shows the run's error above the composer, so no bot message repeats it
-          // there. A linked messaging chat (DM or group) only receives stored bot messages, so it gets one.
-          if (run.trigger === "messaging") {
-            await publishMessage(deps, run, "bot", [
-              { kind: "text", text: LEGAL_MODEL_REQUIRED_MESSAGE },
-            ]).catch((error) => getLogger().error("legal model notice", error));
-          }
-          await failRunBeforeModel(LEGAL_MODEL_REQUIRED_MESSAGE);
           return;
         }
         if (legalOnly) {
@@ -7878,12 +7860,12 @@ export function directoryDescription(peer: {
   spawnKey: string | null;
 }): string {
   if (isIntegrationAgentSpawnKey(peer.spawnKey) || isCartaAgentSpawnKey(peer.spawnKey)) {
-    return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text, and when its answer comes in, give the user the answer yourself. Do not tell the user to ask it themselves. If its answer says it could not do something, give the user that reason and any link in it; never reply only that the request could not be completed.`;
+    return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text, and when its answer comes in, give the user the answer yourself. Do not tell the user to ask it themselves. If its answer says it could not do something, give the user that reason and end your reply with the link in its answer, or [Open Integrations](/app/integrations) when it has none; never reply only that the request could not be completed.`;
   }
   if (!isFinanceAgentSpawnKey(peer.spawnKey)) {
     return peer.description;
   }
-  return `${peer.description} Message it with message_bot whenever the user asks about cash, runway, burn or spending, even if they did not name it. It answers with the figures from the Finance page. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text. When its answer comes in, quote the figures in your reply yourself and end with [Open Finance](/app/finance) for the detail. Never estimate a figure yourself; if it cannot answer, say so and link Finance. If the user asks to pay or change something, message the Mercury or Brex agent instead, and give the user its reason and any link in it.`.trim();
+  return `${peer.description} Message it with message_bot whenever the user asks about cash, runway, burn or spending, even if they did not name it. It answers with the figures from the Finance page. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text. When its answer comes in, quote the figures in your reply yourself and end with [Open Finance](/app/finance) for the detail. Never estimate a figure yourself; if it cannot answer, or no accounts are connected yet, say so and still end with [Open Finance](/app/finance). If the user asks to pay or change something, message the Mercury or Brex agent instead, and give the user its reason and end your reply with its link, or [Open Integrations](/app/integrations) when it has none.`.trim();
 }
 
 export const PLAIN_CAPABILITY_GUIDANCE =

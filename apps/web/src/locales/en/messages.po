@@ -463,6 +463,10 @@ msgstr "{name}, paid with {paidWith}"
 msgid "{newCount, plural, one {# new message} other {# new messages}}"
 msgstr "{newCount, plural, one {# new message} other {# new messages}}"
 
+#: src/pages/Legal.tsx
+msgid "{overdue} overdue"
+msgstr "{overdue} overdue"
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "{pct} yield"
 msgstr "{pct} yield"
@@ -712,7 +716,6 @@ msgid "Actions for space"
 msgstr "Actions for space"
 
 #: src/pages/BillingSettingsPanel.tsx
-#: src/pages/Legal.tsx
 #: src/pages/legal/LegalContracts.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Active"
@@ -876,14 +879,6 @@ msgstr "Add wallet"
 #: src/pages/Investors.tsx
 msgid "Add your investors, auditors and counsel here. Contacts are your address book."
 msgstr "Add your investors, auditors and counsel here. Contacts are your address book."
-
-#: src/pages/Legal.tsx
-msgid "Add your OpenRouter key"
-msgstr "Add your OpenRouter key"
-
-#: src/pages/Legal.tsx
-msgid "Add your OpenRouter key above to start. The Legal agent then reads your Data room for contracts and deadlines."
-msgstr "Add your OpenRouter key above to start. The Legal agent then reads your Data room for contracts and deadlines."
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderDocuments.tsx
@@ -2147,10 +2142,6 @@ msgstr "Choose files"
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Choose how apps connect for everyone on this server."
 msgstr "Choose how apps connect for everyone on this server."
-
-#: src/pages/Legal.tsx
-msgid "Choose Legal's own model again in the Legal agent's settings to start. It then reads your Data room for contracts and deadlines."
-msgstr "Choose Legal's own model again in the Legal agent's settings to start. It then reads your Data room for contracts and deadlines."
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Choose the account to connect, then come back here."
@@ -5237,17 +5228,9 @@ msgstr "Legal"
 msgid "Legal document"
 msgstr "Legal document"
 
-#: src/pages/Legal.tsx
-msgid "Legal needs an OpenRouter key to read your contracts."
-msgstr "Legal needs an OpenRouter key to read your contracts."
-
 #: src/components/legal/LegalGraph.tsx
 msgid "Legal relationships"
 msgstr "Legal relationships"
-
-#: src/pages/Legal.tsx
-msgid "Legal runs on its own model: choose it again in the Legal agent's settings."
-msgstr "Legal runs on its own model: choose it again in the Legal agent's settings."
 
 #: src/components/integrations/IntegrationAgentSection.tsx
 msgid "Let other agents use {service} directly"
@@ -6629,10 +6612,6 @@ msgstr "Open computer settings"
 msgid "Open Contacts"
 msgstr "Open Contacts"
 
-#: src/pages/Legal.tsx
-msgid "Open deadlines"
-msgstr "Open deadlines"
-
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/Devin.tsx
 msgid "Open Devin"
@@ -6852,10 +6831,6 @@ msgstr "Other ways to connect"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
 msgstr "Out"
-
-#: src/pages/Legal.tsx
-msgid "Overdue"
-msgstr "Overdue"
 
 #: src/pages/Board.tsx
 msgid "Owner"

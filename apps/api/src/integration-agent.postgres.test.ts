@@ -179,6 +179,8 @@ describePostgres("integration agents (PostgreSQL)", () => {
     expect(bot.description).toContain("Your Mercury account");
     expect(bot.description).not.toContain("message_bot");
     expect(bot.instructions).toContain('turn on "Allow changes in Mercury"');
+    // Changes on: the agent calls the tool so the approval card appears, never asks in chat.
+    expect(bot.instructions).toContain("never ask for confirmation in chat");
     const rows = await prisma.botMcpServer.findMany({ where: { serverId: server.id } });
     expect(rows).toMatchObject([{ botId: first.botId, allowAllTools: true }]);
   });
