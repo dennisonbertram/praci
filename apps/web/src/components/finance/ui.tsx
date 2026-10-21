@@ -397,13 +397,28 @@ export function NotFoundNotice() {
   );
 }
 
-export function ErrorNotice({ message, onRetry }: { message: string; onRetry: () => void }) {
+/** `action` replaces "Try again" when the fix is something else, such as Reconnect; with neither, there is no button. */
+export function ErrorNotice({
+  message,
+  onRetry,
+  action,
+}: {
+  message: string;
+  onRetry?: () => void;
+  action?: { label: string; onClick: () => void };
+}) {
   return (
     <div role="alert" className="my-4 flex items-center gap-3 text-sm text-destructive">
       <span>{message}</span>
-      <Button variant="outline" size="sm" onClick={onRetry}>
-        <Trans>Try again</Trans>
-      </Button>
+      {action ? (
+        <Button variant="outline" size="sm" onClick={action.onClick}>
+          {action.label}
+        </Button>
+      ) : onRetry ? (
+        <Button variant="outline" size="sm" onClick={onRetry}>
+          <Trans>Try again</Trans>
+        </Button>
+      ) : null}
     </div>
   );
 }

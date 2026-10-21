@@ -154,7 +154,7 @@ it("lists only model recipients, each off until the user turns it on, with the s
   expect(
     switches.map((s) => [s.getAttribute("aria-label"), s.getAttribute("aria-checked")]),
   ).toEqual([
-    ["Allow model", "true"],
+    ["Allow Model", "true"],
     ["Allow TypeSafe", "false"],
   ]);
   expect(container.textContent).toContain(AI_DATA_DISCLOSURES.model);
@@ -169,6 +169,26 @@ it("holds its place with a skeleton until the status loads, then says what off d
   await act(async () => resolve(statusOf()));
   expect(container.querySelector("[data-skeleton]")).toBeNull();
   expect(container.textContent).toContain("Bots cannot use a model until you allow it.");
+});
+
+it("shows a model slug as its display name", async () => {
+  consent.aiConsentStatus.mockResolvedValue(
+    statusOf([
+      { key: "a", name: "OpenRouter", use: "model", detail: "vendor/gpt-6-luna, x", allowed: true },
+      {
+        key: "b",
+        name: "OpenRouter",
+        use: "model",
+        detail: "vendor/muse-spark-1.2",
+        allowed: false,
+      },
+    ]),
+  );
+  await render(<AiDataSharingSection />);
+  expect([...container.querySelectorAll("li")].map((r) => r.textContent)).toEqual([
+    "Bots, mail, files and contractsGPT-6 Luna",
+    "Bots, mail, files and contractsMuse Spark 1.2",
+  ]);
 });
 
 it("tells two models from the same provider apart", async () => {
@@ -194,13 +214,13 @@ it("tells two models from the same provider apart", async () => {
   const rows = [...container.querySelectorAll("li")];
   // Labelled by purpose, with the model as secondary text and no vendor caption.
   expect(rows.map((r) => r.textContent)).toEqual([
-    "Bots, mail, files and contracts" + "alpha",
-    "Bots, mail, files and contracts" + "beta",
+    "Bots, mail, files and contracts" + "Alpha",
+    "Bots, mail, files and contracts" + "Beta",
   ]);
   expect(container.textContent).not.toContain("OpenRouter");
   expect(
     [...container.querySelectorAll('[role="switch"]')].map((s) => s.getAttribute("aria-label")),
-  ).toEqual(["Allow alpha", "Allow beta"]);
+  ).toEqual(["Allow Alpha", "Allow Beta"]);
 });
 
 it("revokes only the switched-off recipient and allows only the switched-on one", async () => {
@@ -213,10 +233,10 @@ it("revokes only the switched-off recipient and allows only the switched-on one"
   );
   await render(<AiDataSharingSection />);
 
-  await click(container.querySelector('[aria-label="Allow model"]'));
+  await click(container.querySelector('[aria-label="Allow Model"]'));
   expect(consent.revokeRecipient).toHaveBeenCalledExactlyOnceWith("model-key");
   expect(consent.allowRecipient).not.toHaveBeenCalled();
-  expect(container.querySelector('[aria-label="Allow model"]')?.getAttribute("aria-checked")).toBe(
+  expect(container.querySelector('[aria-label="Allow Model"]')?.getAttribute("aria-checked")).toBe(
     "false",
   );
 
@@ -231,7 +251,7 @@ it("tells an open Inbox to reload once a switch changes", async () => {
   window.addEventListener("rakazo:inbox-changed", changed);
   await render(<AiDataSharingSection />);
   expect(changed).not.toHaveBeenCalled();
-  await click(container.querySelector('[aria-label="Allow model"]'));
+  await click(container.querySelector('[aria-label="Allow Model"]'));
   expect(changed).toHaveBeenCalledTimes(1);
   window.removeEventListener("rakazo:inbox-changed", changed);
 });

@@ -1,3 +1,8 @@
+import { isDevinSessionUrl } from "@rakazo/contracts";
+
+/** A link to another app; the tap hands it to the system. */
+export type NotificationExternalTarget = { kind: "external"; url: string };
+
 export type NotificationRoute =
   | {
       pathname: "/thread";
@@ -34,7 +39,9 @@ function notificationField(data: Record<string, unknown>, key: string): string |
  * A bot and a group each have one thread. groupId wins when both are present
  * so a group run does not open that bot's direct chat.
  */
-export function notificationOpenTarget(data: unknown): NotificationRoute | null {
+export function notificationOpenTarget(
+  data: unknown,
+): NotificationRoute | NotificationExternalTarget | null {
   if (!data || typeof data !== "object" || Array.isArray(data)) return null;
   const record = data as Record<string, unknown>;
   const threadId = notificationField(record, "threadId");
@@ -47,6 +54,8 @@ export function notificationOpenTarget(data: unknown): NotificationRoute | null 
   };
   // Mobile has only the Inbox page; other pages fall through to a bot or nothing.
   const link = notificationField(record, "link");
+  // Checked first: a Devin alert also carries its agent's botId, and the thread is not the target.
+  if (link && isDevinSessionUrl(link)) return { kind: "external", url: link };
   if (!threadId && (notificationField(record, "surface") === "inbox" || link === "/inbox")) {
     return { pathname: "/inbox" };
   }
@@ -82,7 +91,9 @@ export function notificationOpenTargetFromLink(url: string): NotificationRoute |
   } else {
     return null;
   }
-  return notificationOpenTarget(data);
+  // A rakazo:// link opens a screen; only a notification's own link may leave the app.
+  const target = notificationOpenTarget(data);
+  return target && "pathname" in target ? target : null;
 }
 
 export function notificationSpaceId(data: unknown): string | undefined {
@@ -103,7 +114,7 @@ export function notificationResponseRoute(
     notification: { request: { content: { data?: unknown } } };
   },
   defaultActionIdentifier: string,
-): NotificationRoute | null {
+): NotificationRoute | NotificationExternalTarget | null {
   if (response.actionIdentifier !== defaultActionIdentifier) return null;
   return notificationOpenTarget(response.notification.request.content.data);
 }

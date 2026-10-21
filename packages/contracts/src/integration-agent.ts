@@ -9,7 +9,7 @@ import {
 import { DEVIN_READ_TOOLS, DEVIN_WRITE_TOOLS, isDevinEndpoint } from "./devin.js";
 import type { FinanceProvider } from "./finance.js";
 import { FINANCE_READ_TOOLS, financeProviderForEndpoint } from "./finance.js";
-import { GRANOLA_READ_TOOLS, isGranolaEndpoint } from "./granola.js";
+import { GRANOLA_READ_TOOLS, granolaAgentSpawnKey, isGranolaEndpoint } from "./granola.js";
 import { isInboxAgentSpawnKey } from "./inbox.js";
 import { isWisprFlowEndpoint, WISPR_FLOW_READ_NAME } from "./wispr-flow.js";
 
@@ -73,7 +73,10 @@ export function isIntegrationAgentForServer(
       server.agentBotId === bot.id &&
       server.spaceId === bot.spaceId &&
       server.userId === bot.userId &&
-      bot.spawnKey === integrationAgentSpawnKeyForServer(server) &&
+      // A Granola server also accepts the user's one shared Granola agent (the API key creates it).
+      (bot.spawnKey === integrationAgentSpawnKeyForServer(server) ||
+        (isGranolaEndpoint(server.endpoint) &&
+          bot.spawnKey === granolaAgentSpawnKey(server.userId))) &&
       bot.archivedAt === null,
   );
 }

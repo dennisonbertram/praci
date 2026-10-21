@@ -153,17 +153,17 @@ export function ContactsPage({ spaceName }: { spaceName?: string }) {
               </Button>
             </div>
           ) : (
-            <div className="max-w-5xl">
+            <div>
               <Table compact className="table-fixed">
                 <TableHeader>
                   <TableHeadRow>
                     <TableHead>
                       <Trans>Name</Trans>
                     </TableHead>
-                    <TableHead className="hidden w-56 @md:table-cell">
+                    <TableHead className="hidden w-[30%] @md:table-cell">
                       <Trans>Email</Trans>
                     </TableHead>
-                    <TableHead className="hidden w-44 @lg:table-cell">
+                    <TableHead className="hidden w-[24%] @lg:table-cell">
                       <Trans>Organization</Trans>
                     </TableHead>
                     <TableHead className="w-28">
@@ -193,10 +193,16 @@ export function ContactsPage({ spaceName }: { spaceName?: string }) {
                           {contact.organization ?? contact.email}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden truncate @md:table-cell">
+                      <TableCell
+                        className="hidden truncate @md:table-cell"
+                        title={contact.email ?? undefined}
+                      >
                         {contact.email}
                       </TableCell>
-                      <TableCell className="hidden truncate @lg:table-cell">
+                      <TableCell
+                        className="hidden truncate @lg:table-cell"
+                        title={contact.organization ?? undefined}
+                      >
                         {contact.organization}
                       </TableCell>
                       <TableCell>{names[contact.kind]}</TableCell>

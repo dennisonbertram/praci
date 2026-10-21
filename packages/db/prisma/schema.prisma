@@ -617,6 +617,8 @@ model Thread {
   unread                      Boolean               @default(false)
   /// Highest message seq the thread's owner has read; -1 before any. Moves forward only, except markUnread.
   lastReadSeq                 Int                   @default(-1)
+  /// Set when meeting-source agent text reached this thread (directly or forwarded). Never cleared.
+  meetingTaintedAt            DateTime?
   messages                    Message[]
   events                      Event[]
   tasks                       Task[]

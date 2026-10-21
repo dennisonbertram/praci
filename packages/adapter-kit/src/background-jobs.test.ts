@@ -38,6 +38,8 @@ function handlers(): BackgroundJobHandlers {
     "mail.watch.renew": vi.fn(async () => undefined),
     "devin.refresh": vi.fn(async () => undefined),
     "finance.sync": vi.fn(async () => undefined),
+    "meetings.sync": vi.fn(async () => undefined),
+    "meetings.digest": vi.fn(async () => undefined),
     "dataroom.blob.delete": vi.fn(async () => undefined),
     "dataroom.ingest": vi.fn(async () => undefined),
     "dataroom.classify": vi.fn(async () => undefined),
@@ -131,6 +133,22 @@ describe("background job contracts", () => {
     ]) {
       expect(() => parseBackgroundJob("dataroom.zip.unpack", broken)).toThrow();
     }
+  });
+
+  it("meetings.sync payload names exactly one source", () => {
+    const base = { spaceId: "s", userId: "u", provider: "granola" };
+    expect(parseBackgroundJob("meetings.sync", { ...base, connectionId: "c" }).payload).toEqual({
+      ...base,
+      connectionId: "c",
+    });
+    expect(parseBackgroundJob("meetings.sync", { ...base, mcpServerId: "m" }).payload).toEqual({
+      ...base,
+      mcpServerId: "m",
+    });
+    expect(() => parseBackgroundJob("meetings.sync", base)).toThrow();
+    expect(() =>
+      parseBackgroundJob("meetings.sync", { ...base, connectionId: "c", mcpServerId: "m" }),
+    ).toThrow();
   });
 
   it("mail.sync payload needs spaceId, userId and connectionId", () => {

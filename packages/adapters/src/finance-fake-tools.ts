@@ -128,6 +128,8 @@ export function fakeMercury(
       return { requestId: `fake-request-${sendMoneyRequests.length}`, status: "pendingApproval" };
     }
     if (name === "getAccounts") return options.accounts ?? mercuryAccountsResponse();
+    if (name === "getRecipient") return { id: args.recipientId, name: "Acme (Mock)" };
+    if (name === "getAccount") return { id: args.accountId, nickname: "Operating" };
     if (name === "getRecipients")
       return {
         recipients: options.recipients ?? [
@@ -248,7 +250,7 @@ export function fakeBrex(options: BrexOptions): { callTool: FinanceCallTool } & 
  * it offline. Lists a read tool and the write tool; calls go to `mercury.callTool`.
  */
 export function fakeMercuryMcpFetch(mercury: Pick<ReturnType<typeof fakeMercury>, "callTool">) {
-  const tools = ["getAccounts", "requestSendMoney"].map((name) => ({
+  const tools = ["getAccounts", "getRecipient", "getAccount", "requestSendMoney"].map((name) => ({
     name,
     inputSchema: { type: "object" },
   }));

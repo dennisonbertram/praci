@@ -495,11 +495,19 @@ export function createRepos(prisma: PrismaClient) {
               disabledBuiltinTools,
             },
           });
+          // A child of a thread that holds meeting text starts out marked, in this transaction.
+          const parentThread = input.parentBotId
+            ? await tx.thread.findFirst({
+                where: { botId: input.parentBotId, spaceId: actor.spaceId, userId: actor.userId },
+                select: { meetingTaintedAt: true },
+              })
+            : null;
           const thread = await tx.thread.create({
             data: {
               spaceId: actor.spaceId,
               botId: created.id,
               userId: actor.userId,
+              ...(parentThread?.meetingTaintedAt ? { meetingTaintedAt: new Date() } : {}),
             },
           });
           if (input.initialMessage) {
