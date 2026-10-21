@@ -53,6 +53,7 @@ export * from "./company-connection-reader.js";
 export * from "./company-import-engine.js";
 export * from "./company-import-sources.js";
 export * from "./company-slack-source.js";
+export * from "./company-tracker-source.js";
 export * from "./compose-html.js";
 export * from "./composio-catalog-cache.js";
 export * from "./composio-connector.js";

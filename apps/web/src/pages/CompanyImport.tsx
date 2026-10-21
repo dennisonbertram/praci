@@ -44,7 +44,16 @@ function statusName(status: string) {
   };
   return names[status] ?? status.replaceAll("_", " ");
 }
+function trackerSource(source: { sourceKind: string; scope: Record<string, unknown> }) {
+  return (
+    source.sourceKind === "github" ||
+    source.sourceKind === "linear" ||
+    source.scope.reader === "github" ||
+    source.scope.reader === "linear"
+  );
+}
 function scopeName(source: { sourceKind: string; scope: Record<string, unknown> }) {
+  if (trackerSource(source)) return t`All accessible items`;
   if (source.sourceKind === "slack" || source.scope.reader === "slack") {
     const count =
       (Array.isArray(source.scope.channelIds) ? source.scope.channelIds.length : 0) +
@@ -300,21 +309,30 @@ export function CompanyImportPage({
                             <Trans>{source.itemCount} items</Trans>
                           </span>
                         )}
-                      <Button
-                        type="button"
-                        variant="link"
-                        disabled={busy || !selected[source.key]}
-                        onClick={() => setScopeSource(source)}
-                      >
-                        {scopeName({
-                          sourceKind: source.sourceKind,
-                          scope: selected[source.key] ?? source.defaultScope,
-                        })}
-                        <span className="sr-only">
-                          {" "}
-                          · <Trans>Choose scope</Trans>
+                      {trackerSource({
+                        sourceKind: source.sourceKind,
+                        scope: source.defaultScope,
+                      }) ? (
+                        <span>
+                          {scopeName({ sourceKind: source.sourceKind, scope: source.defaultScope })}
                         </span>
-                      </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="link"
+                          disabled={busy || !selected[source.key]}
+                          onClick={() => setScopeSource(source)}
+                        >
+                          {scopeName({
+                            sourceKind: source.sourceKind,
+                            scope: selected[source.key] ?? source.defaultScope,
+                          })}
+                          <span className="sr-only">
+                            {" "}
+                            · <Trans>Choose scope</Trans>
+                          </span>
+                        </Button>
+                      )}
                     </div>
                   ) : source.reason === "not_connected" && source.connectPath ? (
                     <Link className="text-sm underline underline-offset-4" to={source.connectPath}>

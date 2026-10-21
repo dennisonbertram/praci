@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { CompanySourceKindSchema } from "./company.js";
-import { CompanySlackChannelIdSchema } from "./company-extraction.js";
+import { CompanySlackChannelIdSchema, CompanyTrackerScopeSchema } from "./company-extraction.js";
 
 const identifier = z.string().min(1).max(200);
 
@@ -24,7 +24,21 @@ export const CompanyImportSourceInputSchema = z
         : !source.mcpServerId &&
           (source.sourceKind === "data_room" || Boolean(source.connectionId)),
     "Choose one source connection",
-  );
+  )
+  .refine((source) => {
+    const reader = source.scope.reader;
+    if (source.sourceKind === "github")
+      return (
+        (reader === undefined || reader === "github") &&
+        CompanyTrackerScopeSchema.safeParse(source.scope).success
+      );
+    if (reader === "github") return false;
+    if (reader === "linear")
+      return (
+        source.sourceKind === "mcp" && CompanyTrackerScopeSchema.safeParse(source.scope).success
+      );
+    return true;
+  }, "Tracker reader does not match source kind");
 
 export const CompanyImportCreateInputSchema = z.strictObject({
   tokenCap: z.number().int().positive().safe(),

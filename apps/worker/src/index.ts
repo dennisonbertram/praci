@@ -22,6 +22,7 @@ import {
   createCompanyImportEngine,
   createCompanySlackReader,
   createCompanySourceWorker,
+  createCompanyTrackerReader,
   createConnectorStack,
   createDevinCallTool,
   createFinanceCallToolFor,
@@ -264,6 +265,7 @@ async function main() {
 
   const companyReader = createCompanyConnectionReader({ prisma, connectors: stack.connector, mcp });
   const slackReader = createCompanySlackReader(companyReader);
+  const trackerReader = createCompanyTrackerReader(companyReader);
   companyImport = createCompanyImportEngine({
     prisma,
     jobs,
@@ -274,6 +276,7 @@ async function main() {
       mail,
       extractor: new LlmCompanyExtractor(),
       slack: slackReader,
+      tracker: trackerReader,
     }),
   });
   const jobHandlers = createBackgroundJobHandlers({

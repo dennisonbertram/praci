@@ -13,6 +13,7 @@ import {
   CompanyDataRoomScopeSchema,
   CompanyMailScopeSchema,
   CompanySlackScopeSchema,
+  CompanyTrackerScopeSchema,
 } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import * as z from "zod";
@@ -20,6 +21,8 @@ import { skipCompanyMail, validateCompanyExtraction } from "./company-extraction
 import { CompanyImportWorkerError } from "./company-import-engine.js";
 import type { CompanySlackReader } from "./company-slack-source.js";
 import { isCompanySlackSource } from "./company-slack-source.js";
+import type { CompanyTrackerReader } from "./company-tracker-source.js";
+import { isCompanyTrackerSource } from "./company-tracker-source.js";
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 const noFacts: CompanyImportReadPage = { items: [], facts: [], nextCursor: null, done: true };
@@ -57,6 +60,8 @@ function utf8Prefix(value: string, maxBytes: number) {
 export function companySourceScope(kind: string, raw: Record<string, unknown>, now = new Date()) {
   if (kind === "data_room") return CompanyDataRoomScopeSchema.parse(raw);
   const slack = isCompanySlackSource({ sourceKind: kind, scope: raw });
+  const tracker = isCompanyTrackerSource({ sourceKind: kind, scope: raw });
+  if (tracker) return CompanyTrackerScopeSchema.parse(raw);
   if (kind !== "gmail" && !slack) return raw;
   const scope = slack ? CompanySlackScopeSchema.parse(raw) : CompanyMailScopeSchema.parse(raw);
   if (scope.allTime || scope.after) return scope;
@@ -71,6 +76,7 @@ export function createCompanySourceWorker(deps: {
   mail?: MailProvider;
   extractor: CompanyExtractor;
   slack?: CompanySlackReader;
+  tracker?: CompanyTrackerReader;
 }): CompanyImportWorker {
   // Narrow the capability object at construction, not by trusting a model's instructions.
   const mail = deps.mail
@@ -255,6 +261,10 @@ export function createCompanySourceWorker(deps: {
 
   return {
     async discover({ source, cursor, maxUnits }, context) {
+      if (isCompanyTrackerSource(source)) {
+        if (!deps.tracker) throw new CompanyImportWorkerError("unsupported_reader");
+        return deps.tracker.discover(source, cursor, maxUnits, contextFor(context));
+      }
       if (isCompanySlackSource(source)) {
         if (!deps.slack) throw new CompanyImportWorkerError("unsupported_reader");
         return deps.slack.discover(source, cursor, maxUnits, contextFor(context));
@@ -323,6 +333,26 @@ export function createCompanySourceWorker(deps: {
       };
     },
     async read({ source, cursor, maxBytes }, context) {
+      if (isCompanyTrackerSource(source)) {
+        if (!deps.tracker) throw new CompanyImportWorkerError("unsupported_reader");
+        const page = await deps.tracker.read(source, cursor, contextFor(context));
+        if (!page.document)
+          return {
+            ...noFacts,
+            nextCursor: page.nextCursor,
+            done: page.done,
+            cooldownMs: page.cooldownMs,
+          };
+        if (Buffer.byteLength(`${page.document.title}\n${page.document.text}`) > maxBytes)
+          throw new CompanyImportWorkerError("source_item_too_large");
+        const result = await extract(source, page.document, maxBytes, context);
+        return {
+          ...result,
+          nextCursor: page.nextCursor,
+          done: page.done,
+          cooldownMs: page.cooldownMs,
+        };
+      }
       if (isCompanySlackSource(source)) {
         if (!deps.slack) throw new CompanyImportWorkerError("unsupported_reader");
         const page = await deps.slack.read(source, cursor, contextFor(context));

@@ -261,6 +261,7 @@ function identityFieldPath(identityType: string): string {
     slack: "slackId",
     github: "githubLogin",
     linear: "linearId",
+    tracker: "trackerUrl",
     domain: "domain",
   }[identityType];
   return attr ? `attrs.${attr}` : `attrs.${identityType}`;
@@ -924,9 +925,83 @@ function entityAliases(input: CompanyEntityImportInput["entity"], sourceKey: str
       ]),
     ];
   }
+  if (input.kind === "project") return [...strong, `source:${sourceKey}`];
   const aliases =
     strong.length > 0 ? strong : [`${input.kind}:name:${normalizeCompanyName(input.displayName)}`];
   return [...aliases, `source:${sourceKey}`];
+}
+
+type IdentityMatch = {
+  entityId: string;
+  identityType: string;
+  identityValue: string;
+};
+
+async function projectIdentityMatches(
+  db: CompanyDb,
+  scope: Scope,
+  entity: CompanyEntityImportInput["entity"] & { kind: "project" },
+): Promise<IdentityMatch[]> {
+  const trackerUrl = entity.attrs.trackerUrl;
+  if (trackerUrl) {
+    const exact = await db.companyIdentity.findMany({
+      where: {
+        ...scope,
+        entityKind: "project",
+        identityType: "tracker",
+        identityValue: trackerUrl,
+      },
+      select: { entityId: true, identityType: true, identityValue: true },
+    });
+    if (exact.length) {
+      const rows = await db.companyEntity.findMany({
+        where: { ...scope, kind: "project", id: { in: exact.map((match) => match.entityId) } },
+        select: { id: true, attrs: true },
+      });
+      const matchingIds = new Set(
+        rows
+          .filter((row) => (row.attrs as Record<string, unknown>).trackerUrl === trackerUrl)
+          .map((row) => row.id),
+      );
+      const valid = exact.filter((match) => matchingIds.has(match.entityId));
+      if (valid.length) return valid;
+    }
+  }
+
+  const linked = await db.companyIdentity.findMany({
+    where: { ...scope, entityKind: "project", identityType: "tracker" },
+    select: { entityId: true },
+  });
+  const linkedIds = new Set(linked.map((identity) => identity.entityId));
+  const projects = await db.companyEntity.findMany({
+    where: { ...scope, kind: "project" },
+    select: { id: true, normalizedName: true, attrs: true },
+  });
+  const unlinked = projects.filter((project) => !linkedIds.has(project.id));
+  const urlMatches = trackerUrl
+    ? unlinked.filter(
+        (project) => (project.attrs as Record<string, unknown>).trackerUrl === trackerUrl,
+      )
+    : [];
+  if (urlMatches.length) {
+    return urlMatches.map((project) => ({
+      entityId: project.id,
+      identityType: "tracker",
+      identityValue: trackerUrl!,
+    }));
+  }
+
+  const normalizedName = normalizeCompanyName(entity.displayName);
+  return unlinked
+    .filter((project) => {
+      const attrs = project.attrs as Record<string, unknown>;
+      return !attrs.trackerUrl && project.normalizedName === normalizedName;
+    })
+    .map((project) => ({
+      entityId: project.id,
+      identityType: "name",
+      identityValue: normalizedName,
+    }));
 }
 
 async function linkedDataRoomItemId(
@@ -1108,19 +1183,22 @@ async function importEntity(
     input.entity.kind === "organisation"
       ? identifiers.filter(([, identityType]) => identityType !== "name")
       : identifiers;
-  const matches = matchingIdentifiers.length
-    ? await db.companyIdentity.findMany({
-        where: {
-          ...scope,
-          entityKind: input.entity.kind,
-          OR: matchingIdentifiers.map(([, identityType, identityValue]) => ({
-            identityType,
-            identityValue,
-          })),
-        },
-        select: { entityId: true, identityType: true, identityValue: true },
-      })
-    : [];
+  const matches =
+    input.entity.kind === "project"
+      ? await projectIdentityMatches(db, scope, input.entity)
+      : matchingIdentifiers.length
+        ? await db.companyIdentity.findMany({
+            where: {
+              ...scope,
+              entityKind: input.entity.kind,
+              OR: matchingIdentifiers.map(([, identityType, identityValue]) => ({
+                identityType,
+                identityValue,
+              })),
+            },
+            select: { entityId: true, identityType: true, identityValue: true },
+          })
+        : [];
   const matchedIds = [...new Set(matches.map((match) => match.entityId))];
   const groups = await Promise.all(
     matchedIds.map(async (matchedId) => {
@@ -1916,6 +1994,7 @@ async function editEntity(
       "attrs.slackId": "slack",
       "attrs.githubLogin": "github",
       "attrs.linearId": "linear",
+      "attrs.trackerUrl": "tracker",
       "attrs.domain": "domain",
     }[path];
     if (identityType) touchedIdentityTypes.set(identityType, path);

@@ -36,6 +36,7 @@ export const CompanyIdentityTypeSchema = z.enum([
   "slack",
   "github",
   "linear",
+  "tracker",
   "domain",
   "name",
 ]);
@@ -386,7 +387,7 @@ export const CompanyEventRecordSchema = z.strictObject({
 export const CompanyIdentityRecordSchema = z.strictObject({
   id: identifier,
   identityType: CompanyIdentityTypeSchema,
-  identityValue: identifier,
+  identityValue: z.string().min(1).max(2000),
 });
 export const CompanyEntityRecordSchema = z.strictObject({
   readOnly: z.boolean().optional(),
@@ -432,5 +433,7 @@ export function companyEntityIdentifiers(input: CompanyEntityInput): string[] {
   }
   if (input.kind === "organisation" && input.attrs.domain)
     return [`domain:${input.attrs.domain.toLowerCase()}`];
+  if (input.kind === "project" && input.attrs.trackerUrl)
+    return [`tracker:${input.attrs.trackerUrl}`];
   return [`name:${normalizeCompanyName(input.displayName)}`];
 }
