@@ -8,6 +8,7 @@ import {
 import type { PrismaClient } from "@rakazo/db";
 import {
   addContactIfNew,
+  CapTableSourceError,
   ContactEmailTakenError,
   getCapTableSnapshot,
   listContacts,
@@ -83,12 +84,19 @@ export async function contactToolFromTool(
       return { capTable: await getCapTableSnapshot(deps.prisma, deps.scope) };
     }
     if (name === "cap_table_update") {
-      const input = CapTableSnapshotInputSchema.safeParse(args);
+      // The tool writes as Carta; the model cannot name another source to get past the writer rule.
+      const input = CapTableSnapshotInputSchema.safeParse({ ...args, source: "carta" });
       if (!input.success)
         return {
           error: input.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "),
         };
-      await saveCapTableSnapshot(deps.prisma, deps.scope, input.data);
+      try {
+        await saveCapTableSnapshot(deps.prisma, deps.scope, input.data);
+      } catch (error) {
+        if (error instanceof CapTableSourceError)
+          return { error: "The cap table is not read from Carta, so nothing was changed." };
+        throw error;
+      }
       return { ok: true };
     }
     if (name === "contacts_save") {
