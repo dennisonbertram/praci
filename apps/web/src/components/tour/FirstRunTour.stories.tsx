@@ -5,13 +5,7 @@ import { mockRpc } from "../../lib/__mocks__/rpc";
 import { mockMe } from "../../stories/fixtures";
 import { FirstRunTour } from "./FirstRunTour";
 
-const ids = [
-  "sidebar-inbox",
-  "sidebar-finance",
-  "sidebar-legal",
-  "sidebar-data-room",
-  "sidebar-integrations",
-];
+const ids = ["sidebar-inbox", "sidebar-finance", "sidebar-legal", "sidebar-data-room"];
 
 /** A stand-in sidebar carrying the same anchors as the real one. */
 function Sidebar({ without = [] }: { without?: string[] }) {
@@ -26,9 +20,6 @@ function Sidebar({ without = [] }: { without?: string[] }) {
           +
         </button>
       </div>
-      <div data-tour="sidebar-chat" className="my-2 rounded-xl bg-card p-2 text-sm">
-        Chief
-      </div>
       {ids.filter(has).map((id) => (
         <button
           key={id}
@@ -39,6 +30,14 @@ function Sidebar({ without = [] }: { without?: string[] }) {
           {id.replace("sidebar-", "")}
         </button>
       ))}
+      <div data-tour="sidebar-chat" className="my-2 rounded-xl bg-card p-2 text-sm">
+        Chief
+      </div>
+      {has("sidebar-integrations") ? (
+        <button type="button" data-tour="sidebar-integrations" className="py-2 text-start text-sm">
+          Connect apps
+        </button>
+      ) : null}
       <button type="button" data-tour="user-menu" className="mt-auto py-2 text-start text-sm">
         Demo User
       </button>
@@ -49,7 +48,7 @@ function Sidebar({ without = [] }: { without?: string[] }) {
 const meta = {
   title: "Tour/First-run tour",
   component: FirstRunTour,
-  args: { open: true, onClose: fn(), onConnectApps: fn() },
+  args: { open: true, onClose: fn(), onAsk: fn() },
   beforeEach: () => mockRpc({ "preferences.update": (): Me => ({ ...mockMe, tourSeen: true }) }),
   render: (args) => (
     <>
@@ -60,7 +59,7 @@ const meta = {
 } satisfies Meta<typeof FirstRunTour>;
 export default meta;
 
-/** Nine steps, from Chief to the account menu. */
+/** Nine steps, top to bottom, ending on a button that focuses the composer. */
 export const Open: StoryObj<typeof meta> = {};
 
 /** A page that is hidden has no anchor, so its steps are dropped. */

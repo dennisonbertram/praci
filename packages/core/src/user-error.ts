@@ -153,6 +153,18 @@ export function authErrorMessage(body: unknown, copy: AuthErrorCopy): string {
 /** A provider's raw "401" for a run. */
 export const KEY_REJECTED_PATTERN = /^401\b|"code":\s*401\b/;
 
+/** A stored run error as a person reads it; one mapping for the panel, the toast and the push. */
+export function plainRunError(
+  error: string,
+  copy: { keyRejected: string; generic: string },
+): string {
+  return KEY_REJECTED_PATTERN.test(error)
+    ? copy.keyRejected
+    : isInternalRunError(error)
+      ? copy.generic
+      : error;
+}
+
 /** Reason the newest run stopped, until the reader dismisses that run's failure. */
 export function threadRunError(
   snapshot: ThreadSnapshot | null,

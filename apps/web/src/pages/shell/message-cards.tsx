@@ -251,7 +251,7 @@ export function AppConnectCard({
             disabled={busy}
             onClick={() => void authorize()}
           >
-            {busy ? t`Waiting…` : t`Authorize`}
+            {busy ? t`Waiting…` : t`Connect`}
           </Button>
         )}
       </div>
