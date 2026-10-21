@@ -74,6 +74,11 @@ msgstr ""
 msgid "{0, plural, one {# email} other {# emails}}"
 msgstr ""
 
+#. placeholder {0}: glance.dataRoomWaiting
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# file failed} other {# files failed}}"
+msgstr ""
+
 #. placeholder {0}: items.length
 #: src/components/FinanceCards.tsx
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
@@ -102,11 +107,6 @@ msgstr ""
 #. placeholder {0}: usage.runs
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "{0, plural, one {# task done by your bots} other {# tasks done by your bots}}"
-msgstr ""
-
-#. placeholder {0}: glance.dataRoomWaiting
-#: src/pages/Shell.tsx
-msgid "{0, plural, one {# waiting} other {# waiting}}"
 msgstr ""
 
 #. placeholder {0}: rows.length
@@ -237,10 +237,8 @@ msgstr ""
 msgid "{0} handling"
 msgstr "Обработка {0}"
 
-#. placeholder {0}: months.toFixed(0)
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
-#: src/components/sidebar-glance.tsx
 msgid "{0} mo"
 msgstr ""
 
@@ -264,11 +262,6 @@ msgstr ""
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} rollup hours"
 msgstr "{0} ч. сводки"
-
-#. placeholder {0}: runwayGlance(glance.financeRunwayMonths)
-#: src/pages/Shell.tsx
-msgid "{0} runway"
-msgstr ""
 
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
@@ -1367,10 +1360,6 @@ msgstr ""
 msgid "Ask {botName}"
 msgstr ""
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Ask a question"
-msgstr ""
-
 #: src/pages/Devin.tsx
 msgid "Ask a space owner to connect Devin."
 msgstr ""
@@ -1423,6 +1412,10 @@ msgstr "Спрашивайте перед покупкой"
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Ask before sending external email"
 msgstr "Спросите перед отправкой внешнего электронного письма"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Ask Chief"
+msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
@@ -5388,6 +5381,7 @@ msgstr "Загрузка поставщиков голосовой связи…
 #: src/App.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/ui.tsx
+#: src/components/RowsSkeleton.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
 #: src/pages/finance/FinanceTransaction.tsx
