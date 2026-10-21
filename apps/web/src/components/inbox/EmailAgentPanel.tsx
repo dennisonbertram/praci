@@ -106,20 +106,20 @@ export function EmailAgentPanel({
   return (
     <aside
       data-testid="email-agent-panel"
-      aria-label={bot.name}
+      aria-label={t`Email agent`}
       className="flex h-full min-h-0 w-full flex-col border-s border-sidebar-border bg-background"
     >
       <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-2">
         <button
           type="button"
-          aria-label={t`Open ${bot.name} full screen`}
+          aria-label={t`Open email agent full screen`}
           title={t`Open full screen`}
           onClick={() => navigate(`/app/${bot.id}`)}
           className="-mx-1.5 flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
         >
           <BotAvatar color={bot.color} identity={bot.id} size={22} status={bot.status} />
           <span className="truncate text-sm font-medium" dir="auto">
-            {bot.name}
+            <Trans>Email agent</Trans>
           </span>
         </button>
         <Button variant="ghost" size="icon-sm" aria-label={t`Close agent`} onClick={onClose}>
@@ -182,7 +182,8 @@ export function EmailAgentPanel({
       ) : null}
       <Composer
         draftKey={`bot:${bot.id}`}
-        activeName={bot.name}
+        activeName={t`Email agent`}
+        placeholder={t`Ask about this email`}
         running={running}
         pendingAttachments={[]}
         attachmentNotice={null}

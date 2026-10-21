@@ -125,7 +125,7 @@ export function mailThreadPromptText(block: MailThreadBlock): string {
 
 /** What the model sees in place of the thread until mail consent allows `mailThreadPromptText`. */
 export function mailThreadPlaceholder(block: MailThreadBlock): string {
-  return `[email thread: "${block.subject}", ${block.messages.length === 1 ? "1 message" : `${block.messages.length} messages`}. Not shared with you yet: the user has not allowed AI data sharing for mail with the model running this chat. Tell the user to allow it in Settings, AI data sharing, and do not ask them to paste the message.]`;
+  return `[email thread: "${block.subject}", ${block.messages.length === 1 ? "1 message" : `${block.messages.length} messages`}. Not shared with you yet: the user has not allowed AI data sharing for mail with the model running this chat. To read it, call mail_search for this subject: the user is then asked to allow it on a card. Do not send them to another page, and do not ask them to paste the message.]`;
 }
 
 export function blocksToAgentHistoryText(blocks: MessageBlock[]): string {

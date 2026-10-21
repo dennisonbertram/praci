@@ -105,6 +105,11 @@ const menuItem = async (name: string) => {
   );
 };
 
+const clickAsk = () =>
+  act(async () =>
+    [...document.querySelectorAll("button")].find((b) => b.textContent === "Ask agent")?.click(),
+  );
+
 const press = (key: string, target: Element = document.body, init: KeyboardEventInit = {}) =>
   act(() => {
     target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, ...init }));
@@ -279,11 +284,11 @@ it("Ask agent runs the page's action, and shows why it failed", async () => {
     root.render(<InboxMessageDialog messageId="m2" onAskAgent={onAskAgent} onClose={() => {}} />),
   );
   await flush();
-  await act(async () => (await menuItem("Ask agent"))?.click());
+  await clickAsk();
   expect(onAskAgent).toHaveBeenCalledTimes(1);
   expect(document.querySelector('[role="alert"]')).toBeNull();
   onAskAgent.mockRejectedValueOnce(new Error("Mail is unavailable"));
-  await act(async () => (await menuItem("Ask agent"))?.click());
+  await clickAsk();
   expect(document.querySelector('[role="alert"]')?.textContent).toContain("Mail is unavailable");
 });
 
@@ -301,7 +306,9 @@ it("Ask agent opens the email's agent in a panel, which closes again and can sta
       [...document.querySelectorAll("button")].find((b) => b.textContent === name)?.click(),
     );
   expect(document.querySelector('[data-testid="agent-panel"]')).toBeNull();
-  await act(async () => (await menuItem("Ask agent"))?.click());
+  // Beside Reply in the toolbar, not behind More.
+  expect(await menuItem("Ask agent")).toBeUndefined();
+  await clickAsk();
   expect(onAskAgentPanel).toHaveBeenCalledTimes(1);
   expect(document.querySelector('[data-testid="agent-panel"]')?.textContent).toContain(
     "Thread agent",
@@ -330,7 +337,7 @@ it("drops a late Ask agent answer when the user has moved to another email", asy
     );
   render("early");
   await flush();
-  await act(async () => (await menuItem("Ask agent"))?.click());
+  await clickAsk();
   render("later");
   await flush();
   await act(async () => resolve({ id: "bot-a", name: "Agent for early" }));
@@ -339,7 +346,9 @@ it("drops a late Ask agent answer when the user has moved to another email", asy
 
 it("shows no Ask agent button when the page gives no action", async () => {
   await open();
-  expect(await menuItem("Ask agent")).toBeUndefined();
+  expect([...document.querySelectorAll("button")].some((b) => b.textContent === "Ask agent")).toBe(
+    false,
+  );
 });
 
 it("keeps Reply as the one filled button, with Reply all and Forward in More", async () => {
