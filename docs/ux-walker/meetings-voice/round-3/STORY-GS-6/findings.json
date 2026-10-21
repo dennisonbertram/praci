@@ -1,0 +1,13 @@
+{
+  "story_id": "STORY-GS-6",
+  "round": 3,
+  "result": "PASS",
+  "round2_status": [
+    {
+      "id": "F2-GS-6-01",
+      "status": "fixed",
+      "evidence": "'Agent removed' state drawn with 'Create agent' (g-d-api-key-noagent.png)."
+    }
+  ],
+  "findings": []
+}

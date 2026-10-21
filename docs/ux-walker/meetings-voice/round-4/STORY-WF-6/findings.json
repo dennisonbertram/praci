@@ -1,0 +1,40 @@
+{
+  "story": "STORY-WF-6",
+  "round": 4,
+  "verdict": "PASS",
+  "round3_dispositions": [
+    {
+      "id": "F3-WF-6-1",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "Workspace names are still not visible in any frame (step-call-normal.png); the call card shows only Elio's line. Kept as a note for the S4 manual checklist."
+    },
+    {
+      "id": "F3-WF-6-2",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "ElevenLabs still reads \"Speak + transcribe\" and \"Connected\" while Flow reads \"Transcribing\" (step-voice-connected.png). The selected bar and the word disambiguate; not re-raised."
+    },
+    {
+      "id": "F2-WF-6-2",
+      "sev": "low",
+      "status": "fixed",
+      "evidence": "The consent-off effect is now drawn: the Flow row reads \"AI data sharing off\" and links to the AI data sharing screen (step-voice-aioff.png, step-consent-off.png)."
+    }
+  ],
+  "new_findings": [
+    {
+      "id": "F4-WF-6-1",
+      "kind": "mockup",
+      "severity": "low",
+      "category": "visual",
+      "criterion": "Consistency",
+      "score": "warn",
+      "description": "At 390 px wide the provider list is 280 px wide and the Wispr Flow pane below it is 332 px wide, so the two stacked blocks have different widths and edges.",
+      "expected": "Stacked list and pane share one width (TX-19 asked for a stacked card with an 8 px gap).",
+      "actual": "List 280 px, pane 332 px (mobile-check-390.png).",
+      "screenshot": "screenshots/mobile-check-390.png",
+      "suggested_fix": "Make the list fill the container width at 560 px and below, as the pane does."
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "story_id": "STORY-GS-3",
+  "round": 4,
+  "result": "PASS",
+  "round3_status": [
+    {
+      "id": "F3-GS-3-01",
+      "status": "fixed",
+      "evidence": "The \"Both connected\" frame now exists on the integrations list and on the detail page (g-d-api-key-both.png); each row has its own label and Disconnect."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F4-GS-3-01",
+      "severity": "low",
+      "category": "clarity",
+      "criterion": "Consistency",
+      "score": "warn",
+      "kind": "mockup",
+      "description": "The Both connected rows read \"Sign-in\" and \"API key\". The plan (Surfaces, Page order) says each row is labelled with its existing route words, \"via MCP\" and \"Granola API key\".",
+      "expected": "Row labels match the plan wording.",
+      "actual": "Labels are \"Sign-in\" and \"API key\".",
+      "screenshot": "g-d-api-key-both.png",
+      "suggested_fix": "Either relabel the rows in docs/granola/mockup.html or change the plan sentence to the shorter labels.",
+      "jf": "NEW",
+      "files_likely_involved": []
+    }
+  ]
+}
