@@ -1,19 +1,9 @@
 import { useLingui } from "@lingui/react/macro";
-import type { Me, ThreadSnapshot } from "@rakazo/contracts";
+import type { Me } from "@rakazo/contracts";
 import { useCallback, useMemo } from "react";
 import { rpc } from "../../lib/rpc";
 import type { TourStep } from "./TourPopover";
 import { TourPopover } from "./TourPopover";
-
-/** True while a Connect card waits for an answer: still pending, and the user has not written since. */
-export function connectCardsOpen(messages: ThreadSnapshot["messages"]) {
-  const lastUser = messages.findLastIndex((message) => message.role === "user");
-  return messages.some(
-    (message, i) =>
-      i > lastUser &&
-      message.blocks.some((block) => block.kind === "app_connect" && block.status === "pending"),
-  );
-}
 
 /**
  * The first-run tour. It runs when `open` is true; finishing or skipping it records `tourSeen`
@@ -25,7 +15,7 @@ export function FirstRunTour({
   onAsk,
 }: {
   open: boolean;
-  /** The last step's button: finishes the tour and focuses the composer on a sample question. */
+  /** The last step's "Ask Chief": finishes the tour and opens Chief with a sample question. */
   onAsk: () => void;
   /** Called as soon as the tour ends; `byEscape` when the Escape key ended it. */
   onClose: (me: Me | null, byEscape?: boolean) => void;
@@ -94,6 +84,6 @@ export function FirstRunTour({
   );
   if (!open) return null;
   return (
-    <TourPopover steps={steps} onFinish={finish} doneLabel={t`Ask a question`} onDone={onAsk} />
+    <TourPopover steps={steps} onFinish={finish} lastAction={{ label: t`Ask Chief`, run: onAsk }} />
   );
 }

@@ -91,6 +91,8 @@ function Status({ status }: { status: LegalContractStatus }) {
  */
 export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
   useHideAmounts();
+  // Active is the normal case, so the column appears only when some contract is not.
+  const showStatus = contracts.some((contract) => contract.status !== "active");
   return (
     <>
       <ul aria-label={t`Contracts`} className="flex flex-col @4xl:hidden">
@@ -134,10 +136,10 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
           <Trans>Contracts</Trans>
         </caption>
         <colgroup>
-          <col className="w-[20%]" />
-          <col className="w-[14%]" />
-          <col className="w-[8%]" />
-          <col className="w-[20%]" />
+          <col className={showStatus ? "w-[20%]" : "w-[22%]"} />
+          <col className={showStatus ? "w-[14%]" : "w-[18%]"} />
+          {showStatus ? <col className="w-[8%]" /> : null}
+          <col className={showStatus ? "w-[20%]" : "w-[22%]"} />
           <col className="w-[17%]" />
           <col className="w-[9%]" />
           <col className="w-[12%]" />
@@ -150,9 +152,11 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
             <TableHead>
               <Trans>Parties</Trans>
             </TableHead>
-            <TableHead>
-              <Trans>Status</Trans>
-            </TableHead>
+            {showStatus ? (
+              <TableHead>
+                <Trans>Status</Trans>
+              </TableHead>
+            ) : null}
             <TableHead>
               <Trans>Term</Trans>
             </TableHead>
@@ -174,9 +178,11 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
                 <Title contract={contract} />
               </TableCell>
               <TableCell>{contract.counterparties.join(", ") || dash}</TableCell>
-              <TableCell>
-                <Status status={contract.status} />
-              </TableCell>
+              {showStatus ? (
+                <TableCell>
+                  <Status status={contract.status} />
+                </TableCell>
+              ) : null}
               <TableCell className="whitespace-nowrap tabular-nums">{term(contract)}</TableCell>
               <TableCell className="whitespace-nowrap">{renewal(contract)}</TableCell>
               <TableCell className="text-end tabular-nums">{value(contract)}</TableCell>

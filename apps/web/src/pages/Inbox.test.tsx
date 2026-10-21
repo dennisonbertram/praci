@@ -722,13 +722,48 @@ it("stops spinning when sorting stalls and offers to try again", async () => {
   // Each poll returns a fresh answer, as the server does.
   rpcMock.list.mockImplementation(async () => list([row("a"), row("b")], { triagePending: true }));
   const c = await render();
-  for (let i = 0; i < 13; i++) await dwell(5_000);
+  for (let i = 0; i < 7; i++) await dwell(5_000);
   expect(c.textContent).not.toContain("Sorting your mail…");
   expect(c.textContent).toContain("Sorting is taking longer than usual.");
   const refreshes = rpcMock.refresh.mock.calls.length;
   await click(byText(c, "Try sorting again"));
   expect(rpcMock.refresh.mock.calls.length).toBe(refreshes + 1);
   expect(c.textContent).toContain("Sorting your mail…");
+});
+
+it("keeps the sorting stall notice through the minute sync", async () => {
+  vi.useFakeTimers();
+  try {
+    rpcMock.list.mockImplementation(async () => list([row("a")], { triagePending: true }));
+    const c = await render();
+    for (let i = 0; i < 7; i++)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5_000);
+      });
+    expect(c.textContent).toContain("Sorting is taking longer than usual.");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(61_000);
+    });
+    expect(c.textContent).toContain("Sorting is taking longer than usual.");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("says it is reading the mail during the first sync and asks the server a few times only", async () => {
+  vi.useFakeTimers();
+  try {
+    rpcMock.list.mockResolvedValue(list([]));
+    rpcMock.refresh.mockImplementation(async () => ({ syncing: true }));
+    const c = await render();
+    expect(c.textContent).toContain("Reading your mail…");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(25_000);
+    });
+    expect(rpcMock.refresh.mock.calls.length).toBeLessThanOrEqual(6);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 it("shows nothing from the first sort until it and its to-dos have landed, then changes once", async () => {
@@ -1113,7 +1148,8 @@ it("polls refresh while it reports syncing and reloads the list once when it sto
   await dwell(2_000);
   expect(rpcMock.refresh).toHaveBeenCalledTimes(2);
   expect(rpcMock.list.mock.calls.length).toBe(lists);
-  await dwell(2_000);
+  // Each wait doubles, so a long first sync is not asked about every two seconds.
+  await dwell(4_000);
   expect(rpcMock.refresh).toHaveBeenCalledTimes(3);
   expect(rpcMock.list.mock.calls.length).toBe(lists + 1);
   await dwell(10_000);

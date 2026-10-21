@@ -16,7 +16,7 @@ vi.mock("@lingui/react/macro", () => {
 });
 
 import { setHideAmounts } from "../../lib/hide-amounts-preference";
-import { InboxRow } from "./InboxRow";
+import { InboxGroup, InboxRow } from "./InboxRow";
 
 const row: MailRow = {
   id: "m1",
@@ -242,4 +242,12 @@ it("offers no spam or trash items without a move handler", async () => {
   await show();
   const items = await menuItems();
   expect(items.map((el) => el.textContent)).toEqual(["Archive", "Mark read"]);
+});
+
+it("labels the group number as unread mail, not a row count", async () => {
+  const rows = [row, { ...row, id: "m2", unread: false }, { ...row, id: "m3", unread: false }];
+  await act(async () =>
+    root.render(<InboxGroup title="Earlier" rows={rows} onOpen={() => {}} onMark={undefined} />),
+  );
+  expect(document.querySelector("h2")?.textContent).toBe("Earlier1 unread");
 });
