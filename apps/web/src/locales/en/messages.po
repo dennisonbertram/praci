@@ -5895,6 +5895,7 @@ msgstr "Needs sign-in"
 msgid "Needs takeover"
 msgstr "Needs takeover"
 
+#: src/components/PageAgentsRow.tsx
 #: src/lib/roster-status.ts
 #: src/pages/ActivityList.tsx
 #: src/pages/Devin.tsx
@@ -6780,6 +6781,10 @@ msgstr "Ownership"
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Page"
 msgstr "Page"
+
+#: src/components/PageAgentsRow.tsx
+msgid "Page agents"
+msgstr "Page agents"
 
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Page changed. Reload"
