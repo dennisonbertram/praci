@@ -63,6 +63,7 @@ describePostgres("notifications.glance (PostgreSQL)", () => {
     expect(await glance(alice)).toEqual({
       financeRunwayMonths: null,
       legalDueSoon: 0,
+      devinNeedsYou: 0,
       dataRoomWaiting: 0,
       botKinds: {},
     });
@@ -90,6 +91,64 @@ describePostgres("notifications.glance (PostgreSQL)", () => {
     expect((await glance(alice)).legalDueSoon).toBe(2);
     expect((await glance(bob)).legalDueSoon).toBe(1);
     expect((await glance(aliceElsewhere)).legalDueSoon).toBe(1);
+  });
+
+  it("counts waiting and failed Devin sessions of the space's active connection only", async () => {
+    const server = (space: string, user: string, tag: string) =>
+      prisma.mcpServer.create({
+        data: {
+          spaceId: space,
+          userId: user,
+          slug: `devin-${tag}`,
+          name: "Devin",
+          transport: "streamable_http",
+          endpoint: "https://mcp.devin.ai/mcp",
+        },
+      });
+    const sessions = (serverId: string, space: string, kinds: string[]) =>
+      prisma.devinSession.createMany({
+        data: kinds.map((kind, n) => ({
+          serverId,
+          spaceId: space,
+          sessionId: `${serverId}-${n}`,
+          title: kind,
+          status: kind,
+          kind,
+          origin: "webapp",
+          devinUpdatedAt: new Date(),
+          lastSeenAt: new Date(),
+        })),
+      });
+    const active = await server(spaceA, alice.userId, "active");
+    const privateRow = await server(spaceA, bob.userId, "private");
+    const elsewhere = await server(spaceB, alice.userId, "elsewhere");
+    await sessions(active.id, spaceA, ["needs_you", "error", "working", "finished"]);
+    await sessions(privateRow.id, spaceA, ["needs_you", "needs_you"]);
+    await sessions(elsewhere.id, spaceB, ["needs_you"]);
+    await prisma.devinConnectionState.createMany({
+      data: [
+        { serverId: active.id, spaceId: spaceA },
+        { serverId: elsewhere.id, spaceId: spaceB },
+      ],
+    });
+    // Every member of the space sees the same count; a private row without a state row adds nothing.
+    expect((await glance(alice)).devinNeedsYou).toBe(2);
+    expect((await glance(bob)).devinNeedsYou).toBe(2);
+    expect((await glance(aliceElsewhere)).devinNeedsYou).toBe(1);
+
+    await prisma.devinConnectionState.update({
+      where: { serverId: active.id },
+      data: { rejectedAt: new Date(), lastError: "rejected" },
+    });
+    expect((await glance(alice)).devinNeedsYou).toBe(0);
+    await prisma.devinConnectionState.update({
+      where: { serverId: active.id },
+      data: { rejectedAt: null, lastError: "connector_gone" },
+    });
+    expect((await glance(alice)).devinNeedsYou).toBe(0);
+    await prisma.mcpServer.deleteMany({
+      where: { id: { in: [active.id, privateRow.id, elsewhere.id] } },
+    });
   });
 
   it("counts failed data room items for the caller only", async () => {
