@@ -60,7 +60,7 @@ describe("fundraising_read", () => {
     });
     expect(roundFind).toHaveBeenCalledWith({ where: { ...scope, closedAt: null } });
     expect(contactFind).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { ...scope, kind: "prospect", stage: { not: null } } }),
+      expect.objectContaining({ where: { ...scope, kind: "prospect" } }),
     );
   });
 
@@ -84,6 +84,16 @@ describe("fundraising_read", () => {
       round: null,
       pendingUsd: 0,
       prospects: [],
+    });
+  });
+
+  it("lists a prospect saved without a stage at Target", async () => {
+    const prisma = {
+      fundraiseRound: { findFirst: async () => null },
+      contact: { findMany: async () => [row({ stage: null, checkSizeCents: null })] },
+    } as never;
+    expect(await fundraisingToolFromTool("fundraising_read", { prisma, scope })).toMatchObject({
+      prospects: [{ stage: "target" }],
     });
   });
 

@@ -43,10 +43,12 @@ export async function getFundraisingOverview(
       orderBy: [{ closedAt: "desc" }, { id: "desc" }],
     }));
   const prospects = await prisma.contact.findMany({
-    where: { ...scope, kind: "prospect", stage: { not: null } },
+    where: { ...scope, kind: "prospect" },
     include: { bot: { select: { id: true, name: true } } },
     orderBy: [{ name: "asc" }, { id: "asc" }],
   });
+  // A prospect made without a stage (for example by an agent) starts at Target.
+  const withStage = prospects.map((p) => ({ ...p, stage: p.stage ?? "target" }));
   const open = row && !row.closedAt ? row : null;
   // A Committed prospect counts only in the round that was open when its stage was saved.
   const pendingCents = open
@@ -54,7 +56,7 @@ export async function getFundraisingOverview(
         .filter((p) => p.stage === "committed" && p.roundId === open.id)
         .reduce((sum, p) => sum + Number(p.checkSizeCents ?? 0), 0)
     : 0;
-  return { round: row ? toRound(row) : null, pendingCents, prospects: prospects.map(toContact) };
+  return { round: row ? toRound(row) : null, pendingCents, prospects: withStage.map(toContact) };
 }
 
 /** Starts a round, or edits the open round when `id` is given. */
