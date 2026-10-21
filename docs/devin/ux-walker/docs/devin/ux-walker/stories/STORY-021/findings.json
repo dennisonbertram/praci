@@ -1,0 +1,53 @@
+[
+  {
+    "id": "F-STORY-021-01",
+    "story_id": "STORY-021",
+    "severity": "medium",
+    "category": "hierarchy",
+    "criterion": "Information stated once",
+    "score": "warn",
+    "description": "Toast, dot, tile and row say the same fact. Real toast structure observed (title, one-line body, age) has no action label; the whole card is presumably the target. Devin copy not rendered, so toast text could not be compared.",
+    "expected": "Single clear route from toast to the question.",
+    "actual": "Four mentions (catalog + observation).",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-021/screenshots/step-1.png",
+    "suggested_fix": "Keep toast + dot; tie tile to same cached result.",
+    "files_likely_involved": [
+      "apps/web/src/pages/devin/",
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-021-02",
+    "story_id": "STORY-021",
+    "severity": "low",
+    "category": "error-handling",
+    "criterion": "Error messages",
+    "score": "warn",
+    "description": "Not observed: toast body when the question text is unavailable and toast suppression when already on the page are undecided.",
+    "expected": "Fallback copy decided.",
+    "actual": "Not represented.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-021/screenshots/step-1.png",
+    "suggested_fix": "Decide fallback body.",
+    "files_likely_involved": [
+      "apps/web/src/pages/devin/",
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-021-03",
+    "story_id": "STORY-021",
+    "severity": "low",
+    "category": "flow",
+    "criterion": "Feedback",
+    "score": "warn",
+    "description": "Dot clears on arrival even though the row still says Needs you (per catalog; not observable in static mockup).",
+    "expected": "Dot semantics match what the tile says.",
+    "actual": "Not observed.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-021/screenshots/step-4.png",
+    "suggested_fix": "Document behaviour.",
+    "files_likely_involved": [
+      "apps/web/src/pages/devin/",
+      "docs/devin/mockup.html"
+    ]
+  }
+]

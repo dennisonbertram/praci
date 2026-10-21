@@ -589,6 +589,7 @@ msgid "A deposit address at an exchange."
 msgstr "A deposit address at an exchange."
 
 #: src/components/sidebar-folders/FolderHeader.tsx
+#: src/pages/shell/dialogs.tsx
 msgid "A folder with that name already exists"
 msgstr "A folder with that name already exists"
 
@@ -1060,10 +1061,6 @@ msgstr "Allow writing"
 msgid "Allowed"
 msgstr "Allowed"
 
-#: src/components/AskCard.tsx
-msgid "Allowed once"
-msgstr "Allowed once"
-
 #: src/pages/Auth.tsx
 msgid "Already have an account?"
 msgstr "Already have an account?"
@@ -1101,8 +1098,8 @@ msgid "Always act"
 msgstr "Always act"
 
 #: src/components/AskCard.tsx
-msgid "Always allow this tool"
-msgstr "Always allow this tool"
+msgid "Always allow this"
+msgstr "Always allow this"
 
 #: src/components/AskCard.tsx
 msgid "Always allowed"
@@ -1220,6 +1217,10 @@ msgstr "Approve"
 #: src/pages/shell/message-cards.tsx
 msgid "Approve this server to let your bot use its tools."
 msgstr "Approve this server to let your bot use its tools."
+
+#: src/components/AskCard.tsx
+msgid "Approved"
+msgstr "Approved"
 
 #: src/components/ConnectAppsButton.tsx
 #: src/components/integrations/AppDetail.tsx
@@ -3746,6 +3747,7 @@ msgstr "Document date"
 
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/FolderDocuments.tsx
+#: src/pages/Shell.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Documents"
 msgstr "Documents"
@@ -5602,6 +5604,10 @@ msgstr "More Blockscout actions"
 msgid "More computer actions"
 msgstr "More computer actions"
 
+#: src/pages/ActivityList.tsx
+msgid "More filters"
+msgstr "More filters"
+
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 msgid "Move"
@@ -5694,10 +5700,6 @@ msgstr "Needs a monthly burn"
 msgid "Needs a server restart"
 msgstr "Needs a server restart"
 
-#: src/lib/roster-status.ts
-msgid "Needs an answer"
-msgstr "Needs an answer"
-
 #: src/components/MailApprovalCard.tsx
 msgid "Needs approval"
 msgstr "Needs approval"
@@ -5731,6 +5733,10 @@ msgstr "Needs takeover"
 #: src/pages/Shell.tsx
 msgid "Needs you"
 msgstr "Needs you"
+
+#: src/lib/roster-status.ts
+msgid "Needs your answer"
+msgstr "Needs your answer"
 
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -7871,8 +7877,8 @@ msgid "Search older mail"
 msgstr "Search older mail"
 
 #: src/pages/shell/command-palette.tsx
-msgid "Search pages, bots and groups"
-msgstr "Search pages, bots and groups"
+msgid "Search pages, bots, groups, documents and artifacts"
+msgstr "Search pages, bots, groups, documents and artifacts"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Search providers"
@@ -9866,6 +9872,10 @@ msgstr "Who owns what in the company?"
 #: src/components/EmailCards.tsx
 msgid "Within 3 days"
 msgstr "Within 3 days"
+
+#: src/components/AskCard.tsx
+msgid "Won't ask again for this kind of action."
+msgstr "Won't ask again for this kind of action."
 
 #: src/lib/ticket-status.ts
 msgid "Won't do"

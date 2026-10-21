@@ -58,3 +58,11 @@ it.each([
   if (icon) expect(line.querySelector(`svg.${icon}`)).toBeTruthy();
   else expect(line.querySelector("svg")).toBeNull();
 });
+
+it.each([
+  ["allow", "Approved"],
+  ["always", "Always allowed"],
+  ["deny", "Denied"],
+])("words the %s answer as %s", (answer, words) => {
+  expect(render(answer).textContent).toBe(words);
+});

@@ -1,0 +1,258 @@
+{
+  "mode": "inspect",
+  "images": [
+    "f1-1440-light.png",
+    "f0-1440-dark.png",
+    "f9-1440-light.png",
+    "f17-1440-light.png",
+    "f20-1440-light.png",
+    "f4-1440-dark.png",
+    "f1-375-light.png",
+    "f0-900-light.png"
+  ],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 73,
+      "costUsd": 0.171524,
+      "result": {
+        "verdict": "Needs revision — the core 'Needs you first' triage story is clear at desktop width, but the stale-key, agent-missing, stacked-toast and narrow-overlay states hide or misrepresent exactly the information a busy founder needs, and several secondary surfaces imply interactions they do not explain.",
+        "findings": [
+          {
+            "level": "group",
+            "element": "Summary cards 'Needs you 3' (amber outline) and 'Working 2' (plain) above the table",
+            "problem": "The two cards read as selectable filter tabs — one visually selected with a full amber border, one unselected — yet the table below them always shows all groups (Needs you, Working, Earlier). A first-time user will tap 'Working' expecting the list to filter and be confused when nothing appears to change.",
+            "norm": "A bordered, card-styled summary that looks selected must either filter the list or not use selected-state styling; status summaries use static, non-interactive styling.",
+            "severity": "P1",
+            "screenshot": "f1-1440-light.png",
+            "fix": "Either make the cards real filters (selected state filters the table, with a clear way back to All) or restyle them as plain unbordered stat text so they do not afford interaction."
+          },
+          {
+            "level": "group",
+            "element": "'Needs you 3' / 'Working 2' summary cards",
+            "problem": "Each card is a tall, mostly empty box containing only a small label and one numeral, consuming roughly 100px of vertical space before the first session row. This pushes 'Earlier' off the bottom of the 1440 viewport and delays the actual questions the founder came to read.",
+            "norm": "Dashboard stat cards should be compact in proportion to their content; glanceable counts do not need display-card height, especially above an already-grouped list that repeats the same counts.",
+            "severity": "P2",
+            "screenshot": "f1-1440-light.png",
+            "fix": "Collapse to a single compact summary line (e.g. '3 need you · 2 working') or drastically reduce card padding/height, and consider dropping the cards entirely since the group headings already carry the counts."
+          },
+          {
+            "level": "page",
+            "element": "Whole page state: 'Devin rejected the key. Alerts are paused.' notice, missing summary cards, and the session table below",
+            "problem": "In the key-rejected state the Needs you/Working summary cards disappear, every status pill (Needs input, Error, Finished, Working) renders as a washed-out grey outline, yet the rows still present questions, PRs and relative times as if current — under a small 'Updated 4m ago' next to the title. The founder cannot tell whether the 3 needs-you items are still accurate, stale, or growing, and the drained pills remove the urgency coding the page normally relies on.",
+            "norm": "A stale/broken-sync state must be applied consistently: data shown should be explicitly labelled as last-known with a sync time, and primary triage counts should not silently vanish.",
+            "severity": "P1",
+            "screenshot": "f9-1440-light.png",
+            "fix": "Keep the summary counts but mark them stale (e.g. 'Needs you 3 · as of 4m ago, updates paused'), keep status pill colours, and add one plain sentence under the notice stating the list is the last successful sync."
+          },
+          {
+            "level": "page",
+            "element": "Right-hand panel containing only a centred 'Create Devin agent' button",
+            "problem": "When the agent is missing, the entire right third of the screen is an empty black void with one floating pill button and no heading, icon, or explanation. Unlike the populated panel there is no 'Devin agent' title. A non-technical founder is given no reason to create it, no sense of what it does, what it costs, or why the panel exists at all — and the main session list is meanwhile truncated below 'Upgrade Prisma to 6.x'.",
+            "norm": "An empty state must name the feature, state the benefit in one line, and then offer the action; a bare button in empty space is not an empty state.",
+            "severity": "P1",
+            "screenshot": "f4-1440-dark.png",
+            "fix": "Add the 'Devin agent' panel header plus a short empty state: what the agent answers ('Ask about these sessions in plain English'), then the Create button. Alternatively collapse the panel entirely until an agent exists."
+          },
+          {
+            "level": "group",
+            "element": "Stacked toast cards with a floating '+1' badge at bottom-right over Inbox",
+            "problem": "The second notification is completely hidden behind the first — only stacked card edges and a small detached '+1' pill are visible, with no session title, question, or action. There are 3 sessions needing the founder, but from any other page they can only ever see one; the '+1' does not read as an expandable control, so the second blocked session ('Upgrade Prisma to 6.x') is effectively invisible.",
+            "norm": "Stacked notifications must expose at least the title of each pending item or a labelled 'View all (2)' action; a count badge alone must not be the only access to urgent, actionable items.",
+            "severity": "P1",
+            "screenshot": "f20-1440-light.png",
+            "fix": "Show both toasts expanded (capped with a 'View all in Devin' row), or replace the stack with a single toast: 'Devin needs input on 2 sessions — Add CSV export…, Upgrade Prisma… · Open Devin'."
+          },
+          {
+            "level": "component",
+            "element": "Toast 'Devin needs input … Opens Devin' with '2m ago'",
+            "problem": "The toast has no dismiss/close control and its only action, 'Opens Devin', is set as small plain grey text with no button styling, arrow, or external-link icon — inconsistent with the ↗ affordance used on every other Devin-bound element in the app. A first-time user cannot tell the toast is clickable, nor make it go away.",
+            "norm": "Actionable toasts pair a visibly interactive action (labelled button/link with consistent iconography) with a dismiss control, per standard toast patterns.",
+            "severity": "P2",
+            "screenshot": "f20-1440-light.png",
+            "fix": "Style the action as a real link/button ('Open in Devin ↗') using the same external-link convention as session rows, and add a close (×) control with an accessible label."
+          },
+          {
+            "level": "layout",
+            "element": "Docked 'Devin agent' panel overlaying the session table at 900px, cutting through the 'Pull request' column",
+            "problem": "At 900px the panel covers roughly the right 55% of the page: the Working summary card is clipped mid-card, and PR values are truncated mid-string ('acme/ap', 'acme/we', 'acme/mo') with no fade, ellipsis, or horizontal-scroll cue. The founder cannot read the very PR numbers the agent's answers reference (e.g. acme/api#215) while the panel is open, forcing them to close it to recover context.",
+            "norm": "At intermediate widths a side panel must either push/reflow content to a readable minimum width or take over the full viewport as a sheet; it must never slice table columns mid-value.",
+            "severity": "P1",
+            "screenshot": "f0-900-light.png",
+            "fix": "Below ~1100px make the agent a full-width sheet (or overlay that fully covers with its own header), and above that dock it with the table reflowing to fewer columns (drop Source before truncating PR)."
+          },
+          {
+            "level": "group",
+            "element": "Mobile session rows under 'Needs you'",
+            "problem": "On mobile the Source column disappears entirely with no replacement: 'Add CSV export for invoices' shows only '2m ago', 'Upgrade Prisma to 6.x' shows 'acme/api#212 open · 1h ago' but not 'Linear', and the Error row shows only 'Yesterday'. Metadata formatting is also inconsistent row-to-row (time alone vs PR+time combined), with no labels, so a founder cannot tell where a session came from — context that is present on desktop.",
+            "norm": "Responsive table-to-card transformations must preserve all decision-relevant fields as a consistently ordered, labelled metadata line rather than silently dropping a column.",
+            "severity": "P2",
+            "screenshot": "f1-375-light.png",
+            "fix": "Give every mobile row the same labelled meta line, e.g. 'Slack · 2m ago', 'Linear · acme/api#212 open · 1h ago', 'Web · Yesterday', wrapping to two lines where needed."
+          },
+          {
+            "level": "component",
+            "element": "Panel header close/collapse icon (top-right of 'Devin agent' panel)",
+            "problem": "The panel's only exit is a tiny unlabelled panel-glyph icon with no text or visible tooltip. At 900px, where the panel buries half the page, a first-time founder has no obvious way to dismiss it and get their table back.",
+            "norm": "Overlay/sheet dismissal must be a recognisable, labelled control (× with aria-label, or 'Close'); ambiguous utility glyphs are not discoverable exits.",
+            "severity": "P2",
+            "screenshot": "f0-900-light.png",
+            "fix": "Use a clear × 'Close' button in the panel header at overlay widths (keeping the dock/collapse toggle, labelled, only at desktop widths where the panel is docked)."
+          },
+          {
+            "level": "component",
+            "element": "Agent composer: '+' and microphone icon buttons flanking 'Message Devin agent'",
+            "problem": "The composer presents unlabelled '+' (attachment) and microphone (voice) buttons that imply the founder can attach files or dictate — capabilities nowhere else suggested on this read-only page — while the send arrow sits in a muted, disabled-looking purple circle even as the primary action. A non-technical user cannot predict what '+' will do here.",
+            "norm": "Composer affordances must match the agent's actual capabilities; unexplained generic chat chrome copied from full chat products creates false expectations.",
+            "severity": "P3",
+            "screenshot": "f0-1440-dark.png",
+            "fix": "Remove the '+' and mic buttons (or label them with tooltips and real behaviour), and give the send button a clearly enabled/disabled treatment tied to input content."
+          },
+          {
+            "level": "component",
+            "element": "Agent answer bullets: bold session titles followed by separate 'Open Add pagination in Devin ↗' links",
+            "problem": "In the 'Two sessions touched acme/api' answer, the recognisable text — the session title — is bold but not the link, while the actual link is a second, longer 'Open … in Devin' phrase that wraps awkwardly onto its own line. Founders scanning on a phone must parse duplicated titles and hunt for the tappable text, twice per answer.",
+            "norm": "In generated answers the entity name itself should be the link; redundant 'Open X' link text doubles line length and weakens scannability.",
+            "severity": "P3",
+            "screenshot": "f0-1440-dark.png",
+            "fix": "Make the bold session title the link (with ↗), and drop the repeated 'Open … in Devin' link text, keeping one short link per session."
+          },
+          {
+            "level": "component",
+            "element": "Connect dialog: 'Where to find your key ↗' helper link and empty-state 'Connect Devin' button visible blurred behind the dialog",
+            "problem": "For a non-engineer founder, the only guidance to complete the one required field is a single small external link — no inline steps, no indication of what the key looks like or who in their org can generate it. Behind the dialog, the empty state's own black Connect button still peeks out from under the modal, presenting a second, partially obscured copy of the same call to action.",
+            "norm": "Credential-entry dialogs for non-technical users give 2–3 short inline steps before sending users away, and modal presentation should fully supersede the underlying CTA.",
+            "severity": "P2",
+            "screenshot": "f17-1440-light.png",
+            "fix": "Add two short inline steps under the intro (where in Devin to generate the key, who has permission), keep the external link for detail, and centre/size the dialog so the background empty-state CTA is not half-visible behind it."
+          },
+          {
+            "level": "component",
+            "element": "'Suspended' status pill on 'Rewrite onboarding copy' in the Earlier group",
+            "problem": "'Suspended' is the only terminal status given no explanation anywhere: Needs-you errors get a reason line, Finished rows show a PR state, but a suspended session shows no reason, no date beyond '2d ago', and no hint whether it will resume, needs the founder, or is dead. A founder cannot tell if this is a problem they are ignoring.",
+            "norm": "Non-obvious lifecycle states must carry a one-line plain-language reason or consequence, consistent with how the Error state is already handled on the same page.",
+            "severity": "P3",
+            "screenshot": "f0-1440-dark.png",
+            "fix": "Add a sub-line under suspended rows in the same style as error reasons, e.g. 'Paused — no activity for 2 days' or 'Waiting on a merged PR', or rename the status to plain language."
+          }
+        ],
+        "excellent": [
+          "Grouping is exactly right for the persona: 'Needs you' first with Devin's actual question ('Should the export keep the legacy CSV column order?') visible in the row, so the founder knows what is being asked before leaving the app (f1-1440-light.png).",
+          "Status is communicated redundantly and consistently — group heading, pill, and summary count agree — making the page glanceable between meetings (f1-1440-light.png, f0-1440-dark.png).",
+          "Mobile reflow keeps the essentials intact: Needs you/Working counts, status pill, full question text and timestamp all survive at 375px in a single readable column (f1-375-light.png).",
+          "Agent answers are well structured for a non-engineer: short prose lead, PR references with state, and bullet-per-session outcomes rather than raw logs (f0-1440-dark.png).",
+          "The connect dialog uses plain, reassuring language — 'Connects Devin for everyone in this space. Read-only.' — that correctly sets scope expectations for a founder (f17-1440-light.png).",
+          "The notification toast carries the right content: session title plus Devin's verbatim question and age, so it is actionable without opening anything (f20-1440-light.png)."
+        ]
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 140,
+      "costUsd": 0.130706,
+      "result": {
+        "verdict": "The v5 Devin page mockup is well-tailored to a non-technical founder—surfacing full plain-English blocker questions, clear session grouping, and a clean mobile row layout—but several high-visibility interaction and visual consistency issues remain across the empty-agent state, notification toasts, connect modal backdrop, table section dividers, and cross-surface iconography.",
+        "findings": [
+          {
+            "level": "page",
+            "element": "Right panel empty state ('Create Devin agent' button and header area)",
+            "problem": "When the Ask panel is opened before an agent exists, the panel renders as a blank dark void with no panel header/title on the top-left and a standalone 'Create Devin agent' button in the center with zero explanatory copy. For a non-technical founder who just clicked 'Ask', 'Create Devin agent' is ambiguous—it reads as if it might spin up a new billable coding session in Devin rather than enabling a read-only Q&A assistant inside Rakazo.",
+            "norm": "Drawer/panel empty states should maintain their persistent header ('Devin agent' + icon) for orientation and pair primary creation CTAs with a brief 1-line description of what is being created and its scope (e.g., read-only search over Devin sessions).",
+            "severity": "P1",
+            "screenshot": "f4-1440-dark.png",
+            "fix": "Keep the 'Devin agent' icon and title in the panel header bar alongside the collapse button, and add a short subtext above or below the button (e.g., 'Answers questions about your Devin sessions. Read-only.')"
+          },
+          {
+            "level": "component",
+            "element": "Stacked notification toast ('Devin needs input') and '+1' stack badge",
+            "problem": "First, the toast has no close/dismiss ('×') button: when the founder is working in Inbox, there is no visible way to dismiss the notification without clicking it and leaving their current workflow ('Opens Devin'). Second, the visual stack renders two backing cards behind the front toast (3 cards total), which contradicts the '+1' badge in the top-right corner. Third, 'Opens Devin' lacks the external link indicator ('↗') used everywhere else in the UI when opening Devin externally, making it unclear whether clicking navigates to the internal Devin page or launches devin.ai.",
+            "norm": "Persistent or stacked action toasts must provide an explicit dismiss affordance, the number of stacked back-layers should match the overflow count badge, and external navigation affordances should use consistent iconography ('↗').",
+            "severity": "P1",
+            "screenshot": "f20-1440-light.png",
+            "fix": "Add a dismiss ('×') button on hover or in the top-right beside '2m ago', match the backing card count to the badge ('+2' if 3 total toasts, or show only 1 backing layer for '+1'), and append '↗' to 'Opens in Devin ↗' if it opens an external tab."
+          },
+          {
+            "level": "layout",
+            "element": "Connect Devin modal backdrop and underlying empty-state CTA button",
+            "problem": "Because the modal backdrop uses a pure blur without sufficient dimming/opacity and the modal sits at the exact vertical center of the viewport, the high-contrast black 'Connect Devin' button from the underlying page's empty state pokes out directly behind the top-right edge of the white dialog card above the '×' close button, creating a distracting dark visual smudge.",
+            "norm": "Modal backdrops must sufficiently attenuate high-contrast background elements (or hide the redundant trigger CTA while the modal is open) so underlying primary buttons do not visually collide with the dialog boundary.",
+            "severity": "P2",
+            "screenshot": "f17-1440-light.png",
+            "fix": "Add a semi-opaque scrim tint to the backdrop blur or hide the underlying empty-state 'Connect Devin' trigger button while the Connect Devin modal is open."
+          },
+          {
+            "level": "group",
+            "element": "Table column header row ('Session', 'Status', 'Pull request', 'Source', 'Updated') and section group headers ('Needs you', 'Working', 'Earlier')",
+            "problem": "Horizontal divider lines are placed only below the section group labels ('Needs you', 'Working', 'Earlier'), while the table column header row has no bottom border and the last row of each section ('Migrate billing webhooks...' and 'Add pagination...') has no bottom border separating it from the next section's heading. As a result, 'Working' and 'Earlier' visually attach to the bottom of the preceding row rather than cleanly starting a new group.",
+            "norm": "Grouped data tables require clear separation between the column header row and the first group, and between the final row of one group and the heading of the next group (via a top border on group headers or increased top margin above group headers).",
+            "severity": "P2",
+            "screenshot": "f1-1440-light.png",
+            "fix": "Add a subtle bottom border under the column header row ('Session' ... 'Updated'), and add a top border (or increased top padding of 24px–28px) above each section group header ('Needs you', 'Working', 'Earlier') so each group cleanly separates from the row above it."
+          },
+          {
+            "level": "layout",
+            "element": "900px viewport underlying table layout when chat panel overlays ('Pull reque:', 'acme/ap')",
+            "problem": "At 900px width, the left navigation sidebar has already collapsed into a mobile/tablet hamburger menu ('☰'), yet the main content area still renders the full 5-column desktop table and wide 2-column summary cards. When the overlay panel opens on the right, it slices through the 'Working' summary card ('Workin') and clips the 'Pull request' column mid-word ('Pull reque:', 'acme/ap', 'acme/m(') with only a faint shadow separating the two light surfaces.",
+            "norm": "At tablet widths where the primary navigation collapses and an overlay panel occupies ~45% of the viewport, the underlying list should either switch to the compact responsive row layout or the overlay panel should have a crisp left border (`1px solid`) so clipped background text does not bleed into the panel edge.",
+            "severity": "P2",
+            "screenshot": "f0-900-light.png",
+            "fix": "Add an explicit `1px solid` left border to the overlay panel in light mode (matching the dark-mode divider in `f0-1440-dark.png`) so it cleanly bounds the panel against the underlying light page."
+          },
+          {
+            "level": "component",
+            "element": "Devin brand/service icon across Sidebar ('</>'), Connect Modal (gray square 'D'), Toast (black circle 'D'), and Agent Panel (purple bot icon)",
+            "problem": "Devin is represented by four different visual marks across the product: code brackets '</>' in the sidebar (`f1-1440-light.png`), a light-gray rounded square with 'D' in the Connect modal (`f17-1440-light.png`), a solid black circle with white 'D' in the notification toast (`f20-1440-light.png`), and a purple bot face in the chat panel (`f0-1440-dark.png`). In particular, using two different 'D' monograms (light gray square vs. black circle) alongside '</>' fragments recognition of the integration.",
+            "norm": "An integration should use a single consistent icon across navigation, connection dialogs, and system notifications (while a distinct assistant avatar can represent the Rakazo AI agent).",
+            "severity": "P2",
+            "screenshot": "f17-1440-light.png",
+            "fix": "Unify the Devin integration icon across the Connect dialog and notification toast (and ideally align with the sidebar icon) rather than mixing a gray rounded-square 'D', a black circular 'D', and '</>'."
+          },
+          {
+            "level": "group",
+            "element": "Summary cards ('Needs you 3', 'Working 2') and status pills in Key-Rejected state",
+            "problem": "When the key is rejected (`f9-1440-light.png`), the page still renders the full table of cached sessions from 4 minutes ago with active external-link icons ('↗'), but hides the 'Needs you 3' and 'Working 2' summary cards and strips all semantic styling from the status pills so 'Error' and 'Needs input' look identical to 'Working' and 'Finished'. Hiding the summary cards causes a ~110px layout shift while muting 'Error' and 'Needs input' makes it harder for a founder to spot which cached sessions were already blocked.",
+            "norm": "When displaying last-known cached data beneath a connection error banner, preserve layout stability and semantic distinction between error/blocker states and completed states.",
+            "severity": "P2",
+            "screenshot": "f9-1440-light.png",
+            "fix": "Either keep the summary cards visible ( reflecting the cached counts) or retain subtle semantic differentiation on 'Needs input' and 'Error' pills so the cached table remains scannable."
+          },
+          {
+            "level": "layout",
+            "element": "Mobile top hamburger bar ('☰') and page header ('Devin' + 'Ask') at 375px",
+            "problem": "On mobile (`f1-375-light.png`) and narrow tablet (`f0-900-light.png`), the hamburger menu button ('☰') occupies its own full-width row above the 'Devin' title and 'Ask' button. Coupled with the tall summary cards (which are ~110px high with mostly empty space), this vertical stacking pushes the session list down so that not even the 'Working' section heading is visible above the fold on a 375px screen.",
+            "norm": "On mobile viewports, navigation triggers, page titles, and header actions should share a single compact header bar or use tighter vertical spacing so primary content fits above the fold.",
+            "severity": "P3",
+            "screenshot": "f1-375-light.png",
+            "fix": "Reduce the vertical height/padding of the two summary cards on mobile (e.g., from ~110px to ~72px) and tighten the gap between the top hamburger bar and the 'Devin' header row so more sessions fit on the first screen."
+          },
+          {
+            "level": "component",
+            "element": "User chat bubbles ('Anything merged today?') in the Devin agent panel",
+            "problem": "User message bubbles use black text (`#111`) over a highly saturated medium-purple background (`#9b59ff`), whereas the send button in the composer uses a soft lavender fill (`#dcd0ff`) in light mode (`f0-900-light.png`). Black text on saturated mid-purple looks visually heavy and jarring against the warm stone/neutral palette in light mode.",
+            "norm": "Chat message bubbles with saturated accent fills typically pair with crisp white text, or use a softer pastel tint when paired with dark text (matching the light-mode send button).",
+            "severity": "P3",
+            "screenshot": "f0-900-light.png",
+            "fix": "In light mode, use the softer lavender tint (matching the send button) for user bubbles with dark text, or switch the user bubble text to white across both themes."
+          },
+          {
+            "level": "group",
+            "element": "Top summary cards ('Needs you 3', 'Working 2') visual styling and whitespace",
+            "problem": "In light mode (`f1-1440-light.png`), 'Needs you 3' has a prominent 1px amber border while 'Working 2' has a pure white background with almost no visible border against the off-white canvas, making 'Needs you' look like an active/selected filter tab and 'Working' look like an unselected tab. Additionally, on desktop each card is ~550px wide with ~90% empty whitespace.",
+            "norm": "Non-interactive summary stat cards should not mimic active/inactive tab selection states, and should have visible boundaries on light backgrounds.",
+            "severity": "P3",
+            "screenshot": "f1-1440-light.png",
+            "fix": "Give the 'Working' card a visible `1px solid` neutral border in light mode so both cards read as grounded stat containers rather than an active vs. unselected tab pair."
+          }
+        ],
+        "excellent": [
+          "High-signal blocker visibility (`f1-1440-light.png`): Surfacing full plain-English questions ('Should the export keep the legacy CSV column order?') and failure reasons ('Tests failed on acme/api') directly beneath session titles lets a busy founder triage what Devin needs at a glance.",
+          "Clean responsive mobile row adaptation (`f1-375-light.png`): Dropping the low-priority 'Source' column and condensing 'Pull request' and 'Updated' into a single metadata line ('acme/api#212 open · 1h ago') eliminates horizontal scrolling while preserving all actionable context.",
+          "Transparent, actionable agent responses (`f0-1440-dark.png`): Showing collapsible tool steps ('Done · 2 tools · 5s', 'Session search ×2') alongside concise answers with direct deep links to both the PR and the Devin session makes the docked panel genuinely useful.",
+          "Graceful degradation on key rejection (`f9-1440-light.png`): Displaying 'Updated 4m ago' in the header while keeping the last-synced session rows readable prevents a disruptive blank screen when credentials expire."
+        ]
+      }
+    }
+  ]
+}

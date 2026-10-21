@@ -1,0 +1,86 @@
+[
+  {
+    "id": "F-STORY-004-01",
+    "story_id": "STORY-004",
+    "severity": "medium",
+    "category": "error-handling",
+    "criterion": "Loading states / Empty states",
+    "score": "fail",
+    "description": "The mockup has no loading, error, zero-session, or stale ('Updated' old) frames. Real Legal has stories for loading, load error ('Could not load Legal' + Try again) and empty. A slow Devin API has no designed state.",
+    "expected": "Loading, error with retry, and empty frames drawn.",
+    "actual": "Only the happy state.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-004/screenshots/step-4.png",
+    "suggested_fix": "Add the frames; reuse Skeleton and the section-load-failed pattern.",
+    "files_likely_involved": [
+      "apps/web/src/pages/devin/",
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-004-02",
+    "story_id": "STORY-004",
+    "severity": "medium",
+    "category": "happy-path",
+    "criterion": "Labels/copy",
+    "score": "warn",
+    "description": "'ACUs this week' is Devin jargon with no definition and no window ('this week' rolling or calendar); value 41.6 has no unit or comparison.",
+    "expected": "Plain label or title/tooltip.",
+    "actual": "Bare label.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-004/screenshots/step-2.png",
+    "suggested_fix": "Rename (for example 'Usage this week') or add an info tooltip.",
+    "files_likely_involved": [
+      "apps/web/src/pages/devin/",
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-004-03",
+    "story_id": "STORY-004",
+    "severity": "medium",
+    "category": "layout",
+    "criterion": "Overflow/clipping",
+    "score": "warn",
+    "description": "With the panel docked at 1440px, 3 titles ('Add pagination to the audit l...', 'Migrate billing webhooks to t...') and both Needs-you question subtitles are ellipsized with no title attribute or expand. The question text is the most valuable cell and is cut at about 45 characters while ACUs and From get full space. Real Legal wraps long cells instead of cutting them.",
+    "expected": "Wrap to two lines or give the Session column more width; full text on hover.",
+    "actual": "Clipped mid-sentence ('...legacy ...').",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-004/screenshots/step-3.png",
+    "suggested_fix": "Widen Session (31%) or wrap subtitles to two lines; add title attribute.",
+    "files_likely_involved": [
+      "apps/web/src/pages/devin/",
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-004-04",
+    "story_id": "STORY-004",
+    "severity": "low",
+    "category": "layout",
+    "criterion": "Spacing",
+    "score": "warn",
+    "description": "Geometry audit: PR cell 'acme/web#418 merged' spills 12px and 'acme/mobile#97 open' 7px past its cell, leaving 9px to 'Slack'.",
+    "expected": "Fits inside the column with padding.",
+    "actual": "Spill into the From column.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-004/screenshots/step-3.png",
+    "suggested_fix": "Move the state word under the link or widen Pull request (21%).",
+    "files_likely_involved": [
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-004-05",
+    "story_id": "STORY-004",
+    "severity": "medium",
+    "category": "disclosure",
+    "criterion": "Secondary features",
+    "score": "warn",
+    "description": "First visit shows the panel already open mid-conversation (two prior questions). The real pattern is an intro with suggestion chips (sb-pages-agent-panel-intro). First-use state and default open/closed (open question) are undecided; a fresh user would see an empty thread, not this.",
+    "expected": "Draw the first-visit state: closed panel or intro with chips.",
+    "actual": "Mid-conversation frame only.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-004/screenshots/step-4.png",
+    "suggested_fix": "Draw closed-by-default and intro states.",
+    "files_likely_involved": [
+      "apps/web/src/pages/devin/",
+      "docs/devin/mockup.html"
+    ]
+  }
+]

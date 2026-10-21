@@ -953,6 +953,7 @@ export const Composer = memo(function Composer({
           ))}
           <textarea
             ref={textareaRef}
+            data-composer-input
             value={draft}
             onChange={(event) => updateDraft(event.target.value)}
             onPaste={handlePaste}

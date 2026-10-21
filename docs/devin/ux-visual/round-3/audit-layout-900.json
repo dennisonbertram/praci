@@ -1,0 +1,612 @@
+{
+ "viewport": {
+  "width": 900,
+  "height": 900,
+  "pageScrollY": 12772,
+  "pageScrollX": 0
+ },
+ "offscreenPrimary": [
+  {
+   "el": "button.btn.p \"Connect\"",
+   "top": 10551,
+   "bottom": 10583
+  },
+  {
+   "el": "button.btn.p \"Connecting\u2026\"",
+   "top": 11067,
+   "bottom": 11099
+  },
+  {
+   "el": "button.btn.p \"Connect\"",
+   "top": 11076,
+   "bottom": 11108
+  }
+ ],
+ "scrollers": [
+  {
+   "el": "main.pg \"DevinAskNeeds you3Working2Sess\"",
+   "clientH": 542,
+   "scrollH": 790
+  },
+  {
+   "el": "main.pg \"DevinAskNeeds you3Working2Sess\"",
+   "clientH": 542,
+   "scrollH": 790
+  },
+  {
+   "el": "main.pg \"DevinAskNeeds you3Working2Sess\"",
+   "clientH": 542,
+   "scrollH": 790
+  },
+  {
+   "el": "main.pg \"DevinAskNeeds you3Working2Sess\"",
+   "clientH": 362,
+   "scrollH": 790
+  },
+  {
+   "el": "main.pg \"DevinAskNeeds you3Working2Sess\"",
+   "clientH": 542,
+   "scrollH": 979
+  },
+  {
+   "el": "main.pg.stale \"DevinUpdated 4m agoDevin rejec\"",
+   "clientH": 702,
+   "scrollH": 790
+  },
+  {
+   "el": "main.pg.stale \"DevinUpdated 4m agoDevin rejec\"",
+   "clientH": 702,
+   "scrollH": 790
+  },
+  {
+   "el": "main.pg \"DevinAskNeeds you0Working2Sess\"",
+   "clientH": 502,
+   "scrollH": 527
+  },
+  {
+   "el": "main.pg \"DevinAskNeeds you0Working2Sess\"",
+   "clientH": 402,
+   "scrollH": 430
+  },
+  {
+   "el": "main.pg \"DevinAskNeeds you2Working2Some\"",
+   "clientH": 702,
+   "scrollH": 743
+  },
+  {
+   "el": "main.pg \"DevinAskNeeds you0Working2Sess\"",
+   "clientH": 402,
+   "scrollH": 451
+  }
+ ],
+ "deadSpace": [
+  {
+   "el": "div.wrapx \"Search Pages InboxFinanceLegal\"",
+   "w": 900,
+   "h": 560,
+   "fillPct": 8,
+   "pctOfViewport": 62
+  },
+  {
+   "el": "div.fw \"Search Pages InboxFinanceLegal\"",
+   "w": 900,
+   "h": 560,
+   "fillPct": 8,
+   "pctOfViewport": 62
+  },
+  {
+   "el": "div.shell \"Search Pages InboxFinanceLegal\"",
+   "w": 900,
+   "h": 560,
+   "fillPct": 8,
+   "pctOfViewport": 62
+  },
+  {
+   "el": "div.col \"DevinConnect Devin to see its \"",
+   "w": 900,
+   "h": 558,
+   "fillPct": 2,
+   "pctOfViewport": 62
+  },
+  {
+   "el": "div.dscrim \"DConnect DevinConnects Devin f\"",
+   "w": 900,
+   "h": 558,
+   "fillPct": 6,
+   "pctOfViewport": 62
+  },
+  {
+   "el": "main.pg \"DevinConnect Devin to see its \"",
+   "w": 900,
+   "h": 502,
+   "fillPct": 2,
+   "pctOfViewport": 56
+  },
+  {
+   "el": "div.wrapx \"Search Pages InboxFinanceLegal\"",
+   "w": 900,
+   "h": 360,
+   "fillPct": 3,
+   "pctOfViewport": 40
+  },
+  {
+   "el": "div.fw \"Search Pages InboxFinanceLegal\"",
+   "w": 900,
+   "h": 360,
+   "fillPct": 3,
+   "pctOfViewport": 40
+  },
+  {
+   "el": "div.shell \"Search Pages InboxFinanceLegal\"",
+   "w": 900,
+   "h": 360,
+   "fillPct": 3,
+   "pctOfViewport": 40
+  },
+  {
+   "el": "div.col \"DevinAskNo Devin sessions yet.\"",
+   "w": 900,
+   "h": 358,
+   "fillPct": 3,
+   "pctOfViewport": 40
+  }
+ ],
+ "spacing": {
+  "observed": [
+   1,
+   2,
+   4,
+   6,
+   8,
+   9,
+   10,
+   12,
+   14,
+   16,
+   18,
+   20,
+   24,
+   28,
+   36,
+   40,
+   48
+  ],
+  "offScale": [
+   6,
+   9,
+   10,
+   14,
+   18
+  ],
+  "nearDupes": [
+   [
+    4,
+    6
+   ],
+   [
+    6,
+    8
+   ],
+   [
+    8,
+    9
+   ],
+   [
+    9,
+    10
+   ],
+   [
+    10,
+    12
+   ],
+   [
+    12,
+    14
+   ],
+   [
+    14,
+    16
+   ],
+   [
+    16,
+    18
+   ],
+   [
+    18,
+    20
+   ]
+  ]
+ },
+ "type": {
+  "distinctFontSizes": [
+   "11px",
+   "12px",
+   "18px",
+   "22px",
+   "13px",
+   "14px",
+   "16px"
+  ],
+  "sizes": {
+   "11px/400": 23,
+   "12px/400": 59,
+   "18px/600": 21,
+   "12px/600": 20,
+   "22px/600": 20,
+   "12px/500": 138,
+   "13px/500": 40,
+   "14px/500": 291,
+   "14px/400": 280,
+   "16px/400": 15,
+   "13px/400": 15,
+   "16px/700": 2,
+   "11px/600": 1,
+   "16px/500": 3
+  }
+ },
+ "alignment": {
+  "nearMissEdges": [
+   [
+    271,
+    274
+   ],
+   [
+    325,
+    326
+   ],
+   [
+    527,
+    530
+   ],
+   [
+    530,
+    533
+   ],
+   [
+    549,
+    551
+   ],
+   [
+    809,
+    810
+   ]
+  ]
+ },
+ "smallTargets": [
+  {
+   "el": "a.ti \"Add CSV export for invoices (o\"",
+   "w": 197,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Upgrade Prisma to 6.x (opens i\"",
+   "w": 159,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Remove unused feature flags (o\"",
+   "w": 206,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Add pagination to the audit lo\"",
+   "w": 241,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Fix flaky invoice export test \"",
+   "w": 195,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Rewrite onboarding copy (opens\"",
+   "w": 177,
+   "h": 18
+  },
+  {
+   "el": "a \"acme/web#418\"",
+   "w": 121,
+   "h": 21
+  },
+  {
+   "el": "a \"acme/api#215\"",
+   "w": 113,
+   "h": 21
+  },
+  {
+   "el": "a \"acme/api#212\"",
+   "w": 113,
+   "h": 21
+  },
+  {
+   "el": "a.ti \"Add CSV export for invoices (o\"",
+   "w": 197,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Upgrade Prisma to 6.x (opens i\"",
+   "w": 159,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Remove unused feature flags (o\"",
+   "w": 206,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Add pagination to the audit lo\"",
+   "w": 241,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Fix flaky invoice export test \"",
+   "w": 195,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Rewrite onboarding copy (opens\"",
+   "w": 177,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Add CSV export for invoices (o\"",
+   "w": 197,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Upgrade Prisma to 6.x (opens i\"",
+   "w": 159,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Remove unused feature flags (o\"",
+   "w": 206,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Add pagination to the audit lo\"",
+   "w": 241,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Fix flaky invoice export test \"",
+   "w": 195,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Rewrite onboarding copy (opens\"",
+   "w": 177,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Add CSV export for invoices (o\"",
+   "w": 197,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Upgrade Prisma to 6.x (opens i\"",
+   "w": 159,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Remove unused feature flags (o\"",
+   "w": 206,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Add pagination to the audit lo\"",
+   "w": 241,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Fix flaky invoice export test \"",
+   "w": 195,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Rewrite onboarding copy (opens\"",
+   "w": 177,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Add CSV export for invoices (o\"",
+   "w": 197,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Upgrade Prisma to 6.x (opens i\"",
+   "w": 159,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Remove unused feature flags (o\"",
+   "w": 206,
+   "h": 18
+  }
+ ],
+ "lowContrast": [
+  {
+   "el": "div.v.tab \"3\"",
+   "ratio": 3.64
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  },
+  {
+   "el": "div.v.tab \"3\"",
+   "ratio": 3.64
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  },
+  {
+   "el": "div.v.tab \"3\"",
+   "ratio": 3.64
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  },
+  {
+   "el": "div.v.tab \"3\"",
+   "ratio": 3.64
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  },
+  {
+   "el": "div.v.tab \"3\"",
+   "ratio": 3.64
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  },
+  {
+   "el": "span \"DU\"",
+   "ratio": 4.42
+  },
+  {
+   "el": "div.v.tab \"3\"",
+   "ratio": 3.64
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  }
+ ],
+ "overlaps": [
+  {
+   "a": "a.ti \"Fix flaky invoice export test \"",
+   "b": "button.mb \"Open navigation\"",
+   "w": 16,
+   "h": 7
+  },
+  {
+   "a": "a.ti \"Fix flaky invoice export test \"",
+   "b": "button.mb \"Open navigation\"",
+   "w": 16,
+   "h": 7
+  },
+  {
+   "a": "a.ti \"Fix flaky invoice export test \"",
+   "b": "button.mb \"Open navigation\"",
+   "w": 16,
+   "h": 7
+  },
+  {
+   "a": "a.ti \"Add pagination to the audit lo\"",
+   "b": "a.lnk \"Inbox\"",
+   "w": 6,
+   "h": 13
+  },
+  {
+   "a": "a.ti \"Bump Expo SDK and move push no\"",
+   "b": "a.lnk \"Cap table\"",
+   "w": 50,
+   "h": 37
+  },
+  {
+   "a": "a.lnk \"Cap table\"",
+   "b": "a.ti \"Add CSV export for invoices (o\"",
+   "w": 197,
+   "h": 6
+  },
+  {
+   "a": "a.lnk \"Data room\"",
+   "b": "a.ti \"Add CSV export for invoices (o\"",
+   "w": 197,
+   "h": 8
+  },
+  {
+   "a": "a.lnk \"Artifacts\"",
+   "b": "a.ti \"Upgrade Prisma to 6.x (opens i\"",
+   "w": 159,
+   "h": 14
+  },
+  {
+   "a": "a.lnk \"Integrations\"",
+   "b": "a.ti \"Migrate billing webhooks to th\"",
+   "w": 291,
+   "h": 9
+  },
+  {
+   "a": "button.drawscrim \"Close navigation\"",
+   "b": "button.btn.askbtn \"Ask\"",
+   "w": 58,
+   "h": 32
+  }
+ ],
+ "fixedOverlays": []
+}
