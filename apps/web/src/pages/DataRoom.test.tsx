@@ -635,6 +635,15 @@ it("keeps the open folder in the URL, and opens it again from there", async () =
   expect(search).toBe("?folder=f1");
 });
 
+it("lists only the documents Legal has not checked when the Legal page links here", async () => {
+  await renderPage("/?legal=unchecked");
+  await settle();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ legalUnchecked: true }));
+  expect(container.querySelector('[data-testid="data-room-filters"]')?.textContent).toContain(
+    "Not checked",
+  );
+});
+
 it("falls back to All items when the folder in the URL no longer exists", async () => {
   await renderPage("/?folder=gone");
   await settle();

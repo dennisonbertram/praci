@@ -3719,6 +3719,7 @@ msgstr "Déconnexion en cours…"
 #: src/components/data-room/ImportActivity.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
+#: src/pages/Legal.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/shell/composer.tsx
 #: src/pages/shell/message-cards.tsx
@@ -4991,7 +4992,7 @@ msgid "Last scan failed: {0}"
 msgstr ""
 
 #: src/pages/Legal.tsx
-msgid "Last scan failed: OpenRouter did not accept your key."
+msgid "Last scan failed: The AI key was rejected."
 msgstr ""
 
 #: src/components/DesktopUpdates.tsx
@@ -5025,6 +5026,7 @@ msgid "Leave"
 msgstr "Quitter"
 
 #: src/components/ContactDialog.tsx
+#: src/components/data-room/FilterBar.tsx
 #: src/pages/Legal.tsx
 #: src/pages/Shell.tsx
 msgid "Legal"
@@ -6171,6 +6173,10 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Not attached, over the {MAX_COMPOSE_ATTACHMENT_MB} MB limit: {leftOutNames}. Download it from the original to share it another way."
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Not checked"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -7409,13 +7415,10 @@ msgid "Replace API key"
 msgstr "Remplacer la clé API"
 
 #: src/components/integrations/FinanceSection.tsx
+#: src/pages/Legal.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Replace key"
 msgstr "Remplacer la clé"
-
-#: src/pages/Legal.tsx
-msgid "Replace OpenRouter key"
-msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Replace value"
@@ -8901,6 +8904,10 @@ msgstr ""
 
 #: src/components/AiDataSharing.tsx
 msgid "The text is sent to the AI model that runs your bots."
+msgstr ""
+
+#: src/components/legal/ConsentPrompt.tsx
+msgid "The text of your Data room documents is sent to the AI model that runs your bots."
 msgstr ""
 
 #: src/components/finance/StatementReviewCard.tsx

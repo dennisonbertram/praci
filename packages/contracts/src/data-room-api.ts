@@ -67,6 +67,8 @@ export const DataRoomApiFiltersSchema = z.object({
   docDateTo: z.string().datetime().optional(),
   status: z.string().min(1).optional(),
   source: z.string().min(1).optional(),
+  /** Only ready items the Legal agent has not analyzed at their current revision. */
+  legalUnchecked: z.boolean().optional(),
 });
 
 /** The values the list filters offer: those of every item in the folder, not just a loaded page. */
