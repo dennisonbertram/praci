@@ -440,6 +440,55 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
     expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("failed");
   });
 
+  it("clears a transient unit error after a successful page", async () => {
+    const { runId, claims } = await runWithSources(100);
+    const first = claims[0]!;
+    await failCompanyImportUnit(prisma, actor, {
+      runId,
+      sourceId: first.sourceId,
+      unitId: first.id,
+      claimToken: first.claimToken,
+      errorCode: "transient_worker_failure",
+    });
+
+    expect((await getCompanyImportProgress(prisma, actor, runId)).sources[0]?.lastError).toBe(
+      "transient_worker_failure",
+    );
+    const availableAt = new Date(Date.now() - 1_000);
+    await prisma.companyImportUnit.update({
+      where: { id: first.id },
+      data: { availableAt },
+    });
+    await prisma.companyImportSource.update({
+      where: { id: first.sourceId },
+      data: { backoffUntil: availableAt },
+    });
+    const reclaimed = await claimCompanyImportUnit(prisma, actor, {
+      runId,
+      unitId: first.id,
+    });
+    expect(reclaimed).not.toBeNull();
+
+    await completeCompanyImportUnit(prisma, actor, {
+      runId,
+      sourceId: first.sourceId,
+      unitId: first.id,
+      claimToken: reclaimed!.claimToken,
+      nextCursor: { page: 2 },
+      done: false,
+      itemsDiscovered: 0,
+      itemsRead: 0,
+      facts: [],
+    });
+
+    const progress = await getCompanyImportProgress(prisma, actor, runId);
+    expect(progress.status).toBe("running");
+    expect(progress.sources[0]?.lastError).toBeNull();
+    expect(
+      await prisma.companyImportUnit.findUniqueOrThrow({ where: { id: first.id } }),
+    ).toMatchObject({ status: "waiting", lastError: null });
+  });
+
   it("requires retry_failed for partial runs and completes the retried unit", async () => {
     const { runId, claims } = await runWithSources(100, 2);
     const done = claims[0]!;

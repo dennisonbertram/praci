@@ -1129,6 +1129,7 @@ export async function completeCompanyImportUnit(
           claimToken: null,
           claimExpiresAt: null,
           completedAt: input.done ? new Date() : null,
+          lastError: null,
           ...(input.nextCursor === null ? {} : { cursor: jsonInput(input.nextCursor) }),
           itemsDiscovered: { increment: input.itemsDiscovered },
           itemsRead: { increment: input.itemsRead },
