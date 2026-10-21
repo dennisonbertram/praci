@@ -56,6 +56,7 @@ export function ContactDialog({
   onSaved,
   onDeleted,
   onOpenContact,
+  onCapTable = false,
 }: {
   contact: Contact | null;
   prefill?: ContactPrefill;
@@ -65,6 +66,8 @@ export function ContactDialog({
   onSaved: (saved: Contact) => void;
   onDeleted?: (contact: Contact) => void;
   onOpenContact?: (contact: Contact) => void;
+  /** The contact is also a holder on the cap table, so say that editing it does not change Carta. */
+  onCapTable?: boolean;
 }) {
   const [name, setName] = useState(contact?.name ?? prefill?.name ?? "");
   const [email, setEmail] = useState(contact?.email ?? prefill?.email ?? "");
@@ -185,13 +188,15 @@ export function ContactDialog({
             </Label>
             <Textarea
               id="contact-notes"
-              aria-describedby="contact-notes-hint"
+              aria-describedby={onCapTable ? "contact-notes-hint" : undefined}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
-            <p id="contact-notes-hint" className="text-xs text-muted-foreground">
-              <Trans>Contacts are your address book. They do not change Carta.</Trans>
-            </p>
+            {onCapTable ? (
+              <p id="contact-notes-hint" className="text-xs text-muted-foreground">
+                <Trans>Contacts are your address book. They do not change Carta.</Trans>
+              </p>
+            ) : null}
           </div>
           {error ? (
             <div role="alert" className="flex flex-wrap items-center gap-2 text-sm">

@@ -70,6 +70,11 @@ it("links a legend row and its slice in both directions", async () => {
   expect((slices()[2] as SVGElement).style.opacity).toBe("1");
 });
 
+it("leaves a legend row with no breakdown out of the tab order", async () => {
+  const el = await mount(<OwnershipDonut classes={classes} fullyDilutedShares={1000} />);
+  expect(el.querySelectorAll("li > div")[2]?.hasAttribute("tabindex")).toBe(false);
+});
+
 it("adds a slice for shares no class holds, so the legend matches the centre", async () => {
   const el = await mount(<OwnershipDonut classes={classes} fullyDilutedShares={1250} />);
   expect(el.querySelector("[data-testid=donut-centre]")?.textContent).toBe(

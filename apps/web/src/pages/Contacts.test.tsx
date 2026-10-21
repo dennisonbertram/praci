@@ -78,6 +78,14 @@ it("lists contacts, searches them and filters by kind", async () => {
   expect(container.textContent).toContain("No matches");
 });
 
+it("keeps rows short and names the workspace when there is more than one", async () => {
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "investor")]);
+  await act(async () => root.render(<ContactsPage spaceName="Example Co" />));
+  await act(async () => {});
+  expect(container.querySelector("h1")?.parentElement?.textContent).toContain("Example Co");
+  expect(container.querySelector("tbody tr")?.className).toContain("h-10");
+});
+
 it("shows a single line when there are no contacts", async () => {
   rpcMock.list.mockResolvedValueOnce([]);
   await show();

@@ -259,8 +259,45 @@ it("shows the summary, ownership legend and joined investors", async () => {
   expect(text).toContain("SAFE, $250,000");
   // amount raised is null; the SAFE holder has no shares or percent
   expect(text).toContain("—");
-  // Bo is a contact with no holding and is still listed
-  expect(text).toContain("Bo");
+  // Bo is a contact with no holding: not under All, but under their own tab and in a search.
+  expect(container.querySelector("table:not(.sr-only)")?.textContent).not.toContain("Bo");
+  await click(button("Auditors"));
+  expect(container.querySelector("table:not(.sr-only)")?.textContent).toContain("Bo");
+});
+
+it("shows a skeleton, not the contacts-only layout, until the cap table has loaded", async () => {
+  let resolve: (value: unknown) => void = () => {};
+  rpcMock.capTable.mockReturnValue(new Promise((r) => (resolve = r)));
+  await show();
+  expect(container.querySelector("[role=tablist]")).toBeNull();
+  expect(container.querySelector("[aria-busy=true]")).not.toBeNull();
+  await act(async () => resolve({ snapshot, syncing: false }));
+  expect(container.querySelector("[role=tablist]")).not.toBeNull();
+  expect(container.querySelector("[aria-busy=true]")).toBeNull();
+});
+
+it("says contacts do not change Carta only for a contact that is on the cap table", async () => {
+  rpcMock.list.mockResolvedValue([
+    contact("c1", "Ada", "investor"),
+    contact("c2", "Bo", "auditor"),
+  ]);
+  rpcMock.capTable.mockResolvedValue({
+    snapshot: { ...snapshot, holders: [{ ...snapshot.holders[0], email: "ada@example.test" }] },
+    syncing: false,
+  });
+  await show();
+  const open = (name: string) =>
+    click(
+      [...container.querySelectorAll<HTMLElement>("tbody button")].find(
+        (b) => b.textContent === name,
+      ),
+    );
+  await open("Ada");
+  expect(document.body.textContent).toContain("do not change Carta");
+  await click(button("Cancel"));
+  await click(button("Auditors"));
+  await open("Bo");
+  expect(document.body.textContent).not.toContain("do not change Carta");
 });
 
 it("lists the unallocated option pool as a row so the Ownership column adds up", async () => {
@@ -593,6 +630,7 @@ it("lists only investors on the Investors tab and offers Add email only to inves
   ].filter((b) => b.textContent === "Add email");
   expect(adds).toHaveLength(1);
   // A contact with no holding shows a dash, the same as a holder with no shares.
+  await click(button("Auditors"));
   const rows = [...container.querySelectorAll("table:not(.sr-only) tbody tr")];
   const bo = rows.find((row) => row.textContent?.includes("Bo"));
   expect(bo?.querySelectorAll("td")[4]?.textContent).toBe("—");

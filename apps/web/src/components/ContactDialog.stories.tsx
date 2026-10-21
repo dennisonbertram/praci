@@ -24,6 +24,8 @@ type Story = StoryObj<typeof meta>;
 
 export const New: Story = {};
 export const Editing: Story = { args: { contact, onDeleted: () => {} } };
+/** A holder on the cap table: the one case that says editing does not change Carta. */
+export const OnCapTable: Story = { args: { contact, onCapTable: true, onDeleted: () => {} } };
 export const PrefilledFromHolder: Story = {
   args: { prefill: { name: "Bo Sample", email: "bo@example.test", organization: null } },
 };
