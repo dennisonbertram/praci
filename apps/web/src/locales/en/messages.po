@@ -1718,6 +1718,11 @@ msgstr "Browser"
 msgid "Built-in"
 msgstr "Built-in"
 
+#. placeholder {0}: builtins.length
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Built-in skills ({0})"
+msgstr "Built-in skills ({0})"
+
 #: src/components/compose/RichTextEditor.tsx
 msgid "Bulleted list"
 msgstr "Bulleted list"
@@ -4151,6 +4156,10 @@ msgstr "Failure handling"
 msgid "Fee"
 msgstr "Fee"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Fetching…"
+msgstr "Fetching…"
+
 #: src/pages/SpaceSearch.tsx
 msgid "File"
 msgstr "File"
@@ -4176,6 +4185,10 @@ msgstr "Filter"
 #: src/components/ListControls.tsx
 msgid "Filter by {label}"
 msgstr "Filter by {label}"
+
+#: src/pages/Artifacts.tsx
+msgid "Filter by bot"
+msgstr "Filter by bot"
 
 #: src/pages/Artifacts.tsx
 msgid "Filter by date"
@@ -9572,7 +9585,7 @@ msgstr "URL"
 msgid "Usage"
 msgstr "Usage"
 
-#. placeholder {0}: entry.name
+#. placeholder {0}: label.title
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Use {0}"
 msgstr "Use {0}"

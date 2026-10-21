@@ -1718,6 +1718,11 @@ msgstr ""
 msgid "Built-in"
 msgstr "기본 제공"
 
+#. placeholder {0}: builtins.length
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Built-in skills ({0})"
+msgstr ""
+
 #: src/components/compose/RichTextEditor.tsx
 msgid "Bulleted list"
 msgstr ""
@@ -4151,6 +4156,10 @@ msgstr "실패했을 때 처리"
 msgid "Fee"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Fetching…"
+msgstr ""
+
 #: src/pages/SpaceSearch.tsx
 msgid "File"
 msgstr ""
@@ -4175,6 +4184,10 @@ msgstr ""
 #: src/components/data-room/FilterBar.tsx
 #: src/components/ListControls.tsx
 msgid "Filter by {label}"
+msgstr ""
+
+#: src/pages/Artifacts.tsx
+msgid "Filter by bot"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -9572,7 +9585,7 @@ msgstr ""
 msgid "Usage"
 msgstr "사용량"
 
-#. placeholder {0}: entry.name
+#. placeholder {0}: label.title
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Use {0}"
 msgstr ""
