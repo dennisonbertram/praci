@@ -1524,6 +1524,19 @@ export function createRunExecutor(deps: ExecutorDeps) {
             if (block.kind === "bot_message_received") replySenderIds.add(block.fromBotId);
           }
         }
+        // The loaded window may not reach an old reply, so ask the database about the whole thread.
+        // If that fails the run is treated as tainted.
+        let threadScanFailed = false;
+        try {
+          const rows = await deps.prisma.$queryRaw<{ id: string | null }[]>`
+            SELECT DISTINCT e->>'fromBotId' AS "id"
+            FROM "messages" m, jsonb_array_elements(m."blocks") e
+            WHERE m."threadId" = ${run.threadId} AND e->>'kind' = 'bot_message_received'`;
+          for (const row of rows) if (row.id) replySenderIds.add(row.id);
+        } catch (error) {
+          getLogger().error("meeting taint scan", error);
+          threadScanFailed = true;
+        }
         const meetingSenderIds = new Set<string>();
         for (const id of replySenderIds) {
           const candidate =
@@ -1544,18 +1557,19 @@ export function createRunExecutor(deps: ExecutorDeps) {
             meetingSenderIds.add(id);
           }
         }
-        const meetingTaint = meetingSenderIds.size > 0;
+        const meetingTaint = meetingSenderIds.size > 0 || threadScanFailed;
         // The wake prompt carries the reply body (already escaped); mark that body as meeting text too.
-        const task = senderBot && meetingSenderIds.has(senderBot.id)
-          ? {
-              ...loadedTask,
-              prompt: loadedTask.prompt.replace(
-                /(<bot_message from="[^\n]*">\n)([\s\S]*)(\n<\/bot_message>)/,
-                (_all, open: string, body: string, close: string) =>
-                  `${open}${wrapMeetingNotes(body)}${close}`,
-              ),
-            }
-          : loadedTask;
+        const task =
+          senderBot && meetingSenderIds.has(senderBot.id)
+            ? {
+                ...loadedTask,
+                prompt: loadedTask.prompt.replace(
+                  /(<bot_message from="[^\n]*">\n)([\s\S]*)(\n<\/bot_message>)/,
+                  (_all, open: string, body: string, close: string) =>
+                    `${open}${wrapMeetingNotes(body)}${close}`,
+                ),
+              }
+            : loadedTask;
         const meetingWrappedMessages = meetingTaint
           ? loadedMessages.map((message) => ({
               ...message,
@@ -3213,8 +3227,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             : undefined;
           // A run that read a meeting agent's reply holds untrusted meeting text: every call that
           // writes, sends or reaches the network asks, on a card that cannot become a saved rule.
-          const meetingTaintedCall =
-            meetingTaint && !MEETING_TAINT_FREE_TOOLS.has(name);
+          const meetingTaintedCall = meetingTaint && !MEETING_TAINT_FREE_TOOLS.has(name);
           const requiresMandatoryApproval =
             requiresUnattendedApproval ||
             meetingTaintedCall ||

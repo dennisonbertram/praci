@@ -146,6 +146,7 @@ function fixture({
   peer,
   mcpServers,
   history,
+  threadReplySenders,
   knownBots,
   connectionRows = mail ? [mailConnectionRow()] : [],
   googleConnectors = false,
@@ -170,6 +171,8 @@ function fixture({
   mcpServers?: { id: string; endpoint: string; agentBotId: string }[];
   /** Earlier thread messages, and the spawn key of each bot they name. */
   history?: { blocks: unknown[] }[];
+  /** Senders of replies anywhere in the thread, as the whole-thread scan finds them. */
+  threadReplySenders?: string[] | Error;
   knownBots?: Record<string, string>;
   connectionRows?: Record<string, unknown>[];
   /** Offers the native Google Calendar and Drive tools. */
@@ -290,6 +293,10 @@ function fixture({
   };
   const prisma = {
     user: { findUnique: vi.fn(async () => ({ timezone: null })) },
+    $queryRaw: vi.fn(async () => {
+      if (threadReplySenders instanceof Error) throw threadReplySenders;
+      return (threadReplySenders ?? []).map((id) => ({ id }));
+    }),
     run: {
       findUnique: vi.fn(async () => run),
       findUniqueOrThrow: vi.fn(async () => run),
@@ -323,14 +330,14 @@ function fixture({
               archivedAt: null,
             }
           : peer?.senderInScope
-          ? {
-              id: "peer-1",
-              spaceId: run.spaceId,
-              userId: run.userId,
-              spawnKey: peer.senderSpawnKey ?? null,
-              archivedAt: null,
-            }
-          : null,
+            ? {
+                id: "peer-1",
+                spaceId: run.spaceId,
+                userId: run.userId,
+                spawnKey: peer.senderSpawnKey ?? null,
+                archivedAt: null,
+              }
+            : null,
       ),
     },
     mcpServer: {
@@ -2911,7 +2918,9 @@ describe("meeting-source agent", () => {
     expect(f.request()?.fallbackModels ?? []).toEqual([]);
     const ordinary = fixture({ builtin: true });
     await ordinary.run();
-    expect(ordinary.request()?.fallbackModels).toEqual([{ provider: "openrouter", id: "backup/model" }]);
+    expect(ordinary.request()?.fallbackModels).toEqual([
+      { provider: "openrouter", id: "backup/model" },
+    ]);
   });
 
   it("a run that can read meetings has no tool that writes memory, fetches a URL or sends anything", async () => {
@@ -3108,11 +3117,30 @@ describe("meeting taint and consent are not escaped", () => {
   it("a later user turn in the same thread still asks for every write, send and fetch", async () => {
     for (const name of ["save_shared_memory", "web_fetch"]) {
       const f = heldAfterReply(name);
-      f.setCalls([{ args: { content: "x", path: "MEMORY.md", url: "https://example.invalid" }, executionId: "c" }]);
+      f.setCalls([
+        {
+          args: { content: "x", path: "MEMORY.md", url: "https://example.invalid" },
+          executionId: "c",
+        },
+      ]);
       await f.run();
       expect(f.pauseRunForInput, name).toHaveBeenCalledOnce();
       expect(f.commit).not.toHaveBeenCalled();
     }
+  });
+
+  it("holds a run whose meeting reply is older than the loaded history window", async () => {
+    const f = heldAfterReply("web_fetch", { history: [], threadReplySenders: ["peer-1"] });
+    f.setCalls([{ args: { url: "https://example.invalid" }, executionId: "c" }]);
+    await f.run();
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+  });
+
+  it("holds every run when the whole-thread scan fails", async () => {
+    const f = heldAfterReply("web_fetch", { history: [], threadReplySenders: new Error("db") });
+    f.setCalls([{ args: { url: "https://example.invalid" }, executionId: "c" }]);
+    await f.run();
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
   });
 
   it("keeps asking on a resumed run after the approval pause", async () => {
@@ -3140,7 +3168,13 @@ describe("meeting taint and consent are not escaped", () => {
     expect(mcp.execute).not.toHaveBeenCalled();
     expect(mcp.offeredTools).not.toContain("run_subagent");
     // Reads that reach Drive, calendar, mail or the web are not on the card-free list.
-    for (const name of ["drive_search", "calendar_list_events", "mail_search", "web_search", "web_fetch"]) {
+    for (const name of [
+      "drive_search",
+      "calendar_list_events",
+      "mail_search",
+      "web_search",
+      "web_fetch",
+    ]) {
       expect(MEETING_TAINT_FREE_TOOLS.has(name), name).toBe(false);
     }
     // Without the earlier reply the subagent tool is offered.
