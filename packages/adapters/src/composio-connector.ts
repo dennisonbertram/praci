@@ -625,15 +625,16 @@ export class ComposioConnector implements ComposioProvider {
         }
         if (
           call.route.discoveredReadOnly === true &&
-          (call.tool === COMPOSIO_MULTI_EXECUTE_TOOL ||
-            requested.some((name) => {
-              const tool = offered.get(name);
-              return (
-                !tool ||
-                tool.readOnly === false ||
-                (tool.readOnly !== true && call.authorizeUnannotatedRead?.(tool) !== true)
-              );
-            }))
+          requested.some((name) => {
+            const tool = offered.get(name);
+            return (
+              !tool ||
+              tool.readOnly === false ||
+              (tool.readOnly !== true &&
+                (call.tool === COMPOSIO_MULTI_EXECUTE_TOOL ||
+                  call.authorizeUnannotatedRead?.(tool) !== true))
+            );
+          })
         ) {
           yield { type: "error", message: CHANGED_TO_WRITE_MESSAGE };
           return;

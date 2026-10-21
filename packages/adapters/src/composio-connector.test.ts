@@ -1776,4 +1776,18 @@ describe("composio connected-app agent dispatch gates", () => {
     ]);
     expect(composioSdkState.executions).toEqual([]);
   });
+
+  it("preserves annotated read batches without extending unannotated authorization to wrappers", async () => {
+    const batch = {
+      tool: "COMPOSIO_MULTI_EXECUTE_TOOL",
+      args: { tools: [{ tool_slug: "GITHUB_GET_REPOS", arguments: {} }] },
+      route: { ...route, toolName: "COMPOSIO_MULTI_EXECUTE_TOOL", discoveredReadOnly: true },
+    };
+    const events = await run({ ...batch, readOnlyNow: true });
+    expect(events).toContainEqual(expect.objectContaining({ type: "result" }));
+    expect(composioSdkState.executions).toHaveLength(1);
+    const denied = await run({ ...batch, authorizeUnannotatedRead: () => true });
+    expect(denied).toContainEqual(expect.objectContaining({ type: "error" }));
+    expect(composioSdkState.executions).toEqual([]);
+  });
 });

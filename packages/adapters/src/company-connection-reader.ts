@@ -14,7 +14,6 @@ import {
   integrationPresetForEndpoint,
   isReadTool,
 } from "@rakazo/contracts";
-import { connectorToolRequiresApproval } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { CompanyImportWorkerError } from "./company-import-engine.js";
 import { COMPANY_SLACK_READ_TOOLS, COMPANY_SLACK_WRITE_TOOLS } from "./company-slack-source.js";
@@ -221,18 +220,17 @@ function readToolAllowed(
   }
   const tokens = toolNameTokens(tool.name);
   const hasReadVerb = tokens.some((token) => SAFE_NAME_VERBS.has(token));
-  const approvalName = `list_${tool.name
-    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
-    .replace(/[^a-zA-Z0-9_]+/g, "_")}`;
   if (
     WRAPPER_NAME.test(tool.name) ||
     tokens.some((token) => WRAPPER_NAME_PARTS.has(token)) ||
     tokens.some((token) => WRITE_NAME_VERBS.has(token)) ||
-    tokens.some((token) => ["and", "or", "then"].includes(token)) ||
-    connectorToolRequiresApproval(approvalName)
+    tokens.some((token) => ["and", "or", "then"].includes(token))
   )
     return false;
-  return tool.readOnly === true && hasReadVerb;
+  return (
+    isReadTool({ name: tool.name, annotations: { readOnlyHint: tool.readOnly === true } }) &&
+    hasReadVerb
+  );
 }
 
 function retryError(error: unknown): CompanyImportWorkerError {
