@@ -47,8 +47,13 @@ function useRect(element: Element | null) {
 export function TourPopover({
   steps,
   onFinish,
+  doneLabel,
+  onDone,
 }: {
   steps: readonly TourStep[];
+  /** Label of the last step's button, and what it does after the tour is recorded. Default: Done. */
+  doneLabel?: string;
+  onDone?: () => void;
   onFinish: (result: "done" | "skip" | "empty") => void;
 }) {
   const { t } = useLingui();
@@ -92,8 +97,16 @@ export function TourPopover({
             <Trans>Back</Trans>
           </Button>
         ) : null}
-        <Button size="sm" autoFocus onClick={() => (last ? onFinish("done") : setIndex(index + 1))}>
-          {last ? <Trans>Done</Trans> : <Trans>Next</Trans>}
+        <Button
+          size="sm"
+          autoFocus
+          onClick={() => {
+            if (!last) return setIndex(index + 1);
+            onFinish("done");
+            onDone?.();
+          }}
+        >
+          {last ? (doneLabel ?? <Trans>Done</Trans>) : <Trans>Next</Trans>}
         </Button>
       </div>
     </>
