@@ -2452,7 +2452,6 @@ msgstr ""
 msgid "Connect API key"
 msgstr "Подключить API-ключ"
 
-#: src/components/ConnectAppsButton.tsx
 #: src/components/tour/FirstRunTour.tsx
 msgid "Connect apps"
 msgstr ""
@@ -4648,16 +4647,13 @@ msgstr ""
 msgid "Image upload area"
 msgstr "Область загрузки изображения"
 
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/NotificationSettings.tsx
 msgid "iMessage"
 msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
-msgid "iMessage (BlueBubbles)"
-msgstr ""
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "iMessage (Photon)"
+msgid "iMessage on your Mac"
 msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx

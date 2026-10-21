@@ -34,7 +34,6 @@ import {
 import { signInFor, signInNext } from "./lib/sign-in-next";
 import { completeSsoCallback, SSO_CALLBACK_PATH } from "./lib/sso-flow";
 import { GoogleOAuthCallbackPage } from "./pages/GoogleOAuthCallback";
-import { IntegrationSetupPage } from "./pages/IntegrationSetup";
 import { LocalSettingsPage } from "./pages/LocalSettings";
 import { McpOAuthCallbackPage } from "./pages/McpOAuthCallback";
 import { ShellPage } from "./pages/Shell";
@@ -180,16 +179,8 @@ function SessionApp() {
             path="/integrations/google/callback"
             element={user ? <GoogleOAuthCallbackPage /> : <Navigate to="/sign-in" replace />}
           />
-          <Route
-            path="/integrations/setup"
-            element={
-              user ? (
-                <IntegrationSetupPage />
-              ) : (
-                <Navigate to="/sign-in?next=/integrations/setup" replace />
-              )
-            }
-          />
+          {/* Setup links from the server use this path; the page itself lives inside the shell. */}
+          <Route path="/integrations/setup" element={<LegacySetupRedirect />} />
           <Route
             element={
               user ? (
@@ -231,6 +222,11 @@ function SessionApp() {
  * waits and retries here instead of routing to sign-in and stranding a signed-in
  * user. Better Auth only polls once a session exists, so the retry lives here.
  */
+function LegacySetupRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={`/app/integrations/setup${search}`} replace />;
+}
+
 /** Signed-out visits to an app page come back to that page after sign-in. */
 function SignInRedirect() {
   const { pathname, search } = useLocation();

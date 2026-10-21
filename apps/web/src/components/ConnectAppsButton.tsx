@@ -32,7 +32,7 @@ export function unconnectedFeatured(
 }
 
 /**
- * The sidebar's Apps row. While featured apps are unconnected it is a "Connect apps" pill
+ * The sidebar's Apps row. While featured apps are unconnected it is a "Apps" pill
  * with their logos; once they are connected, and while loading or on failure, it is the plain row.
  */
 export function ConnectAppsButton({
@@ -87,7 +87,7 @@ export function ConnectAppsButton({
         className="mb-1 flex w-full items-center justify-between gap-3 rounded-full border border-sidebar-border bg-muted py-1.5 pl-4 pr-2 hover:bg-sidebar-accent"
       >
         <span className="text-[14px] font-medium text-foreground/90">
-          <Trans>Connect apps</Trans>
+          <Trans>Apps</Trans>
         </span>
         <span aria-hidden className="flex -space-x-1.5">
           {apps.map((app) => (

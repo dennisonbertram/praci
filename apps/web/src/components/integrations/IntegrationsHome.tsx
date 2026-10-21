@@ -385,7 +385,6 @@ export function IntegrationsHome({
       !data.sources.some((source) => isSameMcpEndpoint(source.source, entry.endpoint)),
   );
   const [chatMatches, setChatMatches] = useState(0);
-  const otherMatches = showFinance || firstPartyMcp.length > 0 || chatMatches > 0;
   const financeServerIds = data.financeSources.flatMap((source) =>
     source.serverId ? [source.serverId] : [],
   );
@@ -402,15 +401,24 @@ export function IntegrationsHome({
     (server) => !financeServerIds.includes(server.id) && server !== cryptoServer,
   );
   const filtering = Boolean(query.trim()) || category !== "all";
-  // A chip alone narrows Connected to that category; a search hides it behind the flat results.
-  const chipOnly = category !== "all" && !query.trim();
-  const connectedApps = chipOnly
+  // Connected narrows to the chip's category and to apps whose name matches the search, so an app
+  // that is already connected still turns up when searched for.
+  const searching = Boolean(query.trim());
+  const chipOnly = category !== "all" && !searching;
+  const connectedApps = filtering
     ? apps.filter(
         (app) =>
-          data.catalog.find((item) => `${item.connectorId}:${item.slug}` === app.key)?.category ===
-          category,
+          (category === "all" ||
+            data.catalog.find((item) => `${item.connectorId}:${item.slug}` === app.key)
+              ?.category === category) &&
+          app.name.toLowerCase().includes(query.trim().toLowerCase()),
       )
     : apps;
+  const otherMatches =
+    showFinance ||
+    firstPartyMcp.length > 0 ||
+    chatMatches > 0 ||
+    (searching && connectedApps.length > 0);
   const wholeList = category === "all";
   const hasConnected = chipOnly
     ? connectedApps.length > 0 || (category === "finance" && connectedKeys.size > 0)
@@ -521,7 +529,7 @@ export function IntegrationsHome({
         ) : null}
         {data.loaded ? (
           <>
-            {hasConnected && (!filtering || chipOnly) ? (
+            {(searching ? connectedApps.length > 0 : hasConnected) ? (
               <>
                 <SectionTitle>
                   <Trans>Connected</Trans>
@@ -536,7 +544,7 @@ export function IntegrationsHome({
                       onReconnect={retry}
                     />
                   ))}
-                  {(wholeList ? servers : []).map((server) => (
+                  {(wholeList && !searching ? servers : []).map((server) => (
                     <McpCard
                       key={server.id}
                       server={server}
@@ -544,10 +552,10 @@ export function IntegrationsHome({
                       descriptions={firstPartyDescription}
                     />
                   ))}
-                  {(wholeList ? data.sources : []).map((source) => (
+                  {(wholeList && !searching ? data.sources : []).map((source) => (
                     <SourceCard key={source.id} source={source} onRemove={setRemoving} />
                   ))}
-                  {wholeList || category === "finance" ? (
+                  {!searching && (wholeList || category === "finance") ? (
                     <FinanceSection
                       mode="connected"
                       sources={data.financeSources}
