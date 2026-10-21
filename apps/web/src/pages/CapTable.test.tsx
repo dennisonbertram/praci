@@ -1033,6 +1033,20 @@ describe("search, filter and sort", () => {
     await flush();
   };
 
+  it("says the SAFEs are left out of the donut and links to them on the Investors tab", async () => {
+    await showAt("/app/cap-table");
+    const note = [...container.querySelectorAll("a")].find((a) =>
+      a.textContent?.startsWith("SAFEs ("),
+    );
+    expect(note?.textContent).toBe("SAFEs (2, $109,000) are not included until they convert");
+    expect(note?.getAttribute("href")).toBe("/app/cap-table?kind=investor&security=SAFE");
+    // On another tab the overview, and so the note, is gone.
+    await showAt("/app/cap-table?kind=investor");
+    expect(
+      [...container.querySelectorAll("a")].some((a) => a.textContent?.startsWith("SAFEs (")),
+    ).toBe(false);
+  });
+
   it("sorts by ownership, largest first, until another sort is chosen", async () => {
     await showAt("/app/cap-table");
     expect(rowNames().slice(0, 3)).toEqual(["Ten", "Nine", "Two"]);
