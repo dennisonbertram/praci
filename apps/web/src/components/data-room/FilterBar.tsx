@@ -53,13 +53,21 @@ export const TOOLBAR_LABEL = "@max-[639px]/bd:sr-only";
 export function ToolbarTip({
   label,
   compact,
+  disabled,
   children,
 }: {
   label: string;
   compact: boolean;
+  disabled?: boolean;
   children: ReactElement;
 }) {
-  return compact ? <Tip label={label}>{children}</Tip> : children;
+  return compact ? (
+    <Tip label={label} disabled={disabled}>
+      {children}
+    </Tip>
+  ) : (
+    children
+  );
 }
 
 /** A pill that opens a popover; with a value it shows "Label: value" and a remove button. */

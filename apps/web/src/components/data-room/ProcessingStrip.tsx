@@ -28,6 +28,8 @@ export function ProcessingStrip({
 }) {
   const [open, setOpen] = useState(false);
   const remaining = processingRemaining(processing);
+  // One or two files show their own Reading badge in the list; a strip would repeat it.
+  if (total <= 2 && !importing) return null;
   const row = "border-b border-border px-3 py-1.5 text-xs text-muted-foreground";
   if (finished) {
     return (
