@@ -31,6 +31,7 @@ import { todayIso } from "../lib/legal-format";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 import { CompanyFactDetail } from "./CompanyFactDetail";
+import { CompanyHistory } from "./CompanyHistory";
 import { CompanyPrivacy } from "./CompanyPrivacy";
 
 export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
@@ -180,6 +181,9 @@ export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
           <TabsTrigger value="organisations">
             <Trans>Organisations</Trans>
           </TabsTrigger>
+          <TabsTrigger value="history">
+            <Trans>History</Trans>
+          </TabsTrigger>
         </TabsList>
       </Tabs>
       {page.error && (
@@ -193,6 +197,7 @@ export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
       {!data && !page.error && <Skeleton className="mt-6 h-64 w-full" />}
       {data && (
         <div className="mt-6 space-y-8">
+          {view === "history" && <CompanyHistory data={data} onOpen={setFact} />}
           {running && (
             <p role="status" className="text-sm text-muted-foreground">
               <Trans>Import in progress</Trans>

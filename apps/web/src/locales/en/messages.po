@@ -258,6 +258,11 @@ msgstr "{0} deliveries unknown"
 msgid "{0} did not accept the sign-in."
 msgstr "{0} did not accept the sign-in."
 
+#. placeholder {0}: source.evidenceCount
+#: src/pages/CompanyPrivacy.tsx
+msgid "{0} evidence records"
+msgstr "{0} evidence records"
+
 #. placeholder {0}: failed.length
 #. placeholder {0}: failed[0]?.name ?? ""
 #: src/pages/Investors.tsx
@@ -273,6 +278,11 @@ msgstr "{0} files were not added. Attachments can be up to {MAX_COMPOSE_ATTACHME
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} handling"
 msgstr "{0} handling"
+
+#. placeholder {0}: source.itemCount
+#: src/pages/CompanyImport.tsx
+msgid "{0} items"
+msgstr "{0} items"
 
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
@@ -295,6 +305,11 @@ msgstr "{0} non-USD not counted"
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "{0} of {1}"
 msgstr "{0} of {1}"
+
+#. placeholder {0}: run.sources.find((item) => item.id === source.id)?.label ?? source.sourceKind
+#: src/pages/CompanyImport.tsx
+msgid "{0} progress"
+msgstr "{0} progress"
 
 #. placeholder {0}: sender.name
 #: src/pages/ExternalConversationSettings.tsx
@@ -395,13 +410,25 @@ msgstr "{count, plural, one {access to # shared document} other {access to # sha
 msgid "{count, plural, one {Synced # meeting} other {Synced # meetings}}"
 msgstr "{count, plural, one {Synced # meeting} other {Synced # meetings}}"
 
+#: src/pages/CompanyImport.tsx
+msgid "{count} channels"
+msgstr "{count} channels"
+
 #: src/lib/billing.ts
 msgid "{count} days"
 msgstr "{count} days"
 
+#: src/pages/CompanyImport.tsx
+msgid "{count} folders"
+msgstr "{count} folders"
+
 #: src/lib/billing.ts
 msgid "{count} months"
 msgstr "{count} months"
+
+#: src/pages/CompanyImport.tsx
+msgid "{count} read tools"
+msgstr "{count} read tools"
 
 #: src/pages/Fundraising.tsx
 msgid "{count} SAFEs are signed and unpaid."
@@ -670,6 +697,18 @@ msgstr "+{more} more"
 msgid "0x… or name.eth"
 msgstr "0x… or name.eth"
 
+#: src/pages/CompanyImport.tsx
+msgid "1 channel"
+msgstr "1 channel"
+
+#: src/pages/CompanyImport.tsx
+msgid "1 folder"
+msgstr "1 folder"
+
+#: src/pages/CompanyImport.tsx
+msgid "1 read tool"
+msgstr "1 read tool"
+
 #: src/components/fundraising/MercuryLine.tsx
 msgid "1 SAFE could not be read"
 msgstr "1 SAFE could not be read"
@@ -736,6 +775,10 @@ msgstr "About groups"
 #: src/pages/shell/bot-picker.tsx
 msgid "About spaces"
 msgstr "About spaces"
+
+#: src/pages/CompanyImport.tsx
+msgid "Access denied"
+msgstr "Access denied"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Access token"
@@ -1047,6 +1090,10 @@ msgstr "AI data sharing off"
 msgid "All"
 msgstr "All"
 
+#: src/pages/CompanyImport.tsx
+msgid "All accessible items"
+msgstr "All accessible items"
+
 #: src/pages/Artifacts.tsx
 msgid "All bots"
 msgstr "All bots"
@@ -1076,6 +1123,11 @@ msgstr "all dates"
 msgid "All files processed"
 msgstr "All files processed"
 
+#: src/pages/CompanyImport.tsx
+#: src/pages/CompanyImportScope.tsx
+msgid "All folders"
+msgstr "All folders"
+
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 #: src/components/data-room/ItemDialogs.tsx
@@ -1093,11 +1145,18 @@ msgstr "All mail from {0}"
 msgid "All providers"
 msgstr "All providers"
 
+#: src/pages/CompanyImport.tsx
+#: src/pages/CompanyImportScope.tsx
+msgid "All public channels"
+msgstr "All public channels"
+
 #: src/pages/ActivityList.tsx
 msgid "All statuses"
 msgstr "All statuses"
 
 #: src/pages/Artifacts.tsx
+#: src/pages/CompanyImport.tsx
+#: src/pages/CompanyImportScope.tsx
 msgid "All time"
 msgstr "All time"
 
@@ -1116,6 +1175,12 @@ msgstr "Allow {0} actions without asking"
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow {0} connector without asking"
 msgstr "Allow {0} connector without asking"
+
+#. placeholder {0}: source.label
+#. placeholder {1}: current?.recipient?.name ?? "model"
+#: src/pages/CompanyImport.tsx
+msgid "Allow {0} to {1}"
+msgstr "Allow {0} to {1}"
 
 #. placeholder {0}: rule.matchValue
 #: src/components/ApprovalRulesSettings.tsx
@@ -1413,9 +1478,22 @@ msgstr "Archived {n}"
 msgid "Archived. Chat, memory, and files kept."
 msgstr "Archived. Chat, memory, and files kept."
 
+#: src/pages/CompanyImportScope.tsx
+msgid "Argument schema"
+msgstr "Argument schema"
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Arguments"
 msgstr "Arguments"
+
+#: src/pages/CompanyImportScope.tsx
+msgid "Arguments (JSON)"
+msgstr "Arguments (JSON)"
+
+#. placeholder {0}: tool.name
+#: src/pages/CompanyImportScope.tsx
+msgid "Arguments for {0}"
+msgstr "Arguments for {0}"
 
 #: src/pages/Artifacts.tsx
 msgid "Artifact"
@@ -1761,6 +1839,10 @@ msgstr "Bcc"
 msgid "Bearer token"
 msgstr "Bearer token"
 
+#: src/pages/CompanyImportScope.tsx
+msgid "Before"
+msgstr "Before"
+
 #: src/pages/Finance.tsx
 msgid "bill"
 msgstr "bill"
@@ -1997,6 +2079,10 @@ msgstr "Can't reach the server."
 #: src/components/markdown-link-prompt.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Artifacts.tsx
+#: src/pages/CompanyFactDetail.tsx
+#: src/pages/CompanyImport.tsx
+#: src/pages/CompanyImportScope.tsx
+#: src/pages/CompanyPrivacy.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/Fundraising.tsx
 #: src/pages/Investors.tsx
@@ -2033,6 +2119,7 @@ msgstr "cancelled"
 
 #: src/components/AskCard.tsx
 #: src/pages/ActivityList.tsx
+#: src/pages/CompanyImport.tsx
 msgid "Cancelled"
 msgstr "Cancelled"
 
@@ -2043,6 +2130,10 @@ msgstr "Cap table"
 #: src/pages/Shell.tsx
 msgid "cap table, equity, ownership, Carta"
 msgstr "cap table, equity, ownership, Carta"
+
+#: src/pages/CompanyImport.tsx
+msgid "Cap-limited; sample pending"
+msgstr "Cap-limited; sample pending"
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Card balance owed"
@@ -2065,6 +2156,7 @@ msgid "Carta"
 msgstr "Carta"
 
 #: src/components/FinanceCards.tsx
+#: src/pages/Company.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Cash"
@@ -2149,9 +2241,14 @@ msgstr "Changes your account"
 msgid "Changing…"
 msgstr "Changing…"
 
+#: src/pages/CompanyImportScope.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Channels"
 msgstr "Channels"
+
+#: src/pages/CompanyImportScope.tsx
+msgid "Channels unavailable"
+msgstr "Channels unavailable"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Charges"
@@ -2275,6 +2372,10 @@ msgstr "Choose a Google Sheet"
 msgid "Choose a new password"
 msgstr "Choose a new password"
 
+#: src/pages/CompanyImportScope.tsx
+msgid "Choose a valid scope"
+msgstr "Choose a valid scope"
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Choose file"
 msgstr "Choose file"
@@ -2286,6 +2387,15 @@ msgstr "Choose files"
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Choose how apps connect for everyone on this server."
 msgstr "Choose how apps connect for everyone on this server."
+
+#: src/pages/CompanyImport.tsx
+msgid "Choose read tools"
+msgstr "Choose read tools"
+
+#: src/pages/CompanyImport.tsx
+#: src/pages/CompanyImportScope.tsx
+msgid "Choose scope"
+msgstr "Choose scope"
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Choose the account to connect, then come back here."
@@ -2507,6 +2617,14 @@ msgid "Collapse {title}"
 msgstr "Collapse {title}"
 
 #: src/pages/Shell.tsx
+msgid "Collapse Company agent"
+msgstr "Collapse Company agent"
+
+#: src/pages/Shell.tsx
+msgid "Collapse Company importer"
+msgstr "Collapse Company importer"
+
+#: src/pages/Shell.tsx
 msgid "Collapse Data room agent"
 msgstr "Collapse Data room agent"
 
@@ -2564,8 +2682,31 @@ msgid "Compact"
 msgstr "Compact"
 
 #: src/components/legal/LegalGraph.tsx
+#: src/pages/Company.tsx
+#: src/pages/CompanyHistory.tsx
+#: src/pages/CompanyImport.tsx
 msgid "Company"
 msgstr "Company"
+
+#: src/pages/Company.tsx
+msgid "Company actions"
+msgstr "Company actions"
+
+#: src/pages/Company.tsx
+msgid "Company agent"
+msgstr "Company agent"
+
+#: src/pages/CompanyHistory.tsx
+msgid "Company history"
+msgstr "Company history"
+
+#: src/pages/CompanyImport.tsx
+msgid "Company importer"
+msgstr "Company importer"
+
+#: src/pages/CompanyPrivacy.tsx
+msgid "Company privacy"
+msgstr "Company privacy"
 
 #. placeholder {0}: current.name
 #: src/components/finance/ui.tsx
@@ -2643,6 +2784,10 @@ msgstr "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_T
 msgid "Configure API key"
 msgstr "Configure API key"
 
+#: src/pages/CompanyFactDetail.tsx
+msgid "Confirm"
+msgstr "Confirm"
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "Confirm delete"
@@ -2656,6 +2801,14 @@ msgstr "Confirm password"
 msgid "Confirm the URL is reachable from this browser session, then test again."
 msgstr "Confirm the URL is reachable from this browser session, then test again."
 
+#: src/pages/CompanyFactDetail.tsx
+msgid "Confirmed"
+msgstr "Confirmed"
+
+#: src/pages/CompanyFactDetail.tsx
+msgid "Conflicting evidence"
+msgstr "Conflicting evidence"
+
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ConnectAppsStep.tsx
@@ -2668,6 +2821,7 @@ msgstr "Confirm the URL is reachable from this browser session, then test again.
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/pages/CompanyImport.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/shell/message-cards.tsx
@@ -2703,6 +2857,7 @@ msgstr "Connect {service}"
 msgid "Connect a Composio or Pipedream account to add apps like Slack, Notion and GitHub."
 msgstr "Connect a Composio or Pipedream account to add apps like Slack, Notion and GitHub."
 
+#: src/pages/CompanyImport.tsx
 #: src/pages/Onboarding.tsx
 msgid "Connect a model"
 msgstr "Connect a model"
@@ -2874,6 +3029,10 @@ msgstr "Connection test failed."
 #: src/components/integrations/DevinConnectDialog.tsx
 msgid "Connects Devin for everyone in this space. Read-only."
 msgstr "Connects Devin for everyone in this space. Read-only."
+
+#: src/pages/CompanyImport.tsx
+msgid "Consent required"
+msgstr "Consent required"
 
 #: src/components/fundraising/MercuryDialogs.tsx
 msgid "Contact"
@@ -3094,6 +3253,10 @@ msgstr "Could not create space"
 #: src/pages/Shell.tsx
 msgid "Could not create the Carta agent"
 msgstr "Could not create the Carta agent"
+
+#: src/pages/Shell.tsx
+msgid "Could not create the Company agent"
+msgstr "Could not create the Company agent"
 
 #: src/pages/Shell.tsx
 msgid "Could not create the Data room agent"
@@ -3805,6 +3968,14 @@ msgid "Create an app in the provider's developer settings with this callback URL
 msgstr "Create an app in the provider's developer settings with this callback URL."
 
 #: src/pages/Shell.tsx
+msgid "Create Company agent"
+msgstr "Create Company agent"
+
+#: src/pages/Shell.tsx
+msgid "Create Company importer"
+msgstr "Create Company importer"
+
+#: src/pages/Shell.tsx
 msgid "Create Data room agent"
 msgstr "Create Data room agent"
 
@@ -3911,6 +4082,10 @@ msgstr "Customer"
 msgid "Customer support"
 msgstr "Customer support"
 
+#: src/pages/CompanyHistory.tsx
+msgid "Customers"
+msgstr "Customers"
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Customize bot avatar"
 msgstr "Customize bot avatar"
@@ -3940,6 +4115,10 @@ msgstr "Data room search model"
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Date"
 msgstr "Date"
+
+#: src/pages/CompanyImportScope.tsx
+msgid "Date window"
+msgstr "Date window"
 
 #: src/lib/billing.ts
 #: src/pages/RoutineSchedule.tsx
@@ -4071,6 +4250,10 @@ msgstr "Delete the folder {0}?"
 msgid "Delete this update?"
 msgstr "Delete this update?"
 
+#: src/pages/CompanyPrivacy.tsx
+msgid "Delete your company facts, import history, corrections and exclusions. Documents and integrations stay connected. This cannot be undone."
+msgstr "Delete your company facts, import history, corrections and exclusions. Documents and integrations stay connected. This cannot be undone."
+
 #: src/pages/shell/transcript.tsx
 msgid "deleted"
 msgstr "deleted"
@@ -4110,6 +4293,7 @@ msgid "Deposit in Finance"
 msgstr "Deposit in Finance"
 
 #: src/pages/Board.tsx
+#: src/pages/CompanyFactDetail.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Description"
@@ -4189,15 +4373,22 @@ msgstr "Disabled tools"
 #: src/components/ComposeEmail.tsx
 #: src/components/finance/StatementReviewCard.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/pages/CompanyImport.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Discard"
 msgstr "Discard"
 
+#: src/pages/CompanyImport.tsx
+msgid "Discard this import?"
+msgstr "Discard this import?"
+
 #: src/components/MailApprovalCard.tsx
+#: src/pages/CompanyImport.tsx
 msgid "Discarded"
 msgstr "Discarded"
 
 #: src/components/integrations/GranolaMeetingsCard.tsx
+#: src/pages/CompanyPrivacy.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -4219,6 +4410,14 @@ msgstr "Disconnect {name}?"
 #: src/components/integrations/McpDetail.tsx
 msgid "Disconnect sign-in"
 msgstr "Disconnect sign-in"
+
+#: src/pages/CompanyPrivacy.tsx
+msgid "Disconnect source?"
+msgstr "Disconnect source?"
+
+#: src/pages/CompanyPrivacy.tsx
+msgid "Disconnected"
+msgstr "Disconnected"
 
 #. placeholder {0}: selected.providerName ?? selected.provider
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4326,6 +4525,7 @@ msgstr "Don't share"
 #: src/components/tour/TourPopover.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
+#: src/pages/CompanyImport.tsx
 #: src/pages/investors/UpdateEditor.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
@@ -4495,6 +4695,7 @@ msgstr "Earlier updates"
 
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/pages/CompanyFactDetail.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/Investors.tsx
 msgid "Edit"
@@ -4658,6 +4859,18 @@ msgstr "Equity"
 msgid "Equity raised"
 msgstr "Equity raised"
 
+#: src/pages/CompanyPrivacy.tsx
+msgid "Erase"
+msgstr "Erase"
+
+#: src/pages/CompanyPrivacy.tsx
+msgid "Erase company map"
+msgstr "Erase company map"
+
+#: src/pages/CompanyPrivacy.tsx
+msgid "Erase company map?"
+msgstr "Erase company map?"
+
 #: src/lib/devin-format.ts
 #: src/lib/roster-status.ts
 #: src/pages/Shell.tsx
@@ -4705,6 +4918,18 @@ msgstr "Every week"
 msgid "Exchange"
 msgstr "Exchange"
 
+#: src/pages/CompanyFactDetail.tsx
+msgid "Exclude"
+msgstr "Exclude"
+
+#: src/pages/CompanyFactDetail.tsx
+msgid "Exclude person"
+msgstr "Exclude person"
+
+#: src/pages/CompanyFactDetail.tsx
+msgid "Exclude person?"
+msgstr "Exclude person?"
+
 #: src/pages/shell/message-cards.tsx
 msgid "Expand"
 msgstr "Expand"
@@ -4736,6 +4961,10 @@ msgstr "Expired"
 msgid "Export"
 msgstr "Export"
 
+#: src/pages/Company.tsx
+msgid "Export JSON"
+msgstr "Export JSON"
+
 #: src/components/DataExport.tsx
 msgid "Export my data"
 msgstr "Export my data"
@@ -4763,6 +4992,10 @@ msgstr "Extra high"
 msgid "Extra high"
 msgstr "Extra high"
 
+#: src/pages/CompanyImport.tsx
+msgid "Facts"
+msgstr "Facts"
+
 #: src/components/CloudAgentCard.tsx
 msgid "failed"
 msgstr "failed"
@@ -4774,6 +5007,7 @@ msgstr "failed"
 #: src/components/integrations/parts.tsx
 #: src/components/sidebar-glance.tsx
 #: src/pages/ActivityList.tsx
+#: src/pages/CompanyImport.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Failed"
 msgstr "Failed"
@@ -4940,6 +5174,7 @@ msgid "Folder"
 msgstr "Folder"
 
 #: src/components/data-room/FolderTree.tsx
+#: src/pages/CompanyImportScope.tsx
 msgid "Folders"
 msgstr "Folders"
 
@@ -4981,6 +5216,7 @@ msgstr "Free"
 #: src/components/data-room/FilterBar.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/ActivityList.tsx
+#: src/pages/CompanyImportScope.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "From"
 msgstr "From"
@@ -5012,6 +5248,10 @@ msgstr "From Google Drive"
 msgid "from Mercury"
 msgstr "from Mercury"
 
+#: src/pages/CompanyImport.tsx
+msgid "From sample"
+msgstr "From sample"
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "From URL"
 msgstr "From URL"
@@ -5035,6 +5275,10 @@ msgstr "Fully diluted"
 #: src/components/fundraising/SafeList.tsx
 msgid "Funded"
 msgstr "Funded"
+
+#: src/pages/CompanyHistory.tsx
+msgid "Funding"
+msgstr "Funding"
 
 #: src/pages/Fundraising.tsx
 #: src/pages/Shell.tsx
@@ -5282,8 +5526,18 @@ msgid "High"
 msgstr "High"
 
 #: src/components/inbox/CleanupHistory.tsx
+#: src/pages/Company.tsx
+#: src/pages/CompanyHistory.tsx
 msgid "History"
 msgstr "History"
+
+#: src/pages/CompanyHistory.tsx
+msgid "History timeline; plus or minus to zoom"
+msgstr "History timeline; plus or minus to zoom"
+
+#: src/pages/CompanyHistory.tsx
+msgid "History zoom"
+msgstr "History zoom"
 
 #: src/components/cap-table/CapTableEditor.tsx
 msgid "holder"
@@ -5320,6 +5574,10 @@ msgstr "hours"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "How Integrations connect for everyone on this server."
 msgstr "How Integrations connect for everyone on this server."
+
+#: src/pages/Shell.tsx
+msgid "How is my import going?"
+msgstr "How is my import going?"
 
 #: src/lib/slash-skills.ts
 msgid "How long cash lasts, with what-ifs."
@@ -5409,6 +5667,7 @@ msgstr "iMessage on your Mac"
 
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
+#: src/pages/Company.tsx
 msgid "Import"
 msgstr "Import"
 
@@ -5425,6 +5684,10 @@ msgstr "Import an OpenAPI description"
 msgid "Import anyway"
 msgstr "Import anyway"
 
+#: src/pages/CompanyImport.tsx
+msgid "Import company"
+msgstr "Import company"
+
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Import from Box"
 msgstr "Import from Box"
@@ -5437,6 +5700,10 @@ msgstr "Import from email"
 msgid "Import from Google Drive"
 msgstr "Import from Google Drive"
 
+#: src/pages/Company.tsx
+msgid "Import in progress"
+msgstr "Import in progress"
+
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
@@ -5446,6 +5713,10 @@ msgstr "Important"
 #: src/components/finance/StatementReviewCard.tsx
 msgid "Imported"
 msgstr "Imported"
+
+#: src/pages/CompanyImport.tsx
+msgid "Importing"
+msgstr "Importing"
 
 #. placeholder {0}: importing.done
 #. placeholder {1}: importing.total
@@ -5489,6 +5760,14 @@ msgstr "Inbox"
 #: src/pages/shell/message-cards.tsx
 msgid "Inbox & email"
 msgstr "Inbox & email"
+
+#: src/pages/CompanyImportScope.tsx
+msgid "INBOX, SENT"
+msgstr "INBOX, SENT"
+
+#: src/pages/CompanyImport.tsx
+msgid "Increase token cap"
+msgstr "Increase token cap"
 
 #: src/components/data-room/ProcessingStrip.tsx
 msgid "Indexing"
@@ -5620,6 +5899,7 @@ msgid "Italic"
 msgstr "Italic"
 
 #: src/components/data-room/ItemRows.tsx
+#: src/pages/CompanyImport.tsx
 msgid "Items"
 msgstr "Items"
 
@@ -5650,6 +5930,10 @@ msgstr "Jurisdiction"
 #: src/lib/relative-time.ts
 msgid "just now"
 msgstr "just now"
+
+#: src/pages/CompanyImport.tsx
+msgid "Keep"
+msgstr "Keep"
 
 #: src/pages/DataRoom.tsx
 msgid "Keep contracts, board decks and investor documents in one place."
@@ -5685,6 +5969,10 @@ msgstr "Kind"
 #: src/components/finance/WalletDialog.tsx
 msgid "Label (optional)"
 msgstr "Label (optional)"
+
+#: src/pages/CompanyImportScope.tsx
+msgid "Label IDs"
+msgstr "Label IDs"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Language"
@@ -5752,6 +6040,10 @@ msgstr "Last scan failed: {0}"
 msgid "Last scan failed: The AI key was rejected."
 msgstr "Last scan failed: The AI key was rejected."
 
+#: src/pages/CompanyImport.tsx
+msgid "Last three years"
+msgstr "Last three years"
+
 #: src/components/DesktopUpdates.tsx
 msgid "Later"
 msgstr "Later"
@@ -5769,6 +6061,10 @@ msgstr "Later statements for this account keep this name."
 #: src/components/FinanceCards.tsx
 msgid "Latest {0} of {1}"
 msgstr "Latest {0} of {1}"
+
+#: src/pages/Company.tsx
+msgid "Latest events"
+msgstr "Latest events"
 
 #: src/pages/portal/PortalHome.tsx
 msgid "Latest update"
@@ -5788,6 +6084,7 @@ msgstr "Leave"
 
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/FilterBar.tsx
+#: src/pages/CompanyHistory.tsx
 #: src/pages/Legal.tsx
 #: src/pages/Shell.tsx
 msgid "Legal"
@@ -5907,6 +6204,10 @@ msgstr "Loading"
 msgid "Loading activity…"
 msgstr "Loading activity…"
 
+#: src/pages/CompanyImportScope.tsx
+msgid "Loading channels…"
+msgstr "Loading channels…"
+
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Loading memory settings…"
 msgstr "Loading memory settings…"
@@ -5922,6 +6223,10 @@ msgstr "Loading model catalog…"
 #: src/components/ArtifactFileCard.tsx
 msgid "Loading preview…"
 msgstr "Loading preview…"
+
+#: src/pages/CompanyImport.tsx
+msgid "Loading recipients"
+msgstr "Loading recipients"
 
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Loading rules…"
@@ -5966,6 +6271,10 @@ msgstr "Local server"
 #: src/pages/LocalSettings.tsx
 msgid "Local Server Settings"
 msgstr "Local Server Settings"
+
+#: src/pages/CompanyFactDetail.tsx
+msgid "Locked fields"
+msgstr "Locked fields"
 
 #: src/pages/Paywall.tsx
 #: src/pages/Shell.tsx
@@ -6017,6 +6326,10 @@ msgstr "Mail from {0} is now marked as noise"
 #: src/pages/Inbox.tsx
 msgid "Mail from {0} is now marked important"
 msgstr "Mail from {0} is now marked important"
+
+#: src/pages/CompanyFactDetail.tsx
+msgid "Make private"
+msgstr "Make private"
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Make sure nothing is still running on this computer."
@@ -6392,6 +6705,7 @@ msgid "month"
 msgstr "month"
 
 #: src/components/finance/ui.tsx
+#: src/pages/CompanyHistory.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Month"
@@ -6457,6 +6771,10 @@ msgstr "More Alchemy actions"
 msgid "More Blockscout actions"
 msgstr "More Blockscout actions"
 
+#: src/pages/CompanyImportScope.tsx
+msgid "More channels"
+msgstr "More channels"
+
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "More computer actions"
 msgstr "More computer actions"
@@ -6464,6 +6782,10 @@ msgstr "More computer actions"
 #: src/pages/ActivityList.tsx
 msgid "More filters"
 msgstr "More filters"
+
+#: src/pages/CompanyImportScope.tsx
+msgid "More private channels"
+msgstr "More private channels"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "More settings"
@@ -6541,6 +6863,8 @@ msgstr "Mute"
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
+#: src/pages/Company.tsx
+#: src/pages/CompanyFactDetail.tsx
 #: src/pages/Contacts.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/RoutineEditor.tsx
@@ -6671,6 +6995,10 @@ msgstr "New folder…"
 msgid "New group"
 msgstr "New group"
 
+#: src/pages/CompanyImport.tsx
+msgid "New import"
+msgstr "New import"
+
 #: src/components/investors/ActionItems.tsx
 msgid "New mail"
 msgstr "New mail"
@@ -6727,6 +7055,10 @@ msgstr "Next 30 days"
 #: src/components/inbox/MailAttachments.tsx
 msgid "Next attachment"
 msgstr "Next attachment"
+
+#: src/pages/Company.tsx
+msgid "Next dates"
+msgstr "Next dates"
 
 #: src/pages/legal/LegalContracts.tsx
 msgid "Next deadline"
@@ -6810,6 +7142,10 @@ msgstr "No chat apps linked yet."
 msgid "No closing balance found to check against"
 msgstr "No closing balance found to check against"
 
+#: src/pages/Company.tsx
+msgid "No company facts yet"
+msgstr "No company facts yet"
+
 #: src/pages/Contacts.tsx
 msgid "No contacts yet"
 msgstr "No contacts yet"
@@ -6822,6 +7158,10 @@ msgstr "No contracts or deadlines found on {0}."
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
 msgstr "No credentials saved for this bot."
+
+#: src/pages/CompanyHistory.tsx
+msgid "No dated facts"
+msgstr "No dated facts"
 
 #: src/pages/Devin.tsx
 msgid "No Devin sessions yet."
@@ -6839,6 +7179,14 @@ msgstr "No documents here name a party"
 msgid "no email"
 msgstr "no email"
 
+#: src/pages/CompanyImport.tsx
+msgid "No extraction model"
+msgstr "No extraction model"
+
+#: src/pages/CompanyImport.tsx
+msgid "No facts in this sample"
+msgstr "No facts in this sample"
+
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "No files found"
@@ -6855,6 +7203,10 @@ msgstr "No follow-ups from meetings yet"
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No group chats yet."
 msgstr "No group chats yet."
+
+#: src/pages/CompanyPrivacy.tsx
+msgid "No imported sources"
+msgstr "No imported sources"
 
 #: src/components/data-room/ItemDialogs.tsx
 #: src/pages/investors/UpdateEditor.tsx
@@ -6935,6 +7287,10 @@ msgstr "No open deadlines."
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "No providers found."
 msgstr "No providers found."
+
+#: src/pages/CompanyImport.tsx
+msgid "No read-only importer"
+msgstr "No read-only importer"
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "No receipt"
@@ -7051,6 +7407,12 @@ msgstr "Not attached: {0}"
 #: src/components/data-room/FilterBar.tsx
 msgid "Not checked"
 msgstr "Not checked"
+
+#: src/pages/Company.tsx
+#: src/pages/CompanyFactDetail.tsx
+#: src/pages/CompanyHistory.tsx
+msgid "Not confirmed"
+msgstr "Not confirmed"
 
 #: src/components/MailApprovalCard.tsx
 msgid "Not confirmed as saved. Check Drafts in your mail before trying again."
@@ -7232,6 +7594,10 @@ msgstr "On a call with {0}"
 msgid "On a schedule"
 msgstr "On a schedule"
 
+#: src/pages/CompanyHistory.tsx
+msgid "Ongoing"
+msgstr "Ongoing"
+
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
 msgstr "Only empty spaces can be deleted. Delete its bots and groups first."
@@ -7284,6 +7650,10 @@ msgstr "Open <0>{0}</0> to finish signing in."
 #: src/components/integrations/SignInStep.tsx
 msgid "Open again"
 msgstr "Open again"
+
+#: src/pages/CompanyImport.tsx
+msgid "Open Company"
+msgstr "Open Company"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
@@ -7395,6 +7765,10 @@ msgstr "Open shell"
 msgid "Open sign-in"
 msgstr "Open sign-in"
 
+#: src/pages/CompanyFactDetail.tsx
+msgid "Open source"
+msgstr "Open source"
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Open work"
 msgstr "Open work"
@@ -7451,6 +7825,10 @@ msgstr "Or paste an API key"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Organic"
 msgstr "Organic"
+
+#: src/pages/Company.tsx
+msgid "Organisations"
+msgstr "Organisations"
 
 #: src/components/ContactDialog.tsx
 #: src/pages/Contacts.tsx
@@ -7511,6 +7889,10 @@ msgstr "Out"
 msgid "Outside memory service"
 msgstr "Outside memory service"
 
+#: src/pages/Company.tsx
+msgid "Overview"
+msgstr "Overview"
+
 #: src/pages/Board.tsx
 msgid "Owner"
 msgstr "Owner"
@@ -7555,6 +7937,11 @@ msgstr "Park"
 #: src/components/UiArtifactView.tsx
 msgid "Part of this can't be shown."
 msgstr "Part of this can't be shown."
+
+#: src/pages/Company.tsx
+#: src/pages/CompanyImport.tsx
+msgid "Partial import"
+msgstr "Partial import"
 
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
@@ -7607,6 +7994,10 @@ msgstr "Past charges"
 msgid "Past due"
 msgstr "Past due"
 
+#: src/pages/Company.tsx
+msgid "Past members"
+msgstr "Past members"
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Paste a replacement key"
@@ -7644,6 +8035,11 @@ msgstr "Paste your API key, then test again."
 msgid "Path"
 msgstr "Path"
 
+#: src/pages/CompanyImport.tsx
+msgid "Pause"
+msgstr "Pause"
+
+#: src/pages/CompanyImport.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Paused"
 msgstr "Paused"
@@ -7661,6 +8057,11 @@ msgstr "pending"
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
 msgstr "Pending"
+
+#: src/pages/Company.tsx
+#: src/pages/CompanyHistory.tsx
+msgid "People"
+msgstr "People"
 
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -7857,6 +8258,10 @@ msgstr "Preview {0}"
 msgid "Preview isn't available for this file type — download it to view it."
 msgstr "Preview isn't available for this file type — download it to view it."
 
+#: src/pages/CompanyImport.tsx
+msgid "Preview sample"
+msgstr "Preview sample"
+
 #: src/components/inbox/MailAttachments.tsx
 msgid "Previous attachment"
 msgstr "Previous attachment"
@@ -7878,6 +8283,11 @@ msgstr "Print"
 msgid "Priority"
 msgstr "Priority"
 
+#: src/pages/Company.tsx
+#: src/pages/CompanyImport.tsx
+msgid "Privacy"
+msgstr "Privacy"
+
 #: src/pages/SettingsOverlay.tsx
 msgid "Privacy and approvals"
 msgstr "Privacy and approvals"
@@ -7885,6 +8295,10 @@ msgstr "Privacy and approvals"
 #: src/pages/shell/bot-panel.tsx
 msgid "Private"
 msgstr "Private"
+
+#: src/pages/CompanyImportScope.tsx
+msgid "Private channels and DMs"
+msgstr "Private channels and DMs"
 
 #: src/components/integrations/ExchangeConnectDialog.tsx
 msgid "Private key"
@@ -7901,6 +8315,14 @@ msgstr "Pro rata side letter"
 #: src/components/data-room/ProcessingStrip.tsx
 msgid "Processing"
 msgstr "Processing"
+
+#: src/pages/CompanyHistory.tsx
+msgid "Product"
+msgstr "Product"
+
+#: src/pages/CompanyImport.tsx
+msgid "Progress"
+msgstr "Progress"
 
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -7946,6 +8368,14 @@ msgstr "Provider"
 msgid "Providers"
 msgstr "Providers"
 
+#: src/pages/CompanyImport.tsx
+msgid "Public and selected private channels"
+msgstr "Public and selected private channels"
+
+#: src/pages/CompanyImport.tsx
+msgid "Published call rates · total unknown"
+msgstr "Published call rates · total unknown"
+
 #: src/components/CloudAgentCard.tsx
 #: src/pages/devin/DevinSessions.tsx
 msgid "Pull request"
@@ -7956,6 +8386,7 @@ msgid "Q{quarter} so far"
 msgstr "Q{quarter} so far"
 
 #: src/components/finance/ui.tsx
+#: src/pages/CompanyHistory.tsx
 msgid "Quarter"
 msgstr "Quarter"
 
@@ -7975,6 +8406,10 @@ msgstr "Quick status check from everyone, please"
 msgid "Quote"
 msgstr "Quote"
 
+#: src/pages/Company.tsx
+msgid "Raised"
+msgstr "Raised"
+
 #: src/pages/shell/transcript.tsx
 msgid "React"
 msgstr "React"
@@ -7984,6 +8419,7 @@ msgid "Reactions"
 msgstr "Reactions"
 
 #: src/components/integrations/AppDetail.tsx
+#: src/pages/CompanyImport.tsx
 msgid "Read"
 msgstr "Read"
 
@@ -8017,6 +8453,10 @@ msgstr "Read posts, DMs and bookmarks"
 msgid "Read replies aloud"
 msgstr "Read replies aloud"
 
+#: src/pages/CompanyImportScope.tsx
+msgid "Read tools"
+msgstr "Read tools"
+
 #: src/components/tour/FirstRunTour.tsx
 msgid "Read your mail sorted by what needs you, and send replies you approve."
 msgstr "Read your mail sorted by what needs you, and send replies you approve."
@@ -8028,6 +8468,7 @@ msgstr "Read-only API key"
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/format.ts
 #: src/components/data-room/ProcessingStrip.tsx
+#: src/pages/CompanyImport.tsx
 msgid "Reading"
 msgstr "Reading"
 
@@ -8152,6 +8593,7 @@ msgstr "Recipients"
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
+#: src/pages/CompanyPrivacy.tsx
 #: src/pages/Devin.tsx
 #: src/pages/Finance.tsx
 msgid "Reconnect"
@@ -8177,6 +8619,10 @@ msgstr "Reconnect needed"
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Reconnecting"
 msgstr "Reconnecting"
+
+#: src/pages/Company.tsx
+msgid "Reconstructed"
+msgstr "Reconstructed"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Recording may have started, but the view could not refresh"
@@ -8263,6 +8709,10 @@ msgstr "Refreshing…"
 #: src/lib/user-error.ts
 msgid "Registration is closed"
 msgstr "Registration is closed"
+
+#: src/pages/CompanyFactDetail.tsx
+msgid "Reject"
+msgstr "Reject"
 
 #: src/components/legal/LegalGraph.tsx
 msgid "Relations of {selectedLabel}"
@@ -8393,6 +8843,14 @@ msgstr "Remove skill {0}"
 #: src/components/finance/StatementImport.tsx
 msgid "Remove the {0} – {1} statement?"
 msgstr "Remove the {0} – {1} statement?"
+
+#: src/pages/CompanyImport.tsx
+msgid "Remove this import’s evidence and facts that have no other evidence."
+msgstr "Remove this import’s evidence and facts that have no other evidence."
+
+#: src/pages/CompanyFactDetail.tsx
+msgid "Remove this person and their relationships, and stop collecting their facts. Events about other people stay. Matching names and known identities will be excluded from future imports."
+msgstr "Remove this person and their relationships, and stop collecting their facts. Events about other people stay. Matching names and known identities will be excluded from future imports."
 
 #: src/pages/RoutineEditor.tsx
 msgid "Remove webhook"
@@ -8530,6 +8988,10 @@ msgstr "Research & writing"
 msgid "Resend link"
 msgstr "Resend link"
 
+#: src/pages/CompanyImport.tsx
+msgid "Reserved"
+msgstr "Reserved"
+
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Reset"
@@ -8604,11 +9066,19 @@ msgstr "Restored {name}"
 msgid "Restoring your workspace"
 msgstr "Restoring your workspace"
 
+#: src/pages/CompanyImport.tsx
+msgid "Resume"
+msgstr "Resume"
+
 #: src/components/AccountAccess.tsx
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/DataRoomStats.tsx
 #: src/pages/Auth.tsx
+#: src/pages/Company.tsx
+#: src/pages/CompanyImport.tsx
+#: src/pages/CompanyImportScope.tsx
+#: src/pages/CompanyPrivacy.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
@@ -8616,6 +9086,10 @@ msgstr "Restoring your workspace"
 #: src/pages/shell/composer-error.tsx
 msgid "Retry"
 msgstr "Retry"
+
+#: src/pages/CompanyImport.tsx
+msgid "Retry failed"
+msgstr "Retry failed"
 
 #: src/App.tsx
 #: src/pages/PeerMessagesOverlay.tsx
@@ -8639,6 +9113,10 @@ msgstr "Return to Praci"
 #: src/components/finance/ui.tsx
 msgid "Revenue"
 msgstr "Revenue"
+
+#: src/pages/CompanyImport.tsx
+msgid "Review"
+msgstr "Review"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
@@ -8664,6 +9142,15 @@ msgstr "Right"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Robot"
 msgstr "Robot"
+
+#: src/pages/Company.tsx
+#: src/pages/CompanyFactDetail.tsx
+msgid "Role"
+msgstr "Role"
+
+#: src/pages/CompanyFactDetail.tsx
+msgid "Roles over time"
+msgstr "Roles over time"
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Room guidance"
@@ -8785,6 +9272,18 @@ msgstr "SAFEs, if converted at cap"
 msgid "Sales & CRM"
 msgstr "Sales & CRM"
 
+#: src/pages/CompanyImport.tsx
+msgid "Sample · up to 25 items per source"
+msgstr "Sample · up to 25 items per source"
+
+#: src/pages/CompanyImport.tsx
+msgid "Sample facts"
+msgstr "Sample facts"
+
+#: src/pages/CompanyImport.tsx
+msgid "Sample ready"
+msgstr "Sample ready"
+
 #: src/components/RunsOnPicker.tsx
 msgid "Sandbox"
 msgstr "Sandbox"
@@ -8799,6 +9298,8 @@ msgstr "Sandbox"
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Board.tsx
+#: src/pages/CompanyFactDetail.tsx
+#: src/pages/CompanyImportScope.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/KnowledgeSection.tsx
@@ -9271,6 +9772,10 @@ msgstr "Share {0}"
 msgid "Share with investors"
 msgstr "Share with investors"
 
+#: src/pages/CompanyFactDetail.tsx
+msgid "Share with team"
+msgstr "Share with team"
+
 #: src/components/AskCard.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Shared"
@@ -9283,6 +9788,14 @@ msgstr "Shared by all bots"
 #: src/pages/shell/dialogs.tsx
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr "Shared chat with 2-6 bots. They all reply in the same thread."
+
+#: src/pages/CompanyImport.tsx
+msgid "Shared pages"
+msgstr "Shared pages"
+
+#: src/pages/CompanyFactDetail.tsx
+msgid "Shared with team"
+msgstr "Shared with team"
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
@@ -9337,6 +9850,10 @@ msgstr "Show list"
 #: src/components/MailApprovalCard.tsx
 msgid "Show more"
 msgstr "Show more"
+
+#: src/pages/Shell.tsx
+msgid "Show my import plan"
+msgstr "Show my import plan"
 
 #: src/components/ComposeEmail.tsx
 msgid "Show original message"
@@ -9483,6 +10000,10 @@ msgstr "Signed out. Reconnect to keep reading this account's mail."
 msgid "Similar to {0}"
 msgstr "Similar to {0}"
 
+#: src/pages/Company.tsx
+msgid "Since"
+msgstr "Since"
+
 #. placeholder {0}: shortDay(card.from)
 #: src/components/FinanceCards.tsx
 msgid "since {0}"
@@ -9626,8 +10147,16 @@ msgid "Source"
 msgstr "Source"
 
 #: src/components/data-room/DataRoomStats.tsx
+#: src/pages/Company.tsx
+#: src/pages/CompanyFactDetail.tsx
+#: src/pages/CompanyImport.tsx
+#: src/pages/CompanyPrivacy.tsx
 msgid "Sources"
 msgstr "Sources"
+
+#: src/pages/CompanyImport.tsx
+msgid "Sources and model recipients"
+msgstr "Sources and model recipients"
 
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Space changed. Reopen Models to load its backup list."
@@ -9729,6 +10258,10 @@ msgstr "Start {trialDays}-day free trial"
 msgid "Start a round"
 msgstr "Start a round"
 
+#: src/pages/CompanyImport.tsx
+msgid "Start import"
+msgstr "Start import"
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Start recording"
 msgstr "Start recording"
@@ -9806,6 +10339,10 @@ msgstr "Still waiting on {service}"
 #: src/pages/shell/transcript.tsx
 msgid "Stop"
 msgstr "Stop"
+
+#: src/pages/CompanyPrivacy.tsx
+msgid "Stop Company imports from this source and remove its evidence. Facts without other evidence are removed; your edits stay. Your integration stays connected."
+msgstr "Stop Company imports from this source and remove its evidence. Facts without other evidence are removed; your edits stay. Your integration stays connected."
 
 #: src/pages/shell/transcript.tsx
 msgid "Stop speaking"
@@ -10409,6 +10946,26 @@ msgstr "Today"
 msgid "Token"
 msgstr "Token"
 
+#: src/pages/CompanyImport.tsx
+msgid "Token cap"
+msgstr "Token cap"
+
+#: src/pages/CompanyImport.tsx
+msgid "Token cap nearly reached"
+msgstr "Token cap nearly reached"
+
+#: src/pages/CompanyImport.tsx
+msgid "Token cap reached"
+msgstr "Token cap reached"
+
+#: src/pages/CompanyImport.tsx
+msgid "Token estimate"
+msgstr "Token estimate"
+
+#: src/pages/CompanyImport.tsx
+msgid "Tokens"
+msgstr "Tokens"
+
 #: src/components/inbox/TodoCard.tsx
 msgid "Tomorrow"
 msgstr "Tomorrow"
@@ -10663,6 +11220,7 @@ msgstr "Undone"
 #: src/components/finance/ui.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/lib/devin-format.ts
+#: src/pages/CompanyImport.tsx
 #: src/pages/legal/LegalContracts.tsx
 msgid "Unknown"
 msgstr "Unknown"
@@ -11053,6 +11611,10 @@ msgstr "vs {previousRange}"
 msgid "Wait a moment and test again."
 msgstr "Wait a moment and test again."
 
+#: src/pages/CompanyImport.tsx
+msgid "Waiting"
+msgstr "Waiting"
+
 #: src/lib/devin-format.ts
 msgid "Waiting {days}d"
 msgstr "Waiting {days}d"
@@ -11172,6 +11734,10 @@ msgstr "What about its memories?"
 msgid "What bots remember by default"
 msgstr "What bots remember by default"
 
+#: src/pages/Shell.tsx
+msgid "What dates are coming up?"
+msgstr "What dates are coming up?"
+
 #: src/components/PageAgentIntro.tsx
 msgid "What deadlines are coming up?"
 msgstr "What deadlines are coming up?"
@@ -11219,6 +11785,11 @@ msgstr "What this bot handles"
 #: src/components/teach/SkillDraftCard.tsx
 msgid "What to return"
 msgstr "What to return"
+
+#: src/pages/Company.tsx
+#: src/pages/CompanyFactDetail.tsx
+msgid "What we do"
+msgstr "What we do"
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "What your bots remember between chats, and where they keep it."
@@ -11277,6 +11848,10 @@ msgstr "Who are our investors?"
 #: src/lib/investors-agent.ts
 msgid "Who owns what in the company?"
 msgstr "Who owns what in the company?"
+
+#: src/pages/Shell.tsx
+msgid "Who works here?"
+msgstr "Who works here?"
 
 #: src/components/EmailCards.tsx
 msgid "Within 3 days"
@@ -11343,6 +11918,7 @@ msgid "year"
 msgstr "year"
 
 #: src/components/finance/ui.tsx
+#: src/pages/CompanyHistory.tsx
 msgid "Year"
 msgstr "Year"
 

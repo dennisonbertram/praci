@@ -32,6 +32,19 @@ test("Company shows owner facts, precision and provenance with masked money", as
   await page.getByTestId("hide-amounts-toggle").click();
   await expect(page.getByText("Raised $50,000 for warehouse robots.")).toHaveCount(0);
   await captureScreenshot(page, testInfo, "company-overview");
+  await page.getByRole("tab", { name: "History", exact: true }).click();
+  const timeline = page.getByRole("region", { name: "History timeline; plus or minus to zoom" });
+  const historyBar = timeline.getByRole("button", { name: /Alex Reed/ });
+  await historyBar.focus();
+  await page.keyboard.press("+");
+  await expect(page.getByRole("button", { name: "Quarter", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await captureScreenshot(page, testInfo, "company-history");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("dialog", { name: "works at" })).toBeVisible();
+  await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("tab", { name: "People", exact: true }).click();
   await expect(page.getByRole("cell", { name: "2024", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Alex Reed", exact: true }).click();
