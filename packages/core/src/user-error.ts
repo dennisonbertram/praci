@@ -1,4 +1,5 @@
 import type { ThreadSnapshot } from "@rakazo/contracts";
+import { MISSING_TOOL_FINAL_RESPONSE_ERROR } from "@rakazo/contracts";
 
 /** Copy each client supplies in its own language. */
 export type UserErrorCopy = { fallback: string; offline: string };
@@ -165,6 +166,15 @@ export function plainRunError(
       : error;
 }
 
+/** True when a delegate agent's reply reached this thread after the run began: the answer is on screen. */
+function repliedAfter(snapshot: ThreadSnapshot, since: string): boolean {
+  return snapshot.messages.some(
+    (message) =>
+      message.createdAt >= since &&
+      message.blocks.some((block) => block.kind === "bot_message_received"),
+  );
+}
+
 /** Reason the newest run stopped, until the reader dismisses that run's failure. */
 export function threadRunError(
   snapshot: ThreadSnapshot | null,
@@ -172,7 +182,9 @@ export function threadRunError(
   dismissedRunIds?: ReadonlySet<string>,
 ): string | null {
   const run = snapshot?.run;
-  if (run?.status !== "failed" || dismissedRunIds?.has(run.id)) return null;
+  if (!snapshot || run?.status !== "failed" || dismissedRunIds?.has(run.id)) return null;
+  if (run.error === MISSING_TOOL_FINAL_RESPONSE_ERROR && repliedAfter(snapshot, run.createdAt))
+    return null;
   return run.error ? describe(run.error) : null;
 }
 

@@ -154,7 +154,7 @@ import { DevinConnectDialog } from "../components/integrations/DevinConnectDialo
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
 import { PageAgentsRow } from "../components/PageAgentsRow";
 import { canOfferHostComputer } from "../components/RunsOnPicker";
-import { OpeningSpace } from "../components/ShellSkeleton";
+import { OpeningSpace, ThreadSkeleton } from "../components/ShellSkeleton";
 import { RailTip, SidebarPageLink } from "../components/SidebarPageLink";
 import { SidebarPages } from "../components/SidebarPages";
 import { SidebarPagesGroup } from "../components/SidebarPagesGroup";
@@ -357,7 +357,7 @@ export type { PendingAttachment };
 export { Composer, Transcript, UnreadDivider };
 
 /** Safety-net refresh of the sidebar list; events and tab focus keep it current in between. */
-export const BOTS_POLL_MS = 60_000;
+export const BOTS_POLL_MS = 90_000;
 const THREAD_SNAPSHOT_TIMEOUT_MS = 2_000;
 /** Bound Settings leave so a hung voice status refresh cannot block dismissal. */
 const VOICE_STATUS_REFRESH_TIMEOUT_MS = 10_000;
@@ -2399,7 +2399,11 @@ export function ShellPage() {
     rememberSeenRunErrorId(runId);
   }, []);
   const transcriptMessages = useMemo(
-    () => userVisibleMessages(activeSnapshot?.messages ?? [], { includePeerReceipts: true }),
+    () =>
+      userVisibleMessages(activeSnapshot?.messages ?? [], {
+        includePeerReceipts: true,
+        collapseHandoffs: true,
+      }),
     [activeSnapshot?.messages],
   );
   const transcriptArtifactTarget = useMemo<ArtifactTarget>(
@@ -3631,6 +3635,15 @@ export function ShellPage() {
     }
   }
 
+  function retryFailedRun() {
+    const last = activeSnapshot?.messages.findLast((message) => message.role === "user");
+    const text = last?.blocks
+      .flatMap((block) => (block.kind === "text" ? [block.text] : []))
+      .join("\n");
+    dismissComposerError();
+    if (text?.trim()) void sendMessage(text, [], newClientId());
+  }
+
   const embeddedScreenUrl = embeddableScreenUrl(screenUrl);
   const hasControl = userHoldsComputerControl(computer, computerBot?.id);
   const hideScreenLoadError = computerErrorFromScreen && Boolean(embeddedScreenUrl);
@@ -3765,6 +3778,8 @@ export function ShellPage() {
                 members={activeGroup.members}
                 onAsk={(text) => void sendMessage(text, [], newClientId())}
               />
+            ) : !activeSnapshot ? (
+              <ThreadSkeleton />
             ) : (
               <Transcript
                 key={activeSnapshot?.threadId}
@@ -3887,6 +3902,7 @@ export function ShellPage() {
               runErrorId={displayedRunErrorId}
               onRunErrorPresented={handleRunErrorPresented}
               onDismissError={dismissComposerError}
+              onRetryRun={retryFailedRun}
               onOpenModelSettings={(provider) =>
                 // "" is a rejected key: open the provider the failed run used.
                 openSettings("models", provider || (activeSnapshot?.run?.modelProvider ?? ""))
