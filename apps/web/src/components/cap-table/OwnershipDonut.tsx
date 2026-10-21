@@ -130,7 +130,7 @@ const legendHeight = (rows: number) => ROW * rows - 2;
 const HEAD = 28;
 const drillLegendHeight = (rows: number) => HEAD + legendHeight(rows);
 /** Narrower than this, the donut at rest sits above its legend instead of beside it. */
-const SIDE = 400;
+const SIDE = 520;
 /** The breakdown legend shows this many rows and scrolls past them, so the card is not sized for the longest one. */
 const MAX_DRILL_ROWS = 5;
 /** Width of the side-by-side layout. Narrower containers stack the donuts. */
@@ -478,7 +478,7 @@ export function OwnershipDonut({
           </div>
 
           <ul
-            className="absolute grid gap-0.5 text-sm"
+            className="absolute grid grid-cols-1 gap-0.5 text-sm"
             style={{
               left: mainLegend.x,
               top: mainLegend.y,
@@ -585,7 +585,7 @@ export function OwnershipDonut({
                 </div>
               </div>
               <ul
-                className="rk-scroll absolute grid content-start gap-0.5 overflow-y-auto text-sm"
+                className="rk-scroll absolute grid grid-cols-1 content-start gap-0.5 overflow-y-auto text-sm"
                 style={{
                   maxHeight: drillLegendHeight(MAX_DRILL_ROWS),
                   left: drillLegend.x,
