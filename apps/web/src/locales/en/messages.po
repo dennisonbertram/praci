@@ -93,6 +93,11 @@ msgstr "{0, plural, one {# finance lookup} other {# finance lookups}}"
 msgid "{0, plural, one {# model} other {# models}}"
 msgstr "{0, plural, one {# model} other {# models}}"
 
+#. placeholder {0}: glance.devinNeedsYou
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# needs you} other {# need you}}"
+msgstr "{0, plural, one {# needs you} other {# need you}}"
+
 #. placeholder {0}: rows.length
 #: src/pages/Inbox.tsx
 msgid "{0, plural, one {# result} other {# results}}"
@@ -1149,10 +1154,6 @@ msgstr "Amounts"
 msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "An API key is stored for this provider, not a subscription sign-in."
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "An org-scoped Devin service-user key (starts with cog_)."
-msgstr "An org-scoped Devin service-user key (starts with cog_)."
-
 #: src/components/AskCard.tsx
 msgid "Answer"
 msgstr "Answer"
@@ -1178,6 +1179,10 @@ msgstr "Answered: {answer}"
 msgid "Answers from your meeting notes and transcripts."
 msgstr "Answers from your meeting notes and transcripts."
 
+#: src/pages/Shell.tsx
+msgid "Answers questions about what Devin is working on."
+msgstr "Answers questions about what Devin is working on."
+
 #: src/pages/Paywall.tsx
 msgid "Any model, with your own key"
 msgstr "Any model, with your own key"
@@ -1189,6 +1194,10 @@ msgstr "Anyone who can reach this address can talk to your Mac's server. Use a p
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Anything else"
 msgstr "Anything else"
+
+#: src/pages/Shell.tsx
+msgid "Anything merged today?"
+msgstr "Anything merged today?"
 
 #: src/lib/devin-format.ts
 msgid "API"
@@ -1858,6 +1867,7 @@ msgstr "Can't reach the server."
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ConnectionDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/DevinConnectDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
@@ -2339,6 +2349,10 @@ msgid "Collapse Data room agent"
 msgstr "Collapse Data room agent"
 
 #: src/pages/Shell.tsx
+msgid "Collapse Devin agent"
+msgstr "Collapse Devin agent"
+
+#: src/pages/Shell.tsx
 msgid "Collapse Finance agent"
 msgstr "Collapse Finance agent"
 
@@ -2476,6 +2490,7 @@ msgstr "Confirm the URL is reachable from this browser session, then test again.
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/DevinConnectDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IMessageSection.tsx
@@ -2552,6 +2567,7 @@ msgstr "Connect Blockscout"
 msgid "Connect Carta"
 msgstr "Connect Carta"
 
+#: src/components/integrations/DevinConnectDialog.tsx
 #: src/pages/Devin.tsx
 msgid "Connect Devin"
 msgstr "Connect Devin"
@@ -2641,6 +2657,7 @@ msgid "Connecting to tools"
 msgstr "Connecting to tools"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/DevinConnectDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/parts.tsx
 #: src/pages/GoogleOAuthCallback.tsx
@@ -2654,6 +2671,10 @@ msgstr "Connecting…"
 #: src/lib/model-connection-preflight.ts
 msgid "Connection test failed."
 msgstr "Connection test failed."
+
+#: src/components/integrations/DevinConnectDialog.tsx
+msgid "Connects Devin for everyone in this space. Read-only."
+msgstr "Connects Devin for everyone in this space. Read-only."
 
 #: src/pages/Contacts.tsx
 #: src/pages/Shell.tsx
@@ -2837,6 +2858,10 @@ msgstr "Could not create the Carta agent"
 #: src/pages/Shell.tsx
 msgid "Could not create the Data room agent"
 msgstr "Could not create the Data room agent"
+
+#: src/pages/Shell.tsx
+msgid "Could not create the Devin agent"
+msgstr "Could not create the Devin agent"
 
 #: src/pages/Shell.tsx
 msgid "Could not create the Finance agent"
@@ -3409,6 +3434,10 @@ msgid "Create Data room agent"
 msgstr "Create Data room agent"
 
 #: src/pages/Shell.tsx
+msgid "Create Devin agent"
+msgstr "Create Devin agent"
+
+#: src/pages/Shell.tsx
 msgid "Create Finance agent"
 msgstr "Create Finance agent"
 
@@ -3697,6 +3726,7 @@ msgid "Developer"
 msgstr "Developer"
 
 #: src/pages/Devin.tsx
+#: src/pages/Shell.tsx
 msgid "Devin"
 msgstr "Devin"
 
@@ -3708,6 +3738,10 @@ msgstr "Devin rejected the key. Alerts are paused."
 #: src/pages/devin/DevinSessions.tsx
 msgid "Devin sessions"
 msgstr "Devin sessions"
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Devin sessions are not affected."
+msgstr "Devin sessions are not affected."
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Didn't open?"
@@ -6040,6 +6074,10 @@ msgstr "No files found"
 msgid "No folder"
 msgstr "No folder"
 
+#: src/components/inbox/TodoCard.tsx
+msgid "No follow-ups from meetings yet"
+msgstr "No follow-ups from meetings yet"
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No group chats yet."
 msgstr "No group chats yet."
@@ -6474,6 +6512,7 @@ msgstr "Open computer settings"
 msgid "Open deadlines"
 msgstr "Open deadlines"
 
+#: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/Devin.tsx
 msgid "Open Devin"
 msgstr "Open Devin"
@@ -6626,6 +6665,10 @@ msgstr "Organization"
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Organization API key"
 msgstr "Organization API key"
+
+#: src/components/integrations/DevinConnectDialog.tsx
+msgid "Organization service-user key"
+msgstr "Organization service-user key"
 
 #: src/pages/shell/chat-context.tsx
 msgid "Original message unavailable"
@@ -8774,6 +8817,10 @@ msgstr "Suspicious"
 msgid "Switching…"
 msgstr "Switching…"
 
+#: src/components/inbox/TodoCard.tsx
+msgid "Syncing"
+msgstr "Syncing"
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
 msgstr "System"
@@ -9927,6 +9974,10 @@ msgstr "What bots remember by default"
 msgid "What deadlines are coming up?"
 msgstr "What deadlines are coming up?"
 
+#: src/pages/Shell.tsx
+msgid "What did Devin do this week?"
+msgstr "What did Devin do this week?"
+
 #: src/components/PageAgentIntro.tsx
 msgid "What did we spend last month?"
 msgstr "What did we spend last month?"
@@ -9982,6 +10033,10 @@ msgstr "Where did spend go up this month?"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Where it went"
 msgstr "Where it went"
+
+#: src/components/integrations/DevinConnectDialog.tsx
+msgid "Where to find your key"
+msgstr "Where to find your key"
 
 #: src/components/PageAgentIntro.tsx
 msgid "Which bills are unpaid?"

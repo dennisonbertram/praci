@@ -303,6 +303,11 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
         <li>
           <Trans>Your data in {server.name} is not deleted.</Trans>
         </li>
+        {isDevinEndpoint(server.endpoint) ? (
+          <li>
+            <Trans>Devin sessions are not affected.</Trans>
+          </li>
+        ) : null}
       </ConfirmDialog>
       <ConfirmDialog
         open={confirmingWrites}

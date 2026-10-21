@@ -6,6 +6,7 @@ import {
   appStatus,
   classifyTool,
   FINANCE_PROVIDERS,
+  FIRST_PARTY_MCP,
   filterCatalog,
   groupConnections,
   groupTools,
@@ -243,5 +244,13 @@ describe("appPath", () => {
     expect(url.searchParams.get("reconnect")).toBe("conn 1");
     expect(url.searchParams.get("permission")).toBe("mail_rules");
     expect(url.searchParams.get("next")).toBe("/app/inbox?cleanup=1");
+  });
+});
+
+describe("Devin tile", () => {
+  it("connects through its own dialog, so the generic key form flag and hint are gone", () => {
+    const devin = FIRST_PARTY_MCP.find((entry) => entry.id === "devin");
+    expect(devin).toBeDefined();
+    expect(devin).not.toHaveProperty("apiKey");
   });
 });

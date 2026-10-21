@@ -1,7 +1,8 @@
-import type { MeetingSource } from "@rakazo/adapter-kit";
-import { MeetingSourceError } from "@rakazo/adapter-kit";
+import type { JobPublisher, MeetingSource } from "@rakazo/adapter-kit";
+import { MeetingSourceError, meetingsDigestJob } from "@rakazo/adapter-kit";
 import type { MeetingSourceRef, PrismaClient } from "@rakazo/db";
 import { upsertMeeting } from "@rakazo/db";
+import { getLogger } from "@rakazo/logging";
 
 /** How far back the first pass reaches. */
 export const MEETINGS_BACKFILL_DAYS = 90;
@@ -35,6 +36,8 @@ export interface MeetingSyncDeps {
   ref: MeetingSourceRef;
   provider: string;
   source: MeetingSource;
+  /** Queues the digest of a meeting that was created or updated and has none yet. */
+  jobs?: JobPublisher;
   /** Pages read in one run; a longer pass continues in the next run. */
   maxPages: number;
   now?: () => Date;
@@ -116,8 +119,10 @@ export async function runMeetingSyncPass(
       }
       deps.signal?.throwIfAborted();
       if (!(await deps.holdsClaim())) return { done: false, lostClaim: true, fetched };
-      await upsertMeeting(prisma, scope, deps.ref, deps.provider, meeting);
+      const outcome = await upsertMeeting(prisma, scope, deps.ref, deps.provider, meeting);
       fetched++;
+      if (outcome === "created" || outcome === "updated")
+        await queueDigest(deps, meeting.externalId);
     }
     if (!listed.nextCursor) {
       const kept = await deps.save({ cursor: null, syncedThrough: new Date(pass.startedAt) });
@@ -146,4 +151,25 @@ async function alreadyHave(
   return (
     !!stored?.sourceUpdatedAt && stored.sourceUpdatedAt.getTime() >= Date.parse(item.updatedAt)
   );
+}
+
+/** A lost enqueue only delays the digest: consent and mail-connect triggers queue empty ones again. */
+async function queueDigest(deps: MeetingSyncDeps, externalId: string) {
+  if (!deps.jobs) return;
+  try {
+    const stored = await deps.prisma.meeting.findFirst({
+      where: { ...deps.scope, provider: deps.provider, externalId, digestStatus: null },
+      select: { id: true },
+    });
+    if (stored) {
+      await deps.jobs.enqueue({
+        ...meetingsDigestJob({ ...deps.scope, meetingId: stored.id }),
+        keepExisting: true,
+      });
+    }
+  } catch (error) {
+    getLogger().warn("meeting digest enqueue failed", {
+      reason: error instanceof Error ? error.name : "error",
+    });
+  }
 }
