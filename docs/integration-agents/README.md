@@ -283,6 +283,8 @@ agent restores the Finance agent's direct read access. `financeConnect` still
 creates the server and assigns the Finance agent; the new agent is created later by
 the user.
 
+**Devin.** Read-only: it has no writes switch. The space's Devin page lists its sessions, and a session that starts waiting on a person sends the connector one "Devin needs input" alert that opens the session in Devin (plan: `docs/plans/devin.md`).
+
 ## Mobile
 
 Agents are ordinary bots, so their chat works wherever bots chat on mobile, and the
