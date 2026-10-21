@@ -232,6 +232,11 @@ msgstr ""
 msgid "{0} handling"
 msgstr "Gestion de {0}"
 
+#. placeholder {0}: group.count
+#: src/components/inbox/InboxDigest.tsx
+msgid "{0} messages"
+msgstr ""
+
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
 msgid "{0} mo"
@@ -4452,6 +4457,10 @@ msgstr ""
 msgid "First seen"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "First sync can take a minute"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 msgid "Fix or remove the highlighted addresses."
 msgstr ""
@@ -7097,6 +7106,10 @@ msgstr ""
 msgid "Praci keeps your meetings and to-dos."
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Preparing draft…"
+msgstr ""
+
 #: src/components/DataExport.tsx
 msgid "Preparing…"
 msgstr ""
@@ -9488,6 +9501,10 @@ msgstr "Aujourd'hui"
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Token"
+msgstr ""
+
+#: src/components/inbox/TodoCard.tsx
+msgid "Tomorrow"
 msgstr ""
 
 #. placeholder {0}: formatBytes(attachment.size)
