@@ -267,4 +267,61 @@ describePostgres("meetings (PostgreSQL)", () => {
       "created",
     );
   });
+
+  it("concurrent upsert and delete never leave a deleted meeting behind", async () => {
+    for (let round = 0; round < 5; round++) {
+      const externalId = `race-${round}`;
+      await upsertMeeting(prisma, mine, source, "granola", meetingFixture({ externalId }));
+      const row = await prisma.meeting.findFirstOrThrow({ where: { ...mine, externalId } });
+      await Promise.all([
+        deleteMeeting(prisma, mine, row.id),
+        upsertMeeting(
+          prisma,
+          mine,
+          source,
+          "granola",
+          meetingFixture({ externalId, updatedAt: "2026-05-01T00:00:00.000Z" }),
+        ),
+      ]);
+      expect(await prisma.meeting.count({ where: { ...mine, externalId } })).toBe(0);
+      expect(await prisma.meetingTombstone.count({ where: { ...mine, externalId } })).toBe(1);
+    }
+  });
+
+  it("concurrent older and newer upserts end with the newer content", async () => {
+    for (let round = 0; round < 5; round++) {
+      const externalId = `order-${round}`;
+      await Promise.all([
+        upsertMeeting(
+          prisma,
+          mine,
+          source,
+          "granola",
+          meetingFixture({ externalId, title: "new", updatedAt: "2026-06-02T00:00:00.000Z" }),
+        ),
+        upsertMeeting(
+          prisma,
+          mine,
+          source,
+          "granola",
+          meetingFixture({ externalId, title: "old", updatedAt: "2026-06-01T00:00:00.000Z" }),
+        ),
+      ]);
+      expect(
+        (await prisma.meeting.findFirstOrThrow({ where: { ...mine, externalId } })).title,
+      ).toBe("new");
+    }
+  });
+
+  it("concurrent first sync-state upserts both succeed with one row", async () => {
+    const fresh = { mcpServerId };
+    await Promise.all([
+      upsertMeetingSyncState(prisma, mine, fresh, "wisprflow", { error: "a" }),
+      upsertMeetingSyncState(prisma, mine, fresh, "wisprflow", { error: "b" }),
+    ]);
+    expect(await prisma.meetingSyncState.count({ where: { mcpServerId } })).toBe(1);
+    await expect(
+      upsertMeetingSyncState(prisma, otherUser, fresh, "wisprflow"),
+    ).rejects.toBeInstanceOf(IsolationError);
+  });
 });

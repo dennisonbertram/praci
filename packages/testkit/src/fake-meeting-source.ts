@@ -13,7 +13,9 @@ export class FakeMeetingSource implements MeetingSource {
     this.provider = options.provider ?? "fake";
     this.pageSize = options.pageSize ?? 30;
     this.meetings = [...meetings].sort(
-      (a, b) => a.updatedAt.localeCompare(b.updatedAt) || a.externalId.localeCompare(b.externalId),
+      (a, b) =>
+        Date.parse(a.updatedAt) - Date.parse(b.updatedAt) ||
+        a.externalId.localeCompare(b.externalId),
     );
   }
 

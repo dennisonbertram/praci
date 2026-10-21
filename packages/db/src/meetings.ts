@@ -35,17 +35,7 @@ export async function upsertMeeting(
   const owner = ownerOf(scope);
   const columns = sourceColumns(source);
   const key = { ...owner, provider, externalId: meeting.externalId };
-  if (
-    await prisma.meetingTombstone.findUnique({ where: { spaceId_userId_provider_externalId: key } })
-  ) {
-    return "tombstoned";
-  }
-  const existing = await prisma.meeting.findUnique({
-    where: { spaceId_userId_provider_externalId: key },
-    select: { sourceUpdatedAt: true },
-  });
   const sourceUpdatedAt = new Date(meeting.updatedAt);
-  if (existing && existing.sourceUpdatedAt >= sourceUpdatedAt) return "stale";
   const data = {
     ...columns,
     title: meeting.title,
@@ -64,12 +54,37 @@ export async function upsertMeeting(
       ? { transcript: formatMeetingTranscript(meeting.transcript), transcriptIndexed: true }
       : {}),
   };
-  await prisma.meeting.upsert({
-    where: { spaceId_userId_provider_externalId: key },
-    create: { ...key, ...data },
-    update: data,
+  return prisma.$transaction(async (tx): Promise<UpsertMeetingResult> => {
+    await lockMeeting(tx, key);
+    if (
+      await tx.meetingTombstone.findUnique({ where: { spaceId_userId_provider_externalId: key } })
+    ) {
+      return "tombstoned";
+    }
+    const existing = await tx.meeting.findUnique({
+      where: { spaceId_userId_provider_externalId: key },
+      select: { id: true },
+    });
+    if (!existing) {
+      await tx.meeting.create({ data: { ...key, ...data } });
+      return "created";
+    }
+    // The write itself is conditional, so an older update never wins even without the lock.
+    const { count } = await tx.meeting.updateMany({
+      where: { ...key, sourceUpdatedAt: { lt: sourceUpdatedAt } },
+      data,
+    });
+    return count ? "updated" : "stale";
   });
-  return existing ? "updated" : "created";
+}
+
+/** Serializes writers of one meeting (upsert vs delete) until the transaction ends. */
+function lockMeeting(
+  tx: Pick<PrismaClient, "$executeRaw">,
+  key: { spaceId: string; userId: string; provider: string; externalId: string },
+) {
+  const text = `${key.spaceId}:${key.userId}:${key.provider}:${key.externalId}`;
+  return tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${text}, 0))`;
 }
 
 export type MeetingFilter = {
@@ -136,13 +151,18 @@ export function getMeeting(prisma: PrismaClient, scope: Scope, id: string) {
  */
 export async function deleteMeeting(prisma: PrismaClient, scope: Scope, id: string) {
   const owner = ownerOf(scope);
+  const found = await prisma.meeting.findFirst({
+    where: { id, ...owner },
+    select: { provider: true, externalId: true },
+  });
+  if (!found) throw new IsolationError();
+  const key = { ...owner, provider: found.provider, externalId: found.externalId };
   await prisma.$transaction(async (tx) => {
-    const meeting = await tx.meeting.findFirst({
-      where: { id, ...owner },
-      select: { provider: true, externalId: true },
-    });
-    if (!meeting) throw new IsolationError();
-    const key = { ...owner, provider: meeting.provider, externalId: meeting.externalId };
+    await lockMeeting(tx, key);
+    const locked = await tx.$queryRaw<{ id: string }[]>(
+      Prisma.sql`SELECT "id" FROM "meetings" WHERE "id" = ${id} AND "spaceId" = ${owner.spaceId} AND "userId" = ${owner.userId} FOR UPDATE`,
+    );
+    if (!locked.length) throw new IsolationError();
     await tx.inboxTodo.deleteMany({ where: { meetingId: id, ...owner } });
     await tx.meetingTombstone.upsert({
       where: { spaceId_userId_provider_externalId: key },
@@ -185,14 +205,18 @@ export async function upsertMeetingSyncState(
   patch: MeetingSyncPatch = {},
 ) {
   const owner = ownerOf(scope);
-  const existing = await getMeetingSyncState(prisma, owner, source);
-  if (existing) {
-    return prisma.meetingSyncState.update({ where: { id: existing.id }, data: patch });
+  const columns = sourceColumns(source);
+  const where = syncKey(source);
+  const existing = await prisma.meetingSyncState.findUnique({ where });
+  if (existing && (existing.spaceId !== owner.spaceId || existing.userId !== owner.userId)) {
+    throw new IsolationError();
   }
-  return prisma.meetingSyncState.create({
-    data: {
+  return prisma.meetingSyncState.upsert({
+    where,
+    update: patch,
+    create: {
       ...owner,
-      ...sourceColumns(source),
+      ...columns,
       ...(patch as Prisma.MeetingSyncStateUncheckedCreateInput),
       provider,
     },
