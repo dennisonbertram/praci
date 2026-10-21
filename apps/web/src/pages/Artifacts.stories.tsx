@@ -91,7 +91,7 @@ const load = (list = items, nextCursor: string | null = null) =>
 function Page({ at = "/app/artifacts" }: { at?: string }) {
   return (
     <Routes>
-      <Route path="/app/artifacts/:artifactId?" element={<ArtifactsPage />} />
+      <Route path="/app/artifacts/:artifactId?" element={<ArtifactsPage onAskAgent={() => {}} />} />
       <Route path="*" element={<Navigate to={at} replace />} />
     </Routes>
   );

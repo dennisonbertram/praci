@@ -84,12 +84,13 @@ describe("Inbox agent panel collapse preference", () => {
     expect(readBotsSidebarCollapsed("user-1")).toBe(false);
     writeInboxAgentCollapsed("user-1", true);
     expect(store.size).toBe(0);
-    // The Carta agent panel has its own preference.
-    writeCartaAgentCollapsed("user-1", true);
+    // The Carta agent panel has its own preference and also starts closed.
     expect(readCartaAgentCollapsed("user-1")).toBe(true);
-    // Closing the Carta panel leaves the Inbox panel at its default (closed).
-    expect(readInboxAgentCollapsed("user-1")).toBe(true);
     writeCartaAgentCollapsed("user-1", false);
+    expect(readCartaAgentCollapsed("user-1")).toBe(false);
+    // Opening the Carta panel leaves the Inbox panel at its default (closed).
+    expect(readInboxAgentCollapsed("user-1")).toBe(true);
+    writeCartaAgentCollapsed("user-1", true);
     expect(store.size).toBe(0);
     vi.unstubAllGlobals();
   });
