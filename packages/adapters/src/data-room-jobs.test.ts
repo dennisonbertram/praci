@@ -7,6 +7,7 @@ import {
   CHUNK_OVERLAP_CHARS,
   CHUNK_TARGET_CHARS,
   chunkText,
+  DATA_ROOM_TEXT_MAX_CHARS,
   extractItemText,
 } from "./data-room-jobs.js";
 import { fakeAi, MemoryArtifacts, makePdf, RecordingJobs } from "./data-room-test-fakes.js";
@@ -81,6 +82,12 @@ describe("extractItemText", () => {
       "Office lease for 100 Placeholder Street. Monthly rent 7500 dollars. Renewal date 31 January. Notice of renewal due 30 November.";
     const text = await extract("lease.pdf", "application/pdf", makePdf(lease));
     expect(text.replace(/\s+/g, " ")).toBe(lease);
+  });
+
+  it("reads a PDF of more than 200 pages instead of failing", async () => {
+    const text = await extract("policy.pdf", "application/pdf", makePdf("Policy clause 7", 250));
+    expect(text).toContain("Policy clause 7");
+    expect(text.length).toBeLessThanOrEqual(DATA_ROOM_TEXT_MAX_CHARS);
   });
 
   it("gives no text for a PDF without a text layer", async () => {
@@ -221,6 +228,15 @@ describe("extractItemText", () => {
       expect(await scan(seeing)).toBe("page 1\n\npage 2\n\npage 3");
       expect(seen).toEqual(["1", "2", "3"]);
       expect(rendered).toEqual([20]);
+    });
+
+    it("does not send a long PDF with a normal text layer to vision, but still reads a long scan", async () => {
+      // 500 pages at 25 characters: the 200 pages read hold 5000 characters, under 20 per page of all 500.
+      const before = seen.length;
+      const text = await scan(seeing, makePdf("Clause text for the pages", 500));
+      expect(text).toContain("Clause text");
+      expect(seen.length).toBe(before);
+      expect(await scan(seeing, makePdf("", 500))).toBe("page 1\n\npage 2\n\npage 3");
     });
 
     it("re-reads consent before rendering and before every page, and drops output if revoked", async () => {

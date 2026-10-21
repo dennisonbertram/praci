@@ -685,7 +685,7 @@ it("lists results as one flat grid without headings and hides Connected while se
   value.connections = [composioGmail()];
   await show(value, "/app/integrations?q=sla");
   const headings = [...container.querySelectorAll("h2")].map((h) => h.textContent);
-  expect(headings).not.toContain("Apps");
+  expect(headings).not.toContain("Integrations");
   expect(headings).not.toContain("Connected");
   expect(container.textContent).toContain("Slack");
 });
