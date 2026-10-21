@@ -37,9 +37,24 @@ const rpcMock = vi.hoisted(() => ({
   stats: vi.fn(),
   processing: vi.fn(),
   imports: vi.fn(),
+  inboxList: vi.fn(),
+}));
+const bulk = vi.hoisted(() => ({ save: vi.fn(), blob: vi.fn(), composed: vi.fn() }));
+vi.mock("../lib/data-room", async (original) => ({
+  ...(await original<typeof import("../lib/data-room")>()),
+  saveDataRoomItem: bulk.save,
+  fetchDataRoomBlob: bulk.blob,
+}));
+vi.mock("../components/ComposeEmail", () => ({
+  NEW_MESSAGE: { kind: "new" },
+  ComposeEmail: (props: { restore?: { files: File[] } }) => {
+    bulk.composed(props.restore?.files.map((file) => file.name));
+    return null;
+  },
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
+    inbox: { list: rpcMock.inboxList },
     connections: { list: rpcMock.connections, catalog: async () => [] },
     mcp: { servers: { list: async () => [] } },
     dataRoom: {
@@ -1118,4 +1133,35 @@ it("does not ask for the list again while a request is still in flight", async (
     slow.resolve({ items: [item("a.txt")], nextCursor: null });
   });
   expect(names()).toEqual(["a.txt"]);
+});
+
+const tick = (n: number) =>
+  act(async () => {
+    container.querySelectorAll<HTMLElement>('[role="checkbox"]')[n]?.click();
+  });
+const barButton = (label: string) =>
+  Array.from(
+    container.querySelectorAll<HTMLButtonElement>('[data-testid="data-room-selection"] button'),
+  ).find((button) => (button.textContent || button.ariaLabel) === label);
+
+it("downloads the ticked files and opens the mail composer with them attached", async () => {
+  bulk.blob.mockResolvedValue(new Blob(["x"]));
+  rpcMock.inboxList.mockResolvedValue({ accounts: [{ connectionId: "c1", label: "Work" }] });
+  await renderPage();
+  expect(container.querySelector('[data-testid="data-room-selection"]')).toBeNull();
+  await tick(0);
+  await tick(1);
+  expect(container.querySelector('[data-testid="data-room-selection"]')?.textContent).toContain(
+    "2 selected",
+  );
+  // Ticking never opens the preview.
+  expect(container.querySelector('[aria-current="true"]')).toBeNull();
+  await act(async () => barButton("Download")?.click());
+  await settle();
+  expect(bulk.save.mock.calls.map(([saved]) => saved.name)).toEqual(["b.txt", "a.txt"]);
+  await act(async () => barButton("Send")?.click());
+  await settle();
+  expect(bulk.composed).toHaveBeenLastCalledWith(["b.txt", "a.txt"]);
+  await act(async () => barButton("Clear selection")?.click());
+  expect(container.querySelector('[data-testid="data-room-selection"]')).toBeNull();
 });

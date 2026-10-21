@@ -1,9 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState } from "react";
 import { userEvent, within } from "storybook/test";
 import { setHideAmounts } from "../../lib/hide-amounts-preference";
 import { items } from "../../stories/fixtures/data-room";
 import type { RowInteraction } from "./ItemRows";
 import { GridView, ListView, SubfolderList } from "./ItemRows";
+import { SelectionBar } from "./SelectionBar";
 
 const o: RowInteraction = {
   shownId: "itm_ready",
@@ -49,6 +51,38 @@ type Story = StoryObj;
 
 export const List: Story = { render: () => <ListView rows={rows} o={o} /> };
 /** Nothing classified yet: every column keeps its place, with a dash where a value is missing. */
+/** Three rows ticked: the bar offers Download and Send for all of them. */
+export const ListWithSelection: Story = {
+  render: () => {
+    const [checked, setChecked] = useState<ReadonlySet<string>>(
+      new Set(rows.slice(0, 3).map((row) => row.item.id)),
+    );
+    return (
+      <>
+        <SelectionBar
+          count={checked.size}
+          onDownload={() => undefined}
+          onSend={() => undefined}
+          onClear={() => setChecked(new Set())}
+        />
+        <ListView
+          rows={rows}
+          o={{
+            ...o,
+            checked,
+            onCheck: (item) =>
+              setChecked((current) => {
+                const next = new Set(current);
+                if (!next.delete(item.id)) next.add(item.id);
+                return next;
+              }),
+          }}
+        />
+      </>
+    );
+  },
+};
+
 export const ListWithoutFacets: Story = {
   render: () => (
     <ListView

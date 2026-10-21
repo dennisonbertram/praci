@@ -96,6 +96,9 @@ export function isNotADocument(file: { mimeType: string; size: number; name: str
   );
 }
 
+/** The in-app path that opens a file's preview; the agent writes it as a markdown link on the file's name. */
+const dataRoomItemLink = (id: string) => `/app/data-room?item=${encodeURIComponent(id)}`;
+
 export async function dataRoomToolFromTool(
   name: string,
   deps: DataRoomToolDeps,
@@ -143,6 +146,7 @@ async function search(deps: DataRoomToolDeps, actor: Actor, args: Record<string,
     results: page.results.map(({ item, snippet }) => ({
       id: item.id,
       name: item.name,
+      link: dataRoomItemLink(item.id),
       docType: item.docType,
       docDate: item.docDate?.toISOString().slice(0, 10) ?? null,
       snippet: snippet.replace(HIGHLIGHT_MARKS, "").slice(0, SNIPPET_CHARS),
@@ -175,6 +179,7 @@ async function read(deps: DataRoomToolDeps, actor: Actor, args: Record<string, u
   return {
     id: item.id,
     name: item.name,
+    link: dataRoomItemLink(item.id),
     folder: path.length ? path.join("/") : null,
     mimeType: item.mimeType,
     status: item.status,
