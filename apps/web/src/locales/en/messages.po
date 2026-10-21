@@ -1268,10 +1268,6 @@ msgstr "Artifact"
 msgid "Artifacts"
 msgstr "Artifacts"
 
-#: src/components/ListControls.tsx
-msgid "Ascending"
-msgstr "Ascending"
-
 #: src/components/AskBotButton.tsx
 msgid "Ask"
 msgstr "Ask"
@@ -3016,7 +3012,7 @@ msgstr "Could not render chart"
 msgid "Could not reset password"
 msgstr "Could not reset password"
 
-#: src/pages/CapTable.tsx
+#: src/lib/use-contact-notice.ts
 msgid "Could not restore {name}: {reason}. If you dismiss this, {name} stays deleted."
 msgstr "Could not restore {name}: {reason}. If you dismiss this, {name} stays deleted."
 
@@ -3533,7 +3529,7 @@ msgstr "deleted"
 msgid "Deleted"
 msgstr "Deleted"
 
-#: src/pages/CapTable.tsx
+#: src/lib/use-contact-notice.ts
 msgid "Deleted {name}"
 msgstr "Deleted {name}"
 
@@ -3557,10 +3553,6 @@ msgstr "Deny"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Deployment default"
 msgstr "Deployment default"
-
-#: src/components/ListControls.tsx
-msgid "Descending"
-msgstr "Descending"
 
 #: src/pages/Board.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -3653,11 +3645,11 @@ msgid "Disconnecting…"
 msgstr "Disconnecting…"
 
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/ContactNotice.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ImportActivity.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/shell/composer.tsx
 #: src/pages/shell/message-cards.tsx
@@ -6169,10 +6161,6 @@ msgstr "Not in runway"
 msgid "Not now"
 msgstr "Not now"
 
-#: src/pages/CapTable.tsx
-msgid "Not on Carta? You can still keep your investors and advisors below."
-msgstr "Not on Carta? You can still keep your investors and advisors below."
-
 #: src/pages/Legal.tsx
 msgid "Not scanned yet"
 msgstr "Not scanned yet"
@@ -7476,7 +7464,7 @@ msgstr "Restore the last saved workspace."
 msgid "Restore the last saved workspace. Unsaved work on the computer is lost."
 msgstr "Restore the last saved workspace. Unsaved work on the computer is lost."
 
-#: src/pages/CapTable.tsx
+#: src/lib/use-contact-notice.ts
 msgid "Restored {name}"
 msgstr "Restored {name}"
 
@@ -7695,8 +7683,8 @@ msgstr "Save the workspace and install current software."
 msgid "Saved"
 msgstr "Saved"
 
-#. placeholder {0}: saved.name
-#: src/pages/CapTable.tsx
+#. placeholder {0}: contact.name
+#: src/lib/use-contact-notice.ts
 msgid "Saved {0}"
 msgstr "Saved {0}"
 
@@ -8378,6 +8366,14 @@ msgstr "Software update"
 #: src/lib/user-error.ts
 msgid "Something went wrong. Try again."
 msgstr "Something went wrong. Try again."
+
+#: src/components/ListControls.tsx
+msgid "Sort ascending"
+msgstr "Sort ascending"
+
+#: src/components/ListControls.tsx
+msgid "Sort descending"
+msgstr "Sort descending"
 
 #: src/components/ListControls.tsx
 msgid "Sort: {fieldLabel}"
@@ -9216,6 +9212,7 @@ msgid "Try {name} again"
 msgstr "Try {name} again"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/ContactNotice.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
@@ -9307,13 +9304,13 @@ msgstr "Undid {restored}"
 msgid "Undid {restored}, skipped {skipped}"
 msgstr "Undid {restored}, skipped {skipped}"
 
+#: src/components/ContactNotice.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
 #: src/components/inbox/CleanupHistory.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/MailOutbox.tsx
 #: src/components/sidebar-folders/SidebarUndoNotice.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Undo"

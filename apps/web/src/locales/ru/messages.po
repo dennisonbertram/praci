@@ -1268,10 +1268,6 @@ msgstr ""
 msgid "Artifacts"
 msgstr ""
 
-#: src/components/ListControls.tsx
-msgid "Ascending"
-msgstr ""
-
 #: src/components/AskBotButton.tsx
 msgid "Ask"
 msgstr ""
@@ -3016,7 +3012,7 @@ msgstr "Не удалось отобразить диаграмму"
 msgid "Could not reset password"
 msgstr "Не удалось сбросить пароль"
 
-#: src/pages/CapTable.tsx
+#: src/lib/use-contact-notice.ts
 msgid "Could not restore {name}: {reason}. If you dismiss this, {name} stays deleted."
 msgstr ""
 
@@ -3533,7 +3529,7 @@ msgstr "удалено"
 msgid "Deleted"
 msgstr ""
 
-#: src/pages/CapTable.tsx
+#: src/lib/use-contact-notice.ts
 msgid "Deleted {name}"
 msgstr ""
 
@@ -3557,10 +3553,6 @@ msgstr "Запретить"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Deployment default"
 msgstr "Развертывание по умолчанию"
-
-#: src/components/ListControls.tsx
-msgid "Descending"
-msgstr ""
 
 #: src/pages/Board.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -3653,11 +3645,11 @@ msgid "Disconnecting…"
 msgstr "Отключение…"
 
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/ContactNotice.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ImportActivity.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/shell/composer.tsx
 #: src/pages/shell/message-cards.tsx
@@ -6169,10 +6161,6 @@ msgstr ""
 msgid "Not now"
 msgstr "Не сейчас"
 
-#: src/pages/CapTable.tsx
-msgid "Not on Carta? You can still keep your investors and advisors below."
-msgstr ""
-
 #: src/pages/Legal.tsx
 msgid "Not scanned yet"
 msgstr ""
@@ -7476,7 +7464,7 @@ msgstr "Восстановить последнее сохранённое ра�
 msgid "Restore the last saved workspace. Unsaved work on the computer is lost."
 msgstr "Восстановите последнее сохраненное рабочее пространство. Несохраненная работа на компьютере теряется."
 
-#: src/pages/CapTable.tsx
+#: src/lib/use-contact-notice.ts
 msgid "Restored {name}"
 msgstr ""
 
@@ -7695,8 +7683,8 @@ msgstr "Сохранить рабочее пространство и устан
 msgid "Saved"
 msgstr "Сохранено"
 
-#. placeholder {0}: saved.name
-#: src/pages/CapTable.tsx
+#. placeholder {0}: contact.name
+#: src/lib/use-contact-notice.ts
 msgid "Saved {0}"
 msgstr ""
 
@@ -8378,6 +8366,14 @@ msgstr "Обновление программного обеспечения"
 #: src/lib/user-error.ts
 msgid "Something went wrong. Try again."
 msgstr "Что-то пошло не так. Попробуйте ещё раз."
+
+#: src/components/ListControls.tsx
+msgid "Sort ascending"
+msgstr ""
+
+#: src/components/ListControls.tsx
+msgid "Sort descending"
+msgstr ""
 
 #: src/components/ListControls.tsx
 msgid "Sort: {fieldLabel}"
@@ -9216,6 +9212,7 @@ msgid "Try {name} again"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/ContactNotice.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
@@ -9307,13 +9304,13 @@ msgstr ""
 msgid "Undid {restored}, skipped {skipped}"
 msgstr ""
 
+#: src/components/ContactNotice.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
 #: src/components/inbox/CleanupHistory.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/MailOutbox.tsx
 #: src/components/sidebar-folders/SidebarUndoNotice.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Undo"

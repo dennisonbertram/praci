@@ -93,6 +93,13 @@ export function sliceArcs(shares: number[]): string[] {
   return sliceAngles(shares).map(([from, to]) => arc(from + GAP / 2, to - GAP / 2));
 }
 
+/** "Common (Mock)" and "common" are the same class: compare without case and parenthetical notes. */
+const classKey = (name: string) =>
+  name
+    .replace(/\([^)]*\)/g, "")
+    .trim()
+    .toLowerCase();
+
 /** Holder shares for one slice, biggest first with the tail merged; null when the snapshot has none to show. */
 function breakdown(
   slice: Slice,
@@ -106,7 +113,7 @@ function breakdown(
   for (const h of holdings) {
     const match = isOptions
       ? h.security.toLowerCase().includes("option")
-      : h.security === slice.name;
+      : classKey(h.security) === classKey(slice.name);
     if (match && h.shares) byHolder.set(h.name, (byHolder.get(h.name) ?? 0) + h.shares);
   }
   if (isOptions && pool) byHolder.set(labels.pool, (byHolder.get(labels.pool) ?? 0) + pool);
@@ -250,7 +257,7 @@ export function OwnershipDonut({
   const sA = wide ? ORIGINAL_SCALE.wide : ORIGINAL_SCALE.narrow;
   const sB = wide ? DRILL_SCALE.wide : DRILL_SCALE.narrow;
   const frameH = wide
-    ? legendHeight(MAX_SLICES)
+    ? Math.max(SIZE, legendHeight(Math.max(slices.length, drillRows)))
     : Math.max(
         SIZE + 16 + legendHeight(slices.length),
         DRILL_TOP + SIZE * sB + 12 + legendHeight(drillRows),

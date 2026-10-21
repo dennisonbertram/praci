@@ -220,7 +220,9 @@ it("sends the chosen sort to the server and keeps the order it returns", async (
   // The server returned b before a; the page must not reorder that.
   expect(names()).toEqual(["b.txt", "a.txt"]);
 
-  const direction = container.querySelector<HTMLButtonElement>('button[aria-label="Descending"]');
+  const direction = container.querySelector<HTMLButtonElement>(
+    'button[aria-label="Sort ascending"]',
+  );
   await act(async () => {
     direction?.click();
   });
@@ -822,7 +824,7 @@ it("remembers the view and sort across visits", async () => {
   await renderPage();
   await act(async () => {
     container.querySelector<HTMLButtonElement>('button[aria-label="Grid view"]')?.click();
-    container.querySelector<HTMLButtonElement>('button[aria-label="Descending"]')?.click();
+    container.querySelector<HTMLButtonElement>('button[aria-label="Sort ascending"]')?.click();
   });
   act(() => root.unmount());
   root = createRoot(container);

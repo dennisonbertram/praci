@@ -15,9 +15,11 @@ import {
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ContactDialog, contactKindNames } from "../components/ContactDialog";
+import { ContactNotice } from "../components/ContactNotice";
 import { PickFilter, SearchField } from "../components/ListControls";
 import { PageHeader } from "../components/PageHeader";
 import { rpc } from "../lib/rpc";
+import { useContactNotice } from "../lib/use-contact-notice";
 import { errorText } from "../lib/user-error";
 
 const matches = (contact: Contact, needle: string) =>
@@ -49,6 +51,8 @@ export function ContactsPage() {
       });
   }, []);
   useEffect(load, [load]);
+  const container = useRef<HTMLDivElement>(null);
+  const { notice, setNotice, savedId, saved, deleted } = useContactNotice(load, container);
 
   const needle = query.trim().toLowerCase();
   const shown = (contacts ?? []).filter(
@@ -56,11 +60,14 @@ export function ContactsPage() {
   );
 
   return (
-    <div className="@container/bd rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
+    <div
+      ref={container}
+      className="@container/bd rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5"
+    >
       <PageHeader
         title={<Trans>Contacts</Trans>}
         actions={
-          <Button size="sm" onClick={() => setEditing("new")}>
+          <Button onClick={() => setEditing("new")}>
             <Plus aria-hidden="true" />
             <Trans>Add contact</Trans>
           </Button>
@@ -118,7 +125,11 @@ export function ContactsPage() {
               </TableHeader>
               <TableBody>
                 {shown.map((contact) => (
-                  <TableRow key={contact.id} data-contact-id={contact.id}>
+                  <TableRow
+                    key={contact.id}
+                    data-contact-id={contact.id}
+                    className={contact.id === savedId ? "bg-muted" : ""}
+                  >
                     <TableCell>
                       <button
                         type="button"
@@ -128,6 +139,15 @@ export function ContactsPage() {
                       >
                         {contact.name}
                       </button>
+                      {/* Without room for the Organization column, it shows under the name. */}
+                      {contact.organization ? (
+                        <div
+                          className="truncate text-xs text-muted-foreground @lg:hidden"
+                          title={contact.organization}
+                        >
+                          {contact.organization}
+                        </div>
+                      ) : null}
                     </TableCell>
                     <TableCell className="hidden truncate @md:table-cell">
                       {contact.email}
@@ -143,19 +163,15 @@ export function ContactsPage() {
           )}
         </>
       )}
+      <ContactNotice notice={notice} onDismiss={() => setNotice(null)} />
       {editing ? (
         <ContactDialog
           key={editing === "new" ? "new" : editing.id}
           contact={editing === "new" ? null : editing}
-          prefill={
-            editing === "new"
-              ? { name: "", email: null, organization: null, kind: "other" }
-              : undefined
-          }
           contacts={contacts ?? []}
           onClose={() => setEditing(null)}
-          onSaved={load}
-          onDeleted={load}
+          onSaved={saved}
+          onDeleted={deleted}
           onOpenContact={setEditing}
         />
       ) : null}
