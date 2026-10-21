@@ -1318,6 +1318,11 @@ export const appContract = {
     catalog: oc.output(z.array(VoiceCatalogEntrySchema)),
     status: oc.output(VoiceStatusSchema),
     credentials: oc.output(z.array(VoiceCredentialSchema)),
+    /** Select a transcription provider with its own key. The key is never returned. */
+    setTranscription: oc
+      .input(z.object({ provider: z.string().min(1), apiKey: z.string().min(8) }))
+      .output(z.object({ provider: z.string() })),
+    clearTranscription: oc.output(z.object({ ok: z.literal(true) })),
     connect: oc
       .input(
         z.object({

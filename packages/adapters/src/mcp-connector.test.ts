@@ -2180,7 +2180,7 @@ describe("MCP connector Devin agent", () => {
     const tools = await connector.discoverTools(context);
     const byName = Object.fromEntries(tools.map((t) => [t.route?.toolName, t.readOnly]));
     for (const name of DEVIN_READ_TOOLS) expect(byName[name]).toBe(true);
-    for (const name of DEVIN_WRITE_TOOLS) expect(byName[name]).toBe(false);
+    for (const name of DEVIN_WRITE_TOOLS) expect(byName).not.toHaveProperty(name);
     expect(byName).not.toHaveProperty("devin_added_later");
     await connector.close();
   });
@@ -2193,6 +2193,18 @@ describe("MCP connector Devin agent", () => {
     expect(await call("devin_added_later", false)).toMatchObject([{ type: "error" }]);
     expect(await call("devin_session_search", true)).toMatchObject([{ type: "result" }]);
     expect(state.calls).toEqual(["devin_session_search"]);
+    await connector.close();
+  });
+
+  it("no Devin write tool is offered or executable for the Devin agent, even with writes on and allowAllTools", async () => {
+    const { connector, context, state, call } = await setup(true);
+    const names = (await connector.discoverTools(context)).map((t) => t.route?.toolName);
+    expect(names).toEqual([...DEVIN_READ_TOOLS]);
+    for (const name of ["devin_session_interact", "devin_session_create", "devin_playbook_manage"])
+      expect(names).not.toContain(name);
+    for (const name of DEVIN_WRITE_TOOLS)
+      expect(await call(name, false)).toMatchObject([{ type: "error" }]);
+    expect(state.calls).toEqual([]);
     await connector.close();
   });
 

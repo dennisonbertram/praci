@@ -56,7 +56,7 @@ export function slashSkillLabel(
       case "devin-sessions":
         return {
           title: t`Devin sessions`,
-          description: t`Start and follow Devin sessions. Each one asks first.`,
+          description: t`Search and follow Devin sessions. Read-only.`,
         };
       case "meeting-notes":
         return {

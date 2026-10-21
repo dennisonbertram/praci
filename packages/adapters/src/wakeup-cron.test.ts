@@ -12,6 +12,7 @@ describe("RECURRING_JOBS", () => {
       "messaging.retention",
       "account.export.cleanup",
       "mail.watch.renew",
+      "devin.refresh",
     ]);
   });
 });

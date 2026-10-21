@@ -491,12 +491,15 @@ import {
   threadSnapshotForReader,
 } from "./thread-target.js";
 import {
+  clearTranscription,
   disconnectVoiceCredential,
+  findTranscriptionSelection,
   listVoiceCatalog,
   loadDefaultVoiceCredential,
   loadVoiceCredential,
   persistVoiceCredential,
   prepareVoice,
+  setTranscription,
   toVoiceCredential,
   toVoiceStatus,
   updateVoiceSpeechModel,
@@ -7871,8 +7874,15 @@ export function createRouter(deps: RouterDeps) {
       catalog: authed.voice.catalog.handler(async () => listVoiceCatalog()),
       status: authed.voice.status.handler(async ({ context }) => {
         const cred = await findDefaultVoiceCredential(deps.prisma, context.actor);
-        return toVoiceStatus(cred);
+        const selection = await findTranscriptionSelection(deps, context.actor);
+        return toVoiceStatus(cred, selection?.provider ?? null);
       }),
+      setTranscription: authed.voice.setTranscription.handler(async ({ context, input }) =>
+        setTranscription(deps, context.actor, { ...input, signal: context.signal }),
+      ),
+      clearTranscription: authed.voice.clearTranscription.handler(async ({ context }) =>
+        clearTranscription(deps, context.actor),
+      ),
       credentials: authed.voice.credentials.handler(async ({ context }) => {
         const rows = await deps.prisma.userVoiceCredential.findMany({
           where: { userId: context.actor.userId },
@@ -7935,7 +7945,8 @@ export function createRouter(deps: RouterDeps) {
             { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
           ),
         );
-        return toVoiceStatus(cred);
+        const selection = await findTranscriptionSelection(deps, context.actor);
+        return toVoiceStatus(cred, selection?.provider ?? null);
       }),
       setSpeechModel: authed.voice.setSpeechModel.handler(async ({ context, input }) =>
         updateVoiceSpeechModel(deps, context.actor, input),

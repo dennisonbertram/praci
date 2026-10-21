@@ -47,6 +47,7 @@ const payloadSchemas = {
     messageId: z.string().min(1),
   }),
   "mail.watch.renew": z.object({}),
+  "devin.refresh": z.object({ serverId: z.string().min(1).optional() }),
   "finance.sync": z.object({ userId: z.string().min(1), spaceId: z.string().min(1) }),
   "dataroom.blob.delete": z.object({ spaceId: z.string().min(1), storageKey: z.string().min(1) }),
   "dataroom.ingest": dataRoomStepPayload,

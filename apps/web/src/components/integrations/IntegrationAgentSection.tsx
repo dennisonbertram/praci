@@ -57,7 +57,8 @@ export function IntegrationAgentSection({
   writesEnabled: boolean;
   shared: boolean;
   disabled: boolean;
-  onWrites: (on: boolean) => void;
+  /** Omitted when the agent can never make changes (Devin): the switch is not shown. */
+  onWrites?: (on: boolean) => void;
   onShared: (on: boolean) => void;
   /** The per-agent list, shown while the connection is shared. */
   usedBy: ReactNode;
@@ -73,18 +74,20 @@ export function IntegrationAgentSection({
         <Link to={agentHref} className="w-fit text-sm font-medium hover:underline">
           {agentName}
         </Link>
-        <WritesSwitch
-          service={service}
-          checked={writesEnabled}
-          disabled={disabled}
-          onChange={onWrites}
-          idPrefix={idPrefix}
-          hint={
-            <Trans>
-              Off: the agent only reads. On: it can also make changes, and asks you before each one.
-            </Trans>
-          }
-        />
+        {onWrites ? (
+          <WritesSwitch
+            service={service}
+            checked={writesEnabled}
+            disabled={disabled}
+            onChange={onWrites}
+            idPrefix={idPrefix}
+            hint={
+              <Trans>
+                Off: the agent only reads. On: it can also make changes, and asks you before each one.
+              </Trans>
+            }
+          />
+        ) : null}
         <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-0.5">
           <Switch
             id={`${idPrefix}-shared`}

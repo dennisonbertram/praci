@@ -1,5 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { financeProviderForEndpoint, isCartaEndpoint } from "@rakazo/contracts";
+import { financeProviderForEndpoint, isCartaEndpoint, isDevinEndpoint } from "@rakazo/contracts";
 import { Button, Input } from "@rakazo/ui-web";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
@@ -251,7 +251,7 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
             writesEnabled={server.writesEnabled}
             shared={!server.agentExclusive}
             disabled={busy}
-            onWrites={setWrites}
+            onWrites={isDevinEndpoint(server.endpoint) ? undefined : setWrites}
             usedBy={usedBy}
             onShared={(shared) => void setShared(shared)}
           />

@@ -748,6 +748,8 @@ export interface BackgroundJobPayloads {
   };
   /** Renews the Gmail push watches that are close to expiring; run daily by the worker's cron. */
   "mail.watch.renew": Record<string, never>;
+  /** Refreshes the space's Devin sessions; run every two minutes by cron without a payload (every connection), or for the one server named. */
+  "devin.refresh": { serverId?: string };
   /** Syncs a user's finance accounts and transactions from their Mercury and Brex servers; one queued job per user and space. */
   "finance.sync": { userId: string; spaceId: string };
   /** Removes a deleted Data room item's blob. Idempotent: a missing blob is success. */
