@@ -589,6 +589,25 @@ describe("Company document reader", () => {
     expect(terminal.document?.text).toContain("Terminal");
 
     response = {
+      data: {
+        successful: true,
+        data: [{ id: "record-3", title: "Wrapped" }],
+        has_more: true,
+        next_cursor: "next-page",
+      },
+      logId: "synthetic-log",
+    };
+    const wrapped = await documents.read(source, { toolName: tool.name }, context);
+    expect(wrapped.document?.text).toContain("Wrapped");
+    expect(wrapped.done).toBe(false);
+    expect(wrapped.nextCursor).toMatchObject({ pageToken: "next-page" });
+
+    response = { id: "record-4", title: "Single result", has_more: false };
+    const single = await documents.read(source, { toolName: tool.name }, context);
+    expect(single.document?.text).toContain("Single result");
+    expect(single.done).toBe(true);
+
+    response = {
       records: [{ id: "record-2", nested: Array.from({ length: 101 }, (_, index) => index) }],
       has_more: false,
     };

@@ -18,6 +18,14 @@ const MAX_VISITED = 2_000;
 const MAX_ARRAY_ITEMS = 100;
 const MAX_OBJECT_FIELDS = 200;
 const MAX_CURSOR_BYTES = 2_000;
+const PAGINATION_KEYS = [
+  "next_cursor",
+  "next_page_token",
+  "nextCursor",
+  "has_more",
+  "hasNext",
+  "pageInfo",
+] as const;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CURSORS = ["start_cursor", "cursor", "page_token", "after"] as const;
 const SIZES = ["page_size", "limit", "per_page"] as const;
@@ -154,15 +162,25 @@ function providerFailure(value: Record<string, unknown>): never {
 function decodeToolResult(value: unknown) {
   let current = value;
   const seen = new Set<object>();
+  const metadata: Record<string, unknown> = {};
+  const decoded = () => {
+    if (Object.keys(metadata).length === 0) return current;
+    if (Array.isArray(current)) return { ...metadata, results: current };
+    const root = asRecord(current);
+    if (!root) fail("invalid_source_response");
+    return { ...metadata, ...root };
+  };
   for (let depth = 0; depth < 8; depth++) {
     const root = asRecord(current);
-    if (!root) return current;
+    if (!root) return decoded();
     if (seen.has(root)) fail("invalid_source_response");
     seen.add(root);
     const error = root.error;
     const hasFailure =
       root.success === false ||
       root.successful === false ||
+      root.ok === false ||
+      root.isError === true ||
       (typeof root.status === "number" && root.status >= 400) ||
       (typeof root.statusCode === "number" && root.statusCode >= 400) ||
       (typeof root.status_code === "number" && root.status_code >= 400) ||
@@ -174,7 +192,10 @@ function decodeToolResult(value: unknown) {
         root.successful === true ||
         Object.hasOwn(root, "logId") ||
         Object.hasOwn(root, "log_id"));
-    if (!wrapped) return current;
+    if (!wrapped) return decoded();
+    for (const key of PAGINATION_KEYS) {
+      if (Object.hasOwn(root, key)) metadata[key] = root[key];
+    }
     current = root.data;
   }
   fail("invalid_source_response");
@@ -745,12 +766,9 @@ export function createCompanyDocumentReader(
       if (!rows) {
         if (page.more) fail("source_cursor_stalled");
         const root = asRecord(result);
-        const hasPaginationMetadata =
-          Boolean(root?.pageInfo) ||
-          ["next_cursor", "next_page_token", "nextCursor", "has_more", "hasNext"].some((key) =>
-            Object.hasOwn(root ?? {}, key),
-          );
-        if (hasPaginationMetadata) return { nextCursor: null, done: true };
+        const keys = Object.keys(root ?? {});
+        if (keys.length && keys.every((key) => PAGINATION_KEYS.includes(key as never)))
+          return { nextCursor: null, done: true };
         return {
           document: genericDocument(tool, selected.args, result, pageToken ?? null, 0),
           nextCursor: null,
