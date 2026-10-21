@@ -12,7 +12,15 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Navigate, Outlet, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
+import {
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { LoadingState } from "./components/ai/primitives";
 import { DataRoomDropZone } from "./components/data-room/DropZone";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -233,16 +241,14 @@ function LegacySetupRedirect() {
 
 /** Cap table became Investors; old links keep their query, minus the Carta-only kinds that no longer filter. */
 function CapTableRedirect() {
-  const { pathname, search } = useLocation();
+  const { search } = useLocation();
+  const rest = useParams()["*"];
   const params = new URLSearchParams(search);
   if (params.get("kind") === "shareholder" || params.get("kind") === "options")
     params.delete("kind");
   const query = params.toString();
   return (
-    <Navigate
-      to={`${pathname.replace("/app/cap-table", "/app/investors")}${query ? `?${query}` : ""}`}
-      replace
-    />
+    <Navigate to={`/app/investors${rest ? `/${rest}` : ""}${query ? `?${query}` : ""}`} replace />
   );
 }
 
