@@ -1489,6 +1489,10 @@ msgstr "Attachments can't be over {MAX_COMPOSE_ATTACHMENT_MB} MB."
 msgid "Attachments: {0}"
 msgstr "Attachments: {0}"
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Audience"
+msgstr "Audience"
+
 #: src/components/ContactDialog.tsx
 msgid "Auditor"
 msgstr "Auditor"
@@ -1867,6 +1871,10 @@ msgstr "Call Elio"
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Callback URL"
 msgstr "Callback URL"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Can message"
+msgstr "Can message"
 
 #: src/App.tsx
 msgid "Can't reach the server."
@@ -2446,6 +2454,10 @@ msgstr "Compose"
 #: src/pages/shell/transcript.tsx
 msgid "Computer"
 msgstr "Computer"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Computer and browser"
+msgstr "Computer and browser"
 
 #: src/pages/Shell.tsx
 msgid "Computer and routines"
@@ -4290,6 +4302,11 @@ msgstr "Export my data"
 msgid "Export this week's list from the CRM and drop it in the shared folder"
 msgstr "Export this week's list from the CRM and drop it in the shared folder"
 
+#: src/components/BotAudienceTag.tsx
+#: src/pages/shell/bot-panel.tsx
+msgid "External"
+msgstr "External"
+
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "External conversation"
@@ -5012,6 +5029,10 @@ msgstr "Integration options"
 #: src/pages/Shell.tsx
 msgid "Integrations"
 msgstr "Integrations"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Internal"
+msgstr "Internal"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
@@ -8895,6 +8916,11 @@ msgstr "Steps"
 msgid "Steps to follow"
 msgstr "Steps to follow"
 
+#. placeholder {0}: grantedConnections.join(", ")
+#: src/pages/shell/bot-panel.tsx
+msgid "Still has access to: {0}"
+msgstr "Still has access to: {0}"
+
 #: src/components/ShellSkeleton.tsx
 msgid "Still opening…"
 msgstr "Still opening…"
@@ -9019,6 +9045,10 @@ msgstr "Take control"
 #: src/pages/Shell.tsx
 msgid "Take the tour"
 msgstr "Take the tour"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Talks to people outside your company. Private tools are turned off."
+msgstr "Talks to people outside your company. Private tools are turned off."
 
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx

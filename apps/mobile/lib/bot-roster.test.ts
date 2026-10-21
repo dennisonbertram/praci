@@ -35,6 +35,9 @@ function bot(id = "bot-1"): Bot {
     teamChatAmbientEnabled: false,
     teamChatRules: "",
     disabledBuiltinTools: [],
+    audience: "internal",
+    externalMessageTargets: [],
+    externalComputerTools: false,
     webhookConfigured: false,
     spawnKey: null,
   };

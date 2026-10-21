@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 249 of 249
-- Web and shared components: 674
+- Web and shared component files with stories: 250 of 250
+- Web and shared components: 675
 - Mobile components: 140 in 97 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -73,6 +73,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | AskBotButton | [apps/web/src/components/AskBotButton.tsx](../../apps/web/src/components/AskBotButton.tsx) | [AskBotButton.stories.tsx](../../apps/web/src/components/AskBotButton.stories.tsx) | web |
 | AskCard | [apps/web/src/components/AskCard.tsx](../../apps/web/src/components/AskCard.tsx) | [AskCard.stories.tsx](../../apps/web/src/components/AskCard.stories.tsx) | web |
 | AutoFileEmailSetting | [apps/web/src/components/AutoFileEmailSetting.tsx](../../apps/web/src/components/AutoFileEmailSetting.tsx) | [AutoFileEmailSetting.stories.tsx](../../apps/web/src/components/AutoFileEmailSetting.stories.tsx) | web |
+| BotAudienceTag | [apps/web/src/components/BotAudienceTag.tsx](../../apps/web/src/components/BotAudienceTag.tsx) | [BotAudienceTag.stories.tsx](../../apps/web/src/components/BotAudienceTag.stories.tsx) | web |
 | CloudAgentCard | [apps/web/src/components/CloudAgentCard.tsx](../../apps/web/src/components/CloudAgentCard.tsx) | [CloudAgentCard.stories.tsx](../../apps/web/src/components/CloudAgentCard.stories.tsx) | web |
 | Row, RecipientSummary, ComposeEmail | [apps/web/src/components/ComposeEmail.tsx](../../apps/web/src/components/ComposeEmail.tsx) | [ComposeEmail.stories.tsx](../../apps/web/src/components/ComposeEmail.stories.tsx), [MailOutbox.stories.tsx](../../apps/web/src/components/MailOutbox.stories.tsx) | web |
 | ComputerMaintenanceActions | [apps/web/src/components/ComputerMaintenanceActions.tsx](../../apps/web/src/components/ComputerMaintenanceActions.tsx) | [ComputerMaintenanceActions.stories.tsx](../../apps/web/src/components/ComputerMaintenanceActions.stories.tsx) | web |

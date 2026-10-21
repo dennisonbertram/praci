@@ -75,6 +75,9 @@ function mapBot(
     teamChatAmbientEnabled?: boolean;
     teamChatRules?: string;
     disabledBuiltinTools?: string[];
+    audience?: string;
+    externalMessageTargets?: string[];
+    externalComputerTools?: boolean;
     webhookSecretId?: string | null;
     spawnKey?: string | null;
     runsOn?: string | null;
@@ -120,6 +123,9 @@ function mapBot(
     teamChatAmbientEnabled: bot.teamChatAmbientEnabled ?? false,
     teamChatRules: bot.teamChatRules ?? "",
     disabledBuiltinTools: bot.disabledBuiltinTools ?? [],
+    audience: bot.audience === "external" ? "external" : "internal",
+    externalMessageTargets: bot.externalMessageTargets ?? [],
+    externalComputerTools: bot.externalComputerTools ?? false,
     webhookConfigured: Boolean(bot.webhookSecretId),
     spawnKey: bot.spawnKey ?? null,
   };
@@ -419,6 +425,10 @@ export function createRepos(prisma: PrismaClient) {
         modelId?: string | null;
         thinkingLevel?: string | null;
         disabledBuiltinTools?: string[];
+        /** A copy keeps the original's audience; every other new bot is internal. */
+        audience?: "internal" | "external";
+        externalMessageTargets?: string[];
+        externalComputerTools?: boolean;
         initialMessage?: {
           role: "user" | "bot" | "system";
           blocks: MessageBlock[];
@@ -493,6 +503,9 @@ export function createRepos(prisma: PrismaClient) {
               modelId,
               thinkingLevel,
               disabledBuiltinTools,
+              audience: input.audience ?? "internal",
+              externalMessageTargets: input.externalMessageTargets ?? [],
+              externalComputerTools: input.externalComputerTools ?? false,
             },
           });
           // A child of a thread that holds meeting text starts out marked, in this transaction.
