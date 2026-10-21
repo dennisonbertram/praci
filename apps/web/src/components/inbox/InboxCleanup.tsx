@@ -288,8 +288,12 @@ export function InboxCleanup({
           ) : (
             <>
               <CleanupActionBar counts={counts} busy={busy} onApply={apply} />
-              <label className="flex items-center gap-3 px-1 py-2 text-sm text-muted-foreground">
+              <label
+                htmlFor="cleanup-select-all"
+                className="flex items-center gap-3 px-1 py-2 text-sm text-muted-foreground"
+              >
                 <Checkbox
+                  id="cleanup-select-all"
                   className="relative after:absolute after:-inset-3.5"
                   checked={selected.size === senders.length}
                   disabled={busy}
