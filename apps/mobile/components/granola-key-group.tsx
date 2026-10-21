@@ -15,6 +15,8 @@ type MeetingsStatus = {
   consentOff: boolean;
 } | null;
 
+const SYNC_POLL_MS = 5000;
+
 /** Granola API-key connection. It is not in the connection catalog, so it has its own fixed group. */
 export function GranolaKeyGroup() {
   const { t } = useI18n();
@@ -32,10 +34,16 @@ export function GranolaKeyGroup() {
       // The group stays on its last known state; Connect still works.
     }
   }, []);
+  const syncingNow =
+    status?.status === "connected" && !status.consentOff && status.syncedThrough === null;
   useFocusEffect(
     useCallback(() => {
       void load();
-    }, [load]),
+      // While the first sync runs, look again every few seconds; stops on blur or once synced.
+      if (!syncingNow) return undefined;
+      const timer = setInterval(() => void load(), SYNC_POLL_MS);
+      return () => clearInterval(timer);
+    }, [load, syncingNow]),
   );
 
   async function connect() {

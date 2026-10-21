@@ -75,3 +75,11 @@ export const StoredMeetingSchema = z.object({
   startedAt: IsoDate,
 });
 export type StoredMeeting = z.infer<typeof StoredMeetingSchema>;
+
+/** Stored meetings come 100 at a time, newest first; `nextCursor` is null on the last page. */
+export const STORED_MEETINGS_PAGE_SIZE = 100;
+export const StoredMeetingsPageSchema = z.object({
+  items: z.array(StoredMeetingSchema),
+  nextCursor: z.string().nullable(),
+});
+export type StoredMeetingsPage = z.infer<typeof StoredMeetingsPageSchema>;

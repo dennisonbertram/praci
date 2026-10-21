@@ -9,8 +9,12 @@ import {
   requestMeetingSync,
   selectConfiguredModel,
 } from "@rakazo/adapters";
-import type { Actor, MeetingsStatus, StoredMeeting } from "@rakazo/contracts";
-import { AI_DISCLOSURE_VERSION, GRANOLA_API_CONNECTOR_ID } from "@rakazo/contracts";
+import type { Actor, MeetingsStatus, StoredMeetingsPage } from "@rakazo/contracts";
+import {
+  AI_DISCLOSURE_VERSION,
+  GRANOLA_API_CONNECTOR_ID,
+  STORED_MEETINGS_PAGE_SIZE,
+} from "@rakazo/contracts";
 import {
   deleteMeeting,
   findDefaultModelCredential,
@@ -249,6 +253,9 @@ export async function granolaStatus(deps: MeetingsDeps, actor: Actor): Promise<M
 export async function disconnectGranola(deps: MeetingsDeps, actor: Actor): Promise<{ ok: true }> {
   const { prisma } = deps.router;
   await prisma.$transaction(async (tx) => {
+    // The lock connect takes: a racing connect either finishes first (its new secret is the one
+    // read and deleted here) or waits, and then replaces the disconnected row's secret.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('granola-connect'), hashtext(${`${actor.spaceId}:${actor.userId}`}))`;
     const connection = await tx.connection.findFirst({
       where: { ...owner(actor), connectorId: GRANOLA_API_CONNECTOR_ID, status: { not: "revoked" } },
     });
@@ -279,14 +286,32 @@ export async function refreshGranola(deps: MeetingsDeps, actor: Actor): Promise<
 export async function listStoredMeetings(
   deps: MeetingsDeps,
   actor: Actor,
-): Promise<StoredMeeting[]> {
+  cursor?: string,
+): Promise<StoredMeetingsPage> {
+  // The cursor is the last row's start time and id; rows sort by start time (newest first), then id.
+  const at = cursor ? cursor.split("|") : [];
+  const after =
+    at.length === 2 && !Number.isNaN(Date.parse(at[0] ?? ""))
+      ? {
+          OR: [
+            { startedAt: { lt: new Date(at[0] as string) } },
+            { startedAt: new Date(at[0] as string), id: { gt: at[1] as string } },
+          ],
+        }
+      : {};
   const rows = await deps.router.prisma.meeting.findMany({
-    where: { ...owner(actor), deletedAt: null },
+    where: { ...owner(actor), deletedAt: null, ...after },
     select: { id: true, title: true, startedAt: true },
     orderBy: [{ startedAt: "desc" }, { id: "asc" }],
-    take: 1000,
+    take: STORED_MEETINGS_PAGE_SIZE + 1,
   });
-  return rows.map((row) => ({ ...row, startedAt: row.startedAt.toISOString() }));
+  const page = rows.slice(0, STORED_MEETINGS_PAGE_SIZE);
+  const last = page[page.length - 1];
+  return {
+    items: page.map((row) => ({ ...row, startedAt: row.startedAt.toISOString() })),
+    nextCursor:
+      rows.length > page.length && last ? `${last.startedAt.toISOString()}|${last.id}` : null,
+  };
 }
 
 export async function deleteStoredMeeting(

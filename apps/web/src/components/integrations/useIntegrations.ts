@@ -163,6 +163,23 @@ export function useIntegrations(): IntegrationsData {
     void refresh();
   }, [refresh]);
 
+  // While the first Granola sync runs the page shows "Syncing"; look again every few seconds, only
+  // while the page is visible, and stop once it has finished.
+  const syncing = data.meetings?.status === "connected" && !data.meetings.syncedThrough;
+  useEffect(() => {
+    if (!syncing) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === "hidden") return;
+      void Promise.resolve()
+        .then(() => rpc.meetings.status())
+        .then((meetings) => {
+          if (mounted.current) setData((prev) => ({ ...prev, meetings }));
+        })
+        .catch(() => undefined);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [syncing]);
+
   return { ...data, refresh };
 }
 

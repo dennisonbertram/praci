@@ -9,11 +9,14 @@ const meta = {
   parameters: { layout: "fullscreen" },
   beforeEach: () =>
     mockRpc({
-      "meetings.list": [
-        { id: "m1", title: "Weekly sync", startedAt: "2026-10-19T10:00:00Z" },
-        { id: "m2", title: "Board prep", startedAt: "2026-10-18T15:30:00Z" },
-        { id: "m3", title: "Customer call", startedAt: "2026-10-16T09:00:00Z" },
-      ],
+      "meetings.list": {
+        items: [
+          { id: "m1", title: "Weekly sync", startedAt: "2026-10-19T10:00:00Z" },
+          { id: "m2", title: "Board prep", startedAt: "2026-10-18T15:30:00Z" },
+          { id: "m3", title: "Customer call", startedAt: "2026-10-16T09:00:00Z" },
+        ],
+        nextCursor: null,
+      },
     }),
 } satisfies Meta<typeof StoredMeetingsList>;
 export default meta;
@@ -21,7 +24,9 @@ type Story = StoryObj<typeof meta>;
 
 export const Meetings: Story = {};
 
-export const Empty: Story = { beforeEach: () => mockRpc({ "meetings.list": [] }) };
+export const Empty: Story = {
+  beforeEach: () => mockRpc({ "meetings.list": { items: [], nextCursor: null } }),
+};
 
 export const ConfirmingDelete: Story = {
   play: async ({ canvasElement }) => {

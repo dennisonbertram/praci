@@ -12,13 +12,16 @@ import { ConfirmDialog } from "./AppDetail";
 export function StoredMeetingsList() {
   const { t } = useLingui();
   const [rows, setRows] = useState<StoredMeeting[] | null>(null);
+  const [next, setNext] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<StoredMeeting | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (cursor?: string) => {
     try {
-      setRows(await rpc.meetings.list());
+      const page = await rpc.meetings.list(cursor ? { cursor } : {});
+      setRows((prev) => (cursor ? [...(prev ?? []), ...page.items] : page.items));
+      setNext(page.nextCursor);
     } catch (err) {
       setError(errorText(err));
     }
@@ -33,7 +36,7 @@ export function StoredMeetingsList() {
     try {
       await rpc.meetings.delete({ meetingId: meeting.id });
       setDeleting(null);
-      await load();
+      setRows((prev) => (prev ?? []).filter((row) => row.id !== meeting.id));
     } catch (err) {
       setError(errorText(err));
     } finally {
@@ -73,6 +76,13 @@ export function StoredMeetingsList() {
             </li>
           ))}
         </ul>
+        {next ? (
+          <div className="mt-4 flex justify-center">
+            <Button variant="outline" size="sm" onClick={() => void load(next)}>
+              <Trans>Show more</Trans>
+            </Button>
+          </div>
+        ) : null}
       </div>
       <ConfirmDialog
         open={deleting !== null}

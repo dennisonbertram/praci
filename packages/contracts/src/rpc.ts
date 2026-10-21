@@ -235,7 +235,7 @@ import { McpOauthClientSchema } from "./mcp.js";
 import {
   MeetingConnectInputSchema,
   MeetingsStatusSchema,
-  StoredMeetingSchema,
+  StoredMeetingsPageSchema,
 } from "./meetings.js";
 import {
   MessagingSetupSaveSchema,
@@ -1479,7 +1479,9 @@ export const appContract = {
     /** Asks for a sync now (throttled). */
     refresh: oc.output(z.object({ ok: z.literal(true) })),
     /** The caller's stored meetings, newest first; a plain query that works with consent off and after disconnect. */
-    list: oc.output(z.array(StoredMeetingSchema)),
+    list: oc
+      .input(z.object({ cursor: z.string().max(200).optional() }))
+      .output(StoredMeetingsPageSchema),
     /** Deletes one of the caller's meetings with its to-dos; sync does not bring it back. */
     delete: oc.input(z.object({ meetingId: Id })).output(z.object({ ok: z.literal(true) })),
   },

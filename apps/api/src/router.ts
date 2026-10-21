@@ -7286,8 +7286,8 @@ export function createRouter(deps: RouterDeps) {
       refresh: authed.meetings.refresh.handler(({ context }) =>
         refreshGranola(meetingsFor(context.actor), context.actor),
       ),
-      list: authed.meetings.list.handler(({ context }) =>
-        listStoredMeetings(meetingsFor(context.actor), context.actor),
+      list: authed.meetings.list.handler(({ context, input }) =>
+        listStoredMeetings(meetingsFor(context.actor), context.actor, input.cursor),
       ),
       delete: authed.meetings.delete.handler(({ context, input }) =>
         deleteStoredMeeting(meetingsFor(context.actor), context.actor, input.meetingId),

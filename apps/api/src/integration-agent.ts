@@ -85,7 +85,7 @@ type AgentRef = Pick<Bot, "id" | "spawnKey">;
  * agent named by the Granola spawn key (the API key creates it). Null when there is none.
  */
 export async function findGranolaAgent(
-  prisma: Pick<PrismaClient, "mcpServer" | "bot">,
+  prisma: Pick<PrismaClient, "mcpServer" | "bot" | "connection">,
   actor: Actor,
 ): Promise<AgentRef | null> {
   const servers = await prisma.mcpServer.findMany({
@@ -98,14 +98,44 @@ export async function findGranolaAgent(
     });
     if (bot && isIntegrationAgentForServer(server, bot)) return bot;
   }
-  return prisma.bot.findFirst({
-    where: {
-      spaceId: actor.spaceId,
-      userId: actor.userId,
-      spawnKey: granolaAgentSpawnKey(actor.userId),
-      archivedAt: null,
-    },
-  });
+  const key = granolaAgentSpawnKey(actor.userId);
+  const scoped = { spaceId: actor.spaceId, userId: actor.userId, archivedAt: null };
+  let found = await prisma.bot.findFirst({ where: { ...scoped, spawnKey: key } });
+  if (!found) {
+    // An agent the key connection is attached to, or a pre-S6 Granola agent (server-specific key)
+    // left behind when its server was removed.
+    const connection = await prisma.connection.findFirst({
+      where: {
+        spaceId: actor.spaceId,
+        userId: actor.userId,
+        connectorId: GRANOLA_API_CONNECTOR_ID,
+        agentBotId: { not: null },
+      },
+      select: { agentBotId: true },
+    });
+    found =
+      (connection?.agentBotId
+        ? await prisma.bot.findFirst({ where: { ...scoped, id: connection.agentBotId } })
+        : null) ??
+      (await prisma.bot.findFirst({
+        where: {
+          ...scoped,
+          spawnKey: { startsWith: integrationAgentSpawnKey("") },
+          name: "Granola agent",
+          description: "Your Granola account",
+        },
+        orderBy: { createdAt: "asc" },
+      }));
+  }
+  if (!found) return null;
+  // A legacy agent takes the user-level key, so the sign-in gate accepts it for any Granola server.
+  if (found.spawnKey !== key) {
+    const moved = await prisma.bot
+      .updateMany({ where: { id: found.id, spawnKey: found.spawnKey }, data: { spawnKey: key } })
+      .catch(() => ({ count: 0 }));
+    if (moved.count) return { id: found.id, spawnKey: key };
+  }
+  return found;
 }
 
 export async function ensureConnectedAppAgent(
@@ -363,7 +393,10 @@ export async function setConnectedAppExclusive(
  */
 export async function ensureIntegrationAgent(
   deps: {
-    prisma: Pick<PrismaClient, "mcpServer" | "botMcpServer" | "bot" | "$transaction">;
+    prisma: Pick<
+      PrismaClient,
+      "mcpServer" | "botMcpServer" | "bot" | "connection" | "$transaction"
+    >;
     repos: Pick<ReturnType<typeof createRepos>, "createBot">;
     /** Archives a bot this call created when it could not be linked. */
     archiveBot: (botId: string) => Promise<void>;

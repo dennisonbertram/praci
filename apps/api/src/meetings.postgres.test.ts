@@ -10,10 +10,11 @@ import {
   GRANOLA_API_CONNECTOR_ID,
   GRANOLA_MCP_ENDPOINT,
   granolaAgentSpawnKey,
+  integrationAgentSpawnKey,
   isIntegrationAgentForServer,
 } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
-import { createDb } from "@rakazo/db";
+import { createDb, createRepos } from "@rakazo/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as ComputerLifecycleModule from "../../../packages/adapters/src/computer-lifecycle.js";
 import { isMeetingSourceAgent } from "../../../packages/adapters/src/meeting-tools.js";
@@ -184,10 +185,10 @@ describePostgres("meetings.* (PostgreSQL)", () => {
     await prisma.meetingTombstone.deleteMany({ where: spaces });
     await prisma.connection.deleteMany({ where: spaces });
     await prisma.mcpServer.deleteMany({ where: spaces });
-    await prisma.secret.deleteMany({ where: { userId: { in: [userA, userB, userC] } } });
+    await prisma.secret.deleteMany({ where: { spaceId } });
     await prisma.bot.deleteMany({ where: spaces });
     await prisma.organization.deleteMany({ where: { id: orgId } });
-    await prisma.user.deleteMany({ where: { id: { in: [userA, userB, userC] } } });
+    await prisma.user.deleteMany({ where: { id: { endsWith: suffix } } });
     await close();
   });
 
@@ -274,7 +275,7 @@ describePostgres("meetings.* (PostgreSQL)", () => {
   it("never returns the key from any RPC", async () => {
     const outputs = [
       await client(a).meetings.status(),
-      await client(a).meetings.list(),
+      (await client(a).meetings.list({})).items,
       await client(a).meetings.refresh(),
       await client(a).connections.list(),
     ];
@@ -329,13 +330,13 @@ describePostgres("meetings.* (PostgreSQL)", () => {
   });
 
   it("lists only the actor's meetings", async () => {
-    const mine = await client(a).meetings.list();
+    const mine = (await client(a).meetings.list({})).items;
     expect(mine.map((m) => m.title).sort()).toEqual([
       "Invented meeting not_aaa",
       "Invented meeting not_bbb",
     ]);
-    expect(await client(b).meetings.list()).toEqual([]);
-    expect(await client(aOtherSpace).meetings.list()).toEqual([]);
+    expect((await client(b).meetings.list({})).items).toEqual([]);
+    expect((await client(aOtherSpace).meetings.list({})).items).toEqual([]);
   });
 
   it("delete: another user or space cannot; to-dos go with it; sync does not bring it back", async () => {
@@ -378,14 +379,14 @@ describePostgres("meetings.* (PostgreSQL)", () => {
     expect(await prisma.meeting.count({ where: { userId: userA } })).toBe(1);
     expect(await prisma.inboxTodo.count({ where: { userId: userA } })).toBe(1);
     expect((await client(a).meetings.status())?.status).toBe("disconnected");
-    expect(await client(a).meetings.list()).toHaveLength(1);
+    expect((await client(a).meetings.list({})).items).toHaveLength(1);
     // No sync runs without a key, and the agent keeps answering from what is stored.
     await client(a).meetings.refresh();
     expect(jobs.enqueue).not.toHaveBeenCalled();
     expect(await granolaBots(userA)).toHaveLength(1);
     // Deleting still works after Disconnect.
     await client(a).meetings.delete({ meetingId: kept?.id ?? "" });
-    expect(await client(a).meetings.list()).toEqual([]);
+    expect((await client(a).meetings.list({})).items).toEqual([]);
   });
 
   it("key then sign-in: one Granola agent that serves both routes", async () => {
@@ -443,5 +444,154 @@ describePostgres("meetings.* (PostgreSQL)", () => {
     expect(one.botId).toBe(two.botId);
     expect(await granolaBots(userB)).toHaveLength(1);
     expect((await client(b).meetings.status())?.agentBotId).toBe(one.botId);
+  });
+
+  it("disconnect and connect racing leave exactly the current secret", async () => {
+    const racer = actor(id("user-race"));
+    await prisma.user.create({
+      data: { id: racer.userId, name: "r", email: racer.email, emailVerified: false },
+    });
+    await prisma.member.create({
+      data: {
+        id: id("member-race"),
+        organizationId: orgId,
+        userId: racer.userId,
+        role: "member",
+        createdAt: new Date(),
+      },
+    });
+    await client(racer).meetings.connect({ apiKey: KEY });
+    for (let round = 0; round < 6; round++) {
+      await Promise.all([
+        client(racer).meetings.connect({ apiKey: KEY }),
+        client(racer).meetings.disconnect(),
+        client(racer).meetings.connect({ apiKey: KEY }),
+        client(racer).meetings.disconnect(),
+      ]);
+      const row = await prisma.connection.findFirstOrThrow({ where: { userId: racer.userId } });
+      const secrets = await prisma.secret.findMany({ where: { userId: racer.userId } });
+      // Connected: the row's own secret and no other. Disconnected: no secret at all.
+      expect(secrets.map((secret) => secret.id)).toEqual(row.secretId ? [row.secretId] : []);
+      expect(row.status === "connected").toBe(Boolean(row.secretId));
+    }
+    // Disconnect waits for connect's lock, so it can never read a row connect is replacing.
+    await client(racer).meetings.connect({ apiKey: KEY });
+    let settled = false;
+    let pending: Promise<unknown> = Promise.resolve();
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('granola-connect'), hashtext(${`${racer.spaceId}:${racer.userId}`}))`;
+      pending = client(racer)
+        .meetings.disconnect()
+        .then(() => {
+          settled = true;
+        });
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      expect(settled).toBe(false);
+    });
+    await pending;
+    expect(settled).toBe(true);
+    await prisma.secret.deleteMany({ where: { userId: racer.userId } });
+  });
+
+  it("a pre-S6 Granola agent is the one agent after the key is attached and the sign-in is removed and added again", async () => {
+    const legacyUser = actor(id("user-legacy"));
+    await prisma.user.create({
+      data: { id: legacyUser.userId, name: "l", email: legacyUser.email, emailVerified: false },
+    });
+    await prisma.member.create({
+      data: {
+        id: id("member-legacy"),
+        organizationId: orgId,
+        userId: legacyUser.userId,
+        role: "member",
+        createdAt: new Date(),
+      },
+    });
+    const server = await mkServer(legacyUser.userId);
+    const legacy = await createRepos(prisma).createBot(legacyUser, {
+      spawnKey: integrationAgentSpawnKey(server.id),
+      name: "Granola agent",
+      title: "",
+      description: "Your Granola account",
+      instructions: "legacy",
+      notifyOnFinish: true,
+    });
+    await prisma.mcpServer.update({ where: { id: server.id }, data: { agentBotId: legacy.id } });
+    await prisma.botMcpServer.create({
+      data: {
+        spaceId,
+        userId: legacyUser.userId,
+        botId: legacy.id,
+        serverId: server.id,
+        allowAllTools: true,
+        allowedTools: [],
+      },
+    });
+    await client(legacyUser).meetings.connect({ apiKey: KEY });
+    const connection = await prisma.connection.findFirstOrThrow({
+      where: { userId: legacyUser.userId },
+    });
+    expect(connection.agentBotId).toBe(legacy.id);
+    await client(legacyUser).mcp.servers.remove({ id: server.id });
+    const again = await mkServer(legacyUser.userId);
+    const created = await client(legacyUser).integrationAgents.create({ serverId: again.id });
+    expect(created.botId).toBe(legacy.id);
+    const active = await prisma.bot.findMany({
+      where: {
+        spaceId,
+        userId: legacyUser.userId,
+        archivedAt: null,
+        description: "Your Granola account",
+      },
+    });
+    expect(active.map((bot) => bot.id)).toEqual([legacy.id]);
+    const linked = await prisma.mcpServer.findUniqueOrThrow({ where: { id: again.id } });
+    expect(isIntegrationAgentForServer(linked, active[0] as never)).toBe(true);
+  });
+
+  it("pages stored meetings 100 at a time, newest first, and only the actor's", async () => {
+    const pager = actor(id("user-pager"));
+    await prisma.user.create({
+      data: { id: pager.userId, name: "p", email: pager.email, emailVerified: false },
+    });
+    await prisma.member.create({
+      data: {
+        id: id("member-pager"),
+        organizationId: orgId,
+        userId: pager.userId,
+        role: "member",
+        createdAt: new Date(),
+      },
+    });
+    const base = Date.parse("2026-01-01T00:00:00Z");
+    await prisma.meeting.createMany({
+      data: Array.from({ length: 205 }, (_, i) => ({
+        spaceId,
+        userId: pager.userId,
+        provider: "granola",
+        externalId: `pg_${i}`,
+        title: `Meeting ${i}`,
+        // Pairs share a start time so the id tiebreak is exercised.
+        startedAt: new Date(base + Math.floor(i / 2) * 60_000),
+        sourceUpdatedAt: new Date(base),
+      })),
+    });
+    const seen: string[] = [];
+    let cursor: string | undefined;
+    const sizes: number[] = [];
+    for (;;) {
+      const page = await client(pager).meetings.list(cursor ? { cursor } : {});
+      sizes.push(page.items.length);
+      seen.push(...page.items.map((item) => item.id));
+      if (!page.nextCursor) break;
+      cursor = page.nextCursor;
+    }
+    expect(sizes).toEqual([100, 100, 5]);
+    expect(new Set(seen).size).toBe(205);
+    const starts = (await client(pager).meetings.list({})).items.map((item) => item.startedAt);
+    expect([...starts].sort().reverse()).toEqual(starts);
+    expect((await client(b).meetings.list({ cursor: "2026-01-01T00:00:00.000Z|x" })).items).toEqual(
+      [],
+    );
   });
 });

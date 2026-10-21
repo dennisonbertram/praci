@@ -261,3 +261,23 @@ it("Disconnect calls meetings/disconnect and reloads", async () => {
   await press("Disconnect");
   expect(text()).toContain(KEEP);
 });
+
+it("polls while Syncing and shows Synced once the first sync finishes", async () => {
+  vi.useFakeTimers();
+  try {
+    await render({ ...base, status: "connected", syncedThrough: null });
+    expect(text()).toContain("Syncing");
+    status = { ...base, status: "connected" };
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+    expect(text()).toContain("Synced 4 meetings");
+    const calls = vi.mocked(rpc).mock.calls.length;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20_000);
+    });
+    expect(vi.mocked(rpc).mock.calls.length).toBe(calls);
+  } finally {
+    vi.useRealTimers();
+  }
+});
