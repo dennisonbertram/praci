@@ -6,7 +6,7 @@ export const NOTIFICATIONS_CHANGED_EVENT = "rakazo:notifications-changed";
 
 /** Sidebar page key for an app path, matching the `surface` of its notifications. */
 export function surfaceOfPath(pathname: string): string | null {
-  const key = /^\/app\/(inbox|finance|legal|cap-table|data-room|artifacts)(\/|$)/.exec(
+  const key = /^\/app\/(inbox|finance|legal|cap-table|data-room|devin|artifacts)(\/|$)/.exec(
     pathname,
   )?.[1];
   return key ?? null;
@@ -33,6 +33,7 @@ type Glance = Awaited<ReturnType<typeof rpc.notifications.glance>>;
 const EMPTY: Glance = {
   financeRunwayMonths: null,
   legalDueSoon: 0,
+  devinNeedsYou: 0,
   dataRoomWaiting: 0,
   botKinds: {},
 };
