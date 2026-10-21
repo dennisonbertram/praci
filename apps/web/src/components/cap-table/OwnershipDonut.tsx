@@ -344,7 +344,6 @@ export function OwnershipDonut({
 
   if (slices.length === 0) return null;
   const locale = i18n.locale || "en";
-  const total = slices.reduce((n, s) => n + s.shares, 0);
   const drillTotal = drill?.reduce((n, s) => n + s.shares, 0) ?? 0;
   const label = `${t`Ownership`}: ${slices
     .slice(0, 3)
@@ -468,12 +467,17 @@ export function OwnershipDonut({
               data-testid="donut-centre"
               style={{ opacity: isOpen ? 0 : 1, transition: tr("opacity") }}
             >
-              <span className="text-xl font-semibold leading-none tabular-nums">
-                {shareCount(tip ? tip.shares : total, locale)}
-              </span>
-              <span className="mt-1 line-clamp-2 text-xs leading-tight text-muted-foreground">
-                {tip ? tip.name : unissued > 0 ? t`Fully diluted shares` : t`Shares`}
-              </span>
+              {/* The total is in the summary; the centre names a slice while one is hovered. */}
+              {tip ? (
+                <>
+                  <span className="text-xl font-semibold leading-none tabular-nums">
+                    {shareCount(tip.shares, locale)}
+                  </span>
+                  <span className="mt-1 line-clamp-2 text-xs leading-tight text-muted-foreground">
+                    {tip.name}
+                  </span>
+                </>
+              ) : null}
             </div>
           </div>
 
