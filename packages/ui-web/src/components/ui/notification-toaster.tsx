@@ -5,7 +5,7 @@ import { Button } from "@rakazo/ui-web/components/ui/button";
 import { cn } from "@rakazo/ui-web/lib/utils";
 import { XIcon } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export const MAX_VISIBLE_NOTIFICATION_TOASTS = 3;
 
@@ -150,7 +150,10 @@ function ToastList({
   // Offset of each toast from the bottom when fanned out.
   // A closing toast's height is 0 during its exit, so the front is the first one still open.
   const frontIndex = visible.findIndex((t) => t.transitionStatus !== "ending");
-  const front = frontIndex < 0 ? 0 : heights[frontIndex] || 0;
+  // When none is left open the last measured height is kept, so the closing card fades without shrinking.
+  const lastFront = useRef(0);
+  if (frontIndex >= 0 && heights[frontIndex]) lastFront.current = heights[frontIndex];
+  const front = frontIndex < 0 ? lastFront.current : heights[frontIndex] || 0;
   // Rear sheets stick up above the front one by PEEK_PX each; the wrapper reserves that too.
   const PEEK_PX = 16;
   const rear = Math.max(0, visible.filter((t) => t.transitionStatus !== "ending").length - 1);
