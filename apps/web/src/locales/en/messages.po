@@ -139,11 +139,6 @@ msgstr "{0, plural, one {Its # transaction will be removed from Finance.} other 
 msgid "{0, plural, one {Last full month} other {Last # full months}}"
 msgstr "{0, plural, one {Last full month} other {Last # full months}}"
 
-#. placeholder {0}: files.length
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "{0, plural, one {Reviewing # file} other {Reviewing # files}}"
-msgstr "{0, plural, one {Reviewing # file} other {Reviewing # files}}"
-
 #. placeholder {0}: filteredRecent.length
 #: src/pages/ActivityList.tsx
 msgid "{0, plural, one {Show # finished run} other {Show # finished runs}}"
@@ -598,7 +593,6 @@ msgid "* So far"
 msgstr "* So far"
 
 #: src/components/ComposeEmail.tsx
-#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "+{more} more"
 msgstr "+{more} more"
@@ -1787,7 +1781,6 @@ msgid "Bots, mail, files and contracts"
 msgstr "Bots, mail, files and contracts"
 
 #: src/components/data-room/FilterBar.tsx
-#: src/components/data-room/ImportFromEmail.tsx
 msgid "Box"
 msgstr "Box"
 
@@ -4102,7 +4095,7 @@ msgid "Edit wallet"
 msgstr "Edit wallet"
 
 #: src/components/ContactDialog.tsx
-#: src/components/data-room/ImportFromEmail.tsx
+#: src/components/data-room/SelectionBar.tsx
 #: src/pages/Auth.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
@@ -4545,10 +4538,16 @@ msgstr "From {0}"
 msgid "From another app (advanced)"
 msgstr "From another app (advanced)"
 
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "From Box"
+msgstr "From Box"
+
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/data-room/Preview.tsx
 msgid "From email"
 msgstr "From email"
 
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/data-room/Preview.tsx
 msgid "From Google Drive"
 msgstr "From Google Drive"
@@ -4666,7 +4665,6 @@ msgid "Google apps"
 msgstr "Google apps"
 
 #: src/components/data-room/FilterBar.tsx
-#: src/components/data-room/ImportFromEmail.tsx
 msgid "Google Drive"
 msgstr "Google Drive"
 
@@ -8271,6 +8269,8 @@ msgstr "Select a bot"
 msgid "Select a connected model"
 msgstr "Select a connected model"
 
+#: src/components/data-room/AutoSortDialog.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Select all"
 msgstr "Select all"
@@ -8284,7 +8284,6 @@ msgid "Self-custody"
 msgstr "Self-custody"
 
 #: src/components/ComposeEmail.tsx
-#: src/components/data-room/SelectionBar.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/MailApprovalCard.tsx
@@ -8325,6 +8324,7 @@ msgstr "Send reset link"
 msgid "Send saved draft"
 msgstr "Send saved draft"
 
+#: src/components/data-room/SelectionBar.tsx
 #: src/components/data-room/SendToAgent.tsx
 msgid "Send to agent"
 msgstr "Send to agent"
@@ -8743,6 +8743,10 @@ msgstr "Sort descending"
 #: src/components/ListControls.tsx
 msgid "Sort: {fieldLabel}"
 msgstr "Sort: {fieldLabel}"
+
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Sorting every file in the Data room"
+msgstr "Sorting every file in the Data room"
 
 #: src/pages/Inbox.tsx
 msgid "Sorting is taking longer than usual. Your mail is below."
@@ -9893,7 +9897,6 @@ msgstr "Updating…"
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/FilterBar.tsx
-#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Upload"
@@ -9911,6 +9914,10 @@ msgstr "Upload a PDF, CSV, OFX or QFX file"
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed"
 msgstr "Upload failed"
+
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Upload files"
+msgstr "Upload files"
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Upload files for agents to use. Artifacts holds what agents make."

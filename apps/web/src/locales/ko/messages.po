@@ -139,11 +139,6 @@ msgstr ""
 msgid "{0, plural, one {Last full month} other {Last # full months}}"
 msgstr ""
 
-#. placeholder {0}: files.length
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "{0, plural, one {Reviewing # file} other {Reviewing # files}}"
-msgstr ""
-
 #. placeholder {0}: filteredRecent.length
 #: src/pages/ActivityList.tsx
 msgid "{0, plural, one {Show # finished run} other {Show # finished runs}}"
@@ -598,7 +593,6 @@ msgid "* So far"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
-#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "+{more} more"
 msgstr ""
@@ -1787,7 +1781,6 @@ msgid "Bots, mail, files and contracts"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
-#: src/components/data-room/ImportFromEmail.tsx
 msgid "Box"
 msgstr ""
 
@@ -4102,7 +4095,7 @@ msgid "Edit wallet"
 msgstr ""
 
 #: src/components/ContactDialog.tsx
-#: src/components/data-room/ImportFromEmail.tsx
+#: src/components/data-room/SelectionBar.tsx
 #: src/pages/Auth.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
@@ -4545,10 +4538,16 @@ msgstr ""
 msgid "From another app (advanced)"
 msgstr ""
 
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "From Box"
+msgstr ""
+
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/data-room/Preview.tsx
 msgid "From email"
 msgstr ""
 
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/data-room/Preview.tsx
 msgid "From Google Drive"
 msgstr ""
@@ -4666,7 +4665,6 @@ msgid "Google apps"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
-#: src/components/data-room/ImportFromEmail.tsx
 msgid "Google Drive"
 msgstr ""
 
@@ -8271,6 +8269,8 @@ msgstr "대화할 Bot을 선택하세요"
 msgid "Select a connected model"
 msgstr "연결된 모델 선택"
 
+#: src/components/data-room/AutoSortDialog.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Select all"
 msgstr ""
@@ -8284,7 +8284,6 @@ msgid "Self-custody"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
-#: src/components/data-room/SelectionBar.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/MailApprovalCard.tsx
@@ -8325,6 +8324,7 @@ msgstr "재설정 링크 보내기"
 msgid "Send saved draft"
 msgstr ""
 
+#: src/components/data-room/SelectionBar.tsx
 #: src/components/data-room/SendToAgent.tsx
 msgid "Send to agent"
 msgstr ""
@@ -8742,6 +8742,10 @@ msgstr ""
 
 #: src/components/ListControls.tsx
 msgid "Sort: {fieldLabel}"
+msgstr ""
+
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Sorting every file in the Data room"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -9893,7 +9897,6 @@ msgstr "업데이트 중…"
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/FilterBar.tsx
-#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Upload"
@@ -9910,6 +9913,10 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed"
+msgstr ""
+
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Upload files"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx

@@ -5475,7 +5475,7 @@ export function ShellPage() {
             onAskAgent={dataRoomAgentOpen ? undefined : askDataRoomAgent}
             onOpenModelSettings={() => openSettings("models")}
             agents={sendToAgentTargets}
-            onSendToAgent={(item, agent) => void sendFilesToAgent([item], agent)}
+            onSendToAgent={(items, agent) => void sendFilesToAgent(items, agent)}
             spaceName={
               spaces.length > 1
                 ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
