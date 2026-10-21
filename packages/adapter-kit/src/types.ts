@@ -1264,6 +1264,25 @@ export class MailProviderError extends Error {
   }
 }
 
+export type MeetingSourceErrorKind =
+  | "auth"
+  | "mapping"
+  | "rate_limit"
+  | "unavailable"
+  | "not_found";
+
+/** A meeting source failed. The message is a short reason, never a vendor payload. */
+export class MeetingSourceError extends Error {
+  constructor(
+    readonly kind: MeetingSourceErrorKind,
+    message: string,
+    readonly retryAfterMs?: number,
+  ) {
+    super(message);
+    this.name = "MeetingSourceError";
+  }
+}
+
 /** Authenticated passthrough to an app's own API for one connected account. */
 export interface ConnectorProxyRequest {
   /** Connection.provider (app slug). */

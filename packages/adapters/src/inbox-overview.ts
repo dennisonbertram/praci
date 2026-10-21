@@ -116,7 +116,7 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
     );
   const todoRows = todos.map(
     (todo) =>
-      `${clip(todo.text, 140)} | ${todo.dueOn ? `due ${day(todo.dueOn)}` : "no due date"} | acct:${label.get(todo.connectionId)}${
+      `${clip(todo.text, 140)} | ${todo.dueOn ? `due ${day(todo.dueOn)}` : "no due date"} | acct:${label.get(todo.connectionId ?? "")}${
         todo.message
           ? ` | id:${todo.message.providerMessageId} | from:${clip(todo.message.fromName || todo.message.fromAddress, 50)}`
           : ""
