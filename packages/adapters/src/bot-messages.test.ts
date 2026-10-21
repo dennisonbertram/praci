@@ -1051,4 +1051,25 @@ describe("the external chain mark", () => {
     );
     expect(receivedBlock(back)).toMatchObject({ externalOrigin: true });
   });
+
+  it("carries the sending run's own mark (from its history window) onto every delivery", async () => {
+    const h = deps({
+      bots: [
+        { id: "bot-fin", name: "Finance", title: "", audience: "internal", thread: { id: "t-f" } },
+      ],
+    });
+    await messageBot(
+      h.deps,
+      run,
+      sender,
+      { bot_id: "bot-fin", message: "cash?" },
+      { externalChain: { name: "Support" } },
+    );
+    expect(receivedBlock(h)).toMatchObject({ externalOrigin: true, externalOriginName: "Support" });
+    expect(h.tx.task.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ prompt: expect.stringContaining("Security notice") }),
+      }),
+    );
+  });
 });

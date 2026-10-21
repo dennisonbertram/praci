@@ -1581,9 +1581,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   : []),
                 ...loadedMessages.flatMap((message) => message.blocks as MessageBlock[]),
               ]);
-        // Set when a message that carries the mark is claimed as steering mid-run.
-        let steeredExternal: { name?: string } | undefined;
-        const externalTaint = () => externalChain !== undefined || steeredExternal !== undefined;
+        const externalTaint = () => externalChain !== undefined;
         // No automatic private context for an external bot, or for any bot answering an external chain.
         const restrictedContext = bot.audience === "external" || externalChain !== undefined;
         // The wake prompt carries the reply body (already escaped); mark that body as meeting text too.
@@ -2015,7 +2013,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               { id: bot.id, name: bot.name },
               `Could not complete the delegated request: ${message}`,
               "status",
-              { forceUnread: true },
+              { forceUnread: true, externalChain },
             ).catch((error) => getLogger().error("bot message failure return", error));
           }
           if (!failed.continuationRunId) {
@@ -2994,7 +2992,31 @@ export function createRunExecutor(deps: ExecutorDeps) {
             return true;
           }
         };
+        // A read-only call that a marked run's gate now records as an effect has handlers that
+        // return without finishing it; settle it here so a retry does not treat a completed read
+        // as interrupted. Re-reading is safe, so a failed settle is only logged.
+        const settleReadEffect = new Map<string, (result: unknown) => Promise<unknown>>();
         const applyTool = async (
+          name: string,
+          args: Record<string, unknown>,
+          executionId: string,
+          route?: unknown,
+          observer?: AgentToolExecutionObserver,
+        ) => {
+          try {
+            const result = await applyToolCall(name, args, executionId, route, observer);
+            const settle = settleReadEffect.get(executionId);
+            if (settle && !isToolPauseResult(result)) {
+              await settle(result).catch((error: unknown) =>
+                getLogger().error("read effect settle", error),
+              );
+            }
+            return result;
+          } finally {
+            settleReadEffect.delete(executionId);
+          }
+        };
+        const applyToolCall = async (
           name: string,
           args: Record<string, unknown>,
           executionId: string,
@@ -3560,6 +3582,20 @@ export function createRunExecutor(deps: ExecutorDeps) {
           const needsApproval = gateDecision === "ask";
           const bypassApproval = gateDecision === "allow" && requiresApprovalByDefault;
           let claimedEffect = false;
+          if (
+            applied &&
+            READ_ONLY_AGENT_TOOLS.has(name) &&
+            (meetingTaintedCall || externalTaintedCall)
+          ) {
+            settleReadEffect.set(executionId, (result) =>
+              completeEffect(
+                deps,
+                applied.effect.id,
+                claimedEffect ? "executing" : "intended",
+                result,
+              ),
+            );
+          }
           /** The call runs because the person approved its card. */
           let approvedByCard = false;
 
@@ -5790,7 +5826,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 deliveryKey: effectKey,
               },
               // A background run may only ask an agent that owns an account.
-              { ownerAgentsOnly: isBackgroundRunTrigger(run.trigger), ownerOrigin: ownerOriginRun },
+              {
+                ownerAgentsOnly: isBackgroundRunTrigger(run.trigger),
+                ownerOrigin: ownerOriginRun,
+                externalChain,
+              },
             );
             if (!sent.ok) return finish({ error: sent.error });
             return finish({
@@ -6060,7 +6100,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         };
 
         const pluginLine =
-          voiceAgent || bot.audience === "external"
+          voiceAgent || restrictedContext
             ? undefined
             : mailOnly
               ? undefined
@@ -6275,8 +6315,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
                     pluginLine,
                     mailSearchGuidance: mailSkill.guidance,
                     dataRoomEnabled: dataRoomEnabled && !legalOnly && !externalBot,
-                    agentSkillsLine: externalBot ? undefined : agentSkillsLine,
-                    taughtSkillsLine: externalBot ? undefined : taughtSkillsLine,
+                    agentSkillsLine: restrictedContext ? undefined : agentSkillsLine,
+                    taughtSkillsLine: restrictedContext ? undefined : taughtSkillsLine,
                     replyGuidance: runReplyGuidance(run.trigger),
                     disabledBuiltinTools: instructionDisabledTools,
                   })
@@ -6397,12 +6437,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
                         leaseOwner: workerId,
                         leaseFence: fence,
                         seenIds,
+                        // A message that carries the external mark is not taken into a run that was
+                        // built without it (tools, context and notice would be wrong). It waits and
+                        // starts its own run, which is built marked.
+                        excludeExternalOrigin:
+                          externalChain === undefined && bot.audience !== "external",
                       });
-                      // A claimed message that carries the external mark marks the rest of this run.
-                      for (const item of steering) {
-                        const chain = externalChainOf(item.blocks as MessageBlock[]);
-                        if (chain && bot.audience !== "external") steeredExternal = chain;
-                      }
                       return Promise.all(
                         steering.map(async (item) => {
                           const { images, files, unavailableInstruction } =
@@ -6687,7 +6727,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                     { id: bot.id, name: bot.name },
                     stuckText,
                     "result",
-                    { forceUnread: true },
+                    { forceUnread: true, externalChain },
                   ).catch((error) => getLogger().error("bot message loop-guard return", error));
                 }
                 runAbortController?.abort();
@@ -6934,6 +6974,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               { id: bot.id, name: bot.name },
               botMessageOutcome.text,
               botMessageOutcome.intent,
+              { externalChain },
             ).catch((error) => getLogger().error("bot message result return", error));
           }
           const notifyBody = completionNotificationPreview(text);
