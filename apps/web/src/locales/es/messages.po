@@ -49,6 +49,10 @@ msgstr ""
 msgid ", {0} already imported"
 msgstr ""
 
+#: src/pages/devin/DevinSessions.tsx
+msgid "(opens in Devin)"
+msgstr ""
+
 #. placeholder {0}: processing.failed
 #: src/components/data-room/ProcessingStrip.tsx
 msgid "{0, plural, one {# couldn't be read} other {# couldn't be read}}"
@@ -1186,6 +1190,10 @@ msgstr ""
 msgid "Anything else"
 msgstr ""
 
+#: src/lib/devin-format.ts
+msgid "API"
+msgstr ""
+
 #: src/components/SoftwareUpdateSection.tsx
 msgid "API is back, but the update did not finish. Check the host logs."
 msgstr "La API volvió, pero la actualización no terminó. Revisa los logs del host."
@@ -1341,6 +1349,14 @@ msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Ask a question"
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "Ask a space owner to connect Devin."
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "Ask a space owner to reconnect."
 msgstr ""
 
 #: src/components/FinanceCards.tsx
@@ -1515,6 +1531,10 @@ msgstr ""
 
 #: src/components/inbox/CleanupHistory.tsx
 msgid "Automatic"
+msgstr ""
+
+#: src/lib/devin-format.ts
+msgid "Automation"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -2188,6 +2208,10 @@ msgstr ""
 msgid "Clearing…"
 msgstr "Borrando…"
 
+#: src/lib/devin-format.ts
+msgid "CLI"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Client ID"
@@ -2283,6 +2307,10 @@ msgstr "Nube"
 #: src/components/AskCard.tsx
 msgid "Code"
 msgstr "Código"
+
+#: src/lib/devin-format.ts
+msgid "Code scan"
+msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Coding sessions and repo docs"
@@ -2522,6 +2550,14 @@ msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Connect Carta"
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "Connect Devin"
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "Connect Devin to see its sessions here."
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -2929,6 +2965,10 @@ msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Could not load credentials."
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "Could not load Devin sessions."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -3631,6 +3671,10 @@ msgstr "Predeterminado del despliegue"
 msgid "Description"
 msgstr "Descripción"
 
+#: src/lib/devin-format.ts
+msgid "Desktop"
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 msgid "Desktop app"
 msgstr ""
@@ -3652,7 +3696,16 @@ msgstr ""
 msgid "Developer"
 msgstr ""
 
+#: src/pages/Devin.tsx
+msgid "Devin"
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "Devin rejected the key. Alerts are paused."
+msgstr ""
+
 #: src/lib/slash-skills.ts
+#: src/pages/devin/DevinSessions.tsx
 msgid "Devin sessions"
 msgstr ""
 
@@ -3930,6 +3983,7 @@ msgstr ""
 msgid "Each bot keeps its own"
 msgstr ""
 
+#: src/pages/devin/DevinSessions.tsx
 #: src/pages/Inbox.tsx
 msgid "Earlier"
 msgstr ""
@@ -4068,6 +4122,7 @@ msgstr ""
 msgid "equity, ownership, shares, options, Carta"
 msgstr ""
 
+#: src/lib/devin-format.ts
 #: src/lib/roster-status.ts
 #: src/pages/Shell.tsx
 msgid "Error"
@@ -4309,6 +4364,7 @@ msgstr "Termina el inicio de sesión por suscripción y vuelve a probar."
 msgid "finished"
 msgstr "finalizado"
 
+#: src/lib/devin-format.ts
 #: src/pages/ActivityList.tsx
 msgid "Finished"
 msgstr ""
@@ -4884,6 +4940,10 @@ msgstr ""
 msgid "Its conversation, files, and routines will be permanently deleted. Bots it created stay in your list."
 msgstr "Su conversación, archivos y rutinas se eliminarán de forma permanente. Los bots que creó permanecerán en tu lista."
 
+#: src/lib/devin-format.ts
+msgid "Jira"
+msgstr ""
+
 #: src/pages/shell/transcript.tsx
 msgid "Jump to latest"
 msgstr "Ir al más reciente"
@@ -5079,6 +5139,10 @@ msgstr ""
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Light"
 msgstr "Claro"
+
+#: src/lib/devin-format.ts
+msgid "Linear"
+msgstr ""
 
 #: src/pages/SpaceSearch.tsx
 msgid "Link"
@@ -5730,6 +5794,7 @@ msgstr ""
 msgid "Needs attention"
 msgstr ""
 
+#: src/lib/devin-format.ts
 #: src/pages/ActivityList.tsx
 msgid "Needs input"
 msgstr "Necesita entrada"
@@ -5752,6 +5817,8 @@ msgstr "Necesita toma de control"
 
 #: src/lib/roster-status.ts
 #: src/pages/ActivityList.tsx
+#: src/pages/Devin.tsx
+#: src/pages/devin/DevinSessions.tsx
 #: src/pages/Shell.tsx
 msgid "Needs you"
 msgstr ""
@@ -5950,6 +6017,10 @@ msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "No Devin sessions yet."
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -6403,6 +6474,10 @@ msgstr ""
 msgid "Open deadlines"
 msgstr ""
 
+#: src/pages/Devin.tsx
+msgid "Open Devin"
+msgstr ""
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Open document"
 msgstr ""
@@ -6560,6 +6635,7 @@ msgstr "Mensaje original no disponible"
 #: src/components/ContactDialog.tsx
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
+#: src/lib/devin-format.ts
 #: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Other"
@@ -6931,6 +7007,7 @@ msgid "Providers"
 msgstr "Proveedores"
 
 #: src/components/CloudAgentCard.tsx
+#: src/pages/devin/DevinSessions.tsx
 msgid "Pull request"
 msgstr "Solicitud de incorporación"
 
@@ -7093,6 +7170,7 @@ msgstr ""
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
+#: src/pages/Devin.tsx
 #: src/pages/Finance.tsx
 msgid "Reconnect"
 msgstr ""
@@ -8072,6 +8150,10 @@ msgstr ""
 msgid "Server URL"
 msgstr "URL del servidor"
 
+#: src/pages/devin/DevinSessions.tsx
+msgid "Session"
+msgstr ""
+
 #: src/components/integrations/IMessageSection.tsx
 msgid "Set by server"
 msgstr ""
@@ -8375,6 +8457,10 @@ msgstr ""
 msgid "Skipping"
 msgstr ""
 
+#: src/lib/devin-format.ts
+msgid "Slack"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Slack message"
 msgstr "Mensaje de Slack"
@@ -8399,6 +8485,10 @@ msgstr ""
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Software update"
 msgstr "Actualización de software"
+
+#: src/pages/Devin.tsx
+msgid "Some sessions could not be read."
+msgstr ""
 
 #: src/App.tsx
 #: src/lib/user-error.ts
@@ -8427,6 +8517,7 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/Preview.tsx
+#: src/pages/devin/DevinSessions.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Source"
 msgstr ""
@@ -8565,6 +8656,7 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Board.tsx
+#: src/pages/devin/DevinSessions.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 #: src/pages/legal/LegalContracts.tsx
@@ -8670,6 +8762,10 @@ msgstr "Admite imágenes"
 msgid "Supports thinking"
 msgstr "Admite razonamiento"
 
+#: src/lib/devin-format.ts
+msgid "Suspended"
+msgstr ""
+
 #: src/components/inbox/InboxRow.tsx
 msgid "Suspicious"
 msgstr ""
@@ -8734,6 +8830,10 @@ msgstr ""
 
 #: src/lib/sidebar-page-copy.ts
 msgid "Team health"
+msgstr ""
+
+#: src/lib/devin-format.ts
+msgid "Teams"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -8874,6 +8974,10 @@ msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "The member who connected Devin left this space. Alerts are paused."
 msgstr ""
 
 #: src/lib/run-phase.ts
@@ -9357,6 +9461,7 @@ msgstr ""
 
 #: src/components/finance/ui.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/lib/devin-format.ts
 #: src/pages/legal/LegalContracts.tsx
 msgid "Unknown"
 msgstr ""
@@ -9429,6 +9534,10 @@ msgstr ""
 msgid "Untitled folder"
 msgstr ""
 
+#: src/pages/devin/DevinSessions.tsx
+msgid "Untitled session"
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Up to date"
@@ -9470,11 +9579,14 @@ msgid "Update progress"
 msgstr ""
 
 #: src/components/SoftwareUpdateSection.tsx
+#: src/pages/devin/DevinSessions.tsx
 msgid "Updated"
 msgstr "Actualizado"
 
+#. placeholder {0}: formatRelativeTime(data.fetchedAt)
 #. placeholder {0}: formatRelativeTime(snapshot.updatedAt)
 #: src/pages/CapTable.tsx
+#: src/pages/Devin.tsx
 msgid "Updated {0}"
 msgstr ""
 
@@ -9700,6 +9812,18 @@ msgstr ""
 msgid "Wait a moment and test again."
 msgstr "Espera un momento y vuelve a probar."
 
+#: src/lib/devin-format.ts
+msgid "Waiting {days}d"
+msgstr ""
+
+#: src/lib/devin-format.ts
+msgid "Waiting {hours}h"
+msgstr ""
+
+#: src/lib/devin-format.ts
+msgid "Waiting {minutes}m"
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/SignInStep.tsx
 msgid "Waiting for sign-in"
@@ -9748,6 +9872,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Wallets"
+msgstr ""
+
+#: src/lib/devin-format.ts
+msgid "Web"
 msgstr ""
 
 #: src/pages/Paywall.tsx
@@ -9899,7 +10027,10 @@ msgstr ""
 msgid "Work this bot repeats for you, like a cash check every Monday."
 msgstr ""
 
+#: src/lib/devin-format.ts
 #: src/pages/ActivityList.tsx
+#: src/pages/Devin.tsx
+#: src/pages/devin/DevinSessions.tsx
 msgid "Working"
 msgstr ""
 
