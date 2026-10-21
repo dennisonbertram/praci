@@ -187,7 +187,8 @@ button:focus-visible {
   color: var(--fg);
 }
 #status:empty {
-  display: none;
+  min-height: 0;
+  margin: 0;
 }
 #status {
   margin: 12px 0 0;
