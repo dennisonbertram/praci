@@ -14,7 +14,13 @@ const samples: Item[] = [
   { id: "n5", title: "New file in the data room", body: "Board deck v2" },
 ];
 
-type Item = { id: string; title: string; body?: string; withBot?: boolean };
+type Item = {
+  id: string;
+  title: string;
+  body?: string;
+  withBot?: boolean;
+  action?: string;
+};
 
 const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
 const formatTime = (iso: string) => `${Math.round((Date.now() - Date.parse(iso)) / 60_000)}m ago`;
@@ -38,9 +44,10 @@ function Demo({ items, expanded = false }: { items: Item[]; expanded?: boolean }
     return () => clearTimeout(timer);
   }, [expanded]);
   useEffect(() => {
-    for (const { withBot, ...item } of items)
+    for (const { withBot, action, ...item } of items)
       enqueueNotificationToast({
         ...item,
+        action: action ? { label: action, onClick: () => {} } : undefined,
         timeout: 0,
         href: "/demo",
         avatar: withBot ? botAvatar : undefined,
@@ -112,5 +119,33 @@ export const LongText: Story = {
       title: "A very long notification title that keeps going well past one line of the toast card",
       body: "A long body with an unbrokenstringthatcouldoverflowthecardifwrappingwerenothandledproperly and then some more words to fill several lines of text in the card.",
     },
+  ]),
+};
+
+/** A toast with an action stays until it is used or dismissed. */
+export const UndoAction: Story = {
+  args: { onOpen: () => {} },
+  render: render([{ id: "undo", title: "Deleted Ada Example", action: "Undo" }]),
+};
+export const UndoWithLongName: Story = {
+  args: { onOpen: () => {} },
+  render: render([
+    {
+      id: "undo-long",
+      title: "Deleted Alexandria Bartholomew Montgomery-Fitzgerald of Invented Holdings Ltd",
+      action: "Undo",
+    },
+  ]),
+};
+export const FailedRestore: Story = {
+  args: { onOpen: () => {} },
+  render: render([{ id: "restore", title: "Could not restore Ada Example", action: "Try again" }]),
+};
+/** The toast with an action moves in front of the one that arrived after it. */
+export const UndoBehindAgentToast: Story = {
+  args: { onOpen: () => {} },
+  render: render([
+    { id: "undo-first", title: "Deleted Ada Example", action: "Undo" },
+    { id: "agent", title: "Ledger agent finished", body: "Nothing was changed.", withBot: true },
   ]),
 };

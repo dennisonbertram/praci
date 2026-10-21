@@ -20,16 +20,21 @@ export const ContactSchema = z.object({
   organization: z.string().nullable(),
   kind: ContactKindSchema,
   notes: z.string().nullable(),
+  /** The agent that added the contact; null for a contact added by hand. */
+  addedBy: z.object({ id: Id, name: z.string() }).nullable(),
   createdAt: IsoDate,
   updatedAt: IsoDate,
 });
 export type Contact = z.infer<typeof ContactSchema>;
 
+/** An email address as the server accepts it: trimmed, lower-cased, well-formed. */
+export const ContactEmailSchema = z.string().trim().toLowerCase().pipe(z.email());
+
 /** Create, or update when `id` is given or `email` matches the user's contact. Null clears a field; omitted keeps it. */
 export const ContactSaveInputSchema = z.object({
   id: Id.optional(),
   name: z.string().trim().min(1).max(200),
-  email: z.string().trim().toLowerCase().pipe(z.email()).nullish(),
+  email: ContactEmailSchema.nullish(),
   organization: z.string().trim().max(200).nullish(),
   kind: ContactKindSchema.optional(),
   notes: z.string().trim().max(5000).nullish(),
