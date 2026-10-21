@@ -87,6 +87,7 @@ import {
   CALL_CLIENT_NONCE_PREFIX,
   callIdFromClientNonce,
   connectorKindFromToolName,
+  connectorToolRequiresApproval,
   containsSecret,
   createStreamingRedactor,
   deniedConnectionIds,
@@ -378,6 +379,14 @@ import {
   needsOAuthProbe,
   parseMcpServerToolArgs,
 } from "./mcp-server-tool.js";
+import {
+  isMeetingSourceAgent,
+  MEETING_AGENT_BUILTIN_TOOLS,
+  MEETING_CONSENT_OFF,
+  MEETING_TOOL_NAMES,
+  meetingToolFromTool,
+  wrapMeetingNotes,
+} from "./meeting-tools.js";
 import { loadAgentMemoryContext } from "./memory-context.js";
 import type { MemoryProviderResolver } from "./memory-provider-factory.js";
 import { selectMemoryTools } from "./memory-tools.js";
@@ -538,6 +547,9 @@ export const READ_ONLY_AGENT_TOOLS = new Set([
   "run_subagent",
   "task_catalog",
   "recall_memory",
+  "meetings_list",
+  "meetings_search",
+  "meetings_get",
   "schedule_list",
   "schedule_runs",
   "scratchpad_list",
@@ -1420,7 +1432,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           thread,
           loadedMessages,
           peerMessage,
-          task,
+          loadedTask,
           storedConnections,
           defaultCredential,
           settings,
@@ -1488,9 +1500,50 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // Outside the owner's private chat Elio may not see its private history or summaries,
         // the same boundary its private-read tools have: keep only the triggering message.
         const hidePrivateVoiceHistory = voiceAgent && !voiceWorkspaceReadAllowed;
-        const messages = hidePrivateVoiceHistory
-          ? loadedMessages.filter((message) => message.id === run.sourceMessageId)
+        // The sender is a bot of this space and user. Not enough alone: a foreign bot or channel
+        // may have started the chain, so the message must also carry the owner's own origin.
+        const senderBot =
+          run.trigger === "bot_message" && peerMessage?.fromBotId
+            ? await deps.prisma.bot.findFirst({
+                where: {
+                  id: peerMessage.fromBotId,
+                  spaceId: run.spaceId,
+                  userId: bot.userId,
+                  archivedAt: null,
+                },
+                select: { id: true, spaceId: true, userId: true, spawnKey: true, archivedAt: true },
+              })
+            : null;
+        const senderInScope = Boolean(senderBot);
+        // A reply from a meeting-source agent carries untrusted meeting text. Wrap it for the model,
+        // and treat the whole run as holding it (see meetingTaint at the approval gate).
+        const meetingTaint = senderBot
+          ? await isMeetingSourceAgent(senderBot, { prisma: deps.prisma })
+          : false;
+        // The wake prompt carries the reply body (already escaped); mark that body as meeting text too.
+        const task = meetingTaint
+          ? {
+              ...loadedTask,
+              prompt: loadedTask.prompt.replace(
+                /(<bot_message from="[^\n]*">\n)([\s\S]*)(\n<\/bot_message>)/,
+                (_all, open: string, body: string, close: string) =>
+                  `${open}${wrapMeetingNotes(body)}${close}`,
+              ),
+            }
+          : loadedTask;
+        const meetingWrappedMessages = meetingTaint
+          ? loadedMessages.map((message) => ({
+              ...message,
+              blocks: (message.blocks as MessageBlock[]).map((block) =>
+                block.kind === "bot_message_received" && block.fromBotId === senderBot!.id
+                  ? { ...block, text: wrapMeetingNotes(block.text) }
+                  : block,
+              ),
+            }))
           : loadedMessages;
+        const messages = hidePrivateVoiceHistory
+          ? meetingWrappedMessages.filter((message) => message.id === run.sourceMessageId)
+          : meetingWrappedMessages;
         const historySearchBeforeSeq =
           contextStrategy !== "current" && run.sourceMessageId
             ? (messages.find((message) => message.id === run.sourceMessageId)?.seq ??
@@ -1564,6 +1617,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const legalOnly = isLegalAgentSpawnKey(bot.spawnKey);
         // The Data room agent gets a fixed list of built-ins and no connector tools.
         const dataRoomAgent = isDataRoomAgentSpawnKey(bot.spawnKey);
+        // A meeting-source agent reads untrusted meeting text, so it gets a fixed list of built-ins.
+        const meetingAgent = await isMeetingSourceAgent(bot, { prisma: deps.prisma });
         // Connections limited to chosen agents stay out of this run unless the bot was granted access.
         const deniedIds = deniedConnectionIds(storedConnections);
         const ordinaryAllowedConnections = storedConnections.filter(
@@ -2126,22 +2181,6 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }).then((accounts) => accounts.filter((a) => visibleToIdentity(a.id)));
           return calendarAccountsPromise;
         };
-        // The sender is a bot of this space and user. Not enough alone: a foreign bot or channel
-        // may have started the chain, so the message must also carry the owner's own origin.
-        const senderInScope =
-          run.trigger === "bot_message" &&
-          Boolean(peerMessage?.fromBotId) &&
-          Boolean(
-            await deps.prisma.bot.findFirst({
-              where: {
-                id: peerMessage!.fromBotId,
-                spaceId: run.spaceId,
-                userId: bot.userId,
-                archivedAt: null,
-              },
-              select: { id: true },
-            }),
-          );
         // Whether what this run sends on is owner-originated: the owner in a direct chat, or a
         // same-owner bot answering a message that was.
         const ownerOriginRun =
@@ -2399,6 +2438,22 @@ export function createRunExecutor(deps: ExecutorDeps) {
             trigger: run.trigger,
             messagingChannelRun,
           });
+        // Owner-initiated runs only (the owner's message, or a bot_message from the owner's own
+        // agent), and only with the AI data sharing consent mail needs. Without it the agent has no
+        // meetings_* tool and no live MCP tool either, so MCP cannot read meetings around the gate.
+        const meetingsEnabled =
+          meetingAgent &&
+          mailToolsAllowed({
+            hasProvider: true,
+            groupId: thread.groupId,
+            runUserId: run.userId,
+            botUserId: bot.userId,
+            messagingChannelRun,
+            trigger: run.trigger,
+            ownerAgentPeer: senderInScope && peerMessage?.ownerOrigin === true,
+          }) &&
+          !(await inboxMailConsentBlock());
+        const meetingAgentToolSet: ReadonlySet<string> = new Set(MEETING_AGENT_BUILTIN_TOOLS);
         const financeEnabled =
           financeToolsAllowed({
             ownerAgentPeer: financeAgentPeer,
@@ -2464,6 +2519,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             legalEnabled,
             contactsEnabled,
             capTableEnabled,
+            meetingsEnabled,
             messagingChannelRun,
             cartaAgent,
             integrationAgent: integrationAgent || appAgentIdentity,
@@ -2488,7 +2544,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
         ].filter(
           (tool) =>
             (!legalOnly || legalToolSet.has(tool.name)) &&
-            (!dataRoomAgent || dataRoomAgentToolSet.has(tool.name)),
+            (!dataRoomAgent || dataRoomAgentToolSet.has(tool.name)) &&
+            (!meetingAgent || meetingAgentToolSet.has(tool.name)),
         );
         // Generic connector tools (Composio, Pipedream, MCP) reach the owner's accounts, so a run
         // another agent started (bot_message, possibly from another account) gets none of them.
@@ -2548,6 +2605,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         }
         const exposedConnectorTools =
           !voiceAgent &&
+          (!meetingAgent || meetingsEnabled) &&
           (run.trigger !== "bot_message" || integrationPeerRun || connectedAppPeerRun)
             ? (peerDiscovered ?? discovered).filter(
                 (tool) =>
@@ -3100,8 +3158,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
           )
             ? callRoute?.toolName
             : undefined;
+          // A run that read a meeting agent's reply holds untrusted meeting text: every call that
+          // writes, sends or reaches the network asks, on a card that cannot become a saved rule.
+          const meetingTaintedCall =
+            meetingTaint && meetingTaintRequiresApproval(name, viaConnector, declaredReadOnly);
           const requiresMandatoryApproval =
             requiresUnattendedApproval ||
+            meetingTaintedCall ||
             toolRequiresExplicitApproval(name) ||
             // No saved rule or Auto Review may send mail for the Carta agent (investor email).
             isCartaMailSend(bot.spawnKey, name) ||
@@ -3177,17 +3240,18 @@ export function createRunExecutor(deps: ExecutorDeps) {
               ? approvalEffectKey(runId, replayEffectToolName, args)
               : toolEffectIdempotencyKey(runId, replayEffectToolName, args, occurrence);
           // Connector read-only hints must not bypass approval, review, or replay decisions.
-          const applied = READ_ONLY_AGENT_TOOLS.has(name)
-            ? undefined
-            : await recordEffect(
-                deps,
-                run,
-                replayEffectToolName,
-                effectKey,
-                effectRequest,
-                executionId,
-                consumedEffectIds,
-              );
+          const applied =
+            READ_ONLY_AGENT_TOOLS.has(name) && !meetingTaintedCall
+              ? undefined
+              : await recordEffect(
+                  deps,
+                  run,
+                  replayEffectToolName,
+                  effectKey,
+                  effectRequest,
+                  executionId,
+                  consumedEffectIds,
+                );
 
           const runAutoReview = async () => {
             if (!injectedReview && !checker) return;
@@ -3461,6 +3525,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               reviewReason,
               fullMail: isCartaMailSend(bot.spawnKey, name),
               integrationWriteTool,
+              noAlwaysAllow: meetingTaintedCall,
               serviceName: callRoute?.serverName,
               mailAccount: await approvalMailAccount(),
               imessage: imessageCard,
@@ -4414,6 +4479,20 @@ export function createRunExecutor(deps: ExecutorDeps) {
                     read,
                   )
                 : await read(),
+            );
+          }
+          if (MEETING_TOOL_NAMES.has(name) && meetingsEnabled) {
+            return finish(
+              await meetingToolFromTool(
+                name,
+                {
+                  prisma: deps.prisma,
+                  // From the run, never from model input.
+                  scope: { spaceId: run.spaceId, userId: bot.userId },
+                  consentAllowed: async () => !(await inboxMailConsentBlock()),
+                },
+                args,
+              ),
             );
           }
           if (DATA_ROOM_TOOL_NAMES.has(name) && deps.artifacts && dataRoomEnabled) {
@@ -5675,6 +5754,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
               )
             ) {
               return { error: `unknown tool ${name}` };
+            }
+            // A meeting-source agent reaches its live MCP tools only where meetings_* is offered, and
+            // with consent read again now, so the live path cannot read meetings around the gate.
+            if (meetingAgent && (!meetingsEnabled || (await inboxMailConsentBlock()))) {
+              return { error: MEETING_CONSENT_OFF };
             }
             let result: unknown = { error: `unknown tool ${name}` };
             // Reads the connection's switch, agent link and exclusivity from the database. It runs
@@ -7001,6 +7085,22 @@ const OWNER_PEER_WRITE_TOOLS = new Set([
   "drive_update_file",
 ]);
 
+/** Built-ins that reach the network but are listed as reads. */
+const NETWORK_READ_TOOLS = new Set(["web_fetch", "web_search"]);
+/** Built-ins that only ask the owner a question or show something to them. */
+const PLAIN_REPLY_TOOLS = new Set(["ask_user"]);
+
+/** Whether a call is a write, a send or an outbound-network request, for a run holding meeting text. */
+function meetingTaintRequiresApproval(
+  name: string,
+  viaConnector: boolean,
+  declaredReadOnly: boolean | undefined,
+): boolean {
+  if (viaConnector) return connectorToolRequiresApproval(name, declaredReadOnly);
+  if (PLAIN_REPLY_TOOLS.has(name)) return false;
+  return NETWORK_READ_TOOLS.has(name) || !READ_ONLY_AGENT_TOOLS.has(name);
+}
+
 const CARTA_BLOCKED_DELEGATION_TOOLS = new Set([
   "spawn_bot",
   "message_bot",
@@ -7038,6 +7138,8 @@ export function selectBuiltinToolsForRun(options: {
   contactsEnabled?: boolean;
   /** The Carta agent on a run its owner started: the Cap Table tools are offered. */
   capTableEnabled?: boolean;
+  /** A meeting-source agent on an owner-initiated run with AI data sharing allowed. */
+  meetingsEnabled?: boolean;
   messagingChannelRun: boolean;
   /** The Carta agent: no delegation to other bots, whose runs would skip its mail approval. */
   cartaAgent?: boolean;
@@ -7096,6 +7198,7 @@ export function selectBuiltinToolsForRun(options: {
       (options.legalEnabled || !LEGAL_GATED_TOOL_NAMES.has(tool.name)) &&
       (options.contactsEnabled || !CONTACT_ONLY_TOOL_NAMES.has(tool.name)) &&
       (options.capTableEnabled || !CAP_TABLE_TOOL_NAMES.has(tool.name)) &&
+      (options.meetingsEnabled || !MEETING_TOOL_NAMES.has(tool.name)) &&
       (options.dataRoomEnabled || !DATA_ROOM_TOOL_NAMES.has(tool.name)) &&
       !(
         (options.cartaAgent || options.integrationAgent) &&
