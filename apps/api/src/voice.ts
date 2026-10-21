@@ -79,17 +79,16 @@ export async function findTranscriptionSelection(deps: VoiceDeps, actor: Actor) 
   return deps.prisma.transcriptionSelection.findUnique({ where: { userId: actor.userId } });
 }
 
-/** The selected transcription provider and its key, or null when nothing is selected. */
+/** The selected provider, with its key or null when the key is unavailable; null when nothing is selected. */
 async function loadTranscriptionSelection(deps: VoiceDeps, actor: Actor) {
   const selection = await findTranscriptionSelection(deps, actor);
   if (!selection) return null;
   const secret = await deps.prisma.secret.findFirst({
     where: { id: selection.secretId, userId: actor.userId, spaceId: null },
   });
-  if (!secret) return null;
   return {
     provider: selection.provider,
-    apiKey: await deps.secrets.load(secret.ciphertext, secret.id),
+    apiKey: secret ? await deps.secrets.load(secret.ciphertext, secret.id) : null,
   };
 }
 
@@ -493,22 +492,22 @@ export async function transcribeVoice(
   // The server picks the provider; clients only upload. A selected provider is used only with its
   // recipient's consent, otherwise the voice provider (also needing consent while a selection
   // exists). Without a selection, behaviour is unchanged: the voice provider, no consent check.
+  // A selection row whose key is unavailable (for example mid-replacement) still follows the
+  // selection rules, so audio never skips the consent check.
   const selected = await loadTranscriptionSelection(deps, actor);
-  const selectedAllowed = selected
-    ? await hasVoiceConsent(deps.prisma, actor, selected.provider)
-    : false;
   let target: { provider: string; apiKey: string } | null = null;
-  if (selected && selectedAllowed) target = selected;
-  else {
+  // One consent decision for the chosen provider, used for both audio and context.
+  let consented = false;
+  if (selected?.apiKey && (await hasVoiceConsent(deps.prisma, actor, selected.provider))) {
+    target = { provider: selected.provider, apiKey: selected.apiKey };
+    consented = true;
+  } else {
     const loaded = await loadDefaultVoiceCredential(deps, actor);
     if (loaded) target = { provider: loaded.cred.provider, apiKey: loaded.apiKey };
-  }
-  if (
-    selected &&
-    !selectedAllowed &&
-    !(target && (await hasVoiceConsent(deps.prisma, actor, target.provider)))
-  ) {
-    throw new ORPCError("CONFLICT", { message: "AI data sharing needs your permission." });
+    if (target) consented = await hasVoiceConsent(deps.prisma, actor, target.provider);
+    if (selected && !consented) {
+      throw new ORPCError("CONFLICT", { message: "AI data sharing needs your permission." });
+    }
   }
   if (!target) throw new NoVoiceConfigured("key");
   const { apiKey } = target;
@@ -520,9 +519,7 @@ export async function transcribeVoice(
   }
   // Context goes only to a provider that uses it and whose recipient has consented.
   const context =
-    input.context &&
-    provider.describe().capabilities.usesContext &&
-    (await hasVoiceConsent(deps.prisma, actor, target.provider))
+    input.context && consented && provider.describe().capabilities.usesContext
       ? input.context
       : undefined;
   if (input.audio.byteLength === 0 || input.audio.byteLength > MAX_TRANSCRIBE_BYTES) {

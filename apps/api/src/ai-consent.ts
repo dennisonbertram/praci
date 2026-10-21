@@ -104,7 +104,7 @@ export async function aiConsentStatus(
     deps.prisma.aiDataConsent.findMany({
       where: { userId: actor.userId, spaceId: actor.spaceId, version: AI_DISCLOSURE_VERSION },
     }),
-    uses.includes("voice")
+    uses.includes("voice") && !query.uses
       ? deps.prisma.transcriptionSelection.findUnique({ where: { userId: actor.userId } })
       : null,
   ]);
@@ -226,6 +226,7 @@ export async function aiConsentStatus(
   for (const voice of voices)
     add(aiRecipient({ provider: voice.credential.provider, use: "voice" }));
   // A selected transcription provider receives dictation audio, so it is a recipient of its own.
+  // It is listed in settings discovery only, not in targeted checks such as speech playback.
   if (transcription) add(aiRecipient({ provider: transcription.provider, use: "voice" }));
   if (memory)
     add(

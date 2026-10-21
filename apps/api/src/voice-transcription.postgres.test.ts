@@ -8,6 +8,7 @@ import {
   withSecretPersistence,
 } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
+import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -369,6 +370,96 @@ describePostgres("transcription selection (PostgreSQL)", () => {
       expect(spy).not.toHaveBeenCalled();
       await prisma.secret.deleteMany({ where: { id: secret.id } });
       await cleanup();
+    });
+
+    const openaiKey = () => aiRecipient({ provider: "openai", use: "voice" })?.key as string;
+    const addOpenai = async (consented: boolean) => {
+      const secret = await prisma.secret.create({
+        data: { id: id(`oa-${Math.random()}`), userId: userA, kind: "voice", ciphertext: "enc:k" },
+      });
+      const cred = await prisma.userVoiceCredential.create({
+        data: { userId: userA, provider: "openai", secretId: secret.id },
+      });
+      await prisma.spaceVoicePreference.create({
+        data: { spaceId, userId: userA, credentialId: cred.id, voiceId: "alloy", isDefault: true },
+      });
+      if (consented) {
+        await prisma.aiDataConsent.create({
+          data: {
+            userId: userA,
+            spaceId,
+            recipientKey: openaiKey(),
+            version: AI_DISCLOSURE_VERSION,
+          },
+        });
+      }
+      return secret.id;
+    };
+    const dropOpenai = async (secretId: string) => {
+      await prisma.aiDataConsent.deleteMany({
+        where: { userId: userA, recipientKey: openaiKey() },
+      });
+      await prisma.secret.deleteMany({ where: { id: secretId } });
+    };
+
+    it("falls back to a consented voice provider that shares data, sending nothing to the selection", async () => {
+      await select();
+      await revoke();
+      const secretId = await addOpenai(true);
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(new Response(JSON.stringify({ text: "from openai" })));
+      vi.stubGlobal("fetch", fetchMock);
+      const spy = calls();
+      try {
+        await expect(transcribeVoice(deps(), actor(userA), audio)).resolves.toEqual({
+          text: "from openai",
+        });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(spy).not.toHaveBeenCalled();
+      } finally {
+        vi.unstubAllGlobals();
+        await dropOpenai(secretId);
+        await cleanup();
+      }
+    });
+
+    it("fails closed when the selection's key is unavailable", async () => {
+      await select();
+      const row = await prisma.transcriptionSelection.findUniqueOrThrow({
+        where: { userId: userA },
+      });
+      await prisma.secret.deleteMany({ where: { id: row.secretId } });
+      const secretId = await addOpenai(false);
+      const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ text: "x" })));
+      vi.stubGlobal("fetch", fetchMock);
+      try {
+        await expect(transcribeVoice(deps(), actor(userA), audio)).rejects.toThrow(
+          "AI data sharing needs your permission.",
+        );
+        expect(fetchMock).not.toHaveBeenCalled();
+      } finally {
+        vi.unstubAllGlobals();
+        await dropOpenai(secretId);
+        await cleanup();
+      }
+    });
+
+    it("does not list the transcriber in a targeted speech check", async () => {
+      await select();
+      await revoke();
+      const secretId = await addOpenai(true);
+      try {
+        const status = await aiConsentStatus(
+          { prisma, secrets, env: { agentRuntime: "scripted" } } as never,
+          actor(userA),
+          { uses: ["voice"] },
+        );
+        expect(status.recipients.map((r) => r.key)).toEqual([openaiKey()]);
+      } finally {
+        await dropOpenai(secretId);
+        await cleanup();
+      }
     });
 
     it("strips context for a provider that ignores it or has no consent", async () => {
