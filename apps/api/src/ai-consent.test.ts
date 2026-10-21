@@ -3,6 +3,11 @@ import type { Actor } from "@rakazo/contracts";
 import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const queueMeetingDigests = vi.hoisted(() => vi.fn(async () => 0));
+vi.mock("@rakazo/adapters", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@rakazo/adapters")>()),
+  queueMeetingDigests,
+}));
 vi.mock("./thread-target.js", () => ({
   resolveThreadTarget: async () => ({ kind: "bot", botId: "bot" }),
 }));
@@ -25,6 +30,7 @@ function setup() {
         findFirst: vi.fn(async () => ({ credential: { provider: "openai" }, voiceId: "alloy" })),
         findMany: vi.fn(async () => [{ credential: { provider: "openai" } }]),
       },
+      transcriptionSelection: { findUnique: vi.fn(async () => null) },
       spaceMemoryConfig: { findUnique: vi.fn(async () => null) },
       deploymentSettings: { findUnique: vi.fn(async () => null) },
       aiDataConsent: { findMany: vi.fn(async () => []), upsert },
@@ -123,6 +129,20 @@ describe("consent grants", () => {
     expect(status.recipients).toHaveLength(1);
     expect(status.recipients[0]?.name).toBe("OpenAI");
     expect(deps.prisma.spaceVoicePreference.findMany).not.toHaveBeenCalled();
+  });
+  it("queues meeting digests after a grant with only the space and user, not the whole actor", async () => {
+    const { deps, actor } = setup();
+    const full = { ...actor, email: "me@example.test", isDeploymentOwner: false } as Actor;
+    const current = await aiConsentStatus(deps, full);
+    await allowAiConsent(deps, full, {
+      scope: current.scope,
+      version: current.version,
+      keys: [current.recipients[0]!.key],
+    });
+    expect(queueMeetingDigests).toHaveBeenCalledWith(deps, {
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+    });
   });
   it("returns an operator policy without requiring a hosted provider", async () => {
     const { deps, actor } = setup();

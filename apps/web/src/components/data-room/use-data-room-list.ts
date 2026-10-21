@@ -14,6 +14,8 @@ export type Filters = {
   source?: string;
   /** Only "failed", set from the failed count. */
   status?: string;
+  /** Only documents the Legal agent has not checked; set by the Legal page's link. */
+  legalUnchecked?: boolean;
   docDateFrom?: string;
   docDateTo?: string;
 };

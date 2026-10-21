@@ -66,6 +66,11 @@ export const Section: Story = {
   beforeEach: () => mockRpc({ "aiConsent.status": status(false) }),
 };
 
+export const SectionLoading: Story = {
+  ...Section,
+  beforeEach: () => mockRpc({ "aiConsent.status": () => new Promise(() => undefined) }),
+};
+
 export const SectionHiddenWhenEmpty: Story = {
   render: () => (
     <div className="w-[480px] text-sm text-muted-foreground">

@@ -147,13 +147,13 @@ describe("company focus", () => {
         (block as { kind: string }).kind === "text" ? [(block as { text: string }).text] : [],
       ),
     );
-    expect(texts.at(-1)).toContain("[Finance](/app/finance) and [Cap table](/app/cap-table)");
-    expect(texts.at(-1)).toContain("[Data room](/app/data-room)");
     // One sentence above the cards, not three bubbles that all say connect.
     expect(texts[0]).toBe(
       "Got it. Email, calendar, and your company pages. Connect Gmail and Google Calendar here and I’ll use what you already have.",
     );
-    expect(posted).toHaveLength(3);
+    // One bubble and the cards; the page note is only for the no-cards reply.
+    expect(texts).toHaveLength(1);
+    expect(posted).toHaveLength(2);
   });
 });
 

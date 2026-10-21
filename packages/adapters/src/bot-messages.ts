@@ -19,6 +19,7 @@ import {
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import type { ExecutorDeps } from "./executor.js";
+import { markMeetingTaintOnDelivery } from "./meeting-tools.js";
 
 /**
  * The hop the current run sits at, read back from the message that woke this
@@ -253,6 +254,13 @@ export async function messageBot(
             ? { ownerOrigin: true }
             : {}),
         };
+        await markMeetingTaintOnDelivery(tx, {
+          spaceId: run.spaceId,
+          userId: run.userId,
+          senderBotId: sender.id,
+          sourceThreadId: run.threadId,
+          targetThreadId,
+        });
         const inbound = await createThreadMessageInTransaction(tx, {
           threadId: targetThreadId,
           role: "user",

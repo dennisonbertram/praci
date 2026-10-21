@@ -101,8 +101,15 @@ export function InboxConsentPrompt({
   );
 }
 
-/** "vendor/gpt-6-luna, forwarded to its provider" -> "gpt-6-luna". */
-const modelLabel = (detail: string) => detail.split(",")[0]?.split("/").pop()?.trim() ?? "";
+/** "vendor/gpt-6-luna, forwarded to its provider" -> "GPT-6 Luna". */
+export const modelLabel = (detail: string) =>
+  (detail.split(",")[0]?.split("/").pop() ?? "")
+    .trim()
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((word) => (/^gpt$/i.test(word) ? "GPT" : word.charAt(0).toUpperCase() + word.slice(1)))
+    .join(" ")
+    .replace(/^GPT (?=\d)/, "GPT-");
 
 /** One switch per AI model that receives data; hidden when there is none or it cannot load. */
 export function AiDataSharingSection() {
@@ -123,8 +130,7 @@ export function AiDataSharingSection() {
     };
   }, []);
 
-  if (recipients === null) return <Skeleton aria-busy="true" className="h-[132px] rounded-xl" />;
-  if (recipients.length === 0) return null;
+  if (recipients?.length === 0) return null;
   const set = (recipient: AiRecipient, allowed: boolean) => {
     setPending(true);
     setError("");
@@ -151,8 +157,12 @@ export function AiDataSharingSection() {
           {error}
         </p>
       ) : null}
-      <ul className="mt-3 flex flex-col gap-3">
-        {recipients.map((recipient) => {
+      <ul className="mt-3 flex flex-col gap-3" aria-busy={recipients === null}>
+        {/* The text above is fixed, so only the rows wait; two is the usual count. */}
+        {recipients === null
+          ? [0, 1].map((n) => <Skeleton key={n} className="h-10 rounded-md" />)
+          : null}
+        {recipients?.map((recipient) => {
           const model = modelLabel(recipient.detail) || recipient.name;
           return (
             <li key={recipient.key} className="flex items-center gap-3">

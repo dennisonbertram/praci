@@ -113,7 +113,10 @@ export function DataRoomPage({
   const query = queryInput.trim() === "" ? "" : debouncedQuery;
   // The open folder lives in the URL and nothing else does: a reload, a bookmark, a shared link or
   // the Back button opens the folder again. The other filters are page state.
-  const [otherFilters, setOtherFilters] = useState<Omit<Filters, "folderId">>({});
+  const [otherFilters, setOtherFilters] = useState<Omit<Filters, "folderId">>(
+    // The Legal page links here to list the documents it has not checked.
+    () => (params.get("legal") === "unchecked" ? { legalUnchecked: true } : {}),
+  );
   const filters = useMemo<Filters>(
     () => (urlFolder ? { ...otherFilters, folderId: urlFolder } : otherFilters),
     [otherFilters, urlFolder],

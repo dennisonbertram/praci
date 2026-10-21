@@ -363,6 +363,14 @@ export function FilterBar({
             onChange={(status) => onFilters({ ...filters, status })}
           />
         ) : null}
+        {filters.legalUnchecked ? (
+          <PickFilter
+            label={t`Legal`}
+            value="unchecked"
+            options={[["unchecked", t`Not checked`]]}
+            onChange={() => onFilters({ ...filters, legalUnchecked: undefined })}
+          />
+        ) : null}
         {sources.length > 1 || filters.source ? (
           <PickFilter
             label={t`Source`}

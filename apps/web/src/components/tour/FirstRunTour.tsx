@@ -1,9 +1,19 @@
 import { useLingui } from "@lingui/react/macro";
-import type { Me } from "@rakazo/contracts";
+import type { Me, ThreadSnapshot } from "@rakazo/contracts";
 import { useCallback, useMemo } from "react";
 import { rpc } from "../../lib/rpc";
 import type { TourStep } from "./TourPopover";
 import { TourPopover } from "./TourPopover";
+
+/** True while a Connect card waits for an answer: still pending, and the user has not written since. */
+export function connectCardsOpen(messages: ThreadSnapshot["messages"]) {
+  const lastUser = messages.findLastIndex((message) => message.role === "user");
+  return messages.some(
+    (message, i) =>
+      i > lastUser &&
+      message.blocks.some((block) => block.kind === "app_connect" && block.status === "pending"),
+  );
+}
 
 /**
  * The first-run tour. It runs when `open` is true; finishing or skipping it records `tourSeen`

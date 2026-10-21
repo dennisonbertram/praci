@@ -92,18 +92,23 @@ export function LegalDeadlines({
       ) : null}
     </p>
   ) : null;
-  const undoBar = undo ? (
-    <p role="status" className="mb-2 flex items-center gap-2 text-sm">
-      {undo.status === "done" ? (
-        <Trans>Marked {maskCurrencyWhenHidden(undo.deadline.title)} done.</Trans>
-      ) : (
-        <Trans>Dismissed {maskCurrencyWhenHidden(undo.deadline.title)}.</Trans>
-      )}
-      <Button size="sm" variant="ghost" onClick={() => void reopen()}>
-        <Trans>Undo</Trans>
-      </Button>
-    </p>
-  ) : null;
+  // The slot keeps its height when the line goes, so the list below never jumps.
+  const undoBar = (
+    <div role="status" className="mb-2 flex h-8 items-center gap-2 text-sm">
+      {undo ? (
+        <>
+          {undo.status === "done" ? (
+            <Trans>Marked {maskCurrencyWhenHidden(undo.deadline.title)} done.</Trans>
+          ) : (
+            <Trans>Dismissed {maskCurrencyWhenHidden(undo.deadline.title)}.</Trans>
+          )}
+          <Button size="sm" variant="ghost" onClick={() => void reopen()}>
+            <Trans>Undo</Trans>
+          </Button>
+        </>
+      ) : null}
+    </div>
+  );
   if (open.length === 0) {
     return (
       <div>

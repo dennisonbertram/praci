@@ -1,6 +1,7 @@
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import { useEffect } from "react";
+import { Linking } from "react-native";
 import { loadSessionToken, selectedSpaceId, selectSpace } from "./api";
 import {
   notificationResponseRoute,
@@ -60,13 +61,18 @@ export async function openNotificationResponse(
     // Threads switch space themselves. Pages open in the current space, so move to the
     // notification's space first; otherwise the wrong space's page opens and is cleared.
     const spaceId = notificationSpaceId(response.notification.request.content.data);
-    if (spaceId && target?.pathname !== "/thread" && target?.pathname !== "/group-thread") {
+    const opensThread =
+      target &&
+      "pathname" in target &&
+      (target.pathname === "/thread" || target.pathname === "/group-thread");
+    if (spaceId && !opensThread) {
       if (spaceId !== selectedSpaceId() && !(await selectSpace(spaceId))) {
         openedResponses.delete(key);
         return false;
       }
     }
-    if (target) router.push(target);
+    if (target && "kind" in target) await Linking.openURL(target.url);
+    else if (target) router.push(target);
     if (surface) void markSurfaceSeen(surface);
     clearNotificationResponseIfCurrent(response);
     return true;

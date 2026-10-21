@@ -10,6 +10,10 @@ export const SLASH_SKILL_LIMIT = 8;
  */
 const HIDDEN_BUILTIN_SKILLS = new Set(["Interrogate", "inbox-search"]);
 
+export function isHiddenBuiltinSkill(skill: Pick<AgentSkillCatalogEntry, "name" | "source">) {
+  return skill.source === "builtin" && HIDDEN_BUILTIN_SKILLS.has(skill.name);
+}
+
 /** A plain-language title and line for a bundled skill, whose stored name is a slug. */
 export function slashSkillLabel(
   skill: Pick<AgentSkillCatalogEntry, "name" | "description" | "source">,
@@ -84,7 +88,7 @@ export function slashSkillOptions(
 ): AgentSkillCatalogEntry[] {
   const needle = query.trim().toLowerCase();
   const matches = skills.filter((skill) => {
-    if (skill.source === "builtin" && HIDDEN_BUILTIN_SKILLS.has(skill.name)) return false;
+    if (isHiddenBuiltinSkill(skill)) return false;
     if (!needle) return true;
     const label = slashSkillLabel(skill);
     return [skill.name, label.title, label.description].some((text) =>
