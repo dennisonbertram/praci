@@ -34,7 +34,7 @@ const memoryList = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/rpc", () => ({ rpc: { memory: { list: memoryList } } }));
 
 import type { Bot } from "@rakazo/contracts";
-import { DeleteBotDialog, RenameSpaceDialog } from "./dialogs";
+import { DeleteBotDialog, RenameBotSectionDialog, RenameSpaceDialog } from "./dialogs";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -102,6 +102,25 @@ describe("RenameSpaceDialog", () => {
     });
     await submit("Support");
     expect(container.textContent).toContain("Space deletion is already in progress");
+  });
+});
+
+describe("RenameBotSectionDialog", () => {
+  it("refuses a name another folder already has without sending it", async () => {
+    const onConfirm = vi.fn(async () => undefined);
+    await act(async () => {
+      root.render(
+        <RenameBotSectionDialog
+          section={{ name: "Ops" }}
+          takenNames={["Ops", "Sales"]}
+          onCancel={() => undefined}
+          onConfirm={onConfirm}
+        />,
+      );
+    });
+    await submit("Sales");
+    expect(container.textContent).toContain("A folder with that name already exists");
+    expect(onConfirm).not.toHaveBeenCalled();
   });
 });
 

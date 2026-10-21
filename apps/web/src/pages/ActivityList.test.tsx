@@ -93,3 +93,23 @@ it("says nothing needs the founder when only finished runs exist", async () => {
   expect(container.textContent).toContain("Nothing needs you right now.");
   expect(container.textContent).toContain("Show 1 finished run");
 });
+
+it("keeps the Activity header and Filter toggle visible while the filter form is open", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  api.runs.list.mockImplementation(async ({ filter }: { filter: string }) => ({
+    runs: filter === "active" ? [run("a", "waiting_input")] : [],
+  }));
+  const container = document.createElement("div");
+  document.body.append(container);
+  await act(async () => createRoot(container).render(view()));
+
+  const toggle = () =>
+    container.querySelector<HTMLButtonElement>('[data-testid="activity-show-filters"]');
+  await act(async () => toggle()?.click());
+  expect(container.querySelector('[data-testid="activity-status-filter"]')).not.toBeNull();
+  expect(container.querySelector("h2")?.textContent).toBe("Activity");
+  expect(toggle()?.getAttribute("aria-expanded")).toBe("true");
+
+  await act(async () => toggle()?.click());
+  expect(container.querySelector('[data-testid="activity-status-filter"]')).toBeNull();
+});
