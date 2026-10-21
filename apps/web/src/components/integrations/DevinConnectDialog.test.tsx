@@ -23,6 +23,7 @@ import { DevinConnectDialog } from "./DevinConnectDialog";
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 const onClose = vi.fn();
+const onConnected = vi.fn();
 function Where() {
   return <output data-testid="where">{useLocation().pathname}</output>;
 }
@@ -33,7 +34,7 @@ async function mount(mode?: "connect" | "replace") {
   await act(async () =>
     root.render(
       <MemoryRouter initialEntries={["/app/integrations"]}>
-        <DevinConnectDialog mode={mode} onClose={onClose} />
+        <DevinConnectDialog mode={mode} onConnected={onConnected} onClose={onClose} />
         <Where />
       </MemoryRouter>,
     ),
@@ -52,6 +53,7 @@ async function type(value: string) {
 
 beforeEach(() => {
   onClose.mockReset();
+  onConnected.mockReset();
   api.connect.mockReset();
   api.replaceKey.mockReset();
 });
@@ -82,11 +84,13 @@ it("a refused key shows The key was refused and keeps the dialog open; a good ke
   await act(async () => submit().click());
   expect(document.querySelector('[role="alert"]')?.textContent).toBe("The key was refused.");
   expect(onClose).not.toHaveBeenCalled();
+  expect(onConnected).not.toHaveBeenCalled();
   expect(container.querySelector('[data-testid="where"]')?.textContent).toBe("/app/integrations");
 
   api.connect.mockResolvedValueOnce({ ok: true });
   await act(async () => submit().click());
   expect(api.connect).toHaveBeenLastCalledWith({ secret: "demo-key" });
+  expect(onConnected).toHaveBeenCalledOnce();
   expect(onClose).toHaveBeenCalledOnce();
   expect(container.querySelector('[data-testid="where"]')?.textContent).toBe("/app/devin");
 });

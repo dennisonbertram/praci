@@ -535,6 +535,8 @@ export function ShellPage() {
   /** The connector's Devin agent: undefined until asked, null for everyone else. */
   const [devinAgentId, setDevinAgentId] = useState<string | null | undefined>(undefined);
   const [devinDialog, setDevinDialog] = useState<"connect" | "replace" | null>(null);
+  /** Remounts the Devin page after a key is accepted, so it shows the new connection at once. */
+  const [devinPageKey, setDevinPageKey] = useState(0);
   // The Carta agent panel remembers being collapsed, and starts collapsed on a phone, where it
   // would cover the page.
   const [cartaAgentCollapsed, setCartaAgentCollapsed] = useState(() => !wideScreen());
@@ -3186,7 +3188,6 @@ export function ShellPage() {
 
   const cartaSuggestions = [t`Who are our investors?`, t`Draft this month's investor update`];
   const cartaAgentIntro = t`The Carta agent reads your cap table from Carta and answers questions about it. Try one:`;
-  // The agent panel of the current page; null on bot and group routes, which have their own panels.
   // The connector's agent is made on first visit, as the plan says; anyone else gets null.
   useEffect(() => {
     if (!devinMode) return;
@@ -3203,6 +3204,7 @@ export function ShellPage() {
       live = false;
     };
   }, [devinMode, bootstrapMe?.spaceId, refreshBots]);
+  // The agent panel of the current page; null on bot and group routes, which have their own panels.
   const agentPanel = inboxMode
     ? {
         name: "inbox-agent",
@@ -5393,6 +5395,7 @@ export function ShellPage() {
           />
         ) : devinMode ? (
           <DevinPage
+            key={devinPageKey}
             onAskAgent={devinAgentOpen ? undefined : askDevinAgent}
             onConnect={() => setDevinDialog("connect")}
             onReconnect={() => setDevinDialog("replace")}
@@ -6376,7 +6379,11 @@ export function ShellPage() {
 
       <Suspense fallback={null}>
         {devinDialog ? (
-          <DevinConnectDialog mode={devinDialog} onClose={() => setDevinDialog(null)} />
+          <DevinConnectDialog
+            mode={devinDialog}
+            onConnected={() => setDevinPageKey((key) => key + 1)}
+            onClose={() => setDevinDialog(null)}
+          />
         ) : null}
         {settingsOpen ? (
           <SettingsOverlay

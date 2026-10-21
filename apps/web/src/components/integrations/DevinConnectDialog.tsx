@@ -23,9 +23,12 @@ import { AppLogo } from "./AppLogo";
  */
 export function DevinConnectDialog({
   mode = "connect",
+  onConnected,
   onClose,
 }: {
   mode?: "connect" | "replace";
+  /** Called once the key is accepted, before the dialog closes. */
+  onConnected?: () => void;
   onClose: () => void;
 }) {
   const { t } = useLingui();
@@ -41,6 +44,7 @@ export function DevinConnectDialog({
     try {
       const input = { secret: secret.trim() };
       await (mode === "replace" ? rpc.devin.replaceKey(input) : rpc.devin.connect(input));
+      onConnected?.();
       onClose();
       navigate("/app/devin");
     } catch (cause) {

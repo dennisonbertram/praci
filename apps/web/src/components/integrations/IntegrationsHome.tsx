@@ -128,7 +128,13 @@ function McpCard({
   const { t } = useLingui();
   const reconnect = useMcpReconnect(server.id, () => void data.refresh());
   const isDevin = "endpoint" in server && isDevinEndpoint(server.endpoint);
-  const devin = useDevinConnection(isDevin);
+  const connection = useDevinConnection(isDevin);
+  // The space's connection is this card only for the connector's own server; a private Devin
+  // server kept from before is a plain MCP server and must not take the shared key's actions.
+  const devin =
+    connection?.isConnector && connection.agentBotId === (server.agentBotId ?? null)
+      ? connection
+      : null;
   // A key Devin refused, or a connector who left, is fixed with a new key, not by signing in again.
   const devinLapsed = devin?.status === "rejected" || devin?.status === "connector_gone";
   const status = reconnect.busy ? "connecting" : devinLapsed ? "reconnect" : mcpStatus(server);
@@ -143,7 +149,7 @@ function McpCard({
   const page =
     known?.id === "carta"
       ? { to: "/app/cap-table", label: t`Open Cap table` }
-      : isDevin
+      : devin
         ? { to: "/app/devin", label: t`Open Devin` }
         : undefined;
   return (
@@ -164,12 +170,12 @@ function McpCard({
         {page && status === "connected" ? (
           <OpenPageLink to={page.to}>{page.label}</OpenPageLink>
         ) : null}
-        {status === "reconnect" && (!isDevin || devin?.manage) ? (
+        {status === "reconnect" && (!devin || devin.manage) ? (
           <Button
             size="sm"
             className="relative z-10 ms-auto"
             disabled={reconnect.busy}
-            onClick={() => (isDevin ? onReconnectDevin() : void reconnect.run())}
+            onClick={() => (devin ? onReconnectDevin() : void reconnect.run())}
           >
             <Trans>Reconnect</Trans>
           </Button>

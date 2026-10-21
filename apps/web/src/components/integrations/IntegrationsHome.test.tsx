@@ -216,8 +216,8 @@ const devinServer = {
   name: "Devin",
   endpoint: "https://mcp.devin.ai/mcp",
 } as unknown as IntegrationsData["servers"][number];
-const devinSessions = (status: string, manage = true) => ({
-  connection: { status, manage, canConnect: false, isConnector: manage, agentBotId: null },
+const devinSessions = (status: string, manage = true, isConnector = manage) => ({
+  connection: { status, manage, canConnect: false, isConnector, agentBotId: null },
   fetchedAt: null,
   stale: false,
   partial: false,
@@ -256,8 +256,15 @@ it("marks a rejected Devin key as needing reconnect and lets an owner replace it
   expect(devinRpc.connect).not.toHaveBeenCalled();
 });
 
-it("gives a member no Reconnect button when the Devin key is rejected", async () => {
-  devinRpc.sessions.mockResolvedValue(devinSessions("rejected", false));
+it("treats a private Devin server as a plain one when another member connected the space", async () => {
+  devinRpc.sessions.mockResolvedValue(devinSessions("rejected", true, false));
+  await show({ ...data(true, true), servers: [devinServer] });
+  expect(container.textContent).not.toContain("Needs reconnect");
+  expect(container.querySelector('a[href="/app/devin"]')).toBeNull();
+});
+
+it("gives a demoted connector no Reconnect button when the Devin key is rejected", async () => {
+  devinRpc.sessions.mockResolvedValue(devinSessions("rejected", false, true));
   await show({ ...data(true, true), servers: [devinServer] });
   expect(container.textContent).toContain("Needs reconnect");
   const buttons = [...container.querySelectorAll("button")].map((button) => button.textContent);
