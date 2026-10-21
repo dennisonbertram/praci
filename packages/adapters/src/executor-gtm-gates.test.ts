@@ -5,6 +5,35 @@ import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
 import { createRunExecutor } from "./executor.js";
 
 const gtmAgentBuiltinToolSet = new Set<string>(GTM_AGENT_BUILTIN_TOOLS);
+const pageBrowserToolCases = [
+  {
+    name: "browser_navigate",
+    args: { url: "https://example.test" },
+    adapter: "navigate",
+    result: { url: "https://example.test", title: "Example" },
+  },
+  {
+    name: "browser_snapshot",
+    args: {},
+    adapter: "snapshot",
+    result: {
+      url: "https://example.test/",
+      title: "Example",
+      tree: "[button-1] Continue",
+    },
+  },
+  {
+    name: "browser_act",
+    args: { actions: [{ kind: "click", ref: "button-1" }] },
+    adapter: "act",
+    result: {
+      ok: true,
+      completed: 1,
+      url: "https://example.test/",
+      title: "Example",
+    },
+  },
+] as const;
 
 vi.mock("./computer-lifecycle.js", async (importOriginal) => ({
   ...(await importOriginal<typeof ComputerLifecycleModule>()),
@@ -26,6 +55,7 @@ type FixtureOptions = {
     enabled: boolean;
   }[];
   execute?: { name: string; args?: Record<string, unknown> };
+  beforeExecute?: () => void;
   completeRoutineItem?: boolean;
   routine?: {
     scheduledAt: Date;
@@ -121,11 +151,22 @@ function gtmFixture(options: FixtureOptions = {}) {
     async ({
       where,
     }: {
-      where?: { id?: string; spaceId?: string; userId?: string; botId?: string };
+      where?: {
+        id?: string;
+        spaceId?: string;
+        userId?: string;
+        botId?: string;
+        category?: string;
+        status?: string;
+        approvedAt?: { not: null };
+      };
     } = {}) => {
       if (where?.id === item.id) return { ...item };
       if (
         options.approvedSignup &&
+        where?.category === "create_account" &&
+        where.status === "open" &&
+        where.approvedAt?.not === null &&
         where?.spaceId === run.spaceId &&
         where.userId === run.userId &&
         where.botId === run.botId
@@ -138,6 +179,27 @@ function gtmFixture(options: FixtureOptions = {}) {
   const scratchpadUpdateMany = vi.fn(async () => ({ count: 1 }));
   const scratchpadFindMany = vi.fn(async () => options.routine?.items ?? []);
   const execute = vi.fn(async () => ({ ok: true }));
+  const browserNavigate = vi.fn(async () => ({
+    url: "https://example.test",
+    title: "Example",
+  }));
+  const browserSnapshot = vi.fn(async () => ({
+    url: "https://example.test/",
+    title: "Example",
+    tree: "[button-1] Continue",
+    elements: [{ ref: "button-1", role: "button", name: "Continue" }],
+  }));
+  const browserAct = vi.fn(async () => ({
+    ok: true,
+    completed: 1,
+    url: "https://example.test/",
+    title: "Example",
+  }));
+  const browserAdapters = {
+    navigate: browserNavigate,
+    snapshot: browserSnapshot,
+    act: browserAct,
+  };
   const externalEffects: Record<string, unknown>[] = [];
   const pauseRunForInput = vi.fn(async () => true);
   const externalEffect = {
@@ -258,7 +320,10 @@ function gtmFixture(options: FixtureOptions = {}) {
     },
     aiDataConsent: { findFirst: vi.fn(async () => ({ userId: run.userId })) },
     user: { findUnique: vi.fn(async () => null) },
-    taughtSkill: { findMany: vi.fn(async () => []) },
+    taughtSkill: {
+      findMany: vi.fn(async () => []),
+      findFirst: vi.fn(async () => null),
+    },
     agentSecret: { findMany: vi.fn(async () => []) },
     botSecret: { findMany: vi.fn(async () => []) },
     agentSkill: { findMany: vi.fn(async () => []) },
@@ -292,6 +357,7 @@ function gtmFixture(options: FixtureOptions = {}) {
   const runtimeRun = vi.fn(async function* (next: AgentRunRequest) {
     request = next;
     if (options.execute) {
+      options.beforeExecute?.();
       try {
         directResult = await next.executeTool?.(
           options.execute.name,
@@ -332,7 +398,10 @@ function gtmFixture(options: FixtureOptions = {}) {
     home: { commit: vi.fn(async () => "fixture-revision") },
     memory: { read: async () => ({ documents: [] }) },
     memoryProviders: { resolve: async () => null },
-    browser: { describe: () => ({ capabilities: { page: true } }) },
+    browser: {
+      describe: () => ({ capabilities: { page: true } }),
+      ...browserAdapters,
+    },
     events: {
       append: vi.fn(async () => undefined),
       finalizeRun,
@@ -372,6 +441,7 @@ function gtmFixture(options: FixtureOptions = {}) {
     scratchpadFindFirst,
     scratchpadFindMany,
     scratchpadUpdateMany,
+    browserAdapters,
   };
 }
 
@@ -427,6 +497,76 @@ describe("GTM executor gates", () => {
       expect.arrayContaining(["browser_navigate", "browser_snapshot", "browser_act"]),
     );
   });
+
+  it.each(pageBrowserToolCases)(
+    "denies $name when signup approval is revoked after exposure",
+    async ({ name, args, adapter }) => {
+      const fixtureOptions: FixtureOptions = {
+        approvedSignup: true,
+        execute: { name, args },
+      };
+      fixtureOptions.beforeExecute = () => {
+        fixtureOptions.approvedSignup = false;
+      };
+      const f = gtmFixture(fixtureOptions);
+
+      await f.executor.continueRun(f.run.id, "worker-1");
+
+      expect((f.request()?.tools ?? []).map((tool) => tool.name)).toContain(name);
+      expect(f.directResult()).toEqual({
+        error: "Browser access requires an approved open signup.",
+      });
+      expect(f.browserAdapters[adapter]).not.toHaveBeenCalled();
+      const approvalLookups = f.scratchpadFindFirst.mock.calls.filter(
+        ([query]) => query?.where?.category === "create_account",
+      );
+      expect(approvalLookups).toHaveLength(2);
+      for (const [query] of approvalLookups) {
+        expect(query).toEqual(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              spaceId: "space-1",
+              userId: "user-1",
+              botId: "bot-1",
+              category: "create_account",
+            }),
+          }),
+        );
+      }
+    },
+  );
+
+  it.each(pageBrowserToolCases)(
+    "executes $name when signup approval remains active",
+    async ({ name, args, adapter, result }) => {
+      const f = gtmFixture({
+        approvedSignup: true,
+        execute: { name, args },
+      });
+
+      await f.executor.continueRun(f.run.id, "worker-1");
+
+      expect((f.request()?.tools ?? []).map((tool) => tool.name)).toContain(name);
+      expect(f.directResult()).toMatchObject(result);
+      expect(f.browserAdapters[adapter]).toHaveBeenCalledTimes(1);
+      const approvalLookups = f.scratchpadFindFirst.mock.calls.filter(
+        ([query]) => query?.where?.category === "create_account",
+      );
+      expect(approvalLookups).toHaveLength(2);
+      for (const [query] of approvalLookups) {
+        expect(query).toEqual(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              spaceId: "space-1",
+              userId: "user-1",
+              botId: "bot-1",
+              category: "create_account",
+            }),
+          }),
+        );
+      }
+    },
+  );
 
   it("offers only direct read-only tools from this bot's enabled Zernio MCP server", async () => {
     const tools = [

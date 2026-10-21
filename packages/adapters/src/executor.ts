@@ -5032,6 +5032,17 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 error: "Teaching is in progress. Stop teaching before using the computer.",
               });
             }
+            if (
+              gtmAgent &&
+              (run.userId !== bot.userId ||
+                !(await hasApprovedOpenSignup(deps, {
+                  spaceId: run.spaceId,
+                  userId: run.userId,
+                  botId: bot.id,
+                })))
+            ) {
+              return finish({ error: "Browser access requires an approved open signup." });
+            }
             if (name !== "browser_snapshot") workspaceCheckpoint.markDirty();
             // Pages can echo a filled login (e.g. a username field), so scrub every page result.
             const redactions = () => [...runSecrets];
