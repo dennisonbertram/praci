@@ -8239,19 +8239,19 @@ msgstr "See who owns your company"
 msgid "See your cash, burn and runway, pulled from your bank."
 msgstr "See your cash, burn and runway, pulled from your bank."
 
-#: src/components/inbox/InboxRow.tsx
-#: src/components/inbox/InboxSenderGroup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Select"
 msgstr "Select"
 
 #. placeholder {0}: file.name
+#. placeholder {0}: group.sender
 #. placeholder {0}: item.name
-#. placeholder {0}: row.subject
 #: src/components/data-room/DriveRow.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/inbox/CleanupSenderRow.tsx
+#: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 msgid "Select {0}"
 msgstr "Select {0}"
 
@@ -9658,8 +9658,8 @@ msgid "Type"
 msgstr "Type"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Type here to find any chat, file or email."
-msgstr "Type here to find any chat, file or email."
+msgid "Type here to find any page, chat or email."
+msgstr "Type here to find any page, chat or email."
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Type without recording"

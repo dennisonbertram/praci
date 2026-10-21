@@ -27,7 +27,7 @@ export function FirstRunTour({
       {
         id: "search",
         anchor: '[data-tour="sidebar-search"]',
-        text: t`Type here to find any chat, file or email.`,
+        text: t`Type here to find any page, chat or email.`,
       },
       {
         id: "create",
