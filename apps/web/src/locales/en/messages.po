@@ -2414,6 +2414,10 @@ msgstr "Choose read tools"
 msgid "Choose scope"
 msgstr "Choose scope"
 
+#: src/pages/CompanyReview.tsx
+msgid "Choose subjects"
+msgstr "Choose subjects"
+
 #: src/components/integrations/SignInStep.tsx
 msgid "Choose the account to connect, then come back here."
 msgstr "Choose the account to connect, then come back here."
@@ -2421,6 +2425,10 @@ msgstr "Choose the account to connect, then come back here."
 #: src/pages/RoutineEditor.tsx
 msgid "Choose when it runs"
 msgstr "Choose when it runs"
+
+#: src/pages/CompanyReview.tsx
+msgid "Choose…"
+msgstr "Choose…"
 
 #: src/pages/shell/working-label.ts
 msgid "Choosing your company in Carta"
@@ -2803,6 +2811,7 @@ msgid "Configure API key"
 msgstr "Configure API key"
 
 #: src/pages/CompanyFactDetail.tsx
+#: src/pages/CompanyReview.tsx
 msgid "Confirm"
 msgstr "Confirm"
 
@@ -2824,6 +2833,7 @@ msgid "Confirmed"
 msgstr "Confirmed"
 
 #: src/pages/CompanyFactDetail.tsx
+#: src/pages/CompanyReview.tsx
 msgid "Conflicting evidence"
 msgstr "Conflicting evidence"
 
@@ -3014,6 +3024,10 @@ msgstr "Connected {0}."
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Connected and using {0}."
 msgstr "Connected and using {0}."
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Connected Data Room sources require manual re-import."
+msgstr "Connected Data Room sources require manual re-import."
 
 #: src/pages/shell/message-cards.tsx
 msgid "Connected. Its tools are available from your next message."
@@ -4122,6 +4136,10 @@ msgstr "Dark"
 msgid "Data room"
 msgstr "Data room"
 
+#: src/pages/CompanyRefresh.tsx
+msgid "Data Room"
+msgstr "Data Room"
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Data room search model"
 msgstr "Data room search model"
@@ -4336,6 +4354,7 @@ msgstr "Desktop update"
 
 #: src/components/AskCard.tsx
 #: src/components/data-room/ProcessingStrip.tsx
+#: src/pages/CompanyReview.tsx
 msgid "Details"
 msgstr "Details"
 
@@ -4715,6 +4734,7 @@ msgstr "Earlier updates"
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/CompanyFactDetail.tsx
+#: src/pages/CompanyReview.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/Investors.tsx
 msgid "Edit"
@@ -5344,6 +5364,10 @@ msgstr "Getting ready"
 msgid "Git event"
 msgstr "Git event"
 
+#: src/pages/CompanyRefresh.tsx
+msgid "GitHub lists do not provide a complete change feed."
+msgstr "GitHub lists do not provide a complete change feed."
+
 #: src/components/data-room/FilterBar.tsx
 msgid "Gmail"
 msgstr "Gmail"
@@ -5359,6 +5383,10 @@ msgstr "Gmail didn't respond. Try again."
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "Gmail filter limit reached"
 msgstr "Gmail filter limit reached"
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Gmail history expired. Re-import to establish a new checkpoint."
+msgstr "Gmail history expired. Re-import to establish a new checkpoint."
 
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail is limiting requests right now."
@@ -5700,6 +5728,10 @@ msgstr "Import"
 msgid "Import {0}"
 msgstr "Import {0}"
 
+#: src/pages/CompanyRefresh.tsx
+msgid "Import a source to set up refresh."
+msgstr "Import a source to set up refresh."
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Import an OpenAPI description"
 msgstr "Import an OpenAPI description"
@@ -5972,6 +6004,10 @@ msgstr "Keep editing"
 msgid "Keep memories"
 msgstr "Keep memories"
 
+#: src/pages/CompanyReview.tsx
+msgid "Keep separate"
+msgstr "Keep separate"
+
 #: src/components/tour/FirstRunTour.tsx
 msgid "Keep your contracts here and see which are due soon."
 msgstr "Keep your contracts here and see which are due soon."
@@ -6022,6 +6058,10 @@ msgstr "Last 90 days"
 #: src/pages/Finance.tsx
 msgid "Last charge"
 msgstr "Last charge"
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Last completed"
+msgstr "Last completed"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Last month vs 3 mo ago"
@@ -6376,6 +6416,10 @@ msgstr "Manage billing"
 msgid "Manage messaging settings"
 msgstr "Manage messaging settings"
 
+#: src/pages/CompanyRefresh.tsx
+msgid "Manual re-import only"
+msgstr "Manual re-import only"
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Manual setup required"
 msgstr "Manual setup required"
@@ -6486,6 +6530,10 @@ msgstr "Marked signed"
 #: src/pages/Inbox.tsx
 msgid "Marked unread"
 msgstr "Marked unread"
+
+#: src/pages/CompanyReview.tsx
+msgid "Match"
+msgstr "Match"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Max"
@@ -6688,6 +6736,10 @@ msgstr "Model"
 #: src/lib/model-connection-preflight.ts
 msgid "Model \"{modelId}\" was not listed."
 msgstr "Model \"{modelId}\" was not listed."
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Model consent needed"
+msgstr "Model consent needed"
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -6901,6 +6953,10 @@ msgstr "Mute"
 msgid "Name"
 msgstr "Name"
 
+#: src/pages/CompanyReview.tsx
+msgid "Name or title"
+msgstr "Name or title"
+
 #: src/pages/GroupPanel.tsx
 msgid "Name this group"
 msgstr "Name this group"
@@ -7094,6 +7150,10 @@ msgstr "Next deadline"
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Next message"
 msgstr "Next message"
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Next refresh"
+msgstr "Next refresh"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Next run {nextRun}"
@@ -7442,6 +7502,7 @@ msgstr "Not checked"
 #: src/pages/CompanyCalendar.tsx
 #: src/pages/CompanyFactDetail.tsx
 #: src/pages/CompanyHistory.tsx
+#: src/pages/CompanyReview.tsx
 msgid "Not confirmed"
 msgstr "Not confirmed"
 
@@ -7571,11 +7632,19 @@ msgstr "Nothing shared yet."
 msgid "Nothing to clean up. People you have written to or saved as contacts are left out."
 msgstr "Nothing to clean up. People you have written to or saved as contacts are left out."
 
+#: src/pages/CompanyReview.tsx
+msgid "Nothing to review"
+msgstr "Nothing to review"
+
 #: src/components/NotificationSettings.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Notifications"
 msgstr "Notifications"
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Notion search does not guarantee complete or immediate change detection."
+msgstr "Notion search does not guarantee complete or immediate change detection."
 
 #. placeholder {0}: selected.label
 #: src/pages/ModelSettingsOverlay.tsx
@@ -8303,6 +8372,10 @@ msgstr "Previous attachment"
 msgid "Previous message"
 msgstr "Previous message"
 
+#: src/pages/CompanyReview.tsx
+msgid "Previously rejected name"
+msgstr "Previously rejected name"
+
 #: src/pages/Inbox.tsx
 msgid "Primary"
 msgstr "Primary"
@@ -8442,6 +8515,14 @@ msgstr "Quote"
 #: src/pages/Company.tsx
 msgid "Raised"
 msgstr "Raised"
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Re-import"
+msgstr "Re-import"
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Re-import to establish a checkpoint."
+msgstr "Re-import to establish a checkpoint."
 
 #: src/pages/shell/transcript.tsx
 msgid "React"
@@ -8648,6 +8729,10 @@ msgstr "Reconnect Gmail"
 msgid "Reconnect needed"
 msgstr "Reconnect needed"
 
+#: src/pages/CompanyRefresh.tsx
+msgid "Reconnect this source before importing."
+msgstr "Reconnect this source before importing."
+
 #: src/App.tsx
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Reconnecting"
@@ -8724,12 +8809,22 @@ msgstr "Redirect URI"
 #: src/App.tsx
 #: src/components/ErrorBoundary.tsx
 #: src/components/fundraising/MercuryLine.tsx
+#: src/pages/CompanyRefresh.tsx
 #: src/pages/Finance.tsx
 #: src/pages/Investors.tsx
 #: src/pages/RoutineRunHistory.tsx
 #: src/pages/shell/bot-pins.tsx
 msgid "Refresh"
 msgstr "Refresh"
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Refresh needs attention"
+msgstr "Refresh needs attention"
+
+#: src/pages/Company.tsx
+#: src/pages/CompanyRefresh.tsx
+msgid "Refresh sources"
+msgstr "Refresh sources"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Refresh view"
@@ -8744,6 +8839,7 @@ msgid "Registration is closed"
 msgstr "Registration is closed"
 
 #: src/pages/CompanyFactDetail.tsx
+#: src/pages/CompanyReview.tsx
 msgid "Reject"
 msgstr "Reject"
 
@@ -8766,6 +8862,10 @@ msgstr "Release interrupted computer?"
 #: src/components/data-room/FilterBar.tsx
 msgid "Relevance"
 msgstr "Relevance"
+
+#: src/pages/CompanyReview.tsx
+msgid "Reload"
+msgstr "Reload"
 
 #: src/pages/shell/transcript.tsx
 msgid "Remember"
@@ -9071,6 +9171,10 @@ msgstr "Resize panel"
 msgid "Resize sidebar"
 msgstr "Resize sidebar"
 
+#: src/pages/CompanyReview.tsx
+msgid "Resolve identity"
+msgstr "Resolve identity"
+
 #: src/components/integrations/IMessageSection.tsx
 msgid "Restart the Praci server to start using iMessage."
 msgstr "Restart the Praci server to start using iMessage."
@@ -9113,6 +9217,7 @@ msgstr "Resume"
 #: src/pages/CompanyImport.tsx
 #: src/pages/CompanyImportScope.tsx
 #: src/pages/CompanyPrivacy.tsx
+#: src/pages/CompanyRefresh.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
@@ -9148,6 +9253,7 @@ msgstr "Return to Praci"
 msgid "Revenue"
 msgstr "Revenue"
 
+#: src/pages/Company.tsx
 #: src/pages/CompanyImport.tsx
 msgid "Review"
 msgstr "Review"
@@ -9305,6 +9411,10 @@ msgstr "SAFEs, if converted at cap"
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Sales & CRM"
 msgstr "Sales & CRM"
+
+#: src/pages/CompanyReview.tsx
+msgid "Same person?"
+msgstr "Same person?"
 
 #: src/pages/CompanyImport.tsx
 msgid "Sample · up to 25 items per source"
@@ -10114,6 +10224,10 @@ msgstr "Skipping"
 msgid "Slack"
 msgstr "Slack"
 
+#: src/pages/CompanyRefresh.tsx
+msgid "Slack history does not reliably include edits to older messages."
+msgstr "Slack history does not reliably include edits to older messages."
+
 #: src/pages/RoutineEditor.tsx
 msgid "Slack message"
 msgstr "Slack message"
@@ -10721,6 +10835,10 @@ msgstr "The original message didn't load."
 msgid "The provider is rate-limiting requests."
 msgstr "The provider is rate-limiting requests."
 
+#: src/pages/CompanyRefresh.tsx
+msgid "The selected Linear reader does not provide a complete change feed."
+msgstr "The selected Linear reader does not provide a complete change feed."
+
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "The selected memory provider is not available in this build."
 msgstr "The selected memory provider is not available in this build."
@@ -10870,6 +10988,10 @@ msgstr "This provider cannot be tested without saving."
 msgid "This provider is not connected yet."
 msgstr "This provider is not connected yet."
 
+#: src/pages/CompanyRefresh.tsx
+msgid "This reader has no verified incremental change feed."
+msgstr "This reader has no verified incremental change feed."
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "This removes the connection from every space."
 msgstr "This removes the connection from every space."
@@ -10983,6 +11105,10 @@ msgstr "Today"
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Token"
 msgstr "Token"
+
+#: src/pages/CompanyRefresh.tsx
+msgid "Token budget reached"
+msgstr "Token budget reached"
 
 #: src/pages/CompanyImport.tsx
 msgid "Token cap"
@@ -11631,6 +11757,14 @@ msgstr "View"
 msgid "View chat"
 msgstr "View chat"
 
+#: src/pages/CompanyReview.tsx
+msgid "View evidence"
+msgstr "View evidence"
+
+#: src/pages/CompanyRefresh.tsx
+msgid "View progress"
+msgstr "View progress"
+
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -11876,6 +12010,10 @@ msgstr "Which contracts renew in the next 90 days?"
 #: src/lib/data-room-agent.ts
 msgid "Which documents mention renewal?"
 msgstr "Which documents mention renewal?"
+
+#: src/pages/CompanyReview.tsx
+msgid "Which event?"
+msgstr "Which event?"
 
 #: src/lib/investors-agent.ts
 #: src/pages/Shell.tsx

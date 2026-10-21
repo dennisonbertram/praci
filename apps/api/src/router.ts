@@ -7529,6 +7529,13 @@ export function createRouter(deps: RouterDeps) {
       calendar: authed.company.calendar.handler(({ context, input }) =>
         companyCalendar(deps.prisma, context.actor, input),
       ),
+      review: authed.company.review.handler(({ context }) =>
+        companyForActor(deps.prisma, context.actor).review(),
+      ),
+      resolveCandidate: authed.company.resolveCandidate.handler(async ({ context, input }) => {
+        await companyForActor(deps.prisma, context.actor).resolveCandidate(input);
+        return { ok: true as const };
+      }),
       fact: authed.company.fact.handler(({ context, input }) =>
         companyFact(deps.prisma, context.actor, input),
       ),

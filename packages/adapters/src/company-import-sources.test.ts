@@ -103,7 +103,7 @@ describe("company source worker", () => {
         changedIds: ["new-message", "changed-message"],
         deletedIds: ["deleted-message"],
       })),
-      listMessages: vi.fn(async ({ ids }: { ids?: string[] }) => ({
+      listMessages: vi.fn(async (_account: unknown, { ids }: { ids?: string[] }) => ({
         messages: (ids ?? []).map((id) => summary(id)),
       })),
       getMessage: vi.fn(async (_account: unknown, id: string) => ({
@@ -115,12 +115,16 @@ describe("company source worker", () => {
         truncated: false,
       })),
     });
+    const extract = vi.fn(async () => ({
+      extraction: { entities: [], edges: [], events: [] },
+      model: { provider: "synthetic", model: "refresh-test" },
+    }));
     const worker = createCompanySourceWorker({
       prisma: prisma(),
       mail,
       extractor: {
-        relevant: vi.fn(async () => false),
-        extract: vi.fn(),
+        relevant: vi.fn(async () => true),
+        extract,
       },
     });
     const begin = await worker.beginRefresh?.(
@@ -148,7 +152,7 @@ describe("company source worker", () => {
     });
     expect(page.proposedCheckpoint).toEqual({ kind: "gmail_history", cursor: "next" });
     expect(mail.listMessages).not.toHaveBeenCalled();
-    await worker.read(
+    const read = await worker.read(
       {
         source,
         unitKey: "gmail:changed",
@@ -162,7 +166,16 @@ describe("company source worker", () => {
       expect.objectContaining({ ids: ["changed-message"], useCache: false }),
       expect.anything(),
     );
-    expect(mail.getMessage).not.toHaveBeenCalled();
+    expect(mail.getMessage).toHaveBeenCalledWith(
+      expect.anything(),
+      "changed-message",
+      expect.anything(),
+    );
+    expect(extract).toHaveBeenCalledWith(
+      expect.objectContaining({ text: "A relevant update." }),
+      expect.anything(),
+    );
+    expect(read.extractions).toHaveLength(1);
 
     expect(
       worker.refreshCapability?.({

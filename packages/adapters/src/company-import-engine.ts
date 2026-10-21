@@ -28,8 +28,10 @@ import {
 import type { NotificationEvents, PrismaClient } from "@rakazo/db";
 import {
   awaitCompanyImportConsent,
+  awaitCompanyRefreshConsent,
   CompanyImportError,
   claimCompanyImportUnit,
+  clearCompanyImportNotificationPending,
   companyImportSourceKey,
   completeCompanyImportUnit,
   createCompanyImportRun,
@@ -40,10 +42,13 @@ import {
   getCompanyImportProgress,
   getCompanyImportRunForScheduling,
   grantCompanyImportConsent,
+  listCompanyImportNotificationRecovery,
   listCompanyImportUnitsForScheduling,
   listCompanyRefreshSources,
   listDueCompanyRefreshSources,
+  markCompanyImportNotificationState,
   markCompanyRefreshRecoveryRequired,
+  markCompanyRefreshUnavailable,
   persistCompanyImportBaseline,
   persistCompanyImportProposedCheckpoint,
   reconcileCompanyImportRunIds,
@@ -52,6 +57,7 @@ import {
   settleCompanyImportCall,
   startCompanyImportRun,
   updateCompanyImportRun,
+  updateCompanyRefreshCapability,
   upsertCompanyRefreshSource,
 } from "@rakazo/db";
 import { aiRecipient } from "./ai-consent.js";
@@ -65,6 +71,26 @@ const MAX_READ_ITEMS = 100;
 const MAX_SAMPLE_READ_ITEMS = 1;
 const UNIT_LEASE_MS = 120_000;
 const RUN_TOPIC = (spaceId: string, userId: string) => `company-import:${spaceId}:${userId}`;
+
+function companySourceName(sourceKind: string, scope: unknown) {
+  const reader =
+    scope && typeof scope === "object" && !Array.isArray(scope)
+      ? (scope as Record<string, unknown>).reader
+      : null;
+  if (sourceKind === "mcp" && reader === "linear") return "Linear";
+  return (
+    {
+      gmail: "Gmail",
+      data_room: "Data Room",
+      slack: "Slack",
+      github: "GitHub",
+      linear: "Linear",
+      notion: "Notion",
+      mcp: "Connected tool",
+      composio: "Connected tool",
+    }[sourceKind] ?? "Company source"
+  );
+}
 
 export class CompanyImportWorkerError extends Error {
   constructor(
@@ -330,76 +356,121 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
     title: string,
     importance: "info" | "attention",
   ) {
-    const result = await createNotification(deps.prisma, {
-      spaceId: actor.spaceId,
-      userId: actor.userId,
-      surface: "company_import",
-      title,
-      importance,
-      dedupeKey: `company-import:${runId}:${state}`,
-      skipRateLimits: true,
-    });
-    if (result.status === "created") {
-      await deps.notificationEvents?.notify(
-        { spaceId: actor.spaceId, userId: actor.userId },
-        {
-          id: result.notification.id,
-          surface: result.notification.surface,
-          importance: result.notification.importance,
-        },
-      );
+    try {
+      const run = await deps.prisma.companyImportRun.findFirst({
+        where: { id: runId, spaceId: actor.spaceId, ownerUserId: actor.userId },
+        select: { notificationStates: true },
+      });
+      if (!run || run.notificationStates.includes(state)) return;
+      const result = await createNotification(deps.prisma, {
+        spaceId: actor.spaceId,
+        userId: actor.userId,
+        surface: "company",
+        title,
+        importance,
+        link: `/app/company/import?runId=${encodeURIComponent(runId)}`,
+        dedupeKey: `company-import:${runId}:${state}`,
+        skipRateLimits: true,
+      });
+      if (result.status !== "rateLimited") {
+        await markCompanyImportNotificationState(deps.prisma, actor, runId, state);
+        if (result.status === "created") {
+          await deps.notificationEvents
+            ?.notify(
+              { spaceId: actor.spaceId, userId: actor.userId },
+              {
+                id: result.notification.id,
+                surface: result.notification.surface,
+                importance: result.notification.importance,
+              },
+            )
+            .catch(() => undefined);
+        }
+      }
+    } catch {
+      return;
     }
   }
 
   async function notifyRunCompletion(actor: Actor, runId: string) {
     const run = await deps.prisma.companyImportRun.findFirst({
       where: { id: runId, spaceId: actor.spaceId, ownerUserId: actor.userId },
-      select: { status: true },
+      select: { status: true, mode: true },
     });
     if (
       !run ||
       !["completed", "preview_ready", "partial", "failed", "cancelled"].includes(run.status)
     )
       return;
-    await notify(actor, runId, `completion:${run.status}`, "Company import complete", "info");
-    const manualOnly = await deps.prisma.companyRefreshSource.findFirst({
+    const subject = run.mode === "refresh" ? "Company refresh" : "Company import";
+    const completion =
+      run.status === "completed"
+        ? {
+            title: `${subject} complete`,
+            importance: "info" as const,
+          }
+        : run.status === "preview_ready"
+          ? { title: "Company sample ready", importance: "info" as const }
+          : run.status === "cancelled"
+            ? { title: `${subject} cancelled`, importance: "info" as const }
+            : {
+                title:
+                  run.status === "partial" ? `${subject} partially completed` : `${subject} failed`,
+                importance: "attention" as const,
+              };
+    await notify(actor, runId, `completion:${run.status}`, completion.title, completion.importance);
+    const manualOnly = await deps.prisma.companyRefreshSource.findMany({
       where: {
         spaceId: actor.spaceId,
         ownerUserId: actor.userId,
-        capability: "manual_only",
+        capability: { in: ["manual_only", "pending"] },
         importSources: { some: { runId } },
       },
-      select: { id: true },
+      select: { id: true, sourceKind: true, scope: true },
     });
-    if (manualOnly)
+    for (const source of manualOnly)
       await notify(
         actor,
         runId,
-        "refresh_unavailable",
-        "Automatic refresh unavailable",
+        `refresh_unavailable:${source.id}`,
+        `Automatic refresh unavailable for ${companySourceName(source.sourceKind, source.scope)}`,
         "attention",
       );
   }
 
   async function notifyRefreshUnavailable(actor: Actor, sourceId: string) {
-    const result = await createNotification(deps.prisma, {
-      spaceId: actor.spaceId,
-      userId: actor.userId,
-      surface: "company_import",
-      title: "Automatic refresh unavailable",
-      importance: "attention",
-      dedupeKey: `company-refresh:${sourceId}:unavailable`,
-      skipRateLimits: true,
-    });
-    if (result.status === "created") {
-      await deps.notificationEvents?.notify(
-        { spaceId: actor.spaceId, userId: actor.userId },
-        {
-          id: result.notification.id,
-          surface: result.notification.surface,
-          importance: result.notification.importance,
-        },
-      );
+    try {
+      const source = await deps.prisma.companyRefreshSource.findFirst({
+        where: { id: sourceId, spaceId: actor.spaceId, ownerUserId: actor.userId },
+        select: { sourceKind: true, scope: true },
+      });
+      const result = await createNotification(deps.prisma, {
+        spaceId: actor.spaceId,
+        userId: actor.userId,
+        surface: "company",
+        title: `Automatic refresh unavailable for ${companySourceName(
+          source?.sourceKind ?? "unknown",
+          source?.scope,
+        )}`,
+        importance: "attention",
+        link: "/app/company/import",
+        dedupeKey: `company-refresh:${sourceId}:unavailable`,
+        skipRateLimits: true,
+      });
+      if (result.status === "created") {
+        await deps.notificationEvents
+          ?.notify(
+            { spaceId: actor.spaceId, userId: actor.userId },
+            {
+              id: result.notification.id,
+              surface: result.notification.surface,
+              importance: result.notification.importance,
+            },
+          )
+          .catch(() => undefined);
+      }
+    } catch {
+      return;
     }
   }
 
@@ -692,6 +763,54 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
     });
   }
 
+  async function dispatchRefresh(
+    actor: Actor,
+    source: Awaited<ReturnType<typeof listCompanyRefreshSources>>[number],
+    force: boolean,
+  ) {
+    const descriptor = {
+      id: source.id,
+      sourceKind: CompanySourceKindSchema.parse(source.sourceKind),
+      connectionId: source.connectionId,
+      mcpServerId: source.mcpServerId,
+      scope: source.scope as Record<string, unknown>,
+    };
+    const capability = worker.refreshCapability?.(descriptor) ?? {
+      kind: "pending" as const,
+      reason: "provider_capability_pending",
+    };
+    await updateCompanyRefreshCapability(deps.prisma, actor, {
+      sourceId: source.id,
+      capability: capability.kind,
+      reason: capability.kind === "supported" ? null : capability.reason,
+    });
+    if (capability.kind !== "supported") {
+      await notifyRefreshUnavailable(actor, source.id);
+      return null;
+    }
+    const run = await createCompanyRefreshRun(deps.prisma, actor, source.id, force);
+    if (!run) return null;
+    const importSource = await deps.prisma.companyImportSource.findFirst({
+      where: { spaceId: actor.spaceId, ownerUserId: actor.userId, runId: run.id },
+      select: { id: true },
+    });
+    if (!importSource) throw new CompanyImportError("not_found");
+    try {
+      await currentConsent(actor, run.id, importSource.id);
+    } catch (error) {
+      if (!(error instanceof CompanyImportConsentRequired)) throw error;
+      await awaitCompanyRefreshConsent(deps.prisma, actor, {
+        runId: run.id,
+        sourceId: importSource.id,
+      });
+      await notify(actor, run.id, "awaiting_consent", "Company refresh needs consent", "attention");
+      await publish(actor, run.id);
+      return run;
+    }
+    await enqueueRun(actor, run.id);
+    return run;
+  }
+
   async function scheduleUnits(actor: Actor, runId: string) {
     const run = await getCompanyImportRunForScheduling(deps.prisma, actor, runId);
     if (!run || !["running", "paused"].includes(run.status)) return;
@@ -738,6 +857,7 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
       unitId: claim.id,
       claimToken: claim.claimToken,
     };
+    let refreshRun = false;
     try {
       // Persist a lease-expiry recovery job before any source or model call.
       await deps.jobs.enqueue({
@@ -748,8 +868,6 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
         keepExisting: true,
         maxAttempts: 1,
       });
-      await currentConsent(actor, payload.runId, source.id);
-      const context = workerContext(actor, claimInput, AbortSignal.timeout(120_000));
       const sourceDescriptor = {
         id: source.id,
         sourceKind: CompanySourceKindSchema.parse(source.sourceKind),
@@ -761,16 +879,48 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
         where: { id: payload.runId, spaceId: actor.spaceId, ownerUserId: actor.userId },
         select: { mode: true },
       });
+      refreshRun = run?.mode === "refresh";
+      const refreshSourceId =
+        (source as typeof source & { refreshSourceId?: string | null }).refreshSourceId ?? null;
+      if (refreshSourceId) {
+        const capability = worker.refreshCapability?.(sourceDescriptor) ?? {
+          kind: "pending" as const,
+          reason: "provider_capability_pending",
+        };
+        if (capability.kind !== "supported") {
+          if (refreshRun) {
+            const marked = await markCompanyRefreshUnavailable(deps.prisma, actor, {
+              sourceId: refreshSourceId,
+              capability: capability.kind,
+              reason: capability.reason,
+              runId: payload.runId,
+              unitId: claim.id,
+              claimToken: claim.claimToken,
+            });
+            if (marked) {
+              await notifyRefreshUnavailable(actor, refreshSourceId);
+              await publish(actor, payload.runId);
+            }
+            return;
+          }
+          await updateCompanyRefreshCapability(deps.prisma, actor, {
+            sourceId: refreshSourceId,
+            capability: capability.kind,
+            reason: capability.reason,
+          });
+          await notifyRefreshUnavailable(actor, refreshSourceId);
+        }
+      }
+      await currentConsent(actor, payload.runId, source.id);
+      const context = workerContext(actor, claimInput, AbortSignal.timeout(120_000));
       const sample = run?.mode === "sample";
       if (claim.unitKey.startsWith("discover:")) {
         let baselineCheckpoint: unknown =
           (source as typeof source & { baseCheckpoint?: unknown }).baseCheckpoint ?? null;
         let proposedCheckpoint: unknown =
           (source as typeof source & { proposedCheckpoint?: unknown }).proposedCheckpoint ?? null;
-        const refreshSourceId =
-          (source as typeof source & { refreshSourceId?: string | null }).refreshSourceId ?? null;
         const sourceSampled = (source as typeof source & { sampled?: boolean }).sampled ?? false;
-        if (!sample && worker.beginRefresh && refreshSourceId) {
+        if (worker.beginRefresh && refreshSourceId) {
           if (run?.mode === "refresh") {
             const refreshBegin = await worker.beginRefresh(
               { source: sourceDescriptor, mode: "refresh", checkpoint: baselineCheckpoint },
@@ -783,7 +933,7 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
                 { ...claimInput, checkpoint: refreshBegin.runCutoff },
               );
             }
-          } else if (baselineCheckpoint === null && !sourceSampled) {
+          } else if (baselineCheckpoint === null && (!sourceSampled || run?.mode === "sample")) {
             const refreshBegin = await worker.beginRefresh(
               { source: sourceDescriptor, mode: "full", checkpoint: null },
               context,
@@ -884,7 +1034,7 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
           actor,
           payload.runId,
           "awaiting_consent",
-          "Company import needs consent",
+          refreshRun ? "Company refresh needs consent" : "Company import needs consent",
           "attention",
         );
         await publish(actor, payload.runId);
@@ -941,6 +1091,91 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
         keepExisting: true,
         maxAttempts: 1,
       });
+    }
+    const pendingNotifications = await listCompanyImportNotificationRecovery(deps.prisma);
+    for (const pending of pendingNotifications) {
+      const actor = workerActor(pending);
+      for (const state of pending.states) {
+        if (state.startsWith("completion:")) {
+          if (state === `completion:${pending.status}`)
+            await notifyRunCompletion(actor, pending.runId);
+          else
+            await clearCompanyImportNotificationPending(deps.prisma, actor, pending.runId, state);
+        } else if (state === "awaiting_consent") {
+          if (pending.status === "awaiting_consent")
+            await notify(
+              actor,
+              pending.runId,
+              state,
+              pending.mode === "refresh"
+                ? "Company refresh needs consent"
+                : "Company import needs consent",
+              "attention",
+            );
+          else
+            await clearCompanyImportNotificationPending(deps.prisma, actor, pending.runId, state);
+        } else if (state === "budget_reached") {
+          if (pending.status === "budget_reached")
+            await notify(
+              actor,
+              pending.runId,
+              state,
+              pending.mode === "refresh"
+                ? "Company refresh paused at its budget"
+                : "Company import paused at its budget",
+              "attention",
+            );
+          else
+            await clearCompanyImportNotificationPending(deps.prisma, actor, pending.runId, state);
+        } else if (state === "recovery_required") {
+          if (pending.mode === "refresh")
+            await notify(
+              actor,
+              pending.runId,
+              state,
+              "Company refresh needs recovery",
+              "attention",
+            );
+          else
+            await clearCompanyImportNotificationPending(deps.prisma, actor, pending.runId, state);
+        } else if (state === "refresh_unavailable") {
+          const source = await deps.prisma.companyRefreshSource.findFirst({
+            where: {
+              spaceId: pending.spaceId,
+              ownerUserId: pending.userId,
+              importSources: { some: { runId: pending.runId } },
+              capability: { in: ["manual_only", "pending"] },
+            },
+            select: { sourceKind: true, scope: true },
+          });
+          if (source)
+            await notify(
+              actor,
+              pending.runId,
+              state,
+              `Automatic refresh unavailable for ${companySourceName(source.sourceKind, source.scope)}`,
+              "attention",
+            );
+          else
+            await clearCompanyImportNotificationPending(deps.prisma, actor, pending.runId, state);
+        } else if (state.startsWith("refresh_unavailable:")) {
+          const sourceId = state.slice("refresh_unavailable:".length);
+          const source = await deps.prisma.companyRefreshSource.findFirst({
+            where: { id: sourceId, spaceId: pending.spaceId, ownerUserId: pending.userId },
+            select: { sourceKind: true, scope: true },
+          });
+          if (source)
+            await notify(
+              actor,
+              pending.runId,
+              state,
+              `Automatic refresh unavailable for ${companySourceName(source.sourceKind, source.scope)}`,
+              "attention",
+            );
+          else
+            await clearCompanyImportNotificationPending(deps.prisma, actor, pending.runId, state);
+        }
+      }
     }
   }
 
@@ -1109,13 +1344,8 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
         (candidate) => candidate.id === sourceKey,
       );
       if (!source) throw new CompanyImportError("not_found");
-      if (source.capability !== "supported") {
-        await notifyRefreshUnavailable(actor, source.id);
-        throw new CompanyImportError("invalid_state");
-      }
-      const run = await createCompanyRefreshRun(deps.prisma, actor, sourceKey, true);
+      const run = await dispatchRefresh(actor, source, true);
       if (!run) throw new CompanyImportError("invalid_state");
-      await enqueueRun(actor, run.id);
       return publish(actor, run.id);
     },
     refreshTick: async () => {
@@ -1124,8 +1354,10 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
       for (const source of sources) {
         const actor = workerActor({ spaceId: source.spaceId, userId: source.ownerUserId });
         try {
-          const run = await createCompanyRefreshRun(deps.prisma, actor, source.id, false);
-          if (run) await enqueueRun(actor, run.id);
+          const ownedSource = (await listCompanyRefreshSources(deps.prisma, actor)).find(
+            (candidate) => candidate.id === source.id,
+          );
+          if (ownedSource) await dispatchRefresh(actor, ownedSource, false);
         } catch (error) {
           if (
             error instanceof CompanyImportError &&

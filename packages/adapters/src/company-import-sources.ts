@@ -291,6 +291,8 @@ export function createCompanySourceWorker(deps: {
         return { kind: "supported", checkpointKind: "gmail_history" };
       if (source.sourceKind === "data_room" && !source.connectionId)
         return { kind: "supported", checkpointKind: "data_room_updated_at" };
+      if (source.sourceKind === "mcp" && source.scope.reader === "linear")
+        return { kind: "manual_only", reason: "linear_manual_reimport_release_policy" };
       const manualReimportReasons: Record<string, string> = {
         slack: "slack_manual_reimport_release_policy",
         github: "github_manual_reimport_release_policy",

@@ -97,7 +97,7 @@ export function CompanyImportPage({
     [requestedId],
   );
   const [run, setRun] = useState<CompanyImportSession | null>(null);
-  const [newImport, setNewImport] = useState(false);
+  const [newImport, setNewImport] = useState(params.get("new") === "1");
   const [selected, setSelected] = useState<Record<string, Record<string, unknown>> | null>(null);
   const [scopeSource, setScopeSource] = useState<CompanyImportCatalogSource | null>(null);
   const [cap, setCap] = useState("1000000");

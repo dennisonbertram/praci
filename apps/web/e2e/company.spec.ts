@@ -1,7 +1,174 @@
 import { expect, test } from "@playwright/test";
+import type { CompanyReviewItem } from "@rakazo/contracts";
 import { companyCalendarItems } from "@rakazo/core";
 import { companyFixture } from "../src/pages/company-fixtures";
 import { captureScreenshot, completeOnboarding, signup } from "./helpers";
+
+test("Company Review keyboard actions keep the badge in sync and refresh stays capability-scoped", async ({
+  page,
+}, testInfo) => {
+  const data = structuredClone(companyFixture);
+  let items: CompanyReviewItem[] = [
+    {
+      kind: "fact",
+      id: "entity:company",
+      reason: "contradiction",
+      fact: { kind: "entity", record: data.entities[0]! },
+    },
+    {
+      kind: "candidate",
+      id: "candidate:alex",
+      candidate: {
+        id: "alex",
+        version: "v1",
+        reason: "name_only_person_candidate",
+        title: "Alex Reed",
+        quote: "Alex joined the robotics team.",
+        sourceKind: "gmail",
+        details: [],
+        choices: [{ id: "person", title: "Alex Reed · alex@northwind.example" }],
+        allowSeparate: true,
+        editableTitle: true,
+        subjects: [],
+        subjectChoices: [],
+      },
+    },
+    {
+      kind: "candidate",
+      id: "candidate:rejected",
+      candidate: {
+        id: "rejected",
+        version: "v1",
+        reason: "rejected_name_only_claim",
+        title: "Jordan Quinn",
+        quote: "Jordan joined engineering.",
+        sourceKind: "gmail",
+        details: [],
+        choices: [],
+        allowSeparate: true,
+        editableTitle: true,
+        subjects: [],
+        subjectChoices: [],
+      },
+    },
+  ];
+  let resolutions = 0;
+  let failResolution = true;
+  let refreshes = 0;
+  const source = {
+    id: "gmail",
+    sourceKind: "gmail",
+    capability: "supported",
+    status: "ready",
+    reason: null,
+    lastSuccessAt: "2026-10-21T03:00:00Z",
+    nextRunAt: "2026-10-22T03:00:00Z",
+    runId: null as string | null,
+  };
+  await page.route("**/rpc/company/**", async (route) => {
+    const method = new URL(route.request().url()).pathname.split("/").at(-1);
+    const input = route.request().postDataJSON()?.json;
+    if (method === "resolveCandidate") {
+      if (failResolution) {
+        failResolution = false;
+        await route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({ message: "Unavailable" }),
+        });
+        return;
+      }
+      resolutions++;
+      if (input.candidateId === "alex")
+        expect(input).toMatchObject({ action: "confirm", targetId: "person", separate: false });
+      items = items.filter(
+        (item) => item.kind !== "candidate" || item.candidate.id !== input.candidateId,
+      );
+    }
+    if (method === "confirm" || method === "editEntity")
+      items = items.filter((item) => item.kind !== "fact");
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        json: method === "page" ? data : method === "review" ? { items } : { ok: true },
+        meta: [],
+      }),
+    });
+  });
+  await page.route("**/rpc/companyImport/**", async (route) => {
+    const method = new URL(route.request().url()).pathname.split("/").at(-1);
+    if (method === "refresh") {
+      expect(route.request().postDataJSON()?.json).toEqual({ sourceId: "gmail" });
+      refreshes++;
+      source.runId = "refresh-run";
+    }
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        json:
+          method === "refreshStatus"
+            ? [
+                source,
+                {
+                  ...source,
+                  id: "slack",
+                  sourceKind: "slack",
+                  capability: "manual_only",
+                  status: "unavailable",
+                  reason: "slack_manual_reimport_release_policy",
+                  lastSuccessAt: null,
+                  nextRunAt: null,
+                  runId: null,
+                },
+              ]
+            : { runId: "refresh-run" },
+        meta: [],
+      }),
+    });
+  });
+  await signup(page, `review-${Date.now()}@rakazo.test`, "password12", "Review User");
+  await completeOnboarding(page);
+  await page.goto("/app/company?view=review");
+  await expect(page.getByRole("tab", { name: "Review (3)", exact: true })).toBeVisible();
+  const conflict = page.getByRole("region", { name: "Northwind Robotics", exact: true });
+  await conflict.focus();
+  await page.keyboard.press("e");
+  const detail = page.getByRole("dialog", { name: "Northwind Robotics", exact: true });
+  await expect(detail.getByRole("button", { name: "Save", exact: true })).toBeVisible();
+  await detail.getByRole("button", { name: "Close", exact: true }).click();
+  await conflict.focus();
+  await page.keyboard.press("c");
+  await expect(page.getByRole("tab", { name: "Review (2)", exact: true })).toBeVisible();
+  const match = page.getByRole("region", { name: "Alex Reed", exact: true });
+  await expect(match.getByText("Same person?", { exact: true })).toBeVisible();
+  await expect(match.getByRole("button", { name: "Confirm", exact: true })).toBeDisabled();
+  await match.getByRole("combobox", { name: "Match", exact: true }).selectOption("person");
+  await match.getByRole("button", { name: "Confirm", exact: true }).click();
+  await expect(match.getByRole("alert")).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Review (2)", exact: true })).toBeVisible();
+  await captureScreenshot(page, testInfo, "company-review");
+  await match.focus();
+  await page.keyboard.press("c");
+  await expect(page.getByRole("tab", { name: "Review (1)", exact: true })).toBeVisible();
+  const rejected = page.getByRole("region", { name: "Jordan Quinn", exact: true });
+  await rejected.focus();
+  await page.keyboard.press("r");
+  await expect(page.getByText("Nothing to review", { exact: true })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Review (0)", exact: true })).toBeVisible();
+  expect(resolutions).toBe(2);
+  await page.getByRole("button", { name: "Company actions", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Refresh sources", exact: true }).click();
+  const refresh = page.getByRole("region", { name: "Refresh sources", exact: true });
+  await expect(refresh.getByText("Manual re-import only", { exact: true })).toBeVisible();
+  await expect(refresh.getByRole("button", { name: "Refresh", exact: true })).toHaveCount(1);
+  await refresh.getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect(refresh.getByRole("link", { name: "View progress", exact: true })).toHaveAttribute(
+    "href",
+    "/app/company/import?runId=refresh-run",
+  );
+  expect(refreshes).toBe(1);
+  await captureScreenshot(page, testInfo, "company-refresh");
+});
 
 test("Company shows owner facts, precision and provenance with masked money", async ({
   page,
@@ -78,11 +245,13 @@ test("Company shows owner facts, precision and provenance with masked money", as
         json:
           method === "page"
             ? data
-            : method === "calendar"
-              ? calendar
-              : method === "fact"
-                ? fact
-                : { ok: true },
+            : method === "review"
+              ? { items: [] }
+              : method === "calendar"
+                ? calendar
+                : method === "fact"
+                  ? fact
+                  : { ok: true },
         meta: [],
       }),
     });

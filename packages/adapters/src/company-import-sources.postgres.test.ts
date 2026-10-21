@@ -16,7 +16,7 @@ import type { Actor } from "@rakazo/contracts";
 import { companyImporterSpawnKey } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { companyForActor, createDb } from "@rakazo/db";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createCompanyConnectionReader } from "./company-connection-reader.js";
 import { createCompanyDocumentReader } from "./company-document-source.js";
 import { createCompanyImportEngine } from "./company-import-engine.js";
@@ -251,6 +251,15 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
     await close();
   });
 
+  beforeEach(async () => {
+    await companyForActor(prisma, actor).eraseMap();
+    await companyForActor(prisma, {
+      ...actor,
+      userId: otherUserId,
+      email: `${otherUserId}@example.test`,
+    }).eraseMap();
+  });
+
   async function createEngine() {
     const connector = {
       proxy: async (request: ConnectorProxyRequest) =>
@@ -360,6 +369,62 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
       });
     }
   }
+
+  it("paginates tied Data Room update timestamps without losing items or crossing the cutoff", async () => {
+    const updatedAt = new Date("2026-01-04T12:00:00.000Z");
+    const ids = ["a", "b", "later", "other-owner"].map((id) => `refresh-tie-${id}-${suffix}`);
+    await prisma.dataRoomItem.createMany({
+      data: ids.map((id, index) => ({
+        id,
+        spaceId,
+        userId: index === 3 ? otherUserId : userId,
+        source: "upload",
+        sha256: createHash("sha256").update(id).digest("hex"),
+        name: `${id}.txt`,
+        mimeType: "text/plain",
+        size: BigInt(10),
+        status: "ready",
+        updatedAt: index === 2 ? new Date("2026-01-06T00:00:00.000Z") : updatedAt,
+      })),
+    });
+    const worker = createCompanySourceWorker({
+      prisma,
+      extractor: { relevant: vi.fn(), extract: vi.fn() },
+    });
+    const context: CompanyImportWorkerContext = {
+      actor: { spaceId, userId },
+      signal: AbortSignal.timeout(10_000),
+      executeModelCall: vi.fn(),
+    };
+    const source = {
+      id: "synthetic-data-room-refresh",
+      sourceKind: "data_room",
+      connectionId: null,
+      scope: { itemIds: ids },
+    };
+    const refresh = {
+      checkpoint: { kind: "data_room_updated_at", updatedAt: updatedAt.toISOString() },
+      runCutoff: { kind: "data_room_updated_at", updatedAt: "2026-01-05T00:00:00.000Z" },
+    };
+    const first = await worker.discover({ source, cursor: null, maxUnits: 1, refresh }, context);
+    const second = await worker.discover(
+      { source, cursor: first.nextCursor, maxUnits: 1, refresh },
+      context,
+    );
+    const end = await worker.discover(
+      { source, cursor: second.nextCursor, maxUnits: 1, refresh },
+      context,
+    );
+    expect([...first.units, ...second.units].map((unit) => unit.cursor)).toEqual([
+      { itemId: ids[0] },
+      { itemId: ids[1] },
+    ]);
+    expect(first.proposedCheckpoint).toEqual(refresh.runCutoff);
+    expect(second.proposedCheckpoint).toEqual(refresh.runCutoff);
+    expect(end.units).toEqual([]);
+    expect(end.done).toBe(true);
+    await prisma.dataRoomItem.deleteMany({ where: { id: { in: ids }, spaceId } });
+  });
 
   it("runs real Data Room and Gmail sources, persists facts, and reuses unchanged evidence", async () => {
     const engine = await createEngine();
