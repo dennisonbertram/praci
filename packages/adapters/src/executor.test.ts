@@ -180,6 +180,7 @@ async function runIdentityExecutor({
   let request: AgentRunRequest | undefined;
   const toolResults: Array<{ name: string; result: unknown }> = [];
   const effectRows: Array<Record<string, unknown>> = [];
+  const persistedReplayArgs: Array<Record<string, unknown>> = [];
   const fallbackAttempts: Array<{ ok: boolean; value?: unknown; error?: unknown }> = [];
   const matchesEffectWhere = (row: Record<string, unknown>, where: Record<string, unknown> = {}) =>
     Object.entries(where).every(([key, value]) => {
@@ -191,8 +192,23 @@ async function runIdentityExecutor({
   let runtimeRunCount = 0;
   const runtimeRun = vi.fn(async function* (next: AgentRunRequest) {
     request = next;
-    const currentCalls = callBatches?.[runtimeRunCount] ?? calls;
+    const runtimeRunIndex = runtimeRunCount;
     runtimeRunCount += 1;
+    let currentCalls = callBatches?.[runtimeRunIndex] ?? calls;
+    if (resumeApprovedEffect && runtimeRunIndex === 1) {
+      const approved = effectRows.find((effect) => effect.kind === "company_import_start");
+      const persistedRequest = approved?.request;
+      if (
+        approved?.status !== "approved" ||
+        !persistedRequest ||
+        typeof persistedRequest !== "object"
+      ) {
+        throw new Error("Approved Company import request was not persisted.");
+      }
+      const replayArgs = structuredClone(persistedRequest) as Record<string, unknown>;
+      persistedReplayArgs.push(replayArgs);
+      currentCalls = [{ name: "company_import_start", args: replayArgs }];
+    }
     for (const [index, call] of currentCalls.entries()) {
       if (!next.executeTool) throw new Error("Runtime tool executor was not provided.");
       toolResults.push({
@@ -544,6 +560,7 @@ async function runIdentityExecutor({
     connectorCall,
     webFetch,
     effectRows,
+    persistedReplayArgs,
     fallbackAttempts,
     prisma,
     memoryRead,
@@ -784,8 +801,8 @@ describe("Company identity executor boundaries", () => {
       spawnKey: null,
       backupModel: backup,
       selectBackup: true,
-      calls: [{ name: "company_search", args: { text: "Synthetic Example" } }],
-      callsAfterBackup: [{ name: "company_search", args: { text: "Synthetic Example" } }],
+      calls: [{ name: "company_search", args: {} }],
+      callsAfterBackup: [{ name: "company_search", args: {} }],
       consentedRecipientKeys: [primaryConsent, backupConsent],
     });
 
@@ -793,6 +810,12 @@ describe("Company identity executor boundaries", () => {
     expect(toolResults).toHaveLength(2);
     expect(toolResults.every(({ result }) => (result as { untrusted?: boolean }).untrusted)).toBe(
       true,
+    );
+    const fallbackSearch = toolResults[1]!.result as {
+      facts: Array<{ record: { id: string } }>;
+    };
+    expect(fallbackSearch.facts.map((fact) => fact.record.id)).toContain(
+      "company-data-room-person",
     );
     expect(
       prisma.aiDataConsent.findFirst.mock.calls.map(([args]) => args?.where?.recipientKey),
@@ -813,7 +836,7 @@ describe("Company identity executor boundaries", () => {
       spawnKey: null,
       backupModel: backup,
       selectBackup: true,
-      callsAfterBackup: [{ name: "company_search", args: { text: "Synthetic Example" } }],
+      callsAfterBackup: [{ name: "company_search", args: {} }],
       consentedRecipientKeys: [],
     });
 
@@ -975,22 +998,23 @@ describe("Company identity executor boundaries", () => {
       version: "synthetic-version",
     }));
     const call = { name: "company_import_start", args: { runId: "import-1" } };
-    const { toolResults, pauseRunForInput, effectRows } = await runIdentityExecutor({
-      spawnKey: companyImporterSpawnKey("user-1"),
-      callBatches: [[call], [call]],
-      resumeApprovedEffect: true,
-      companyImport: {
-        run: importRun,
-        engine: { consentStatus, start },
-        mutateBeforeResume: mutate
-          ? () => {
-              (importRun.sources[0]!.scope as { channels: string[] }).channels = [
-                "changed-channel",
-              ];
-            }
-          : undefined,
-      },
-    });
+    const { toolResults, pauseRunForInput, effectRows, persistedReplayArgs } =
+      await runIdentityExecutor({
+        spawnKey: companyImporterSpawnKey("user-1"),
+        callBatches: [[call], [call]],
+        resumeApprovedEffect: true,
+        companyImport: {
+          run: importRun,
+          engine: { consentStatus, start },
+          mutateBeforeResume: mutate
+            ? () => {
+                (importRun.sources[0]!.scope as { channels: string[] }).channels = [
+                  "changed-channel",
+                ];
+              }
+            : undefined,
+        },
+      });
 
     expect(pauseRunForInput).toHaveBeenCalledTimes(1);
     expect(effectRows).toEqual([
@@ -1003,6 +1027,9 @@ describe("Company identity executor boundaries", () => {
         }),
       }),
     ]);
+    expect(persistedReplayArgs).toHaveLength(1);
+    expect(persistedReplayArgs[0]).toEqual(effectRows[0]?.request);
+    expect(persistedReplayArgs[0]).not.toBe(effectRows[0]?.request);
     expect(toolResults).toHaveLength(2);
     if (mutate) {
       expect(start).not.toHaveBeenCalled();
