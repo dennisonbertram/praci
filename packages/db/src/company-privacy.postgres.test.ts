@@ -173,6 +173,12 @@ describePostgres("company privacy controls (PostgreSQL)", () => {
       await company.importEntity(person("Privacy Casey", "privacy-casey", "casey@example.test")),
     );
     await company.merge(excluded.id, excludedRoot.id);
+    const excludedSibling = record(
+      await company.importEntity(
+        person("Privacy Casey alias", "privacy-casey-alias", "casey-alias@example.test"),
+      ),
+    );
+    await company.merge(excludedSibling.id, excludedRoot.id);
     const privatePerson = record(
       await company.importEntity(
         person("Private Endpoint", "privacy-private", "private@example.test"),
@@ -327,6 +333,7 @@ describePostgres("company privacy controls (PostgreSQL)", () => {
     await company.excludePerson(excluded.id);
     expect(await company.detail(excluded.id)).toBeNull();
     expect(await company.detail(excludedRoot.id)).toBeNull();
+    expect(await company.detail(excludedSibling.id)).toBeNull();
     expect(
       await prisma.companyCandidate.findUnique({ where: { id: pendingRelation.id } }),
     ).toBeNull();

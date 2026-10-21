@@ -1946,17 +1946,16 @@ async function mergedEntityGroupIds(
   scope: Scope,
   entityId: string,
 ): Promise<string[]> {
-  const merges = await db.companyMerge.findMany({
-    where: { ...scope, OR: [{ survivorEntityId: entityId }, { sourceEntityId: entityId }] },
-    select: { sourceEntityId: true, survivorEntityId: true },
+  const parent = await db.companyMerge.findFirst({
+    where: { ...scope, sourceEntityId: entityId },
+    select: { survivorEntityId: true },
   });
-  return [
-    ...new Set([
-      entityId,
-      ...merges.map((merge) => merge.sourceEntityId),
-      ...merges.map((merge) => merge.survivorEntityId),
-    ]),
-  ];
+  const rootId = parent?.survivorEntityId ?? entityId;
+  const children = await db.companyMerge.findMany({
+    where: { ...scope, survivorEntityId: rootId },
+    select: { sourceEntityId: true },
+  });
+  return [rootId, ...children.map((merge) => merge.sourceEntityId)];
 }
 
 async function rejectEntity(
