@@ -1207,6 +1207,24 @@ export const builtinAgentTools: ConnectorTool[] = [
     },
   },
   {
+    name: "investor_update_draft",
+    description:
+      "Past investor and board updates, and the drafts on the Investors page. action history: recent sent updates with their full text, to match their sections and voice (optionally audience investors or board). action get: one update by id. action save: change the subject, period or body of an existing draft by id; a sent update is refused. action create: add a draft (audience investors or board). You never send an update: the user sends it from the Investors page. Write TBD for anything you cannot source. Body is markdown.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["history", "get", "save", "create"] },
+        id: { type: "string", description: "For get and save." },
+        audience: { type: "string", enum: ["investors", "board"] },
+        subject: { type: "string" },
+        period: { type: "string", description: "YYYY-MM or YYYY-Qn." },
+        body: { type: "string", description: "Markdown." },
+        limit: { type: "number", description: "For history. Default 5, max 20." },
+      },
+      required: ["action"],
+    },
+  },
+  {
     name: "cap_table_read",
     description:
       "The cap table on the user's Cap Table page, as last saved: fully diluted shares, option pool, latest 409A, amount raised, share classes and each holder's security, shares and ownership. Null before the first save. Read this before answering cap table or investor questions.",

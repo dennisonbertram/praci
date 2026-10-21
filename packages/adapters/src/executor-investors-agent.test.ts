@@ -26,7 +26,7 @@ function historyMessages() {
   ];
 }
 
-async function runInvestors(trigger = "user") {
+async function runInvestors(trigger = "user", spawnKey: string | null = "investors-agent:user-1") {
   const scripted = false;
   const run = {
     id: "run-1",
@@ -63,7 +63,7 @@ async function runInvestors(trigger = "user") {
         id: run.botId,
         name: "Investors agent",
         userId: "user-1",
-        spawnKey: "investors-agent:user-1",
+        spawnKey,
         title: "Assistant",
         description: "Test assistant",
         modelProvider: null,
@@ -210,5 +210,18 @@ describe("Investors agent runs", () => {
     expect(names(chat)).toContain("cap_table_read");
     expect(names(chat)).not.toContain("cap_table_update");
     expect(names(routine)).toContain("cap_table_update");
+  });
+
+  it("offers investor_update_draft to the Investors agent and to no other bot", async () => {
+    const investors = await runInvestors();
+    expect((investors.request?.tools ?? []).map((tool) => tool.name)).toContain(
+      "investor_update_draft",
+    );
+    for (const spawnKey of ["carta-agent:user-1", "legal-agent:user-1", null]) {
+      const other = await runInvestors("user", spawnKey);
+      expect((other.request?.tools ?? []).map((tool) => tool.name)).not.toContain(
+        "investor_update_draft",
+      );
+    }
   });
 });

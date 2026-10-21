@@ -9,7 +9,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@rakazo/ui-web";
-import type { Editor } from "@tiptap/react";
+import { Markdown } from "@tiptap/markdown";
+import type { Editor, Extensions } from "@tiptap/react";
 import { useEditor, useEditorState } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import {
@@ -27,6 +28,8 @@ export interface EditorContentValue {
   /** Empty when the message has no text. */
   html: string;
   text: string;
+  /** Only when the editor was made with `markdown`; empty when the message has no text. */
+  markdown?: string;
 }
 
 export const MOD_KEY = /Mac|iPhone|iPad/.test(globalThis.navigator?.platform ?? "") ? "⌘" : "Ctrl+";
@@ -36,8 +39,14 @@ export function useComposeEditor({
   disabled,
   onChange,
   onLinkShortcut,
+  markdown = false,
+  extensions = [],
 }: {
   disabled: boolean;
+  /** Stores and loads markdown (and keeps headings), for text that is kept as markdown. */
+  markdown?: boolean;
+  /** More tiptap extensions, for example a decoration. */
+  extensions?: Extensions;
   onChange: (value: EditorContentValue) => void;
   onLinkShortcut: () => void;
 }) {
@@ -49,13 +58,15 @@ export function useComposeEditor({
     editable: !disabled,
     extensions: [
       StarterKit.configure({
-        heading: false,
+        heading: markdown ? undefined : false,
         code: false,
         codeBlock: false,
         strike: false,
         horizontalRule: false,
         link: { openOnClick: false, defaultProtocol: "https" },
       }),
+      ...(markdown ? [Markdown] : []),
+      ...extensions,
     ],
     editorProps: {
       attributes: {
@@ -82,6 +93,7 @@ export function useComposeEditor({
       latest.current.onChange({
         html: current.isEmpty ? "" : current.getHTML(),
         text: current.getText({ blockSeparator: "\n" }),
+        ...(markdown ? { markdown: current.isEmpty ? "" : current.getMarkdown() } : {}),
       }),
   });
   useEffect(() => {

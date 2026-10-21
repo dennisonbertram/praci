@@ -1,0 +1,106 @@
+import type { InvestorUpdate } from "@rakazo/contracts";
+import { InvestorAudienceSchema, isInvestorsAgentSpawnKey } from "@rakazo/contracts";
+import type { PrismaClient } from "@rakazo/db";
+import {
+  getInvestorUpdate,
+  InvestorUpdateLockedError,
+  IsolationError,
+  listInvestorUpdates,
+  saveInvestorUpdate,
+} from "@rakazo/db";
+import * as z from "zod";
+import { mailToolsAllowed } from "./mail-tools.js";
+
+export const INVESTOR_UPDATE_TOOL_NAMES = new Set(["investor_update_draft"]);
+
+/** Only the Investors agent, on a run its owner started (a direct message or its own routine). */
+export function investorUpdateToolsAllowed(
+  options: Parameters<typeof mailToolsAllowed>[0] & { botSpawnKey: string | null | undefined },
+): boolean {
+  return isInvestorsAgentSpawnKey(options.botSpawnKey) && mailToolsAllowed(options);
+}
+
+type Deps = {
+  prisma: Pick<PrismaClient, "investorUpdate" | "contact" | "composeSend" | "space">;
+  /** From the run (the bot owner), never from model input. */
+  scope: { spaceId: string; userId: string };
+};
+
+const Args = z.object({
+  action: z.enum(["history", "get", "save", "create"]),
+  id: z.string().min(1).optional(),
+  audience: InvestorAudienceSchema.optional(),
+  subject: z.string().trim().max(998).optional(),
+  period: z
+    .string()
+    .regex(/^\d{4}-(?:0[1-9]|1[0-2]|Q[1-4])$/)
+    .optional(),
+  body: z.string().max(100_000).optional(),
+  limit: z.number().int().min(1).max(20).optional(),
+});
+
+const shown = (u: InvestorUpdate) => ({
+  id: u.id,
+  audience: u.audience,
+  subject: u.subject,
+  period: u.period,
+  status: u.status,
+  sentAt: u.sentAt,
+  body: u.body,
+});
+
+/**
+ * Past updates, and the drafts on the Investors page. The agent can read a sent update and write only
+ * a draft; it never sends one (that is the founder's click on the page).
+ */
+export async function investorUpdateToolFromTool(
+  deps: Deps,
+  args: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const parsed = Args.safeParse(args);
+  if (!parsed.success)
+    return {
+      error: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "),
+    };
+  const input = parsed.data;
+  try {
+    if (input.action === "history") {
+      const all = await listInvestorUpdates(deps.prisma, deps.scope);
+      const sent = all.filter(
+        (u) =>
+          (u.status === "sent" || u.status === "partly_sent") &&
+          (!input.audience || u.audience === input.audience),
+      );
+      return { updates: sent.slice(0, input.limit ?? 5).map(shown) };
+    }
+    if (input.action === "create") {
+      const draft = await saveInvestorUpdate(deps.prisma, deps.scope, {
+        audience: input.audience ?? "investors",
+        subject: input.subject,
+        period: input.period,
+        body: input.body,
+      });
+      return {
+        update: shown(draft),
+        note: "Saved as a draft on the Investors page. Nothing was sent.",
+      };
+    }
+    if (!input.id) return { error: "id is required" };
+    if (input.action === "get")
+      return { update: shown(await getInvestorUpdate(deps.prisma, deps.scope, input.id)) };
+    const saved = await saveInvestorUpdate(deps.prisma, deps.scope, {
+      id: input.id,
+      subject: input.subject,
+      period: input.period,
+      body: input.body,
+    });
+    return { update: shown(saved), note: "Draft saved. Nothing was sent." };
+  } catch (error) {
+    if (error instanceof InvestorUpdateLockedError)
+      return {
+        error: "That update was already sent, so it cannot be changed. Create a new draft.",
+      };
+    if (error instanceof IsolationError) return { error: "No update with this id." };
+    return { error: "Investor update tool failed" };
+  }
+}

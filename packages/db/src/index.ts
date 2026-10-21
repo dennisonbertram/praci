@@ -17,6 +17,7 @@ export * from "./expire-stuck-run.js";
 export * from "./external-conversations.js";
 export * from "./groups.js";
 export * from "./history-retrieval.js";
+export * from "./investor-updates.js";
 export * from "./legal.js";
 export * from "./meetings.js";
 export * from "./memory-config.js";
