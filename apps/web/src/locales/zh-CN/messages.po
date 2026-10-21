@@ -1719,7 +1719,7 @@ msgid "Bots run on"
 msgstr ""
 
 #: src/pages/Welcome.tsx
-msgid "Bots that run your inbox, cash,<0/>cap table and investor documents."
+msgid "Bots that run your inbox, cash, cap table and investor documents."
 msgstr ""
 
 #: src/pages/Paywall.tsx
@@ -7476,6 +7476,10 @@ msgid "Reset computer?"
 msgstr "重置电脑？"
 
 #: src/pages/Auth.tsx
+msgid "Reset link expired"
+msgstr ""
+
+#: src/pages/Auth.tsx
 msgid "Reset password"
 msgstr "重置密码"
 
@@ -9024,10 +9028,6 @@ msgstr "此提供方尚未连接。"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "This removes the connection from every space."
 msgstr ""
-
-#: src/pages/Auth.tsx
-msgid "This reset link is invalid or expired"
-msgstr "此重置链接无效或已过期"
 
 #: src/pages/shell/message-cards.tsx
 msgid "This server cannot be assigned without a bot."
