@@ -69,9 +69,12 @@ behavior. Its normal mode can discover real model keys, including from a local
 development environment file; merely unsetting shell keys is insufficient.
 
 For a safe baseline, explicitly select `DEMO_NO_MODEL=1` and remove inherited
-model keys. This seeds the **no-model** state: do not claim a real or emulated
-model-reply journey passed using it. A richer deterministic model mode must be
-separately verified before use; live integrations require explicit approval.
+model keys. Despite its name, the current launcher selects `AGENT_RUNTIME=scripted`
+with this flag and skips model-key discovery. The API exempts that runtime from
+model setup, so this is a **scripted baseline**, not proof of the missing-model
+setup state or real model replies. Check the launcher's `modelEnv()` path, not
+just the `demoModelEnv()` helper or startup message: they currently disagree.
+Live integrations require explicit approval.
 
 Choose an unused slot from 0–9 and export it, for example `export DEMO_SLOT=3`
 only after checking availability. Slot ports are Postgres `5450 + slot`, API
@@ -141,9 +144,12 @@ Do not describe passing fixture tests as full desktop coverage.
 
 Use the development stack above for applicable workflows: sign-in, navigation,
 Data room, attachments, settings, persistence after app relaunch, and isolation
-between invented users/spaces. Exercise chat's no-model state in the safe
-baseline; use a verified scripted harness for successful replies. Cover loading,
-empty/error states, light/dark appearance and the relevant window sizes.
+between invented users/spaces. Verify scripted replies separately before claiming
+a successful chat journey. To test missing-model setup, use a separately verified
+non-scripted runtime with no user or deployment model configured; confirm the API
+reports `needsModel: true` before exercising that UI. The baseline command above
+does not establish this state. Cover loading, empty/error states, light/dark
+appearance and the relevant window sizes.
 
 Use existing shared web journeys where they genuinely apply, but drive Electron
 for its preload, clipboard, dialogs, downloads, links and window lifecycle.
@@ -242,7 +248,8 @@ entire cross-platform product is tested.
 ## Follow-up tooling, not yet supplied by this skill
 
 - A preflight/one-command cloud launcher with readiness, slot ownership and cleanup.
-- An explicit credential-isolated deterministic model mode for full chat journeys.
+- Reconcile the demo launcher's model-mode selection with its helper and startup
+  message, and verify distinct credential-isolated scripted and missing-model modes.
 - An automated real-Docker packaged Linux acceptance lane with no executable fallback.
 - Standard sanitized evidence bundles and a macOS/Windows acceptance matrix.
 
