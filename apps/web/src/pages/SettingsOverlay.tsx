@@ -104,6 +104,20 @@ export function SettingsOverlay({
 }) {
   const { t } = useLingui();
   const panelRef = useRef<HTMLDivElement>(null);
+  const opener = useRef(document.activeElement);
+  // The app behind a modal dialog cannot take focus or clicks while it is open.
+  useEffect(() => {
+    const app = document.getElementById("root");
+    app?.setAttribute("inert", "");
+    return () => app?.removeAttribute("inert");
+  }, []);
+  // The control that opened Settings, or the user menu's button when that menu item is gone.
+  const returnFocus = () => {
+    const from = opener.current;
+    return from instanceof HTMLElement && from.isConnected && from !== document.body
+      ? from
+      : document.querySelector<HTMLElement>('[data-testid="user-menu-trigger"]');
+  };
   const [section, setSection] = useState<SettingsSection>(initialSection);
   const [memoryBusy, setMemoryBusy] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
@@ -203,10 +217,9 @@ export function SettingsOverlay({
         showCloseButton={false}
         aria-modal="true"
         initialFocus={() => panelRef.current}
-        // Models needs the full height for its two panes; other sections size to their content.
-        className={`flex max-h-[calc(100%-2rem)] w-[min(1080px,calc(100%-2rem))] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-h-[calc(100%-5rem)] sm:max-w-[1080px] ${
-          section === "models" ? "h-[min(760px,calc(100%-2rem))]" : ""
-        }`}
+        finalFocus={returnFocus}
+        // One height for every section, so the nav never moves under the pointer; the pane scrolls.
+        className="flex h-[min(760px,calc(100%-2rem))] max-h-[calc(100%-2rem)] w-[min(1080px,calc(100%-2rem))] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-h-[calc(100%-5rem)] sm:max-w-[1080px]"
       >
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           {/* A phone cannot fit every section in a strip, so it gets a select. */}
@@ -229,7 +242,7 @@ export function SettingsOverlay({
           <nav
             data-testid="settings-nav"
             aria-label={t`Settings`}
-            className="hidden shrink-0 gap-1 border-border md:flex md:w-[200px] md:flex-col md:overflow-y-auto md:border-e md:px-3 md:py-4"
+            className="hidden shrink-0 gap-1 border-border md:flex md:w-[208px] md:flex-col md:overflow-y-auto md:border-e md:px-3 md:py-4"
           >
             {navItems.map((item) => {
               const Icon = item.icon;

@@ -20,3 +20,6 @@ export const Empty: Story = { args: { deadlines: [] } };
 
 /** Opened from the Overdue tile: only the overdue ones, with a way back to all. */
 export const OnlyOverdue: Story = { args: { onlyOverdue: true, onShowAll: () => {} } };
+
+/** The page offers the Legal agent: each row gets Ask agent with the row as the question. */
+export const WithAskAgent: Story = { args: { onAsk: () => {} } };
