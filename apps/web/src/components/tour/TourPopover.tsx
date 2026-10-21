@@ -149,6 +149,8 @@ export function TourPopover({
     </>
   );
 
+  // Over the sidebar, never the page: the page to its right holds the greeting, composer and cards.
+  const below = !rect || rect.top + rect.height / 2 < window.innerHeight / 2;
   const ring = rect && rect.width > 0 && rect.right > 0 && rect.left < window.innerWidth;
   if (!wide) {
     // Keep the card off the ring: on top when the target is in the lower half of the screen.
@@ -182,8 +184,9 @@ export function TourPopover({
       >
         <PopoverContent
           anchor={element}
-          side="right"
-          align={step.anchor.includes("user-menu") ? "end" : "start"}
+          side={below ? "bottom" : "top"}
+          // An icon at the sidebar's edge keeps its card over the sidebar, not the page.
+          align={rect && rect.width < 100 ? "end" : "start"}
           sideOffset={10}
           data-testid="tour-popover"
           className="w-72"

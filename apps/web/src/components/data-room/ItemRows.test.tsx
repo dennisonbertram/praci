@@ -95,7 +95,7 @@ it("renders a native table in the Cap table style, with the header hidden on a p
   const head = container.querySelector('[data-testid="data-room-head"]');
   expect(head?.className).toContain("hidden");
   expect(head?.querySelector("th")?.className).toContain("text-xs");
-  expect(head?.textContent).toBe("NameTypeAddedPartiesStatus");
+  expect(head?.textContent).toBe("NameTypeAddedParties");
   expect(container.querySelectorAll("colgroup > col")).toHaveLength(6);
 });
 
@@ -287,7 +287,8 @@ it("sizes the columns with table-column <col>s, not table-cell", () => {
   act(() => root.render(<ListView rows={[{ item: item("a", null), snippets: [] }]} o={o()} />));
   const cols = Array.from(container.querySelectorAll("col")).map((c) => c.className);
   expect(cols.some((c) => c.includes("table-cell"))).toBe(false);
-  expect(cols.filter((c) => c.includes("table-column"))).toHaveLength(4);
+  // Status has no column while no row has a status.
+  expect(cols.filter((c) => c.includes("table-column"))).toHaveLength(3);
 });
 
 it("opens the file when its search snippet is clicked", () => {
@@ -332,8 +333,9 @@ it("puts a sub-folder's menu in the same column as a file's at every list width"
       <ListView
         rows={[{ item: item("a", null), snippets: [] }]}
         o={o()}
-        lead={() => (
+        lead={(showStatus) => (
           <SubfolderList
+            showStatus={showStatus}
             folders={[invoices]}
             contents={() => "2 items"}
             onOpen={vi.fn()}
@@ -603,4 +605,67 @@ it("ticks a row from its checkbox or the x key without opening the preview", () 
   expect(onCheck).toHaveBeenCalledTimes(2);
   act(() => root.render(<ListView rows={rows} o={o()} />));
   expect(container.querySelector('[role="checkbox"]')).toBeNull();
+});
+
+const asRows = (...items: unknown[]) =>
+  items.map((i) => ({ item: i as DataRoomApiItem, snippets: [] }));
+
+it("offers Delete, not Try again, on a file that cannot be read", () => {
+  const onAction = vi.fn();
+  const rows = asRows({
+    ...item("scan", null),
+    status: "failed",
+    error: "This file isn't a readable PDF.",
+  });
+  act(() => root.render(<ListView rows={rows} o={{ ...o(), onAction }} />));
+  const buttons = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
+  expect(buttons).not.toContain("Try again");
+  act(() =>
+    Array.from(container.querySelectorAll("button"))
+      .find((b) => b.textContent === "Delete")
+      ?.click(),
+  );
+  expect(onAction).toHaveBeenCalledWith("delete", expect.objectContaining({ id: "scan" }));
+});
+
+it("keeps Try again for a failure that is not about the file's bytes", () => {
+  const rows = asRows({
+    ...item("late", null),
+    status: "failed",
+    error: "TimeoutError: timed out",
+  });
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  const buttons = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
+  expect(buttons).toContain("Try again");
+});
+
+it("shows how long a file has been Reading once that passes two minutes", () => {
+  const long = new Date(Date.now() - 5 * 60_000).toISOString();
+  const short = new Date(Date.now() - 30_000).toISOString();
+  const rows = asRows(
+    { ...item("old", null), status: "extracting", createdAt: long },
+    { ...item("new", null), status: "extracting", createdAt: short },
+  );
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  const lines = Array.from(container.querySelectorAll('[data-testid="data-room-subline"]')).map(
+    (el) => el.textContent,
+  );
+  expect(lines[0]).toMatch(/^Reading for/);
+  expect(lines[1]).toBe("Reading");
+});
+
+it("leaves out the Status column when no row has a status", () => {
+  act(() => root.render(<ListView rows={asRows(item("a", null), item("b", null))} o={o()} />));
+  expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).not.toContain(
+    "Status",
+  );
+  expect(container.querySelector('[data-testid="data-room-status"]')).toBeNull();
+  act(() =>
+    root.render(
+      <ListView rows={asRows(item("a", null), { ...item("b", null), status: "failed" })} o={o()} />,
+    ),
+  );
+  expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).toContain(
+    "Status",
+  );
 });

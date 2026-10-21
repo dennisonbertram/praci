@@ -232,6 +232,11 @@ msgstr ""
 msgid "{0} handling"
 msgstr "Обработка {0}"
 
+#. placeholder {0}: group.count
+#: src/components/inbox/InboxDigest.tsx
+msgid "{0} messages"
+msgstr ""
+
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
 msgid "{0} mo"
@@ -244,6 +249,7 @@ msgstr ""
 
 #. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
 msgid "{0} non-USD not counted"
 msgstr ""
 
@@ -822,11 +828,6 @@ msgstr ""
 msgid "Add email"
 msgstr ""
 
-#. placeholder {0}: prefill.name
-#: src/components/ContactDialog.tsx
-msgid "Add email for {0}"
-msgstr ""
-
 #: src/components/data-room/DataRoomImportMenu.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/DataRoom.tsx
@@ -911,6 +912,7 @@ msgstr ""
 msgid "Address or ENS"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1031,16 +1033,16 @@ msgstr "Разрешить подключение {0} без запроса"
 msgid "Allow {0} without asking"
 msgstr "Разрешить {0} без запроса"
 
-#: src/components/AiDataSharing.tsx
-msgid "Allow {model}"
-msgstr ""
-
 #: src/pages/Legal.tsx
 msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Allow access on the page to ask"
+msgstr ""
+
+#: src/components/AiDataSharing.tsx
+msgid "Allow AI models"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -1365,9 +1367,8 @@ msgstr ""
 msgid "Ask agent"
 msgstr ""
 
-#. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
 #: src/pages/legal/LegalDeadlines.tsx
-msgid "Ask agent about {0}"
+msgid "Ask agent about {name}"
 msgstr ""
 
 #. placeholder {0}: rule.matchValue
@@ -1406,7 +1407,7 @@ msgid "Ask Chief"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
+msgid "Ask Chief anything."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -1526,7 +1527,6 @@ msgstr ""
 msgid "Auto-renews, {notice} days notice"
 msgstr ""
 
-#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 msgid "Auto-sort"
@@ -1732,10 +1732,6 @@ msgstr ""
 #: src/pages/shell/transcript.tsx
 msgid "Bots are working"
 msgstr "Боты работают"
-
-#: src/components/AiDataSharing.tsx
-msgid "Bots cannot use a model until you allow it."
-msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Bots lose access to its tools."
@@ -2037,7 +2033,6 @@ msgstr ""
 msgid "Chart failed to render: {error}"
 msgstr "Не удалось отобразить диаграмму: {error}."
 
-#: src/components/finance/charts.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Chart hidden while amounts are hidden"
 msgstr ""
@@ -2596,7 +2591,7 @@ msgid "Connect Gmail to send files"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Connect Gmail, Calendar and other apps so agents can read your mail and files."
+msgid "Connect Gmail, Calendar and more in Integrations so bots can read your mail and files."
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -3412,14 +3407,6 @@ msgstr ""
 msgid "Counterparty"
 msgstr ""
 
-#: src/components/finance/CountCryptoButton.tsx
-msgid "Counting all crypto"
-msgstr ""
-
-#: src/components/finance/CountCryptoButton.tsx
-msgid "Counting stablecoins"
-msgstr ""
-
 #: src/components/data-room/ItemDialogs.tsx
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
@@ -3634,6 +3621,7 @@ msgstr "По умолчанию ({0})"
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/integrations/StoredMeetingsList.tsx
 #: src/pages/Artifacts.tsx
@@ -3858,9 +3846,8 @@ msgstr "Закрыть"
 msgid "Dismiss"
 msgstr ""
 
-#. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
 #: src/pages/legal/LegalDeadlines.tsx
-msgid "Dismiss {0}"
+msgid "Dismiss {name}"
 msgstr ""
 
 #: src/pages/shell/composer-error.tsx
@@ -3911,10 +3898,6 @@ msgstr ""
 msgid "Documents by document date"
 msgstr ""
 
-#: src/components/finance/CountCryptoButton.tsx
-msgid "Don't count crypto"
-msgstr ""
-
 #: src/pages/Auth.tsx
 msgid "Don’t have an account?"
 msgstr "У вас нет учетной записи?"
@@ -3928,6 +3911,7 @@ msgstr ""
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/components/sidebar-glance.tsx
 #: src/components/tour/TourPopover.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
@@ -4042,10 +4026,6 @@ msgstr ""
 msgid "Duplicate"
 msgstr "Дублировать"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "e.g. Recruiting, Sales, Legal"
-msgstr ""
-
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Each bot keeps its own"
 msgstr ""
@@ -4087,6 +4067,10 @@ msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Email and calendar"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Email chats"
 msgstr ""
 
 #: src/lib/user-error.ts
@@ -4298,6 +4282,7 @@ msgstr "неуспешный"
 #: src/components/data-room/format.ts
 #: src/components/data-room/ItemRows.tsx
 #: src/components/integrations/parts.tsx
+#: src/components/sidebar-glance.tsx
 #: src/pages/ActivityList.tsx
 msgid "Failed"
 msgstr "Ошибка"
@@ -4385,8 +4370,8 @@ msgstr ""
 msgid "Financing"
 msgstr ""
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Find an app"
+#: src/components/finance/charts.tsx
+msgid "Financing, {when}"
 msgstr ""
 
 #: src/lib/slash-skills.ts
@@ -4444,6 +4429,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "First seen"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "First sync can take a minute"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -4574,6 +4563,7 @@ msgid "Get notified when this bot finishes or needs input"
 msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
+#: src/lib/run-phase.ts
 msgid "Getting ready"
 msgstr "Подготовка"
 
@@ -4701,6 +4691,10 @@ msgstr "Повесьте трубку, затем введите код на э�
 
 #: src/pages/Inbox.tsx
 msgid "Has attachment"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Has its own computer."
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -5403,6 +5397,10 @@ msgstr "Настройки локального сервера"
 msgid "Log out"
 msgstr "Выйти"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Looking for changes"
+msgstr ""
+
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "Looks like spam"
 msgstr ""
@@ -5469,9 +5467,8 @@ msgstr "Управление настройками обмена сообщен�
 msgid "Manual setup required"
 msgstr "Требуется ручная настройка"
 
-#. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
 #: src/pages/legal/LegalDeadlines.tsx
-msgid "Mark {0} done"
+msgid "Mark {name} done"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
@@ -5642,6 +5639,11 @@ msgstr ""
 msgid "Message"
 msgstr "Сообщение"
 
+#. placeholder {0}: activeName.replace(/…$/, "")
+#: src/pages/shell/composer.tsx
+msgid "Message {0}"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "Message {activeName}"
 msgstr "Сообщение {activeName}"
@@ -5805,10 +5807,6 @@ msgstr "Ещё"
 msgid "More {0} actions"
 msgstr ""
 
-#: src/components/integrations/FinanceSection.tsx
-msgid "More {name} actions"
-msgstr ""
-
 #. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name
 #: src/components/data-room/ItemMenu.tsx
@@ -5938,6 +5936,7 @@ msgstr ""
 msgid "Needs attention"
 msgstr ""
 
+#: src/components/sidebar-glance.tsx
 #: src/lib/devin-format.ts
 #: src/pages/ActivityList.tsx
 msgid "Needs input"
@@ -5990,6 +5989,7 @@ msgstr ""
 msgid "new"
 msgstr ""
 
+#: src/components/sidebar-glance.tsx
 #: src/pages/shell/transcript.tsx
 msgid "New"
 msgstr ""
@@ -6085,6 +6085,10 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Next message"
+msgstr ""
+
+#: src/pages/RoutineEditor.tsx
+msgid "Next run {nextRun}"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -6611,10 +6615,6 @@ msgstr ""
 msgid "Open again"
 msgstr ""
 
-#: src/pages/Artifacts.tsx
-msgid "Open chat"
-msgstr ""
-
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
 msgstr ""
@@ -6863,6 +6863,7 @@ msgid "Page"
 msgstr ""
 
 #: src/components/PageAgentsRow.tsx
+#: src/pages/Shell.tsx
 msgid "Page agents"
 msgstr ""
 
@@ -7083,6 +7084,10 @@ msgstr ""
 msgid "Praci keeps your meetings and to-dos."
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Preparing draft…"
+msgstr ""
+
 #: src/components/DataExport.tsx
 msgid "Preparing…"
 msgstr ""
@@ -7093,7 +7098,7 @@ msgid "Preparing… {0}%"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Press + to create an agent or a group chat."
+msgid "Press + to create a bot or a group chat."
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -7279,6 +7284,18 @@ msgstr ""
 
 #: src/pages/Investors.tsx
 msgid "Reading Carta…"
+msgstr ""
+
+#: src/components/data-room/format.ts
+msgid "Reading for {days} d"
+msgstr ""
+
+#: src/components/data-room/format.ts
+msgid "Reading for {hours} h"
+msgstr ""
+
+#: src/components/data-room/format.ts
+msgid "Reading for {minutes} min"
 msgstr ""
 
 #: src/components/data-room/format.ts
@@ -8222,19 +8239,19 @@ msgstr ""
 msgid "See your cash, burn and runway, pulled from your bank."
 msgstr ""
 
-#: src/components/inbox/InboxRow.tsx
-#: src/components/inbox/InboxSenderGroup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Select"
 msgstr ""
 
 #. placeholder {0}: file.name
+#. placeholder {0}: group.sender
 #. placeholder {0}: item.name
-#. placeholder {0}: row.subject
 #: src/components/data-room/DriveRow.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/inbox/CleanupSenderRow.tsx
+#: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 msgid "Select {0}"
 msgstr ""
 
@@ -8417,6 +8434,10 @@ msgstr ""
 msgid "Shares"
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Shares one computer with your other bots."
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "Sheet"
 msgstr ""
@@ -8496,6 +8517,10 @@ msgstr ""
 
 #: src/pages/shell/working-label.ts
 msgid "Showing the emails it found"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Sidebar"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -8708,12 +8733,12 @@ msgstr ""
 msgid "Sort descending"
 msgstr ""
 
-#: src/components/ListControls.tsx
-msgid "Sort: {fieldLabel}"
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Sort every file in the Data room"
 msgstr ""
 
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "Sorting every file in the Data room"
+#: src/components/ListControls.tsx
+msgid "Sort: {fieldLabel}"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -8835,10 +8860,6 @@ msgstr "Начать запись"
 #: src/pages/shell/transcript.tsx
 msgid "Starting"
 msgstr "Запуск"
-
-#: src/lib/run-phase.ts
-msgid "Starting the computer"
-msgstr ""
 
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/lib/roster-status.ts
@@ -9384,10 +9405,6 @@ msgid "This sheet is empty."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-msgid "This space already uses {selectedProviderName}."
-msgstr ""
-
-#: src/pages/ModelSettingsOverlay.tsx
 msgid "This subscription sign-in is not available in Praci yet. Use a deployment credential or choose another provider."
 msgstr ""
 
@@ -9438,7 +9455,6 @@ msgid "Time zone updated"
 msgstr ""
 
 #: src/pages/Board.tsx
-#: src/pages/shell/bot-panel.tsx
 msgid "Title"
 msgstr "Заголовок"
 
@@ -9479,6 +9495,10 @@ msgstr "Сегодня"
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Token"
+msgstr ""
+
+#: src/components/inbox/TodoCard.tsx
+msgid "Tomorrow"
 msgstr ""
 
 #. placeholder {0}: formatBytes(attachment.size)
@@ -9638,7 +9658,7 @@ msgid "Type"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Type here to find any chat, file or email."
+msgid "Type here to find any page, chat or email."
 msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx
@@ -9883,7 +9903,7 @@ msgid "Upload files"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Upload files for agents to use. Artifacts holds what agents make."
+msgid "Upload files for bots to use. Artifacts holds what bots make."
 msgstr ""
 
 #: src/pages/shell/BotSkillsSection.tsx
@@ -9906,6 +9926,7 @@ msgstr ""
 msgid "Uploaded"
 msgstr ""
 
+#: src/components/sidebar-glance.tsx
 #: src/lib/ticket-priority.ts
 msgid "Urgent"
 msgstr ""
@@ -10091,6 +10112,10 @@ msgstr ""
 msgid "Waiting in line…"
 msgstr "Ожидание в очереди…"
 
+#: src/pages/shell/transcript.tsx
+msgid "Waiting on {delegate}"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Waiting…"
 msgstr "Ожидание…"
@@ -10204,6 +10229,10 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 msgid "What should this routine do each time it runs?"
 msgstr "Что должна делать эта задача при каждом запуске?"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "What this bot handles"
+msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "What to return"
@@ -10379,6 +10408,10 @@ msgstr "Вы управляете"
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "You'll sign in to {0} in a new window."
+msgstr ""
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Your bots already use {selectedProviderName}."
 msgstr ""
 
 #: src/components/integrations/SignInStep.tsx

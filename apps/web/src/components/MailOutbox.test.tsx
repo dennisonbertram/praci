@@ -23,7 +23,7 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-it("never shows Sending without an Undo: the notice waits for Sent", async () => {
+it("keeps a Sending notice, without Undo, from the end of the undo window until Sent", async () => {
   let finish: (problem: string | null) => void = () => {};
   const root = createRoot(document.body.appendChild(document.createElement("div")));
   await act(async () => root.render(<MailOutbox />));
@@ -35,7 +35,8 @@ it("never shows Sending without an Undo: the notice waits for Sent", async () =>
   expect(document.body.textContent).toContain("Sending…");
   expect(document.body.textContent).toContain("Undo");
   await act(async () => void (await vi.advanceTimersByTimeAsync(UNDO_SEND_MS)));
-  expect(document.body.textContent).not.toContain("Sending…");
+  expect(document.body.textContent).toContain("Sending…");
+  expect(document.body.textContent).not.toContain("Undo");
   await act(async () => finish(null));
   expect(document.body.textContent).toContain("Sent");
   await act(async () => void (await vi.advanceTimersByTimeAsync(5_000)));

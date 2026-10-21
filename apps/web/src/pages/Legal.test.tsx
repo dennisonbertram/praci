@@ -171,6 +171,10 @@ it("scans now without opening the agent panel", async () => {
   expect(ask).not.toHaveBeenCalled();
 });
 
+// A row's buttons are named from its whole first line, contract included.
+const named = (d?: { title: string; contractTitle?: string | null }) =>
+  d?.contractTitle ? `${d.title}: ${d.contractTitle}` : d?.title;
+
 it("marks overdue deadlines and closes one with Done", async () => {
   const onChanged = vi.fn();
   const sidebarRefresh = vi.fn();
@@ -183,7 +187,7 @@ it("marks overdue deadlines and closes one with Done", async () => {
   expect(page).toMatch(/[A-Z][a-z]{2} \d{1,2}, 20\d\d/);
   expect(page).toContain("Tenant shall submit the closing statement");
   expect(page.match(/Overdue by/g)).toHaveLength(1);
-  await click(button(`Mark ${deadlines[0]?.title} done`));
+  await click(button(`Mark ${named(deadlines[0])} done`));
   expect(rpcMock.updateDeadline).toHaveBeenCalledWith({ id: deadlines[0]?.id, status: "done" });
   // The closed row's slot now holds the Undo line, so the rows below stay where they were.
   const rows = container.querySelectorAll("li");
@@ -198,7 +202,7 @@ it("marks overdue deadlines and closes one with Done", async () => {
 it("keeps the deadline and shows the error when the update fails", async () => {
   rpcMock.updateDeadline.mockRejectedValue(new Error("nope"));
   await render(<LegalDeadlines deadlines={deadlines} onChanged={() => {}} today="2026-10-16" />);
-  await click(button(`Dismiss ${deadlines[1]?.title}`));
+  await click(button(`Dismiss ${named(deadlines[1])}`));
   expect(rpcMock.updateDeadline).toHaveBeenCalledWith({
     id: deadlines[1]?.id,
     status: "dismissed",
@@ -424,7 +428,7 @@ it("offers Undo after Done and reopens the deadline", async () => {
   const onChanged = vi.fn();
   rpcMock.updateDeadline.mockResolvedValue({});
   await render(<LegalDeadlines deadlines={deadlines} onChanged={onChanged} today="2026-10-16" />);
-  await click(button(`Mark ${deadlines[0]?.title} done`));
+  await click(button(`Mark ${named(deadlines[0])} done`));
   expect(container.textContent).not.toContain("Tenant shall submit");
   await click(button("Undo"));
   expect(rpcMock.updateDeadline).toHaveBeenLastCalledWith({ id: deadlines[0]?.id, status: "open" });
@@ -657,7 +661,7 @@ it("offers Ask agent on each deadline row, with the row as the question", async 
     <LegalDeadlines deadlines={deadlines} onChanged={() => {}} today="2026-10-16" onAsk={onAsk} />,
   );
   expect(container.querySelectorAll("li")).toHaveLength(2);
-  await click(button("Ask agent about Send non-renewal notice"));
+  await click(button(`Ask agent about ${named(deadlines[1])}`));
   expect(onAsk).toHaveBeenCalledWith(deadlines[1]);
 });
 
@@ -675,6 +679,10 @@ it("gives each deadline row its own first line, naming the contract", async () =
   );
   expect(new Set(firstLines).size).toBe(firstLines.length);
   expect(firstLines.join()).toContain("Hosting renewal");
+  const names = [...container.querySelectorAll("li button")].map((b) =>
+    b.getAttribute("aria-label"),
+  );
+  expect(new Set(names).size).toBe(names.length);
 });
 
 it("shows a status chip only for a contract that is not active", async () => {

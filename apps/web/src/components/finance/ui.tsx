@@ -91,18 +91,18 @@ export function shortSpaceName(name: string, all: readonly string[]): string {
   );
 }
 
-/** Which company Finance shows, as a menu to switch to another space; nothing with a single space. */
+/** Which company Finance shows: its name, as a menu to switch when there is another space to switch to. */
 export function SpaceName() {
   const { spaces = [], spaceId, onSwitchSpace } = useContext(ChromeContext);
   const current = spaces.find((space) => space.id === spaceId);
-  if (spaces.length < 2 || !current) return null;
+  if (!current) return null;
   const label = shortSpaceName(
     current.name,
     spaces.map((space) => space.name),
   );
-  if (!onSwitchSpace) {
+  if (!onSwitchSpace || spaces.length < 2) {
     return (
-      <span title={current.name} className="min-w-0 truncate text-xs text-muted-foreground">
+      <span title={current.name} className="min-w-0 truncate ps-2 text-xs text-muted-foreground">
         {label}
       </span>
     );

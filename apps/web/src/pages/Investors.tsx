@@ -32,7 +32,7 @@ import {
   contactAddLabels,
   contactKindNames as kindNames,
 } from "../components/ContactDialog";
-import { OwnershipDonut } from "../components/cap-table/OwnershipDonut";
+import { donutSliceCount, OwnershipDonut } from "../components/cap-table/OwnershipDonut";
 import { FolderDocuments } from "../components/data-room/FolderDocuments";
 import { CustomConnectionDialog } from "../components/integrations/CustomConnectionDialog";
 import { useIntegrations } from "../components/integrations/useIntegrations";
@@ -185,7 +185,7 @@ function joinRows(snapshot: Snapshot | null, contacts: Contact[]): Row[] {
 
 function Figure({ title, value, hint }: { title: string; value: string; hint?: string }) {
   return (
-    <Card size="sm" className="px-3.5 py-2 @md/bd:py-3">
+    <Card size="sm" className="px-3.5 py-2">
       <h2 className="text-xs font-semibold text-muted-foreground">{title}</h2>
       <div className="mt-1 text-[22px] font-semibold leading-tight tabular-nums">{value}</div>
       {/* The hint gives way on a phone, so the holders list starts higher. */}
@@ -212,11 +212,13 @@ function SafeNote({ holders }: { holders: Snapshot["holders"] }) {
   );
 }
 
-function Summary({ snapshot }: { snapshot: Snapshot | null }) {
+function Summary({ snapshot, beside }: { snapshot: Snapshot | null; beside: boolean }) {
   useHideAmounts();
   const a = snapshot?.latest409a;
   return (
-    <div className="grid grid-cols-2 gap-2 @md/bd:gap-3 @2xl:grid-cols-4 @4xl/bd:grid-cols-2 @4xl/bd:grid-rows-2">
+    <div
+      className={`grid grid-cols-2 gap-2 @md/bd:gap-3 @2xl:grid-cols-4 ${beside ? "@4xl/bd:grid-cols-2 @4xl/bd:grid-rows-2" : ""}`}
+    >
       {snapshot ? (
         <>
           <Figure title={t`Fully diluted shares`} value={num(snapshot.fullyDilutedShares)} />
@@ -508,6 +510,11 @@ export function InvestorsPage({
   );
   const shareColumns = !amountColumn || shown.some((row) => row.holder?.shares != null);
   const showHoldings = snapshot !== null || reading;
+  // Two slices (say Common and Option pool) repeat what the cards and table already say.
+  const showDonut =
+    !!snapshot && donutSliceCount(snapshot.shareClasses, snapshot.fullyDilutedShares) > 2;
+  // An Email column of dashes wastes a quarter of the row; the muted line keeps any address.
+  const emailColumn = shown.some((row) => row.contact?.email || row.holder?.email);
   // The summary and donut are the overview: a tab or a search is a look at rows, which come first.
   const overview = filter === "all" && !narrowing;
   const filterNames: Record<Filter, string> = {
@@ -671,9 +678,16 @@ export function InvestorsPage({
         ) : null}
 
         {!serversChecked || (cartaConnected && cap === null && !capFailed) ? (
-          <div className="flex flex-col gap-2" aria-busy="true">
-            {[0, 1, 2].map((n) => (
-              <Skeleton key={n} className="h-9 w-full" />
+          // The shape of the loaded page (tabs, four cards, rows), so nothing shifts when it arrives.
+          <div className="flex flex-col gap-3" aria-busy="true">
+            <Skeleton className="h-9 w-72 max-w-full rounded-2xl" />
+            <div className="grid grid-cols-2 gap-2 @2xl:grid-cols-4">
+              {[0, 1, 2, 3].map((n) => (
+                <Skeleton key={n} className="h-[60px] w-full rounded-xl" />
+              ))}
+            </div>
+            {[0, 1, 2, 3].map((n) => (
+              <Skeleton key={n} className="h-11 w-full" />
             ))}
           </div>
         ) : cartaConnected ? (
@@ -682,7 +696,7 @@ export function InvestorsPage({
             <Tabs
               value={filter}
               onValueChange={(next) => setFilter(next as Filter)}
-              className="mb-4"
+              className="mb-3"
             >
               {/* One row that scrolls sideways on a phone. */}
               <TabsList
@@ -703,12 +717,14 @@ export function InvestorsPage({
 
             {/* Wide enough, the figures sit beside the donut so the table gets the page's height. */}
             {showHoldings && overview ? (
-              <div className="mb-3 grid gap-3 @md/bd:mb-4 @md/bd:gap-4 @4xl/bd:grid-cols-2">
+              <div
+                className={`mb-3 grid gap-3 @md/bd:gap-4 ${showDonut ? "@4xl/bd:grid-cols-2" : ""}`}
+              >
                 <div className="flex flex-col gap-1">
-                  <Summary snapshot={snapshot} />
+                  <Summary snapshot={snapshot} beside={showDonut} />
                   {snapshot ? <SafeNote holders={snapshot.holders} /> : null}
                 </div>
-                {snapshot ? (
+                {snapshot && showDonut ? (
                   <OwnershipSection>
                     <OwnershipDonut
                       classes={snapshot.shareClasses}
@@ -728,7 +744,7 @@ export function InvestorsPage({
 
             {rows.length > 0 && !error ? (
               // Search takes the first row on a phone; Security and Sort wrap beneath it.
-              <div className="mb-4 flex max-w-5xl flex-wrap items-center gap-1.5">
+              <div className="mb-2 flex flex-wrap items-center gap-1.5">
                 <SearchField
                   className="w-full @md:w-72"
                   value={query}
@@ -847,16 +863,18 @@ export function InvestorsPage({
             ) : (
               // Name takes what the other columns leave. Columns drop in priority order as the page
               // narrows: Email first (it moves under the name), then Kind, then Shares.
-              <div className="max-w-5xl">
+              <div>
                 <Table compact className="table-fixed">
                   <TableHeader>
                     <TableHeadRow>
                       <TableHead className={`${STICKY} ps-2`}>
                         <Trans>Name</Trans>
                       </TableHead>
-                      <TableHead className={`${STICKY} hidden w-56 @3xl:table-cell`}>
-                        <Trans>Email</Trans>
-                      </TableHead>
+                      {emailColumn ? (
+                        <TableHead className={`${STICKY} hidden w-56 @3xl:table-cell`}>
+                          <Trans>Email</Trans>
+                        </TableHead>
+                      ) : null}
                       <TableHead className={`${STICKY} hidden w-28 @lg:table-cell`}>
                         <Trans>Kind</Trans>
                       </TableHead>
@@ -962,27 +980,32 @@ export function InvestorsPage({
                                 </span>
                               ) : null}
                               {organization ? (
-                                <span className="min-w-0 truncate" title={organization}>
+                                <span
+                                  className={`min-w-0 truncate ${holding ? "hidden @lg:inline" : ""}`}
+                                  title={organization}
+                                >
                                   {organization}
                                 </span>
                               ) : null}
                               {email ? (
                                 <span
                                   data-testid="cap-table-row-email"
-                                  className="min-w-0 truncate @3xl:hidden"
+                                  className={`min-w-0 truncate ${emailColumn ? "@3xl:hidden" : ""} ${holding || organization ? "hidden @lg:inline" : ""}`}
                                 >
                                   {email}
                                 </span>
                               ) : null}
                             </div>
                           </TableCell>
-                          <TableCell
-                            data-testid="cap-table-email-cell"
-                            className="hidden truncate text-muted-foreground @3xl:table-cell"
-                            title={contact?.email ?? holder?.email ?? undefined}
-                          >
-                            {email ?? empty}
-                          </TableCell>
+                          {emailColumn ? (
+                            <TableCell
+                              data-testid="cap-table-email-cell"
+                              className="hidden truncate text-muted-foreground @3xl:table-cell"
+                              title={contact?.email ?? holder?.email ?? undefined}
+                            >
+                              {email ?? empty}
+                            </TableCell>
+                          ) : null}
                           <TableCell className="hidden @lg:table-cell">
                             <div className="truncate">{names[kind]}</div>
                           </TableCell>

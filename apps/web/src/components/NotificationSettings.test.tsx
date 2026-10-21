@@ -12,6 +12,8 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: React.ReactNode }) => children,
 }));
 vi.mock("@rakazo/ui-web", () => ({
+  // biome-ignore lint/a11y/noLabelWithoutControl: test stand-in; callers pass htmlFor and children through props
+  Label: (props: React.ComponentProps<"label">) => <label {...props} />,
   Switch: ({
     checked,
     onCheckedChange,

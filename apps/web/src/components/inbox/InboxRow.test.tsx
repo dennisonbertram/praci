@@ -74,6 +74,16 @@ it("shows a compact label dot in the narrow pane that names the label", async ()
   expect(dot?.className).toContain("@md:hidden");
 });
 
+it("lets Tab reach the revealed row actions once the row has focus", async () => {
+  await show();
+  const archive = () => document.querySelector<HTMLElement>('button[aria-label="Archive"]');
+  expect(archive()?.tabIndex).toBe(-1);
+  await act(async () => document.querySelector<HTMLElement>("button[data-row-id]")?.focus());
+  expect(archive()?.tabIndex).toBe(0);
+  await act(async () => document.querySelector<HTMLElement>("button[data-row-id]")?.blur());
+  expect(archive()?.tabIndex).toBe(-1);
+});
+
 it("gives the More trigger a larger touch target on coarse pointers", async () => {
   await show();
   expect(document.querySelector('button[aria-label="More"]')?.className).toContain(
@@ -168,7 +178,7 @@ it("checks the row from its own checkbox without opening it, and passes the shif
   const onOpen = vi.fn();
   await show({ onPick, onOpen });
   const box = document.querySelector<HTMLElement>('[role="checkbox"]');
-  expect(box?.getAttribute("aria-label")).toBe("Select");
+  expect(box?.getAttribute("aria-label")).toBe("Select Sam Rivera");
   // The checkbox is a sibling of the row button, never inside it.
   expect(box?.closest("button[data-row-id]")).toBeNull();
   await act(async () => box?.click());

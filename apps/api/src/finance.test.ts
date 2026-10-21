@@ -526,6 +526,14 @@ describe("finance detail lookups", () => {
     expect(given.map((r) => r.id)).toEqual(["t-1"]);
   });
 
+  it("counts the category's non-USD transactions that its total leaves out", async () => {
+    const { deps } = setup({
+      financeTransaction: [txn(a, { id: "t-1" }), txn(a, { id: "t-2", currency: "EUR" })],
+    });
+    const out = await financeCategory(deps, a, { slug: "software" });
+    expect(out.excludedNonUsdCount).toBe(1);
+  });
+
   it("covers the dashboard period a category was opened from, in its total, vendors and list", async () => {
     const { deps } = setup({
       financeTransaction: [

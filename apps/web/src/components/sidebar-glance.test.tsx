@@ -43,6 +43,16 @@ it("shows the value when nothing is unseen, and nothing when there is no value",
   expect(glanceBadge({ unseen: 0, rail: false }).badge).toBeNull();
 });
 
+it("colors a failure count with the destructive token, not the muted one", () => {
+  html(glanceBadge({ unseen: 0, value: "2", failure: true, rail: false }).badge);
+  const value = container.querySelector("[data-testid=glance-value]");
+  expect(value?.className).toContain("text-destructive");
+  html(glanceBadge({ unseen: 0, value: "2", rail: false }).badge);
+  expect(container.querySelector("[data-testid=glance-value]")?.className).not.toContain(
+    "text-destructive",
+  );
+});
+
 it("keeps a value out of the rail, where any badge becomes a dot", () => {
   expect(glanceBadge({ unseen: 0, value: "3", rail: true }).badge).toBeNull();
   expect(glanceBadge({ unseen: 1, rail: true }).badge).not.toBeNull();
@@ -58,6 +68,8 @@ it.each([
   html(<StatusMark kind={kind} botId="bot-1" />);
   expect(container.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
   expect(container.textContent).toContain(label);
+  // Sighted mouse users get the same words on hover.
+  expect(container.querySelector("[data-kind]")?.getAttribute("title")).toBeTruthy();
 });
 
 it("gives each agent its own animation phase", () => {

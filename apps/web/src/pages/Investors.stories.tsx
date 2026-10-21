@@ -337,3 +337,32 @@ export const FullTableWithSafes: Story = {
       "carta.capTable": { snapshot: fullSnapshot, syncing: false },
     }),
 };
+
+/** Two share classes: a donut would repeat the cards, so the summary is one row and the table starts higher. */
+export const TwoShareClasses: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": [contact("c9", "Casey Advisor", "other", "Independent advisor")],
+      "mcp.servers.list": [cartaServer],
+      "carta.capTable": {
+        snapshot: {
+          ...fullSnapshot,
+          shareClasses: [
+            { name: "Common", shares: 8_400_000, percent: 84 },
+            { name: "Options", shares: 1_600_000, percent: 16 },
+          ],
+        },
+        syncing: false,
+      },
+    }),
+};
+
+/** Carta is connected and the cap table is still loading: the skeleton has the tabs, cards and rows of the page. */
+export const LoadingCapTable: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [cartaServer],
+      "carta.capTable": () => new Promise(() => {}),
+    }),
+};

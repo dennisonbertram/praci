@@ -26,6 +26,7 @@ import {
   Trash2,
   TriangleAlert,
 } from "lucide-react";
+import { useState } from "react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { formatMailTime } from "../../lib/mail-time";
 
@@ -172,6 +173,9 @@ export function InboxRow({
   const summary = rowSummary(row);
   // The checkbox takes the place of the unread dot while the pointer is on the row or any row is checked.
   const showPick = picked || anyPicked;
+  // The revealed buttons join the Tab order only while the row has focus, so a list keeps one stop per row.
+  const [focusWithin, setFocusWithin] = useState(false);
+  const reachable = selected || focusWithin;
   const muted = row.feedback === "noise";
   // Marks belong to the sender, so the hint says so.
   const markHint = {
@@ -209,7 +213,14 @@ export function InboxRow({
   ];
   return (
     <div className="border-b border-foreground/10">
-      <div className="group/row relative">
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: only tracks focus inside the row; the row button and actions are the controls */}
+      <div
+        className="group/row relative"
+        onFocus={() => setFocusWithin(true)}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) setFocusWithin(false);
+        }}
+      >
         <button
           type="button"
           aria-haspopup="dialog"
@@ -285,10 +296,10 @@ export function InboxRow({
         </button>
         {onPick ? (
           <Checkbox
-            aria-label={t`Select`}
+            aria-label={t`Select ${row.from}`}
             checked={picked}
             onClick={(event) => onPick({ shift: event.shiftKey })}
-            className={`absolute start-2 top-1/2 z-10 -translate-y-1/2 @md:start-3 ${showPick ? "" : "opacity-0 focus-visible:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100"}`}
+            className={`absolute start-2 top-1/2 z-10 -translate-y-1/2 @md:start-3 pointer-coarse:after:-start-3.25 pointer-coarse:after:-end-4.25 ${showPick ? "" : "opacity-0 focus-visible:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100"}`}
           />
         ) : null}
         {marks.length + actions.length ? (
@@ -306,7 +317,7 @@ export function InboxRow({
                           variant="ghost"
                           size="icon-xs"
                           aria-label={name}
-                          tabIndex={selected ? 0 : -1}
+                          tabIndex={reachable ? 0 : -1}
                           className="text-muted-foreground"
                           onClick={(event) => {
                             event.stopPropagation();
@@ -331,7 +342,7 @@ export function InboxRow({
                           size="icon-xs"
                           aria-label={name}
                           aria-pressed={pressed}
-                          tabIndex={selected ? 0 : -1}
+                          tabIndex={reachable ? 0 : -1}
                           className={pressed ? "text-foreground" : "text-muted-foreground"}
                           onClick={(event) => {
                             event.stopPropagation();

@@ -44,7 +44,7 @@ function TableRow({
     <tr
       data-slot="table-row"
       className={cn(
-        "h-14 group-data-[compact]/table:h-auto border-t border-border transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+        "h-14 group-data-[compact]/table:h-auto pointer-coarse:group-data-[compact]/table:h-11 border-t border-border transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
         onOpen &&
           "cursor-pointer [&_[data-row-open]]:-mx-1 [&_[data-row-open]]:px-1 [&>td:first-child]:ps-2 has-[:focus-visible]:bg-muted/50 has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-2 has-[:focus-visible]:outline-ring",
         className,

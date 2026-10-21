@@ -397,6 +397,11 @@ export const NewslettersGrouped: Story = {
   beforeEach: () => mockRpc({ "inbox.list": byPile, ...bulkMocks }),
 };
 
+export const NewslettersDigest: Story = {
+  parameters: { initialEntries: ["/?pile=newsletters&digest=1"] },
+  beforeEach: () => mockRpc({ "inbox.list": byPile, ...bulkMocks }),
+};
+
 /** Spam is a flat list behind a count; Gmail's own spam is not in the inbox, so it has no Archived badge. */
 export const SpamView: Story = {
   parameters: { initialEntries: ["/?pile=spam"] },

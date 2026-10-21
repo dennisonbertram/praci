@@ -960,7 +960,7 @@ function SubscriptionsTable({
           return (
             <TableRow
               key={sub.key}
-              className="group/row cursor-pointer pointer-coarse:h-11"
+              className="group/row cursor-pointer"
               {...rowProps(financePath.vendor(sub.key))}
             >
               <TableCell className="font-semibold">

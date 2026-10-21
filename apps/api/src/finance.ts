@@ -917,6 +917,7 @@ export async function financeCategory(
     end: range.end,
     trend: monthlySpend(own, { categorySlug: input.slug }, now, 12),
     vendors: breakdown(own, "vendor", range),
+    excludedNonUsdCount: excludedNonUsdCount(inRange),
     recent: newest(inRange, 100),
   };
 }

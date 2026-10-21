@@ -262,6 +262,13 @@ function InboxListPage({
   const [help, setHelp] = useState(false);
   const searchRef = useRef<HTMLFormElement>(null);
   const [synced, setSynced] = useState(false);
+  // The first sync of a new connection can take a minute; after 5 s the loading line says so.
+  const [slowSync, setSlowSync] = useState(false);
+  useEffect(() => {
+    if (synced) return;
+    const timer = setTimeout(() => setSlowSync(true), 5_000);
+    return () => clearTimeout(timer);
+  }, [synced]);
   // "Try again" is busy until its sync answers, so the click visibly does something.
   const [retrying, setRetrying] = useState(false);
   // A retry was made since the notice appeared; if the notice is back, it says so.
@@ -528,7 +535,7 @@ function InboxListPage({
   );
   // Display order. A group header takes its own id; a sender with one message shows as that message.
   const ids = useMemo(() => {
-    if (digestOn) return digestList.map((row) => row.id);
+    if (digestOn) return groupBySender(digestList).map((group) => group.newest.id);
     if (grouped)
       return senderGroups.flatMap((group) =>
         group.count === 1
@@ -585,7 +592,17 @@ function InboxListPage({
   const loading =
     !shown ||
     (!filtered && shown.rows.length === 0 && !synced) ||
-    (showTodos && todos === undefined && !sorting);
+    // The To do card is waited for on the Important pile even before it is known to show (meetings
+    // arrive with it), so it never pushes the loaded rows down.
+    (pile === "important" && !paused && todos === undefined && !sorting);
+  // Nothing to search in a mailbox with no mail in any pile.
+  const mailboxEmpty =
+    !loading &&
+    rows.length === 0 &&
+    !query &&
+    !filter &&
+    !category &&
+    (pileCounts ? Object.values(pileCounts).every((n) => n === 0) : true);
   // Applies a change to every copy of the rows: the list, the pages after it and the cached lists.
   const patchRows = (change: (rows: MailRow[], searched: boolean) => MailRow[]) => {
     const patch = (list: InboxListOutput, searched: boolean) => ({
@@ -852,6 +869,23 @@ function InboxListPage({
     setSelectedId(id);
     setParams(next, { state: LIST_OPEN });
   };
+  // Allowing syncs again, which is what queues triage now that it may run. It shows while the
+  // first sync still loads the list, so the choice is not hidden behind the skeleton.
+  const consentPrompt =
+    pile === "important" &&
+    shown?.triageBlocked?.reason === "needs_consent" &&
+    !consentDismissed ? (
+      <InboxConsentPrompt
+        recipient={shown.triageBlocked.recipient}
+        onAllowed={() => {
+          restartSortWatch();
+          setJustAllowed(true);
+          setAttempt((n) => n + 1);
+          setReload((n) => n + 1);
+        }}
+        onDismiss={() => setConsentDismissed(true)}
+      />
+    ) : null;
   const todoCard = todos ? (
     <TodoCard
       todos={todos}
@@ -1077,55 +1111,57 @@ function InboxListPage({
                     {spaceName}
                   </span>
                 ) : null}
-                <form
-                  ref={searchRef}
-                  className="min-w-40 flex-1 basis-full @lg/ph:basis-0"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    setParam("q", draft.trim());
-                  }}
-                >
-                  <InputGroup className="w-full max-w-sm">
-                    <InputGroupAddon>
-                      <Search aria-hidden="true" />
-                    </InputGroupAddon>
-                    <InputGroupInput
-                      type="search"
-                      name="inbox-search"
-                      value={draft}
-                      onChange={(event) => setDraft(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Escape") return;
-                        setDraft("");
-                        if (query) setParam("q", "");
-                      }}
-                      // Short enough to fit beside the agent panel; the hover title keeps the example.
-                      placeholder={t`Search mail`}
-                      title={t`Search mail, e.g. from:sam has:attachment`}
-                      aria-label={t`Search mail`}
-                      // Nothing to search or filter before mail is connected.
-                      disabled={Boolean(data) && accounts.length === 0}
-                      maxLength={MAX_QUERY}
-                      className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
-                      autoComplete="off"
-                    />
-                    {draft ? (
-                      <InputGroupAddon align="inline-end">
-                        <InputGroupButton
-                          size="icon-xs"
-                          aria-label={t`Clear`}
-                          onClick={() => {
-                            setDraft("");
-                            setParam("q", "");
-                            searchRef.current?.querySelector("input")?.focus();
-                          }}
-                        >
-                          <X aria-hidden="true" />
-                        </InputGroupButton>
+                {mailboxEmpty ? null : (
+                  <form
+                    ref={searchRef}
+                    className="min-w-40 flex-1 basis-full @lg/ph:basis-0"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      setParam("q", draft.trim());
+                    }}
+                  >
+                    <InputGroup className="w-full max-w-sm">
+                      <InputGroupAddon>
+                        <Search aria-hidden="true" />
                       </InputGroupAddon>
-                    ) : null}
-                  </InputGroup>
-                </form>
+                      <InputGroupInput
+                        type="search"
+                        name="inbox-search"
+                        value={draft}
+                        onChange={(event) => setDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key !== "Escape") return;
+                          setDraft("");
+                          if (query) setParam("q", "");
+                        }}
+                        // Short enough to fit beside the agent panel; the hover title keeps the example.
+                        placeholder={t`Search mail`}
+                        title={t`Search mail, e.g. from:sam has:attachment`}
+                        aria-label={t`Search mail`}
+                        // Nothing to search or filter before mail is connected.
+                        disabled={Boolean(data) && accounts.length === 0}
+                        maxLength={MAX_QUERY}
+                        className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
+                        autoComplete="off"
+                      />
+                      {draft ? (
+                        <InputGroupAddon align="inline-end">
+                          <InputGroupButton
+                            size="icon-xs"
+                            aria-label={t`Clear`}
+                            onClick={() => {
+                              setDraft("");
+                              setParam("q", "");
+                              searchRef.current?.querySelector("input")?.focus();
+                            }}
+                          >
+                            <X aria-hidden="true" />
+                          </InputGroupButton>
+                        </InputGroupAddon>
+                      ) : null}
+                    </InputGroup>
+                  </form>
+                )}
               </>
             }
             actions={
@@ -1305,8 +1341,7 @@ function InboxListPage({
               {pile === "newsletters" ? (
                 <Toggle
                   size="sm"
-                  variant="outline"
-                  className="-mt-2 mb-4 rounded-full aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+                  className="-mt-2 mb-4 ms-auto"
                   pressed={digest}
                   onPressedChange={(on) => {
                     const next = new URLSearchParams(params);
@@ -1380,9 +1415,14 @@ function InboxListPage({
           </PageEmptyState>
         ) : loading ? (
           <div className="flex flex-col gap-2" aria-busy="true">
+            {consentPrompt}
             {synced ? null : (
               <p role="status" className="text-sm text-muted-foreground">
-                <Trans>Reading your mail…</Trans>
+                {slowSync ? (
+                  <Trans>First sync can take a minute</Trans>
+                ) : (
+                  <Trans>Reading your mail…</Trans>
+                )}
               </p>
             )}
             {[0, 1, 2, 3, 4].map((n) => (
@@ -1423,19 +1463,8 @@ function InboxListPage({
           </>
         ) : shown ? (
           <>
-            {pile !== "important" ? null : shown.triageBlocked?.reason === "needs_consent" &&
-              !consentDismissed ? (
-              // Allowing syncs again, which is what queues triage now that it may run.
-              <InboxConsentPrompt
-                recipient={shown.triageBlocked.recipient}
-                onAllowed={() => {
-                  restartSortWatch();
-                  setJustAllowed(true);
-                  setAttempt((n) => n + 1);
-                  setReload((n) => n + 1);
-                }}
-                onDismiss={() => setConsentDismissed(true)}
-              />
+            {consentPrompt ? (
+              consentPrompt
             ) : sorting && stalled ? (
               <div
                 role="status"

@@ -296,9 +296,27 @@ export function RoutineEditor({
     }
     wasSaving.current = saving;
   }, [saving, error]);
+  // A saved routine has nothing to save until a field changes. The baseline is the draft as
+  // it stood when this routine was opened or last saved (the parent swaps `editing` on save).
+  const draftKey = JSON.stringify(draft);
+  const [baseline, setBaseline] = useState(draftKey);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-baseline only when the saved routine changes
+  useEffect(() => setBaseline(draftKey), [editing]);
   const canTest = Boolean(editing) && !saving && !running;
   const needsOneShotArm =
     editing != null && routineNeedsOneShotArm(editing, draft.schedules.map(cronFromPreset));
+  const unchanged = editing != null && !needsOneShotArm && draftKey === baseline;
+  const nextRun =
+    editing?.nextRunAt && draft.active && unchanged
+      ? new Date(editing.nextRunAt).toLocaleString(undefined, {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          timeZone: zone,
+        })
+      : null;
 
   function addSchedule(freq: CronFreq) {
     const base = defaultCronPreset();
@@ -633,6 +651,9 @@ export function RoutineEditor({
           </DropdownMenuContent>
         </DropdownMenu>
 
+        {nextRun ? (
+          <p className="mt-2 text-xs text-muted-foreground/70">{t`Next run ${nextRun}`}</p>
+        ) : null}
         {!hasTriggers ? (
           <p className="mt-2 text-xs text-muted-foreground/70">
             <Trans>Pick when this runs, for example every Monday morning.</Trans>
@@ -641,7 +662,7 @@ export function RoutineEditor({
       </div>
 
       <div className="mt-5">
-        <Button disabled={saving || running || !hasTriggers} onClick={onSave}>
+        <Button disabled={saving || running || !hasTriggers || unchanged} onClick={onSave}>
           {saving ? t`Saving…` : justSaved ? t`Saved` : t`Save`}
         </Button>
       </div>
