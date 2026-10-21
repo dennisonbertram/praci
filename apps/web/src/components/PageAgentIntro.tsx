@@ -2,7 +2,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@rakazo/ui-web";
 import { dataRoomAgentSuggestions } from "../lib/data-room-agent";
 
-export type PageAgentKind = "inbox" | "finance" | "carta" | "data-room";
+export type PageAgentKind = "inbox" | "finance" | "carta" | "data-room" | "legal";
 
 /** Which page agent a bot is, from the spawn key its page created it with (null for other bots). */
 export function pageAgentKind(spawnKey: string | null | undefined): PageAgentKind | null {
@@ -10,6 +10,7 @@ export function pageAgentKind(spawnKey: string | null | undefined): PageAgentKin
   if (spawnKey?.startsWith("finance-agent:")) return "finance";
   if (spawnKey?.startsWith("carta-agent:")) return "carta";
   if (spawnKey?.startsWith("data-room-agent:")) return "data-room";
+  if (spawnKey?.startsWith("legal-agent:")) return "legal";
   return null;
 }
 
@@ -40,7 +41,13 @@ export function PageAgentIntro({
           ]
         : kind === "data-room"
           ? dataRoomAgentSuggestions()
-          : [
+          : kind === "legal"
+            ? [
+                t`Which contracts renew in the next 90 days?`,
+                t`What deadlines are coming up?`,
+                t`Which contracts have the highest value?`,
+              ]
+            : [
               t`Who owns what in the company?`,
               t`How much of the option pool is left?`,
               t`Draft this month's investor update`,
@@ -60,6 +67,10 @@ export function PageAgentIntro({
         ) : kind === "data-room" ? (
           <Trans>
             I search and read the documents in your Data room and answer questions about them.
+          </Trans>
+        ) : kind === "legal" ? (
+          <Trans>
+            I read your Data room for contracts and deadlines and answer questions about them.
           </Trans>
         ) : (
           <Trans>

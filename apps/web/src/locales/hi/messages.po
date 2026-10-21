@@ -1007,6 +1007,10 @@ msgstr ""
 msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Allow access first."
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Allow changes"
@@ -1649,6 +1653,10 @@ msgstr ""
 msgid "Bots are working"
 msgstr "बॉट काम कर रहे हैं"
 
+#: src/components/AiDataSharing.tsx
+msgid "Bots cannot use a model until you allow it."
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Bots lose access to its tools."
 msgstr ""
@@ -1672,6 +1680,10 @@ msgstr ""
 
 #: src/pages/Paywall.tsx
 msgid "Bots with their own computer and browser"
+msgstr ""
+
+#: src/components/AiDataSharing.tsx
+msgid "Bots, mail, files and contracts"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -4612,6 +4624,10 @@ msgid "I read your bank and card accounts and answer questions about cash, spend
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx
+msgid "I read your Data room for contracts and deadlines and answer questions about them."
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
 msgid "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
 msgstr ""
 
@@ -4922,10 +4938,6 @@ msgstr ""
 
 #: src/pages/shell/transcript.tsx
 msgid "Last run failed."
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Last scan {lastScan}"
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -6109,6 +6121,10 @@ msgstr ""
 
 #: src/lib/ticket-priority.ts
 msgid "Normal"
+msgstr ""
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Not a real deadline: hide it"
 msgstr ""
 
 #: src/components/compose/RecipientField.tsx
@@ -8874,6 +8890,10 @@ msgstr "प्रोवाइडर अनुरोधों की दर स�
 msgid "The selected memory provider is not available in this build."
 msgstr "चयनित मेमोरी प्रोवाइडर इस बिल्ड में उपलब्ध नहीं है।"
 
+#: src/components/AiDataSharing.tsx
+msgid "The sender, subject and a preview of each message are sent to the AI model that runs your bots."
+msgstr ""
+
 #. placeholder {0}: shortDay(first.dueFor)
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "the statement through {0}"
@@ -9764,6 +9784,10 @@ msgid "What bots remember by default"
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx
+msgid "What deadlines are coming up?"
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
 msgid "What did we spend last month?"
 msgstr ""
 
@@ -9821,6 +9845,14 @@ msgstr ""
 
 #: src/components/integrations/AgentStep.tsx
 msgid "Which bots can use {appName}?"
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
+msgid "Which contracts have the highest value?"
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
+msgid "Which contracts renew in the next 90 days?"
 msgstr ""
 
 #: src/lib/data-room-agent.ts

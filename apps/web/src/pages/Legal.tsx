@@ -1,6 +1,6 @@
 import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import { Button, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
+import { Button, cn, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import type { FinanceSpace } from "../components/finance/ui";
@@ -147,7 +147,16 @@ function Legal({
 
   // A failed first load has nothing to show; a failed re-read keeps the page and says so.
   if (overview.error && !data) {
-    return <ErrorNotice message={overview.error} onRetry={overview.retry} />;
+    return (
+      <div>
+        <PageHeader
+          title={<Trans>Legal</Trans>}
+          meta={<SpaceName />}
+          actions={<AskAgentButton />}
+        />
+        <ErrorNotice message={overview.error} onRetry={overview.retry} />
+      </div>
+    );
   }
   if (!data) return <LegalSkeleton />;
   const blocker = data.modelBlocker;
@@ -158,7 +167,10 @@ function Legal({
     !running && !blocker && status && needsConsent && status.recipients.length === 0
       ? t`Connect a model in Settings first.`
       : "";
+  // The consent card names the other reason in words; the disabled button says it on hover too.
+  const scanTitle = scanReason || (needsConsent && !blocker && !running ? t`Allow access first.` : "");
   const { counts } = data;
+  const showActive = counts.activeContracts !== counts.contracts;
   // Counted here so the tile and the row pills use the viewer's date, not the server's.
   const today = todayIso();
   const overdue = data.deadlines.filter((d) => daysBetween(today, d.dueDate) < 0).length;
@@ -175,7 +187,7 @@ function Legal({
         meta={
           <>
             <SpaceName />
-            <span className="min-w-0 truncate text-[11px]">
+            <span className="min-w-0 text-[11px]">
               {lastRun?.status === "failed" && !running ? (
                 keyRejected ? (
                   <Trans>Last scan failed: OpenRouter did not accept your key.</Trans>
@@ -184,9 +196,7 @@ function Legal({
                 ) : (
                   <Trans>Last scan failed</Trans>
                 )
-              ) : lastScan && needsConsent ? (
-                <Trans>Last scan {lastScan}</Trans>
-              ) : lastScan ? (
+              ) : needsConsent ? null : lastScan ? (
                 data.agent.dailyScanActive ? (
                   <Trans>Last scan {lastScan}. Scans daily.</Trans>
                 ) : (
@@ -208,7 +218,12 @@ function Legal({
         }
         actions={
           <>
-            <Button variant="outline" disabled={scanDisabled} onClick={() => void scan()}>
+            <Button
+              variant="outline"
+              disabled={scanDisabled}
+              title={scanDisabled && scanTitle ? scanTitle : undefined}
+              onClick={() => void scan()}
+            >
               {running ? <Trans>Scanning…</Trans> : <Trans>Scan now</Trans>}
             </Button>
             <AskAgentButton />
@@ -237,15 +252,26 @@ function Legal({
       {!blocker && status && !status.allowed && status.recipients.length > 0 ? (
         <LegalConsentPrompt consent={status} onChange={setGranted} />
       ) : null}
-      <div className="mb-4 grid grid-cols-2 gap-3 @3xl:grid-cols-4">
+      <div
+        className={cn(
+          "mb-4 grid gap-3",
+          // Active is dropped when it equals Contracts: three tiles share one row, never a lone fourth.
+          showActive ? "grid-cols-2 @3xl:grid-cols-4" : "grid-cols-3",
+        )}
+      >
         <Kpi title={t`Contracts`} value={counts.contracts} />
-        <Kpi title={t`Active`} value={counts.activeContracts} />
+        {showActive ? <Kpi title={t`Active`} value={counts.activeContracts} /> : null}
         <Kpi
           title={t`Open deadlines`}
           value={counts.openDeadlines}
           to={`${LEGAL_PATH}?view=deadlines`}
         />
-        <Kpi title={t`Overdue`} value={overdue} to={`${LEGAL_PATH}?view=deadlines&due=overdue`} />
+        <Kpi
+          title={t`Overdue`}
+          value={overdue}
+          alert={overdue > 0}
+          to={`${LEGAL_PATH}?view=deadlines&due=overdue`}
+        />
       </div>
       {/* A line, not a fifth tile: four tiles fill two rows of two, or one row, with none alone. */}
       {counts.unreviewedDocuments > 0 ? (

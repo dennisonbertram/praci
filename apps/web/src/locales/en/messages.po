@@ -1007,6 +1007,10 @@ msgstr "Allow {model}"
 msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
 
+#: src/pages/Legal.tsx
+msgid "Allow access first."
+msgstr "Allow access first."
+
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Allow changes"
@@ -1649,6 +1653,10 @@ msgstr "Bots"
 msgid "Bots are working"
 msgstr "Bots are working"
 
+#: src/components/AiDataSharing.tsx
+msgid "Bots cannot use a model until you allow it."
+msgstr "Bots cannot use a model until you allow it."
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Bots lose access to its tools."
 msgstr "Bots lose access to its tools."
@@ -1673,6 +1681,10 @@ msgstr "Bots that run your inbox, cash,<0/>cap table and investor documents."
 #: src/pages/Paywall.tsx
 msgid "Bots with their own computer and browser"
 msgstr "Bots with their own computer and browser"
+
+#: src/components/AiDataSharing.tsx
+msgid "Bots, mail, files and contracts"
+msgstr "Bots, mail, files and contracts"
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ImportFromEmail.tsx
@@ -4612,6 +4624,10 @@ msgid "I read your bank and card accounts and answer questions about cash, spend
 msgstr "I read your bank and card accounts and answer questions about cash, spending and runway."
 
 #: src/components/PageAgentIntro.tsx
+msgid "I read your Data room for contracts and deadlines and answer questions about them."
+msgstr "I read your Data room for contracts and deadlines and answer questions about them."
+
+#: src/components/PageAgentIntro.tsx
 msgid "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
 msgstr "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
 
@@ -4923,10 +4939,6 @@ msgstr "Last run failed: {failedNote}"
 #: src/pages/shell/transcript.tsx
 msgid "Last run failed."
 msgstr "Last run failed."
-
-#: src/pages/Legal.tsx
-msgid "Last scan {lastScan}"
-msgstr "Last scan {lastScan}"
 
 #: src/pages/Legal.tsx
 msgid "Last scan {lastScan}. Daily scan paused."
@@ -6110,6 +6122,10 @@ msgstr "None yet. A vendor shows here after three similar monthly charges."
 #: src/lib/ticket-priority.ts
 msgid "Normal"
 msgstr "Normal"
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Not a real deadline: hide it"
+msgstr "Not a real deadline: hide it"
 
 #: src/components/compose/RecipientField.tsx
 msgid "Not a valid email address"
@@ -8874,6 +8890,10 @@ msgstr "The provider is rate-limiting requests."
 msgid "The selected memory provider is not available in this build."
 msgstr "The selected memory provider is not available in this build."
 
+#: src/components/AiDataSharing.tsx
+msgid "The sender, subject and a preview of each message are sent to the AI model that runs your bots."
+msgstr "The sender, subject and a preview of each message are sent to the AI model that runs your bots."
+
 #. placeholder {0}: shortDay(first.dueFor)
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "the statement through {0}"
@@ -9764,6 +9784,10 @@ msgid "What bots remember by default"
 msgstr "What bots remember by default"
 
 #: src/components/PageAgentIntro.tsx
+msgid "What deadlines are coming up?"
+msgstr "What deadlines are coming up?"
+
+#: src/components/PageAgentIntro.tsx
 msgid "What did we spend last month?"
 msgstr "What did we spend last month?"
 
@@ -9822,6 +9846,14 @@ msgstr "Which bills are unpaid?"
 #: src/components/integrations/AgentStep.tsx
 msgid "Which bots can use {appName}?"
 msgstr "Which bots can use {appName}?"
+
+#: src/components/PageAgentIntro.tsx
+msgid "Which contracts have the highest value?"
+msgstr "Which contracts have the highest value?"
+
+#: src/components/PageAgentIntro.tsx
+msgid "Which contracts renew in the next 90 days?"
+msgstr "Which contracts renew in the next 90 days?"
 
 #: src/lib/data-room-agent.ts
 msgid "Which documents mention renewal?"
