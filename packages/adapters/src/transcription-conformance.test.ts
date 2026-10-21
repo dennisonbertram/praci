@@ -55,10 +55,10 @@ const harnesses: Harness[] = [
   {
     name: "fish-audio",
     ...http("fish-audio"),
-    language: (fetchMock) =>
-      ((fetchMock.mock.calls[0]?.[1] as RequestInit).body as FormData).get("language") as
-        | string
-        | null,
+    language: (fetchMock) => {
+      const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+      return (init.body as FormData).get("language") as string | null;
+    },
   },
   {
     name: "scripted",
