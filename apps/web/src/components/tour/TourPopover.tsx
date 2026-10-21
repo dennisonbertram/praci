@@ -1,6 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Button, Popover, PopoverContent } from "@rakazo/ui-web";
 import { useEffect, useLayoutEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 export type TourStep = {
   id: string;
@@ -9,7 +10,7 @@ export type TourStep = {
   text: string;
 };
 
-/** Below the `lg` breakpoint the sidebar is off screen, so steps show as a card at the bottom. */
+/** Below the `lg` breakpoint the sidebar is a drawer (the shell opens it for the tour); the card sits on the screen half away from the ring. */
 const WIDE = "(min-width: 1024px)";
 
 function useWide() {
@@ -23,6 +24,23 @@ function useWide() {
   return wide;
 }
 
+/** Portaled to the body: the sidebar is transformed, which would otherwise move fixed children. */
+function Ring({ rect }: { rect: DOMRect }) {
+  return createPortal(
+    <div
+      aria-hidden="true"
+      className="pointer-events-none fixed z-40 rounded-xl ring-2 ring-primary"
+      style={{
+        left: rect.left - 3,
+        top: rect.top - 3,
+        width: rect.width + 6,
+        height: rect.height + 6,
+      }}
+    />,
+    document.body,
+  );
+}
+
 /** Follows the anchor's box so the ring stays on it while the layout settles or scrolls. */
 function useRect(element: Element | null) {
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -32,7 +50,10 @@ function useRect(element: Element | null) {
     update();
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
+    // The mobile drawer slides in, so measure again when its transition ends.
+    window.addEventListener("transitionend", update, true);
     return () => {
+      window.removeEventListener("transitionend", update, true);
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
@@ -67,13 +88,22 @@ export function TourPopover({
   const [index, setIndex] = useState(0);
   const step = present?.[index];
   const element = step ? document.querySelector(step.anchor) : null;
-  const rect = useRect(wide ? element : null);
+  const rect = useRect(element);
 
   // Nothing to point at: close without recording, so the tour can still run once the page has loaded.
   const empty = present?.length === 0;
   useEffect(() => {
     if (empty) onFinish("empty");
   }, [empty, onFinish]);
+  // On a phone the card is not a popover, so Escape needs its own handler.
+  useEffect(() => {
+    if (wide) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onFinish("skip");
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [wide, onFinish]);
   if (!step) return null;
 
   const last = index === (present?.length ?? 0) - 1;
@@ -112,32 +142,30 @@ export function TourPopover({
     </>
   );
 
+  const ring = rect && rect.width > 0 && rect.right > 0 && rect.left < window.innerWidth;
   if (!wide) {
+    // Keep the card off the ring: on top when the target is in the lower half of the screen.
+    const top = ring && rect.top + rect.height / 2 > window.innerHeight / 2;
     return (
-      <div
-        role="dialog"
-        aria-label={t`Tour`}
-        data-testid="tour-card"
-        className="fixed inset-x-4 bottom-4 z-50 flex flex-col gap-2.5 rounded-lg bg-popover p-3 text-popover-foreground shadow-md ring-1 ring-foreground/10"
-      >
-        {body}
-      </div>
+      <>
+        {ring ? <Ring rect={rect} /> : null}
+        {createPortal(
+          <div
+            role="dialog"
+            aria-label={t`Tour`}
+            data-testid="tour-card"
+            className={`fixed inset-x-4 z-50 flex flex-col gap-2.5 rounded-lg bg-popover p-3 text-popover-foreground shadow-md ring-1 ring-foreground/10 ${top ? "top-4" : "bottom-4"}`}
+          >
+            {body}
+          </div>,
+          document.body,
+        )}
+      </>
     );
   }
   return (
     <>
-      {rect ? (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none fixed z-40 rounded-xl ring-2 ring-primary"
-          style={{
-            left: rect.left - 3,
-            top: rect.top - 3,
-            width: rect.width + 6,
-            height: rect.height + 6,
-          }}
-        />
-      ) : null}
+      {ring ? <Ring rect={rect} /> : null}
       <Popover
         open
         modal={false}
@@ -147,7 +175,7 @@ export function TourPopover({
       >
         <PopoverContent
           anchor={element}
-          side={step.anchor.includes("user-menu") ? "top" : "right"}
+          side={step.anchor.includes("user-menu") ? "top" : "bottom"}
           align="start"
           sideOffset={10}
           data-testid="tour-popover"

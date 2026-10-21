@@ -126,7 +126,8 @@ reachable through it. PR 1 records this in this file.
    run (not only Carta), so any agent can record the people and companies the
    business works with. `contacts_add` needs no approval and never changes a row: a
    contact with the same email, or the same name and organization when there is no
-   email, is returned as "already saved". `contacts_save` edits and still asks first.
+   email, is returned as "already saved". `contacts_save` edits, and follows the app's normal approval settings:
+   it is consequential, so with no rule and Auto Review off it runs without asking.
    The Cap Table tools stay with the Carta agent. The investor update takes its
    recipients from the list. Open audit requests still live in
    Gmail threads; an audit tracker is a v2 decision.
@@ -137,7 +138,7 @@ reachable through it. PR 1 records this in this file.
     trigger is the one that offers the mail, contacts and Cap Table tools without a typed
     user message. The run saves the snapshot with `cap_table_update` (one row per space
     and user in `cap_table_snapshots`; `carta.capTable` returns it plus `syncing`), adds
-    investors with `contacts_add` (no approval; `contacts_save` still asks), and
+    investors with `contacts_add` (no approval; `contacts_save` follows the normal approval settings), and
     summarizes investor threads.
 11. **Carta belongs to the Carta agent.** `assignmentAllowsTool` refuses every tool on
     a Carta endpoint for any other bot, and creating, updating or signing in to a Carta
