@@ -33,6 +33,7 @@ const rpcMock = vi.hoisted(() => ({
   markRead: vi.fn(),
   askAgent: vi.fn(),
   todos: vi.fn(),
+  setDone: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
@@ -46,7 +47,7 @@ vi.mock("../lib/rpc", () => ({
       unarchiveMany: rpcMock.unarchiveMany,
       markRead: rpcMock.markRead,
       askAgent: rpcMock.askAgent,
-      todos: { list: rpcMock.todos, setDone: vi.fn() },
+      todos: { list: rpcMock.todos, setDone: rpcMock.setDone },
     },
   },
 }));
@@ -57,7 +58,9 @@ vi.mock("../lib/inbox-message-cache", () => ({
   loadInboxMessage: () => new Promise(() => {}),
 }));
 const realDialog = vi.hoisted(() => ({ on: false }));
-vi.mock("../components/AiDataSharing", () => ({ InboxConsentPrompt: () => null }));
+vi.mock("../components/AiDataSharing", () => ({
+  InboxConsentPrompt: () => <div data-consent-prompt />,
+}));
 vi.mock("../components/ComposeEmail", () => ({
   ComposeEmail: () => <div data-testid="compose" />,
   MAIL_SENT_EVENT: "rakazo:mail-sent",
@@ -937,6 +940,117 @@ it("turns off search and Filter until mail is connected", async () => {
   const c = await render();
   expect(c.textContent).toContain("No mail connected");
   expect(c.querySelector<HTMLInputElement>('input[aria-label="Search mail"]')?.disabled).toBe(true);
+});
+
+const meetingTodo = (id: string, text: string, extra: Record<string, unknown> = {}) => ({
+  id,
+  connectionId: null,
+  meetingId: `m-${id}`,
+  messageId: null,
+  text,
+  detail: "Planning, Oct 19",
+  from: null,
+  priority: null,
+  dueOn: null,
+  doneAt: null,
+  ...extra,
+});
+const sourceOn = { source: true, syncing: false, ready: true };
+
+it("shows a meeting-only user's follow-ups above Connect mail, with no mail page and no consent prompt", async () => {
+  rpcMock.list.mockResolvedValue(
+    list([], {
+      accounts: [],
+      enabled: false,
+      triageBlocked: { reason: "needs_consent" } as never,
+    }),
+  );
+  rpcMock.todos.mockResolvedValue({
+    enabled: true,
+    todos: [meetingTodo("t1", "Send the notes")],
+    meetings: sourceOn,
+  });
+  const c = await render();
+  expect(c.textContent).toContain("To do");
+  expect(c.textContent).toContain("Send the notes");
+  expect(c.textContent).toContain("Planning, Oct 19");
+  expect(c.textContent).not.toContain("No mail connected");
+  expect(c.querySelector("[data-consent-prompt]")).toBeNull();
+  const order = [...c.querySelectorAll("h2, button")].map((el) => el.textContent);
+  expect(order.indexOf("To do")).toBeLessThan(order.indexOf("Connect mail"));
+  await click(byText(c, "Connect mail"));
+  expect(connectMail).toHaveBeenCalled();
+});
+
+it("shows the card with a connected source and no to-dos yet: Syncing, then the empty line", async () => {
+  rpcMock.list.mockResolvedValue(list([], { accounts: [] }));
+  rpcMock.todos.mockResolvedValue({
+    enabled: true,
+    todos: [],
+    meetings: { source: true, syncing: true, ready: true },
+  });
+  const c = await render();
+  expect(c.textContent).toContain("To do");
+  expect(c.textContent).toContain("Syncing");
+  expect(c.textContent).not.toContain("No follow-ups from meetings yet");
+  expect(c.textContent).not.toContain("No mail connected");
+
+  // The first sync finishes; the card looks again on its own.
+  rpcMock.todos.mockResolvedValue({ enabled: true, todos: [], meetings: sourceOn });
+  await dwell(5_100);
+  expect(c.textContent).toContain("No follow-ups from meetings yet");
+  expect(c.textContent).not.toContain("Syncing");
+});
+
+it("keeps the heading and the empty line after the last meeting to-do is completed", async () => {
+  rpcMock.list.mockResolvedValue(list([], { accounts: [] }));
+  const todo = meetingTodo("t1", "Send the notes");
+  rpcMock.todos.mockResolvedValue({ enabled: true, todos: [todo], meetings: sourceOn });
+  rpcMock.setDone.mockResolvedValue({ ...todo, doneAt: new Date().toISOString() });
+  const c = await render();
+  expect(c.textContent).not.toContain("No follow-ups from meetings yet");
+  await click(c.querySelector('[role="checkbox"]'));
+  expect(c.textContent).toContain("To do");
+  expect(c.textContent).toContain("No follow-ups from meetings yet");
+});
+
+it("shows nothing for a user with no mail, no to-dos and no source", async () => {
+  rpcMock.list.mockResolvedValue(list([], { accounts: [] }));
+  rpcMock.todos.mockResolvedValue({
+    enabled: false,
+    todos: [],
+    meetings: { source: false, syncing: false, ready: false },
+  });
+  const c = await render();
+  expect(c.textContent).toContain("No mail connected");
+  expect(c.textContent).not.toContain("To do");
+});
+
+it("shows meeting follow-ups on every account tab", async () => {
+  const accounts = [
+    { connectionId: "c1", label: "Me" },
+    { connectionId: "c2", label: "Sales" },
+  ] as InboxListOutput["accounts"];
+  rpcMock.list.mockResolvedValue(list([row("a")], { accounts }));
+  const forTab = ({ connectionId }: { connectionId?: string }) => ({
+    enabled: true,
+    todos: [
+      meetingTodo("t1", "From a meeting"),
+      ...(connectionId === "c2"
+        ? [meetingTodo("t2", "Mail on Sales", { connectionId: "c2" })]
+        : []),
+    ],
+    meetings: sourceOn,
+  });
+  rpcMock.todos.mockImplementation(async (input: { connectionId?: string }) => forTab(input));
+  const c = await render();
+  expect(c.textContent).toContain("From a meeting");
+  const tab = (name: string) =>
+    [...c.querySelectorAll<HTMLElement>('[role="tab"]')].find((el) => el.textContent === name);
+  await click(tab("Sales") ?? null);
+  expect(c.textContent).toContain("From a meeting");
+  expect(c.textContent).toContain("Mail on Sales");
+  await click(tab("All") ?? null);
 });
 
 it("opens the shortcut list with ? while a message is open", async () => {

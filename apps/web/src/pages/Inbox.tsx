@@ -85,6 +85,8 @@ import { MAIL_SENT_EVENT } from "../lib/outbox";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
+type MeetingsState = { source: boolean; syncing: boolean; ready: boolean };
+
 const ALL = "all";
 /** While a refresh reports its sync still running, ask again this often, at most this many times. */
 const SYNC_POLL_MS = 2_000;
@@ -232,6 +234,8 @@ function InboxListPage({
   const announceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [todosByTab, setTodosByTab] = useState<Record<string, InboxTodo[]>>({});
   const [todoRefresh, setTodoRefresh] = useState(0);
+  // Meeting source state from the to-do reply; null when the reply failed, undefined until it arrives.
+  const [meetings, setMeetings] = useState<MeetingsState | null | undefined>();
   // The focused row or group header (a `senderGroupId`); `picked` holds the checked rows.
   const [selectedId, setSelectedId] = useState<string | undefined>();
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
@@ -356,9 +360,10 @@ function InboxListPage({
   useEffect(() => {
     if (paused) return;
     let live = true;
-    const done = (todos: InboxTodo[]) => {
+    const done = (todos: InboxTodo[], state: MeetingsState | null = null) => {
       if (!live) return;
       setTodosByTab((all) => ({ ...all, [tabKey]: todos }));
+      setMeetings(state);
       if (sortEnding.current) {
         sortEnding.current = false;
         setSorting(false);
@@ -366,13 +371,20 @@ function InboxListPage({
     };
     rpc.inbox.todos
       .list(tab ? { connectionId: tab } : {})
-      .then((next) => done(next.todos))
+      .then((next) => done(next.todos, next.meetings ?? null))
       // The list reports its own failure; the card just stays hidden.
       .catch(() => done([]));
     return () => {
       live = false;
     };
   }, [tab, tabKey, todoRefresh, paused]);
+  // The first meeting sync has no event to wait for; look again until it has a checkpoint.
+  const meetingsSyncing = Boolean(meetings?.syncing);
+  useEffect(() => {
+    if (paused || !meetingsSyncing) return;
+    const timer = setTimeout(() => setTodoRefresh((n) => n + 1), 5_000);
+    return () => clearTimeout(timer);
+  }, [meetingsSyncing, paused, todoRefresh]);
   // Refetch when a sync lands, triage finishes, or triage turns on or off (consent, model),
   // not on every reload or poll.
   const syncedAt = data?.syncedAt;
@@ -545,8 +557,9 @@ function InboxListPage({
   };
   const setParam = (name: Parameters<typeof setInboxListParam>[1], value: string) =>
     setParams(setInboxListParam(params, name, value));
-  const showTodos =
-    triage && !sorting && pile === "important" && shown?.triageBlocked?.reason !== "needs_consent";
+  // Meeting follow-ups show whenever the user has any or a meeting source, with or without mail triage.
+  const meetingTodos = Boolean(meetings?.source) || (todos ?? []).some((todo) => todo.meetingId);
+  const showTodos = (triage || meetingTodos) && !sorting && pile === "important";
   const loading =
     !shown ||
     (!filtered && shown.rows.length === 0 && !synced) ||
@@ -1276,6 +1289,32 @@ function InboxListPage({
           >
             {fixButton}
           </PageEmptyState>
+        ) : data && accounts.length === 0 && todos === undefined && !paused ? (
+          // Whether the user has meeting follow-ups decides the page, so it waits for them.
+          <div className="flex flex-col gap-2" aria-busy="true">
+            <Skeleton className="h-9 w-full" />
+          </div>
+        ) : data && accounts.length === 0 && meetingTodos ? (
+          // A meeting-only user: the follow-ups come first, with a plain way to add mail.
+          <>
+            {todos ? (
+              <TodoCard
+                todos={todos}
+                meetings={meetings ?? undefined}
+                onChange={(next) =>
+                  setTodosByTab((all) => ({
+                    ...all,
+                    [tabKey]: (all[tabKey] ?? []).map((item) =>
+                      item.id === next.id ? next : item,
+                    ),
+                  }))
+                }
+              />
+            ) : null}
+            <Button onClick={onConnectMail}>
+              <Trans>Connect mail</Trans>
+            </Button>
+          </>
         ) : data && accounts.length === 0 ? (
           <PageEmptyState
             icon={<Mail className="size-8" strokeWidth={1.6} aria-hidden="true" />}
@@ -1322,19 +1361,18 @@ function InboxListPage({
           )
         ) : shown ? (
           <>
-            {pile !== "important" ? null : shown.triageBlocked?.reason === "needs_consent" ? (
+            {pile !== "important" ? null : shown.triageBlocked?.reason === "needs_consent" &&
+              !consentDismissed ? (
               // Allowing syncs again, which is what queues triage now that it may run.
-              consentDismissed ? null : (
-                <InboxConsentPrompt
-                  recipient={shown.triageBlocked.recipient}
-                  onAllowed={() => {
-                    setJustAllowed(true);
-                    setAttempt((n) => n + 1);
-                    setReload((n) => n + 1);
-                  }}
-                  onDismiss={() => setConsentDismissed(true)}
-                />
-              )
+              <InboxConsentPrompt
+                recipient={shown.triageBlocked.recipient}
+                onAllowed={() => {
+                  setJustAllowed(true);
+                  setAttempt((n) => n + 1);
+                  setReload((n) => n + 1);
+                }}
+                onDismiss={() => setConsentDismissed(true)}
+              />
             ) : sorting && stalled ? (
               <div
                 role="status"
@@ -1360,6 +1398,7 @@ function InboxListPage({
             ) : showTodos && todos ? (
               <TodoCard
                 todos={todos}
+                meetings={meetings ?? undefined}
                 onOpen={openMessage}
                 onChange={(next) =>
                   setTodosByTab((all) => ({
