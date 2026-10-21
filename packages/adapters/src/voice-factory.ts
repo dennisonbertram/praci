@@ -20,7 +20,6 @@ export const VOICE_CATALOG = [
     description: "Highest quality and cloning. Flash v2.5 for conversational calls.",
     transcribe: true,
     speech: true,
-    transcription: true,
   },
   {
     id: "openai",
@@ -28,7 +27,6 @@ export const VOICE_CATALOG = [
     description: "Simple TTS plus Whisper-class transcription. Reuse an OpenAI key.",
     transcribe: true,
     speech: true,
-    transcription: true,
   },
   {
     id: "cartesia",
@@ -36,7 +34,6 @@ export const VOICE_CATALOG = [
     description: "Lowest-latency Sonic voices for interruptible calls.",
     transcribe: false,
     speech: true,
-    transcription: false,
   },
   {
     id: "fish-audio",
@@ -44,7 +41,6 @@ export const VOICE_CATALOG = [
     description: "Voice models, cloning, and expressive speech with optional transcription.",
     transcribe: true,
     speech: true,
-    transcription: true,
   },
 ] as const;
 
@@ -95,17 +91,36 @@ export function createVoiceProvider(kind: string): VoiceProvider {
   );
 }
 
+/** Replace the key in an error. Cancellation and errors without the key pass through unchanged. */
+function scrubKey(error: unknown, apiKey: string): unknown {
+  if (!(error instanceof Error) || !apiKey || !error.message.includes(apiKey)) return error;
+  if (error.name === "AbortError" || error.name === "TimeoutError") return error;
+  const scrubbed = new Error(error.message.split(apiKey).join("[key]"), { cause: error.cause });
+  scrubbed.name = error.name;
+  return scrubbed;
+}
+
 /** Wrap a transcription provider with the checks every provider shares. */
 export function guardTranscription(inner: TranscriptionProvider): TranscriptionProvider {
   return {
     describe: () => inner.describe(),
-    verify: (apiKey, context) => inner.verify(apiKey, context),
+    async verify(apiKey, context) {
+      try {
+        const result = await inner.verify(apiKey, context);
+        if (result.message && apiKey) {
+          return { ...result, message: result.message.split(apiKey).join("[key]") };
+        }
+        return result;
+      } catch (error) {
+        throw scrubKey(error, apiKey);
+      }
+    },
     async transcribe(request: VoiceTranscribeRequest, context: AdapterContext) {
       const signal = request.signal ?? context.signal;
       if (request.audio.byteLength === 0 || request.audio.byteLength > MAX_TRANSCRIBE_BYTES) {
         throw new Error("That recording is empty or too large.");
       }
-      if (signal.aborted) throw new Error("Transcription was cancelled.");
+      signal.throwIfAborted();
       const capped = {
         ...request,
         context: request.context ? capTranscriptionContext(request.context) : undefined,
@@ -113,9 +128,7 @@ export function guardTranscription(inner: TranscriptionProvider): TranscriptionP
       try {
         return await inner.transcribe(capped, context);
       } catch (error) {
-        // Never let the key reach a user-visible message.
-        const message = error instanceof Error ? error.message : "Transcription failed.";
-        throw new Error(request.apiKey ? message.split(request.apiKey).join("[key]") : message);
+        throw scrubKey(error, request.apiKey);
       }
     },
   };

@@ -1380,8 +1380,6 @@ export const VoiceCatalogEntrySchema = z.object({
   transcribe: z.boolean(),
   /** Can speak. Absent means yes. */
   speech: z.boolean().optional(),
-  /** Can transcribe. Same as `transcribe` where both are set. */
-  transcription: z.boolean().optional(),
 });
 export type VoiceCatalogEntry = z.infer<typeof VoiceCatalogEntrySchema>;
 

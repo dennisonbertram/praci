@@ -143,7 +143,15 @@ describe.each(harnesses)("transcription conformance: $name", (h) => {
     controller.abort();
     await expect(
       h.make().provider.transcribe(request({ signal: controller.signal }), ctx),
-    ).rejects.toThrow();
+    ).rejects.toBe(controller.signal.reason);
+  });
+
+  it("scrubs the key from a failed verify", async () => {
+    const { provider, failingKey } = h.make();
+    h.serve("error");
+    const result = await provider.verify(failingKey, ctx).catch((e: unknown) => e as Error);
+    const message = result instanceof Error ? result.message : (result.message ?? "");
+    expect(message).not.toContain(failingKey);
   });
 });
 
@@ -154,7 +162,7 @@ describe("context caps", () => {
       request({
         context: {
           appKind: "ai",
-          vocabulary: ["  Ada  ", "", ...Array.from({ length: 500 }, (_, i) => `w${i}`)],
+          vocabulary: ["  Ada  ", "", "z".repeat(200), ...Array.from({ length: 500 }, (_, i) => `w${i}`)],
           beforeText: `start${"y".repeat(5000)}`,
         },
       }),
@@ -164,6 +172,7 @@ describe("context caps", () => {
     expect(sent.appKind).toBe("ai");
     expect(sent.vocabulary).toHaveLength(MAX_TRANSCRIPTION_VOCABULARY);
     expect(sent.vocabulary![0]).toBe("Ada");
+    expect(sent.vocabulary![1]).toBe("z".repeat(MAX_TRANSCRIPTION_VOCABULARY_ITEM_CHARS));
     expect(sent.vocabulary!.every((w) => w.length <= MAX_TRANSCRIPTION_VOCABULARY_ITEM_CHARS)).toBe(
       true,
     );
