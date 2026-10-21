@@ -1,13 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { LegalPage } from "./Legal";
-import {
-  consentFixture as consent,
-  emptyOverview,
-  graph,
-  needsKeyOverview,
-  overview,
-} from "./legal/fixtures";
+import { consentFixture as consent, emptyOverview, graph, overview } from "./legal/fixtures";
 
 const never = () => new Promise(() => {});
 const fails = () => Promise.reject(new Error("Could not load Legal"));
@@ -38,15 +32,14 @@ export const NeedsConsent: Story = {
     }),
 };
 
-/** No OpenRouter key of the user's own: the notice names the fix and Scan now says why it is off. */
-export const NeedsOwnKey: Story = {
-  beforeEach: () => mockRpc({ "legal.overview": needsKeyOverview, "legal.consent": consent }),
-};
-
-export const ModelChanged: Story = {
+/** The agent runs on the space default model: no key or model banner. */
+export const SpaceDefaultModel: Story = {
   beforeEach: () =>
     mockRpc({
-      "legal.overview": { ...needsKeyOverview, modelBlocker: "model_changed" },
+      "legal.overview": {
+        ...overview,
+        model: { provider: "openrouter", id: "openai/gpt-6-luna", isPreferred: false },
+      },
       "legal.consent": consent,
     }),
 };

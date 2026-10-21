@@ -45,6 +45,7 @@ import type {
 } from "@rakazo/adapters";
 import {
   acquireComputerExecutionLease,
+  answerBotShare,
   applyCodexLiveCatalog,
   applyPendingSenderRules,
   applyTeachingDesktopInput,
@@ -79,6 +80,7 @@ import {
   enqueueTakeoverContinuation,
   ensureComputerWorkspaceLayout,
   expireComputerControl,
+  findBotShareEffect,
   forgetBotSecret,
   getBotPage,
   getBotPins,
@@ -182,6 +184,7 @@ import {
   isGranolaEndpoint,
   isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
+  isInvestorsAgentSpawnKey,
   isLegalAgentSpawnKey,
   isMailThreadAgentSpawnKey,
   isRetiredVoiceAgentSpawnKey,
@@ -439,6 +442,7 @@ import {
   setIntegrationExclusive,
 } from "./integration-agent.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
+import { ensureInvestorsAgent } from "./investors-agent.js";
 import {
   legalAgent,
   legalConsent,
@@ -1434,7 +1438,12 @@ export function createRouter(deps: RouterDeps) {
           where: {
             userId: context.actor.userId,
             spaceId: context.actor.spaceId,
-            recipientKey: input.key ?? undefined,
+            // Taking a model back also takes back the document grants given on top of it.
+            ...(input.key
+              ? {
+                  OR: [{ recipientKey: input.key }, { recipientKey: { startsWith: "data-room:" } }],
+                }
+              : {}),
           },
         });
         return aiConsentStatus(deps, context.actor);
@@ -2254,6 +2263,7 @@ export function createRouter(deps: RouterDeps) {
           isMailThreadAgentSpawnKey(input.spawnKey) ||
           isFinanceAgentSpawnKey(input.spawnKey) ||
           isLegalAgentSpawnKey(input.spawnKey) ||
+          isInvestorsAgentSpawnKey(input.spawnKey) ||
           isDataRoomAgentSpawnKey(input.spawnKey) ||
           isCartaAgentSpawnKey(input.spawnKey) ||
           isIntegrationAgentSpawnKey(input.spawnKey) ||
@@ -3186,6 +3196,22 @@ export function createRouter(deps: RouterDeps) {
                 getLogger().error("thread answer enqueue", error);
               }),
           );
+          return { ok: true as const };
+        }
+        // A held bot-to-bot message is answered without a waiting run: Share delivers the stored
+        // text once, Don't share delivers nothing. The card says which; the client sends no text.
+        const scope = {
+          spaceId: context.actor.spaceId,
+          userId: context.actor.userId,
+          threadId: target.threadId,
+        };
+        if (await findBotShareEffect(deps.prisma, scope, input)) {
+          const shared = await answerBotShare(deps, scope, input);
+          if (!shared) {
+            throw new ORPCError("CONFLICT", {
+              message: "This prompt is no longer awaiting an answer",
+            });
+          }
           return { ok: true as const };
         }
         const answered = await deps.events.answerRunInput({
@@ -7373,6 +7399,13 @@ export function createRouter(deps: RouterDeps) {
         legalConsentGrant(legalDeps, context.actor, input),
       ),
     },
+    investors: {
+      agent: authed.investors.agent.handler(({ context }) =>
+        ensureInvestorsAgent({ repos }, context.actor).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        }),
+      ),
+    },
     carta: {
       agent: authed.carta.agent.handler(({ context }) =>
         ensureCartaAgent({ prisma: deps.prisma, repos }, context.actor).catch((error: unknown) => {
@@ -7979,6 +8012,7 @@ export function createRouter(deps: RouterDeps) {
           devinNeedsYou,
           isDevinConnected,
           dataRoomWaiting,
+          hasTicket,
           botKinds,
         ] = await Promise.all([
           financeRunwayMonths(financeDeps, context.actor),
@@ -7993,6 +8027,12 @@ export function createRouter(deps: RouterDeps) {
               status: "failed",
             },
           }),
+          deps.env?.ticketBoardEnabled
+            ? deps.prisma.ticket.findFirst({
+                where: { spaceId: context.actor.spaceId },
+                select: { id: true },
+              })
+            : null,
           unseenBotKinds(deps.prisma, context.actor),
         ]);
         return {
@@ -8001,6 +8041,7 @@ export function createRouter(deps: RouterDeps) {
           devinNeedsYou,
           devinConnected: isDevinConnected,
           dataRoomWaiting,
+          hasTickets: Boolean(hasTicket),
           botKinds,
         };
       }),

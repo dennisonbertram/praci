@@ -432,14 +432,17 @@ test("Finance runway shows crypto and switches what counts", async ({ page }) =>
   ).toHaveText("$75,000");
   await expect(main.getByText("$15,000 · not in runway", { exact: true })).toBeVisible();
   await expect(main.getByText("$8,000 · not in runway", { exact: true })).toBeVisible();
-  await expect(main.getByRole("button", { name: "Count crypto" })).toHaveAttribute(
-    "aria-pressed",
+  await expect(main.getByRole("switch", { name: "Count crypto" })).toHaveAttribute(
+    "aria-checked",
     "false",
   );
-  await main.getByRole("button", { name: "Count crypto" }).click();
+  await main.getByRole("switch", { name: "Count crypto" }).click();
   // The Cash card and the In runway row both read the full total.
   await expect(main.getByText("$98,000", { exact: true })).toHaveCount(2);
-  await expect(main.getByRole("button", { name: "Counting all crypto" })).toBeVisible();
+  await expect(main.getByRole("switch", { name: "Count crypto" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
 });
 
 test("Finance month groups transactions by vendor and expands a vendor", async ({

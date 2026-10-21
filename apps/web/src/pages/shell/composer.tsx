@@ -1078,7 +1078,8 @@ export const Composer = memo(function Composer({
                       : t`Message…`))
                 : undefined
             }
-            aria-label={activeName ? t`Message ${activeName}` : t`Message`}
+            // A name cut short with "…" would be read aloud as part of the label.
+            aria-label={activeName ? t`Message ${activeName.replace(/…$/, "")}` : t`Message`}
             role="combobox"
             aria-autocomplete="list"
             aria-haspopup="listbox"

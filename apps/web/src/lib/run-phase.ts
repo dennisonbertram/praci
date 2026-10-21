@@ -8,7 +8,7 @@ export function runPhaseLine(phase: RunPhase): string | null {
     case "computer_wait":
       return t`Waiting for the computer`;
     case "computer_start":
-      return t`Starting the computer`;
+      return t`Getting ready`;
     case "connecting":
       return name ? t`Connecting to ${name}` : t`Connecting to tools`;
     case "model_wait":

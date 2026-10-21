@@ -292,7 +292,7 @@ export function FinanceAccountsPage({
               onClose={() => setConnecting(null)}
             />
           ) : null}
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
             {sourceName ? (
               <Kpi
                 title={t`${sourceName} cash`}
@@ -443,7 +443,7 @@ export function FinanceAccountPage({ id }: { id: string }) {
       ) : null}
       {data && account ? (
         <>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
             <Kpi
               title={isCard ? t`Balance owed` : t`Balance`}
               value={money(account.balanceCents)}

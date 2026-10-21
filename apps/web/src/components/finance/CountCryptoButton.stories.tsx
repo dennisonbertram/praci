@@ -23,6 +23,6 @@ export const SaveFailed: Story = {
       },
     }),
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole("button"));
+    await userEvent.click(within(canvasElement).getByRole("switch"));
   },
 };

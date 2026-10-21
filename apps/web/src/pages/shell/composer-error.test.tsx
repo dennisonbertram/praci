@@ -2,7 +2,6 @@
 
 import {
   LEGAL_CONSENT_REQUIRED_MESSAGE,
-  LEGAL_MODEL_REQUIRED_MESSAGE,
   MISSING_TOOL_FINAL_RESPONSE_ERROR,
 } from "@rakazo/contracts";
 import type { ReactNode } from "react";
@@ -35,22 +34,6 @@ afterEach(() => {
 
 const settingsButton = () =>
   [...container.querySelectorAll("button")].find((b) => b.textContent === "Open Models settings");
-
-it("offers OpenRouter's Models settings for the Legal model error", async () => {
-  const open = vi.fn();
-  await act(async () =>
-    root.render(
-      <ComposerError
-        message={LEGAL_MODEL_REQUIRED_MESSAGE}
-        onDismiss={() => {}}
-        onOpenModelSettings={open}
-      />,
-    ),
-  );
-  expect(container.textContent).toContain("needs your own OpenRouter key");
-  await act(async () => settingsButton()?.click());
-  expect(open).toHaveBeenCalledWith("openrouter");
-});
 
 it("offers Models settings when the provider did not accept the API key", async () => {
   const open = vi.fn();

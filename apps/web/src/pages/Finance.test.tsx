@@ -832,6 +832,37 @@ it("names the space on detail pages too, switches company from there, and puts A
   expect(titleRow?.querySelector('button[aria-label="Ask Finance agent"]')).not.toBeNull();
 });
 
+it("names the company on a detail page even with one space, as plain text with no switcher", async () => {
+  rpcMock.vendor.mockResolvedValue({
+    key: "acme-hosting",
+    name: "Acme Hosting",
+    isSubscription: false,
+    monthlyAvgCents: 50_000,
+    changePct: null,
+    firstSeenAt: "2025-03-02T00:00:00.000Z",
+    paidWith: [],
+    monthly: [],
+    charges: [],
+  });
+  await act(async () => {
+    root.render(
+      <MemoryRouter initialEntries={["/app/finance/vendor/acme-hosting"]}>
+        <FinancePage
+          spaces={[{ id: "s1", name: "Example Space One" }]}
+          spaceId="s1"
+          onSwitchSpace={vi.fn()}
+          onAskAgent={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+  });
+  await flush();
+  expect(container.querySelector('[title="Example Space One"]')?.textContent).toBe(
+    "Example Space One",
+  );
+  expect(container.querySelector('button[aria-label^="Company:"]')).toBeNull();
+});
+
 const spendTransaction = (hasReceipt: boolean): FinanceTransactionOutput => ({
   transaction: {
     id: "t1",

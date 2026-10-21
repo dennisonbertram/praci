@@ -90,7 +90,7 @@ export function FinanceBurnPage() {
     >
       {data ? (
         <>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
             <Kpi
               title={t`Monthly burn`}
               value={data.monthlyCents > 0 ? money(data.monthlyCents) : "—"}
@@ -255,7 +255,7 @@ export function FinanceMonthPage({ month }: { month: string }) {
     >
       {data ? (
         <>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
             <Kpi title={t`Out`} value={money(data.outCents)} />
             <Kpi title={t`In`} value={money(data.inCents)} />
             <Kpi
@@ -317,7 +317,7 @@ export function FinanceRunwayPage() {
     >
       {data ? (
         <>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
             <Kpi title={t`Cash`} value={money(data.cashCents)} to={financePath.accounts()} />
             <Kpi
               title={t`Monthly burn`}
