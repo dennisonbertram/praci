@@ -510,3 +510,18 @@ it("names the step a working item is in on its spinner, and leaves ready items p
   ).map((el) => el.getAttribute("title"));
   expect(titles).toEqual(["Reading text", "Tagging", "Indexing for search"]);
 });
+
+it("offers Try again on a failed grid tile", () => {
+  const onAction = vi.fn();
+  const rows = [{ ...item("junk", null), status: "failed" }, item("fine", null)].map((i) => ({
+    item: i as DataRoomApiItem,
+    snippets: [],
+  }));
+  act(() => root.render(<GridView rows={rows} o={{ ...o(), onAction }} />));
+  const retry = Array.from(container.querySelectorAll("button")).filter(
+    (b) => b.textContent === "Try again",
+  );
+  expect(retry).toHaveLength(1);
+  act(() => retry[0]?.click());
+  expect(onAction).toHaveBeenCalledWith("retry", expect.objectContaining({ id: "junk" }));
+});
