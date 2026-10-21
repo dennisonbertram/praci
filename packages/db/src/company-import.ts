@@ -308,7 +308,7 @@ export async function updateCompanyImportRun(
           data: { status: "paused" },
         });
       } else if (input.action === "resume") {
-        if (!["paused", "budget_reached", "partial"].includes(run.status)) {
+        if (!["paused", "budget_reached"].includes(run.status)) {
           throw new CompanyImportError("invalid_state");
         }
         if (
@@ -356,9 +356,49 @@ export async function updateCompanyImportRun(
           data: { status: input.action === "cancel" ? "cancelled" : "discarded" },
         });
         if (input.action === "discard") {
-          await tx.companyEvidence.deleteMany({
-            where: { ...scope, extractorRunId: run.id },
+          const affectedEvidence = await tx.companyEvidence.findMany({
+            where: {
+              ...scope,
+              OR: [{ extractorRunId: run.id }, { importObservations: { some: { runId: run.id } } }],
+            },
+            select: { id: true, extractorRunId: true },
           });
+          await tx.companyImportEvidence.deleteMany({ where: { ...scope, runId: run.id } });
+          if (affectedEvidence.length > 0) {
+            const evidenceIds = affectedEvidence.map((evidence) => evidence.id);
+            const survivingObservations = await tx.companyImportEvidence.findMany({
+              where: { ...scope, evidenceId: { in: evidenceIds } },
+              select: { evidenceId: true },
+            });
+            const observedEvidenceIds = new Set(
+              survivingObservations.map((observation) => observation.evidenceId),
+            );
+            const originRunIds = [
+              ...new Set(
+                affectedEvidence.flatMap((evidence) =>
+                  evidence.extractorRunId ? [evidence.extractorRunId] : [],
+                ),
+              ),
+            ];
+            const discardedOrigins = await tx.companyImportRun.findMany({
+              where: { ...scope, id: { in: originRunIds }, status: "discarded" },
+              select: { id: true },
+            });
+            const discardedOriginIds = new Set(discardedOrigins.map((origin) => origin.id));
+            const deletableEvidenceIds = affectedEvidence
+              .filter(
+                (evidence) =>
+                  evidence.extractorRunId &&
+                  discardedOriginIds.has(evidence.extractorRunId) &&
+                  !observedEvidenceIds.has(evidence.id),
+              )
+              .map((evidence) => evidence.id);
+            if (deletableEvidenceIds.length > 0) {
+              await tx.companyEvidence.deleteMany({
+                where: { ...scope, id: { in: deletableEvidenceIds } },
+              });
+            }
+          }
           await tx.companyCandidate.deleteMany({ where: { ...scope, importRunId: run.id } });
         }
       }
@@ -721,6 +761,85 @@ export async function settleCompanyImportCall(
         });
       }
       return !overBound;
+    }),
+  );
+}
+
+export async function releaseCompanyImportCall(
+  prisma: PrismaClient,
+  actor: Actor,
+  input: {
+    reservationId: string;
+    runId: string;
+    sourceId: string;
+    unitId: string;
+    claimToken: string;
+  },
+) {
+  const scope = scopeOf(actor);
+  await requireMember(prisma, scope);
+  return withTransactionRetry(() =>
+    prisma.$transaction(async (tx) => {
+      await lockCompanyScope(tx, scope);
+      const lockedRun = await lockRun(tx, scope, input.runId);
+      if (!lockedRun) return false;
+      const [source, unit] = await Promise.all([
+        tx.companyImportSource.findFirst({
+          where: { ...scope, id: input.sourceId, runId: input.runId },
+          select: { id: true },
+        }),
+        tx.companyImportUnit.findFirst({
+          where: {
+            ...scope,
+            id: input.unitId,
+            runId: input.runId,
+            sourceId: input.sourceId,
+          },
+          select: { id: true },
+        }),
+      ]);
+      if (!source || !unit) return false;
+      const call = await tx.companyImportCall.findFirst({
+        where: {
+          ...scope,
+          reservationId: input.reservationId,
+          runId: input.runId,
+          sourceId: input.sourceId,
+          unitId: input.unitId,
+          claimToken: input.claimToken,
+          status: "reserved",
+        },
+        select: { id: true, reservedInput: true, reservedOutput: true },
+      });
+      if (!call) return false;
+      const released = await tx.companyImportCall.updateMany({
+        where: {
+          ...scope,
+          id: call.id,
+          reservationId: input.reservationId,
+          runId: input.runId,
+          sourceId: input.sourceId,
+          unitId: input.unitId,
+          claimToken: input.claimToken,
+          status: "reserved",
+        },
+        data: { status: "released", settledAt: new Date() },
+      });
+      if (released.count !== 1) return false;
+      const amount = call.reservedInput + call.reservedOutput;
+      await tx.companyImportRun.update({
+        where: { ...scope, id: input.runId },
+        data: { reservedTokens: { decrement: amount } },
+      });
+      await tx.companyImportSource.update({
+        where: { ...scope, id: input.sourceId },
+        data: { tokensReserved: { decrement: amount } },
+      });
+      await tx.companyImportUnit.update({
+        where: { ...scope, id: input.unitId },
+        data: { tokensReserved: { decrement: amount } },
+      });
+      return true;
     }),
   );
 }

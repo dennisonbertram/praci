@@ -3481,6 +3481,7 @@ model CompanyEvidence {
   confirmedByUserId String?
   confirmedAt      DateTime?
   createdAt       DateTime      @default(now())
+  importObservations CompanyImportEvidence[]
 
   @@unique([id, spaceId, ownerUserId])
   @@unique([spaceId, ownerUserId, factKind, factId, sourceKey, contentHash])
@@ -3594,11 +3595,27 @@ model CompanyImportRun {
   units                 CompanyImportUnit[]
   calls                 CompanyImportCall[]
   candidates            CompanyCandidate[]
+  evidenceObservations  CompanyImportEvidence[]
 
   @@unique([id, spaceId, ownerUserId])
   @@index([spaceId, ownerUserId, createdAt])
   @@index([status, updatedAt])
   @@map("company_import_runs")
+}
+
+model CompanyImportEvidence {
+  id         String           @id @default(cuid())
+  runId      String
+  run        CompanyImportRun @relation(fields: [runId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  evidenceId String
+  evidence   CompanyEvidence  @relation(fields: [evidenceId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  spaceId    String
+  ownerUserId String
+  createdAt  DateTime         @default(now())
+
+  @@unique([runId, evidenceId])
+  @@index([spaceId, ownerUserId, evidenceId])
+  @@map("company_import_evidence")
 }
 
 model CompanyImportSource {

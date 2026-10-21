@@ -9,7 +9,9 @@ import {
   claimCompanyImportUnit,
   completeCompanyImportUnit,
   createCompanyImportRun,
+  failCompanyImportUnit,
   getCompanyImportProgress,
+  releaseCompanyImportCall,
   reserveCompanyImportCall,
   settleCompanyImportCall,
   startCompanyImportRun,
@@ -331,6 +333,51 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
     expect(cancelledRun.outputTokensUsed).toBe(3n);
   });
 
+  it("releases a pre-invocation reservation once without usage", async () => {
+    const { runId, claims } = await runWithSources(100);
+    const claim = claims[0]!;
+    const reservation = await reserveCompanyImportCall(prisma, actor, {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      recipientKey: "synthetic-recipient",
+      disclosureVersion: "2026-01",
+      callId: "synthetic-call",
+      inputTokenBound: 4,
+      maxOutputTokens: 3,
+    });
+    const release = {
+      reservationId: reservation.reservationId,
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+    };
+
+    await expect(
+      releaseCompanyImportCall(prisma, actor, { ...release, unitId: "wrong-unit" }),
+    ).resolves.toBe(false);
+    await expect(releaseCompanyImportCall(prisma, actor, release)).resolves.toBe(true);
+    await expect(releaseCompanyImportCall(prisma, actor, release)).resolves.toBe(false);
+
+    const run = await prisma.companyImportRun.findUniqueOrThrow({ where: { id: runId } });
+    const source = await prisma.companyImportSource.findUniqueOrThrow({
+      where: { id: claim.sourceId },
+    });
+    const unit = await prisma.companyImportUnit.findUniqueOrThrow({ where: { id: claim.id } });
+    const call = await prisma.companyImportCall.findUniqueOrThrow({
+      where: { reservationId: reservation.reservationId },
+    });
+    expect(run.reservedTokens).toBe(0n);
+    expect(source.tokensReserved).toBe(0n);
+    expect(unit.tokensReserved).toBe(0n);
+    expect(call.status).toBe("released");
+    expect(await prisma.usageRecord.count({ where: { callId: reservation.reservationId } })).toBe(
+      0,
+    );
+  });
+
   it("records known over-bound usage and pauses the run instead of dropping billing", async () => {
     const { runId, claims } = await runWithSources(100);
     const claim = claims[0]!;
@@ -385,6 +432,75 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
       claimCompanyImportUnit(prisma, actor, { runId, unitId: claim.id }),
     ).resolves.toBeNull();
     expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("failed");
+  });
+
+  it("requires retry_failed for partial runs and completes the retried unit", async () => {
+    const { runId, claims } = await runWithSources(100, 2);
+    const done = claims[0]!;
+    const failed = claims[1]!;
+    await completeCompanyImportUnit(prisma, actor, {
+      runId,
+      sourceId: done.sourceId,
+      unitId: done.id,
+      claimToken: done.claimToken,
+      nextCursor: null,
+      done: true,
+      itemsDiscovered: 0,
+      itemsRead: 0,
+      facts: [],
+    });
+    await prisma.companyImportUnit.update({
+      where: { id: failed.id },
+      data: { attempts: 3 },
+    });
+    await failCompanyImportUnit(prisma, actor, {
+      runId,
+      sourceId: failed.sourceId,
+      unitId: failed.id,
+      claimToken: failed.claimToken,
+      errorCode: "synthetic_failure",
+    });
+
+    expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("partial");
+    await expect(
+      updateCompanyImportRun(prisma, actor, { runId, action: "resume" }),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+    expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("partial");
+    await updateCompanyImportRun(prisma, actor, { runId, action: "retry_failed" });
+    const retried = await prisma.companyImportUnit.findUniqueOrThrow({ where: { id: failed.id } });
+    expect(retried).toMatchObject({ status: "waiting", attempts: 0, lastError: null });
+    const claim = await claimCompanyImportUnit(prisma, actor, { runId, unitId: failed.id });
+    expect(claim).not.toBeNull();
+    await completeCompanyImportUnit(prisma, actor, {
+      runId,
+      sourceId: failed.sourceId,
+      unitId: failed.id,
+      claimToken: claim!.claimToken,
+      nextCursor: null,
+      done: true,
+      itemsDiscovered: 0,
+      itemsRead: 0,
+      facts: [],
+    });
+    expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("completed");
+  });
+
+  it("allows a claimed unit to finish after the run is paused", async () => {
+    const { runId, claims } = await runWithSources(100);
+    const claim = claims[0]!;
+    await updateCompanyImportRun(prisma, actor, { runId, action: "pause" });
+    await completeCompanyImportUnit(prisma, actor, {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      nextCursor: null,
+      done: true,
+      itemsDiscovered: 0,
+      itemsRead: 0,
+      facts: [],
+    });
+    expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("completed");
   });
 
   it("isolates progress and discard evidence by owner and import run", async () => {
@@ -469,5 +585,71 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
         },
       }),
     ).toBeGreaterThan(0);
+  });
+
+  it("retains shared evidence until every observing run is discarded", async () => {
+    const fact = {
+      entity: {
+        kind: "person" as const,
+        displayName: "Synthetic shared import person",
+        attrs: { workEmails: ["shared-import@example.test"] },
+        confidence: 0.8,
+      },
+      evidence: {
+        stance: "supports" as const,
+        sourceKind: "slack" as const,
+        sourceItemId: "shared-synthetic-item",
+        quote: "Shared synthetic source quote.",
+        contentHash: "shared-synthetic-hash",
+        extractedAt: "2026-01-02T03:04:05.000Z",
+        extractorModel: null,
+        confidence: 0.8,
+      },
+    };
+    const importFact = async () => {
+      const run = await runWithSources(100);
+      const claim = run.claims[0]!;
+      await completeCompanyImportUnit(prisma, actor, {
+        runId: run.runId,
+        sourceId: claim.sourceId,
+        unitId: claim.id,
+        claimToken: claim.claimToken,
+        nextCursor: null,
+        done: true,
+        itemsDiscovered: 1,
+        itemsRead: 1,
+        facts: [{ kind: "entity", input: fact }],
+      });
+      return run.runId;
+    };
+
+    const firstRunId = await importFact();
+    const secondRunId = await importFact();
+    const evidence = await prisma.companyEvidence.findFirstOrThrow({
+      where: { spaceId, ownerUserId: userId, extractorRunId: firstRunId },
+      select: { id: true, factId: true },
+    });
+    expect(
+      await prisma.companyEvidence.count({
+        where: { spaceId, ownerUserId: userId, contentHash: "shared-synthetic-hash" },
+      }),
+    ).toBe(1);
+    expect(await prisma.companyImportEvidence.count({ where: { evidenceId: evidence.id } })).toBe(
+      2,
+    );
+
+    await updateCompanyImportRun(prisma, actor, { runId: firstRunId, action: "discard" });
+    expect(await prisma.companyEvidence.count({ where: { id: evidence.id } })).toBe(1);
+    expect(
+      await prisma.companyImportEvidence.count({
+        where: { evidenceId: evidence.id, runId: secondRunId },
+      }),
+    ).toBe(1);
+    expect(await prisma.companyIdentity.count({ where: { entityId: evidence.factId } })).toBe(1);
+
+    await updateCompanyImportRun(prisma, actor, { runId: secondRunId, action: "discard" });
+    expect(await prisma.companyEvidence.count({ where: { id: evidence.id } })).toBe(0);
+    expect(await prisma.companyEntity.count({ where: { id: evidence.factId } })).toBe(0);
+    expect(await prisma.companyIdentity.count({ where: { entityId: evidence.factId } })).toBe(0);
   });
 });

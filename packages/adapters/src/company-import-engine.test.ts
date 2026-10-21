@@ -22,6 +22,7 @@ const db = vi.hoisted(() => ({
   listCompanyImportUnitsForScheduling: vi.fn(),
   reconcileCompanyImportRunIds: vi.fn(),
   grantCompanyImportConsent: vi.fn(async () => ({ allowed: true, resumed: false })),
+  releaseCompanyImportCall: vi.fn(async () => true),
   reserveCompanyImportCall: vi.fn(async () => ({
     reservationId: "reservation-1",
     reservedInput: 10,
@@ -42,6 +43,7 @@ vi.mock("@rakazo/db", () => ({
   getCompanyImportRunForScheduling: db.getCompanyImportRunForScheduling,
   listCompanyImportUnitsForScheduling: db.listCompanyImportUnitsForScheduling,
   reconcileCompanyImportRunIds: db.reconcileCompanyImportRunIds,
+  releaseCompanyImportCall: db.releaseCompanyImportCall,
   reserveCompanyImportCall: db.reserveCompanyImportCall,
   settleCompanyImportCall: db.settleCompanyImportCall,
   startCompanyImportRun: vi.fn(),
@@ -117,13 +119,22 @@ const source = {
 };
 
 function createHarness(options?: {
+  revokeConsentAfterReservation?: boolean;
   revokeConsentAfterCall?: boolean;
   changeModelAfterCall?: boolean;
+  sourceScope?: Record<string, unknown>;
+  ownedItemIds?: string[];
   runStatus?: string;
 }) {
   let consentGranted = true;
   let modelId = "synthetic-model";
   let grantedRecipientKey: string | undefined;
+  if (options?.revokeConsentAfterReservation) {
+    db.reserveCompanyImportCall.mockImplementationOnce(async () => {
+      consentGranted = false;
+      return { reservationId: "reservation-1", reservedInput: 10, reservedOutput: 5 };
+    });
+  }
   const invoke = vi.fn(async () => {
     if (options?.revokeConsentAfterCall) consentGranted = false;
     if (options?.changeModelAfterCall) modelId = "changed-model";
@@ -157,8 +168,15 @@ function createHarness(options?: {
     companyImportSource: {
       findFirst: vi.fn(async () => ({
         ...source,
+        scope: options?.sourceScope ?? source.scope,
         run: { ...source.run, status: options?.runStatus ?? source.run.status },
       })),
+    },
+    dataRoomItem: {
+      count: vi.fn(async (input: { where: { id: { in: string[] } } }) => {
+        const owned = new Set(options?.ownedItemIds ?? []);
+        return [...new Set(input.where.id.in)].filter((id) => owned.has(id)).length;
+      }),
     },
     aiDataConsent: {
       findUnique: vi.fn(
@@ -256,6 +274,32 @@ describe("company import engine", () => {
     );
   });
 
+  it("releases a reservation when consent is revoked before invocation", async () => {
+    const { engine, invoke } = createHarness({ revokeConsentAfterReservation: true });
+
+    await engine.unitJob({
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      runId: "run-1",
+      unitId: "unit-1",
+    });
+
+    expect(invoke).not.toHaveBeenCalled();
+    expect(db.releaseCompanyImportCall).toHaveBeenCalledTimes(1);
+    expect(db.releaseCompanyImportCall).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ spaceId: actor.spaceId, userId: actor.userId }),
+      expect.objectContaining({
+        runId: "run-1",
+        sourceId: "source-1",
+        unitId: "unit-1",
+        claimToken: "fence-1",
+        reservationId: "reservation-1",
+      }),
+    );
+    expect(db.settleCompanyImportCall).not.toHaveBeenCalled();
+  });
+
   it("does not start work after the run has been cancelled", async () => {
     const { engine, invoke, secondInvoke } = createHarness({ runStatus: "cancelled" });
 
@@ -272,4 +316,40 @@ describe("company import engine", () => {
     expect(db.completeCompanyImportUnit).not.toHaveBeenCalled();
     expect(db.failCompanyImportUnit).toHaveBeenCalledTimes(1);
   });
+
+  it("accepts repeated IDs when every unique data-room item is owned", async () => {
+    const { engine, invoke } = createHarness({
+      sourceScope: { itemIds: ["owned-item", "owned-item"] },
+      ownedItemIds: ["owned-item"],
+    });
+
+    await engine.unitJob({
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      runId: "run-1",
+      unitId: "unit-1",
+    });
+
+    expect(invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["missing-item", "foreign-item"])(
+    "denies a data-room scope containing %s",
+    async (itemId) => {
+      const { engine, invoke } = createHarness({
+        sourceScope: { itemIds: ["owned-item", itemId] },
+        ownedItemIds: ["owned-item"],
+      });
+
+      await engine.unitJob({
+        spaceId: actor.spaceId,
+        userId: actor.userId,
+        runId: "run-1",
+        unitId: "unit-1",
+      });
+
+      expect(invoke).not.toHaveBeenCalled();
+      expect(db.awaitCompanyImportConsent).toHaveBeenCalledTimes(1);
+    },
+  );
 });

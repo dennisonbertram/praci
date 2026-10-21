@@ -36,6 +36,7 @@ import {
   grantCompanyImportConsent,
   listCompanyImportUnitsForScheduling,
   reconcileCompanyImportRunIds,
+  releaseCompanyImportCall,
   reserveCompanyImportCall,
   settleCompanyImportCall,
   startCompanyImportRun,
@@ -288,14 +289,15 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
         if (!Array.isArray(itemIds) || !itemIds.every((id) => typeof id === "string")) {
           throw new CompanyImportConsentRequired();
         }
+        const uniqueItemIds = [...new Set(itemIds as string[])];
         const count = await deps.prisma.dataRoomItem.count({
           where: {
-            id: { in: itemIds as string[] },
+            id: { in: uniqueItemIds },
             spaceId: actor.spaceId,
             userId: actor.userId,
           },
         });
-        if (count !== itemIds.length) throw new CompanyImportConsentRequired();
+        if (count !== uniqueItemIds.length) throw new CompanyImportConsentRequired();
       }
     }
     if (active) {
@@ -376,30 +378,39 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
           inputTokenBound,
           maxOutputTokens,
         });
-        const stillAllowed = await currentConsent(
-          actor,
-          input.runId,
-          input.sourceId,
-          before.recipient.key,
-        );
-        if (stillAllowed.recipientKey !== before.recipientKey) {
-          throw new CompanyImportConsentRequired();
+        let stillAllowed: Awaited<ReturnType<typeof currentConsent>>;
+        try {
+          stillAllowed = await currentConsent(
+            actor,
+            input.runId,
+            input.sourceId,
+            before.recipient.key,
+          );
+          if (stillAllowed.recipientKey !== before.recipientKey) {
+            throw new CompanyImportConsentRequired();
+          }
+          const claim = await deps.prisma.companyImportUnit.findFirst({
+            where: {
+              id: input.unitId,
+              runId: input.runId,
+              sourceId: input.sourceId,
+              spaceId: actor.spaceId,
+              ownerUserId: actor.userId,
+              status: "claimed",
+              claimToken: input.claimToken,
+              claimExpiresAt: { gt: new Date() },
+            },
+            select: { id: true },
+          });
+          if (!claim) throw new CompanyImportWorkerError("stale_claim");
+          if (signal.aborted) throw new CompanyImportWorkerError("aborted");
+        } catch (error) {
+          await releaseCompanyImportCall(deps.prisma, actor, {
+            ...input,
+            reservationId: reservation.reservationId,
+          });
+          throw error;
         }
-        const claim = await deps.prisma.companyImportUnit.findFirst({
-          where: {
-            id: input.unitId,
-            runId: input.runId,
-            sourceId: input.sourceId,
-            spaceId: actor.spaceId,
-            ownerUserId: actor.userId,
-            status: "claimed",
-            claimToken: input.claimToken,
-            claimExpiresAt: { gt: new Date() },
-          },
-          select: { id: true },
-        });
-        if (!claim) throw new CompanyImportWorkerError("stale_claim");
-        if (signal.aborted) throw new CompanyImportWorkerError("aborted");
         const result = await invoke(stillAllowed.model, signal);
         if (
           result.provider !== stillAllowed.model.provider ||

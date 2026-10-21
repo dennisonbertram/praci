@@ -858,6 +858,34 @@ async function evidenceCreateData(
   };
 }
 
+async function persistImportEvidence(
+  db: CompanyDb,
+  scope: Scope,
+  data: Awaited<ReturnType<typeof evidenceCreateData>>,
+) {
+  await db.companyEvidence.createMany({ data: [data], skipDuplicates: true });
+  const evidence = await db.companyEvidence.findFirst({
+    where: {
+      ...scope,
+      factKind: data.factKind,
+      factId: data.factId,
+      sourceKey: data.sourceKey,
+      contentHash: data.contentHash,
+    },
+    select: { id: true },
+  });
+  if (!evidence || !data.extractorRunId) return;
+  const run = await db.companyImportRun.findFirst({
+    where: { ...scope, id: data.extractorRunId },
+    select: { id: true },
+  });
+  if (!run) return;
+  await db.companyImportEvidence.createMany({
+    data: [{ ...scope, runId: run.id, evidenceId: evidence.id }],
+    skipDuplicates: true,
+  });
+}
+
 async function importEntity(
   db: CompanyDb,
   scope: Scope,
@@ -1147,10 +1175,7 @@ async function importEntity(
       claimFingerprint,
       contradictsLockedValue ? "contradicts" : input.evidence.stance,
     );
-    await db.companyEvidence.createMany({
-      data: [replayEvidence],
-      skipDuplicates: true,
-    });
+    await persistImportEvidence(db, scope, replayEvidence);
     if (contradictsLockedValue) {
       await db.companyEvidence.updateMany({
         where: {
@@ -1230,9 +1255,11 @@ async function importEntity(
     },
     include: ENTITY_INCLUDE,
   });
-  await db.companyEvidence.create({
-    data: await evidenceCreateData(db, scope, "entity", row.id, input.evidence, claimFingerprint),
-  });
+  await persistImportEvidence(
+    db,
+    scope,
+    await evidenceCreateData(db, scope, "entity", row.id, input.evidence, claimFingerprint),
+  );
   if (matchedGroups.length > 1) {
     // Conflicting identifiers remain candidates; none is attached to the new entity.
     return mapEntity(db, scope, row);
@@ -1360,10 +1387,7 @@ async function importEdge(
     fingerprint,
     contradicts ? "contradicts" : input.evidence.stance,
   );
-  await db.companyEvidence.createMany({
-    data: [edgeEvidence],
-    skipDuplicates: true,
-  });
+  await persistImportEvidence(db, scope, edgeEvidence);
   if (contradicts) {
     await db.companyEvidence.updateMany({
       where: {
@@ -1598,10 +1622,7 @@ async function importEvent(
     rawKey === key ? fingerprint : rawFingerprint,
     contradicts ? "contradicts" : input.evidence.stance,
   );
-  await db.companyEvidence.createMany({
-    data: [eventEvidence],
-    skipDuplicates: true,
-  });
+  await persistImportEvidence(db, scope, eventEvidence);
   if (contradicts) {
     await db.companyEvidence.updateMany({
       where: {
