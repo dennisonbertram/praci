@@ -43,6 +43,20 @@ export async function claimSteering(
           : [{ runId: input.runId }],
         message: {
           threadId: input.threadId,
+          // A run built without the external mark leaves marked messages for their own run.
+          ...(input.excludeExternalOrigin
+            ? {
+                AND: [
+                  {
+                    NOT: {
+                      blocks: {
+                        array_contains: [{ kind: "bot_message_received", externalOrigin: true }],
+                      },
+                    },
+                  },
+                ],
+              }
+            : {}),
           // Private follow-ups remain unclaimed for the existing private continuation.
           ...(channelId
             ? { blocks: { array_contains: [{ kind: "channel_message", channelId }] } }
