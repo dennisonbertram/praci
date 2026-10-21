@@ -1572,10 +1572,6 @@ msgstr "Avatar Studio"
 msgid "Avatars"
 msgstr "Avatars"
 
-#: src/pages/finance/FinanceSpend.tsx
-msgid "Average per month"
-msgstr "Average per month"
-
 #: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/ImportFromDrive.tsx
@@ -6934,6 +6930,11 @@ msgstr "pending"
 msgid "Pending"
 msgstr "Pending"
 
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Per month"
+msgstr "Per month"
+
 #: src/components/finance/ui.tsx
 msgid "Period"
 msgstr "Period"
@@ -9166,6 +9167,10 @@ msgstr "The text of your Data room documents is sent to the AI model that runs y
 msgid "The transactions read add up to the closing balance"
 msgstr "The transactions read add up to the closing balance"
 
+#: src/pages/Finance.tsx
+msgid "The usual charge scaled to a month, or for usage-based vendors the average of recent full months. The vendor page shows the same figure."
+msgstr "The usual charge scaled to a month, or for usage-based vendors the average of recent full months. The vendor page shows the same figure."
+
 #: src/pages/shell/message-cards.tsx
 msgid "The web, notes and docs"
 msgstr "The web, notes and docs"
@@ -9880,13 +9885,9 @@ msgstr "Uses Carta figures and asks before sending."
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 
-#: src/pages/Finance.tsx
-msgid "Usual charge scaled to a month; usage-based vendors use the last 3 months. A vendor page shows the average of actual spend over the months it names."
-msgstr "Usual charge scaled to a month; usage-based vendors use the last 3 months. A vendor page shows the average of actual spend over the months it names."
-
-#: src/pages/Finance.tsx
-msgid "Usual per month"
-msgstr "Usual per month"
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Usual charge"
+msgstr "Usual charge"
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
