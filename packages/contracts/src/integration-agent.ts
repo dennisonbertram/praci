@@ -300,6 +300,7 @@ export const INTEGRATION_PRESETS = {
 export function integrationPresetForEndpoint(
   endpoint: string | null | undefined,
 ): IntegrationPreset | undefined {
+  if (isZernioEndpoint(endpoint)) return INTEGRATION_PRESETS.zernio;
   if (isCartaEndpoint(endpoint)) return INTEGRATION_PRESETS.carta;
   if (isDevinEndpoint(endpoint)) return INTEGRATION_PRESETS.devin;
   if (isBoxEndpoint(endpoint)) return INTEGRATION_PRESETS.box;

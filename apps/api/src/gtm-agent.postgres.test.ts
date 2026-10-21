@@ -4,7 +4,7 @@ import { gtmAgentSpawnKey } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb, createRepos } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { ensureGtmAgent } from "./gtm-agent.js";
+import { assignZernioServers, ensureGtmAgent, ensureGtmRoutine } from "./gtm-agent.js";
 import type { RouterDeps } from "./router.js";
 import { createRouter } from "./router.js";
 
@@ -147,6 +147,58 @@ describePostgres("GTM agent (PostgreSQL)", () => {
         select: { userId: true, spaceId: true },
       }),
     ).toEqual({ userId: userA, spaceId: otherSpaceId });
+  });
+
+  it("does not create a routine or link Zernio when the active bot row lock fails", async () => {
+    const botId = id("archive-race");
+    const bot = {
+      findFirst: vi.fn(async () => ({ id: botId, spawnKey: gtmAgentSpawnKey(userA) })),
+      updateMany: vi.fn(async () => ({ count: 0 })),
+    };
+    const routine = { findFirst: vi.fn(async () => null), create: vi.fn() };
+    const mcpServer = { findMany: vi.fn() };
+    const tx = {
+      $executeRaw: vi.fn(async () => undefined),
+      bot,
+      routine,
+      mcpServer,
+      botMcpServer: { deleteMany: vi.fn(), upsert: vi.fn() },
+    };
+    const transactionalPrisma = {
+      $transaction: vi.fn(async (run: (transaction: never) => Promise<unknown>) =>
+        run(tx as never),
+      ),
+    };
+
+    await expect(
+      ensureGtmRoutine({ prisma: transactionalPrisma as never, jobs }, actor(userA), botId),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(
+      assignZernioServers(transactionalPrisma as never, actor(userA), botId),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+
+    expect(bot.updateMany).toHaveBeenNthCalledWith(1, {
+      where: {
+        id: botId,
+        spaceId,
+        userId: userA,
+        spawnKey: gtmAgentSpawnKey(userA),
+        archivedAt: null,
+      },
+      data: { updatedAt: expect.any(Date) },
+    });
+    expect(bot.updateMany).toHaveBeenNthCalledWith(2, {
+      where: {
+        id: botId,
+        spaceId,
+        userId: userA,
+        spawnKey: gtmAgentSpawnKey(userA),
+        archivedAt: null,
+      },
+      data: { updatedAt: expect.any(Date) },
+    });
+    expect(routine.create).not.toHaveBeenCalled();
+    expect(mcpServer.findMany).not.toHaveBeenCalled();
   });
 
   it("replaces an archived identity instead of restoring its old thread", async () => {

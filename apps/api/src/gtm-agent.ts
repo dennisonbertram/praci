@@ -5,6 +5,7 @@ import type { Actor, Bot, ZernioPostingCapability } from "@rakazo/contracts";
 import {
   GTM_WORK_ROUTINE_NAME,
   gtmAgentSpawnKey,
+  integrationAgentSpawnKey,
   isIntegrationAgentForServer,
   isZernioEndpoint,
   pageAgentColor,
@@ -38,6 +39,18 @@ export async function ensureGtmRoutine(
       select: { id: true, spawnKey: true },
     });
     if (!active || active.spawnKey !== gtmAgentSpawnKey(actor.userId))
+      throw new ORPCError("CONFLICT", { message: "The GTM agent is no longer active" });
+    const locked = await tx.bot.updateMany({
+      where: {
+        id: active.id,
+        spaceId: actor.spaceId,
+        userId: actor.userId,
+        spawnKey: gtmAgentSpawnKey(actor.userId),
+        archivedAt: null,
+      },
+      data: { updatedAt: new Date() },
+    });
+    if (!locked.count)
       throw new ORPCError("CONFLICT", { message: "The GTM agent is no longer active" });
     const existing = await tx.routine.findFirst({
       where: { spaceId: actor.spaceId, userId: actor.userId, botId, name: GTM_WORK_ROUTINE_NAME },
@@ -76,6 +89,18 @@ export async function assignZernioServers(
     });
     if (!bot || bot.spawnKey !== gtmAgentSpawnKey(actor.userId))
       throw new ORPCError("CONFLICT", { message: "The GTM agent is no longer active" });
+    const locked = await tx.bot.updateMany({
+      where: {
+        id: bot.id,
+        spaceId: actor.spaceId,
+        userId: actor.userId,
+        spawnKey: gtmAgentSpawnKey(actor.userId),
+        archivedAt: null,
+      },
+      data: { updatedAt: new Date() },
+    });
+    if (!locked.count)
+      throw new ORPCError("CONFLICT", { message: "The GTM agent is no longer active" });
     const servers = await tx.mcpServer.findMany({
       where: { spaceId: actor.spaceId, userId: actor.userId },
       select: {
@@ -89,32 +114,21 @@ export async function assignZernioServers(
         writesEnabled: true,
       },
     });
+    const previousBots = new Map<string, string>();
     for (const server of servers.filter((row) => isZernioEndpoint(row.endpoint))) {
       if (server.agentBotId && server.agentBotId !== bot.id) {
+        const spawnKey = integrationAgentSpawnKey(server.id);
         const previous = await tx.bot.findFirst({
           where: {
             id: server.agentBotId,
             spaceId: actor.spaceId,
             userId: actor.userId,
-            spawnKey: `integration-agent:${server.id}`,
+            spawnKey,
             archivedAt: null,
           },
           select: { id: true },
         });
-        if (previous) {
-          const archived = await tx.bot.updateMany({
-            where: {
-              id: previous.id,
-              spaceId: actor.spaceId,
-              userId: actor.userId,
-              spawnKey: `integration-agent:${server.id}`,
-              archivedAt: null,
-            },
-            data: { archivedAt: new Date(), pinned: false },
-          });
-          if (!archived.count)
-            throw new ORPCError("CONFLICT", { message: "The integration changed; retry" });
-        }
+        if (previous) previousBots.set(previous.id, spawnKey);
       }
       const linked = await tx.mcpServer.updateMany({
         where: {
@@ -160,6 +174,29 @@ export async function assignZernioServers(
           },
         });
       }
+    }
+    for (const [previousBotId, spawnKey] of previousBots) {
+      const stillLinked = await tx.mcpServer.findFirst({
+        where: {
+          agentBotId: previousBotId,
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+        },
+        select: { id: true },
+      });
+      if (stillLinked) continue;
+      const archived = await tx.bot.updateMany({
+        where: {
+          id: previousBotId,
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          spawnKey,
+          archivedAt: null,
+        },
+        data: { archivedAt: new Date(), pinned: false },
+      });
+      if (!archived.count)
+        throw new ORPCError("CONFLICT", { message: "The integration changed; retry" });
     }
   });
 }

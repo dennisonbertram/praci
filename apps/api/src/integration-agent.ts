@@ -550,7 +550,11 @@ export async function setIntegrationExclusive(
     throw new ORPCError("BAD_REQUEST", { message: "This server has no agent" });
   // Archiving the agent can release the server after the check above: only the checked agent counts.
   const { count } = await prisma.mcpServer.updateMany({
-    where: { ...scope(actor, server.id), agentBotId: server.agentBotId },
+    where: {
+      ...scope(actor, server.id),
+      endpoint: server.endpoint,
+      agentBotId: server.agentBotId,
+    },
     data: { agentExclusive: exclusive },
   });
   if (!count) throw new ORPCError("CONFLICT", { message: "The integration changed; retry" });

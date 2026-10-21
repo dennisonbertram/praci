@@ -109,6 +109,7 @@ describe("isReadTool", () => {
   it("matches presets by endpoint host", () => {
     expect(integrationPresetForEndpoint("https://mcp.mercury.com/mcp")?.service).toBe("Mercury");
     expect(integrationPresetForEndpoint(CARTA_MCP_ENDPOINT)).toBe(INTEGRATION_PRESETS.carta);
+    expect(integrationPresetForEndpoint(ZERNIO_MCP_ENDPOINT)).toBe(INTEGRATION_PRESETS.zernio);
     expect(integrationPresetForEndpoint("https://example.test/mcp")).toBeUndefined();
   });
   it("builds and recognizes the spawn key", () => {
