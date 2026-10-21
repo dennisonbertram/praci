@@ -187,11 +187,6 @@ msgstr "{0} (over 10 MB)"
 msgid "{0} (overdue)"
 msgstr "{0} (overdue)"
 
-#. placeholder {0}: preset.n
-#: src/pages/RoutineSchedule.tsx
-msgid "{0} {unitLabel}"
-msgstr "{0} {unitLabel}"
-
 #. placeholder {0}: bot.name
 #: src/components/integrations/parts.tsx
 msgid "{0} can use {appName}"
@@ -685,6 +680,7 @@ msgid "Active model"
 msgstr "Active model"
 
 #: src/components/computer/TerminalApp.tsx
+#: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
 msgid "Activity"
 msgstr "Activity"
@@ -1363,11 +1359,6 @@ msgstr "Asking another agent"
 #: src/components/legal/LegalGraph.tsx
 msgid "Asset"
 msgstr "Asset"
-
-#. placeholder {0}: preset.time
-#: src/pages/RoutineSchedule.tsx
-msgid "at {0}"
-msgstr "at {0}"
 
 #: src/pages/RoutineSchedule.tsx
 msgid "at {timeSelect}"
@@ -2275,10 +2266,6 @@ msgstr "Color {color}"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Comfortable"
 msgstr "Comfortable"
-
-#: src/pages/RoutineEditor.tsx
-msgid "Coming soon"
-msgstr "Coming soon"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Command"
@@ -3377,10 +3364,6 @@ msgid "Credentials are encrypted and never sent to the model."
 msgstr "Credentials are encrypted and never sent to the model."
 
 #: src/pages/RoutineSchedule.tsx
-msgid "Cron"
-msgstr "Cron"
-
-#: src/pages/RoutineSchedule.tsx
 msgid "Cron expression"
 msgstr "Cron expression"
 
@@ -4025,7 +4008,6 @@ msgid "Error"
 msgstr "Error"
 
 #: src/pages/ExternalConversationSettings.tsx
-#: src/pages/RoutineSchedule.tsx
 msgid "Every"
 msgstr "Every"
 
@@ -4046,10 +4028,6 @@ msgstr "Every day"
 #: src/pages/RoutineSchedule.tsx
 msgid "Every hour"
 msgstr "Every hour"
-
-#: src/pages/RoutineSchedule.tsx
-msgid "Every Monday"
-msgstr "Every Monday"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
@@ -5043,10 +5021,6 @@ msgstr "Letter or email"
 msgid "Light"
 msgstr "Light"
 
-#: src/pages/RoutineEditor.tsx
-msgid "Linear issue"
-msgstr "Linear issue"
-
 #: src/pages/SpaceSearch.tsx
 msgid "Link"
 msgstr "Link"
@@ -5547,7 +5521,6 @@ msgid "Month to date"
 msgstr "Month to date"
 
 #: src/pages/finance/FinanceSpend.tsx
-#: src/pages/RoutineSchedule.tsx
 msgid "Monthly"
 msgstr "Monthly"
 
@@ -6315,11 +6288,6 @@ msgstr "On a call with {0}"
 msgid "On a schedule"
 msgstr "On a schedule"
 
-#. placeholder {0}: preset.time
-#: src/pages/RoutineSchedule.tsx
-msgid "on the 1st at {0}"
-msgstr "on the 1st at {0}"
-
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
 msgstr "Only empty spaces can be deleted. Delete its bots and groups first."
@@ -6622,10 +6590,6 @@ msgstr "Page not found"
 #: src/components/SidebarPagesGroup.tsx
 msgid "Page options"
 msgstr "Page options"
-
-#: src/pages/RoutineEditor.tsx
-msgid "PagerDuty incident"
-msgstr "PagerDuty incident"
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
@@ -7730,6 +7694,7 @@ msgstr "Save the workspace and install current software."
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/ExternalConversationSettings.tsx
+#: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Saved"
 msgstr "Saved"
@@ -8049,10 +8014,6 @@ msgstr "Sent"
 #: src/pages/Shell.tsx
 msgid "Sent to {forwardedName}"
 msgstr "Sent to {forwardedName}"
-
-#: src/pages/RoutineEditor.tsx
-msgid "Sentry alert"
-msgstr "Sentry alert"
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Serenity endpoint is required."
@@ -8387,10 +8348,6 @@ msgstr "Skipping"
 #: src/pages/RoutineEditor.tsx
 msgid "Slack message"
 msgstr "Slack message"
-
-#: src/pages/RoutineEditor.tsx
-msgid "Slack not enabled"
-msgstr "Slack not enabled"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Slack, calendar and email"
@@ -8758,10 +8715,6 @@ msgstr "Team health"
 #: src/pages/RoutineEditor.tsx
 msgid "Teams message"
 msgstr "Teams message"
-
-#: src/pages/RoutineEditor.tsx
-msgid "Teams not enabled"
-msgstr "Teams not enabled"
 
 #: src/pages/legal/LegalContracts.tsx
 msgid "Term"

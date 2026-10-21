@@ -187,11 +187,6 @@ msgstr ""
 msgid "{0} (overdue)"
 msgstr ""
 
-#. placeholder {0}: preset.n
-#: src/pages/RoutineSchedule.tsx
-msgid "{0} {unitLabel}"
-msgstr "{0} {unitLabel}"
-
 #. placeholder {0}: bot.name
 #: src/components/integrations/parts.tsx
 msgid "{0} can use {appName}"
@@ -685,6 +680,7 @@ msgid "Active model"
 msgstr "当前模型"
 
 #: src/components/computer/TerminalApp.tsx
+#: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
 msgid "Activity"
 msgstr "动态"
@@ -1363,11 +1359,6 @@ msgstr ""
 #: src/components/legal/LegalGraph.tsx
 msgid "Asset"
 msgstr ""
-
-#. placeholder {0}: preset.time
-#: src/pages/RoutineSchedule.tsx
-msgid "at {0}"
-msgstr "{0}"
 
 #: src/pages/RoutineSchedule.tsx
 msgid "at {timeSelect}"
@@ -2275,10 +2266,6 @@ msgstr "颜色 {color}"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Comfortable"
 msgstr ""
-
-#: src/pages/RoutineEditor.tsx
-msgid "Coming soon"
-msgstr "即将推出"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Command"
@@ -3377,10 +3364,6 @@ msgid "Credentials are encrypted and never sent to the model."
 msgstr "凭据已加密，不会发送给模型。"
 
 #: src/pages/RoutineSchedule.tsx
-msgid "Cron"
-msgstr "Cron"
-
-#: src/pages/RoutineSchedule.tsx
 msgid "Cron expression"
 msgstr "Cron 表达式"
 
@@ -4025,7 +4008,6 @@ msgid "Error"
 msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
-#: src/pages/RoutineSchedule.tsx
 msgid "Every"
 msgstr "每"
 
@@ -4046,10 +4028,6 @@ msgstr "每天"
 #: src/pages/RoutineSchedule.tsx
 msgid "Every hour"
 msgstr "每小时"
-
-#: src/pages/RoutineSchedule.tsx
-msgid "Every Monday"
-msgstr "每周一"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
@@ -5043,10 +5021,6 @@ msgstr ""
 msgid "Light"
 msgstr "浅色"
 
-#: src/pages/RoutineEditor.tsx
-msgid "Linear issue"
-msgstr "Linear 工单"
-
 #: src/pages/SpaceSearch.tsx
 msgid "Link"
 msgstr ""
@@ -5547,7 +5521,6 @@ msgid "Month to date"
 msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
-#: src/pages/RoutineSchedule.tsx
 msgid "Monthly"
 msgstr "每月"
 
@@ -6315,11 +6288,6 @@ msgstr "正在与 {0} 通话"
 msgid "On a schedule"
 msgstr "按计划"
 
-#. placeholder {0}: preset.time
-#: src/pages/RoutineSchedule.tsx
-msgid "on the 1st at {0}"
-msgstr "每月 1 日 {0}"
-
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
 msgstr ""
@@ -6622,10 +6590,6 @@ msgstr ""
 #: src/components/SidebarPagesGroup.tsx
 msgid "Page options"
 msgstr ""
-
-#: src/pages/RoutineEditor.tsx
-msgid "PagerDuty incident"
-msgstr "PagerDuty 事件"
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
@@ -7730,6 +7694,7 @@ msgstr "保存工作区并安装最新软件。"
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/ExternalConversationSettings.tsx
+#: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Saved"
 msgstr "已保存"
@@ -8049,10 +8014,6 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Sent to {forwardedName}"
 msgstr ""
-
-#: src/pages/RoutineEditor.tsx
-msgid "Sentry alert"
-msgstr "Sentry 告警"
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Serenity endpoint is required."
@@ -8387,10 +8348,6 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 msgid "Slack message"
 msgstr "Slack 消息"
-
-#: src/pages/RoutineEditor.tsx
-msgid "Slack not enabled"
-msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Slack, calendar and email"
@@ -8758,10 +8715,6 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 msgid "Teams message"
 msgstr "Teams 消息"
-
-#: src/pages/RoutineEditor.tsx
-msgid "Teams not enabled"
-msgstr ""
 
 #: src/pages/legal/LegalContracts.tsx
 msgid "Term"

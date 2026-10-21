@@ -187,11 +187,6 @@ msgstr ""
 msgid "{0} (overdue)"
 msgstr ""
 
-#. placeholder {0}: preset.n
-#: src/pages/RoutineSchedule.tsx
-msgid "{0} {unitLabel}"
-msgstr "{0} {unitLabel}"
-
 #. placeholder {0}: bot.name
 #: src/components/integrations/parts.tsx
 msgid "{0} can use {appName}"
@@ -685,6 +680,7 @@ msgid "Active model"
 msgstr "Aktives Modell"
 
 #: src/components/computer/TerminalApp.tsx
+#: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
 msgid "Activity"
 msgstr "Aktivität"
@@ -1363,11 +1359,6 @@ msgstr ""
 #: src/components/legal/LegalGraph.tsx
 msgid "Asset"
 msgstr ""
-
-#. placeholder {0}: preset.time
-#: src/pages/RoutineSchedule.tsx
-msgid "at {0}"
-msgstr "um {0}"
 
 #: src/pages/RoutineSchedule.tsx
 msgid "at {timeSelect}"
@@ -2274,10 +2265,6 @@ msgstr "Farbe {color}"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Comfortable"
-msgstr ""
-
-#: src/pages/RoutineEditor.tsx
-msgid "Coming soon"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -3377,10 +3364,6 @@ msgid "Credentials are encrypted and never sent to the model."
 msgstr "Zugangsdaten werden verschlüsselt und dem Modell nie gesendet."
 
 #: src/pages/RoutineSchedule.tsx
-msgid "Cron"
-msgstr "Cron"
-
-#: src/pages/RoutineSchedule.tsx
 msgid "Cron expression"
 msgstr "Cron-Ausdruck"
 
@@ -4025,7 +4008,6 @@ msgid "Error"
 msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
-#: src/pages/RoutineSchedule.tsx
 msgid "Every"
 msgstr "Alle"
 
@@ -4046,10 +4028,6 @@ msgstr "Jeden Tag"
 #: src/pages/RoutineSchedule.tsx
 msgid "Every hour"
 msgstr "Jede Stunde"
-
-#: src/pages/RoutineSchedule.tsx
-msgid "Every Monday"
-msgstr "Jeden Montag"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
@@ -5043,10 +5021,6 @@ msgstr ""
 msgid "Light"
 msgstr "Hell"
 
-#: src/pages/RoutineEditor.tsx
-msgid "Linear issue"
-msgstr ""
-
 #: src/pages/SpaceSearch.tsx
 msgid "Link"
 msgstr ""
@@ -5547,7 +5521,6 @@ msgid "Month to date"
 msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
-#: src/pages/RoutineSchedule.tsx
 msgid "Monthly"
 msgstr "Monatlich"
 
@@ -6315,11 +6288,6 @@ msgstr "Im Gespräch mit {0}"
 msgid "On a schedule"
 msgstr ""
 
-#. placeholder {0}: preset.time
-#: src/pages/RoutineSchedule.tsx
-msgid "on the 1st at {0}"
-msgstr "am 1. um {0}"
-
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
 msgstr ""
@@ -6621,10 +6589,6 @@ msgstr ""
 #: src/components/SidebarPages.tsx
 #: src/components/SidebarPagesGroup.tsx
 msgid "Page options"
-msgstr ""
-
-#: src/pages/RoutineEditor.tsx
-msgid "PagerDuty incident"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -7730,6 +7694,7 @@ msgstr "Den Arbeitsbereich speichern und aktuelle Software installieren."
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/ExternalConversationSettings.tsx
+#: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Saved"
 msgstr "Gespeichert"
@@ -8048,10 +8013,6 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Sent to {forwardedName}"
-msgstr ""
-
-#: src/pages/RoutineEditor.tsx
-msgid "Sentry alert"
 msgstr ""
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
@@ -8386,10 +8347,6 @@ msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Slack message"
-msgstr ""
-
-#: src/pages/RoutineEditor.tsx
-msgid "Slack not enabled"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -8757,10 +8714,6 @@ msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Teams message"
-msgstr ""
-
-#: src/pages/RoutineEditor.tsx
-msgid "Teams not enabled"
 msgstr ""
 
 #: src/pages/legal/LegalContracts.tsx
