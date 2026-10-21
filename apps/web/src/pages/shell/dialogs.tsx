@@ -19,7 +19,8 @@ import {
   Input,
 } from "@rakazo/ui-web";
 import { Lock, Users } from "lucide-react";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 
 /** Each dialog is mounted only while open, so `open` is always true and the
@@ -406,6 +407,14 @@ export function DeleteBotDialog({
   const [deleting, setDeleting] = useState(false);
   const [deleteMemories, setDeleteMemories] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Ask about memories only when the bot has some; if they cannot be checked, ask anyway.
+  const [hasMemories, setHasMemories] = useState(false);
+  useEffect(() => {
+    rpc.memory
+      .list({ botId: bot.id, scope: "bot" })
+      .then((docs) => setHasMemories(!Array.isArray(docs) || docs.length > 0))
+      .catch(() => setHasMemories(true));
+  }, [bot.id]);
 
   return (
     <AlertDialog open onOpenChange={closeUnlessBusy(deleting, onCancel)}>
@@ -421,43 +430,45 @@ export function DeleteBotDialog({
             </Trans>
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <fieldset className="space-y-2">
-          <legend className="mb-2 text-[13.5px] text-foreground/75">
-            <Trans>What about its memories?</Trans>
-          </legend>
-          <label className="flex cursor-pointer gap-3 rounded-lg border border-border p-3">
-            <input
-              type="radio"
-              name="delete-memory"
-              checked={!deleteMemories}
-              onChange={() => setDeleteMemories(false)}
-            />
-            <span>
-              <span className="block text-[14px] text-foreground">
-                <Trans>Keep memories</Trans>
+        {hasMemories ? (
+          <fieldset className="space-y-2">
+            <legend className="mb-2 text-[13.5px] text-foreground/75">
+              <Trans>What about its memories?</Trans>
+            </legend>
+            <label className="flex cursor-pointer gap-3 rounded-lg border border-border p-3">
+              <input
+                type="radio"
+                name="delete-memory"
+                checked={!deleteMemories}
+                onChange={() => setDeleteMemories(false)}
+              />
+              <span>
+                <span className="block text-[14px] text-foreground">
+                  <Trans>Keep memories</Trans>
+                </span>
+                <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
+                  <Trans>Move them to your shared memory.</Trans>
+                </span>
               </span>
-              <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
-                <Trans>Move them to your shared memory.</Trans>
+            </label>
+            <label className="flex cursor-pointer gap-3 rounded-lg border border-border p-3">
+              <input
+                type="radio"
+                name="delete-memory"
+                checked={deleteMemories}
+                onChange={() => setDeleteMemories(true)}
+              />
+              <span>
+                <span className="block text-[14px] text-foreground">
+                  <Trans>Delete memories too</Trans>
+                </span>
+                <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
+                  <Trans>This cannot be undone.</Trans>
+                </span>
               </span>
-            </span>
-          </label>
-          <label className="flex cursor-pointer gap-3 rounded-lg border border-border p-3">
-            <input
-              type="radio"
-              name="delete-memory"
-              checked={deleteMemories}
-              onChange={() => setDeleteMemories(true)}
-            />
-            <span>
-              <span className="block text-[14px] text-foreground">
-                <Trans>Delete memories too</Trans>
-              </span>
-              <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
-                <Trans>This cannot be undone.</Trans>
-              </span>
-            </span>
-          </label>
-        </fieldset>
+            </label>
+          </fieldset>
+        ) : null}
         {error ? <p className="text-[13.5px] text-destructive">{error}</p> : null}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={deleting}>
