@@ -67,6 +67,6 @@ export function StatusMark({ kind, botId }: { kind: NotificationKind; botId: str
   );
 }
 
-/** Finance runway as "24 mo"; nothing when unknown or while amounts are hidden. */
-export const runwayGlance = (months: number | null, hidden: boolean) =>
-  months === null || hidden ? undefined : t`${months.toFixed(0)} mo`;
+/** Finance runway as "24 mo"; nothing when unknown. A length of time, so Hide amounts leaves it. */
+export const runwayGlance = (months: number | null) =>
+  months === null ? undefined : t`${months.toFixed(0)} mo`;

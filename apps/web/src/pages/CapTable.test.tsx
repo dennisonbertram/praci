@@ -260,9 +260,15 @@ it("shows the summary, ownership legend and joined investors", async () => {
   expect(text).toContain("1,000,000");
   expect(text).toContain("10.00%");
   expect(text).toContain("Example Ventures");
-  expect(text).toContain("SAFE, $250,000");
-  // amount raised is null; the SAFE holder has no shares or percent
-  expect(text).toContain("—");
+  // amount raised is null; a SAFE has no shares, so its holder is not under All
+  expect(text).not.toContain("Dee Newcomer");
+  await click(button("Investors"));
+  const investors = container.querySelector("table:not(.sr-only)");
+  const header = [...(investors?.querySelectorAll("th") ?? [])].map((th) => th.textContent);
+  expect(header).toContain("Amount");
+  expect(investors?.textContent).toContain("Dee Newcomer");
+  expect(investors?.textContent).toContain("$250,000");
+  await click(button("All"));
   // Bo is a contact with no holding: not under All, but under their own tab and in a search.
   expect(container.querySelector("table:not(.sr-only)")?.textContent).not.toContain("Bo");
   await click(button("Auditors"));
@@ -314,7 +320,7 @@ it("lists the unallocated option pool as a row so the Ownership column adds up",
   expect(row?.textContent).toContain("5.00%");
 });
 
-it("puts the unallocated pool right after the granted options, before the SAFEs", async () => {
+it("puts the unallocated pool right after the granted options", async () => {
   rpcMock.capTable.mockResolvedValue({
     snapshot: {
       ...snapshot,
@@ -328,7 +334,7 @@ it("puts the unallocated pool right after the granted options, before the SAFEs"
           amountUsd: null,
           percent: 9,
         },
-        { ...snapshot.holders[1] },
+        { ...snapshot.holders[0] },
       ],
     },
     syncing: false,
@@ -339,7 +345,6 @@ it("puts the unallocated pool right after the granted options, before the SAFEs"
   );
   const at = (name: string) => names.findIndex((n) => n.startsWith(name));
   expect(at("Unallocated pool")).toBe(at("Granted options") + 1);
-  expect(at("Unallocated pool")).toBeLessThan(at("Dee Newcomer"));
 });
 
 it("shows Ownership in the same font as the other figures", async () => {
@@ -354,7 +359,7 @@ it("shows Ownership in the same font as the other figures", async () => {
 
 it("offers Add email for a holder without a contact and prefills the dialog", async () => {
   rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
-  await show();
+  await show("/app/cap-table?kind=investor");
   const add = [
     ...container.querySelectorAll<HTMLButtonElement>("[data-testid=cap-table-email-cell] button"),
   ].filter((b) => b.textContent === "Add email");
@@ -639,12 +644,12 @@ it("lists only investors on the Investors tab and offers Add email only to inves
   expect(text).toContain("Ada");
   expect(text).not.toContain("Founder Person");
   expect(text).not.toContain("Granted options");
-  await click(button("All"));
-  expect(container.textContent).toContain("Founder Person");
   const adds = [
     ...container.querySelectorAll<HTMLButtonElement>("[data-testid=cap-table-email-cell] button"),
   ].filter((b) => b.textContent === "Add email");
   expect(adds).toHaveLength(1);
+  await click(button("All"));
+  expect(container.textContent).toContain("Founder Person");
   // A contact with no holding shows the table's dash in Ownership, hidden on phones where cards stay blank.
   await click(button("Auditors"));
   const rows = [...container.querySelectorAll("table:not(.sr-only) tbody tr")];
@@ -702,18 +707,21 @@ it("hides dollar amounts but keeps shares and ownership in place while amounts a
   setHideAmounts(true);
   await show();
   const text = container.textContent ?? "";
-  for (const real of ["1.25", "250,000"]) expect(text).not.toContain(real);
+  expect(text).not.toContain("1.25");
   // Share counts and ownership are not money: the rows stay readable for a screen share.
   for (const shown of ["10,000,000", "1,000,000", "10.00%", "70.00%"])
     expect(text).toContain(shown);
   expect(text).toContain("Example Ventures");
+  await click(button("Investors"));
+  expect(container.textContent).toContain("$•••");
+  expect(container.textContent).not.toContain("250,000");
   await act(async () => setHideAmounts(false));
   expect(container.textContent).toContain("250,000");
 });
 
 it("repeats each email under the name, for phones where the Email column is hidden", async () => {
   rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
-  await show();
+  await show("/app/cap-table?kind=investor");
   const under = [...container.querySelectorAll("[data-testid=cap-table-row-email]")].map(
     (cell) => cell.textContent,
   );
@@ -886,7 +894,7 @@ it("shows a holder's Carta email and offers Save as contact instead of Add email
     },
     syncing: false,
   });
-  await show();
+  await show("/app/cap-table?kind=investor");
   const row = [...container.querySelectorAll("table:not(.sr-only) tbody tr")].find((r) =>
     r.textContent?.includes("Priya Holder"),
   );
@@ -1031,23 +1039,30 @@ describe("search, filter and sort", () => {
   });
 
   it.each([
-    ["percent", "desc", ["Ten", "Nine", "Two", "Safe Nine", "Safe Hundred"]],
-    ["percent", "asc", ["Two", "Nine", "Ten", "Safe Nine", "Safe Hundred"]],
-    ["shares", "desc", ["Ten", "Two", "Nine", "Safe Nine", "Safe Hundred"]],
-    ["shares", "asc", ["Nine", "Two", "Ten", "Safe Nine", "Safe Hundred"]],
-    ["amountUsd", "desc", ["Safe Hundred", "Safe Nine", "Nine", "Ten", "Two"]],
-    ["amountUsd", "asc", ["Safe Nine", "Safe Hundred", "Nine", "Ten", "Two"]],
-    ["name", "asc", ["Nine", "Safe Hundred", "Safe Nine", "Ten", "Two"]],
-    ["name", "desc", ["Two", "Ten", "Safe Nine", "Safe Hundred", "Nine"]],
-  ])("sorts by %s %s as numbers, with missing values last", async (field, dir, expected) => {
+    ["percent", "desc", ["Ten", "Nine", "Two"]],
+    ["percent", "asc", ["Two", "Nine", "Ten"]],
+    ["shares", "desc", ["Ten", "Two", "Nine"]],
+    ["shares", "asc", ["Nine", "Two", "Ten"]],
+    ["name", "asc", ["Nine", "Ten", "Two"]],
+    ["name", "desc", ["Two", "Ten", "Nine"]],
+  ])("sorts by %s %s as numbers", async (field, dir, expected) => {
     await showAt(`/app/cap-table?sort=${field}&dir=${dir}`);
+    expect(rowNames()).toEqual(expected);
+  });
+
+  // SAFEs have no shares, so they sit on the Investors tab, which shows their Amount.
+  it.each([
+    ["desc", ["Safe Hundred", "Safe Nine", "Two"]],
+    ["asc", ["Safe Nine", "Safe Hundred", "Two"]],
+  ])("sorts investors by amount %s, with missing values last", async (dir, expected) => {
+    await showAt(`/app/cap-table?kind=investor&sort=amountUsd&dir=${dir}`);
     expect(rowNames()).toEqual(expected);
   });
 
   it("sorts by kind", async () => {
     await showAt("/app/cap-table?sort=kind&dir=asc");
-    // Investors (the SAFEs and the preferred holder) before Shareholders.
-    expect(rowNames().slice(0, 3).sort()).toEqual(["Safe Hundred", "Safe Nine", "Two"]);
+    // Investors (the preferred holder) before Shareholders.
+    expect(rowNames()[0]).toBe("Two");
     await showAt("/app/cap-table?sort=kind&dir=desc");
     expect(rowNames().slice(0, 2).sort()).toEqual(["Nine", "Ten"]);
   });
@@ -1065,12 +1080,12 @@ describe("search, filter and sort", () => {
   });
 
   it("filters by security, and shows the filter only with a choice", async () => {
-    await showAt("/app/cap-table?security=SAFE");
+    await showAt("/app/cap-table?kind=investor&security=SAFE");
     expect(rowNames().sort()).toEqual(["Safe Hundred", "Safe Nine"]);
     expect(button("Security: SAFE")).toBeDefined();
     // A security the rows do not have is ignored.
     await showAt("/app/cap-table?security=Missing");
-    expect(rowNames()).toHaveLength(5);
+    expect(rowNames()).toHaveLength(3);
     // One security means nothing to filter.
     rpcMock.capTable.mockResolvedValue({
       snapshot: { ...sortable, holders: sortable.holders.slice(0, 2) },
@@ -1106,7 +1121,7 @@ describe("search, filter and sort", () => {
     expect(container.textContent).toContain("No matches");
     await click(button("Clear filters"));
     expect(search$).not.toContain("q=");
-    expect(rowNames()).toHaveLength(5);
+    expect(rowNames()).toHaveLength(3);
   });
 
   it("restores search and sort from a link", async () => {
@@ -1128,7 +1143,7 @@ describe("search, filter and sort", () => {
 
   it("sorts by amount while amounts are hidden, without showing them", async () => {
     setHideAmounts(true);
-    await showAt("/app/cap-table?sort=amountUsd&dir=desc");
+    await showAt("/app/cap-table?kind=investor&sort=amountUsd&dir=desc");
     expect(rowNames().slice(0, 2)).toEqual(["Safe Hundred", "Safe Nine"]);
     const text = container.textContent ?? "";
     expect(text).not.toContain("100,000");

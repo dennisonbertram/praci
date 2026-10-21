@@ -85,6 +85,28 @@ it("adds a slice for shares no class holds, so the legend matches the centre", a
   expect(el.querySelectorAll("[data-testid=donut-slice]")).toHaveLength(4);
 });
 
+it("says how much of the option pool is still free", async () => {
+  const el = await mount(
+    <OwnershipDonut classes={classes} fullyDilutedShares={1250} optionPoolAvailable={250} />,
+  );
+  const rows = [...el.querySelectorAll("table.sr-only tbody tr")].map((r) => r.textContent);
+  expect(rows).toContain("Option pool (250 available)20.00%250");
+});
+
+it("names the class above its holders when it is opened", async () => {
+  const el = await mount(
+    <OwnershipDonut
+      classes={classes}
+      fullyDilutedShares={1000}
+      holdings={[{ name: "Ada", security: "Common", shares: 600 }]}
+    />,
+  );
+  await act(async () => {
+    el.querySelector<HTMLElement>("button[aria-label='Show Common breakdown']")?.click();
+  });
+  expect(el.querySelector("[data-testid=breakdown-head]")?.textContent).toBe("Commonof class");
+});
+
 it("falls back to the listed total when the classes exceed fully diluted", async () => {
   const el = await mount(<OwnershipDonut classes={classes} fullyDilutedShares={500} />);
   expect(el.querySelectorAll("[data-testid=donut-slice]")).toHaveLength(3);
@@ -120,7 +142,9 @@ const click = (node: Element | null | undefined) =>
 const rowFor = (el: HTMLElement, name: string) =>
   el.querySelector(`button[aria-label='Show ${name} breakdown']`);
 const legendRows = (el: HTMLElement) =>
-  [...el.querySelectorAll("[data-testid=breakdown-legend] li")].map((li) => li.textContent);
+  [
+    ...el.querySelectorAll("[data-testid=breakdown-legend] li:not([data-testid=breakdown-head])"),
+  ].map((li) => li.textContent);
 
 it("opens a class breakdown by holder from a legend row, with totals that add up", async () => {
   const el = await mount(<OwnershipDonut {...drillProps} />);
@@ -188,7 +212,7 @@ it("switches class from the faded donut", async () => {
 
 it("breaks options into granted holders and the unallocated pool", async () => {
   const el = await mount(<OwnershipDonut {...drillProps} fullyDilutedShares={1100} />);
-  await click(rowFor(el, "Options and pool"));
+  await click(rowFor(el, "Option pool (40 available)"));
   expect(legendRows(el)).toEqual(["Eve60.00%60", "Unallocated pool40.00%40"]);
 });
 

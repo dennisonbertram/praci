@@ -126,6 +126,11 @@ function breakdown(
 
 const ROW = 34;
 const legendHeight = (rows: number) => ROW * rows - 2;
+/** The breakdown legend starts with a row naming the class. */
+const HEAD = 28;
+const drillLegendHeight = (rows: number) => HEAD + legendHeight(rows);
+/** Narrower than this, the donut at rest sits above its legend instead of beside it. */
+const SIDE = 400;
 /** The breakdown legend shows this many rows and scrolls past them, so the card is not sized for the longest one. */
 const MAX_DRILL_ROWS = 5;
 /** Width of the side-by-side layout. Narrower containers stack the donuts. */
@@ -231,7 +236,11 @@ export function OwnershipDonut({
 
   const issued = classes.reduce((n, c) => n + c.shares, 0);
   const unissued = (fullyDilutedShares ?? 0) - issued;
-  const optionsLabel = t`Options and pool`;
+  // Granted options plus the pool: say how much of it is still free, as the summary above does.
+  const poolFree = shareCount(optionPoolAvailable ?? 0, i18n.locale || "en");
+  const optionsLabel = optionPoolAvailable
+    ? t`Option pool (${poolFree} available)`
+    : t`Options and pool`;
   const slices = groupClasses(
     unissued > 0 ? [...classes, { name: optionsLabel, shares: unissued }] : classes,
   );
@@ -256,17 +265,29 @@ export function OwnershipDonut({
   const frameW = wide ? WIDE : width || 300;
   const cx = frameW / 2;
   const drillRows = Math.min(MAX_DRILL_ROWS, Math.max(1, ...drills.map((d) => d?.length ?? 0)));
+  const isOpenNow = open !== null;
   const sA = wide ? ORIGINAL_SCALE.wide : ORIGINAL_SCALE.narrow;
   const sB = wide ? DRILL_SCALE.wide : DRILL_SCALE.narrow;
+  // Beside its legend at rest, the card is only as tall as the donut. Opening a class needs the
+  // stacked layout's room, which the card grows into.
+  const side = !wide && frameW >= SIDE;
+  const restH = side
+    ? Math.max(SIZE, legendHeight(slices.length))
+    : SIZE + 16 + legendHeight(slices.length);
   const frameH = wide
-    ? Math.max(SIZE, legendHeight(Math.max(slices.length, drillRows)))
-    : Math.max(
-        SIZE + 16 + legendHeight(slices.length),
-        DRILL_TOP + SIZE * sB + 12 + legendHeight(drillRows),
-      );
-  const aBase: Pt = wide ? [0, (frameH - SIZE) / 2] : [cx - SIZE / 2, 0];
-  /** Moves the scaled donut to the frame's left (wide) or top (narrow) edge. */
-  const aShift: Pt = wide ? [-(SIZE / 2) * (1 - sA), 0] : [0, -(SIZE / 2) * (1 - sA)];
+    ? Math.max(SIZE, legendHeight(slices.length), drillLegendHeight(drillRows))
+    : isOpenNow
+      ? Math.max(restH, DRILL_TOP + SIZE * sB + 12 + drillLegendHeight(drillRows))
+      : restH;
+  const aBase: Pt = wide
+    ? [0, (frameH - SIZE) / 2]
+    : side
+      ? [0, (restH - SIZE) / 2]
+      : [cx - SIZE / 2, 0];
+  /** Moves the scaled donut to the frame's left (wide) or top centre (narrow) edge. */
+  const aShift: Pt = wide
+    ? [-(SIZE / 2) * (1 - sA), 0]
+    : [cx - SIZE / 2 - aBase[0], -(SIZE / 2) * (1 - sA) - aBase[1]];
   const bBase: Pt = wide ? [156, (frameH - SIZE) / 2] : [cx - SIZE / 2, DRILL_TOP];
   const aCentre: Pt = [aBase[0] + SIZE / 2 + aShift[0], aBase[1] + SIZE / 2 + aShift[1]];
   const bCentre: Pt = wide
@@ -275,11 +296,13 @@ export function OwnershipDonut({
   const dir: Pt = wide ? [1, 0] : [0, 1];
   const mainLegend = wide
     ? { x: 240, y: (frameH - legendHeight(slices.length)) / 2, w: 384 }
-    : { x: 0, y: SIZE + 16, w: frameW };
+    : side
+      ? { x: SIZE + 24, y: (restH - legendHeight(slices.length)) / 2, w: frameW - SIZE - 24 }
+      : { x: 0, y: SIZE + 16, w: frameW };
   const drillLegend = wide
     ? {
         x: 360,
-        y: (frameH - legendHeight(Math.min(drill?.length ?? 0, MAX_DRILL_ROWS))) / 2,
+        y: (frameH - drillLegendHeight(Math.min(drill?.length ?? 0, MAX_DRILL_ROWS))) / 2,
         w: 280,
       }
     : { x: 0, y: DRILL_TOP + SIZE * sB + 12, w: frameW };
@@ -356,7 +379,11 @@ export function OwnershipDonut({
       <div ref={wrap} className="w-full">
         <div
           className="relative mx-auto"
-          style={{ width: wide ? WIDE : "100%", height: frameH }}
+          style={{
+            width: wide ? WIDE : "100%",
+            height: frameH,
+            transition: tr("height"),
+          }}
           data-testid="ownership-stage"
         >
           {isOpen ? (
@@ -560,7 +587,7 @@ export function OwnershipDonut({
               <ul
                 className="rk-scroll absolute grid content-start gap-0.5 overflow-y-auto text-sm"
                 style={{
-                  maxHeight: legendHeight(MAX_DRILL_ROWS),
+                  maxHeight: drillLegendHeight(MAX_DRILL_ROWS),
                   left: drillLegend.x,
                   top: drillLegend.y,
                   width: drillLegend.w,
@@ -571,6 +598,19 @@ export function OwnershipDonut({
                 aria-hidden={!isOpen}
                 data-testid="breakdown-legend"
               >
+                <li
+                  data-testid="breakdown-head"
+                  className="sticky top-0 z-10 flex items-center gap-2 bg-card px-2 text-sm font-medium"
+                  style={{ height: HEAD }}
+                >
+                  <span className="min-w-0 flex-1 truncate" title={slices[view ?? 0]?.name}>
+                    {slices[view ?? 0]?.name}
+                  </span>
+                  <span className="w-14 shrink-0 text-end text-xs font-normal text-muted-foreground">
+                    {t`of class`}
+                  </span>
+                  <span className="w-20 shrink-0" />
+                </li>
                 {drill.map((s, i) => (
                   <li key={s.name}>
                     <div
