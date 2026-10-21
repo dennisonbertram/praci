@@ -455,7 +455,8 @@ export const DEMO_CONVERSATIONS: Record<string, { gapHours: number; turns: Turn[
 
 /**
  * The email agent's chat for the Sam Ortiz thread ("Ask agent" on that email). It follows the thread
- * card the agent starts with. The 4,600 figure is calculated, and the answer says so.
+ * card the agent starts with, and asks the Carta and Data room agents rather than using their tools.
+ * The 4,600 figure is calculated, and the answer says so. The reply is a pending mail_send card.
  */
 export const DEMO_EMAIL_AGENT_CONVERSATION: { gapHours: number; turns: Turn[] } = {
   gapHours: 0.02,
@@ -466,31 +467,36 @@ export const DEMO_EMAIL_AGENT_CONVERSATION: { gapHours: number; turns: Turn[] } 
       blocks: [
         steps(
           ["Read the thread", "Read email thread"],
-          ["Read Carta", "Read Carta: Sam Ortiz"],
-          [
-            "Searched the Data room",
-            "Searched Data room: 4 found",
-            "Recapitalization Summary",
-            "Warrant Agreement",
-          ],
-          ["Read the Data room file", "Read Recapitalization Summary"],
+          ["Asked the Carta agent", "Asked Carta agent"],
+          ["Asked the Data room agent", "Asked Data room agent"],
           ["Searched mail", "Searched mail: 3 found"],
         ),
         {
           kind: "text",
-          text: `**1. Closing out.** Carta lists 18,400 Series Seed Preferred and a 2,000-share warrant for Sam. The Warrant Agreement lets the holder cancel it with written consent. I found no repurchase template or board consent. Tax treatment is a question for your counsel.
+          text: `**1. Closing out.** The Carta agent lists 18,400 Series Seed Preferred and a 2,000-share warrant for Sam. The Data room agent found the Warrant Agreement, which lets the holder cancel it with written consent. There is no repurchase template or board consent. Tax treatment is a question for your counsel.
 
 **2. After the recap.** Carta's snapshot is from Sep 30, before the recap. The Recapitalization Summary sets a 1-for-4 reverse split, which gives **4,600 shares (calculated from the summary, not read from Carta)**. Seed Prime was offered to all 9 existing investors on Sep 8, including Sam. I found no reply from him.
 
-Draft reply:
-
-> Hi Sam,
->
-> Your 18,400 preferred shares become 4,600 after the 1-for-4 reverse split. Seed Prime was offered to all existing investors, including you, on Sep 8.
->
-> On closing out: we can do it either way. I will confirm which and send the paperwork this week.
->
-> Maya`,
+I drafted a reply for you to approve.`,
+        },
+        {
+          kind: "ask",
+          text: "Send this reply to Sam?",
+          mail: {
+            tool: "mail_send",
+            account: "mock-founder@northwind.example.test",
+            to: ["Sam Ortiz <sam@harborline.example.test>"],
+            cc: [],
+            bcc: [],
+            subject: "Re: [MOCK] Notice of Stockholder Action",
+            body: "Hi Sam,\n\nYour 18,400 preferred shares become 4,600 after the 1-for-4 reverse split. Seed Prime was offered to all existing investors, including you, on Sep 8.\n\nOn closing out: we can do it either way. I will confirm which and send the paperwork this week.\n\nMaya",
+            reply: true,
+          },
+          status: "pending",
+          actions: [
+            { id: "approve", label: "Send" },
+            { id: "decline", label: "Discard" },
+          ],
         },
       ],
     },

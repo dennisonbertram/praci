@@ -1,9 +1,10 @@
-import { useLingui } from "@lingui/react/macro";
-import type { Bot, ThreadSnapshot } from "@rakazo/contracts";
+import { Trans, useLingui } from "@lingui/react/macro";
+import type { Bot, ThreadMessage, ThreadSnapshot } from "@rakazo/contracts";
 import { newClientId } from "@rakazo/core";
 import { BotAvatar, Button } from "@rakazo/ui-web";
 import { PanelRightClose } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { rpc } from "../../lib/rpc";
 import { Composer } from "../../pages/shell/composer";
 import { Transcript } from "../../pages/shell/transcript";
@@ -13,17 +14,52 @@ const asyncNoop = async () => {};
 const POLL_MS = 2_500;
 
 /**
- * An email's own agent, docked inside the message dialog. It is the Shell's page-agent panel (header,
- * Transcript, Composer) for the thread agent that Ask agent finds or creates. Prototype: the thread is
- * read by polling while a run is active, not by the Shell's event subscription.
+ * The reply the agent proposed: the body of its newest mail card that is still waiting for the
+ * owner. The agent writes replies with mail_send, so the card is its draft; nothing is sent until
+ * the owner approves it or sends from the composer.
  */
-export function EmailAgentPanel({ bot, onClose }: { bot: Bot; onClose: () => void }) {
+export function latestPendingDraft(messages: readonly ThreadMessage[]): string | undefined {
+  for (const message of [...messages].reverse()) {
+    for (const block of [...message.blocks].reverse()) {
+      if (
+        block.kind === "ask" &&
+        block.mail?.reply &&
+        block.status !== "answered" &&
+        !block.mail.outcome
+      )
+        return block.mail.body;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * An email's own agent, docked inside the message dialog. It is the Shell's page-agent panel (header,
+ * Transcript, Composer) for the thread agent that Ask agent finds or creates. The thread is read by
+ * polling while a run is active: the Shell's event subscription is part of its 6,800-line state
+ * and is not separable, and the poll stops with the run and with the panel.
+ */
+export function EmailAgentPanel({
+  bot,
+  onClose,
+  onReplyWithDraft,
+}: {
+  bot: Bot;
+  onClose: () => void;
+  /** Opens the Reply composer with the agent's draft as its text. */
+  onReplyWithDraft: (draft: string) => void;
+}) {
   const { t } = useLingui();
+  const navigate = useNavigate();
   const [snapshot, setSnapshot] = useState<ThreadSnapshot | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [scrollRequest, setScrollRequest] = useState<{ messageId: string; nonce: number } | null>(
+    null,
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentHere = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const jumps = useRef(0);
   const load = useCallback(
     () => rpc.threads.get({ botId: bot.id }).then(setSnapshot, () => undefined),
     [bot.id],
@@ -39,6 +75,24 @@ export function EmailAgentPanel({ bot, onClose }: { bot: Bot; onClose: () => voi
     const timer = setInterval(() => void load(), POLL_MS);
     return () => clearInterval(timer);
   }, [running, load]);
+
+  // Show the newest answer from its start, on opening and when a run ends, so its top is not
+  // pushed out of view by the tail-follow.
+  const lastBotId = [...(snapshot?.messages ?? [])].reverse().find((m) => m.role === "bot")?.id;
+  const shown = useRef<{ id?: string; running: boolean }>({ running: false });
+  useEffect(() => {
+    if (!snapshot || running) {
+      shown.current.running = running;
+      return;
+    }
+    if (lastBotId && (shown.current.id !== lastBotId || shown.current.running)) {
+      jumps.current += 1;
+      setScrollRequest({ messageId: lastBotId, nonce: jumps.current });
+    }
+    shown.current = { id: lastBotId, running: false };
+  }, [snapshot, running, lastBotId]);
+
+  const draft = latestPendingDraft(snapshot?.messages ?? []);
   const artifactTarget = { botId: bot.id };
   return (
     <aside
@@ -47,12 +101,18 @@ export function EmailAgentPanel({ bot, onClose }: { bot: Bot; onClose: () => voi
       className="flex h-full min-h-0 w-full flex-col border-s border-sidebar-border bg-background"
     >
       <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-2">
-        <span className="flex min-w-0 items-center gap-2">
+        <button
+          type="button"
+          aria-label={t`Open ${bot.name} full screen`}
+          title={t`Open full screen`}
+          onClick={() => navigate(`/app/${bot.id}`)}
+          className="-mx-1.5 flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
+        >
           <BotAvatar color={bot.color} identity={bot.id} size={22} status={bot.status} />
           <span className="truncate text-sm font-medium" dir="auto">
             {bot.name}
           </span>
-        </span>
+        </button>
         <Button variant="ghost" size="icon-sm" aria-label={t`Close agent`} onClick={onClose}>
           <PanelRightClose aria-hidden="true" />
         </Button>
@@ -62,11 +122,12 @@ export function EmailAgentPanel({ bot, onClose }: { bot: Bot; onClose: () => voi
           <Transcript
             scrollRef={scrollRef}
             sentHere={sentHere}
-            scrollRequest={null}
-            onScrollRequestHandled={noop}
+            scrollRequest={scrollRequest}
+            onScrollRequestHandled={() => setScrollRequest(null)}
             artifactTarget={artifactTarget}
             messages={snapshot.messages}
-            showToolActivity // the lookups are the point of this panel, so they show whatever the chat setting says
+            // The lookups are the point of this panel, so they show whatever the chat setting says.
+            showToolActivity
             olderCursor={snapshot.olderCursor}
             loadingOlder={false}
             answerableAskMessageId={null}
@@ -93,6 +154,13 @@ export function EmailAgentPanel({ bot, onClose }: { bot: Bot; onClose: () => voi
       ) : (
         <div className="min-h-0 flex-1" />
       )}
+      {draft ? (
+        <div className="shrink-0 px-4 pb-2">
+          <Button variant="outline" size="sm" onClick={() => onReplyWithDraft(draft)}>
+            <Trans>Reply with draft</Trans>
+          </Button>
+        </div>
+      ) : null}
       <Composer
         draftKey={`bot:${bot.id}`}
         activeName={bot.name}

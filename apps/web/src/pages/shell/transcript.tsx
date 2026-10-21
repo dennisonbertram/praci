@@ -450,7 +450,11 @@ export const Transcript = memo(function Transcript({
     window.clearTimeout(jumpScrollTimer.current);
     jumpScrollTimer.current = window.setTimeout(endJumpScroll, 2_000);
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    row.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "center" });
+    // A message taller than the view is shown from its start, not its middle.
+    row.scrollIntoView({
+      behavior: reducedMotion ? "auto" : "smooth",
+      block: row.getBoundingClientRect().height > element.clientHeight ? "start" : "center",
+    });
     row.animate(
       reducedMotion
         ? [{ backgroundColor: "var(--muted)" }, { backgroundColor: "var(--muted)" }]

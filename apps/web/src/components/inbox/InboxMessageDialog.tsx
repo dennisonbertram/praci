@@ -195,6 +195,8 @@ function InboxMessage({
   const [attempt, setAttempt] = useState(0);
   const [asking, setAsking] = useState(false);
   const [askError, setAskError] = useState("");
+  // The agent's draft for the Reply composer, until that composer closes.
+  const [agentDraft, setAgentDraft] = useState<string | undefined>();
   const seed = useMemo(
     () => (composing ? ({ kind: composing, messageId } as const) : null),
     [composing, messageId],
@@ -438,7 +440,15 @@ function InboxMessage({
           </p>
         ) : null}
         {seed ? (
-          <ComposeEmail seed={seed} accounts={[]} onClose={() => setComposing(null)} />
+          <ComposeEmail
+            seed={seed}
+            accounts={[]}
+            draft={composing === "reply" ? agentDraft : undefined}
+            onClose={() => {
+              setComposing(null);
+              setAgentDraft(undefined);
+            }}
+          />
         ) : null}
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           {message?.thread?.length ? (
@@ -506,7 +516,14 @@ function InboxMessage({
       </div>
       {agentBot ? (
         <div className="absolute inset-y-0 end-0 z-10 w-full max-w-[384px] shadow-xl md:relative md:-my-4 md:-me-4 md:max-w-none md:w-96 md:shrink-0 md:shadow-none">
-          <EmailAgentPanel bot={agentBot} onClose={() => setAgentBot(null)} />
+          <EmailAgentPanel
+            bot={agentBot}
+            onClose={() => setAgentBot(null)}
+            onReplyWithDraft={(text) => {
+              setAgentDraft(text);
+              setComposing("reply");
+            }}
+          />
         </div>
       ) : null}
     </>

@@ -9,7 +9,7 @@ const meta = {
   title: "Inbox/Email agent panel",
   component: EmailAgentPanel,
   parameters: { layout: "fullscreen" },
-  args: { bot, onClose: () => undefined },
+  args: { bot, onClose: () => undefined, onReplyWithDraft: () => undefined },
   decorators: [
     (Story) => (
       <div className="h-[640px] w-96">
