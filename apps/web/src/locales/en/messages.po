@@ -564,6 +564,10 @@ msgstr "{tokens, plural, one {# token of AI text} other {# tokens of AI text}}"
 msgid "{unpriced} unpriced"
 msgstr "{unpriced} unpriced"
 
+#: src/components/inbox/InboxRow.tsx
+msgid "{unread} unread"
+msgstr "{unread} unread"
+
 #: src/pages/shell/transcript.tsx
 msgid "{workingBotName} is working"
 msgstr "{workingBotName} is working"
@@ -4643,6 +4647,10 @@ msgstr "Gmail signed this account out. Sign in again to see your mail here."
 msgid "Gmail tabs"
 msgstr "Gmail tabs"
 
+#: src/pages/Inbox.tsx
+msgid "Gmail Updates"
+msgstr "Gmail Updates"
+
 #: src/pages/shell/command-palette.tsx
 msgid "Go to"
 msgstr "Go to"
@@ -7326,6 +7334,10 @@ msgstr "Reading your contacts"
 msgid "Reading your finances"
 msgstr "Reading your finances"
 
+#: src/pages/Inbox.tsx
+msgid "Reading your mail…"
+msgstr "Reading your mail…"
+
 #: src/components/finance/StatementImport.tsx
 msgid "Reading…"
 msgstr "Reading…"
@@ -9871,7 +9883,6 @@ msgstr "Updated {updated}"
 
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
-#: src/pages/Inbox.tsx
 msgid "Updates"
 msgstr "Updates"
 

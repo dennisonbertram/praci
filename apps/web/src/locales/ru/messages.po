@@ -564,6 +564,10 @@ msgstr ""
 msgid "{unpriced} unpriced"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
+msgid "{unread} unread"
+msgstr ""
+
 #: src/pages/shell/transcript.tsx
 msgid "{workingBotName} is working"
 msgstr "{workingBotName} работает"
@@ -4643,6 +4647,10 @@ msgstr ""
 msgid "Gmail tabs"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Gmail Updates"
+msgstr ""
+
 #: src/pages/shell/command-palette.tsx
 msgid "Go to"
 msgstr ""
@@ -7326,6 +7334,10 @@ msgstr ""
 msgid "Reading your finances"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Reading your mail…"
+msgstr ""
+
 #: src/components/finance/StatementImport.tsx
 msgid "Reading…"
 msgstr ""
@@ -9871,7 +9883,6 @@ msgstr ""
 
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
-#: src/pages/Inbox.tsx
 msgid "Updates"
 msgstr "Обновления"
 
