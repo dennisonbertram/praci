@@ -96,13 +96,18 @@ async function runInvestors(trigger = "user") {
       ),
       findUnique: vi.fn(async () => null),
     },
-    task: { findUniqueOrThrow: vi.fn(async () => ({ id: run.taskId, prompt: "Look again" })) },
+    task: {
+      findUniqueOrThrow: vi.fn(async () => ({
+        id: run.taskId,
+        prompt: "Look again",
+      })),
+    },
     computer: { updateMany: vi.fn(async () => ({ count: 1 })) },
     connection: { findMany: vi.fn(async () => []) },
     spaceModelPreference: {
-      findFirst: vi.fn<(...args: unknown[]) => Promise<Record<string, unknown> | null>>(
-        async () => null,
-      ),
+      findFirst: vi.fn<
+        (...args: unknown[]) => Promise<Record<string, unknown> | null>
+      >(async () => null),
     },
     secret: { findFirst: vi.fn(async () => null) },
     userModelCredential: { findFirst: vi.fn(async () => null) },
@@ -127,7 +132,13 @@ async function runInvestors(trigger = "user") {
     externalEffect: { findMany: vi.fn(async () => []) },
     artifact: {
       findMany: vi.fn(async () => [
-        { id: "art-1", storageKey: "shot.png", size: 4, mimeType: "image/png", name: "shot.png" },
+        {
+          id: "art-1",
+          storageKey: "shot.png",
+          size: 4,
+          mimeType: "image/png",
+          name: "shot.png",
+        },
       ]),
     },
   };
@@ -151,7 +162,10 @@ async function runInvestors(trigger = "user") {
   const executor = createRunExecutor({
     prisma,
     deploymentModelKey: "fake-deployment-key",
-    runtime: { describe: () => ({ capabilities: { scripted } }), run: runtimeRun },
+    runtime: {
+      describe: () => ({ capabilities: { scripted } }),
+      run: runtimeRun,
+    },
     sandbox: {
       describe: () => ({ capabilities: { graphical: false } }),
       writeFile: vi.fn(async () => undefined),
@@ -181,11 +195,25 @@ describe("Investors agent runs", () => {
     expect(names.length).toBeGreaterThan(0);
     expect(names.filter((name) => !fixed.has(name))).toEqual([]);
     expect(names).toEqual(
-      expect.arrayContaining(["cap_table_read", "contacts_list", "search_data_room"]),
+      expect.arrayContaining([
+        "cap_table_read",
+        "contacts_list",
+        "search_data_room",
+      ]),
     );
     for (const banned of ["mail_send", "mcp__carta__list", "COMPOSIO_SEARCH"]) {
       expect(names).not.toContain(banned);
     }
     expect(discoverTools).not.toHaveBeenCalled();
+  });
+
+  it("offers cap_table_update only on the routine sheet read", async () => {
+    const chat = await runInvestors("user");
+    const routine = await runInvestors("routine");
+    const names = (r: typeof chat) =>
+      (r.request?.tools ?? []).map((tool) => tool.name);
+    expect(names(chat)).toContain("cap_table_read");
+    expect(names(chat)).not.toContain("cap_table_update");
+    expect(names(routine)).toContain("cap_table_update");
   });
 });
