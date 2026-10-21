@@ -1092,6 +1092,10 @@ export const RunSchema = z.object({
 });
 export type Run = z.infer<typeof RunSchema>;
 
+// Stored as a failed-run error, not an assistant message: asking the user to continue would
+// store that sentence as the reply, and the next "continue" misses a final answer again.
+export const MISSING_TOOL_FINAL_RESPONSE_ERROR = "This agent could not finish. Try again.";
+
 export const ThreadMessagePageSchema = z.object({
   threadId: Id,
   messages: z.array(ThreadMessageSchema),

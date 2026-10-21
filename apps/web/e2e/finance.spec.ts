@@ -119,11 +119,9 @@ test("Finance shows the dashboard and drills down to a vendor, a charge and its 
   await expect(page).toHaveURL(/\/app\/finance\/vendor\/acme-hosting$/);
   await expect(main.getByRole("heading", { name: "Acme Hosting", level: 1 })).toBeVisible();
   await expect(main.getByText("↑ 40%")).toBeVisible();
-  // Opened from the dashboard's Breakdown card, so the trail says so (Acme Hosting is also a
+  // Opened from the dashboard's Breakdown card, so Back says so (Acme Hosting is also a
   // subscription, but the user did not come from there).
-  await expect(main.getByRole("navigation", { name: "Breadcrumb" })).toHaveText(
-    "Finance/Breakdown/Acme Hosting",
-  );
+  await expect(main.getByRole("link", { name: "← Breakdown" })).toBeVisible();
   await captureScreenshot(page, testInfo, "finance-vendor");
 
   // A charge without a receipt says so and offers no upload.

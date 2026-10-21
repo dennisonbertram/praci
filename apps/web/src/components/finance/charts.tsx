@@ -134,7 +134,7 @@ function Grid({
               y={y + 3}
               textAnchor="end"
               className="fill-muted-foreground"
-              fontSize={10}
+              fontSize={11}
             >
               {axisMoney(v)}
             </text>
@@ -228,7 +228,7 @@ export function LineChart({
                       y={height - 6}
                       textAnchor={i === values.length - 1 && x(i) > width - 24 ? "end" : "middle"}
                       className="fill-muted-foreground"
-                      fontSize={10}
+                      fontSize={11}
                     >
                       {text}
                     </text>
@@ -553,7 +553,7 @@ export function BurnLines({
                       y={height - 8}
                       textAnchor="middle"
                       className="fill-muted-foreground"
-                      fontSize={10}
+                      fontSize={11}
                       fontWeight={m.partial ? 700 : 400}
                     >
                       {name}
@@ -573,7 +573,7 @@ export function BurnLines({
                   y={top - 6}
                   textAnchor={cx(i) > width - 32 ? "end" : "middle"}
                   className="fill-foreground"
-                  fontSize={10}
+                  fontSize={11}
                 >
                   {`↑ ${money(m.financingCents)}`}
                 </text>
@@ -678,7 +678,7 @@ export function MonthBars({
                     y={y - 4}
                     textAnchor="middle"
                     className="fill-muted-foreground"
-                    fontSize={10}
+                    fontSize={11}
                   >
                     {money(item.cents)}
                   </text>
@@ -687,7 +687,7 @@ export function MonthBars({
                     y={height - 6}
                     textAnchor="middle"
                     className="fill-muted-foreground"
-                    fontSize={10}
+                    fontSize={11}
                   >
                     {item.label}
                   </text>
