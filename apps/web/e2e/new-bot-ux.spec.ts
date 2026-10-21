@@ -20,9 +20,8 @@ test("create opens a greeted chat; picker lists bots; sidebar collapses", async 
   await page.getByTestId("create-menu-trigger").click();
   const picker = page.getByTestId("bot-create-picker");
   await expect(picker).toBeVisible();
-  await expect(picker.getByPlaceholder("Search")).toBeVisible();
   await expect(picker.getByTestId("create-new-bot")).toBeVisible();
-  await expect(picker.getByText("Chief", { exact: true })).toBeVisible();
+  await expect(picker.getByText("Chief", { exact: true })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "plus-picker-bots");
 
   await picker.getByTestId("create-new-bot").click();

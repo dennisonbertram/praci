@@ -1,9 +1,11 @@
-import { useLingui } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import {
   Button,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@rakazo/ui-web";
 import { ChevronDown, MoreHorizontal } from "lucide-react";
@@ -75,16 +77,26 @@ export function SidebarPagesGroup({
               >
                 <MoreHorizontal size={14} aria-hidden="true" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" aria-label={t`Page options`} className="w-[200px]">
-                {pages.map((page) => (
-                  <DropdownMenuCheckboxItem
-                    key={page.key}
-                    checked={!hidden.includes(page.key)}
-                    onCheckedChange={() => onToggleHidden(page.key)}
-                  >
-                    {page.label}
-                  </DropdownMenuCheckboxItem>
-                ))}
+              <DropdownMenuContent
+                side="right"
+                align="start"
+                aria-label={t`Page options`}
+                className="w-[200px]"
+              >
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>
+                    <Trans>Show in sidebar</Trans>
+                  </DropdownMenuLabel>
+                  {pages.map((page) => (
+                    <DropdownMenuCheckboxItem
+                      key={page.key}
+                      checked={!hidden.includes(page.key)}
+                      onCheckedChange={() => onToggleHidden(page.key)}
+                    >
+                      {page.label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : null}

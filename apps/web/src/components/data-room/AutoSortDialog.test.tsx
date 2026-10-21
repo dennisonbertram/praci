@@ -187,42 +187,26 @@ it("lists the files being reviewed while the plan is made, and Apply waits", asy
   expect(button("Apply").hasAttribute("disabled")).toBe(true);
 });
 
-it("reveals each file's outcome in turn, then shows the review", async () => {
+it("goes straight from the file list to the review, with no per-file No change rows", async () => {
   motion(false);
-  vi.useFakeTimers();
   autoSort.plan.mockResolvedValue(plan);
   await render(vi.fn(), vi.fn(), files);
-  expect(items()).toEqual(names);
-  await act(() => vi.advanceTimersByTimeAsync(50));
-  expect(items()[0]).toBe("plan.pdfMove → Benefits / Health");
-  expect(items()[1]).toBe(names[1]);
-  await act(() => vi.advanceTimersByTimeAsync(50));
-  expect(items()[1]).toContain("Rename → Cap table - Example Co.png");
+  expect(items()).toEqual([]);
+  expect(document.body.textContent).not.toContain("No change");
+  expect(boxes()).toHaveLength(3);
+  expect(button("Apply").hasAttribute("disabled")).toBe(false);
+});
+
+it("says what to do when no change is ticked, instead of Apply 0 changes", async () => {
+  autoSort.plan.mockResolvedValue({
+    mode: "ai",
+    operations: [{ ...plan.operations[1], fromFolderId: "f9" }],
+  });
+  await render();
+  expect(boxes().map((b) => b.getAttribute("aria-checked"))).toEqual(["false"]);
+  expect(document.body.textContent).toContain("Tick a change to apply it.");
+  expect(button("Apply").textContent).toBe("Apply");
   expect(button("Apply").hasAttribute("disabled")).toBe(true);
-  await act(() => vi.advanceTimersByTimeAsync(300));
-  expect(items()).toEqual([]);
-  expect(boxes()).toHaveLength(3);
-  expect(button("Apply").hasAttribute("disabled")).toBe(false);
-  vi.useRealTimers();
-});
-
-it("shows No change for a file the plan leaves alone", async () => {
-  motion(false);
-  vi.useFakeTimers();
-  autoSort.plan.mockResolvedValue(plan);
-  await render(vi.fn(), vi.fn(), files);
-  await act(() => vi.advanceTimersByTimeAsync(150));
-  expect(items()[2]).toBe("notes.txtNo change");
-  vi.useRealTimers();
-});
-
-it("skips the reveal when the user prefers reduced motion", async () => {
-  motion(true);
-  autoSort.plan.mockResolvedValue(plan);
-  await render(vi.fn(), vi.fn(), files);
-  expect(items()).toEqual([]);
-  expect(boxes()).toHaveLength(3);
-  expect(button("Apply").hasAttribute("disabled")).toBe(false);
 });
 
 it("lists at most 300 files and counts the rest", async () => {

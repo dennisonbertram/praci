@@ -53,11 +53,6 @@ msgstr ", {0} already imported"
 msgid "(opens in Devin)"
 msgstr "(opens in Devin)"
 
-#. placeholder {0}: processing.failed
-#: src/components/data-room/ProcessingStrip.tsx
-msgid "{0, plural, one {# couldn't be read} other {# couldn't be read}}"
-msgstr "{0, plural, one {# couldn't be read} other {# couldn't be read}}"
-
 #. placeholder {0}: counts.unreviewedDocuments
 #: src/pages/Legal.tsx
 msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
@@ -1255,6 +1250,7 @@ msgid "Appearance"
 msgstr "Appearance"
 
 #: src/components/compose/RichTextEditor.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr "Apply"
@@ -3117,6 +3113,7 @@ msgstr "Could not reach the model server."
 msgid "Could not reach the server"
 msgstr "Could not reach the server"
 
+#: src/components/data-room/ItemRows.tsx
 #: src/components/finance/StatementImport.tsx
 msgid "Could not read this file"
 msgstr "Could not read this file"
@@ -4365,6 +4362,7 @@ msgstr "Filter by date"
 msgid "Filter memory"
 msgstr "Filter memory"
 
+#: src/components/data-room/FilterBar.tsx
 #: src/pages/Artifacts.tsx
 msgid "Filters"
 msgstr "Filters"
@@ -5801,6 +5799,7 @@ msgstr "More settings"
 
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/pages/shell/command-palette.tsx
 msgid "Move"
 msgstr "Move"
 
@@ -6101,14 +6100,6 @@ msgstr "No bot activity yet."
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "No bot uses {0} yet. Choose bots on its page."
 msgstr "No bot uses {0} yet. Choose bots on its page."
-
-#: src/pages/shell/bot-picker.tsx
-msgid "No bots match"
-msgstr "No bots match"
-
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "No change"
-msgstr "No change"
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No chat apps linked yet."
@@ -6438,8 +6429,8 @@ msgid "Not tagged"
 msgstr "Not tagged"
 
 #: src/components/data-room/Preview.tsx
-msgid "Not tagged yet. Files are tagged once you let Praci read documents; you can still search it by name and text."
-msgstr "Not tagged yet. Files are tagged once you let Praci read documents; you can still search it by name and text."
+msgid "Not tagged yet."
+msgstr "Not tagged yet."
 
 #: src/components/MailApprovalCard.tsx
 msgid "Not waiting for approval"
@@ -6543,6 +6534,7 @@ msgstr "Only if the server does not use sign-in"
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/command-palette.tsx
 #: src/pages/shell/transcript.tsx
 msgid "Open"
 msgstr "Open"
@@ -7725,6 +7717,10 @@ msgstr "Resize folders"
 msgid "Resize panel"
 msgstr "Resize panel"
 
+#: src/pages/Shell.tsx
+msgid "Resize sidebar"
+msgstr "Resize sidebar"
+
 #: src/components/integrations/IMessageSection.tsx
 msgid "Restart the Praci server to start using iMessage."
 msgstr "Restart the Praci server to start using iMessage."
@@ -8042,7 +8038,6 @@ msgstr "Scroll sideways to see the whole graph."
 #: src/pages/Contacts.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Shell.tsx
-#: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/command-palette.tsx
 msgid "Search"
 msgstr "Search"
@@ -8401,6 +8396,10 @@ msgstr "Show computer"
 #: src/components/finance/ui.tsx
 msgid "Show finances for"
 msgstr "Show finances for"
+
+#: src/components/SidebarPagesGroup.tsx
+msgid "Show in sidebar"
+msgstr "Show in sidebar"
 
 #: src/components/inbox/TodoCard.tsx
 #: src/components/MailApprovalCard.tsx
@@ -9363,6 +9362,10 @@ msgstr "This zip is password-protected"
 #: src/components/data-room/DropZone.tsx
 msgid "This zip is too large to unpack"
 msgstr "This zip is too large to unpack"
+
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Tick a change to apply it."
+msgstr "Tick a change to apply it."
 
 #: src/pages/Board.tsx
 msgid "Tickets track work for your bots. Bots add them when you ask them to track a task, or press New ticket."
