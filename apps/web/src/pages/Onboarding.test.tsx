@@ -119,6 +119,8 @@ it("offers both sign-ins above the API key fields", async () => {
   expect(button("Sign in with ChatGPT")).toBeTruthy();
   expect(button("Sign in with OpenRouter")).toBeTruthy();
   expect(container.querySelector("details")?.textContent).toContain("Use an API key instead");
+  // Thinking and Advanced belong to Settings, not first run.
+  expect(container.textContent).not.toMatch(/Thinking|Advanced/);
   expect(button("Continue")?.disabled).toBe(true);
 });
 

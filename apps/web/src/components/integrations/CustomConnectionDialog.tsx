@@ -562,6 +562,7 @@ export function CustomConnectionDialog({
                   <Trans>Client ID</Trans>
                   <Input
                     aria-label={t`Client ID`}
+                    autoFocus
                     className="mt-1 font-mono text-sm"
                     value={clientId}
                     onChange={(event) => setClientId(event.target.value)}

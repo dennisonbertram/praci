@@ -4,7 +4,7 @@
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 241 of 241
-- Web and shared components: 652
+- Web and shared components: 650
 - Mobile components: 137 in 94 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -271,7 +271,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | --- | --- | --- | --- |
 | GeneralSettingsPanels, PrivacySettingsPanels, UsageSettingsPanel, ComputerSettingsPanel, UpdatesSettingsPanel, ChangePasswordSection, SettingsPasswordInput, AppearancePicker, TimezonePicker, UiLocalePicker | [apps/web/src/pages/AccountSettingsOverlay.tsx](../../apps/web/src/pages/AccountSettingsOverlay.tsx) | [AccountSettingsOverlay.stories.tsx](../../apps/web/src/pages/AccountSettingsOverlay.stories.tsx) | web |
 | ActivityList, ActivitySection, ActivityError, ActivityFilters, FilterChip, ActivityRow | [apps/web/src/pages/ActivityList.tsx](../../apps/web/src/pages/ActivityList.tsx) | [ActivityList.stories.tsx](../../apps/web/src/pages/ActivityList.stories.tsx) | web |
-| ArtifactsPage, BrowsingPane, ArtifactTable, LoadMoreButton, EmptyArtifacts, IndexPane, FilterChip, BotFilterChip, ArtifactCard, ArtifactRow, ArtifactMimeIcon, PreviewPane | [apps/web/src/pages/Artifacts.tsx](../../apps/web/src/pages/Artifacts.tsx) | [Artifacts.stories.tsx](../../apps/web/src/pages/Artifacts.stories.tsx) | web |
+| ArtifactsPage, BrowsingPane, ArtifactTable, LoadMoreButton, EmptyArtifacts, IndexPane, ArtifactCard, ArtifactRow, ArtifactMimeIcon, PreviewPane | [apps/web/src/pages/Artifacts.tsx](../../apps/web/src/pages/Artifacts.tsx) | [Artifacts.stories.tsx](../../apps/web/src/pages/Artifacts.stories.tsx) | web |
 | AuthPage, PasswordResetPage, AuthFrame, PasswordField | [apps/web/src/pages/Auth.tsx](../../apps/web/src/pages/Auth.tsx) | [Auth.stories.tsx](../../apps/web/src/pages/Auth.stories.tsx) | web |
 | BillingSettingsPanel | [apps/web/src/pages/BillingSettingsPanel.tsx](../../apps/web/src/pages/BillingSettingsPanel.tsx) | [BillingSettingsPanel.stories.tsx](../../apps/web/src/pages/BillingSettingsPanel.stories.tsx) | web |
 | BoardPage, TicketDialog | [apps/web/src/pages/Board.tsx](../../apps/web/src/pages/Board.tsx) | [Board.stories.tsx](../../apps/web/src/pages/Board.stories.tsx) | web |
