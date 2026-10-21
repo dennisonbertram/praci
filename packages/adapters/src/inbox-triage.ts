@@ -220,7 +220,7 @@ async function triagePass(
             needsReply: item?.needsReply ?? null,
             priority: item?.priority ?? null,
             category: item?.category ?? null,
-            // The free rules win when they decided, unless the model calls it spam; its category fills the rest.
+            // The model category decides the pile when there is one; the free rules are the fallback.
             pile: item
               ? resolvePile(row.rulePile, item.category, row.notSpamAt !== null)
               : row.rulePile,

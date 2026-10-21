@@ -220,7 +220,9 @@ it("sends the chosen sort to the server and keeps the order it returns", async (
   // The server returned b before a; the page must not reorder that.
   expect(names()).toEqual(["b.txt", "a.txt"]);
 
-  const direction = container.querySelector<HTMLButtonElement>('button[aria-label="Descending"]');
+  const direction = container.querySelector<HTMLButtonElement>(
+    'button[aria-label="Sort ascending"]',
+  );
   await act(async () => {
     direction?.click();
   });
@@ -822,7 +824,7 @@ it("remembers the view and sort across visits", async () => {
   await renderPage();
   await act(async () => {
     container.querySelector<HTMLButtonElement>('button[aria-label="Grid view"]')?.click();
-    container.querySelector<HTMLButtonElement>('button[aria-label="Descending"]')?.click();
+    container.querySelector<HTMLButtonElement>('button[aria-label="Sort ascending"]')?.click();
   });
   act(() => root.unmount());
   root = createRoot(container);
@@ -1174,4 +1176,20 @@ it("shows stats for the open filters, and a click on a type filters the list", a
   expect(rpcMock.list).toHaveBeenLastCalledWith(
     expect.objectContaining({ folderId: "f1", docType: "legal" }),
   );
+});
+
+it("does not ask for the list again while a request is still in flight", async () => {
+  const slow = deferred<{ items: DataRoomApiItem[]; nextCursor: null }>();
+  rpcMock.list.mockReturnValue(slow.promise);
+  await renderPage();
+  expect(rpcMock.list).toHaveBeenCalledTimes(1);
+  // A poll tick from the processing strip.
+  await act(async () => {
+    window.dispatchEvent(new Event("rakazo:data-room-changed"));
+  });
+  expect(rpcMock.list).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    slow.resolve({ items: [item("a.txt")], nextCursor: null });
+  });
+  expect(names()).toEqual(["a.txt"]);
 });

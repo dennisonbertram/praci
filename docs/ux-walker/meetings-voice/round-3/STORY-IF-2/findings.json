@@ -1,0 +1,29 @@
+{
+  "story_id": "STORY-IF-2",
+  "round": 3,
+  "result": "PASS",
+  "round2_status": [
+    {
+      "id": "F2-IF-2-01",
+      "status": "fixed",
+      "evidence": "The Mail connected frame mixes meeting and mail to-dos in one card (g-d-inbox-mail.png)."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F3-IF-2-01",
+      "severity": "low",
+      "category": "state",
+      "criterion": "State coverage",
+      "score": "warn",
+      "kind": "mockup",
+      "description": "Only one account tab is drawn, so the plan rule 'each account tab lists that account's mail to-dos plus all meeting to-dos' cannot be seen working with two accounts.",
+      "expected": "The journey step has a drawn, unambiguous surface.",
+      "actual": "Only one account tab is drawn, so the plan rule 'each account tab lists that account's mail to-dos plus all meeting to-dos' cannot be seen working with two accounts.",
+      "screenshot": "g-d-inbox-mail.png",
+      "suggested_fix": "Add a second account tab to the 'Mail connected' frame, or state the rule in the mockup caption.",
+      "files_likely_involved": [],
+      "jf": "NEW"
+    }
+  ]
+}

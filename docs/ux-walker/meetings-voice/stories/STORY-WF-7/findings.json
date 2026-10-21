@@ -1,0 +1,52 @@
+[
+  {
+    "id": "F-WF-7-1",
+    "kind": "plan",
+    "severity": "medium",
+    "category": "flow",
+    "criterion": "Dead ends",
+    "score": "warn",
+    "description": "The cap message is clear but the call card offers only Mute and End; continuing by typing or switching provider is not signposted.",
+    "expected": "User can type or end; the plan states typed input stays available.",
+    "actual": "Mute and End only.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-WF-7/screenshots/step-3.png",
+    "suggested_fix": "Accept: the composer remains on the page in the real app; confirm in S3a that typing works during a blocked call.",
+    "catalog_ref": "JF-14 (partly resolved by the mockup)",
+    "plan_section": "Flow S3a",
+    "files_likely_involved": []
+  },
+  {
+    "id": "F-WF-7-2",
+    "kind": "plan",
+    "severity": "low",
+    "category": "error-handling",
+    "criterion": "Error messages",
+    "score": "warn",
+    "description": "Length and size rejection (6 min, 25 MB) and non-WAV rejection have no drawn message or location.",
+    "expected": "One-line caption using the same card caption path.",
+    "actual": "None.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-WF-7/screenshots/step-3.png",
+    "suggested_fix": "Reuse the caption path; do not add a new surface.",
+    "catalog_ref": "JF-42",
+    "plan_section": "Flow S3a/S3b",
+    "files_likely_involved": []
+  },
+  {
+    "id": "F-WF-7-3",
+    "kind": "mockup",
+    "severity": "low",
+    "category": "visual",
+    "criterion": "Information stated once",
+    "score": "warn",
+    "description": "Footnote 'With Flow transcription the call looks the same as today...' inside the frame.",
+    "expected": "Note outside the frame.",
+    "actual": "Visible muted line.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-WF-7/screenshots/step-3.png",
+    "suggested_fix": "Move into an HTML comment.",
+    "catalog_ref": "NEW",
+    "plan_section": "wispr-flow mockup screen-call",
+    "files_likely_involved": [
+      "docs/wispr-flow/mockup.html"
+    ]
+  }
+]

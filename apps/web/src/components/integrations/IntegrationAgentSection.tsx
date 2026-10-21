@@ -85,16 +85,20 @@ export function IntegrationAgentSection({
             </Trans>
           }
         />
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-0.5">
           <Switch
             id={`${idPrefix}-shared`}
+            aria-describedby={`${idPrefix}-shared-hint`}
             checked={shared}
             disabled={disabled}
             onCheckedChange={onShared}
           />
           <Label htmlFor={`${idPrefix}-shared`}>
-            <Trans>Share with all agents</Trans>
+            <Trans>Let other agents use {service} directly</Trans>
           </Label>
+          <p id={`${idPrefix}-shared-hint`} className="col-start-2 text-sm text-muted-foreground">
+            <Trans>Off: other agents reach {service} only through this agent.</Trans>
+          </p>
         </div>
       </div>
       {shared ? (

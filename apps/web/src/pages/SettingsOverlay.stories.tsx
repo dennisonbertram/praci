@@ -83,6 +83,7 @@ export const General: Story = {};
 export const GeneralAsOwner: Story = {
   args: { isDeploymentOwner: true, messagingEnabled: true, onOpenMessaging: () => undefined },
 };
+export const Privacy: Story = { args: { initialSection: "privacy" } };
 export const Models: Story = { args: { initialSection: "models" } };
 export const Memory: Story = {
   args: {

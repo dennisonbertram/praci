@@ -19,17 +19,20 @@ export function ProcessingStrip({
   total,
   finished = false,
   importing,
+  onShowFailed,
 }: {
   processing: DataRoomApiProcessing;
   total: number;
   finished?: boolean;
   /** Imports still running, shown ahead of the count on the same line. */
   importing?: { done: number; total: number } | null;
+  /** Lists only the files that could not be read. */
+  onShowFailed?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const remaining = processingRemaining(processing);
   const row = "border-b border-border px-3 py-1.5 text-xs text-muted-foreground";
-  if (finished) {
+  if (finished && processing.failed === 0) {
     return (
       <div role="status" className={row}>
         <span className="text-foreground">{t`All files processed`}</span>
@@ -50,9 +53,21 @@ export function ProcessingStrip({
       : processing.tagging
         ? t`Tagging`
         : null;
+  const failedCount = plural(processing.failed, {
+    one: "# couldn't be read",
+    other: "# couldn't be read",
+  });
   const failed =
     processing.failed > 0 ? (
-      <p>{plural(processing.failed, { one: "# couldn't be read", other: "# couldn't be read" })}</p>
+      <p className="whitespace-nowrap">
+        {onShowFailed ? (
+          <Button variant="link" size="xs" className="h-auto p-0" onClick={onShowFailed}>
+            {failedCount}
+          </Button>
+        ) : (
+          failedCount
+        )}
+      </p>
     ) : null;
   if (remaining === 0 && !importing) {
     return failed ? (

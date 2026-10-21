@@ -1,17 +1,18 @@
 ## Area: Legal (STORY-LEG-nnn)
 
-Source: `docs/ux-paths/legal/catalog.md`.
-
-Generated: 2026-10-17
+Generated: 2026-10-17, refreshed 2026-10-20
 Code read at: `origin/feat/legal` commit **f2b8fc1e** (PR #109, "Legal: regenerate translation catalogs after the e2e fixes"). The checkout this catalog lives in is `559a76ad` (`docs/ux-pass`), which does not contain Legal. The previous catalog read `488048d5`.
-Total Stories: 29 (Short 12, Medium 13, Long 4)
+Total Stories: 29 (short 12, medium 13, long 4) as of 2026-10-20
 Persona for every story: Maya, a first-time founder (MOCK DEMO DATA, Northwind Robotics). Maya has never seen Praci. She does not know words like "agent", "scan", "consent", "Data room", "node" or "Muse Spark". She wants one thing: run the company without missing a contract date.
+
+### Refresh 2026-10-20 (features merged since 2026-10-17)
+- Legal merged to main with PR #109. Remarks below that Legal "is not on main", "needs a build with feat/legal" or cites `f2b8fc1e` are out of date, and the walk blocker that said STORY-LEG-020 gates everything is removed; STORY-LEG-020 now runs on a normal build. No Legal story was rewritten in this refresh. Legal is still missing from the sidebar search results (see Gaps).
 
 ### Read this first: where the Legal code is
 
-- **Legal is not on `docs/ux-pass` or `origin/main`.** It merges from PR #109 (branch `origin/feat/legal`). Everything below was read from that branch with `git show origin/feat/legal:<path>` and nothing else. Nothing was run in a browser; every expected result is read from code, and anything that depends on the model's behaviour is marked as a hypothesis.
+- **(Out of date since 2026-10-20: Legal is in main.) Legal is not on `docs/ux-pass` or `origin/main`.** It merges from PR #109 (branch `origin/feat/legal`). Everything below was read from that branch with `git show origin/feat/legal:<path>` and nothing else. Nothing was run in a browser; every expected result is read from code, and anything that depends on the model's behaviour is marked as a hypothesis.
 - File:line references are to `origin/feat/legal` at f2b8fc1e. `Legal.tsx` = `apps/web/src/pages/Legal.tsx`; `LegalDeadlines.tsx` and `LegalContracts.tsx` are in `apps/web/src/pages/legal/`; `LegalGraph.tsx` and `ConsentPrompt.tsx` are in `apps/web/src/components/legal/`; `legal-tools.ts` is `packages/adapters/src/legal-tools.ts`; `api-legal.ts` is `apps/api/src/legal.ts`; `legal-agent.ts` (API) is `apps/api/src/legal-agent.ts`; `db/legal.ts` is `packages/db/src/legal.ts`.
-- **The walk only works against a build that contains feat/legal.** On a build from `origin/main` there is no `/app/legal` route and no Legal sidebar item, so STORY-LEG-020 fails at step 1 and everything else cannot run.
+- **(Out of date since 2026-10-20: Legal is in main.) The walk only works against a build that contains feat/legal.** On a build from `origin/main` there is no `/app/legal` route and no Legal sidebar item, so STORY-LEG-020 fails at step 1 and everything else cannot run.
 - The same PR changes the Data room (a consent prompt, "import from email", "import from Drive"). Those are covered by the Data room catalog. Here they are only referenced (STORY-LEG-018, STORY-LEG-028).
 - The earlier problem list (P-nn, S-nn, C-nn) came from the previous catalog and a prior review. Where this PR fixed one, it is named in "Changes". The open ones are re-stated, with fresh line numbers, in "Suspected problems (this area)" at the end.
 
@@ -552,6 +553,8 @@ STORY-LEG-001 (First week: find Legal, set up, first scan, check dates)  [D0]
 
 #### STORY-LEG-020: The Legal tab is not there
 
+> **Updated 2026-10-20**: Legal is now part of the main build, so the case this story checks (a build without Legal) no longer occurs. Walk it as a sanity check that the Legal row, the /app/legal route and the Contracts, Deadlines and Graph tabs exist; Legal is still missing from sidebar search results (STORY-APP-322).
+
 **Type**: long (it gates every other story)
 **Topic**: Build contents
 **Persona**: Maya, told "click Legal in the sidebar"
@@ -791,3 +794,6 @@ IDs below are stable for this catalog; all are read from code, none observed in 
 - **S-LEG-14** Date formats differ between tabs: "Nov 30" (Contracts, `shortDay`) vs "Nov 30, 2026" (Deadlines, `fullDay`).
 - **S-LEG-15** The "Ask agent" button does not name the Legal agent; it disappears while the panel is open; and the page shows no "not legal advice" notice (only the agent's instructions say it).
 - **S-LEG-16** (hypothesis) The Legal agent's tool list includes `web_search`, `web_fetch` and the memory tools (`contracts/legal.ts` `LEGAL_AGENT_BUILTIN_TOOLS`), but the consent card describes only document text going to the model provider. Whether contract facts can reach a web query or saved memory was not traced.
+
+
+---

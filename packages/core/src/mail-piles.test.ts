@@ -536,8 +536,11 @@ describe("pileFromCategory", () => {
 });
 
 describe("resolvePile", () => {
-  it("keeps the rule pile over a non-spam model verdict", () => {
-    expect(resolvePile("newsletters", "personal")).toBe("newsletters");
+  it("lets the model category decide over the rule pile, so badge and pile agree", () => {
+    expect(resolvePile("updates", "newsletter")).toBe("newsletters");
+    expect(resolvePile("newsletters", "personal")).toBe("important");
+    expect(resolvePile("newsletters", "unknown")).toBe("newsletters");
+    expect(resolvePile("spam", "personal")).toBe("spam");
     expect(resolvePile(null, "personal")).toBe("important");
     expect(resolvePile(null, null)).toBeNull();
   });

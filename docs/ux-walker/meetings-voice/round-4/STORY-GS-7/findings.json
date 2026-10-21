@@ -1,0 +1,29 @@
+{
+  "story_id": "STORY-GS-7",
+  "round": 4,
+  "result": "PASS",
+  "round3_status": [
+    {
+      "id": "F3-GS-7-01",
+      "status": "fixed",
+      "evidence": "At 390 px the popover now renders as a bottom sheet inside the frame with Delete visible (g-m-citation-open.png)."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F4-GS-7-01",
+      "severity": "low",
+      "category": "clarity",
+      "criterion": "Consistency",
+      "score": "warn",
+      "kind": "mockup",
+      "description": "The citation popover repeats the title and date in bold (\"Pricing review, 12 Oct\" in the Granola popover, \"Security sync, 14 Oct\" in the Flow popover). The plan says the popover shows attendees, the source link and Delete, and that \"title and date repeat the chip and are not shown again\".",
+      "expected": "Popover shows attendees, source link when one exists, and Delete only (plan, Reading).",
+      "actual": "A bold title and date line sits above the attendees in both popovers.",
+      "screenshot": "g-d-citation-open.png",
+      "suggested_fix": "Remove the bold title line from the popover in docs/granola/mockup.html (screen-citation) and docs/wispr-flow/mockup.html (screen-flow-meetings), or drop the sentence from the plan if the heading is wanted for screen readers (it already has aria-label).",
+      "jf": "NEW",
+      "files_likely_involved": []
+    }
+  ]
+}

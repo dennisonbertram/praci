@@ -90,3 +90,37 @@ it("shows an alert when contacts cannot be loaded", async () => {
   await show();
   expect(container.querySelector("[role=alert]")).not.toBeNull();
 });
+
+const click = (el: Element | null | undefined) => act(async () => (el as HTMLElement)?.click());
+const buttonNamed = (label: string) =>
+  [...document.querySelectorAll("button")].find((b) => b.textContent === label);
+
+it("shows Saved on add, and starts a new contact as an investor like Cap table", async () => {
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "customer")]);
+  rpcMock.save.mockResolvedValue(contact("c2", "Bo", "investor"));
+  await show();
+  await click(buttonNamed("Add contact"));
+  expect((document.getElementById("contact-kind") as HTMLSelectElement).value).toBe("investor");
+  const name = document.getElementById("contact-name") as HTMLInputElement;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(name, "Bo");
+    name.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await click(name.closest("form")?.querySelector("button[type=submit]"));
+  expect(container.querySelector("[role=status]")?.textContent).toContain("Saved Bo");
+});
+
+it("shows Deleted with Undo, and the organisation under the name", async () => {
+  const ada = contact("c1", "Ada", "customer");
+  rpcMock.list.mockResolvedValue([ada]);
+  rpcMock.remove.mockResolvedValue(undefined);
+  rpcMock.save.mockResolvedValue(ada);
+  await show();
+  expect(container.querySelector("tbody td div")?.textContent).toBe("Acme Corp");
+  await click(container.querySelector("tbody button"));
+  await click(buttonNamed("Delete"));
+  await click(buttonNamed("Delete"));
+  const notice = container.querySelector("[role=status]")?.textContent ?? "";
+  expect(notice).toContain("Deleted Ada");
+  expect(notice).toContain("Undo");
+});

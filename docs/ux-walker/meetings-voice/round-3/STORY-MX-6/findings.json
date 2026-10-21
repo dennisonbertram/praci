@@ -1,0 +1,18 @@
+{
+  "story_id": "STORY-MX-6",
+  "round": 3,
+  "result": "PASS",
+  "round2_status": [
+    {
+      "id": "F2-MX-6-01",
+      "status": "fixed",
+      "evidence": "Plan states the stopped-S5 outcome (live MCP only, no synced status, PR lists removed tools). The mockup draws no sync claim for Flow."
+    },
+    {
+      "id": "F2-MX-6-02",
+      "status": "still-open",
+      "evidence": "Flow and Granola tiles still show the identical subtitle 'Meeting notes' and 'Connected' badge although only one has a sync status. Low."
+    }
+  ],
+  "findings": []
+}

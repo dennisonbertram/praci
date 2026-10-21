@@ -1,0 +1,18 @@
+{
+  "story_id": "STORY-GS-5",
+  "round": 3,
+  "result": "PASS",
+  "round2_status": [
+    {
+      "id": "F2-GS-5-01",
+      "status": "fixed",
+      "evidence": "Status row reads 'Reconnect needed' with an amber dot, never 'Synced' (g-d-api-key-reconnect.png)."
+    },
+    {
+      "id": "F2-GS-5-02",
+      "status": "fixed",
+      "evidence": "Tile draws 'Reconnect needed' (g-d-integrations-reconnect.png), matching plan Surfaces."
+    }
+  ],
+  "findings": []
+}

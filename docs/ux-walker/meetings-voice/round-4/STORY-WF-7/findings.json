@@ -1,0 +1,14 @@
+{
+  "story": "STORY-WF-7",
+  "round": 4,
+  "verdict": "PASS",
+  "round3_dispositions": [
+    {
+      "id": "F-WF-7-2",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "No drawn message and no plan text for the length/size rejection; the non-WAV message is dropped by decision. Unchanged and decided, not re-raised."
+    }
+  ],
+  "new_findings": []
+}

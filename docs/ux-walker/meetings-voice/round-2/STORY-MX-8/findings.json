@@ -1,0 +1,57 @@
+{
+  "story_id": "STORY-MX-8",
+  "result": "PASS",
+  "round1_status": [
+    {
+      "id": "F-MX-8-1",
+      "status": "fixed",
+      "evidence": "To do card above 'Connect mail' (inbox-todos.png)."
+    },
+    {
+      "id": "F-MX-8-2",
+      "status": "fixed",
+      "evidence": "Consent off draws the existing prompt (inbox-consent.png); wording is a separate finding F2-IF-5-01."
+    },
+    {
+      "id": "F-MX-8-3",
+      "status": "fixed",
+      "evidence": "'Syncing' state drawn on the card and the Inbox."
+    },
+    {
+      "id": "F-MX-8-4",
+      "status": "obsolete",
+      "evidence": "Plan: replacing a healthy key = Disconnect (data kept) then Connect; a dead key is replaced in place (needs_reconnect)."
+    },
+    {
+      "id": "F-MX-8-5",
+      "status": "fixed",
+      "evidence": "Plan dedupes per (userId, normalized text), so one promise from two sources gives one row; provider not shown by decision."
+    },
+    {
+      "id": "F-MX-8-6",
+      "status": "fixed",
+      "evidence": "No author notes rendered."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F2-MX-8-01",
+      "severity": "low",
+      "category": "visual",
+      "criterion": "Consistency",
+      "score": "warn",
+      "kind": "mockup",
+      "description": "The Flow mockup's Inbox state shows the To do card without the 'Connect mail' card, unlike the Granola Inbox frames for the same meeting-only user.",
+      "expected": "Same layout in both mockups.",
+      "actual": "flow-inbox.png: To do card only.",
+      "screenshot": "flow-inbox.png",
+      "suggested_fix": "Add the Connect mail card or note the user has mail.",
+      "files_likely_involved": [
+        "docs/granola/mockup.html"
+      ],
+      "jf": null,
+      "plan_section": null,
+      "story_id": "STORY-MX-8"
+    }
+  ]
+}

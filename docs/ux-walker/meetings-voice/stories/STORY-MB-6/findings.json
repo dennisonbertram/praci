@@ -1,0 +1,50 @@
+[
+  {
+    "id": "F-MB-6-1",
+    "story_id": "STORY-MB-6",
+    "severity": "high",
+    "category": "happy-path",
+    "criterion": "Journey surface",
+    "score": "fail",
+    "kind": "plan",
+    "jf": "JF-12",
+    "description": "Journey breaks: steps 1-7 (Call Elio, routing, recording, consent alert mid-call, Not now / Allow) have no mobile surface. Plan sections: wispr-flow.md S3b call routing and S1c consent.",
+    "expected": "Mobile call frame and native Alert for consent.",
+    "actual": "Only the settings screen exists.",
+    "screenshot": null,
+    "suggested_fix": "Draw the mobile call and consent alert, or state they reuse existing screens.",
+    "files_likely_involved": []
+  },
+  {
+    "id": "F-MB-6-2",
+    "story_id": "STORY-MB-6",
+    "severity": "high",
+    "category": "error-handling",
+    "criterion": "Privacy",
+    "score": "fail",
+    "kind": "plan",
+    "jf": "JF-11",
+    "description": "Audio goes to Flow before any consent prompt; mobile asks only when a reply is spoken, and with This device on the plan would not use Flow at all.",
+    "expected": "Consent before first upload; clear precedence between This device and Flow.",
+    "actual": "Unspecified.",
+    "screenshot": null,
+    "suggested_fix": "Fix in S3b/S1c.",
+    "files_likely_involved": []
+  },
+  {
+    "id": "F-MB-6-3",
+    "story_id": "STORY-MB-6",
+    "severity": "low",
+    "category": "error-handling",
+    "criterion": "Stale copy",
+    "score": "warn",
+    "kind": "plan",
+    "jf": "JF-35",
+    "description": "Existing alert 'Calls need transcription' still names ElevenLabs, OpenAI, Fish Audio and omits Flow.",
+    "expected": "Include Flow.",
+    "actual": "Omitted.",
+    "screenshot": null,
+    "suggested_fix": "Update copy.",
+    "files_likely_involved": []
+  }
+]

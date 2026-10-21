@@ -1,0 +1,155 @@
+[
+  {
+    "id": "F-GS-1-01",
+    "story_id": "STORY-GS-1",
+    "severity": "high",
+    "category": "happy-path",
+    "criterion": "Feedback / loading",
+    "score": "fail",
+    "kind": "plan",
+    "description": "Step 4/6: no first-sync state. After 'Connecting\u2026' the card jumps to 'Synced 42 meetings, 3 minutes ago'; the first-sync-running and '0 meetings so far' states are not drawn, so Maya cannot tell if 42 is complete or a first batch.",
+    "expected": "A visible in-progress state during the 90-day backfill, then a final count.",
+    "actual": "Only the finished 'Synced {n} meetings, {time}' line exists.",
+    "screenshot": "screenshots/step-4-connected.png",
+    "suggested_fix": "Add one in-progress line (for example 'Syncing, {n} so far') or define that the card shows nothing until the first batch lands.",
+    "files_likely_involved": [],
+    "jf": "JF-6",
+    "plan_section": "granola.md Surfaces / Sync (S3 backfill, S6)"
+  },
+  {
+    "id": "F-GS-1-02",
+    "story_id": "STORY-GS-1",
+    "severity": "medium",
+    "category": "happy-path",
+    "criterion": "Feedback / next step",
+    "score": "fail",
+    "kind": "plan",
+    "description": "Step 5: journey breaks, no surface tells Maya the Granola agent now exists or links to it. The Connected card has only the status line and Disconnect.",
+    "expected": "A link to the agent (as McpDetail shows today) or the agent already visible with a pointer.",
+    "actual": "Connected card: status line and Disconnect only.",
+    "screenshot": "screenshots/step-4-connected.png",
+    "suggested_fix": "Reuse the existing IntegrationAgentSection link on the key card.",
+    "files_likely_involved": [],
+    "jf": "JF-18",
+    "plan_section": "granola.md Agent provisioning"
+  },
+  {
+    "id": "F-GS-1-03",
+    "story_id": "STORY-GS-1",
+    "severity": "medium",
+    "category": "simplicity",
+    "criterion": "Duplicated actions",
+    "score": "warn",
+    "kind": "plan",
+    "description": "Detail page (and 390px spot-check) shows two identically labelled red 'Disconnect' buttons once the key is connected (Live questions and Sync) with no scope in the label. Screen 2 draws the Sync card alone, so the pair is never drawn together.",
+    "expected": "One Disconnect per route with a label that names what it disconnects, or a single place.",
+    "actual": "Two 'Disconnect' buttons, 300px apart, different effects.",
+    "screenshot": "screenshots/mobile-390-detail.png",
+    "suggested_fix": "Draw both connected together; label by route or merge the two sections.",
+    "files_likely_involved": [],
+    "jf": "NEW",
+    "plan_section": "granola.md S6 (page order, discovery ambiguity 6/7); catalog Duplicate paths 1"
+  },
+  {
+    "id": "F-GS-1-04",
+    "story_id": "STORY-GS-1",
+    "severity": "low",
+    "category": "disclosure",
+    "criterion": "Labels/copy",
+    "score": "warn",
+    "kind": "plan",
+    "description": "Tile and detail use 'Live questions' and 'Sync \u00b7 Business plan' as section labels. A first-time user does not know that 'Sync' is the route that gives Inbox to-dos, and the tile button 'Add key' does not say what a key is for.",
+    "expected": "Labels that say what each route gives (stored meetings, to-dos) without extra explainer text.",
+    "actual": "Two jargon labels, no benefit stated.",
+    "screenshot": "screenshots/step-1.png",
+    "suggested_fix": "Rename 'Sync' to what it provides, or reveal the benefit only when the key field is focused.",
+    "files_likely_involved": [],
+    "jf": "NEW",
+    "plan_section": "granola.md Surfaces"
+  },
+  {
+    "id": "F-GS-1-05",
+    "story_id": "STORY-GS-1",
+    "severity": "medium",
+    "category": "consistency",
+    "criterion": "Mockup vs story preconditions",
+    "score": "warn",
+    "kind": "mockup",
+    "description": "Mockup tile and sidebar show Granola 'Connected' for Live questions and a 'Granola agent' already in the sidebar, but GS-1's persona has never connected Granola. The first-time state (tile unconnected, no agent) is not drawn.",
+    "expected": "Tile in its unconnected state, no agent in the sidebar.",
+    "actual": "MCP route pre-connected on every screen.",
+    "screenshot": "screenshots/step-1.png",
+    "suggested_fix": "Add an unconnected tile state, or say in the walk catalog that the MCP route is assumed connected.",
+    "files_likely_involved": [
+      "docs/granola/mockup.html"
+    ]
+  },
+  {
+    "id": "F-GS-1-06",
+    "story_id": "STORY-GS-1",
+    "severity": "medium",
+    "category": "consistency",
+    "criterion": "Mockup vs story preconditions",
+    "score": "warn",
+    "kind": "mockup",
+    "description": "Step 9: GS-1's user has mail with triage on (To do on the Important pile), but the Inbox mockup draws the meeting-only layout ('no mail account'). The mail + meeting Inbox is not drawn for this story (IF-2 not mocked).",
+    "expected": "The Inbox as a mail user sees it, with the To do card on the Important pile.",
+    "actual": "Meeting-only Inbox, no mail rows or piles.",
+    "screenshot": "screenshots/step-9.png",
+    "suggested_fix": "Add a state with the mail pile tabs above the To do card.",
+    "files_likely_involved": [
+      "docs/granola/mockup.html"
+    ]
+  },
+  {
+    "id": "F-GS-1-07",
+    "story_id": "STORY-GS-1",
+    "severity": "low",
+    "category": "visual",
+    "criterion": "Broken elements / state styling",
+    "score": "warn",
+    "kind": "mockup",
+    "description": "Disabled 'Connect' renders as a mid-grey solid button with dark text in dark mode, which looks more enabled than disabled.",
+    "expected": "Clearly disabled style.",
+    "actual": "Grey filled button at 50% opacity.",
+    "screenshot": "screenshots/step-2.png",
+    "suggested_fix": "Use a border-only or muted disabled style.",
+    "files_likely_involved": [
+      "docs/granola/mockup.html"
+    ]
+  },
+  {
+    "id": "F-GS-1-08",
+    "story_id": "STORY-GS-1",
+    "severity": "low",
+    "category": "layout",
+    "criterion": "Spacing consistency",
+    "score": "warn",
+    "kind": "mockup",
+    "description": "Integrations tile: the 'Connected' badge on the Granola tile wraps onto its own line under 'Live questions' (the row's min-width forces a wrap), while the Slack tile's badge sits on one line. Tile contents look uneven.",
+    "expected": "Label and badge on one line.",
+    "actual": "Badge below label.",
+    "screenshot": "screenshots/step-1.png",
+    "suggested_fix": "Drop the .grow min-width in tile rows.",
+    "files_likely_involved": [
+      "docs/granola/mockup.html"
+    ]
+  },
+  {
+    "id": "F-GS-1-09",
+    "story_id": "STORY-GS-1",
+    "severity": "medium",
+    "category": "a11y",
+    "criterion": "Interactive sizing",
+    "score": "warn",
+    "kind": "mockup",
+    "description": "To-do checkboxes are 16x16 px and citation chips about 19 px tall, below the 32 px minimum for touch targets (desktop mockup).",
+    "expected": "Hit area of at least 32 px.",
+    "actual": "16 px checkbox, ~19 px citation chip.",
+    "screenshot": "screenshots/step-9.png",
+    "suggested_fix": "Pad the checkbox label row to a 32 px target.",
+    "files_likely_involved": [
+      "docs/granola/mockup.html"
+    ]
+  }
+]

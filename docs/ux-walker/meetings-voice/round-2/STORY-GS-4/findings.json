@@ -1,0 +1,64 @@
+{
+  "story_id": "STORY-GS-4",
+  "result": "FAIL",
+  "round1_status": [
+    {
+      "id": "F-GS-4-01",
+      "status": "fixed",
+      "evidence": "'Business plan' hint sits on the field label (int-detail.png) and is the plan's decided explanation."
+    },
+    {
+      "id": "F-GS-4-02",
+      "status": "still-open",
+      "evidence": "The mockup now draws a first-time 'Not connected' tile and a 'Sign-in only' connected state, but no MCP sign-in control on the detail page. See F2-GS-4-01."
+    },
+    {
+      "id": "F-GS-4-03",
+      "status": "obsolete",
+      "evidence": "'Live questions' and 'Sync' groups no longer exist; the open point is now the missing MCP row (F2-GS-4-01)."
+    },
+    {
+      "id": "F-GS-4-04",
+      "status": "fixed",
+      "evidence": "Tile has one status line and no 'Add key' button (int-new.png, int-key.png)."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F2-GS-4-01",
+      "severity": "high",
+      "category": "happy-path",
+      "criterion": "Happy path clarity",
+      "score": "fail",
+      "kind": "mockup",
+      "description": "The detail page of a user who is not connected draws only the key card. The plan's page order (MCP controls first, key card below) and the free-plan fallback (the MCP tile keeps working for free and Pro users) cannot be followed in the mockup: there is no MCP sign-in control and no 'Connect' for the MCP route.",
+      "expected": "Detail page shows the existing MCP controls above the key card.",
+      "actual": "int-detail.png: header, one key card.",
+      "screenshot": "int-detail.png",
+      "suggested_fix": "Draw the existing MCP sign-in row above the key card in the 'Detail page' state, plus the 'Sign-in only' detail page with the key card empty below it.",
+      "files_likely_involved": [
+        "docs/granola/mockup.html"
+      ],
+      "jf": "NEW",
+      "plan_section": "granola.md Surfaces (Page order, Free plan)",
+      "story_id": "STORY-GS-4"
+    },
+    {
+      "id": "F2-GS-4-02",
+      "severity": "low",
+      "category": "happy-path",
+      "criterion": "Feedback",
+      "score": "warn",
+      "kind": "plan",
+      "description": "An MCP-only user never learns that Inbox to-dos need the API key. The plan is silent by choice (copy minimal), so a free-to-Business upgrader is the only person who finds out.",
+      "expected": "One decision recorded: either silence is intended, or one line appears only for MCP-only users who open the Inbox.",
+      "actual": "Inbox for MCP-only is 'No mail connected' (plan S5: MCP tile alone is not a meeting source).",
+      "screenshot": "inbox-empty.png",
+      "suggested_fix": "Record the decision in granola.md; do not add copy unless wanted.",
+      "files_likely_involved": [],
+      "jf": null,
+      "plan_section": "granola.md S5 (zero-account layout)",
+      "story_id": "STORY-GS-4"
+    }
+  ]
+}

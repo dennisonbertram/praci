@@ -1,0 +1,53 @@
+[
+  {
+    "id": "F-IF-8-01",
+    "story_id": "STORY-IF-8",
+    "severity": "high",
+    "category": "happy-path",
+    "criterion": "Journey surface",
+    "score": "fail",
+    "kind": "plan",
+    "description": "Steps 1-2: the mockup shows 'To do / No follow-ups from meetings yet' alone, but today Leo's Inbox shows 'No mail connected / Connect mail' and the To do card returns null when empty. The drawn state does not exist in the plan or code path, so the first thing Leo sees (a Gmail prompt) is not drawn.",
+    "expected": "The real zero-account page, with a decision on where the empty line sits.",
+    "actual": "Card-only page.",
+    "screenshot": "screenshots/step-1-empty.png",
+    "suggested_fix": "Same decision as JF-1; if the card shows for a connected meeting source, say so.",
+    "files_likely_involved": [],
+    "jf": "JF-1",
+    "plan_section": "granola.md Digest and Inbox follow-ups (empty state, wording not given)"
+  },
+  {
+    "id": "F-IF-8-02",
+    "story_id": "STORY-IF-8",
+    "severity": "medium",
+    "category": "error-handling",
+    "criterion": "Empty states",
+    "score": "warn",
+    "kind": "plan",
+    "description": "'No follow-ups from meetings yet' does not distinguish 'sync still running', 'digest failed silently' and 'no commitments found'. Leo cannot tell failure from nothing.",
+    "expected": "An empty state that is true in all three cases or a separate failure state.",
+    "actual": "One muted line.",
+    "screenshot": "screenshots/step-1-empty.png",
+    "suggested_fix": "Reword to something true in every case or draw a failure state; AGENTS.md also requires the copy to be quoted and justified in the PR.",
+    "files_likely_involved": [],
+    "jf": "NEW",
+    "plan_section": "granola.md Digest (failed and silent after retries), S5"
+  },
+  {
+    "id": "F-IF-8-04",
+    "story_id": "STORY-IF-8",
+    "severity": "low",
+    "category": "layout",
+    "criterion": "Viewport usage",
+    "score": "warn",
+    "kind": "mockup",
+    "description": "The empty card sits in the top-left of a large pane (about 300 px tall page with 60 percent empty); acceptable for a mockup, but the empty state has no visual anchor.",
+    "expected": "-",
+    "actual": "Card at top, empty below.",
+    "screenshot": "screenshots/step-1-empty.png",
+    "suggested_fix": null,
+    "files_likely_involved": [
+      "docs/granola/mockup.html"
+    ]
+  }
+]
