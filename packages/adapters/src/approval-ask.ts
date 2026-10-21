@@ -7,8 +7,8 @@ import {
   integrationPresetForEndpoint,
   isCartaAgentSpawnKey,
   isCartaEndpoint,
-  isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
+  isMailAgentSpawnKey,
   isReadTool,
   MAX_COMPOSE_BODY,
 } from "@rakazo/contracts";
@@ -145,12 +145,12 @@ export function buildConsentAskBlock(
 }
 
 /**
- * The Carta and Inbox agents' mail_send: always asks, never from a saved rule or Auto Review, so
+ * The Carta, Inbox and email agents' mail_send: always asks, never from a saved rule or Auto Review, so
  * the founder sees the whole message on a card before investor or customer mail goes out.
  */
 export const isCartaMailSend = (botSpawnKey: string | null | undefined, toolName: string) =>
   toolName === "mail_send" &&
-  (isCartaAgentSpawnKey(botSpawnKey) || isInboxAgentSpawnKey(botSpawnKey));
+  (isCartaAgentSpawnKey(botSpawnKey) || isMailAgentSpawnKey(botSpawnKey));
 
 /**
  * The Carta agent's write tools on Carta's server: every call asks, whatever the saved rules say.

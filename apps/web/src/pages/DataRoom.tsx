@@ -11,6 +11,8 @@ import { ChartColumn, LayoutGrid, List, Plus, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
+import type { ComposeRestore } from "../components/ComposeEmail";
+import { ComposeEmail, NEW_MESSAGE } from "../components/ComposeEmail";
 import { AutoSortDialog } from "../components/data-room/AutoSortDialog";
 import { DataRoomConsentPrompt } from "../components/data-room/ConsentPrompt";
 import { DataRoomStats } from "../components/data-room/DataRoomStats";
@@ -29,6 +31,7 @@ import { PathBar } from "../components/data-room/PathBar";
 import { Preview } from "../components/data-room/Preview";
 import { ProcessingStrip } from "../components/data-room/ProcessingStrip";
 import { ResizableFolders } from "../components/data-room/ResizableFolders";
+import { SelectionBar } from "../components/data-room/SelectionBar";
 import type { SendTarget } from "../components/data-room/SendToAgent";
 import {
   setOpenDataRoomFolder,
@@ -44,7 +47,13 @@ import { useDataRoomList } from "../components/data-room/use-data-room-list";
 import { useDataRoomProcessing } from "../components/data-room/use-data-room-processing";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
-import { DATA_ROOM_CHANGED, readDataRoomView, saveDataRoomView } from "../lib/data-room";
+import {
+  DATA_ROOM_CHANGED,
+  fetchDataRoomBlob,
+  readDataRoomView,
+  saveDataRoomItem,
+  saveDataRoomView,
+} from "../lib/data-room";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
@@ -358,6 +367,7 @@ export function DataRoomPage({
     item ? (list.rows.find((row) => row.item.id === item.id)?.item ?? item) : null;
   const shown = previewOpen ? fresh(pinned) : null;
 
+  const [checkedIds, setCheckedIds] = useState<ReadonlySet<string>>(new Set());
   const interaction: RowInteraction = {
     shownId: shown?.id,
     onSelect: (item) => {
@@ -378,6 +388,18 @@ export function DataRoomPage({
       }
     },
     onAction: (kind, item) => (kind === "retry" ? retry(item) : setAction({ kind, item })),
+    // Tick boxes are for the list; the grid has its tiles' own menus.
+    ...(view === "list" || searching
+      ? {
+          checked: checkedIds,
+          onCheck: (item: DataRoomApiItem) =>
+            setCheckedIds((current) => {
+              const next = new Set(current);
+              if (!next.delete(item.id)) next.add(item.id);
+              return next;
+            }),
+        }
+      : {}),
     agents,
     onSendToAgent,
     folderPath,
@@ -385,6 +407,70 @@ export function DataRoomPage({
   };
 
   const [action, setAction] = useState<{ kind: ItemAction; item: DataRoomEntry } | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [compose, setCompose] = useState<ComposeRestore | null>(null);
+  // A new search, filter or folder starts a new selection.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the key is the trigger.
+  useEffect(() => setCheckedIds((current) => (current.size ? new Set() : current)), [queryKey]);
+  const checkedItems = list.rows.map((row) => row.item).filter((item) => checkedIds.has(item.id));
+
+  /** Saves each ticked file in turn; one that cannot be read is named, the rest still download. */
+  async function downloadChecked() {
+    setBulkBusy(true);
+    const failed: string[] = [];
+    for (const item of checkedItems) {
+      try {
+        await saveDataRoomItem(item);
+      } catch {
+        failed.push(item.name);
+      }
+    }
+    setBulkBusy(false);
+    if (failed.length) showNoticeToast(t`Could not download ${failed.join(", ")}`);
+  }
+
+  /** Opens the mail composer with the ticked files attached; Send there is the usual send. */
+  async function sendChecked() {
+    setBulkBusy(true);
+    try {
+      const { accounts } = await rpc.inbox.list({});
+      if (!accounts.length) {
+        showNoticeToast(t`Connect Gmail to send files`);
+        return;
+      }
+      const files: File[] = [];
+      const failed: string[] = [];
+      for (const item of checkedItems) {
+        try {
+          files.push(new File([await fetchDataRoomBlob(item)], item.name, { type: item.mimeType }));
+        } catch {
+          failed.push(item.name);
+        }
+      }
+      setCompose({
+        seed: NEW_MESSAGE,
+        clientId: crypto.randomUUID().replaceAll("-", ""),
+        fields: {
+          connectionId: accounts[0]?.connectionId ?? "",
+          to: [],
+          cc: [],
+          bcc: [],
+          subject: "",
+          html: "",
+          text: "",
+        },
+        forwarded: [],
+        files,
+        saved: false,
+        accounts,
+        ...(failed.length ? { notice: t`Not attached: ${failed.join(", ")}` } : {}),
+      });
+    } catch (cause) {
+      showNoticeToast(errorText(cause));
+    } finally {
+      setBulkBusy(false);
+    }
+  }
   const fileInput = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const [creatingFolder, setCreatingFolder] = useState(false);
@@ -646,6 +732,13 @@ export function DataRoomPage({
                 data-testid="data-room-list"
                 className="@container/list rk-scroll min-w-0 flex-1 overflow-y-auto"
               >
+                <SelectionBar
+                  count={checkedItems.length}
+                  busy={bulkBusy}
+                  onDownload={() => void downloadChecked()}
+                  onSend={() => void sendChecked()}
+                  onClear={() => setCheckedIds(new Set())}
+                />
                 <PathBar
                   nodes={nodes}
                   folderId={filters.folderId}
@@ -837,6 +930,14 @@ export function DataRoomPage({
             reload();
             reloadFolders();
           }}
+        />
+      ) : null}
+      {compose ? (
+        <ComposeEmail
+          seed={NEW_MESSAGE}
+          accounts={compose.accounts}
+          restore={compose}
+          onClose={() => setCompose(null)}
         />
       ) : null}
       {notice ? (

@@ -85,7 +85,7 @@ const reply = (kind: "reply" | "replyAll" | "forward"): ComposeSeed => ({
 // Roots still mounted when a test ends would fire their autosave timers during a later test.
 const mounted: Array<ReturnType<typeof createRoot>> = [];
 
-async function open(seed: ComposeSeed, onClose = () => {}) {
+async function open(seed: ComposeSeed, onClose = () => {}, draft?: string) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   prefill.mockResolvedValue({
     connectionId: "c1",
@@ -101,7 +101,9 @@ async function open(seed: ComposeSeed, onClose = () => {}) {
   const root = createRoot(container);
   mounted.push(root);
   await act(async () =>
-    root.render(<ComposeEmail seed={seed} accounts={[]} connectionId="c1" onClose={onClose} />),
+    root.render(
+      <ComposeEmail seed={seed} accounts={[]} connectionId="c1" draft={draft} onClose={onClose} />,
+    ),
   );
   return { container, root };
 }
@@ -143,6 +145,14 @@ it("seeds a reply-all with chips, shows Cc only because it has addresses, and ke
   expect(field("Bcc")).toBeNull();
   const quote = document.querySelector("blockquote");
   expect(quote?.textContent).toContain("quoted line");
+});
+
+it("starts a reply with the agent's draft above the quoted original", async () => {
+  await open(reply("reply"), () => {}, "Hi Sam,\n\nThe split makes it 4,600.");
+  const text = document.querySelector(".ProseMirror")?.textContent ?? "";
+  expect(text).toContain("The split makes it 4,600.");
+  expect(text.indexOf("4,600")).toBeLessThan(text.indexOf("quoted line"));
+  expect(document.querySelector("blockquote")?.textContent).toContain("quoted line");
 });
 
 it("starts a forward in the To field", async () => {

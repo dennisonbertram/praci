@@ -3,9 +3,9 @@ import {
   isCartaAgentSpawnKey,
   isDataRoomAgentSpawnKey,
   isFinanceAgentSpawnKey,
-  isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
   isLegalAgentSpawnKey,
+  isMailAgentSpawnKey,
   isVoiceAgentSpawnKey,
 } from "@rakazo/contracts";
 
@@ -37,6 +37,17 @@ export type ConnectionAccessRow = {
   botAccess: { botId: string }[];
 };
 
+/**
+ * What an external bot sees of the connection rows: "all agents" does not reach it, only an
+ * explicit access row does. Every place that reads connection rows for a run applies this.
+ */
+export function connectionRowsForAudience<T extends { allAgents: boolean }>(
+  rows: T[],
+  audience: string | null | undefined,
+): T[] {
+  return audience === "external" ? rows.map((row) => ({ ...row, allAgents: false })) : rows;
+}
+
 /** A connection limited to chosen agents is usable only by a bot with an access row. */
 export function botMayUseConnection(row: {
   allAgents: boolean;
@@ -48,7 +59,7 @@ export function botMayUseConnection(row: {
 /** Whether the bot works with Composio, Pipedream and other connector tools at all. */
 export function botUsesConnectorTools(spawnKey: string | null | undefined): boolean {
   return !(
-    isInboxAgentSpawnKey(spawnKey) ||
+    isMailAgentSpawnKey(spawnKey) ||
     isFinanceAgentSpawnKey(spawnKey) ||
     isLegalAgentSpawnKey(spawnKey) ||
     isDataRoomAgentSpawnKey(spawnKey) ||
@@ -71,8 +82,8 @@ export function botCanReachConnection(
   // A connected-app agent works on its own linked connection only; a Calendar or Drive agent
   // uses the built-in tools of that one native Google account.
   if (row.agentBotId === bot.id && bot.spawnKey === integrationAgentSpawnKey(row.id)) return true;
-  // The Inbox agent reads every Gmail account with the built-in mail tools, whatever the connector.
-  if (row.provider?.toLowerCase() === "gmail" && isInboxAgentSpawnKey(bot.spawnKey)) return true;
+  // The Inbox agent and an email's own agent read every Gmail account with the built-in mail tools, whatever the connector.
+  if (row.provider?.toLowerCase() === "gmail" && isMailAgentSpawnKey(bot.spawnKey)) return true;
   return row.connectorId === "google"
     ? botUsesNativeGoogle(bot.spawnKey)
     : botUsesConnectorTools(bot.spawnKey);
@@ -123,15 +134,18 @@ export type EffectiveAccess = { shared: "all" | "some" | "none"; botIds: string[
  */
 export function effectiveAccessByConnection(
   rows: ConnectionAccessRow[],
-  bots: { id: string; spawnKey: string | null; archivedAt: Date | null }[],
+  bots: { id: string; spawnKey: string | null; archivedAt: Date | null; audience?: string }[],
 ): Record<string, EffectiveAccess> {
   const active = bots.filter((bot) => !bot.archivedAt);
   const usable = new Map<string, string[]>(rows.map((row) => [row.id, []]));
   for (const bot of active) {
-    const own = rows.map((row) => ({
-      ...row,
-      botAccess: row.botAccess.filter((entry) => entry.botId === bot.id),
-    }));
+    const own = connectionRowsForAudience(
+      rows.map((row) => ({
+        ...row,
+        botAccess: row.botAccess.filter((entry) => entry.botId === bot.id),
+      })),
+      bot.audience,
+    );
     const denied = deniedConnectionIds(own);
     for (const row of own) {
       if (row.status !== "connected" || !botCanReachConnection(bot, row)) continue;

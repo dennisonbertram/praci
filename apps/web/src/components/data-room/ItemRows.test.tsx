@@ -580,3 +580,26 @@ it("shows why a failed file failed, and where it is, on its grid tile", async ()
     "Legal",
   );
 });
+
+it("ticks a row from its checkbox or the x key without opening the preview", () => {
+  const rows = [item("a", null), item("b", null)].map((i) => ({ item: i, snippets: [] }));
+  const onCheck = vi.fn();
+  const onToggle = vi.fn();
+  act(() =>
+    root.render(
+      <ListView rows={rows} o={{ ...o(), onCheck, onToggle, checked: new Set(["b"]) }} />,
+    ),
+  );
+  const boxes = Array.from(container.querySelectorAll<HTMLElement>('[role="checkbox"]'));
+  expect(boxes.map((box) => box.getAttribute("aria-checked"))).toEqual(["false", "true"]);
+  act(() => boxes[0]?.click());
+  expect(onCheck).toHaveBeenCalledTimes(1);
+  expect(onToggle).not.toHaveBeenCalled();
+  const row = container.querySelector<HTMLElement>("[data-row]");
+  act(() => {
+    row?.dispatchEvent(new KeyboardEvent("keydown", { key: "x", bubbles: true }));
+  });
+  expect(onCheck).toHaveBeenCalledTimes(2);
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  expect(container.querySelector('[role="checkbox"]')).toBeNull();
+});

@@ -363,6 +363,10 @@ msgstr "{count} days"
 msgid "{count} months"
 msgstr "{count} months"
 
+#: src/components/data-room/SelectionBar.tsx
+msgid "{count} selected"
+msgstr "{count} selected"
+
 #: src/lib/billing.ts
 msgid "{count} weeks"
 msgstr "{count} weeks"
@@ -1485,6 +1489,10 @@ msgstr "Attachments can't be over {MAX_COMPOSE_ATTACHMENT_MB} MB."
 msgid "Attachments: {0}"
 msgstr "Attachments: {0}"
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Audience"
+msgstr "Audience"
+
 #: src/components/ContactDialog.tsx
 msgid "Auditor"
 msgstr "Auditor"
@@ -1864,6 +1872,10 @@ msgstr "Call Elio"
 msgid "Callback URL"
 msgstr "Callback URL"
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Can message"
+msgstr "Can message"
+
 #: src/App.tsx
 msgid "Can't reach the server."
 msgstr "Can't reach the server."
@@ -2228,6 +2240,10 @@ msgstr "Clear formatting"
 msgid "Clear search"
 msgstr "Clear search"
 
+#: src/components/data-room/SelectionBar.tsx
+msgid "Clear selection"
+msgstr "Clear selection"
+
 #: src/pages/shell/dialogs.tsx
 msgid "Clearing…"
 msgstr "Clearing…"
@@ -2266,6 +2282,10 @@ msgstr "Close"
 #: src/components/computer/ComputerWorkspace.tsx
 msgid "Close {title}"
 msgstr "Close {title}"
+
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Close agent"
+msgstr "Close agent"
 
 #: src/components/ComposeEmail.tsx
 msgid "Close and remove"
@@ -2435,6 +2455,10 @@ msgstr "Compose"
 msgid "Computer"
 msgstr "Computer"
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Computer and browser"
+msgstr "Computer and browser"
+
 #: src/pages/Shell.tsx
 msgid "Computer and routines"
 msgstr "Computer and routines"
@@ -2596,6 +2620,10 @@ msgstr "Connect Executor"
 #: src/pages/Inbox.tsx
 msgid "Connect Gmail to read, sort and answer your mail here."
 msgstr "Connect Gmail to read, sort and answer your mail here."
+
+#: src/pages/DataRoom.tsx
+msgid "Connect Gmail to send files"
+msgstr "Connect Gmail to send files"
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Connect Gmail, Calendar and other apps so agents can read your mail and files."
@@ -2947,6 +2975,11 @@ msgstr "Could not dismiss"
 #: src/pages/shell/message-cards.tsx
 msgid "Could not dismiss this server"
 msgstr "Could not dismiss this server"
+
+#. placeholder {0}: failed.join(", ")
+#: src/pages/DataRoom.tsx
+msgid "Could not download {0}"
+msgstr "Could not download {0}"
 
 #. placeholder {0}: props.name
 #: src/components/ArtifactFileCard.tsx
@@ -3928,6 +3961,7 @@ msgstr "Done"
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/PreviewActions.tsx
+#: src/components/data-room/SelectionBar.tsx
 #: src/components/DataExport.tsx
 #: src/components/inbox/MailAttachments.tsx
 #: src/pages/Artifacts.tsx
@@ -4267,6 +4301,11 @@ msgstr "Export my data"
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Export this week's list from the CRM and drop it in the shared folder"
 msgstr "Export this week's list from the CRM and drop it in the shared folder"
+
+#: src/components/BotAudienceTag.tsx
+#: src/pages/shell/bot-panel.tsx
+msgid "External"
+msgstr "External"
 
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -4990,6 +5029,10 @@ msgstr "Integration options"
 #: src/pages/Shell.tsx
 msgid "Integrations"
 msgstr "Integrations"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Internal"
+msgstr "Internal"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
@@ -6363,6 +6406,11 @@ msgstr "Not a valid email address"
 msgid "Not attached, over the {MAX_COMPOSE_ATTACHMENT_MB} MB limit: {leftOutNames}. Download it from the original to share it another way."
 msgstr "Not attached, over the {MAX_COMPOSE_ATTACHMENT_MB} MB limit: {leftOutNames}. Download it from the original to share it another way."
 
+#. placeholder {0}: failed.join(", ")
+#: src/pages/DataRoom.tsx
+msgid "Not attached: {0}"
+msgstr "Not attached: {0}"
+
 #: src/components/data-room/FilterBar.tsx
 msgid "Not checked"
 msgstr "Not checked"
@@ -6564,6 +6612,8 @@ msgid "Open {0}"
 msgstr "Open {0}"
 
 #. placeholder {0}: active.name
+#. placeholder {0}: bot.name
+#: src/components/inbox/EmailAgentPanel.tsx
 #: src/pages/Shell.tsx
 msgid "Open {0} full screen"
 msgstr "Open {0} full screen"
@@ -6622,6 +6672,7 @@ msgstr "Open Finance"
 msgid "Open folder"
 msgstr "Open folder"
 
+#: src/components/inbox/EmailAgentPanel.tsx
 #: src/pages/Shell.tsx
 msgid "Open full screen"
 msgstr "Open full screen"
@@ -7673,6 +7724,10 @@ msgstr "Reply all"
 msgid "Reply cancelled"
 msgstr "Reply cancelled"
 
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Reply with draft"
+msgstr "Reply with draft"
+
 #. placeholder {0}: replyNameRef.current
 #: src/pages/shell/composer.tsx
 msgid "Replying to {0}"
@@ -8199,10 +8254,11 @@ msgid "Select"
 msgstr "Select"
 
 #. placeholder {0}: file.name
+#. placeholder {0}: item.name
 #. placeholder {0}: row.subject
-#. placeholder {0}: sender.name
 #: src/components/data-room/DriveRow.tsx
 #: src/components/data-room/ImportFromEmail.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "Select {0}"
 msgstr "Select {0}"
@@ -8228,6 +8284,7 @@ msgid "Self-custody"
 msgstr "Self-custody"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/data-room/SelectionBar.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/MailApprovalCard.tsx
@@ -8859,6 +8916,11 @@ msgstr "Steps"
 msgid "Steps to follow"
 msgstr "Steps to follow"
 
+#. placeholder {0}: grantedConnections.join(", ")
+#: src/pages/shell/bot-panel.tsx
+msgid "Still has access to: {0}"
+msgstr "Still has access to: {0}"
+
 #: src/components/ShellSkeleton.tsx
 msgid "Still opening…"
 msgstr "Still opening…"
@@ -8983,6 +9045,10 @@ msgstr "Take control"
 #: src/pages/Shell.tsx
 msgid "Take the tour"
 msgstr "Take the tour"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Talks to people outside your company. Private tools are turned off."
+msgstr "Talks to people outside your company. Private tools are turned off."
 
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
