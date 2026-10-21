@@ -397,7 +397,13 @@ function Overview({
   const quarter = Math.floor((Number(totals.start.slice(5, 7)) - 1) / 3) + 1;
   const year = totals.start.slice(0, 4);
   const soFar =
-    period === "quarter" ? t`Q${quarter} so far` : period === "year" ? t`${year} so far` : null;
+    period === "quarter"
+      ? t`Q${quarter} so far`
+      : period === "year"
+        ? t`${year} so far`
+        : period === "month"
+          ? t`Spent so far this month`
+          : null;
   const previousRange = range({ start: totals.previousStart, end: totals.previousEnd });
   const bars = data.cashSeries[period];
   const barGranularity = BAR_GRANULARITY[period];
@@ -599,7 +605,11 @@ function Overview({
                 {money(totals.currentCents)}
               </Link>
               <span className="text-[11px] text-muted-foreground">
-                {soFar ? t`${soFar} · spent ${spentRange}` : t`Spent ${spentRange}`}
+                {soFar
+                  ? period === "month"
+                    ? t`${soFar} · ${spentRange}`
+                    : t`${soFar} · spent ${spentRange}`
+                  : t`Spent ${spentRange}`}
                 {sameAsBefore(totals) ? null : (
                   <>
                     {" · "}
@@ -905,7 +915,7 @@ function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }
   useHideAmounts();
   const rowProps = useRowNavigate();
   return (
-    <Table compact>
+    <Table compact className="max-w-3xl">
       <TableHeader>
         <TableHeadRow>
           <TableHead>
@@ -945,7 +955,10 @@ function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }
                   {sub.name}
                 </HereLink>
                 {sub.overlapGroup ? (
-                  <span className="ms-1.5 rounded-full border border-border px-1.5 text-[10px] font-normal text-muted-foreground">
+                  <span
+                    title={t`Does a similar job to another subscription`}
+                    className="ms-1.5 rounded-full border border-border px-1.5 text-[10px] font-normal text-muted-foreground"
+                  >
                     <Trans>overlaps</Trans>
                   </span>
                 ) : null}
@@ -960,7 +973,7 @@ function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }
               </TableCell>
               <TableCell className="text-end tabular-nums">{money(sub.monthlyCents)}</TableCell>
               <TableCell className="hidden w-[90px] whitespace-nowrap text-end tabular-nums text-muted-foreground @md:table-cell">
-                {trendText(sub.trendCents) ?? "—"}
+                {trendText(sub.trendCents)}
               </TableCell>
               <TableCell className="hidden whitespace-nowrap text-end text-muted-foreground @md:table-cell">
                 {shortDay(sub.lastChargeAt)}

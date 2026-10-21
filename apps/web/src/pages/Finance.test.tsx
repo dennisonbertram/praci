@@ -145,7 +145,7 @@ const connectedOverview = (over: Partial<FinanceOverview> = {}): FinanceOverview
         key: "acme-hosting",
         name: "Acme Hosting",
         monthlyCents: 50_000,
-        trendCents: [40_000, 45_000, 50_000],
+        trendCents: [40_000, 40_000, 45_000, 50_000],
         lastChargeAt: "2026-10-01T00:00:00.000Z",
         overlapGroup: null,
         paidWith: [{ provider: "brex", kind: "card", name: "Card", lastFour: "0001" }],
@@ -412,7 +412,7 @@ it("hides Cash and Runway when only Brex is connected, and still shows spend", a
   expect(container.querySelector('a[href="/app/finance/runway"]')).toBeNull();
   expect(container.textContent).not.toContain("Runway");
   expect(container.textContent).not.toContain("Cash");
-  expect(container.textContent).toContain("Spent Oct 1");
+  expect(container.textContent).toContain("Spent so far this month · Oct 1");
   expect(container.textContent).toContain("Monthly burn");
   expect(container.textContent).toContain("Add Mercury");
 });

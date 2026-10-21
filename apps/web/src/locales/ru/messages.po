@@ -500,6 +500,10 @@ msgid "{service} agent"
 msgstr ""
 
 #: src/pages/Finance.tsx
+msgid "{soFar} · {spentRange}"
+msgstr ""
+
+#: src/pages/Finance.tsx
 msgid "{soFar} · spent {spentRange}"
 msgstr ""
 
@@ -1006,10 +1010,6 @@ msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Allow access below first."
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -3743,6 +3743,10 @@ msgstr ""
 msgid "Documents over time"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Does a similar job to another subscription"
+msgstr ""
+
 #: src/components/finance/CountCryptoButton.tsx
 msgid "Don't count crypto"
 msgstr ""
@@ -4935,11 +4939,11 @@ msgid "Last run failed."
 msgstr ""
 
 #: src/pages/Legal.tsx
-msgid "Last scan {lastScan}. Daily scan paused."
+msgid "Last scan {lastScan}"
 msgstr ""
 
 #: src/pages/Legal.tsx
-msgid "Last scan {lastScan}. Daily scans wait until you allow access."
+msgid "Last scan {lastScan}. Daily scan paused."
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -5708,10 +5712,6 @@ msgstr ""
 msgid "Needs input"
 msgstr "Требуется ввод данных"
 
-#: src/pages/Legal.tsx
-msgid "Needs Muse Spark 1.2."
-msgstr ""
-
 #: src/components/integrations/parts.tsx
 msgid "Needs reconnect"
 msgstr ""
@@ -5733,10 +5733,6 @@ msgstr "Требуется передача управления"
 #: src/pages/Shell.tsx
 msgid "Needs you"
 msgstr "Требуется ваше участие"
-
-#: src/pages/Legal.tsx
-msgid "Needs your OpenRouter key."
-msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -8509,6 +8505,10 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Spent {spentRange}"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Spent so far this month"
 msgstr ""
 
 #: src/components/FinanceCards.tsx
