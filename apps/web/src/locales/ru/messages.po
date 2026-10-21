@@ -500,6 +500,10 @@ msgid "{service} agent"
 msgstr ""
 
 #: src/pages/Finance.tsx
+msgid "{soFar} · {spentRange}"
+msgstr ""
+
+#: src/pages/Finance.tsx
 msgid "{soFar} · spent {spentRange}"
 msgstr ""
 
@@ -878,7 +882,6 @@ msgstr ""
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -1008,10 +1011,6 @@ msgstr ""
 msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr ""
 
-#: src/pages/Legal.tsx
-msgid "Allow access below first."
-msgstr ""
-
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Allow changes"
@@ -1116,10 +1115,6 @@ msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
 msgid "Amounts"
-msgstr ""
-
-#: src/components/HideAmountsToggle.tsx
-msgid "Amounts are hidden: money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show. A reply you write keeps the original amounts."
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -1639,6 +1634,10 @@ msgstr "Экран бота"
 msgid "Bot screen preview"
 msgstr "Предварительный просмотр экрана бота"
 
+#: src/pages/BotContextMenu.tsx
+msgid "Bot settings"
+msgstr ""
+
 #: src/pages/IntegrationSetup.tsx
 msgid "Bot that gets the apps you connect here"
 msgstr ""
@@ -1718,6 +1717,11 @@ msgstr ""
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "Встроенный"
+
+#. placeholder {0}: builtins.length
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Built-in skills ({0})"
+msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
 msgid "Bulleted list"
@@ -2443,6 +2447,10 @@ msgstr ""
 msgid "Connect a provider to add backups."
 msgstr "Подключите провайдера, чтобы добавить резервные модели."
 
+#: src/pages/Shell.tsx
+msgid "Connect a voice provider to call Elio."
+msgstr ""
+
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Connect Alchemy"
@@ -2457,6 +2465,7 @@ msgid "Connect API key"
 msgstr "Подключить API-ключ"
 
 #: src/components/ConnectAppsButton.tsx
+#: src/components/tour/FirstRunTour.tsx
 msgid "Connect apps"
 msgstr ""
 
@@ -2485,7 +2494,7 @@ msgid "Connect MCP server “{name}”"
 msgstr "Подключите MCP-сервер «{name}»"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Connect the apps you already use."
+msgid "Connect the apps you already use, so agents can work with your mail and files."
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -2573,7 +2582,6 @@ msgid "Contacts are your address book. They do not change Carta."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Context limit"
 msgstr ""
 
@@ -3470,7 +3478,6 @@ msgid "Decline"
 msgstr "Отклонить"
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Default"
 msgstr "По умолчанию"
@@ -3481,9 +3488,7 @@ msgstr "По умолчанию"
 msgid "Default ({0})"
 msgstr "По умолчанию ({0})"
 
-#. placeholder {0}: thinkingLevelLabel("medium")
 #. placeholder {0}: thinkingLevelLabel(defaultThinkingLevel)
-#: src/pages/Onboarding.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Default ({0})"
@@ -3741,6 +3746,10 @@ msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
 msgid "Documents over time"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Does a similar job to another subscription"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
@@ -4114,7 +4123,6 @@ msgid "External conversation"
 msgstr "Внешний диалог"
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Extra high"
 msgstr "Очень высокий"
 
@@ -4156,6 +4164,10 @@ msgstr "Обработка сбоев"
 msgid "Fee"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Fetching…"
+msgstr ""
+
 #: src/pages/SpaceSearch.tsx
 msgid "File"
 msgstr ""
@@ -4180,6 +4192,10 @@ msgstr ""
 #: src/components/data-room/FilterBar.tsx
 #: src/components/ListControls.tsx
 msgid "Filter by {label}"
+msgstr ""
+
+#: src/pages/Artifacts.tsx
+msgid "Filter by bot"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -4557,13 +4573,8 @@ msgstr "Скрыть расшифровку"
 msgid "Hides money amounts in finance, chat and email."
 msgstr ""
 
-#: src/components/HideAmountsToggle.tsx
-msgid "Hides money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show. A reply you write keeps the original amounts."
-msgstr ""
-
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "High"
 msgstr "Высокий"
 
@@ -4935,11 +4946,11 @@ msgid "Last run failed."
 msgstr ""
 
 #: src/pages/Legal.tsx
-msgid "Last scan {lastScan}. Daily scan paused."
+msgid "Last scan {lastScan}"
 msgstr ""
 
 #: src/pages/Legal.tsx
-msgid "Last scan {lastScan}. Daily scans wait until you allow access."
+msgid "Last scan {lastScan}. Daily scan paused."
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -5183,7 +5194,6 @@ msgstr ""
 
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Low"
 msgstr "Низкий"
 
@@ -5319,7 +5329,6 @@ msgid "Marked unread"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Max"
 msgstr "Макс"
 
@@ -5333,7 +5342,6 @@ msgid "Maximize"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Maximum images per request"
 msgstr ""
 
@@ -5342,7 +5350,6 @@ msgid "Maximum of 10 backup models."
 msgstr "Можно добавить не более 10 резервных моделей."
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Maximum output tokens"
 msgstr ""
 
@@ -5351,7 +5358,6 @@ msgid "MCP endpoint"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Medium"
 msgstr "Средний"
 
@@ -5456,7 +5462,6 @@ msgid "Microphone failed"
 msgstr "Ошибка микрофона"
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Minimal"
 msgstr "Минимальный"
 
@@ -5708,10 +5713,6 @@ msgstr ""
 msgid "Needs input"
 msgstr "Требуется ввод данных"
 
-#: src/pages/Legal.tsx
-msgid "Needs Muse Spark 1.2."
-msgstr ""
-
 #: src/components/integrations/parts.tsx
 msgid "Needs reconnect"
 msgstr ""
@@ -5733,10 +5734,6 @@ msgstr "Требуется передача управления"
 #: src/pages/Shell.tsx
 msgid "Needs you"
 msgstr "Требуется ваше участие"
-
-#: src/pages/Legal.tsx
-msgid "Needs your OpenRouter key."
-msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -7065,7 +7062,6 @@ msgid "Ready until {0}"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Reasoning effort"
 msgstr ""
 
@@ -8098,7 +8094,6 @@ msgid "Set up app catalog"
 msgstr ""
 
 #: src/components/call/CallCard.tsx
-#: src/pages/BotContextMenu.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -8106,7 +8101,7 @@ msgid "Settings"
 msgstr "Настройки"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Settings, backups and Export my data are here, and so is Take the tour."
+msgid "Settings, Export my data and Take the tour are in your account menu."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -8511,6 +8506,10 @@ msgstr ""
 msgid "Spent {spentRange}"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Spent so far this month"
+msgstr ""
+
 #: src/components/FinanceCards.tsx
 msgid "Spent this month"
 msgstr ""
@@ -8600,6 +8599,10 @@ msgstr ""
 msgid "Steps"
 msgstr "Шаги"
 
+#: src/components/ShellSkeleton.tsx
+msgid "Still opening…"
+msgstr ""
+
 #: src/pages/shell/transcript.tsx
 msgid "Still waiting on {service}"
 msgstr ""
@@ -8680,12 +8683,10 @@ msgid "Summarize what's new this week"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Supports images"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Supports thinking"
 msgstr "Поддерживает рассуждения"
 
@@ -8949,7 +8950,6 @@ msgid "These saved settings can't be read. Remove it and add it again."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/transcript.tsx
@@ -9283,6 +9283,7 @@ msgstr ""
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
+#: src/components/ShellSkeleton.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
@@ -9588,7 +9589,7 @@ msgstr ""
 msgid "Usage"
 msgstr "Использование"
 
-#. placeholder {0}: entry.name
+#. placeholder {0}: label.title
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Use {0}"
 msgstr ""

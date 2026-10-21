@@ -88,7 +88,7 @@ export function FolderDocuments({ folderPath }: { folderPath: string[] }) {
                   {typeLabel(item.facets.docType)}
                 </TableCell>
                 <TableCell className="pe-0 text-end text-muted-foreground">
-                  {dateText(item.createdAt)}
+                  {dateText(item.createdAt, true)}
                 </TableCell>
               </TableRow>
             );

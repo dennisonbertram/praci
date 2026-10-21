@@ -18,12 +18,18 @@ export function attentionFromDto(n: NotificationDto): AttentionNotification {
   };
 }
 
-/** A run failure for the chat on screen: the composer error already shows it, so no toast repeats it. */
-export function failureShownInOpenChat(
+/**
+ * A run result for the chat on screen: the composer error or the reply already shows it, so no
+ * toast repeats it. A finished run only counts while the tab is in front; otherwise the person is
+ * away and still wants the alert.
+ */
+export function resultShownInOpenChat(
   n: Pick<NotificationDto, "botId" | "kind">,
   openBotId: string | undefined,
+  tabInFront: boolean,
 ): boolean {
-  return n.kind === "failed" && Boolean(openBotId) && n.botId === openBotId;
+  if (!openBotId || n.botId !== openBotId) return false;
+  return n.kind === "failed" || (n.kind === "done" && tabInFront);
 }
 
 /** An `attention` notification; `info` only puts a dot on the sidebar and never reaches here. */

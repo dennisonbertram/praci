@@ -26,7 +26,7 @@ function Sidebar({ without = [] }: { without?: string[] }) {
           +
         </button>
       </div>
-      <div data-sidebar-group="main" className="my-2 rounded-xl bg-card p-2 text-sm">
+      <div data-tour="sidebar-chat" className="my-2 rounded-xl bg-card p-2 text-sm">
         Chief
       </div>
       {ids.filter(has).map((id) => (
@@ -49,7 +49,7 @@ function Sidebar({ without = [] }: { without?: string[] }) {
 const meta = {
   title: "Tour/First-run tour",
   component: FirstRunTour,
-  args: { open: true, onClose: fn() },
+  args: { open: true, onClose: fn(), onConnectApps: fn() },
   beforeEach: () => mockRpc({ "preferences.update": (): Me => ({ ...mockMe, tourSeen: true }) }),
   render: (args) => (
     <>
