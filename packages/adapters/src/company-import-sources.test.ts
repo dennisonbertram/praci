@@ -163,6 +163,182 @@ describe("company source worker", () => {
     );
   });
 
+  it("bounds oversized multibyte data-room text and records a truncation cursor", async () => {
+    const text = "界界界";
+    const itemFindFirst = vi.fn(async () => ({
+      id: "item-1",
+      name: "brief",
+      docType: null,
+      docDate: null,
+      parties: [],
+      summary: null,
+      sourceUrl: null,
+      status: "ready",
+    }));
+    const textFindFirst = vi.fn(async () => ({ text }));
+    const relevant = vi.fn(async () => true);
+    const extract = vi.fn(async (document: { title: string; text: string }) => ({
+      extraction: {
+        entities: [
+          {
+            ref: "subject",
+            entity: {
+              kind: "person" as const,
+              displayName: "Subject",
+              attrs: {},
+              confidence: 0.9,
+            },
+            quote: document.text,
+          },
+        ],
+        edges: [],
+        events: [],
+      },
+      model: { provider: "scripted", model: "bounded" },
+    }));
+    const worker = createCompanySourceWorker({
+      prisma: prisma({
+        dataRoomItem: { findMany: vi.fn(), findFirst: itemFindFirst },
+        dataRoomItemText: { findFirst: textFindFirst },
+      }),
+      extractor: { relevant, extract },
+    });
+
+    const page = await worker.read(
+      {
+        source: {
+          id: "source-1",
+          sourceKind: "data_room",
+          connectionId: null,
+          scope: { itemIds: ["item-1"] },
+        },
+        unitKey: "data_room:item-1",
+        cursor: { itemId: "item-1" },
+        maxBytes: 10,
+      },
+      context(),
+    );
+
+    expect(page.items[0]).toMatchObject({
+      content: "brief\n界",
+      contentHash: expect.any(String),
+    });
+    expect(Buffer.byteLength(page.items[0]!.content)).toBeLessThanOrEqual(10);
+    expect(page.nextCursor).toEqual({ itemId: "item-1", truncated: true });
+    expect(extract).toHaveBeenCalledWith(
+      { id: "item-1", title: "brief", text: "界", snippet: "\n界界界", sourceUrl: null },
+      expect.anything(),
+    );
+  });
+
+  it("marks reused and irrelevant truncated documents as complete with a cursor marker", async () => {
+    const itemFindFirst = vi.fn(async () => ({
+      id: "item-1",
+      name: "brief",
+      docType: null,
+      docDate: null,
+      parties: [],
+      summary: null,
+      sourceUrl: null,
+      status: "ready",
+    }));
+    const textFindFirst = vi.fn(async () => ({ text: "source text" }));
+    const evidenceFindMany = vi
+      .fn()
+      .mockResolvedValueOnce([{ id: "evidence-1" }])
+      .mockResolvedValueOnce([]);
+    const relevant = vi.fn(async () => false);
+    const worker = createCompanySourceWorker({
+      prisma: prisma({
+        dataRoomItem: { findMany: vi.fn(), findFirst: itemFindFirst },
+        dataRoomItemText: { findFirst: textFindFirst },
+        companyEvidence: { findMany: evidenceFindMany },
+      }),
+      extractor: { relevant, extract: vi.fn() },
+    });
+    const input = {
+      source: {
+        id: "source-1",
+        sourceKind: "data_room" as const,
+        connectionId: null,
+        scope: { itemIds: ["item-1"] },
+      },
+      unitKey: "data_room:item-1",
+      cursor: { itemId: "item-1" },
+      maxBytes: 10,
+    };
+
+    const reused = await worker.read(input, context());
+    const irrelevant = await worker.read({ ...input, cursor: reused.nextCursor }, context());
+
+    expect(reused.nextCursor).toEqual({ itemId: "item-1", truncated: true });
+    expect(reused.reusedEvidenceIds).toEqual(["evidence-1"]);
+    expect(irrelevant.nextCursor).toEqual({ itemId: "item-1", truncated: true });
+    expect(irrelevant.extractions).toBeUndefined();
+    expect(relevant).toHaveBeenCalledTimes(1);
+  });
+
+  it("extracts usable Gmail plain text when the provider flags HTML truncation", async () => {
+    const relevant = vi.fn(async () => true);
+    const extract = vi.fn(async (document: { title: string; text: string }) => ({
+      extraction: {
+        entities: [
+          {
+            ref: "subject",
+            entity: {
+              kind: "person" as const,
+              displayName: "Subject",
+              attrs: {},
+              confidence: 0.9,
+            },
+            quote: document.text,
+          },
+        ],
+        edges: [],
+        events: [],
+      },
+      model: { provider: "scripted", model: "gmail-truncated" },
+    }));
+    const worker = createCompanySourceWorker({
+      prisma: prisma({
+        companyEvidence: { findMany: vi.fn(async () => []) },
+      }),
+      mail: {
+        listMessages: vi.fn(async () => ({ messages: [summary("m-1")] })),
+        getMessage: vi.fn(async () => ({
+          subject: "Northwind",
+          text: "Usable plain text.",
+          html: "<div>truncated",
+          threadId: "thread-m-1",
+          truncated: true,
+        })),
+      } as unknown as MailProvider,
+      extractor: { relevant, extract },
+    });
+
+    const page = await worker.read(
+      {
+        source: {
+          id: "source-1",
+          sourceKind: "gmail",
+          connectionId: "connection-1",
+          scope: { allTime: true },
+        },
+        unitKey: "gmail:m-1",
+        cursor: { itemId: "m-1" },
+        maxBytes: 1_000,
+      },
+      context(),
+    );
+
+    expect(page.nextCursor).toEqual({ itemId: "m-1", truncated: true });
+    expect(page.items[0]!.content).toBe("Northwind\nUsable plain text.");
+    expect(extract).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Northwind", text: "Usable plain text." }),
+      expect.anything(),
+    );
+  });
+
   it("continues a partially hydrated Gmail page using only IDs and page tokens", async () => {
     const listMessages = vi
       .fn<MailProvider["listMessages"]>()

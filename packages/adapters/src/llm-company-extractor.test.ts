@@ -1,10 +1,17 @@
 import type { CompanyImportWorkerContext } from "@rakazo/adapter-kit";
 import { describe, expect, it } from "vitest";
-import { skipCompanyMail, validateCompanyExtraction } from "./company-extraction-safety.js";
+import {
+  prepareCompanyDocument,
+  skipCompanyMail,
+  validateCompanyExtraction,
+} from "./company-extraction-safety.js";
 import type { CompanyCompletion, CompanyCompletionRequest } from "./llm-company-extractor.js";
 import { LlmCompanyExtractor } from "./llm-company-extractor.js";
 
-const document = { title: "Appointment", text: "Avery Chen joins Northwind Robotics as CTO." };
+const document = {
+  title: "Appointment",
+  text: "Avery Chen joins Northwind Robotics as CTO. Avery's work email is avery@northwind.example.",
+};
 const extraction = {
   entities: [
     {
@@ -121,6 +128,98 @@ describe("company extraction safety", () => {
         document,
       ),
     ).toThrow();
+  });
+
+  it("rejects personal, unlabeled, and hallucinated email addresses", () => {
+    const personal = {
+      title: "Appointment",
+      text: "Avery Chen joins Northwind Robotics. Avery's personal email is avery@gmail.com.",
+    };
+    const personalExtraction = {
+      ...extraction,
+      entities: [
+        {
+          ...extraction.entities[0],
+          entity: {
+            ...extraction.entities[0]!.entity,
+            attrs: { workEmails: ["avery@gmail.com"] },
+          },
+          quote: "Avery Chen joins Northwind Robotics.",
+        },
+      ],
+    };
+    expect(() => validateCompanyExtraction(personalExtraction, personal)).toThrow(
+      "company_extraction_unverified_email",
+    );
+
+    const unlabeled = {
+      title: "Appointment",
+      text: "Avery Chen joins Northwind Robotics. Contact: avery@northwind.example.",
+    };
+    expect(() => validateCompanyExtraction(extraction, unlabeled)).toThrow(
+      "company_extraction_unverified_email",
+    );
+    expect(() =>
+      validateCompanyExtraction(
+        {
+          ...extraction,
+          entities: [
+            {
+              ...extraction.entities[0],
+              entity: {
+                ...extraction.entities[0]!.entity,
+                attrs: { workEmails: ["other@northwind.example"] },
+              },
+            },
+          ],
+        },
+        document,
+      ),
+    ).toThrow("company_extraction_unverified_email");
+  });
+
+  it("permits an explicitly labeled public-mail work address and rejects private lines", () => {
+    const publicWork = {
+      title: "Appointment",
+      text: "Avery Chen joins Northwind Robotics. Company email address: avery@gmail.com.",
+    };
+    const publicExtraction = {
+      ...extraction,
+      entities: [
+        {
+          ...extraction.entities[0],
+          quote: "Avery Chen joins Northwind Robotics.",
+          entity: {
+            ...extraction.entities[0]!.entity,
+            attrs: { workEmails: ["avery@gmail.com"] },
+          },
+        },
+      ],
+    };
+    expect(validateCompanyExtraction(publicExtraction, publicWork)).toEqual(publicExtraction);
+
+    const privateLine = {
+      title: "Appointment",
+      text: `${publicWork.text}\nAvery's personal email: avery@private.example.`,
+    };
+    expect(prepareCompanyDocument(privateLine).text).not.toContain("avery@private.example");
+    expect(() =>
+      validateCompanyExtraction(
+        {
+          ...publicExtraction,
+          entities: [
+            {
+              ...publicExtraction.entities[0],
+              entity: {
+                ...publicExtraction.entities[0]!.entity,
+                attrs: { workEmails: ["avery@private.example"] },
+              },
+            },
+          ],
+        },
+        privateLine,
+      ),
+    ).toThrow("company_extraction_unverified_email");
   });
 
   it("excludes instruction/private lines and lowers confidence on mixed untrusted documents", async () => {

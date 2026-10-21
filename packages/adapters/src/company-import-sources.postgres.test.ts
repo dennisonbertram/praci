@@ -23,7 +23,7 @@ const describePostgres =
   process.env.VERIFY_DATABASE && databaseUrl ? describe.sequential : describe.skip;
 
 const content =
-  "Avery Chen works at Northwind Robotics. Northwind Robotics raised a seed round in 2024.";
+  "Avery Chen works at Northwind Robotics. Avery's work email is avery@northwind.example. Northwind Robotics raised a seed round in 2024.";
 const extraction = {
   entities: [
     {

@@ -17,13 +17,35 @@ import { CompanyImportWorkerError } from "./company-import-engine.js";
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 const noFacts: CompanyImportReadPage = { items: [], facts: [], nextCursor: null, done: true };
-const itemCursor = z.strictObject({ itemId: z.string().min(1).max(300) });
+const itemCursor = z.strictObject({
+  itemId: z.string().min(1).max(300),
+  truncated: z.boolean().optional(),
+});
 const discoveryCursor = z.strictObject({
   afterId: z.string().optional(),
   pageToken: z.string().nullable().optional(),
   pendingIds: z.array(z.string()).max(100).optional(),
   nextPageToken: z.string().nullable().optional(),
 });
+const MAX_TITLE_BYTES = 1_024;
+
+type SourceDocument = {
+  id: string;
+  title: string;
+  text: string;
+  snippet: string;
+  sourceUrl?: string | null;
+  truncated?: boolean;
+};
+
+function utf8Prefix(value: string, maxBytes: number) {
+  if (maxBytes <= 0) return "";
+  const bytes = Buffer.from(value);
+  if (bytes.length <= maxBytes) return value;
+  let end = maxBytes;
+  while (end > 0 && (bytes[end]! & 0xc0) === 0x80) end--;
+  return bytes.subarray(0, end).toString();
+}
 
 /** Capture the default window once, before consent, rather than moving it on every retry. */
 export function companySourceScope(kind: string, raw: Record<string, unknown>, now = new Date()) {
@@ -107,19 +129,27 @@ export function createCompanySourceWorker(deps: {
   };
   const extract = async (
     source: CompanyImportSourceDescriptor,
-    document: {
-      id: string;
-      title: string;
-      text: string;
-      snippet: string;
-      sourceUrl?: string | null;
-    },
+    document: SourceDocument,
     maxBytes: number,
     context: CompanyImportWorkerContext,
   ): Promise<CompanyImportReadPage> => {
-    const content = `${document.title}\n${document.text}`;
-    if (Buffer.byteLength(content) > maxBytes)
-      throw new CompanyImportWorkerError("source_item_too_large");
+    const title = utf8Prefix(document.title, Math.min(MAX_TITLE_BYTES, Math.max(0, maxBytes)));
+    const separator = maxBytes > Buffer.byteLength(title) ? "\n" : "";
+    const text = utf8Prefix(
+      document.text,
+      Math.max(0, maxBytes - Buffer.byteLength(title) - Buffer.byteLength(separator)),
+    );
+    const extractionDocument = {
+      id: document.id,
+      title,
+      text,
+      snippet: document.snippet,
+      sourceUrl: document.sourceUrl,
+    };
+    const content = `${title}${separator}${text}`;
+    const truncated =
+      Boolean(document.truncated) || title !== document.title || text !== document.text;
+    const nextCursor = truncated ? { itemId: document.id, truncated: true } : null;
     const contentHash = hash(content);
     const items = [{ sourceItemId: document.id, contentHash, content }];
     const prior = await deps.prisma.companyEvidence.findMany({
@@ -133,17 +163,24 @@ export function createCompanySourceWorker(deps: {
       },
       select: { id: true },
     });
-    if (prior.length) return { ...noFacts, items, reusedEvidenceIds: prior.map((row) => row.id) };
+    if (prior.length)
+      return {
+        ...noFacts,
+        items,
+        nextCursor,
+        reusedEvidenceIds: prior.map((row) => row.id),
+      };
     if (
-      !document.text.trim() ||
-      !(await deps.extractor.relevant({ title: document.title, text: document.snippet }, context))
+      !text.trim() ||
+      !(await deps.extractor.relevant({ title, text: document.snippet }, context))
     )
-      return { ...noFacts, items };
-    const result = await deps.extractor.extract(document, context);
-    const extraction = validateCompanyExtraction(result.extraction, document);
+      return { ...noFacts, items, nextCursor };
+    const result = await deps.extractor.extract(extractionDocument, context);
+    const extraction = validateCompanyExtraction(result.extraction, extractionDocument);
     return {
       ...noFacts,
       items,
+      nextCursor,
       extractions: [
         {
           sourceItemId: document.id,
@@ -311,7 +348,6 @@ export function createCompanySourceWorker(deps: {
       )
         return noFacts;
       const full = await mail!.getMessage(account, itemId, contextFor(context));
-      if (full.truncated) throw new CompanyImportWorkerError("source_item_too_large");
       return extract(
         source,
         {
@@ -320,6 +356,7 @@ export function createCompanySourceWorker(deps: {
           text: full.text,
           snippet: message.snippet,
           sourceUrl: `https://mail.google.com/mail/u/0/#all/${encodeURIComponent(full.threadId)}`,
+          truncated: full.truncated,
         },
         maxBytes,
         context,
