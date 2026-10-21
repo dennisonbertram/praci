@@ -2,6 +2,7 @@ import { cartaAgentSpawnKey } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
   buildApprovalAskBlock,
+  describeApprovalAction,
   isIntegrationAgentWrite,
   mailRequestIsValid,
   normalizeMailEdits,
@@ -17,8 +18,8 @@ describe("buildApprovalAskBlock tool identity", () => {
   it("names the service, so two servers with the same tool get different titles", () => {
     const a = ask("mcp__finance-mercury__requestSendMoney", "Mercury");
     const b = ask("mcp__finance-other__requestSendMoney", "Other Bank");
-    expect(a.text).toBe("Review before Mercury: Request send money → 5");
-    expect(b.text).toBe("Review before Other Bank: Request send money → 5");
+    expect(a.text).toBe("Review before Mercury: Request send money → $5.00");
+    expect(b.text).toBe("Review before Other Bank: Request send money → $5.00");
   });
 
   it("always shows the exact fully qualified tool id in the detail", () => {
@@ -39,6 +40,38 @@ describe("buildApprovalAskBlock tool identity", () => {
       id: "always",
       label: "Always allow this tool",
     });
+  });
+});
+
+describe("describeApprovalAction money and generic tools", () => {
+  it("shows an amount with its currency symbol", () => {
+    expect(
+      describeApprovalAction(
+        "mcp__finance-mercury__requestSendMoney",
+        { amount: 1200, accountId: "chk-1" },
+        "Mercury",
+      ),
+    ).toBe("Mercury: Request send money → $1,200.00");
+    expect(describeApprovalAction("pay", { amount: "50", currency: "EUR" })).toContain("€50.00");
+  });
+
+  it("keeps hand-written titles", () => {
+    expect(describeApprovalAction("contacts_save", { name: "Ann" })).toBe("Save contact “Ann”");
+  });
+
+  it("folds raw integration arguments behind Details, but not a mail body", () => {
+    const write = buildApprovalAskBlock("e1", "mcp__m__x", { amount: 1 }, [], {
+      integrationWriteTool: "x",
+    });
+    const mail = buildApprovalAskBlock(
+      "e1",
+      "mail_send",
+      { to: ["a@b.test"], subject: "s", body: "b" },
+      [],
+      { fullMail: true },
+    );
+    expect(write.kind === "ask" && write.detailFolded).toBe(true);
+    expect(mail.kind === "ask" && mail.detailFolded).toBeFalsy();
   });
 });
 

@@ -39,7 +39,7 @@ test("connected app creates its agent and persists write and sharing controls", 
   await page.goto(appPath);
   const section = page.getByRole("region", { name: "Agent", exact: true });
   const writes = section.getByRole("switch", { name: "Allow changes in Notion" });
-  const share = section.getByRole("switch", { name: "Share with all agents" });
+  const share = section.getByRole("switch", { name: /Let other agents use/ });
   await expect(writes).not.toBeChecked();
   await expect(share).toBeChecked();
   await writes.click();

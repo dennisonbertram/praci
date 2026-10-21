@@ -16,8 +16,12 @@ describe("autoGroupFolderName", () => {
     expect(bot(dataRoomAgentSpawnKey("u"))).toBe("Workspace");
     expect(bot(cartaAgentSpawnKey("u"))).toBe("Workspace");
     expect(bot(integrationAgentSpawnKey("mercury"))).toBe("Apps");
-    expect(bot("onboarding:first")).toBe("Agents");
+    expect(bot("other:key")).toBe("Agents");
     expect(bot(null)).toBe("Agents");
+  });
+
+  it("leaves Chief, the first bot, out of every folder", () => {
+    expect(autoGroupFolderName({ kind: "bot", spawnKey: "onboarding:first" })).toBeNull();
   });
 
   it("files groups in Groups", () => {

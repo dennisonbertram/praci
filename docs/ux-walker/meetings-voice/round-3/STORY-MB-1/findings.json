@@ -1,0 +1,89 @@
+{
+  "story": "STORY-MB-1",
+  "round": 3,
+  "verdict": "PASS",
+  "round2_dispositions": [
+    {
+      "id": "F-MB-1-1",
+      "sev": "high",
+      "status": "fixed",
+      "evidence": "Dedicated Granola group draws the key field and Connect directly (gm-empty.png)."
+    },
+    {
+      "id": "F-MB-1-2",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "No generic Add; see gm-empty.png."
+    },
+    {
+      "id": "F-MB-1-3",
+      "sev": "low",
+      "status": "fixed",
+      "evidence": "Footer sentence is the group footer."
+    },
+    {
+      "id": "F-MB-1-4",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Live questions group removed from the mobile frame."
+    },
+    {
+      "id": "F-MB-1-5",
+      "sev": "low",
+      "status": "fixed",
+      "evidence": "Synced row has a spinner while syncing (gm-syncing.png)."
+    },
+    {
+      "id": "F-MB-1-6",
+      "sev": "low",
+      "status": "fixed",
+      "evidence": "Plan text and frame agree."
+    },
+    {
+      "id": "F2-MB-1-1",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "After \"Synced 42 meetings\" nothing on the phone points to the Granola agent; the plan keeps the agent link web-only for the first release (granola.md Surfaces)."
+    },
+    {
+      "id": "F2-MB-1-2",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "Disconnect is still a red row that acts at once. The plan decides \"no confirmation dialog\" because meetings are kept; flagged only as an iOS-convention deviation to verify on device."
+    },
+    {
+      "id": "F2-MB-1-3",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "Back control is now 44 pt and the Connecting button now has a spinner (fixed). The status bar is still three dots instead of signal, Wi-Fi and battery glyphs (frame chrome only)."
+    }
+  ],
+  "new_findings": [
+    {
+      "id": "F3-MB-1-1",
+      "kind": "mockup",
+      "severity": "medium",
+      "category": "happy-path",
+      "criterion": "Primary CTA / labels (iOS SecureField convention)",
+      "score": "warn",
+      "description": "The empty Granola key field has no placeholder and no field chrome. On the phone it is a 13 pt stacked caption \"Granola API key \u00b7 Business plan\" over blank space (59 pt row empty, 60 pt row in Reconnect needed), so it reads as a section caption rather than an input. iOS forms show a placeholder or an inline label with a trailing value.",
+      "expected": "A user can tell at a glance that the row takes a pasted key.",
+      "actual": "Empty state and Reconnect needed show a label and an empty dark row; only the Connect button below hints that something is to be entered.",
+      "screenshot": "screenshots/gm-empty.png, screenshots/gm-reconnect.png",
+      "suggested_fix": "Draw the label inline at the left with a muted placeholder such as \"Paste key\" at the right (iOS LabeledContent/SecureField), or add a placeholder. The plan removed web placeholders; the phone needs its own decision."
+    },
+    {
+      "id": "F3-MB-1-2",
+      "kind": "mockup",
+      "severity": "low",
+      "category": "visual",
+      "criterion": "Spacing / native grouping",
+      "score": "warn",
+      "description": "In the Disconnected state, \"Rakazo keeps your meetings and to-dos.\" is a bare caption between the \"Granola\" header and the key group. The plan says it is a plain first row of the group.",
+      "expected": "A first row inside the group.",
+      "actual": "Floating caption under the header, 0 padding above the field group (gm-disconnected.png).",
+      "screenshot": "screenshots/gm-disconnected.png",
+      "suggested_fix": "Draw it as the first plain row of the group, or as a group footer."
+    }
+  ]
+}

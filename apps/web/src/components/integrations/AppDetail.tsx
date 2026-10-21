@@ -361,7 +361,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
       className="mb-3.5 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
     >
       <ArrowLeft className="size-4" aria-hidden="true" />
-      <Trans>Integrations</Trans>
+      <Trans>Apps</Trans>
     </Link>
   );
 
@@ -643,7 +643,10 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
           {isGmail ? (
             <>
               <li>
-                <Trans>Mail data Praci cached from these accounts is removed.</Trans>
+                <Trans>
+                  Mail data Praci cached from {accountCount > 1 ? "these accounts" : "this account"}{" "}
+                  is removed.
+                </Trans>
               </li>
               <li>
                 <Trans>The Inbox page stops showing new mail until you reconnect.</Trans>

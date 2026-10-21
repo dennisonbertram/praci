@@ -32,7 +32,7 @@ test("Carta uses the general Agent controls while retaining its specialized agen
   await page.goto(path);
   const section = page.getByRole("region", { name: "Agent", exact: true });
   const writes = section.getByRole("switch", { name: "Allow changes in Carta" });
-  const share = section.getByRole("switch", { name: "Share with all agents" });
+  const share = section.getByRole("switch", { name: /Let other agents use/ });
   await expect(writes).not.toBeChecked();
   await expect(share).not.toBeChecked();
   await expect(page.getByRole("link", { name: "Open Cap table" })).toBeVisible();

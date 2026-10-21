@@ -1,0 +1,18 @@
+{
+  "story_id": "STORY-GS-4",
+  "round": 3,
+  "result": "PASS",
+  "round2_status": [
+    {
+      "id": "F2-GS-4-01",
+      "status": "fixed",
+      "evidence": "Detail page shows the MCP sign-in card above the key card in every state (g-d-integrations-detail.png, g-d-api-key-rejected.png)."
+    },
+    {
+      "id": "F2-GS-4-02",
+      "status": "still-open",
+      "evidence": "Nothing tells an MCP-only user that Inbox to-dos need the key. The plan stays silent by choice (copy minimal, plan Not built / Inbox rule: MCP tile alone is not a meeting source). Low."
+    }
+  ],
+  "findings": []
+}

@@ -4,6 +4,7 @@ import type { CleanupCandidate } from "./mail-cleanup.js";
 import {
   cleanupChoiceCounts,
   cleanupTargets,
+  isCleanupListed,
   isCleanupPreselected,
   rankCleanupSenders,
   senderKey,
@@ -20,6 +21,27 @@ const base: CleanupCandidate = {
   skipInbox: false,
 };
 const pick = (patch: Partial<CleanupCandidate> = {}) => isCleanupPreselected({ ...base, ...patch });
+
+describe("isCleanupListed", () => {
+  const listed = (patch: Partial<Parameters<typeof isCleanupListed>[0]> = {}) =>
+    isCleanupListed({ messageCount: 3, priorContact: false, keep: false, ...patch });
+
+  it("lists a sender with 3+ mails the user never wrote back to", () => {
+    expect(listed()).toBe(true);
+    expect(listed({ priorContact: null })).toBe(true);
+  });
+
+  it.each([
+    ["fewer than 3 mails", { messageCount: 2 }],
+    ["a sender the user has written to", { priorContact: true }],
+  ])("leaves out %s", (_name, patch) => {
+    expect(listed(patch)).toBe(false);
+  });
+
+  it("keeps a sender the user already decided on, so it can be undone", () => {
+    expect(listed({ messageCount: 1, priorContact: true, keep: true })).toBe(true);
+  });
+});
 
 describe("isCleanupPreselected", () => {
   it("preselects a bulk, rarely read, never-contacted sender", () => {

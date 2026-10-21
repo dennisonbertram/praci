@@ -1,0 +1,26 @@
+{
+  "story_id": "STORY-GS-6",
+  "result": "SKIPPED",
+  "round1_status": [],
+  "findings": [
+    {
+      "id": "F2-GS-6-01",
+      "severity": "medium",
+      "category": "happy-path",
+      "criterion": "Completeness",
+      "score": "warn",
+      "kind": "mockup",
+      "description": "The 'agent removed' state of the connected key card ('Create agent' in place of the 'Granola agent' link) is defined by the plan and not drawn.",
+      "expected": "A card state with 'Create agent' and its 'Creating agent' label.",
+      "actual": "Only the agent-present card (key-connected.png).",
+      "screenshot": "key-connected.png",
+      "suggested_fix": "Add a 'No agent' state to screen 2.",
+      "files_likely_involved": [
+        "docs/granola/mockup.html"
+      ],
+      "jf": "JF-18",
+      "plan_section": "granola.md Surfaces / Agent provisioning",
+      "story_id": "STORY-GS-6"
+    }
+  ]
+}

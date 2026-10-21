@@ -177,7 +177,7 @@ export function SortControl<F extends string>({
   onField: (field: F) => void;
   onDirection: (direction: "asc" | "desc") => void;
 }) {
-  const label = direction === "asc" ? t`Ascending` : t`Descending`;
+  const label = direction === "asc" ? t`Sort descending` : t`Sort ascending`;
   return (
     <>
       <DropdownMenu>

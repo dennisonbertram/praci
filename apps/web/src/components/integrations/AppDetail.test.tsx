@@ -236,7 +236,7 @@ it("turns changes off immediately and saves sharing for the account", async () =
     }),
   );
   expect(switches()[1]?.getAttribute("aria-checked")).toBe("false");
-  expect(container.textContent).toContain("Share with all agents");
+  expect(container.textContent).toContain("Let other agents use");
   await act(async () => switches()[0]!.click());
   expect(setWrites).toHaveBeenCalledWith({ connectionId: "conn_app", enabled: false });
   expect(document.querySelector('[role="alertdialog"]')).toBeNull();
@@ -510,6 +510,14 @@ it("offers Remove account per row only when there is more than one account", asy
   // With one account, Disconnect Gmail is the single way to remove it.
   expect(labels()).not.toContain("Remove account");
   expect(labels()).toContain("Disconnect Gmail");
+  await act(async () =>
+    [...container.querySelectorAll("button")]
+      .find((b) => b.textContent === "Disconnect Gmail")
+      ?.click(),
+  );
+  expect(document.body.textContent).toContain(
+    "Mail data Praci cached from this account is removed.",
+  );
   act(() => root.unmount());
   container.remove();
   await show(PAGE, data({ connections: [account("a"), account("b")] }));

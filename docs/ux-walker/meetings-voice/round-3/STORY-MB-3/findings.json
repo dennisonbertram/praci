@@ -1,0 +1,70 @@
+{
+  "story": "STORY-MB-3",
+  "round": 3,
+  "verdict": "PASS",
+  "round2_dispositions": [
+    {
+      "id": "F-MB-3-1",
+      "sev": "high",
+      "status": "fixed",
+      "evidence": "To do group is drawn above Connect mail (inbox-todos.png)."
+    },
+    {
+      "id": "F-MB-3-2",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Layout drawn."
+    },
+    {
+      "id": "F-MB-3-3",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Empty state wording drawn."
+    },
+    {
+      "id": "F-MB-3-4",
+      "sev": "low",
+      "status": "fixed",
+      "evidence": "Detail line has no \"From:\" prefix."
+    },
+    {
+      "id": "F-MB-3-5",
+      "sev": "low",
+      "status": "obsolete",
+      "evidence": "Superseded by the plan layout."
+    },
+    {
+      "id": "F-MB-3-6",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "Date labels: \"Fri\" grey, \"Today\" amber, third row none; no rule for when a date shows or turns amber is stated in the plan."
+    },
+    {
+      "id": "F2-MB-3-1",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Verified in the browser: clicking the row text or the date leaves all 3 rows; only the checkbox removes one (matches the plan: only the checkbox acts)."
+    },
+    {
+      "id": "F2-MB-3-2",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "The consent-off state is not drawn on the Inbox phone frame; only the Integrations \"AI data sharing off\" row exists."
+    }
+  ],
+  "new_findings": [
+    {
+      "id": "F3-MB-3-1",
+      "kind": "plan",
+      "severity": "low",
+      "category": "happy-path",
+      "criterion": "Recovery",
+      "score": "warn",
+      "description": "Ticking a to-do removes the row immediately with no undo and no brief completed state. iOS Reminders-style lists show the check first and offer undo; an accidental tap on the 44 pt circle loses the row from view.",
+      "expected": "A short completed state or undo.",
+      "actual": "Row gone at once (inbox-after-tick.png); the plan keeps this existing behavior.",
+      "screenshot": "screenshots/inbox-after-tick.png",
+      "suggested_fix": "Optional: keep the checked circle for about a second before removing, or add shake-to-undo. Not required for the plan."
+    }
+  ]
+}

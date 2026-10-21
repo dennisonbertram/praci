@@ -1,0 +1,52 @@
+[
+  {
+    "id": "F-MX-7-1",
+    "kind": "plan",
+    "severity": "medium",
+    "category": "happy-path",
+    "criterion": "Feedback",
+    "score": "warn",
+    "description": "Only the safe outcome is drawn. If the model answers in words that follow the injected line, nothing on screen tells the user it was injected text.",
+    "expected": "One decision in the plan: either silent, or the skill tells the model to say in one sentence that part of the transcript asked it to act.",
+    "actual": "Silent summary.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-MX-7/screenshots/step-3.png",
+    "suggested_fix": "Decide in S4; recommend one skill sentence, no UI element.",
+    "catalog_ref": "JF-10 (related), JF-27",
+    "plan_section": "Granola S4 #440 'A text wrapper is not protection'",
+    "files_likely_involved": []
+  },
+  {
+    "id": "F-MX-7-2",
+    "kind": "plan",
+    "severity": "medium",
+    "category": "flow",
+    "criterion": "Dead ends",
+    "score": "warn",
+    "description": "The injected-commitment to-do and its tap-through (steps 4-6) have no surface; the to-do has no path to the meeting.",
+    "expected": "Defined behavior for tapping a meeting to-do.",
+    "actual": "None drawn.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-MX-7/screenshots/step-3.png",
+    "suggested_fix": "Plan: say meeting to-dos are not tappable (as the Inbox mockup comment assumes).",
+    "catalog_ref": "discovery ambiguity 13 (no JF id)",
+    "plan_section": "Granola S5",
+    "files_likely_involved": []
+  },
+  {
+    "id": "F-MX-7-3",
+    "kind": "mockup",
+    "severity": "low",
+    "category": "visual",
+    "criterion": "Information stated once",
+    "score": "warn",
+    "description": "Author note, containing the sample injection string, is rendered as visible page text under the composer.",
+    "expected": "Notes outside the product frame.",
+    "actual": "Muted two-line note.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-MX-7/screenshots/step-3.png",
+    "suggested_fix": "Move to an HTML comment.",
+    "catalog_ref": "NEW",
+    "plan_section": "granola mockup screen-agent",
+    "files_likely_involved": [
+      "docs/granola/mockup.html"
+    ]
+  }
+]

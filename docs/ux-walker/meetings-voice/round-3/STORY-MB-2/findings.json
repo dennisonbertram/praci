@@ -1,0 +1,64 @@
+{
+  "story": "STORY-MB-2",
+  "round": 3,
+  "verdict": "PASS",
+  "round2_dispositions": [
+    {
+      "id": "F-MB-2-1",
+      "sev": "high",
+      "status": "still-open",
+      "evidence": "Downgraded to medium. The line still gives no cause and the phone has no route to live questions, but the plan now adds \"Business plan\" to the field label (gm-rejected.png) and decides the one line. The step the plan defines can be taken. Kept as a plan weakness."
+    },
+    {
+      "id": "F-MB-2-2",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Reconnect needed state is drawn."
+    },
+    {
+      "id": "F-MB-2-3",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Offline state drawn."
+    },
+    {
+      "id": "F-MB-2-4",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "The pasted key remains a row of dots, so truncation cannot be seen, and there is no clear control."
+    },
+    {
+      "id": "F2-MB-2-1",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "\"Business plan\" now follows the field label in rejected, offline and reconnect states (gm-rejected.png)."
+    },
+    {
+      "id": "F2-MB-2-2",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Reconnect needed is one group: warning dot, \"Reconnect needed\", no \"Synced 42 meetings\" (gm-reconnect.png)."
+    },
+    {
+      "id": "F2-MB-2-3",
+      "sev": "low",
+      "status": "fixed",
+      "evidence": "\"Could not reach Granola\" is the plan wording and has its own Offline frame."
+    }
+  ],
+  "new_findings": [
+    {
+      "id": "F3-MB-2-1",
+      "kind": "mockup",
+      "severity": "medium",
+      "category": "happy-path",
+      "criterion": "Primary CTA / labels (iOS SecureField convention)",
+      "score": "warn",
+      "description": "The empty Granola key field has no placeholder and no field chrome. On the phone it is a 13 pt stacked caption \"Granola API key \u00b7 Business plan\" over blank space (59 pt row empty, 60 pt row in Reconnect needed), so it reads as a section caption rather than an input. iOS forms show a placeholder or an inline label with a trailing value.",
+      "expected": "A user can tell at a glance that the row takes a pasted key.",
+      "actual": "Empty state and Reconnect needed show a label and an empty dark row; only the Connect button below hints that something is to be entered.",
+      "screenshot": "screenshots/gm-empty.png, screenshots/gm-reconnect.png",
+      "suggested_fix": "Draw the label inline at the left with a muted placeholder such as \"Paste key\" at the right (iOS LabeledContent/SecureField), or add a placeholder. The plan removed web placeholders; the phone needs its own decision."
+    }
+  ]
+}

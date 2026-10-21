@@ -1,0 +1,23 @@
+{
+  "story_id": "STORY-GS-1",
+  "round": 3,
+  "result": "PASS",
+  "round2_status": [
+    {
+      "id": "F2-GS-1-01",
+      "status": "fixed",
+      "evidence": "Citation chips measure 149x32 px in agent-answer and citation states (live probe)."
+    },
+    {
+      "id": "F2-GS-1-02",
+      "status": "fixed",
+      "evidence": "g-m-api-key-empty.png: link on its own line at 390 px with its arrow intact. The 1280 px wrappedControls flag is a false positive (one line in g-d-api-key-empty.png)."
+    },
+    {
+      "id": "F2-GS-1-03",
+      "status": "fixed",
+      "evidence": "Plan Reading: 'Still syncing' is returned as a literal reason while the first sync has no syncedThrough, and the skill relays it."
+    }
+  ],
+  "findings": []
+}

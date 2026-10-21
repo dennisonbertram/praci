@@ -32,7 +32,7 @@ export function unconnectedFeatured(
 }
 
 /**
- * The sidebar's Integrations row. While featured apps are unconnected it is a "Connect apps" pill
+ * The sidebar's Apps row. While featured apps are unconnected it is a "Connect apps" pill
  * with their logos; once they are connected, and while loading or on failure, it is the plain row.
  */
 export function ConnectAppsButton({
@@ -72,7 +72,7 @@ export function ConnectAppsButton({
         testId="sidebar-integrations"
         current={active}
         icon={<LayoutGrid size={15} strokeWidth={1.8} aria-hidden="true" />}
-        label={t`Integrations`}
+        label={t`Apps`}
         onOpen={onClick}
       />
     );
@@ -114,7 +114,7 @@ export function ConnectAppsButton({
         <LayoutGrid size={15} strokeWidth={1.8} />
       </span>
       <span className="text-[14px] font-medium text-foreground/90">
-        <Trans>Integrations</Trans>
+        <Trans>Apps</Trans>
       </span>
     </button>
   );

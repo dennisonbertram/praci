@@ -1,0 +1,70 @@
+[
+  {
+    "id": "F-GS-4-01",
+    "story_id": "STORY-GS-4",
+    "severity": "high",
+    "category": "happy-path",
+    "criterion": "Primary CTA / labels",
+    "score": "fail",
+    "kind": "plan",
+    "description": "Step 4: a free or Pro user sees a key field and no explanation that the key route needs Business beyond the small muted 'Business plan' suffix on the section label. The mockup, not the plan, adds that hint; the plan says the card explains nothing, so the two disagree.",
+    "expected": "The page tells a non-Business user which route to use, without a paragraph.",
+    "actual": "'SYNC \u00b7 Business plan' muted label; field and Connect look available to everyone.",
+    "screenshot": "screenshots/step-1-detail.png",
+    "suggested_fix": "Decide the hint in the plan; keep it to the section label.",
+    "files_likely_involved": [],
+    "jf": "JF-4",
+    "plan_section": "granola.md Surfaces ('explains nothing' for free plan); catalog gap 8"
+  },
+  {
+    "id": "F-GS-4-02",
+    "story_id": "STORY-GS-4",
+    "severity": "high",
+    "category": "happy-path",
+    "criterion": "Journey surface",
+    "score": "fail",
+    "kind": "plan",
+    "description": "Steps 5 to 8: journey breaks, no surface for the MCP route when it is not connected. The mockup draws Live questions as already Connected on every screen, so the free user's actual decision (press MCP connect) is not shown. Step 8 (no to-dos for MCP-only users) has no surface either.",
+    "expected": "Detail page with the MCP section in its unconnected state, and a signal that to-dos need the key route.",
+    "actual": "Only 'Signed in with Granola / Connected / Disconnect' is drawn.",
+    "screenshot": "screenshots/step-1-detail.png",
+    "suggested_fix": "Add an unconnected state for Live questions; one line on the empty Inbox state if MCP-only.",
+    "files_likely_involved": [],
+    "jf": "NEW",
+    "plan_section": "granola.md Surfaces; Digest and Inbox follow-ups"
+  },
+  {
+    "id": "F-GS-4-03",
+    "story_id": "STORY-GS-4",
+    "severity": "medium",
+    "category": "simplicity",
+    "criterion": "Duplicated actions",
+    "score": "warn",
+    "kind": "plan",
+    "description": "Two ways to connect Granola on one page with no stated difference except the two small section labels 'Live questions' and 'Sync'.",
+    "expected": "One clear primary route per user type.",
+    "actual": "Two stacked sections of equal weight.",
+    "screenshot": "screenshots/mobile-390-detail.png",
+    "suggested_fix": "Order by plan or collapse the key card until chosen; plan decision.",
+    "files_likely_involved": [],
+    "jf": "NEW",
+    "plan_section": "catalog Duplicate paths 1; discovery ambiguity 6/7"
+  },
+  {
+    "id": "F-GS-4-04",
+    "story_id": "STORY-GS-4",
+    "severity": "low",
+    "category": "visual",
+    "criterion": "Mockup vs plan",
+    "score": "warn",
+    "kind": "mockup",
+    "description": "Tile shows both 'Connected' and 'Add key' in one card; for a free user the visible 'Add key' CTA invites the dead-end step the story describes.",
+    "expected": "CTA that depends on plan or is secondary.",
+    "actual": "Button 'Add key' at full weight.",
+    "screenshot": "screenshots/step-0-tile.png",
+    "suggested_fix": null,
+    "files_likely_involved": [
+      "docs/granola/mockup.html"
+    ]
+  }
+]
