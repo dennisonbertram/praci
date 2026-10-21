@@ -5,6 +5,7 @@ const PAGE_AGENT_COLOR: Record<string, number> = {
   inbox: 2,
   finance: 0,
   "data-room": 1,
+  company: 4,
   carta: 3,
   investors: 3,
   legal: 6,

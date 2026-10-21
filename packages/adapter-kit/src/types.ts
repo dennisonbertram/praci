@@ -511,6 +511,10 @@ export interface AgentRunRequest {
   }>;
   currentTurnImages?: AgentInputImage[];
   tools: ConnectorTool[];
+  /** Optional child-tool boundary for identities with restricted helper access. */
+  subagentToolNames?: ReadonlySet<string>;
+  /** False prevents helpers from requesting a different model recipient. */
+  subagentModelSelectionAllowed?: boolean;
   model: AgentRunModel;
   /** Ordered, user-selected models eligible after provider unavailability. */
   fallbackModels?: Array<Pick<AgentRunModel, "provider" | "id">>;

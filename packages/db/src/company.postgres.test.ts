@@ -1,4 +1,8 @@
-import { CompanyEntityRecordSchema, normalizeCompanyName } from "@rakazo/contracts";
+import {
+  CompanyEntityRecordSchema,
+  CompanyFactUpsertInputSchema,
+  normalizeCompanyName,
+} from "@rakazo/contracts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createNorthwindCompanyFixture } from "../../testkit/src/fixtures/company/corpus.js";
 import { northwindGroundTruth } from "../../testkit/src/fixtures/company/ground-truth.js";
@@ -2915,5 +2919,119 @@ describePostgres("company foundation (PostgreSQL)", () => {
         evidence: evidence("forbidden-item", "forbidden-hash"),
       } as never),
     ).rejects.toThrow();
+  });
+
+  it("creates private manual suggestions idempotently and rejects stale edit approvals", async () => {
+    const company = companyForActor(prisma, actor);
+    const otherCompany = companyForActor(prisma, otherActor);
+    const otherCountBefore = await otherCompany.count();
+    const proposal = CompanyFactUpsertInputSchema.parse({
+      operation: "create",
+      kind: "entity",
+      fact: {
+        kind: "organisation",
+        displayName: "Synthetic manual company",
+        attrs: { domain: "manual.example.test" },
+        confidence: 0.8,
+      },
+      provenance: "Owner-provided synthetic source.",
+    });
+    const input = {
+      proposal,
+      snapshot: { kind: "entity", current: null },
+      effectKey: "manual-company-upsert-create",
+    };
+    const first = await company.manualUpsert(input);
+    const second = await company.manualUpsert(input);
+    const record = (
+      first as {
+        record: { id: string; status: string; visibility: string; lockedFields: string[] };
+      }
+    ).record;
+    expect(record.status).toBe("suggested");
+    expect(record.visibility).toBe("private");
+    expect(record.lockedFields).toContain("displayName");
+    expect((second as { replayed?: boolean }).replayed).toBe(true);
+    expect(
+      await prisma.companyEvidence.count({
+        where: {
+          spaceId,
+          ownerUserId: userId,
+          sourceKind: "manual",
+          sourceItemId: "manual:manual-company-upsert-create",
+        },
+      }),
+    ).toBe(1);
+    expect(await otherCompany.count()).toBe(otherCountBefore);
+    expect((await otherCompany.list()).some((fact) => fact.id === record.id)).toBe(false);
+    expect(await otherCompany.detail(record.id)).toBeNull();
+
+    await company.importEntity({
+      entity: {
+        kind: "organisation",
+        displayName: "Synthetic identity match",
+        attrs: { domain: "identity-match.example.test" },
+        confidence: 0.8,
+      },
+      evidence: evidence("manual-upsert-identity-match", "manual-upsert-identity-hash"),
+    });
+    const countBeforeMatch = await prisma.companyEntity.count({
+      where: { spaceId, ownerUserId: userId },
+    });
+    const matchingProposal = CompanyFactUpsertInputSchema.parse({
+      operation: "create",
+      kind: "entity",
+      fact: {
+        kind: "organisation",
+        displayName: "Synthetic alternate name",
+        attrs: { domain: "identity-match.example.test" },
+        confidence: 0.8,
+      },
+      provenance: "Owner-provided synthetic source.",
+    });
+    await expect(
+      company.manualUpsert({
+        proposal: matchingProposal,
+        snapshot: { kind: "entity", current: null },
+        effectKey: "manual-company-upsert-identity-match",
+      }),
+    ).rejects.toThrow(/matches an existing entity/i);
+    expect(await prisma.companyEntity.count({ where: { spaceId, ownerUserId: userId } })).toBe(
+      countBeforeMatch,
+    );
+    expect(
+      await prisma.companyEvidence.count({
+        where: {
+          spaceId,
+          ownerUserId: userId,
+          sourceKind: "manual",
+          sourceItemId: "manual:manual-company-upsert-identity-match",
+        },
+      }),
+    ).toBe(0);
+
+    const saved = await company.importEntity(
+      person("Synthetic stale-edit target", "stale-edit-target", "stale-edit-hash"),
+    );
+    const id = entityId(saved);
+    const snapshot = { kind: "entity", current: await company.detail(id) };
+    const editProposal = CompanyFactUpsertInputSchema.parse({
+      operation: "edit",
+      kind: "entity",
+      patch: { entityId: id, kind: "person", displayName: "Synthetic stale-edit proposal" },
+      provenance: "Owner-provided correction.",
+    });
+    await company.edit({
+      entityId: id,
+      kind: "person",
+      displayName: "Synthetic concurrent edit",
+    });
+    await expect(
+      company.manualUpsert({
+        proposal: editProposal,
+        snapshot,
+        effectKey: "manual-company-upsert-stale-edit",
+      }),
+    ).rejects.toThrow(/changed after approval/i);
   });
 });

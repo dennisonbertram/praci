@@ -12,6 +12,7 @@ const fakeAgentState = vi.hoisted(() => ({
     | "parent-parallel"
     | "ask-pause"
     | "nested-ask-pause"
+    | "subagent-inspect"
     | "tools-then-empty-failure"
     | "tools-then-final-text",
   terminalMessage: undefined as
@@ -46,6 +47,8 @@ const fakeAgentState = vi.hoisted(() => ({
   promptInputs: [] as string[],
   promptImages: [] as unknown[][],
   toolResult: undefined as unknown,
+  createdToolSets: [] as string[][],
+  subagentArgs: {} as Record<string, unknown>,
 }));
 
 vi.mock("@earendil-works/pi-agent-core", () => ({
@@ -70,6 +73,7 @@ vi.mock("@earendil-works/pi-agent-core", () => ({
       this.tools = options.initialState.tools;
       this.prepareNextTurnWithContext = options.prepareNextTurnWithContext;
       fakeAgentState.tools = this.tools;
+      fakeAgentState.createdToolSets.push(this.tools.map((tool) => tool.name));
       fakeAgentState.initialMessages = options.initialState.messages;
     }
 
@@ -103,6 +107,37 @@ vi.mock("@earendil-works/pi-agent-core", () => ({
           args,
         });
         fakeAgentState.toolResult = await target.execute("call-1", args);
+        return;
+      }
+
+      if (fakeAgentState.mode === "subagent-inspect") {
+        const delegation = this.tools.find((tool) => tool.name === "run_subagent");
+        if (delegation) {
+          const args = {
+            name: "helper",
+            task: "inspect Company facts",
+            ...fakeAgentState.subagentArgs,
+          };
+          this.emit({ type: "tool_execution_start", toolName: delegation.name, args });
+          const result = await delegation.execute("delegate-1", args);
+          const toolCall = {
+            type: "toolCall",
+            id: "delegate-1",
+            name: delegation.name,
+            arguments: args,
+          };
+          this.emit({
+            type: "turn_end",
+            message: { role: "assistant", content: [toolCall] },
+            toolResults: [{ toolCallId: "delegate-1", result }],
+          });
+        }
+        const response = {
+          role: "assistant",
+          content: [{ type: "text", text: "Helper complete." }],
+        };
+        this.emit({ type: "message_end", message: response });
+        this.emit({ type: "turn_end", message: response, toolResults: [] });
         return;
       }
 
@@ -426,6 +461,8 @@ describe("Pi connector tool dispatch", () => {
     fakeAgentState.mode = "dispatch";
     fakeAgentState.abortCount = 0;
     fakeAgentState.tools = [];
+    fakeAgentState.createdToolSets = [];
+    fakeAgentState.subagentArgs = {};
     fakeAgentState.preparedMessages = [];
     fakeAgentState.steeredMessages = [];
     fakeAgentState.followUpMessages = [];
@@ -444,6 +481,83 @@ describe("Pi connector tool dispatch", () => {
       args: { collection: "notes", title: "Result", body: "Done" },
     };
     delete process.env.MAX_TOOL_CALLS_PER_TURN;
+  });
+
+  it("filters Company helper tools and rejects model-recipient overrides", async () => {
+    fakeAgentState.mode = "subagent-inspect";
+    const runtime = new PiAgentRuntime();
+    const executeTool = vi.fn(async () => ({ untrusted: true }));
+    const request = {
+      botId: "company-importer",
+      threadId: "thread-1",
+      runId: "company-import",
+      prompt: "Inspect the configured import plan.",
+      instructions: "Use a restricted helper.",
+      history: [],
+      tools: [
+        {
+          name: "run_subagent",
+          description: "Delegate bounded planning",
+          inputSchema: { type: "object", properties: {} },
+        },
+        {
+          name: "company_search",
+          description: "Search Company facts",
+          inputSchema: { type: "object", properties: {} },
+        },
+        {
+          name: "company_fact_upsert",
+          description: "Propose a Company correction",
+          inputSchema: { type: "object", properties: {} },
+        },
+        {
+          name: "mail_send",
+          description: "Send mail",
+          inputSchema: { type: "object", properties: {} },
+        },
+      ],
+      model: { provider: "test", id: "dispatch-test-model" },
+      executeTool,
+      subagentToolNames: new Set(["company_search"]),
+      subagentModelSelectionAllowed: false,
+    };
+    const events: unknown[] = [];
+    for await (const event of runtime.run(request, {
+      operationId: "company-import",
+      traceId: "company-import",
+      spaceId: "space-1",
+      userId: "owner-1",
+      signal: new AbortController().signal,
+    })) {
+      events.push(event);
+    }
+
+    expect(fakeAgentState.createdToolSets).toHaveLength(2);
+    expect(fakeAgentState.createdToolSets[1]).toEqual(["company_search"]);
+
+    fakeAgentState.createdToolSets = [];
+    fakeAgentState.subagentArgs = {
+      model_provider: "other",
+      model_id: "unconsented-model",
+    };
+    const overrideEvents: unknown[] = [];
+    for await (const event of runtime.run(request, {
+      operationId: "company-import-override",
+      traceId: "company-import-override",
+      spaceId: "space-1",
+      userId: "owner-1",
+      signal: new AbortController().signal,
+    })) {
+      overrideEvents.push(event);
+    }
+    expect(fakeAgentState.createdToolSets).toHaveLength(1);
+    expect(overrideEvents).toContainEqual(
+      expect.objectContaining({
+        type: "subagent",
+        status: "failed",
+        result: expect.stringContaining("model selection is unavailable"),
+      }),
+    );
   });
 
   it("injects durable steering at Pi's next safe turn boundary", async () => {

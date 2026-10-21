@@ -21,6 +21,7 @@ import {
 import { Ellipsis } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { AskBotButton } from "../components/AskBotButton";
 import { useFinanceQuery } from "../components/finance/ui";
 import { downloadArtifactBytes } from "../lib/artifact-open";
 import { companyDate, companyDateEnd } from "../lib/company-format";
@@ -32,7 +33,7 @@ import { errorText } from "../lib/user-error";
 import { CompanyFactDetail } from "./CompanyFactDetail";
 import { CompanyPrivacy } from "./CompanyPrivacy";
 
-export function CompanyPage() {
+export function CompanyPage({ onAskAgent }: { onAskAgent?: () => void } = {}) {
   useHideAmounts();
   const page = useFinanceQuery(() => rpc.company.page(), []);
   const finance = useFinanceQuery(() => rpc.finance.overview(), []);
@@ -141,6 +142,7 @@ export function CompanyPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {onAskAgent && <AskBotButton botName={t`Company agent`} onClick={onAskAgent} />}
           <Link to="/app/company/import" className="text-sm underline underline-offset-4">
             <Trans>Import</Trans>
           </Link>

@@ -1343,6 +1343,12 @@ async function executeSubagent(host: ToolHost, executionId: string, args: Record
   const hasBackups = Boolean(host.request.fallbackModels?.length);
   let requestModel = hasBackups ? host.activeModel.config : host.request.model;
   try {
+    if (
+      host.request.subagentModelSelectionAllowed === false &&
+      (requestedProvider || requestedModelId)
+    ) {
+      throw new Error("Helper model selection is unavailable for this agent.");
+    }
     if (Boolean(requestedProvider) !== Boolean(requestedModelId)) {
       throw new Error("model_provider and model_id must both be set");
     }
@@ -1389,7 +1395,11 @@ async function executeSubagent(host: ToolHost, executionId: string, args: Record
   }
   const subagentModel = modelForCompletion(selectedModel.model, requestModel.maxTokens);
 
-  const childDefs = host.request.tools.filter((tool) => !DELEGATION_TOOL_NAMES.has(tool.name));
+  const childDefs = host.request.tools.filter(
+    (tool) =>
+      !DELEGATION_TOOL_NAMES.has(tool.name) &&
+      (!host.request.subagentToolNames || host.request.subagentToolNames.has(tool.name)),
+  );
   const nestedHost: ToolHost = {
     ...host,
     activeModel: {

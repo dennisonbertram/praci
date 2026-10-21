@@ -50,6 +50,8 @@ import {
   BUILTIN_TOOL_NAMES,
   botSecretSubmissionSchema,
   CLOUDFLARE_AI_GATEWAY_CONFIG_MESSAGE,
+  COMPANY_AGENT_BUILTIN_TOOLS,
+  COMPANY_IMPORTER_BUILTIN_TOOLS,
   COMPUTER_COMMAND_OUTPUT_MAX_CHARS,
   DATA_ROOM_AGENT_BUILTIN_TOOLS,
   disabledBuiltinToolSet,
@@ -62,6 +64,8 @@ import {
   integrationPresetForEndpoint,
   isAttachmentImageMimeType,
   isCartaAgentSpawnKey,
+  isCompanyAgentSpawnKey,
+  isCompanyImporterSpawnKey,
   isDataRoomAgentSpawnKey,
   isFinanceAgentSpawnKey,
   isGtmAgentSpawnKey,
@@ -265,6 +269,13 @@ import { executeCloudAgentTool } from "./cloud-agent-service.js";
 import { validCloudAgentArgs } from "./cloud-agent-tools.js";
 import { selectCloudAgentTools } from "./cloud-agent-tools-select.js";
 import { cloudflareGatewayProviderEnv } from "./cloudflare-ai-gateway.js";
+import type { CompanyImportEngine } from "./company-import-engine.js";
+import {
+  COMPANY_TOOL_NAMES,
+  companyToolFromTool,
+  companyToolsForRun,
+  prepareCompanyApprovalArgs,
+} from "./company-tools.js";
 import type { PluginConnectionRow } from "./composio-connector.js";
 import {
   collectLogIds,
@@ -705,6 +716,7 @@ export interface ExecutorDeps {
   /** The deployment default model can run; see resolveDeploymentModel. */
   deploymentModelConfigured?: boolean;
   dataDir?: string;
+  companyImport?: () => CompanyImportEngine;
   /** Tells the user's open clients about a new notification; absent means no live signal. */
   notificationEvents?: NotificationEvents;
   jobs: JobPublisher;
@@ -1761,6 +1773,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // 89s run), so it gets none of them and skips the discovery calls.
         const mailOnly = isMailAgentSpawnKey(bot.spawnKey);
         const gtmAgent = isGtmAgentSpawnKey(bot.spawnKey);
+        const companyAgent = isCompanyAgentSpawnKey(bot.spawnKey);
+        const companyImporter = isCompanyImporterSpawnKey(bot.spawnKey);
         // The Finance agent reads synced finance data through finance_* tools, with its Mercury and
         // Brex MCP tools for details. Composio and the other connectors only slow it down.
         // The Carta agent likewise uses only MCP tools (Carta) plus the built-in mail, drive and
@@ -1895,6 +1909,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
           !legalOnly &&
           !dataRoomAgent &&
           !investorsAgent &&
+          !companyAgent &&
+          !companyImporter &&
           !voiceAgent
             ? (async () => {
                 if (gtmAgent) {
@@ -2722,6 +2738,20 @@ export function createRunExecutor(deps: ExecutorDeps) {
             ownerAgentPeer: senderInScope && peerMessage?.ownerOrigin === true,
           }) &&
           (await meetingConsentOk());
+        const companyReadAllowed = dataRoomToolsAllowed({
+          hasProvider: true,
+          groupId: thread.groupId,
+          runUserId: run.userId,
+          botUserId: bot.userId,
+          trigger: run.trigger,
+          messagingChannelRun,
+        });
+        const companyOwnerRun =
+          run.userId === bot.userId &&
+          !thread.groupId &&
+          !messagingChannelRun &&
+          !isBackgroundRunTrigger(run.trigger) &&
+          OWNER_INITIATED_TRIGGERS.has(run.trigger);
         const meetingAgentToolSet: ReadonlySet<string> = new Set(MEETING_AGENT_BUILTIN_TOOLS);
         const financeEnabled =
           financeToolsAllowed({
@@ -2792,6 +2822,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
         });
         const legalToolSet: ReadonlySet<string> = new Set(LEGAL_AGENT_BUILTIN_TOOLS);
         const dataRoomAgentToolSet: ReadonlySet<string> = new Set(DATA_ROOM_AGENT_BUILTIN_TOOLS);
+        const companyAgentToolSet: ReadonlySet<string> = new Set(COMPANY_AGENT_BUILTIN_TOOLS);
+        const companyImporterToolSet: ReadonlySet<string> = new Set(COMPANY_IMPORTER_BUILTIN_TOOLS);
         const investorsToolSet: ReadonlySet<string> = new Set(INVESTORS_AGENT_BUILTIN_TOOLS);
         const builtins = [
           ...selectBuiltinToolsForRun({
@@ -2847,6 +2879,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
             (!gtmAgent || GTM_AGENT_TOOL_SET.has(tool.name)) &&
             (!legalOnly || legalToolSet.has(tool.name)) &&
             (!dataRoomAgent || dataRoomAgentToolSet.has(tool.name)) &&
+            (!companyAgent || companyAgentToolSet.has(tool.name)) &&
+            (!companyImporter || companyImporterToolSet.has(tool.name)) &&
             (!investorsAgent || investorsToolSet.has(tool.name)) &&
             !(capTableWriteBlocked && tool.name === "cap_table_update") &&
             (!meetingAgent || meetingAgentToolSet.has(tool.name)) &&
@@ -2956,12 +2990,35 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // The intro turn confirms how a bot read its own role before anyone hands it
         // real work — it must not be able to act on that reading (shell, computer,
         // scheduling, spawning another bot, ...) before the user has assigned any task.
+        const companyToolDeps = {
+          ownerRun: companyOwnerRun,
+          companyAgent,
+          importer: companyImporter,
+          dataRoomAllowed: companyReadAllowed,
+        };
+        const companyRunTools = companyToolsForRun(companyToolDeps).filter(
+          (tool) =>
+            companyOwnerRun ||
+            ![
+              "company_fact_upsert",
+              "company_import_start",
+              "company_import_pause",
+              "company_import_resume",
+              "company_import_cancel",
+            ].includes(tool.name),
+        );
         const tools =
           run.trigger === "created"
             ? []
-            : voiceAgent
-              ? builtins
-              : [...builtins, ...exposedConnectorTools];
+            : companyAgent || companyImporter
+              ? [...companyRunTools, ...builtins]
+              : voiceAgent
+                ? [...builtins, ...(companyReadAllowed ? companyToolsForRun(companyToolDeps) : [])]
+                : [
+                    ...builtins,
+                    ...(companyReadAllowed ? companyToolsForRun(companyToolDeps) : []),
+                    ...exposedConnectorTools,
+                  ];
         const offeredToolNames = new Set(tools.map((tool) => tool.name));
         const taskCatalogInstruction = tools.some((tool) => tool.name === "task_catalog")
           ? TASK_CATALOG_GUIDANCE
@@ -3223,6 +3280,63 @@ export function createRunExecutor(deps: ExecutorDeps) {
           if (disabledBuiltinTools.has(name)) {
             return { error: "This tool is disabled for this bot." };
           }
+          if (COMPANY_TOOL_NAMES.has(name) && !offeredToolNames.has(name)) {
+            return { error: `Tool ${name} is not available to this bot.` };
+          }
+          const companyIdentityTools = companyImporter
+            ? COMPANY_IMPORTER_BUILTIN_TOOLS
+            : companyAgent
+              ? COMPANY_AGENT_BUILTIN_TOOLS
+              : undefined;
+          if (companyIdentityTools && !companyIdentityTools.includes(name as never)) {
+            return { error: `Tool ${name} is not available to this Company agent.` };
+          }
+          if (
+            (name === "company_fact_upsert" ||
+              name === "company_import_start" ||
+              name === "company_import_pause" ||
+              name === "company_import_resume" ||
+              name === "company_import_cancel") &&
+            !companyOwnerRun
+          ) {
+            return { error: "Company changes require a direct owner-started foreground run." };
+          }
+          if (
+            (name === "company_fact_upsert" || name === "company_import_start") &&
+            !("proposal" in args && "snapshot" in args)
+          ) {
+            const companyImport = deps.companyImport?.();
+            if (name === "company_import_start" && !companyImport) {
+              return { error: "Company import services are not configured for this process." };
+            }
+            const prepared = await prepareCompanyApprovalArgs(
+              {
+                prisma: deps.prisma,
+                actor: {
+                  spaceId: run.spaceId,
+                  userId: run.userId,
+                  email: "",
+                  isDeploymentOwner: false,
+                },
+                companyImport,
+                ownerRun: companyOwnerRun,
+                companyAgent,
+                importer: companyImporter,
+                dataRoomAllowed: async () => (await legalRunAi()).allowed,
+              },
+              name,
+              args,
+              false,
+            );
+            if (prepared.consentRequired) {
+              return {
+                untrusted: true,
+                consentRequired: true,
+                link: prepared.link,
+              };
+            }
+            args = prepared;
+          }
           // A model can call a built-in it was never offered; the offer is the run's tool list.
           if (BUILTIN_AGENT_TOOL_NAMES.has(name) && !offeredToolNames.has(name)) {
             return { error: `Tool ${name} is not available to this bot.` };
@@ -3466,7 +3580,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 : {}),
             };
           }
-          const viaConnector = !BUILTIN_AGENT_TOOL_NAMES.has(name);
+          const viaConnector = !BUILTIN_AGENT_TOOL_NAMES.has(name) && !COMPANY_TOOL_NAMES.has(name);
           const builtinDenial = viaConnector ? null : await googleBuiltinDenial(name);
           if (builtinDenial) return { error: builtinDenial };
           const writeOnAgentConnection = viaConnector
@@ -3477,7 +3591,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
           // execute; a catalog call uses the tool it was just resolved to.
           const declaredReadOnly = viaConnector
             ? (resolvedTool ?? connectorTools.get(name))?.readOnly
-            : undefined;
+            : COMPANY_TOOL_NAMES.has(name)
+              ? tools.find((tool) => tool.name === name)?.readOnly
+              : undefined;
           const requiresUnattendedApproval = unattendedTriggerToolRequiresApproval(
             run.trigger,
             name,
@@ -3901,8 +4017,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 ? [EXTERNAL_REQUEST_REASON, reviewReason].filter(Boolean).join("\n")
                 : reviewReason,
               fullMail: isCartaMailSend(bot.spawnKey, name),
+              fullCompany:
+                (name === "company_fact_upsert" || name === "company_import_start") &&
+                COMPANY_TOOL_NAMES.has(name),
               integrationWriteTool,
-              noAlwaysAllow: meetingTaintedCall || externalTaintedCall,
+              noAlwaysAllow:
+                meetingTaintedCall || externalTaintedCall || COMPANY_TOOL_NAMES.has(name),
               serviceName: callRoute?.serverName,
               mailAccount:
                 meetingTaintedCall || externalTaintedCall ? undefined : await approvalMailAccount(),
@@ -4125,6 +4245,29 @@ export function createRunExecutor(deps: ExecutorDeps) {
             runSecrets.push(...additions);
             progressRedactor = createStreamingRedactor(runSecrets);
           };
+          if (COMPANY_TOOL_NAMES.has(name)) {
+            const companyImport = deps.companyImport?.();
+            const result = await companyToolFromTool(
+              {
+                prisma: deps.prisma,
+                actor: {
+                  spaceId: run.spaceId,
+                  userId: run.userId,
+                  email: "",
+                  isDeploymentOwner: false,
+                },
+                companyImport,
+                ownerRun: companyOwnerRun,
+                companyAgent,
+                importer: companyImporter,
+                dataRoomAllowed: async () => (await legalRunAi()).allowed,
+              },
+              name,
+              args,
+              { approvedByCard, effectKey },
+            );
+            return finish(result);
+          }
           const appendComputerCommand = (payload: ComputerCommand) =>
             deps.events
               .append({

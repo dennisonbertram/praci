@@ -18,6 +18,7 @@ import {
 } from "@rakazo/ui-web";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { AskBotButton } from "../components/AskBotButton";
 import { useFinanceQuery } from "../components/finance/ui";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { rpc } from "../lib/rpc";
@@ -56,9 +57,11 @@ function scopeName(source: { sourceKind: string; scope: Record<string, unknown> 
 }
 export function CompanyImportPage({
   onOpenSettings,
+  onAskAgent,
   settingsOpen = false,
 }: {
   onOpenSettings: () => void;
+  onAskAgent?: () => void;
   settingsOpen?: boolean;
 }) {
   useHideAmounts();
@@ -239,7 +242,10 @@ export function CompanyImportPage({
             <Trans>Import company</Trans>
           </h1>
         </div>
-        {!showSources && status && <Badge variant="secondary">{statusName(status)}</Badge>}
+        <div className="flex items-center gap-3">
+          {!showSources && status && <Badge variant="secondary">{statusName(status)}</Badge>}
+          {onAskAgent && <AskBotButton botName={t`Company importer`} onClick={onAskAgent} />}
+        </div>
       </header>
       {error && (
         <p role="alert" className="text-destructive">

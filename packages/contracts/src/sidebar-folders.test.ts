@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cartaAgentSpawnKey } from "./carta.js";
+import { companyAgentSpawnKey, companyImporterSpawnKey } from "./company-agent.js";
 import { dataRoomAgentSpawnKey } from "./data-room.js";
 import { financeAgentSpawnKey } from "./finance.js";
 import { inboxAgentSpawnKey } from "./inbox.js";
@@ -17,6 +18,8 @@ describe("autoGroupFolderName", () => {
     expect(bot(dataRoomAgentSpawnKey("u"))).toBe("Workspace");
     expect(bot(cartaAgentSpawnKey("u"))).toBe("Workspace");
     expect(bot(investorsAgentSpawnKey("u"))).toBe("Workspace");
+    expect(bot(companyAgentSpawnKey("u"))).toBe("Workspace");
+    expect(bot(companyImporterSpawnKey("u"))).toBe("Workspace");
     expect(bot(integrationAgentSpawnKey("mercury"))).toBe("Apps");
     expect(bot("other:key")).toBe("Agents");
     expect(bot(null)).toBe("Agents");
