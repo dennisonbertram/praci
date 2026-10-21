@@ -1,0 +1,206 @@
+{
+  "schemaVersion": 1,
+  "mode": "offline-recorded",
+  "claim": "Synthetic recorded-output plumbing and regression measurements; not live extraction quality or real provider token measurements.",
+  "entityKinds": [
+    {
+      "kind": "company",
+      "predicted": 1,
+      "expected": 1,
+      "correct": 1,
+      "found": 1,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "kind": "person",
+      "predicted": 5,
+      "expected": 30,
+      "correct": 4,
+      "found": 4,
+      "precision": 0.8,
+      "recall": 0.13333333333333333
+    },
+    {
+      "kind": "organisation",
+      "predicted": 5,
+      "expected": 11,
+      "correct": 5,
+      "found": 5,
+      "precision": 1,
+      "recall": 0.45454545454545453
+    },
+    {
+      "kind": "matter",
+      "predicted": 1,
+      "expected": 2,
+      "correct": 1,
+      "found": 1,
+      "precision": 1,
+      "recall": 0.5
+    },
+    {
+      "kind": "product",
+      "predicted": 1,
+      "expected": 3,
+      "correct": 1,
+      "found": 1,
+      "precision": 1,
+      "recall": 0.3333333333333333
+    },
+    {
+      "kind": "project",
+      "predicted": 1,
+      "expected": 3,
+      "correct": 1,
+      "found": 1,
+      "precision": 1,
+      "recall": 0.3333333333333333
+    }
+  ],
+  "wrongMerges": 0,
+  "missedMerges": 1,
+  "eventDates": {
+    "correct": 7,
+    "checked": 8,
+    "accuracy": 0.875,
+    "checks": [
+      {
+        "title": "First autonomous picking trial",
+        "kind": "milestone",
+        "occursOn": {
+          "date": "2021-01-01",
+          "precision": "year"
+        },
+        "correct": true
+      },
+      {
+        "title": "Northwind Robotics founded",
+        "kind": "founded",
+        "occursOn": {
+          "date": "2021-01-12",
+          "precision": "day"
+        },
+        "correct": true
+      },
+      {
+        "title": "Avery Vale joined",
+        "kind": "hire",
+        "occursOn": {
+          "date": "2021-01-12",
+          "precision": "day"
+        },
+        "correct": true
+      },
+      {
+        "title": "Rowan Flint joined",
+        "kind": "hire",
+        "occursOn": {
+          "date": "2021-01-12",
+          "precision": "day"
+        },
+        "correct": true
+      },
+      {
+        "title": "Sam Reed joined",
+        "kind": "hire",
+        "occursOn": {
+          "date": "2021-03-08",
+          "precision": "day"
+        },
+        "correct": true
+      },
+      {
+        "title": "Sam Moss joined",
+        "kind": "hire",
+        "occursOn": {
+          "date": "2021-04-19",
+          "precision": "day"
+        },
+        "correct": true
+      },
+      {
+        "title": "Series A closed",
+        "kind": "funding_round",
+        "occursOn": {
+          "date": "2023-05-19",
+          "precision": "day"
+        },
+        "correct": false
+      },
+      {
+        "title": "Series A closed",
+        "kind": "funding_round",
+        "occursOn": {
+          "date": "2023-05-22",
+          "precision": "day"
+        },
+        "correct": true
+      }
+    ]
+  },
+  "eventSubjectLinks": {
+    "correct": 4,
+    "checked": 8
+  },
+  "provenance": {
+    "supported": 27,
+    "facts": 27,
+    "coverage": 1
+  },
+  "observations": {
+    "injectionItemsChecked": 3,
+    "injectionFacts": 0,
+    "outOfAllowlistCalls": 0,
+    "sourceWrites": {
+      "data_room": 0,
+      "gmail": 0,
+      "slack": 0,
+      "github": 0,
+      "linear": 0
+    },
+    "isolationRows": 0,
+    "correctionsChecked": 3,
+    "correctionsRetained": 3,
+    "addedFactsOnReplay": 0,
+    "addedEvidenceOnReplay": 0,
+    "addedModelCallsOnReplay": 976,
+    "repeatedEmploymentPeriods": 2,
+    "aliasEntityIds": ["sam-reed", "sam-reed", "sam-reed"],
+    "distinctSamIds": ["sam-reed", "sam-moss"],
+    "tokenCap": 1000000,
+    "usedTokens": 28830,
+    "inputTokens": 26150,
+    "outputTokens": 2680,
+    "reservedTokens": 0,
+    "relevanceCalls": 990,
+    "extractionCalls": 14,
+    "items": 990
+  },
+  "cost": {
+    "usageKind": "recorded synthetic usage settled by the durable engine; not a live tokenizer/provider measurement",
+    "relevance": {
+      "calls": 990,
+      "estimatedInput": 148500,
+      "estimatedOutput": 9900
+    },
+    "extraction": {
+      "calls": 14,
+      "estimatedInput": 35000,
+      "estimatedOutput": 5600
+    },
+    "recordedTokens": 28830,
+    "recordedInputTokens": 26150,
+    "recordedOutputTokens": 2680,
+    "recordedTokensPerItem": 29.12121212121212,
+    "estimatedTokens": 199000
+  },
+  "limitations": [
+    "Hand-authored recordings cover a deliberately small subset; all other relevance decisions are recorded false, not inferred quality.",
+    "Recorded source readers span all five fixture kinds; production Data room/Gmail adapters have separate integration tests. Future Slack/tracker integrations are not claimed.",
+    "Entity identity precision/recall is not full attribute accuracy. Date accuracy compares date plus precision and end date independently of subject-link coverage, which is separately reported.",
+    "The draft/final date contradiction remains visible. The weak return mention stays separate (one missed merge); the two-period control uses an identity explicitly supplied by the test owner, not automatic resolution.",
+    "Unsupported email-label grammar and preview screening can omit facts. No unread-tail, live recall, live-model cost or provider quality claim.",
+    "Fact-bearing unchanged items reuse evidence; items without evidence may be reclassified. Replay model calls are reported separately from fact/evidence idempotency."
+  ]
+}
