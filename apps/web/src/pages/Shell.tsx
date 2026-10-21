@@ -271,6 +271,7 @@ import { getToolActivityEnabled, subscribeToolActivity } from "../lib/tool-activ
 import { transcriptCanSnapAfterFrame, transcriptIsNearEnd } from "../lib/transcript-scroll";
 import { speaker } from "../lib/tts";
 import { useRememberedMessages } from "../lib/use-remembered-messages";
+import { useRunResumedAt } from "../lib/use-run-resumed-at";
 import { useSidebarGlance } from "../lib/use-sidebar-glance";
 import { errorText } from "../lib/user-error";
 import { workingActivity } from "../lib/working-activity";
@@ -2305,8 +2306,10 @@ export function ShellPage() {
   const soleWorkingActivity = soleWorkingRun
     ? workingActivity(soleWorkingRun, activeSnapshot?.messages ?? [])
     : undefined;
+  const runResumedAt = useRunResumedAt(currentRuns);
   const workingStartedAt = soleWorkingRun
-    ? Date.parse(soleWorkingRun.startedAt ?? soleWorkingRun.createdAt)
+    ? (runResumedAt(soleWorkingRun.id) ??
+      Date.parse(soleWorkingRun.startedAt ?? soleWorkingRun.createdAt))
     : undefined;
   const composerRunning = currentRuns.some((run) => isActive(run.status));
   const runError = threadRunError(activeSnapshot, dismissedRunErrorIds);
