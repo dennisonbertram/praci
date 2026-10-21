@@ -549,7 +549,9 @@ export function InvestorsPage({
                 <Plus aria-hidden="true" />
                 <Trans>Add contact</Trans>
               </Button>
-              {onShowAgent ? <AskBotButton botName="Investors agent" onClick={onShowAgent} /> : null}
+              {onShowAgent ? (
+                <AskBotButton botName="Investors agent" onClick={onShowAgent} />
+              ) : null}
             </>
           }
         />
