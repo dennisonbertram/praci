@@ -37,7 +37,7 @@ test("spaces stay invisible by default and chat creation requires approval", asy
     timeout: 15_000,
   });
   await expect(page.getByRole("button", { name: "Cancel", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Always allow this tool" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Always allow this" })).toHaveCount(0);
   await expect(sidebar.getByText("Customer support", { exact: true })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "create-space-chat-approval");
   await page.getByRole("button", { name: "Create space", exact: true }).click();

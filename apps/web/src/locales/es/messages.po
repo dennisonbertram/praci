@@ -114,6 +114,11 @@ msgstr ""
 msgid "{0, plural, one {Added # file} other {Added # files}}"
 msgstr ""
 
+#. placeholder {0}: chosen.length
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "{0, plural, one {Apply # change} other {Apply # changes}}"
+msgstr ""
+
 #. placeholder {0}: picks.size
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "{0, plural, one {Import # file} other {Import # files}}"
@@ -253,6 +258,11 @@ msgstr ""
 #. placeholder {0}: runwayGlance(glance.financeRunwayMonths, hideAmounts)
 #: src/pages/Shell.tsx
 msgid "{0} runway"
+msgstr ""
+
+#. placeholder {0}: active.name
+#: src/pages/Shell.tsx
+msgid "{0} settings"
 msgstr ""
 
 #. placeholder {0}: statement.transactionCount
@@ -1051,10 +1061,6 @@ msgstr ""
 msgid "Allowed"
 msgstr ""
 
-#: src/components/AskCard.tsx
-msgid "Allowed once"
-msgstr "Permitido una vez"
-
 #: src/pages/Auth.tsx
 msgid "Already have an account?"
 msgstr "¿Ya tienes una cuenta?"
@@ -1092,8 +1098,8 @@ msgid "Always act"
 msgstr ""
 
 #: src/components/AskCard.tsx
-msgid "Always allow this tool"
-msgstr "Permitir siempre esta herramienta"
+msgid "Always allow this"
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Always allowed"
@@ -1144,6 +1150,10 @@ msgstr "Respondido: {0}"
 msgid "Answered: {answer}"
 msgstr "Respondido: {answer}"
 
+#: src/lib/slash-skills.ts
+msgid "Answers from your meeting notes and transcripts."
+msgstr ""
+
 #: src/pages/Paywall.tsx
 msgid "Any model, with your own key"
 msgstr ""
@@ -1190,7 +1200,6 @@ msgid "Appearance"
 msgstr "Apariencia"
 
 #: src/components/compose/RichTextEditor.tsx
-#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr ""
@@ -1207,6 +1216,10 @@ msgstr "Aprobar"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Approve this server to let your bot use its tools."
+msgstr ""
+
+#: src/components/AskCard.tsx
+msgid "Approved"
 msgstr ""
 
 #: src/components/ConnectAppsButton.tsx
@@ -1689,6 +1702,10 @@ msgstr ""
 msgid "Box"
 msgstr ""
 
+#: src/lib/slash-skills.ts
+msgid "Box files"
+msgstr ""
+
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Brain label"
 msgstr ""
@@ -2128,6 +2145,7 @@ msgid "Clear formatting"
 msgstr ""
 
 #: src/components/ListControls.tsx
+#: src/pages/DataRoom.tsx
 #: src/pages/Shell.tsx
 msgid "Clear search"
 msgstr ""
@@ -3603,6 +3621,10 @@ msgstr ""
 msgid "Developer"
 msgstr ""
 
+#: src/lib/slash-skills.ts
+msgid "Devin sessions"
+msgstr ""
+
 #: src/components/integrations/SignInStep.tsx
 msgid "Didn't open?"
 msgstr ""
@@ -4215,6 +4237,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Find an app"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Find and summarize files in Box. Changes ask first."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -5336,6 +5362,10 @@ msgstr "Medio"
 msgid "Medium"
 msgstr "Medio"
 
+#: src/lib/slash-skills.ts
+msgid "Meeting notes"
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Meeting notes and transcripts"
 msgstr ""
@@ -5670,10 +5700,6 @@ msgstr ""
 msgid "Needs a server restart"
 msgstr ""
 
-#: src/lib/roster-status.ts
-msgid "Needs an answer"
-msgstr ""
-
 #: src/components/MailApprovalCard.tsx
 msgid "Needs approval"
 msgstr ""
@@ -5706,6 +5732,10 @@ msgstr "Necesita toma de control"
 #: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
 msgid "Needs you"
+msgstr ""
+
+#: src/lib/roster-status.ts
+msgid "Needs your answer"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -7821,10 +7851,6 @@ msgstr ""
 msgid "Search Drive"
 msgstr ""
 
-#: src/pages/DataRoom.tsx
-msgid "Search looks for these words in names and text."
-msgstr ""
-
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Inbox.tsx
 msgid "Search mail"
@@ -8495,6 +8521,10 @@ msgstr ""
 
 #: src/pages/Paywall.tsx
 msgid "Start {trialDays}-day free trial"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Start and follow Devin sessions. Each one asks first."
 msgstr ""
 
 #: src/components/teach/TeachComputerOverlay.tsx
@@ -9841,6 +9871,10 @@ msgstr ""
 
 #: src/components/EmailCards.tsx
 msgid "Within 3 days"
+msgstr ""
+
+#: src/components/AskCard.tsx
+msgid "Won't ask again for this kind of action."
 msgstr ""
 
 #: src/lib/ticket-status.ts
