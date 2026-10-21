@@ -72,7 +72,6 @@ vi.mock("../components/integrations/useIntegrations", () => ({
   }),
 }));
 
-import { DATA_ROOM_CHANGED } from "../lib/data-room";
 import { setHideAmounts } from "../lib/hide-amounts-preference";
 import { CapTablePage, rowKind } from "./CapTable";
 
@@ -539,7 +538,10 @@ it("explains where ownership comes from when Carta is not connected", async () =
   expect(container.textContent).toContain("See who owns your company");
   // A founder new to Carta learns what it is, and that the page works without it.
   expect(container.textContent).toContain("Carta is the service many startups use");
-  expect(container.textContent).toContain("Not on Carta?");
+  // Nothing else competes with the prompt: no tabs, search, table or Add contact.
+  expect(container.querySelector("[role=tablist]")).toBeNull();
+  expect(container.querySelector("input[type=search]")).toBeNull();
+  expect(container.textContent).not.toContain("Add contact");
   await act(async () => root.unmount());
   root = createRoot(container);
   rpcMock.servers.mockResolvedValue([{ ...cartaServer, oauthStatus: "reconnect" }]);
@@ -688,8 +690,6 @@ it("reloads contacts and the cap table when the agent finishes a chat turn", asy
 });
 
 it("shows an error with Try again when the Carta connection check fails", async () => {
-  // The page and the Import menu each read the servers once.
-  rpcMock.servers.mockRejectedValueOnce(new Error("offline"));
   rpcMock.servers.mockRejectedValueOnce(new Error("offline"));
   await show();
   const text = container.textContent ?? "";
@@ -876,41 +876,19 @@ it("shows no Documents section when the folder is missing or empty", async () =>
   expect(container.textContent).not.toContain("Documents");
 });
 
-it("files an import into Finance / Cap Table, creating the folder when it is missing", async () => {
-  rpcMock.connections.mockResolvedValue([
-    { connectorId: "google", provider: "googledrive", status: "connected" },
-  ]);
-  rpcMock.catalog.mockResolvedValue([{ connectorId: "google", slug: "googledrive" }]);
-  rpcMock.folders.mockResolvedValue([folder("fin", "Finance", null)]);
-  rpcMock.folderCreate.mockResolvedValue(folder("cap", "Cap Table", "fin"));
-  rpcMock.driveList.mockResolvedValue({
-    files: [{ id: "g1", name: "Plan.pdf", mimeType: "application/pdf", isFolder: false, size: 10 }],
-  });
-  rpcMock.importDrive.mockResolvedValue({ imported: 1, duplicates: 0, failed: 0 });
-  const changed = vi.fn();
-  window.addEventListener(DATA_ROOM_CHANGED, changed);
+it("leaves importing files to the Data room: the header has no Import or Add files", async () => {
   await show();
-  await click(document.querySelector<HTMLElement>('[aria-haspopup="menu"]') ?? undefined);
-  await click(
-    [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
-      (el) => el.textContent === "Google Drive",
-    ),
-  );
-  expect(rpcMock.folderCreate).toHaveBeenCalledWith({ name: "Cap Table", parentId: "fin" });
-  await click(
-    document.querySelector<HTMLElement>('[role="checkbox"][aria-label="Select Plan.pdf"]') ??
-      undefined,
-  );
-  await click([...document.querySelectorAll("button")].find((b) => b.textContent === "Import 1"));
-  expect(rpcMock.importDrive).toHaveBeenCalledWith({
-    fileIds: ["g1"],
-    driveFolderIds: [],
-    folderId: "cap",
-  });
-  await flush();
-  // The Documents list under the table reloads on this event.
-  expect(changed).toHaveBeenCalled();
-  window.removeEventListener(DATA_ROOM_CHANGED, changed);
+  const labels = [...container.querySelectorAll("button")].map((b) => b.textContent);
+  expect(labels).not.toContain("Import");
+  expect(labels).not.toContain("Add files");
+});
+
+it("shows a skeleton, not the contacts layout, until the Carta check ends", async () => {
+  rpcMock.servers.mockReturnValue(new Promise(() => {}));
+  await show();
+  expect(container.querySelector("[aria-busy=true]")).not.toBeNull();
+  expect(container.querySelector("[role=tablist]")).toBeNull();
+  expect(container.querySelector("table")).toBeNull();
 });
 
 describe("search, filter and sort", () => {
@@ -1066,7 +1044,9 @@ describe("search, filter and sort", () => {
 
   it("flips direction and writes the sort to the URL", async () => {
     await showAt("/app/cap-table");
-    await click(document.querySelector<HTMLElement>("button[aria-label=Descending]") ?? undefined);
+    await click(
+      document.querySelector<HTMLElement>("button[aria-label='Sort ascending']") ?? undefined,
+    );
     expect(search$).toContain("dir=asc");
     expect(search$).toContain("sort=percent");
     expect(rowNames().slice(0, 3)).toEqual(["Two", "Nine", "Ten"]);

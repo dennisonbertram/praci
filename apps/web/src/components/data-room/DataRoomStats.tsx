@@ -11,7 +11,10 @@ import { sizeText, typeLabel } from "./format";
 import type { Filters } from "./use-data-room-list";
 
 /** The filter a click on a bar or row applies; the page then shows the list. */
-export type StatsPick = Pick<Filters, "docType" | "party" | "source" | "docDateFrom" | "docDateTo">;
+export type StatsPick = Pick<
+  Filters,
+  "docType" | "party" | "source" | "status" | "docDateFrom" | "docDateTo"
+>;
 
 /** The first and last moment of a "YYYY-MM" or "YYYY" bucket, as the date filters take them. */
 export function bucketRange(key: string): Pick<StatsPick, "docDateFrom" | "docDateTo"> {
@@ -222,7 +225,12 @@ export function DataRoomStats({
     { key: "ready", label: t`Ready`, count: stats.status.ready },
     { key: "processing", label: t`Reading`, count: stats.status.processing },
     { key: "notSearchable", label: t`Not searchable`, count: stats.status.notSearchable },
-    { key: "failed", label: t`Failed`, count: stats.status.failed },
+    {
+      key: "failed",
+      label: t`Failed`,
+      count: stats.status.failed,
+      onPick: () => onPick({ status: "failed" }),
+    },
   ].filter((row) => row.count > 0);
   return (
     <div className="@container/stats flex flex-col gap-3 p-3">

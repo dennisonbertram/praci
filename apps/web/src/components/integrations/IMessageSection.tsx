@@ -269,11 +269,14 @@ function SetupDialog({
 export function IMessageSection({
   query = "",
   flat = false,
+  onShown,
   onOpenMessaging,
 }: {
   query?: string;
   /** Results among other tiles: no heading of its own. */
   flat?: boolean;
+  /** How many tiles match, so the page can tell "nothing matches" from "matches are in here". */
+  onShown?: (count: number) => void;
   onOpenMessaging?: () => void;
 }) {
   const { t } = useLingui();
@@ -300,7 +303,12 @@ export function IMessageSection({
       sub: t`Chat with your agents over iMessage from your Mac`,
     },
   ].filter((tile) => tile.name.toLowerCase().includes(query.trim().toLowerCase()));
-  if (!state?.canConfigure || tiles.length === 0) return null;
+  const shown = state?.canConfigure ? tiles.length : 0;
+  useEffect(() => {
+    onShown?.(shown);
+    return () => onShown?.(0);
+  }, [shown, onShown]);
+  if (!state?.canConfigure || shown === 0) return null;
   const open = tiles.find((tile) => tile.id === editing);
   const providerOf = (id: Provider["id"]) => state.providers.find((p) => p.id === id);
   return (

@@ -1,0 +1,12328 @@
+{
+ "375-light-integrations-new": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 6,
+     "19px/700": 1,
+     "13px/400": 1,
+     "13px/600": 2,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-light-integrations-detail": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 7,
+     "13px/400": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Get a key in Granola ↗\""
+   ]
+  }
+ },
+ "375-light-integrations-mcp": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 6,
+     "19px/700": 1,
+     "13px/400": 1,
+     "13px/600": 2,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-light-integrations-key": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 6,
+     "19px/700": 1,
+     "13px/400": 1,
+     "13px/600": 2,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-light-api-key-empty": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 10,
+     "13px/400": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Get a key in Granola ↗\""
+   ]
+  }
+ },
+ "375-light-api-key-entering": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-light-api-key-verifying": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-light-api-key-syncing": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 7,
+     "13px/400": 3,
+     "19px/700": 1,
+     "12px/500": 1,
+     "13px/500": 1,
+     "11px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-light-api-key-connected": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 7,
+     "13px/400": 3,
+     "19px/700": 1,
+     "12px/500": 1,
+     "13px/500": 1,
+     "11px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-light-api-key-rejected": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 2,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-light-api-key-reconnect": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 4,
+     "19px/700": 1,
+     "12px/500": 1,
+     "13px/500": 2,
+     "11px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-light-agent-answer": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "11px/700": 2,
+     "19px/700": 1,
+     "13px/400": 3
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Pricing review, 12 Oct\"",
+     "w": 136,
+     "h": 21
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Pricing questionVendor call\"",
+     "children": 2,
+     "widths": [
+      117,
+      89
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-light-agent-inject": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "11px/700": 2,
+     "19px/700": 1,
+     "13px/400": 3
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Vendor call, 16 Oct\"",
+     "w": 121,
+     "h": 21
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Pricing questionVendor call\"",
+     "children": 2,
+     "widths": [
+      117,
+      89
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-light-citation-closed": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 375,
+     "h": 471,
+     "fillPct": 7,
+     "pctOfViewport": 58
+    },
+    {
+     "el": "section#screen-citation \"5 Opening a citation ClosedOpe\"",
+     "w": 351,
+     "h": 403,
+     "fillPct": 9,
+     "pctOfViewport": 46
+    },
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 351,
+     "h": 300,
+     "fillPct": 4,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.pane \"G You agreed to send Dana a re\"",
+     "w": 349,
+     "h": 298,
+     "fillPct": 4,
+     "pctOfViewport": 34
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "11px/700": 1,
+     "13px/400": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"ClosedOpenDelete\"",
+     "children": 3,
+     "widths": [
+      65,
+      56,
+      63
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-light-citation-open": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "11px/700": 1,
+     "13px/400": 3,
+     "12px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"ClosedOpenDelete\"",
+     "children": 3,
+     "widths": [
+      65,
+      56,
+      63
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-light-citation-confirm": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 351,
+     "h": 300,
+     "fillPct": 12,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.pane \"G You agreed to send Dana a re\"",
+     "w": 349,
+     "h": 298,
+     "fillPct": 12,
+     "pctOfViewport": 34
+    },
+    {
+     "el": "div.scrim \"Delete this meeting\"",
+     "w": 349,
+     "h": 298,
+     "fillPct": 8,
+     "pctOfViewport": 34
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "11px/700": 1,
+     "13px/400": 1,
+     "13px/700": 1,
+     "13px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"ClosedOpenDelete\"",
+     "children": 3,
+     "widths": [
+      65,
+      56,
+      63
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-light-disconnect-before": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 375,
+     "h": 438,
+     "fillPct": 8,
+     "pctOfViewport": 54
+    },
+    {
+     "el": "section#screen-disconnect \"6 Disconnect BeforeAfter Searc\"",
+     "w": 351,
+     "h": 370,
+     "fillPct": 10,
+     "pctOfViewport": 43
+    },
+    {
+     "el": "div \"SearchInboxBotsGGranola agentI\"",
+     "w": 351,
+     "h": 300,
+     "fillPct": 7,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 351,
+     "h": 300,
+     "fillPct": 7,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.pane \"● Synced 42 meetingsDisconnect\"",
+     "w": 349,
+     "h": 298,
+     "fillPct": 7,
+     "pctOfViewport": 34
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 2,
+     "13px/400": 2,
+     "12px/500": 1,
+     "13px/500": 1,
+     "11px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"BeforeAfter\"",
+     "children": 2,
+     "widths": [
+      63,
+      54
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-light-disconnect-after": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 336,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     7,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 8,
+     "11px/400": 3,
+     "13px/400": 4,
+     "13px/500": 1,
+     "11px/700": 1,
+     "19px/700": 1,
+     "12px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Pricing review, 12 Oct\"",
+     "w": 136,
+     "h": 21
+    },
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"BeforeAfter\"",
+     "children": 2,
+     "widths": [
+      63,
+      54
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Get a key in Granola ↗\""
+   ]
+  }
+ },
+ "375-dark-integrations-new": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 6,
+     "19px/700": 1,
+     "13px/400": 1,
+     "13px/600": 2,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-dark-integrations-detail": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 7,
+     "13px/400": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Get a key in Granola ↗\""
+   ]
+  }
+ },
+ "375-dark-integrations-mcp": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 6,
+     "19px/700": 1,
+     "13px/400": 1,
+     "13px/600": 2,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-dark-integrations-key": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 6,
+     "19px/700": 1,
+     "13px/400": 1,
+     "13px/600": 2,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-dark-api-key-empty": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 10,
+     "13px/400": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Get a key in Granola ↗\""
+   ]
+  }
+ },
+ "375-dark-api-key-entering": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-dark-api-key-verifying": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-dark-api-key-syncing": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 7,
+     "13px/400": 3,
+     "19px/700": 1,
+     "12px/500": 1,
+     "13px/500": 1,
+     "11px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-dark-api-key-connected": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 7,
+     "13px/400": 3,
+     "19px/700": 1,
+     "12px/500": 1,
+     "13px/500": 1,
+     "11px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-dark-api-key-rejected": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 2,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-dark-api-key-reconnect": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 4,
+     "19px/700": 1,
+     "12px/500": 1,
+     "13px/500": 2,
+     "11px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-dark-agent-answer": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "11px/700": 2,
+     "19px/700": 1,
+     "13px/400": 3
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Pricing review, 12 Oct\"",
+     "w": 136,
+     "h": 21
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Pricing questionVendor call\"",
+     "children": 2,
+     "widths": [
+      117,
+      89
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-dark-agent-inject": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "11px/700": 2,
+     "19px/700": 1,
+     "13px/400": 3
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Vendor call, 16 Oct\"",
+     "w": 121,
+     "h": 21
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Pricing questionVendor call\"",
+     "children": 2,
+     "widths": [
+      117,
+      89
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-dark-citation-closed": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 375,
+     "h": 471,
+     "fillPct": 7,
+     "pctOfViewport": 58
+    },
+    {
+     "el": "section#screen-citation \"5 Opening a citation ClosedOpe\"",
+     "w": 351,
+     "h": 403,
+     "fillPct": 9,
+     "pctOfViewport": 46
+    },
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 351,
+     "h": 300,
+     "fillPct": 4,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.pane \"G You agreed to send Dana a re\"",
+     "w": 349,
+     "h": 298,
+     "fillPct": 4,
+     "pctOfViewport": 34
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "11px/700": 1,
+     "13px/400": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"ClosedOpenDelete\"",
+     "children": 3,
+     "widths": [
+      65,
+      56,
+      63
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-dark-citation-open": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "11px/700": 1,
+     "13px/400": 3,
+     "12px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"ClosedOpenDelete\"",
+     "children": 3,
+     "widths": [
+      65,
+      56,
+      63
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-dark-citation-confirm": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 351,
+     "h": 300,
+     "fillPct": 12,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.pane \"G You agreed to send Dana a re\"",
+     "w": 349,
+     "h": 298,
+     "fillPct": 12,
+     "pctOfViewport": 34
+    },
+    {
+     "el": "div.scrim \"Delete this meeting\"",
+     "w": 349,
+     "h": 298,
+     "fillPct": 8,
+     "pctOfViewport": 34
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "11px/700": 1,
+     "13px/400": 1,
+     "13px/700": 1,
+     "13px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"ClosedOpenDelete\"",
+     "children": 3,
+     "widths": [
+      65,
+      56,
+      63
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-dark-disconnect-before": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 375,
+     "h": 438,
+     "fillPct": 8,
+     "pctOfViewport": 54
+    },
+    {
+     "el": "section#screen-disconnect \"6 Disconnect BeforeAfter Searc\"",
+     "w": 351,
+     "h": 370,
+     "fillPct": 10,
+     "pctOfViewport": 43
+    },
+    {
+     "el": "div \"SearchInboxBotsGGranola agentI\"",
+     "w": 351,
+     "h": 300,
+     "fillPct": 7,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 351,
+     "h": 300,
+     "fillPct": 7,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.pane \"● Synced 42 meetingsDisconnect\"",
+     "w": 349,
+     "h": 298,
+     "fillPct": 7,
+     "pctOfViewport": 34
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 2,
+     "13px/400": 2,
+     "12px/500": 1,
+     "13px/500": 1,
+     "11px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"BeforeAfter\"",
+     "children": 2,
+     "widths": [
+      63,
+      54
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "375-dark-disconnect-after": {
+  "layout": {
+   "viewport": {
+    "width": 375,
+    "height": 812,
+    "pageScrollY": 336,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     7,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 8,
+     "11px/400": 3,
+     "13px/400": 4,
+     "13px/500": 1,
+     "11px/700": 1,
+     "19px/700": 1,
+     "12px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Pricing review, 12 Oct\"",
+     "w": 136,
+     "h": 21
+    },
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"BeforeAfter\"",
+     "children": 2,
+     "widths": [
+      63,
+      54
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Get a key in Granola ↗\""
+   ]
+  }
+ },
+ "768-light-integrations-new": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 6,
+     "19px/700": 1,
+     "13px/400": 1,
+     "13px/600": 2,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Not connectedDetail pageSign-i\"",
+     "children": 4,
+     "widths": [
+      110,
+      90,
+      94,
+      110
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-light-integrations-detail": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 7,
+     "13px/400": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Not connectedDetail pageSign-i\"",
+     "children": 4,
+     "widths": [
+      110,
+      90,
+      94,
+      110
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Get a key in Granola ↗\""
+   ]
+  }
+ },
+ "768-light-integrations-mcp": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 6,
+     "19px/700": 1,
+     "13px/400": 1,
+     "13px/600": 2,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Not connectedDetail pageSign-i\"",
+     "children": 4,
+     "widths": [
+      110,
+      90,
+      94,
+      110
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-light-integrations-key": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 6,
+     "19px/700": 1,
+     "13px/400": 1,
+     "13px/600": 2,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Not connectedDetail pageSign-i\"",
+     "children": 4,
+     "widths": [
+      110,
+      90,
+      94,
+      110
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-light-api-key-empty": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 10,
+     "13px/400": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Get a key in Granola ↗\""
+   ]
+  }
+ },
+ "768-light-api-key-entering": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 12,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-light-api-key-verifying": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-light-api-key-syncing": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 768,
+     "h": 471,
+     "fillPct": 10,
+     "pctOfViewport": 46
+    },
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 6,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"← Integrations GGranola Granol\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 7,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 7,
+     "13px/400": 3,
+     "19px/700": 1,
+     "12px/500": 1,
+     "13px/500": 1,
+     "11px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-light-api-key-connected": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 768,
+     "h": 471,
+     "fillPct": 10,
+     "pctOfViewport": 46
+    },
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 6,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"← Integrations GGranola Granol\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 7,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 7,
+     "13px/400": 3,
+     "19px/700": 1,
+     "12px/500": 1,
+     "13px/500": 1,
+     "11px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-light-api-key-rejected": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 2,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-light-api-key-reconnect": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 4,
+     "19px/700": 1,
+     "12px/500": 1,
+     "13px/500": 2,
+     "11px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-light-agent-answer": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "11px/700": 2,
+     "19px/700": 1,
+     "13px/400": 3
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Pricing review, 12 Oct\"",
+     "w": 136,
+     "h": 21
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Pricing questionVendor call\"",
+     "children": 2,
+     "widths": [
+      117,
+      89
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-light-agent-inject": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "11px/700": 2,
+     "19px/700": 1,
+     "13px/400": 3
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Vendor call, 16 Oct\"",
+     "w": 121,
+     "h": 21
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Pricing questionVendor call\"",
+     "children": 2,
+     "widths": [
+      117,
+      89
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-light-citation-closed": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 768,
+     "h": 438,
+     "fillPct": 4,
+     "pctOfViewport": 43
+    },
+    {
+     "el": "section#screen-citation \"5 Opening a citation ClosedOpe\"",
+     "w": 744,
+     "h": 370,
+     "fillPct": 5,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 2,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"G You agreed to send Dana a re\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 2,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "11px/700": 1,
+     "13px/400": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"ClosedOpenDelete\"",
+     "children": 3,
+     "widths": [
+      65,
+      56,
+      63
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-light-citation-open": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 768,
+     "h": 438,
+     "fillPct": 8,
+     "pctOfViewport": 43
+    },
+    {
+     "el": "section#screen-citation \"5 Opening a citation ClosedOpe\"",
+     "w": 744,
+     "h": 370,
+     "fillPct": 9,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 7,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"G You agreed to send Dana a re\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 8,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "11px/700": 1,
+     "13px/400": 3,
+     "12px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"ClosedOpenDelete\"",
+     "children": 3,
+     "widths": [
+      65,
+      56,
+      63
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-light-citation-confirm": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 768,
+     "h": 438,
+     "fillPct": 7,
+     "pctOfViewport": 43
+    },
+    {
+     "el": "section#screen-citation \"5 Opening a citation ClosedOpe\"",
+     "w": 744,
+     "h": 370,
+     "fillPct": 8,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 6,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"G You agreed to send Dana a re\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 6,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.scrim \"Delete this meeting\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 4,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "11px/700": 1,
+     "13px/400": 1,
+     "13px/700": 1,
+     "13px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"ClosedOpenDelete\"",
+     "children": 3,
+     "widths": [
+      65,
+      56,
+      63
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-light-disconnect-before": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 768,
+     "h": 438,
+     "fillPct": 4,
+     "pctOfViewport": 43
+    },
+    {
+     "el": "section#screen-disconnect \"6 Disconnect BeforeAfter Searc\"",
+     "w": 744,
+     "h": 370,
+     "fillPct": 5,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div \"SearchInboxBotsGGranola agentI\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 3,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 3,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"● Synced 42 meetingsDisconnect\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 3,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 2,
+     "13px/400": 2,
+     "12px/500": 1,
+     "13px/500": 1,
+     "11px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"BeforeAfter\"",
+     "children": 2,
+     "widths": [
+      63,
+      54
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-light-disconnect-after": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 124,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 7,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"What did we decide with Dana a\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 8,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     7,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 8,
+     "11px/400": 3,
+     "13px/400": 4,
+     "13px/500": 1,
+     "11px/700": 1,
+     "19px/700": 1,
+     "12px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Pricing review, 12 Oct\"",
+     "w": 136,
+     "h": 21
+    },
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"BeforeAfter\"",
+     "children": 2,
+     "widths": [
+      63,
+      54
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Get a key in Granola ↗\""
+   ]
+  }
+ },
+ "768-dark-integrations-new": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 6,
+     "19px/700": 1,
+     "13px/400": 1,
+     "13px/600": 2,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Not connectedDetail pageSign-i\"",
+     "children": 4,
+     "widths": [
+      110,
+      90,
+      94,
+      110
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-dark-integrations-detail": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 7,
+     "13px/400": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Not connectedDetail pageSign-i\"",
+     "children": 4,
+     "widths": [
+      110,
+      90,
+      94,
+      110
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Get a key in Granola ↗\""
+   ]
+  }
+ },
+ "768-dark-integrations-mcp": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 6,
+     "19px/700": 1,
+     "13px/400": 1,
+     "13px/600": 2,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Not connectedDetail pageSign-i\"",
+     "children": 4,
+     "widths": [
+      110,
+      90,
+      94,
+      110
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-dark-integrations-key": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "19px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 6,
+     "19px/700": 1,
+     "13px/400": 1,
+     "13px/600": 2,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Not connectedDetail pageSign-i\"",
+     "children": 4,
+     "widths": [
+      110,
+      90,
+      94,
+      110
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-dark-api-key-empty": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 10,
+     "13px/400": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Get a key in Granola ↗\""
+   ]
+  }
+ },
+ "768-dark-api-key-entering": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 12,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-dark-api-key-verifying": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-dark-api-key-syncing": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 768,
+     "h": 471,
+     "fillPct": 10,
+     "pctOfViewport": 46
+    },
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 6,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"← Integrations GGranola Granol\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 7,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 7,
+     "13px/400": 3,
+     "19px/700": 1,
+     "12px/500": 1,
+     "13px/500": 1,
+     "11px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-dark-api-key-connected": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 768,
+     "h": 471,
+     "fillPct": 10,
+     "pctOfViewport": 46
+    },
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 6,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"← Integrations GGranola Granol\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 7,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 7,
+     "13px/400": 3,
+     "19px/700": 1,
+     "12px/500": 1,
+     "13px/500": 1,
+     "11px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-dark-api-key-rejected": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 2,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-dark-api-key-reconnect": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 4,
+     "19px/700": 1,
+     "12px/500": 1,
+     "13px/500": 2,
+     "11px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-dark-agent-answer": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "11px/700": 2,
+     "19px/700": 1,
+     "13px/400": 3
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Pricing review, 12 Oct\"",
+     "w": 136,
+     "h": 21
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Pricing questionVendor call\"",
+     "children": 2,
+     "widths": [
+      117,
+      89
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-dark-agent-inject": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "19px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "11px/700": 2,
+     "19px/700": 1,
+     "13px/400": 3
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Vendor call, 16 Oct\"",
+     "w": 121,
+     "h": 21
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Pricing questionVendor call\"",
+     "children": 2,
+     "widths": [
+      117,
+      89
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-dark-citation-closed": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 768,
+     "h": 438,
+     "fillPct": 4,
+     "pctOfViewport": 43
+    },
+    {
+     "el": "section#screen-citation \"5 Opening a citation ClosedOpe\"",
+     "w": 744,
+     "h": 370,
+     "fillPct": 5,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 2,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"G You agreed to send Dana a re\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 2,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "11px/700": 1,
+     "13px/400": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"ClosedOpenDelete\"",
+     "children": 3,
+     "widths": [
+      65,
+      56,
+      63
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-dark-citation-open": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 768,
+     "h": 438,
+     "fillPct": 8,
+     "pctOfViewport": 43
+    },
+    {
+     "el": "section#screen-citation \"5 Opening a citation ClosedOpe\"",
+     "w": 744,
+     "h": 370,
+     "fillPct": 9,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 7,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"G You agreed to send Dana a re\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 8,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "11px/700": 1,
+     "13px/400": 3,
+     "12px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"ClosedOpenDelete\"",
+     "children": 3,
+     "widths": [
+      65,
+      56,
+      63
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-dark-citation-confirm": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 768,
+     "h": 438,
+     "fillPct": 7,
+     "pctOfViewport": 43
+    },
+    {
+     "el": "section#screen-citation \"5 Opening a citation ClosedOpe\"",
+     "w": 744,
+     "h": 370,
+     "fillPct": 8,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 6,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"G You agreed to send Dana a re\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 6,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.scrim \"Delete this meeting\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 4,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "11px/700": 1,
+     "13px/400": 1,
+     "13px/700": 1,
+     "13px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"ClosedOpenDelete\"",
+     "children": 3,
+     "widths": [
+      65,
+      56,
+      63
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-dark-disconnect-before": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 768,
+     "h": 438,
+     "fillPct": 4,
+     "pctOfViewport": 43
+    },
+    {
+     "el": "section#screen-disconnect \"6 Disconnect BeforeAfter Searc\"",
+     "w": 744,
+     "h": 370,
+     "fillPct": 5,
+     "pctOfViewport": 35
+    },
+    {
+     "el": "div \"SearchInboxBotsGGranola agentI\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 3,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 3,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"● Synced 42 meetingsDisconnect\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 3,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 2,
+     "13px/400": 2,
+     "12px/500": 1,
+     "13px/500": 1,
+     "11px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"BeforeAfter\"",
+     "children": 2,
+     "widths": [
+      63,
+      54
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "768-dark-disconnect-after": {
+  "layout": {
+   "viewport": {
+    "width": 768,
+    "height": 1024,
+    "pageScrollY": 124,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.win \"SearchInboxBotsGGranola agentI\"",
+     "w": 744,
+     "h": 300,
+     "fillPct": 7,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div.pane \"What did we decide with Dana a\"",
+     "w": 742,
+     "h": 298,
+     "fillPct": 8,
+     "pctOfViewport": 28
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     7,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 8,
+     "11px/400": 3,
+     "13px/400": 4,
+     "13px/500": 1,
+     "11px/700": 1,
+     "19px/700": 1,
+     "12px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Pricing review, 12 Oct\"",
+     "w": 136,
+     "h": 21
+    },
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"BeforeAfter\"",
+     "children": 2,
+     "widths": [
+      63,
+      54
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Get a key in Granola ↗\""
+   ]
+  }
+ },
+ "1440-light-integrations-new": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 6,
+     "13px/400": 3,
+     "13px/600": 3,
+     "19px/700": 1,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Not connectedDetail pageSign-i\"",
+     "children": 4,
+     "widths": [
+      110,
+      90,
+      94,
+      110
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-light-integrations-detail": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"Integrations Connected apps GG\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 12,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 7,
+     "13px/400": 3,
+     "13px/600": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Not connectedDetail pageSign-i\"",
+     "children": 4,
+     "widths": [
+      110,
+      90,
+      94,
+      110
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Get a key in Granola ↗\""
+   ]
+  }
+ },
+ "1440-light-integrations-mcp": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 6,
+     "13px/400": 4,
+     "11px/400": 1,
+     "11px/700": 1,
+     "13px/600": 3,
+     "19px/700": 1,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Not connectedDetail pageSign-i\"",
+     "children": 4,
+     "widths": [
+      110,
+      90,
+      94,
+      110
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-light-integrations-key": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 6,
+     "13px/400": 4,
+     "11px/400": 1,
+     "11px/700": 1,
+     "13px/600": 3,
+     "19px/700": 1,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Not connectedDetail pageSign-i\"",
+     "children": 4,
+     "widths": [
+      110,
+      90,
+      94,
+      110
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-light-api-key-empty": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"← Integrations GGranola Granol\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 12,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 10,
+     "13px/400": 4,
+     "11px/400": 1,
+     "11px/700": 1,
+     "13px/600": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Get a key in Granola ↗\""
+   ]
+  }
+ },
+ "1440-light-api-key-entering": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"← Integrations GGranola Granol\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 10,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 4,
+     "11px/400": 1,
+     "11px/700": 1,
+     "13px/600": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-light-api-key-verifying": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"← Integrations GGranola Granol\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 11,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 4,
+     "11px/400": 1,
+     "11px/700": 1,
+     "13px/600": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-light-api-key-syncing": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"← Integrations GGranola Granol\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 5,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 7,
+     "13px/400": 6,
+     "11px/400": 1,
+     "11px/700": 2,
+     "13px/600": 1,
+     "19px/700": 1,
+     "12px/500": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-light-api-key-connected": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"← Integrations GGranola Granol\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 5,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 7,
+     "13px/400": 6,
+     "11px/400": 1,
+     "11px/700": 2,
+     "13px/600": 1,
+     "19px/700": 1,
+     "12px/500": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-light-api-key-rejected": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 5,
+     "11px/400": 1,
+     "11px/700": 1,
+     "13px/600": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-light-api-key-reconnect": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 7,
+     "11px/400": 1,
+     "11px/700": 2,
+     "13px/600": 1,
+     "19px/700": 1,
+     "12px/500": 1,
+     "13px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-light-agent-answer": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     18,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      18,
+      20
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "13px/400": 6,
+     "11px/400": 1,
+     "13px/600": 1,
+     "11px/700": 3,
+     "19px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Pricing review, 12 Oct\"",
+     "w": 136,
+     "h": 21
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Pricing questionVendor call\"",
+     "children": 2,
+     "widths": [
+      117,
+      89
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-light-agent-inject": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     18,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      18,
+      20
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "13px/400": 6,
+     "11px/400": 1,
+     "13px/600": 1,
+     "11px/700": 3,
+     "19px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Vendor call, 16 Oct\"",
+     "w": 121,
+     "h": 21
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Pricing questionVendor call\"",
+     "children": 2,
+     "widths": [
+      117,
+      89
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-light-citation-closed": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 1120,
+     "h": 462,
+     "fillPct": 11,
+     "pctOfViewport": 40
+    },
+    {
+     "el": "div.pane \"G You agreed to send Dana a re\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 1,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "13px/400": 4,
+     "11px/400": 1,
+     "13px/600": 1,
+     "11px/700": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"ClosedOpenDelete\"",
+     "children": 3,
+     "widths": [
+      65,
+      56,
+      63
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-light-citation-open": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"G You agreed to send Dana a re\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 6,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "13px/400": 6,
+     "11px/400": 1,
+     "13px/600": 1,
+     "11px/700": 2,
+     "12px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"ClosedOpenDelete\"",
+     "children": 3,
+     "widths": [
+      65,
+      56,
+      63
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-light-citation-confirm": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"G You agreed to send Dana a re\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 5,
+     "pctOfViewport": 20
+    },
+    {
+     "el": "div.scrim \"Delete this meeting\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 3,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "13px/400": 4,
+     "11px/400": 1,
+     "13px/600": 1,
+     "11px/700": 2,
+     "13px/700": 1,
+     "13px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"ClosedOpenDelete\"",
+     "children": 3,
+     "widths": [
+      65,
+      56,
+      63
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-light-disconnect-before": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 1120,
+     "h": 462,
+     "fillPct": 11,
+     "pctOfViewport": 40
+    },
+    {
+     "el": "div.pane \"● Synced 42 meetingsDisconnect\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 3,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 2,
+     "13px/400": 5,
+     "11px/400": 1,
+     "11px/700": 2,
+     "13px/600": 1,
+     "12px/500": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"BeforeAfter\"",
+     "children": 2,
+     "widths": [
+      63,
+      54
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-light-disconnect-after": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 272,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"What did we decide with Dana a\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 6,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     7,
+     8,
+     10,
+     12,
+     14,
+     18,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14,
+     18,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      18,
+      20
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 8,
+     "11px/400": 6,
+     "13px/400": 13,
+     "11px/700": 4,
+     "13px/600": 3,
+     "13px/500": 1,
+     "19px/700": 1,
+     "12px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Pricing review, 12 Oct\"",
+     "w": 136,
+     "h": 21
+    },
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"BeforeAfter\"",
+     "children": 2,
+     "widths": [
+      63,
+      54
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Get a key in Granola ↗\""
+   ]
+  }
+ },
+ "1440-dark-integrations-new": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 6,
+     "13px/400": 3,
+     "13px/600": 3,
+     "19px/700": 1,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Not connectedDetail pageSign-i\"",
+     "children": 4,
+     "widths": [
+      110,
+      90,
+      94,
+      110
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-dark-integrations-detail": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"Integrations Connected apps GG\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 12,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 7,
+     "13px/400": 3,
+     "13px/600": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Not connectedDetail pageSign-i\"",
+     "children": 4,
+     "widths": [
+      110,
+      90,
+      94,
+      110
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Get a key in Granola ↗\""
+   ]
+  }
+ },
+ "1440-dark-integrations-mcp": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 6,
+     "13px/400": 4,
+     "11px/400": 1,
+     "11px/700": 1,
+     "13px/600": 3,
+     "19px/700": 1,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Not connectedDetail pageSign-i\"",
+     "children": 4,
+     "widths": [
+      110,
+      90,
+      94,
+      110
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-dark-integrations-key": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 3,
+     "12px/400": 6,
+     "13px/400": 4,
+     "11px/400": 1,
+     "11px/700": 1,
+     "13px/600": 3,
+     "19px/700": 1,
+     "11px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Not connectedDetail pageSign-i\"",
+     "children": 4,
+     "widths": [
+      110,
+      90,
+      94,
+      110
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-dark-api-key-empty": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"← Integrations GGranola Granol\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 12,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 10,
+     "13px/400": 4,
+     "11px/400": 1,
+     "11px/700": 1,
+     "13px/600": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Get a key in Granola ↗\""
+   ]
+  }
+ },
+ "1440-dark-api-key-entering": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"← Integrations GGranola Granol\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 10,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 4,
+     "11px/400": 1,
+     "11px/700": 1,
+     "13px/600": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-dark-api-key-verifying": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"← Integrations GGranola Granol\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 11,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 4,
+     "11px/400": 1,
+     "11px/700": 1,
+     "13px/600": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-dark-api-key-syncing": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"← Integrations GGranola Granol\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 5,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 7,
+     "13px/400": 6,
+     "11px/400": 1,
+     "11px/700": 2,
+     "13px/600": 1,
+     "19px/700": 1,
+     "12px/500": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-dark-api-key-connected": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"← Integrations GGranola Granol\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 5,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 7,
+     "13px/400": 6,
+     "11px/400": 1,
+     "11px/700": 2,
+     "13px/600": 1,
+     "19px/700": 1,
+     "12px/500": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-dark-api-key-rejected": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 5,
+     "11px/400": 1,
+     "11px/700": 1,
+     "13px/600": 1,
+     "19px/700": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-dark-api-key-reconnect": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 2,
+     "12px/400": 9,
+     "13px/400": 7,
+     "11px/400": 1,
+     "11px/700": 2,
+     "13px/600": 1,
+     "19px/700": 1,
+     "12px/500": 1,
+     "13px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"EmptyEnteringConnectingSyncing\"",
+     "children": 7,
+     "widths": [
+      62,
+      73,
+      91,
+      71,
+      88,
+      96,
+      123
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-dark-agent-answer": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     18,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      18,
+      20
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "13px/400": 6,
+     "11px/400": 1,
+     "13px/600": 1,
+     "11px/700": 3,
+     "19px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Pricing review, 12 Oct\"",
+     "w": 136,
+     "h": 21
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Pricing questionVendor call\"",
+     "children": 2,
+     "widths": [
+      117,
+      89
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-dark-agent-inject": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     18,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      18,
+      20
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 5,
+     "13px/400": 6,
+     "11px/400": 1,
+     "13px/600": 1,
+     "11px/700": 3,
+     "19px/700": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Vendor call, 16 Oct\"",
+     "w": 121,
+     "h": 21
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"Pricing questionVendor call\"",
+     "children": 2,
+     "widths": [
+      117,
+      89
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-dark-citation-closed": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 1120,
+     "h": 462,
+     "fillPct": 11,
+     "pctOfViewport": 40
+    },
+    {
+     "el": "div.pane \"G You agreed to send Dana a re\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 1,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "13px/400": 4,
+     "11px/400": 1,
+     "13px/600": 1,
+     "11px/700": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"ClosedOpenDelete\"",
+     "children": 3,
+     "widths": [
+      65,
+      56,
+      63
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-dark-citation-open": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"G You agreed to send Dana a re\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 6,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "13px/400": 6,
+     "11px/400": 1,
+     "13px/600": 1,
+     "11px/700": 2,
+     "12px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"ClosedOpenDelete\"",
+     "children": 3,
+     "widths": [
+      65,
+      56,
+      63
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-dark-citation-confirm": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"G You agreed to send Dana a re\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 5,
+     "pctOfViewport": 20
+    },
+    {
+     "el": "div.scrim \"Delete this meeting\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 3,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 4,
+     "13px/400": 4,
+     "11px/400": 1,
+     "13px/600": 1,
+     "11px/700": 2,
+     "13px/700": 1,
+     "13px/500": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"ClosedOpenDelete\"",
+     "children": 3,
+     "widths": [
+      65,
+      56,
+      63
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-dark-disconnect-before": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.screens \"1 Integrations: Granola Not co\"",
+     "w": 1120,
+     "h": 462,
+     "fillPct": 11,
+     "pctOfViewport": 40
+    },
+    {
+     "el": "div.pane \"● Synced 42 meetingsDisconnect\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 3,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 2,
+     "13px/400": 5,
+     "11px/400": 1,
+     "11px/700": 2,
+     "13px/600": 1,
+     "12px/500": 1,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"BeforeAfter\"",
+     "children": 2,
+     "widths": [
+      63,
+      54
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "1440-dark-disconnect-after": {
+  "layout": {
+   "viewport": {
+    "width": 1440,
+    "height": 900,
+    "pageScrollY": 272,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div.pane \"What did we decide with Dana a\"",
+     "w": 878,
+     "h": 298,
+     "fillPct": 6,
+     "pctOfViewport": 20
+    }
+   ],
+   "spacing": {
+    "observed": [
+     2,
+     4,
+     6,
+     7,
+     8,
+     10,
+     12,
+     14,
+     18,
+     20,
+     22,
+     26,
+     28
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14,
+     18,
+     22,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      18,
+      20
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      26,
+      28
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "12px",
+     "11px",
+     "13px",
+     "19px"
+    ],
+    "sizes": {
+     "16px/700": 1,
+     "12px/400": 8,
+     "11px/400": 6,
+     "13px/400": 13,
+     "11px/700": 4,
+     "13px/600": 3,
+     "13px/500": 1,
+     "19px/700": 1,
+     "12px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a.cite \"Pricing review, 12 Oct\"",
+     "w": 136,
+     "h": 21
+    },
+    {
+     "el": "input \"Send Dana the revised pricing\"",
+     "w": 16,
+     "h": 16
+    }
+   ],
+   "lowContrast": [
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    },
+    {
+     "el": "span.av.bot \"G\"",
+     "ratio": 3
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.sw \"BeforeAfter\"",
+     "children": 2,
+     "widths": [
+      63,
+      54
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Get a key in Granola ↗\""
+   ]
+  }
+ }
+}

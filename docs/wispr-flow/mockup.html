@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wispr Flow mockup</title>
+<!--
+Mockup for docs/plans/wispr-flow.md. Sample data is invented (example.com). Light and dark follow the OS; the button at the top right toggles.
+Open a screen directly with mockup.html#screen-id. State pills switch the states of one screen.
+Composer dictation is not drawn: the plan adds no switch, button or copy for it (Flow types into the composer like a keyboard).
+Author notes live in HTML comments, not in the frames. Everything inside a window or phone frame is product UI.
+D-1 (round 2): the shared design tokens are not changed. Colours below that differ from the tokens (muted text, warning, success, bot, iOS label, field border, switch track) are compliant local values: text at least 4.5:1, field borders and switch tracks at least 3:1. The shared tokens need the same change if the maintainer accepts D-1.
+-->
+<style>
+:root{
+  --background:#fafafa; --card:#fff; --muted:#f2f2f2; --muted-fg:#636363;
+  --fg:#111; --border:#e6e6e6; --primary:#111; --primary-fg:#fff;
+  --sidebar:#f5f5f4; --sidebar-accent:#e9e9e7; --destructive:#c4352b; --warning:#8f5a0a; --success:#276749;
+  --bot:#b9501c; --bot2:#0f6672; --scrim:rgba(0,0,0,.35); --field:#8a8a8a;
+  --ios-bg:#f2f2f7; --ios-row:#fff; --ios-sep:#e3e3e8; --ios-label:#6c6c70; --glass:rgba(255,255,255,.72);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
+    --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
+    --sidebar:#141414; --sidebar-accent:#232323; --scrim:rgba(0,0,0,.6);
+    --destructive:#e5645a; --warning:#d9a441; --success:#4fb37f; --bot:#bd4f23; --bot2:#13717e; --field:#7a7a7a;
+    --ios-bg:#000; --ios-row:#1c1c1e; --ios-sep:#38383a; --ios-label:#8e8e93; --glass:rgba(70,70,74,.62);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
+  --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
+  --sidebar:#141414; --sidebar-accent:#232323; --scrim:rgba(0,0,0,.6);
+  --destructive:#e5645a; --warning:#d9a441; --success:#4fb37f; --bot:#bd4f23; --bot2:#13717e; --field:#7a7a7a;
+  --ios-bg:#000; --ios-row:#1c1c1e; --ios-sep:#38383a; --ios-label:#8e8e93; --glass:rgba(70,70,74,.62);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth;scroll-padding-top:56px}
+body{margin:0;background:var(--background);color:var(--fg);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+/* index nav (mockup-only) */
+.index{position:sticky;top:0;z-index:50;display:flex;gap:6px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--card);overflow-x:auto;white-space:nowrap}
+.index b{font-size:11px;color:var(--muted-fg);text-transform:uppercase;letter-spacing:.04em;margin-right:4px}
+.index a,.pill{display:inline-flex;align-items:center;min-height:32px;padding:4px 12px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--muted-fg);font-size:12px;text-decoration:none}
+.index a:hover{background:var(--muted)}
+.index button{margin-left:auto}
+.pill.on{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.screens{max-width:1120px;margin:0 auto;padding:12px 20px 80px}
+.screen{padding-top:28px}
+.sh{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.sh h2{margin:0;font-size:16px}
+.sh .sw{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.note{color:var(--muted-fg);font-size:12px;margin:8px 0 0;max-width:720px}
+/* app window */
+.win{position:relative;display:grid;grid-template-columns:200px 1fr;border:1px solid var(--border);border-radius:12px;overflow:hidden;min-height:300px;background:var(--background)}
+.win.nosb{grid-template-columns:1fr}
+.win .side{background:var(--sidebar);border-right:1px solid var(--border);padding:10px 8px;display:flex;flex-direction:column;gap:2px}
+.row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px}
+.row.active{background:var(--sidebar-accent);font-weight:600}
+.row .count{margin-left:auto;font-size:11px;color:var(--muted-fg)}
+.lbl{font-size:11px;color:var(--muted-fg);padding:12px 8px 4px;text-transform:uppercase;letter-spacing:.04em}
+.av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;flex:none}
+.av.bot{background:var(--bot)}.av.bot2{background:var(--bot2)}
+.pane{padding:22px 26px 30px;min-width:0;position:relative}
+.pane h1{font-size:19px;margin:0 0 4px}
+.pane h3.sec{font-size:12px;margin:22px 0 8px;color:var(--muted-fg);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.sub{color:var(--muted-fg);margin:0 0 16px;max-width:620px}
+.btn{border:1px solid var(--border);background:var(--card);border-radius:8px;padding:6px 12px;font-weight:500}
+.btn:hover{background:var(--muted)}
+.btn.pri{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.btn.pri:hover{opacity:.9}
+.btn{min-height:32px}
+.btn.kb{min-width:112px}
+.btn[disabled]{cursor:default;background:transparent;color:var(--muted-fg);border-color:var(--border);opacity:1}
+.btn.sm{padding:4px 12px;font-size:12px}
+.btn.bad{color:var(--destructive);border-color:var(--destructive);background:transparent}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted-fg)}
+input.f,select.f{width:100%;padding:8px 10px;border:1px solid var(--field);border-radius:8px;background:var(--card)}
+.fld{display:block;margin:0 0 10px}.fld>span{display:block;font-size:12px;color:var(--muted-fg);margin-bottom:4px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.card.c-sm{padding:10px 14px;gap:4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.card .top{display:flex;gap:12px;align-items:center;min-width:0}
+.card .nm{font-weight:600}.card .ds{color:var(--muted-fg);font-size:12px}
+.logo{width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:var(--muted);color:var(--muted-fg);display:grid;place-items:center;flex:none;font-weight:700;font-size:16px}
+.logo.xl{width:48px;height:48px}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid currentColor}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.badge.ok{color:var(--success)}.badge.warn{color:var(--warning)}.badge.err{color:var(--destructive)}.badge.pend{color:var(--muted-fg)}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:12px}
+.pr{display:flex;gap:12px;align-items:center;padding:11px 14px;border-top:1px solid var(--border);flex-wrap:wrap}
+.pr:first-child{border-top:0}.pr .grow{flex:1;min-width:160px}.pr small{color:var(--muted-fg);display:block}
+.ok-t{color:var(--success)}.err-t{color:var(--destructive)}.mut{color:var(--muted-fg)}
+.mono{font:12px ui-monospace,Menlo,monospace}
+.dhead{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.back{color:var(--muted-fg);background:none;border:0;padding:0;margin-bottom:12px;min-height:32px}
+.cap{font-size:11px;color:var(--muted-fg);text-transform:uppercase;letter-spacing:.04em;margin:18px 0 6px}
+.fh{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.fh>span{font-size:12px;color:var(--muted-fg);margin-bottom:4px}.fh a{display:inline-flex;align-items:center;min-height:32px;margin:-8px 0;font-size:12px;color:var(--muted-fg)}
+.agentlink{display:flex;width:fit-content;align-items:center;gap:8px;min-height:32px;text-decoration:none;font-weight:500}
+a.tile{text-decoration:none;color:inherit}
+.tabs{display:flex;gap:4px;margin:14px 0 10px}
+.tab{min-height:32px;padding:4px 12px;border-radius:8px;border:0;background:transparent;color:var(--muted-fg)}
+.tab[aria-selected=true]{background:var(--sidebar-accent);color:var(--fg);font-weight:600}
+.mail .pr{padding:9px 14px}
+/* chat */
+.chat{display:flex;flex-direction:column;gap:14px;max-width:640px}
+.me{align-self:flex-end;background:var(--primary);color:var(--primary-fg);padding:8px 12px;border-radius:14px 14px 4px 14px;max-width:85%}
+.bm{display:flex;gap:10px;align-items:flex-start}
+.bm .body{display:flex;flex-direction:column;gap:6px;min-width:0}
+.bm .who{font-weight:600}
+.tool{display:inline-flex;gap:6px;align-items:center;color:var(--muted-fg);font-size:12px;border:1px solid var(--border);border-radius:8px;padding:2px 8px;width:fit-content}
+.cite{position:relative;display:inline-flex;align-items:center;height:20px;margin:-2px 2px;vertical-align:middle;border:0;background:var(--sidebar-accent);color:var(--fg);border-radius:999px;padding:0 12px;font-size:12px;font-weight:500;text-decoration:none}
+.cite:hover{background:var(--border)}
+.cite::after{content:"";position:absolute;inset:-6px 0}
+.anchor{position:relative;display:inline-block}
+.anchor .pop{position:absolute;top:100%;left:0;margin-top:6px;z-index:4;max-width:min(280px,calc(100vw - 72px))}
+.composer{margin-top:18px;max-width:640px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;color:var(--muted-fg);background:var(--card)}
+.pop a{display:inline-flex;align-items:center;min-height:32px}
+.pop{border:1px solid var(--border);background:var(--card);border-radius:10px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.14);width:fit-content;min-width:240px;display:flex;flex-direction:column;gap:2px}
+/* to-do card */
+.todo h2{font-size:12px;margin:0 0 4px;color:var(--muted-fg);font-weight:600}
+.todo ul{list-style:none;margin:0;padding:0}
+.todo li{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--border);transition:opacity .3s}
+.todo li.fade{opacity:0}.todo li.gone{display:none}
+.todo li .hit{display:grid;place-items:center;width:32px;height:32px;margin:-6px 0 -6px -8px;flex:none;cursor:pointer}
+.todo li:first-child{border-top:0}
+.todo li small{display:block;color:var(--muted-fg);font-size:12px}
+.todo li .due{margin-left:auto;font-size:12px;color:var(--muted-fg);white-space:nowrap}
+.todo li .due.warn{color:var(--warning)}
+.todo input[type=checkbox]{width:16px;height:16px;margin:0;accent-color:var(--primary)}
+.todo .empty{color:var(--muted-fg);padding:4px 0}
+.cleared{display:none!important}
+.shim{background:linear-gradient(90deg,var(--muted-fg) 35%,var(--fg) 50%,var(--muted-fg) 65%) 0 0/250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shim 1.6s linear infinite}
+@keyframes shim{to{background-position:-150% 0}}
+.spin{width:16px;height:16px;border-radius:50%;border:2px solid var(--ios-sep);border-top-color:var(--ios-label);animation:spin .8s linear infinite;flex:none;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.shim,.spin{animation:none}.shim{color:var(--muted-fg);background:none}}
+/* switch */
+.tgl{width:34px;height:20px;border-radius:999px;background:var(--field);border:0;position:relative;flex:none}
+.tgl::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s}
+.tgl::before{content:"";position:absolute;inset:-6px -4px}
+.tgl[aria-checked=true]{background:var(--primary)}
+.tgl[aria-checked=true]::after{left:16px;background:var(--primary-fg)}
+/* iPhone */
+.phones{display:flex;gap:28px;flex-wrap:wrap;justify-content:center;align-items:flex-end}
+.phonewrap{display:flex;flex-direction:column;gap:10px;align-items:center;width:390px;max-width:100%}
+.phonewrap .sw{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.phone{width:390px;height:780px;border:8px solid var(--fg);border-radius:52px;background:var(--ios-bg);position:relative;overflow:hidden;display:flex;flex-direction:column;font-family:-apple-system,"SF Pro Text",system-ui,sans-serif;font-size:17px;line-height:1.3}
+.phone::before{content:"";position:absolute;top:10px;left:50%;transform:translateX(-50%);width:110px;height:30px;border-radius:20px;background:#000;z-index:3}
+.sbar{display:flex;justify-content:space-between;padding:16px 30px 6px;font-weight:600;font-size:15px}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:6px 16px;min-height:40px;color:var(--fg)}
+.nav .bk{color:var(--fg);font-size:17px}
+.glass{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--glass);backdrop-filter:blur(20px);box-shadow:0 1px 6px rgba(0,0,0,.14),inset 0 0 0 .5px rgba(128,128,128,.3);font-size:26px;line-height:1;padding-bottom:3px}
+button.glass{border:0;color:inherit;font-family:inherit;cursor:pointer}
+.nav .tt{font-weight:600}
+.large{font-size:34px;font-weight:700;letter-spacing:-.02em;padding:2px 20px 8px}
+.pbody{flex:1;overflow-y:auto;padding:0 16px 24px}
+.ig{background:var(--ios-row);border-radius:12px;overflow:hidden;margin:0 0 6px}
+.ih{font-size:13px;color:var(--ios-label);padding:14px 16px 6px}
+.if{font-size:13px;color:var(--ios-label);padding:2px 16px 12px}
+.if.err-t{color:var(--destructive)}
+.ir{display:flex;align-items:center;gap:10px;padding:11px 16px;min-height:52px;border-top:1px solid var(--ios-sep)}
+.ir:first-child{border-top:0}
+.ir .g{flex:1;min-width:0}
+.ir .tr{color:var(--ios-label);display:flex;gap:6px;align-items:center}
+.ir small{display:block;color:var(--ios-label);font-size:14px}
+.ir.link{justify-content:center;font-weight:500}
+.ir.dim{opacity:.4}
+.ir.dst{color:var(--destructive)}
+.kbd{position:absolute;left:0;right:0;bottom:0;height:260px;z-index:4;background:var(--glass);backdrop-filter:blur(20px);border-top:.5px solid var(--ios-sep);padding:10px 3px;display:flex;flex-direction:column;gap:10px;font-size:22px}
+.kbd div{display:flex;gap:6px;justify-content:center}
+.kbd span{flex:1;max-width:34px;height:42px;border-radius:5px;background:var(--ios-row);display:grid;place-items:center;box-shadow:0 1px 0 rgba(0,0,0,.3)}
+.kbd span.w{max-width:none;flex:4;font-size:16px}
+.kbd span.go{max-width:none;flex:1.4;font-size:16px;background:var(--primary);color:var(--primary-fg)}
+.ir input{border:0;background:transparent;width:100%;outline:0}
+.chev::after{content:"›";font-size:22px;color:var(--ios-label);line-height:1}
+.chk{color:var(--fg);font-weight:700}
+.circ{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--ios-label);flex:none;background:transparent;padding:0}
+.nab{display:grid;place-items:center;min-height:48px;margin:12px 0 6px;border-radius:14px;background:var(--primary);color:var(--primary-fg);font-weight:600;border:0;width:100%;font-size:17px;gap:8px;grid-auto-flow:column;justify-content:center}
+.nab.dim{opacity:.4}
+.sw-ios{width:51px;height:31px;border-radius:999px;background:var(--ios-sep);position:relative;flex:none;border:0;padding:0}
+.sw-ios::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:.15s}
+.sw-ios[aria-checked=true]{background:var(--success)}
+.sw-ios[aria-checked=true]::after{left:22px}
+.homebar{width:134px;height:5px;border-radius:3px;background:var(--fg);margin:6px auto 8px;flex:none}
+.scrim{position:absolute;inset:0;background:var(--scrim);display:grid;place-items:center;padding:16px;z-index:5}
+@media (max-width:820px){
+  .win{grid-template-columns:1fr}.win .side{display:none}
+  .pane{padding:16px}
+  .screens{padding:8px 12px 60px}
+  .sh .sw{margin-left:0}
+}
+@media (max-width:430px){.phone{width:100%;max-width:390px}}
+@media (max-width:560px){
+  .pane{position:static}
+  .anchor{position:static}
+  .anchor .pop{position:absolute;top:auto;bottom:0;left:0;right:0;margin:0;width:auto;max-width:none;border-width:1px 0 0;border-radius:12px 12px 0 0;padding:14px 16px 16px;gap:6px;box-shadow:0 -8px 24px rgba(0,0,0,.18)}
+  .anchor .pop a,.anchor .pop .btn{min-height:44px}
+}
+@media (max-width:620px){.vkey{padding-top:0!important;max-width:none!important}.vlist{width:100%!important}}
+.vsplit{display:flex;gap:8px 20px;flex-wrap:wrap}
+.ir .tr.ok-t{color:var(--success)}
+a.ir{text-decoration:none;color:inherit}
+.prow.sp{padding:0 14px 0 0;gap:0}
+.prow .rb{flex:1;display:flex;align-items:center;min-height:44px;padding:8px 14px;background:transparent;border:0;text-align:left;color:inherit}
+.prow .st{display:inline-flex;align-items:center;min-height:44px;padding-left:8px;font-size:12px;white-space:nowrap}
+.prow .st.warn{color:var(--warning)}
+.prow{display:flex;gap:12px;align-items:center;width:100%;min-height:44px;padding:8px 14px;background:transparent;border:0;border-top:1px solid var(--border);text-align:left;color:inherit}
+.prow:first-child{border-top:0}.prow .grow{flex:1}.prow small{color:var(--muted-fg);display:block}.prow.sel{background:var(--muted);box-shadow:inset 3px 0 0 var(--fg)}
+</style>
+</head>
+<body>
+<nav class="index" aria-label="Screens">
+  <b>Screens</b>
+  <a href="#screen-settings-voice">1 Settings, Voice</a>
+  <a href="#screen-consent">2 AI data sharing</a>
+  <a href="#screen-call">3 Voice call</a>
+  <a href="#screen-flow-meetings">4 Flow tile, agent, meetings</a>
+  <a href="#screen-mobile">5 Mobile Voice settings</a>
+  <button class="pill" id="theme" type="button">Light / dark</button>
+</nav>
+<div class="screens">
+
+<!-- 1 -->
+<section class="screen" id="screen-settings-voice">
+  <header class="sh"><h2>1 Settings, Voice: Wispr Flow in the providers list</h2>
+    <div class="sw" role="group" aria-label="State">
+      <button class="pill on" data-s="default">Default</button><button class="pill" data-s="empty">Wispr Flow, no key</button><button class="pill" data-s="verifying">Verifying</button><button class="pill" data-s="connected">Connected</button><button class="pill" data-s="aioff">AI data sharing off</button><button class="pill" data-s="rejected">Key rejected</button>
+    </div></header>
+  <!--
+  D3 / FX-64: Flow is one row in the existing Voice providers list, labelled "Transcribe only" (it mirrors "Speak only"). There is no separate "Transcription" selector, no "Connected" badge inside the card and no "API access required" state. A rejected key and an unapproved organization both show the existing line "Could not connect this voice provider".
+  Choosing the Flow row sets transcription only and leaves the speech provider unchanged. Providers marked "Speak + transcribe" set both, as today. The Flow row and its key pane ship with S3a (#447).
+  The Flow key pane is the existing provider key pane: API key, Connect. One sentence under Connect lists only the fields sent (FX-42, RX-25: calls send no text from the screen). Consent is asked once, here, for this recipient (D3); the consent is recorded after the key verifies (the sentence is read before pressing Connect). The sentence stays visible while verifying and after a rejection, and is not shown once connected. New copy for the PR to quote: "Transcribe only", "Transcribing", "Sends your recordings and workspace names to Wispr Flow."
+  RX-54 / RX-26: once connected, Flow is the transcriber, so its row status reads "Transcribing". The ElevenLabs row keeps its own status and still describes speech. Disconnect on the Flow row is the way back. The selected row carries aria-current and a 3 px bar, visible at 3:1 or better in light and dark.
+  RX-55: after a rejection the key stays in the field and Connect stays disabled until the field is edited (editing clears the line and the red border). Verifying disables the field and the button and shows the AI shimmer on the button text.
+  TX-16: the Flow key pane has the header "Wispr Flow". TX-4 / TX-20: if consent for the Flow recipient is turned off (screen 2), the Flow row status reads "AI data sharing off" and links to that setting, mirroring Granola; the key stays stored and transcription falls back to the voice provider with no prompt until consent returns. TX-19: at 620 px and below the list and the key pane stack with an 8 px gap.
+  Users who never choose Flow see no change: the "Default" state shows the list with one extra row and the ElevenLabs pane as today.
+  -->
+  <div class="win nosb">
+    <div class="pane">
+      <div class="pr" style="padding:0 0 14px;border:0"><h1 style="margin:0;flex:1">Voice</h1><button class="btn ghost" aria-label="Close voice settings">✕</button></div>
+      <div class="vsplit">
+        <div class="vlist" style="width:280px;max-width:100%">
+          <div class="mut" style="margin-bottom:8px">Providers</div>
+          <div class="panel" style="overflow:hidden">
+            <button class="prow" data-s="default" data-sel="default"><div class="grow">ElevenLabs<small>Speak + transcribe</small></div><span class="ok-t" style="font-size:12px">Connected</span></button>
+            <button class="prow" data-s="default"><div class="grow">OpenAI<small>Speak + transcribe</small></div></button>
+            <button class="prow" data-s="default"><div class="grow">Fish Audio<small>Speak + transcribe</small></div></button>
+            <button class="prow" data-s="default"><div class="grow">Cartesia<small>Speak only</small></div></button>
+            <div class="prow sp" data-sel="empty verifying connected aioff rejected"><button class="rb" data-s="empty"><span class="grow">Wispr Flow<small>Transcribe only</small></span></button><span class="st ok-t" data-st="connected" hidden>Transcribing</span><a class="st warn" href="#screen-consent" data-go="screen-consent:off" data-st="aioff" hidden>AI data sharing off</a></div>
+          </div>
+        </div>
+        <div class="vkey" style="flex:1;min-width:260px;max-width:460px;padding-top:28px">
+          <div class="card" data-st="default">
+            <h2 style="font-size:14px;margin:0 0 8px">ElevenLabs</h2>
+            <label class="fld" style="margin:0"><span>API key</span><input class="f" type="password" autocomplete="off" placeholder="Paste a replacement key" aria-label="API key"></label>
+            <label class="fld" style="margin:0"><span>Voice</span><select class="f" aria-label="Voice"><option>Rachel</option></select></label>
+            <label class="fld" style="margin:0"><span>Speech model</span><select class="f" aria-label="Speech model"><option>Multilingual v2</option></select></label>
+            <div><button class="btn">Hear a sample</button></div>
+          </div>
+          <div class="card" data-st="empty verifying connected aioff rejected" hidden>
+            <h2 style="font-size:14px;margin:0 0 8px">Wispr Flow</h2>
+            <div data-st="empty" hidden>
+              <label class="fld"><span>API key</span><input class="f" type="password" autocomplete="off" aria-label="API key"></label>
+              <button class="btn pri kb" disabled data-dim>Connect</button>
+              <p class="mut" style="margin:8px 0 0">Sends your recordings and workspace names to Wispr Flow.</p>
+            </div>
+            <div data-st="verifying" hidden data-auto="connected">
+              <label class="fld"><span>API key</span><input class="f" type="password" value="flow_example_key_000" disabled aria-label="API key"></label>
+              <button class="btn pri kb" disabled><span class="shim">Connecting…</span></button>
+              <p class="mut" style="margin:8px 0 0">Sends your recordings and workspace names to Wispr Flow.</p>
+            </div>
+            <div data-st="connected aioff" hidden>
+              <div><button class="btn sm bad" data-s="default">Disconnect</button></div>
+            </div>
+            <div data-st="rejected" hidden>
+              <label class="fld"><span>API key</span><input class="f" type="password" value="flow_example_key_000" autocomplete="off" aria-label="API key" aria-invalid="true" style="border-color:var(--destructive)"></label>
+              <p role="alert" class="err-t" style="margin:0 0 8px">Could not connect this voice provider</p>
+              <button class="btn pri kb" disabled data-dim>Connect</button>
+              <p class="mut" style="margin:8px 0 0">Sends your recordings and workspace names to Wispr Flow.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="screen" id="screen-consent">
+  <header class="sh"><h2>2 AI data sharing</h2>
+    <div class="sw" role="group" aria-label="State">
+      <button class="pill on" data-s="on">All on</button><button class="pill" data-s="off">Wispr Flow off</button><button class="pill" data-s="model">Anthropic off</button>
+    </div></header>
+  <!--
+  D3 / FX-65: there is no Inbox consent card and no "Voice sharing has changed" heading, and no global disclosure-version bump. Consent for Flow is asked once, at Connect (screen 1), per recipient.
+  This is the existing AI data sharing setting with one more recipient row. The "Wispr Flow" row appears only after the Flow key is connected; its detail text is invented. Turning it off makes /api/voice/transcribe reject Flow requests; transcription falls back to the voice provider with no prompt (TX-4), and the Flow row in Voice settings reads "AI data sharing off" with a link back here. The states are the toggles in each position. The "Anthropic" row is the AI model recipient (rows follow AiDataSharing.tsx: switch, name, detail); Granola's "AI data sharing off" opens the "Anthropic off" state.
+  Users who never connect Flow see nothing new.
+  -->
+  <div class="win" data-sidebar="Settings" data-bots="Research agent">
+    <div class="pane">
+      <h1 style="font-size:15px">AI data sharing</h1>
+      <div class="panel" style="max-width:560px;margin-top:10px">
+        <div class="pr"><button class="tgl" role="switch" aria-checked="true" aria-label="Allow Anthropic, Model" data-st="on off" data-s="model"></button><button class="tgl" role="switch" aria-checked="false" aria-label="Allow Anthropic, Model" data-st="model" data-s="on" hidden></button><div class="grow"><b>Anthropic</b><small>Model</small></div></div>
+        <div class="pr"><button class="tgl" role="switch" aria-checked="true" aria-label="Allow ElevenLabs, Voice" data-st="on off model"></button><div class="grow"><b>ElevenLabs</b><small>Voice · recordings and text you play</small></div></div>
+        <div class="pr"><button class="tgl" role="switch" aria-checked="true" aria-label="Allow Wispr Flow, Voice" data-st="on model" data-s="off"></button><button class="tgl" role="switch" aria-checked="false" aria-label="Allow Wispr Flow, Voice" data-st="off" data-s="on" hidden></button><div class="grow"><b>Wispr Flow</b><small>Voice · recordings and workspace names</small></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="screen" id="screen-call">
+  <header class="sh"><h2>3 Voice call using Flow transcription</h2>
+    <div class="sw" role="group" aria-label="State">
+      <button class="pill on" data-s="normal">During a call</button><button class="pill" data-s="cap">Daily limit reached</button>
+    </div></header>
+  <!--
+  FX-66 / RX-27 / RX-56: with Flow transcription the call looks the same as today, so no footnote is drawn. The only visible change is the daily cap: one line in the call card through the existing error-caption path, saying that typing still works, with no reset time (FX-45). TX-5 / TX-20: the call card has no input. The thread composer below the card stays available, so typing works while the call is blocked. Mute is disabled while blocked, and on the phone the call stays open for typing (D-5). Typing in the composer must still work while the call is blocked (a test in S3a). New copy for the PR to quote: "Daily voice limit reached. You can keep typing." The alert shows only in the Daily limit state.
+  The unsupported-format message is not drawn: the recorder produces WAV itself, so the user does not meet it.
+  -->
+  <div class="win" data-sidebar="Elio" data-bots="Elio">
+    <div class="pane">
+      <div class="card" style="max-width:380px;align-items:center;text-align:center;padding:22px">
+        <span class="av bot" style="width:44px;height:44px;font-size:18px">E</span>
+        <b>Elio</b>
+        <div data-st="normal" class="mut">Can you move my two o'clock with Dana to Thursday?</div>
+        <div data-st="cap" hidden class="err-t" role="alert">Daily voice limit reached. You can keep typing.</div>
+        <div style="display:flex;gap:8px;margin-top:6px"><button class="btn sm" data-st="normal">Mute</button><button class="btn sm" data-st="cap" disabled hidden>Mute</button><button class="btn sm bad">End</button></div>
+      </div>
+      <div class="composer" style="max-width:380px">Ask Elio</div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="screen" id="screen-flow-meetings">
+  <header class="sh"><h2>4 Wispr Flow tile, agent, meetings</h2>
+    <div class="sw" role="group" aria-label="Page">
+      <button class="pill on" data-s="tile">Tile</button><button class="pill" data-s="agent">Agent answer</button><button class="pill" data-s="cite">Citation</button><button class="pill" data-s="confirm">Delete</button><button class="pill" data-s="inbox">Inbox</button>
+    </div></header>
+  <!--
+  The Flow tile, preset and agent already exist; the plan adds the sync into the shared meetings store with no visible change to the tile. No sync status is shown for Flow (FX-47).
+  Agent answer: "Security sync" is a Wispr Flow meeting and "Vendor call" is a Granola meeting. The answer does not say which is which (FX-11: the provider is only the chip's hover title, set as the chip's title attribute, RX-57). The Flow agent and the Granola agent read the same stored meetings and either answers any meeting question (FX-48); there is one Granola agent (D2). Chips are 20 px high filled pills with a 32 px hit area. The Flow bot and the Granola bot have different identity colours (RX-60).
+  TX-7 / TX-8: the popover shows the meeting title and date, closes on Escape or a click outside, opens as a bottom sheet inside the window at 560 px and below, and the layout does not move when it opens.
+  Citation: a Flow meeting has no known source link, so its popover has no "Open in" row but still offers Delete (RX-57, see Granola screen 5). The confirmation names the meeting and says the note in Wispr Flow is not changed (RX-3, with the provider name swapped in). New copy for the PR to quote: "Delete", Delete "{meeting title}"?, "Removes this meeting and its to-dos from Praci. Your note in Wispr Flow is not changed.", "Cancel".
+  Inbox: the first to-do comes from a Wispr Flow meeting and the second from a Granola meeting. They share one list, and a promise recorded by both sources gives one row (FX-18). The detail line has no "From:" prefix (RX-58). A meeting-only user sees the "Connect mail" card below the To do card (FX-14); with a mail account the To do card sits above the account tabs.
+  Plan S5 may stop after pinning the tool allowlist if Flow's output cannot be mapped (FX-47); then the agent answer and Inbox states would not exist for Flow.
+  The sidebar highlights the row that matches the state (Integrations, the Flow agent, or Inbox).
+  -->
+  <div class="win" data-sidebar="Integrations" data-bots="Wispr Flow agent|Granola agent" data-amap="tile:Integrations|agent:Wispr Flow agent|cite:Wispr Flow agent|confirm:Wispr Flow agent|inbox:Inbox">
+    <div class="pane">
+      <div data-st="tile">
+        <h1>Integrations</h1>
+        <p class="sub">Connected apps</p>
+        <div class="grid">
+          <div class="card"><div class="top"><span class="logo">W</span><div><div class="nm">Wispr Flow</div><div class="ds">Meeting notes</div></div></div><div><span class="badge ok">Connected</span></div></div>
+          <div class="card"><div class="top"><span class="logo">G</span><div><div class="nm">Granola</div><div class="ds">Meeting notes</div></div></div><div><span class="badge ok">Connected</span></div></div>
+        </div>
+      </div>
+      <div data-st="agent cite confirm" hidden>
+        <div class="dhead"><span class="av bot bot2" style="width:30px;height:30px">W</span><h1 style="margin:0">Wispr Flow agent</h1></div>
+        <div class="chat" style="margin-top:18px">
+          <div class="me" style="margin-left:auto;width:fit-content">Which meetings covered the security review?</div>
+          <div class="bm"><span class="av bot bot2">W</span><div class="body">
+            <span class="tool">Searched meetings</span>
+            <div>Two meetings covered it. The team agreed to start the review after the vendor sends its questionnaire. <span class="anchor"><button class="cite" title="Wispr Flow" data-s="cite" aria-haspopup="dialog">Security sync, 14 Oct</button>
+              <span class="pop" role="dialog" aria-label="Security sync" data-st="cite" data-close="agent" hidden>
+                <b>Security sync, 14 Oct</b>
+                <span class="mut">Priya Natarajan, you</span>
+                <button class="btn sm bad" data-s="confirm" style="align-self:flex-start">Delete</button>
+              </span></span></div>
+            <div>The vendor said the questionnaire will arrive next week. <a class="cite" title="Granola" href="#screen-flow-meetings">Vendor call, 16 Oct</a></div>
+          </div></div>
+        </div>
+        <div class="composer">Ask Wispr Flow agent</div>
+      </div>
+      <div class="scrim" role="alertdialog" aria-label="Delete Security sync" data-st="confirm" hidden>
+        <div class="card" style="max-width:340px">
+          <b>Delete "Security sync"?</b>
+          <div class="mut">Removes this meeting and its to-dos from Praci. Your note in Wispr Flow is not changed.</div>
+          <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" data-s="agent">Cancel</button><button class="btn bad" data-s="agent">Delete</button></div>
+        </div>
+      </div>
+      <div data-st="inbox" hidden>
+        <h1>Inbox</h1>
+        <div class="card todo" role="region" aria-labelledby="fl-h" style="max-width:640px;margin-top:14px">
+          <h2 id="fl-h">To do</h2>
+          <ul>
+            <li><label class="hit"><input type="checkbox" aria-label="Start the security review"></label><div><div class="tx">Start the security review</div><small>Security sync, 14 Oct</small></div><span class="due">Mon</span></li>
+            <li><label class="hit"><input type="checkbox" aria-label="Send Dana the revised pricing"></label><div><div class="tx">Send Dana the revised pricing</div><small>Pricing review, 12 Oct</small></div><span class="due">Fri</span></li>
+          </ul>
+        </div>
+        <div class="card" style="max-width:640px;margin-top:14px">
+          <div>Connect Gmail to read, sort and answer your mail here.</div>
+          <div><button class="btn">Connect mail</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="screen" id="screen-mobile">
+  <header class="sh"><h2>5 Mobile: Voice settings</h2></header>
+  <!--
+  The frame stands for native SwiftUI/Expo UI: a grouped List, a SecureField row and native back with Liquid Glass chrome (the round back button is a glass control, 44 pt; the system draws the real one).
+  D3 / FX-67 / RX-59: there is no "Transcription" row and no picker. Flow is a "Transcribe only" row in the providers list. "This device" is a checkmark row (apps/mobile/app/(settings)/voice.tsx:334, a Pressable, not a switch) and keeps the single checkmark in every state, even before the key verifies. The Flow row never takes the checkmark; it shows only its own status, "Transcribing" once connected. "works offline" drops from the "This device" subtitle only when Flow is connected (FX-44: the server provider wins for listening). TX-16: the Flow key rows sit under a "Wispr Flow" group header, so Disconnect clearly belongs to Flow. TX-18: "Transcribing" and "Connected" use the success colour, as on the web, and Fish Audio is in the list. TX-4: with consent off the Flow row reads "AI data sharing off" and opens the setting; transcription falls back to the voice provider with no prompt, so "This device" reads "Free".
+  RX-59: the group is the real SettingsGroup: title-case 13 pt header, rows of 52 pt or more, Connect as a NativeActionButton (full-width prominent button with a progress indicator while connecting), a 44 pt back control. The 14 pt subtitle under each row title is native secondary text.
+  RX-29: Connect is dimmed while the field is empty and, after a rejection, until the key is edited (editing clears the error line). The consent sentence is the group footer in key, verifying and rejected, and is gone once connected. A rejected key shows the existing line in the destructive colour.
+  UX-10: the Typing state shows the system keyboard with the key field, Connect and the consent sentence above it; the list scrolls to the key group in every key state. UX-14: a connected key has Disconnect only; to change the key the user disconnects and pastes a new one.
+  The provider pane's own menus (Voice, Speech model) are native inline menus in the app; Flow has none, so none is drawn.
+  -->
+  <div class="phones">
+    <div class="phonewrap" data-scope>
+      <div class="sw" role="group" aria-label="State">
+        <button class="pill on" data-s="list">Voice</button><button class="pill" data-s="key">Wispr Flow, key</button><button class="pill" data-s="typing">Typing</button><button class="pill" data-s="verifying">Verifying</button><button class="pill" data-s="rejected">Key rejected</button><button class="pill" data-s="connected">Connected</button><button class="pill" data-s="aioff">AI data sharing off</button>
+      </div>
+      <div class="phone">
+        <div class="sbar"><span>9:41</span><span>●●●</span></div>
+        <div class="nav"><button class="glass bk" aria-label="Back">‹</button><span class="tt"></span><span style="width:44px"></span></div>
+        <div class="large">Voice</div>
+        <div class="pbody">
+          <div class="ig"><div class="ir" data-s="list" role="button" tabindex="0"><div class="g">This device<small data-st="list key typing verifying rejected">Free, works offline</small><small data-st="connected aioff" hidden>Free</small></div><div class="tr chk">✓</div></div></div>
+          <div class="ih">Providers</div>
+          <div class="ig">
+            <div class="ir"><div class="g">ElevenLabs<small>Speak + transcribe</small></div><div class="tr ok-t">Connected</div></div>
+            <div class="ir"><div class="g">OpenAI<small>Speak + transcribe</small></div></div>
+            <div class="ir"><div class="g">Fish Audio<small>Speak + transcribe</small></div></div>
+            <div class="ir"><div class="g">Cartesia<small>Speak only</small></div></div>
+            <div class="ir" data-st="list key typing verifying rejected connected" data-s="key" role="button" tabindex="0"><div class="g">Wispr Flow<small>Transcribe only</small></div><div class="tr ok-t" data-st="connected" hidden>Transcribing</div></div>
+            <a class="ir" href="#screen-consent" data-go="screen-consent:off" data-st="aioff" hidden><div class="g">Wispr Flow<small>Transcribe only</small></div><div class="tr" style="color:var(--warning)">AI data sharing off</div><span class="chev"></span></a>
+          </div>
+          <div data-st="key typing verifying rejected connected aioff" data-end hidden>
+            <div class="ih">Wispr Flow</div>
+            <div data-st="key" hidden><div class="ig"><div class="ir"><input type="password" autocomplete="off" aria-label="API key" placeholder="API key"></div></div><div class="nab dim" data-dim role="button" tabindex="0">Connect</div><div class="if">Sends your recordings and workspace names to Wispr Flow.</div></div>
+            <div data-st="typing" hidden><div class="ig"><div class="ir"><input type="password" autocomplete="off" aria-label="API key" placeholder="API key" value="flow_example_ke"></div></div><div class="nab" data-s="verifying" role="button" tabindex="0">Connect</div><div class="if">Sends your recordings and workspace names to Wispr Flow.</div><div style="height:260px" aria-hidden="true"></div></div>
+            <div data-st="verifying" hidden data-auto="connected"><div class="ig"><div class="ir"><input type="password" autocomplete="off" aria-label="API key" placeholder="API key" value="flow_example_key_000" disabled></div></div><div class="nab dim"><span class="spin"></span>Connecting…</div><div class="if">Sends your recordings and workspace names to Wispr Flow.</div></div>
+            <div data-st="rejected" hidden><div class="ig"><div class="ir"><input type="password" autocomplete="off" aria-label="API key" placeholder="API key" value="flow_example_key_000"></div></div><div class="if err-t">Could not connect this voice provider</div><div class="nab dim" data-dim role="button" tabindex="0">Connect</div><div class="if">Sends your recordings and workspace names to Wispr Flow.</div></div>
+            <div data-st="connected aioff" hidden><div class="ig"><div class="ir link dst" data-s="list" role="button" tabindex="0">Disconnect</div></div></div>
+          </div>
+        </div>
+        <div class="kbd" data-st="typing" hidden aria-hidden="true"><div><span>q</span><span>w</span><span>e</span><span>r</span><span>t</span><span>y</span><span>u</span><span>i</span><span>o</span><span>p</span></div><div><span>a</span><span>s</span><span>d</span><span>f</span><span>g</span><span>h</span><span>j</span><span>k</span><span>l</span></div><div><span>z</span><span>x</span><span>c</span><span>v</span><span>b</span><span>n</span><span>m</span></div><div><span class="w">space</span><span class="go">go</span></div></div>
+        <div class="homebar"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+<script>
+(function(){
+  function setState(sc,s){
+    sc.querySelectorAll('[data-st]').forEach(function(x){x.hidden=x.dataset.st.split(' ').indexOf(s)<0});
+    sc.querySelectorAll('.pill[data-s]').forEach(function(p){p.classList.toggle('on',p.dataset.s===s)});
+    sc.querySelectorAll('[data-sel]').forEach(function(x){var on=x.dataset.sel.split(' ').indexOf(s)>=0;x.classList.toggle('sel',on);if(on)x.setAttribute('aria-current','true');else x.removeAttribute('aria-current')});
+    sc.querySelectorAll('[data-amap]').forEach(function(w){var m={};w.dataset.amap.split('|').forEach(function(p){var q=p.split(':');m[q[0]]=q[1]});w.querySelectorAll('.side .row[data-row]').forEach(function(r){r.classList.toggle('active',r.dataset.row===m[s])})});
+    sc.querySelectorAll('[data-auto]').forEach(function(x){if(!x.hidden){var n=x.dataset.auto;setTimeout(function(){if(!x.hidden)setState(sc,n)},1200)}});
+    sc.querySelectorAll('.todo li').forEach(function(li){li.classList.remove('fade','gone');var c=li.querySelector('input');if(c)c.checked=false});
+    sc.querySelectorAll('.cleared').forEach(function(a){a.classList.remove('cleared')});
+    sc.querySelectorAll('input[aria-invalid]').forEach(function(i){i.setAttribute('aria-invalid','true');i.style.borderColor='var(--destructive)'});
+    sc.querySelectorAll('[data-dim]').forEach(function(b){if(b.tagName==='BUTTON'){b.disabled=true;b.removeAttribute('data-s')}else{b.classList.add('dim');b.removeAttribute('data-s')}});
+    sc.querySelectorAll('.pbody').forEach(function(p){var e=p.querySelector('[data-end]');p.scrollTop=e&&!e.hidden?p.scrollHeight:0});
+  }
+  function closePop(focus){
+    var p=document.querySelector('.pop[data-close]:not([hidden])');if(!p)return;
+    setState(p.closest('section'),p.dataset.close);
+    if(focus){var c=p.parentNode.querySelector('.cite');if(c)c.focus()}
+  }
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closePop(true)});
+  document.addEventListener('click',function(e){
+    if(!e.target.closest('.anchor'))closePop(false);
+    var g=e.target.closest('[data-go]');
+    if(g){var q=g.dataset.go.split(':');setState(document.getElementById(q[0]),q[1])}
+    var t=e.target.closest('[data-s]');
+    if(t){var sc=t.closest('[data-scope]')||t.closest('section');setState(sc,t.dataset.s);}
+    var th=e.target.closest('#theme');
+    if(th){var r=document.documentElement;var dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;r.dataset.theme=dark?'light':'dark';}
+  });
+  document.addEventListener('change',function(e){
+    var c=e.target.closest('.todo input[type=checkbox]');
+    if(c){var li=c.closest('li');li.classList.add('fade');setTimeout(function(){li.classList.add('gone')},320)}
+  });
+  document.addEventListener('input',function(e){
+    var i=e.target;if(!i.matches('input[type=password]'))return;
+    var blk=i.closest('[data-st]');
+    var ph=i.closest('.phone');
+    if(ph){
+      blk.querySelectorAll('.if.err-t').forEach(function(a){a.classList.add('cleared')});
+      var nb=blk.querySelector('.nab[data-dim]');
+      if(nb){nb.classList.toggle('dim',!i.value);if(i.value)nb.dataset.s='verifying';else nb.removeAttribute('data-s')}
+      return;
+    }
+    var a=blk&&blk.querySelector('[role=alert]');if(a)a.classList.add('cleared');
+    if(i.hasAttribute('aria-invalid')){i.removeAttribute('aria-invalid');i.style.borderColor=''}
+    var b=blk&&blk.querySelector('button[data-dim]');if(b){b.disabled=!i.value;if(i.value)b.dataset.s='verifying';else b.removeAttribute('data-s')}
+  });
+  document.querySelectorAll('.tgl:not([data-s])').forEach(function(b){b.addEventListener('click',function(){b.setAttribute('aria-checked',b.getAttribute('aria-checked')!=='true')})});
+  document.querySelectorAll('[data-sidebar]').forEach(function(w){
+    var a=w.dataset.sidebar,bots=(w.dataset.bots||'Granola agent').split('|');
+    var h='<div class="side"><div class="row" style="color:var(--muted-fg)">Search</div>'+
+      '<div class="row'+(a==='Inbox'?' active':'')+'" data-row="Inbox">Inbox</div><div class="lbl">Bots</div>';
+    bots.forEach(function(b){h+='<div class="row'+(a===b?' active':'')+'" data-row="'+b+'"><span class="av bot'+(b[0]==='W'?' bot2':'')+'">'+b[0]+'</span>'+b+'</div>'});
+    h+='<div style="flex:1"></div><div class="row'+(a==='Integrations'?' active':'')+'" data-row="Integrations">Integrations</div></div>';
+    w.insertAdjacentHTML('afterbegin',h);
+  });
+  function fromHash(){if(location.hash==='#screen-consent-model'){var c=document.getElementById('screen-consent');setState(c,'model');c.scrollIntoView()}}
+  fromHash();addEventListener('hashchange',fromHash);
+  document.querySelectorAll('[data-scope],section.screen').forEach(function(sc){
+    var on=sc.querySelector('.pill[data-s].on');
+    if(on&&(sc.matches('[data-scope]')||!sc.querySelector('[data-scope]')))setState(sc,on.dataset.s);
+  });
+})();
+</script>
+</body>
+</html>

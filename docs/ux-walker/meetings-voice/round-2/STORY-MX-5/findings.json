@@ -1,0 +1,54 @@
+{
+  "story_id": "STORY-MX-5",
+  "result": "PASS",
+  "round1_status": [
+    {
+      "id": "F-MX-5-1",
+      "status": "fixed",
+      "evidence": "Plan defines the wording: tool output 'no transcript' relayed by the skill. To-do-from-summary basis still not distinguishable (low, F2-MX-5-01)."
+    },
+    {
+      "id": "F-MX-5-2",
+      "status": "fixed",
+      "evidence": "No author note under the answer."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F2-MX-5-01",
+      "severity": "low",
+      "category": "happy-path",
+      "criterion": "Feedback",
+      "score": "warn",
+      "kind": "plan",
+      "description": "A to-do created from a summary-only Flow meeting looks identical to one from a transcript.",
+      "expected": "Recorded decision.",
+      "actual": "Flow Inbox frame, flow-inbox.png.",
+      "screenshot": "flow-inbox.png",
+      "suggested_fix": "Accept as decided or add 'summary only' to the digest's to-do detail.",
+      "files_likely_involved": [],
+      "jf": null,
+      "plan_section": "wispr-flow.md S5",
+      "story_id": "STORY-MX-5"
+    },
+    {
+      "id": "F2-MX-5-02",
+      "severity": "low",
+      "category": "visual",
+      "criterion": "Completeness",
+      "score": "warn",
+      "kind": "mockup",
+      "description": "Flow citation popover (no link, Delete only) described in the Flow mockup comment is not drawn, so Delete for a Flow meeting cannot be seen.",
+      "expected": "Flow popover state in screen 4.",
+      "actual": "Not drawn.",
+      "screenshot": "flow-agent.png",
+      "suggested_fix": "Draw it.",
+      "files_likely_involved": [
+        "docs/granola/mockup.html"
+      ],
+      "jf": null,
+      "plan_section": null,
+      "story_id": "STORY-MX-5"
+    }
+  ]
+}

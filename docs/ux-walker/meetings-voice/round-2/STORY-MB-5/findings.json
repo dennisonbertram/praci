@@ -1,0 +1,102 @@
+{
+  "story": "STORY-MB-5",
+  "round": 2,
+  "verdict": "PASS",
+  "round1_dispositions": [
+    {
+      "id": "F-MB-5-1",
+      "sev": "high",
+      "status": "obsolete",
+      "evidence": "No API-access state; Flow appears only where the deployment has a Flow base URL (plan S3a). Residual generic error is WF-8 N1."
+    },
+    {
+      "id": "F-MB-5-2",
+      "sev": "medium",
+      "status": "still-open",
+      "evidence": "The Flow row takes the check mark as soon as it is tapped, before any key is verified (step-key, step-verifying, step-rejected). See N1."
+    },
+    {
+      "id": "F-MB-5-3",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Header \"WISPR FLOW\" names the provider."
+    },
+    {
+      "id": "F-MB-5-4",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Verifying and Key rejected drawn."
+    },
+    {
+      "id": "F-MB-5-5",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Destructive color."
+    },
+    {
+      "id": "F-MB-5-6",
+      "sev": "medium",
+      "status": "still-open",
+      "evidence": "Disconnect has no confirmation; downgraded to low (N2)."
+    },
+    {
+      "id": "F-MB-5-7",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Plan S3b states precedence; but the mockup draws it differently (N1)."
+    },
+    {
+      "id": "F-MB-5-8",
+      "sev": "low",
+      "status": "fixed",
+      "evidence": "\"Transcribe only\" label."
+    },
+    {
+      "id": "F-MB-5-9",
+      "sev": "low",
+      "status": "fixed",
+      "evidence": "Inline list, glass back; remaining gaps in N3."
+    }
+  ],
+  "new_findings": [
+    {
+      "kind": "mockup",
+      "severity": "medium",
+      "category": "consistency",
+      "description": "Mockup moves the check from \"This device\" to the Flow row in key, verifying and rejected states and drops it entirely when connected, and removes \"works offline\" before Flow is connected. Plan S3a/S3b says the Flow row does not take the check, \"This device\" stays on for speech and only loses \"works offline\" while Flow is connected. In the connected state no row shows the speech choice.",
+      "suggested_fix": "Keep the check on \"This device\" in every state; drop only \"works offline\" when Connected.",
+      "screenshot": "screenshots/step-key.png",
+      "plan_section": "Flow S3a/S3b",
+      "catalog_ref": "NEW",
+      "id": "F2-MB-5-1",
+      "score": "warn",
+      "story_id": "STORY-MB-5"
+    },
+    {
+      "kind": "plan",
+      "severity": "low",
+      "category": "happy-path",
+      "description": "Disconnect (red row) acts at once with no iOS confirmation.",
+      "suggested_fix": "Decide in S3a.",
+      "screenshot": "screenshots/step-connected.png",
+      "plan_section": "Flow S3a",
+      "catalog_ref": "NEW",
+      "id": "F2-MB-5-2",
+      "score": "warn",
+      "story_id": "STORY-MB-5"
+    },
+    {
+      "kind": "mockup",
+      "severity": "low",
+      "category": "visual",
+      "description": "Native fidelity: subtitle 14 px, 40 pt back, status bar dots.",
+      "suggested_fix": "Annotate.",
+      "screenshot": "screenshots/step-list.png",
+      "plan_section": null,
+      "catalog_ref": "NEW",
+      "id": "F2-MB-5-3",
+      "score": "warn",
+      "story_id": "STORY-MB-5"
+    }
+  ]
+}

@@ -214,15 +214,19 @@ export function Preview({
             ? t`Image hidden while amounts are hidden`
             : t`Hidden while amounts are hidden`}
         </p>
-      ) : (
+      ) : item.status === "failed" ? null : (
         <FileViewer item={item} file={file} />
       )}
       {item.status === "failed" ? (
-        <div className="flex flex-col gap-1 text-sm">
+        <div className="flex flex-col items-start gap-1.5 text-sm">
           <p className="font-medium text-destructive">
             <Trans>Couldn't read this file</Trans>
           </p>
           {item.error ? <p className="text-muted-foreground">{item.error}</p> : null}
+          <Button size="sm" onClick={() => onAction("retry", item)}>
+            <RotateCw aria-hidden="true" />
+            <Trans>Try again</Trans>
+          </Button>
         </div>
       ) : !isSettled(item.status) ? (
         <p className="text-sm text-muted-foreground">
@@ -286,14 +290,8 @@ export function Preview({
         </Field>
         <Field label={t`Size`}>{sizeText(item.size)}</Field>
       </dl>
-      {/* Try again and Delete for a file that can't be read; Open and Download are in the header. */}
+      {/* Delete for a file that can't be read; Try again is under the heading, Open and Download in the header. */}
       <div className="flex flex-col gap-1.5">
-        {item.status === "failed" ? (
-          <Button onClick={() => onAction("retry", item)}>
-            <RotateCw aria-hidden="true" />
-            <Trans>Try again</Trans>
-          </Button>
-        ) : null}
         {item.status === "failed" ? (
           <Button
             variant="ghost"

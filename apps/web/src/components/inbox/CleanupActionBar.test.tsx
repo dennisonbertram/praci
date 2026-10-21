@@ -38,9 +38,9 @@ it("shows how many conversations each choice touches and applies the one clicked
   expect(onApply.mock.calls).toEqual([["unsubscribe"], ["skip_inbox"]]);
 });
 
-it("disables a choice that touches nothing, and everything while busy", async () => {
+it("leaves out a choice that touches nothing, and disables everything while busy", async () => {
   await show({ counts: { ...counts, unsubscribe: 0 } });
-  expect(button("Unsubscribe 0")?.hasAttribute("disabled")).toBe(true);
+  expect(button("Unsubscribe 0")).toBeUndefined();
   expect(button("Archive 12")?.hasAttribute("disabled")).toBe(false);
   await show({ busy: true });
   expect(button("Archive 12")?.hasAttribute("disabled")).toBe(true);

@@ -66,7 +66,7 @@ test("creates an integration agent, opens its chat, and persists its permissions
     `/app/${agentBotId}`,
   );
   const writes = section.getByRole("switch", { name: "Allow changes in Demo Bank" });
-  const share = section.getByRole("switch", { name: "Share with all agents" });
+  const share = section.getByRole("switch", { name: /Let other agents use/ });
   await expect(writes).toBeChecked();
   await expect(share).not.toBeChecked();
   await expect(page.getByRole("button", { name: "Create agent" })).toHaveCount(0);

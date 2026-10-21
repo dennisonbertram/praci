@@ -1,0 +1,65 @@
+{
+  "story": "STORY-WF-6",
+  "round": 2,
+  "verdict": "PASS",
+  "round1_dispositions": [
+    {
+      "id": "F-WF-6-1",
+      "sev": "high",
+      "status": "fixed",
+      "evidence": "Consent is asked at Connect (D3); the Inbox card and call-start trigger are gone. Rejected and declined paths: declining means not pressing Connect. Evidence step-3.png."
+    },
+    {
+      "id": "F-WF-6-2",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "One provider list and one pane; one Connected tag per row (step-4.png). A related question remains as N1."
+    },
+    {
+      "id": "F-WF-6-3",
+      "sev": "low",
+      "status": "obsolete",
+      "evidence": "The Transcription select no longer exists; Disconnect goes back to the Default pane."
+    },
+    {
+      "id": "F-WF-6-4",
+      "sev": "low",
+      "status": "fixed",
+      "evidence": "Heading \"Voice sharing has changed\" removed; remaining new strings are quoted in the HTML comment for the PR."
+    },
+    {
+      "id": "F-WF-6-5",
+      "sev": "low",
+      "status": "fixed",
+      "evidence": "Author notes moved into HTML comments; none visible in step-1..4 screenshots."
+    }
+  ],
+  "new_findings": [
+    {
+      "kind": "plan",
+      "severity": "medium",
+      "category": "flow",
+      "description": "After Connect nothing says Flow is now the transcriber. ElevenLabs stays Connected and is also \"Speak + transcribe\", and the only cue for the active provider is a subtle highlight on the selected row. A user cannot tell which provider hears them, or how to switch back other than Disconnect.",
+      "suggested_fix": "State in S3a whether Connect makes Flow the transcriber and how selecting an ElevenLabs/OpenAI row changes it; if it does, show the active one with the existing check or \"Connected\" tag only.",
+      "screenshot": "screenshots/step-4.png",
+      "plan_section": "Flow S3a",
+      "catalog_ref": "NEW",
+      "id": "F2-WF-6-1",
+      "score": "warn",
+      "story_id": "STORY-WF-6"
+    },
+    {
+      "kind": "plan",
+      "severity": "low",
+      "category": "flow",
+      "description": "Plan-defined step \"consent switched off later, next call shows the existing consent prompt\" has no frame; AI data sharing toggle is drawn but not its effect.",
+      "suggested_fix": "Accept: existing prompt, noted in S1c/S3a.",
+      "screenshot": "screenshots/step-5-consent.png",
+      "plan_section": "Flow S1c",
+      "catalog_ref": "NEW",
+      "id": "F2-WF-6-2",
+      "score": "warn",
+      "story_id": "STORY-WF-6"
+    }
+  ]
+}

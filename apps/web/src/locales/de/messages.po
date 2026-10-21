@@ -59,6 +59,11 @@ msgstr ""
 msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
 msgstr ""
 
+#. placeholder {0}: glance.legalDueSoon
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# due soon} other {# due soon}}"
+msgstr ""
+
 #. placeholder {0}: stats.duplicates
 #: src/components/data-room/DataRoomStats.tsx
 msgid "{0, plural, one {# duplicate} other {# duplicates}}"
@@ -92,6 +97,11 @@ msgstr ""
 #. placeholder {0}: usage.runs
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "{0, plural, one {# task done by your bots} other {# tasks done by your bots}}"
+msgstr ""
+
+#. placeholder {0}: glance.dataRoomWaiting
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# waiting} other {# waiting}}"
 msgstr ""
 
 #. placeholder {0}: rows.length
@@ -243,6 +253,11 @@ msgstr ""
 #. placeholder {0}: sender.name
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} rollup hours"
+msgstr ""
+
+#. placeholder {0}: runwayGlance(glance.financeRunwayMonths, hideAmounts)
+#: src/pages/Shell.tsx
+msgid "{0} runway"
 msgstr ""
 
 #. placeholder {0}: statement.transactionCount
@@ -564,6 +579,10 @@ msgstr ""
 msgid "A deposit address at an exchange."
 msgstr ""
 
+#: src/components/sidebar-folders/FolderHeader.tsx
+msgid "A folder with that name already exists"
+msgstr ""
+
 #: src/components/finance/WalletDialog.tsx
 msgid "A Safe multisig. Its owners and threshold are shown."
 msgstr ""
@@ -765,7 +784,7 @@ msgstr ""
 msgid "Add email"
 msgstr ""
 
-#: src/pages/ModelSettingsOverlay.tsx
+#: src/components/AutoFileEmailSetting.tsx
 msgid "Add email attachments to the Data room"
 msgstr ""
 
@@ -1197,6 +1216,14 @@ msgstr "Genehmigen"
 msgid "Approve this server to let your bot use its tools."
 msgstr ""
 
+#: src/components/ConnectAppsButton.tsx
+#: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/McpDetail.tsx
+#: src/pages/Shell.tsx
+msgid "Apps"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Apps with their own server"
 msgstr ""
@@ -1266,10 +1293,6 @@ msgstr ""
 #: src/pages/Shell.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Artifacts"
-msgstr ""
-
-#: src/components/ListControls.tsx
-msgid "Ascending"
 msgstr ""
 
 #: src/components/AskBotButton.tsx
@@ -1581,7 +1604,7 @@ msgid "Blocked"
 msgstr ""
 
 #: src/components/NotificationSettings.tsx
-msgid "Blocked in browser settings"
+msgid "Blocked. Allow notifications for this site in your browser settings."
 msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
@@ -2426,7 +2449,7 @@ msgid "Connect Alchemy"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
-msgid "Connect any app that offers an MCP server URL."
+msgid "Connect any other app by its address."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2587,6 +2610,10 @@ msgstr ""
 #: src/pages/Legal.tsx
 #: src/pages/legal/LegalContracts.tsx
 msgid "Contracts"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "contracts, NDA, deadlines"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
@@ -3016,7 +3043,7 @@ msgstr "Diagramm konnte nicht angezeigt werden"
 msgid "Could not reset password"
 msgstr "Passwort konnte nicht zurückgesetzt werden"
 
-#: src/pages/CapTable.tsx
+#: src/lib/use-contact-notice.ts
 msgid "Could not restore {name}: {reason}. If you dismiss this, {name} stays deleted."
 msgstr ""
 
@@ -3084,7 +3111,7 @@ msgstr ""
 msgid "Could not save the page."
 msgstr ""
 
-#: src/pages/ModelSettingsOverlay.tsx
+#: src/components/AutoFileEmailSetting.tsx
 msgid "Could not save the setting"
 msgstr ""
 
@@ -3533,7 +3560,7 @@ msgstr "gelöscht"
 msgid "Deleted"
 msgstr ""
 
-#: src/pages/CapTable.tsx
+#: src/lib/use-contact-notice.ts
 msgid "Deleted {name}"
 msgstr ""
 
@@ -3558,10 +3585,6 @@ msgstr "Ablehnen"
 msgid "Deployment default"
 msgstr "Bereitstellungsstandard"
 
-#: src/components/ListControls.tsx
-msgid "Descending"
-msgstr ""
-
 #: src/pages/Board.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -3580,6 +3603,7 @@ msgstr ""
 msgid "Desktop update"
 msgstr ""
 
+#: src/components/AskCard.tsx
 #: src/components/data-room/ProcessingStrip.tsx
 msgid "Details"
 msgstr ""
@@ -3653,11 +3677,11 @@ msgid "Disconnecting…"
 msgstr "Verbindung wird getrennt…"
 
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/ContactNotice.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ImportActivity.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/shell/composer.tsx
 #: src/pages/shell/message-cards.tsx
@@ -4104,6 +4128,7 @@ msgid "failed"
 msgstr "fehlgeschlagen"
 
 #: src/components/data-room/DataRoomStats.tsx
+#: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/format.ts
 #: src/components/data-room/ItemRows.tsx
 #: src/components/integrations/parts.tsx
@@ -4777,14 +4802,6 @@ msgstr "Anweisung"
 msgid "Integration options"
 msgstr ""
 
-#: src/components/ConnectAppsButton.tsx
-#: src/components/integrations/AppDetail.tsx
-#: src/components/integrations/IntegrationsHome.tsx
-#: src/components/integrations/McpDetail.tsx
-#: src/pages/Shell.tsx
-msgid "Integrations"
-msgstr "Integrationen"
-
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Interval"
@@ -4887,6 +4904,10 @@ msgstr ""
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Language"
 msgstr "Sprache"
+
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Language and time zone"
+msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
 msgid "Largest files"
@@ -4992,6 +5013,10 @@ msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
+msgstr ""
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Let other agents use {service} directly"
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
@@ -5180,8 +5205,9 @@ msgstr ""
 msgid "Mail data from this account that Praci cached is removed."
 msgstr ""
 
+#. placeholder {0}: accountCount > 1 ? "these accounts" : "this account"
 #: src/components/integrations/AppDetail.tsx
-msgid "Mail data Praci cached from these accounts is removed."
+msgid "Mail data Praci cached from {0} is removed."
 msgstr ""
 
 #. placeholder {0}: status.sender
@@ -5554,6 +5580,7 @@ msgstr ""
 #: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/transcript.tsx
 msgid "More"
 msgstr ""
@@ -6169,10 +6196,6 @@ msgstr ""
 msgid "Not now"
 msgstr "Jetzt nicht"
 
-#: src/pages/CapTable.tsx
-msgid "Not on Carta? You can still keep your investors and advisors below."
-msgstr ""
-
 #: src/pages/Legal.tsx
 msgid "Not scanned yet"
 msgstr ""
@@ -6273,6 +6296,10 @@ msgstr "OAuth-Verbindung fehlgeschlagen"
 
 #: src/components/legal/LegalGraph.tsx
 msgid "Obligation"
+msgstr ""
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Off: other agents reach {service} only through this agent."
 msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
@@ -6428,7 +6455,7 @@ msgid "Open receipt"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
-msgid "Open server integrations"
+msgid "Open server apps"
 msgstr ""
 
 #: src/pages/shell/composer.tsx
@@ -6809,6 +6836,10 @@ msgstr ""
 msgid "Praci keeps itself up to date. If an update ever needs you, it shows here."
 msgstr ""
 
+#: src/components/DataExport.tsx
+msgid "Preparing…"
+msgstr ""
+
 #. placeholder {0}: job.progress
 #: src/components/DataExport.tsx
 msgid "Preparing… {0}%"
@@ -6852,6 +6883,10 @@ msgstr ""
 
 #: src/pages/Board.tsx
 msgid "Priority"
+msgstr ""
+
+#: src/pages/SettingsOverlay.tsx
+msgid "Privacy and approvals"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -7414,6 +7449,10 @@ msgstr ""
 msgid "Request export"
 msgstr ""
 
+#: src/components/DataExport.tsx
+msgid "Request new export"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Research & writing"
 msgstr ""
@@ -7476,7 +7515,7 @@ msgstr "Den zuletzt gespeicherten Arbeitsbereich wiederherstellen."
 msgid "Restore the last saved workspace. Unsaved work on the computer is lost."
 msgstr ""
 
-#: src/pages/CapTable.tsx
+#: src/lib/use-contact-notice.ts
 msgid "Restored {name}"
 msgstr ""
 
@@ -7695,8 +7734,8 @@ msgstr "Den Arbeitsbereich speichern und aktuelle Software installieren."
 msgid "Saved"
 msgstr "Gespeichert"
 
-#. placeholder {0}: saved.name
-#: src/pages/CapTable.tsx
+#. placeholder {0}: contact.name
+#: src/lib/use-contact-notice.ts
 msgid "Saved {0}"
 msgstr ""
 
@@ -7926,6 +7965,10 @@ msgstr "Bot auswählen"
 msgid "Select a connected model"
 msgstr "Verbundenes Modell auswählen"
 
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Select all"
+msgstr ""
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Select an item to see its relations."
 msgstr ""
@@ -8018,7 +8061,7 @@ msgstr ""
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/LocalSettings.tsx
-msgid "Server integrations"
+msgid "Server apps"
 msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
@@ -8074,10 +8117,6 @@ msgstr "Einrichtungshilfe"
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Shape"
 msgstr "Form"
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Share with all agents"
-msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Shared"
@@ -8380,6 +8419,14 @@ msgid "Something went wrong. Try again."
 msgstr "Etwas ist schiefgelaufen. Versuche es erneut."
 
 #: src/components/ListControls.tsx
+msgid "Sort ascending"
+msgstr ""
+
+#: src/components/ListControls.tsx
+msgid "Sort descending"
+msgstr ""
+
+#: src/components/ListControls.tsx
 msgid "Sort: {fieldLabel}"
 msgstr ""
 
@@ -8530,6 +8577,7 @@ msgid "Stats"
 msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
+#: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/ActivityList.tsx
@@ -8773,6 +8821,10 @@ msgstr ""
 msgid "The agent will be able to change your {service} data. It asks before each change."
 msgstr ""
 
+#: src/components/integrations/McpDetail.tsx
+msgid "The agent will be able to move money and change your {service} accounts. It asks before each change."
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "The AI your bots think with. They already have one, so change this only to use another AI company or your own key."
 msgstr ""
@@ -8824,6 +8876,10 @@ msgstr "Zeitüberschreitung der Verbindung."
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "The Data room holds your files. Artifacts holds what agents make."
+msgstr ""
+
+#: src/components/DataExport.tsx
+msgid "The export failed. Try again."
 msgstr ""
 
 #: src/components/finance/StatementImport.tsx
@@ -9117,8 +9173,9 @@ msgstr "Heute"
 msgid "Token"
 msgstr ""
 
+#. placeholder {0}: formatBytes(attachment.size)
 #: src/components/inbox/MailAttachments.tsx
-msgid "Too large to preview"
+msgid "Too large to preview ({0})"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
@@ -9216,6 +9273,7 @@ msgid "Try {name} again"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/ContactNotice.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
@@ -9307,16 +9365,20 @@ msgstr ""
 msgid "Undid {restored}, skipped {skipped}"
 msgstr ""
 
+#: src/components/ContactNotice.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
 #: src/components/inbox/CleanupHistory.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/MailOutbox.tsx
 #: src/components/sidebar-folders/SidebarUndoNotice.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Undo"
+msgstr ""
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Undone"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -9523,7 +9585,6 @@ msgid "URL"
 msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
-#: src/pages/Shell.tsx
 msgid "Usage"
 msgstr "Nutzung"
 

@@ -1,0 +1,27 @@
+{
+  "story_id": "STORY-MX-3",
+  "result": "OUTDATED",
+  "round1_status": [
+    {
+      "id": "F-MX-3-1",
+      "status": "obsolete",
+      "evidence": "Routine deferred (granola.md Deferred: S7; D1)."
+    },
+    {
+      "id": "F-MX-3-2",
+      "status": "obsolete",
+      "evidence": "Routine deferred."
+    },
+    {
+      "id": "F-MX-3-3",
+      "status": "obsolete",
+      "evidence": "screen-routine removed from the Granola mockup."
+    },
+    {
+      "id": "F-MX-3-4",
+      "status": "obsolete",
+      "evidence": "Routine switch removed."
+    }
+  ],
+  "findings": []
+}

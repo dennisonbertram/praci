@@ -1,0 +1,26 @@
+{
+  "story_id": "STORY-IF-2",
+  "result": "FAIL",
+  "round1_status": [],
+  "findings": [
+    {
+      "id": "F2-IF-2-01",
+      "severity": "medium",
+      "category": "happy-path",
+      "criterion": "Happy path clarity",
+      "score": "warn",
+      "kind": "mockup",
+      "description": "The 'Mail connected' state shows only meeting to-dos in the To do card. The story is about one list that mixes mail to-dos and meeting to-dos, and how the user tells them apart (plan: only the detail line differs).",
+      "expected": "Card shows at least one mail to-do (with sender and reason) next to meeting to-dos.",
+      "actual": "Three meeting rows only (inbox-mail.png).",
+      "screenshot": "inbox-mail.png",
+      "suggested_fix": "Add one mail to-do to the 'Mail connected' state.",
+      "files_likely_involved": [
+        "docs/granola/mockup.html"
+      ],
+      "jf": "NEW",
+      "plan_section": "granola.md S5 (Retrieval and completion)",
+      "story_id": "STORY-IF-2"
+    }
+  ]
+}

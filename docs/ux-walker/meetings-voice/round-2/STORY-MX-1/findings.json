@@ -1,0 +1,64 @@
+{
+  "story_id": "STORY-MX-1",
+  "result": "PASS",
+  "round1_status": [
+    {
+      "id": "F-MX-1-1",
+      "status": "obsolete",
+      "evidence": "Plan decision: provider is shown only as the chip's hover title (granola.md Tool output). Residual drawn gap in F2-MX-1-01."
+    },
+    {
+      "id": "F-MX-1-2",
+      "status": "still-open",
+      "evidence": "Two agents still appear in the sidebar. Plan says either answers; no UI says so. Low, see F2-MX-1-02."
+    },
+    {
+      "id": "F-MX-1-3",
+      "status": "fixed",
+      "evidence": "Plan now specifies the chat sentences for provider filter, comparison and window."
+    },
+    {
+      "id": "F-MX-1-4",
+      "status": "fixed",
+      "evidence": "No author notes are visible in the Granola or Flow agent frames."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F2-MX-1-01",
+      "severity": "low",
+      "category": "visual",
+      "criterion": "Consistency",
+      "score": "warn",
+      "kind": "mockup",
+      "description": "The Flow mockup comment says the provider is the chip's hover title, but the chips have no title attribute; touch users cannot hover at all. The chip popover for a Flow meeting (no 'Open in' row, Delete only) is described in a comment and not drawn.",
+      "expected": "Chips carry title='Wispr Flow' / 'Granola'; a Flow popover is drawn.",
+      "actual": "a.cite has no title; Flow chips link to their own screen anchor.",
+      "screenshot": "flow-agent.png",
+      "suggested_fix": "Add title attributes and draw the Flow popover state.",
+      "files_likely_involved": [
+        "docs/granola/mockup.html"
+      ],
+      "jf": null,
+      "plan_section": "granola.md Tool output; wispr-flow.md S5",
+      "story_id": "STORY-MX-1"
+    },
+    {
+      "id": "F2-MX-1-02",
+      "severity": "low",
+      "category": "happy-path",
+      "criterion": "Happy path clarity",
+      "score": "warn",
+      "kind": "plan",
+      "description": "The sidebar lists two agents whose names suggest a vendor each, but both answer all meetings. Nothing in the UI says so; the user may pick the 'wrong' one or distrust an answer that mixes providers.",
+      "expected": "User does not need to choose, or is told once.",
+      "actual": "Two agent rows (flow-agent.png).",
+      "screenshot": "flow-agent.png",
+      "suggested_fix": "Optional: record that the agent description (existing agent card) says 'Answers from all your meetings'. No new chrome unless wanted.",
+      "files_likely_involved": [],
+      "jf": "JF-9",
+      "plan_section": "wispr-flow.md S5",
+      "story_id": "STORY-MX-1"
+    }
+  ]
+}

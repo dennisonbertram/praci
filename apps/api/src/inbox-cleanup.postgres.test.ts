@@ -74,6 +74,7 @@ describePostgres("inbox cleanup (PostgreSQL + Gmail emulator)", () => {
       await sender(f.a, f.connA, "read@lists.example.test", { count: 6, read: 5 });
       await sender(f.a, f.connA, "friend@example.test", { count: 5, prior: true });
       await sender(f.a, f.connA, "unchecked@example.test", { count: 5, prior: null });
+      await sender(f.a, f.connA, "few@lists.example.test", { count: 2 });
       // Two messages of one thread count as one conversation.
       await f.cache(f.a, f.connA, "big-extra", {
         from: "big@lists.example.test",
@@ -84,7 +85,6 @@ describePostgres("inbox cleanup (PostgreSQL + Gmail emulator)", () => {
 
       expect(out.senders.map((s) => s.address)).toEqual([
         "big@lists.example.test",
-        "friend@example.test",
         "unchecked@example.test",
         "small@lists.example.test",
         "read@lists.example.test",
@@ -107,7 +107,6 @@ describePostgres("inbox cleanup (PostgreSQL + Gmail emulator)", () => {
         "big@lists.example.test": true,
         "small@lists.example.test": true,
         "read@lists.example.test": false,
-        "friend@example.test": false,
         "unchecked@example.test": false,
       });
       expect(out.accounts.map((a) => a.connectionId)).toEqual(
