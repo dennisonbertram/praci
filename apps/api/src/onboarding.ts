@@ -38,7 +38,7 @@ const FOCUS_OPTIONS: FocusOption[] = [
     label: "Run my company",
     summary: "email, calendar, and your company pages",
     apps: ["gmail", "googlecalendar"],
-    note: "For cash and equity, connect your bank, card, and Carta in [Finance](/app/finance) and [Cap table](/app/cap-table). Board decks and investor documents go in the [Data room](/app/data-room).",
+    note: "For cash and equity, connect your bank, card, and Carta in [Finance](/app/finance) and [Investors](/app/investors). Board decks and investor documents go in the [Data room](/app/data-room).",
   },
   {
     id: "day",

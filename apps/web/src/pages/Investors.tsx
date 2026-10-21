@@ -287,7 +287,7 @@ function ConnectCartaDialog({
 }
 
 /** The Cap Table page: the Carta snapshot joined with the user's contacts. The Carta agent beside it does the Carta work. */
-export function CapTablePage({
+export function InvestorsPage({
   onShowAgent,
   onCartaStatus,
   onOpenModelSettings,
@@ -535,7 +535,7 @@ export function CapTablePage({
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
       <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
         <PageHeader
-          title={<Trans>Cap table</Trans>}
+          title={<Trans>Investors</Trans>}
           meta={
             snapshot ? (
               <>

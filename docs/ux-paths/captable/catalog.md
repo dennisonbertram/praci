@@ -1,5 +1,8 @@
 ## Area: Cap Table (STORY-CAP-nnn)
 
+> Note 2026-10-21: the Cap table page is now Investors (`/app/investors`, sidebar row "Investors"; `/app/cap-table` redirects). Stories below still say "Cap table" for the same page.
+
+
 Generated: 2026-10-17, refreshed 2026-10-20
 Scope: Cap table page (`/app/cap-table`), the Carta connection (in-place sign-in and Integrations), the Carta agent side panel, contacts, the Refresh/Reading states, Hide amounts, phone width, and how the sidebar reaches the page.
 Total Stories: 40 (short 21, medium 13, long 6) as of 2026-10-20
