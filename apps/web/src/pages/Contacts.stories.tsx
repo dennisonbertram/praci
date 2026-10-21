@@ -28,9 +28,11 @@ const contacts = [
   contact("c4", "Di Demo", "investor", null),
 ];
 
-const meta = { title: "Pages/Contacts", component: ContactsPage } satisfies Meta<
-  typeof ContactsPage
->;
+const meta = {
+  title: "Pages/Contacts",
+  component: ContactsPage,
+  args: { onAskAgent: () => {} },
+} satisfies Meta<typeof ContactsPage>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 

@@ -27,6 +27,7 @@ import {
   ATTACHMENT_MAX_BYTES,
   ATTACHMENT_MAX_COUNT,
   DEFAULT_AVATAR_STYLE,
+  FIRST_BOT_SPAWN_KEY,
   isIntegrationAgentSpawnKey,
   LEGAL_AGENT_MODEL,
   LEGAL_CONSENT_REQUIRED_MESSAGE,
@@ -548,9 +549,8 @@ export function ShellPage() {
   const [devinDialog, setDevinDialog] = useState<"connect" | "replace" | null>(null);
   /** Remounts the Devin page after a key is accepted, so it shows the new connection at once. */
   const [devinPageKey, setDevinPageKey] = useState(0);
-  // The Carta agent panel remembers being collapsed, and starts collapsed on a phone, where it
-  // would cover the page.
-  const [cartaAgentCollapsed, setCartaAgentCollapsed] = useState(() => !wideScreen());
+  // The Carta agent panel starts closed, like the other pages' agents, and remembers an explicit open.
+  const [cartaAgentCollapsed, setCartaAgentCollapsed] = useState(true);
   const [creatingCartaAgent, setCreatingCartaAgent] = useState(false);
   // Reported by the Cap Table page. Without Carta the agent has nothing to read, so its panel stays shut.
   const [cartaConnected, setCartaConnected] = useState(false);
@@ -2596,6 +2596,9 @@ export function ShellPage() {
   }, [active, groupId, inGroup, snapshot?.botId, snapshot?.groupId, snapshot?.threadId]);
 
   const openBot = useCallback((id: string) => navigate(`/app/${id}`), [navigate]);
+  // Contacts and Artifacts have no agent of their own: their Ask opens Chief, the first bot.
+  const chiefId = bots.find((bot) => bot.spawnKey === FIRST_BOT_SPAWN_KEY && !bot.archivedAt)?.id;
+  const askChief = chiefId ? () => openBot(chiefId) : undefined;
 
   async function startElioCall() {
     if (voiceCallStarting.current) return;
@@ -5477,11 +5480,11 @@ export function ShellPage() {
             }
           />
         ) : contactsMode ? (
-          <ContactsPage spaceName={pageSpaceName} />
+          <ContactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
         ) : artifactsMode ? (
           <ErrorBoundary fallback={<SectionLoadFailed />}>
             <Suspense fallback={null}>
-              <ArtifactsPage spaceName={pageSpaceName} />
+              <ArtifactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
             </Suspense>
           </ErrorBoundary>
         ) : boardMode ? (

@@ -42,8 +42,8 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArtifactPreview } from "../components/ArtifactPreview";
+import { AskBotButton } from "../components/AskBotButton";
 import { Tip } from "../components/data-room/FilterBar";
-import { sizeText } from "../components/data-room/format";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { artifactDisplayName as displayName } from "../lib/artifact-name";
@@ -104,7 +104,13 @@ function matchesCalendarDateFilter(iso: string, filter: DateFilter, now: Date): 
   return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
 }
 
-export function ArtifactsPage({ spaceName }: { spaceName?: string }) {
+export function ArtifactsPage({
+  spaceName,
+  onAskAgent,
+}: {
+  spaceName?: string;
+  onAskAgent?: () => void;
+}) {
   const { artifactId } = useParams<{ artifactId?: string }>();
   const navigate = useNavigate();
   const { t } = useLingui();
@@ -331,6 +337,7 @@ export function ArtifactsPage({ spaceName }: { spaceName?: string }) {
                   </Tip>
                 </fieldset>
               ) : null}
+              {onAskAgent ? <AskBotButton botName="Chief" onClick={onAskAgent} /> : null}
             </>
           }
         />
@@ -566,7 +573,6 @@ function ArtifactTable({
           <col />
           {showBot ? <col className={`${MID_COLUMN} w-40`} /> : null}
           <col className={`${MID_COLUMN} w-28`} />
-          <col className={`${MID_COLUMN} w-24`} />
           <col className="w-9" />
         </colgroup>
         <TableHeader
@@ -585,9 +591,6 @@ function ArtifactTable({
             <TableHead className={MID_COL}>
               <Trans>Added</Trans>
             </TableHead>
-            <TableHead className={MID_COL}>
-              <Trans>Size</Trans>
-            </TableHead>
             <TableHead />
           </TableHeadRow>
         </TableHeader>
@@ -598,7 +601,7 @@ function ArtifactTable({
               <TableRow
                 key={artifact.id}
                 data-testid="artifact-row"
-                className="group/row cursor-pointer"
+                className="group/row h-10 cursor-pointer [&>td]:py-1.5"
                 onClick={() => navigate(`/app/artifacts/${artifact.id}`)}
               >
                 <TableCell>
@@ -615,16 +618,12 @@ function ArtifactTable({
                       >
                         {displayName(artifact.name)}
                       </Link>
-                      {/* Where the Bot, Added and Size columns are hidden (a narrow pane), they go under the name. */}
+                      {/* Where the Bot and Added columns are hidden (a narrow pane), they go under the name. */}
                       <span
                         data-testid="artifact-meta"
                         className="truncate text-xs text-muted-foreground @min-[720px]/list:hidden"
                       >
-                        {[
-                          bot?.name,
-                          formatRelativeTime(artifact.createdAt),
-                          sizeText(artifact.size),
-                        ]
+                        {[bot?.name, formatRelativeTime(artifact.createdAt)]
                           .filter(Boolean)
                           .join(" · ")}
                       </span>
@@ -655,9 +654,6 @@ function ArtifactTable({
                 ) : null}
                 <TableCell className={`${MID_COL} truncate text-muted-foreground tabular-nums`}>
                   {formatRelativeTime(artifact.createdAt)}
-                </TableCell>
-                <TableCell className={`${MID_COL} truncate text-muted-foreground tabular-nums`}>
-                  {sizeText(artifact.size)}
                 </TableCell>
                 <TableCell className="pe-0">
                   <button
@@ -859,8 +855,8 @@ function ArtifactCard({
             </div>
           ) : null}
         </div>
-        {/* pe-8 keeps the time clear of the Delete button that appears on hover. */}
-        <div className="mt-auto flex items-center gap-2 pe-8 text-[12px] text-muted-foreground">
+        {/* On hover the Delete button covers the time; where it always shows (touch), pe-8 keeps clear. */}
+        <div className="mt-auto flex items-center gap-2 text-[12px] text-muted-foreground pointer-coarse:pe-8">
           {bot ? (
             <>
               <BotAvatar color={bot.color} identity={bot.id} size={20} status={bot.status} />

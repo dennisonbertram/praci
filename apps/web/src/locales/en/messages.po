@@ -5776,12 +5776,25 @@ msgstr "Monthly spend · {0} – {1}"
 msgid "More"
 msgstr "More"
 
+#. placeholder {0}: exchange.name
+#: src/components/integrations/FinanceSection.tsx
+msgid "More {0} actions"
+msgstr "More {0} actions"
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "More {name} actions"
+msgstr "More {name} actions"
+
 #. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/inbox/MailAttachments.tsx
 msgid "More actions for {0}"
 msgstr "More actions for {0}"
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "More Alchemy actions"
+msgstr "More Alchemy actions"
 
 #: src/components/integrations/FinanceSection.tsx
 msgid "More Blockscout actions"
@@ -6364,7 +6377,6 @@ msgstr "Not confirmed as sent. Check Sent before trying again."
 msgid "Not confirmed as sent. Check Sent in your mail before trying again."
 msgstr "Not confirmed as sent. Check Sent in your mail before trying again."
 
-#: src/components/integrations/FinanceSection.tsx
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Not connected"
 msgstr "Not connected"
@@ -7891,6 +7903,11 @@ msgstr "Runway scenarios"
 msgid "Safe"
 msgstr "Safe"
 
+#. placeholder {0}: safes.length
+#: src/pages/CapTable.tsx
+msgid "SAFEs ({0}, {total}) are not included until they convert"
+msgstr "SAFEs ({0}, {total}) are not included until they convert"
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Sales & CRM"
 msgstr "Sales & CRM"
@@ -8560,7 +8577,6 @@ msgstr "Site"
 
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/Preview.tsx
-#: src/pages/Artifacts.tsx
 msgid "Size"
 msgstr "Size"
 
