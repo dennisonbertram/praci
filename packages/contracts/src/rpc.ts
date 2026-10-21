@@ -22,7 +22,11 @@ import {
   UpdateTicketInput,
 } from "./board.js";
 import { BotSecretMetadata, BotSecretPutInput, StoredBotSecretName } from "./bot-secrets.js";
-import { CapTableStateSchema } from "./carta.js";
+import {
+  CapTableChangeSourceInputSchema,
+  CapTableSaveInputSchema,
+  CapTableStateSchema,
+} from "./carta.js";
 import { ContactListInputSchema, ContactSaveInputSchema, ContactSchema } from "./contacts.js";
 import {
   DataRoomApiBoxListInputSchema,
@@ -1517,13 +1521,19 @@ export const appContract = {
   investors: {
     /** Creates the Investors agent once (idempotent) and returns it. */
     agent: oc.output(BotSchema),
+    /** The Investors page's cap table and whether the Carta agent is refreshing it. */
+    capTable: oc.output(CapTableStateSchema),
+    /** Starts a Carta agent run that refreshes the snapshot and the investor contacts (Carta source only). */
+    refresh: oc.output(z.object({ ok: z.literal(true) })),
+    /** Saves the typed-in table whole; CONFLICT when the table changed since it was loaded. */
+    capTableSave: oc.input(CapTableSaveInputSchema).output(CapTableStateSchema),
+    /** Makes another source the writer at once, keeping the data and one Undo. */
+    changeSource: oc.input(CapTableChangeSourceInputSchema).output(CapTableStateSchema),
+    /** Restores the table before the last source switch, once. */
+    undoSource: oc.output(CapTableStateSchema),
   },
   carta: {
     agent: oc.output(BotSchema),
-    /** The Cap Table page's snapshot and whether the Carta agent is refreshing it. */
-    capTable: oc.output(CapTableStateSchema),
-    /** Starts a Carta agent run that refreshes the snapshot and the investor contacts. */
-    refresh: oc.output(z.object({ ok: z.literal(true) })),
   },
   contacts: {
     list: oc.input(ContactListInputSchema).output(z.array(ContactSchema)),
