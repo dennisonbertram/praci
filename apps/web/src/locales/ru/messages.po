@@ -5774,11 +5774,24 @@ msgstr ""
 msgid "More"
 msgstr "Ещё"
 
+#. placeholder {0}: exchange.name
+#: src/components/integrations/FinanceSection.tsx
+msgid "More {0} actions"
+msgstr ""
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "More {name} actions"
+msgstr ""
+
 #. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/inbox/MailAttachments.tsx
 msgid "More actions for {0}"
+msgstr ""
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "More Alchemy actions"
 msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
@@ -6363,7 +6376,6 @@ msgstr ""
 msgid "Not confirmed as sent. Check Sent in your mail before trying again."
 msgstr ""
 
-#: src/components/integrations/FinanceSection.tsx
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Not connected"
 msgstr "Не подключена"
@@ -7890,6 +7902,11 @@ msgstr ""
 msgid "Safe"
 msgstr ""
 
+#. placeholder {0}: safes.length
+#: src/pages/CapTable.tsx
+msgid "SAFEs ({0}, {total}) are not included until they convert"
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Sales & CRM"
 msgstr ""
@@ -8559,7 +8576,6 @@ msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/Preview.tsx
-#: src/pages/Artifacts.tsx
 msgid "Size"
 msgstr ""
 

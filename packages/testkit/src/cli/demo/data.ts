@@ -1356,7 +1356,7 @@ export const DEMO_CONTACTS = [
     name: "Dana Counselor",
     email: "dana@halcyon-logistics.example.test",
     organization: "Halcyon Logistics (Mock)",
-    kind: "other" as const,
+    kind: "legal" as const,
     notes: `${MOCK_NOTE}: Halcyon's legal counsel.`,
   },
   {
