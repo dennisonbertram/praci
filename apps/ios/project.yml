@@ -40,10 +40,14 @@ targets:
         Release:
           PRODUCT_BUNDLE_IDENTIFIER: com.rakazo.app
     info:
+      path: Praci-Info.plist
       properties:
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - rakazo
+        NSLocalNetworkUsageDescription: Connect to your Praci server on your local network.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
   PraciTests:
     type: bundle.unit-test
     platform: iOS
@@ -51,6 +55,7 @@ targets:
       - Tests/PraciTests
     dependencies:
       - target: Praci
+      - package: RakazoCore
 schemes:
   Praci:
     build:

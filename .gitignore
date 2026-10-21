@@ -27,6 +27,7 @@ apps/mobile/dist
 apps/mobile/android
 apps/mobile/ios
 apps/ios/*.xcodeproj
+apps/ios/Praci-Info.plist
 apps/ios/DerivedData
 apps/ios/build
 apps/ios/.build

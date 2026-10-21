@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { renderSwiftTokens } from "./generate-swift.js";
 import { botColors, darkTokens, lightTokens } from "./index.js";
+import { renderSwiftTokens } from "./swift-tokens.js";
 
 describe("native semantic tokens", () => {
   it("renders every light and dark semantic color and bot accent deterministically", () => {

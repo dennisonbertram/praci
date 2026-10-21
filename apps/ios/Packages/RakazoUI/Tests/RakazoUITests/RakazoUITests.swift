@@ -2,5 +2,5 @@ import Testing
 
 @Test
 func packageTestTargetLoads() {
-    #expect(true)
+  #expect(true)
 }
