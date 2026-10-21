@@ -53,14 +53,14 @@ beforeEach(() => {
 it("shows the pill without waiting for the slow full catalog", async () => {
   connections.catalog.mockReturnValue(new Promise(() => {}));
   const { container } = await render();
-  expect(row(container)?.textContent).toBe("Connect apps");
+  expect(row(container)?.textContent).toBe("Apps");
   expect(connections.featured).toHaveBeenCalledOnce();
   expect(connections.catalog).not.toHaveBeenCalled();
 });
 
 it("shows the pill with three featured logos and navigates on click", async () => {
   const { container, onClick } = await render();
-  expect(row(container)?.textContent).toBe("Connect apps");
+  expect(row(container)?.textContent).toBe("Apps");
   expect(container.querySelectorAll("[data-testid=app-logo]")).toHaveLength(3);
   row(container)?.click();
   expect(onClick).toHaveBeenCalledOnce();
@@ -103,7 +103,7 @@ it("leaves out Gmail when native Google Gmail is connected", async () => {
 
 it("shows the plain Apps row, not the pill, while active", async () => {
   const { container, show } = await render();
-  expect(row(container)?.textContent).toBe("Connect apps");
+  expect(row(container)?.textContent).toBe("Apps");
   await show(true);
   expect(row(container)?.textContent).toBe("Apps");
   expect(row(container)?.getAttribute("aria-current")).toBe("page");

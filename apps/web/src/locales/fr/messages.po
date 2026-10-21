@@ -2493,10 +2493,6 @@ msgstr ""
 msgid "Connect API key"
 msgstr "Connecter la clé API"
 
-#: src/components/ConnectAppsButton.tsx
-msgid "Connect apps"
-msgstr ""
-
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 msgid "Connect Blockscout"
 msgstr ""
@@ -4689,16 +4685,13 @@ msgstr ""
 msgid "Image upload area"
 msgstr "Zone de téléchargement d'image"
 
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/NotificationSettings.tsx
 msgid "iMessage"
 msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
-msgid "iMessage (BlueBubbles)"
-msgstr ""
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "iMessage (Photon)"
+msgid "iMessage on your Mac"
 msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx

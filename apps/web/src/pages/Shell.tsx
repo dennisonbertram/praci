@@ -694,6 +694,8 @@ export function ShellPage() {
   useEffect(() => setSettingsOpen(false), [pathname]);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
   const [settingsModelProvider, setSettingsModelProvider] = useState<string | undefined>();
+  /** Why Settings opened, shown at the top of its pane (Call Elio without a voice provider). */
+  const [settingsNotice, setSettingsNotice] = useState<string | undefined>();
   const [messagingSettingsOpen, setMessagingSettingsOpen] = useState(false);
   const [messagingSurfaceEnabled, setMessagingSurfaceEnabled] = useState(false);
   const [messagingProviders, setMessagingProviders] = useState<string[]>([]);
@@ -2496,8 +2498,8 @@ export function ShellPage() {
   async function startElioCall() {
     if (voiceCallStarting.current) return;
     if (!voiceStatus?.ready) {
-      setSendError(t`Connect a voice provider to call Elio.`);
       openSettings("voice");
+      setSettingsNotice(t`Connect a voice provider to call Elio.`);
       return;
     }
     const originBotId = activeBotId.current;
@@ -3184,6 +3186,7 @@ export function ShellPage() {
   function openSettings(section: SettingsSection = "general", modelProvider?: string) {
     setSettingsSection(section);
     setSettingsModelProvider(modelProvider);
+    setSettingsNotice(undefined);
     setSettingsOpen(true);
   }
 
@@ -6227,6 +6230,7 @@ export function ShellPage() {
             onUsageOpen={refreshUsage}
             initialSection={settingsSection}
             modelProvider={settingsModelProvider}
+            notice={settingsNotice}
             avatarStyle={bootstrapMe?.avatarStyle ?? DEFAULT_AVATAR_STYLE}
             isDeploymentOwner={bootstrapMe?.isDeploymentOwner === true}
             billingEnabled={bootstrapMe?.billingEnabled === true}

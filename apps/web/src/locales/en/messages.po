@@ -2493,10 +2493,6 @@ msgstr "Connect any other app by its address."
 msgid "Connect API key"
 msgstr "Connect API key"
 
-#: src/components/ConnectAppsButton.tsx
-msgid "Connect apps"
-msgstr "Connect apps"
-
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 msgid "Connect Blockscout"
 msgstr "Connect Blockscout"
@@ -4689,17 +4685,14 @@ msgstr "Image hidden while amounts are hidden"
 msgid "Image upload area"
 msgstr "Image upload area"
 
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/NotificationSettings.tsx
 msgid "iMessage"
 msgstr "iMessage"
 
 #: src/components/integrations/IMessageSection.tsx
-msgid "iMessage (BlueBubbles)"
-msgstr "iMessage (BlueBubbles)"
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "iMessage (Photon)"
-msgstr "iMessage (Photon)"
+msgid "iMessage on your Mac"
+msgstr "iMessage on your Mac"
 
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
