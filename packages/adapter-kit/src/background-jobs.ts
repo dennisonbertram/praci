@@ -63,6 +63,8 @@ const payloadSchemas = {
     spaceId: z.string().min(1),
     userId: z.string().min(1),
     meetingId: z.string().min(1),
+    /** Set on the last job of a batch: when it ends, the rest of the backlog is queued. */
+    continue: z.boolean().optional(),
   }),
   "finance.sync": z.object({ userId: z.string().min(1), spaceId: z.string().min(1) }),
   "dataroom.blob.delete": z.object({ spaceId: z.string().min(1), storageKey: z.string().min(1) }),

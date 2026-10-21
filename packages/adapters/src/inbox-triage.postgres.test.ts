@@ -533,6 +533,37 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
     expect(queue.enqueued).toEqual([]);
   });
 
+  it("leaves a meeting to-do alone and does not count it against the open limit", async () => {
+    const user = await addUser();
+    const meeting = await prisma.meeting.create({
+      data: {
+        spaceId,
+        userId: user.userId,
+        provider: "granola",
+        externalId: `m-${suffix}-${user.userId}`,
+        title: "Planning",
+        startedAt: new Date(),
+        sourceUpdatedAt: new Date(),
+      },
+    });
+    await prisma.inboxTodo.create({
+      data: {
+        spaceId,
+        userId: user.userId,
+        connectionId: null,
+        meetingId: meeting.id,
+        text: "Send the notes",
+      },
+    });
+    for (let i = 0; i < 6; i++) await mail(user, `Item ${i}`, { minutesAgo: 5 + i });
+    await run(user, fakeRuntime(answerAll()).runtime);
+    const rows = await prisma.inboxTodo.findMany({ where: { userId: user.userId, spaceId } });
+    expect(rows.filter((r) => r.connectionId === null).map((r) => r.text)).toEqual([
+      "Send the notes",
+    ]);
+    expect(rows.filter((r) => r.connectionId !== null)).toHaveLength(MAX_OPEN_TODOS);
+  });
+
   it("creates at most five open to-dos, best first", async () => {
     const user = await addUser();
     const priorities = ["critical", "important", "important", "normal", "normal", "low", "low"];

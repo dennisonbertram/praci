@@ -765,7 +765,7 @@ export interface BackgroundJobPayloads {
     mcpServerId?: string;
   };
   /** Extracts commitments from a stored meeting; the handler is filled in by the digest slice. */
-  "meetings.digest": { spaceId: string; userId: string; meetingId: string };
+  "meetings.digest": { spaceId: string; userId: string; meetingId: string; continue?: boolean };
   "finance.sync": { userId: string; spaceId: string };
   /** Removes a deleted Data room item's blob. Idempotent: a missing blob is success. */
   "dataroom.blob.delete": { spaceId: string; storageKey: string };
