@@ -7826,6 +7826,10 @@ msgstr "Search activity"
 msgid "Search all items"
 msgstr "Search all items"
 
+#: src/lib/slash-skills.ts
+msgid "Search and follow Devin sessions. Read-only."
+msgstr "Search and follow Devin sessions. Read-only."
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Search and read files and folders"
 msgstr "Search and read files and folders"
@@ -8520,10 +8524,6 @@ msgstr "Starred"
 #: src/pages/Paywall.tsx
 msgid "Start {trialDays}-day free trial"
 msgstr "Start {trialDays}-day free trial"
-
-#: src/lib/slash-skills.ts
-msgid "Start and follow Devin sessions. Each one asks first."
-msgstr "Start and follow Devin sessions. Each one asks first."
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Start recording"
