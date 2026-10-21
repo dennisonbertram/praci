@@ -1945,7 +1945,7 @@ msgid "Carta is connected"
 msgstr ""
 
 #: src/pages/Investors.tsx
-msgid "Carta is the service many startups use to record who owns shares, options and SAFEs. Connect it to see them here and to ask the Carta agent about them."
+msgid "Carta is the service many startups use to record who owns shares, options and SAFEs. Connect it to see them here."
 msgstr ""
 
 #: src/components/FinanceCards.tsx
@@ -2354,10 +2354,6 @@ msgid "Collapse {title}"
 msgstr ""
 
 #: src/pages/Shell.tsx
-msgid "Collapse Carta agent"
-msgstr ""
-
-#: src/pages/Shell.tsx
 msgid "Collapse Data room agent"
 msgstr ""
 
@@ -2371,6 +2367,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Collapse Inbox agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Collapse Investors agent"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -2891,6 +2891,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Could not create the Inbox agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Could not create the Investors agent"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -4003,11 +4007,6 @@ msgstr ""
 msgid "Draft skill"
 msgstr "Habilidad en borrador"
 
-#: src/components/PageAgentIntro.tsx
-#: src/pages/Shell.tsx
-msgid "Draft this month's investor update"
-msgstr ""
-
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Drafts"
 msgstr ""
@@ -4826,7 +4825,11 @@ msgid "HR document"
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx
-msgid "I keep your cap table and investor contacts, and draft investor updates for you to review."
+msgid "I answer questions about your cap table, investors and finances, using your Data room and contacts."
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
+msgid "I keep your cap table and investor contacts up to date from Carta."
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx
@@ -10275,11 +10278,13 @@ msgstr ""
 msgid "Which documents mention renewal?"
 msgstr ""
 
+#: src/lib/investors-agent.ts
 #: src/pages/Shell.tsx
 msgid "Who are our investors?"
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx
+#: src/lib/investors-agent.ts
 msgid "Who owns what in the company?"
 msgstr ""
 

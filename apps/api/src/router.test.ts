@@ -4666,3 +4666,31 @@ describe("Carta server guards", () => {
     ).rejects.toThrow("This integration is used only by its agent.");
   });
 });
+
+describe("Investors agent", () => {
+  it("reserves its spawn key so bots.create cannot squat on it", async () => {
+    const deps = {
+      prisma: {} as PrismaClient,
+      env: { defaultProvider: "fake", defaultModel: "fake-model" },
+      dataDir: "/tmp/rakazo-router-test",
+    } as unknown as RouterDeps;
+    const actor = {
+      spaceId: "workspace-1",
+      userId: "user-1",
+      email: "user@rakazo.test",
+      isDeploymentOwner: false,
+    } satisfies Actor;
+    const client = createRouterClient(createRouter(deps), { context: { actor } });
+    await expect(
+      client.bots.create({
+        name: "Squatter",
+        title: "",
+        description: "",
+        instructions: "",
+        notifyOnFinish: true,
+        computerMode: "team" as const,
+        spawnKey: "investors-agent:someone",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});

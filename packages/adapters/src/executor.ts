@@ -56,6 +56,7 @@ import {
   externalBotMayUseBuiltin,
   HistoryReadInputSchema,
   HistorySearchInputSchema,
+  INVESTORS_AGENT_BUILTIN_TOOLS,
   integrationAgentSpawnKey,
   integrationPresetForEndpoint,
   isAttachmentImageMimeType,
@@ -64,6 +65,7 @@ import {
   isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
+  isInvestorsAgentSpawnKey,
   isLegalAgentSpawnKey,
   isMailAgentSpawnKey,
   isVoiceAgentSpawnKey,
@@ -1743,6 +1745,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const legalOnly = isLegalAgentSpawnKey(bot.spawnKey);
         // The Data room agent gets a fixed list of built-ins and no connector tools.
         const dataRoomAgent = isDataRoomAgentSpawnKey(bot.spawnKey);
+        // The Investors agent gets a fixed list of built-ins and no connector tools (no MCP, no Composio).
+        const investorsAgent = isInvestorsAgentSpawnKey(bot.spawnKey);
         // Connections limited to chosen agents stay out of this run unless the bot was granted access.
         // An external bot reaches a connection only through an explicit access row.
         const deniedIds = deniedConnectionIds(
@@ -1822,7 +1826,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
         });
 
         const discoveredPromise =
-          deps.connector && !mailOnly && !legalOnly && !dataRoomAgent && !voiceAgent
+          deps.connector &&
+          !mailOnly &&
+          !legalOnly &&
+          !dataRoomAgent &&
+          !investorsAgent &&
+          !voiceAgent
             ? (async () => {
                 if (appAgentIdentity) {
                   const current = await deps.prisma.connection.findFirst({
@@ -2680,6 +2689,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         });
         const legalToolSet: ReadonlySet<string> = new Set(LEGAL_AGENT_BUILTIN_TOOLS);
         const dataRoomAgentToolSet: ReadonlySet<string> = new Set(DATA_ROOM_AGENT_BUILTIN_TOOLS);
+        const investorsToolSet: ReadonlySet<string> = new Set(INVESTORS_AGENT_BUILTIN_TOOLS);
         const builtins = [
           ...selectBuiltinToolsForRun({
             ticketBoardEnabled:
@@ -2729,6 +2739,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           (tool) =>
             (!legalOnly || legalToolSet.has(tool.name)) &&
             (!dataRoomAgent || dataRoomAgentToolSet.has(tool.name)) &&
+            (!investorsAgent || investorsToolSet.has(tool.name)) &&
             (!meetingAgent || meetingAgentToolSet.has(tool.name)) &&
             // pi-runtime runs run_subagent itself, before the executor's approval gate.
             ((!meetingTaint && externalChain === undefined) ||
