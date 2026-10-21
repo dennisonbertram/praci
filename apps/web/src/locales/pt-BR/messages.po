@@ -3513,6 +3513,10 @@ msgstr ""
 msgid "Credentials are encrypted and never sent to the model."
 msgstr "As credenciais são criptografadas e nunca são enviadas ao modelo."
 
+#: src/components/AskCard.tsx
+msgid "Credentials requested:"
+msgstr ""
+
 #: src/pages/RoutineSchedule.tsx
 msgid "Cron expression"
 msgstr "Expressão cron"
@@ -5896,6 +5900,10 @@ msgstr ""
 msgid "Moved {n} to trash"
 msgstr ""
 
+#: src/components/SecretRequestDialog.tsx
+msgid "Multi line"
+msgstr ""
+
 #: src/components/call/CallCard.tsx
 msgid "Mute"
 msgstr "Silenciar"
@@ -7193,6 +7201,11 @@ msgstr ""
 msgid "Protected input"
 msgstr ""
 
+#: src/components/AskCard.tsx
+#: src/components/SecretRequestDialog.tsx
+msgid "Provide secret"
+msgstr ""
+
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Provider"
@@ -7985,7 +7998,6 @@ msgstr ""
 msgid "Sandbox"
 msgstr ""
 
-#: src/components/AskCard.tsx
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/RenameAccountDialog.tsx
@@ -8639,6 +8651,10 @@ msgstr ""
 msgid "Since {from}"
 msgstr ""
 
+#: src/components/SecretRequestDialog.tsx
+msgid "Single line"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Site"
 msgstr ""
@@ -8969,6 +8985,7 @@ msgstr "subagente"
 msgid "Subject"
 msgstr ""
 
+#: src/components/SecretRequestDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Submit"
@@ -9991,7 +10008,7 @@ msgstr "Usar sua própria chave"
 msgid "Used by"
 msgstr ""
 
-#: src/components/AskCard.tsx
+#: src/components/SecretRequestDialog.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Username"
 msgstr ""

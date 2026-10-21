@@ -32,10 +32,13 @@ test("saves a website login from a username and password card without echoing ei
   }
   await expect(card).toBeVisible({ timeout: 15_000 });
   await expect(card.getByText("https://login.example.test", { exact: true })).toBeVisible();
-  const usernameField = card.getByLabel("Username");
-  const passwordField = card.getByLabel("Password");
-  await expect(passwordField).toHaveAttribute("type", "password");
-  const save = card.getByRole("button", { name: "Save", exact: true });
+  const open = card.getByRole("button", { name: "Provide secret", exact: true });
+  await open.click();
+  const dialog = page.getByRole("dialog");
+  const usernameField = dialog.getByLabel("Username");
+  const passwordField = dialog.locator('input[type="password"]');
+  await expect(passwordField).toBeVisible();
+  const save = dialog.getByRole("button", { name: "Submit", exact: true });
 
   const username = `fake-user-${stamp}@example.test`;
   const password = `fake-password-${stamp}`;
@@ -52,7 +55,7 @@ test("saves a website login from a username and password card without echoing ei
   await captureScreenshot(page, testInfo, "login-card-narrow");
   await page.setViewportSize({ width: 1280, height: 720 });
 
-  // Saving clears both fields immediately, including when the save fails.
+  // Submitting closes the dialog and clears both fields, including when the save fails.
   await page.route("**/rpc/threads/answer", (route) =>
     route.fulfill({
       status: 400,
@@ -61,10 +64,12 @@ test("saves a website login from a username and password card without echoing ei
   );
   await save.click();
   await expect(card.getByText("Could not submit this answer", { exact: true })).toBeVisible();
-  await expect(passwordField).toHaveValue("");
-  await expect(usernameField).toHaveValue("");
+  await expect(dialog).toHaveCount(0);
   await page.unroute("**/rpc/threads/answer");
 
+  await open.click();
+  await expect(passwordField).toHaveValue("");
+  await expect(usernameField).toHaveValue("");
   await usernameField.fill(username);
   await passwordField.fill(password);
   await save.click();
