@@ -1105,44 +1105,57 @@ function InboxListPage({
             actions={
               <>
                 {tools ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    data-testid="inbox-cleanup"
-                    aria-label={t`Cleanup`}
-                    title={t`Cleanup`}
-                    className="pointer-coarse:h-10 pointer-coarse:min-w-10"
-                    onClick={() =>
-                      setParams((before) => {
-                        const next = new URLSearchParams(before);
-                        next.set("cleanup", "1");
-                        return next;
-                      })
-                    }
-                  >
-                    <ListChecks aria-hidden="true" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          data-testid="inbox-cleanup"
+                          aria-label={t`Cleanup`}
+                          className="pointer-coarse:h-10 pointer-coarse:min-w-10"
+                          onClick={() =>
+                            setParams((before) => {
+                              const next = new URLSearchParams(before);
+                              next.set("cleanup", "1");
+                              return next;
+                            })
+                          }
+                        />
+                      }
+                    >
+                      <ListChecks aria-hidden="true" />
+                    </TooltipTrigger>
+                    <TooltipContent>{t`Cleanup`}</TooltipContent>
+                  </Tooltip>
                 ) : null}
                 {tools ? (
                   <DropdownMenu>
-                    <DropdownMenuTrigger
-                      data-testid="inbox-filter"
-                      render={
-                        <Button
-                          variant={filter || (triage && category) ? "secondary" : "outline"}
-                          size="sm"
-                          className="pointer-coarse:h-10 pointer-coarse:min-w-10"
-                        />
-                      }
-                      aria-label={filter || (triage && category) ? undefined : t`Filter`}
-                    >
-                      <ListFilter aria-hidden="true" />
-                      {filter
-                        ? filterLabels()[filter]
-                        : triage && category
-                          ? categoryLabels()[category]
-                          : null}
-                    </DropdownMenuTrigger>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <DropdownMenuTrigger
+                            data-testid="inbox-filter"
+                            render={
+                              <Button
+                                variant={filter || (triage && category) ? "secondary" : "outline"}
+                                size="sm"
+                                className="pointer-coarse:h-10 pointer-coarse:min-w-10"
+                              />
+                            }
+                            aria-label={filter || (triage && category) ? undefined : t`Filter`}
+                          >
+                            <ListFilter aria-hidden="true" />
+                            {filter
+                              ? filterLabels()[filter]
+                              : triage && category
+                                ? categoryLabels()[category]
+                                : null}
+                          </DropdownMenuTrigger>
+                        }
+                      />
+                      <TooltipContent>{t`Filter`}</TooltipContent>
+                    </Tooltip>
                     <DropdownMenuContent align="end" className="min-w-48">
                       <DropdownMenuRadioGroup
                         value={filter ?? (triage ? category : undefined) ?? ""}
@@ -1229,20 +1242,27 @@ function InboxListPage({
                 onChange={(next) => setParam("pile", next === "important" ? "" : next)}
               />
               {pile === "newsletters" ? (
-                <Toggle
-                  size="sm"
-                  className="-mt-2 mb-4 aria-pressed:bg-primary aria-pressed:text-primary-foreground"
-                  aria-label={t`Digest`}
-                  pressed={digest}
-                  onPressedChange={(on) => {
-                    const next = new URLSearchParams(params);
-                    if (on) next.set("digest", "1");
-                    else next.delete("digest");
-                    setParams(next);
-                  }}
-                >
-                  <Newspaper aria-hidden="true" />
-                </Toggle>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Toggle
+                        size="sm"
+                        className="-mt-2 mb-4 aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+                        aria-label={t`Digest`}
+                        pressed={digest}
+                        onPressedChange={(on) => {
+                          const next = new URLSearchParams(params);
+                          if (on) next.set("digest", "1");
+                          else next.delete("digest");
+                          setParams(next);
+                        }}
+                      />
+                    }
+                  >
+                    <Newspaper aria-hidden="true" />
+                  </TooltipTrigger>
+                  <TooltipContent>{t`Digest`}</TooltipContent>
+                </Tooltip>
               ) : null}
             </div>
           ) : null}
@@ -1393,7 +1413,7 @@ function InboxListPage({
                 role="status"
                 className={cn(
                   "mb-4 flex items-center gap-2 text-sm text-muted-foreground",
-                  justAllowed && "mb-5 min-h-28 items-start",
+                  justAllowed && "min-h-16",
                 )}
               >
                 <Spinner aria-hidden="true" />

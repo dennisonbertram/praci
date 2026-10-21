@@ -58,7 +58,7 @@ export function PinsStrip({ pins, onPins }: { pins: BotPins; onPins: (pins: BotP
       className="rk-scroll flex shrink-0 items-stretch gap-2 overflow-x-auto border-b border-border px-3 py-2 md:px-[22px]"
     >
       {pins.stats.map((stat) => (
-        <Card key={stat.id} size="sm" className="shrink-0 px-3.5">
+        <Card key={stat.id} size="sm" className="shrink-0 px-3.5 max-md:gap-0 max-md:py-2">
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <span dir="auto">{stat.label}</span>
             {stat.error ? (
@@ -77,7 +77,7 @@ export function PinsStrip({ pins, onPins }: { pins: BotPins; onPins: (pins: BotP
             {shown(stat.value)}
           </div>
           {stat.detail ? (
-            <div className="text-[11px] text-muted-foreground" dir="auto">
+            <div className="text-[11px] text-muted-foreground max-md:hidden" dir="auto">
               {shown(stat.detail)}
             </div>
           ) : null}

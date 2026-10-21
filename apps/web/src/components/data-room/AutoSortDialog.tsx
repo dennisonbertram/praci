@@ -64,11 +64,14 @@ export function AutoSortDialog({
   files = [],
   onClose,
   onApplied,
+  onOpenModels,
 }: {
   /** The files the page has loaded; the list shows them while the plan is made. */
   files?: AutoSortFile[];
   onClose: () => void;
   onApplied: (result: AutoSortApplyOutput) => void;
+  /** Opens the Models settings, where a rejected key is replaced. */
+  onOpenModels?: () => void;
 }) {
   const [plan, setPlan] = useState<AutoSortPlan | null>(null);
   const [error, setError] = useState("");
@@ -118,11 +121,15 @@ export function AutoSortDialog({
     { type: "rename_item", title: t`Rename` },
   ];
   const reasonText =
-    plan?.reason === "ai_failed"
-      ? t`The model could not sort your files.`
-      : plan?.reason
-        ? t`Turn on a model and allow AI access to sort files.`
-        : null;
+    plan?.reason === "ai_rejected"
+      ? t`The model provider did not accept your API key.`
+      : plan?.reason === "ai_failed"
+        ? t`The model could not sort your files.`
+        : plan?.reason
+          ? t`Turn on a model and allow AI access to sort files.`
+          : null;
+  // A model problem is fixed in Models; "Retry" alone would fail the same way.
+  const fixInModels = plan?.reason === "ai_rejected" || plan?.reason === "ai_unavailable";
   const chosen = plan?.operations.filter((op) => !off.has(op.key)) ?? [];
   const toggle = (key: string, on: boolean) =>
     setOff((prev) => {
@@ -221,6 +228,18 @@ export function AutoSortDialog({
               {reasonText ? (
                 <div className="flex flex-wrap items-center gap-3 px-2 text-muted-foreground">
                   {reasonText}
+                  {fixInModels && onOpenModels ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        onClose();
+                        onOpenModels();
+                      }}
+                    >
+                      <Trans>Open Models settings</Trans>
+                    </Button>
+                  ) : null}
                   <Button variant="outline" size="sm" onClick={load}>
                     <Trans>Retry</Trans>
                   </Button>
@@ -264,9 +283,16 @@ export function AutoSortDialog({
           <Button type="button" variant="outline" onClick={onClose}>
             <Trans>Cancel</Trans>
           </Button>
-          <Button type="button" disabled={busy || revealing || chosen.length === 0} onClick={apply}>
-            {plural(chosen.length, { one: "Apply # change", other: "Apply # changes" })}
-          </Button>
+          {/* Nothing to apply (a failed or empty plan): the button would only read "Apply 0 changes". */}
+          {plan && plan.operations.length === 0 ? null : error && !plan ? null : (
+            <Button
+              type="button"
+              disabled={busy || revealing || chosen.length === 0}
+              onClick={apply}
+            >
+              {plural(chosen.length, { one: "Apply # change", other: "Apply # changes" })}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

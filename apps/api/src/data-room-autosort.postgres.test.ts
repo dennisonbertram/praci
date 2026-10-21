@@ -114,6 +114,8 @@ describePostgres("Data room auto-sort service (PostgreSQL)", () => {
     allowed = true;
     answer = new Error("model down");
     expect((await svc.autoSort.plan(a)).reason).toBe("ai_failed");
+    answer = new Error('401 {"error":"User not found."}');
+    expect((await svc.autoSort.plan(a)).reason).toBe("ai_rejected");
 
     answer = {
       items: [{ id: item.id, folderPath: ["Benefits", "Dental"], name: "Dental statement 2026" }],

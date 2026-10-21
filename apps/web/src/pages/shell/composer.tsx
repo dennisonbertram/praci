@@ -1060,7 +1060,8 @@ export const Composer = memo(function Composer({
             disabled={disabled}
             placeholder={
               showComposerPlaceholder
-                ? activeName
+                ? // On a phone the header already names the agent, and a long name wraps.
+                  activeName && !window.matchMedia?.("(max-width: 480px)").matches
                   ? t`Message ${activeName}`
                   : t`Message…`
                 : undefined

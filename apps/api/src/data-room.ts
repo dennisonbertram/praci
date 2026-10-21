@@ -49,6 +49,7 @@ import {
   DATA_ROOM_DISCLOSURE_VERSION,
   DataRoomApiName,
 } from "@rakazo/contracts";
+import { KEY_REJECTED_PATTERN } from "@rakazo/core";
 import type {
   DataRoomFilters,
   DataRoomFolderRecord,
@@ -424,6 +425,7 @@ export function createDataRoomService(deps: DataRoomDeps) {
         ]);
         let proposal: unknown = null;
         let asked = false;
+        let rejected = false;
         if (ai?.model && ai.allowed && deps.proposeSort && items.length) {
           asked = true;
           const paths = autoSortFolderPaths(folders);
@@ -447,14 +449,17 @@ export function createDataRoomService(deps: DataRoomDeps) {
               },
             );
           } catch (error) {
+            const message = error instanceof Error ? error.message : "unknown";
+            rejected = KEY_REJECTED_PATTERN.test(message);
             getLogger().warn("data room auto-sort model failed; merging duplicates only", {
-              error: error instanceof Error ? error.message : "unknown",
+              error: message,
             });
           }
         }
         const plan = buildAutoSortPlan({ folders, items, proposal });
         if (plan.mode === "ai" || plan.reason || !items.length) return plan;
-        return { ...plan, reason: asked ? ("ai_failed" as const) : ("ai_unavailable" as const) };
+        const reason = !asked ? "ai_unavailable" : rejected ? "ai_rejected" : "ai_failed";
+        return { ...plan, reason } as const;
       },
       apply: (actor: Actor, input: { operations: AutoSortOperation[] }) =>
         dataRoomCall(async () => {

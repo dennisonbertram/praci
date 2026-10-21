@@ -1,6 +1,7 @@
 import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import { Button, cn, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
+import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import type { FinanceSpace } from "../components/finance/ui";
@@ -81,6 +82,8 @@ function Legal({
   const setView = (next: View) =>
     setParams(next === "contracts" ? {} : { view: next }, { replace: true });
   const [scanError, setScanError] = useState("");
+  // The failed run whose notice the user closed; the next failed run shows its own.
+  const [dismissedRun, setDismissedRun] = useState<string | null>(null);
   // The run Scan now queued, until the overview shows it finished.
   const [waitingFor, setWaitingFor] = useState<string | null>(null);
   const status = granted ?? consent.data;
@@ -189,15 +192,7 @@ function Legal({
           <>
             <SpaceName />
             <span className="min-w-0 text-[11px]">
-              {lastRun?.status === "failed" && !running ? (
-                keyRejected ? (
-                  <Trans>Last scan failed: OpenRouter did not accept your key.</Trans>
-                ) : lastRun.error ? (
-                  <Trans>Last scan failed: {runErrorText(lastRun.error)}</Trans>
-                ) : (
-                  <Trans>Last scan failed</Trans>
-                )
-              ) : needsConsent ? null : lastScan ? (
+              {needsConsent ? null : lastScan ? (
                 data.agent.dailyScanActive ? (
                   <Trans>Last scan {lastScan}. Scans daily.</Trans>
                 ) : (
@@ -209,12 +204,6 @@ function Legal({
                 <Trans>Not scanned yet. Daily scan paused.</Trans>
               )}
             </span>
-            {/* A rejected key is fixed in one place; go straight to its field. */}
-            {keyRejected && onOpenSettings ? (
-              <Button size="sm" variant="outline" onClick={onOpenSettings}>
-                <Trans>Replace OpenRouter key</Trans>
-              </Button>
-            ) : null}
           </>
         }
         actions={
@@ -274,10 +263,44 @@ function Legal({
           to={`${LEGAL_PATH}?view=deadlines&due=overdue`}
         />
       </div>
+      {lastRun?.status === "failed" && !running && lastRun.id !== dismissedRun ? (
+        <div
+          role="status"
+          data-testid="scan-failed"
+          className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+        >
+          <p className="min-w-0 flex-1 basis-64">
+            {keyRejected ? (
+              <Trans>Last scan failed: The AI key was rejected.</Trans>
+            ) : lastRun.error ? (
+              <Trans>Last scan failed: {runErrorText(lastRun.error)}</Trans>
+            ) : (
+              <Trans>Last scan failed</Trans>
+            )}
+          </p>
+          {/* A rejected key is fixed in one place; go straight to its field. */}
+          {keyRejected && onOpenSettings ? (
+            <Button size="sm" variant="outline" onClick={onOpenSettings}>
+              <Trans>Replace key</Trans>
+            </Button>
+          ) : null}
+          <button
+            type="button"
+            aria-label={t`Dismiss`}
+            onClick={() => setDismissedRun(lastRun.id)}
+            className="shrink-0 hover:text-foreground"
+          >
+            <X size={14} strokeWidth={2} />
+          </button>
+        </div>
+      ) : null}
       {/* A line, not a fifth tile: four tiles fill two rows of two, or one row, with none alone. */}
       {counts.unreviewedDocuments > 0 ? (
         <p className="-mt-2 mb-4 text-xs text-muted-foreground">
-          <Link to={DATA_ROOM_PATH} className="underline underline-offset-2 hover:text-foreground">
+          <Link
+            to={`${DATA_ROOM_PATH}?legal=unchecked`}
+            className="rk-tap underline underline-offset-2 hover:text-foreground"
+          >
             {plural(counts.unreviewedDocuments, {
               one: "# Data room document not yet checked by Legal",
               other: "# Data room documents not yet checked by Legal",
@@ -389,7 +412,8 @@ function ModelBlockerNotice({
 function GraphTab() {
   const graph = useFinanceQuery(() => rpc.legal.graph(), []);
   if (graph.error) return <ErrorNotice message={graph.error} onRetry={graph.retry} />;
-  if (!graph.data) return <Skeleton aria-busy="true" className="h-64" />;
+  // bg-border: the default skeleton fill is almost the page colour, so the tab looked blank.
+  if (!graph.data) return <Skeleton aria-busy="true" className="h-64 bg-border" />;
   return <LegalGraphView graph={graph.data} />;
 }
 

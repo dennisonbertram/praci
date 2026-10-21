@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 247 of 247
-- Web and shared components: 665
+- Web and shared component files with stories: 248 of 248
+- Web and shared components: 666
 - Mobile components: 138 in 95 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -97,6 +97,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ModelPreflightFeedback | [apps/web/src/components/ModelConnectionPreflightNotice.tsx](../../apps/web/src/components/ModelConnectionPreflightNotice.tsx) | [ModelConnectionPreflightNotice.stories.tsx](../../apps/web/src/components/ModelConnectionPreflightNotice.stories.tsx) | web |
 | NotificationSettingsSection | [apps/web/src/components/NotificationSettings.tsx](../../apps/web/src/components/NotificationSettings.tsx) | [NotificationSettings.stories.tsx](../../apps/web/src/components/NotificationSettings.stories.tsx) | web |
 | PageAgentIntro | [apps/web/src/components/PageAgentIntro.tsx](../../apps/web/src/components/PageAgentIntro.tsx) | [PageAgentIntro.stories.tsx](../../apps/web/src/components/PageAgentIntro.stories.tsx) | web |
+| PageAgentsRow | [apps/web/src/components/PageAgentsRow.tsx](../../apps/web/src/components/PageAgentsRow.tsx) | [PageAgentsRow.stories.tsx](../../apps/web/src/components/PageAgentsRow.stories.tsx) | web |
 | PageEmptyState | [apps/web/src/components/PageEmptyState.tsx](../../apps/web/src/components/PageEmptyState.tsx) | [PageEmptyState.stories.tsx](../../apps/web/src/components/PageEmptyState.stories.tsx) | web |
 | PageHeader | [apps/web/src/components/PageHeader.tsx](../../apps/web/src/components/PageHeader.tsx) | [PageHeader.stories.tsx](../../apps/web/src/components/PageHeader.stories.tsx) | web |
 | PdfViewer | [apps/web/src/components/PdfViewer.tsx](../../apps/web/src/components/PdfViewer.tsx) | [PdfViewer.stories.tsx](../../apps/web/src/components/PdfViewer.stories.tsx) | web |

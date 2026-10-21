@@ -422,11 +422,12 @@ export function CapTablePage({
     if (filtersSettled && filter !== requestedFilter) setFilter("all");
   });
   const needle = query.trim().toLowerCase();
-  // With a cap table, All lists who holds shares; contacts with no holding sit under their own tabs
-  // and still turn up in a search.
+  // With a cap table, All lists who holds shares; contacts and SAFE investors with no shares sit
+  // under their own tabs and still turn up in a search.
   const kindRows = rows.filter(
     (row) =>
-      matchesFilter(row, filter) && (filter !== "all" || !snapshot || !!row.holder || !!needle),
+      matchesFilter(row, filter) &&
+      (filter !== "all" || !snapshot || row.holder?.shares != null || !!needle),
   );
   // Security shows only with a choice to make: two or more securities among these rows.
   const securities = [...new Set(kindRows.flatMap((row) => rowSecurity(row) ?? []))].sort((a, b) =>
@@ -461,6 +462,12 @@ export function CapTablePage({
   );
   const shown = sortRows(narrowed, sortField, sortDirection, (row) => names[rowKind(row)]);
   const narrowing = !!needle || !!security;
+  // SAFEs have an amount and no shares: give them an Amount column, and drop Shares and
+  // Ownership when no shown row has any, rather than showing two columns of dashes.
+  const amountColumn = shown.some(
+    (row) => row.holder?.shares == null && row.holder?.amountUsd != null,
+  );
+  const shareColumns = !amountColumn || shown.some((row) => row.holder?.shares != null);
   const showHoldings = snapshot !== null || reading;
   // The summary and donut are the overview: a tab or a search is a look at rows, which come first.
   const overview = filter === "all" && !narrowing;
@@ -792,7 +799,12 @@ export function CapTablePage({
                     <TableHead className={`${STICKY} hidden w-28 @lg:table-cell`}>
                       <Trans>Kind</Trans>
                     </TableHead>
-                    {snapshot ? (
+                    {snapshot && amountColumn ? (
+                      <TableHead className={`${STICKY} w-24 text-end`}>
+                        <Trans>Amount</Trans>
+                      </TableHead>
+                    ) : null}
+                    {snapshot && shareColumns ? (
                       <>
                         <TableHead className={`${STICKY} hidden w-20 text-end @md:table-cell`}>
                           <Trans>Shares</Trans>
@@ -810,7 +822,7 @@ export function CapTablePage({
                     const organization = contact?.organization ?? holder?.organization ?? null;
                     const kind = rowKind({ contact, holder });
                     const security = holder
-                      ? holder.shares == null && holder.amountUsd != null
+                      ? holder.shares == null && holder.amountUsd != null && !amountColumn
                         ? `${holder.security}, ${usd(holder.amountUsd)}`
                         : holder.security
                       : null;
@@ -822,11 +834,11 @@ export function CapTablePage({
                     ) : !contact && kind === "investor" ? (
                       <>
                         {/* Carta's email shows as is; saving it makes the holder a contact. */}
-                        {holder?.email ? <div className="truncate">{holder.email}</div> : null}
+                        {holder?.email ? <span className="truncate">{holder.email} </span> : null}
                         <Button
                           variant="link"
                           size="xs"
-                          className="h-auto px-0"
+                          className="h-4 px-0 py-0 leading-4"
                           onClick={() =>
                             setEditing({
                               name,
@@ -850,7 +862,7 @@ export function CapTablePage({
                       <TableRow
                         key={key}
                         data-contact-id={contact?.id}
-                        className={contact && contact.id === savedId ? SAVED_ROW_CLASS : ""}
+                        className={`group-data-[compact]/table:h-11 [&>td]:py-0.5 ${contact && contact.id === savedId ? SAVED_ROW_CLASS : ""}`}
                         onOpen={contact ? () => setEditing(contact) : undefined}
                       >
                         <TableCell>
@@ -868,30 +880,29 @@ export function CapTablePage({
                               {name}
                             </span>
                           )}
-                          {/* Without room for the Kind column, the kind and holding show here. */}
-                          <div
-                            className="truncate text-xs text-muted-foreground @lg:hidden"
-                            title={holding ?? undefined}
-                          >
-                            {[names[kind], holding].filter(Boolean).join(" · ")}
+                          {/* One muted line keeps every row one height. Without room for the Kind or Email
+                          columns, the kind, holding and email join it. */}
+                          <div className="flex min-w-0 gap-2 whitespace-nowrap text-xs text-muted-foreground empty:hidden">
+                            <span className="shrink-0 @lg:hidden">{names[kind]}</span>
+                            {holding ? (
+                              <span className="min-w-0 truncate" title={holding}>
+                                {holding}
+                              </span>
+                            ) : null}
+                            {organization ? (
+                              <span className="min-w-0 truncate" title={organization}>
+                                {organization}
+                              </span>
+                            ) : null}
+                            {email ? (
+                              <span
+                                data-testid="cap-table-row-email"
+                                className="min-w-0 truncate @3xl:hidden"
+                              >
+                                {email}
+                              </span>
+                            ) : null}
                           </div>
-                          {organization ? (
-                            <div
-                              className="truncate text-xs text-muted-foreground"
-                              title={organization}
-                            >
-                              {organization}
-                            </div>
-                          ) : null}
-                          {/* Without room for the Email column, the email shows here. */}
-                          {email ? (
-                            <div
-                              data-testid="cap-table-row-email"
-                              className="truncate text-xs text-muted-foreground @3xl:hidden"
-                            >
-                              {email}
-                            </div>
-                          ) : null}
                         </TableCell>
                         <TableCell
                           data-testid="cap-table-email-cell"
@@ -902,13 +913,13 @@ export function CapTablePage({
                         </TableCell>
                         <TableCell className="hidden @lg:table-cell">
                           <div className="truncate">{names[kind]}</div>
-                          {holding ? (
-                            <div className="truncate text-xs text-muted-foreground" title={holding}>
-                              {holding}
-                            </div>
-                          ) : null}
                         </TableCell>
-                        {snapshot ? (
+                        {snapshot && amountColumn ? (
+                          <TableCell className="text-end tabular-nums">
+                            {holder?.amountUsd != null ? usd(holder.amountUsd) : empty}
+                          </TableCell>
+                        ) : null}
+                        {snapshot && shareColumns ? (
                           <>
                             <TableCell className="hidden text-end tabular-nums @md:table-cell">
                               {holder?.shares != null ? num(holder.shares) : empty}

@@ -97,6 +97,10 @@ export const mercuryTreasuryResponse = {
   page: {},
 };
 
+const DEFAULT_RECIPIENTS: Array<Record<string, unknown>> = [
+  { id: "recipient_mock_acme", name: "Acme (Mock)", status: "active" },
+];
+
 export interface MercuryOptions {
   /** Rows per account id, newest first. */
   txns: Record<string, MercuryRow[]>;
@@ -132,10 +136,21 @@ export function fakeMercury(
     if (name === "getAccount") return { id: args.accountId, nickname: "Operating" };
     if (name === "getRecipients")
       return {
-        recipients: options.recipients ?? [
-          { id: "recipient_mock_acme", name: "Acme (Mock)", status: "active" },
-        ],
+        recipients: options.recipients ?? DEFAULT_RECIPIENTS,
       };
+    if (name === "getRecipient") {
+      const row = (options.recipients ?? DEFAULT_RECIPIENTS).find((r) => r.id === args.recipientId);
+      if (!row) throw new Error(`recipient ${String(args.recipientId)} not found`);
+      return row;
+    }
+    if (name === "getAccount") {
+      const accounts = (options.accounts ?? mercuryAccountsResponse()).accounts as Array<
+        Record<string, unknown>
+      >;
+      const row = accounts.find((a) => a.id === args.accountId);
+      if (!row) throw new Error(`account ${String(args.accountId)} not found`);
+      return row;
+    }
     if (name === "getTreasury") return options.treasury ?? mercuryTreasuryResponse;
     if (name === "getTransactionById")
       return { transaction: { id: args.transactionId, attachments: options.attachments } };

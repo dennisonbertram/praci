@@ -20,17 +20,17 @@ export function attentionFromDto(n: NotificationDto): AttentionNotification {
 }
 
 /**
- * A run result for the chat on screen: the composer error or the reply already shows it, so no
- * toast repeats it. A finished run only counts while the tab is in front; otherwise the person is
- * away and still wants the alert.
+ * Results that need no toast. A failure in the chat that is open is already shown by its composer.
+ * A finished run with the tab in front is shown by the agent's sidebar row, whether or not its chat
+ * is open. When the person is away the alert is still sent. Failures elsewhere keep their toast.
  */
 export function resultShownInOpenChat(
   n: Pick<NotificationDto, "botId" | "kind">,
   openBotId: string | undefined,
   tabInFront: boolean,
 ): boolean {
-  if (!openBotId || n.botId !== openBotId) return false;
-  return n.kind === "failed" || (n.kind === "done" && tabInFront);
+  if (n.kind === "done" && n.botId) return tabInFront;
+  return Boolean(openBotId) && n.botId === openBotId && n.kind === "failed";
 }
 
 /**

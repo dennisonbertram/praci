@@ -51,6 +51,7 @@ vi.mock("../components/finance/StatementImport", () => ({
 }));
 
 import { hereCrumb, shortSpaceName, trailFor, WithEndings } from "../components/finance/ui";
+import { resetHideAmountsMemory, setHideAmounts } from "../lib/hide-amounts-preference";
 import { cryptoSubtitle, FinancePage, UpcomingRow } from "./Finance";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -551,6 +552,22 @@ it("hides the comparison when the previous period is not fully synced", async ()
   expect(container.textContent).not.toContain("vs Sep");
 });
 
+it("keeps runway months and the run-out month visible while amounts are hidden", async () => {
+  setHideAmounts(true);
+  try {
+    rpcMock.overview.mockResolvedValue(connectedOverview());
+    await show("/app/finance");
+    await flush();
+    const text = container.textContent ?? "";
+    expect(text).toContain("6.3 mo");
+    expect(text).toContain("Until April 2027");
+    expect(text).not.toContain("$50,000");
+  } finally {
+    setHideAmounts(false);
+    resetHideAmountsMemory();
+  }
+});
+
 it("shows the figures, syncs once, and lets the period chips change the spend number", async () => {
   rpcMock.overview.mockResolvedValue(connectedOverview());
   await show("/app/finance");
@@ -659,7 +676,7 @@ it("labels the subscription figures by what they measure", async () => {
   await flush();
   const heads = [...container.querySelectorAll("thead th")].map((th) => th.textContent);
   expect(heads).toContain("Usual per month");
-  expect(heads).toContain("Change, 3 months");
+  expect(heads).toContain("3-mo change");
   expect(heads).not.toContain("Typical month");
   expect(container.querySelector('th[title*="vendor page"]')?.textContent).toBe("Usual per month");
 });
