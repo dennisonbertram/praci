@@ -676,6 +676,8 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
 
   // The Data room agent is created on first use; create it now so it has a conversation.
   await session.rpc("dataRoom/agent");
+  // The Investors agent is created when the Investors page first opens; create it now so Bots lists it.
+  await session.rpc("investors/agent");
 
   // The agents' earlier conversations, routines and saved skills, written straight to the database
   // (no model call). Each bot's own introduction run is waited for first, then replaced.

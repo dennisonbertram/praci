@@ -1,8 +1,9 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@rakazo/ui-web";
 import { dataRoomAgentSuggestions } from "../lib/data-room-agent";
+import { investorsAgentSuggestions } from "../lib/investors-agent";
 
-export type PageAgentKind = "inbox" | "finance" | "carta" | "data-room" | "legal";
+export type PageAgentKind = "inbox" | "finance" | "carta" | "data-room" | "legal" | "investors";
 
 /** Which page agent a bot is, from the spawn key its page created it with (null for other bots). */
 export function pageAgentKind(spawnKey: string | null | undefined): PageAgentKind | null {
@@ -11,6 +12,7 @@ export function pageAgentKind(spawnKey: string | null | undefined): PageAgentKin
   if (spawnKey?.startsWith("carta-agent:")) return "carta";
   if (spawnKey?.startsWith("data-room-agent:")) return "data-room";
   if (spawnKey?.startsWith("legal-agent:")) return "legal";
+  if (spawnKey?.startsWith("investors-agent:")) return "investors";
   return null;
 }
 
@@ -47,11 +49,9 @@ export function PageAgentIntro({
                 t`What deadlines are coming up?`,
                 t`Which contracts have the highest value?`,
               ]
-            : [
-                t`Who owns what in the company?`,
-                t`How much of the option pool is left?`,
-                t`Draft this month's investor update`,
-              ];
+            : kind === "investors"
+              ? investorsAgentSuggestions()
+              : [t`Who owns what in the company?`, t`How much of the option pool is left?`];
   return (
     <div className="flex min-h-0 flex-1 flex-col justify-end gap-3 px-4 py-5 md:px-7">
       <p className="text-sm text-muted-foreground">
@@ -72,11 +72,13 @@ export function PageAgentIntro({
           <Trans>
             I read your Data room for contracts and deadlines and answer questions about them.
           </Trans>
-        ) : (
+        ) : kind === "investors" ? (
           <Trans>
-            I keep your cap table and investor contacts, and draft investor updates for you to
-            review.
+            I answer questions about your cap table, investors and finances, using your Data room
+            and contacts.
           </Trans>
+        ) : (
+          <Trans>I keep your cap table and investor contacts up to date from Carta.</Trans>
         )}
       </p>
       <div className="flex flex-col items-start gap-1.5">

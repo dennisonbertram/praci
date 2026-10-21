@@ -203,6 +203,7 @@ describe("effectiveAccessByConnection", () => {
       "inbox-agent:u1",
       "legal-agent:u1",
       "carta-agent:u1",
+      "investors-agent:u1",
       "voice-agent:u1",
     ].map((spawnKey, i) => ({ id: `s${i}`, spawnKey, archivedAt: null }));
     const all = [...bots, ...special];
@@ -215,7 +216,7 @@ describe("effectiveAccessByConnection", () => {
       [row("g", "connected", true, { connectorId: "google", provider: "gmail" })],
       all,
     ).g;
-    expect(gmail?.botIds).toEqual(["chief", "other", "s0", "s1", "s2", "s3"]);
+    expect(gmail?.botIds).toEqual(["chief", "other", "s0", "s1", "s2", "s3", "s4"]);
   });
 
   it("gives a pending connection no users", () => {

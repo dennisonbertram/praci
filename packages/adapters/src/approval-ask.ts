@@ -8,6 +8,7 @@ import {
   isCartaAgentSpawnKey,
   isCartaEndpoint,
   isIntegrationAgentSpawnKey,
+  isInvestorsAgentSpawnKey,
   isMailAgentSpawnKey,
   isReadTool,
   MAX_COMPOSE_BODY,
@@ -155,7 +156,9 @@ export function buildConsentAskBlock(
  */
 export const isCartaMailSend = (botSpawnKey: string | null | undefined, toolName: string) =>
   toolName === "mail_send" &&
-  (isCartaAgentSpawnKey(botSpawnKey) || isMailAgentSpawnKey(botSpawnKey));
+  (isCartaAgentSpawnKey(botSpawnKey) ||
+    isInvestorsAgentSpawnKey(botSpawnKey) ||
+    isMailAgentSpawnKey(botSpawnKey));
 
 /**
  * The Carta agent's write tools on Carta's server: every call asks, whatever the saved rules say.

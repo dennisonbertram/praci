@@ -56,6 +56,7 @@ import {
   externalBotMayUseBuiltin,
   HistoryReadInputSchema,
   HistorySearchInputSchema,
+  INVESTORS_AGENT_BUILTIN_TOOLS,
   integrationAgentSpawnKey,
   integrationPresetForEndpoint,
   isAttachmentImageMimeType,
@@ -64,6 +65,7 @@ import {
   isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
+  isInvestorsAgentSpawnKey,
   isLegalAgentSpawnKey,
   isMailAgentSpawnKey,
   isVoiceAgentSpawnKey,
@@ -113,6 +115,7 @@ import {
   nextCronDateAcross,
   nextFence,
   ownsLine,
+  PrivateFragments,
   parseSkillMd,
   plainRunError,
   planActionGate,
@@ -533,6 +536,19 @@ import {
 import { VOICE_WORKSPACE_TOOL_NAMES, voiceAgentToolFromTool } from "./voice-agent-tools.js";
 import { createWebProvider } from "./web-provider-factory.js";
 import { webFetchFromTool, webSearchFromTool } from "./web-tools.js";
+
+/** Tools whose result is public to anyone: what a web page says. Every other result is private. */
+const PUBLIC_RESULT_TOOLS = new Set(["web_search", "web_fetch"]);
+/** Results that carry nothing to protect (the model's own words, or only a status). */
+const NO_FRAGMENT_TOOLS = new Set([
+  "message_bot",
+  "message_user",
+  "notify_user",
+  "ask_user",
+  "skill_read",
+  "show_image",
+  "render_plot",
+]);
 
 export const READ_ONLY_AGENT_TOOLS = new Set([
   "imessage_list_conversations",
@@ -1580,6 +1596,51 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 ...loadedMessages.flatMap((message) => message.blocks as MessageBlock[]),
               ]);
         const externalTaint = () => externalChain !== undefined;
+        // What this run read from private sources, and what is public to a recipient (the external
+        // person's own words, web pages). A message to an external bot that repeats a private
+        // fragment is held for the owner instead of sent.
+        const privateFragments = new PrivateFragments();
+        // Set when any message of this run to an external bot was held for the owner.
+        let heldForOwner = false;
+        let chainFragmentsLoaded: Promise<void> | undefined;
+        const loadChainFragments = () => {
+          chainFragmentsLoaded ??= (async () => {
+            const received = [
+              ...(run.trigger === "bot_message" && peerMessage
+                ? [peerMessage as MessageBlock]
+                : []),
+              ...loadedMessages.flatMap((message) => message.blocks as MessageBlock[]),
+            ].filter((block) => block.kind === "bot_message_received");
+            if (received.length === 0) return;
+            const senders = await deps.prisma.bot.findMany({
+              where: {
+                id: { in: [...new Set(received.map((block) => block.fromBotId))] },
+                spaceId: run.spaceId,
+                userId: run.userId,
+              },
+              select: { id: true, audience: true },
+            });
+            const internal = new Set(
+              senders.filter((sender) => sender.audience !== "external").map((sender) => sender.id),
+            );
+            for (const block of received) {
+              // An internal bot's answer is private; an external bot's request, or a message from
+              // another Space, is the other side's own text.
+              if (internal.has(block.fromBotId)) privateFragments.addPrivateRelay(block.text);
+              else privateFragments.addPublic(block.text);
+            }
+          })();
+          return chainFragmentsLoaded;
+        };
+        // The record lives in this process only. A run resumed after an approval, or reclaimed after a
+        // crash, runs under a later lease and cannot know what its earlier attempts read, so every
+        // message it sends to an external bot is held (fail closed).
+        const readsKnown = fence <= 1;
+        const outboundFragments = async () => {
+          if (!readsKnown) return undefined;
+          await loadChainFragments();
+          return privateFragments;
+        };
         // No automatic private context for an external bot, or for any bot answering an external chain.
         const restrictedContext = bot.audience === "external" || externalChain !== undefined;
         // The wake prompt carries the reply body (already escaped); mark that body as meeting text too.
@@ -1682,6 +1743,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const legalOnly = isLegalAgentSpawnKey(bot.spawnKey);
         // The Data room agent gets a fixed list of built-ins and no connector tools.
         const dataRoomAgent = isDataRoomAgentSpawnKey(bot.spawnKey);
+        // The Investors agent gets a fixed list of built-ins and no connector tools (no MCP, no Composio).
+        const investorsAgent = isInvestorsAgentSpawnKey(bot.spawnKey);
         // Connections limited to chosen agents stay out of this run unless the bot was granted access.
         // An external bot reaches a connection only through an explicit access row.
         const deniedIds = deniedConnectionIds(
@@ -1761,7 +1824,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
         });
 
         const discoveredPromise =
-          deps.connector && !mailOnly && !legalOnly && !dataRoomAgent && !voiceAgent
+          deps.connector &&
+          !mailOnly &&
+          !legalOnly &&
+          !dataRoomAgent &&
+          !investorsAgent &&
+          !voiceAgent
             ? (async () => {
                 if (appAgentIdentity) {
                   const current = await deps.prisma.connection.findFirst({
@@ -2011,7 +2079,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               { id: bot.id, name: bot.name },
               `Could not complete the delegated request: ${message}`,
               "status",
-              { forceUnread: true, externalChain },
+              { forceUnread: true, externalChain, outbound: outboundFragments },
             ).catch((error) => getLogger().error("bot message failure return", error));
           }
           if (!failed.continuationRunId) {
@@ -2603,6 +2671,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         });
         const legalToolSet: ReadonlySet<string> = new Set(LEGAL_AGENT_BUILTIN_TOOLS);
         const dataRoomAgentToolSet: ReadonlySet<string> = new Set(DATA_ROOM_AGENT_BUILTIN_TOOLS);
+        const investorsToolSet: ReadonlySet<string> = new Set(INVESTORS_AGENT_BUILTIN_TOOLS);
         const builtins = [
           ...selectBuiltinToolsForRun({
             ticketBoardEnabled:
@@ -2652,6 +2721,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           (tool) =>
             (!legalOnly || legalToolSet.has(tool.name)) &&
             (!dataRoomAgent || dataRoomAgentToolSet.has(tool.name)) &&
+            (!investorsAgent || investorsToolSet.has(tool.name)) &&
             (!meetingAgent || meetingAgentToolSet.has(tool.name)) &&
             // pi-runtime runs run_subagent itself, before the executor's approval gate.
             ((!meetingTaint && externalChain === undefined) ||
@@ -2987,6 +3057,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
         ) => {
           try {
             const result = await applyToolCall(name, args, executionId, route, observer);
+            if (!isToolPauseResult(result) && !NO_FRAGMENT_TOOLS.has(name)) {
+              const text = JSON.stringify(result);
+              if (PUBLIC_RESULT_TOOLS.has(name)) privateFragments.addPublic(text);
+              else privateFragments.addPrivate(text);
+            }
             const settle = settleReadEffect.get(executionId);
             if (settle && !isToolPauseResult(result)) {
               await settle(result).catch((error: unknown) =>
@@ -3007,6 +3082,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
         ) => {
           if (voiceAgent && !offeredToolNames.has(name)) {
             return { error: `Tool ${name} is not available to Elio.` };
+          }
+          // The Investors agent has a fixed list; a name outside it never reaches a connector.
+          if (investorsAgent && !offeredToolNames.has(name)) {
+            return { error: `Tool ${name} is not available to this bot.` };
           }
           context.signal.throwIfAborted();
           if (handedOff) {
@@ -5812,9 +5891,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 ownerAgentsOnly: isBackgroundRunTrigger(run.trigger),
                 ownerOrigin: ownerOriginRun,
                 externalChain,
+                outbound: outboundFragments,
               },
             );
             if (!sent.ok) return finish({ error: sent.error });
+            if (sent.held) heldForOwner = true;
             return finish({
               ok: true,
               botId: sent.botId,
@@ -5852,6 +5933,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 message: redactSecrets(String(args.message ?? ""), runSecrets),
                 deliveryKey: effectKey,
               },
+              { outbound: outboundFragments },
             );
             if (!result.ok) return finish({ error: result.error });
             return finish(result);
@@ -5865,6 +5947,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               bot_id: args.bot_id ? String(args.bot_id) : undefined,
               confirm_name: args.confirm_name ? String(args.confirm_name) : undefined,
               message: String(args.message ?? ""),
+              outbound: outboundFragments,
             });
             if ("ok" in result && result.ok) handedOff = true;
             return finish(result);
@@ -6709,7 +6792,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                     { id: bot.id, name: bot.name },
                     stuckText,
                     "result",
-                    { forceUnread: true, externalChain },
+                    { forceUnread: true, externalChain, outbound: outboundFragments },
                   ).catch((error) => getLogger().error("bot message loop-guard return", error));
                 }
                 runAbortController?.abort();
@@ -6956,10 +7039,18 @@ export function createRunExecutor(deps: ExecutorDeps) {
               { id: bot.id, name: bot.name },
               botMessageOutcome.text,
               botMessageOutcome.intent,
-              { externalChain },
+              {
+                externalChain,
+                outbound: outboundFragments,
+                onHeld: () => {
+                  heldForOwner = true;
+                },
+              },
             ).catch((error) => getLogger().error("bot message result return", error));
           }
-          const notifyBody = completionNotificationPreview(text);
+          // The text was held for the owner's approval: no push may preview it. The held share has
+          // its own notification, which names the recipient only.
+          const notifyBody = heldForOwner ? "" : completionNotificationPreview(text);
           if (
             runSendsFinishNotification(run.trigger) &&
             notifyBody &&

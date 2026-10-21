@@ -27,3 +27,5 @@ export const Carta: Story = { args: { kind: "carta" } };
 export const DataRoom: Story = { args: { kind: "data-room" } };
 /** The Legal agent before the first message. */
 export const Legal: Story = { args: { kind: "legal" } };
+
+export const Investors: Story = { args: { kind: "investors" } };
