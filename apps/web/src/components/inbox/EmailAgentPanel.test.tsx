@@ -80,6 +80,12 @@ it("takes the draft from the newest mail card still waiting for the owner", () =
   expect(latestPendingDraft([message(1, [{ kind: "text", text: "hi" }])])).toBeUndefined();
 });
 
+it("ignores a mail_draft card: only a mail_send reply is a draft", () => {
+  const saved = card("saved in Gmail");
+  (saved as { mail: { tool: string } }).mail.tool = "mail_draft";
+  expect(latestPendingDraft([message(1, [saved])])).toBeUndefined();
+});
+
 it("offers Reply with draft only when the agent proposed one, and hands over its text", async () => {
   get.mockResolvedValue(snapshot([message(1, [card("Hi Sam")])]));
   const onReplyWithDraft = vi.fn();

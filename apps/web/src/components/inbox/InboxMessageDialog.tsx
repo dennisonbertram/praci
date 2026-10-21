@@ -194,6 +194,14 @@ function InboxMessage({
   const [gone, setGone] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [asking, setAsking] = useState(false);
+  // InboxMessage is keyed by message, so it unmounts when the user moves to another email.
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const [askError, setAskError] = useState("");
   // The agent's draft for the Reply composer, until that composer closes.
   const [agentDraft, setAgentDraft] = useState<string | undefined>();
@@ -402,7 +410,10 @@ function InboxMessage({
                   setAsking(true);
                   setAskError("");
                   (onAskAgentPanel
-                    ? onAskAgentPanel().then(setAgentBot)
+                    ? onAskAgentPanel().then((bot) => {
+                        // This message is gone if the user moved on or closed the dialog meanwhile.
+                        if (mounted.current) setAgentBot(bot);
+                      })
                     : (onAskAgent?.() ?? Promise.resolve())
                   ).then(
                     () => setAsking(false),

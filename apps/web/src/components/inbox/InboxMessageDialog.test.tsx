@@ -308,6 +308,33 @@ it("Ask agent opens the email's agent in a panel, which closes again and can sta
   expect(document.querySelector('[data-testid="agent-panel"]')).toBeNull();
 });
 
+it("drops a late Ask agent answer when the user has moved to another email", async () => {
+  get.mockImplementation(async ({ messageId }) => message(messageId));
+  let resolve: (bot: { id: string; name: string }) => void = () => {};
+  const onAskAgentPanel = vi.fn(
+    () => new Promise<{ id: string; name: string }>((r) => (resolve = r)),
+  );
+  const render = (messageId: string) =>
+    act(() =>
+      root.render(
+        <InboxMessageDialog
+          messageId={messageId}
+          onAskAgentPanel={onAskAgentPanel as never}
+          onClose={() => {}}
+        />,
+      ),
+    );
+  render("early");
+  await flush();
+  await act(async () =>
+    [...document.querySelectorAll("button")].find((b) => b.textContent === "Ask agent")?.click(),
+  );
+  render("later");
+  await flush();
+  await act(async () => resolve({ id: "bot-a", name: "Agent for early" }));
+  expect(document.querySelector('[data-testid="agent-panel"]')).toBeNull();
+});
+
 it("shows no Ask agent button when the page gives no action", async () => {
   await open();
   expect([...document.querySelectorAll("button")].some((b) => b.textContent === "Ask agent")).toBe(

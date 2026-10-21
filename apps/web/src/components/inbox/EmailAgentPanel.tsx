@@ -23,7 +23,8 @@ export function latestPendingDraft(messages: readonly ThreadMessage[]): string |
     for (const block of [...message.blocks].reverse()) {
       if (
         block.kind === "ask" &&
-        block.mail?.reply &&
+        block.mail?.tool === "mail_send" &&
+        block.mail.reply &&
         block.status !== "answered" &&
         !block.mail.outcome
       )
