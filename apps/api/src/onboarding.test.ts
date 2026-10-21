@@ -149,7 +149,7 @@ describe("company focus", () => {
     );
     // One sentence above the cards, not three bubbles that all say connect.
     expect(texts[0]).toBe(
-      "Got it. Email, calendar, and your company pages. Connect Gmail and Google Calendar here and I’ll use what you already have. For cash and equity, connect your bank, card, and Carta in [Finance](/app/finance) and [Cap table](/app/cap-table). Board decks and investor documents go in the [Data room](/app/data-room).",
+      "Got it. Email, calendar, and your company pages. Connect Gmail and Google Calendar here and I’ll use what you already have. For cash and equity, connect your bank, card, and Carta in [Finance](/app/finance) and [Investors](/app/investors). Board decks and investor documents go in the [Data room](/app/data-room).",
     );
     // One bubble and the cards, with the page pointers inside the bubble.
     expect(texts).toHaveLength(1);

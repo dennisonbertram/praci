@@ -102,7 +102,7 @@ test("768px has no horizontal page overflow in the app areas", async ({ page }) 
     "/app/finance",
     "/app/legal",
     "/app/data-room",
-    "/app/cap-table",
+    "/app/investors",
   ]) {
     await page.goto(path);
     await expect(page.getByTestId("shell-root")).toHaveAttribute("data-ready", "true");
