@@ -18,6 +18,7 @@ const MAX_VISITED = 2_000;
 const MAX_ARRAY_ITEMS = 100;
 const MAX_OBJECT_FIELDS = 200;
 const MAX_CURSOR_BYTES = 2_000;
+const SHA256_HEX = /^[a-f0-9]{64}$/;
 const PAGINATION_KEYS = [
   "next_cursor",
   "next_page_token",
@@ -105,6 +106,35 @@ export function isCompanyDocumentSource(source: CompanyImportSourceDescriptor) {
 
 function fail(code: string): never {
   throw new CompanyImportWorkerError(code);
+}
+
+function normalizedSeenHashes(value: Record<string, unknown>) {
+  const rawHashes = value.seenHashes;
+  const rawTokens = value.seen;
+  if (
+    (rawHashes !== undefined &&
+      (!Array.isArray(rawHashes) ||
+        rawHashes.some((item) => typeof item !== "string" || !SHA256_HEX.test(item)))) ||
+    (rawTokens !== undefined &&
+      (!Array.isArray(rawTokens) ||
+        rawTokens.some(
+          (item) => typeof item !== "string" || !item || item.length > MAX_CURSOR_BYTES,
+        )))
+  )
+    fail("invalid_source_cursor");
+  const hashes = [...((rawHashes ?? []) as string[]), ...((rawTokens ?? []) as string[]).map(hash)];
+  if (hashes.length > MAX_VISITED || new Set(hashes).size !== hashes.length)
+    fail("invalid_source_cursor");
+  return hashes;
+}
+
+function hasSeenToken(seenHashes: string[], token: string) {
+  return seenHashes.includes(hash(token));
+}
+
+function appendSeenToken(seenHashes: string[], token: string) {
+  if (seenHashes.length >= MAX_VISITED) fail("source_queue_overflow");
+  return [...seenHashes, hash(token)];
 }
 
 function toolArgsSchema(tool: ConnectorTool) {
@@ -474,13 +504,7 @@ export function createCompanyDocumentReader(
         )
           fail("invalid_source_cursor");
         const token = typeof current.startCursor === "string" ? current.startCursor : undefined;
-        const rawSeen = Array.isArray(current.seen) ? current.seen : [];
-        if (
-          rawSeen.length > MAX_VISITED ||
-          rawSeen.some((item) => typeof item !== "string" || !item || item.length > 2_000)
-        )
-          fail("invalid_source_cursor");
-        const seen = rawSeen as string[];
+        const seenHashes = normalizedSeenHashes(current);
         const args: Record<string, unknown> = { filter_value: "page", page_size: bounded };
         if (token) args.start_cursor = token;
         const result = asRecord(
@@ -507,12 +531,11 @@ export function createCompanyDocumentReader(
         if (page.more && units.length === 0) fail("source_cursor_stalled");
         if (rows.length === bounded && page.more === undefined)
           fail("source_pagination_unavailable");
-        if (page.token && seen.includes(page.token)) fail("source_cursor_stalled");
-        if (page.token && seen.length >= MAX_VISITED) fail("source_queue_overflow");
-        const nextSeen = [...seen, ...(page.token ? [page.token] : [])];
+        if (page.token && hasSeenToken(seenHashes, page.token)) fail("source_cursor_stalled");
+        const nextSeenHashes = page.token ? appendSeenToken(seenHashes, page.token) : seenHashes;
         return {
           units,
-          nextCursor: page.more ? { startCursor: page.token, seen: nextSeen } : null,
+          nextCursor: page.more ? { startCursor: page.token, seenHashes: nextSeenHashes } : null,
           done: !page.more,
         };
       }
@@ -529,7 +552,7 @@ export function createCompanyDocumentReader(
             toolName: item.name,
             args: item.args,
             pageToken: null,
-            seen: [],
+            seenHashes: [],
           },
         })),
         nextCursor:
@@ -585,7 +608,7 @@ export function createCompanyDocumentReader(
               kind: "notion",
               phase: "blocks",
               pageId,
-              queue: [{ id: pageId, pageToken: null, rowIndex: 0, seen: [] }],
+              queue: [{ id: pageId, pageToken: null, rowIndex: 0, seenHashes: [] }],
               visited: [pageId],
             },
             done: false,
@@ -611,7 +634,6 @@ export function createCompanyDocumentReader(
           const entry = asRecord(item);
           const pageToken = entry?.pageToken;
           const rowIndex = entry?.rowIndex;
-          const seen = entry?.seen;
           if (
             typeof entry?.id !== "string" ||
             !UUID.test(entry.id) ||
@@ -619,19 +641,14 @@ export function createCompanyDocumentReader(
               (typeof pageToken !== "string" || pageToken.length > MAX_CURSOR_BYTES)) ||
             !Number.isInteger(rowIndex) ||
             (rowIndex as number) < 0 ||
-            (rowIndex as number) > PAGE_SIZE ||
-            !Array.isArray(seen) ||
-            seen.length > MAX_VISITED ||
-            seen.some(
-              (token) => typeof token !== "string" || !token || token.length > MAX_CURSOR_BYTES,
-            )
+            (rowIndex as number) > PAGE_SIZE
           )
             fail("invalid_source_cursor");
           return {
             id: entry.id,
             pageToken: pageToken as string | null,
             rowIndex: rowIndex as number,
-            seen: seen as string[],
+            seenHashes: normalizedSeenHashes(entry),
           };
         });
         const entry = queue[0]!;
@@ -654,7 +671,7 @@ export function createCompanyDocumentReader(
         if (rows.length === PAGE_SIZE && page.more === undefined)
           fail("source_pagination_unavailable");
         if (entry.rowIndex > rows.length) fail("source_cursor_stalled");
-        if (page.more && entry.seen.includes(page.token!)) fail("source_cursor_stalled");
+        if (page.more && hasSeenToken(entry.seenHashes, page.token!)) fail("source_cursor_stalled");
 
         let document: CompanyDocumentPage["document"];
         if (entry.rowIndex < rows.length) {
@@ -664,7 +681,7 @@ export function createCompanyDocumentReader(
           visited.add(block.id);
           if (block.hasChildren) {
             if (queue.length >= MAX_QUEUE) fail("source_queue_overflow");
-            queue.push({ id: block.id, pageToken: null, rowIndex: 0, seen: [] });
+            queue.push({ id: block.id, pageToken: null, rowIndex: 0, seenHashes: [] });
           }
           const text = boundedUtf8(`${block.type}\n${block.text}`, MAX_DOCUMENT_BYTES);
           document = {
@@ -677,23 +694,21 @@ export function createCompanyDocumentReader(
           if (entry.rowIndex + 1 < rows.length) {
             queue[0] = { ...entry, rowIndex: entry.rowIndex + 1 };
           } else if (page.more) {
-            if (entry.seen.length >= MAX_VISITED) fail("source_queue_overflow");
             queue[0] = {
               id: entry.id,
               pageToken: page.token!,
               rowIndex: 0,
-              seen: [...entry.seen, page.token!],
+              seenHashes: appendSeenToken(entry.seenHashes, page.token!),
             };
           } else {
             queue.shift();
           }
         } else if (page.more) {
-          if (entry.seen.length >= MAX_VISITED) fail("source_queue_overflow");
           queue[0] = {
             id: entry.id,
             pageToken: page.token!,
             rowIndex: 0,
-            seen: [...entry.seen, page.token!],
+            seenHashes: appendSeenToken(entry.seenHashes, page.token!),
           };
         } else {
           queue.shift();
@@ -710,7 +725,7 @@ export function createCompanyDocumentReader(
           : null;
         return { document, nextCursor, done: nextCursor === null };
       }
-      const state = asRecord(cursor);
+      const state = asRecord(cursor) ?? {};
       const toolName = state?.toolName;
       if (typeof toolName !== "string") fail("invalid_source_cursor");
       const { tools } = await validate(source, context);
@@ -736,13 +751,7 @@ export function createCompanyDocumentReader(
       )
         fail("invalid_source_cursor");
       const pageToken = typeof state?.pageToken === "string" ? state.pageToken : undefined;
-      const rawSeen = Array.isArray(state?.seen) ? state.seen : [];
-      if (
-        rawSeen.length > MAX_VISITED ||
-        rawSeen.some((item) => typeof item !== "string" || !item || item.length > 2_000)
-      )
-        fail("invalid_source_cursor");
-      const seen = rawSeen as string[];
+      const seenHashes = normalizedSeenHashes(state);
       const args = { ...selected.args };
       if (cursorField && pageToken) args[cursorField] = pageToken;
       if (sizeField && args[sizeField] === undefined)
@@ -778,15 +787,14 @@ export function createCompanyDocumentReader(
       if ((rowIndex as number) > rows.length) fail("source_cursor_stalled");
       if ((rowIndex as number) === rows.length) {
         if (!page.more) return { nextCursor: null, done: true };
-        if (seen.includes(page.token!)) fail("source_cursor_stalled");
-        if (seen.length >= MAX_VISITED) fail("source_queue_overflow");
+        if (hasSeenToken(seenHashes, page.token!)) fail("source_cursor_stalled");
         return {
           nextCursor: {
             kind: "generic",
             toolName,
             pageToken: page.token,
             rowIndex: 0,
-            seen: [...seen, page.token!],
+            seenHashes: appendSeenToken(seenHashes, page.token!),
           },
           done: false,
         };
@@ -805,17 +813,16 @@ export function createCompanyDocumentReader(
           toolName,
           pageToken: pageToken ?? null,
           rowIndex: (rowIndex as number) + 1,
-          seen,
+          seenHashes,
         };
       } else if (page.more) {
-        if (seen.includes(page.token!)) fail("source_cursor_stalled");
-        if (seen.length >= MAX_VISITED) fail("source_queue_overflow");
+        if (hasSeenToken(seenHashes, page.token!)) fail("source_cursor_stalled");
         nextCursor = {
           kind: "generic",
           toolName,
           pageToken: page.token,
           rowIndex: 0,
-          seen: [...seen, page.token!],
+          seenHashes: appendSeenToken(seenHashes, page.token!),
         };
       }
       return { document, nextCursor, done: nextCursor === null };

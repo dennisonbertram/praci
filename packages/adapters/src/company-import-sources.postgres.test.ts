@@ -1502,6 +1502,206 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
     await expect(engine.progress({ ...actor, userId: otherUserId }, first.runId)).rejects.toThrow();
   });
 
+  it("samples and resumes paginated Notion and selected documents on the same run", async () => {
+    const notionConnection = await prisma.connection.create({
+      data: {
+        spaceId,
+        userId,
+        connectorId: "composio",
+        provider: "notion",
+        displayName: "Synthetic Notion sample",
+        status: "connected",
+        providerRef: `synthetic-notion-sample-${suffix}`,
+        allAgents: true,
+        privateByDefault: false,
+      },
+    });
+    const genericConnection = await prisma.connection.create({
+      data: {
+        spaceId,
+        userId,
+        connectorId: "composio",
+        provider: "acme_crm",
+        displayName: "Synthetic CRM sample",
+        status: "connected",
+        providerRef: `synthetic-crm-sample-${suffix}`,
+        allAgents: true,
+        privateByDefault: false,
+      },
+    });
+    const pageId = "77777777-7777-4777-8777-777777777777";
+    const blockIds = Array.from(
+      { length: 30 },
+      (_, index) => `70000000-0000-4000-8000-${index.toString().padStart(12, "0")}`,
+    );
+    const notionTools: ConnectorTool[] = [
+      {
+        name: "NOTION_SEARCH_NOTION_PAGE",
+        description: "Search pages",
+        inputSchema: {
+          type: "object",
+          properties: { filter_value: {}, page_size: {}, start_cursor: {} },
+        },
+        route: { connectorId: "composio", toolName: "NOTION_SEARCH_NOTION_PAGE" },
+      },
+      {
+        name: "NOTION_RETRIEVE_PAGE",
+        description: "Retrieve page metadata",
+        inputSchema: {
+          type: "object",
+          properties: { page_id: {} },
+          required: ["page_id"],
+        },
+        route: { connectorId: "composio", toolName: "NOTION_RETRIEVE_PAGE" },
+      },
+      {
+        name: "NOTION_FETCH_BLOCK_CONTENTS",
+        description: "Read page blocks",
+        inputSchema: {
+          type: "object",
+          properties: { block_id: {}, page_size: {}, start_cursor: {} },
+          required: ["block_id"],
+        },
+        route: { connectorId: "composio", toolName: "NOTION_FETCH_BLOCK_CONTENTS" },
+      },
+    ];
+    const genericTool: ConnectorTool = {
+      name: "ACME_LIST_RECORDS",
+      description: "Read selected records",
+      readOnly: true,
+      inputSchema: { type: "object", properties: {} },
+      route: { connectorId: "composio", toolName: "ACME_LIST_RECORDS" },
+    };
+    const calls: string[] = [];
+    const documents = createCompanyDocumentReader({
+      listTools: async (source: Parameters<CompanyConnectionReader["listTools"]>[0]) =>
+        source.sourceKind === "notion" ? notionTools : [genericTool],
+      callTool: async (
+        _source: Parameters<CompanyConnectionReader["callTool"]>[0],
+        name: Parameters<CompanyConnectionReader["callTool"]>[1],
+        args: Parameters<CompanyConnectionReader["callTool"]>[2],
+      ) => {
+        calls.push(name);
+        if (name === "NOTION_SEARCH_NOTION_PAGE")
+          return { results: [{ id: pageId }], has_more: false };
+        if (name === "NOTION_RETRIEVE_PAGE")
+          return {
+            id: args.page_id,
+            properties: { Name: { type: "title", title: [{ plain_text: "Sample page" }] } },
+          };
+        if (name === "NOTION_FETCH_BLOCK_CONTENTS")
+          return {
+            results: blockIds.map((id) => ({
+              id,
+              type: "paragraph",
+              paragraph: { rich_text: [{ plain_text: `Notion block ${id}` }] },
+              has_children: false,
+            })),
+            has_more: false,
+          };
+        return {
+          records: Array.from({ length: 30 }, (_, index) => ({
+            id: `generic-record-${index}`,
+            title: `Generic record ${index}`,
+          })),
+          has_more: false,
+        };
+      },
+    } as unknown as CompanyConnectionReader);
+    const extracted = new Map<string, number>();
+    const extractor: CompanyExtractor = {
+      relevant: async () => true,
+      extract: async (document) => {
+        const item = `${document.title}\n${document.text}`;
+        extracted.set(item, (extracted.get(item) ?? 0) + 1);
+        return {
+          extraction: { entities: [], edges: [], events: [] },
+          model: { provider: "synthetic", model: "stub-extractor" },
+        };
+      },
+    };
+    const worker = createCompanySourceWorker({ prisma, documents, extractor });
+    const engine = createCompanyImportEngine({
+      prisma,
+      jobs: {
+        enqueue: async () => undefined,
+        cancel: async () => undefined,
+        close: async () => undefined,
+      },
+      realtime: { publish: async () => undefined } as unknown as RealtimeFanout,
+      resolveModel: async () => ({ provider: "synthetic", id: "synthetic-model" }),
+      worker,
+    });
+    const created = await engine.create(actor, {
+      tokenCap: 1_000_000,
+      mode: "sample",
+      sources: [
+        {
+          sourceKind: "notion",
+          connectionId: notionConnection.id,
+          scope: { reader: "notion", allTime: true },
+        },
+        {
+          sourceKind: "composio",
+          connectionId: genericConnection.id,
+          scope: { reader: "generic", tools: [{ name: genericTool.name, args: {} }] },
+        },
+      ],
+    });
+    await grantAll(engine, created.runId);
+    const payload = { spaceId, userId, runId: created.runId };
+    const processWaiting = async () => {
+      await engine.runJob(payload);
+      const waiting = await prisma.companyImportUnit.findMany({
+        where: { runId: created.runId, spaceId, ownerUserId: userId, status: "waiting" },
+        orderBy: { createdAt: "asc" },
+        select: { id: true },
+      });
+      for (const unit of waiting) await engine.unitJob({ ...payload, unitId: unit.id });
+    };
+    await engine.start(actor, created.runId);
+    for (let step = 0; step < 5; step++) {
+      await processWaiting();
+      if ((await engine.progress(actor, created.runId)).status === "preview_ready") break;
+    }
+    const preview = await engine.progress(actor, created.runId);
+    expect(preview.status).toBe("preview_ready");
+    expect(preview.sources.map((source) => source.itemsRead)).toEqual([1, 1]);
+    const sourceStates = await prisma.companyImportSource.findMany({
+      where: { runId: created.runId, spaceId, ownerUserId: userId },
+      select: { cursor: true },
+    });
+    expect(sourceStates.every((source) => source.cursor === null)).toBe(true);
+    const pausedReads = await prisma.companyImportUnit.findMany({
+      where: {
+        runId: created.runId,
+        spaceId,
+        ownerUserId: userId,
+        status: "done",
+        unitKey: { not: "discover:0" },
+      },
+      select: { cursor: true },
+    });
+    expect(pausedReads).toHaveLength(2);
+    expect(
+      pausedReads.every(
+        ({ cursor }) => (cursor as Record<string, unknown> | null)?.companySampleResume === true,
+      ),
+    ).toBe(true);
+
+    await engine.action(actor, created.runId, "continue");
+    for (let step = 0; step < 40; step++) {
+      await processWaiting();
+      if ((await engine.progress(actor, created.runId)).status === "completed") break;
+    }
+    const completed = await engine.progress(actor, created.runId);
+    expect(completed.status).toBe("completed");
+    expect(completed.sources.map((source) => source.itemsRead)).toEqual([31, 30]);
+    expect(extracted.size).toBe(61);
+    expect([...extracted.values()].every((count) => count === 1)).toBe(true);
+    expect(calls).not.toContain("ACME_CREATE_RECORD");
+  });
+
   it("resumes a durable Notion block cursor after a provider rate limit", async () => {
     const notionConnection = await prisma.connection.create({
       data: {

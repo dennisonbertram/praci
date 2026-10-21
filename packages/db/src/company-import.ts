@@ -9,7 +9,11 @@ import type {
   CompanyImportProgress,
   CompanyImportSourceInput,
 } from "@rakazo/contracts";
-import { AI_DISCLOSURE_VERSION, CompanySourceKindSchema } from "@rakazo/contracts";
+import {
+  AI_DISCLOSURE_VERSION,
+  COMPANY_IMPORT_CURSOR_MAX_BYTES,
+  CompanySourceKindSchema,
+} from "@rakazo/contracts";
 import type { PrismaClient } from "./client.js";
 import { Prisma } from "./client.js";
 import { companyWriter } from "./company.js";
@@ -134,6 +138,19 @@ function assertBoundedJson(value: unknown, maxBytes = 16_384) {
   if (typeof serialized !== "string" || Buffer.byteLength(serialized) > maxBytes) {
     throw new CompanyImportError("invalid_state");
   }
+}
+
+function isCompanySampleResumeCursor(
+  value: unknown,
+): value is { companySampleResume: true; cursor: unknown } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const cursor = value as Record<string, unknown>;
+  return (
+    Object.keys(cursor).length === 2 &&
+    cursor.companySampleResume === true &&
+    Object.hasOwn(cursor, "cursor") &&
+    cursor.cursor !== null
+  );
 }
 
 export async function createCompanyImportRun(
@@ -382,29 +399,63 @@ export async function updateCompanyImportRun(
           data: { mode: "full", status: "running", completedAt: null },
         });
         for (const source of sources) {
-          if (source.cursor === null) continue;
-          await tx.companyImportUnit.updateMany({
+          const resumeData = {
+            status: "waiting" as const,
+            attempts: 0,
+            claimToken: null,
+            claimExpiresAt: null,
+            availableAt: now,
+            lastError: null,
+            completedAt: null,
+          };
+          let resumed = false;
+          if (source.cursor !== null) {
+            const discovery = await tx.companyImportUnit.updateMany({
+              where: {
+                ...scope,
+                runId: run.id,
+                sourceId: source.id,
+                unitKey: "discover:0",
+                status: "done",
+              },
+              data: resumeData,
+            });
+            resumed = discovery.count > 0;
+          }
+          const doneReads = await tx.companyImportUnit.findMany({
             where: {
               ...scope,
               runId: run.id,
               sourceId: source.id,
-              unitKey: "discover:0",
               status: "done",
             },
-            data: {
-              status: "waiting",
-              attempts: 0,
-              claimToken: null,
-              claimExpiresAt: null,
-              availableAt: now,
-              lastError: null,
-              completedAt: null,
-            },
+            select: { id: true, unitKey: true, cursor: true },
           });
-          await tx.companyImportSource.update({
-            where: { ...scope, id: source.id },
-            data: { status: "running", lastError: null },
-          });
+          const resumeIds = doneReads
+            .filter(
+              (unit) =>
+                !unit.unitKey.startsWith("discover:") && isCompanySampleResumeCursor(unit.cursor),
+            )
+            .map((unit) => unit.id);
+          if (resumeIds.length) {
+            await tx.companyImportUnit.updateMany({
+              where: {
+                ...scope,
+                runId: run.id,
+                sourceId: source.id,
+                id: { in: resumeIds },
+                status: "done",
+              },
+              data: resumeData,
+            });
+            resumed = true;
+          }
+          if (resumed) {
+            await tx.companyImportSource.update({
+              where: { ...scope, id: source.id },
+              data: { status: "running", lastError: null },
+            });
+          }
         }
         await finalizeCompanyImportRun(tx, scope, run.id);
       } else if (input.action === "retry_failed") {
@@ -1031,8 +1082,9 @@ export async function completeCompanyImportUnit(
   },
 ) {
   const scope = scopeOf(actor);
-  assertBoundedJson(input.nextCursor);
-  if (input.nextSourceCursor !== undefined) assertBoundedJson(input.nextSourceCursor);
+  assertBoundedJson(input.nextCursor, COMPANY_IMPORT_CURSOR_MAX_BYTES);
+  if (input.nextSourceCursor !== undefined)
+    assertBoundedJson(input.nextSourceCursor, COMPANY_IMPORT_CURSOR_MAX_BYTES);
   for (const discovered of input.discoveredUnits ?? []) {
     if (
       !discovered.unitKey ||
@@ -1040,7 +1092,7 @@ export async function completeCompanyImportUnit(
       discovered.unitKey.startsWith("discover:")
     )
       throw new CompanyImportError("invalid_state");
-    assertBoundedJson(discovered.cursor);
+    assertBoundedJson(discovered.cursor, COMPANY_IMPORT_CURSOR_MAX_BYTES);
   }
   if (
     !Number.isSafeInteger(input.itemsDiscovered) ||

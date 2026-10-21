@@ -7,6 +7,8 @@ import {
   CompanyTrackerScopeSchema,
 } from "./company-extraction.js";
 
+export const COMPANY_IMPORT_CURSOR_MAX_BYTES = 512 * 1024;
+
 const identifier = z.string().min(1).max(200);
 
 export const CompanyImportSourceInputSchema = z

@@ -1,5 +1,6 @@
 import type { AgentUsage } from "@rakazo/adapter-kit";
 import type { Actor } from "@rakazo/contracts";
+import { COMPANY_IMPORT_CURSOR_MAX_BYTES } from "@rakazo/contracts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "./client.js";
 import { createDb } from "./client.js";
@@ -164,6 +165,62 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
       claims: claims.filter((claim): claim is NonNullable<typeof claim> => claim !== null),
     };
   }
+
+  it("bounds internal cursors separately from owner source scope", async () => {
+    const { runId, claims } = await runWithSources(100);
+    const claim = claims[0]!;
+    const cursor = { value: "x".repeat(20_000) };
+    const oversizedCursor = { value: "x".repeat(COMPANY_IMPORT_CURSOR_MAX_BYTES) };
+    const completion = {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      done: true,
+      itemsDiscovered: 1,
+      itemsRead: 0,
+      facts: [],
+    };
+
+    await expect(
+      completeCompanyImportUnit(prisma, actor, {
+        ...completion,
+        nextCursor: oversizedCursor,
+      }),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+    await expect(
+      completeCompanyImportUnit(prisma, actor, {
+        ...completion,
+        nextCursor: null,
+        nextSourceCursor: oversizedCursor,
+      }),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+    await expect(
+      completeCompanyImportUnit(prisma, actor, {
+        ...completion,
+        nextCursor: null,
+        discoveredUnits: [{ unitKey: "read:oversized", cursor: oversizedCursor }],
+      }),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+
+    await completeCompanyImportUnit(prisma, actor, {
+      ...completion,
+      nextCursor: null,
+      discoveredUnits: [{ unitKey: "read:large", cursor }],
+    });
+    const stored = await prisma.companyImportUnit.findFirstOrThrow({
+      where: { runId, spaceId, ownerUserId: userId, unitKey: "read:large" },
+      select: { cursor: true },
+    });
+    expect(stored.cursor).toEqual(cursor);
+
+    await expect(
+      createCompanyImportRun(prisma, actor, {
+        tokenCap: 100,
+        sources: [{ sourceKind: "data_room", scope: { value: "x".repeat(16_384) } }],
+      }),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+  });
 
   it("reclaims expired claims with a new fence and rejects stale completion", async () => {
     const { runId, claims } = await runWithSources(100);

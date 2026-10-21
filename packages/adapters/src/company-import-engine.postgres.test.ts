@@ -6,6 +6,7 @@ import type {
   RealtimeFanout,
 } from "@rakazo/adapter-kit";
 import type { Actor } from "@rakazo/contracts";
+import { COMPANY_IMPORT_CURSOR_MAX_BYTES } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -359,6 +360,95 @@ describePostgres("company import engine workflow (PostgreSQL)", () => {
     expect(discoveryLimits).toEqual([25, 100]);
     expect([...readCounts.values()].every((count) => count === 1)).toBe(true);
     expect(readCounts.size).toBe(30);
+  });
+
+  it("persists large valid cursors and rejects cursors above the shared bound", async () => {
+    const jobs = { enqueue: async () => undefined } as unknown as JobPublisher;
+    const realtime = { publish: async () => undefined } as unknown as RealtimeFanout;
+    const createEngine = (nextCursor: unknown, discoveredCursor: unknown) =>
+      createCompanyImportEngine({
+        prisma,
+        jobs,
+        realtime,
+        resolveModel: async () => ({ provider: "synthetic", id: "sample-model" }),
+        worker: {
+          discover: async (): Promise<CompanyImportDiscoveryPage> => ({
+            units: [{ unitKey: "read:cursor", cursor: discoveredCursor }],
+            nextCursor,
+            done: nextCursor === null,
+          }),
+          read: async (): Promise<CompanyImportReadPage> => ({
+            items: [],
+            facts: [],
+            nextCursor: null,
+            done: true,
+          }),
+        },
+      });
+    const runDiscovery = async (
+      engine: ReturnType<typeof createCompanyImportEngine>,
+      runId: string,
+    ) => {
+      const source = await prisma.companyImportSource.findFirstOrThrow({
+        where: { runId, spaceId, ownerUserId: userId },
+      });
+      const consent = await engine.consentStatus(actor, runId, source.id);
+      await engine.grantConsent(actor, {
+        runId,
+        sourceId: source.id,
+        consentKey: consent.consentKey!,
+        version: consent.version,
+        sourceKind: consent.sourceKind,
+        recipient: consent.recipient!,
+      });
+      await engine.start(actor, runId);
+      const payload = { spaceId, userId, runId };
+      await engine.runJob(payload);
+      const discovery = await prisma.companyImportUnit.findFirstOrThrow({
+        where: { runId, spaceId, ownerUserId: userId, unitKey: "discover:0" },
+      });
+      await engine.unitJob({ ...payload, unitId: discovery.id });
+      return discovery.id;
+    };
+
+    const validCursor = { value: "x".repeat(20_000) };
+    const validEngine = createEngine(null, validCursor);
+    const valid = await validEngine.create(actor, {
+      tokenCap: 2_500,
+      sources: [{ sourceKind: "slack", connectionId: slackConnectionId, scope: {} }],
+    });
+    await runDiscovery(validEngine, valid.runId);
+    const stored = await prisma.companyImportUnit.findFirstOrThrow({
+      where: { runId: valid.runId, spaceId, ownerUserId: userId, unitKey: "read:cursor" },
+      select: { cursor: true },
+    });
+    expect(stored.cursor).toEqual(validCursor);
+
+    const oversizedEngine = createEngine(
+      { value: "x".repeat(COMPANY_IMPORT_CURSOR_MAX_BYTES) },
+      null,
+    );
+    const oversized = await oversizedEngine.create(actor, {
+      tokenCap: 2_500,
+      sources: [{ sourceKind: "slack", connectionId: slackConnectionId, scope: {} }],
+    });
+    const failedId = await runDiscovery(oversizedEngine, oversized.runId);
+    expect(
+      await prisma.companyImportUnit.findFirstOrThrow({
+        where: { id: failedId, spaceId, ownerUserId: userId },
+        select: { lastError: true },
+      }),
+    ).toEqual({ lastError: "cursor_too_large" });
+    expect(
+      await prisma.companyImportUnit.findFirst({
+        where: {
+          runId: oversized.runId,
+          spaceId,
+          ownerUserId: userId,
+          unitKey: "read:cursor",
+        },
+      }),
+    ).toBeNull();
   });
 
   it("rejects an oversized sample read before persisting any facts", async () => {

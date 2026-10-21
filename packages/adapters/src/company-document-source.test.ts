@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type {
   AdapterContext,
   CompanyConnectionReader,
@@ -6,6 +7,7 @@ import type {
   ConnectorProvider,
   ConnectorTool,
 } from "@rakazo/adapter-kit";
+import { COMPANY_IMPORT_CURSOR_MAX_BYTES } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import { createCompanyConnectionReader } from "./company-connection-reader.js";
 import { createCompanyDocumentReader } from "./company-document-source.js";
@@ -618,5 +620,144 @@ describe("Company document reader", () => {
         context,
       ),
     ).rejects.toThrow("source_projection_overflow");
+  });
+
+  it("hashes legacy pagination histories and still detects repeated long tokens", async () => {
+    const longTokens = Array.from(
+      { length: 40 },
+      (_, index) => `${index.toString().padStart(4, "0")}-${"x".repeat(1_995)}`,
+    );
+    let nextToken = "notion-next";
+    const notion = createCompanyDocumentReader({
+      listTools: async () => notionTools,
+      callTool: async () => ({
+        results: [{ id: "11111111-1111-4111-8111-111111111111" }],
+        has_more: true,
+        next_cursor: nextToken,
+      }),
+    } as unknown as CompanyConnectionReader);
+    const notionSource: CompanyImportSourceDescriptor = {
+      id: "notion-source",
+      sourceKind: "notion",
+      connectionId: "notion-connection",
+      scope: { reader: "notion", allTime: true },
+    };
+    const notionPage = await notion.discover(
+      notionSource,
+      { startCursor: "current", seen: longTokens },
+      10,
+      context,
+    );
+    expect(notionPage.nextCursor).toMatchObject({
+      startCursor: "notion-next",
+      seenHashes: [
+        ...longTokens.map((token) => createHash("sha256").update(token).digest("hex")),
+        createHash("sha256").update("notion-next").digest("hex"),
+      ],
+    });
+    expect(JSON.stringify(notionPage.nextCursor)).not.toContain(longTokens[0]);
+    nextToken = longTokens[10]!;
+    await expect(notion.discover(notionSource, notionPage.nextCursor, 10, context)).rejects.toThrow(
+      "source_cursor_stalled",
+    );
+
+    const tool: ConnectorTool = {
+      name: "ACME_LIST_RECORDS",
+      description: "list",
+      readOnly: true,
+      inputSchema: {
+        type: "object",
+        properties: { cursor: {}, limit: { type: "integer", maximum: 100 } },
+      },
+      route: { connectorId: "composio", toolName: "ACME_LIST_RECORDS" },
+    };
+    let genericToken = "generic-next";
+    const generic = createCompanyDocumentReader({
+      listTools: async () => [tool],
+      callTool: async () => ({
+        records: [{ id: "record" }],
+        has_more: true,
+        next_cursor: genericToken,
+      }),
+    } as unknown as CompanyConnectionReader);
+    const genericSource: CompanyImportSourceDescriptor = {
+      id: "generic-source",
+      sourceKind: "composio",
+      connectionId: "generic-connection",
+      scope: { reader: "generic", tools: [{ name: tool.name, args: {} }] },
+    };
+    const genericPage = await generic.read(
+      genericSource,
+      {
+        kind: "generic",
+        toolName: tool.name,
+        pageToken: "current",
+        rowIndex: 0,
+        seen: longTokens,
+      },
+      context,
+    );
+    expect(genericPage.nextCursor).toMatchObject({
+      pageToken: "generic-next",
+      seenHashes: expect.arrayContaining([
+        createHash("sha256").update(longTokens[0]!).digest("hex"),
+      ]),
+    });
+    expect(Buffer.byteLength(JSON.stringify(genericPage.nextCursor))).toBeLessThan(16_384);
+    genericToken = longTokens[20]!;
+    await expect(generic.read(genericSource, genericPage.nextCursor, context)).rejects.toThrow(
+      "source_cursor_stalled",
+    );
+  });
+
+  it("serializes more than 400 Notion blocks within the shared cursor bound", async () => {
+    const pageId = "11111111-1111-4111-8111-111111111111";
+    const blockIds = Array.from(
+      { length: 450 },
+      (_, index) => `00000000-0000-4000-8000-${index.toString().padStart(12, "0")}`,
+    );
+    const reader: CompanyConnectionReader = {
+      listTools: async () => notionTools,
+      callTool: async (_source, name, args) => {
+        if (name === "NOTION_RETRIEVE_PAGE")
+          return { id: pageId, properties: { Name: { type: "title", title: [] } } };
+        const pageIndex = args.start_cursor ? Number(String(args.start_cursor).slice(5)) : 0;
+        const start = pageIndex * 100;
+        const rows = blockIds.slice(start, start + 100).map((id) => ({
+          id,
+          type: "paragraph",
+          paragraph: { rich_text: [{ plain_text: id }] },
+          has_children: false,
+        }));
+        const more = start + rows.length < blockIds.length;
+        return {
+          results: rows,
+          has_more: more,
+          ...(more ? { next_cursor: `page-${pageIndex + 1}` } : {}),
+        };
+      },
+    };
+    const documents = createCompanyDocumentReader(reader);
+    const source: CompanyImportSourceDescriptor = {
+      id: "source",
+      sourceKind: "notion",
+      connectionId: "connection",
+      scope: { reader: "notion", allTime: true },
+    };
+    let cursor: unknown = { kind: "notion", pageId };
+    let documentsRead = 0;
+    let largestCursor = 0;
+    while (true) {
+      const page = await documents.read(source, cursor, context);
+      if (page.document) documentsRead++;
+      if (page.done) break;
+      cursor = page.nextCursor;
+      const serialized = JSON.stringify(cursor);
+      largestCursor = Math.max(largestCursor, Buffer.byteLength(serialized));
+      expect(serialized).not.toContain('"seen":');
+      expect(Buffer.byteLength(serialized)).toBeLessThanOrEqual(COMPANY_IMPORT_CURSOR_MAX_BYTES);
+    }
+    expect(documentsRead).toBe(451);
+    expect(largestCursor).toBeGreaterThan(16_384);
   });
 });
