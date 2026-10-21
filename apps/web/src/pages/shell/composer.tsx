@@ -65,6 +65,7 @@ export const Composer = memo(function Composer({
   onDismissAttachmentNotice,
   sendError,
   runError,
+  onRetryRun,
   runErrorId,
   onRunErrorPresented,
   onDismissError,
@@ -101,6 +102,7 @@ export const Composer = memo(function Composer({
   onDismissAttachmentNotice?: () => void;
   sendError: string | null;
   runError: string | null;
+  onRetryRun?: () => void;
   runErrorId: string | null;
   onRunErrorPresented: (runId: string) => void;
   onDismissError: () => void;
@@ -628,6 +630,7 @@ export const Composer = memo(function Composer({
         <ComposerError
           ref={runErrorRef}
           message={(sendError ?? runError) as string}
+          onRetry={!sendError ? onRetryRun : undefined}
           onOpenModelSettings={!sendError ? onOpenModelSettings : undefined}
           onNavigate={!sendError ? onNavigate : undefined}
           onDismiss={() => {

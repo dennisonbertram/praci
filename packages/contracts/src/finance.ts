@@ -436,6 +436,8 @@ export const RecurringChargeSchema = z.object({
   monthlyCents: Cents,
   /** True for usage-based vendors whose charges vary by more than the similar-amount range. */
   variable: z.boolean(),
+  /** For usage-based vendors, the full months `monthlyCents` averages; absent when it is scaled from the usual charge. */
+  windowMonths: z.number().int().optional(),
   chargeCount: z.number().int(),
   lastChargeAt: IsoDate,
   nextExpectedAt: IsoDate,
@@ -745,6 +747,8 @@ export const FinanceVendorOutputSchema = z.object({
   monthlyAvgCents: Cents,
   /** How many full months the average covers (1 to 6). Absent from older payloads. */
   monthlyAvgMonths: z.number().int().optional(),
+  /** True when `monthlyAvgCents` is the subscriptions list figure scaled from the usual charge, not an average of months. */
+  monthlyUsual: z.boolean().optional(),
   /** Last full month against 3 months before it (or the vendor's first full month, when newer); null when either is 0. */
   changePct: z.number().nullable(),
   /** The month `changePct` compares against. Absent from older payloads. */

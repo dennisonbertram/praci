@@ -49,11 +49,6 @@ msgstr ", {0} already imported"
 msgid "(opens in Devin)"
 msgstr "(opens in Devin)"
 
-#. placeholder {0}: processing.failed
-#: src/components/data-room/ProcessingStrip.tsx
-msgid "{0, plural, one {# couldn't be read} other {# couldn't be read}}"
-msgstr "{0, plural, one {# couldn't be read} other {# couldn't be read}}"
-
 #. placeholder {0}: counts.unreviewedDocuments
 #: src/pages/Legal.tsx
 msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
@@ -308,8 +303,13 @@ msgstr "{0} will still respond to direct mentions."
 
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
-msgid "{0}'s computer screen"
-msgstr "{0}'s computer screen"
+msgid "{0}' computer"
+msgstr "{0}' computer"
+
+#. placeholder {0}: active.name
+#: src/pages/Shell.tsx
+msgid "{0}'s computer"
+msgstr "{0}'s computer"
 
 #: src/components/finance/ui.tsx
 msgid "{accounts} + crypto"
@@ -1246,6 +1246,7 @@ msgid "Appearance"
 msgstr "Appearance"
 
 #: src/components/compose/RichTextEditor.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr "Apply"
@@ -1420,8 +1421,8 @@ msgid "Ask before sending external email"
 msgstr "Ask before sending external email"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Ask Chief anything. Agents ask before they send, pay or change anything."
-msgstr "Ask Chief anything. Agents ask before they send, pay or change anything."
+msgid "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
+msgstr "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Ask the server owner to configure this provider."
@@ -1573,10 +1574,6 @@ msgstr "Avatar Studio"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Avatars"
 msgstr "Avatars"
-
-#: src/pages/finance/FinanceSpend.tsx
-msgid "Average per month"
-msgstr "Average per month"
 
 #: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/computer/FilesApp.tsx
@@ -3114,6 +3111,7 @@ msgstr "Could not reach the model server."
 msgid "Could not reach the server"
 msgstr "Could not reach the server"
 
+#: src/components/data-room/ItemRows.tsx
 #: src/components/finance/StatementImport.tsx
 msgid "Could not read this file"
 msgstr "Could not read this file"
@@ -3587,6 +3585,10 @@ msgstr "Date"
 #: src/pages/RoutineSchedule.tsx
 msgid "day"
 msgstr "day"
+
+#: src/pages/RoutineSchedule.tsx
+msgid "Day of week"
+msgstr "Day of week"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Day-to-day work"
@@ -4354,6 +4356,7 @@ msgstr "Filter by date"
 msgid "Filter memory"
 msgstr "Filter memory"
 
+#: src/components/data-room/FilterBar.tsx
 #: src/pages/Artifacts.tsx
 msgid "Filters"
 msgstr "Filters"
@@ -4970,6 +4973,10 @@ msgstr "Instance API key"
 msgid "Instruction"
 msgstr "Instruction"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Instructions"
+msgstr "Instructions"
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Integration options"
 msgstr "Integration options"
@@ -5298,6 +5305,7 @@ msgid "Load web images automatically"
 msgstr "Load web images automatically"
 
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/integrations/McpDetail.tsx
 #: src/pages/Finance.tsx
 #: src/pages/Shell.tsx
 msgid "Loading"
@@ -5310,6 +5318,10 @@ msgstr "Loading activity…"
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Loading memory settings…"
 msgstr "Loading memory settings…"
+
+#: src/components/ShellSkeleton.tsx
+msgid "Loading messages"
+msgstr "Loading messages"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Loading model catalog…"
@@ -5783,6 +5795,10 @@ msgstr "More computer actions"
 msgid "More filters"
 msgstr "More filters"
 
+#: src/pages/shell/bot-panel.tsx
+msgid "More settings"
+msgstr "More settings"
+
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 msgid "Move"
@@ -5855,6 +5871,7 @@ msgstr "Mute"
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-credentials.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Name"
 msgstr "Name"
@@ -6088,10 +6105,6 @@ msgstr "No bot uses {0} yet. Choose bots on its page."
 #: src/pages/shell/bot-picker.tsx
 msgid "No bots match"
 msgstr "No bots match"
-
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "No change"
-msgstr "No change"
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No chat apps linked yet."
@@ -6420,8 +6433,8 @@ msgid "Not tagged"
 msgstr "Not tagged"
 
 #: src/components/data-room/Preview.tsx
-msgid "Not tagged yet. Files are tagged once you let Praci read documents; you can still search it by name and text."
-msgstr "Not tagged yet. Files are tagged once you let Praci read documents; you can still search it by name and text."
+msgid "Not tagged yet."
+msgstr "Not tagged yet."
 
 #: src/components/MailApprovalCard.tsx
 msgid "Not waiting for approval"
@@ -6933,6 +6946,11 @@ msgstr "pending"
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
 msgstr "Pending"
+
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Per month"
+msgstr "Per month"
 
 #: src/components/finance/ui.tsx
 msgid "Period"
@@ -7739,6 +7757,7 @@ msgstr "Restoring your workspace"
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/ModelBackupsSettings.tsx
+#: src/pages/shell/composer-error.tsx
 msgid "Retry"
 msgstr "Retry"
 
@@ -8812,6 +8831,10 @@ msgstr "Step 2 of 3"
 msgid "Steps"
 msgstr "Steps"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Steps to follow"
+msgstr "Steps to follow"
+
 #: src/components/ShellSkeleton.tsx
 msgid "Still opening…"
 msgstr "Still opening…"
@@ -9171,6 +9194,10 @@ msgstr "The text of your Data room documents is sent to the AI model that runs y
 msgid "The transactions read add up to the closing balance"
 msgstr "The transactions read add up to the closing balance"
 
+#: src/pages/Finance.tsx
+msgid "The usual charge scaled to a month, or for usage-based vendors the average of recent full months. The vendor page shows the same figure."
+msgstr "The usual charge scaled to a month, or for usage-based vendors the average of recent full months. The vendor page shows the same figure."
+
 #: src/pages/shell/message-cards.tsx
 msgid "The web, notes and docs"
 msgstr "The web, notes and docs"
@@ -9330,6 +9357,10 @@ msgstr "This zip is password-protected"
 #: src/components/data-room/DropZone.tsx
 msgid "This zip is too large to unpack"
 msgstr "This zip is too large to unpack"
+
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Tick a change to apply it."
+msgstr "Tick a change to apply it."
 
 #: src/pages/Board.tsx
 msgid "Tickets track work for your bots. Bots add them when you ask them to track a task, or press New ticket."
@@ -9881,13 +9912,9 @@ msgstr "Uses Carta figures and asks before sending."
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 
-#: src/pages/Finance.tsx
-msgid "Usual charge scaled to a month; usage-based vendors use the last 3 months. A vendor page shows the average of actual spend over the months it names."
-msgstr "Usual charge scaled to a month; usage-based vendors use the last 3 months. A vendor page shows the average of actual spend over the months it names."
-
-#: src/pages/Finance.tsx
-msgid "Usual per month"
-msgstr "Usual per month"
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Usual charge"
+msgstr "Usual charge"
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
@@ -10093,6 +10120,10 @@ msgstr "What do you want me on first?"
 #: src/lib/finance-agent.ts
 msgid "What is our runway?"
 msgstr "What is our runway?"
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "What it does and when to use it"
+msgstr "What it does and when to use it"
 
 #: src/components/PageAgentIntro.tsx
 msgid "What needs my reply today?"
