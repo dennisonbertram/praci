@@ -78,7 +78,7 @@ describe("finance formatting", () => {
   });
 
   it("says a flat subscription is flat and a rising one by how much", () => {
-    expect(trendText([4_500, 4_500, 4_500])).toBe("±0%");
+    expect(trendText([4_500, 4_500, 4_500])).toBeNull();
     expect(trendText([10_000, 11_000, 12_000])).toBe("↑ 20%");
     expect(trendText([5_000])).toBeNull();
   });

@@ -1,11 +1,12 @@
 import { i18n } from "@lingui/core";
 import { plural, t } from "@lingui/core/macro";
 
-export const dateText = (iso: string | null) =>
+/** A document's date is a calendar day (UTC); when something happened (`local`) is the viewer's day. */
+export const dateText = (iso: string | null, local = false) =>
   iso
     ? new Intl.DateTimeFormat(i18n.locale || undefined, {
         dateStyle: "medium",
-        timeZone: "UTC",
+        timeZone: local ? undefined : "UTC",
       }).format(new Date(iso))
     : "";
 
