@@ -118,8 +118,7 @@ async function sendLoop(
           bcc: "",
           subject: update.subject,
           body: update.body,
-          // Board updates are plain text; investor updates keep their formatting.
-          ...(update.audience === "investors" ? { html: markdownToHtml(update.body) } : {}),
+          html: markdownToHtml(update.body),
         });
         if (result.status !== "sent" && result.status !== "unknown")
           await ensureFailedRow(deps, actor, clientId, connectionId);

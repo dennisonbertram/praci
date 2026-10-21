@@ -111,6 +111,17 @@ describePostgres("investor updates (PostgreSQL)", () => {
     expect(board.recipientContactIds).toEqual([contact.Board]);
   });
 
+  it("lists a sent update ahead of a newer draft", async () => {
+    const older = await saveInvestorUpdate(prisma, mine, { audience: "investors" });
+    const newer = await saveInvestorUpdate(prisma, mine, { audience: "investors" });
+    await prisma.investorUpdate.update({
+      where: { id: older.id },
+      data: { status: "sent", sentAt: new Date(Date.now() + 60_000) },
+    });
+    const ids = (await listInvestorUpdates(prisma, mine)).map((u) => u.id);
+    expect(ids.indexOf(older.id)).toBeLessThan(ids.indexOf(newer.id));
+  });
+
   it("keeps updates scoped to the space and user and refuses another user's contacts", async () => {
     const update = await saveInvestorUpdate(prisma, mine, {
       audience: "investors",

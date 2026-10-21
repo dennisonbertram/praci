@@ -25,6 +25,7 @@ type RoutineRow = {
   id: string;
   name: string;
   botId: string;
+  prompt?: string;
   crons: string[];
   active: boolean;
   notify: boolean;
@@ -98,6 +99,7 @@ describe("investor update routine", () => {
     const deps = { prisma, jobs } as never;
     expect(await setInvestorsReminder(deps, actor, "bot-1", "quarterly")).toBe("quarterly");
     expect(rows[0]).toMatchObject({ crons: ["0 9 1 1,4,7,10 *"], active: true });
+    expect(rows[0]?.prompt).toContain("last full quarter");
     expect(rows[0]?.nextRunAt).not.toBeNull();
     expect(cadenceOf(rows[0]!)).toBe("quarterly");
     // The next run falls on the 1st of one of those months at 09:00 local time.
@@ -115,6 +117,7 @@ describe("investor update routine", () => {
 
     expect(await setInvestorsReminder(deps, actor, "bot-1", "monthly")).toBe("monthly");
     expect(rows[0]).toMatchObject({ crons: ["0 9 1 * *"], active: true });
+    expect(rows[0]?.prompt).toContain("last full month");
 
     // Off pauses the routine and cancels its wakeup; it never deletes it.
     expect(await setInvestorsReminder(deps, actor, "bot-1", "off")).toBe("off");

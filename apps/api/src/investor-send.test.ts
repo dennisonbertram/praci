@@ -128,11 +128,11 @@ describe("startInvestorUpdateSend", () => {
     expect(after.deliveries.map((d) => d.state)).toEqual(["sent", "sent"]);
   });
 
-  it("sends board updates as plain text", async () => {
+  it("sends board updates with the same formatting as investor updates", async () => {
     const { deps, calls, tables } = setup();
     tables.investorUpdate[0] = { ...tables.investorUpdate[0], audience: "board" };
     await (await startInvestorUpdateSend(deps, actor, "upd1")).done;
-    expect(calls[0]?.html).toBeUndefined();
+    expect(calls[0]?.html).toContain("<strong>team</strong>");
     expect(calls[0]?.body).toBe("Hello **team**");
   });
 

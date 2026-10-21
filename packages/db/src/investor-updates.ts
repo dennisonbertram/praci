@@ -153,7 +153,7 @@ async function ownRow(prisma: Db, scope: Scope, id: string): Promise<Row> {
   return row;
 }
 
-/** Every update, newest first. */
+/** Every update, newest first; a sent update ranks by when it went out. */
 export async function listInvestorUpdates(
   prisma: Db,
   actor: Scope,
@@ -164,7 +164,14 @@ export async function listInvestorUpdates(
     where: scope,
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
   });
-  return toViews(prisma, scope, rows, now);
+  // Stable sort keeps the createdAt order among equal keys.
+  const at = (r: Row) => (r.sentAt ?? r.createdAt).getTime();
+  return toViews(
+    prisma,
+    scope,
+    rows.sort((a, b) => at(b) - at(a)),
+    now,
+  );
 }
 
 /** One update; IsolationError when it is not the user's. */

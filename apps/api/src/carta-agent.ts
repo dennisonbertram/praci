@@ -118,7 +118,7 @@ export async function ensureCartaAgent(
     spawnKey: cartaAgentSpawnKey(actor.userId),
     name: "Carta agent",
     title: "",
-    description: "Keeps your cap table and investor contacts, and drafts investor updates.",
+    description: "Keeps your cap table and investor contacts.",
     instructions: CARTA_AGENT_INSTRUCTIONS,
     notifyOnFinish: true,
     color: pageAgentColor("carta"),
