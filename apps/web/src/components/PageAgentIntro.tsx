@@ -48,10 +48,10 @@ export function PageAgentIntro({
                 t`Which contracts have the highest value?`,
               ]
             : [
-              t`Who owns what in the company?`,
-              t`How much of the option pool is left?`,
-              t`Draft this month's investor update`,
-            ];
+                t`Who owns what in the company?`,
+                t`How much of the option pool is left?`,
+                t`Draft this month's investor update`,
+              ];
   return (
     <div className="flex min-h-0 flex-1 flex-col justify-end gap-3 px-4 py-5 md:px-7">
       <p className="text-sm text-muted-foreground">

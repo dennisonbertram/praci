@@ -168,7 +168,8 @@ function Legal({
       ? t`Connect a model in Settings first.`
       : "";
   // The consent card names the other reason in words; the disabled button says it on hover too.
-  const scanTitle = scanReason || (needsConsent && !blocker && !running ? t`Allow access first.` : "");
+  const scanTitle =
+    scanReason || (needsConsent && !blocker && !running ? t`Allow access first.` : "");
   const { counts } = data;
   const showActive = counts.activeContracts !== counts.contracts;
   // Counted here so the tile and the row pills use the viewer's date, not the server's.
