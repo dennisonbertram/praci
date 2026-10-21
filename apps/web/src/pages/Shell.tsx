@@ -71,6 +71,7 @@ import {
   PopoverContent,
   PopoverTrigger,
   Separator,
+  Skeleton,
   Spinner,
 } from "@rakazo/ui-web";
 import {
@@ -349,6 +350,8 @@ const IntegrationsPage = lazy(() =>
 export type { PendingAttachment };
 export { Composer, Transcript, UnreadDivider };
 
+/** Safety-net refresh of the sidebar list; events and tab focus keep it current in between. */
+export const BOTS_POLL_MS = 60_000;
 const THREAD_SNAPSHOT_TIMEOUT_MS = 2_000;
 /** Bound Settings leave so a hung voice status refresh cannot block dismissal. */
 const VOICE_STATUS_REFRESH_TIMEOUT_MS = 10_000;
@@ -1458,7 +1461,7 @@ export function ShellPage() {
     const poll = window.setInterval(() => {
       if (botsRefreshInFlight.current > 0) return;
       refreshVisibleBots();
-    }, 3_000);
+    }, BOTS_POLL_MS);
     return () => {
       cancelled = true;
       window.clearTimeout(refreshTimer);
@@ -4223,6 +4226,16 @@ export function ShellPage() {
                     else navigate(`/app/${run.botId}`);
                   }}
                 />
+              ) : null}
+              {!initialBotsLoaded && bots.length === 0 && !rail ? (
+                <div className="space-y-2 px-1 pt-2" aria-hidden="true">
+                  {[0, 1, 2, 3].map((row) => (
+                    <div key={row} className="flex items-center gap-3 rounded-xl px-2 py-2.5">
+                      <Skeleton className="size-9 rounded-full" />
+                      <Skeleton className="h-3 w-2/5" />
+                    </div>
+                  ))}
+                </div>
               ) : null}
               <SidebarDnd
                 layout={sidebarLayout}

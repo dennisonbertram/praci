@@ -116,7 +116,9 @@ function SessionApp() {
     return <SessionUnavailable refetch={session.refetch} />;
   }
   if (gate === "loading") {
-    return window.location.pathname.startsWith("/app") ? (
+    // /integrations/* also opens inside the shell, so it waits behind the same skeleton.
+    const { pathname } = window.location;
+    return pathname.startsWith("/app") || pathname.startsWith("/integrations") ? (
       <ShellSkeleton />
     ) : (
       <div

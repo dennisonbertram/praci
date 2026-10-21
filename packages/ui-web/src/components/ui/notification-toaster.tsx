@@ -5,9 +5,21 @@ import { Button } from "@rakazo/ui-web/components/ui/button";
 import { cn } from "@rakazo/ui-web/lib/utils";
 import { XIcon } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 export const MAX_VISIBLE_NOTIFICATION_TOASTS = 3;
+/** Phones have no room for a stack: one toast above the composer. */
+export const MAX_VISIBLE_NOTIFICATION_TOASTS_PHONE = 1;
+
+const PHONE_QUERY = "(max-width: 639px)";
+const phoneQuery = () => (window.matchMedia ? window.matchMedia(PHONE_QUERY) : undefined);
+const subscribePhone = (notify: () => void) => {
+  const query = phoneQuery();
+  if (!query) return () => undefined;
+  query.addEventListener("change", notify);
+  return () => query.removeEventListener("change", notify);
+};
+const isPhone = () => phoneQuery()?.matches ?? false;
 
 export type NotificationToastData = {
   /** A button on the toast (Undo, Try again). The toast stays until it is used or dismissed. */
@@ -138,10 +150,10 @@ function ToastList({
   // would count actions against the plain toasts; the limit is applied to the plain stack here.
   const actions = toasts.filter((t) => t.data?.action);
   const plain = toasts.filter((t) => !t.data?.action);
+  const phone = useSyncExternalStore(subscribePhone, isPhone, () => false);
+  const limit = phone ? MAX_VISIBLE_NOTIFICATION_TOASTS_PHONE : MAX_VISIBLE_NOTIFICATION_TOASTS;
   let active = 0;
-  const visible = plain.filter(
-    (t) => t.transitionStatus === "ending" || active++ < MAX_VISIBLE_NOTIFICATION_TOASTS,
-  );
+  const visible = plain.filter((t) => t.transitionStatus === "ending" || active++ < limit);
   const hidden = plain.length - visible.length;
   // Stack height once fanned out: each visible toast's height plus the gap between them.
   const GAP_PX = 8;
