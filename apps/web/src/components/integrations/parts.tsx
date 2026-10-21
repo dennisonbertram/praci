@@ -115,7 +115,11 @@ export function CardHead({
         ) : (
           <div className="truncate font-semibold">{name}</div>
         )}
-        {sub ? <div className="line-clamp-2 text-xs text-muted-foreground">{sub}</div> : null}
+        {sub ? (
+          <div className="line-clamp-2 text-xs text-muted-foreground max-sm:line-clamp-1">
+            {sub}
+          </div>
+        ) : null}
       </div>
     </div>
   );

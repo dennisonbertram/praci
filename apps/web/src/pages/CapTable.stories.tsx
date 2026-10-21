@@ -281,3 +281,59 @@ export const WithDocuments: Story = {
       },
     }),
 };
+
+const holder = (
+  name: string,
+  security: string,
+  shares: number | null,
+  percent: number | null,
+  amountUsd: number | null = null,
+) => ({
+  name,
+  email: `${name.toLowerCase().replace(/\W+/g, ".")}@example.test`,
+  organization: null,
+  security,
+  shares,
+  amountUsd,
+  percent,
+});
+
+/** A full table: ten holders and four SAFEs, so the page scrolls under its fixed header. */
+const fullSnapshot = {
+  ...snapshot,
+  amountRaisedUsd: 350_000,
+  optionPoolAvailable: 600_000,
+  shareClasses: [
+    { name: "Common", shares: 8_400_000, percent: 84 },
+    { name: "Options", shares: 1_000_000, percent: 10 },
+  ],
+  holders: [
+    holder("Founder One", "Common", 3_000_000, 30),
+    holder("Founder Two", "Common", 3_000_000, 30),
+    holder("Founder Three", "Common", 1_500_000, 15),
+    holder("Casey Advisor", "Common", 250_000, 2.5),
+    holder("Early Employee A", "Options", 250_000, 2.5),
+    holder("Early Employee B", "Options", 250_000, 2.5),
+    holder("Early Employee C", "Options", 200_000, 2),
+    holder("Early Employee D", "Options", 150_000, 1.5),
+    holder("Consultant E", "Options", 100_000, 1),
+    holder("Consultant F", "Options", 50_000, 0.5),
+    holder("Angel One", "SAFE", null, null, 100_000),
+    holder("Angel Two", "SAFE", null, null, 100_000),
+    holder("Angel Three", "SAFE", null, null, 100_000),
+    holder("Angel Four", "SAFE", null, null, 50_000),
+  ],
+};
+
+/** The SAFE note sits under the donut; the header stays while the table scrolls. */
+export const FullTableWithSafes: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": [
+        contact("c9", "Casey Advisor", "other", "Independent advisor"),
+        contact("c10", "Angel One", "investor", null),
+      ],
+      "mcp.servers.list": [cartaServer],
+      "carta.capTable": { snapshot: fullSnapshot, syncing: false },
+    }),
+};
