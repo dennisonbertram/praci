@@ -845,6 +845,15 @@ describePostgres("company privacy controls (PostgreSQL)", () => {
       id: legacy.id,
       status: "confirmed",
     });
+    await company.sourceControl(source, false);
+    await company.excludePerson(retained.id);
+    await company.reject(legacy.id);
+    await company.sourceControl(source, true);
+    expect(await company.importEntity(input)).toMatchObject({ suppressed: true, record: null });
+    expect(await company.importEntity(legacyInput)).toMatchObject({
+      suppressed: true,
+      record: null,
+    });
   });
 
   it("cascades Company state when its space is deleted", async () => {

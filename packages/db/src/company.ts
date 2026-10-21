@@ -1986,7 +1986,7 @@ async function rejectEntity(
   const groupIds = new Set(await mergedEntityGroupIds(db, scope, row.id));
   const groupRows = await db.companyEntity.findMany({
     where: { ...scope, id: { in: [...groupIds] } },
-    select: { id: true, kind: true, normalizedName: true },
+    select: { id: true, kind: true, normalizedName: true, sourceClaimKeys: true },
   });
   const identities = await db.companyIdentity.findMany({
     where: { ...scope, entityId: { in: [...groupIds] } },
@@ -2002,6 +2002,11 @@ async function rejectEntity(
     select: { factId: true, sourceKey: true },
   });
   const memberById = new Map(groupRows.map((member) => [member.id, member]));
+  sourceEvidence.push(
+    ...groupRows.flatMap((member) =>
+      member.sourceClaimKeys.map((sourceKey) => ({ factId: member.id, sourceKey })),
+    ),
+  );
   const strongAliases = identities
     .filter((identity) => identity.identityType !== "name")
     .map((identity) => `${row.kind}:${identity.identityType}:${identity.identityValue}`);
@@ -2779,10 +2784,11 @@ async function excludePerson(db: CompanyDb, scope: Scope, entityId: string): Pro
   const ids = await mergedEntityGroupIds(db, scope, current.id);
   const members = await db.companyEntity.findMany({
     where: { ...scope, id: { in: ids } },
-    select: { displayName: true, attrs: true },
+    select: { displayName: true, attrs: true, sourceClaimKeys: true },
   });
   const aliases = new Set<string>();
   for (const member of members) {
+    for (const key of member.sourceClaimKeys) aliases.add(`source:${key}`);
     for (const alias of companyExcludedPersonAliases({
       kind: "person",
       displayName: member.displayName,
