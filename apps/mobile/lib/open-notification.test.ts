@@ -7,6 +7,7 @@ vi.mock("expo-notifications", () => ({
   getLastNotificationResponse: vi.fn(),
   useLastNotificationResponse: vi.fn(),
 }));
+vi.mock("react-native", () => ({ Linking: { openURL: vi.fn() } }));
 vi.mock("expo-router", () => ({
   router: { push: vi.fn() },
 }));
@@ -22,6 +23,7 @@ vi.mock("./settings-sheet", () => ({
 
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
+import { Linking } from "react-native";
 import { loadSessionToken, selectSpace } from "./api";
 import { openNotificationResponse } from "./open-notification";
 import { closeSettingsSheet } from "./settings-sheet";
@@ -301,5 +303,47 @@ describe("opening a notification by surface", () => {
       pathname: "/thread",
       params: { botId: "bot-9", threadId: "t-2" },
     });
+  });
+});
+
+describe("opening a Devin session notification", () => {
+  const devin = (id: string, extra: Record<string, unknown> = {}) =>
+    tap(id, {
+      surface: "devin",
+      botId: "bot-1",
+      link: "https://app.devin.ai/sessions/devin-0001",
+      spaceId: "space-a",
+      ...extra,
+    });
+
+  it("opens the link in Devin, not the thread, and marks the surface seen", async () => {
+    vi.mocked(loadSessionToken).mockResolvedValue("token");
+    vi.mocked(Linking.openURL).mockResolvedValue(true);
+    await expect(openNotificationResponse(devin("devin-tap"))).resolves.toBe(true);
+    expect(Linking.openURL).toHaveBeenCalledWith("https://app.devin.ai/sessions/devin-0001");
+    expect(router.push).not.toHaveBeenCalled();
+    expect(markSurfaceSeen).toHaveBeenCalledWith("devin");
+  });
+
+  it("switches to the notification's space first", async () => {
+    vi.mocked(loadSessionToken).mockResolvedValue("token");
+    vi.mocked(Linking.openURL).mockResolvedValue(true);
+    await expect(
+      openNotificationResponse(devin("devin-other-space", { spaceId: "space-b" })),
+    ).resolves.toBe(true);
+    expect(selectSpace).toHaveBeenCalledWith("space-b");
+    expect(vi.mocked(selectSpace).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(Linking.openURL).mock.invocationCallOrder[0] ?? 0,
+    );
+  });
+
+  it("returns false and releases the claim when the link cannot be opened", async () => {
+    vi.mocked(loadSessionToken).mockResolvedValue("token");
+    vi.mocked(Linking.openURL).mockRejectedValueOnce(new Error("no app"));
+    const response = devin("devin-fails");
+    await expect(openNotificationResponse(response)).resolves.toBe(false);
+    expect(markSurfaceSeen).not.toHaveBeenCalled();
+    await expect(openNotificationResponse(response)).resolves.toBe(true);
+    expect(Linking.openURL).toHaveBeenCalledTimes(2);
   });
 });

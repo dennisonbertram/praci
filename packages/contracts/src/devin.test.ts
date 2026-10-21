@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { devinSessionUrl, isDevinSessionUrl } from "./devin.js";
+import {
+  DevinKeyInputSchema,
+  DevinSessionsOutputSchema,
+  devinSessionUrl,
+  isDevinSessionUrl,
+} from "./devin.js";
 
 describe("Devin session links", () => {
   it("builds the canonical session URL and accepts only that", () => {
@@ -32,5 +37,51 @@ describe("Devin session links", () => {
   it("refuses to build a URL from an id with unsafe characters", () => {
     expect(() => devinSessionUrl("../x")).toThrow();
     expect(() => devinSessionUrl("")).toThrow();
+  });
+});
+
+describe("Devin page contract", () => {
+  const none = {
+    connection: {
+      status: "none",
+      manage: true,
+      canConnect: true,
+      isConnector: false,
+      agentBotId: null,
+    },
+    fetchedAt: null,
+    stale: false,
+    partial: false,
+    sessions: [],
+  };
+
+  it("accepts a space with no connection and a session row", () => {
+    expect(DevinSessionsOutputSchema.parse(none)).toEqual(none);
+    const row = {
+      id: "devin-0001",
+      title: "Fix the login redirect",
+      kind: "needs_you",
+      status: "blocked",
+      statusDetail: null,
+      question: "Which environment?",
+      prs: [{ url: "https://github.com/acme/web/pull/1", state: "open" }],
+      origin: "webapp",
+      updatedAt: "2025-10-09T10:00:00.000Z",
+    };
+    expect(DevinSessionsOutputSchema.parse({ ...none, sessions: [row] }).sessions).toEqual([row]);
+  });
+
+  it("rejects an unknown status or session kind", () => {
+    expect(() =>
+      DevinSessionsOutputSchema.parse({ ...none, connection: { ...none.connection, status: "x" } }),
+    ).toThrow();
+    expect(() =>
+      DevinSessionsOutputSchema.parse({ ...none, sessions: [{ id: "a", kind: "other" }] }),
+    ).toThrow();
+  });
+
+  it("trims the key and refuses an empty one", () => {
+    expect(DevinKeyInputSchema.parse({ secret: "  key  " })).toEqual({ secret: "key" });
+    expect(() => DevinKeyInputSchema.parse({ secret: "   " })).toThrow();
   });
 });

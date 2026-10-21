@@ -322,3 +322,48 @@ it("shows a Devin agent section without the changes switch, and Mercury with it"
   });
   expect(writesSwitch()).not.toBeNull();
 });
+
+it("says disconnecting Devin leaves its sessions running", async () => {
+  await show(false, "https://mcp.devin.ai/mcp");
+  await press("Remove Carta");
+  expect(document.body.textContent).toContain("Devin sessions are not affected.");
+});
+
+it("draws the Granola agent link once, under the key status, and names the route when both are connected", async () => {
+  const data = {
+    ...mockIntegrations({
+      servers: [
+        mockServer("s1", "Granola", {
+          endpoint: "https://mcp.granola.ai/mcp",
+          agentBotId: "bot_ada",
+          agentExclusive: true,
+        }),
+      ],
+      meetings: {
+        connectionId: "conn_1",
+        status: "connected",
+        syncedThrough: "2026-10-20T10:00:00Z",
+        lastSyncedAt: null,
+        syncedCount: 2,
+        consentOff: false,
+        agentBotId: "bot_ada",
+      },
+    }),
+    refresh,
+  };
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/app/integrations/mcp/s1"]}>
+        <Routes>
+          <Route path="/app/integrations/mcp/:serverId" element={<McpDetail data={data} />} />
+        </Routes>
+      </MemoryRouter>,
+    ),
+  );
+  expect(container.textContent).toContain("Synced 2 meetings");
+  expect(container.textContent).toContain("API key");
+  expect(container.textContent).toContain("Sign-in");
+  expect(container.querySelectorAll('a[href="/app/bot_ada"]')).toHaveLength(1);
+  expect(container.querySelector("#server-writes")).toBeNull();
+  expect(container.querySelector("#server-shared")).toBeNull();
+});

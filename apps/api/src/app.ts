@@ -18,6 +18,7 @@ import type {
   ConnectorRegistry,
   DestinationEmulator,
   FinanceSyncDeps,
+  MeetingSourceRegistry,
   RemoteConnectorDependencies,
 } from "@rakazo/adapters";
 import {
@@ -32,6 +33,7 @@ import {
   createBlueBubblesPollState,
   createCloudAgentConnection,
   createConnectorStack,
+  createDevinCallTool,
   createFinanceCallToolFor,
   createGmailPushVerifier,
   createJobReconciler,
@@ -74,6 +76,7 @@ import {
   piSessionsRoot,
   reconcileCloudAgents,
   reconcileComputerUpdates,
+  reconcileMeetingSyncs,
   removeAccountExportBlobs,
   removePiUserSessions,
   resolveEnsName,
@@ -198,6 +201,8 @@ export async function createApp(
     financeCallToolFor?: FinanceSyncDeps["callToolFor"];
     /** Replaces the network for wallet balances, prices, ENS and exchange reads, so canned crypto data runs offline. */
     cryptoFetch?: typeof fetch;
+    /** Replaces the real meeting providers, so the demo and tests run Granola against its emulator. */
+    meetingSources?: MeetingSourceRegistry;
   } = {},
 ): Promise<AppHandles> {
   const {
@@ -215,6 +220,7 @@ export async function createApp(
     contextStrategy,
     financeCallToolFor: financeCallToolOverride,
     cryptoFetch,
+    meetingSources,
     ...envOverrides
   } = overrides;
   const env = { ...loadEnv(process.env), ...envOverrides };
@@ -583,6 +589,8 @@ export async function createApp(
     deploymentModelConfigured: env.deploymentModelConfigured,
     messaging,
     cloudAgent,
+    devinCallTool: createDevinCallTool(prisma, mcp),
+    notificationEvents,
     financeCallToolFor: financeCallToolOverride ?? createFinanceCallToolFor(prisma, mcp),
     artifacts,
     connectors: stack.connector,
@@ -596,6 +604,7 @@ export async function createApp(
     mail,
     mailWritesDisabled: env.mailWritesDisabled,
     gmailPush,
+    ...(meetingSources ? { meetingSources } : {}),
   });
   if (inMemoryJobs) {
     await inMemoryJobs.start(jobHandlers);
@@ -608,6 +617,7 @@ export async function createApp(
         notificationEvents,
         reconcileCloudAgents: () => reconcileCloudAgents({ prisma, jobs, cloudAgent }),
         reconcileComputerUpdates: () => reconcileComputerUpdates({ prisma, jobs }),
+        reconcileMeetings: () => reconcileMeetingSyncs({ prisma, jobs }),
       })
     : undefined;
   reconciler?.start();
@@ -648,6 +658,7 @@ export async function createApp(
     mcp,
     // The same offline fake serves exchange reads (Coinbase, Kraken) and their prices.
     ...(cryptoFetch ? { exchangeFetch: cryptoFetch } : {}),
+    ...(meetingSources ? { meetingSources } : {}),
     parseStatement: async (file, scope) => {
       // Only a PDF from an unknown bank reaches the model, and only with the consent the Inbox
       // triage model already needs. Without it the parser says no model is configured.
@@ -825,7 +836,7 @@ export async function createApp(
   mountInboxAttachment(app, { prisma, mail }, loggedActor);
   mountDataRoomRoutes(app, { prisma, artifacts, jobs }, loggedActor);
   mountAccountExportDownload(app, { prisma, artifacts }, loggedActor);
-  mountVoiceHttpRoutes(app, { prisma, secrets }, (c) => loggedActor(c.req.raw));
+  mountVoiceHttpRoutes(app, { prisma, secrets, ticketBoardEnabled }, (c) => loggedActor(c.req.raw));
   mountWebhookHttpRoutes(app, { prisma, secrets, events, jobs });
   // Gmail push is off unless the deployment sets a Pub/Sub topic and service account.
   if (gmailPush) {

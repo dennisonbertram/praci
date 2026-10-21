@@ -2,9 +2,21 @@ import { readFileSync } from "node:fs";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { DEVIN_MCP_ENDPOINT } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createDevinCallTool } from "./devin-call-tool.js";
 import { refreshDevinConnection, runDevinRefreshJob } from "./devin-refresh.js";
+
+// The notification table is covered by the PostgreSQL tests; here only the call is observed.
+const createNotification = vi.hoisted(() =>
+  vi.fn(async () => ({
+    status: "created" as const,
+    notification: { id: "n-1", importance: "attention" },
+  })),
+);
+vi.mock("@rakazo/db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@rakazo/db")>()),
+  createNotification,
+}));
 
 // Every fixture is synthetic: invented data in the documented format (issue #516 replaces them).
 const fixture = (name: string) =>
@@ -64,7 +76,15 @@ function fakeDb(
       findUnique: vi.fn(async ({ where }: { where: { serverId: string } }) => {
         const state = states.get(where.serverId);
         return state
-          ? { ...state, server: { spaceId: "space-1", userId: "user-1", revision: db.revision } }
+          ? {
+              ...state,
+              server: {
+                spaceId: "space-1",
+                userId: "user-1",
+                revision: db.revision,
+                agentBotId: "bot-1",
+              },
+            }
           : null;
       }),
       findMany: vi.fn(async () => [...states.values()].filter((s) => !s.rejectedAt)),
@@ -87,6 +107,7 @@ function fakeDb(
         },
       ),
     },
+    notificationPreference: { findUnique: vi.fn(async () => null) },
     spaceMember: { findFirst: vi.fn(async () => (db.member ? { id: "m" } : null)) },
     // The commit's `SELECT 1 FROM mcp_servers ... revision = ${revision} FOR SHARE`.
     $queryRaw: vi.fn(async (_strings: unknown, _id: string, revision: number) =>
@@ -107,6 +128,20 @@ function fakeDb(
           const key = `${where.serverId_sessionId.serverId}/${where.serverId_sessionId.sessionId}`;
           const existing = sessions.get(key);
           sessions.set(key, existing ? { ...existing, ...update } : create);
+        },
+      ),
+      updateMany: vi.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: { serverId: string; sessionId: string };
+          data: Record<string, unknown>;
+        }) => {
+          const key = `${where.serverId}/${where.sessionId}`;
+          const row = sessions.get(key);
+          if (row) sessions.set(key, { ...row, ...data });
+          return { count: row ? 1 : 0 };
         },
       ),
       deleteMany: vi.fn(
@@ -161,6 +196,8 @@ const refresh = (fake: ReturnType<typeof fakeDb>, devin: ReturnType<typeof fakeD
   );
 
 describe("refreshDevinConnection", () => {
+  beforeEach(() => createNotification.mockClear());
+
   it("in the first successful refresh stores a waiting session with its real message id, already notified", async () => {
     const fake = fakeDb();
     const devin = fakeDevin();
@@ -193,9 +230,23 @@ describe("refreshDevinConnection", () => {
     expect(fake.db.sessions.get("srv-1/devin-0001")).toMatchObject({
       question: expect.stringContaining("Which environment"),
       lastMessageId: "ev-103",
-      notifiedMessageId: null,
+      notifiedMessageId: "ev-103",
     });
     expect(devin.messageCalls()).toHaveLength(1);
+    expect(createNotification).toHaveBeenCalledTimes(1);
+    expect(createNotification).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        spaceId: "space-1",
+        userId: "user-1",
+        botId: "bot-1",
+        title: "Devin needs input",
+        body: "Fix login redirect loop: Which environment should I test against? Staging or production?",
+        kind: "needs_input",
+        skipRateLimits: true,
+        externalLink: expect.objectContaining({ url: "https://app.devin.ai/sessions/devin-0001" }),
+      }),
+    );
   });
 
   it("an unchanged waiting session fetches no messages in two further runs", async () => {
@@ -218,7 +269,7 @@ describe("refreshDevinConnection", () => {
     expect(fake.db.sessions.get("srv-1/a-1")).toMatchObject({
       kind: "needs_you",
       lastMessageId: "ev-103",
-      notifiedMessageId: null,
+      notifiedMessageId: "ev-103",
     });
   });
 

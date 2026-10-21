@@ -48,6 +48,24 @@ const payloadSchemas = {
   }),
   "mail.watch.renew": z.object({}),
   "devin.refresh": z.object({ serverId: z.string().min(1).optional() }),
+  "meetings.sync": z
+    .object({
+      spaceId: z.string().min(1),
+      userId: z.string().min(1),
+      provider: z.string().min(1),
+      connectionId: z.string().min(1).optional(),
+      mcpServerId: z.string().min(1).optional(),
+    })
+    .refine((p) => (p.connectionId === undefined) !== (p.mcpServerId === undefined), {
+      message: "A meetings sync names exactly one source",
+    }),
+  "meetings.digest": z.object({
+    spaceId: z.string().min(1),
+    userId: z.string().min(1),
+    meetingId: z.string().min(1),
+    /** Set on the last job of a batch: when it ends, the rest of the backlog is queued. */
+    continue: z.boolean().optional(),
+  }),
   "finance.sync": z.object({ userId: z.string().min(1), spaceId: z.string().min(1) }),
   "dataroom.blob.delete": z.object({ spaceId: z.string().min(1), storageKey: z.string().min(1) }),
   "dataroom.ingest": dataRoomStepPayload,
@@ -328,6 +346,34 @@ export function mailAttachmentsJob(
     payload: { ...scope, messageId },
     replaceKey: `mail.attachments:${scope.connectionId}:${messageId}`,
     maxAttempts: 5,
+  };
+}
+
+/** One queued sync per source: a repeat replaces it, and the sync's own claim keeps one running. */
+export function meetingsSyncJob(
+  payload: BackgroundJobPayloads["meetings.sync"],
+  availableAt?: Date,
+): BackgroundJob {
+  return {
+    name: "meetings.sync",
+    payload,
+    replaceKey: `meetings.sync:${payload.connectionId ?? payload.mcpServerId}`,
+    maxAttempts: 3,
+    ...(availableAt ? { availableAt } : {}),
+  };
+}
+
+/** One queued digest per meeting. */
+export function meetingsDigestJob(
+  payload: BackgroundJobPayloads["meetings.digest"],
+  availableAt?: Date,
+): BackgroundJob {
+  return {
+    name: "meetings.digest",
+    payload,
+    replaceKey: `meetings.digest:${payload.meetingId}`,
+    maxAttempts: 3,
+    ...(availableAt ? { availableAt } : {}),
   };
 }
 
