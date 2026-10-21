@@ -1,11 +1,11 @@
-# J1 proposal B: restructure into one setup screen
+# J1 proposal B (round 2): restructure, restore the first-send consent sheet
 
-Replace the bottom sheet with a full-screen "Set up Praci" page (pushed from the Home card) that holds everything the first run needs.
+Remove consent from Connect and ask on the first send, the one frame the thread walker asked for (F-thread-007).
 
-- Page is a grouped list: (1) Model: provider rows with a trailing checkmark, field below, (2) AI data sharing: three switches (Model, Speech, Memory), Model on and locked while connecting, Speech and Memory off, (3) one prominent button "Connect and continue".
-- Consent is explicit and complete in one place; no first-use sheets later for Speech or Memory because the user already chose.
-- After success the page dismisses to the Chief thread (not Home) with the composer focused.
-- No-model Home card on both devices opens the same page. Failed key shows an inline red line under the field.
-- Settings > AI data sharing reuses the same group.
+- PG-A-HomeNoModel: the Connect sheet footer is removed. After connecting the card says "Model A connected." with "Message Chief".
+- PG-B-Consent: frame 1 is a new sheet "Share data with Model A?" with the line "Your messages and attachments are sent to Model A to run your agents.", prominent Allow, secondary Not now, Privacy details link. Frame 2 draws the thread after Not now: the typed message stays in the composer as a draft and a one-line strip above it reads "Sharing is off. Allow". Frame 3 is the speech sheet, frame 4 Settings.
+- PG-A-ThreadStates: Not sent row "Sharing is off" with Allow.
+- PH-Inbox: "Consent needed" frame stays; add the declined Inbox frame with a card and Allow.
 
-Cost: a heavy first screen (more reading and decisions up front for a new founder, who has to rule on Speech and Memory before using either), a second layout to design for Duo outer display (466 wide), and a new screen where a sheet already exists. Not-sent state still needed.
+Every new user now meets a second modal between "Message Chief" and the first reply. Consent is explicit and just in time, and it matches speech.
+Risk: medium. It adds a gate that STORY-019 (flow audit) measured as extra taps, a second Duo layout for the sheet, and a first reply that waits on a prompt.

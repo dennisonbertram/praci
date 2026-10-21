@@ -1,18 +1,14 @@
-# J5 proposal A: minimal change (no new boards)
+# J5 proposal A (minimal): remove the range control, label the periods
 
-Idea: keep the board set as it is. Fix the one contradiction and make the rule cards honest about what is not drawn.
+Problem: the 30 days / 90 days / 12 months control only changes which bars are lit. Runway, Cash and the chart never change, so the control promises a filter it does not provide. Runway and Cash are point-in-time figures; a range cannot change them truthfully.
 
-## Changes
-1. PG-B-Rules, Finance, Laptop pose: replace "period tabs, accounts and Ask controls on the bottom half" with "page on the top half; Finance agent thread and composer on the bottom half". This matches Desk (F-finance-settings-007, step 6 part).
-2. PG-B-Rules, shared rules: add one bullet "Boards exist for Finance (laptop), Inbox (inner and half-folded). Every other page derives its inner and laptop pose from its rule card."
-3. PG-A-Rules, shared recipe step 9 and 10: add "Pages without a board are built from the card; do not add a board unless the card cannot be followed."
-4. Inner: add the one-line "Re: Pilot timeline" context chip above the composer (STORY-064-R1-8).
-
-## What stays undrawn
-Inbox message inner, Computer laptop with keyboard, Finance and Legal inner, Data room laptop, Sign in inner.
+## Design
+- Delete the segmented control from every frame of PG-B-Finance and from Desk.
+- Label each figure with its period: tiles read "Runway now" and "Cash today"; the chart card header reads "Monthly burn, 12 months".
+- The chart keeps 12 bars and the selected-month callout. The callout names the month ("Oct [AMOUNT]"). Unselected bars lighten to `#7E7C75` (about 3.6:1 on the `#252523` card) and a 1px baseline in `#3A3935` is added, so months can be read and compared.
+- Hidden-amounts frame masks everything inferable: Runway reads "•• mo", the callout reads "Oct ••••", and all 12 bars are drawn at one equal height (selected bar still lighter), so burn shape cannot be read.
+- Desk: the eye moves to the top-right of the top half, level with the "Finance" title. The back chevron moves to the top-left of the top half before the title; the chat half keeps only the Finance agent pill. Frame captions state that Hide amounts is remembered on this device and in every pose.
+- Questions about a shorter window go to the Finance agent in the chat half ("Why did spend jump last month?" already shows the pattern).
 
 ## Cost
-4 text edits and one chip. No new 626x890 or 890x626 board.
-
-## Weakness
-Archive, Reply, Cleanup and "open message" on the inner display (STORY-064-R1-1, R1-6, F-inbox-computer-014) and the keyboard-open laptop Computer (F-duo-014, STORY-076-R1-7) remain text only. These are the two poses with real interaction, so the build team still has to invent them.
+Two boards edited, no new data sets drawn. SwiftUI: one Swift Charts BarMark chart, one Text label per tile, one `@AppStorage` flag.

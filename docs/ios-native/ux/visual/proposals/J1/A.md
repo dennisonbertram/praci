@@ -1,12 +1,11 @@
-# J1 proposal A: minimal change
+# J1 proposal A (round 2): minimal change
 
-Keep two gates. Fix the labels and add the missing states.
+Keep the round 1 design: Connect is consent (one footer line under Connect), no first-send sheet. Close only the drawing gaps.
 
-- Home card after connecting: "Model A connected." with button "Message Chief". Card disappears after the first message is sent.
-- Connect sheet: rows "Hosted provider (Recommended)", "Local server", "Subscription sign-in". Field gets a label and changes per row (API key / Server address / no field and the button reads "Sign in"). Letter tiles H, L, S stay.
-- Consent stays a separate sheet on first send, now titled with the real provider ("Share data with Model A?"), adds a "Privacy details" link, "Change in Settings" becomes a text button. "Not now" keeps the typed message and shows the thread's "Not sent: Sharing is off. Turn on" state.
-- Add failed-key panel, no-model PH-Home variant, no-model Not-sent state, empty thread panel.
-- "+" is drawn dimmed in the no-model panels.
-- Chief row subtitle in no-model: "Connect a model to chat".
+- PG-B-Consent: Settings frame gets one more line under the Model A row when it is off: "Off. Agents are paused." Privacy details becomes a full-width 44 pt row. Add a frame "Speech, after Not now": the composer is focused again, no notice.
+- PG-A-ThreadStates: the existing "Not sent: No model connected" row gets a sibling "Not sent: Model A sharing is off" with a text action "Open settings" that opens Settings > AI data sharing.
+- PG-A-HomeNoModel: Privacy details link enlarged to a 44 pt target. No new Home state.
+- PH-Inbox: after "Not now", the Inbox shows the empty "No mail account" style screen with an "Allow" button.
 
-Cost: still connect, type, send, then a second sheet. Two decisions about the same provider (RED-R1-4 only softened).
+Allow-later path: Not sent row, Open settings, flip Model A switch, back, resend. Four taps, three screens.
+Risk: small. Weakness: the user flips a switch on a different screen with no disclosure beside it, and the composer text must be resent.

@@ -2,335 +2,464 @@
   "mode": "inspect",
   "images": [
     "PG-A-Thread.png",
-    "PG-A-ThreadStates.png",
+    "ts_row0.png",
+    "ts_row1.png",
+    "ts_row3.png",
+    "ts_row4.png",
     "PG-B-Consent.png",
     "PG-A-GroupThread.png",
-    "Inner.png",
-    "DS-06-Chat-mail.png",
-    "DS-06-Chat-cards.png"
+    "Inner.png"
   ],
   "results": [
     {
       "model": "meta/muse-wonder",
       "ok": true,
-      "seconds": 53,
-      "costUsd": 0.154488,
+      "seconds": 78,
+      "costUsd": 0.211096,
       "result": {
-        "verdict": "Promising approval-first thread model with clear Send hierarchy, but not ready: money approval contradicts the explicit-approval promise, consent is not informed enough to agree to, group attribution is ambiguous, and several recovery/edit actions are undiscoverable or too small for one-handed use.",
+        "verdict": "Not ready. The core draft-approval card is clear, and most error states name a recovery action, but round 2 is not reviewable as a complete 20-state set, two Send paths remain live while the draft is changing, several other states imply the wrong tap, and the legally-critical first consent shown is for Speech—not for the model provider the founder must approve before first use. A non-technical, one-handed founder cannot reliably tell what happened, what is blocked, and what happens next in the archived, running, group, computer-control, and Inner views.",
         "findings": [
           {
             "level": "component",
-            "element": "Mail approval card body 'Hi Ana, Thursday works...' with Save/Send",
-            "problem": "No visible edit affordance, pencil, or hint that the draft body is tappable, so a first-time founder cannot correct 'I'll send an invite shortly' before sending; DS-06-Chat-mail.png specifies body is tappable to edit but the shipped mock shows it as read-only text.",
-            "norm": "Editable content must have a visible affordance; iOS HIG requires discoverability without hidden gestures for a primary task.",
-            "severity": "P1",
+            "element": "'Send' button on 'Re: Pilot timeline' card in 'Agent editing the draft' frame",
+            "problem": "While the pill reads 'Updating' and 'Edit' is dimmed, 'Send' stays full-white and enabled. The founder can approve and send a stale version while the agent is literally rewriting it—the exact race the explicit-approval promise must prevent.",
+            "norm": "Approval actions must be disabled, with reason, whenever the object being approved is mutating; the safe action gets the visual prominence.",
+            "severity": "P0",
             "screenshot": "PG-A-Thread.png",
-            "fix": "Add an Edit affordance on the card (pencil + 'Edit' labelled 44pt target) and an edited state; show subject/recipient rows in the same editable style as DS-06-Chat-mail.png."
+            "fix": "Disable Send and Edit during Updating, relabel the pill 'Updating draft—Send unavailable', and re-enable Send only with a visible 'Draft updated' change note."
           },
           {
             "level": "component",
-            "element": "'••• Inbox agent is working' line directly above the composer, below a completed draft card",
-            "problem": "State contradicts the content above it: the draft is already delivered and awaiting approval while the agent is still shown working, so the user cannot tell whether Send is safe yet or another result is coming.",
-            "norm": "Status indicators must reflect a single, current system state and resolve when the task completes.",
-            "severity": "P1",
-            "screenshot": "PG-A-Thread.png",
-            "fix": "Remove/replace the working line when the approval card appears (e.g. 'Waiting for your approval'), and only show 'working' before any draft exists."
-          },
-          {
-            "level": "component",
-            "element": "Floating left rail: back chevron, document icon, list icon with no labels",
-            "problem": "Document and list icons are unlabelled and indistinguishable in purpose to a non-technical first-time user; the same rail in Inner.png sits on the opposite (right) edge, so location is also inconsistent.",
-            "norm": "Icon-only controls need labels or universally understood symbols and consistent placement (iOS HIG); brief requires ease for non-technical founders.",
-            "severity": "P1",
-            "screenshot": "PG-A-Thread.png",
-            "fix": "Add text labels/tooltips or use a labelled segmented control, keep the rail in the same position across outer and inner displays, and keep all targets >=44pt."
-          },
-          {
-            "level": "component",
-            "element": "'Not sent  Retry' and 'Not sent: Attachment is too large  Edit' captions under failed/refused bubbles",
-            "problem": "Retry and Edit are small inline text links, well under 44pt, placed under right-aligned bubbles — hard to hit one-handed between meetings and easy to miss entirely.",
-            "norm": "iOS HIG minimum 44x44pt touch targets, especially for the sole recovery action on an error.",
-            "severity": "P1",
-            "screenshot": "PG-A-ThreadStates.png",
-            "fix": "Make Retry/Edit full labelled pill buttons of at least 44pt under the bubble, keeping the red 'Not sent' word+icon (not colour alone)."
-          },
-          {
-            "level": "component",
-            "element": "Refused bubble 'Attached the pilot deck.' with 'Not sent: Attachment is too large'",
-            "problem": "The message refers to an attachment that is nowhere shown — no file chip, name, or size — so Edit gives the user nothing concrete to remove, compress, or replace.",
-            "norm": "An error must identify the offending object and offer a direct fix on that object.",
-            "severity": "P1",
-            "screenshot": "PG-A-ThreadStates.png",
-            "fix": "Render the attachment chip (name, size, e.g. 'pilot-deck.pdf · 38 MB') inside/above the bubble with Remove/Replace actions attached to the chip."
+            "element": "'Send' on approval card vs up-arrow in composer 'Add Jordan on Cc' in 'Approval pending, typing' frame",
+            "problem": "Two different send actions coexist: 'Send' would mail the card still addressed only 'To Ana Ruiz', while the typed 'Add Jordan on Cc' has not been applied and its up-arrow sends a chat instruction. One tap on the prominent Send mails without Jordan on Cc.",
+            "norm": "One verb, one target, one prominent action per view; pending edits to an approval object must be applied or explicitly excluded before approval.",
+            "severity": "P0",
+            "screenshot": "ts_row4.png",
+            "fix": "When composer text references the draft, disable the card Send and show 'Apply Cc change first', or merge the flows so the arrow updates the card and only then arms Send."
           },
           {
             "level": "page",
-            "element": "Offline panel: 'Offline. Messages send when you reconnect.' banner + 'Waiting to send' under 'Thursday works for me.'",
-            "problem": "Most of the panel is empty black space with no queued count, no draft context, and no statement of whether 'Waiting to send' will auto-send to the agent or needs a tap on reconnect — the exact ambiguity this screen exists to resolve.",
-            "norm": "Offline/queued states must state what is queued, where it will go, and whether action is required (offline-first UX convention).",
-            "severity": "P2",
-            "screenshot": "PG-A-ThreadStates.png",
-            "fix": "Add a persistent queued chip on the composer ('1 queued — sends automatically on reconnect') and keep the pending message visually distinct until delivered."
-          },
-          {
-            "level": "page",
-            "element": "First-use sheet 'Share data with Model A?' — 'Your messages, chat history and attachments are sent to Model A to run your agents.' with Allow / Not now",
-            "problem": "Consent is not informed: 'Model A' names no real provider, and there is no retention, training-use, or privacy link on the sheet (Privacy details exists only in Settings), yet Allow is the single prominent white pill pushing agreement. A founder cannot knowingly agree from this text.",
-            "norm": "Privacy consent must name the recipient, data categories, purpose and retention before agreement, with details reachable from the consent surface itself.",
+            "element": "Left sheet 'Share recordings with Speech A?' / 'Allow'",
+            "problem": "The brief's mandatory first step is consent to share data with the AI model provider, but the only first-use sheet in this file consents to Speech A for transcription. No model-provider sheet—named provider, data sent, retention—is shown at all, so the persona's first-visit journey cannot be verified or completed as specified.",
+            "norm": "Gate the first agent run on an informed, provider-specific consent naming recipient, data categories, and consequence of declining.",
             "severity": "P0",
             "screenshot": "PG-B-Consent.png",
-            "fix": "Name the provider, list data categories/retention/training use in plain language, add a 'Privacy details' link on the sheet, and make Allow/Not now visually neutral until details are offered."
+            "fix": "Add/show the Model consent sheet before first chat ('Share messages and attachments with [Provider]?'), and keep Speech consent as a separate, later, mic-triggered ask."
           },
           {
             "level": "group",
-            "element": "Sheet 'Allow' (all-or-nothing) vs Settings 'AI data sharing' toggles: Model A on, Speech A on, Memory A off",
-            "problem": "The two surfaces disagree: the sheet implies one binary grant covering messages/attachments, while Settings exposes three independent grants including Speech and Memory that the sheet never mentions, so the user cannot predict what Allow turned on.",
-            "norm": "Consent asked at first use and consent managed in Settings must be the same model with the same categories.",
+            "element": "Whole state grid: frames below 'Composer with an oversize file / New messages / Loading / Could not refresh'",
+            "problem": "The 'Archived', 'Read only', 'Session ended' and 'Reconnecting' states announced for round 2 appear only as cut-off footer labels with no frames, and ts_row2 was not supplied. Half the recovery story (notably session-ended and read-only) literally cannot be judged or learned from.",
+            "norm": "Every labeled state in a review board must be fully visible at legible size; error/terminal states need cause plus next step.",
+            "severity": "P0",
+            "screenshot": "ts_row1.png",
+            "fix": "Re-export complete, uncropped rows for Archived, Read only, Session ended and Reconnecting, each showing its banner, composer state and single recovery action."
+          },
+          {
+            "level": "component",
+            "element": "'Send' (up-arrow) button in oversize-file composer 'Attached the pilot deck.'",
+            "problem": "The composer states 'pilot-deck.pdf is over 25 MB. Remove it to send.' yet the round up-arrow remains solid white, signalling ready-to-send. Pressing it will presumably fail again; the affordance contradicts the instruction.",
+            "norm": "A blocked primary action must look blocked and name the blocker at the point of action.",
+            "severity": "P1",
+            "screenshot": "ts_row1.png",
+            "fix": "Grey/disable the arrow until the red pilot-deck.pdf chip is removed, or make the tap animate/highlight the offending chip."
+          },
+          {
+            "level": "component",
+            "element": "'Thursday works for me.' bubble in 'Offline, nothing queued' frame",
+            "problem": "Under a banner 'Offline. Messages send when you reconnect.' a normal right-aligned bubble sits with no status. The frame title says nothing is queued, but the founder cannot tell whether this bubble was already sent or is waiting—the queued frame differs only by tiny grey 'Waiting to send' text and omits the offline banner entirely.",
+            "norm": "Every unsent message carries a persistent per-message status; global connectivity and per-message state must agree in all frames.",
+            "severity": "P1",
+            "screenshot": "ts_row0.png",
+            "fix": "Show the offline banner in both frames and label the bubble itself 'Sent earlier' vs 'Waiting to send' with a clock icon at readable contrast."
+          },
+          {
+            "level": "component",
+            "element": "'Attached the pilot deck.' bubble with 'pilot-deck.pdf, 48 MB' in 'Refused: file too large'",
+            "problem": "Recovery copy 'Not sent: File is over the 25 MB limit / Remove file' is good, but the attachment keeps the shape of a successfully sent user bubble, so at a glance between meetings it reads as delivered.",
+            "norm": "Refused content must be visually quarantined (error styling, not success styling) until resolved.",
+            "severity": "P1",
+            "screenshot": "ts_row0.png",
+            "fix": "Keep the red outline used in the 'Failed' bubble, add a 'Not sent' chip on the attachment itself, and only restore normal styling after a successful resend."
+          },
+          {
+            "level": "page",
+            "element": "'Archived' frame: top bar 'Archived / Restore' plus composer 'Restore to send messages'",
+            "problem": "The saved messages inexplicably read as an already-completed exchange ending 'Sent. Anything else for Ana?' with no draft card, and the founder gets two competing recovery cues: a small top-right 'Restore' pill and a fake-looking text field that is not a field. Which to tap, and what restoring does to the pending draft, is unstated.",
+            "norm": "A read-only/archived state has one clearly labelled recovery action and explains what is preserved.",
+            "severity": "P1",
+            "screenshot": "PG-A-Thread.png",
+            "fix": "Replace the composer with a single full-width 'Restore chat' button and a line 'Your unsent draft to Ana is kept'; hide or mark the historical thread as read-only."
+          },
+          {
+            "level": "component",
+            "element": "'Replaced by a newer draft' pill in 'Draft replaced' frame",
+            "problem": "The pill announces replacement but offers no 'View previous draft', undo, or diff. A founder who had reviewed the earlier wording loses it silently and must re-read the new card line-by-line to know what changed.",
+            "norm": "System-generated replacement of user-reviewed work must be recoverable and show what changed.",
+            "severity": "P1",
+            "screenshot": "PG-A-Thread.png",
+            "fix": "Make the pill tappable: 'Replaced by a newer draft — See changes', highlighting changed lines in the new card with Restore previous as secondary action."
+          },
+          {
+            "level": "component",
+            "element": "Stop (round square) as the only composer action in 'Running, text typed' frame",
+            "problem": "The founder has typed 'Also check Ana' but the sole button is the white stop square. There is no send affordance and no hint whether typed text queues, interrupts, or is discarded if they tap stop—one-handed, the big white target invites the destructive tap.",
+            "norm": "While an agent runs, composer behaviour (queue follow-up vs steer vs blocked) must be explicit and the destructive stop must not be the only prominent target.",
+            "severity": "P1",
+            "screenshot": "ts_row4.png",
+            "fix": "Show an up-arrow 'Queue' action beside a smaller labelled Stop, with helper text 'Sends after this run' under 'Also check Ana'."
+          },
+          {
+            "level": "component",
+            "element": "'Stopping' frame: spinner in composer, 'Message Inbox agent' placeholder, '•••' agent bubble",
+            "problem": "Nothing says 'Stopping…', how long it takes, or whether typing is accepted; the enabled-looking composer invites input into a dying run. The founder cannot tell if the tap registered.",
+            "norm": "Transitional states need a named label, disabled or clearly-queued input, and a terminal confirmation.",
+            "severity": "P1",
+            "screenshot": "ts_row4.png",
+            "fix": "Add an inline 'Stopping the agent…' status above the composer, disable send, and end with 'Stopped—nothing was sent'."
+          },
+          {
+            "level": "component",
+            "element": "'Team computer' card: empty black preview, 'Inbox agent is using it', 'Take control'",
+            "problem": "A blank black rectangle, an unexplained 'Team computer' concept and 'Take control' as the sole prominent action. A non-technical founder cannot see what the agent is doing with invoices, what taking control interrupts, or how to stop it safely—yet this is the spend-adjacent surface.",
+            "norm": "Remote/autonomous sessions require a live, legible preview, current action narration, and clearly separated Pause/Stop/Take-control.",
+            "severity": "P1",
+            "screenshot": "ts_row3.png",
+            "fix": "Render the actual computer view with a caption 'Opening invoice list…', and offer 'Pause agent' as primary with 'Take control' secondary and explained."
+          },
+          {
+            "level": "component",
+            "element": "'Not sent: No model connected' + 'Connect' under the 'Hello' bubble",
+            "problem": "The explanation of this state sits in a footnote outside the device frame ('Connect opens the Connect sheet; the message sends when it succeeds.'). Inside the product the founder only sees failure plus 'Connect'—no provider choice, cost, or consent implication, and 'No model' is developer language for this persona.",
+            "norm": "All explanatory copy must live in the UI; blocked-agent states explain in user language what connecting means before opening any sheet.",
+            "severity": "P1",
+            "screenshot": "ts_row3.png",
+            "fix": "Use 'Not sent: no AI service connected yet' with an in-frame subline 'Connect to send—your message is saved and will send automatically'."
+          },
+          {
+            "level": "page",
+            "element": "Right panel toggles 'Model A / Speech A / Memory A' in 'Settings, AI data sharing'",
+            "problem": "'Model A', 'Speech A', 'Memory A' are spec placeholders, not provider names a founder can consent to; nothing states retention, training use, or where 'Privacy details' leads. 'Turning off Model A pauses all agents.' appears only as a footnote, with no confirmation when the green toggle is actually flipped.",
+            "norm": "Data-sharing settings must name the real recipient, data, purpose and retention, and consequential toggles confirm before applying.",
             "severity": "P1",
             "screenshot": "PG-B-Consent.png",
-            "fix": "Mirror the three categories in the sheet (or explain Allow enables Model A only), and after Allow deep-link to these exact toggles; note 'Change in Settings' on the sheet is currently tiny grey text, not a visible button."
+            "fix": "Replace with real provider names and one-line data/retention summaries, and confirm 'Pause all agents?' in a sheet when Model is turned off."
           },
           {
             "level": "component",
-            "element": "Settings toggles for Model A / Speech A (bright green, on) and Memory A (grey, off)",
-            "problem": "Saturated green switches are the strongest colour on an otherwise monochrome screen and read as 'good/safe' rather than 'sharing data externally', biasing the privacy decision; there is also no per-toggle consequence text (what stops working when off).",
-            "norm": "Brief: monochrome app; system-green 'on' must not be the only state signal, and privacy toggles need consequence descriptions.",
+            "element": "'Not now' button in 'Share recordings with Speech A?' sheet",
+            "problem": "'Not now' gives no consequence: will dictation be unavailable, will they be re-asked every tap of the mic? Nor is it clear Allow is permanent or revocable here, though Settings proves it is.",
+            "norm": "Declining a permission must state the resulting capability loss and where to change it later.",
             "severity": "P2",
             "screenshot": "PG-B-Consent.png",
-            "fix": "Use monochrome switches with explicit On/Off text and add one-line consequences per row (e.g. 'Off: agents cannot read attachments')."
+            "fix": "Add 'You can still type. Turn this on anytime in Settings › AI data sharing.' under 'Not now'."
           },
           {
             "level": "group",
-            "element": "Agent attribution: 'Finance agent' label + bubble, orange avatar rendered below that bubble, then 'Legal agent' label + bubble, purple avatar below it",
-            "problem": "Avatars trail the bubble they do not belong to visually, sitting closer to the next agent's label, so a skim reader attributes 'Runway is [N] mo...' to the wrong agent; in a funding thread misattribution changes who is trusted.",
-            "norm": "Chat convention (iMessage/Slack): avatar and name lead and align with the top of their own message group.",
+            "element": "Left list rows vs open thread in Inner view",
+            "problem": "The Inbox agent thread for Ana Ruiz is open on the right, yet no left row ('Ana Ruiz / Re: Pilot timeline') is highlighted as selected; all 'Needs reply' rows carry identical white dots. On the wide Inner display the founder cannot anchor which mail the draft answers.",
+            "norm": "Master–detail layouts require a persistent selected state in the master list matching the detail pane.",
             "severity": "P1",
-            "screenshot": "PG-A-GroupThread.png",
-            "fix": "Place each agent's shape avatar and name together at the top-left of its own bubble and remove the orphaned avatars below bubbles."
+            "screenshot": "Inner.png",
+            "fix": "Give the Ana Ruiz row a filled selected background and keep the unread dot distinct from the selection indicator."
           },
           {
             "level": "component",
-            "element": "Finance agent bubble 'Runway is [N] mo. I will add the cash summary to the page.'",
-            "problem": "An unresolved placeholder '[N]' is presented as a factual answer with no missing-data flag, source, or follow-up, so the founder may quote a non-number to the board.",
-            "norm": "Agents must surface uncertainty/missing data explicitly and never present placeholders as results.",
+            "element": "Composer 'Also ask her for the agenda' with a separate floating '⋮' round button at far right",
+            "problem": "Inner introduces a second, unlabeled circular overflow button outside the composer that does not exist on the outer thread, competing with the up-arrow and sitting at the far edge—hardest for one-handed reach, and inconsistent with the floating rail used elsewhere.",
+            "norm": "Keep composer chrome identical across form factors; no unlabeled satellite buttons; primary actions within thumb reach.",
             "severity": "P1",
-            "screenshot": "PG-A-GroupThread.png",
-            "fix": "Replace with 'I could not find runway yet — connect Mercury or upload a statement' plus an action button; never render bracket placeholders in user-facing bubbles."
+            "screenshot": "Inner.png",
+            "fix": "Remove the satellite button (fold into the existing Chat menu on the rail) and right-align the send arrow inside the composer as on Duo outer."
           },
           {
             "level": "component",
-            "element": "Composer 'Message Funding room' with only a mic icon, in a two-agent thread",
-            "problem": "Nothing shows how to direct a question to Finance vs Legal, whether both will answer, or the @mention pattern that DS-06-Chat-mail.png defines; first-time users will broadcast by accident.",
-            "norm": "Multi-agent/group composers must make the addressee model visible (Slack/Teams mention affordance).",
-            "severity": "P2",
-            "screenshot": "PG-A-GroupThread.png",
-            "fix": "Show '@Finance' / '@Legal' hint chips above the composer and echo the addressed agent in the send button area; default behaviour stated in placeholder text."
-          },
-          {
-            "level": "group",
-            "element": "Inbox list: 'Needs reply 3' rows (Ana Ruiz, Jordan Lee, Northwind) have no unread dot while 'Other mail today 24' rows (Acme Payroll, Example Weekly, Deals Daily) have white dots",
-            "problem": "The signalling is inverted against convention: the urgent needs-reply items look read/less important than newsletters, and the selected Ana Ruiz row is only a faint fill, so the list↔thread link is weak at a glance.",
-            "norm": "Unread/urgency needs the strongest marker; list selection must be clearly tied to the open thread (mail-app convention).",
+            "element": "Chips 'Re: Pilot timeline' and 'Ana Ruiz' directly under the approval card",
+            "problem": "Two grey pills duplicate information already in the card ('Re: Pilot timeline', 'To Ana Ruiz') with no label or visible action. Founders will tap them expecting navigation and get undefined behaviour.",
+            "norm": "Every chip must be a labelled, functional filter/link or be removed; no decorative duplicate metadata.",
             "severity": "P2",
             "screenshot": "Inner.png",
-            "fix": "Give Needs reply rows the prominent marker (dot + count badge), strengthen the selected row (left accent bar + fill), and keep snippet truncation from cutting mid-word-critical subjects."
+            "fix": "Delete the chips, or turn them into a single labelled link 'Open original email from Ana Ruiz'."
+          },
+          {
+            "level": "group",
+            "element": "Header stack 'Funding room' avatar cluster with 'C' badge and typing indicator in group thread",
+            "problem": "Two agent shapes (orange Finance triangle, purple Legal droplet) plus an unexplained 'C' overlap the header, and the bottom typing row shows only a purple droplet with '•••' and no name. In the one multi-agent view, attribution—the core value of per-agent shapes—fails at the exact moment of activity, and the always-visible stop square implies a run the bubbles do not explain.",
+            "norm": "In group agent UIs, every activity indicator is named; avatar clusters explain membership (e.g. 'Finance, Legal + you').",
+            "severity": "P1",
+            "screenshot": "PG-A-GroupThread.png",
+            "fix": "Label typing as 'Legal agent is checking dates…', expand the header to 'Funding room · Finance, Legal' on tap, and remove 'C' or identify it as the user."
+          },
+          {
+            "level": "component",
+            "element": "Menu items 'Clear chat' vs red 'Delete chat'/'Delete group' and 'Open computer' in Chat menus",
+            "problem": "For a non-technical founder, 'Clear chat' vs 'Delete chat' (and in group, 'Delete group') distinction is nowhere explained in the menu; only group delete gets a confirmation saying messages are removed for everyone. 'Open computer' is jargon with no preview of what opens. Destructive red text-only 'Delete' in confirmations is also weaker than the adjacent bold 'Cancel', inverting prominence.",
+            "norm": "Destructive actions are verb-labelled with scope ('Delete for everyone'), explained before confirmation, and visually weighted as the deliberate choice in the dialog.",
+            "severity": "P1",
+            "screenshot": "PG-A-GroupThread.png",
+            "fix": "Rename to 'Clear history (keeps the chat)' and 'Delete for everyone…', add subtitles in-menu, and style confirmation Delete as a filled red button."
+          },
+          {
+            "level": "component",
+            "element": "Floating left rail (Back / Page / List / More icons) present in every thread frame",
+            "problem": "Four icon-only glass buttons with no visible labels; meaning exists only in the separate 'Accessible names' spec column ('Page — Open the page', 'List — Open the to do list' [sic]). A first-time founder must guess, the rail eats ~12% of a 466px-wide screen, pushes chat right, and its top Back sits far from the one-handed thumb zone.",
+            "norm": "Primary navigation on a narrow phone surface is labelled or uses universally-known glyphs, bottom-anchored for thumb reach; spec annotations are not a substitute for in-UI labels.",
+            "severity": "P1",
+            "screenshot": "PG-A-Thread.png",
+            "fix": "Add text labels or a labelled bottom bar for Page/List, fix the 'to do' typo, and keep only Back + More in the rail."
+          },
+          {
+            "level": "page",
+            "element": "Vertical space use in thread frames (e.g. 'Loading', 'Running', 'Offline, message queued')",
+            "problem": "Roughly the top 55–65% of most frames is empty black; content hugs the composer while the camera pill and '9:41' float in dead space. On a 466x678 outer display the app neither fits more context nor uses the space for status—long drafts will force scrolling the approval card off-screen.",
+            "norm": "Chat layouts anchor status at top and content continuously; no majority-empty first screen, and approval cards must stay fully visible without scroll.",
+            "severity": "P2",
+            "screenshot": "ts_row0.png",
+            "fix": "Pin a compact status/agent header under the title pill, let history fill the space, and cap draft-card height with internal scroll so Edit/Send never leave the screen."
+          },
+          {
+            "level": "component",
+            "element": "Suggestion chips 'Summarize my inbox' / 'Draft a reply to Ana' / 'What is due this week?' under 'Hello! How can I help?'",
+            "problem": "This is the only genuine first-message state, yet the agent is named 'Chief'—an agent absent from the brief's Inbox/Finance/Legal roster and from every other frame—so a first-time user learns the wrong cast. Chips also wrap unevenly (2+1) with the third orphaned left.",
+            "norm": "Onboarding surfaces introduce the actual named agents consistently across the product.",
+            "severity": "P2",
+            "screenshot": "ts_row3.png",
+            "fix": "Rename to the real default agent (or explain Chief as coordinator of Inbox/Finance/Legal) and lay chips in a single-column list for one-handed tapping."
+          },
+          {
+            "level": "component",
+            "element": "'Needs approval' pill with chevron beneath the user bubble in 'Approval pending' (4th frame)",
+            "problem": "The same product expresses approval three ways: gold pill on the card, gold pill in headers, and here a dark collapsible pill with a yellow dot under the user's own message, separated from the draft it controls. Tapping target and destination are ambiguous.",
+            "norm": "One status component, one placement (on the object it describes), reused identically everywhere.",
+            "severity": "P2",
+            "screenshot": "ts_row3.png",
+            "fix": "Standardise on the on-card 'Needs approval' pill from PG-A-Thread and make it scroll to/highlight the draft card."
+          },
+          {
+            "level": "component",
+            "element": "Skeleton bubbles in 'Loading' frame and 'Could not refresh / Try again' banner",
+            "problem": "Loading shows three anonymous grey blobs with an enabled composer and no 'Loading…' label—indistinguishable from a broken empty chat. 'Could not refresh' gives no time reference ('showing mail from 9:12'), so the founder may act on stale inbox data between meetings.",
+            "norm": "Loading and stale states are verbally labelled, input is either disabled or declared safe, and stale content carries its age.",
+            "severity": "P2",
+            "screenshot": "ts_row1.png",
+            "fix": "Add 'Loading messages…' with the skeletons, disable composer send until loaded, and change the refresh banner to 'Couldn't refresh—showing 9:12 AM inbox · Try again'."
+          },
+          {
+            "level": "component",
+            "element": "'Add a recipient' in 'Empty recipient' frame",
+            "problem": "The safeguard works—Send greys out—but the gold 'Add a recipient' text gives no hint it is tappable (no chevron/field styling) and the card otherwise looks complete, so a hurried founder reads the state as cosmetic rather than blocking.",
+            "norm": "Missing required fields use field affordance and a one-line blocking explanation next to the disabled action.",
+            "severity": "P2",
+            "screenshot": "PG-A-Thread.png",
+            "fix": "Render 'To' as an empty tappable field 'Add a recipient…' and add 'Add a recipient to send' as helper text above the disabled Send."
           },
           {
             "level": "layout",
-            "element": "Inner display: Inbox list (left) + Inbox agent thread (right) with floating document/list rail clipped at the right edge and composer controls reversed vs outer display (mic + ellipsis on right)",
-            "problem": "The two-pane layout fits one screen well, but floating controls change side and order between Inner.png and PG-A-Thread.png, breaking muscle memory, and the right rail visually collides with the display edge/Dynamic Island time column.",
-            "norm": "Floating navigation layer must be positionally consistent across breakpoints; controls must clear device chrome/safe areas.",
+            "element": "Colour system across all screens: green iOS toggles, gold 'Needs approval', red errors, blue/green/orange/purple agent marks on near-black",
+            "problem": "The brief promises monochrome with colour reserved for per-agent identity, but system-green toggles in Settings are the loudest colour in the product and read as ' Praci brand/active' rather than agent identity; gold approval and red error then compete as a third and fourth semantic palette with no legend.",
+            "norm": "Reserve saturated colour for defined semantics; platform toggles should adopt the app accent or be explicitly excepted in the system.",
+            "severity": "P3",
+            "screenshot": "PG-B-Consent.png",
+            "fix": "Tint Settings switches to the neutral/monochrome accent (or document green=on as a system exception) and publish one legend: agent colour = identity, gold = your approval, red = error."
+          },
+          {
+            "level": "page",
+            "element": "'Archive this chat?' confirmation over still-visible 'Edit/Send' card",
+            "problem": "The dialog correctly says 'It moves to Archived. You can restore it.', but the live approval card behind it still shows a white 'Send', inviting the interpretation that archiving and sending are related, and nothing says the pending draft survives archiving.",
+            "norm": "Confirmation dialogs state the fate of in-progress work (unsent draft) explicitly.",
             "severity": "P2",
-            "screenshot": "Inner.png",
-            "fix": "Standardise the glass rail and composer control order across outer/inner, inset the rail from the edge with the same margin as PG-A-Thread.png."
-          },
-          {
-            "level": "component",
-            "element": "MCP tool approval card: 'Mercury agent wants to run requestSendMoney' with 'Amount [AMOUNT]' and stacked Allow once / Always allow / Deny",
-            "problem": "'Always allow' for requestSendMoney directly contradicts the product promise that agents never spend money without an explicit approval tap, and Allow once is the prominent white pill while the amount is an unresolved '[AMOUNT]' placeholder — a user can approve an unknown sum in one tap.",
-            "norm": "Brief: no spending without explicit per-action approval; financial approvals must show exact amount/recipient and must not offer standing consent.",
-            "severity": "P0",
-            "screenshot": "DS-06-Chat-cards.png",
-            "fix": "Remove 'Always allow' for money-moving tools, disable Allow until a real formatted amount, recipient and memo render, and add amount confirmation (e.g. 'Allow once — $X to Northwind')."
-          },
-          {
-            "level": "component",
-            "element": "Resolved card 'Allowed once: requestSendMoney' with green check",
-            "problem": "After a money approval the audit trail collapses to tool name only — no amount, recipient, time, or undo/report path — so the founder cannot verify what was spent from the thread.",
-            "norm": "Financial actions need a durable, human-readable receipt in-conversation.",
-            "severity": "P1",
-            "screenshot": "DS-06-Chat-cards.png",
-            "fix": "Resolve to 'Allowed once: $X to Northwind · Pilot invoice · 9:41 AM' with a View receipt action, retaining the word+check status."
-          },
-          {
-            "level": "group",
-            "element": "MCP approval actions Allow once (white) / Always allow (dark) / Deny (red text on dark)",
-            "problem": "Three full-width stacked capsules compete despite the 'one prominent action per view' rule, and Deny relies on red text on a dark fill — low contrast and inconsistent with the spec note that Deny is a solid secondary button with destructive text.",
-            "norm": "One prominent action per view (brief); destructive actions need adequate contrast and equal tap affordance, not colour alone.",
-            "severity": "P2",
-            "screenshot": "DS-06-Chat-cards.png",
-            "fix": "Keep Allow once prominent, demote Always allow (if retained elsewhere) and Deny to smaller side-by-side secondary buttons with an icon+label for Deny."
-          },
-          {
-            "level": "component",
-            "element": "Voice player bar PAUSED AT START showing '0:42 / 1:30' (identical to PLAYING)",
-            "problem": "A paused-at-start player cannot be at 0:42; the spec example teaches implementers a broken state and undermines trust in elapsed/total readouts.",
-            "norm": "Spec examples must be internally consistent; media players show 0:00 before playback.",
-            "severity": "P2",
-            "screenshot": "DS-06-Chat-cards.png",
-            "fix": "Set PAUSED AT START to 0:00 / 1:30 with an unplayed waveform, and keep PLAYING at 0:42 with the played-portion fill shown."
-          },
-          {
-            "level": "component",
-            "element": "Mail approval card signature: thread cards end 'I'll send an invite shortly.' while DS-06-Chat-mail.png NEEDS APPROVAL/SENT cards add 'Best, Jordan'",
-            "problem": "The approval card the user actually approves in PG-A-Thread.png/Inner.png omits the sign-off that the design system shows will be sent, so the user approves text that differs from the sent email.",
-            "norm": "Approval UI must show the exact artefact that will be sent (WYSIWYG for approval-gated actions).",
-            "severity": "P1",
             "screenshot": "PG-A-Thread.png",
-            "fix": "Render the complete email (subject, To/Cc, full body including sign-off) identically in thread, inner and DS examples; highlight any post-approval additions as forbidden."
+            "fix": "Change body to 'It moves to Archived. Your unsent draft to Ana Ruiz is kept and restored with the chat.'"
           }
         ],
         "excellent": [
-          "PG-A-Thread.png mail approval card: Send is the single prominent white pill and Save is a quiet secondary — exactly one prominent action, thumb-reachable at bottom right, matching Inner.png.",
-          "PG-A-Thread.png agent line 'Here is a draft. I have not sent it.' makes the never-send-without-approval promise explicit in plain language for a non-technical founder.",
-          "DS-06-Chat-mail.png Mail approval card statuses 'Needs approval' / '✓ Sent' / '× Not sent' pair colour with a word and symbol, so status is never colour alone.",
-          "PG-A-ThreadStates.png Failed/Refused: failed user bubbles get a red outline plus 'Not sent' text and a named recovery (Retry/Edit) rather than silently disappearing.",
-          "PG-B-Consent.png first-use sheet: Allow (prominent) vs Not now (secondary) hierarchy is unambiguous and dismissible without agreeing.",
-          "Inner.png: Inbox list and the Inbox agent thread with its approval card fit side-by-side on one 890x626 screen with no horizontal scrolling, preserving context while approving."
+          "PG-A-Thread.png — 'Re: Pilot timeline' approval card: recipient, full draft text, gold 'Needs approval' pill, secondary 'Edit' and one prominent white 'Send' is exactly the explicit-approval pattern promised; 'Archive confirmation' likewise states reversibility ('You can restore it.').",
+          "ts_row0.png — 'Failed' frame: red-outlined bubble plus 'Not sent · Retry' in one line gives cause and recovery without a modal; 'Refused: file too large' names the 25 MB limit and a 'Remove file' action.",
+          "ts_row1.png — 'New messages, scrolled up': 'NEW' divider plus a floating 'Jump to latest' pill is textbook chat behaviour and ideal one-handed.",
+          "ts_row4.png — 'Running' frames: agent avatar with progress arc and '•••' bubble, and the mic morphing into a stop control, make agent activity legible at a glance; 'Approval pending, typing' keeps Edit/Send visible while composing.",
+          "PG-A-GroupThread.png — Finance agent (orange triangle) vs Legal agent (purple droplet) with name labels above each bubble delivers the promised per-agent shape/colour identity; 'Delete Funding room?' states scope and irreversibility ('removed for everyone. This cannot be undone.').",
+          "PG-B-Consent.png — Consent sheet hierarchy: plain-language data sentence, one prominent 'Allow', quieter 'Not now', and a 'Privacy details' link is the right shape for informed consent (content gaps notwithstanding); Settings shows the dependency 'Turning off Model A pauses all agents.'",
+          "Inner.png — Dual-pane Inbox + Inbox agent thread fits one 890x626 screen with correct counts ('Needs reply 3', 'Other mail today 24') and the same approval card, proving the wide layout without inventing new patterns."
         ]
       }
     },
     {
       "model": "google/gemini-4-argon",
       "ok": true,
-      "seconds": 124,
-      "costUsd": 0.114262,
+      "seconds": 198,
+      "costUsd": 0.149504,
       "result": {
-        "verdict": "Praci establishes a sophisticated, calm monochrome visual language with strong single-CTA discipline and accessible shape-coded agent avatars, but suffers from critical trust, safety, and usability gaps—including an 'Always allow' button on a money-sending tool that violates the core product promise, no way to read the incoming email being replied to, uneditable-looking email drafts, inconsistent navigation/composer rails across screens, and raw technical placeholders.",
+        "verdict": "Praci demonstrates strong craft in its dark monochrome visual language, inline approval architecture, and unusually thorough edge-case state coverage, but contains critical safety and interaction flaws—most notably enabling the primary 'Send' CTA while an agent is mid-stream editing a draft, keeping an active 'Send' button when an oversize attachment blocks submission, and exposing a 'Stop' button where users expect 'Send' while typing during an active agent run.",
         "findings": [
           {
             "level": "component",
-            "element": "MCP tool approval card ('Always allow' button and 'requestSendMoney' title)",
-            "problem": "1) The card offers an 'Always allow' button right below 'Allow once' for 'requestSendMoney', directly violating the core product rule that 'agents never send mail or spend money without an explicit approval tap' and creating a high-risk mis-tap hazard for one-handed mobile use. 2) The title exposes a raw developer function name ('requestSendMoney') to a non-technical founder. 3) The Amount field contains an unreplaced '[AMOUNT]' placeholder, failing to demonstrate the spec's own tabular-numeral requirement.",
-            "norm": "High-stakes financial actions must require per-transaction confirmation (never 'Always allow'), use plain human language instead of raw API/MCP identifiers, and display realistic formatted currency values in design specs.",
+            "element": "Mail approval card ('Send' button in 'Agent editing the draft' frame)",
+            "problem": "While the agent is actively modifying the email draft (indicated by the 'Updating' badge and streaming text cursor in the body), the 'Edit' button is disabled, but the primary 'Send' button remains fully enabled and styled as the prominent solid-white CTA.",
+            "norm": "Destructive or external-facing commit actions (like sending an email to a customer) must never be enabled while the underlying content is actively mutating or streaming, as the user cannot verify what will actually be sent.",
             "severity": "P0",
-            "screenshot": "DS-06-Chat-cards.png",
-            "fix": "Remove 'Always allow' for financial/external-send tools so only 'Allow once' (or 'Approve $X') and 'Deny' appear. Translate tool identifiers into human titles (e.g., 'Mercury agent wants to send $12,400.00'), and replace '[AMOUNT]' with a formatted tabular currency string."
-          },
-          {
-            "level": "component",
-            "element": "Resolved MCP tool approval card ('Allowed once: requestSendMoney')",
-            "problem": "Once approved, the card collapses to a single line ('Allowed once: requestSendMoney') that strips out the Amount ('[AMOUNT]'), Recipient ('Northwind'), and Memo ('Pilot invoice'). A founder scrolling back through the thread has no audit trail of how much money was sent or to whom.",
-            "norm": "Financial and destructive tool-execution receipts in chat threads must preserve key transaction parameters (amount and recipient) in their resolved state for auditability and user trust.",
-            "severity": "P1",
-            "screenshot": "DS-06-Chat-cards.png",
-            "fix": "Include the primary parameters in the resolved summary line, e.g., 'Sent $12,400 to Northwind · Pilot invoice' with a tap-to-expand detail view."
-          },
-          {
-            "level": "page",
-            "element": "Split view: 'Inbox' list (left pane) and 'Inbox agent' thread (right pane)",
-            "problem": "Although 'Ana Ruiz — Re: Pilot timeline' is selected in the left Inbox list and the user is asked to approve and send a reply on the right, neither pane displays the body of Ana's incoming email (the list truncates it at 'Can we move the kickoff to Thursd...'). The user is forced to approve an outbound customer email blind, without being able to read what they are replying to.",
-            "norm": "In email-triage and draft-approval workflows, users must be able to view the source message content before approving an outbound reply.",
-            "severity": "P0",
-            "screenshot": "Inner.png",
-            "fix": "Allow tapping the selected inbox row or a 'View original email' header inside the Mail Approval Card to expand/preview Ana's full incoming message inline."
-          },
-          {
-            "level": "component",
-            "element": "Mail approval card ('Save' button, body text, and 'Not sent' state)",
-            "problem": "1) The spec states 'Body is tappable to edit,' but the card provides zero visual affordance (no pencil icon, input border, or 'Edit' label) to tell a first-time user the draft text can be modified. 2) On an unedited draft, the label 'Save' next to 'Send' is ambiguous (save changes vs. save to drafts without sending). 3) In the 'Not sent' state (DS-06-Chat-mail.png bottom), both 'Save' and 'Send' buttons are removed, leaving a dead card with no way to resume editing or send the draft later.",
-            "norm": "Editable surfaces require clear signifiers, action labels must unambiguously describe their outcome ('Save draft' vs. 'Edit'), and saved/unsent drafts must retain an action to reopen or send.",
-            "severity": "P1",
             "screenshot": "PG-A-Thread.png",
-            "fix": "Add an explicit 'Edit' affordance (or pencil icon) on the draft card, clarify 'Save' as 'Save draft' (or 'Edit'), and retain an 'Edit & send' action on cards in the 'Not sent' / saved-draft state."
+            "fix": "Disable the 'Send' button (matching the disabled styling used in the 'Empty recipient' frame) whenever the draft card is in the 'Updating' state, and re-enable it only after the agent finishes streaming changes."
+          },
+          {
+            "level": "component",
+            "element": "Composer Send button ('Composer with an oversize file' frame)",
+            "problem": "The composer displays an error chip ('! pilot-deck.pdf') and explicit blocking helper text ('pilot-deck.pdf is over 25 MB. Remove it to send.'), yet the circular Send button (up-arrow) at the bottom-right of the composer is rendered in its fully active, solid-white primary state.",
+            "norm": "When form or composer validation blocks submission, the submit button must visually and functionally reflect the disabled state so users do not repeatedly tap an active-looking CTA that cannot succeed.",
+            "severity": "P0",
+            "screenshot": "ts_row1.png",
+            "fix": "Render the composer Send button in a disabled, low-contrast state whenever an attachment exceeds the file size limit, and include the file size ('48 MB') inside the red attachment pill so the user immediately sees why it failed validation."
+          },
+          {
+            "level": "component",
+            "element": "Composer right action button ('Running, text typed' frame)",
+            "problem": "When the user types a follow-up message ('Also check Ana') while the agent is running, the button inside the right edge of the text input remains the solid-white 'Stop' button (square icon) rather than a Send/Queue control. A one-handed user who finishes typing and reflexively taps the bottom-right composer button will accidentally abort the agent's current run instead of submitting their text.",
+            "norm": "Input submission controls and process cancellation controls must not occupy the same spatial slot while text is entered; typing into a composer creates a strong expectation that the trailing button inside the text field submits the typed text.",
+            "severity": "P0",
+            "screenshot": "ts_row4.png",
+            "fix": "Move the 'Stop' action out of the text input's trailing submit slot when the user is typing (for example, place a 'Stop' pill alongside the agent's typing indicator bubble above the composer), or allow the trailing button to queue/send the typed message without killing the active run."
           },
           {
             "level": "group",
-            "element": "Agent status indicator ('••• Inbox agent is working') and tool trace ('Searched mail, 12 results')",
-            "problem": "1) In PG-A-Thread.png, '••• Inbox agent is working' appears at the bottom even though the agent has already finished drafting the reply and is paused waiting for the user's approval tap ('Needs approval'). This creates confusion about whether pressing 'Send' is safe or if the draft is still changing. (In Inner.png, showing the exact same thread state, both the working indicator and tool trace are absent.) 2) 'Searched mail, 12 results' is placed below 'Here is a draft. I have not sent it.' instead of before the response it produced, inverting chronological order.",
-            "norm": "Working/streaming indicators must terminate as soon as the agent yields control to the user for approval, and tool-use traces should precede the agent output they informed.",
+            "element": "Mail approval card 'Send' button vs. Composer Send icon ('Approval pending, typing' frame and 'Inner.png')",
+            "problem": "When a user types a modification request in the composer ('Add Jordan on Cc' in ts_row4.png or 'Also ask her for the agenda' in Inner.png) below an unapproved draft card, the composer's Send button is demoted to a bare, borderless arrow icon while the draft card's 'Send' button directly above it remains bright solid white. A rushed user typing in the composer can easily tap the prominent white 'Send' button right above the input field, sending the unedited email before the agent adds Jordan on Cc.",
+            "norm": "Visual hierarchy must follow the user's active focus; when the composer has active text focus and typed content, the composer's submit action must have clear button affordance, and competing commit buttons directly above the keyboard/composer should not overshadow it.",
             "severity": "P1",
-            "screenshot": "PG-A-Thread.png",
-            "fix": "Hide 'Inbox agent is working' while blocked on user approval (or replace with 'Waiting for your approval'), and render 'Searched mail, 12 results' above the agent's reply bubble consistently across outer and inner displays."
+            "screenshot": "ts_row4.png",
+            "fix": "Give the composer's Send button a distinct circular button container when text is entered, and visually de-emphasize the draft card's 'Send' button from solid white to secondary fill while the user is actively typing a follow-up instruction in the composer."
           },
           {
             "level": "page",
-            "element": "First-use consent sheet ('Share data with Model A?') and 'Settings, AI data sharing' toggles",
-            "problem": "1) Using placeholder jargon ('Model A', 'Speech A', 'Memory A') as primary labels confuses a non-technical startup founder. 2) The first-use sheet only asks permission to share 'messages, chat history and attachments' with 'Model A', yet the Settings screen shows 'Speech A (Recordings and spoken text)' also toggled ON without prior consent. 3) The Settings toggles use bright iOS system green (#34C759), breaking the app's strict monochrome surface rule. 4) Tapping 'Not now' on a mandatory first-visit consent sheet gives no indication that agents will be unusable.",
-            "norm": "Privacy and AI consent flows must use plain feature-led labels, never enable unconsented data categories (like voice recordings) by default, adhere to the app's color system, and explain the consequence of declining required permissions.",
+            "element": "Consent sheet and Settings toggles ('Speech, first use' and 'Settings, AI data sharing')",
+            "problem": "First, the brief specifies that the left panel of PG-B-Consent should be the first-visit sheet asking to share data with the AI model provider before using agents, but the mockup instead shows a 'Speech, first use' microphone consent sheet. Second, both panels expose cryptic placeholder names ('Model A', 'Speech A', 'Memory A') that mean nothing to a non-technical founder. Third, the green iOS toggle switches violate the app's strict monochrome design language.",
+            "norm": "Privacy and data-sharing consent screens must clearly name the actual service or plain-language capability for non-technical users, cover the primary blocker flow (model provider consent), and adhere to the product's monochrome color system.",
             "severity": "P1",
             "screenshot": "PG-B-Consent.png",
-            "fix": "Lead each toggle with the capability ('Chat & attachments', 'Voice transcription', 'Long-term memory') and list the provider in the subtitle; only enable categories explicitly consented to in onboarding; style active switches with the monochrome high-contrast token; and clarify what happens if 'Not now' is tapped."
+            "fix": "Add the primary first-visit AI Model Provider consent sheet, replace placeholder names ('Model A', 'Speech A', 'Memory A') with real provider names or clear functional labels (e.g., 'Language model', 'Voice transcription', 'Conversation memory'), and style active toggles in high-contrast monochrome white/grey rather than system green."
+          },
+          {
+            "level": "group",
+            "element": "Offline status banner ('Offline, nothing queued' vs. 'Offline, message queued')",
+            "problem": "In 'Offline, nothing queued', a top banner clearly explains: 'Offline. Messages send when you reconnect.' However, in 'Offline, message queued', as soon as the user sends a message that gets stuck in 'Waiting to send', the top offline banner disappears completely, removing the explanation for why the message is not sending.",
+            "norm": "System status banners explaining connectivity loss must persist while messages are queued offline so the user understands the root cause of the 'Waiting to send' state.",
+            "severity": "P1",
+            "screenshot": "ts_row0.png",
+            "fix": "Keep the 'Offline. Messages send when you reconnect.' banner visible at the top of the thread whenever the device is offline, especially when one or more messages are in the 'Waiting to send' state."
+          },
+          {
+            "level": "component",
+            "element": "Oversize file error bubble ('Refused: file too large' frame)",
+            "problem": "First, showing a 48 MB file already sent as a chat bubble contradicts 'ts_row1.png' ('Composer with an oversize file'), where the exact same 48 MB file is blocked in the composer before sending. Second, the recovery action 'x Remove file' on a sent message that says 'Attached the pilot deck.' is ambiguous: it is unclear whether tapping 'Remove file' will immediately send the text 'Attached the pilot deck.' without the attachment, delete the entire bubble, or return the message to the composer.",
+            "norm": "Validation should prevent impossible states consistently, and error recovery actions on multi-part messages (text + attachment) must make clear whether the accompanying text will be sent, edited, or discarded.",
+            "severity": "P1",
+            "screenshot": "ts_row0.png",
+            "fix": "If a file fails post-send validation, provide an 'Edit in composer' or 'Delete message' action rather than 'Remove file', so the user never accidentally sends a message saying 'Attached the pilot deck.' with the attachment stripped out."
+          },
+          {
+            "level": "group",
+            "element": "First-message prompt suggestions ('Chief' thread, first column)",
+            "problem": "The three starter prompt pills ('Summarize my inbox', 'Draft a reply to Ana', 'What is due this week?') use the exact same dark surface fill, corner radius, typography, and left-aligned placement as the agent's incoming greeting bubble ('Hello! How can I help?') directly above them.",
+            "norm": "Interactive prompt suggestions (which represent actions the user can send) must be visually distinct from incoming agent messages so first-time users immediately recognize them as tappable user prompts.",
+            "severity": "P1",
+            "screenshot": "ts_row3.png",
+            "fix": "Differentiate prompt suggestion chips from incoming agent bubbles by right-aligning them above the composer, adding a subtle border stroke or trailing upward-arrow/sparkle icon, and increasing vertical separation from the agent's greeting bubble."
+          },
+          {
+            "level": "group",
+            "element": "Disconnected model state ('Not sent: No model connected' frame)",
+            "problem": "When no AI model is connected (or AI data sharing is paused), the composer remains active and invites the user to type and send 'Hello', only to fail after submission with technical jargon ('Not sent: No model connected + Connect').",
+            "norm": "Prevent errors before input: if a required global dependency (like model provider consent or connection) is missing, disable or replace the composer with an inline setup prompt rather than letting the user type and fail.",
+            "severity": "P1",
+            "screenshot": "ts_row3.png",
+            "fix": "When no model is connected or AI data sharing is turned off in Settings, replace or overlay the composer with a clear banner ('AI agents are paused. Connect a model to start chatting.' with a 'Connect' button) before the user types a message."
+          },
+          {
+            "level": "component",
+            "element": "Team computer card ('Inbox agent opened Team computer' frame)",
+            "problem": "First, the 'Take control' button is styled as the prominent solid-white primary CTA—identical to 'Send' on an email approval card—encouraging a non-technical phone user to interrupt the agent and open a remote desktop view unnecessarily. Second, the dark preview rectangle inside the card is empty and misaligned, stopping roughly 35px short of the card's right padding edge.",
+            "norm": "Reserve the single high-contrast primary button per view for actions the user is required to take (such as approving a blocked action); optional override actions like taking over an agent's virtual desktop should use secondary button styling.",
+            "severity": "P2",
+            "screenshot": "ts_row3.png",
+            "fix": "Style 'Take control' as a secondary pill button (matching 'Edit' on the draft card) unless the agent is explicitly blocked waiting for human input, and fix the width of the inner screen preview container so its right margin matches its left margin (12–16px)."
+          },
+          {
+            "level": "component",
+            "element": "Archive confirmation modal ('Archive confirmation' frame)",
+            "problem": "Tapping 'Archive' in the chat menu triggers a blocking confirmation alert ('Archive this chat? It moves to Archived. You can restore it. Cancel / Archive'), even though archiving is completely non-destructive and the resulting 'Archived' view immediately displays a prominent 'Restore' button at the top.",
+            "norm": "Blocking confirmation dialogs should be reserved for irreversible destructive actions (like 'Delete chat' or 'Delete group'); reversible organization actions like 'Archive' should execute immediately with an easy undo/restore affordance.",
+            "severity": "P2",
+            "screenshot": "PG-A-Thread.png",
+            "fix": "Remove the modal confirmation step for 'Archive' and transition directly to the archived state with the top 'Restore' banner (or show a brief undo toast)."
+          },
+          {
+            "level": "component",
+            "element": "Mail approval card ('Add a recipient' in 'Empty recipient' frame)",
+            "problem": "In the 'Empty recipient' frame, the missing recipient placeholder ('Add a recipient') uses the exact same amber/yellow text color as the non-interactive 'Needs approval' status badge directly above it, with no button container, plus icon, or input affordance to indicate whether 'Add a recipient' is directly tappable or requires tapping 'Edit'.",
+            "norm": "Interactive placeholders and non-interactive status badges should not share the exact same visual treatment without clear tap affordances.",
+            "severity": "P2",
+            "screenshot": "PG-A-Thread.png",
+            "fix": "Give '+ Add a recipient' a subtle pill border or leading '+' icon so it clearly reads as a tappable target, or automatically focus the recipient field in edit mode when a draft has no recipient."
           },
           {
             "level": "layout",
-            "element": "Left control rail and bottom composer bar across thread screens",
-            "problem": "The navigation and composer layout changes unpredictably across screens: 1) PG-A-Thread.png and PG-A-GroupThread.png dedicate a 64px left column to '<', a two-icon pill, and a bottom '⋮' button, sacrificing ~15% of horizontal width on a narrow 466px screen. 2) In PG-A-ThreadStates.png, the two-icon pill and bottom '⋮' button vanish and the entire chat history and composer shift ~50px to the left. 3) In DS-06-Chat-mail.png, the button left of the composer is '+' (attach), whereas in PG-A-Thread.png and Inner.png it is '⋮' (more), leaving no visible way to attach files despite 'Refused' showing an attachment error.",
-            "norm": "Core layout grids and composer actions must remain stable across states and match the design system specification.",
-            "severity": "P1",
-            "screenshot": "PG-A-ThreadStates.png",
-            "fix": "Unify the thread header and composer bar across all states: move the secondary view switcher icons into the top header row so messages can use the full viewport width, and consistently use the '+' attachment button next to the composer as specified in DS-06-Chat."
-          },
-          {
-            "level": "page",
-            "element": "Navigation controls on Duo inner display",
-            "problem": "While the outer screens provide a '<' back button to navigate between agents, rooms, and settings, Inner.png has no back button, sidebar switcher, or navigation control anywhere on screen, trapping the user inside the Inbox / Inbox agent split view.",
-            "norm": "Every top-level adaptive layout (including dual-pane inner displays) must provide persistent navigation to reach other rooms, agents, and settings.",
-            "severity": "P1",
-            "screenshot": "Inner.png",
-            "fix": "Add a back/navigation button in the top-left of the Inbox pane or include an agent/room switcher rail."
-          },
-          {
-            "level": "group",
-            "element": "Refused message state ('Attached the pilot deck.' / 'Not sent: Attachment is too large')",
-            "problem": "1) The failed message bubble renders only plain text ('Attached the pilot deck.') with no file attachment chip, contradicting the composer spec in DS-06-Chat-mail.png where attachments render as distinct file pills ('terms.pdf'). 2) File-size limits are only surfaced after sending rather than when selecting the file. 3) For the 'Failed' state (middle panel), the 'Retry' action is a tiny ~12pt inline text link rather than a thumb-friendly touch target.",
-            "norm": "Attachment errors should visually identify the offending file chip, validate size constraints at selection time, and provide at least a 44x44pt touch target for one-handed recovery actions.",
-            "severity": "P2",
-            "screenshot": "PG-A-ThreadStates.png",
-            "fix": "Render the oversized file chip inside the bubble with an error state, validate file size upon attachment selection, and give 'Retry' and 'Edit' pill-sized 44pt tap targets."
-          },
-          {
-            "level": "component",
-            "element": "Finance agent message ('Runway is [N] mo.') and Legal agent working indicator",
-            "problem": "1) The Finance agent's bubble contains an unreplaced template token ('Runway is [N] mo.'). 2) At the bottom of the thread, '••• Legal agent is working' is colored in the Inbox agent's blue (#3B82F6) rather than the Legal agent's purple identity color (or monochrome muted text). 3) The group header pill includes a 'C' letter circle alongside geometric agent avatars, colliding with DS-06-Chat-cards.png where letter tiles ('M') denote third-party MCP integrations rather than human teammates.",
-            "norm": "Mockups must use realistic data instead of bracketed tokens, agent-specific status indicators should match the active agent's color token, and avatar conventions for humans vs. integrations must be distinct.",
-            "severity": "P2",
-            "screenshot": "PG-A-GroupThread.png",
-            "fix": "Replace '[N]' with a concrete number (e.g., '14 mo.'), tint the working indicator to match the active agent (purple for Legal agent) or neutral foreground, and distinguish human teammate avatars from square integration letter tiles."
-          },
-          {
-            "level": "component",
-            "element": "User vs. Agent chat bubbles (Dark and Light mode)",
-            "problem": "User bubbles and agent bubbles use nearly identical fill luminance, border radii, and typography in both dark mode (PG-A-Thread.png) and light mode (DS-06-Chat-mail.png), relying solely on left/right alignment. When bubbles span 75–85% of the narrow column width, the visual distinction between user prompts and agent replies blurs.",
-            "norm": "Conversational UIs should differentiate user messages from assistant responses via clear surface contrast, border treatment, or tail/corner asymmetry in addition to alignment.",
+            "element": "Left floating navigation rail vs. content column (all Duo outer frames)",
+            "problem": "Placing the 4-icon floating glass rail vertically down the left edge below the camera cutout and '9:41' clock forces the entire chat thread and settings content to indent by ~46–60px across the full height of the 466px screen, wasting ~12% of horizontal width in the lower two-thirds of the viewport while leaving only a ~2px gap between the floating rail and message elements.",
+            "norm": "On compact mobile viewports, persistent navigation chrome should minimize horizontal encroachment on the primary reading and composing column and maintain at least 8–12px of clearance from content.",
             "severity": "P2",
             "screenshot": "PG-A-Thread.png",
-            "fix": "Increase surface contrast between user and agent bubbles (e.g., higher-contrast surface fill or subtle border on user bubbles, or unbubbled left-aligned text for agent replies)."
+            "fix": "Consolidate top navigation into a single horizontal header bar alongside the agent pill (moving 'Page', 'List', and 'Chat menu' to the top-right header area), freeing the full width of the screen for messages, approval cards, and the composer."
           },
           {
-            "level": "group",
-            "element": "Composer with reply banner and attachments (top-left spec)",
-            "problem": "In the composer spec with 'Replying to Ana Ruiz', the reply banner spans the full width above the '+' button, while the input container holding 'terms.pdf', 'chart.png', and 'Check the attached|' is indented to the right of the '+' button. This creates a broken, L-shaped left edge between the reply header and the composer box.",
-            "norm": "Attached context banners (like reply quotes) should either share the exact width of the text input container they belong to or wrap cleanly inside the same parent container.",
-            "severity": "P3",
-            "screenshot": "DS-06-Chat-mail.png",
-            "fix": "Align the left edge of the 'Replying to' banner with the composer input container, or place both inside a unifiedcomposer surface."
+            "level": "layout",
+            "element": "Right-pane navigation rail and bottom-right 'Chat menu' button",
+            "problem": "On the inner display, the floating rail moves to the top-right with only two icons ('Page' and 'List'), while the three-dots 'Chat menu' button is split off to the bottom-right corner directly beside the composer's Send arrow. Meanwhile, the chat messages and draft card still leave a wide empty column down the right side below the short floating rail.",
+            "norm": "Keep related thread-level navigation controls grouped together consistently across device postures, and avoid placing a menu containing destructive actions ('Clear chat', 'Delete chat') right next to the primary composer Send button.",
+            "severity": "P2",
+            "screenshot": "Inner.png",
+            "fix": "Keep the three-dots 'Chat menu' icon inside the top-right floating control group with 'Page' and 'List', and allow the composer and message column to align cleanly without a competing button at the bottom-right."
           },
           {
             "level": "component",
-            "element": "Voice player bar ('PAUSED AT START' preview)",
-            "problem": "The right-hand preview is labeled 'PAUSED AT START', but the waveform shows 7 played bars in white and the timestamp reads '0:42 / 1:30'—identical to the mid-playback 'PLAYING' state on the left.",
-            "norm": "Design system state specimens must accurately reflect the state described by their label.",
+            "element": "Context pills below approval card ('Re: Pilot timeline' and 'Ana Ruiz')",
+            "problem": "Two dark pills ('Re: Pilot timeline' and 'Ana Ruiz') float between the mail approval card and the composer with no leading icons, no dismiss 'x' buttons, and no visual tether to either the card above or the composer below, leaving their purpose and interactivity ambiguous.",
+            "norm": "Context chips or quick-action pills must clearly communicate whether they are attached context for the composer (inside the composer border with a remove affordance) or source citations attached to the agent's response (with mail/contact icons).",
+            "severity": "P2",
+            "screenshot": "Inner.png",
+            "fix": "If these pills represent context attached to the user's follow-up prompt, move them inside the composer container above the text input (consistent with attachment chips in ts_row1.png); if they are source citations for the agent's draft, add leading mail/contact icons and attach them to the agent turn."
+          },
+          {
+            "level": "group",
+            "element": "Scrolled-up state mockups ('New messages, scrolled up' in ts_row1.png and Col 4 in ts_row3.png)",
+            "problem": "In both frames demonstrating scrolled-up floating pills ('Jump to latest v' in ts_row1.png and 'Needs approval v' in ts_row3.png), the screen contains only 2 short bubbles positioned near the bottom with 350–400px of empty black space above them, and in ts_row1.png the 'NEW' message ('Ana confirmed 10am.') is already completely visible on screen above 'Jump to latest'.",
+            "norm": "Scroll-to-bottom / jump-to-anchor indicators should only appear when the target content is actually clipped below the viewport fold in a populated thread.",
             "severity": "P3",
-            "screenshot": "DS-06-Chat-cards.png",
-            "fix": "Reset the 'PAUSED AT START' specimen to '0:00 / 1:30' with all waveform bars in the unplayed muted state (or rename the state to 'PAUSED')."
+            "screenshot": "ts_row1.png",
+            "fix": "Populate scrolled-up state mockups with enough prior conversation history to fill the viewport height so the off-screen target below the fold is logically implied."
+          },
+          {
+            "level": "component",
+            "element": "Inbox list timestamps and unread hierarchy ('Inner.png' left pane)",
+            "problem": "First, under 'Needs reply 3', the top email is timestamped '10:30 AM' (and device time is '9:41'), yet 'Other mail today 24' lists emails from '3:25 PM', '3:02 PM', and '2:41 PM' on the same day. Second, read emails without a white dot ('Example Weekly', 'Deals Daily') use the exact same bright white text contrast as unread emails with a white dot.",
+            "norm": "Mockup timestamps should be chronologically coherent, and read items in an inbox list should use muted secondary text contrast so unread/actionable items stand out at a glance.",
+            "severity": "P3",
+            "screenshot": "Inner.png",
+            "fix": "Adjust 'Other mail today' timestamps to earlier morning times (e.g., '9:15 AM', '8:50 AM', '7:30 AM') and dim the sender/subject text weight and opacity on read rows that lack an unread indicator dot."
+          },
+          {
+            "level": "component",
+            "element": "Accessible names table ('Round square' label in PG-A-Thread.png vs. PG-A-GroupThread.png) and cropped frame titles (ts_row1.png, ts_row3.png, ts_row4.png)",
+            "problem": "The accessible name for the exact same stop button ('Round square') is documented as 'Stop' in PG-A-Thread.png but as 'Stop the run' in PG-A-GroupThread.png. Additionally, the row exports in ts_row1.png, ts_row3.png, and ts_row4.png clip the frame titles along the top and bottom edges.",
+            "norm": "Accessibility labels for identical controls must be consistent across single and group threads, and specification boards should be exported without slicing frame titles.",
+            "severity": "P3",
+            "screenshot": "PG-A-GroupThread.png",
+            "fix": "Standardize the accessible label for the stop control across all thread types (e.g., 'Stop agent') and adjust artboard slice bounds on the ThreadStates rows so all frame headers remain legible."
           }
         ],
         "excellent": [
-          "Strict single-prominent-action discipline: every screen and card reserves the high-contrast solid pill fill for exactly one primary decision ('Send', 'Allow', 'Allow once', 'Continue'), making one-handed thumb decisions effortless.",
-          "Accessible agent identity system: pairing distinct geometric silhouettes (rounded pill for Inbox, triangle for Finance, teardrop for Legal) with color ensures instant scannability in group threads without relying on color alone.",
-          "Restrained monochrome surface hierarchy with semantic status accents ('Needs approval' amber, 'Sent' green, 'Not sent' red) always paired with explicit text labels and icons rather than color alone.",
-          "Inline conversational error states in PG-A-ThreadStates.png keep recovery contextual right below the affected message rather than interrupting the user with blocking alerts."
+          "Comprehensive state coverage across 20+ conversation edge cases—including offline queuing, oversize attachments, mid-stream draft updates, replaced drafts, archived restore, and computer-use blocks—gives engineering a nearly complete behavioral specification.",
+          "The inline mail approval card ('Re: Pilot timeline') is clean, scannable, and keeps the founder in the conversation flow without forcing a full-screen modal compose view for routine replies.",
+          "Distinct per-agent geometric avatars and colors (blue rounded-rect for Inbox agent, orange triangle for Finance agent, purple droplet for Legal agent) create instant sender recognition inside a restrained dark monochrome interface.",
+          "Including explicit 'Accessible names' specification tables alongside the UI frames demonstrates strong commitment to VoiceOver usability from the earliest design phase.",
+          "Inline error states on failed messages ('Not sent / Retry', 'No model connected / + Connect') pair clear red outline affordances with immediate, single-tap recovery actions right below the affected bubble."
         ]
       }
     }

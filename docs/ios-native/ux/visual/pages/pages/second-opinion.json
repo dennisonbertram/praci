@@ -2,382 +2,527 @@
   "mode": "inspect",
   "images": [
     "PG-B-Finance.png",
+    "PG-B-Legal.png",
     "PG-B-CapTable.png",
+    "PG-B-DataRoom.png",
     "PG-A-Computer.png",
-    "PG-A-AgentPage.png",
-    "PG-A-AgentList.png",
     "PG-A-Routine.png",
-    "PG-A-Artifact.png",
+    "PG-A-Image.png",
     "PG-B-BotSettings.png"
   ],
   "results": [
     {
       "model": "meta/muse-wonder",
       "ok": true,
-      "seconds": 66,
-      "costUsd": 0.1386352,
+      "seconds": 87,
+      "costUsd": 0.2853192,
       "result": {
-        "verdict": "Not ready for a first-time founder. The boards look calm and mostly legible, but orientation, labelled controls, and next actions repeatedly break down: several pages are read-only dead ends for tasks they themselves surface, the left/bottom floating controls change meaning without labels, and Bot settings shows a save failure with no recovery. Runway and schedule information is surfaced well; acting on it usually is not.",
+        "verdict": "Not ship-ready. The boards are visually coherent — dark solid content, one left glass rail, consistent titles and row patterns across Finance/Legal/CapTable/DataRoom — and state coverage (hidden, syncing, failed, reconnecting, empty) is unusually thorough. But several core first-time tasks are blocked or undiscoverable: opening a file shows no readable preview, the Bot settings Save lives in the wrong place and is near-invisible when dimmed, Computer privacy mode disappears exactly while driving, and multiple primary actions violate Praci's own 'exactly one cream prominent action' rule by being grey. Low-contrast greys, color-only distinctions, unlabeled icon-only rail buttons, and vast empty lower halves recur on almost every board.",
         "findings": [
           {
-            "level": "layout",
-            "element": "Left side strip icon stack (eye/refresh on Finance, +/refresh on Cap table, document/chat on Close checklist, share/layers on Runway summary artifact)",
-            "problem": "Primary navigation/actions are unlabelled glyphs whose meaning must be guessed and whose set changes per screen. A first-time user cannot predict what eye, layers, refresh, or + will do — + beside a cap table could dangerously imply adding a holder.",
-            "norm": "iOS HIG: icon-only controls must be instantly recognisable or labelled; destructive/financial actions must never be ambiguous.",
+            "level": "component",
+            "element": "Runway '[N] mo' value in Amounts-hidden frame",
+            "problem": "Masking is inconsistent: Cash, accounts, upcoming and the burn tooltip become '••••'/'•••' but Runway still shows '[N] mo' and the Monthly burn bars still show full relative heights, so the hidden figures are still inferable.",
+            "norm": "Privacy/hide-amounts toggles (Mercury, Apple Wallet style) mask every derived figure and chart value consistently, or explicitly state what stays visible.",
             "severity": "P1",
             "screenshot": "PG-B-Finance.png",
-            "fix": "Use a fixed, labelled strip vocabulary across the app (Back, Ask bot, Refresh, More with text or a sheet). Remove + from Cap table or label its exact action and gate it with confirmation."
-          },
-          {
-            "level": "layout",
-            "element": "Bottom-left circular floating button (chat bubble on Finance/Cap table/Routine, lock on Computer, checkmark on Bot settings, vertical dots on Artifact/AgentList)",
-            "problem": "The same prominent position and white-circle treatment means chat on one screen, lock on another, save on another, and a menu on another. Position memory actively misleads the user; on Bot settings the expected chat button silently becomes Save.",
-            "norm": "Consistent placement = consistent function; one prominent action per view must be identifiable without prior learning.",
-            "severity": "P1",
-            "screenshot": "PG-B-BotSettings.png",
-            "fix": "Reserve bottom-left exclusively for 'Ask bot' everywhere. Put Save as a labelled 'Save bot' pill bottom-right, lock/control actions in the Computer header, and menus in a labelled More button."
-          },
-          {
-            "level": "layout",
-            "element": "Lower half of Cap table, Weekly runway summary, Runway summary artifact and Close checklist pages",
-            "problem": "Content stops halfway and the remaining ~45% of the 466x678 surface is empty black. Density collapses, the pages read as unfinished, and thumb-reach space that should hold the next action holds nothing.",
-            "norm": "Fit the task on one screen with the primary action in lower thumb reach; whitespace should separate groups, not replace content.",
-            "severity": "P2",
-            "screenshot": "PG-B-CapTable.png",
-            "fix": "Either add the task-relevant next block (e.g. recent changes, version history, run history) or anchor the primary action at the bottom. Do not ship top-loaded half-pages."
+            "fix": "Mask Runway too (or label it 'Runway stays visible'), and flatten/desaturate the bar heights or replace the chart with a masked placeholder while hidden."
           },
           {
             "level": "component",
-            "element": "Monthly burn bar chart with one white highlighted bar and '[AMOUNT]' at top right",
-            "problem": "No month labels, no axis, no explanation of why one bar is white, and no value for the highlighted month. The user cannot tell which month spiked or by how much — the core finance question is unanswerable from the chart.",
-            "norm": "Charts require labelled axes/periods and a readable value for any emphasised data point.",
+            "element": "Monthly burn bar chart (Nov–Oct)",
+            "problem": "No y-axis, no values on any bar except the selected Oct '[AMOUNT]' pill, and non-highlighted bars are very dark grey on near-black. A first-time founder cannot read burn for any month except the latest, or judge scale.",
+            "norm": "Financial charts need an axis or per-bar value on tap, and data-ink contrast of at least 3:1 against the surface.",
             "severity": "P1",
             "screenshot": "PG-B-Finance.png",
-            "fix": "Label months under bars, put the selected month's burn value and delta under the chart, and make bars tappable with the selection state named in text."
-          },
-          {
-            "level": "group",
-            "element": "'Accounts' rows (Operating/Cards with chevrons) vs 'Upcoming' rows (Northwind invoice, Acme Payroll without chevrons)",
-            "problem": "Affordance is inconsistent: account rows look tappable, bill rows look static, yet bills are the items needing action. There is no due status, no Pay/Review action, and payroll due Oct 31 has no urgency treatment. The page informs but cannot progress the task.",
-            "norm": "One prominent action per view; tappable rows share one affordance; time-sensitive financial items expose their action inline.",
-            "severity": "P1",
-            "screenshot": "PG-B-Finance.png",
-            "fix": "Give Upcoming rows the same chevron/row behaviour, add status chips ('Due in 3 days'), and add one prominent action such as 'Review upcoming payments'."
+            "fix": "Add a light baseline/gridline with 2–3 value labels, raise inactive bar contrast, and show the amount pill for the tapped bar in every period mode."
           },
           {
             "level": "component",
-            "element": "'Reconnect' underlined text at top right while green dot states 'Carta is connected'",
-            "problem": "Status and action contradict each other: if Carta is connected, a first-time user will read Reconnect as a warning or a trap. It is also a small text-only target well under 44 pt.",
-            "norm": "Status and available action must agree; interactive targets minimum 44x44 pt.",
+            "element": "Eye / eye-off toggle in the left rail (below '<')",
+            "problem": "The only control for hiding amounts is an unlabeled icon in the far left rail, physically separated from every amount it affects, with no label, tooltip or state text. First-time users will not connect it to the figures on the right.",
+            "norm": "Icon-only controls that change data visibility need a text label or placement adjacent to the affected data (iOS HIG: icons need labels where meaning isn't universal).",
             "severity": "P1",
-            "screenshot": "PG-B-CapTable.png",
-            "fix": "When connected, remove Reconnect or move it into a labelled connection menu ('Connected to Carta · Manage'). Show Reconnect as a 44 pt button only when disconnected."
+            "screenshot": "PG-B-Finance.png",
+            "fix": "Move the toggle next to the Cash card or add a 'Hide amounts' labeled row; keep the rail icon only as a secondary shortcut with an accessibility label."
           },
           {
             "level": "group",
-            "element": "Donut legend (Founders/Option pool/Seed investors/Advisors with [N]%) duplicated by the 'Holders' list directly below ([N], no %)",
-            "problem": "The same four categories are presented twice with different units, doubling reading effort and inviting the question of which number is shares and which is percent. Screen space spent on duplication is why the page is half empty.",
-            "norm": "Each fact appears once; lists add new information (detail, change, drill-down), not a restatement of the chart.",
+            "element": "Accounts + Upcoming rows ('Operating / Mercury agent', 'Northwind invoice / Due Oct 24')",
+            "problem": "Account rows show an agent name ('Mercury agent', 'Brex agent') instead of account type/last-4, and Upcoming rows show due date but no urgency, total due, or any pay/review action — the chevron is the only affordance. 'Check upcoming bills' ends in a dead list.",
+            "norm": "Finance lists (Mercury, Ramp) show account identity (type ••1234) and bills with amount, due-in state and a primary next action.",
             "severity": "P2",
-            "screenshot": "PG-B-CapTable.png",
-            "fix": "Keep the donut as the summary and make Holders show new value: holder count, change since last update, or fully-diluted detail — with units in the column header."
+            "screenshot": "PG-B-Finance.png",
+            "fix": "Show 'Operating ••[N]' under the name (agent as a secondary tag), add a 'Due in [N] days' state, and give Upcoming a total header plus tap-through to a bill detail with an action."
           },
           {
             "level": "page",
-            "element": "Whole Cap table view — no export, share, or 'what changed' action",
-            "problem": "Founders check a cap table to answer or forward it ('who owns what?'). The only exits are back, an unexplained +, refresh, and chat. There is no way to share the table with a co-founder or see what Carta changed.",
-            "norm": "A read-only data page must offer the canonical next step for its category (share/export/history).",
+            "element": "Whole Finance view — no cream prominent action",
+            "problem": "There is no tinted primary action at all; the only cream element is the small chat bubble at bottom-left. This breaks the stated rule of exactly one cream prominent action per view and gives the page no clear next step after checking runway.",
+            "norm": "Praci design rule: exactly one tinted (cream) prominent action per view; category convention is a clear primary next action per dashboard.",
             "severity": "P2",
-            "screenshot": "PG-B-CapTable.png",
-            "fix": "Add one prominent 'Share cap table' action and a 'Last updated from Carta' line; demote refresh into the connection menu."
+            "screenshot": "PG-B-Finance.png",
+            "fix": "Either declare the chat button as the view's cream action and make it a labeled pill ('Ask Finance agent'), or add one cream action (e.g. on Upcoming) and demote chat to glass."
+          },
+          {
+            "level": "component",
+            "element": "Scan (expand/scan icon) — second button in the left rail, all frames",
+            "problem": "Running a scan — a headline task for this screen — is an unlabeled scan-frame glyph in the rail. Only the 'Not scanned yet' card has a labeled 'Scan now'. In the default frame ('last scan succeeded, no summary card') there is also no 'last scanned' time, so the user can't tell freshness or find rescan.",
+            "norm": "Primary recurring actions need labels and status ('Last scanned Oct 12 · Scan again'); icon-only rail buttons are for navigation, not core tasks.",
+            "severity": "P0",
+            "screenshot": "PG-B-Legal.png",
+            "fix": "Add a labeled header card in every state: 'Last scan [date] · Scan again' (grey button), reserving the rail icon as a shortcut. Make 'Scan now' in the not-scanned card the one cream action."
+          },
+          {
+            "level": "component",
+            "element": "'Blocked' contract row — 'Vendor master agreement / Scan could not read this PDF'",
+            "problem": "The failure is explained in small red text but the row offers nothing except the same '>' as healthy rows: no Replace, Re-scan, Open anyway, or reason (corrupt? password?). A first-time founder hits a dead end on exactly the file that needs attention.",
+            "norm": "Error rows must pair the cause with a recovery action inline (iOS HIG: errors should suggest a solution).",
+            "severity": "P1",
+            "screenshot": "PG-B-Legal.png",
+            "fix": "Add inline 'Try again' and 'Replace file' actions on the blocked row (or a detail sheet from the chevron titled with the cause and those two buttons)."
           },
           {
             "level": "page",
-            "element": "Team Computer browser pane (grey skeleton bars, blank address pill, macOS traffic-light dots) with 'You have control' pill",
-            "problem": "The user is told they control a shared computer but cannot read a page title, URL, app name, or any content — they would be clicking blind on a machine teammates share. There is also no visible agent activity, so 'watch what the bot is doing' is impossible.",
-            "norm": "Remote control requires legible context (site/app, URL, actor activity) before input is enabled; never ask users to act on content they cannot verify.",
+            "element": "'Deadlines' segment in the Contracts/Deadlines segmented control",
+            "problem": "Every one of the five frames shows Contracts; the Deadlines segment is never shown in any state. The user cannot learn what Deadlines contains, whether scan results feed it, or how deadline dates relate to 'Ends Dec 31' subtitles.",
+            "norm": "Design boards and shipped apps must make both segments of a segmented control reachable and self-describing; deadlines are the stated output of the scan ('Find deadlines in contracts').",
+            "severity": "P1",
+            "screenshot": "PG-B-Legal.png",
+            "fix": "Include at least a Deadlines state in the board set, and add a count/badge on the segment (e.g. 'Deadlines 3') after a successful scan so the payoff of scanning is visible."
+          },
+          {
+            "level": "component",
+            "element": "'Scanning / [N] of [N] files' progress card",
+            "problem": "Progress is shown but there is no Cancel, and the rail scan button is merely 'dimmed' — it is unclear whether tapping it stops, restarts, or does nothing. The existing list also silently drops to 2 contracts during scanning with no indication the rest are pending.",
+            "norm": "Long-running jobs need a visible Cancel and stable content; dimmed controls must read as disabled, not just decorative.",
+            "severity": "P2",
+            "screenshot": "PG-B-Legal.png",
+            "fix": "Add 'Cancel' to the scanning card, keep the full previous list under a 'Updating…' state, and fully disable (reduce contrast + no tap target) the rail scan button while running."
+          },
+          {
+            "level": "component",
+            "element": "Ownership donut ('Shares [N]') and holder color squares",
+            "problem": "The donut uses near-identical greys/white with no legend; holders below have tiny grey squares that don't perceptibly match segments (Option pool's is almost invisible on dark). The user cannot map who owns which slice — the core question of this screen.",
+            "norm": "Donut charts require a legend with distinct, labeled colors keyed to list rows (Carta uses distinct colors + % per holder).",
+            "severity": "P1",
+            "screenshot": "PG-B-CapTable.png",
+            "fix": "Give each holder a distinct color used identically in donut, list square and holder detail; add % labels on or beside segments for holders above ~5%."
+          },
+          {
+            "level": "component",
+            "element": "'+ Add contact' row inside the Holders list",
+            "problem": "An action is disguised as a list row complete with navigation chevron, implying a detail page. Worse, the resulting sheet collects Name, Email and 'Holder: Sam Ortiz / Seed investor' — selecting an existing holder inside an Add-contact form is unexplained, and there is no shares/ownership/type field, so the user can't add an actual stakeholder.",
+            "norm": "Add actions use a clearly styled button/plus affordance; forms must contain the fields that define the entity being created.",
+            "severity": "P0",
+            "screenshot": "PG-B-CapTable.png",
+            "fix": "Restyle as a distinct dashed/button row without chevron. In the sheet, replace the mysterious 'Holder' picker with 'Type: Founder / Investor / Advisor / Option pool', plus optional Shares field; explain in one line what a contact is vs a holder."
+          },
+          {
+            "level": "component",
+            "element": "'Reconnect' button in 'Carta is not connected' state",
+            "problem": "A never-connected service says 'Reconnect', and the card gives no explanation of what Carta is, what connecting grants, or what the user will leave the app to do. First-time founders are asked to OAuth into an unexplained service with a grey (non-prominent) button, breaking the one-cream-action rule.",
+            "norm": "First-connect flows say 'Connect', explain the integration and permissions in plain language, and use the primary action style.",
+            "severity": "P1",
+            "screenshot": "PG-B-CapTable.png",
+            "fix": "Label it 'Connect Carta', add one line ('Syncs shareholders and ownership from Carta. Read-only.'), and make it the view's cream action. Keep 'Reconnect' only for the expired state."
+          },
+          {
+            "level": "page",
+            "element": "Holder detail — 'Ana Ruiz / Founder' (Shares, Ownership, Vested, Email rows)",
+            "problem": "Read-only dead end: email is plain text (not a mail action), there is no vesting schedule behind 'Vested [N]%', no edit, and no link back to the contract/grant. Every value is a placeholder with no source ('via Carta, synced [date]').",
+            "norm": "Detail screens in cap-table tools (Carta/Pulley) make contact actionable and show grant/vesting breakdown with sync provenance.",
+            "severity": "P2",
+            "screenshot": "PG-B-CapTable.png",
+            "fix": "Make Email tappable (Mail/ Copy), expand Vested into a small schedule (vested/total, next vest date), and add a 'Synced from Carta [date]' footer."
+          },
+          {
+            "level": "component",
+            "element": "'Ask about this file' file view — 'Pitch deck v3.pdf' preview area",
+            "problem": "The 'preview' is a huge empty grey rectangle with a generic document glyph: no rendered page, thumbnail, page count, size, or share/download. The stated task 'open a file and ask about it' fails at 'open' — the user must ask an agent about content they cannot see.",
+            "norm": "File viewers (Files, Drive, Dropbox) render the actual first page with page/size metadata and standard share actions; AI-ask is secondary.",
+            "severity": "P0",
+            "screenshot": "PG-B-DataRoom.png",
+            "fix": "Render a real PDF first-page thumbnail (or paged preview), add 'PDF · Oct 9 · [N] pages · [size]' metadata, and add Share/Download as glass rail buttons; keep 'Ask about this file' as the one cream action below."
+          },
+          {
+            "level": "component",
+            "element": "'Add files' button in 'No files yet' empty state vs '+' rail button",
+            "problem": "Two competing add paths: the unlabeled '+' in the left rail exists on every frame and the empty state adds a centered 'Add files' button — which is grey, violating the one-cream-action rule for the view's only possible action. Similarly 'Load more' as a full-width button row is a dated pagination pattern that hides total count ('[N] items' notwithstanding).",
+            "norm": "Empty states have exactly one prominent (here cream) CTA; iOS lists use infinite scroll or 'Showing X of Y' rather than Load-more buttons.",
+            "severity": "P1",
+            "screenshot": "PG-B-DataRoom.png",
+            "fix": "Make empty-state 'Add files' cream and remove the rail '+' on that state (or vice versa). Replace 'Load more' with auto-loading plus a '5 of [N]' footer."
+          },
+          {
+            "level": "group",
+            "element": "Thread composer frame — 'Data room agent', attachment menu (Photos / Files / Data room) + composer '+'",
+            "problem": "The floating attachment menu duplicates its own trigger: the composer's '+' presumably opens it, but the menu floats disconnected above the bar with no highlight on the trigger, no send button is visible in the composer (only mic), and the incoming bubble 'What should I look at?' has no agent name/time context. Users can't tell how to send typed text.",
+            "norm": "Chat composers (iMessage/Messages pattern) show a send affordance once text exists and anchor attachment sheets to their trigger with a clear selected state.",
+            "severity": "P2",
+            "screenshot": "PG-B-DataRoom.png",
+            "fix": "Anchor the menu to the '+' with the button in pressed state, swap mic for a send arrow when the field has text, and label the agent bubble with 'Data room agent'."
+          },
+          {
+            "level": "group",
+            "element": "Team / Private segmented control — present in Watching, Starting, Control ended, Can't connect; absent in In control, Agent waiting, Reconnecting",
+            "problem": "The privacy mode switch vanishes in exactly the states where the user is driving or being asked to sign into a bank portal — the moment Private matters most. There's no explanation of what Private hides from teammates, so a founder may type bank credentials while still in Team without any warning.",
+            "norm": "Mode controls that affect who can see credentials must persist and be confirmed at sensitive moments; disappearing controls break spatial consistency.",
             "severity": "P0",
             "screenshot": "PG-A-Computer.png",
-            "fix": "Render the real site/app name, full URL, and live content at readable size, plus an activity line ('Finance agent is viewing Mercury'). Disable input until content is legible."
+            "fix": "Keep Team/Private visible (disabled-with-reason if switching mid-drive is unsafe: 'Release control to switch'), and when a sign-in is requested in Team mode show 'Teammates can see this screen' above 'I'm done'."
           },
           {
-            "level": "group",
-            "element": "Bottom keyboard row 'Esc / Tab / Ctrl / arrow keys' plus bottom-left lock button beside 'You have control'",
-            "problem": "Ctrl alone does nothing useful, there are no letter keys, modifiers, Return, or paste — so real computer tasks cannot be completed. The lock icon contradicts 'You have control': does it lock the computer, lock in my control, or release it? Two competing control concepts with no labels.",
-            "norm": "Remote-control toolbars must support complete common tasks and label session actions in words ('Release control', 'Lock session').",
+            "level": "component",
+            "element": "Keyboard accessory bar (Esc Tab Ctrl ← ↓ ↑ →) in 'In control' and 'Agent waiting'",
+            "problem": "Keys are tiny grey pills squeezed over the browser, missing the keys a bank-login actually needs (Enter/Return, Delete, Shift, .com/@), and the bar appears in Agent-waiting too — where status says the Finance agent is waiting, yet the user already has a keyboard, blurring who is driving. No tap target looks ≥44pt tall.",
+            "norm": "Remote-control keyboards (Screens, Jump Desktop) are full-width, ≥44pt targets with Return/Delete and a show/hide keyboard toggle as first key (present but unlabeled here).",
             "severity": "P1",
             "screenshot": "PG-A-Computer.png",
-            "fix": "Replace the lock glyph with a labelled 'Release control' button, and expand the keyboard to include Return, Delete, Cmd/Ctrl combos and 'Type text…' dictation input."
+            "fix": "Enlarge keys to 44pt, add Return and Delete, label the keyboard-toggle icon, and only show the bar after 'Take control' is confirmed — in Agent-waiting, show it after the user taps the sign-in prompt."
           },
           {
             "level": "component",
-            "element": "'Finance agent' header pill with orange warning-triangle icon (repeated on Close checklist and Weekly runway summary pills)",
-            "problem": "The agent's identity mark is a hazard symbol. Every Finance agent page reads as an alert, training the user to either panic or ignore real warnings. It also appears where a page title should be.",
-            "norm": "Warning iconography is reserved for actual warnings; identity/avatar elements must be neutral and consistent.",
+            "element": "'Take control' button in 'Starting' state (grey/disabled) and 'Try again' in 'Control denied'",
+            "problem": "In Starting, a disabled cream-shaped button still reads as the primary action with no Cancel for a hung start. In Control denied, the sole cream action 'Try again' encourages fighting 'Jordan is driving' for control, with no 'Ask Jordan' / 'Notify me when free' path — socially and functionally wrong for a shared computer.",
+            "norm": "Disabled primaries need an enabled escape (Cancel); contention states offer request/notify, not retry (Google Docs / Figma presence pattern).",
             "severity": "P1",
-            "screenshot": "PG-A-AgentPage.png",
-            "fix": "Give each bot a neutral avatar/colour (match the Bot settings colour picker) and reserve the triangle for inline, specific alerts with explanatory text."
-          },
-          {
-            "level": "group",
-            "element": "Runway line chart above bullets '4 card expenses need receipts' and 'One invoice is due Friday'",
-            "problem": "The chart has no axes, units, or time labels, and the two bullets are the actual tasks yet are plain text — tapping them apparently does nothing. The page diagnoses problems and offers zero path to fix them without hunting through chat.",
-            "norm": "Every surfaced task must be actionable in place; charts need labelled axes and units.",
-            "severity": "P1",
-            "screenshot": "PG-A-AgentPage.png",
-            "fix": "Make each bullet a tappable row ('4 card expenses need receipts >') deep-linking to the fix, label the chart's months and cash values, and add one primary action if a single next step dominates."
-          },
-          {
-            "level": "page",
-            "element": "Header pill reading 'Close checklist' as the page's only title, with checklist items below",
-            "problem": "The user is told an action, not where they are: is this the Finance close, whose checklist, for which period? There is no progress ('2 of 5 done'), no owner, and no completion state, so working through it has no visible finish line.",
-            "norm": "Every view answers 'where am I' with a noun title; progress tasks show progress and a clear completion action.",
-            "severity": "P1",
-            "screenshot": "PG-A-AgentList.png",
-            "fix": "Title it e.g. 'October close · Finance agent', add a '2 of 5 done' progress indicator, and show a prominent 'Finish close' state when all items are checked."
+            "screenshot": "PG-A-Computer.png",
+            "fix": "Starting: replace with 'Cancel' (glass) + progress text. Control denied: cream action becomes 'Ask Jordan for control', with 'Try again' demoted to text button."
           },
           {
             "level": "component",
-            "element": "Unchecked circular checkboxes and grey strikethrough completed items ('Collect missing receipts')",
-            "problem": "Empty circles are low-contrast outlines on black, completed items rely on strikethrough plus greying (hard to read, and strikethrough alone reads as 'deleted' to new users). Checkbox tap targets appear smaller than the row, though the whole row should toggle.",
-            "norm": "Minimum 44 pt targets (make the full row tappable); completion needs check + colour + text treatment, not strikethrough alone at low contrast.",
+            "element": "Left-rail X + fullscreen buttons — combined vertical pill in Watching/Control ended vs separate circles in In control/Reconnecting",
+            "problem": "The same two controls change grouping between states, and in 'In control' only fullscreen remains (no X to exit while driving — user must find Release control first to leave). Fullscreen glyph (four corners) is unlabeled and very small for a core 'see the remote screen bigger' need on a 466pt strip.",
+            "norm": "Persistent chrome must not re-group between states of one screen; exit must always be available.",
             "severity": "P2",
-            "screenshot": "PG-A-AgentList.png",
-            "fix": "Make entire rows 44+ pt toggle targets, keep completed text legible with a green check chip and reduced — not greyed-out — emphasis."
+            "screenshot": "PG-A-Computer.png",
+            "fix": "Fix one rail composition for all states: X (exit, always), fullscreen below it, same glass grouping; exit while driving should auto-release control with one confirmation."
           },
           {
-            "level": "page",
-            "element": "Whole Weekly runway summary routine view: schedule card and PROMPT block only, back button and chat as the only controls",
-            "problem": "The persona goal is to tune a bot's routine, but there is no Pause, no Edit schedule, no Edit prompt affordance (the prompt is a flat text block), and no Run now. Inspection is a dead end — every change requires starting a chat and hoping.",
-            "norm": "A settings/inspection page for a scheduled job must expose pause, edit, and run-now as its primary actions.",
+            "level": "component",
+            "element": "'Finance agent' pill with orange ⚠ triangle icon (top of Routines, Routine, Run history)",
+            "problem": "The agent's avatar is a warning triangle — on every Routine screen it reads as an alert attached to the Finance agent, colliding with genuine failures on the same screens ('Last run failed' in red below). Users will misread identity as error.",
+            "norm": "Warning iconography is reserved for actual warnings; agent identity uses its bot glyph/color (as Bot settings does with the blue Inbox-agent icon).",
             "severity": "P1",
             "screenshot": "PG-A-Routine.png",
-            "fix": "Add a labelled Pause/Resume toggle in the schedule card, tappable schedule and prompt rows with chevrons, and one prominent 'Run now' action."
-          },
-          {
-            "level": "group",
-            "element": "Duplicated titles and inconsistent metrics: pill 'Runway summary' + card heading 'Runway summary', and Cash/Runway cards with Burn omitted",
-            "problem": "The same title appears twice within centimetres while the metric set silently differs from the AgentPage version of this same summary (which shows Cash, Burn/mo, Runway). The founder cannot tell if this artifact is the same page, an older copy, or a different document.",
-            "norm": "One title per view; the same named document shows the same data model everywhere, with version/time context explaining any difference.",
-            "severity": "P1",
-            "screenshot": "PG-A-Artifact.png",
-            "fix": "Drop the pill duplication, keep one title with 'Updated today by Finance agent', restore Burn for parity, and link 'Open live page' if the artifact is a snapshot."
+            "fix": "Use the Finance agent's bot icon/color in the pill; reserve ⚠ for the failed-run rows and the Load-error state only."
           },
           {
             "level": "component",
-            "element": "Bottom-centre version pager '< v5 of 5 >' with small grey chevrons",
-            "problem": "Version paging is the page's only navigation but chevrons are small, low-contrast, likely under 44 pt, and give no date, author, or what changed — flipping versions is meaningless comparison. Nested inner Cash/Runway cards also reuse near-identical corner radii inside the parent card, breaking concentric corners.",
-            "norm": "44 pt targets; version controls show date/author/diff context; nested surfaces use concentric radii (inner = outer − padding).",
-            "severity": "P2",
-            "screenshot": "PG-A-Artifact.png",
-            "fix": "Enlarge pager targets to 44 pt, label versions with date ('v5 · Today'), add 'What changed', and reduce inner card corner radius to be concentric with the parent card."
+            "element": "More menu — 'Pause routine' row with toggle switch (on)",
+            "problem": "The toggle is shown ON next to the label 'Pause routine': does ON mean paused, or that pausing is enabled? State and action are conflated — and neither the Routine detail ('Next run Mon, Oct 26') nor the list entry for this routine shows a Paused state that would confirm the result.",
+            "norm": "Settings toggles label the state ('Routine active') or menus use a plain action ('Pause routine') that flips to 'Resume routine' (iOS Shortcuts/Reminders pattern).",
+            "severity": "P1",
+            "screenshot": "PG-A-Routine.png",
+            "fix": "Make it a text action that toggles to 'Resume routine', and reflect Paused on the detail schedule line and list row (as 'Receipt reminders · Paused' already does in the list)."
           },
           {
-            "level": "page",
-            "element": "'Could not save bot' red text above an unlabelled white checkmark floating button",
-            "problem": "Saving has failed and the user has no idea why, which field is at fault, or what to do next — there is no Retry, no inline field error, and the save control itself is an unexplained checkmark in the chat-button position. This blocks the core 'tune a bot' task entirely.",
-            "norm": "Errors must state cause and recovery at the point of failure, with a labelled retry; primary save actions are labelled text buttons.",
+            "level": "group",
+            "element": "'Open last run' + 'PROMPT' block on Routine detail",
+            "problem": "'Open last run' (grey, clock icon) is ambiguous — a run is a log/output, not labeled as such ('Last run output'), and 'Updates: Runway summary >' uses unexplained jargon for where output goes. The PROMPT text is the only editable substance of the routine but reads as read-only body copy; editing hides behind 'Edit routine' in the ••• menu in the left rail (a tiny stacked back+••• pill).",
+            "norm": "Primary edit affordances for the main content of a detail screen belong on the content itself (Edit button/pencil on the card), with destinations named as pages the user recognizes.",
+            "severity": "P2",
+            "screenshot": "PG-A-Routine.png",
+            "fix": "Rename to 'View last run's output', change 'Updates' to 'Saves to page: Runway summary', and put an 'Edit' pill on the Prompt card itself; keep the rail ••• as duplicate only."
+          },
+          {
+            "level": "component",
+            "element": "Left rail tool cluster (X, share/upload, image icon, •••) — 'Image' frame",
+            "problem": "Three unlabeled icons under the close button: share (cream circle), an image/versions glyph, and •••. The image glyph's purpose is unguessable (it later turns out Versions live inside ••• → Versions), and there is no delete/export discoverability without opening the menu. The chart image itself also runs to the right screen edge, cropped, with no zoom or fit indication.",
+            "norm": "Photo viewers (iOS Photos) use a bottom bar with labeled share/info/delete and fit-to-screen imagery with pinch affordance; icon-only stacks need labels for non-universal glyphs.",
+            "severity": "P1",
+            "screenshot": "PG-A-Image.png",
+            "fix": "Move to a labeled bottom bar (Share, Versions, Delete) or add text under rail icons; fit the image fully within the content area with margin and a subtle 'Tap to zoom' state on first view."
+          },
+          {
+            "level": "component",
+            "element": "Share button behavior — 'Saved to Photos' toast",
+            "problem": "Tapping the universal share/upload glyph produces 'Saved to Photos' with no share sheet shown anywhere in the board set. The stated task 'view and share an image' has no share destination (team, mail, copy link) — save-to-device and share are conflated under one icon.",
+            "norm": "The iOS share glyph must open the system share sheet; saving to Photos is one destination inside it, confirmed afterward.",
+            "severity": "P1",
+            "screenshot": "PG-A-Image.png",
+            "fix": "Show the share-sheet state in the boards (destinations incl. Save to Photos, Copy, Send to team); keep the green-check toast as the post-save confirmation only."
+          },
+          {
+            "level": "component",
+            "element": "Versions menu (Version 3 Today ✓ / Version 2 Oct 17 / Version 1 Oct 15)",
+            "problem": "Selecting an older version's consequence is unstated: does it preview, restore, or replace current? The checkmark marks 'Today' but there's no 'Viewing' vs 'Current' language and no Restore action, risking a founder silently reverting a board chart.",
+            "norm": "Version pickers (Google Docs, Notion) preview read-only first, then offer an explicit Restore with the current version preserved.",
+            "severity": "P2",
+            "screenshot": "PG-A-Image.png",
+            "fix": "Tapping a version opens a preview banner 'Viewing Version 2 — Oct 17' with cream 'Restore this version' and glass 'Back to latest'."
+          },
+          {
+            "level": "component",
+            "element": "'Save' button — bottom-left circular pill ('Unchanged: Save dimmed', 'Edited: Save ready', 'Saving', 'Error')",
+            "problem": "Save is exiled to the bottom-left corner, in/under the rail zone, far from every field it commits. Dimmed it is dark-grey text on near-black — effectively invisible; a first-time user who renames the bot will look top-right (where Add-contact's Save correctly sits) and conclude changes auto-save or are lost. Inconsistent with PG-B-CapTable.png's sheet, which puts Save top-right.",
+            "norm": "Form commit actions sit top-right (iOS sheets) or as a full-width bottom CTA above the keyboard — consistently across the app (HIG).",
             "severity": "P0",
             "screenshot": "PG-B-BotSettings.png",
-            "fix": "Replace the checkmark with a labelled 'Save' pill, attach the error to the failing field with a reason ('Name is already used'), and add an inline 'Try again' action; keep unsaved-changes state visible."
+            "fix": "Move Save to the top-right of the header (mirroring Add contact) or a full-width cream bar docked above the bottom; keep the dimmed state at ≥60% contrast with 'No changes' hint."
+          },
+          {
+            "level": "component",
+            "element": "Error bar — 'Save' + 'Could not save. No connection.' (red) + 'Retry' (plain white text, far right)",
+            "problem": "The failure message is stranded in the bottom bar, detached from any field, and 'Retry' is bare text with no button chrome or minimum tap target at the opposite edge from Save — while Save also remains active, offering two competing recovery actions for the same failure.",
+            "norm": "Save errors appear adjacent to the commit action as one clear recovery ('Retry' as the button, original action replaced), with ≥44pt targets.",
+            "severity": "P1",
+            "screenshot": "PG-B-BotSettings.png",
+            "fix": "On error, replace Save with a cream 'Retry' pill and put the red cause directly above the bottom bar, full-width; dismiss the duplicate plain-text Retry."
           },
           {
             "level": "group",
-            "element": "Name 'Inbox agent' / Title 'Sorts and answers mail' / Description 'Triage mail, draft replies' stacked text fields under header 'Bot settings'",
-            "problem": "Three overlapping fields with jargon distinctions a first-time founder cannot infer — Title and Description say nearly the same thing twice. The header also never names which bot until the first field, and this is the Inbox agent amid an otherwise Finance-led journey, with no cue about how the user arrived here.",
-            "norm": "Form fields must be mutually exclusive, plainly labelled with helper text, and the edited object's name belongs in the page title.",
-            "severity": "P2",
+            "element": "Name field (bot icon + 'Inbox agent'), Role field ('Sorts and answers mail'), Advanced row",
+            "problem": "Name and Role are both plain dark text fields with no edit/pencil affordance, character guidance, or distinction between display name and behavior-defining Role — yet editing Role is what flips Save to ready. 'Advanced >' has no descriptor, so tuning a bot beyond color/voice is a leap of faith, and backing out with '<' after edits has no unsaved-changes confirmation anywhere in the set.",
+            "norm": "Editable fields signal editability (chevron/caret/focus ring); destructive exits from dirty forms confirm discard (iOS 'Discard Changes?').",
+            "severity": "P1",
             "screenshot": "PG-B-BotSettings.png",
-            "fix": "Title the page 'Inbox agent settings', merge Title/Description into one 'What this bot does' field with a plain-language example, and add helper text under each remaining field."
+            "fix": "Add a pencil/caret affordance and helper text under Role ('This tells the bot what to do'), a one-line descriptor under Advanced ('Model, tools, permissions'), and a discard-confirmation when '<' is tapped with unsaved edits."
           },
           {
-            "level": "component",
-            "element": "Colour picker row of seven small colour dots with white ring on teal",
-            "problem": "Dots appear roughly 28-32 pt — below the 44 pt minimum — are unlabelled (colour-blind users get no names), and it is never explained what the colour controls (avatar? messages? pages?), so the choice feels arbitrary.",
-            "norm": "44 pt minimum targets; colour choices need accessible names and a stated effect with preview.",
+            "level": "layout",
+            "element": "Left floating rail composition — all boards (back '<' top, 1–2 icons, cream chat bubble bottom-left)",
+            "problem": "The rail wastes its middle ~60% as empty black while content crams to the right; the chat bubble sits at the extreme bottom-left corner, small and far from the content it discusses, and on PG-A-Routine.png Load-error it inexplicably renders dark instead of cream. Top '<' buttons sit directly under the vertical Dynamic Island + '9:41', a cramped, hard-to-read stack repeated identically on every frame.",
+            "norm": "Floating glass nav should group controls cohesively (≤3 glass groups) with primary conversation access thumb-reachable and state-consistent; time/status belongs to the system status area, not stacked under the Island.",
             "severity": "P2",
-            "screenshot": "PG-B-BotSettings.png",
-            "fix": "Enlarge swatches to 44 pt, add the colour name under the selected swatch, and show a live preview chip of the bot's avatar/name in the chosen colour."
-          },
-          {
-            "level": "component",
-            "element": "'30 days / 90 days / 12 months' segmented control with '30 days' selected as a filled pill",
-            "problem": "This is the clearest control in the set, but changing range gives no hint whether Runway, Cash, burn chart and Upcoming all rescope — Upcoming bills are date-bound and presumably do not change, inviting misreading of runway against a 12-month chart.",
-            "norm": "Scope controls must make their sphere of influence obvious; mixed-scope pages label per-section scope.",
-            "severity": "P3",
             "screenshot": "PG-B-Finance.png",
-            "fix": "Keep the segmented control, but add scope captions per section (e.g. 'Upcoming · next 30 days always') so users know what did and did not change."
+            "fix": "Group rail controls into one vertical glass pill (back, screen action, chat at bottom of the pill), enlarge chat to a labeled pill on content-heavy screens, and render the chat button identically in all states."
+          },
+          {
+            "level": "layout",
+            "element": "Empty/void lower halves — 'Not scanned yet' (Legal), 'Carta is not connected' (Cap table), 'No files yet' (Data room), Bot settings below 'Advanced'",
+            "problem": "Content is top-anchored leaving 50–65% of the 466×678 view as featureless black. It reads as a loading failure rather than an intentional empty state, wastes the one-screen surface, and pushes the single next action ('Scan now', 'Reconnect', 'Add files') up out of thumb reach.",
+            "norm": "Empty states center icon + explanation + CTA in the middle third of the screen (Apple HIG empty-state guidance).",
+            "severity": "P2",
+            "screenshot": "PG-B-Legal.png",
+            "fix": "Vertically center the empty-state card/CTA block, add one line of 'what happens next' copy, and keep the cream action in the lower-middle thumb zone."
+          },
+          {
+            "level": "layout",
+            "element": "Cross-screen primary-action styling — 'Scan now', 'Try again' (Legal), 'Reconnect' (Cap table), 'Add files', 'Open last run' (Routine) in flat grey vs cream Save/Take control/Run again elsewhere",
+            "problem": "The 'exactly one tinted (cream) prominent action per view' rule is applied inconsistently: views whose only action is grey (Legal scan-failed, Cap-table not-connected, Data-room empty) have no prominent action, while PG-A-Computer.png 'Agent waiting' presents 'I'm done' cream fused with grey 'Skip' in one pill, reading as a segmented control. Users cannot learn 'cream = the thing to tap'.",
+            "norm": "Praci's own design rule plus standard primary/secondary button hierarchy: one cream filled action, secondaries glass/grey, never fused into a segmented-looking pill.",
+            "severity": "P1",
+            "screenshot": "PG-B-CapTable.png",
+            "fix": "Audit every state: give each exactly one cream action (the recovery/next step), separate 'I'm done' and 'Skip' into a cream button plus a text button, and demote chat/Save duplicates accordingly."
           }
         ],
         "excellent": [
-          "PG-B-Finance.png: 'Runway [N] mo' and 'Cash [AMOUNT]' as the two largest elements under the Finance title — the founder's first question is answered in the first glance, in plain words with no jargon.",
-          "PG-B-Finance.png: Accounts rows name their source in plain language ('Operating · Mercury agent', 'Cards · Brex agent'), making bot-managed money feel attributable rather than mysterious.",
-          "PG-A-Routine.png: Schedule card states 'Every Monday at 8:00 AM', 'Last ran today, 8:00 AM' and 'Next run Mon, Oct 26' in one stack — exactly the three facts a founder needs about a routine, with zero jargon.",
-          "PG-A-AgentPage.png: The sentence 'Cash fell in the last 30 days, mostly from two vendor payments. At the current burn the runway is [N] mo.' leads with a human explanation before any bullet detail — exemplary AI-summary writing.",
-          "PG-B-CapTable.png: Green-dot 'Carta is connected' status line is instantly scannable and correctly uses plain language instead of integration terminology.",
-          "PG-A-AgentList.png: Bottom 'Add item' field with a large white + button is a clear, 44 pt+ primary input, correctly anchored in thumb reach.",
-          "PG-B-BotSettings.png: 'Read replies aloud' toggle uses a standard iOS switch, correctly sized and labelled in plain language — the one form control that needs no explanation."
+          "PG-B-Finance.png — 'Amounts hidden' state masks amounts consistently across Cash, both Accounts, Upcoming and the chart tooltip ('••••'/'•••') rather than only the headline figure; a model privacy-state treatment.",
+          "PG-B-Legal.png — 'Scan failed (previous results stay)' keeps the full contract list under the 'Scan failed / Could not reach your files / Try again' banner instead of blanking results; correct error-recovery pattern.",
+          "PG-B-CapTable.png — 'Access expired: Carta access expired / Showing the last sync' keeps stale data visible with provenance and an inline Reconnect, rather than an empty screen.",
+          "PG-A-Computer.png — Driver status pills ('Finance agent is driving', 'You are driving', 'Finance agent is waiting for you') pair a colored dot with plain-English text, and Agent-waiting adds the instructional banner 'Sign in to the bank portal, then tap I'm done.' — clear for a first-time founder.",
+          "PG-B-DataRoom.png — Uploading state shows filename, percentage and determinate progress bar with a cancel '×', and Upload-failed swaps in red 'Upload failed' plus a 'Try again' pill in place.",
+          "PG-A-Routine.png — 'Last run failed' explains the cause in plain language ('The bank connection could not be reached.') with next-run time and a cream 'Run again' beside 'Open last run'.",
+          "PG-A-Image.png — Delete confirmation states consequence and irreversibility ('It is removed from Artifacts for everyone in the space. This cannot be undone.') before the red Delete action.",
+          "PG-B-BotSettings.png — Four-state Save coverage (dimmed unchanged, ready, saving spinner, error with cause 'Could not save. No connection.' and Retry) is thorough state design, even though its placement needs fixing."
         ]
       }
     },
     {
       "model": "google/gemini-4-argon",
       "ok": true,
-      "seconds": 149,
-      "costUsd": 0.115452,
+      "seconds": 163,
+      "costUsd": 0.129942,
       "result": {
-        "verdict": "Praci establishes a sleek, high-contrast dark UI tailored to the compact 466x678 pt outer display, keeping every view within a single screen and avoiding technical AI jargon. However, several critical UX and visual-system flaws undermine first-time founder usability: a line chart in Runway Summary slopes upward while the text below states cash fell; the top context pill inconsistently switches between showing the Agent name, the Page title, and a verb-like 'Close checklist' label; 'PG-A-Computer' violates the single-prominent-action and concentric-corner rules; 'PG-B-CapTable' shows a 'Reconnect' error action while already connected; and 'PG-A-Routine' provides no way to actually edit, pause, or trigger the routine.",
+        "verdict": "Praci establishes a disciplined, atmospheric dark-mode visual language tailored to the 466x678 outer display, with clear state matrices and concise microcopy. However, several critical usability, state-consistency, and design-system violations undermine the experience—most notably trapped navigation states in Team Computer, conflicting icon semantics between Data Room and Image Viewer, ambiguous chart/period filtering in Finance, and a mechanical application of the 'single cream CTA' rule that causes global navigation controls to flicker in appearance or leaves primary empty-state actions un-emphasized.",
         "findings": [
           {
-            "level": "group",
-            "element": "Line chart card vs. summary body text ('Cash fell in the last 30 days...')",
-            "problem": "The orange trend line slopes steadily upward from left to right with zero axis labels, dates, or legend, while the sentence immediately beneath it states 'Cash fell in the last 30 days, mostly from two vendor payments.' A rising line paired with 'Cash fell' directly contradicts the narrative and leaves the founder guessing whether the chart plots cash, burn, or runway.",
-            "norm": "Data visualizations must match the polarity of their accompanying narrative and include minimal axis bounds or a metric label so the trend direction is unambiguous.",
+            "level": "layout",
+            "element": "Left control strip close button ('X') in 'In control', 'Agent waiting', and 'Reconnecting' frames",
+            "problem": "The 'X' dismissal button in the left floating control strip disappears entirely in the 'In control', 'Agent waiting', and 'Reconnecting' states, leaving only the fullscreen toggle icon. In 'Agent waiting' (before the user has even taken control) and 'Reconnecting' (when the remote stream is hung), the user has no way to close or exit the Team computer view.",
+            "norm": "Users must always have an immediate, persistent escape hatch (Back/Close) from remote sessions and loading/reconnecting states without being forced to complete or skip an agent prompt first.",
             "severity": "P0",
-            "screenshot": "PG-A-AgentPage.png",
-            "fix": "Add a subtle header label inside the chart card (e.g., 'Cash · Last 30 days' with start/end values) and invert the line slope so a decline in cash visually trends downward."
-          },
-          {
-            "level": "layout",
-            "element": "Top context pill across PG-A screens ('Finance agent', 'Close checklist', 'Weekly runway summary', 'Runway summary')",
-            "problem": "The top pill changes semantic meaning across screens: in PG-A-AgentPage it shows the bot name ('Finance agent') above an H1 page title ('Runway summary'); in PG-A-AgentList and PG-A-Routine it absorbs the page title ('Close checklist', 'Weekly runway summary') and drops the H1; and in PG-A-Artifact it repeats 'Runway summary' directly above an identical 'Runway summary' H1. Worse, 'Close checklist' reads like a UI action button to dismiss the checklist rather than a month-end close checklist title.",
-            "norm": "Navigation chrome and header pills must maintain a consistent hierarchy across sibling views so users always know where they are (parent agent/scope in the pill, specific document/page title in the H1).",
-            "severity": "P1",
-            "screenshot": "PG-A-AgentList.png",
-            "fix": "Keep the parent attribution in the top pill (e.g., '[Bot icon] Finance agent' or 'Finance agent · Artifact') and display the document title ('Month-end close checklist', 'Weekly runway summary', 'Runway summary') once as the H1 heading."
+            "screenshot": "PG-A-Computer.png",
+            "fix": "Keep the 'X' close button persistently visible in the left control rail across all 8 states of Team computer."
           },
           {
             "level": "page",
-            "element": "Schedule card and PROMPT card",
-            "problem": "The screen is wholly static: there is no control to edit the schedule, edit the prompt, pause/disable the weekly routine, Run Now, or tap through to the 'Runway summary page' mentioned in the text.",
-            "norm": "A routine inspection screen in an agent OS must provide a clear path to edit parameters, toggle active status, or inspect the latest output in one tap.",
+            "element": "'Team | Private' segmented switcher vs. bottom primary CTA ('Take control', 'Try again', 'Retry')",
+            "problem": "In 'Watching', 'Starting', 'Control ended', 'Control denied', and 'Can't connect', the active 'Team' segment at the top uses a bright cream/white fill while the bottom full-width button ('Take control', 'Try again', 'Retry') also uses the cream fill. This violates the brief's 'exactly one tinted (cream) prominent action per view' rule and makes 'Team' look like the primary CTA in the 'Starting' state where 'Take control' is dimmed.",
+            "norm": "Segmented view switchers should use a subtle elevated surface fill (like the segmented controls in Finance and Legal) so they never compete with the single primary tinted CTA.",
             "severity": "P1",
-            "screenshot": "PG-A-Routine.png",
-            "fix": "Make the Schedule and Prompt cards tappable with trailing '>' chevrons (or an Edit action in the left rail), add an active toggle switch to the schedule card, and style 'Runway summary' as an inline tappable page pill."
+            "screenshot": "PG-A-Computer.png",
+            "fix": "Style the 'Team | Private' segmented control with the same dark-grey active pill used in PG-B-Finance ('30 days | 90 days | 12 months') and keep the cream tint exclusively on the bottom primary action button."
+          },
+          {
+            "level": "group",
+            "element": "Top mode selector ('Team | Private' toggle vs. static 'Team' chip)",
+            "problem": "The header switches between a large 2-segment toggle ('Team | Private') in 5 states and a small static badge ('Team' with people icon) in 'In control', 'Agent waiting', and 'Reconnecting'. This shifts the vertical position of the 'Team computer' title and hides the existence of the Private computer even in 'Agent waiting' when the user is not yet driving.",
+            "norm": "Top-level mode switchers should maintain consistent geometry and position across states; if switching is temporarily locked while actively driving, disable the unselected segment rather than replacing the component with a different badge.",
+            "severity": "P2",
+            "screenshot": "PG-A-Computer.png",
+            "fix": "Retain the 'Team | Private' segmented control in all states, dimming the 'Private' segment while the user is actively driving."
+          },
+          {
+            "level": "component",
+            "element": "Status banners ('Sign in to the bank portal...', 'Your control ended...', 'Jordan has control...') and bottom keybar",
+            "problem": "Top status banners are overlaid directly across the top bar of the remote browser window, obscuring the browser's window controls and address/title bar. At the bottom, the translucent glass keybar ('Esc', 'Tab', 'Ctrl', arrows) sits directly over the bright white browser canvas, resulting in poor contrast for the white key labels.",
+            "norm": "Floating HUD overlays on remote desktop views should either dock outside the viewport or use high-contrast dark backing so controls remain legible over white web pages.",
+            "severity": "P2",
+            "screenshot": "PG-A-Computer.png",
+            "fix": "Dock the keybar between the browser card and the bottom CTA (slightly shortening the browser viewport when active) or use a darker, higher-opacity surface for the keybar."
+          },
+          {
+            "level": "group",
+            "element": "Time range segmented control ('30 days | 90 days | 12 months') and 'Monthly burn' bar chart",
+            "problem": "Switching between '30 days', '90 days', and '12 months' does not change 'Runway' ('[N] mo'), 'Cash' ('[AMOUNT]'), or the x-axis of the chart (which always shows all 12 months Nov–Oct); it only changes how many bars are shaded lighter grey, while the '[AMOUNT]' callout pill stays fixed exclusively above the single 'Oct' bar in all three states.",
+            "norm": "When a user selects a '90 days' or '12 months' filter at the top of a financial dashboard, summary metrics or the chart callout must reflect the aggregate or average burn for the selected period, not just highlight bars while continuing to display only October's figure.",
+            "severity": "P1",
+            "screenshot": "PG-B-Finance.png",
+            "fix": "Move the period selector inside the 'Monthly burn' card header if it only affects the burn chart, and update the chart header/callout to show the 30-day, 90-day average, or 12-month average/total burn amount."
+          },
+          {
+            "level": "component",
+            "element": "'Runway' card in 'Amounts hidden (all figures masked)' state",
+            "problem": "In the 'Amounts hidden (all figures masked)' state, 'Cash', 'Monthly burn', 'Accounts', and 'Upcoming' figures are masked with '••••', but 'Runway' still displays '[N] mo' unmasked despite the frame specification stating 'all figures masked'.",
+            "norm": "Privacy/presenter mode in startup finance tools should either mask runway alongside cash/burn (since runway + burn proportion reveals financial health) or clarify that only currency amounts are masked.",
+            "severity": "P3",
+            "screenshot": "PG-B-Finance.png",
+            "fix": "Mask '[N] mo' as '•• mo' when privacy mode is toggled on, or scope the feature strictly to currency values."
           },
           {
             "level": "page",
-            "element": "Top-left 'Team' segmented control vs. bottom-left Padlock FAB, and meaning of the Padlock icon",
-            "problem": "Two elements share the exact same high-contrast solid white fill (#FFFFFF): the active 'Team' segment pill and the bottom-left unlocked padlock FAB, violating the brief's 'one prominent action per view' rule. Additionally, pairing a green 'You have control' pill at top-right with an unlocked padlock FAB at bottom-left is ambiguous—a first-time user cannot tell if tapping the padlock locks control to themselves, releases control back to the bot, or locks the screen.",
-            "norm": "Reserve the high-contrast white fill for the single primary action per screen (as done on PG-B-Finance where the active segment uses a muted gray fill), and use self-explanatory handover iconography or labels.",
-            "severity": "P1",
-            "screenshot": "PG-A-Computer.png",
-            "fix": "Style the active 'Team' segment with the muted dark-gray fill used on PG-B-Finance ('30 days'), and unify the control state into a single clear action (or replace the ambiguous unlocked padlock with a clear handover/pause icon)."
-          },
-          {
-            "level": "group",
-            "element": "'Monthly burn' bar chart and '30 days | 90 days | 12 months' segmented control",
-            "problem": "The top segmented control is set to '30 days', yet the 'Monthly burn' card displays 12 unmarked bars (implying 12 months), with the 8th bar from the left highlighted in bright white and 4 dark bars after it. Because there are no month labels on the X-axis, the founder cannot tell which month the white bar represents, why the 8th bar is highlighted instead of the latest 12th bar, or how '30 days' applies to a 12-bar monthly chart and point-in-time Cash/Runway metrics.",
-            "norm": "Time-range selectors must clearly scope the data beneath them, and bar charts require at least start/end/selected x-axis labels so highlighted bars have temporal meaning.",
-            "severity": "P1",
+            "element": "'Nothing upcoming: Upcoming section omitted' frame",
+            "problem": "When there are no upcoming bills, the entire 'Upcoming' section is silently removed from the bottom of the screen, leaving blank dark canvas.",
+            "norm": "Omitting a core dashboard section completely when empty creates ambiguity between 'zero upcoming bills' and a loading/sync omission; a compact empty state reassures the founder that nothing is due.",
+            "severity": "P2",
             "screenshot": "PG-B-Finance.png",
-            "fix": "Add month labels under key bars (e.g., 'Nov', 'Jun', 'Oct'), highlight the current/latest month by default (or label the white bar directly), and move or scope the time-range selector so it matches the chart granularity."
+            "fix": "Keep the 'Upcoming' section header with a compact single-row muted card reading 'No upcoming bills in the next 30 days'."
           },
           {
             "level": "component",
-            "element": "'Carta is connected' status line and 'Reconnect' link",
-            "problem": "When Carta is already connected and healthy (green status dot), showing a permanent 'Reconnect' action is contradictory—'Reconnect' implies a broken connection. Furthermore, the underlined 'Reconnect' text link is ~14pt tall, violating the 44pt minimum tap target rule.",
-            "norm": "Healthy integrations should show sync recency (e.g., 'Synced 2m ago') rather than error-recovery actions, and all interactive controls must have at least a 44x44pt hit area.",
+            "element": "'Vendor master agreement' status badge ('• Blocked') in 'Blocker row: one file could not be read'",
+            "problem": "A file that failed PDF parsing ('Scan could not read this PDF') is labeled with a red status badge '• Blocked' using the exact same red dot and text treatment as '• Expired' on 'Office lease renewal'. 'Blocked' is internal bot jargon and conflates a technical file-read error with a legal contract lifecycle status.",
+            "norm": "Avoid technical/agent jargon for a first-time founder and visually distinguish system/parsing errors from domain statuses like 'Expired'.",
             "severity": "P1",
-            "screenshot": "PG-B-CapTable.png",
-            "fix": "Replace 'Reconnect' with a passive timestamp ('Updated today') since a manual Refresh button already exists in the left control strip; only show a 44pt 'Reconnect' pill when the integration is disconnected."
+            "screenshot": "PG-B-Legal.png",
+            "fix": "Change the status label from 'Blocked' to 'Unreadable' or 'Needs replacement' with a warning triangle icon instead of a contract-status dot."
           },
           {
             "level": "group",
-            "element": "Donut chart legend vs. 'Holders' list below it",
-            "problem": "The exact same four categories ('Founders', 'Option pool', 'Seed investors', 'Advisors') are listed twice vertically—once in the chart card with '[N]%' and immediately again in the 'Holders' card with '[N] >'. Moreover, '[N]' in the Holders rows is unitless, leaving it unclear whether it represents stakeholder headcount, share count, or dollar value.",
-            "norm": "Avoid repeating identical category lists on a compact mobile viewport; combine summary metrics into the drill-down rows and always include units for numerical placeholders.",
+            "element": "Contracts list in 'Scan running (scan button dimmed)' vs. 'Default' and 'Scan failed'",
+            "problem": "In 'Default' and 'Scan failed (previous results stay)', 4 contracts are listed. In 'Scan running', only 2 contracts are shown while the progress bar says 'Scanning [N] of [N] files', making it unclear whether existing contracts disappear during a re-scan.",
+            "norm": "When re-scanning an existing list, previous results should remain stable in place until the scan completes unless progressive streaming is explicitly indicated.",
+            "severity": "P2",
+            "screenshot": "PG-B-Legal.png",
+            "fix": "Keep all 4 previous contract rows visible below the 'Scanning' progress card during a re-scan, matching the 'Scan failed (previous results stay)' behavior."
+          },
+          {
+            "level": "component",
+            "element": "Duplicate 'Contracts' label below 'Contracts | Deadlines' segmented control",
+            "problem": "Directly beneath the 'Contracts | Deadlines' segmented control (where 'Contracts' is active), a redundant small section header 'Contracts' is repeated immediately above the list container.",
+            "norm": "Do not repeat the active tab/segment title as a section header directly below the tab bar when the view contains only that single list.",
+            "severity": "P3",
+            "screenshot": "PG-B-Legal.png",
+            "fix": "Remove the redundant small 'Contracts' sub-label when no status banner is present above the list."
+          },
+          {
+            "level": "group",
+            "element": "'+ Add contact' row inside 'Holders' list and 'Add contact form (sheet)'",
+            "problem": "Placing '+ Add contact' at the bottom of the 'Holders' cap table list implies adding a shareholder to the cap table. However, tapping it opens an 'Add contact' sheet that attaches a contact person ('Priya Nair') to an existing Holder ('Sam Ortiz'). Conversely, the 'Holder detail' screen (Frame 6, 'Ana Ruiz') shows a 'Contact' section with no way to add or edit a contact.",
+            "norm": "Actions should live at the hierarchy level of the object they modify: adding a contact person for a specific shareholder belongs inside 'Holder detail' (or should be clearly labeled '+ Add stakeholder contact'), not disguised as a row in the cap table ownership list.",
+            "severity": "P1",
+            "screenshot": "PG-B-CapTable.png",
+            "fix": "Move or also surface '+ Add contact' inside the 'Contact' section of 'Holder detail', and clarify the label in the main view if retained."
+          },
+          {
+            "level": "component",
+            "element": "Donut chart color swatches in 'Holders' list ('Default' and 'Access expired')",
+            "problem": "The ownership donut chart and holder rows use four shades of monochrome grey/white. While 'Ana Ruiz' (white) and 'Jordan Lee' (light grey) are distinct, the dark-grey swatches for 'Sam Ortiz' and 'Option pool' have almost no contrast against each other or the dark card surface.",
+            "norm": "Chart legend swatches must maintain sufficient luminance contrast against both the card background and adjacent categories to be distinguishable at a glance.",
             "severity": "P2",
             "screenshot": "PG-B-CapTable.png",
-            "fix": "Merge the color swatches, share counts/headcounts (with explicit units like '[N] shares' or '[N] holders'), and percentages into the interactive 'Holders' rows below the donut chart."
+            "fix": "Adjust the 4-step monochrome ramp (or introduce subtle warm/cool tint differentiation) so every swatch has at least a 3:1 contrast ratio against the card surface and distinct separation from neighbors."
           },
           {
-            "level": "group",
-            "element": "'Title' ('Sorts and answers mail') vs. 'Description' ('Triage mail, draft replies') fields, and 'Could not save bot' error",
-            "problem": "'Title' and 'Description' contain nearly identical verb phrases describing what the bot does, confusing a non-technical founder about which field controls the bot's behavior versus its display subtitle. At the bottom, the red 'Could not save bot' text gives no reason or recovery step while all inputs appear valid.",
-            "norm": "Form labels must have distinct, self-evident purposes, and error messages must explain why the action failed and how to resolve it.",
+            "level": "component",
+            "element": "Header alignment in 'Holder detail' ('Ana Ruiz / Founder')",
+            "problem": "In the 'Holder detail' header, the white square swatch sits to the left of 'Ana Ruiz', while the subtitle 'Founder' is left-aligned with the swatch rather than the text 'Ana Ruiz', creating an awkward ragged alignment.",
+            "norm": "When an icon or swatch precedes a title, the subtitle should either align with the title's left text edge or the swatch should span both lines.",
+            "severity": "P3",
+            "screenshot": "PG-B-CapTable.png",
+            "fix": "Left-align 'Founder' with the 'A' in 'Ana Ruiz'."
+          },
+          {
+            "level": "component",
+            "element": "'Board materials' row in 'Default: Load more is a button row' vs. 'Uploading' and 'Upload failed'",
+            "problem": "In Frame 1 ('Default'), the 'Board materials' folder row is missing its '[N] items' subtitle, making it a single-line row while 'Diligence' (also a folder) and all other rows are two-line rows. In Frames 2 and 3 ('Uploading' and 'Upload failed'), 'Board materials' correctly displays '[N] items' underneath.",
+            "norm": "Identical data items (folders) must render with consistent metadata subtitles across all states of the same screen.",
+            "severity": "P2",
+            "screenshot": "PG-B-DataRoom.png",
+            "fix": "Add the '[N] items' subtitle beneath 'Board materials' in the 'Default' frame."
+          },
+          {
+            "level": "page",
+            "element": "'Open file: Ask about this file' ('Pitch deck v3.pdf')",
+            "problem": "Opening a file displays a blank dark box with a tiny generic file icon and a single 'Ask about this file' CTA, with no document preview/pages and no way to actually read, share, or download the file itself.",
+            "norm": "Opening a file in a Data Room must allow the founder to view/read the document content (or at minimum provide a share/open action) alongside asking the AI agent about it.",
             "severity": "P1",
-            "screenshot": "PG-B-BotSettings.png",
-            "fix": "Consolidate 'Title' and 'Description' into a single 'Role / subtitle' field and expose 'Instructions' directly on this screen, and make the error message actionable (e.g., 'Couldn't save changes. Check connection and tap ✓ to retry.')."
+            "screenshot": "PG-B-DataRoom.png",
+            "fix": "Render a real document preview (consistent with the chart preview in PG-A-Image or document text) and provide a share/export control in the left rail."
           },
           {
             "level": "layout",
-            "element": "Left side-strip controls vs. bottom-left FAB in PG-A-AgentList",
-            "problem": "Across PG-B-Finance, PG-B-CapTable, PG-A-AgentPage, and PG-A-Routine, the bottom-left button is the prominent white Chat FAB. In PG-A-AgentList, the Chat icon is suddenly moved up into the secondary dark utility pill in the middle of the left strip, replaced at bottom-left by a dark '⋮' button, while the white FAB moves to the bottom-right '+' inside 'Add item'.",
-            "norm": "Persistent global actions like invoking the agent chat should remain in a predictable spatial location across screens rather than swapping slots with utility menus.",
+            "element": "Left control strip '+' button and primary CTA in 'Empty room'",
+            "problem": "In 'Empty room', the '+' upload button in the left control rail disappears while the center 'Add files' CTA is styled as a muted dark-grey pill because the bottom-left chat bubble holds the single cream tint. Consequently, the primary onboarding action on an empty screen looks secondary to the generic corner chat icon.",
+            "norm": "In an empty state, the primary content creation CTA ('Add files', or 'Scan now' in Legal's 'Not scanned yet' state) should carry the primary visual emphasis rather than the persistent corner chat icon.",
             "severity": "P2",
-            "screenshot": "PG-A-AgentList.png",
-            "fix": "Keep the agent Chat trigger consistent in its dedicated slot and place page-level overflow ('⋮') in a consistent secondary position."
+            "screenshot": "PG-B-DataRoom.png",
+            "fix": "Apply the cream primary tint to 'Add files' in 'Empty room' (and 'Scan now' in Legal's 'Not scanned yet' state) and dim the corner chat bubble, matching the pattern already used in PG-A-Routine's 'Last run failed' and 'Load error' states."
           },
           {
-            "level": "component",
-            "element": "Bottom keyboard bar ('Esc', 'Tab', 'Ctrl', arrows) and browser window corners",
-            "problem": "The bottom keyboard tray has a large outer pill radius (~24pt), while the inner keys ('Esc' on the far left and '→' on the far right) have uniform ~8pt corners on all four sides, causing the outer corners of 'Esc' and '→' to pinch against the curved container border. This violates the brief's 'concentric corners' rule. The keys also measure ~38pt tall, below the 44pt target.",
-            "norm": "Inner elements nested inside a rounded container must use concentric corner radii on their outer edges (R_inner = R_outer - padding) and meet the 44pt minimum touch target height.",
-            "severity": "P2",
-            "screenshot": "PG-A-Computer.png",
-            "fix": "Match the outer-left radii of the 'Esc' key and outer-right radii of the '→' key to be concentric with the tray border (or use a uniform 14pt container radius with 8pt inner radius and 6pt padding), and increase key height to 44pt."
-          },
-          {
-            "level": "component",
-            "element": "'Runway' ('[N] mo') and 'Cash' ('[AMOUNT]') top metric cards",
-            "problem": "Although the 'Runway' and 'Cash' cards sit side-by-side as equal peers, '[N] mo' is rendered in a noticeably larger font size (~26pt) than '[AMOUNT]' (~20pt) with misaligned baselines.",
-            "norm": "Sibling KPI cards in the same row must use identical value typography and baseline alignment.",
-            "severity": "P2",
-            "screenshot": "PG-B-Finance.png",
-            "fix": "Apply the same font size, weight, and baseline offset to both the Runway and Cash primary metric values."
-          },
-          {
-            "level": "component",
-            "element": "3-column KPI cards ('Cash', 'Burn / mo', 'Runway')",
-            "problem": "Squeezing three metric cards horizontally into a ~360pt content column leaves only ~112pt per card; the placeholder '[AMOUNT]' already touches both inner side paddings, meaning real currency strings (e.g., '$1,250,000') will clip or truncate.",
-            "norm": "Metric cards must accommodate realistic numerical string lengths with at least 12pt horizontal padding.",
-            "severity": "P2",
-            "screenshot": "PG-A-AgentPage.png",
-            "fix": "Use a 2-column grid (like PG-B-Finance and PG-A-Artifact) or stack 'Cash' and 'Burn / mo' above 'Runway' so full dollar amounts never truncate."
-          },
-          {
-            "level": "component",
-            "element": "Actionable bullet items ('4 card expenses need receipts', 'One invoice is due Friday') and 'Upcoming' rows in PG-B-Finance",
-            "problem": "In PG-A-AgentPage, the two exception bullets ('4 card expenses need receipts', 'One invoice is due Friday') are plain static text with no tap affordance. Similarly, in PG-B-Finance, the 'Upcoming' bills ('Northwind invoice', 'Acme Payroll') lack the trailing '>' chevrons present on the 'Accounts' rows above them.",
-            "norm": "Items representing pending tasks, missing receipts, or upcoming bills in a founder dashboard should be tappable drill-downs with clear affordances.",
-            "severity": "P2",
-            "screenshot": "PG-A-AgentPage.png",
-            "fix": "Convert the two action bullets in PG-A-AgentPage and the 'Upcoming' bill rows in PG-B-Finance into interactive rows with trailing '>' chevrons."
-          },
-          {
-            "level": "component",
-            "element": "Duplicate 'Runway summary' header and dual version controls (left-rail layers icon vs. bottom '< v5 of 5 >' pill)",
-            "problem": "'Runway summary' appears in the top pill and immediately again as the card's H1 title. Meanwhile, the left rail includes a stack/layers icon while the bottom center shows a '< v5 of 5 >' stepper whose '<' and '>' arrows are tightly packed inside a small pill.",
-            "norm": "Avoid duplicate headings in the same visual field and consolidate version-history navigation into a single control with 44pt hit targets for previous/next steps.",
-            "severity": "P2",
-            "screenshot": "PG-A-Artifact.png",
-            "fix": "Show 'Artifact · Finance agent' in the top pill so 'Runway summary' only appears once, and widen the '< v5 of 5 >' stepper so both arrow buttons have full 44x44pt tap zones."
-          },
-          {
-            "level": "component",
-            "element": "Section header alignment and casing ('PROMPT' vs. 'Accounts', 'Upcoming', 'Holders', 'Name')",
-            "problem": "In PG-A-Routine, the section header 'PROMPT' is set in ALL CAPS and aligned flush with the outer left edge of the card. On PG-B-Finance, PG-B-CapTable, and PG-B-BotSettings, section headers ('Accounts', 'Upcoming', 'Holders', 'Name') use Sentence case and are indented ~12pt inward from the card's outer left edge.",
-            "norm": "Section headers across the app should follow one typographic case and horizontal alignment rule.",
-            "severity": "P3",
+            "level": "group",
+            "element": "'Last run' row and 'Open last run' button in 'Routine' vs. 'Last run failed'",
+            "problem": "In 'Routine' (Frame 2), there is both a tappable row ('Last run: Mon, Oct 19 · Done >') AND a button directly below it ('Open last run'), creating ambiguity about which one opens the last run vs. 'Run history' (Frame 4). Furthermore, in 'Last run failed' (Frame 5), the tappable row is replaced by static error text, leaving no path to 'Run history' when the latest run fails.",
+            "norm": "Each navigation destination ('Open last run' vs. 'Run history') should have a distinct, unambiguous label that remains accessible regardless of whether the most recent run succeeded or failed.",
+            "severity": "P1",
             "screenshot": "PG-A-Routine.png",
-            "fix": "Change 'PROMPT' to sentence-case 'Prompt' and align all section headers consistently across every view."
+            "fix": "Label the list row 'Run history' (showing 'Mon, Oct 19 · Done >' or 'Mon, Oct 19 · Failed >') in both states so users can always reach 'Run history', and keep 'Open last run' for jumping directly to the latest run's output."
           },
           {
             "level": "component",
-            "element": "Color picker swatch row",
-            "problem": "The 7 color circles inside the 'Color' container are left-packed, leaving an uneven ~40pt empty gap on the right side of the card.",
-            "norm": "Swatches inside a full-width form container should distribute evenly across the available width or use a container sized to fit the swatches symmetrically.",
-            "severity": "P3",
+            "element": "Middle 'photo' icon in the left control strip vs. 'Saved to Photos' banner",
+            "problem": "The left control strip uses a generic 'photo' (mountain/frame) icon for the 'Save to Photos' action. In PG-B-DataRoom (Frame 7), that exact same 'photo' icon means 'Attach from Photos library'. Using a static noun icon ('Photos') for an immediate 'Save/Download' action without a label is non-standard and conflicts with its meaning elsewhere in the app.",
+            "norm": "Use standard action iconography for saving/downloading (such as 'square.and.arrow.down') or place 'Save to Photos' inside the native iOS Share sheet triggered by the top share button.",
+            "severity": "P1",
+            "screenshot": "PG-A-Image.png",
+            "fix": "Replace the 'photo' icon in the left rail with a standard download/save icon ('arrow.down.to.line' or 'square.and.arrow.down')."
+          },
+          {
+            "level": "layout",
+            "element": "'Delete this image?' alert in 'Delete confirmation' and 'Saved to Photos' toast banner",
+            "problem": "In 'Delete confirmation' (Frame 4), the 'Delete this image?' alert modal is neither centered on the screen nor anchored cleanly as a popover arrow to the '⋮' button—it floats off-center over the left border of the image. In 'Saved to Photos' (Frame 5), the top toast pill stretches across the entire width of the content area with mostly empty grey space.",
+            "norm": "Destructive confirmation alerts with 'Cancel | Delete' buttons should be horizontally centered within the viewport (or content area), and toast pills should hug their text content rather than stretching full-width.",
+            "severity": "P2",
+            "screenshot": "PG-A-Image.png",
+            "fix": "Center the 'Delete this image?' confirmation dialog within the content area, and size the 'Saved to Photos' pill to hug its icon and label."
+          },
+          {
+            "level": "component",
+            "element": "Bottom-left circular 'Save' button and duplicate 'Retry' action in 'Error: cause and Retry'",
+            "problem": "In 'Bot settings', the word 'Save' is crammed inside a small 44pt circular icon container in the bottom-left rail with almost zero horizontal padding. In Frame 4 ('Error: cause and Retry'), the bottom bar simultaneously shows the active cream 'Save' circle on the left AND a 'Retry' text button on the right for the exact same failed save operation.",
+            "norm": "Text labels like 'Save' require a pill container with adequate horizontal padding (as done in PG-B-CapTable's 'Add contact' sheet), and an error state should not display two separate active buttons ('Save' and 'Retry') that perform the exact same action.",
+            "severity": "P1",
             "screenshot": "PG-B-BotSettings.png",
-            "fix": "Distribute the 7 color swatches evenly (`space-between`) across the inner width of the Color card so left and right padding match."
+            "fix": "Use a pill shape (or checkmark icon) for 'Save', and in the error state, show the inline error message next to the single 'Save' (or 'Retry') button rather than both."
+          },
+          {
+            "level": "group",
+            "element": "'Name' and 'Role' text fields and missing 'Delete bot' action",
+            "problem": "The 'Name' and 'Role' rows have no visual affordance indicating they are editable text inputs (as opposed to static labels), nor is it clear whether the blue bot avatar inside 'Name' is tappable. Additionally, while the brief specifies 'rename and recolor a bot, choose group members, save or delete', there is no visible 'Delete' option unless it is hidden inside the vague 'Advanced' row.",
+            "norm": "Editable text fields and destructive lifecycle actions ('Delete bot') should be clearly recognizable without requiring users to guess or dig into an 'Advanced' submenu.",
+            "severity": "P2",
+            "screenshot": "PG-B-BotSettings.png",
+            "fix": "Add a subtle edit/clear affordance to editable text fields and surface 'Delete bot' explicitly at the bottom of the form or in a clear '⋮' menu."
           }
         ],
         "excellent": [
-          "Single-screen vertical discipline: every view fits comfortably within the 466x678 pt viewport without vertical scrolling or cramped line spacing.",
-          "Hardware-aware left control strip: placing navigation and contextual tools down the left gutter beneath the Dynamic Island leaves the main canvas unobstructed and keeps thumb targets close to the bezel.",
-          "Jargon-free, founder-friendly copywriting: schedules, bot settings, and financial summaries read in plain English ('Every Monday at 8:00 AM', 'Sorts and answers mail') rather than exposing technical AI parameters.",
-          "Restrained dark-mode surface hierarchy: solid dark gray cards (#1C1C1E) over a near-black canvas (#111111) with glass reserved strictly for floating controls adheres to the visual rules and ensures high legibility."
+          "Disciplined adherence to the outer-display ergonomic model: keeping navigation and primary thumb triggers in the left vertical strip beside the Dynamic Island while giving the right column clean, solid-surface cards.",
+          "Comprehensive state coverage across every feature board—explicitly designing loading, empty, partial-failure, expired-auth, and offline retry states rather than only happy paths.",
+          "Zero-jargon, founder-friendly microcopy in error banners and prompts (e.g., 'Sign in to the bank portal, then tap I'm done', 'Your keys are paused until it is back', 'Showing the last sync').",
+          "Concentric corner radii and calm typographic hierarchy across cards, segmented controls, and list rows create a cohesive, high-craft native iOS dark-mode aesthetic."
         ]
       }
     }

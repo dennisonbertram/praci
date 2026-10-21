@@ -5,25 +5,25 @@
     {
       "model": "meta/muse-wonder",
       "ok": true,
-      "seconds": 16,
-      "costUsd": 0.057112,
+      "seconds": 29,
+      "costUsd": 0.068128,
       "result": {
         "scores": {
           "A": {
-            "criteria": 3,
+            "criteria": 4,
             "simplicity": 5,
-            "consistency": 3,
+            "consistency": 4,
             "usability": 3,
             "visual": 4,
             "effort": 5
           },
           "B": {
-            "criteria": 4,
-            "simplicity": 2,
+            "criteria": 3,
+            "simplicity": 3,
             "consistency": 2,
-            "usability": 3,
-            "visual": 2,
-            "effort": 1
+            "usability": 2,
+            "visual": 3,
+            "effort": 3
           },
           "C": {
             "criteria": 5,
@@ -31,49 +31,49 @@
             "consistency": 5,
             "usability": 5,
             "visual": 4,
-            "effort": 3
+            "effort": 4
           }
         },
         "winner": "C",
-        "graft": "From A: use the solid neutral #33322F fill for the demoted composer control instead of C's 12% translucent fill, preserving legibility without introducing a second tint.",
-        "defense": "C is the only proposal meeting all five criteria: it hides the working line while paused, uses the shipped DS-06 avatar colour, defines Stop/typing/Stopping including failure, makes the tint rule depend on thread state rather than scroll position, and provides a genuinely tappable approval cue. Against A: A is cheaper and simpler, but its non-tappable title-capsule dot explicitly fails acceptance (3), relies on colour alone, and is not a recognisable iOS jump pattern; it also leaves Stop's tint ambiguous when another agent runs beside a pending card. Against B: B prevents scrolling away by construction, but its 230pt tray crowds the thread, duplicates subject/status, creates an undefined multi-card queue, requires a major new component, and conflicts with DS-06's in-scroll card model and the floating/glass layer rules. C instead follows the native Messages/Mail off-screen pill pattern, reuses the card's existing 'Needs approval' wording, indicates direction, disappears when the card is sufficiently visible, preserves VoiceOver and 44pt access, adds no glass group, and uses only native SwiftUI visibility and scrolling APIs with a stated fallback."
+        "graft": null,
+        "defense": "C wins: a single 44px smart-list row directly under Activity guarantees '3 need reply' above the fold on phone and the shorter Duo outer display, with the identical Activity/Inbox/Personnel/Pages order on Home, Main and Split — matching Things/Apple Mail/Linear. It costs Personnel only 44px, so recent agents stay reachable, and Pages subtitles survive. Against A: it also surfaces Inbox and is trivial, but its 6×44px Pages card pushes all 4×54px Personnel below the fold, defeating the founder's second job of chatting with a recent agent. Against B: the chip shows an ambiguous bare '3' rather than '3 need reply', drops glanceable subtitles like '6 mo runway', uses non-native filter-style chips for primary navigation, and its wrapping layout risks height/Dynamic Type/sidebar-width problems in SwiftUI. C is just a moved List section — low risk, no custom layout."
       }
     },
     {
       "model": "google/gemini-4-argon",
       "ok": true,
-      "seconds": 32,
-      "costUsd": 0.026032,
+      "seconds": 33,
+      "costUsd": 0.021444,
       "result": {
         "scores": {
-          "Proposal A": {
-            "criteria": 3,
+          "A": {
+            "criteria": 4,
             "simplicity": 5,
-            "consistency": 3,
-            "usability": 2,
+            "consistency": 4,
+            "usability": 3,
             "visual": 4,
             "effort": 5
           },
-          "Proposal B": {
+          "B": {
             "criteria": 4,
-            "simplicity": 2,
+            "simplicity": 3,
             "consistency": 2,
             "usability": 2,
             "visual": 2,
-            "effort": 1
+            "effort": 2
           },
-          "Proposal C": {
+          "C": {
             "criteria": 5,
             "simplicity": 4,
             "consistency": 5,
             "usability": 5,
             "visual": 5,
-            "effort": 4
+            "effort": 5
           }
         },
-        "winner": "Proposal C",
+        "winner": "C",
         "graft": null,
-        "defense": "Proposal C is the only option that satisfies all five acceptance criteria while strictly respecting Praci's platform and design system rules. By keeping the approval card in the scroll and surfacing a solid-fill 'Needs approval' jump pill only when the card scrolls out of view, it solves navigation using a familiar iOS pattern (Messages/Mail) without violating the three-glass-group cap or inventing new copy. Its state-based rule for the single tinted action—keeping the card's Send prominent and demoting the composer's trailing control across both single and group threads—prevents visual flickering during scroll. It also thoroughly specifies the Stopping timeout and failure fallback. Proposal A fails Acceptance Criterion 3 because its 8pt dot on the title capsule is not tappable, remains visible even when the card is on screen, and relies solely on colour to convey meaning. Proposal B over-engineers the solution by docking the card in a persistent bottom tray, which consumes roughly a third of the compact 678pt strip height, duplicates card metadata in the scroll, violates the DS-06 rule that cards live in the message stream, and introduces high layout and queuing complexity when multiple agents request approval."
+        "defense": "Proposal C aligns the layout directly with the founder's workflow and frequency of use: triage first (Activity and Inbox), immediate action second (recency-sorted Personnel), and lower-frequency reference pages last (Finance, Legal, Cap table, Data room, Team computer). On a 393x852 iPhone viewport, C is the only option that keeps Activity, Inbox ('3 need reply'), and all four Personnel rows above the fold while establishing a single, logical hierarchy across Home, Main, and the Duo Split sidebar—mirroring proven iOS system patterns like Apple Mail, Reminders, and Things. Proposal A fixes Inbox visibility and Split consistency but buries recency-sorted agents beneath six mostly static reference pages, forcing founders to scroll past 'Cap table' and 'Data room' just to chat with an active agent. Proposal B keeps Personnel high but violates the native iOS control constraint with a custom wrapping chip strip, shrinks tap targets, adapts poorly to the Split sidebar, and sacrifices high-signal subtitles like '6 mo runway' and '3 need reply'."
       }
     }
   ]

@@ -1,26 +1,13 @@
-# J5 proposal C: pose templates, as in Apple Mail, Settings, Messages and Things
+# J5 proposal C (convention): Apple Stocks / Health chart pattern, range segmented control attached to the chart
 
-Pattern: native SwiftUI split-view adaptation (Apple Mail and Settings on iPad: `NavigationSplitView`, sidebar + detail, content pushed on compact width). Messages and Things use the same idea. A page does not get a custom inner layout; it picks one of three templates, and each template is drawn once on the page that stresses it most.
+Pattern: Apple Stocks and Apple Health put the range picker (1D 1W 1M 6M 1Y) directly under the chart it controls. The headline number above the chart follows the range; anything that is "as of now" sits outside the chart card.
 
-## Templates
-| Template | Inner (book) | Half-folded | Laptop | Drawn on |
-| --- | --- | --- | --- | --- |
-| List + detail | list third, detail two thirds | list half, detail half | list below, detail above | Inbox message (new board) |
-| Live view + controls | thread third, view two thirds | thread half, view half | view above, key bar, Release and keyboard or composer below | Computer (new board) |
-| Form | form card centered on the right | card in the left half | not applicable | rule text only |
-
-Page assignment: Finance, Legal, Cap table, Data room, Artifacts, Routine = List + detail (their outer board is the detail). Agent page, Agent list, Thread = List + detail with the thread as detail or as the bottom half. Computer, Image = Live view. Sign in, Server, Settings, create sheets = Form.
-
-## Changes
-1. New board Inner-Message (890x626, half-folded): list half left, open message right, strip with Back-less layout (Archive, Reply group, More, prominent Ask Inbox agent).
-2. New board Desk-Computer (626x890): screen top half, Release and Keyboard bar, key bar, system keyboard on the bottom half.
-3. Desk: rule text fixed to match the board; chart content left to K2.
-4. Inner: context chip "Re: Pilot timeline".
-5. PG-A-Rules and PG-B-Rules: add the template table and a per-page coverage line; change Data room, Legal, Cap table laptop text to the List + detail stacked pattern and say no board exists on purpose.
-6. PG-B-Rules Sign in: add keyboard placement for half-folded.
+## Design
+- Runway and Cash stay at the top as "Runway now" and "Cash today", with no range control above them.
+- The Burn card holds the chart, then a segmented control at its bottom edge (30 days / 90 days / 12 months), with "Monthly burn" headline showing the average per month for the range ("[AMOUNT] avg").
+- Range changes the bar count (4 weekly, 3 monthly, 12 monthly) and the average. Scrubbing a bar shows its value in the callout.
+- Three data frames are drawn in PG-B-Finance. Hidden frame masks the average, the callout, Runway, and flattens bars.
+- Desk gets the same card; eye and chevron moves as in A.
 
 ## Cost
-Two new boards, one chip, six rule-card edits.
-
-## Weakness
-Finance inner, Legal inner and Data room laptop stay text. A reader who wants to see them must trust the template.
+Same three data sets as B; control sits at the card bottom so the Duo top half (399pt tall) has to shed a row; SwiftUI Picker(.segmented) under a Chart with chartXSelection. Less new UI than B, more than A.

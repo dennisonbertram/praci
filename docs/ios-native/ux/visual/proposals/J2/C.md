@@ -1,12 +1,7 @@
-# J2 proposal C: Apple Mail convention (the object's verb is prominent)
+# J2 (round 2, problem cluster C4) proposal C: Apple Mail convention
 
-Pattern: Apple Mail, Messages and Things put the create verb in the bottom-trailing prominent slot (Compose, New message, "+"). Reply is the prominent action in a message. Everything else is a plain toolbar item or a menu.
-
-- List: prominent = Compose (as PH-Inbox draws it today). Message view: prominent = Reply.
-- The agent is reached by the search capsule: the Search field is labelled "Search or ask Inbox agent" and typing a question hands off to the Inbox agent thread (a Linear or Things command bar pattern). The strip gets Search/Ask, Filter; More holds Cleanup.
-- Strip set: Back; Search or ask, Filter; spacer; More; prominent Compose.
-- Outer and inner boards (Sheet, Split, Inner, message): remove the tinted Ask circle; Compose becomes tinted.
-- PH-Inbox keeps its tinted Compose and gains More.
-
-Cost: large. It redefines Search, needs search-or-ask intent detection, and removes the only labeled route to the agent from the strip.
-Risk: the product's main differentiator (the agent drafts replies) becomes a hidden behavior of a search field.
+Pattern: Apple Mail compose. Send is the one prominent control at all times; Cancel asks only if the draft changed; the sheet offers Save Draft and Delete Draft, and tapping outside it keeps editing.
+- Every frame draws Send; dimmed when no recipient or an address is invalid (Mail dims Send the same way).
+- X on an unchanged draft closes with no sheet. X on a changed draft shows a two-action sheet: "Save draft", "Discard draft" (red). The "Keep editing" button is dropped; the scrim is the way back.
+- Both existing sheets (frames 7 and 8) become this same two-action sheet.
+Costs: on the 466 pt strip the scrim is a thin area, and VoiceOver and SwiftUI confirmationDialog always add a Cancel button, so the two-action sheet cannot ship natively as drawn. The board would draw something the app will not render.

@@ -1,86 +1,113 @@
-# iOS design boards: ranked problems (round 1)
+# iOS design boards: ranked problems (round 2)
 
-Source: the round 1 returns from ux-flow (8 journeys + redundancy), ux-walker (5 walks) and ux-visual (6 page sets), judged against the boards in `docs/design-system/ios/boards/`. All evidence is from static screenshots and board source; nothing was clicked on a device.
+Source: round 2 audits from ux-flow (STORY-019, 043, 047, 064, 076, 085, redundancy), ux-walker (first-run-home, thread, inbox-computer, finance-settings, duo) and ux-visual (iphone, home, thread, account, inbox, pages), judged against the boards in `docs/design-system/ios/boards/`. All evidence is from static screenshots and board source.
 
-Open counts are approximate after merging duplicates: critical 2, high about 40, medium about 150, low about 90.
+Open counts are approximate after merging duplicates: critical 0, high about 21, medium about 100, low about 100. Raw audit totals are higher because many findings repeat.
 
-Ranking = severity x journey centrality x reach, divided by effort. A cluster is one design decision.
+Ranking = severity x journey centrality x reach, divided by effort. One cluster = one design decision. Clusters marked JUDGEMENT have more than one reasonable design and are decided separately; their issues are not in the fix groups.
 
 ## Ranked clusters
 
-### K1. Create sheets cannot be completed (critical)
-- Root cause: New bot, New group and New space were drawn as three different patterns. The commit control is an unlabeled check, there is no disabled state, and member rows have no selection state.
-- Issues: V-home-R1-1 (P0), V-home-R1-16..20, F-duo-019, F-duo-020, F-duo-022, F-first-run-home-006, 008, 009, 010, 019, 020, V-pages-R1-6, V-pages-R1-20, V-account-R1-6, RED-R1-14, STORY-019-R1-8.
-- Boards: PG-B-NewBot, PG-B-NewGroup, PG-B-NewSpace, PG-B-Server, PG-B-BotSettings, PG-B-GroupSettings.
-- Acceptance: all three create flows are sheets with a medium detent; X on the left, a text capsule "Create" or "Save" on the right; Create is dimmed while Name is empty; NewGroup rows show a selection mark and a "2 selected" count with a 2 to 6 limit; no default state shows an error line.
+### C1. Send stays enabled while the agent replaces the draft (high)
+- Root cause: the "Agent editing the draft" frame dims Edit but not Send.
+- Issues: STORY-047-R2-1, V-iphone-R2-2, V-thread-R2-1; related low STORY-047-R2-2.
+- Boards: PG-A-Thread, PH-Thread, PG-A-ThreadStates.
+- Evidence: Send is bright while the tag reads "Updating".
+- Acceptance: every Updating frame dims Send like Edit; "Draft replaced" shows the new card with "Cc Jordan Lee" and "10:30".
 
-### K2. Page data contradicts itself (critical)
-- Root cause: the Finance chart and the Runway page were drawn per board with different names, period models and values.
-- Issues: V-pages-R1-1 (P0), V-pages-R1-3, V-pages-R1-17, STORY-085-R1-1, F-duo-015, F-duo-016, F-finance-settings-006, RED-R1-15, STORY-076-R1-6.
-- Boards: PG-A-AgentPage, PG-B-Finance, Desk.
-- Acceptance: one chart named "Monthly burn", 12 labeled months, tabs 30 days / 90 days / 12 months that change the chart; the AgentPage line direction matches its sentence and has dated axis labels; Desk top half shows the same page.
+### C2. Switching space shows the old space's data (high)
+- Root cause: the loading frame skeletons Activity and Personnel but not Pages counts.
+- Issues: V-iphone-R2-1, V-home-R2-1.
+- Boards: PH-Spaces, PG-B-Spaces, PG-A-Home (Loading frame).
+- Acceptance: while "Switching to Northwind" shows, no Pages row shows a Personal count.
 
-### K3. Connect a model and AI data consent (judgement)
-- Root cause: first run needs two gates (Connect, then "Share data with Model A?") and the "after connecting" card offers "Create a bot" while Chief exists.
-- Issues: STORY-019-R1-1..7, 9, RED-R1-4, V-home-R1-3..6, V-thread-R1-14, V-thread-R1-15, F-thread-R1-004, F-thread-R1-006.
-- Boards: PG-A-HomeNoModel, PG-B-Consent, PH-Home, PG-A-ThreadStates.
+### C3. Model-provider consent missing or contradictory (high) JUDGEMENT
+- Root cause: the "Share data with Model A?" sheet was removed. STORY-019 flow prefers a one-line notice under Connect; the thread walker wants the first-use sheet back.
+- Issues: F-thread-007, F-thread-R1-004, F-thread-R2-009, V-thread-R2-12, V-thread-R2-13, V-iphone-R2-13.
+- Boards: PG-B-Consent, PG-A-HomeNoModel, PH-Inbox.
 
-### K4. Mail draft card: how it is edited, saved, replaced (judgement)
-- Root cause: the Save/Send card has no edit entry; PG-A-Compose is a send-new-mail screen; Save is ambiguous.
-- Issues: STORY-047-R1-1, 3, 4, 6, F-thread-012, V-thread-R1-5, V-iphone-R1-12, RED-R1-10, V-inbox-R1-10, F-inbox-computer-R1-002.
-- Boards: PG-A-Thread, PH-Thread, PG-A-Compose, DS-06-Chat, Inner.
+### C4. Compose frames replace Send with Done (high) JUDGEMENT
+- Root cause: flow accepts Edit draft then Send on the card (3 to 6 actions); visual audit says a reopened draft has no Send.
+- Issues: V-inbox-R2-1, STORY-047-R2-3, V-inbox-R2-12, RED-R2-5.
+- Boards: PG-A-Compose.
 
-### K5. Approval pending vs. working state and the one tinted action (judgement)
-- Root cause: "is working" shows under a finished draft; the composer Send and the card Send are both prominent; a scrolled-away approval has no cue.
-- Issues: V-thread-R1-2, 9, 18, F-thread-014, 015, STORY-047-R1-2, 5, V-iphone-R1-13, F-duo-006, RED-R1-16.
-- Boards: PG-A-Thread, PG-A-GroupThread, PH-Thread, PG-A-ThreadStates, DS-06-Chat.
+### C5. Inner, laptop and phone poses missing for many screens (high) JUDGEMENT on scope
+- Root cause: most screens are drawn for the Duo outer display only. Choice: draw every pose, or one recipe per layout family plus one example.
+- Issues: STORY-064-R2-1, 064-R2-2, 064-R2-3, 064-R2-5, STORY-085-R2-2, 085-R2-3, F-duo-001, F-duo-R2-004, F-inbox-computer-026, F-inbox-computer-R1-001, STORY-076-R2-6, STORY-043-R2-3.
+- Boards: Inner, Inner-Message, Split, Desk, new PH boards.
 
-### K6. Inbox control set and prominent action (judgement)
-- Root cause: Sheet, Split, PH-Inbox, Inner and the Cleanup board each draw a different action set and a different prominent action; the standard iPhone cannot reach the Inbox agent or Cleanup.
-- Issues: RED-R1-7, 8, F-duo-R1-002, F-inbox-computer-R1-001, R1-004, F-inbox-computer-007, STORY-064-R1-3, F-duo-003, 004, 012, V-inbox-R1-2, 5, 15.
-- Boards: Sheet, Split, PH-Inbox, Inner, PG-A-InboxMessage, PG-A-Cleanup, DS-03, DS-04.
+### C6. Home order buries Inbox; Personnel not in recency order (high) JUDGEMENT on placement
+- Issues: V-iphone-R2-5, V-iphone-R2-6, V-home-R2-11, RED-R2-1, F-thread-016, F-thread-019.
+- Boards: PH-Home, PG-A-Home, Main, Split.
+- Note: sorting by recency and matching subtitle to stamp is not in doubt (goes to fix group 1). The open choice is where Pages and Inbox sit.
 
-### K7. Duo inner, half-folded and laptop poses are rule text only (judgement on scope)
-- Root cause: only some pages have boards for the inner display and the laptop pose.
-- Issues: F-duo-001, STORY-085-R1-2, 3, F-first-run-home-011, 023, STORY-064-R1-1, 6, F-duo-014, F-inbox-computer-014, 025, 026, F-finance-settings-007, STORY-076-R1-7.
+### C7. Finance period control changes nothing (high) JUDGEMENT
+- Issues: V-pages-R2-1, V-pages-R2-5, V-pages-R2-6.
+- Boards: PG-B-Finance. Choice: make the range drive figures and chart, or remove the control and label the period.
 
-### K8. Home is drawn four ways
-- Root cause: PG-A-Home, PH-Home, Main and Split disagree on section order, Pages, Activity, counts and placeholders.
-- Issues: RED-R1-1, 2, 3, 5, 11, 12, F-first-run-home-R1-003, R1-004, 015, 017, 018, 022, V-iphone-R1-1, 2, 17..21, V-home-R1-8..13, F-duo-R1-001, F-duo-008, F-duo-025, F-thread-016, STORY-076-R1-1.
-- Boards: PG-A-Home, PH-Home, Main, PG-B-Spaces, PH-Spaces.
-- Acceptance: one order (title, Activity, Personnel with Chief first, Pages, Artifacts) on all four; no `[N]` or `[AMOUNT]` placeholder; each agent shown once; the approval row has a pill and chevron.
+### C8. Forms drawn only in the ideal state (high)
+- Root cause: no error, loading, success, disabled-reason or keyboard frames.
+- Issues: V-account-R2-1 to 8, 10, 11, 12, 15 to 18; F-finance-settings-012, R1-002, R2-002; STORY-019-R2-1, 019-R2-2; V-home-R2-2.
+- Boards: PG-B-SignIn, PG-B-SignUp, PG-B-ForgotPassword, PG-B-Account, PG-B-Server, PG-B-Models, PG-B-Voice, PG-B-Integrations.
+- Acceptance: each board has frames for field error, submitting and success; every dimmed primary action shows its reason; Server Save is dimmed under "This is not a Praci server".
 
-### K9. Computer: watch, take control, hand off, release
-- Issues: STORY-076-R1-2, 3, V-iphone-R1-3..9, V-pages-R1-7, 21, F-duo-013, F-inbox-computer-015, 016, 022, F-inbox-computer-010.
-- Boards: PG-A-Computer, PH-Computer.
-- Acceptance: Release (labelled "Release control" or "I'm done" while an agent waits) sits in the same slot as Take control; no X while in control; at most three glass groups.
+### C9. "agent" and "bot" name the same thing (high)
+- Issues: V-home-R2-3, F-duo-R2-002, F-first-run-home-R2-001, RED-R2-10, RED-R2-12.
+- Decision applied: "agent" everywhere (menus, sheet titles, "Archived agents", account-deletion text). "Page" is used only for the Home Pages list and the agent page.
+- Acceptance: no user-visible "bot" remains on any board.
 
-### K10. Thread entry points and unlabeled controls
-- Issues: F-first-run-home-021, F-thread-R1-001, 002, F-duo-028, V-thread-R1-6, 8, 11, STORY-043-R1-7.
-- Boards: PG-A-Thread, PH-Thread, PG-A-GroupThread, new PH-GroupThread, Inner.
-- Acceptance: PH-Thread has a More menu (settings, open computer, archive, delete); each header icon has an accessible name line; the composer shows "+".
+### C10. Cleanup counts, confirm and entry disagree (high)
+- Issues: V-inbox-R2-3, 4, 5, 6; RED-R2-6; F-inbox-computer-R2-002.
+- Boards: PG-A-Cleanup.
+- Acceptance: menu count equals ticked senders or the sender without a link is marked; confirm lists both actions and says unsubscribe cannot be undone; progress frame reads "Archiving 40 of 101" with Cancel.
 
-### K11. Chat component states and approval safety
-- Issues: V-thread-R1-1, 17, F-thread-003, 009, 013, 017, 018, 020, 024, 025, 026, STORY-043-R1-1, 2, 4..6, 8, V-thread-R1-3, 4, 10, 13, 16, F-duo-007, F-thread-R1-003.
-- Boards: DS-06-Chat, PG-A-ThreadStates, PG-A-Thread, PG-A-GroupThread, PH-Thread.
-- Acceptance: no standing "Always allow" on a money or send tool; attach menu, upload ring, secret card, CONFLICT, unknown block, reconnecting, empty and read-only states are drawn; "Needs approval" text is 4.5:1.
+### C11. Opened message hides the draft the row announced (high)
+- Issues: V-inbox-R2-2. Boards: PG-A-InboxMessage.
+- Acceptance: a "Draft ready" card with one prominent "Review draft".
 
-### K12. Mail screens lack states
-- Issues: V-inbox-R1-1, 3, 4, 6..13, STORY-064-R1-2, 5, 7, F-inbox-computer-004, 005, 011, 013, R1-002, R1-003, STORY-047-R1-4, V-iphone-R1-22..24, RED-R1-9.
-- Boards: Sheet, PH-Inbox, PG-A-InboxMessage, PG-A-Compose, PG-A-Cleanup.
+### C12. DS-06-Chat page clipped (high)
+- Issues: F-thread-R2-001, V-thread-R2-7, 8, 9, 10. Boards: DS-06-Chat.
+- Acceptance: fixed 7400 px height and overflow hidden removed; all specimens visible; attach, stop glyph and approval pill match the thread boards.
 
-### K13. Account, settings and sign-in states
-- Issues: F-first-run-home-003, 005, 012, R1-001, R1-006, R1-008, RED-R1-6, RED-R1-13, V-account-R1-1..5, 7..13, F-finance-settings-008..016, F-thread-010, 011.
-- Boards: PG-B-SignIn, SignUp, ForgotPassword, Account, Settings, Models, Voice, Integrations.
+### C13. Destructive chat actions lack confirmation (medium)
+- Issues: F-first-run-home-R2-002, V-iphone-R2-11, V-thread-R2-5, RED-R2-13.
+- Boards: PG-A-Thread, PH-Thread, PH-GroupThread, PG-A-GroupThread.
 
-### K14. Pages boards: row rules, states, duplicates
-- Issues: V-pages-R1-2, 4, 5, 8..16, 18, 19, STORY-085-R1-5, 7..12, STORY-076-R1-4, 5, F-finance-settings-002..005, F-inbox-computer-019, 021.
-- Boards: PG-B-Legal, PG-B-CapTable, PG-B-DataRoom, PG-A-Routine, PG-A-Artifact, PG-A-Artifacts, PG-A-AgentList, PG-A-Image.
+### C14. Thread composer states mislead (medium)
+- Issues: V-thread-R2-2, 3, 4, 6, 14; STORY-043-R2-1, 2, 4, 6.
+- Boards: PG-A-ThreadStates, PH-Thread.
 
-### K15. Spec boards and rule cards are stale
-- Issues: F-duo-002, 010, 011, 019, 023, 026, 029, F-thread-005, 023, 028, 029, F-inbox-computer-006, 018, RED-R1-16 (glass-group wording), STORY-085-R1-6.
-- Boards: DS-03, DS-04, DS-05, DS-07, PG-A-Rules, PG-B-Rules, README.
+### C15. Glass-group and tinted-action limits exceeded (medium)
+- Issues: V-iphone-R2-8, 9, 10; V-home-R2-5, 6; V-pages-R2-15, 18, 19; RED-R2-19.
+- Boards: PH-Thread, PH-Inbox, PG-A-HomeNoModel, PG-B-DataRoom, PG-A-Computer, PG-A-Routine.
 
-## Items sent to the owner
+### C16. Rule cards lag the boards (medium)
+- Issues: F-inbox-computer-R2-001, STORY-085-R2-1, 85-R2-4, 85-R2-5, 85-R2-7, STORY-064-R2-5.
+- Boards: PG-A-Rules, PG-B-Rules.
 
-See `needs_product_decision` in the consolidation return: SSO account delete, call control, reactions, routine Run now, sign-up as launch mode.
+### C17. Inbox rows, toasts and chips differ per board (medium)
+- Issues: V-inbox-R2-7, 8, 9, 10, 15; V-iphone-R2-7; RED-R2-8; STORY-064-R2-4.
+- Boards: PH-Inbox, Sheet, Split, PG-A-InboxMessage.
+
+### C18. Settings has no Server row; data-sharing wording vague (medium)
+- Issues: F-first-run-home-R1-007, V-account-R2-13, 14, F-thread-R2-004, F-thread-R2-005.
+- Boards: PG-B-Settings, PG-B-Integrations.
+
+### C19. No call entry on threads (medium)
+- Issues: F-thread-027. Default: add "Call" to the chat menu. Boards: PG-A-Thread, PH-Thread.
+
+### C20. Pages family gaps (medium)
+- Issues: V-pages-R2-2, 3, 4, 7 to 14, 16, 17, 20 to 26; F-finance-settings-R2-001; STORY-076-R2-1 to 5; STORY-085-R2-5, 85-R2-6.
+- Boards: PG-B-Legal, PG-B-CapTable, PG-B-DataRoom, Desk, Desk-Computer, PG-A-Routine, PG-A-Image, PG-A-Artifact, PG-A-Artifacts, PG-A-AgentPage, PG-A-AgentList, PG-A-Computer, PH-Computer.
+
+### C21. Creation sheets lack keyboard, discard and error states (medium)
+- Issues: V-home-R2-13, 14, 15, 16; V-pages-R2-27, 28; RED-R2-14, 15.
+- Boards: PG-B-NewBot, PG-B-NewGroup, PG-B-NewSpace, PG-B-BotSettings, PG-B-GroupSettings.
+
+### C22. Layout defects, one-line fixes (medium)
+- Issues: F-thread-R2-003, F-duo-R2-001, V-iphone-R2-3 (PH-GroupThread header spills 17 px); V-iphone-R2-4, V-iphone-R2-12.
+- Boards: PH-GroupThread, PH-Home, PH-Computer.
+
+### C23. Identity, status words and Activity rows disagree (medium)
+- Issues: RED-R2-11, RED-R2-3, V-home-R2-7, 8, 9, 10, 12.
+- Boards: PG-A-Home, PG-A-Activity, PG-B-Spaces, PG-B-Account, PG-B-Settings.

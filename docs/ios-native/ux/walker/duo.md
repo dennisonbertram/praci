@@ -1,128 +1,85 @@
-# UX Walk: iPhone Duo and device adaptation (round 1 re-walk)
+# UX Walk: iPhone Duo and device adaptation (round 2)
 
 Walker: walk-duo. Date: 2026-10-20. Target: the planned native SwiftUI iPhone app (epic #427, phase 7 is #419). No Swift code exists; the boards are the app.
-Scope: catalog stories STORY-098 to STORY-108 (STORY-101 was merged into STORY-064). Standard iPhone adaptation uses the new PH-* boards.
+Scope: catalog stories STORY-098 to STORY-108 (STORY-101 merged into STORY-064) and the standard iPhone (PH-*) adaptation.
 
-Method: each step was judged against the board that draws it. Every board cited here was viewed as a rendered screenshot (round 1 screenshots), and the geometry audit was run live once per board at the board's own size. Every earlier finding in `duo-findings.json` was re-checked and now carries a status and note.
+Method: every board cited was viewed as a rendered screenshot. The geometry audit ran once per board (25 boards). Every finding in `duo-findings.json` was re-checked.
 
 ## Result
 
-44 findings: 3 resolved, 41 open (4 high, 21 medium, 15 low, 1 suggestion). 5 findings are new in this round (F-duo-R1-001 to 005). F-duo-013 was downgraded from high to medium.
+48 findings: 29 resolved, 19 open (0 critical, 0 high, 4 medium, 14 low, 1 suggestion). Four are new this round (F-duo-R2-001 to 004). Round 1 had 41 open; 24 closed this round. F-duo-001 dropped from high to medium.
 
-Resolved this round: F-duo-005 (one mail draft card, Save / Send, on every thread board), F-duo-024 (field aria-labels), F-duo-031 (space name and switcher on Home).
+Open medium findings:
+- F-duo-001: Duo inner, half-folded and laptop layouts are still missing for thread beside Personnel, Computer 1/2 + 1/2, Artifacts, Image, Settings and the New bot / New space sheets.
+- F-duo-R2-001: PH-GroupThread header spills 17 px past the right edge.
+- F-duo-R2-002: agent and bot are used for the same thing (New agent menu, New bot sheet, Archived bots, Agent settings).
+- F-duo-R2-004: no standard iPhone boards for Artifacts, Settings, Account, Finance or the form sheets.
 
-What the gap-fix pass changed for this topic: PG-A-Home (Pages and Activity sections, space title with menu), PG-A-Thread (Save / Send mail card), and new PH-Home, PH-Thread, PH-Inbox, PH-Computer, PH-Spaces, PG-B-Spaces, PG-A-ThreadStates, PG-A-Compose, PG-B-Account. The Duo inner, half-folded and laptop boards (Split, Inner, Desk) and DS-03 / DS-04 were not touched, so most inner-display findings stand.
+## What changed since round 1
 
-## Boards by pose
+New or rebuilt boards: Main (now the real Home), PG-A-Home (eight frames), PG-A-Activity, Split (full sidebar), Inner-Message, Desk (tabs, accounts, thread), Desk-Computer (keyboard open), PG-A-Thread (chat menu, archive, replaced draft), PG-A-ThreadStates (24 states), PG-A-Computer and PH-Computer (eight states), PH-GroupThread, PG-A-Image (menus, delete, saved), PG-B-NewBot / NewSpace / NewGroup (dimmed Create, errors), PG-B-Settings (archived bots, AI data sharing), PG-B-Account, PG-B-Spaces, PG-B-Finance (three periods, hidden amounts), DS-03 (fold survival, collapse order for every page).
 
-| Pose | Boards that draw it |
-| --- | --- |
-| Outer 466x678 | Main (stale), Sheet, PG-A-*, PG-B-* |
-| Standard iPhone 393x852 | PH-Home, PH-Thread, PH-Inbox, PH-Computer (810 wide, two states), PH-Spaces |
-| Inner flat 890x626 | Split (Inbox only) |
-| Half-folded | Inner (Inbox + Inbox agent only) |
-| Laptop 626x890 | Desk (Finance only) |
-
-Every other page has inner, half-folded and laptop layouts only as rule-card text (F-duo-001).
-
-## Geometry audit (one run per board)
+## Geometry audit (one run per board, 1990x1200 viewport)
 
 | Board | Result |
 | --- | --- |
-| Main, PG-A-Home, PG-B-Spaces, PH-Home, PH-Spaces | Hits are text/time pairs, unread dots, the avatar and Pages rows with chevrons: deliberate. No overflow. |
-| Sheet, PH-Inbox | Unread dot beside text flagged: deliberate. |
-| Split | Sidebar rows and 8 px unread dot flagged: deliberate. 'Connect apps' wrapped flag is a false positive (one line in the screenshot). Create button 30 px wide (F-duo-032). |
-| Inner | Dot rows flagged; Save / Send 'wrapped' is a false positive. |
-| Desk | Gap 8 / 279 is Back + pill, spacer, group: deliberate. |
-| PG-A-Thread, PH-Thread, PG-A-ThreadStates | Clean (Save / Send wrapped flag is a false positive). |
-| PG-A-Computer, PH-Computer | Segments and key bar flagged as 'wrapped': false positives (single-line labels). |
-| PG-A-Artifacts | Chip row is 456 px in a 390 px column; last chip cut off, confirmed in screenshot (F-duo-039). |
-| PG-A-Artifact, PG-A-Image, PG-B-Finance | Clean. |
-| PG-B-NewBot, NewGroup, NewSpace, Settings | Clean. |
-| PG-B-Account | Profile row heights flagged (avatar 48 vs text 22): deliberate, aligned centers. |
-| PG-A-Compose, PG-A-HomeNoModel | Clean. |
+| Main, PG-A-Home, PH-Home, Split, Inner, Inner-Message, Sheet, PH-Inbox, PH-Thread, PG-A-Thread, PG-A-ThreadStates, PG-A-Computer, PH-Computer, Desk-Computer, PG-A-Image, PG-B-Settings | Uneven-row and 'wrapped control' hits are icon/text pairs, unread dots and buttons whose label is on one line in the screenshot (AB, Edit, Send, Team, Take control, Restore): false positives. No page overflow. |
+| PH-GroupThread | Header spills 17 px right; confirmed in the screenshot (F-duo-R2-001). |
+| PG-A-Artifacts | Chip row runs past the column; last chip cut (F-duo-039). Wrapped flags on chips are false positives. |
+| Desk, PG-A-Activity, PG-A-Artifact, PG-B-NewBot, NewSpace, NewGroup, PG-B-Finance | Clean. |
 
-## STORY-098: Open an agent from Home on the outer display and approve a request
+## Stories
 
-1. Tap the Finance agent row. Board: PG-A-Home. PASS: Home now shows Inbox, ACTIVITY (Finance agent Working, Inbox agent Approve, Weekly runway Done), PAGES, PERSONNEL. The Activity row marked Approve is a 2-tap shortcut (row, then Allow), which is better than the 3-tap ideal. WARN: Main.dc.html still draws an older Home (F-duo-R1-001), and Activity is stated twice (bell with dot, and the section; F-duo-008).
-2. Read the thread. Board: PG-A-Thread, PH-Thread. WARN: 'Inbox agent is working' sits under 'Needs approval' (F-duo-009).
-3. Tap Allow. Board: PG-A-Thread. WARN: the only approval card drawn is the mail draft (Save / Send, Send prominent). The Finance Allow once / Always allow / Deny card is on DS-06 only (F-duo-R1-003). Resolved, CONFLICT and failed states: only DS-06 shows Resolved (F-duo-007).
-Also: no pinned cue if the card scrolls away (F-duo-006). Activity list page: NO BOARD (F-duo-008). Standard iPhone: PH-Thread has the same card; PH-Thread has no More, so the thread actions menu has no home (F-duo-028).
-Flow: ideal 3, designed 2 to 3. Matches.
+### STORY-098: Open an agent from Home and approve a request
+1. Tap Finance agent or the Activity row marked 'Needs you'. Board: PG-A-Home, Main, PH-Home, PG-A-Activity. PASS. Activity is on Home, with See all and the bell opening a drawn list. Ideal 3, designed 2 (row, Send).
+2. Read the thread. Board: PG-A-Thread, PH-Thread. PASS. The 'working' line no longer sits under the approval.
+3. Approve. Board: PG-A-Thread. WARN: the card drawn is the mail draft (Edit / Send); the Allow once / Always allow / Deny card is on DS-06 only (F-duo-R1-003). The scrolled-away cue is drawn (resolved F-duo-006). CONFLICT and failed Send are not drawn (F-duo-007).
+Flow matches the ideal.
 
-## STORY-099: Triage mail on the outer display, then ask the Inbox agent
+### STORY-099: Triage mail on the outer display, then ask the Inbox agent
+1. Home to Inbox. PASS. 2. Strip. Board: Sheet, PH-Inbox. PASS: Back, Search / Filter / Compose, More, prominent chat button; same on both. 3. Message. Board: Inner-Message (inner), PG-A-InboxMessage. PASS. 4 to 6. Ask and Send. Board: Inner, PG-A-Thread. PASS; the Inbox states (zero, offline, reconnect, consent) are drawn on Sheet and PH-Inbox.
+Flow: ideal 5, designed 5 on both outer and standard iPhone.
 
-1. Tap Inbox. Board: PG-A-Home. PASS.
-2. Strip. Board: Sheet. PASS: Back, Search / Filter / Compose, prominent 'Ask Inbox agent'. WARN: Split and DS-03 define a different action set (F-duo-003, F-duo-004). Standard iPhone (PH-Inbox) has Search, Filter and a prominent Compose, with no 'Ask Inbox agent' (F-duo-R1-002). PH-Inbox also draws one row mid-swipe, which reads as a bug (F-duo-R1-005).
-3. Open the message. Board: PG-A-InboxMessage (not re-viewed this round).
-4-6. Ask the agent and Send. Board: PG-A-Thread / Inner. PASS: same card on both. Compose and Reply: PG-A-Compose now draws New message, Reply and the Reply / Reply all / Forward title menu, which fills the earlier NO BOARD for alternate (b).
-Flow: ideal 5. Designed 5 on Duo outer, 7 on standard iPhone because the agent is not reachable from the Inbox page.
+### STORY-100: Unfold mid-task and keep working
+1. Unfold. Board: Split (Inbox beside the sidebar), Inner. WARN: no board shows an agent thread beside the Personnel sidebar (F-duo-001). The sidebar itself is now complete (title menu, New, Activity, pages, Personnel, profile).
+2 to 3. Content and toolbar. Board: Inner. PASS for Inbox agent. 4. Tap another agent. NO BOARD for the pane change.
+Survival of draft, scroll and stream is specified (DS-03 section 7, resolved F-duo-002). Flow: ideal 1, designed 1.
 
-## STORY-100: Unfold to the inner display mid-task
+### STORY-102: Laptop pose, watch the Team Computer and take control
+1. Open computer. Board: PG-A-Thread chat menu ('Open computer'), thread computer block ('Take control') in ThreadStates. PASS.
+2 to 5. Laptop pose, watch, handoff, Take control. Board: Desk-Computer, PG-A-Computer (Watching, Agent waiting with I'm done / Skip, In control). PASS. WARN: Desk-Computer draws Release as a bare icon (F-duo-R2-003).
+6. Keyboard. Board: Desk-Computer. PASS (keyboard open under key bar; resolved F-duo-014).
+7 to 12. Team / Private, Fit, handoff, Release. Board: PG-A-Computer, PH-Computer. PASS (Control ended, Reconnecting, Control denied, Can't connect all drawn).
+13 to 15. Composer, unfold, fold. Board: none for 1/2 + 1/2 or 1/3 + 2/3 Computer (F-duo-001).
+Flow: ideal 4, designed 4.
 
-1-2. Board: Split shows the sidebar plus Inbox, not a thread. NO BOARD for a thread beside the sidebar (F-duo-001). WARN: sidebar differs between Split, DS-03, DS-04 (F-duo-010).
-3. Strip moves right. Board: Split / Inner. PASS for Inbox.
-4. Tap Finance agent. NO BOARD.
-Rules for draft, scroll, stream, sheet after a posture change: none (F-duo-002).
+### STORY-103: Review Finance in laptop pose
+1. Open Finance. Board: Desk, PG-B-Finance. PASS: tabs, Runway / Cash, 12-month burn, Accounts, Upcoming.
+2. Hide amounts. Board: PG-B-Finance (masked frame), Desk (eye beside the thread header). PASS.
+3. Ask. Board: Desk. PASS. Chat button is the prominent action on the outer boards. Accounts rows run under the fold band on Desk; scroll is implied.
+Flow: ideal 3, designed 3.
 
-## STORY-102: Laptop pose, watch the Computer and take control
+### STORY-104: Create a bot (outer and inner)
+1. New. Board: PG-A-Home 'New menu' (New agent / New group / New space). PASS; WARN on wording (F-duo-R2-002).
+2 to 4. Sheet, name, Create. Board: PG-B-NewBot (empty dimmed, filled, creating, error), NewSpace, NewGroup. PASS: Create dims while Name is empty, errors inline, selection marks and '2 to 6' hint on groups.
+5 to 6. Inner flat and half-fold sheet. NO BOARD (F-duo-001). Split has '+ New'.
+Standard iPhone: PH-Home has a prominent New; the sheet at 393 pt is NO BOARD (F-duo-R2-004).
+Flow: ideal 4, designed 4.
 
-1. More, Open computer. NO BOARD for the menu (F-duo-028).
-2. Laptop pose. NO BOARD (Desk is Finance only; F-duo-001).
-3. Overlays. Board: PG-A-Computer PASS (Team / Private, 'You have control').
-4. Handoff card Skip / I'm done. NO BOARD on any board (F-duo-013).
-5. Take control. Board: PH-Computer PASS on standard iPhone: Watching state has one prominent 'Take control'; In control swaps it for 'Release', with key bar. Duo outer (PG-A-Computer) still draws only the in-control state and an unlabeled lock glyph for Release (F-duo-013).
-6. Keyboard in laptop pose: no layout with the keyboard open (F-duo-014).
-13-14. Ask in the bottom composer, unfold: NO BOARD; session continuity unstated (F-duo-002).
-Flow: ideal 4. Designed unclear on Duo.
+### STORY-105: Short outer display, More menu
+Board: DS-03 (collapse order now listed for Inbox, Thread, Computer, Finance), PG-A-Thread (chat menu, archive alert, Archived banner). PASS; the reduced-height thread itself is not drawn, only specified. Flow: ideal 2, designed 2.
 
-## STORY-103: Finance in laptop pose
+### STORY-106: Tap a push notification
+No board for the banner (phase 10). Landing: PG-A-Home / PG-B-Spaces ('Switching to Northwind' skeleton, title shows the space). PASS for landing; the notification is not drawn.
 
-Board: Desk. WARN: the chart is 'Monthly spend, 6 bars' while PG-B-Finance is 'Monthly burn, 12 bars' (F-duo-016); period tabs, Accounts, Upcoming and Refresh are missing and the prominent 'Ask Finance agent' is replaced by a composer, while PG-B-Rules says they sit in the bottom half (F-duo-015). Eye icon is in the bar here and the strip group elsewhere. Chat reply under the chart reads clearly.
+### STORY-107: Settings on the inner display
+Board: PG-B-Settings (Settings, Archived bots, AI data sharing), PG-B-Account. PASS on outer; inner nested list + detail has NO BOARD (F-duo-001). Split now has the profile row, so the entry exists.
 
-## STORY-104: Create a bot (outer and inner)
+### STORY-108: Open an artifact image and share it
+Board: PG-A-Artifacts, PG-A-Artifact, PG-A-Image (menus, versions, delete confirmation, Saved to Photos). PASS: Share is the prominent button, name appears once. WARN: chip row cut at the edge (F-duo-039). Inner and standard iPhone: NO BOARD (F-duo-R2-004).
 
-1. Tap New. Board: PG-A-Home / PH-Home draw the + button. NO BOARD for the New menu (F-duo-025).
-2. New bot sheet. Board: PG-B-NewBot. WARN: X plus check in the strip (F-duo-019); Title and Description overlap (F-duo-020); large empty area (F-duo-021); Create not drawn disabled (F-duo-022).
-3. New group. Board: PG-B-NewGroup. PASS for shipped avatar shapes (F-duo-023 partly fixed). No selection marks (F-duo-022).
-4. New space. Board: PG-B-NewSpace. Error state drawn with an enabled-looking check (F-duo-022).
-5-6. Inner and half-folded sheet: NO BOARD (F-duo-001, F-duo-026).
+## Standard iPhone adaptation
+PH-Home, PH-Thread, PH-GroupThread, PH-Inbox, PH-Computer and PH-Spaces follow the same design rules as the outer boards: one prominent action (New, Send, chat button, Take control), top bar instead of strip, title menu for spaces. Gaps: F-duo-R2-001 (group header spill), F-duo-R2-004 (other pages). Thread More, Plus and long-press menus are drawn on PH-Thread.
 
-## STORY-105: Short outer display
-
-Board: DS-03 reduced height (Inbox only). NO BOARD for a thread at 420 pt or for the collapsed prominent action (F-duo-029). The thread More menu is not drawn (F-duo-028).
-
-## STORY-106: Tap a push notification
-
-1-2. Banner: DS-04 toast (Finance as teal circle F, F-duo-023). Space switch: Home and PH-Home now name the space; PG-B-Spaces and PH-Spaces draw the space menu (Personal, Northwind, Side project, New space, Space settings). RESOLVED (F-duo-031).
-3. Thread pushes over Home. Board: PG-A-Thread PASS.
-4. Fold and unfold: NO BOARD (F-duo-002).
-Space settings page (PG-B-Spaces): one confirm check, Delete space in red. Clear. Space settings confirm uses Back + check, not X + check (F-duo-019).
-
-## STORY-107: Settings on the inner display
-
-1. Tap the profile row. NO TARGET on Split (F-duo-011). Outer path: Home avatar (labelled Account) opens Settings (F-duo-033).
-2. Nested list + detail sheet: NO BOARD (F-duo-001). Outer: PG-B-Settings PASS. The profile row says Sam Rivera, the Home avatar says AB.
-Account detail: PG-B-Account now draws Account, Sign out confirmation, Delete confirmation (earlier NO BOARD filled). Models and Voice: PG-B-Models, PG-B-Voice not re-walked this round.
-
-## STORY-108: Open an artifact image and share it
-
-1. Artifacts list. Board: PG-A-Artifacts. WARN: chip row cut off (F-duo-039). Reached from Home by the third unlabeled strip icon (F-duo-038, F-duo-R1-004).
-2. Image. Board: PG-A-Image PASS: Close, Share, Save, name pill, dimmed.
-3. Share. System sheet.
-Artifact page (PG-A-Artifact): Share is not prominent (F-duo-017); title repeated (F-duo-018). Inner and laptop variants: NO BOARD (F-duo-001).
-
-## Ideal versus designed
-
-| Story | Ideal | Designed | Note |
-| --- | --- | --- | --- |
-| 098 | 3 | 2 to 3 | Activity shortcut |
-| 099 | 5 | 5 outer, 7 standard iPhone | F-duo-R1-002 |
-| 100 | 1 | unknown | no posture rules |
-| 102 | 4 | unknown on Duo | handoff card, laptop pose not drawn |
-| 104 | 4 | 4 | New menu not drawn |
-| 107 | 4 | unknown on inner | no profile target |
-
-## Open findings
-
-See `duo-findings.json` (status and status_note on every finding). High: F-duo-001, 002, 003, 015.
+## Design rules check
+Glass stays on bars, menus and the prominent control; content is solid. No view draws more than three glass groups plus the prominent one. Avatars use the shipped shapes. One tinted prominent action per view holds except as noted. Product name is Praci (Account 'After delete' frame).

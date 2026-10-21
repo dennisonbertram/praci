@@ -1,12 +1,11 @@
-# Judge brief J3: Mail draft card editing model
+# Judge brief: J3 Scope of missing inner, laptop and standard-iPhone boards
 
-Product: Praci, a planned native SwiftUI iPhone app. The agent ("Inbox agent") posts a mail draft card in the chat thread: To, Subject, body, buttons. Persona: founder, wants to add Jordan Lee on Cc and change a time, then send, in the fewest taps. Current card: "Needs approval", footer Save and Send (Send prominent). Nothing says how to edit; PG-A-Compose is a send-new-mail screen (X, up-arrow send). Rules: glass only on floating nav; one tinted prominent action per view; every visible word is UI so minimize copy; native iOS controls first.
+Praci is a planned native SwiftUI iPhone app (no Swift code yet; the design boards are the spec). Poses: Duo outer display 466x678 (side strip), inner display 890x626 (1/3 + 2/3 flat, 1/2 + 1/2 half-folded, nothing interactive at x 435 to 455), laptop pose 626x890 (view top, controls bottom), standard iPhone 393x852. Rules: glass only for floating controls; at most three glass groups plus one tinted prominent action per view. Persona: a founder triaging mail with an Inbox agent and checking Finance.
 
-Open questions: how the card is edited; what happens to the old card when the agent replaces it; "Save" vs "Save draft"; whether Compose X and card Save write the same draft.
+Problem: most screens are drawn only for the outer display. Missing: Reply composer, Archive result, Inbox zero and Cleanup on the inner display (high/medium); Finance 1/3 + 2/3 and 1/2 + 1/2; where "Ask [page] agent" opens on inner; an agent thread with draft, chips and a queued message beside the Personnel sidebar; laptop poses for Artifact, Agent page, Agent list; standard iPhone boards for Artifacts, Settings, Account, Finance and sheets. The rules boards already hold a 12-step generation recipe and one rule card per page with inner, half-folded and laptop lines.
 
-Proposals:
-A: composer is the only editor (type "Add Jordan on Cc"); rename Save to Save draft; old card shows "Replaced"; Compose X offers Save/Discard; no edit sheet.
-B: tap card body opens the Compose layout as a prefilled sheet titled Edit draft with Done; card keeps Save draft and Send; edits happen in place.
-C: Apple Mail pattern: draft is autosaved so Save is removed; footer Edit + Send; Edit or body tap opens the same sheet with Done; X with changes asks Discard/Keep editing; old card collapses to "Replaced"; Compose X Save draft writes the same draft.
+Option A (minimal): no new frames. Add rule lines only: Ask-agent destination, remove "folders" from the Inbox story, 393 pt rule, laptop-capable list.
+Option B (draw every pose): a drawn frame for every page in every pose (about 30 frames and 6 new boards).
+Option C (adaptive split view, as Apple Mail, Messages and Settings do with NavigationSplitView): one derivation recipe per layout family (List + detail, Live view + controls, Form/sheet, Thread) plus one drawn exemplar per behaviour that is not derivable: inner Reply, After Archive, Inbox zero and Cleanup frames; Finance 1/3 + 2/3 and half-folded with agent thread, chips and a queued bubble; one new PH-Pages board with Finance and Settings at 393 pt; recipe text states sheets and the other pages follow.
 
-Score each of A, B, C 1-5 on: (1) meets acceptance [x3] (edit entry, Replaced state, Save meaning, same draft, Cc suggestions and error states), (2) simplicity [x2], (3) consistency [x2], (4) usability [x2], (5) visual quality [x2], (6) effort and risk, 5 = small and safe [x1]. Return a winner, an optional graft, and a short defense.
+Score each option 1-5 on: meets acceptance, simplicity, consistency, usability, visual quality, effort and risk (5 = small and safe). Return a winner, an optional graft, and a short defense.

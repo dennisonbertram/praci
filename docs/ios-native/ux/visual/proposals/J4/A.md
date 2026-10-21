@@ -1,26 +1,16 @@
-# J4 proposal A: minimal change
-
-Persona at this step: a founder who asked the Inbox agent to reply to Ana, now looking at a finished draft on PG-A-Thread (466x678 strip) or PH-Thread (393x852).
+# J4 proposal A: minimal change, Pages above Personnel everywhere
 
 ## Idea
-Fix the contradictions in place and add no new element. Remove the wrong line, demote the second prominent button, draw the missing Stop state, and give a scrolled-away approval a small cue that is already in the layout.
+Adopt the order that Split already uses on every Home surface: Activity, then Pages, then Personnel. Inbox stays the first row of Pages, so "3 need reply" moves up the screen without any new element. Nothing else changes.
 
-## Changes
-1. Hide the working line while a card awaits approval. The run is paused for the user, so nothing is working. PG-A-Thread and PH-Thread lose "Inbox agent is working" (STORY-047-R1-2, V-iphone-R1-13, V-thread-R1-2).
-2. Remove the agent sentence "Here is a draft. I have not sent it." when a card follows (STORY-047-R1-5). The tool label then sits directly above the card.
-3. Working indicator is the DS-06 version everywhere: 28 pt bot avatar in its shipped colour with a ring, plus a pill of three neutral dots. No text. VoiceOver label "<agent> is working". PG-A-GroupThread uses the Legal avatar (purple #9B5CF6), not blue text (V-thread-R1-9, F-thread-015).
-4. Composer trailing control while any card awaits approval: Send is drawn with a solid neutral fill (#33322F) and an ink arrow. The card Send is the only tinted action (V-thread-R1-18, RED-R1-16).
-5. Stop: while an agent runs, the trailing slot is stop.fill in the prominent fill. Typed text stays in the field as a draft and Send returns when the run ends. A "Stopping" state shows a 20 pt spinner in the same slot (F-thread-014).
-6. Scrolled-away cue: a 8 pt warning dot on the right edge of the title capsule while an approval is pending. Not tappable.
+## Edits
+- PH-Home, PG-A-Home, Main: move the PAGES block (label plus card) above the PERSONNEL block in every frame.
+- Split: no change.
 
-## What it does not do
-Tapping the dot does nothing, so the jump to the card still needs a manual scroll. That leaves F-duo-006 (a cue that scrolls to the card) only half met.
+## What the persona sees
+On PH-Home (393x852) Activity ends near y=383, then Pages (six rows, about 264 px) ends near y=700, then the PERSONNEL label and Chief at about y=760. Inbox is visible. On the Duo outer display (466x678) Pages ends near y=560, so Chief is the only agent row that fits and the other three are below the fold.
 
-## Boards touched
-PG-A-Thread, PH-Thread, PG-A-GroupThread, PG-A-ThreadStates, DS-06-Chat (composer states plus rule), PG-A-Rules (working line text).
-
-## Cost
-Lowest. No new component. One new composer state (Stopping) and one badge on an existing capsule. SwiftUI: a conditional `Text`/`ProgressView` swap and a `.overlay` badge.
-
-## Risks
-The dot is an unlabeled signal by colour only (against the rule that colour is never the only signal), and a badge on a title capsule is not a pattern iOS users read as "tap to jump".
+## Trade-offs
+- Inbox is fixed, but the main conversation list (Personnel, which is recency sorted and holds Chief) is pushed down on every device. The product is chat with agents first, so the most used list gets worse to fix the second most used one.
+- The six Pages rows are mostly static (Cap table and Data room have no count), so the extra space above Personnel carries little news.
+- Smallest diff, no new component, lowest build risk.

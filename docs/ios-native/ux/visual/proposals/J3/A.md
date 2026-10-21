@@ -1,26 +1,19 @@
-# J3 proposal A: minimal change (composer is the only editor)
+# J3 Option A: minimal change (rule text only)
 
-Idea: do not add an editing surface. The chat composer stays the one way to change a draft ("Add Jordan on Cc"). Fix only the words and the missing states.
+Round 2. Scope of missing inner, laptop and standard-iPhone boards.
 
-## Journey
-Persona: a founder with a pending reply to Ana who must add Jordan on Cc and move the start to 10:30.
-1. Reads the card in the thread (PG-A-Thread, PH-Thread, Inner).
-2. Types "Add Jordan on Cc and make it 10:30" in the composer, taps the composer send.
-3. The agent posts a new card. The old card shrinks to a one-line "Replaced" row.
-4. Taps Send on the new card. Card shows "Sent".
-Taps: 2 plus typing a sentence. To fix one word, the founder must describe the change in words.
+## Idea
+Draw nothing new. The two rules boards already hold a 12-step generation recipe and one rule card per page. Close the findings by editing text.
 
-## Changes
-- Card buttons: rename "Save" to "Save draft". Send unchanged (the one prominent action).
-- After Save draft: the card header tag changes from "Needs approval" to "Saved" (drawn state).
-- Replaced state: old card collapses to one muted line "Replaced by a newer draft", no buttons.
-- Empty To: Send dimmed, To row reads "Add a recipient" in the warning color.
-- DS-06-Chat: delete the phrase "Body is tappable to edit" so the spec stops promising an affordance that does not exist.
-- PG-A-Compose: X with typed text opens an action sheet "Save draft / Discard draft / Cancel". Same draft record as the card's Save draft; one Drafts list.
-- Not added: edit button, edit sheet, Cc suggestion states.
+## Edits
+- PG-A-Rules, Inbox card: remove "folders" from the left-third description (STORY-064-R2-5; Inbox is one page with Needs reply and Other mail sections).
+- PG-A-Rules / PG-B-Rules shared rules: add "Ask [page] agent opens the thread in the right half (half-folded) or replaces the detail pane with Back to [page] (inner flat)" (STORY-085-R2-3).
+- PG-B-Rules shared rules: add a 393 pt line: "Standard iPhone: the outer-display content column with a top bar instead of the side strip; sheets use the same medium and large detents" (F-duo-R2-004, F-inbox-computer-026).
+- PG-A-Rules Artifact, Agent page, Agent list cards: laptop line reads "Full height; no split" (STORY-076-R2-6).
+- Reply, Archive result, Inbox zero, Cleanup, Finance inner: add one sentence each to the Inbox, Inbox message and Finance cards describing the inner pose.
 
-## Fixes by issue
-STORY-047-R1-3 yes; R1-6 yes; V-thread-R1-5 partly (label only, no edit); V-iphone-R1-12 partly; RED-R1-10 yes; V-inbox-R1-10 yes; F-inbox-computer-R1-002 partly; STORY-047-R1-1 and F-thread-012 no (no edit entry); STORY-047-R1-4 no.
+## What it does not do
+No frame shows the Reply form between the list and the fold gap, the snackbar after Archive, Cleanup in the detail pane, Finance beside the sidebar, or an agent thread with chips and a queued bubble. An implementer must infer the layout from prose, and the hinge keep-out (x 435 to 455) is untested on every new surface.
 
-## Risk
-Smallest SwiftUI work (text changes, one action sheet). Leaves the founder unable to fix a single word without a round trip to the agent.
+## Fit
+Smallest effort and no drift risk. Fails the cluster acceptance (STORY-064-R2-1 is rated high and asks for a board). Persona view: the founder's primary inner-display task (reply to the top Needs reply mail) has no drawn path.

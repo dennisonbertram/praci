@@ -5,75 +5,75 @@
     {
       "model": "meta/muse-wonder",
       "ok": true,
-      "seconds": 15,
-      "costUsd": 0.0532872,
+      "seconds": 28,
+      "costUsd": 0.061488,
       "result": {
         "scores": {
           "A": {
-            "criteria": 1,
+            "criteria": 5,
             "simplicity": 5,
-            "consistency": 2,
-            "usability": 2,
-            "visual": 3,
+            "consistency": 4,
+            "usability": 5,
+            "visual": 4,
             "effort": 5
           },
           "B": {
-            "criteria": 2,
-            "simplicity": 1,
-            "consistency": 2,
+            "criteria": 3,
+            "simplicity": 3,
+            "consistency": 3,
             "usability": 3,
             "visual": 3,
-            "effort": 1
+            "effort": 2
           },
           "C": {
-            "criteria": 5,
-            "simplicity": 4,
+            "criteria": 3,
+            "simplicity": 3,
             "consistency": 5,
-            "usability": 5,
+            "usability": 4,
             "visual": 4,
-            "effort": 4
+            "effort": 2
           }
         },
-        "winner": "C",
-        "graft": null,
-        "defense": "C is the only proposal meeting all criteria: it draws the founder's two interactive poses once — inner Inbox message in 1/3+2/3 split so Archive, Reply, More (Cleanup) and Ask Inbox agent can be checked against the x435-455 fold, and laptop Computer with keyboard below the y435-455 fold, key bar, and Release occupying the exact Take control slot — fixes the Desk rule/board mismatch, and assigns every undrawn page a named template via the coverage table without redrawing decisions. A fails criterion 1 outright and substitutes a vague 'derive from rule card' note for template assignment, leaving keyboard occlusion and fold placement untested. B draws the message in the wrong half-folded pose already covered by Inner, and wastes four boards duplicating Split (Finance/Legal inner) and Desk (Data room laptop), creating five 626x890/890x626 surfaces to keep in sync while Finance, Inbox and Computer copy are still changing; its one correct board, Computer laptop, is already in C. No graft: C already incorporates A's Inner chip and Desk fix, and any B board would violate the no-duplication criterion."
+        "winner": "A",
+        "graft": "From C: add one static 12-month average-burn headline to the burn card, with no segmented control, to give the chart a quantitative anchor.",
+        "defense": "A is the only option solving both problems: it removes the dishonest control, makes scope explicit with 'Runway now', 'Cash today' and 'Monthly burn, 12 months', and prevents privacy leakage by masking Runway and flattening bars when amounts are hidden. It best serves the founder's quick-glance job with no interaction and least mock/data risk. B correctly scopes ranges to the burn card, but a header menu pill hides state, 30 daily bars are dense, three invented datasets risk inconsistent totals, and it says nothing about hidden amounts. C uses a familiar Stocks pattern, but its prominent segmented control still invites expectations that Runway/Cash will change, adds exploration the persona does not need, carries the same three-dataset effort/inconsistency risk, and also ignores the hidden-amounts decision."
       }
     },
     {
       "model": "google/gemini-4-argon",
       "ok": true,
-      "seconds": 21,
-      "costUsd": 0.016816,
+      "seconds": 37,
+      "costUsd": 0.024806,
       "result": {
         "scores": {
           "A": {
-            "criteria": 2,
+            "criteria": 5,
             "simplicity": 5,
-            "consistency": 3,
-            "usability": 2,
-            "visual": 2,
+            "consistency": 5,
+            "usability": 5,
+            "visual": 5,
             "effort": 5
           },
           "B": {
             "criteria": 3,
-            "simplicity": 2,
-            "consistency": 3,
-            "usability": 4,
+            "simplicity": 3,
+            "consistency": 4,
+            "usability": 3,
             "visual": 4,
-            "effort": 1
+            "effort": 2
           },
           "C": {
-            "criteria": 5,
-            "simplicity": 4,
-            "consistency": 5,
-            "usability": 5,
-            "visual": 5,
-            "effort": 4
+            "criteria": 3,
+            "simplicity": 2,
+            "consistency": 4,
+            "usability": 3,
+            "visual": 4,
+            "effort": 2
           }
         },
-        "winner": "C",
-        "graft": null,
-        "defense": "Proposal C is the only option that satisfies all four acceptance criteria while respecting cross-cluster maintenance constraints. It draws the exact two high-interaction boards required by the persona and Criterion 1 (Inbox message on the inner display with Archive, Reply, More/Cleanup, and Ask Inbox agent; Computer in laptop pose with the system keyboard, key bar, and Release in the Take control slot), aligns the Desk rule card with the Desk board (Criterion 2), maps all undrawn pages to explicit native split-view templates in a coverage table (Criterion 3), and avoids duplicating layouts across clusters (Criterion 4). Proposal A is rejected because it fails Criterion 1 by adding no boards at all, leaving the core persona interactions unillustrated. Proposal B is rejected because drawing five boards—including Finance inner, Legal inner, and Data room laptop—Directly violates Criterion 4 by duplicating standard list-plus-detail patterns and creating severe synchronization risk with clusters actively editing Finance data and copy."
+        "winner": "A",
+        "graft": "From B, keep the existing terse tile labels ('Runway' and 'Cash' rather than 'Runway now' and 'Cash today') to strictly honor the 'minimal copy (every word is UI)' rule, since both metrics are inherently point-in-time.",
+        "defense": "Option A is the only proposal that solves both parts of the brief while respecting the founder persona and static-mockup constraints. Startup burn is lumpy within a month (payroll, rent, cloud bills), so the daily and weekly burn charts introduced by B and C create noisy, misleading signals just to justify keeping a broken control. Removing the range selector eliminates the false affordance where Runway and Cash never changed, keeps the 12-month monthly burn chart immediately glanceable on iPhone and Duo, and avoids drawing and maintaining three separate static placeholder datasets (which inflates effort and risk in B and C). Finally, only A resolves the undecided privacy requirement by masking Runway, flattening bar heights so relative burn spikes do not leak in the hidden state, and placing the Hide amounts eye cleanly at the top of the Desk layout."
       }
     }
   ]

@@ -1,4 +1,4 @@
-# Brief: Thread screens, round 1
+# Brief: Thread screens, round 2
 
 Praci is a planned native SwiftUI iPhone app for founders and small teams. Users chat with AI agents (Inbox agent, Finance agent, Legal agent) that read mail and documents and draft work. The agents never send mail or spend money without an explicit approval tap. The app is monochrome, with glass only on floating navigation and controls, one prominent action per view, and per-agent avatar shapes and colors.
 
@@ -11,3 +11,5 @@ Screens (static mockups, fixed-size devices):
 - PG-A-GroupThread: Duo outer. Group thread with two agents answering.
 - Inner: Duo inner display (890x626). Inbox list beside the Inbox agent thread.
 - DS-06-Chat: design-system spec of chat components (bubbles, composer, mail approval card, tool approval, ask card, voice player).
+
+Round 2 notes: boards were revised after round 2. ThreadStates is now a grid of 20 labeled states (offline, failed, refused, oversize file, loading, archived, read only, session ended, first message, no model, computer block, running, stopping, approval pending). PG-A-Thread is a grid of chat menu, archive confirmation, archived, draft replaced, empty recipient and agent-editing-the-draft states. Judge every frame, and whether the persona knows what is happening and what to do next in each.

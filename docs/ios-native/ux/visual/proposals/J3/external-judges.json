@@ -5,75 +5,75 @@
     {
       "model": "meta/muse-wonder",
       "ok": true,
-      "seconds": 25,
-      "costUsd": 0.064432,
+      "seconds": 19,
+      "costUsd": 0.052708,
       "result": {
         "scores": {
           "A": {
-            "criteria": 2,
-            "simplicity": 3,
+            "criteria": 1,
+            "simplicity": 4,
             "consistency": 2,
             "usability": 2,
-            "visual": 3,
-            "effort": 5
+            "visual": 2,
+            "effort": 3
           },
           "B": {
-            "criteria": 3,
-            "simplicity": 3,
-            "consistency": 3,
-            "usability": 4,
+            "criteria": 5,
+            "simplicity": 1,
+            "consistency": 2,
+            "usability": 3,
             "visual": 3,
-            "effort": 4
+            "effort": 1
           },
           "C": {
-            "criteria": 5,
-            "simplicity": 4,
+            "criteria": 4,
+            "simplicity": 5,
             "consistency": 5,
             "usability": 5,
             "visual": 4,
-            "effort": 3
+            "effort": 4
           }
         },
         "winner": "C",
-        "graft": "From B: title the shared sheet 'Edit draft' when opened from a card, distinguishing it from new-mail Compose without adding card copy.",
-        "defense": "C best serves the founder: explicit Edit (plus body tap) opens a native prefilled sheet where Cc gets contact suggestions and the time can be edited directly, then Done and Send — no extra Save decision because autosave removes it, leaving Send as the sole tinted action. It also uniquely unifies Compose X 'Save draft' with the card draft and collapses superseded cards to 'Replaced'. A is cheapest but forces a typed agent round-trip, cannot disambiguate Jordan Lee via a Cc picker, risks unwanted body rewrites, and is not fewest-tap. B is direct and reusable, but keeps a redundant Save draft alongside Done (two commit points, ambiguous meaning), leaves Compose-X equivalence unspecified, and omits the Replaced state. C's autosave/unified-store work is moderate but safe to build now in a greenfield SwiftUI app using native sheet and Discard/Keep-editing patterns."
+        "graft": "From B, add one drawn 626x890 laptop exemplar for Artifact (live view top, controls bottom, max three glass groups plus one tinted action); derive Agent page and Agent list from that family recipe.",
+        "defense": "C wins because its NavigationSplitView family recipes, matching Apple Mail/Messages/Settings, cover derivable pages consistently while drawn exemplars prove the non-derivable risks: inner Reply, post-Archive, Inbox zero/Cleanup, Finance 1/3+2/3 and 1/2+1/2 splits avoiding x435-455, and the agent thread with draft, chips and queued message beside the sidebar. A adds only text, so hinge behavior, Ask-agent destination, glass limits and queued-state layout remain untested and ambiguous for SwiftUI implementation. B meets coverage literally but ~30 frames and 6 boards invite visual drift, duplicated glass violations and high maintenance before any code exists; C's single 393pt Finance/Settings board plus recipes gives founders and implementers a clearer, safer spec, with only sheets and clearly derivable pages left undrawn."
       }
     },
     {
       "model": "google/gemini-4-argon",
       "ok": true,
-      "seconds": 30,
-      "costUsd": 0.022122,
+      "seconds": 31,
+      "costUsd": 0.016972,
       "result": {
         "scores": {
-          "A": {
+          "Option A": {
             "criteria": 2,
-            "simplicity": 3,
-            "consistency": 2,
-            "usability": 2,
-            "visual": 3,
-            "effort": 5
-          },
-          "B": {
-            "criteria": 3,
-            "simplicity": 3,
+            "simplicity": 4,
             "consistency": 3,
             "usability": 3,
-            "visual": 3,
-            "effort": 4
+            "visual": 2,
+            "effort": 5
           },
-          "C": {
+          "Option B": {
+            "criteria": 4,
+            "simplicity": 2,
+            "consistency": 3,
+            "usability": 4,
+            "visual": 4,
+            "effort": 1
+          },
+          "Option C": {
             "criteria": 5,
-            "simplicity": 5,
+            "simplicity": 4,
             "consistency": 5,
             "usability": 5,
             "visual": 5,
             "effort": 4
           }
         },
-        "winner": "C",
-        "graft": "From B, adopt the explicit \"Edit draft\" navigation title on the prefilled PG-A-Compose sheet so users immediately distinguish editing an in-place card from starting a new mail.",
-        "defense": "C is the only proposal that resolves every open question while honoring the founder's minimum-tap workflow and iOS conventions. By treating an agent-generated draft as already saved, C eliminates the confusing \"Save\" vs. \"Save draft\" action and replaces it with an explicit \"Edit\" button (plus body tap), keeping the card footer to two crisp actions with \"Send\" as the single prominent button. Reusing PG-A-Compose as the edit sheet provides native Cc autocomplete for adding Jordan Lee, inline recipient error states, unified draft persistence with Compose X, and a clean collapsed \"Replaced\" state when the agent regenerates a card in chat. Proposal A fails usability for surgical edits: forcing the founder to prompt the agent in chat to add a Cc and change a meeting time adds LLM round-trip latency, removes contact autocomplete, and clutters the thread with replaced cards. Proposal B enables direct editing via PG-A-Compose, but hides the entry point behind an unlabelled body tap, retains the redundant \"Save draft\" footer button alongside in-place edits, and leaves the \"Replaced\" card state undefined."
+        "winner": "Option C",
+        "graft": "From Option A: include the explicit rule-card text updates—removing 'folders' from the Inbox story, stating the exact Ask-agent inner destination rule, and explicitly listing which pages are laptop-pose capable—inside Option C's layout-family derivation recipes.",
+        "defense": "Option C wins because it models how SwiftUI actually works (adaptive layout families like NavigationSplitView) while visually specifying every high-risk, non-derivable state in the founder's core Inbox and Finance journeys. Because the design boards are the spec, Option A fails acceptance criteria: prose rules alone cannot verify spatial edge cases like the x 435-455 crease dead-zone in half-folded Finance, the three-glass-group cap during inner Reply/Cleanup, or the density of an agent thread with draft, chips, and a queued bubble beside the sidebar. Conversely, Option B's brute-force 30 frames across 6 new boards creates massive maintenance bloat and drift risk for trivial permutations (like standard sheets or repetitive settings pages) that follow deterministic SwiftUI scaling. Option C hits the sweet spot—drawing the exact exemplars where layout math, glass budgets, and multi-pane states collide, and governing the rest through systematic layout-family recipes."
       }
     }
   ]

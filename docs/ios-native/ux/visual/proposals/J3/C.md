@@ -1,26 +1,25 @@
-# J3 proposal C: the Apple Mail draft pattern (autosaved draft, explicit Edit, Done)
+# J3 Option C: adaptive split view (Apple Mail, Messages, Settings, Linear)
 
-Pattern named: Apple Mail and Messages. A draft is always already saved (Mail autosaves). An explicit "Edit" opens the compose sheet; closing asks only if there are unsaved changes. Messages marks an edited message in place rather than adding a second one. Things and Linear edit in place on the object; here that is the card, which keeps its identity.
+Round 2. Scope of missing inner, laptop and standard-iPhone boards.
 
-## Journey
-1. Reads the card. Footer shows Edit (quiet) and Send (the one prominent action).
-2. Taps Edit, or taps the card body (shortcut). Sheet opens with the PG-A-Compose layout, title "Edit draft".
-3. Picks Jordan Lee from the Cc suggestions, edits the time, taps Done.
-4. Returns to the same card, already updated. Taps Send. Card shows "Sent".
-Fast path with no editing: Send. Words-only path: type to the agent; the old card collapses to "Replaced".
-Taps: Edit, Cc contact, Done, Send = 4 plus typing; no separate Save step to remember.
+## Pattern
+The system pattern is the adaptive split view (SwiftUI NavigationSplitView and size classes). Apple Mail, Messages, Settings and Linear do not have a separate design per size: a few layout families define how a page collapses (sidebar + list + detail becomes a stack on a phone), and each family is shown once. Things shows the same logic: one list and detail template reused for every list. Here: one derivation recipe per family, plus one drawn exemplar wherever behaviour is not derivable from the recipe.
 
-## Changes
-- Card footer: Save removed. The draft is saved on the server the moment the agent produces it and after each edit, so there is nothing to save. Footer is Edit (quiet capsule) and Send (prominent).
-- Card body is also tappable and opens the same sheet; Edit exists so the affordance is visible.
-- Edit sheet (new frames in PG-A-Compose, "Edit draft"): same fields; bottom-left slot shows a "Done" capsule instead of the send arrow; X in the side strip closes. X with changes shows an action sheet: "Discard changes" (destructive) / "Keep editing". Done keeps changes. Compose New message and Reply: X with typed text shows "Save draft" / "Discard draft"; both write the one Drafts list.
-- Sheet states drawn: Cc expanded with a suggestion list (Jordan Lee), invalid address (chip in destructive color, one inline line "Not a valid address"), empty To (Done allowed, Send dimmed on the card with To row "Add a recipient").
-- Replaced: when the agent posts a newer draft, the old card collapses to one muted row "Replaced by a newer draft", no buttons. Tapping Edit while the agent works on a rewrite is not drawn; the Edit capsule dims while "Inbox agent is working".
-- Same draft everywhere: card edits, sheet edits and Compose X "Save draft" are the same draft record. No "Save" label anywhere on the card.
-- DS-06-Chat: mail approval card spec says: footer Edit + Send; body tap opens the editor; no Save; states Needs approval, Needs approval with Cc, Edited (no tag, content simply updated), Replaced, Sent, Not sent, empty recipient.
+## Families
+1. List + detail (Inbox, Legal, Cap table, Data room, Artifacts, Settings).
+2. Live view + controls (Finance, Computer).
+3. Thread (agent thread, group thread).
+4. Form / sheet (New bot, New space, Account, Reply composer).
 
-## Fixes by issue
-STORY-047-R1-1, 3, 4, 6; F-thread-012; V-thread-R1-5; V-iphone-R1-12; RED-R1-10; V-inbox-R1-10; F-inbox-computer-R1-002. All covered.
+## Drawn exemplars (everything else follows the recipe)
+- Inner-Message (becomes a grid of labelled frames): Message selected (existing); Reply, inner flat (detail pane becomes the form, Close top left, one prominent send arrow, list stays); Reply, half-folded (composer under the message); After Archive (next row selected, Archived snackbar with Undo in the detail pane); Inbox zero (centered check and text); Cleanup (More popover with Cleanup in the strip, Cleanup list in the detail pane, prominent Archive 101 emails).
+- Split: add Finance 1/3 + 2/3 (sidebar with Finance selected; period tabs, tiles, chart, Accounts; Ask Finance agent prominent) and the same pose after tapping Ask Finance agent (detail pane replaced by the thread with Back to Finance). This also shows an agent thread beside the Personnel sidebar.
+- Inner: add Finance half-folded: page left, thread right with a draft, two chips and one queued bubble "Waiting to send" (STORY-043-R2-3).
+- Desk: add a pose caption ("Laptop: Live view + controls"). No new drawing; Desk and Desk-Computer already cover the family.
+- New board PH-Pages (393x852): frame 1 Finance, frame 2 Settings pushed list; sheets and Artifacts follow the Form and List recipes.
 
-## Risk
-Medium: one new sheet mode and dirty-state tracking in SwiftUI (`.sheet` with `.interactiveDismissDisabled(hasChanges)` plus `confirmationDialog`). Needs a server decision to save every agent draft as a draft record (not confirmed in this repo).
+## Recipe text
+PG-A-Rules gets step 13 (standard iPhone derivation), the Ask-agent destination rule, removal of "folders", and the laptop-capable list (Artifact, Agent page and Agent list stay full height). PG-B-Rules gets the template table row for 393 pt and the same Ask-agent rule.
+
+## Fit
+About 9 new frames and one new board. Each new frame answers a question the recipe cannot answer (what the hinge does, where the Reply form goes, where Undo sits, what a queued message looks like). The rest of the pages are derived, as the rules boards already say.

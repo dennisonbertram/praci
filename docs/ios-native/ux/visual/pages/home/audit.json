@@ -1,11 +1,11 @@
 {
- "PG-B-NewSpace": {
+ "PG-A-Home": {
   "layout": {
    "viewport": {
-    "width": 466,
-    "height": 678,
-    "pageScrollY": 0,
-    "pageScrollX": 0
+    "width": 1600,
+    "height": 1000,
+    "pageScrollY": 436,
+    "pageScrollX": 336
    },
    "offscreenPrimary": [],
    "scrollers": [],
@@ -15,32 +15,32 @@
      "w": 466,
      "h": 678,
      "fillPct": 0,
-     "pctOfViewport": 100
-    },
-    {
-     "el": "div",
-     "w": 394,
-     "h": 678,
-     "fillPct": 8,
-     "pctOfViewport": 85
+     "pctOfViewport": 20
     }
    ],
    "spacing": {
     "observed": [
      1,
+     2,
+     3,
      4,
      6,
+     7,
      8,
+     9,
      10,
+     12,
      14,
      20,
-     30
+     24
     ],
     "offScale": [
+     3,
      6,
+     7,
+     9,
      10,
-     14,
-     30
+     14
     ],
     "nearDupes": [
      [
@@ -49,54 +49,269 @@
      ],
      [
       6,
+      7
+     ],
+     [
+      7,
       8
      ],
      [
       8,
+      9
+     ],
+     [
+      9,
       10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
      ]
     ]
    },
    "type": {
     "distinctFontSizes": [
-     "22px",
+     "12px",
+     "17px",
+     "11px",
+     "15px",
      "13px",
-     "14px",
-     "12px"
+     "16px"
     ],
     "sizes": {
-     "22px/600": 1,
-     "13px/400": 1,
-     "14px/400": 1,
-     "12px/600": 1
+     "12px/400": 49,
+     "17px/600": 7,
+     "11px/600": 40,
+     "15px/500": 9,
+     "13px/400": 60,
+     "12px/600": 11,
+     "16px/500": 19,
+     "15px/600": 9,
+     "16px/400": 56,
+     "17px/400": 3,
+     "16px/600": 4
     }
    },
    "alignment": {
-    "nearMissEdges": []
+    "nearMissEdges": [
+     [
+      563,
+      566
+     ]
+    ]
    },
-   "smallTargets": [
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [
     {
-     "el": "input \"Name\"",
-     "w": 332,
+     "a": "a \"Data room\"",
+     "b": "button \"Space: Personal\"",
+     "w": 376,
+     "h": 8
+    },
+    {
+     "a": "a \"Team computerOnline\"",
+     "b": "button \"Space: Personal\"",
+     "w": 376,
+     "h": 28
+    },
+    {
+     "a": "a \"Pilot planDoc\"",
+     "b": "a \"Finance agentApprove $1,200 pa\"",
+     "w": 376,
+     "h": 40
+    },
+    {
+     "a": "a \"Runway modelSheet\"",
+     "b": "a \"Finance agentApprove $1,200 pa\"",
+     "w": 376,
+     "h": 14
+    },
+    {
+     "a": "a \"Inbox3 need reply\"",
+     "b": "button.mi \"New agent\"",
+     "w": 217,
+     "h": 41
+    },
+    {
+     "a": "a \"Finance6 mo runway\"",
+     "b": "button.mi \"New group\"",
+     "w": 217,
+     "h": 41
+    },
+    {
+     "a": "a \"Legal2 deadlines\"",
+     "b": "button.mi \"New space\"",
+     "w": 217,
+     "h": 41
+    },
+    {
+     "a": "a \"Data room\"",
+     "b": "button \"Space: Side project\"",
+     "w": 376,
+     "h": 8
+    },
+    {
+     "a": "a \"Team computerOnline\"",
+     "b": "button \"Space: Side project\"",
+     "w": 376,
+     "h": 28
+    },
+    {
+     "a": "a \"Pilot planDoc\"",
+     "b": "button \"New agent\"",
+     "w": 122,
+     "h": 23
+    },
+    {
+     "a": "a \"Runway modelSheet\"",
+     "b": "button \"New agent\"",
+     "w": 122,
      "h": 21
     }
    ],
-   "lowContrast": [],
-   "overlaps": [],
    "fixedOverlays": []
   },
   "geometry": {
-   "pageOverflowX": 0,
-   "unevenRows": [],
+   "pageOverflowX": 336,
+   "unevenRows": [
+    {
+     "container": "div \"ACTIVITYSee all\"",
+     "children": 2,
+     "widths": [
+      53,
+      37
+     ]
+    },
+    {
+     "container": "span \"Needs you\"",
+     "children": 2,
+     "heights": [
+      26,
+      16
+     ],
+     "widths": [
+      80,
+      16
+     ],
+     "topDriftPx": 5
+    },
+    {
+     "container": "div \"Inbox agentYesterday\"",
+     "children": 2,
+     "widths": [
+      89,
+      54
+     ]
+    },
+    {
+     "container": "div \"Carta agent2:44 PM\"",
+     "children": 2,
+     "widths": [
+      88,
+      47
+     ]
+    },
+    {
+     "container": "div \"Mercury agent2:06 PM\"",
+     "children": 2,
+     "widths": [
+      109,
+      47
+     ]
+    },
+    {
+     "container": "a \"Inbox3 need reply\"",
+     "children": 4,
+     "widths": [
+      20,
+      192,
+      84,
+      16
+     ]
+    },
+    {
+     "container": "a \"Finance6 mo runway\"",
+     "children": 4,
+     "widths": [
+      20,
+      200,
+      76,
+      16
+     ]
+    },
+    {
+     "container": "a \"Legal2 deadlines\"",
+     "children": 4,
+     "widths": [
+      20,
+      207,
+      69,
+      16
+     ]
+    },
+    {
+     "container": "a \"Cap table\"",
+     "children": 3,
+     "widths": [
+      20,
+      288,
+      16
+     ]
+    },
+    {
+     "container": "a \"Data room\"",
+     "children": 3,
+     "widths": [
+      20,
+      288,
+      16
+     ]
+    },
+    {
+     "container": "a \"Team computerOnline\"",
+     "children": 4,
+     "widths": [
+      20,
+      225,
+      51,
+      16
+     ]
+    },
+    {
+     "container": "div \"ARTIFACTSSee all\"",
+     "children": 2,
+     "widths": [
+      64,
+      37
+     ]
+    }
+   ],
    "overflowSpills": [],
-   "wrappedControls": []
+   "wrappedControls": [
+    "button.gbtn \"AB\"",
+    "button.gbtn \"AB\"",
+    "button.gbtn \"AB\"",
+    "button \"Try again\"",
+    "button.gbtn \"AB\"",
+    "button.gbtn \"AB\"",
+    "button \"New agent\"",
+    "button.gbtn \"AB\"",
+    "button.gbtn \"AB\"",
+    "button.gbtn \"AB\""
+   ],
+   "unevenRowsTruncated": true
   }
  },
- "PG-B-NewBot": {
+ "PG-A-Activity": {
   "layout": {
    "viewport": {
-    "width": 466,
-    "height": 678,
+    "width": 1600,
+    "height": 1000,
     "pageScrollY": 0,
     "pageScrollX": 0
    },
@@ -104,18 +319,32 @@
    "scrollers": [],
    "deadSpace": [
     {
-     "el": "div",
+     "el": "div \"EmptyActivityNo activityAgents\"",
      "w": 466,
-     "h": 678,
-     "fillPct": 0,
-     "pctOfViewport": 100
+     "h": 702,
+     "fillPct": 10,
+     "pctOfViewport": 20
     },
     {
-     "el": "div",
+     "el": "div \"ActivityNo activityAgents appe\"",
+     "w": 466,
+     "h": 678,
+     "fillPct": 9,
+     "pctOfViewport": 20
+    },
+    {
+     "el": "div.col \"ActivityNo activityAgents appe\"",
      "w": 394,
      "h": 678,
-     "fillPct": 8,
-     "pctOfViewport": 85
+     "fillPct": 9,
+     "pctOfViewport": 17
+    },
+    {
+     "el": "div \"No activityAgents appear here \"",
+     "w": 374,
+     "h": 614,
+     "fillPct": 2,
+     "pctOfViewport": 14
     }
    ],
    "spacing": {
@@ -123,17 +352,17 @@
      1,
      4,
      6,
-     8,
+     9,
      10,
+     12,
      14,
-     20,
-     30
+     24
     ],
     "offScale": [
      6,
+     9,
      10,
-     14,
-     30
+     14
     ],
     "nearDupes": [
      [
@@ -141,54 +370,64 @@
       6
      ],
      [
-      6,
-      8
+      9,
+      10
      ],
      [
-      8,
-      10
+      10,
+      12
+     ],
+     [
+      12,
+      14
      ]
     ]
    },
    "type": {
     "distinctFontSizes": [
-     "22px",
+     "12px",
+     "28px",
+     "11px",
+     "15px",
      "13px",
-     "12px"
+     "16px"
     ],
     "sizes": {
-     "22px/600": 1,
-     "13px/400": 3,
-     "12px/600": 1
+     "12px/400": 6,
+     "28px/600": 2,
+     "11px/600": 2,
+     "15px/500": 5,
+     "13px/400": 6,
+     "12px/600": 3,
+     "13px/600": 1,
+     "16px/500": 1
     }
    },
    "alignment": {
     "nearMissEdges": []
    },
-   "smallTargets": [
-    {
-     "el": "input \"Name\"",
-     "w": 332,
-     "h": 21
-    },
-    {
-     "el": "input \"Title\"",
-     "w": 332,
-     "h": 21
-    },
-    {
-     "el": "input \"Description\"",
-     "w": 332,
-     "h": 21
-    }
-   ],
+   "smallTargets": [],
    "lowContrast": [],
    "overlaps": [],
    "fixedOverlays": []
   },
   "geometry": {
    "pageOverflowX": 0,
-   "unevenRows": [],
+   "unevenRows": [
+    {
+     "container": "span \"Needs you\"",
+     "children": 2,
+     "heights": [
+      26,
+      16
+     ],
+     "widths": [
+      80,
+      16
+     ],
+     "topDriftPx": 5
+    }
+   ],
    "overflowSpills": [],
    "wrappedControls": []
   }
@@ -196,10 +435,10 @@
  "PG-A-HomeNoModel": {
   "layout": {
    "viewport": {
-    "width": 1446,
-    "height": 716,
+    "width": 1600,
+    "height": 1000,
     "pageScrollY": 0,
-    "pageScrollX": 0
+    "pageScrollX": 336
    },
    "offscreenPrimary": [],
    "scrollers": [],
@@ -209,16 +448,25 @@
      "w": 466,
      "h": 678,
      "fillPct": 0,
-     "pctOfViewport": 31
+     "pctOfViewport": 20
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 20
     }
    ],
    "spacing": {
     "observed": [
      1,
      2,
+     3,
      4,
      6,
      7,
+     8,
      10,
      12,
      14,
@@ -228,6 +476,7 @@
      24
     ],
     "offScale": [
+     3,
      6,
      7,
      10,
@@ -242,6 +491,14 @@
      [
       6,
       7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
      ],
      [
       10,
@@ -275,16 +532,16 @@
      "20px"
     ],
     "sizes": {
-     "12px/400": 3,
-     "17px/600": 4,
-     "16px/500": 6,
-     "16px/600": 3,
-     "11px/600": 5,
-     "13px/400": 3,
-     "12px/600": 3,
-     "20px/600": 1,
-     "13px/600": 3,
-     "17px/400": 3
+     "12px/400": 12,
+     "17px/600": 6,
+     "16px/500": 8,
+     "16px/600": 4,
+     "11px/600": 11,
+     "13px/400": 21,
+     "16px/400": 24,
+     "12px/600": 4,
+     "20px/600": 2,
+     "17px/400": 6
     }
    },
    "alignment": {
@@ -295,189 +552,204 @@
      "el": "input \"API key\"",
      "w": 330,
      "h": 22
+    },
+    {
+     "el": "a \"Privacy details\"",
+     "w": 80,
+     "h": 16
+    },
+    {
+     "el": "input \"API key\"",
+     "w": 330,
+     "h": 22
+    },
+    {
+     "el": "a \"Privacy details\"",
+     "w": 80,
+     "h": 16
     }
    ],
    "lowContrast": [],
-   "overlaps": [],
+   "overlaps": [
+    {
+     "a": "a \"Cap table\"",
+     "b": "input \"API key\"",
+     "w": 330,
+     "h": 13
+    },
+    {
+     "a": "a \"Data room\"",
+     "b": "input \"API key\"",
+     "w": 330,
+     "h": 9
+    },
+    {
+     "a": "a \"Team computerOnline\"",
+     "b": "button \"Connect\"",
+     "w": 362,
+     "h": 41
+    },
+    {
+     "a": "a \"Cap table\"",
+     "b": "input \"API key\"",
+     "w": 330,
+     "h": 13
+    },
+    {
+     "a": "a \"Data room\"",
+     "b": "input \"API key\"",
+     "w": 330,
+     "h": 9
+    },
+    {
+     "a": "a \"Team computerOnline\"",
+     "b": "button \"Connect\"",
+     "w": 362,
+     "h": 28
+    }
+   ],
    "fixedOverlays": []
   },
   "geometry": {
-   "pageOverflowX": 0,
-   "unevenRows": [],
+   "pageOverflowX": 336,
+   "unevenRows": [
+    {
+     "container": "a \"Inbox3 need reply\"",
+     "children": 4,
+     "widths": [
+      20,
+      192,
+      84,
+      16
+     ]
+    },
+    {
+     "container": "a \"Finance6 mo runway\"",
+     "children": 4,
+     "widths": [
+      20,
+      200,
+      76,
+      16
+     ]
+    },
+    {
+     "container": "a \"Legal2 deadlines\"",
+     "children": 4,
+     "widths": [
+      20,
+      207,
+      69,
+      16
+     ]
+    },
+    {
+     "container": "a \"Cap table\"",
+     "children": 3,
+     "widths": [
+      20,
+      288,
+      16
+     ]
+    },
+    {
+     "container": "a \"Data room\"",
+     "children": 3,
+     "widths": [
+      20,
+      288,
+      16
+     ]
+    },
+    {
+     "container": "a \"Team computerOnline\"",
+     "children": 4,
+     "widths": [
+      20,
+      225,
+      51,
+      16
+     ]
+    },
+    {
+     "container": "a \"Inbox3 need reply\"",
+     "children": 4,
+     "widths": [
+      20,
+      192,
+      84,
+      16
+     ]
+    },
+    {
+     "container": "a \"Finance6 mo runway\"",
+     "children": 4,
+     "widths": [
+      20,
+      200,
+      76,
+      16
+     ]
+    },
+    {
+     "container": "a \"Legal2 deadlines\"",
+     "children": 4,
+     "widths": [
+      20,
+      207,
+      69,
+      16
+     ]
+    },
+    {
+     "container": "a \"Cap table\"",
+     "children": 3,
+     "widths": [
+      20,
+      288,
+      16
+     ]
+    },
+    {
+     "container": "a \"Data room\"",
+     "children": 3,
+     "widths": [
+      20,
+      288,
+      16
+     ]
+    },
+    {
+     "container": "a \"Team computerOnline\"",
+     "children": 4,
+     "widths": [
+      20,
+      225,
+      51,
+      16
+     ]
+    }
+   ],
    "overflowSpills": [],
    "wrappedControls": [
     "button \"Connect a model\"",
     "button.gbtn \"AB\"",
     "button \"Connect a model\"",
     "button \"Connect\"",
-    "button \"Create a bot\"",
+    "button \"Connect a model\"",
+    "button \"Connect\"",
+    "button \"Message Chief\"",
     "button.gbtn \"AB\""
-   ]
-  }
- },
- "PG-A-Home": {
-  "layout": {
-   "viewport": {
-    "width": 466,
-    "height": 678,
-    "pageScrollY": 0,
-    "pageScrollX": 0
-   },
-   "offscreenPrimary": [],
-   "scrollers": [],
-   "deadSpace": [],
-   "spacing": {
-    "observed": [
-     1,
-     2,
-     4,
-     6,
-     7,
-     8,
-     9,
-     10,
-     12,
-     14
-    ],
-    "offScale": [
-     6,
-     7,
-     9,
-     10,
-     14
-    ],
-    "nearDupes": [
-     [
-      4,
-      6
-     ],
-     [
-      6,
-      7
-     ],
-     [
-      7,
-      8
-     ],
-     [
-      8,
-      9
-     ],
-     [
-      9,
-      10
-     ],
-     [
-      10,
-      12
-     ],
-     [
-      12,
-      14
-     ]
-    ]
-   },
-   "type": {
-    "distinctFontSizes": [
-     "17px",
-     "16px",
-     "13px",
-     "11px",
-     "12px",
-     "15px"
-    ],
-    "sizes": {
-     "17px/600": 1,
-     "16px/500": 6,
-     "13px/400": 12,
-     "11px/600": 4,
-     "12px/400": 9,
-     "15px/500": 7,
-     "13px/600": 1,
-     "15px/600": 2,
-     "12px/600": 1
-    }
-   },
-   "alignment": {
-    "nearMissEdges": []
-   },
-   "smallTargets": [],
-   "lowContrast": [],
-   "overlaps": [],
-   "fixedOverlays": []
-  },
-  "geometry": {
-   "pageOverflowX": 0,
-   "unevenRows": [
-    {
-     "container": "div \"ACTIVITYSee all\"",
-     "children": 2,
-     "widths": [
-      53,
-      37
-     ]
-    },
-    {
-     "container": "div \"Finance agentYesterday\"",
-     "children": 2,
-     "widths": [
-      106,
-      54
-     ]
-    },
-    {
-     "container": "a \"CCarta agent2:44 PMThe option \"",
-     "children": 2,
-     "widths": [
-      40,
-      304
-     ]
-    },
-    {
-     "container": "div \"Carta agent2:44 PM\"",
-     "children": 2,
-     "widths": [
-      88,
-      47
-     ]
-    },
-    {
-     "container": "div \"Legal agent7:51 AM\"",
-     "children": 2,
-     "widths": [
-      88,
-      43
-     ]
-    },
-    {
-     "container": "a \"MMercury agent2:06 PMBalance a\"",
-     "children": 2,
-     "widths": [
-      40,
-      304
-     ]
-    },
-    {
-     "container": "div \"Mercury agent2:06 PM\"",
-     "children": 2,
-     "widths": [
-      109,
-      47
-     ]
-    }
    ],
-   "overflowSpills": [],
-   "wrappedControls": [
-    "button.gbtn \"AB\""
-   ]
+   "unevenRowsTruncated": true
   }
  },
  "PG-B-Spaces": {
   "layout": {
    "viewport": {
-    "width": 956,
-    "height": 716,
-    "pageScrollY": 0,
+    "width": 1600,
+    "height": 1000,
+    "pageScrollY": 436,
     "pageScrollX": 0
    },
    "offscreenPrimary": [],
@@ -488,13 +760,21 @@
      "w": 466,
      "h": 678,
      "fillPct": 0,
-     "pctOfViewport": 46
+     "pctOfViewport": 20
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 20
     }
    ],
    "spacing": {
     "observed": [
      1,
      2,
+     3,
      4,
      6,
      7,
@@ -503,9 +783,312 @@
      10,
      12,
      14,
+     20,
+     22,
      24
     ],
     "offScale": [
+     3,
+     6,
+     7,
+     9,
+     10,
+     14,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      22,
+      24
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "12px",
+     "17px",
+     "11px",
+     "15px",
+     "13px",
+     "16px",
+     "28px"
+    ],
+    "sizes": {
+     "12px/400": 15,
+     "17px/600": 4,
+     "11px/600": 11,
+     "15px/500": 3,
+     "13px/400": 19,
+     "12px/600": 6,
+     "16px/500": 4,
+     "15px/600": 2,
+     "16px/400": 16,
+     "17px/400": 6,
+     "28px/600": 3
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      76,
+      77
+     ],
+     [
+      77,
+      78
+     ],
+     [
+      566,
+      568
+     ]
+    ]
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Name\"",
+     "w": 346,
+     "h": 21
+    },
+    {
+     "el": "input \"Name\"",
+     "w": 346,
+     "h": 21
+    },
+    {
+     "el": "input \"Name\"",
+     "w": 346,
+     "h": 21
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [
+    {
+     "a": "a \"Finance agentApprove $1,200 pa\"",
+     "b": "button.mi \"Personal\"",
+     "w": 260,
+     "h": 19
+    },
+    {
+     "a": "a \"Legal agentReading contractsWo\"",
+     "b": "button.mi \"Northwind\"",
+     "w": 260,
+     "h": 9
+    },
+    {
+     "a": "a \"Weekly runwayRan at 8:00 AMDon\"",
+     "b": "button.mi \"New space\"",
+     "w": 260,
+     "h": 41
+    },
+    {
+     "a": "a \"Chief2:59 PMHello! How can I h\"",
+     "b": "button.mi \"Space settings\"",
+     "w": 260,
+     "h": 15
+    },
+    {
+     "a": "a \"Pilot planDoc\"",
+     "b": "input \"Name\"",
+     "w": 346,
+     "h": 21
+    },
+    {
+     "a": "a \"Runway modelSheet\"",
+     "b": "a \"Delete space\"",
+     "w": 374,
+     "h": 19
+    }
+   ],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"ACTIVITYSee all\"",
+     "children": 2,
+     "widths": [
+      53,
+      37
+     ]
+    },
+    {
+     "container": "span \"Needs you\"",
+     "children": 2,
+     "heights": [
+      26,
+      16
+     ],
+     "widths": [
+      80,
+      16
+     ],
+     "topDriftPx": 5
+    },
+    {
+     "container": "div \"Inbox agentYesterday\"",
+     "children": 2,
+     "widths": [
+      89,
+      54
+     ]
+    },
+    {
+     "container": "div \"Carta agent2:44 PM\"",
+     "children": 2,
+     "widths": [
+      88,
+      47
+     ]
+    },
+    {
+     "container": "div \"Mercury agent2:06 PM\"",
+     "children": 2,
+     "widths": [
+      109,
+      47
+     ]
+    },
+    {
+     "container": "a \"Inbox3 need reply\"",
+     "children": 4,
+     "widths": [
+      20,
+      192,
+      84,
+      16
+     ]
+    },
+    {
+     "container": "a \"Finance6 mo runway\"",
+     "children": 4,
+     "widths": [
+      20,
+      200,
+      76,
+      16
+     ]
+    },
+    {
+     "container": "a \"Legal2 deadlines\"",
+     "children": 4,
+     "widths": [
+      20,
+      207,
+      69,
+      16
+     ]
+    },
+    {
+     "container": "a \"Cap table\"",
+     "children": 3,
+     "widths": [
+      20,
+      288,
+      16
+     ]
+    },
+    {
+     "container": "a \"Data room\"",
+     "children": 3,
+     "widths": [
+      20,
+      288,
+      16
+     ]
+    },
+    {
+     "container": "a \"Team computerOnline\"",
+     "children": 4,
+     "widths": [
+      20,
+      225,
+      51,
+      16
+     ]
+    },
+    {
+     "container": "div \"ARTIFACTSSee all\"",
+     "children": 2,
+     "widths": [
+      64,
+      37
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.gbtn \"AB\"",
+    "button.mi \"Northwind\"",
+    "button.mi \"Side project\"",
+    "button.gbtn \"AB\"",
+    "a \"Delete space\"",
+    "a \"Delete space\"",
+    "button \"Cancel\"",
+    "button \"Delete\""
+   ],
+   "unevenRowsTruncated": true
+  }
+ },
+ "Main": {
+  "layout": {
+   "viewport": {
+    "width": 1600,
+    "height": 1000,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     3,
+     4,
+     6,
+     7,
+     8,
+     9,
+     10,
+     12,
+     14
+    ],
+    "offScale": [
+     3,
      6,
      7,
      9,
@@ -545,71 +1128,31 @@
    },
    "type": {
     "distinctFontSizes": [
-     "12px",
      "17px",
-     "16px",
-     "13px",
      "11px",
+     "12px",
      "15px",
-     "28px"
+     "13px",
+     "16px"
     ],
     "sizes": {
-     "12px/400": 11,
      "17px/600": 1,
-     "16px/500": 6,
-     "13px/400": 13,
-     "11px/600": 4,
-     "15px/500": 7,
-     "13px/600": 1,
-     "15px/600": 2,
+     "11px/600": 6,
+     "12px/400": 9,
+     "15px/500": 3,
+     "13px/400": 12,
      "12px/600": 2,
-     "17px/400": 5,
-     "28px/600": 1,
-     "16px/400": 1
+     "16px/500": 4,
+     "15px/600": 2,
+     "16px/400": 8
     }
    },
    "alignment": {
-    "nearMissEdges": [
-     [
-      76,
-      77
-     ]
-    ]
+    "nearMissEdges": []
    },
-   "smallTargets": [
-    {
-     "el": "input \"Name\"",
-     "w": 346,
-     "h": 21
-    }
-   ],
+   "smallTargets": [],
    "lowContrast": [],
-   "overlaps": [
-    {
-     "a": "a \"Inbox3 need reply42\"",
-     "b": "button.mi \"Personal\"",
-     "w": 260,
-     "h": 44
-    },
-    {
-     "a": "a \"Finance agentReading card expe\"",
-     "b": "button.mi \"Side project\"",
-     "w": 260,
-     "h": 44
-    },
-    {
-     "a": "a \"Inbox agentReply to Ana is rea\"",
-     "b": "button.mi \"New space\"",
-     "w": 260,
-     "h": 44
-    },
-    {
-     "a": "a \"RWeekly runwayRan at 8:00 AMDo\"",
-     "b": "button.mi \"Space settings\"",
-     "w": 260,
-     "h": 42
-    }
-   ],
+   "overlaps": [],
    "fixedOverlays": []
   },
   "geometry": {
@@ -624,19 +1167,24 @@
      ]
     },
     {
-     "container": "div \"Finance agentYesterday\"",
+     "container": "span \"Needs you\"",
      "children": 2,
+     "heights": [
+      26,
+      16
+     ],
      "widths": [
-      106,
-      54
-     ]
+      80,
+      16
+     ],
+     "topDriftPx": 5
     },
     {
-     "container": "a \"CCarta agent2:44 PMThe option \"",
+     "container": "div \"Inbox agentYesterday\"",
      "children": 2,
      "widths": [
-      40,
-      304
+      89,
+      54
      ]
     },
     {
@@ -648,73 +1196,366 @@
      ]
     },
     {
-     "container": "div \"Legal agent7:51 AM\"",
-     "children": 2,
-     "widths": [
-      88,
-      43
-     ]
-    },
-    {
-     "container": "a \"MMercury agent2:06 PMBalance a\"",
-     "children": 2,
-     "widths": [
-      40,
-      304
-     ]
-    },
-    {
      "container": "div \"Mercury agent2:06 PM\"",
      "children": 2,
      "widths": [
       109,
       47
      ]
+    },
+    {
+     "container": "a \"Inbox3 need reply\"",
+     "children": 4,
+     "widths": [
+      20,
+      192,
+      84,
+      16
+     ]
+    },
+    {
+     "container": "a \"Finance6 mo runway\"",
+     "children": 4,
+     "widths": [
+      20,
+      200,
+      76,
+      16
+     ]
+    },
+    {
+     "container": "a \"Legal2 deadlines\"",
+     "children": 4,
+     "widths": [
+      20,
+      207,
+      69,
+      16
+     ]
+    },
+    {
+     "container": "a \"Cap table\"",
+     "children": 3,
+     "widths": [
+      20,
+      288,
+      16
+     ]
+    },
+    {
+     "container": "a \"Data room\"",
+     "children": 3,
+     "widths": [
+      20,
+      288,
+      16
+     ]
+    },
+    {
+     "container": "a \"Team computerOnline\"",
+     "children": 4,
+     "widths": [
+      20,
+      225,
+      51,
+      16
+     ]
+    },
+    {
+     "container": "div \"ARTIFACTSSee all\"",
+     "children": 2,
+     "widths": [
+      64,
+      37
+     ]
     }
    ],
    "overflowSpills": [],
    "wrappedControls": [
-    "button.gbtn \"AB\"",
-    "button.mi \"Northwind\"",
-    "button.mi \"Side project\"",
-    "a \"Delete space\""
-   ]
+    "button.gbtn \"AB\""
+   ],
+   "unevenRowsTruncated": true
   }
  },
- "Main": {
+ "PG-B-NewBot": {
   "layout": {
    "viewport": {
-    "width": 466,
-    "height": 678,
-    "pageScrollY": 0,
+    "width": 1600,
+    "height": 1000,
+    "pageScrollY": 440,
     "pageScrollX": 0
    },
    "offscreenPrimary": [],
    "scrollers": [],
-   "deadSpace": [],
+   "deadSpace": [
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 20
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 20
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 20
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 20
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 17
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 17
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 17
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 17
+    }
+   ],
    "spacing": {
     "observed": [
      1,
-     2,
-     4,
      6,
      8,
      10,
-     12,
      14,
-     18
+     18,
+     20,
+     30
     ],
     "offScale": [
      6,
      10,
      14,
-     18
+     18,
+     30
     ],
     "nearDupes": [
      [
-      4,
-      6
+      6,
+      8
      ],
+     [
+      8,
+      10
+     ],
+     [
+      18,
+      20
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "12px",
+     "17px",
+     "13px",
+     "14px"
+    ],
+    "sizes": {
+     "12px/400": 4,
+     "17px/600": 7,
+     "13px/400": 12,
+     "12px/600": 4,
+     "14px/400": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      208,
+      211
+     ]
+    ]
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Name\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Role\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Name\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Role\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Name\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Role\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Name\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Role\"",
+     "w": 332,
+     "h": 21
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "PG-B-NewGroup": {
+  "layout": {
+   "viewport": {
+    "width": 1600,
+    "height": 1000,
+    "pageScrollY": 440,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 20
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 20
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 20
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 20
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 20
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 17
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 17
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 17
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 17
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 17
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     6,
+     8,
+     10,
+     12,
+     14,
+     18,
+     20,
+     30
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18,
+     30
+    ],
+    "nearDupes": [
      [
       6,
       8
@@ -730,160 +1571,204 @@
      [
       12,
       14
+     ],
+     [
+      18,
+      20
      ]
     ]
    },
    "type": {
     "distinctFontSizes": [
-     "16px",
-     "13px",
-     "11px",
      "12px",
-     "15px"
+     "17px",
+     "13px",
+     "16px",
+     "14px"
     ],
     "sizes": {
-     "16px/500": 7,
-     "13px/400": 8,
-     "11px/600": 2,
-     "12px/400": 6,
-     "15px/600": 3,
-     "12px/600": 1
+     "12px/400": 7,
+     "17px/600": 9,
+     "13px/400": 15,
+     "16px/400": 20,
+     "12px/600": 5,
+     "14px/400": 1
     }
    },
    "alignment": {
-    "nearMissEdges": []
+    "nearMissEdges": [
+     [
+      198,
+      201
+     ]
+    ]
    },
-   "smallTargets": [],
+   "smallTargets": [
+    {
+     "el": "input \"Name this group\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Name this group\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Name this group\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Name this group\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Name this group\"",
+     "w": 332,
+     "h": 21
+    }
+   ],
    "lowContrast": [],
    "overlaps": [],
    "fixedOverlays": []
   },
   "geometry": {
    "pageOverflowX": 0,
-   "unevenRows": [
-    {
-     "container": "div \"Finance agentYesterday\"",
-     "children": 2,
-     "widths": [
-      106,
-      54
-     ]
-    },
-    {
-     "container": "a \"C Carta agent2:44 PM The optio\"",
-     "children": 2,
-     "widths": [
-      40,
-      304
-     ]
-    },
-    {
-     "container": "div \"Carta agent2:44 PM\"",
-     "children": 2,
-     "widths": [
-      88,
-      47
-     ]
-    },
-    {
-     "container": "div \"Legal agent7:51 AM\"",
-     "children": 2,
-     "widths": [
-      88,
-      43
-     ]
-    },
-    {
-     "container": "a \"M Mercury agent2:06 PM Balance\"",
-     "children": 2,
-     "widths": [
-      40,
-      304
-     ]
-    },
-    {
-     "container": "div \"Mercury agent2:06 PM\"",
-     "children": 2,
-     "widths": [
-      109,
-      47
-     ]
-    },
-    {
-     "container": "a \"B Brex agentYesterday 4 card e\"",
-     "children": 2,
-     "widths": [
-      40,
-      304
-     ]
-    },
-    {
-     "container": "div \"Brex agentYesterday\"",
-     "children": 2,
-     "widths": [
-      81,
-      54
-     ]
-    }
-   ],
+   "unevenRows": [],
    "overflowSpills": [],
-   "wrappedControls": [
-    "button.gbtn \"AB\""
-   ]
+   "wrappedControls": []
   }
  },
- "PG-B-NewGroup": {
+ "PG-B-NewSpace": {
   "layout": {
    "viewport": {
-    "width": 466,
-    "height": 678,
-    "pageScrollY": 0,
+    "width": 1600,
+    "height": 1000,
+    "pageScrollY": 440,
     "pageScrollX": 0
    },
    "offscreenPrimary": [],
    "scrollers": [],
-   "deadSpace": [],
+   "deadSpace": [
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 20
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 20
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 20
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 20
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 20
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 17
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 17
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 17
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 17
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 17
+    }
+   ],
    "spacing": {
     "observed": [
      1,
-     4,
      6,
+     8,
      10,
-     12,
-     14
+     14,
+     18,
+     20,
+     30
     ],
     "offScale": [
      6,
      10,
-     14
+     14,
+     18,
+     30
     ],
     "nearDupes": [
      [
-      4,
-      6
+      6,
+      8
      ],
      [
-      10,
-      12
+      8,
+      10
      ],
      [
-      12,
-      14
+      18,
+      20
      ]
     ]
    },
    "type": {
     "distinctFontSizes": [
-     "28px",
+     "12px",
+     "17px",
      "13px",
-     "16px",
-     "12px"
+     "14px"
     ],
     "sizes": {
-     "28px/600": 1,
-     "13px/400": 2,
-     "16px/400": 4,
-     "12px/600": 1
+     "12px/400": 5,
+     "17px/600": 9,
+     "13px/400": 5,
+     "12px/600": 5,
+     "14px/400": 2
     }
    },
    "alignment": {
@@ -891,8 +1776,28 @@
    },
    "smallTargets": [
     {
-     "el": "input \"Name this group\"",
-     "w": 346,
+     "el": "input \"Name\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Name\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Name\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Name\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Name\"",
+     "w": 332,
      "h": 21
     }
    ],

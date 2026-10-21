@@ -2,223 +2,10 @@
  "PG-A-Thread": {
   "layout": {
    "viewport": {
-    "width": 466,
-    "height": 678,
+    "width": 1936,
+    "height": 1436,
     "pageScrollY": 0,
     "pageScrollX": 0
-   },
-   "offscreenPrimary": [],
-   "scrollers": [],
-   "deadSpace": [],
-   "spacing": {
-    "observed": [
-     1,
-     2,
-     3,
-     4,
-     6,
-     8,
-     10,
-     12,
-     14,
-     16
-    ],
-    "offScale": [
-     3,
-     6,
-     10,
-     14
-    ],
-    "nearDupes": [
-     [
-      4,
-      6
-     ],
-     [
-      6,
-      8
-     ],
-     [
-      8,
-      10
-     ],
-     [
-      10,
-      12
-     ],
-     [
-      12,
-      14
-     ],
-     [
-      14,
-      16
-     ]
-    ]
-   },
-   "type": {
-    "distinctFontSizes": [
-     "15px",
-     "13px",
-     "14px",
-     "12px",
-     "16px"
-    ],
-    "sizes": {
-     "15px/600": 2,
-     "15px/400": 3,
-     "13px/400": 2,
-     "14px/600": 1,
-     "12px/400": 1,
-     "14px/400": 3,
-     "16px/400": 1,
-     "12px/600": 1
-    }
-   },
-   "alignment": {
-    "nearMissEdges": []
-   },
-   "smallTargets": [],
-   "lowContrast": [],
-   "overlaps": [],
-   "fixedOverlays": []
-  },
-  "geometry": {
-   "pageOverflowX": 0,
-   "unevenRows": [
-    {
-     "container": "div \"Re: Pilot timelineNeeds approv\"",
-     "children": 2,
-     "widths": [
-      114,
-      85
-     ]
-    }
-   ],
-   "overflowSpills": [],
-   "wrappedControls": [
-    "button \"Save\"",
-    "button \"Send\""
-   ]
-  }
- },
- "PG-A-ThreadStates": {
-  "layout": {
-   "viewport": {
-    "width": 1446,
-    "height": 718,
-    "pageScrollY": 0,
-    "pageScrollX": 0
-   },
-   "offscreenPrimary": [],
-   "scrollers": [],
-   "deadSpace": [
-    {
-     "el": "div \"Inbox agentOffline. Messages s\"",
-     "w": 394,
-     "h": 678,
-     "fillPct": 10,
-     "pctOfViewport": 26
-    },
-    {
-     "el": "div \"Inbox agentAnything else for A\"",
-     "w": 394,
-     "h": 678,
-     "fillPct": 11,
-     "pctOfViewport": 26
-    },
-    {
-     "el": "div \"Inbox agentAnything else for A\"",
-     "w": 394,
-     "h": 678,
-     "fillPct": 11,
-     "pctOfViewport": 26
-    }
-   ],
-   "spacing": {
-    "observed": [
-     1,
-     2,
-     4,
-     6,
-     8,
-     10,
-     12,
-     14,
-     16,
-     24
-    ],
-    "offScale": [
-     6,
-     10,
-     14
-    ],
-    "nearDupes": [
-     [
-      4,
-      6
-     ],
-     [
-      6,
-      8
-     ],
-     [
-      8,
-      10
-     ],
-     [
-      10,
-      12
-     ],
-     [
-      12,
-      14
-     ],
-     [
-      14,
-      16
-     ]
-    ]
-   },
-   "type": {
-    "distinctFontSizes": [
-     "15px",
-     "13px",
-     "12px",
-     "16px"
-    ],
-    "sizes": {
-     "15px/600": 6,
-     "13px/400": 1,
-     "15px/400": 6,
-     "12px/400": 3,
-     "16px/400": 3,
-     "12px/600": 3,
-     "13px/600": 2
-    }
-   },
-   "alignment": {
-    "nearMissEdges": []
-   },
-   "smallTargets": [],
-   "lowContrast": [],
-   "overlaps": [],
-   "fixedOverlays": []
-  },
-  "geometry": {
-   "pageOverflowX": 0,
-   "unevenRows": [],
-   "overflowSpills": [],
-   "wrappedControls": []
-  }
- },
- "PG-B-Consent": {
-  "layout": {
-   "viewport": {
-    "width": 466,
-    "height": 678,
-    "pageScrollY": 40,
-    "pageScrollX": 490
    },
    "offscreenPrimary": [],
    "scrollers": [],
@@ -228,14 +15,441 @@
      "w": 466,
      "h": 678,
      "fillPct": 0,
-     "pctOfViewport": 100
+     "pctOfViewport": 11
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 11
+    },
+    {
+     "el": "div \"Accessible namesBackBackPageOp\"",
+     "w": 466,
+     "h": 678,
+     "fillPct": 12,
+     "pctOfViewport": 11
+    },
+    {
+     "el": "div \"Inbox agentArchivedRestoreRepl\"",
+     "w": 394,
+     "h": 678,
+     "fillPct": 11,
+     "pctOfViewport": 10
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     8,
+     9,
+     10,
+     12,
+     14,
+     16,
+     20,
+     22,
+     24
+    ],
+    "offScale": [
+     6,
+     9,
+     10,
+     14,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      22,
+      24
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "13px",
+     "15px",
+     "14px",
+     "12px",
+     "17px",
+     "20px"
+    ],
+    "sizes": {
+     "13px/600": 8,
+     "15px/600": 13,
+     "15px/400": 14,
+     "13px/400": 8,
+     "14px/600": 7,
+     "12px/600": 13,
+     "14px/400": 37,
+     "17px/400": 6,
+     "17px/600": 2,
+     "20px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [
+    {
+     "a": "div \"Edit draft\"",
+     "b": "button.mi \"Delete chat\"",
+     "w": 246,
+     "h": 34
+    }
+   ],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"ToAna Ruiz\"",
+     "children": 2,
+     "widths": [
+      20,
+      56
+     ]
+    },
+    {
+     "container": "div \"ToAna Ruiz\"",
+     "children": 2,
+     "widths": [
+      20,
+      56
+     ]
+    },
+    {
+     "container": "div \"ToAna Ruiz\"",
+     "children": 2,
+     "widths": [
+      20,
+      56
+     ]
+    },
+    {
+     "container": "div \"ToAna Ruiz\"",
+     "children": 2,
+     "widths": [
+      20,
+      56
+     ]
+    },
+    {
+     "container": "div \"ToAdd a recipient\"",
+     "children": 2,
+     "widths": [
+      20,
+      96
+     ]
+    },
+    {
+     "container": "div \"Re: Pilot timelineUpdating\"",
+     "children": 2,
+     "widths": [
+      114,
+      70
+     ]
+    },
+    {
+     "container": "div \"ToAna Ruiz\"",
+     "children": 2,
+     "widths": [
+      20,
+      56
+     ]
+    },
+    {
+     "container": "div \"PageOpen the page\"",
+     "children": 2,
+     "widths": [
+      32,
+      95
+     ]
+    },
+    {
+     "container": "div \"ListOpen the to do list\"",
+     "children": 2,
+     "widths": [
+      23,
+      118
+     ]
+    },
+    {
+     "container": "div \"More (three dots)Chat menu\"",
+     "children": 2,
+     "widths": [
+      109,
+      70
+     ]
+    },
+    {
+     "container": "div \"PlusAttach\"",
+     "children": 2,
+     "widths": [
+      28,
+      41
+     ]
+    },
+    {
+     "container": "div \"MicDictate\"",
+     "children": 2,
+     "widths": [
+      23,
+      46
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button \"Edit\"",
+    "button \"Send\"",
+    "button \"Edit\"",
+    "button \"Send\"",
+    "button \"Edit\"",
+    "button \"Send\"",
+    "button \"Cancel\"",
+    "button \"Archive\"",
+    "button \"Restore\"",
+    "button \"Edit\"",
+    "button \"Send\"",
+    "button \"Edit\""
+   ],
+   "unevenRowsTruncated": true,
+   "wrappedControlsTruncated": true
+  }
+ },
+ "PG-A-ThreadStates": {
+  "layout": {
+   "viewport": {
+    "width": 1578,
+    "height": 3000,
+    "pageScrollY": 680,
+    "pageScrollX": 358
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     5,
+     6,
+     8,
+     9,
+     10,
+     12,
+     14,
+     16,
+     18,
+     24
+    ],
+    "offScale": [
+     5,
+     6,
+     9,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "13px",
+     "15px",
+     "12px",
+     "11px",
+     "14px",
+     "17px",
+     "16px"
+    ],
+    "sizes": {
+     "13px/600": 25,
+     "15px/600": 22,
+     "13px/400": 9,
+     "15px/400": 32,
+     "12px/600": 21,
+     "12px/400": 7,
+     "11px/600": 1,
+     "14px/600": 4,
+     "14px/400": 5,
+     "17px/600": 1,
+     "16px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 358,
+   "unevenRows": [
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      36,
+      56
+     ]
+    },
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      36,
+      56
+     ]
+    },
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      36,
+      56
+     ]
+    },
+    {
+     "container": "div \"ToAna Ruiz\"",
+     "children": 2,
+     "widths": [
+      20,
+      56
+     ]
+    }
+   ],
+   "overflowSpills": [
+    {
+     "el": "div",
+     "spillPx": 5
+    },
+    {
+     "el": "div",
+     "spillPx": 5
+    },
+    {
+     "el": "div",
+     "spillPx": 5
+    }
+   ],
+   "wrappedControls": [
+    "button \"Try again\"",
+    "button \"Restore\"",
+    "button \"Sign in\"",
+    "button \"Summarize my inbox\"",
+    "button \"Draft a reply to Ana\"",
+    "button \"What is due this week?\"",
+    "button \"Take control\"",
+    "button \"Edit\"",
+    "button \"Send\""
+   ]
+  }
+ },
+ "PG-B-Consent": {
+  "layout": {
+   "viewport": {
+    "width": 956,
+    "height": 718,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 46
     },
     {
      "el": "div \"Inbox agentSummarize my unread\"",
      "w": 394,
      "h": 678,
      "fillPct": 4,
-     "pctOfViewport": 85
+     "pctOfViewport": 39
     }
    ],
    "spacing": {
@@ -299,7 +513,7 @@
      "20px/600": 1,
      "16px/600": 1,
      "16px/400": 4,
-     "13px/400": 5,
+     "13px/400": 6,
      "28px/600": 1
     }
    },
@@ -318,48 +532,86 @@
    "fixedOverlays": []
   },
   "geometry": {
-   "pageOverflowX": 490,
+   "pageOverflowX": 0,
    "unevenRows": [],
    "overflowSpills": [],
    "wrappedControls": [
     "button \"Allow\"",
     "button \"Not now\"",
-    "a \"Change in Settings\""
+    "a \"Privacy details\""
    ]
   }
  },
  "PG-A-GroupThread": {
   "layout": {
    "viewport": {
-    "width": 466,
-    "height": 678,
+    "width": 1936,
+    "height": 716,
     "pageScrollY": 0,
     "pageScrollX": 0
    },
    "offscreenPrimary": [],
    "scrollers": [],
-   "deadSpace": [],
+   "deadSpace": [
+    {
+     "el": "div \"Header and composerAccessible \"",
+     "w": 466,
+     "h": 703,
+     "fillPct": 11,
+     "pctOfViewport": 24
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 23
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 23
+    },
+    {
+     "el": "div \"Accessible namesBackBackMember\"",
+     "w": 466,
+     "h": 678,
+     "fillPct": 9,
+     "pctOfViewport": 23
+    }
+   ],
    "spacing": {
     "observed": [
      1,
      2,
-     3,
      4,
+     5,
      6,
      8,
      10,
+     12,
      14,
-     16
+     16,
+     20,
+     22,
+     24
     ],
     "offScale": [
-     3,
+     5,
      6,
      10,
-     14
+     14,
+     22
     ],
     "nearDupes": [
      [
       4,
+      5
+     ],
+     [
+      5,
       6
      ],
      [
@@ -371,27 +623,47 @@
       10
      ],
      [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
       14,
       16
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      22,
+      24
      ]
     ]
    },
    "type": {
     "distinctFontSizes": [
-     "15px",
-     "11px",
-     "12px",
      "13px",
-     "16px"
+     "15px",
+     "12px",
+     "17px",
+     "20px",
+     "14px"
     ],
     "sizes": {
-     "15px/600": 1,
-     "11px/600": 1,
-     "15px/400": 3,
-     "12px/400": 2,
-     "13px/400": 2,
-     "16px/400": 1,
-     "12px/600": 1
+     "13px/600": 7,
+     "15px/600": 3,
+     "15px/400": 9,
+     "13px/400": 4,
+     "12px/400": 6,
+     "12px/600": 3,
+     "17px/400": 5,
+     "17px/600": 2,
+     "20px/600": 1,
+     "14px/400": 12
     }
    },
    "alignment": {
@@ -404,9 +676,69 @@
   },
   "geometry": {
    "pageOverflowX": 0,
-   "unevenRows": [],
+   "unevenRows": [
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      36,
+      56
+     ]
+    },
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      36,
+      56
+     ]
+    },
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      36,
+      56
+     ]
+    },
+    {
+     "container": "div \"PageOpen the page\"",
+     "children": 2,
+     "widths": [
+      32,
+      95
+     ]
+    },
+    {
+     "container": "div \"More (three dots)Chat menu\"",
+     "children": 2,
+     "widths": [
+      109,
+      70
+     ]
+    },
+    {
+     "container": "div \"PlusAttach\"",
+     "children": 2,
+     "widths": [
+      28,
+      41
+     ]
+    },
+    {
+     "container": "div \"Round squareStop the run\"",
+     "children": 2,
+     "widths": [
+      89,
+      79
+     ]
+    }
+   ],
    "overflowSpills": [],
-   "wrappedControls": []
+   "wrappedControls": [
+    "button \"Cancel\"",
+    "button \"Delete\""
+   ]
   }
  },
  "Inner": {
@@ -433,7 +765,7 @@
      14,
      16,
      22,
-     173
+     154
     ],
     "offScale": [
      6,
@@ -441,7 +773,7 @@
      10,
      14,
      22,
-     173
+     154
     ],
     "nearDupes": [
      [
@@ -476,24 +808,23 @@
    },
    "type": {
     "distinctFontSizes": [
+     "15px",
      "26px",
      "13px",
-     "15px",
      "14px",
      "12px",
      "16px"
     ],
     "sizes": {
+     "15px/400": 5,
      "26px/600": 1,
      "13px/600": 2,
-     "13px/400": 8,
-     "15px/400": 6,
+     "13px/400": 10,
+     "15px/600": 6,
      "14px/400": 15,
-     "15px/600": 5,
      "14px/600": 1,
-     "12px/400": 1,
-     "16px/400": 1,
-     "12px/600": 1
+     "12px/600": 2,
+     "16px/400": 1
     }
    },
    "alignment": {
@@ -537,7 +868,7 @@
      "container": "div \"Jordan Lee8:20 AM\"",
      "children": 2,
      "widths": [
-      77,
+      80,
       51
      ]
     },
@@ -558,7 +889,7 @@
      "container": "div \"Northwind SupportOct 18\"",
      "children": 2,
      "widths": [
-      130,
+      137,
       37
      ]
     },
@@ -600,7 +931,7 @@
      "container": "div \"Example Weekly3:02 PM\"",
      "children": 2,
      "widths": [
-      118,
+      113,
       51
      ]
     },
@@ -621,22 +952,22 @@
      "container": "div \"Deals Daily2:41 PM\"",
      "children": 2,
      "widths": [
-      80,
+      77,
       47
      ]
     },
     {
-     "container": "div \"Re: Pilot timelineNeeds approv\"",
+     "container": "div \"Re: Pilot timeline Ana Ruiz\"",
      "children": 2,
      "widths": [
-      114,
-      85
+      125,
+      76
      ]
     }
    ],
    "overflowSpills": [],
    "wrappedControls": [
-    "button \"Save\"",
+    "button \"Edit\"",
     "button \"Send\""
    ]
   }
@@ -644,10 +975,10 @@
  "DS-06-Chat": {
   "layout": {
    "viewport": {
-    "width": 1200,
-    "height": 900,
-    "pageScrollY": 6500,
-    "pageScrollX": 240
+    "width": 450,
+    "height": 1400,
+    "pageScrollY": 6000,
+    "pageScrollX": 990
    },
    "offscreenPrimary": [],
    "scrollers": [],
@@ -655,72 +986,72 @@
     {
      "el": "section.sec \"Mail approval cardCONTENTPurpo\"",
      "w": 1440,
-     "h": 695,
+     "h": 759,
      "fillPct": 9,
-     "pctOfViewport": 93
+     "pctOfViewport": 173
+    },
+    {
+     "el": "section.sec \"Composer, running and pending \"",
+     "w": 1440,
+     "h": 729,
+     "fillPct": 9,
+     "pctOfViewport": 167
     },
     {
      "el": "section.sec \"Inline image attachmentCONTENT\"",
      "w": 1440,
      "h": 607,
      "fillPct": 6,
-     "pctOfViewport": 81
+     "pctOfViewport": 139
+    },
+    {
+     "el": "section.sec \"Secret ask cardPurpose. The ag\"",
+     "w": 1440,
+     "h": 545,
+     "fillPct": 11,
+     "pctOfViewport": 125
     },
     {
      "el": "section.sec \"Working indicator and agent ev\"",
      "w": 1440,
-     "h": 449,
-     "fillPct": 11,
-     "pctOfViewport": 60
+     "h": 488,
+     "fillPct": 10,
+     "pctOfViewport": 112
     },
     {
      "el": "div.spx \"Needs approval, with CcRe: Pil\"",
      "w": 968,
-     "h": 630,
-     "fillPct": 12,
-     "pctOfViewport": 56
+     "h": 694,
+     "fillPct": 11,
+     "pctOfViewport": 107
+    },
+    {
+     "el": "div.spx \"Running, text typedAlso check \"",
+     "w": 968,
+     "h": 664,
+     "fillPct": 9,
+     "pctOfViewport": 102
     },
     {
      "el": "section.sec \"Pins stripCONTENTPurpose. Pinn\"",
      "w": 1440,
      "h": 380,
      "fillPct": 11,
-     "pctOfViewport": 51
+     "pctOfViewport": 87
     },
     {
      "el": "div.spec \"ComposerGLASSPurpose. Floating\"",
      "w": 360,
      "h": 1502,
      "fillPct": 10,
-     "pctOfViewport": 50
+     "pctOfViewport": 86
     },
     {
      "el": "div.spx \"Loadedchart.png248 KBLoadingch\"",
      "w": 968,
      "h": 542,
-     "fillPct": 5,
-     "pctOfViewport": 49
-    },
-    {
-     "el": "div.spx \"WorkingLet me look at that.Chi\"",
-     "w": 968,
-     "h": 384,
-     "fillPct": 10,
-     "pctOfViewport": 34
-    },
-    {
-     "el": "div.spec \"Mail approval cardCONTENTPurpo\"",
-     "w": 360,
-     "h": 630,
-     "fillPct": 9,
-     "pctOfViewport": 21
-    },
-    {
-     "el": "div.spec \"Inline image attachmentCONTENT\"",
-     "w": 360,
-     "h": 542,
-     "fillPct": 11,
-     "pctOfViewport": 18
+     "fillPct": 6,
+     "pctOfViewport": 83
     }
    ],
    "spacing": {
@@ -740,10 +1071,14 @@
      24,
      32,
      40,
+     42,
+     73,
      80,
      81,
      98,
-     118
+     106,
+     118,
+     158
     ],
     "offScale": [
      3,
@@ -751,9 +1086,13 @@
      6,
      10,
      14,
+     42,
+     73,
      81,
      98,
-     118
+     106,
+     118,
+     158
     ],
     "nearDupes": [
      [
@@ -785,6 +1124,10 @@
       16
      ],
      [
+      40,
+      42
+     ],
+     [
       80,
       81
      ]
@@ -801,38 +1144,56 @@
      "19px",
      "16px",
      "10px",
-     "14px"
+     "14px",
+     "17px"
     ],
     "sizes": {
      "36px/600": 1,
-     "15px/400": 48,
-     "20px/600": 11,
+     "15px/400": 59,
+     "20px/600": 16,
      "11px/600": 11,
-     "13px/400": 92,
-     "13px/500": 86,
-     "11px/400": 31,
-     "12px/400": 45,
+     "13px/400": 116,
+     "13px/500": 94,
+     "11px/400": 49,
+     "12px/400": 54,
      "19px/600": 1,
      "16px/600": 2,
-     "13px/600": 9,
+     "13px/600": 10,
      "10px/600": 1,
      "12px/600": 3,
      "16px/400": 7,
      "15px/500": 4,
      "14px/600": 4,
-     "14px/400": 15,
-     "15px/600": 7
+     "14px/400": 17,
+     "15px/600": 18,
+     "17px/400": 4,
+     "14px/700": 1
     }
    },
    "alignment": {
     "nearMissEdges": [
+     [
+      480,
+      481
+     ],
      [
       868,
       870
      ]
     ]
    },
-   "smallTargets": [],
+   "smallTargets": [
+    {
+     "el": "input \"API key\"",
+     "w": 294,
+     "h": 19
+    },
+    {
+     "el": "input \"API key\"",
+     "w": 292,
+     "h": 19
+    }
+   ],
    "lowContrast": [
     {
      "el": "span \"Needs approval\"",
@@ -847,7 +1208,7 @@
    "fixedOverlays": []
   },
   "geometry": {
-   "pageOverflowX": 240,
+   "pageOverflowX": 990,
    "unevenRows": [
     {
      "container": "div \"VendorStatusAmount\"",
@@ -859,7 +1220,7 @@
      ]
     },
     {
-     "container": "div \"NorthwindPaid[AMOUNT]\"",
+     "container": "div \"NorthwindPaid$1,200\"",
      "children": 3,
      "widths": [
       116,
@@ -868,7 +1229,7 @@
      ]
     },
     {
-     "container": "div \"Acme PayrollDue[AMOUNT]\"",
+     "container": "div \"Acme PayrollDue$1,200\"",
      "children": 3,
      "widths": [
       116,
@@ -951,20 +1312,29 @@
      ]
     }
    ],
-   "overflowSpills": [],
+   "overflowSpills": [
+    {
+     "el": "div",
+     "spillPx": 7
+    },
+    {
+     "el": "div",
+     "spillPx": 7
+    }
+   ],
    "wrappedControls": [
     "a \"EExample Weekly: pilot checkli\"",
-    "button \"Save\"",
+    "button \"Edit\"",
     "button \"Send\"",
-    "button \"Save\"",
+    "button \"Edit\"",
     "button \"Send\"",
     "button \"Allow once\"",
-    "button \"Always allow\"",
     "button \"Deny\"",
     "button \"Work calendar\"",
     "button \"Personal calendar\"",
     "button \"Skip\"",
-    "button \"30 minutesFits Ana's open slot\""
+    "button \"30 minutesFits Ana's open slot\"",
+    "button \"60 minutesNeeds a longer slot\""
    ],
    "unevenRowsTruncated": true,
    "wrappedControlsTruncated": true

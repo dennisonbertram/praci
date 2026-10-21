@@ -1,62 +1,46 @@
-# STORY-019 flow critique: first run with no model connected (round 1)
+# STORY-019 flow critique: first run with no model connected (round 2)
 
-Previous round: convoluted (14 steps, no board for the no-model handoff). Re-traced on the current boards after the gap-fix pass. Judged against boards, not running code.
+Previous round: acceptable in round 1 (8 steps against an ideal of 6; no board for the no-model handoff). Re-traced on the current boards. Judged against boards, not running code.
 
-Boards read (screenshots in the round 1 folder): `PG-B-SignUp`, `PG-B-SignIn`, `PG-A-HomeNoModel`, `PG-A-Home`, `PH-Home`, `PG-B-Settings`, `PG-B-Models`, `PG-B-Consent`, `PG-B-NewBot`, `PG-A-Thread`, `PH-Thread`, `PG-A-ThreadStates`, `PG-B-Account`.
+Boards read: `PG-B-SignUp`, `PG-A-HomeNoModel` (4 frames), `PH-Home` (Connected and No model), `PG-A-ThreadStates` (First message, No model), `PG-B-Consent`, `PG-A-Home`.
 
 ## 1. Friction scorecard
 
 | Measure | Result |
 |---|---|
-| Steps as drawn (Chief bot path) | 8: sign up, tap Connect a model, enter key, Connect, tap Chief, type and send, Allow data sharing, read reply |
-| Steps as drawn (Create a bot path the Home card offers) | 11 (adds tap Create a bot, name, check) |
-| Ideal | 6: sign up, Connect (with sharing consent folded in), tap Chief, send, read reply |
-| Steps with no board | 2 of 11: first-run empty thread (greeting, suggestions); wrong-key or failed connect. Standard-iPhone no-model Home also has no board |
-| Dead ends | Fixed: Home now says a model is missing and offers one action. Remaining: a failed key has no drawn state |
-| Needless decisions | Provider choice (Hosted preselected, not labelled as the default); Title and Description on New bot; Create a bot vs the existing Chief row |
-| Re-entry | None |
-| Detour | Removed. The Account > Settings > Models detour is gone from the first-run path |
-
-Heuristics still failing: 2 (decision economy, provider choice), 5 (no failure state), 11 (key field shown for every provider), 12/9 (Home card offers the wrong next action).
+| Steps as drawn | 7: sign up (one form), tap Connect a model, paste key, Connect, tap Message Chief, type and send, read reply |
+| Ideal | 6 (same, with sign up counted as the form submit and no separate tap into Connect if Home opened the sheet itself) |
+| Steps with no board | 1 of 7 by default path: sign-up to Home handoff (loading) is not drawn but is trivial. Local server and Subscription forms, and a Connect loading state, are not drawn |
+| Dead ends | None. Failed key has a red inline state (frame 3). Sending before connecting shows "Not sent: No model connected" with a Connect link and "the message sends when it succeeds" |
+| Needless decisions | Provider choice remains, but "API key / Recommended" is preselected, so the default user decides nothing |
+| Re-entry | None. The consent sheet before first send is gone; the data line under Connect covers it, and AI data sharing in settings holds the toggle |
+| Detour | None |
 
 ## 2. Take-away pass per screen
 
-- `PG-A-HomeNoModel.png` panel 1: one prominent button "Connect a model". Correct. The card plus the Chief row below it ("No messages yet") is fine. Nothing to remove.
-- Panel 2 (sheet): provider list, key field, Connect. The key field has no label or placeholder and is shown even when Local server or Subscription sign-in is selected, where a key does not apply. One prominent action (Connect). Correct.
-- Panel 3: card says "Model connected." and offers "Create a bot" while Chief already exists in Personnel directly below. The card is the one prominent action and it points at the wrong job. "Model connected." is also stated only by the card; fine.
-- `PG-B-Consent.png` first use: "Share data with Model A?" with Allow, Not now, Change in Settings. One prominent action (Allow). It is a second gate after the user already typed a message; no sign the draft is kept.
-- `PG-B-NewBot.png`: Title and Description are optional and remove nothing the journey needs; two thirds of the sheet is empty. Only relevant if the user takes "Create a bot".
-- `PG-B-Models.png` / `PG-B-Settings.png`: connected-state only; "Now using Model A." repeats the Model row above it. Not on the first-run path any more, so low value.
-- `PG-A-Thread.png` / `PH-Thread.png`: not a first-run view (existing Inbox agent conversation). No empty-thread state exists.
+- `PG-A-HomeNoModel` frame 1: one prominent button ("Connect a model"). Chief row is dimmed and says "Connect a model to chat". Pages list is not needed yet but is quiet. Nothing to remove.
+- Frame 2: provider list, labelled "API key" field, Connect (one prominent), one data-sharing line with Privacy details. The line is needed (it replaces a sheet). No fact is stated twice.
+- Frame 3: red field and "Key not accepted." Connect stays enabled. Correct.
+- Frame 4: "Model A connected." with one prominent "Message Chief". New button now appears. Correct next action.
+- `PH-Home` No model: same card, no New button, no Activity. Matches the Duo frame.
+- `PG-A-ThreadStates` First message: greeting plus three suggestions and a focused composer. No model: the red "Not sent" line with Connect.
+- `PG-B-Consent`: now covers speech only, not this journey.
 
 ## 3. Simpler version
 
-1. Sign up lands on Home with the card "Connect a model to start chatting." and one button.
-2. The sheet shows Hosted provider labelled "Recommended" with an "API key" field; picking Local server swaps the field for an address, Subscription swaps it for "Sign in". A single line under Connect states what is shared with the provider, and Connect also records that consent (removes the separate Share data sheet).
-3. On success the sheet closes and the card becomes "Message Chief" (opens the Chief thread with the composer focused). "Create a bot" stays in New.
-4. Type and send; the reply streams. Back shows the preview on Home.
-
-6 steps. Settings > Models stays the long-term route; the card is an accelerator to the same screen.
+The drawn version is already close to it. Only trim: when connecting succeeds, open the Chief thread with the composer focused instead of returning to Home with a card (saves one tap). Optional, since the card is a clear accelerator.
 
 ## 4. Beauty check
 
-- `PG-A-HomeNoModel`: glass only on the side-strip capsules; card, rows and sheet are solid; one prominent action per panel; Chief uses its shipped teal hexagon; concentric radii on card and button look consistent. Panel 2 dims the background correctly. Passes. The "+" button of `PG-A-Home` is absent in all three panels, so New (group, space) is unreachable in this drawn state; likely cropping, flagged low.
-- `PG-B-Consent`: sheet solid, Allow is the single prominent control, Not now is quiet. Passes. Copy uses the placeholder "Model A" rather than the connected provider's name.
-- `PG-B-NewBot`, `PG-B-Models`: unchanged from round 0, pass the glass and one-action rules.
-- Name "Praci" is correct on sign up and sign in.
+Glass only on side-strip capsules and the New button; card, rows and sheets are solid; one prominent action per frame; Chief uses the shipped teal hexagon; radii are concentric on card, sheet and button; the name "Praci" is correct on sign up. "Model A" is a placeholder for the connected provider's name, expected in a mockup. Passes.
 
-## 5. Verdict: acceptable
+## 5. Verdict: minimal
 
-The dead end and the Settings detour are fixed. The path is 2 steps over ideal with no structural problem; remaining issues are the wrong next action after connecting, one avoidable consent gate, and missing failure and standard-iPhone boards.
+The default path is 7 steps, one more than ideal, with every state a first-run user can hit drawn. Remaining items are undrawn non-default providers and small copy mismatches.
 
 ## ISSUES
 
-- STORY-019-R1-1 (high): `PG-A-HomeNoModel.dc.html` panel 3. At step 5 the card offers "Create a bot" while the Chief bot already sits in Personnel, so the prominent action points at a longer path (11 steps) than the one that works (8). Fix: relabel the button "Message Chief" and open the Chief thread; drop "Create a bot" from the card. If no default bot exists, remove the Chief row from the board instead.
-- STORY-019-R1-2 (medium): `PG-A-HomeNoModel.dc.html` panel 2. At step 3 the key field has no label and shows for Local server and Subscription sign-in, where a key does not apply; Hosted is preselected but not marked as the default. Fix: label the field "API key", mark Hosted "Recommended", and swap the field per provider (address for Local server, a "Sign in" button for Subscription).
-- STORY-019-R1-3 (medium): `PG-B-Consent.dc.html`, `PG-A-HomeNoModel.dc.html`. At step 7 a second sheet ("Share data with Model A?") interrupts the first send, after the user already typed. Fix: put one line under Connect naming the provider and what is shared, record consent on Connect, and use the name of the connected provider instead of "Model A". Keep the sheet only for later providers.
-- STORY-019-R1-4 (medium): no board. The first-run thread (step 6 destination) has no empty state: no greeting or suggestions are drawn; `PG-A-ThreadStates` covers offline, failed and refused only. Fix: add an empty-thread panel to `PG-A-ThreadStates` with a one-line greeting from Chief, up to three tappable suggestions and the focused composer.
-- STORY-019-R1-5 (medium): no board. Wrong key or failed connect at step 4 has no drawn state. Fix: add a panel to `PG-A-HomeNoModel` with an inline red line under the key field ("Key not accepted") and the Connect button back to enabled; the sheet stays open.
-- STORY-019-R1-6 (medium): `PH-Home.dc.html`. The story's device is a standard iPhone, but the no-model card exists only on the Duo outer display. Fix: add a no-model variant to `PH-Home` with the card above Inbox and the same single "Connect a model" button.
-- STORY-019-R1-7 (low): `PG-A-HomeNoModel.dc.html` panel 3. The "Model connected." card has no stated end of life. Fix: remove the card after the first message is sent, or after one tap on its button.
-- STORY-019-R1-8 (low): `PG-B-NewBot.dc.html`. Title and Description are optional yet shown; the lower two thirds of the sheet is empty. Fix: show Name only, with "More" revealing Title and Description.
-- STORY-019-R1-9 (low): `PG-A-HomeNoModel.dc.html`. The "+" button from `PG-A-Home` is missing in all three panels. Fix: draw it, or note that New is hidden until a model is connected.
+- STORY-019-R2-1 (medium): `PG-A-HomeNoModel.dc.html` frame 2. At step 3, picking Local server or Subscription is offered, but the sheet draws only the API key field. A user choosing either sees no drawn address field or "Sign in" button. Fix: add two small frames, Local server with an "Address" field and Subscription with a "Sign in" button replacing the key field; Connect stays the one prominent action.
+- STORY-019-R2-2 (low): `PG-A-HomeNoModel.dc.html` frames 2 and 3. At step 4 there is no Connect-in-progress state, so a slow connection looks like a dead tap. Fix: add a frame with a spinner in the Connect button and the field disabled.
+- STORY-019-R2-3 (low): `PG-A-HomeNoModel.dc.html` frame 4, `PG-A-ThreadStates.dc.html` First message. After connecting, the Chief row previews "Hello! How can I help?" but the thread opens with an empty greeting plus suggestions, so the preview reads as a sent message. Fix: preview "Say hello to Chief" until a real message exists, or show the same greeting line in the thread.
+- STORY-019-R2-4 (low): `PG-A-HomeNoModel.dc.html` frame 4. The "Model A connected." card has no stated end of life. Fix: remove the card after the first message is sent.

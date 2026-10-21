@@ -6,47 +6,47 @@
       "model": "meta/muse-wonder",
       "ok": true,
       "seconds": 24,
-      "costUsd": 0.0564952,
+      "costUsd": 0.0548,
       "result": {
         "scores": {
           "A": {
-            "criteria": 4,
+            "criteria": 5,
             "simplicity": 4,
             "consistency": 5,
-            "usability": 3,
+            "usability": 5,
             "visual": 4,
             "effort": 5
           },
           "B": {
-            "criteria": 5,
+            "criteria": 3,
             "simplicity": 5,
-            "consistency": 4,
-            "usability": 5,
-            "visual": 5,
-            "effort": 3
-          },
-          "C": {
-            "criteria": 2,
-            "simplicity": 3,
             "consistency": 3,
             "usability": 3,
             "visual": 4,
-            "effort": 2
+            "effort": 3
+          },
+          "C": {
+            "criteria": 4,
+            "simplicity": 5,
+            "consistency": 5,
+            "usability": 4,
+            "visual": 5,
+            "effort": 5
           }
         },
-        "winner": "B",
-        "graft": "From A: restore Compose as a visible icon in the Search/Filter group on the 393pt iPhone and inner split list layouts, keeping it in More only on the cramped Duo outer strip, so starting a new mail stays one tap where space allows.",
-        "defense": "B matches the prominent action to the job per view: Ask for founder triage on the list, aligning with the outer/inner boards, and Reply-with-agent-prefill on a message, turning the agent's draft-reply strength into one tap. Its Search/Filter-only group is the cleanest fit for the 466pt side strip. Against A: identical Ask everywhere is more consistent and cheaper, but a generic Ask on a message demotes the actual primary task, plain Reply, and forces an extra clarification step while its extra Compose icon crowds the strip. Against C: Apple Mail familiarity helps, but Compose-as-prominent contradicts the boards' Ask tint, and 'Search or ask' buries the agent in an ambiguous dual-purpose field with risky intent routing and no clear icon route. B's costs—contextual prominence and the prefill handoff—are bounded, and the graft mitigates its main weakness, hidden Compose."
+        "winner": "A",
+        "graft": "From C: also allow scrim-tap/swipe-down to dismiss the sheet and keep editing, as a secondary path to A's explicit Keep editing action.",
+        "defense": "A is the only proposal that explicitly satisfies every criterion: persistent Send in the same place in all frames, no Done, dimmed Send for missing/invalid recipients, and exactly one conditional close sheet. Its explicit Keep editing removes any dead end when reopening or closing an edited draft. B fails the stated one-sheet requirement, does not state dimming, and replaces a deliberate choice with transient toast recovery—risking unwanted autosaved drafts, a missed Delete window, and extra autosave/toast engineering. C is a strong, native runner-up, but as written it omits dimming and makes Keep editing discoverable only via the scrim; on this small display and for non-expert users that hidden gesture is weaker than A's labelled action, despite C's cleaner two-button sheet."
       }
     },
     {
       "model": "google/gemini-4-argon",
       "ok": true,
-      "seconds": 30,
-      "costUsd": 0.02399,
+      "seconds": 32,
+      "costUsd": 0.019368,
       "result": {
         "scores": {
-          "Option A": {
+          "A": {
             "criteria": 5,
             "simplicity": 5,
             "consistency": 5,
@@ -54,26 +54,26 @@
             "visual": 5,
             "effort": 5
           },
-          "Option B": {
-            "criteria": 4,
-            "simplicity": 4,
+          "B": {
+            "criteria": 3,
+            "simplicity": 3,
             "consistency": 3,
             "usability": 3,
             "visual": 4,
-            "effort": 4
-          },
-          "Option C": {
-            "criteria": 2,
-            "simplicity": 3,
-            "consistency": 2,
-            "usability": 2,
-            "visual": 4,
             "effort": 2
+          },
+          "C": {
+            "criteria": 4,
+            "simplicity": 4,
+            "consistency": 4,
+            "usability": 3,
+            "visual": 4,
+            "effort": 4
           }
         },
-        "winner": "Option A",
-        "graft": "From Option B: have the plain Reply action on the message view hand off to the Inbox agent with a reply prefill, while keeping Ask Inbox agent as the persistent prominent tinted action.",
-        "defense": "Option A is the clear winner because it brings PH-Inbox into full alignment with the Duo outer and inner boards by keeping Ask Inbox agent as the single tinted prominent action across both list and message views, while respecting the budget of three glass groups (Back; Search/Filter/Compose; More with Cleanup) plus one tinted prominent button. Against Option B, Option A avoids burying a core mail action (Compose) inside the More overflow menu and avoids jarring visual state swaps in the prominent slot during list-to-message navigation, while grafting B's prefilled agent handoff onto the plain Reply button captures B's best workflow idea without its downsides. Against Option C, Option A keeps the founder's primary differentiator—the Inbox agent—immediately accessible as a dedicated one-tap primary control rather than hiding it behind an icon-only Search button and breaking consistency with the outer and inner displays."
+        "winner": "A",
+        "graft": null,
+        "defense": "Proposal A directly satisfies every acceptance criterion with the lowest risk and highest usability: it places the Send arrow in every compose frame, removes the ambiguous Done capsule, dims Send when recipients are missing or invalid, and unifies the two conflicting close prompts into a single sheet ('Save draft / Discard / Keep editing') triggered on X only when edits exist. Proposal B fails the 'one close sheet' criterion, clutters Drafts when users miss the transient delete toast, and introduces a new floating toast state on the return view that risks violating glass-group constraints. Proposal C is close to A, but omitting an explicit 'Keep editing' / 'Cancel' button and relying solely on tapping the scrim deviates from native SwiftUI confirmationDialog behavior and harms discoverability and accessibility."
       }
     }
   ]

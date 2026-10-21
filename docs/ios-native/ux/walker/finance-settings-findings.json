@@ -18,7 +18,7 @@
  {
   "id": "F-finance-settings-002",
   "story_id": "STORY-081",
-  "severity": "high",
+  "severity": "medium",
   "category": "happy-path",
   "criterion": "Happy path clarity: error and blocked states",
   "description": "The Legal blocker ('Add your OpenRouter key') that replaces the page when no key exists is described only in the rule card. No board draws it, and no copy explains why an OpenRouter key specifically is required. Not-scanned-yet, scan failed, scan running and consent prompt states are also undrawn.",
@@ -29,7 +29,7 @@
   "quick_fix": false,
   "suggested_fix": "Add a states strip to PG-B-Legal: blocker row, Not scanned yet with Scan now, scan in progress on the toolbar scan icon, failed warning row.",
   "status": "open",
-  "note": "PG-B-Legal still draws only the healthy state; blocker, not scanned, running, failed undrawn."
+  "note": "Legal states mostly drawn now (default, Blocked row for an unreadable PDF, Not scanned yet, scan running, scan failed). Still undrawn: the STORY-081 blocker (no OpenRouter key, row opens Models) and the consent prompt. The drawn Blocked row is a different state (one file unreadable). Reduced from high."
  },
  {
   "id": "F-finance-settings-003",
@@ -44,8 +44,8 @@
   "phase_issue": "#424",
   "quick_fix": false,
   "suggested_fix": "Draw the not-connected and pending states and the contact form sheet; label the plus action (Add contact) in the rule card.",
-  "status": "open",
-  "note": "PG-B-CapTable still only the connected state; no not-connected, pending, contact form or holder detail."
+  "status": "resolved",
+  "note": "Cap table now draws connected, access expired, not connected, syncing, Add contact sheet and holder detail. Remaining wording issue moved to R2-001."
  },
  {
   "id": "F-finance-settings-004",
@@ -60,8 +60,8 @@
   "phase_issue": "#424",
   "quick_fix": false,
   "suggested_fix": "Replace the Holders rows with person rows (Ana Ruiz, Jordan Lee) as in the DS-07 Holder row, and align legend labels with DS-07.",
-  "status": "open",
-  "note": "Holders still list the four categories with [N], duplicating the ring legend."
+  "status": "resolved",
+  "note": "Holders are now people (Ana Ruiz, Jordan Lee, Sam Ortiz, Option pool) with role and percent; the category legend is gone."
  },
  {
   "id": "F-finance-settings-005",
@@ -76,8 +76,8 @@
   "phase_issue": "#424",
   "quick_fix": false,
   "suggested_fix": "Add states to PG-B-DataRoom: uploading, searching with result rows, empty. Add a long-press or row action 'Ask about this file' and a composer attachment source for Data room items (#417).",
-  "status": "open",
-  "note": "PG-B-DataRoom unchanged: no upload, search result, empty or Ask-about-file states."
+  "status": "resolved",
+  "note": "PG-B-DataRoom draws uploading, upload failed, search results, empty room, open file with Ask about this file, and the composer attachment sources menu. Picker after Data room source is undrawn (R2-004)."
  },
  {
   "id": "F-finance-settings-006",
@@ -92,13 +92,13 @@
   "phase_issue": "#424",
   "quick_fix": false,
   "suggested_fix": "Pick 'Monthly burn' everywhere, add month labels as on Desk, state how each period tab changes the bars, and rename the rule-card sections to match.",
-  "status": "open",
-  "note": "Still 30 days/90 days/12 months tabs over 12 unlabeled bars titled Monthly burn; Desk says Monthly spend, Last 6 months with month labels; rule card still lists Burn, Spend."
+  "status": "resolved",
+  "note": "Chart is titled Monthly burn with month labels on all frames; Desk matches. Tabs change the bar highlight."
  },
  {
   "id": "F-finance-settings-007",
   "story_id": "STORY-085",
-  "severity": "high",
+  "severity": "low",
   "category": "happy-path",
   "criterion": "Device adaptation coverage",
   "description": "Only Finance has a laptop-pose board, and Desk.dc.html shows the Finance agent thread on the bottom half, not the period tabs, accounts and Ask action that the rule card says go on the bottom half. Legal, Cap table and Data room inner (1/3 + 2/3), half-folded and laptop layouts exist only as rule-card text. No inner-display sidebar board shows rows for the four pages.",
@@ -109,7 +109,7 @@
   "quick_fix": false,
   "suggested_fix": "Add Inner and Desk boards for Legal, Cap table and Data room, and update the Finance laptop rule or the Desk board so they agree.",
   "status": "open",
-  "note": "Desk still shows the Finance agent thread on the bottom half; no Inner/Desk boards for Legal, Cap table, Data room."
+  "note": "Desk draws Finance in laptop pose correctly (page top, thread bottom). Legal, Cap table and Data room have only rule-card laptop templates, no board. Reduced from high because the template is shared."
  },
  {
   "id": "F-finance-settings-008",
@@ -124,8 +124,8 @@
   "phase_issue": "#424",
   "quick_fix": false,
   "suggested_fix": "Draw the Finance page and the Finance chat card with amounts masked, and put a Hide amounts switch in Settings as well.",
-  "status": "open",
-  "note": "No hidden-amounts state on PG-B-Finance, no masked chat card, no Settings switch."
+  "status": "resolved",
+  "note": "Hidden-amounts state drawn on PG-B-Finance (masked figures, eye-slash) and a Hide amounts switch now sits on Account. Masked chat finance card is still undrawn (R2-003)."
  },
  {
   "id": "F-finance-settings-009",
@@ -141,7 +141,7 @@
   "quick_fix": true,
   "suggested_fix": "Make the Home avatar and Settings profile use the same initials, and correct the catalog text to say the X closes Settings and there is one profile row.",
   "status": "open",
-  "note": "Settings now has one profile row labeled Account and PG-B-Account exists (good). Remaining: Home avatar shows AB while Settings and Account show SR, and the strip control is an X, not Done as the catalog says."
+  "note": "Remaining: the Settings strip control is an xmark while the rule card and catalog name it Done; avatar initials and names differ across boards (Home AB, Settings and Account Sam Rivera SR, Split sidebar Alex Morgan AM)."
  },
  {
   "id": "F-finance-settings-010",
@@ -156,8 +156,8 @@
   "phase_issue": "#421",
   "quick_fix": false,
   "suggested_fix": "Draw AI data sharing (switch per service, Withdraw all), Archived bots (list, empty, restore), Change password (form, mismatch error), and align the error wording with the row name.",
-  "status": "open",
-  "note": "Partly fixed: AI data sharing (PG-B-Consent), first-use consent sheet and Account (sign out, delete) are drawn. Still undrawn: Archived bots, Change password page, and Hide amounts, language, appearance, notifications."
+  "status": "resolved",
+  "note": "Archived bots (list and empty), AI data sharing (toggles, Always allow list), Account with Hide amounts, Language, Appearance, Sign out and delete flow are drawn. Change password page tracked in R1-002."
  },
  {
   "id": "F-finance-settings-011",
@@ -172,13 +172,13 @@
   "phase_issue": "#421",
   "quick_fix": false,
   "suggested_fix": "Remove the line from the resting board, and draw a separate 'after choosing a model' state; add the Model and Thinking menus to DS-04 or the board.",
-  "status": "open",
-  "note": "Green Now using Model A. still shown in the resting state; model and thinking menus, backups, embedding model not drawn."
+  "status": "resolved",
+  "note": "Resting Models shows no success line; model menu, thinking menu and Now using Model B after choice are drawn. Backup and embedding models are not in the plan."
  },
  {
   "id": "F-finance-settings-012",
   "story_id": "STORY-089",
-  "severity": "high",
+  "severity": "medium",
   "category": "happy-path",
   "criterion": "Happy path clarity: first run",
   "description": "Tapping a provider row leads to a detail page (API key field, show/hide, Connect, Replace, Disconnect) that is not drawn; the subscription sign-in page (code, Safari, wait) is not drawn; the list holds three rows only so a longer provider list has no design. The first-run route from 'Connect a model to start a run' to Models is also not drawn.",
@@ -189,7 +189,7 @@
   "quick_fix": false,
   "suggested_fix": "Add provider detail (not connected, connecting, connected, error) and subscription sign-in boards; add a Connect action to the blocker message in the thread.",
   "status": "open",
-  "note": "Provider detail, subscription sign-in and connect states still not drawn."
+  "note": "Provider detail (connected) and the Subscription sign-in page are drawn, but the first-run connect is not: no empty API key field with Connect, no connecting or error state, and no sign-in code, Safari wait or failure state. Reduced from high."
  },
  {
   "id": "F-finance-settings-013",
@@ -204,8 +204,8 @@
   "phase_issue": "#421",
   "quick_fix": true,
   "suggested_fix": "Use an invented LAN address such as http://192.0.2.10:8000/v1 as the placeholder, and move the 'Found 3 models.' line into a separate state.",
-  "status": "open",
-  "note": "Still 127.0.0.1 in both the Local server row and the placeholder, plus Found 3 models. before any search."
+  "status": "resolved",
+  "note": "Add server and Add server after Find are separate frames; Found 3 models appears only after Find; placeholder is a LAN address."
  },
  {
   "id": "F-finance-settings-014",
@@ -220,8 +220,8 @@
   "phase_issue": "#423",
   "quick_fix": false,
   "suggested_fix": "Draw device-only and hosted-only states, state which wins when both are on, add the speech model picker and not-connected group.",
-  "status": "open",
-  "note": "Device voice on and Hosted voice Connected still drawn together with a red Disconnect; no precedence, no not-connected state."
+  "status": "resolved",
+  "note": "Voice draws device in use, hosted in use, device only, hosted not connected and hosted only with the In use marker showing which voice speaks."
  },
  {
   "id": "F-finance-settings-015",
@@ -236,8 +236,8 @@
   "phase_issue": "#423",
   "quick_fix": false,
   "suggested_fix": "Add a permission-denied row with an Open Settings action and route the consent check through the same prompt as F-finance-settings-010.",
-  "status": "open",
-  "note": "No permission or voice consent states drawn; Sounds switches still unexplained."
+  "status": "resolved",
+  "note": "Microphone denied (Open Settings) and the first-use Speech sharing consent sheet are drawn. Hosted voice setup form tracked in R2-002."
  },
  {
   "id": "F-finance-settings-016",
@@ -252,8 +252,8 @@
   "phase_issue": "#421",
   "quick_fix": false,
   "suggested_fix": "Remove the red line from the resting sheet and draw it as a separate state; make Get credentials a text link; draw a Not added Calendar row, the pending state and the app detail page.",
-  "status": "open",
-  "note": "Calendar still Added, red credentials error still shown on the resting setup sheet; Get credentials is a full-width button."
+  "status": "resolved",
+  "note": "Integrations draws catalog with Add, Pending, connector detail (Allow writes, Remove) and Server integrations with Hosted and Direct methods plus a separate error frame."
  },
  {
   "id": "F-finance-settings-017",
@@ -284,8 +284,8 @@
   "phase_issue": "#424",
   "quick_fix": true,
   "suggested_fix": "Add an accessible-name line to each page card in PG-B-Rules.",
-  "status": "open",
-  "note": "Prominent bubble is still an unlabeled speech-bubble icon on all four pages; rule cards do not list accessible names."
+  "status": "resolved",
+  "note": "Rule cards now list accessible names (Ask Finance agent, Ask Legal agent, Ask Carta agent, Ask Data room agent). The bubble is still the same icon on all four pages; acceptable as a native pattern."
  },
  {
   "id": "F-finance-settings-019",
@@ -300,8 +300,8 @@
   "phase_issue": "#424",
   "quick_fix": false,
   "suggested_fix": "Remove the icon from the summary row, add chevrons to contract rows, and use the DS-07 status chip.",
-  "status": "open",
-  "note": "Scan icon still repeated in summary row and toolbar; no chevrons on contract rows."
+  "status": "resolved",
+  "note": "Summary row and duplicate scan icon are gone; contract rows have chevrons."
  },
  {
   "id": "F-finance-settings-020",
@@ -316,8 +316,8 @@
   "phase_issue": "#424",
   "quick_fix": true,
   "suggested_fix": "Change 'Oct 31' to 'Due Oct 31' (or drop 'Due' from both).",
-  "status": "open",
-  "note": "Due Oct 24 vs Oct 31 inconsistency remains; no null runway or loading states."
+  "status": "resolved",
+  "note": "Both upcoming rows read Due Oct 24 and Due Oct 31; empty Upcoming frame drawn; loading and no-runway states are in the rule card only."
  },
  {
   "id": "F-finance-settings-021",
@@ -332,8 +332,8 @@
   "phase_issue": "#424",
   "quick_fix": true,
   "suggested_fix": "Remove the Reconnect link from the connected state; show it only in the expired state.",
-  "status": "open",
-  "note": "Reconnect link still shown next to Carta is connected."
+  "status": "resolved",
+  "note": "Reconnect appears only in the expired and not connected frames."
  },
  {
   "id": "F-finance-settings-022",
@@ -349,7 +349,7 @@
   "quick_fix": false,
   "suggested_fix": "Split into Folders and Recently added sections and drop the permission chips from DS-07 until sharing is planned.",
   "status": "open",
-  "note": "Folders still mixed under Recently added; DS-07 still draws Shared / Only me / View only chips."
+  "note": "Folders (Board materials, Diligence) still sit under Recently added with files; DS-07 still draws Shared, Only me and View only chips although the plan has no share links."
  },
  {
   "id": "F-finance-settings-R1-001",
@@ -364,13 +364,13 @@
   "phase_issue": "#419",
   "quick_fix": false,
   "suggested_fix": "Add the Pages section to the Main sidebar and Inner/Split sidebars.",
-  "status": "open",
-  "note": "New in round 1."
+  "status": "resolved",
+  "note": "Main and Split now draw the Pages rows with glance values (Inbox, Finance, Legal, Cap table, Data room)."
  },
  {
   "id": "F-finance-settings-R1-002",
   "story_id": "STORY-096, STORY-087",
-  "severity": "low",
+  "severity": "medium",
   "category": "flow",
   "criterion": "Flow Economy: one way per task",
   "description": "Change password is reachable from two places: a row on Settings and a row on Account (PG-B-Account), and neither destination page is drawn.",
@@ -381,7 +381,7 @@
   "quick_fix": false,
   "suggested_fix": "Keep Change password on Account only, or note the Settings row as a shortcut in the rule card.",
   "status": "open",
-  "note": "New in round 1."
+  "note": "Change password is still reachable from Settings-adjacent Account only as a row; no board draws the form (current, new, confirm, error, success). Raised to medium because STORY-095 cannot be walked."
  },
  {
   "id": "F-finance-settings-R1-003",
@@ -397,7 +397,7 @@
   "quick_fix": false,
   "suggested_fix": "Replace the Presentation line with Push from the Pages section on Home.",
   "status": "open",
-  "note": "New in round 1."
+  "note": "Rule cards still say Push from sidebar ... row for Finance, Legal, Cap table, Data room. Data room card says Choose files for the empty state; the board shows Add files."
  },
  {
   "id": "F-finance-settings-R1-004",
@@ -412,7 +412,71 @@
   "phase_issue": "#424",
   "quick_fix": false,
   "suggested_fix": "Collapse Pages to the pages the user actually has data for, or put the page rows below Personnel.",
+  "status": "resolved",
+  "note": "Pages now sit below Personnel; Finance shows once in Pages and once as Activity item. Finance and Legal pages are reachable in the first screen."
+ },
+ {
+  "id": "F-finance-settings-R2-001",
+  "story_id": "STORY-082",
+  "severity": "medium",
+  "category": "happy-path",
+  "criterion": "Round 2",
+  "description": "The Not connected frame shows the button Reconnect for a user who has never connected Carta, and gives no reason to connect. The rule card says See who owns your company with Connect Carta. The Safari pending state after tapping is not drawn.",
+  "expected": "Not connected frame with one line of purpose and the action Connect Carta; Reconnect only after access expired.",
+  "actual": "Button reads Reconnect in both the expired and the never-connected frames.",
+  "board": "PG-B-CapTable.dc.html",
+  "phase_issue": "#424",
+  "quick_fix": true,
+  "suggested_fix": "Change the label to Connect Carta and add the purpose line from the rule card; draw the pending state.",
   "status": "open",
-  "note": "New in round 1."
+  "note": "New in round 2."
+ },
+ {
+  "id": "F-finance-settings-R2-002",
+  "story_id": "STORY-092",
+  "severity": "medium",
+  "category": "happy-path",
+  "criterion": "Round 2",
+  "description": "The hosted voice setup form (API key field, Connect, speech model choice, error) is not drawn; Hosted voice connection page shows only the connected state with Optional speech model. The Hosted voice and Hosted voice connection rows also describe the same thing twice on the Voice page.",
+  "expected": "Set up page with key field and one Connect action, and one hosted row on Voice.",
+  "actual": "Voice frames show Set up and Reconnect rows that lead to an undrawn page.",
+  "board": "PG-B-Voice.dc.html",
+  "phase_issue": "#424",
+  "quick_fix": false,
+  "suggested_fix": "Draw the Set up page (empty key, Connect, error) and merge the two hosted rows.",
+  "status": "open",
+  "note": "New in round 2."
+ },
+ {
+  "id": "F-finance-settings-R2-003",
+  "story_id": "STORY-079",
+  "severity": "low",
+  "category": "happy-path",
+  "criterion": "Round 2",
+  "description": "The masked state is drawn on the Finance page but the finance card inside a chat thread when Hide amounts is on is not drawn on any board.",
+  "expected": "A thread frame with masked amounts.",
+  "actual": "Desk chat shows [AMOUNT] only in the unmasked state.",
+  "board": "PG-B-Finance.dc.html",
+  "phase_issue": "#424",
+  "quick_fix": false,
+  "suggested_fix": "Add a masked chat card frame to the thread states board.",
+  "status": "open",
+  "note": "New in round 2."
+ },
+ {
+  "id": "F-finance-settings-R2-004",
+  "story_id": "STORY-084",
+  "severity": "low",
+  "category": "happy-path",
+  "criterion": "Round 2",
+  "description": "The composer menu lists Data room as an attachment source, but the file picker it opens and the thread with the attached file are not drawn; Ask about this file also has no after-state.",
+  "expected": "Picker of Data room files and attached file chip in the composer.",
+  "actual": "Menu is the last drawn step.",
+  "board": "PG-B-DataRoom.dc.html",
+  "phase_issue": "#424",
+  "quick_fix": false,
+  "suggested_fix": "Add the picker and attached chip frames.",
+  "status": "open",
+  "note": "New in round 2."
  }
 ]

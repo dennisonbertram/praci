@@ -1,25 +1,19 @@
-# J3 proposal B: restructure (tap the card opens a prefilled editor sheet)
+# J3 Option B: restructure, draw every pose
 
-Idea: the card body becomes a button. Tapping it opens the PG-A-Compose layout as a sheet prefilled with To, Cc, Subject and body. A "Done" control returns to the card. The card keeps Save draft and Send.
+Round 2. Scope of missing inner, laptop and standard-iPhone boards.
 
-## Journey
-1. Reads the card (PG-A-Thread).
-2. Taps the card body (pencil glyph in the card header signals it). Sheet opens, prefilled. Title "Edit draft".
-3. Adds Jordan under Cc (suggestion list), fixes "10am" to "10:30" in the body, taps Done.
-4. Card updates in place; no second card, no "Replaced" tag.
-5. Taps Send.
-Taps: open, add Cc contact, Done, Send = 4 plus typing.
+## Idea
+Every page gets a drawn frame in every pose, so nothing is derived at build time.
 
-## Changes
-- Card: header gets a pencil glyph; the whole body is one tap target. Footer stays Save draft (quiet) and Send (prominent).
-- New board PG-A-DraftEdit (or three extra frames in PG-A-Compose): Edit draft with prefilled fields, Cc expanded with suggestions, invalid-address inline error.
-- The up-arrow in the Compose layout becomes a "Done" capsule in the same bottom-left slot. X on the side strip asks "Save changes / Discard changes" when the text changed.
-- Composer route still exists; the old card shows "Replaced" with no buttons.
-- Save draft writes the same draft the sheet edits; Compose X "Save draft" writes the same record.
-- Edits made in the sheet replace the agent's draft body in place and are sent to the agent as the new truth.
-
-## Fixes by issue
-All of STORY-047-R1-1, 3, 4, 6; F-thread-012; V-thread-R1-5; V-iphone-R1-12; V-inbox-R1-10; F-inbox-computer-R1-002; RED-R1-10.
+## Edits
+- Inner-Message: Reply flat, Reply half-folded, After Archive, Inbox zero, Cleanup (5 frames).
+- New board Inner-Pages: Finance, Legal, Cap table, Data room, Artifacts, Settings, Account, Image, New bot and New space sheets, each 1/3 + 2/3 and 1/2 + 1/2 (about 20 frames).
+- Desk: laptop frames for Artifact, Agent page, Agent list, Image.
+- New boards PH-Pages, PH-Settings, PH-Artifacts, PH-Sheets, PH-Finance (5 boards, about 12 frames).
+- Rules boards: unchanged except a pointer to the new boards.
 
 ## Cost
-The card now has three controls (tap body, Save draft, Send); "Save draft" survives as a second save concept next to "Done". A tappable body has weak discoverability on the narrow 393 pt card even with the pencil.
+About 30 new frames and 6 new boards on a design set that already has 62 boards. Every frame repeats the same glass strip, sidebar and header, so one later change to the strip (for example the prominent action decision in J2) must be made 30 times. Most frames add no new information: Legal beside the sidebar is the same template as Inbox beside the sidebar.
+
+## Fit
+Meets every finding literally. Highest maintenance and drift risk; the review burden for the owner is large and the recipes in the rules boards are left unused.
