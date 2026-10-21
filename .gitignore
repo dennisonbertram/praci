@@ -26,6 +26,11 @@ apps/mobile/.expo
 apps/mobile/dist
 apps/mobile/android
 apps/mobile/ios
+apps/ios/*.xcodeproj
+apps/ios/DerivedData
+apps/ios/build
+apps/ios/.build
+apps/ios/Packages/*/.build
 packages/db/src/generated
 infra/sandboxes/supervisor/dist
 *.log
