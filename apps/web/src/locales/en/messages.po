@@ -114,6 +114,11 @@ msgstr "{0, plural, one {#+ result} other {#+ results}}"
 msgid "{0, plural, one {Added # file} other {Added # files}}"
 msgstr "{0, plural, one {Added # file} other {Added # files}}"
 
+#. placeholder {0}: chosen.length
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "{0, plural, one {Apply # change} other {Apply # changes}}"
+msgstr "{0, plural, one {Apply # change} other {Apply # changes}}"
+
 #. placeholder {0}: picks.size
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "{0, plural, one {Import # file} other {Import # files}}"
@@ -1198,7 +1203,6 @@ msgid "Appearance"
 msgstr "Appearance"
 
 #: src/components/compose/RichTextEditor.tsx
-#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr "Apply"
@@ -2140,6 +2144,7 @@ msgid "Clear formatting"
 msgstr "Clear formatting"
 
 #: src/components/ListControls.tsx
+#: src/pages/DataRoom.tsx
 #: src/pages/Shell.tsx
 msgid "Clear search"
 msgstr "Clear search"
@@ -7839,10 +7844,6 @@ msgstr "Search documents"
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
 msgstr "Search Drive"
-
-#: src/pages/DataRoom.tsx
-msgid "Search looks for these words in names and text."
-msgstr "Search looks for these words in names and text."
 
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Inbox.tsx

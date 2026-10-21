@@ -405,9 +405,12 @@ export function DataRoomPage({
 
   /** Reads a failed file again; the list shows it as Reading until it settles. */
   function retry(item: DataRoomApiItem) {
+    // The row reads as working at once; the server's answer and the next poll confirm it.
+    list.patchItem({ ...item, status: "pending", error: null });
     rpc.dataRoom
       .itemRetry({ id: item.id })
       .then((updated) => {
+        list.patchItem(updated);
         showNoticeToast(t`Reading ${updated.name} again`);
         setPinned((current) => (current?.id === updated.id ? updated : current));
       })
@@ -699,9 +702,9 @@ export function DataRoomPage({
                       </p>
                     )}
                     {searching ? (
-                      <p className="text-xs">
-                        <Trans>Search looks for these words in names and text.</Trans>
-                      </p>
+                      <Button variant="outline" size="sm" onClick={() => setQueryInput("")}>
+                        <Trans>Clear search</Trans>
+                      </Button>
                     ) : null}
                     {filtered ? (
                       <Button variant="outline" size="sm" onClick={clearFilters}>
