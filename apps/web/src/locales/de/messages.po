@@ -1527,7 +1527,6 @@ msgstr ""
 msgid "Auto-renews, {notice} days notice"
 msgstr ""
 
-#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 msgid "Auto-sort"
@@ -3622,6 +3621,7 @@ msgstr "Standard ({0})"
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/integrations/StoredMeetingsList.tsx
 #: src/pages/Artifacts.tsx
@@ -4026,10 +4026,6 @@ msgstr ""
 msgid "Duplicate"
 msgstr "Duplizieren"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "e.g. Recruiting, Sales, Legal"
-msgstr ""
-
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Each bot keeps its own"
 msgstr ""
@@ -4378,10 +4374,6 @@ msgstr ""
 msgid "Financing, {when}"
 msgstr ""
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Find an app"
-msgstr ""
-
 #: src/lib/slash-skills.ts
 msgid "Find and summarize files in Box. Changes ask first."
 msgstr ""
@@ -4699,6 +4691,10 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Has attachment"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Has its own computer."
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -5401,6 +5397,10 @@ msgstr ""
 msgid "Log out"
 msgstr "Abmelden"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Looking for changes"
+msgstr ""
+
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "Looks like spam"
 msgstr ""
@@ -5807,10 +5807,6 @@ msgstr ""
 msgid "More {0} actions"
 msgstr ""
 
-#: src/components/integrations/FinanceSection.tsx
-msgid "More {name} actions"
-msgstr ""
-
 #. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name
 #: src/components/data-room/ItemMenu.tsx
@@ -6089,6 +6085,10 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Next message"
+msgstr ""
+
+#: src/pages/RoutineEditor.tsx
+msgid "Next run {nextRun}"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -6613,10 +6613,6 @@ msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Open again"
-msgstr ""
-
-#: src/pages/Artifacts.tsx
-msgid "Open chat"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
@@ -7288,6 +7284,18 @@ msgstr ""
 
 #: src/pages/Investors.tsx
 msgid "Reading Carta…"
+msgstr ""
+
+#: src/components/data-room/format.ts
+msgid "Reading for {days} d"
+msgstr ""
+
+#: src/components/data-room/format.ts
+msgid "Reading for {hours} h"
+msgstr ""
+
+#: src/components/data-room/format.ts
+msgid "Reading for {minutes} min"
 msgstr ""
 
 #: src/components/data-room/format.ts
@@ -8426,6 +8434,10 @@ msgstr ""
 msgid "Shares"
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Shares one computer with your other bots."
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "Sheet"
 msgstr ""
@@ -8721,12 +8733,12 @@ msgstr ""
 msgid "Sort descending"
 msgstr ""
 
-#: src/components/ListControls.tsx
-msgid "Sort: {fieldLabel}"
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Sort every file in the Data room"
 msgstr ""
 
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "Sorting every file in the Data room"
+#: src/components/ListControls.tsx
+msgid "Sort: {fieldLabel}"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -9443,7 +9455,6 @@ msgid "Time zone updated"
 msgstr ""
 
 #: src/pages/Board.tsx
-#: src/pages/shell/bot-panel.tsx
 msgid "Title"
 msgstr "Titel"
 
@@ -10213,6 +10224,10 @@ msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "What should this routine do each time it runs?"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "What this bot handles"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx

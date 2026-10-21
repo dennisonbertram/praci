@@ -310,11 +310,12 @@ export function McpDetail({
             disabled={busy || writesPending}
             onWrites={isDevinEndpoint(server.endpoint) || granola ? undefined : setWrites}
             usedBy={usedBy}
-            onShared={hasAgent ? (shared) => void setShared(shared) : undefined}
+            onShared={hasAgent ? (shared) => void setShared(shared) : () => undefined}
+            sharedLocked={!hasAgent}
           />
         ) : null}
 
-        {hasAgent ? null : (
+        {hasAgent || bank ? null : (
           <>
             <Heading>
               <Trans>Used by</Trans>

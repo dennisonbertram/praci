@@ -23,7 +23,15 @@ import type { KeyboardEvent, ReactElement, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { dataRoomThumbnailUrl, splitSnippet } from "../../lib/data-room";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
-import { dateText, isSettled, stageLabel, statusLabel, typeLabel } from "./format";
+import {
+  dateText,
+  isSettled,
+  isUnreadable,
+  readingAge,
+  stageLabel,
+  statusLabel,
+  typeLabel,
+} from "./format";
 import type { ItemAction } from "./ItemMenu";
 import { ItemMenu, ItemMenuItems } from "./ItemMenu";
 import type { SendTarget } from "./SendToAgent";
@@ -174,14 +182,14 @@ const dateOf = (item: DataRoomApiItem, field: SortField | undefined) =>
   field === "date" ? dateText(item.facets.docDate) : dateText(item.createdAt, true);
 
 /** Fixed widths, so a one-row list leaves no stretched empty area and columns never shift. */
-function Columns() {
+function Columns({ showStatus }: { showStatus: boolean }) {
   return (
     <colgroup>
       <col />
       <col className={cn(MID_COLUMN, "w-36")} />
       <col className={cn(MID_COLUMN, "w-24")} />
       <col className={cn(PARTIES_COLUMN, "w-36 @min-[1100px]/list:w-auto")} />
-      <col className={cn(MID_COLUMN, "w-20")} />
+      <col className={cn(showStatus ? MID_COLUMN : "hidden", "w-20")} />
       <col className="w-7" />
     </colgroup>
   );
@@ -191,10 +199,12 @@ function ListHead({
   sortField,
   rows,
   o,
+  showStatus,
 }: {
   sortField: SortField | undefined;
   rows: Row[];
   o: RowInteraction;
+  showStatus: boolean;
 }) {
   const allChecked = rows.length > 0 && rows.every(({ item }) => o.checked?.has(item.id));
   return (
@@ -229,17 +239,24 @@ function ListHead({
         <TableHead className={PARTIES_COL}>
           <Trans>Parties</Trans>
         </TableHead>
-        <TableHead className={MID_COL}>
-          <Trans>Status</Trans>
-        </TableHead>
+        {showStatus ? (
+          <TableHead className={MID_COL}>
+            <Trans>Status</Trans>
+          </TableHead>
+        ) : null}
         <TableHead />
       </TableHeadRow>
     </TableHeader>
   );
 }
 
-/** Reads a failed file again, in the row itself. It never opens the preview. */
+/**
+ * The one action under a failed file. Retrying a file that cannot be read fails the same way, so
+ * that file offers Delete (then upload a new copy); a transient failure offers Try again. It never
+ * opens the preview.
+ */
 function RetryButton({ item, o }: { item: DataRoomApiItem; o: RowInteraction }) {
+  const unreadable = isUnreadable(item.error);
   return (
     <Button
       variant="outline"
@@ -247,11 +264,11 @@ function RetryButton({ item, o }: { item: DataRoomApiItem; o: RowInteraction }) 
       className="mt-1"
       onClick={(event) => {
         event.stopPropagation();
-        o.onAction("retry", item);
+        o.onAction(unreadable ? "delete" : "retry", item);
       }}
       onKeyDown={(event) => event.stopPropagation()}
     >
-      <Trans>Try again</Trans>
+      {unreadable ? <Trans>Delete</Trans> : <Trans>Try again</Trans>}
     </Button>
   );
 }
@@ -262,6 +279,7 @@ function ItemRow({
   o,
   sortField,
   first,
+  showStatus,
 }: {
   item: DataRoomApiItem;
   /** Search only: the text that matched, under the name. */
@@ -269,8 +287,11 @@ function ItemRow({
   o: RowInteraction;
   sortField: SortField | undefined;
   first: boolean;
+  showStatus: boolean;
 }) {
   const label = statusLabel(item.status);
+  // ponytail: age since the file was added, so a retried file shows its full age; an item field would be exact.
+  const age = label && item.status !== "failed" ? readingAge(item.createdAt) : "";
   const folder = item.folderId === (o.openFolderId ?? null) ? "" : o.folderPath(item.folderId);
   const parties = item.facets.parties.join(", ");
   const type = typeLabel(item.facets.docType);
@@ -326,11 +347,13 @@ function ItemRow({
             <span
               data-testid="data-room-subline"
               className={cn(
-                "truncate text-xs text-muted-foreground @min-[640px]/list:hidden",
+                "truncate text-xs text-muted-foreground",
+                // On a wide list the Status column says it; the age has no column, so it stays.
+                !age && "@min-[640px]/list:hidden",
                 item.status === "failed" && "text-destructive",
               )}
             >
-              {label || <TypeAndDate item={item} sortField={sortField} />}
+              {age || label || <TypeAndDate item={item} sortField={sortField} />}
             </span>
             {item.status === "failed" && !item.error ? (
               <span data-testid="data-room-failed-reason" className="text-xs text-destructive">
@@ -371,15 +394,17 @@ function ItemRow({
       >
         {parties || empty}
       </TableCell>
-      <TableCell
-        data-testid="data-room-status"
-        className={MID_COL}
-        title={item.status === "failed" ? (item.error ?? undefined) : undefined}
-      >
-        {label ? (
-          <Badge variant={item.status === "failed" ? "destructive" : "secondary"}>{label}</Badge>
-        ) : null}
-      </TableCell>
+      {showStatus ? (
+        <TableCell
+          data-testid="data-room-status"
+          className={MID_COL}
+          title={item.status === "failed" ? (item.error ?? undefined) : undefined}
+        >
+          {label ? (
+            <Badge variant={item.status === "failed" ? "destructive" : "secondary"}>{label}</Badge>
+          ) : null}
+        </TableCell>
+      ) : null}
       <TableCell className="pe-0">
         <ItemMenu
           item={item}
@@ -412,6 +437,7 @@ export function SubfolderList({
   onAction,
   contents,
   tiles = false,
+  showStatus = true,
 }: {
   folders: DataRoomApiFolder[];
   onOpen: (id: string) => void;
@@ -419,6 +445,8 @@ export function SubfolderList({
   /** What a folder holds ("3 items"), so a parent never looks emptier than it is. */
   contents: (folder: DataRoomApiFolder) => string;
   tiles?: boolean;
+  /** Whether the file table has a Status column; the empty cells span the columns that exist. */
+  showStatus?: boolean;
 }) {
   if (!folders.length) return null;
   if (tiles) {
@@ -465,7 +493,7 @@ export function SubfolderList({
               <span className="shrink-0 text-xs text-muted-foreground">{contents(folder)}</span>
             </Button>
           </TableCell>
-          <TableCell colSpan={3} className={MID_COL} />
+          <TableCell colSpan={showStatus ? 3 : 2} className={MID_COL} />
           <TableCell className={PARTIES_COL} />
           <TableCell className="pe-0">
             <ItemMenu item={folder} onAction={onAction} className={ROW_ACTIONS} />
@@ -488,16 +516,18 @@ export function ListView({
 }: {
   rows: Row[];
   o: RowInteraction;
-  lead?: () => ReactNode;
+  lead?: (showStatus: boolean) => ReactNode;
   /** The field the list is sorted by; the Date column shows it. Without one: when added. */
   sortField?: SortField;
 }) {
+  // A column that is empty on every row is left out.
+  const showStatus = rows.some(({ item }) => statusLabel(item.status));
   return (
     <div className={LIST_PAD}>
       <Table>
-        <Columns />
-        <ListHead sortField={sortField} rows={rows} o={o} />
-        {lead?.()}
+        <Columns showStatus={showStatus} />
+        <ListHead sortField={sortField} rows={rows} o={o} showStatus={showStatus} />
+        {lead?.(showStatus)}
         <TableBody aria-label={t`Items`} data-rows>
           {rows.map(({ item, snippets }, index) => (
             <ItemRow
@@ -507,6 +537,7 @@ export function ListView({
               o={o}
               sortField={sortField}
               first={index === 0}
+              showStatus={showStatus}
             />
           ))}
         </TableBody>
@@ -672,7 +703,7 @@ export function GridView({
                 </span>
               </>
             ) : statusLabel(item.status) ? (
-              <span>{statusLabel(item.status)}</span>
+              <span>{readingAge(item.createdAt) || statusLabel(item.status)}</span>
             ) : (
               <>
                 <span>{typeLabel(item.facets.docType) || <NotTagged />}</span>
