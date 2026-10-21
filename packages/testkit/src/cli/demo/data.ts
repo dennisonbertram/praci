@@ -2402,11 +2402,13 @@ export function demoGranolaMeetings(now = new Date()): SourceMeeting[] {
     title: `${MOCK_SUBJECT_PREFIX} ${title}`,
     startedAt: at(daysAgo, -2),
     endedAt: at(daysAgo, -1),
+    // The founder attends with her Founder mail address, a verified identity, so her own
+    // commitments become Inbox to-dos in the demo.
     attendees: [
-      { name: DEMO_USER_NAME, email: DEMO_EMAIL },
-      { name: "Priya Shah (Mock)", email: "mock-priya@demo.rakazo.test" },
+      { name: DEMO_USER_NAME, email: "mock-founder@northwind.example.test" },
+      { name: "Priya Shah (Mock)", email: "mock-priya@northwind.example.test" },
     ],
-    organizerEmail: DEMO_EMAIL,
+    organizerEmail: "mock-founder@northwind.example.test",
     sourceUrl: null,
     folders: [],
     summary,
