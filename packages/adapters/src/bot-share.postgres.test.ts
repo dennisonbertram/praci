@@ -69,13 +69,13 @@ describePostgres("held shares to an external bot (PostgreSQL)", () => {
           .map((block) => block.text),
     );
   const scope = (threadId = chief.threadId, user = userId) => ({ spaceId, userId: user, threadId });
-  const hold = async (text = heldText) => {
+  const hold = async (text = heldText, deliveryKey?: string) => {
     const run = await chiefRun();
     const sent = await messageBot(
       deps(),
       run,
       { id: chief.id, name: chief.name },
-      { bot_id: support.id, message: text, intent: "request" },
+      { bot_id: support.id, message: text, intent: "request", deliveryKey },
       { outbound: async () => fragments() },
     );
     const card = await prisma.message.findFirstOrThrow({
@@ -289,5 +289,154 @@ describePostgres("held shares to an external bot (PostgreSQL)", () => {
     );
     expect(unknown).toMatchObject({ ok: true, held: true });
     expect(await textsIn(support.threadId)).not.toContain("Unchecked text.");
+  });
+
+  it("approval reuses the original delivery key, so a retried status or result does not duplicate", async () => {
+    const { run, card, effect } = await hold(
+      "Call priya.shah@halcyon-ventures.example",
+      "auto-outcome:k1",
+    );
+    expect(
+      await answerBotShare(deps(), scope(), { runId: run.id, messageId: card.id, answer: "allow" }),
+    ).toBe(true);
+    const nonce = await prisma.message.findFirst({
+      where: { threadId: support.threadId, clientNonce: "bot-message:auto-outcome:k1" },
+    });
+    expect(nonce).not.toBeNull();
+    // The same auto outcome retried (even with other text): replayed, no second card or effect.
+    const again = await messageBot(
+      deps(),
+      run,
+      { id: chief.id, name: chief.name },
+      {
+        bot_id: support.id,
+        message: "Different text priya.shah@halcyon-ventures.example",
+        intent: "request",
+        deliveryKey: "auto-outcome:k1",
+      },
+      { outbound: async () => fragments() },
+    );
+    expect(again).toMatchObject({ ok: true, replayed: true });
+    expect(await prisma.externalEffect.count({ where: { runId: run.id } })).toBe(1);
+    expect(effect.id).toBeDefined();
+  });
+
+  it("a retried hold under the same key makes no second card even when the text differs", async () => {
+    const { run } = await hold("Mail priya.shah@halcyon-ventures.example a", "status:k2");
+    await messageBot(
+      deps(),
+      run,
+      { id: chief.id, name: chief.name },
+      {
+        bot_id: support.id,
+        message: "Mail priya.shah@halcyon-ventures.example b",
+        intent: "request",
+        deliveryKey: "status:k2",
+      },
+      { outbound: async () => fragments() },
+    );
+    expect(await prisma.externalEffect.count({ where: { runId: run.id } })).toBe(1);
+  });
+
+  it("recovers a share stranded between the claim and the delivery", async () => {
+    const { run, card, effect } = await hold("Stranded priya.shah@halcyon-ventures.example");
+    const stored = (effect.request as { text: string }).text;
+    // A crash after the claim: executing, and not touched for a while.
+    await prisma.externalEffect.update({
+      where: { id: effect.id },
+      data: { status: "executing", updatedAt: new Date(Date.now() - 120_000) },
+    });
+    expect(
+      await answerBotShare(deps(), scope(), { runId: run.id, messageId: card.id, answer: "allow" }),
+    ).toBe(true);
+    expect((await textsIn(support.threadId)).filter((text) => text === stored)).toHaveLength(1);
+    expect(
+      await prisma.externalEffect.findUniqueOrThrow({ where: { id: effect.id } }),
+    ).toMatchObject({ status: "completed" });
+    // A claim that is still fresh belongs to a live answer: refused.
+    const fresh = await hold("Fresh priya.shah@halcyon-ventures.example");
+    await prisma.externalEffect.update({
+      where: { id: fresh.effect.id },
+      data: { status: "executing" },
+    });
+    expect(
+      await answerBotShare(deps(), scope(), {
+        runId: fresh.run.id,
+        messageId: fresh.card.id,
+        answer: "allow",
+      }),
+    ).toBe(false);
+  });
+
+  it("delivers whatever state the sender's run is in, and never marks answered when delivery failed", async () => {
+    const paused = await hold("Paused priya.shah@halcyon-ventures.example");
+    await prisma.run.update({ where: { id: paused.run.id }, data: { status: "waiting_input" } });
+    // Delivery fails (the recipient is archived): the card stays pending and the effect is released.
+    await prisma.bot.update({ where: { id: support.id }, data: { archivedAt: new Date() } });
+    await expect(
+      answerBotShare(deps(), scope(), {
+        runId: paused.run.id,
+        messageId: paused.card.id,
+        answer: "allow",
+      }),
+    ).rejects.toThrow();
+    const pending = await prisma.message.findUniqueOrThrow({ where: { id: paused.card.id } });
+    expect(pending.blocks).toEqual([expect.objectContaining({ status: "pending" })]);
+    expect(
+      await prisma.externalEffect.findUniqueOrThrow({ where: { id: paused.effect.id } }),
+    ).toMatchObject({ status: "intended" });
+    // The recipient is back: the same answer now delivers from the paused run.
+    await prisma.bot.update({ where: { id: support.id }, data: { archivedAt: null } });
+    expect(
+      await answerBotShare(deps(), scope(), {
+        runId: paused.run.id,
+        messageId: paused.card.id,
+        answer: "allow",
+      }),
+    ).toBe(true);
+    expect(await textsIn(support.threadId)).toContain(
+      (paused.effect.request as { text: string }).text,
+    );
+    // Don't share from a paused run delivers its fixed reply.
+    const second = await hold("Declined priya.shah@halcyon-ventures.example");
+    await prisma.run.update({ where: { id: second.run.id }, data: { status: "waiting_input" } });
+    expect(
+      await answerBotShare(deps(), scope(), {
+        runId: second.run.id,
+        messageId: second.card.id,
+        answer: "deny",
+      }),
+    ).toBe(true);
+    expect((await textsIn(support.threadId)).at(-1)).toBe(BOT_SHARE_DECLINED_MESSAGE);
+  });
+
+  it("a retried hold sends the fixed notice that a crash lost, once", async () => {
+    const { run, effect } = await hold("Notice priya.shah@halcyon-ventures.example", "status:k3");
+    // The card committed but the notice did not.
+    await prisma.message.deleteMany({
+      where: { threadId: support.threadId, clientNonce: `bot-message:share-held:${effect.id}` },
+    });
+    const before = (await textsIn(support.threadId)).filter(
+      (text) => text === BOT_SHARE_HELD_MESSAGE,
+    ).length;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await messageBot(
+        deps(),
+        run,
+        { id: chief.id, name: chief.name },
+        {
+          bot_id: support.id,
+          message: "Notice priya.shah@halcyon-ventures.example",
+          intent: "request",
+          deliveryKey: "status:k3",
+        },
+        { outbound: async () => fragments() },
+      );
+    }
+    const after = (await textsIn(support.threadId)).filter(
+      (text) => text === BOT_SHARE_HELD_MESSAGE,
+    ).length;
+    expect(after).toBe(before + 1);
+    expect(await prisma.externalEffect.count({ where: { runId: run.id } })).toBe(1);
   });
 });

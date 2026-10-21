@@ -1624,13 +1624,18 @@ export function createRunExecutor(deps: ExecutorDeps) {
             for (const block of received) {
               // An internal bot's answer is private; an external bot's request, or a message from
               // another Space, is the other side's own text.
-              if (internal.has(block.fromBotId)) privateFragments.addPrivate(block.text);
+              if (internal.has(block.fromBotId)) privateFragments.addPrivateRelay(block.text);
               else privateFragments.addPublic(block.text);
             }
           })();
           return chainFragmentsLoaded;
         };
+        // The record lives in this process only. A run resumed after an approval, or reclaimed after a
+        // crash, runs under a later lease and cannot know what its earlier attempts read, so every
+        // message it sends to an external bot is held (fail closed).
+        const readsKnown = fence <= 1;
         const outboundFragments = async () => {
+          if (!readsKnown) return undefined;
           await loadChainFragments();
           return privateFragments;
         };
@@ -5928,6 +5933,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 message: redactSecrets(String(args.message ?? ""), runSecrets),
                 deliveryKey: effectKey,
               },
+              { outbound: outboundFragments },
             );
             if (!result.ok) return finish({ error: result.error });
             return finish(result);
@@ -5941,6 +5947,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               bot_id: args.bot_id ? String(args.bot_id) : undefined,
               confirm_name: args.confirm_name ? String(args.confirm_name) : undefined,
               message: String(args.message ?? ""),
+              outbound: outboundFragments,
             });
             if ("ok" in result && result.ok) handedOff = true;
             return finish(result);
@@ -7021,6 +7028,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               .enqueue(runContinueJob(completed.continuationRunId))
               .catch((error) => getLogger().error("steering continuation enqueue", error));
           }
+          let outcomeHeld = false;
           if (botMessageOutcome) {
             // Prefer the final reply. If the turn only posted mid-turn progress, return that
             // text explicitly as status. Delivery uses a stable auto-outcome key; mark
@@ -7032,10 +7040,18 @@ export function createRunExecutor(deps: ExecutorDeps) {
               { id: bot.id, name: bot.name },
               botMessageOutcome.text,
               botMessageOutcome.intent,
-              { externalChain, outbound: outboundFragments },
+              {
+                externalChain,
+                outbound: outboundFragments,
+                onHeld: () => {
+                  outcomeHeld = true;
+                },
+              },
             ).catch((error) => getLogger().error("bot message result return", error));
           }
-          const notifyBody = completionNotificationPreview(text);
+          // The text was held for the owner's approval: no push may preview it. The held share has
+          // its own notification, which names the recipient only.
+          const notifyBody = outcomeHeld ? "" : completionNotificationPreview(text);
           if (
             runSendsFinishNotification(run.trigger) &&
             notifyBody &&

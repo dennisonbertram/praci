@@ -359,7 +359,14 @@ function fixture({
         computerId: "computer-1",
         computer: { id: "computer-1", scope: "dedicated" },
       })),
-      findMany: vi.fn(async () => []),
+      // Sender lookups for the outbound record: the known bots, all internal.
+      findMany: vi.fn(async ({ where }: { where?: { id?: { in?: string[] } } } = {}) =>
+        where?.id?.in
+          ? where.id.in
+              .filter((botId) => knownBots?.[botId] !== undefined)
+              .map((botId) => ({ id: botId, audience: "internal" }))
+          : [],
+      ),
       findFirst: vi.fn(async ({ where }: { where?: { id?: string } } = {}) =>
         where?.id && knownBots?.[where.id] !== undefined
           ? {
@@ -3780,7 +3787,51 @@ describe("what a run read is checked before it reaches an external bot", () => {
     const options = sentBotMessages.calls.at(-1)![4] as MessageBotOptions;
     const fragments = await options.outbound!();
     // The connector read is private: its email is flagged in any case, an unrelated one is not.
-    expect(fragments.matches("PRIYA@HALCYON.EXAMPLE")).toContain("email");
-    expect(fragments.matches("support@halcyon.example")).toEqual([]);
+    expect(fragments!.matches("PRIYA@HALCYON.EXAMPLE")).toContain("email");
+    expect(fragments!.matches("support@halcyon.example")).toEqual([]);
+  });
+
+  it("holds every external-bound message of a run that was resumed or reclaimed (its earlier reads are unknown)", async () => {
+    sentBotMessages.calls.length = 0;
+    const f = fixture({ name: "message_bot", builtin: true });
+    f.setCalls([{ args: { bot_id: "bot-ext", message: "hello" }, executionId: "c1" }]);
+    await f.run();
+    const first = sentBotMessages.calls.at(-1)![4] as MessageBotOptions;
+    expect(await first.outbound!()).toBeDefined();
+    // The same run under a later lease: a resume after an approval, or a reclaim after a crash.
+    f.setCalls([{ args: { bot_id: "bot-ext", message: "again" }, executionId: "c2" }]);
+    await f.run();
+    const later = sentBotMessages.calls.at(-1)![4] as MessageBotOptions;
+    expect(await later.outbound!()).toBeUndefined();
+  });
+
+  it("records an internal bot's plain-text relay as private, names included", async () => {
+    sentBotMessages.calls.length = 0;
+    const f = fixture({
+      name: "message_bot",
+      builtin: true,
+      knownBots: { "peer-1": "" },
+      history: [
+        {
+          blocks: [
+            {
+              kind: "bot_message_received",
+              fromBotId: "peer-1",
+              fromBotName: "Finance",
+              text: "Priya Shah at Halcyon Ventures committed the seed round.",
+              hop: 1,
+              intent: "result",
+              returnToMessageId: "m0",
+            },
+          ],
+        },
+      ],
+    });
+    f.setCalls([{ args: { bot_id: "bot-ext", message: "hello" }, executionId: "c1" }]);
+    await f.run();
+    const options = sentBotMessages.calls.at(-1)![4] as MessageBotOptions;
+    const fragments = (await options.outbound!())!;
+    expect(fragments.matches("Our lead is priya shah.")).toContain("name");
+    expect(fragments.matches("We open at 9am.")).toEqual([]);
   });
 });

@@ -20,6 +20,7 @@ const NUMBER = /\d{1,3}(?:[,   ]\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?/g;
 const NAME_KEY =
   /^(?:name|full_?name|display_?name|holder|holders|investor|investors|company|organi[sz]ation|contact|from|to|cc|bcc|sender|recipient|customer|vendor|merchant|counterparty|owner)$/i;
 const HEADER_NAME = /(?:^|[\n,;:["])\s*"?([^<>\n",;@]{2,60}?)"?\s*<[^<>\s@]+@[^<>\s]+>/g;
+const CAPITALIZED_SPAN = /\p{Lu}[\p{L}'\u2019-]+(?:\s+\p{Lu}[\p{L}'\u2019-]+)+/gu;
 const SHINGLE_WORDS = 8;
 /** Private text beyond this is not read: the check stays cheap and bounded. */
 const MAX_TEXT_CHARS = 200_000;
@@ -126,6 +127,18 @@ export class PrivateFragments {
   /** Text a private source returned (mail, finance, a connector, another internal bot's answer). */
   addPrivate(text: string): void {
     this.merge(this.privateSet, extract(text));
+  }
+
+  /**
+   * Another internal bot's plain-text answer. Structure is lost in a relay ("Priya Shah" no longer
+   * sits under a name field), so every run of two or more capitalized words is also kept as a name.
+   */
+  addPrivateRelay(text: string): void {
+    this.addPrivate(text);
+    for (const match of text.slice(0, MAX_TEXT_CHARS).matchAll(CAPITALIZED_SPAN)) {
+      const name = normalizeName(match[0]);
+      if (name && this.privateSet.names.size < MAX_FRAGMENTS) this.privateSet.names.add(name);
+    }
   }
 
   /** Text that is already public to the recipient: what they wrote, a web page. */

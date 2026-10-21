@@ -45,6 +45,7 @@ type ShareRequest = {
   toBotId: string;
   text: string;
   intent: "request" | "result" | "question" | "status" | "fyi";
+  deliveryKey?: string | null;
   replay: {
     allowTerminalSource: boolean;
     forceUnread: boolean;
@@ -54,10 +55,15 @@ type ShareRequest = {
   };
 };
 
+/** A claimed share that has not finished within this long is taken to be stranded by a crash. */
+const STRANDED_AFTER_MS = 30_000;
+
 /**
  * The owner's answer to a held message. "allow" delivers the text stored with the effect, exactly
- * and once (the claim moves intended to executing in one update, and the delivery key makes the
- * message itself replay-safe); the client sends no text, so nothing can be edited in. "deny"
+ * and once: the claim moves intended to executing in one update, and the message itself carries
+ * the original call's delivery key, so a replay (even after a crash between the claim and the
+ * completion) finds it delivered. The card stays pending until delivery succeeded, so a stranded
+ * share can be answered again. The client sends no text, so nothing can be edited in. "deny"
  * delivers nothing but a fixed server-written reply. Returns false when the card is no longer
  * answerable (already answered, replayed, or not this owner's).
  */
@@ -70,6 +76,10 @@ export async function answerBotShare(
   const found = await findBotShareEffect(deps.prisma, scope, input);
   if (!found) return false;
   const { effect, message } = found;
+  const cardPending = message.blocks.some(
+    (block) => block.kind === "ask" && block.share === true && block.status !== "answered",
+  );
+  if (!cardPending) return false;
   const run = await deps.prisma.run.findFirst({
     where: {
       id: input.runId,
@@ -91,22 +101,37 @@ export async function answerBotShare(
   const request = effect.request as unknown as ShareRequest;
   // The card belongs to the bot that held the message; the stored request must agree.
   if (request.fromBotId !== run.botId) return false;
-
-  const claimed = await deps.prisma.externalEffect.updateMany({
-    where: { id: effect.id, status: "intended" },
-    data: { status: input.answer === "allow" ? "executing" : "denied" },
-  });
-  if (claimed.count !== 1) return false;
-
   const sender = { id: run.botId, name: run.bot.name };
   const common: MessageBotOptions = {
     ...request.replay,
     externalChain: request.replay.externalChain ?? undefined,
     anyRunState: true,
-    serverText: undefined,
   };
+
   if (input.answer === "allow") {
-    // The stored text, with the stored options of the original call, and no new check.
+    if (effect.status === "completed") {
+      // Delivered, but the card was not marked (a crash between the two): finish the bookkeeping.
+      await markCardAnswered(deps, scope, run.botId, input.runId, message, "allow");
+      return true;
+    }
+    const claimed =
+      effect.status === "intended"
+        ? await deps.prisma.externalEffect.updateMany({
+            where: { id: effect.id, status: "intended" },
+            data: { status: "executing" },
+          })
+        : effect.status === "executing"
+          ? // Stranded by a crash: take it over. The delivery key makes the resend a replay.
+            await deps.prisma.externalEffect.updateMany({
+              where: {
+                id: effect.id,
+                status: "executing",
+                updatedAt: { lt: new Date(Date.now() - STRANDED_AFTER_MS) },
+              },
+              data: { status: "executing" },
+            })
+          : { count: 0 };
+    if (claimed.count !== 1) return false;
     const release = () =>
       deps.prisma.externalEffect.updateMany({
         where: { id: effect.id, status: "executing" },
@@ -114,6 +139,7 @@ export async function answerBotShare(
       });
     let sent: Awaited<ReturnType<typeof messageBot>>;
     try {
+      // The stored text, with the stored options and the original delivery key, and no new check.
       sent = await messageBot(
         deps,
         run,
@@ -122,7 +148,7 @@ export async function answerBotShare(
           bot_id: request.toBotId,
           message: request.text,
           intent: request.intent,
-          deliveryKey: `share:${effect.id}`,
+          deliveryKey: request.deliveryKey ?? `share:${effect.id}`,
         },
         { ...common, approvedShare: true },
       );
@@ -140,22 +166,39 @@ export async function answerBotShare(
       where: { id: effect.id, status: "executing" },
       data: { status: "completed", result: { delivered: true } },
     });
-  } else {
-    const told = await messageBot(
-      deps,
-      run,
-      sender,
-      {
-        bot_id: request.toBotId,
-        message: BOT_SHARE_DECLINED_MESSAGE,
-        intent: request.intent,
-        deliveryKey: `share-declined:${effect.id}`,
-      },
-      { ...common, serverText: true },
-    );
-    if (!told.ok) getLogger().error("held share decline notice", new Error(told.error));
+    await markCardAnswered(deps, scope, run.botId, input.runId, message, "allow");
+    return true;
   }
-  await markCardAnswered(deps, scope, run.botId, input.runId, message, input.answer);
+
+  // Don't share.
+  if (effect.status === "intended") {
+    const claimed = await deps.prisma.externalEffect.updateMany({
+      where: { id: effect.id, status: "intended" },
+      data: { status: "denied" },
+    });
+    if (claimed.count !== 1) return false;
+  } else if (effect.status !== "denied") {
+    return false;
+  }
+  // The fixed reply must be delivered before the card reads as answered; if it fails, the card
+  // stays pending and the same answer finishes the job.
+  const told = await messageBot(
+    deps,
+    run,
+    sender,
+    {
+      bot_id: request.toBotId,
+      message: BOT_SHARE_DECLINED_MESSAGE,
+      intent: request.intent,
+      deliveryKey: `share-declined:${effect.id}`,
+    },
+    { ...common, serverText: true },
+  );
+  if (!told.ok) {
+    getLogger().error("held share decline notice", new Error(told.error));
+    throw new Error("Could not send the reply");
+  }
+  await markCardAnswered(deps, scope, run.botId, input.runId, message, "deny");
   return true;
 }
 

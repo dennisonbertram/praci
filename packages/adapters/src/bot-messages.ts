@@ -88,7 +88,7 @@ export type MessageBotOptions = {
    * What the sending run read from private sources. Needed to send to an external bot: a message
    * to one goes out only if it repeats none of it, and with no snapshot it is held.
    */
-  outbound?: () => Promise<PrivateFragments>;
+  outbound?: () => Promise<PrivateFragments | undefined>;
   /** The owner approved this exact text on a card: skip the outbound check. */
   approvedShare?: boolean;
   /** A fixed server-written message (never model text): skip the outbound check. */
@@ -232,10 +232,32 @@ export async function messageBot(
   // sources. A flagged message is not sent: the owner sees it on a card and the external bot is
   // told, in fixed words, that it needs approval.
   if (target.audience === "external" && !options?.approvedShare && !options?.serverText) {
+    // An earlier delivery under this key (a retried status or result) is replayed, never held again.
+    if (input.deliveryKey) {
+      const already = await deps.prisma.message.findUnique({
+        where: {
+          threadId_clientNonce: {
+            threadId: target.thread.id,
+            clientNonce: `bot-message:${input.deliveryKey}`,
+          },
+        },
+        select: { id: true },
+      });
+      if (already) {
+        return {
+          ok: true as const,
+          botId: target.id,
+          name: target.name,
+          delivered: message,
+          replayed: true as const,
+          note: `Already sent to ${target.name} in this turn; it was not sent again.`,
+        };
+      }
+    }
     const fragments = options?.outbound ? await options.outbound() : undefined;
     // No snapshot means the run's reads are unknown, so the message is held.
     if (!fragments || !checkOutbound({ text: message, fragments }).allow) {
-      return holdShare(deps, run, sender, target, message, intent, options);
+      return holdShare(deps, run, sender, target, message, intent, options, input.deliveryKey);
     }
   }
 
@@ -318,8 +340,9 @@ export async function messageBot(
             threadId: run.threadId,
             botId: run.botId,
             userId: run.userId,
+            // A held message is answered whatever the sender's run is doing (paused, queued, done).
             status: options?.anyRunState
-              ? { in: ["running", "completed", "failed", "cancelled"] }
+              ? undefined
               : options?.allowTerminalSource
                 ? { in: ["completed", "failed", "cancelled"] }
                 : "running",
@@ -497,11 +520,14 @@ async function holdShare(
   message: string,
   intent: BotMessageIntent,
   options?: MessageBotOptions,
+  deliveryKey?: string,
 ): Promise<MessageBotResult> {
-  const idempotencyKey = `bot-share:${run.id}:${createHash("sha256")
-    .update(`${target.id}\0${message}`)
-    .digest("hex")
-    .slice(0, 40)}`;
+  // One hold per delivery key when the call has one (a retried status or result must not make a
+  // second card, whatever its text), otherwise per exact text.
+  const idempotencyKey = `bot-share:${run.id}:${
+    deliveryKey ??
+    createHash("sha256").update(`${target.id}\0${message}`).digest("hex").slice(0, 40)
+  }`;
   const heldResult = {
     ok: true as const,
     botId: target.id,
@@ -529,6 +555,9 @@ async function holdShare(
               toBotId: target.id,
               text: message,
               intent,
+              // Approval delivers under the original key, so a later retry of the same status or
+              // result finds it delivered instead of sending it twice.
+              deliveryKey: deliveryKey ?? null,
               replay: {
                 allowTerminalSource: options?.allowTerminalSource === true,
                 forceUnread: options?.forceUnread === true,
@@ -578,35 +607,40 @@ async function holdShare(
     // A concurrent retry created it first: the card already exists.
     if (!isUniqueViolation(error)) throw error;
   }
-  if (!created) {
-    const existing = await deps.prisma.externalEffect.findUnique({ where: { idempotencyKey } });
-    // Already shared, or the owner said no: do not hold again or send anything.
-    if (existing?.status === "completed") {
-      return { ...heldResult, held: undefined, note: `Already sent to ${target.name}.` };
+  const existing = created
+    ? undefined
+    : await deps.prisma.externalEffect.findUnique({ where: { idempotencyKey } });
+  const effectId = created?.effectId ?? existing?.id;
+  if (!effectId) return heldResult;
+  // Already shared: nothing to hold or tell.
+  if (existing?.status === "completed") {
+    return { ...heldResult, held: undefined, note: `Already sent to ${target.name}.` };
+  }
+  if (created) {
+    await deps.events.notify(run.threadId, created.seq).catch((error) => {
+      getLogger().error("held share realtime notification", error);
+    });
+    // Tell the owner; the body names the recipient only, never the held text.
+    try {
+      await notifyThreadEvent(
+        deps.prisma,
+        deps.notificationEvents,
+        { ...run, botId: run.botId },
+        {
+          kind: "help",
+          title: `${sender.name} needs approval`,
+          body: `Share with ${target.name}?`,
+          botId: run.botId,
+          threadId: run.threadId,
+        },
+        `${effectId}\nshare`,
+      );
+    } catch (error) {
+      getLogger().error("held share notification", error);
     }
-    return heldResult;
   }
-  await deps.events.notify(run.threadId, created.seq).catch((error) => {
-    getLogger().error("held share realtime notification", error);
-  });
-  // Tell the owner; the body names the recipient only, never the held text.
-  try {
-    await notifyThreadEvent(
-      deps.prisma,
-      deps.notificationEvents,
-      { ...run, botId: run.botId },
-      {
-        kind: "help",
-        title: `${sender.name} needs approval`,
-        body: `Share with ${target.name}?`,
-        botId: run.botId,
-        threadId: run.threadId,
-      },
-      `${created.effectId}\nshare`,
-    );
-  } catch (error) {
-    getLogger().error("held share notification", error);
-  }
+  // The fixed notice is attempted on every pass, created or retried: its delivery key makes it
+  // replay-safe, and a retry after a lost notice sends it.
   const told = await messageBot(
     deps,
     run,
@@ -615,13 +649,29 @@ async function holdShare(
       bot_id: target.id,
       message: BOT_SHARE_HELD_MESSAGE,
       intent,
-      deliveryKey: `share-held:${created.effectId}`,
+      deliveryKey: `share-held:${effectId}`,
     },
     { ...options, serverText: true, outbound: undefined },
   );
   if (!told.ok) return told;
   return heldResult;
 }
+
+/**
+ * Whether text may go to an external bot by a route that cannot hold it for approval (a group
+ * handoff, an agent message): only if it repeats nothing the run read. Unknown reads refuse.
+ */
+export async function mayReachExternalBot(
+  text: string,
+  outbound?: () => Promise<PrivateFragments | undefined>,
+): Promise<boolean> {
+  const fragments = outbound ? await outbound() : undefined;
+  return fragments !== undefined && checkOutbound({ text, fragments }).allow;
+}
+
+/** The fixed refusal for a route that cannot hold a message for the owner. */
+export const EXTERNAL_HAND_OFF_REFUSED =
+  "This may repeat private information, so it was not sent to an external bot. Tell the owner instead.";
 
 /** Return a delegated run's terminal outcome unless it already sent one explicitly. */
 export async function returnBotMessageOutcome(
@@ -640,7 +690,9 @@ export async function returnBotMessageOutcome(
   options?: {
     forceUnread?: boolean;
     externalChain?: { name?: string };
-    outbound?: () => Promise<PrivateFragments>;
+    outbound?: () => Promise<PrivateFragments | undefined>;
+    /** Called when the outcome was held for the owner instead of sent. */
+    onHeld?: () => void;
   },
 ) {
   const source = await loadBotMessageContext(deps.prisma, run.sourceMessageId);
@@ -690,7 +742,10 @@ export async function returnBotMessageOutcome(
       outbound: options?.outbound,
     },
   );
-  if (outcome.ok) await markBotOutcomeReturned(deps.prisma, run.id);
+  if (outcome.ok) {
+    if (outcome.held) options?.onHeld?.();
+    await markBotOutcomeReturned(deps.prisma, run.id);
+  }
   return outcome.ok;
 }
 

@@ -94,3 +94,20 @@ describe("public text", () => {
     });
   });
 });
+
+describe("a plain-text relay from another internal bot", () => {
+  it("keeps names that lost their structure, so they cannot be repeated to an external bot", () => {
+    const relay = new PrivateFragments();
+    relay.addPrivateRelay("Priya Shah at Halcyon Ventures committed the seed round last week.");
+    for (const text of ["Priya Shah leads it", "talk to PRIYA SHAH", "Halcyon Ventures is in"]) {
+      expect(checkOutbound({ text, fragments: relay }), text).toMatchObject({ allow: false });
+    }
+    expect(checkOutbound({ text: "We open at 9am.", fragments: relay })).toEqual({ allow: true });
+    // Structured addPrivate alone would have missed the relayed name.
+    const plain = new PrivateFragments();
+    plain.addPrivate("Priya Shah at Halcyon Ventures committed the seed round last week.");
+    expect(checkOutbound({ text: "Priya Shah leads it", fragments: plain })).toEqual({
+      allow: true,
+    });
+  });
+});

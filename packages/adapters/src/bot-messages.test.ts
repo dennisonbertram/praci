@@ -1168,4 +1168,51 @@ describe("messages to an external bot are checked against what the run read", ()
     });
     expect(h.tx.externalEffect.create).not.toHaveBeenCalled();
   });
+
+  it("replays an earlier delivery under the same key instead of holding it again", async () => {
+    const h = deps({ bots: [external], alreadyDelivered: { id: "earlier" } });
+    const sent = await messageBot(
+      h.deps,
+      run,
+      sender,
+      {
+        bot_id: "bot-ext",
+        message: "Her address is priya@halcyon.example",
+        deliveryKey: "auto-outcome:r1",
+      },
+      { outbound: async () => secretFragments() },
+    );
+    expect(sent).toMatchObject({ ok: true, replayed: true });
+    expect(h.tx.externalEffect.create).not.toHaveBeenCalled();
+    expect(h.tx.message.create).not.toHaveBeenCalled();
+  });
+
+  it("tells the caller a returned outcome was held", async () => {
+    const asked = [
+      {
+        kind: "bot_message_received",
+        fromBotId: "bot-ext",
+        fromBotName: "Support",
+        text: "q",
+        hop: 1,
+        intent: "request",
+        returnToMessageId: "m0",
+      },
+    ];
+    const h = deps({
+      bots: [{ ...external, id: "bot-ext" }],
+      hopBlocks: asked,
+    });
+    let held = false;
+    const ok = await returnBotMessageOutcome(
+      h.deps,
+      { ...run, sourceMessageId: "msg-1" },
+      sender,
+      "It is priya@halcyon.example",
+      "result",
+      { outbound: async () => secretFragments(), onHeld: () => (held = true) },
+    );
+    expect(ok).toBe(true);
+    expect(held).toBe(true);
+  });
 });

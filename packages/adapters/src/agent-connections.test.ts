@@ -1,3 +1,4 @@
+import { PrivateFragments } from "@rakazo/core";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -5,6 +6,7 @@ import {
   messageConnectedAgent,
   respondAgentConnection,
 } from "./agent-connections.js";
+import { EXTERNAL_HAND_OFF_REFUSED } from "./bot-messages.js";
 
 const requesterIdentity = {
   id: "mi-1",
@@ -32,6 +34,8 @@ function createDeps(
     connection?: Record<string, unknown> | null;
     pendingConnection?: Record<string, unknown> | null;
     sourceHop?: number;
+    /** The target bot's audience. */
+    targetAudience?: string;
     /** Simulates a revoke landing between the pre-check and the transaction. */
     connectionRevokedInsideTx?: boolean;
     /** Simulates a revoke landing after the in-transaction approval read. */
@@ -124,6 +128,7 @@ function createDeps(
               spaceId: "ws-2",
               userId: "user-2",
               archivedAt: null,
+              audience: overrides.targetAudience ?? "internal",
               thread: { id: "thread-2" },
             }
           : { id: "bot-1", name: "Assistant", spaceId: "ws-1", userId: "user-1" },
@@ -535,5 +540,51 @@ describe("messageConnectedAgent revocation locking", () => {
     expect(deps.txCalls.taskCreate).toHaveLength(0);
     expect(deps.txCalls.runCreate).toHaveLength(0);
     expect(deps.enqueue).not.toHaveBeenCalled();
+  });
+});
+
+describe("messageConnectedAgent to an external bot", () => {
+  const connection = {
+    id: "ac-1",
+    requesterBotId: "bot-1",
+    targetBotId: "bot-2",
+    status: "approved",
+  };
+  const send = (
+    deps: ReturnType<typeof createDeps>,
+    message: string,
+    outbound?: () => Promise<PrivateFragments | undefined>,
+  ) =>
+    messageConnectedAgent(
+      deps,
+      run,
+      sender,
+      { address: "+15552222222", message, deliveryKey: "k" },
+      { outbound },
+    );
+  const fragments = () => {
+    const f = new PrivateFragments();
+    f.addPrivate('{"from":"Priya Shah <priya@halcyon.example>"}');
+    return f;
+  };
+
+  it("refuses a message that repeats what the run read, and one sent with unknown reads", async () => {
+    const deps = createDeps({ connection, targetAudience: "external" });
+    expect(await send(deps, "It is priya@halcyon.example", async () => fragments())).toEqual({
+      ok: false,
+      error: EXTERNAL_HAND_OFF_REFUSED,
+    });
+    expect(await send(deps, "hello", async () => undefined)).toMatchObject({ ok: false });
+    expect(await send(deps, "hello")).toMatchObject({ ok: false });
+    expect(deps.txCalls.messageCreate).toHaveLength(0);
+  });
+
+  it("delivers a clean message, and never checks an internal target", async () => {
+    const clean = createDeps({ connection, targetAudience: "external" });
+    expect(await send(clean, "We open at 9am.", async () => fragments())).toMatchObject({
+      ok: true,
+    });
+    const internal = createDeps({ connection });
+    expect(await send(internal, "priya@halcyon.example")).toMatchObject({ ok: true });
   });
 });
