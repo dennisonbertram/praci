@@ -14,13 +14,7 @@ import { AskBotButton } from "../components/AskBotButton";
 import { AutoSortDialog } from "../components/data-room/AutoSortDialog";
 import { DataRoomConsentPrompt } from "../components/data-room/ConsentPrompt";
 import { DataRoomStats } from "../components/data-room/DataRoomStats";
-import {
-  FilterBar,
-  facetOptions,
-  Tip,
-  TOOLBAR_BUTTON,
-  TOOLBAR_LABEL,
-} from "../components/data-room/FilterBar";
+import { FilterBar, facetOptions, Tip } from "../components/data-room/FilterBar";
 import { FolderTree } from "../components/data-room/FolderTree";
 import { folderContents, folderNodes } from "../components/data-room/folders";
 import { alreadyText } from "../components/data-room/format";
@@ -68,11 +62,7 @@ function useDebounced<T>(value: T, ms: number) {
   return debounced;
 }
 
-function FileInputButton({
-  children,
-  tip,
-  ...props
-}: React.ComponentProps<typeof Button> & { tip?: string }) {
+function FileInputButton(props: React.ComponentProps<typeof Button>) {
   const input = useRef<HTMLInputElement>(null);
   return (
     <>
@@ -87,18 +77,7 @@ function FileInputButton({
           event.target.value = "";
         }}
       />
-      {tip ? (
-        // To the side, so the label never covers the toolbar below.
-        <Tip label={tip} side="left">
-          <Button {...props} onClick={() => input.current?.click()}>
-            {children}
-          </Button>
-        </Tip>
-      ) : (
-        <Button {...props} onClick={() => input.current?.click()}>
-          {children}
-        </Button>
-      )}
+      <Button {...props} onClick={() => input.current?.click()} />
     </>
   );
 }
@@ -110,11 +89,14 @@ function FileInputButton({
 export function DataRoomPage({
   spaceName,
   onAskAgent,
+  onOpenModelSettings,
   agents,
   onSendToAgent,
 }: {
   spaceName?: string;
   onAskAgent?: () => void;
+  /** Where a model problem is fixed; without it Auto-sort only names the problem. */
+  onOpenModelSettings?: () => void;
   /** The agents a file can be sent to; without them the menu item is not offered. */
   agents?: SendTarget[];
   onSendToAgent?: (item: DataRoomApiItem, agent: SendTarget) => void;
@@ -403,6 +385,8 @@ export function DataRoomPage({
   };
 
   const [action, setAction] = useState<{ kind: ItemAction; item: DataRoomEntry } | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [autoSorting, setAutoSorting] = useState(false);
 
@@ -418,7 +402,8 @@ export function DataRoomPage({
         setPinned((current) => (current?.id === updated.id ? updated : current));
       })
       .catch((cause) => showNoticeToast(errorText(cause)))
-      .finally(reload);
+      // The processing counts pick up the file again and reload the list as it is read.
+      .finally(() => window.dispatchEvent(new Event(DATA_ROOM_CHANGED)));
   }
 
   function closePreview() {
@@ -540,13 +525,23 @@ export function DataRoomPage({
                       </Toggle>
                     </Tip>
                   </fieldset>
-                  <ImportSources compact folderId={filters.folderId ?? null} onDone={showNotice} />
-                  <FileInputButton className={TOOLBAR_BUTTON} tip={t`Add files`}>
-                    <Plus aria-hidden="true" />
-                    <span className={TOOLBAR_LABEL}>
-                      <Trans>Add files</Trans>
-                    </span>
-                  </FileInputButton>
+                  <input
+                    ref={fileInput}
+                    type="file"
+                    multiple
+                    hidden
+                    data-testid="data-room-file-input"
+                    onChange={(event) => {
+                      uploadFilesToDataRoom(Array.from(event.target.files ?? []));
+                      event.target.value = "";
+                    }}
+                  />
+                  <ImportSources
+                    compact
+                    folderId={filters.folderId ?? null}
+                    onDone={showNotice}
+                    onUpload={() => fileInput.current?.click()}
+                  />
                 </>
               )}
               {onAskAgent ? <AskBotButton botName="Data room agent" onClick={onAskAgent} /> : null}
@@ -594,9 +589,15 @@ export function DataRoomPage({
             onFolder={(folderId) => setFilters({ ...filters, folderId })}
             onNewFolder={() => setCreatingFolder(true)}
             onAutoSort={() => setAutoSorting(true)}
+            statsView={showStats}
           />
           <div ref={setBodyEl} className="relative flex min-h-0 flex-1 border-t border-border">
-            <div className="hidden self-stretch border-e border-border @min-[800px]/bd:flex">
+            {/* With a preview beside the list the tree needs a wider page, or file names get ~100px. */}
+            <div
+              className={`hidden self-stretch border-e border-border ${
+                shown && !narrow && !showStats ? "@min-[1100px]/bd:flex" : "@min-[800px]/bd:flex"
+              }`}
+            >
               <ResizableFolders bounds={bodyEl}>
                 <FolderTree
                   nodes={nodes}
@@ -757,7 +758,13 @@ export function DataRoomPage({
       )}
       {shown && narrow && dialogOpen ? (
         <Dialog open onOpenChange={(open) => !open && closePreview()}>
-          <DialogContent className="max-h-[85dvh] overflow-y-auto p-0">
+          {/* Focus the dialog itself, so Escape closes it at once (a focused icon button would show its tooltip first). */}
+          <DialogContent
+            ref={dialogRef}
+            initialFocus={dialogRef}
+            tabIndex={-1}
+            className="max-h-[85dvh] overflow-y-auto p-0"
+          >
             <Preview
               inDialog
               item={shown}
@@ -774,6 +781,7 @@ export function DataRoomPage({
         <AutoSortDialog
           files={rows.map(({ item }) => ({ id: item.id, name: item.name }))}
           onClose={() => setAutoSorting(false)}
+          onOpenModels={onOpenModelSettings}
           onApplied={({ batchId, items }) => {
             showSortedToast(items, batchId);
             reload();

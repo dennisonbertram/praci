@@ -838,6 +838,7 @@ msgid "Add email for {0}"
 msgstr "Add email for {0}"
 
 #: src/components/data-room/DataRoomImportMenu.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/DataRoom.tsx
 msgid "Add files"
 msgstr "Add files"
@@ -3905,8 +3906,8 @@ msgid "Documents"
 msgstr "Documents"
 
 #: src/components/data-room/DataRoomStats.tsx
-msgid "Documents over time"
-msgstr "Documents over time"
+msgid "Documents by document date"
+msgstr "Documents by document date"
 
 #: src/components/finance/CountCryptoButton.tsx
 msgid "Don't count crypto"
@@ -6618,6 +6619,7 @@ msgstr "Open Inbox"
 msgid "Open link"
 msgstr "Open link"
 
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/pages/shell/composer-error.tsx
 msgid "Open Models settings"
 msgstr "Open Models settings"
@@ -9111,6 +9113,10 @@ msgstr "the model"
 msgid "The model could not sort your files."
 msgstr "The model could not sort your files."
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "The model provider did not accept your API key."
+msgstr "The model provider did not accept your API key."
+
 #: src/lib/user-error.ts
 msgid "The model provider did not accept your API key. Check it in Settings > Models."
 msgstr "The model provider did not accept your API key. Check it in Settings > Models."
@@ -9749,6 +9755,7 @@ msgstr "Updating…"
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Upload"
