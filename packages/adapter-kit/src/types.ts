@@ -527,6 +527,11 @@ export interface AgentRunRequest {
   allowSilentEmpty?: boolean;
   /** Contextual fallback when a non-silent run produces no written response. */
   emptyResponseText?: string;
+  /**
+   * Awaited before every model request. A rejection stops the run; the executor uses it to re-check
+   * the thread's meeting mark and the model's data-sharing consent.
+   */
+  beforeModelRequest?: () => Promise<void>;
   executeTool?: (
     name: string,
     args: Record<string, unknown>,
