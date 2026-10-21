@@ -1756,6 +1756,7 @@ msgstr "Callback URL"
 msgid "Can't reach the server."
 msgstr "Can't reach the server."
 
+#: src/components/AccountAccess.tsx
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
@@ -1999,10 +2000,6 @@ msgstr "Check for receipt"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Check for updates"
 msgstr "Check for updates"
-
-#: src/pages/Shell.tsx
-msgid "Check in."
-msgstr "Check in."
 
 #: src/lib/model-connection-preflight.ts
 msgid "Check the API key or sign-in, then test again."
@@ -9064,6 +9061,7 @@ msgid "Time of day"
 msgstr "Time of day"
 
 #: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/RoutineEditor.tsx
 msgid "Time zone"
 msgstr "Time zone"
 
@@ -9863,6 +9861,10 @@ msgstr "Workload and key people, from your connected tools"
 #: src/components/integrations/AppDetail.tsx
 msgid "Write"
 msgstr "Write"
+
+#: src/pages/Shell.tsx
+msgid "Write what this routine should do each time it runs."
+msgstr "Write what this routine should do each time it runs."
 
 #: src/pages/shell/transcript.tsx
 msgid "Writing"

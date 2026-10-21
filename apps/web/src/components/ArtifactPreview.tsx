@@ -54,7 +54,9 @@ export function ArtifactPreview({
     return <ImagePreview bytes={bytes} mimeType={artifact.mimeType} name={artifact.name} />;
   }
   if (canPreviewSpreadsheet(artifact.name, artifact.mimeType)) {
-    return <SheetPreview key={artifact.id} source={{ artifactId: artifact.id }} />;
+    return (
+      <SheetPreview key={artifact.id} source={{ artifactId: artifact.id }} name={artifact.name} />
+    );
   }
   return (
     <div className="grid h-full place-items-center px-6 text-center text-sm text-muted-foreground/80">

@@ -87,6 +87,8 @@ export type RoutineDraftState = {
   /** Empty runs this routine on the bot's model. */
   modelKey: string;
   thinkingLevel: string;
+  /** Empty keeps the routine's zone, or the account zone for a new routine. */
+  timezone: string;
 };
 
 export function emptyRoutineDraft(): RoutineDraftState {
@@ -101,6 +103,7 @@ export function emptyRoutineDraft(): RoutineDraftState {
     runAtLocal: "",
     modelKey: "",
     thinkingLevel: "",
+    timezone: "",
   };
 }
 
@@ -119,6 +122,7 @@ export function draftFromRoutine(routine: Routine): RoutineDraftState {
         ? modelOptionKey(routine.modelProvider, routine.modelId)
         : "",
     thinkingLevel: routine.thinkingLevel ?? "",
+    timezone: routine.timezone,
   };
 }
 
@@ -272,6 +276,8 @@ export function RoutineEditor({
     []
   ).filter((level) => level !== "off");
   const defaultThinkingLevel = selectedCredential?.thinkingLevel ?? "medium";
+  const zone = draft.timezone || timezone;
+  const zones = Intl.supportedValuesOf("timeZone");
   const slackAvailable = messageProviders.includes("slack");
   const hasTriggers =
     draft.schedules.length > 0 ||
@@ -405,8 +411,8 @@ export function RoutineEditor({
       <div className="mt-5 text-sm text-muted-foreground">
         <div className="flex items-baseline gap-2">
           <Trans>When to run</Trans>
-          <span className="text-xs text-muted-foreground/70" title={timezone}>
-            {timezoneLabel(timezone)}
+          <span className="text-xs text-muted-foreground/70" title={zone}>
+            {timezoneLabel(zone)}
           </span>
           <Popover>
             <PopoverTrigger
@@ -421,7 +427,7 @@ export function RoutineEditor({
               }
             >
               <SlidersHorizontal />
-              {draft.modelKey ? (
+              {draft.modelKey || (editing && zone !== editing.timezone) ? (
                 <span
                   aria-hidden
                   className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-muted-foreground"
@@ -429,7 +435,26 @@ export function RoutineEditor({
               ) : null}
             </PopoverTrigger>
             <PopoverContent align="end" className="w-96 max-w-[calc(100vw-2rem)] p-4">
-              <label htmlFor={`${fieldId}-model`} className="block text-sm text-muted-foreground">
+              <label htmlFor={`${fieldId}-zone`} className="block text-sm text-muted-foreground">
+                <Trans>Time zone</Trans>
+                <NativeSelect
+                  id={`${fieldId}-zone`}
+                  className="mt-2 w-full"
+                  value={zone}
+                  onChange={(event) => onChange({ ...draft, timezone: event.target.value })}
+                >
+                  {(zones.includes(zone) ? zones : [zone, ...zones]).map((name) => (
+                    <NativeSelectOption key={name} value={name}>
+                      {name}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              </label>
+
+              <label
+                htmlFor={`${fieldId}-model`}
+                className="mt-5 block text-sm text-muted-foreground"
+              >
                 <Trans>Model</Trans>
                 <NativeSelect
                   id={`${fieldId}-model`}

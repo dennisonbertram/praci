@@ -192,7 +192,11 @@ export function ArtifactsPage() {
     [bots, ownerBotIds],
   );
 
-  const botsById = useMemo(() => new Map(bots.map((bot) => [bot.id, bot])), [bots]);
+  // Every card would show the same author when one bot made them all, so names appear only for several.
+  const botsById = useMemo(
+    () => new Map(ownerBots.length > 1 ? bots.map((bot) => [bot.id, bot]) : []),
+    [bots, ownerBots],
+  );
 
   const filteredItems = useMemo(() => {
     if (!items) return null;
@@ -535,12 +539,13 @@ function ArtifactTable({
 }) {
   const { t } = useLingui();
   const navigate = useNavigate();
+  const showBot = botsById.size > 0;
   return (
     <div className={PAGE_GUTTER_X}>
       <Table>
         <colgroup>
           <col />
-          <col className={`${MID_COLUMN} w-40`} />
+          {showBot ? <col className={`${MID_COLUMN} w-40`} /> : null}
           <col className={`${MID_COLUMN} w-28`} />
           <col className={`${MID_COLUMN} w-24`} />
           <col className="w-9" />
@@ -553,9 +558,11 @@ function ArtifactTable({
             <TableHead>
               <Trans>Name</Trans>
             </TableHead>
-            <TableHead className={MID_COL}>
-              <Trans>Bot</Trans>
-            </TableHead>
+            {showBot ? (
+              <TableHead className={MID_COL}>
+                <Trans>Bot</Trans>
+              </TableHead>
+            ) : null}
             <TableHead className={MID_COL}>
               <Trans>Added</Trans>
             </TableHead>
@@ -610,21 +617,23 @@ function ArtifactTable({
                     ) : null}
                   </div>
                 </TableCell>
-                <TableCell className={`${MID_COL} text-muted-foreground`}>
-                  {bot ? (
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      <BotAvatar
-                        color={bot.color}
-                        identity={bot.id}
-                        size={16}
-                        status={bot.status}
-                      />
-                      <span className="truncate">{bot.name}</span>
-                    </span>
-                  ) : (
-                    "—"
-                  )}
-                </TableCell>
+                {showBot ? (
+                  <TableCell className={`${MID_COL} text-muted-foreground`}>
+                    {bot ? (
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <BotAvatar
+                          color={bot.color}
+                          identity={bot.id}
+                          size={16}
+                          status={bot.status}
+                        />
+                        <span className="truncate">{bot.name}</span>
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                ) : null}
                 <TableCell className={`${MID_COL} truncate text-muted-foreground tabular-nums`}>
                   {formatRelativeTime(artifact.createdAt)}
                 </TableCell>
@@ -1032,7 +1041,7 @@ function PreviewPane({
             <Skeleton className="h-5 w-48 max-w-full" />
           ) : (
             <h2 className="truncate text-[16px] font-semibold">
-              {state.status === "ready" ? state.artifact.name : t`Artifact`}
+              {state.status === "ready" ? displayName(state.artifact.name) : t`Artifact`}
             </h2>
           )}
           {state.status === "ready" && state.artifact.description ? (

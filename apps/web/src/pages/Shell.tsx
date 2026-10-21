@@ -5611,6 +5611,10 @@ export function ShellPage() {
                     setRoutineError(t`Add a schedule, webhook, GitHub, or message trigger`);
                     return;
                   }
+                  if (!routineDraft.prompt.trim()) {
+                    setRoutineError(t`Write what this routine should do each time it runs.`);
+                    return;
+                  }
                   const saveRequest = ++routineSaveRequest.current;
                   routineSavePending.current = true;
                   setSavingRoutine(true);
@@ -5653,12 +5657,16 @@ export function ShellPage() {
                       saved = await rpc.routines.update({
                         routineId: targetRoutine.id,
                         name: routineDraft.name || t`Routine`,
-                        prompt: routineDraft.prompt || t`Check in.`,
+                        prompt: routineDraft.prompt.trim(),
                         crons,
                         active: armOneShot ? true : routineDraft.active,
                         webhookEnabled: routineDraft.webhookEnabled,
                         githubEnabled: routineDraft.githubEnabled,
                         messageProvider: routineDraft.messageProvider,
+                        ...(routineDraft.timezone &&
+                        routineDraft.timezone !== targetRoutine.timezone
+                          ? { timezone: routineDraft.timezone }
+                          : {}),
                         ...(routineModel.modelProvider !== targetRoutine.modelProvider ||
                         routineModel.modelId !== targetRoutine.modelId ||
                         routineModel.thinkingLevel !== targetRoutine.thinkingLevel
@@ -5670,9 +5678,9 @@ export function ShellPage() {
                       saved = await rpc.routines.create({
                         botId: targetBotId,
                         name: routineDraft.name || t`Routine`,
-                        prompt: routineDraft.prompt || t`Check in.`,
+                        prompt: routineDraft.prompt.trim(),
                         crons,
-                        timezone: accountTimezone(bootstrapMe),
+                        timezone: routineDraft.timezone || accountTimezone(bootstrapMe),
                         active: routineDraft.active,
                         notify: true,
                         webhookEnabled: routineDraft.webhookEnabled,
