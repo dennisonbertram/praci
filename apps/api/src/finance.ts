@@ -49,6 +49,7 @@ import {
 } from "@rakazo/contracts";
 import {
   accountBalanceHistory,
+  averageMonthCents,
   balanceGrid,
   breakdown,
   cashAtDays,
@@ -972,7 +973,9 @@ export async function financeVendor(
   );
   // Months before the vendor first charged are not months of zero spend.
   const firstMonth = firstSeenAt.slice(0, 7);
-  const avgMonths = Math.max(full.filter((m) => m.month >= firstMonth).length, 1);
+  const average = averageMonthCents(full, firstSeenAt);
+  // A subscription shows the figure its row in the list shows.
+  const listed = recurring.find((r) => r.key === input.key);
   // The change compares the last full month with 3 months before it, or with the vendor's first
   // full month when it is newer. A month that starts before the first synced data is incomplete.
   const earliest = earliestDay(all) ?? "";
@@ -983,8 +986,9 @@ export async function financeVendor(
     key: input.key,
     name: latest.counterparty,
     isSubscription: subscriptions(recurring).items.some((s) => s.key === input.key),
-    monthlyAvgCents: Math.round(full.reduce((total, m) => total + m.cents, 0) / avgMonths),
-    monthlyAvgMonths: avgMonths,
+    monthlyAvgCents: listed ? listed.monthlyCents : average.cents,
+    monthlyAvgMonths: listed ? listed.windowMonths : average.months,
+    ...(listed && listed.windowMonths === undefined ? { monthlyUsual: true } : {}),
     changePct: lastFull && base ? Math.round(((lastFull - base.cents) / base.cents) * 100) : null,
     changeFromMonth: lastFull && base ? base.month : null,
     firstSeenAt,

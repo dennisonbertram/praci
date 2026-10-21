@@ -113,7 +113,7 @@ export function FinanceBurnPage() {
               </div>
             ) : null}
           </Section>
-          <div className="grid gap-3 @3xl:grid-cols-2">
+          <div className="grid items-start gap-3 @3xl:grid-cols-2">
             <Section
               title={<Trans>Where it went</Trans>}
               action={

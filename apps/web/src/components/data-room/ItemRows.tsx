@@ -613,7 +613,21 @@ export function GridView({
               item.status === "failed" && "text-destructive",
             )}
           >
-            {statusLabel(item.status) ? (
+            {item.status === "failed" ? (
+              <>
+                <span>{statusLabel(item.status)}</span>
+                {/* Why, as on the list row; the reason may run to two lines. */}
+                <span
+                  data-testid="data-room-failed-reason"
+                  className="line-clamp-2 whitespace-normal!"
+                >
+                  {item.error ?? t`Could not read this file`}
+                </span>
+                {item.folderId !== (o.openFolderId ?? null) ? (
+                  <span>{o.folderPath(item.folderId)}</span>
+                ) : null}
+              </>
+            ) : statusLabel(item.status) ? (
               <span>{statusLabel(item.status)}</span>
             ) : (
               <>

@@ -53,11 +53,6 @@ msgstr ""
 msgid "(opens in Devin)"
 msgstr ""
 
-#. placeholder {0}: processing.failed
-#: src/components/data-room/ProcessingStrip.tsx
-msgid "{0, plural, one {# couldn't be read} other {# couldn't be read}}"
-msgstr ""
-
 #. placeholder {0}: counts.unreviewedDocuments
 #: src/pages/Legal.tsx
 msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
@@ -312,7 +307,12 @@ msgstr ""
 
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
-msgid "{0}'s computer screen"
+msgid "{0}' computer"
+msgstr ""
+
+#. placeholder {0}: active.name
+#: src/pages/Shell.tsx
+msgid "{0}'s computer"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -1250,6 +1250,7 @@ msgid "Appearance"
 msgstr "모양"
 
 #: src/components/compose/RichTextEditor.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr ""
@@ -1272,17 +1273,12 @@ msgstr ""
 msgid "Approved"
 msgstr ""
 
-#: src/components/ConnectAppsButton.tsx
-#: src/components/integrations/AppDetail.tsx
-#: src/components/integrations/GranolaPage.tsx
-#: src/components/integrations/IntegrationsHome.tsx
-#: src/components/integrations/McpDetail.tsx
-#: src/pages/Shell.tsx
-msgid "Apps"
-msgstr ""
-
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Apps with their own server"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "apps, connections"
 msgstr ""
 
 #: src/components/inbox/CleanupActionBar.tsx
@@ -1423,7 +1419,7 @@ msgid "Ask before sending external email"
 msgstr "외부 이메일을 보내기 전에 확인"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Ask Chief anything. Agents ask before they send, pay or change anything."
+msgid "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -1576,10 +1572,6 @@ msgstr "아바타 스튜디오"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Avatars"
 msgstr "아바타"
-
-#: src/pages/finance/FinanceSpend.tsx
-msgid "Average per month"
-msgstr ""
 
 #: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/computer/FilesApp.tsx
@@ -3125,6 +3117,7 @@ msgstr "모델 서버에 연결하지 못했습니다."
 msgid "Could not reach the server"
 msgstr "서버에 연결할 수 없습니다"
 
+#: src/components/data-room/ItemRows.tsx
 #: src/components/finance/StatementImport.tsx
 msgid "Could not read this file"
 msgstr ""
@@ -3598,6 +3591,10 @@ msgstr ""
 #: src/pages/RoutineSchedule.tsx
 msgid "day"
 msgstr "일"
+
+#: src/pages/RoutineSchedule.tsx
+msgid "Day of week"
+msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Day-to-day work"
@@ -4369,6 +4366,7 @@ msgstr ""
 msgid "Filter memory"
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
 #: src/pages/Artifacts.tsx
 msgid "Filters"
 msgstr ""
@@ -4977,8 +4975,21 @@ msgstr "인스턴스 API 키"
 msgid "Instruction"
 msgstr "실행할 내용"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Instructions"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Integration options"
+msgstr ""
+
+#: src/components/ConnectAppsButton.tsx
+#: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/GranolaPage.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/McpDetail.tsx
+#: src/pages/Shell.tsx
+msgid "Integrations"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -5296,6 +5307,7 @@ msgid "Load web images automatically"
 msgstr "웹 이미지 자동으로 불러오기"
 
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/integrations/McpDetail.tsx
 #: src/pages/Finance.tsx
 #: src/pages/Shell.tsx
 msgid "Loading"
@@ -5308,6 +5320,10 @@ msgstr "활동을 불러오는 중…"
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Loading memory settings…"
 msgstr "기억 설정을 불러오는 중…"
+
+#: src/components/ShellSkeleton.tsx
+msgid "Loading messages"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Loading model catalog…"
@@ -5784,6 +5800,10 @@ msgstr "컴퓨터 작업 더보기"
 msgid "More filters"
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "More settings"
+msgstr ""
+
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 msgid "Move"
@@ -5856,6 +5876,7 @@ msgstr "음소거"
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-credentials.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Name"
 msgstr "이름"
@@ -6088,10 +6109,6 @@ msgstr ""
 
 #: src/pages/shell/bot-picker.tsx
 msgid "No bots match"
-msgstr ""
-
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "No change"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -6425,7 +6442,7 @@ msgid "Not tagged"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
-msgid "Not tagged yet. Files are tagged once you let Praci read documents; you can still search it by name and text."
+msgid "Not tagged yet."
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -6938,6 +6955,11 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
+msgstr ""
+
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Per month"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -7740,6 +7762,7 @@ msgstr ""
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/ModelBackupsSettings.tsx
+#: src/pages/shell/composer-error.tsx
 msgid "Retry"
 msgstr "다시 시도"
 
@@ -8815,6 +8838,10 @@ msgstr ""
 msgid "Steps"
 msgstr "실행 단계"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Steps to follow"
+msgstr ""
+
 #: src/components/ShellSkeleton.tsx
 msgid "Still opening…"
 msgstr ""
@@ -9174,6 +9201,10 @@ msgstr ""
 msgid "The transactions read add up to the closing balance"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "The usual charge scaled to a month, or for usage-based vendors the average of recent full months. The vendor page shows the same figure."
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "The web, notes and docs"
 msgstr ""
@@ -9336,6 +9367,10 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "This zip is too large to unpack"
+msgstr ""
+
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Tick a change to apply it."
 msgstr ""
 
 #: src/pages/Board.tsx
@@ -9888,12 +9923,8 @@ msgstr ""
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "이 서버의 자체 {hostCredentialSource} 자격 증명으로 {selectedProviderName}에 액세스합니다."
 
-#: src/pages/Finance.tsx
-msgid "Usual charge scaled to a month; usage-based vendors use the last 3 months. A vendor page shows the average of actual spend over the months it names."
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Usual per month"
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Usual charge"
 msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
@@ -10099,6 +10130,10 @@ msgstr ""
 
 #: src/lib/finance-agent.ts
 msgid "What is our runway?"
+msgstr ""
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "What it does and when to use it"
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx

@@ -33,7 +33,7 @@ export function GranolaPage({
           className="mb-3.5 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
-          <Trans>Apps</Trans>
+          <Trans>Integrations</Trans>
         </Link>
         <div className="flex flex-wrap items-center gap-4">
           <AppLogo name={name} size="xl" />

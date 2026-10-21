@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { OPENING_SLOW_MS, OpeningSpace, ShellSkeleton } from "./ShellSkeleton";
+import { OPENING_SLOW_MS, OpeningSpace, ShellSkeleton, ThreadSkeleton } from "./ShellSkeleton";
 
 const meta = {
   title: "Shell/ShellSkeleton",
@@ -36,4 +36,12 @@ export const SlowOpening: StoryObj = {
   play: async () => {
     await new Promise((resolve) => setTimeout(resolve, OPENING_SLOW_MS + 200));
   },
+};
+
+export const LoadingThread: StoryObj = {
+  render: () => (
+    <div className="flex h-96 bg-background">
+      <ThreadSkeleton />
+    </div>
+  ),
 };

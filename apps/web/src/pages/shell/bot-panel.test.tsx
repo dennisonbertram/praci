@@ -387,3 +387,30 @@ describe("BotSettings saving without a Save button", () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 });
+
+describe("BotSettings for a bot just created with New bot", () => {
+  it("shows only the name until More settings is pressed", async () => {
+    await act(async () => {
+      root.render(
+        <BotSettings
+          bot={bot("")}
+          focusName
+          memoryProviderConfigured={false}
+          onSkillsChange={() => undefined}
+          onSave={onSave}
+          onExport={async () => undefined}
+          onClear={() => undefined}
+        />,
+      );
+    });
+    expect(container.querySelector("input")).not.toBeNull();
+    expect(container.querySelector("textarea")).toBeNull();
+    expect(container.querySelector('[data-testid="bot-settings-advanced"]')).toBeNull();
+    const more = [...container.querySelectorAll("button")].find((b) =>
+      b.textContent?.includes("More settings"),
+    );
+    await act(async () => more?.click());
+    expect(container.querySelector("textarea")).not.toBeNull();
+    expect(container.querySelector('[data-testid="bot-settings-advanced"]')).not.toBeNull();
+  });
+});

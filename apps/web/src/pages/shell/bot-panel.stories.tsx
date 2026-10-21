@@ -139,3 +139,9 @@ export const UnknownToolName: Story = {
     await userEvent.type(input, "not_a_tool{Enter}");
   },
 };
+
+/** A bot just made with New bot: only the name until it has replied once. */
+export const NewBotNameOnly: Story = {
+  beforeEach: setup,
+  args: { focusName: true, bot: { ...scoutBot, name: "New Bot" } },
+};

@@ -111,7 +111,7 @@ test("Integrations page fits a phone", async ({ page }, testInfo) => {
   await signup(page, `integrations-phone-${Date.now()}@rakazo.test`, "password12", "Phone");
   await completeOnboarding(page);
   await page.goto("/app/integrations");
-  await expect(page.getByRole("heading", { name: "Apps", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Integrations", level: 1 })).toBeVisible();
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );

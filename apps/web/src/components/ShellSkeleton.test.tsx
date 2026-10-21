@@ -7,12 +7,13 @@ import { afterEach, expect, it, vi } from "vitest";
 
 vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
+  useLingui: () => ({ t: (parts: TemplateStringsArray) => parts.join("") }),
 }));
 vi.mock("@lingui/core/macro", () => ({
   t: (parts: TemplateStringsArray) => parts.join(""),
 }));
 
-import { OPENING_SLOW_MS, OpeningSpace } from "./ShellSkeleton";
+import { OPENING_SLOW_MS, OpeningSpace, ThreadSkeleton } from "./ShellSkeleton";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -34,4 +35,14 @@ it("offers Try again once opening takes longer than the wait, and not before", a
   expect(retry?.textContent).toBe("Try again");
   await act(async () => retry?.click());
   expect(reload).toHaveBeenCalledTimes(1);
+});
+
+it("shows message placeholders while a thread loads", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  await act(async () => createRoot(container).render(<ThreadSkeleton />));
+  expect(container.querySelector('[role="status"]')?.getAttribute("aria-label")).toBe(
+    "Loading messages",
+  );
 });

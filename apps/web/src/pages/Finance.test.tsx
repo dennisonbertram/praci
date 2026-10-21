@@ -675,10 +675,38 @@ it("labels the subscription figures by what they measure", async () => {
   await show("/app/finance");
   await flush();
   const heads = [...container.querySelectorAll("thead th")].map((th) => th.textContent);
-  expect(heads).toContain("Usual per month");
+  expect(heads).toContain("Per month");
   expect(heads).toContain("3-mo change");
   expect(heads).not.toContain("Typical month");
-  expect(container.querySelector('th[title*="vendor page"]')?.textContent).toBe("Usual per month");
+  expect(container.querySelector('th[title*="vendor page"]')?.textContent).toBe("Per month");
+});
+
+it("shows no percentage for a period under a week old, and no red under 10%", async () => {
+  const base = connectedOverview();
+  const week = { ...totals("week", 61_300, 4_700), start: "2026-10-19", end: "2026-10-22" };
+  rpcMock.overview.mockResolvedValue({
+    ...base,
+    spendTotals: {
+      ...base.spendTotals,
+      week: { ...week, previousStart: "2026-10-12", previousEnd: "2026-10-15" },
+    },
+  });
+  await show("/app/finance?period=week");
+  await flush();
+  expect(container.textContent).not.toContain("1204%");
+  expect(container.textContent).not.toMatch(/vs Oct 12/);
+});
+
+it("shows a change under 10% in the neutral colour", async () => {
+  const base = connectedOverview();
+  rpcMock.overview.mockResolvedValue({
+    ...base,
+    spendTotals: { ...base.spendTotals, month: totals("month", 103_000, 100_000) },
+  });
+  await show("/app/finance?period=month");
+  await flush();
+  expect(container.textContent).toContain("↑ 3%");
+  expect(container.querySelector(".text-destructive")?.textContent ?? "").not.toContain("↑ 3%");
 });
 
 it("offers Ask only while the panel is closed", async () => {
@@ -752,7 +780,6 @@ it("labels a vendor page, breadcrumb and back link", async () => {
   await flush();
   expect(rpcMock.vendor).toHaveBeenCalledWith({ key: "acme-hosting" });
   expect(container.querySelector("h1")?.textContent).toBe("Acme Hosting");
-  expect(container.querySelector("nav")?.textContent).toContain("Subscriptions");
   expect(container.querySelector('a[href="/app/finance#subscriptions"]')?.textContent).toContain(
     "Subscriptions",
   );
@@ -1227,7 +1254,7 @@ it("sends Back from a vendor opened in Breakdown to the Breakdown card", async (
   // Opened from Breakdown, although the vendor is also a subscription.
   const back = container.querySelector('a[href="/app/finance?by=vendor#breakdown"]');
   expect(back?.textContent).toContain("Breakdown");
-  expect(container.querySelector("nav")?.textContent).not.toContain("Subscriptions");
+  expect(back?.textContent).not.toContain("Subscriptions");
   expect(container.textContent).toContain("Last 3 full months");
   // Back reopens Breakdown in Vendor mode.
   Element.prototype.scrollIntoView = vi.fn();
@@ -1272,7 +1299,7 @@ it("keeps the vendor's Breakdown origin after opening one of its charges and com
   expect(
     container.querySelector('a[href="/app/finance?by=vendor#breakdown"]')?.textContent,
   ).toContain("Breakdown");
-  expect(container.querySelector("nav")?.textContent).not.toContain("Subscriptions");
+  expect(container.textContent).not.toContain("← Subscriptions");
 });
 
 it("leaves no empty crumb and no guessed origin on a missing vendor", async () => {

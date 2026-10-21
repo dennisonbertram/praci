@@ -13,19 +13,23 @@ import { strToU8, zipSync } from "fflate";
 import type { DataRoomAi } from "./data-room-models.js";
 
 /**
- * A one-page PDF whose text layer holds `text` (ASCII, no parentheses or backslashes), wrapped at
+ * A PDF (one page unless `pageCount` says more, each with the same text) whose text layer holds `text` (ASCII, no parentheses or backslashes), wrapped at
  * about 80 characters: a PDF reader drops text that runs past the page edge.
  */
-export function makePdf(text: string): Uint8Array {
+export function makePdf(text: string, pageCount = 1): Uint8Array {
   const lines = text.match(/\S.{0,79}(?=\s|$)|\S{80}/g) ?? [];
   const shown = lines.map((line) => `(${line.trim()}) Tj T*`).join(" ");
   const stream = `BT /F1 12 Tf 14 TL 72 720 Td ${shown} ET`;
+  // Objects 1-3 are the catalog, page tree and font; each page is a page object and its stream.
+  const pageIds = Array.from({ length: pageCount }, (_, i) => 4 + 2 * i);
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
-    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
-    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+    `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageCount} >>`,
     "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ...pageIds.flatMap((id) => [
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents ${id + 1} 0 R /Resources << /Font << /F1 3 0 R >> >> >>`,
+      `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+    ]),
   ];
   let pdf = "%PDF-1.4\n";
   const offsets = objects.map((body, i) => {
