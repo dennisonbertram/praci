@@ -1503,6 +1503,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
           include: { computer: true },
         });
         const voiceAgent = isVoiceAgentSpawnKey(bot.spawnKey);
+        const companyAgent = isCompanyAgentSpawnKey(bot.spawnKey);
+        const companyImporter = isCompanyImporterSpawnKey(bot.spawnKey);
         // The owner's zone: shown in the per-turn time line and the default for new schedules.
         const userTimezone = await loadUserTimezone(deps.prisma, run.userId);
         const [
@@ -1549,7 +1551,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
           deps.prisma.deploymentSettings.findUnique({
             where: { id: "default" },
           }),
-          deps.memoryProviders.resolve(run.spaceId),
+          companyAgent || companyImporter
+            ? Promise.resolve(null)
+            : deps.memoryProviders.resolve(run.spaceId),
           deps.prisma.taughtSkill.findMany({
             where: { botId: run.botId, spaceId: run.spaceId, status: "saved" },
           }),
@@ -1773,8 +1777,6 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // 89s run), so it gets none of them and skips the discovery calls.
         const mailOnly = isMailAgentSpawnKey(bot.spawnKey);
         const gtmAgent = isGtmAgentSpawnKey(bot.spawnKey);
-        const companyAgent = isCompanyAgentSpawnKey(bot.spawnKey);
-        const companyImporter = isCompanyImporterSpawnKey(bot.spawnKey);
         // The Finance agent reads synced finance data through finance_* tools, with its Mercury and
         // Brex MCP tools for details. Composio and the other connectors only slow it down.
         // The Carta agent likewise uses only MCP tools (Carta) plus the built-in mail, drive and
@@ -2069,6 +2071,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
           !voiceAgent &&
           !restrictedContext &&
           !meetingTaint &&
+          !companyAgent &&
+          !companyImporter &&
           threadContext.includeSemanticRecall &&
           semanticMemory &&
           memoryScope &&
@@ -2094,10 +2098,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
         ] = await Promise.all([
           discoveredPromise,
           loadCurrentTurnImages(deps, turnBlocks, context),
-          messagingChannelRun || voiceAgent || restrictedContext
+          messagingChannelRun || voiceAgent || restrictedContext || companyAgent || companyImporter
             ? Promise.resolve("")
             : loadAgentMemoryContext(deps.memory, bot.id, context),
-          messagingChannelRun || voiceAgent
+          messagingChannelRun || voiceAgent || companyAgent || companyImporter
             ? Promise.resolve("")
             : loadAgentScratchpadContext(deps, {
                 spaceId: run.spaceId,
@@ -2106,6 +2110,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
               }),
           messagingChannelRun ||
           restrictedContext ||
+          companyAgent ||
+          companyImporter ||
           !deps.ticketBoardEnabled ||
           (voiceAgent && !voiceWorkspaceReadAllowed)
             ? Promise.resolve(undefined)
@@ -2116,7 +2122,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
           recallPromise,
         ]);
         const semanticMemoryEnabled =
-          Boolean(semanticMemory) && !messagingChannelRun && !voiceAgent;
+          Boolean(semanticMemory) &&
+          !messagingChannelRun &&
+          !voiceAgent &&
+          !companyAgent &&
+          !companyImporter;
         let recalledMemory = "";
         let recallSucceeded = false;
         if (recalled) {
@@ -2228,18 +2238,21 @@ export function createRunExecutor(deps: ExecutorDeps) {
           return;
         }
         runSecrets.push(...resolved.redact);
+        let effectiveRunModel = {
+          provider: runModelProvider,
+          id: runModelId,
+          baseUrl: resolved.baseUrl,
+          apiKey: resolved.apiKey,
+        };
+        const resolvedFallbackModels = new Map<string, AgentRunRequest["model"]>();
+        let companyReadUsed = false;
         // Data Room consent for the model this run actually uses. Read on every use, so a revoked
         // consent applies at once.
         const legalRunAi = () =>
           resolveDataRoomAi(
             {
               prisma: deps.prisma,
-              resolveModel: async () => ({
-                provider: runModelProvider,
-                id: runModelId,
-                baseUrl: resolved.baseUrl,
-                apiKey: resolved.apiKey,
-              }),
+              resolveModel: async () => effectiveRunModel,
             },
             { spaceId: run.spaceId, userId: bot.userId },
           );
@@ -3302,10 +3315,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
           ) {
             return { error: "Company changes require a direct owner-started foreground run." };
           }
-          if (
-            (name === "company_fact_upsert" || name === "company_import_start") &&
-            !("proposal" in args && "snapshot" in args)
-          ) {
+          const companyApprovalTool =
+            name === "company_fact_upsert" || name === "company_import_start";
+          const companyApprovalReplay =
+            companyApprovalTool &&
+            approvedEffectReplays.nextToolName() === name &&
+            approvedEffectReplays.nextRequest() !== undefined;
+          if (companyApprovalTool && !companyApprovalReplay) {
             const companyImport = deps.companyImport?.();
             if (name === "company_import_start" && !companyImport) {
               return { error: "Company import services are not configured for this process." };
@@ -3537,6 +3553,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               // still matches the first-approval effect key and execute payload.
               args = approvedReplayArgs(approvedRequest, args, CATALOG_APPROVAL_TOOL);
             }
+            if (companyApprovalTool) effectRequest = args;
             // Bound / shrink-direct approvals may skip catalog parse — reject before execute
             // if they no longer match the live schema.
             if (
@@ -4267,6 +4284,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
               args,
               { approvedByCard, effectKey },
             );
+            if (
+              (COMPANY_READ_TOOLS as readonly string[]).includes(name) &&
+              !("error" in result) &&
+              !("consentRequired" in result)
+            ) {
+              companyReadUsed = true;
+            }
             return finish(result);
           }
           const appendComputerCommand = (payload: ComputerCommand) =>
@@ -6685,7 +6709,14 @@ export function createRunExecutor(deps: ExecutorDeps) {
         let fallbackModels: { provider: string; modelId: string }[] = [];
         // Backup models would receive the Legal agent's history under a consent given for another
         // recipient, so the Legal agent has none. A meeting-source agent has none for the same reason.
-        if (!scripted && !legalOnly && !meetingAgent && !meetingTaint) {
+        if (
+          !scripted &&
+          !legalOnly &&
+          !meetingAgent &&
+          !meetingTaint &&
+          !companyAgent &&
+          !companyImporter
+        ) {
           try {
             fallbackModels = await deps.prisma.spaceBackupModel.findMany({
               where: { userId: run.userId, spaceId: run.spaceId },
@@ -6819,13 +6850,23 @@ export function createRunExecutor(deps: ExecutorDeps) {
                     const key = JSON.stringify([provider, modelId]);
                     if (meetingMarkedMidRun || !fallbackModelKeys.has(key))
                       throw new Error("Backup model is not selected");
-                    return resolveConnectedModel(
+                    const fallbackModel = await resolveConnectedModel(
                       { userId: run.userId, spaceId: run.spaceId },
                       provider,
                       modelId,
                       (values) => runSecrets.push(...values),
                       true,
                     );
+                    if (companyReadUsed) {
+                      const consent = await resolveDataRoomAi(
+                        { prisma: deps.prisma, resolveModel: async () => fallbackModel },
+                        { spaceId: run.spaceId, userId: bot.userId },
+                      );
+                      if (!consent.allowed)
+                        throw new Error("Data Room consent is required for the backup model.");
+                    }
+                    resolvedFallbackModels.set(key, fallbackModel);
+                    return fallbackModel;
                   }
                 : undefined,
               beforeModelRequest: async () => {
@@ -6841,11 +6882,21 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 void phases.write({ kind: "retrying", name: reason });
               },
               onModelChange: async (provider, modelId) => {
-                if (
-                  meetingMarkedMidRun ||
-                  !fallbackModelKeys.has(JSON.stringify([provider, modelId]))
-                ) {
+                const key = JSON.stringify([provider, modelId]);
+                if (meetingMarkedMidRun || !fallbackModelKeys.has(key)) {
                   throw new Error("Backup model is not selected");
+                }
+                const fallbackModel = resolvedFallbackModels.get(key);
+                if (!fallbackModel) {
+                  throw new Error("Backup model was not resolved before it was selected");
+                }
+                if (companyReadUsed) {
+                  const consent = await resolveDataRoomAi(
+                    { prisma: deps.prisma, resolveModel: async () => fallbackModel },
+                    { spaceId: run.spaceId, userId: bot.userId },
+                  );
+                  if (!consent.allowed)
+                    throw new Error("Data Room consent is required for the backup model.");
                 }
                 const updated = await deps.prisma.run.updateMany({
                   where: {
@@ -6859,6 +6910,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 if (updated.count !== 1) {
                   throw new Error("Run lease was lost before the backup model could be used");
                 }
+                effectiveRunModel = {
+                  provider: fallbackModel.provider,
+                  id: fallbackModel.id,
+                  baseUrl: fallbackModel.baseUrl,
+                  apiKey: fallbackModel.apiKey,
+                };
               },
               resumeFromCheckpoint: takeoverResume?.checkpoint,
               script,

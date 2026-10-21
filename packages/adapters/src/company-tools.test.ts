@@ -328,6 +328,41 @@ describe("Company tools", () => {
     });
   });
 
+  it.each([
+    ["budget_reached", true],
+    ["paused", false],
+  ])("handles resume for an import with %s status", async (status, budgetReached) => {
+    const progress = vi.fn(async () => ({ status }));
+    const action = vi.fn(async () => ({ status: "running" }));
+    const result = await companyToolFromTool(
+      {
+        prisma: {} as PrismaClient,
+        actor,
+        ownerRun: true,
+        companyAgent: false,
+        importer: true,
+        dataRoomAllowed: async () => false,
+        companyImport: { progress, action } as never,
+      },
+      "company_import_resume",
+      { runId: "import-1" },
+    );
+
+    expect(progress).toHaveBeenCalledExactlyOnceWith(actor, "import-1");
+    if (budgetReached) {
+      expect(result).toMatchObject({
+        untrusted: true,
+        budgetRequired: true,
+        link: "/app/company/import",
+      });
+      expect(result.message).toContain("Raise the token cap");
+      expect(action).not.toHaveBeenCalled();
+    } else {
+      expect(action).toHaveBeenCalledExactlyOnceWith(actor, "import-1", "resume");
+      expect(result).toEqual({ untrusted: true, progress: { status: "running" } });
+    }
+  });
+
   it("rejects caller-supplied scope, visibility, and review fields", () => {
     expect(CompanySearchInputSchema.safeParse({ text: "Acme", ownerUserId: "other" }).success).toBe(
       false,

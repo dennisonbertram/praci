@@ -615,6 +615,17 @@ export async function companyToolFromTool(
       if (!deps.importer || !deps.companyImport)
         return { error: "Only the Company importer can control import runs." };
       const { runId } = CompanyImportActionToolInputSchema.parse(raw);
+      if (selectedAction === "resume") {
+        const progress = await deps.companyImport.progress(deps.actor, runId);
+        if (progress.status === "budget_reached") {
+          return {
+            untrusted: true,
+            budgetRequired: true,
+            link: companyImportPage,
+            message: `The import budget is exhausted. Raise the token cap on ${companyImportPage} before resuming.`,
+          };
+        }
+      }
       return {
         untrusted: true,
         progress: await deps.companyImport.action(deps.actor, runId, selectedAction),

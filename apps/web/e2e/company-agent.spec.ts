@@ -38,3 +38,42 @@ test("Company pages open their separate durable restricted agents", async ({ pag
   ).toBeVisible();
   expect((await rpc<Bot>(page, "company/agent", {})).id).toBe(first.id);
 });
+
+test("Company route changes can create the other agent while creation is pending", async ({
+  page,
+}) => {
+  await signup(page, `company-race-${Date.now()}@rakazo.test`, "password12", "Company Owner");
+  await completeOnboarding(page);
+  let releaseCreation!: () => void;
+  const held = new Promise<void>((resolve) => {
+    releaseCreation = resolve;
+  });
+  let startedCreation!: () => void;
+  const started = new Promise<void>((resolve) => {
+    startedCreation = resolve;
+  });
+  await page.route("**/rpc/company/agent", async (route) => {
+    startedCreation();
+    await held;
+    await route.continue();
+  });
+  try {
+    await page.goto("/app/company");
+    await page.getByRole("button", { name: "Ask Company agent", exact: true }).click();
+    await started;
+    await page.getByRole("link", { name: "Import", exact: true }).click();
+    await page.getByRole("button", { name: "Ask Company importer", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Open Company importer full screen" }),
+    ).toBeVisible();
+    releaseCreation();
+    await page.getByRole("link", { name: "Company", exact: true }).click();
+    await page.getByRole("button", { name: "Ask Company agent", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Open Company agent full screen" }),
+    ).toBeVisible();
+    await expect(page.getByTestId("company-importer-panel")).toHaveCount(0);
+  } finally {
+    releaseCreation();
+  }
+});

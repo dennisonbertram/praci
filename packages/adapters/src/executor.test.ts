@@ -19,6 +19,7 @@ import {
 } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
+import { resolveDataRoomAi } from "./data-room-models.js";
 import {
   appendToolCompletionAudit,
   createRunExecutor,
@@ -52,6 +53,12 @@ import { UnavailableModelForAuthError } from "./model-selection.js";
 import { RetiredModelCredentialError, serializeModelSecret } from "./pi-oauth.js";
 
 const gtmAgentBuiltinToolSet = new Set<string>(GTM_AGENT_BUILTIN_TOOLS);
+
+const companyStoreMock = vi.hoisted(() => ({ current: null as unknown }));
+vi.mock("@rakazo/db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@rakazo/db")>()),
+  companyForActor: vi.fn(() => companyStoreMock.current),
+}));
 
 describe("bot tool permissions", () => {
   it("never lets self-edit change disabled tools alongside an allowed field", () => {
@@ -127,13 +134,37 @@ async function runIdentityExecutor({
   trigger = "user",
   groupId = null,
   calls = [],
+  callBatches,
   autoReview,
+  companyImport,
+  resumeApprovedEffect = false,
+  backupModel,
+  selectBackup = false,
+  callsAfterBackup = [],
+  consentedRecipientKeys,
+  ambientContext = false,
+  ticketBoardEnabled = false,
+  taskPrompt = ambientContext ? "Follow up on SYN-42" : "Synthetic request",
 }: {
   spawnKey: string | null;
   trigger?: string;
   groupId?: string | null;
   calls?: Array<{ name: string; args: Record<string, unknown> }>;
+  callBatches?: Array<Array<{ name: string; args: Record<string, unknown> }>>;
   autoReview?: { review: ReturnType<typeof vi.fn> };
+  companyImport?: {
+    run: Record<string, unknown>;
+    engine: Record<string, unknown>;
+    mutateBeforeResume?: () => void;
+  };
+  resumeApprovedEffect?: boolean;
+  backupModel?: { provider: string; modelId: string };
+  selectBackup?: boolean;
+  callsAfterBackup?: Array<{ name: string; args: Record<string, unknown> }>;
+  consentedRecipientKeys?: string[];
+  ambientContext?: boolean;
+  ticketBoardEnabled?: boolean;
+  taskPrompt?: string;
 }) {
   const run = {
     id: "run-1",
@@ -148,21 +179,59 @@ async function runIdentityExecutor({
   };
   let request: AgentRunRequest | undefined;
   const toolResults: Array<{ name: string; result: unknown }> = [];
+  const effectRows: Array<Record<string, unknown>> = [];
+  const fallbackAttempts: Array<{ ok: boolean; value?: unknown; error?: unknown }> = [];
+  const matchesEffectWhere = (row: Record<string, unknown>, where: Record<string, unknown> = {}) =>
+    Object.entries(where).every(([key, value]) => {
+      if (value && typeof value === "object" && "not" in value) {
+        return row[key] !== (value as { not: unknown }).not;
+      }
+      return row[key] === value;
+    });
+  let runtimeRunCount = 0;
   const runtimeRun = vi.fn(async function* (next: AgentRunRequest) {
     request = next;
-    for (const [index, call] of calls.entries()) {
+    const currentCalls = callBatches?.[runtimeRunCount] ?? calls;
+    runtimeRunCount += 1;
+    for (const [index, call] of currentCalls.entries()) {
       if (!next.executeTool) throw new Error("Runtime tool executor was not provided.");
       toolResults.push({
         name: call.name,
         result: await next.executeTool(call.name, call.args, `forged-${index}`),
       });
     }
+    if (backupModel) {
+      try {
+        if (!next.resolveFallbackModel) throw new Error("Backup resolver is missing");
+        const resolved = await next.resolveFallbackModel(backupModel.provider, backupModel.modelId);
+        fallbackAttempts.push({ ok: true, value: resolved });
+        if (selectBackup) {
+          await (
+            next as AgentRunRequest & {
+              onModelChange?: (provider: string, modelId: string) => Promise<void>;
+            }
+          ).onModelChange?.(backupModel.provider, backupModel.modelId);
+          for (const [index, call] of callsAfterBackup.entries()) {
+            if (!next.executeTool) throw new Error("Runtime tool executor was not provided.");
+            toolResults.push({
+              name: call.name,
+              result: await next.executeTool(call.name, call.args, `after-backup-${index}`),
+            });
+          }
+        }
+      } catch (error) {
+        fallbackAttempts.push({ ok: false, error });
+      }
+    }
     yield { type: "done" as const, text: "Done" };
   });
   const pauseRunForInput = vi.fn(
     async (_input: {
       blocks: Array<{ kind: string; actions?: Array<{ id: string; label: string }> }>;
-    }) => true,
+    }) => {
+      run.status = "waiting_input";
+      return true;
+    },
   );
   const finalizeRun = vi.fn(async () => ({ continuationRunId: null }));
   const mailSend = vi.fn(async () => []);
@@ -170,6 +239,40 @@ async function runIdentityExecutor({
   const connectorCall = vi.fn(async function* () {
     yield { type: "result" as const, data: {} };
   });
+  const memoryRead = vi.fn(async () => ({
+    documents: ambientContext
+      ? [
+          {
+            path: "synthetic-private-memory",
+            content: "DURABLE_MEMORY_PRIVATE_MARKER",
+            revision: 1,
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          },
+        ]
+      : [],
+  }));
+  const semanticRecall = vi.fn(async () => ({
+    ok: true as const,
+    value: [{ id: "memory-1", memory: "SEMANTIC_RECALL_PRIVATE_MARKER" }],
+  }));
+  const memoryProviderResolve = vi.fn(async () =>
+    ambientContext ? { provider: { recall: semanticRecall }, defaultScope: "user" as const } : null,
+  );
+  const scratchpadFindMany = vi.fn(async () =>
+    ambientContext
+      ? [
+          {
+            id: "scratchpad-1",
+            botId: run.botId,
+            title: "SCRATCHPAD_PRIVATE_MARKER",
+            status: "open",
+            notes: "Private synthetic note",
+            createdAt: new Date(0),
+            updatedAt: new Date(0),
+          },
+        ]
+      : [],
+  );
   const prisma = {
     user: { findUnique: vi.fn(async () => ({ timezone: null })) },
     run: {
@@ -210,7 +313,7 @@ async function runIdentityExecutor({
         id: run.threadId,
         groupId,
         historyCompactionSummary: null,
-        historyCompactedUpToSeq: null,
+        historyCompactedUpToSeq: ambientContext ? 1 : null,
         nextMessageSeq: 3,
       })),
     },
@@ -223,7 +326,7 @@ async function runIdentityExecutor({
           seq: 1,
           role: "user",
           runId: run.id,
-          blocks: [{ kind: "text", text: "Synthetic request" }],
+          blocks: [{ kind: "text", text: taskPrompt }],
           replyToMessageId: null,
           replyQuote: null,
           replyTo: null,
@@ -232,7 +335,7 @@ async function runIdentityExecutor({
       findUnique: vi.fn(async () => null),
     },
     task: {
-      findUniqueOrThrow: vi.fn(async () => ({ id: run.taskId, prompt: "Synthetic request" })),
+      findUniqueOrThrow: vi.fn(async () => ({ id: run.taskId, prompt: taskPrompt })),
     },
     computer: {
       findUniqueOrThrow: vi.fn(async () => ({
@@ -249,32 +352,134 @@ async function runIdentityExecutor({
       updateMany: vi.fn(async () => ({ count: 1 })),
     },
     connection: { findMany: vi.fn(async () => []), findFirst: vi.fn(async () => null) },
-    spaceModelPreference: { findFirst: vi.fn(async () => null) },
-    secret: { findFirst: vi.fn(async () => null) },
+    spaceModelPreference: {
+      findFirst: vi.fn(
+        async (args: {
+          where?: { credential?: { provider?: string }; modelId?: string; isDefault?: boolean };
+          select?: { embeddingModel?: boolean };
+        }) => {
+          if (backupModel && args.where?.credential?.provider === backupModel.provider) {
+            return {
+              modelId: backupModel.modelId,
+              isDefault: false,
+              thinkingLevel: null,
+              credential: {
+                id: "backup-credential",
+                userId: run.userId,
+                provider: backupModel.provider,
+                label: "Synthetic backup",
+                secretId: "backup-secret",
+                createdAt: new Date(0),
+                updatedAt: new Date(0),
+              },
+            };
+          }
+          if (args.select?.embeddingModel) return { embeddingModel: null };
+          return null;
+        },
+      ),
+    },
+    secret: {
+      findFirst: vi.fn(async ({ where }: { where?: { id?: string } } = {}) =>
+        backupModel && where?.id === "backup-secret"
+          ? { id: "backup-secret", ciphertext: "synthetic-backup-secret" }
+          : null,
+      ),
+    },
     userModelCredential: { findFirst: vi.fn(async () => null) },
-    spaceBackupModel: { findMany: vi.fn(async () => []) },
+    spaceBackupModel: {
+      findMany: vi.fn(async () =>
+        backupModel ? [{ provider: backupModel.provider, modelId: backupModel.modelId }] : [],
+      ),
+    },
     deploymentSettings: {
       findUnique: vi.fn(async () => ({
         defaultModelProvider: "openrouter",
         defaultModelId: "openai/gpt-4o",
       })),
     },
-    aiDataConsent: { findFirst: vi.fn(async () => ({ userId: run.userId })) },
+    aiDataConsent: {
+      findFirst: vi.fn(async ({ where }: { where?: { recipientKey?: string } } = {}) =>
+        !consentedRecipientKeys || consentedRecipientKeys.includes(where?.recipientKey ?? "")
+          ? { userId: run.userId }
+          : null,
+      ),
+    },
     taughtSkill: { findMany: vi.fn(async () => []) },
     agentSecret: { findMany: vi.fn(async () => []) },
     botSecret: { findMany: vi.fn(async () => []) },
     agentSkill: { findMany: vi.fn(async () => []) },
     botSkillSetting: { findMany: vi.fn(async () => []) },
-    scratchpadItem: { findMany: vi.fn(async () => []) },
+    scratchpadItem: { findMany: scratchpadFindMany },
+    board: {
+      findUnique: vi.fn(async () =>
+        ambientContext ? { id: "board-1", ticketPrefix: "SYN" } : null,
+      ),
+    },
+    ticket: {
+      findMany: vi.fn(async () =>
+        ambientContext
+          ? [
+              {
+                id: "ticket-1",
+                number: 42,
+                title: "TICKET_CONTEXT_PRIVATE_MARKER",
+                status: "open",
+                assigneeBotId: null,
+              },
+            ]
+          : [],
+      ),
+    },
+    ticketComment: {
+      findMany: vi.fn(async () =>
+        ambientContext ? [{ ticketId: "ticket-1", body: "TICKET_COMMENT_PRIVATE_MARKER" }] : [],
+      ),
+    },
+    companyImportRun: {
+      findFirst: vi.fn(async () => companyImport?.run ?? null),
+    },
     externalEffect: {
-      findMany: vi.fn(async () => []),
-      findUnique: vi.fn(async () => null),
-      create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({
-        id: "effect-1",
-        ...data,
-      })),
-      update: vi.fn(async () => undefined),
-      updateMany: vi.fn(async () => ({ count: 1 })),
+      findMany: vi.fn(async ({ where }: { where?: Record<string, unknown> } = {}) => {
+        const rows = effectRows.filter((row) => matchesEffectWhere(row, where));
+        return rows;
+      }),
+      findUnique: vi.fn(
+        async ({ where }: { where?: { id?: string; idempotencyKey?: string } } = {}) =>
+          effectRows.find(
+            (row) => row.id === where?.id || row.idempotencyKey === where?.idempotencyKey,
+          ) ?? null,
+      ),
+      create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        const row = {
+          id: `effect-${effectRows.length + 1}`,
+          status: "pending",
+          ...data,
+          request: structuredClone(data.request),
+        };
+        effectRows.push(row);
+        return row;
+      }),
+      update: vi.fn(
+        async ({ where, data }: { where?: { id?: string }; data?: Record<string, unknown> }) => {
+          const row = effectRows.find((effect) => effect.id === where?.id);
+          if (row && data) Object.assign(row, data);
+          return row;
+        },
+      ),
+      updateMany: vi.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where?: Record<string, unknown>;
+          data?: Record<string, unknown>;
+        } = {}) => {
+          const matching = effectRows.filter((row) => matchesEffectWhere(row, where));
+          for (const row of matching) if (data) Object.assign(row, data);
+          return { count: matching.length || 1 };
+        },
+      ),
     },
     artifact: { findMany: vi.fn(async () => []) },
     actionApprovalRule: { findMany: vi.fn(async () => []) },
@@ -305,8 +510,8 @@ async function runIdentityExecutor({
       },
     },
     home: { commit: vi.fn(async () => "fixture-revision") },
-    memory: { read: vi.fn(async () => ({ documents: [] })) },
-    memoryProviders: { resolve: vi.fn(async () => null) },
+    memory: { read: memoryRead },
+    memoryProviders: { resolve: memoryProviderResolve },
     artifacts: { get: vi.fn(async () => new Uint8Array()) },
     events: {
       append: vi.fn(async () => undefined),
@@ -314,10 +519,21 @@ async function runIdentityExecutor({
       pauseRunForInput,
     },
     jobs: { enqueue: vi.fn(async () => undefined) },
+    companyImport: companyImport ? () => companyImport.engine : undefined,
     autoReview,
+    secretStore: { load: vi.fn(async () => "synthetic-backup-secret"), put: vi.fn() },
+    ticketBoardEnabled,
     secrets: [],
   } as unknown as Parameters<typeof createRunExecutor>[0]);
   await executor.continueRun(run.id, "worker-1");
+  if (resumeApprovedEffect) {
+    const approved = effectRows.find((effect) => effect.kind === "company_import_start");
+    if (!approved) throw new Error("Company import approval was not persisted.");
+    approved.status = "approved";
+    companyImport?.mutateBeforeResume?.();
+    run.status = "queued";
+    await executor.continueRun(run.id, "worker-1");
+  }
   return {
     request,
     toolResults,
@@ -327,6 +543,87 @@ async function runIdentityExecutor({
     mailSend,
     connectorCall,
     webFetch,
+    effectRows,
+    fallbackAttempts,
+    prisma,
+    memoryRead,
+    memoryProviderResolve,
+    semanticRecall,
+    scratchpadFindMany,
+  };
+}
+
+async function dataRoomConsentKey(provider: string, id: string) {
+  const ai = await resolveDataRoomAi(
+    {
+      prisma: {
+        spaceModelPreference: { findFirst: async () => null },
+        aiDataConsent: { findFirst: async () => null },
+      },
+      resolveModel: async () => ({ provider, id, apiKey: "synthetic-key" }),
+    } as never,
+    { userId: "user-1", spaceId: "space-1" },
+  );
+  return ai.consentKey;
+}
+
+function setCompanySearchStore() {
+  companyStoreMock.current = {
+    list: vi.fn(async () => [
+      {
+        id: "company-person-1",
+        kind: "person",
+        displayName: "Synthetic Example",
+        attrs: {},
+        confidence: 0.9,
+        status: "suggested",
+        visibility: "private",
+        evidence: [],
+        identities: [],
+        mergedFrom: [],
+        edges: [],
+        events: [],
+      },
+      {
+        id: "company-data-room-person",
+        kind: "person",
+        displayName: "Synthetic Private Example",
+        attrs: {},
+        confidence: 0.9,
+        status: "suggested",
+        visibility: "private",
+        evidence: [
+          {
+            id: "company-data-room-evidence",
+            factKind: "entity",
+            factId: "company-data-room-person",
+            stance: "supports",
+            sourceKind: "data_room",
+            connectionId: null,
+            mcpServerId: null,
+            dataRoomItemId: "synthetic-item",
+            sourceItemId: "synthetic-source",
+            sourceKey: "synthetic-source-key",
+            sourceUrl: null,
+            quote: "Synthetic private evidence",
+            contentHash: "synthetic-content-hash",
+            extractedAt: "2026-01-01T00:00:00.000Z",
+            extractorRunId: null,
+            extractorModel: null,
+            confidence: 0.9,
+            confirmedByUserId: null,
+            confirmedAt: null,
+          },
+        ],
+        identities: [],
+        mergedFrom: [],
+        edges: [],
+        events: [],
+      },
+    ]),
+    listEdges: vi.fn(async () => []),
+    listEvents: vi.fn(async () => []),
+    teamFacts: vi.fn(async () => ({ entities: [], edges: [], events: [] })),
   };
 }
 
@@ -369,6 +666,169 @@ describe("Company identity executor boundaries", () => {
     expect(
       [...request!.subagentToolNames!].some((name) => COMPANY_READ_TOOLS.includes(name as never)),
     ).toBe(false);
+  });
+
+  it.each([
+    ["Company agent", companyAgentSpawnKey("user-1")],
+    ["Company importer", companyImporterSpawnKey("user-1")],
+  ])("%s receives no configured backup models", async (_label, spawnKey) => {
+    const { request, prisma } = await runIdentityExecutor({
+      spawnKey,
+      backupModel: { provider: "openai", modelId: "gpt-4o" },
+    });
+
+    expect(request?.fallbackModels).toEqual([]);
+    expect(request?.resolveFallbackModel).toBeUndefined();
+    expect(prisma.spaceBackupModel.findMany).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["Company agent", companyAgentSpawnKey("user-1")],
+    ["Company importer", companyImporterSpawnKey("user-1")],
+  ])("%s receives no ambient private context", async (_label, spawnKey) => {
+    const {
+      request,
+      memoryRead,
+      memoryProviderResolve,
+      semanticRecall,
+      scratchpadFindMany,
+      prisma,
+    } = await runIdentityExecutor({
+      spawnKey,
+      ambientContext: true,
+      ticketBoardEnabled: true,
+    });
+    const serialized = JSON.stringify(request);
+
+    for (const marker of [
+      "DURABLE_MEMORY_PRIVATE_MARKER",
+      "SEMANTIC_RECALL_PRIVATE_MARKER",
+      "SCRATCHPAD_PRIVATE_MARKER",
+      "TICKET_CONTEXT_PRIVATE_MARKER",
+      "TICKET_COMMENT_PRIVATE_MARKER",
+    ]) {
+      expect(serialized).not.toContain(marker);
+    }
+    expect(memoryProviderResolve).not.toHaveBeenCalled();
+    expect(semanticRecall).not.toHaveBeenCalled();
+    expect(memoryRead).not.toHaveBeenCalled();
+    expect(scratchpadFindMany).not.toHaveBeenCalled();
+    expect(prisma.board.findUnique).not.toHaveBeenCalled();
+    expect(prisma.ticket.findMany).not.toHaveBeenCalled();
+    expect(prisma.ticketComment.findMany).not.toHaveBeenCalled();
+  });
+
+  it("preserves ordinary-agent memory, scratchpad, ticket, and semantic context", async () => {
+    const {
+      request,
+      memoryRead,
+      memoryProviderResolve,
+      semanticRecall,
+      scratchpadFindMany,
+      prisma,
+    } = await runIdentityExecutor({
+      spawnKey: null,
+      ambientContext: true,
+      ticketBoardEnabled: true,
+    });
+    const serialized = JSON.stringify(request);
+
+    for (const marker of [
+      "DURABLE_MEMORY_PRIVATE_MARKER",
+      "SEMANTIC_RECALL_PRIVATE_MARKER",
+      "SCRATCHPAD_PRIVATE_MARKER",
+      "TICKET_CONTEXT_PRIVATE_MARKER",
+      "TICKET_COMMENT_PRIVATE_MARKER",
+    ]) {
+      expect(serialized).toContain(marker);
+    }
+    expect(memoryProviderResolve).toHaveBeenCalledOnce();
+    expect(semanticRecall).toHaveBeenCalledOnce();
+    expect(memoryRead).toHaveBeenCalledTimes(2);
+    expect(scratchpadFindMany).toHaveBeenCalledOnce();
+    expect(prisma.board.findUnique).toHaveBeenCalledOnce();
+    expect(prisma.ticket.findMany).toHaveBeenCalledOnce();
+    expect(prisma.ticketComment.findMany).toHaveBeenCalledOnce();
+  });
+
+  it("refuses an unconsented fallback after a successful Company read", async () => {
+    const primaryConsent = await dataRoomConsentKey("openrouter", "openai/gpt-4o");
+    const backup = { provider: "openai", modelId: "gpt-4o" };
+    const backupConsent = await dataRoomConsentKey(backup.provider, backup.modelId);
+    setCompanySearchStore();
+
+    const { toolResults, fallbackAttempts, prisma } = await runIdentityExecutor({
+      spawnKey: null,
+      backupModel: backup,
+      consentedRecipientKeys: [primaryConsent],
+      calls: [{ name: "company_search", args: { text: "Synthetic Example" } }],
+    });
+
+    expect(toolResults[0]?.result).toMatchObject({ untrusted: true });
+    expect(fallbackAttempts[0]?.ok).toBe(false);
+    expect(fallbackAttempts[0]?.error).toMatchObject({
+      message: "Data Room consent is required for the backup model.",
+    });
+    expect(
+      prisma.aiDataConsent.findFirst.mock.calls.map(([args]) => args?.where?.recipientKey),
+    ).toEqual([primaryConsent, backupConsent]);
+  });
+
+  it("uses a consented fallback recipient for later Company reads", async () => {
+    const primaryConsent = await dataRoomConsentKey("openrouter", "openai/gpt-4o");
+    const backup = { provider: "openai", modelId: "gpt-4o" };
+    const backupConsent = await dataRoomConsentKey(backup.provider, backup.modelId);
+    setCompanySearchStore();
+
+    const { toolResults, fallbackAttempts, prisma } = await runIdentityExecutor({
+      spawnKey: null,
+      backupModel: backup,
+      selectBackup: true,
+      calls: [{ name: "company_search", args: { text: "Synthetic Example" } }],
+      callsAfterBackup: [{ name: "company_search", args: { text: "Synthetic Example" } }],
+      consentedRecipientKeys: [primaryConsent, backupConsent],
+    });
+
+    expect(fallbackAttempts[0]?.ok).toBe(true);
+    expect(toolResults).toHaveLength(2);
+    expect(toolResults.every(({ result }) => (result as { untrusted?: boolean }).untrusted)).toBe(
+      true,
+    );
+    expect(
+      prisma.aiDataConsent.findFirst.mock.calls.map(([args]) => args?.where?.recipientKey),
+    ).toEqual([primaryConsent, backupConsent, backupConsent, backupConsent]);
+    expect(prisma.run.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { modelProvider: backup.provider, modelId: backup.modelId },
+      }),
+    );
+  });
+
+  it("allows ordinary fallback before Company reads and checks the selected recipient", async () => {
+    const backup = { provider: "openai", modelId: "gpt-4o" };
+    const backupConsent = await dataRoomConsentKey(backup.provider, backup.modelId);
+    setCompanySearchStore();
+
+    const { toolResults, fallbackAttempts, prisma } = await runIdentityExecutor({
+      spawnKey: null,
+      backupModel: backup,
+      selectBackup: true,
+      callsAfterBackup: [{ name: "company_search", args: { text: "Synthetic Example" } }],
+      consentedRecipientKeys: [],
+    });
+
+    expect(fallbackAttempts[0]?.ok).toBe(true);
+    const searchResult = toolResults[0]!.result as {
+      untrusted: boolean;
+      facts: Array<{ record: { id: string } }>;
+    };
+    expect(searchResult).toMatchObject({ untrusted: true });
+    const facts = searchResult.facts;
+    expect(facts.map((fact) => fact.record.id)).toContain("company-person-1");
+    expect(facts.map((fact) => fact.record.id)).not.toContain("company-data-room-person");
+    expect(
+      prisma.aiDataConsent.findFirst.mock.calls.map(([args]) => args?.where?.recipientKey),
+    ).toEqual([backupConsent]);
   });
 
   it.each([
@@ -472,6 +932,95 @@ describe("Company identity executor boundaries", () => {
     });
     expect(review).not.toHaveBeenCalled();
     expect(request?.tools.map(({ name }) => name)).not.toContain("remember");
+  });
+
+  it.each([
+    ["unchanged", false],
+    ["changed", true],
+  ])("replays an approved Company import start with the persisted plan (%s)", async (_, mutate) => {
+    const importRun = {
+      id: "import-1",
+      status: "configured",
+      tokenCap: 1000n,
+      mode: "sample",
+      reservedTokens: 50n,
+      inputTokensUsed: 20n,
+      outputTokensUsed: 10n,
+      sources: [
+        {
+          id: "source-1",
+          sourceKind: "slack",
+          connectionId: "connection-1",
+          scope: { channels: ["synthetic-channel"] },
+          plan: {
+            itemCount: 10,
+            tokensLower: 100,
+            tokensUpper: 200,
+            estimateBasis: "sample",
+          },
+        },
+      ],
+    };
+    const start = vi.fn(async () => ({ runId: "import-1", status: "running" }));
+    const consentStatus = vi.fn(async () => ({
+      allowed: true,
+      consentKey: "synthetic-consent",
+      sourceKind: "slack",
+      recipient: {
+        key: "synthetic-recipient",
+        name: "Synthetic model",
+        detail: "Synthetic test",
+        privacyUrl: null,
+      },
+      version: "synthetic-version",
+    }));
+    const call = { name: "company_import_start", args: { runId: "import-1" } };
+    const { toolResults, pauseRunForInput, effectRows } = await runIdentityExecutor({
+      spawnKey: companyImporterSpawnKey("user-1"),
+      callBatches: [[call], [call]],
+      resumeApprovedEffect: true,
+      companyImport: {
+        run: importRun,
+        engine: { consentStatus, start },
+        mutateBeforeResume: mutate
+          ? () => {
+              (importRun.sources[0]!.scope as { channels: string[] }).channels = [
+                "changed-channel",
+              ];
+            }
+          : undefined,
+      },
+    });
+
+    expect(pauseRunForInput).toHaveBeenCalledTimes(1);
+    expect(effectRows).toEqual([
+      expect.objectContaining({
+        kind: "company_import_start",
+        status: expect.any(String),
+        request: expect.objectContaining({
+          runId: "import-1",
+          snapshot: expect.objectContaining({ runId: "import-1" }),
+        }),
+      }),
+    ]);
+    expect(toolResults).toHaveLength(2);
+    if (mutate) {
+      expect(start).not.toHaveBeenCalled();
+      expect(toolResults[1]?.result).toMatchObject({
+        error:
+          "The Company import plan or model recipient changed after approval. Review it again.",
+        approvalRequired: true,
+      });
+    } else {
+      expect(start).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ userId: "user-1", spaceId: "space-1" }),
+        "import-1",
+      );
+      expect(toolResults[1]?.result).toMatchObject({
+        untrusted: true,
+        progress: { runId: "import-1", status: "running" },
+      });
+    }
   });
 });
 

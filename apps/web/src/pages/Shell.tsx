@@ -637,8 +637,11 @@ export function ShellPage() {
   const [creatingLegalAgent, setCreatingLegalAgent] = useState(false);
   const [legalAgentError, setLegalAgentError] = useState("");
   const [companyAgentOpen, setCompanyAgentOpen] = useState(false);
-  const [creatingCompanyAgent, setCreatingCompanyAgent] = useState(false);
-  const [companyAgentError, setCompanyAgentError] = useState("");
+  const [creatingCompanyAgents, setCreatingCompanyAgents] = useState({
+    agent: false,
+    importer: false,
+  });
+  const [companyAgentErrors, setCompanyAgentErrors] = useState({ agent: "", importer: "" });
   // The Legal page reports whether it still lacks consent; its Allow is the only one, so the agent waits for it.
   const [legalConsentMissing, setLegalConsentMissing] = useState(false);
   const [devinAgentOpen, setDevinAgentOpen] = useState(false);
@@ -1130,6 +1133,9 @@ export function ShellPage() {
   const companyMode = useMatch("/app/company/*") != null;
   const companyImportMode = useMatch("/app/company/import") != null;
   const devinMode = useMatch("/app/devin") != null;
+  const companyRole = companyImportMode ? "importer" : "agent";
+  const creatingCompanyAgent = creatingCompanyAgents[companyRole];
+  const companyAgentError = companyAgentErrors[companyRole];
   const artifactsMode = useMatch("/app/artifacts/*") != null;
   // The route exists only while bootstrap enables the board (see App).
   const boardMode = useMatch("/app/board") != null;
@@ -1164,9 +1170,9 @@ export function ShellPage() {
   useEffect(() => {
     if (!companyMode) {
       setCompanyAgentOpen(false);
-      setCompanyAgentError("");
     }
-  }, [companyMode, companyImportMode]);
+    setCompanyAgentErrors((errors) => ({ ...errors, [companyRole]: "" }));
+  }, [companyMode, companyRole]);
   useEffect(() => {
     if (!devinMode) setDevinAgentOpen(false);
   }, [devinMode]);
@@ -3274,15 +3280,18 @@ export function ShellPage() {
   }
 
   async function createCompanyAgent() {
-    setCreatingCompanyAgent(true);
-    setCompanyAgentError("");
+    setCreatingCompanyAgents((creating) => ({ ...creating, [companyRole]: true }));
+    setCompanyAgentErrors((errors) => ({ ...errors, [companyRole]: "" }));
     try {
       await (companyImportMode ? rpc.companyImport.agent() : rpc.company.agent());
       await refreshBots();
     } catch (error) {
-      setCompanyAgentError(errorText(error, t`Could not create the Company agent`));
+      setCompanyAgentErrors((errors) => ({
+        ...errors,
+        [companyRole]: errorText(error, t`Could not create the Company agent`),
+      }));
     } finally {
-      setCreatingCompanyAgent(false);
+      setCreatingCompanyAgents((creating) => ({ ...creating, [companyRole]: false }));
     }
   }
 
