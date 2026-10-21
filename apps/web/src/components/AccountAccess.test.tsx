@@ -110,9 +110,11 @@ it("shows the password deletion path for legacy account security", async () => {
 });
 
 function deleteButton() {
-  return Array.from(host.querySelectorAll("button")).filter(
+  const buttons = Array.from(host.querySelectorAll("button")).filter(
     (button) => button.textContent === "Delete account",
-  )[1]!;
+  );
+  expect(buttons).toHaveLength(1); // opening the form replaces the toggle
+  return buttons[0]!;
 }
 it("disables passwordless deletion without a proof or nonempty code", async () => {
   await render();

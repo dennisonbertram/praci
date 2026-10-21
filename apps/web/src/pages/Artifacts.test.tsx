@@ -247,7 +247,8 @@ it("shows artifacts as a table in list view and as cards in grid view, and remem
     await act(async () => button("List view")?.click());
     expect(page.container.querySelectorAll("[data-testid='artifact-row']")).toHaveLength(2);
     const headings = [...page.container.querySelectorAll("th")].map((th) => th.textContent);
-    expect(headings).toEqual(expect.arrayContaining(["Name", "Bot", "Added", "Size"]));
+    expect(headings).toEqual(expect.arrayContaining(["Name", "Added", "Size"]));
+    expect(headings).not.toContain("Bot");
     expect(page.container.querySelector("tr a")?.getAttribute("href")).toBe(
       "/app/artifacts/artifact-1",
     );
