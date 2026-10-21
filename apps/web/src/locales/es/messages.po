@@ -665,6 +665,7 @@ msgid "Access token"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/Inbox.tsx
 msgid "Account"
 msgstr "Cuenta"
 
@@ -5769,6 +5770,7 @@ msgid "Monthly spend · {0} – {1}"
 msgstr ""
 
 #: src/components/inbox/CleanupActionBar.tsx
+#: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -6659,6 +6661,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Open navigation"
 msgstr "Abrir navegación"
+
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Open Newsletters"
+msgstr ""
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Open receipt"
