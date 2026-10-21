@@ -48,7 +48,7 @@ import type {
   RefObject,
   SetStateAction,
 } from "react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { NavigateFunction } from "react-router-dom";
 import { ConnectAppsButton } from "../../components/ConnectAppsButton";
 import { HideAmountsMenuItem } from "../../components/HideAmountsToggle";
@@ -72,7 +72,6 @@ import { FirstRunTour } from "../../components/tour/FirstRunTour";
 import type { AgentApp } from "../../lib/agent-app";
 import { clearAgentAppCache } from "../../lib/agent-app";
 import { authClient } from "../../lib/auth";
-import { BOTS_SIDEBAR_EDGE_DRAG_PX } from "../../lib/bots-sidebar-pref";
 import { maskCurrencyWhenHidden } from "../../lib/hide-amounts-preference";
 import { isUnclaimedFileDrag } from "../../lib/pending-attachments";
 import type { Panel } from "../../lib/right-panel-state";
@@ -316,8 +315,6 @@ export type SpaceSidebarProps = {
   botsSidebarCollapsed: boolean;
   rail: boolean;
   sidebarDocked: boolean;
-  computerOpen: boolean;
-  booting: boolean;
   mobileSidebarOpen: boolean;
   focusSearchOnExpand: RefObject<boolean>;
   setBotsSidebarCollapsedPref: (collapsed: boolean) => void;
@@ -441,8 +438,6 @@ export function SpaceSidebar({
   botsSidebarCollapsed,
   rail,
   sidebarDocked,
-  computerOpen,
-  booting,
   mobileSidebarOpen,
   focusSearchOnExpand,
   setBotsSidebarCollapsedPref,
@@ -544,9 +539,6 @@ export function SpaceSidebar({
 }: SpaceSidebarProps) {
   const { t } = useLingui();
   const [pageAgentsOpen, setPageAgentsOpen] = useState(false);
-  const botsSidebarEdgeDragRef = useRef<{ startX: number; mode: "expand" | "collapse" } | null>(
-    null,
-  );
   return (
     <aside
       ref={sidebarRef}
@@ -1713,51 +1705,6 @@ export function SpaceSidebar({
           </Button>
         </PopoverContent>
       </Popover>
-      {/* The full-screen computer covers the sidebar, so its edge must not catch clicks there. */}
-      {computerOpen || booting ? null : (
-        <button
-          type="button"
-          data-testid="bots-sidebar-edge"
-          aria-label={t`Resize sidebar`}
-          tabIndex={-1}
-          className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 lg:block ${
-            botsSidebarCollapsed ? "start-12" : "start-[308px]"
-          }`}
-          onPointerDown={(event) => {
-            event.currentTarget.setPointerCapture(event.pointerId);
-            botsSidebarEdgeDragRef.current = {
-              startX: event.clientX,
-              mode: botsSidebarCollapsed ? "expand" : "collapse",
-            };
-          }}
-          onPointerMove={(event) => {
-            const drag = botsSidebarEdgeDragRef.current;
-            if (!drag) return;
-            const rtl =
-              typeof document !== "undefined" &&
-              document.documentElement.getAttribute("dir") === "rtl";
-            const delta = rtl ? drag.startX - event.clientX : event.clientX - drag.startX;
-            if (drag.mode === "expand" && delta >= BOTS_SIDEBAR_EDGE_DRAG_PX) {
-              botsSidebarEdgeDragRef.current = null;
-              setBotsSidebarCollapsedPref(false);
-            } else if (drag.mode === "collapse" && delta <= -BOTS_SIDEBAR_EDGE_DRAG_PX) {
-              botsSidebarEdgeDragRef.current = null;
-              setBotsSidebarCollapsedPref(true);
-            }
-          }}
-          onPointerUp={(event) => {
-            const drag = botsSidebarEdgeDragRef.current;
-            botsSidebarEdgeDragRef.current = null;
-            if (!drag) return;
-            if (Math.abs(event.clientX - drag.startX) < BOTS_SIDEBAR_EDGE_DRAG_PX) {
-              setBotsSidebarCollapsedPref(!botsSidebarCollapsed);
-            }
-          }}
-          onPointerCancel={() => {
-            botsSidebarEdgeDragRef.current = null;
-          }}
-        />
-      )}
     </aside>
   );
 }

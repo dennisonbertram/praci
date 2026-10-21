@@ -153,6 +153,7 @@ import {
   subscribeBotsSidebarDensity,
 } from "../lib/bots-sidebar-density-pref";
 import {
+  BOTS_SIDEBAR_EDGE_DRAG_PX,
   readBotsSidebarCollapsed,
   readCartaAgentCollapsed,
   readInboxAgentCollapsed,
@@ -728,6 +729,9 @@ export function ShellPage() {
     focusSearchOnExpand.current = false;
     document.querySelector<HTMLInputElement>('[data-testid="sidebar-search"] input')?.focus();
   }, [botsSidebarCollapsed]);
+  const botsSidebarEdgeDragRef = useRef<{ startX: number; mode: "expand" | "collapse" } | null>(
+    null,
+  );
   const [newSpaceOpen, setNewSpaceOpen] = useState(false);
   const [pickerInfoTopic, setPickerInfoTopic] = useState<"group" | "space" | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -4007,8 +4011,6 @@ export function ShellPage() {
         botsSidebarCollapsed={botsSidebarCollapsed}
         rail={rail}
         sidebarDocked={sidebarDocked}
-        computerOpen={computerOpen}
-        booting={booting}
         mobileSidebarOpen={mobileSidebarOpen}
         focusSearchOnExpand={focusSearchOnExpand}
         setBotsSidebarCollapsedPref={setBotsSidebarCollapsedPref}
@@ -4114,6 +4116,52 @@ export function ShellPage() {
         setTourRestart={setTourRestart}
         setBootstrapMe={setBootstrapMe}
       />
+
+      {/* The full-screen computer covers the sidebar, so its edge must not catch clicks there. */}
+      {computerOpen || booting ? null : (
+        <button
+          type="button"
+          data-testid="bots-sidebar-edge"
+          aria-label={t`Resize sidebar`}
+          tabIndex={-1}
+          className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 lg:block ${
+            botsSidebarCollapsed ? "start-12" : "start-[308px]"
+          }`}
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId);
+            botsSidebarEdgeDragRef.current = {
+              startX: event.clientX,
+              mode: botsSidebarCollapsed ? "expand" : "collapse",
+            };
+          }}
+          onPointerMove={(event) => {
+            const drag = botsSidebarEdgeDragRef.current;
+            if (!drag) return;
+            const rtl =
+              typeof document !== "undefined" &&
+              document.documentElement.getAttribute("dir") === "rtl";
+            const delta = rtl ? drag.startX - event.clientX : event.clientX - drag.startX;
+            if (drag.mode === "expand" && delta >= BOTS_SIDEBAR_EDGE_DRAG_PX) {
+              botsSidebarEdgeDragRef.current = null;
+              setBotsSidebarCollapsedPref(false);
+            } else if (drag.mode === "collapse" && delta <= -BOTS_SIDEBAR_EDGE_DRAG_PX) {
+              botsSidebarEdgeDragRef.current = null;
+              setBotsSidebarCollapsedPref(true);
+            }
+          }}
+          onPointerUp={(event) => {
+            const drag = botsSidebarEdgeDragRef.current;
+            botsSidebarEdgeDragRef.current = null;
+            if (!drag) return;
+            if (Math.abs(event.clientX - drag.startX) < BOTS_SIDEBAR_EDGE_DRAG_PX) {
+              setBotsSidebarCollapsedPref(!botsSidebarCollapsed);
+            }
+          }}
+          onPointerCancel={() => {
+            botsSidebarEdgeDragRef.current = null;
+          }}
+        />
+      )}
 
       {/* Keep the composer's z-index inside the chat so phone overlays like the side panel cover it. */}
       <main

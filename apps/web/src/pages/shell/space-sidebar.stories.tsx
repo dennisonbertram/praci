@@ -155,8 +155,6 @@ export function SidebarFixture({
     botsSidebarCollapsed: rail,
     rail,
     sidebarDocked: true,
-    computerOpen: false,
-    booting: false,
     mobileSidebarOpen,
     focusSearchOnExpand,
     setBotsSidebarCollapsedPref: () => undefined,
