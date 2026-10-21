@@ -312,7 +312,12 @@ msgstr "{0} répondra toujours aux mentions directes."
 
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
-msgid "{0}'s computer screen"
+msgid "{0}' computer"
+msgstr ""
+
+#. placeholder {0}: active.name
+#: src/pages/Shell.tsx
+msgid "{0}'s computer"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -1418,7 +1423,7 @@ msgid "Ask before sending external email"
 msgstr "Demander avant d'envoyer un e-mail externe"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Ask Chief anything. Agents ask before they send, pay or change anything."
+msgid "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -3586,6 +3591,10 @@ msgstr ""
 msgid "day"
 msgstr "jour"
 
+#: src/pages/RoutineSchedule.tsx
+msgid "Day of week"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Day-to-day work"
 msgstr "Travail quotidien"
@@ -4964,6 +4973,10 @@ msgstr "Clé API de l'instance"
 msgid "Instruction"
 msgstr "Instruction"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Instructions"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Integration options"
 msgstr "Options d'intégration"
@@ -5782,6 +5795,10 @@ msgstr "Plus d'actions pour l'ordinateur"
 msgid "More filters"
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "More settings"
+msgstr ""
+
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 msgid "Move"
@@ -5854,6 +5871,7 @@ msgstr "Couper le micro"
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-credentials.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Name"
 msgstr "Nom"
@@ -8814,6 +8832,10 @@ msgstr ""
 msgid "Steps"
 msgstr "Étapes"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Steps to follow"
+msgstr ""
+
 #: src/components/ShellSkeleton.tsx
 msgid "Still opening…"
 msgstr ""
@@ -10098,6 +10120,10 @@ msgstr "Que voulez-vous que je fasse en premier ?"
 
 #: src/lib/finance-agent.ts
 msgid "What is our runway?"
+msgstr ""
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "What it does and when to use it"
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx

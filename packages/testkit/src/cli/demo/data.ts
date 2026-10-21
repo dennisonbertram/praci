@@ -1101,7 +1101,10 @@ export function demoFinance(now = new Date()) {
     {
       id: "mock-bill-legal",
       status: "APPROVED",
-      due_at: new Date(now.getTime() + 10 * DAY_MS).toISOString(),
+      // The 30th, as the Chief and Finance replies say ("Oct 30").
+      due_at: new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + (now.getUTCDate() > 28 ? 1 : 0), 30, 12),
+      ).toISOString(),
       vendor: { name: "Placeholder Legal LLP (Mock)" },
       amount: { value: "2000.00", currency: "USD" },
     },
@@ -1339,14 +1342,14 @@ export const DEMO_CONTACTS = [
     name: "Casey Advisor (Mock)",
     email: "casey.advisor@advisors.example.test",
     organization: "Independent advisor (Mock)",
-    kind: "other" as const,
+    kind: "advisor" as const,
     notes: `${MOCK_NOTE}: advisor with 250,000 common shares.`,
   },
   {
     name: "Morgan Pretend",
     email: "morgan@halcyon-logistics.example.test",
     organization: "Halcyon Logistics (Mock)",
-    kind: "other" as const,
+    kind: "customer" as const,
     notes: `${MOCK_NOTE}: head of operations at our first annual customer.`,
   },
   {
@@ -1360,14 +1363,14 @@ export const DEMO_CONTACTS = [
     name: "Robin Prospect",
     email: "robin@bolt-freight.example.test",
     organization: "Bolt Freight (Mock)",
-    kind: "other" as const,
+    kind: "customer" as const,
     notes: `${MOCK_NOTE}: prospect asking for pricing on 20 units.`,
   },
   {
     name: "Riley Testwell",
     email: "riley@bookkeeping.example.test",
     organization: "Testwell Bookkeeping (Mock)",
-    kind: "other" as const,
+    kind: "vendor" as const,
     notes: `${MOCK_NOTE}: outside bookkeeper, closes the month.`,
   },
   {
@@ -1381,7 +1384,7 @@ export const DEMO_CONTACTS = [
     name: "Sam Samplesworth",
     email: "sam@pilot-customer.example.test",
     organization: "Pilot customer (Mock)",
-    kind: "other" as const,
+    kind: "customer" as const,
     notes: `${MOCK_NOTE}: runs the second pilot site.`,
   },
 ];

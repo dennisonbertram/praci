@@ -27,7 +27,7 @@ type FocusOption = {
   label: string;
   summary: string;
   apps: string[];
-  /** Posted when no app card applies, for work that lives on an app page rather than in a connection. */
+  /** Added to the reply (after any app cards' intro) for work that lives on an app page rather than in a connection. */
   note?: string;
 };
 
@@ -323,7 +323,7 @@ export async function chooseFocus(
   await post(deps, target, [
     {
       kind: "text",
-      text: `${got} Connect ${named} here and I’ll use what you already have.`,
+      text: `${got} Connect ${named} here and I’ll use what you already have.${option.note ? ` ${option.note}` : ""}`,
     },
   ]);
   await post(deps, target, cards);
