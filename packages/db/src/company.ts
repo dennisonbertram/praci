@@ -10,6 +10,7 @@ import type {
   CompanyEventImportInput,
   CompanyEvidenceInput,
   CompanyExport,
+  CompanyFact,
   CompanyFactUpsertInput,
   CompanyPartialDate,
   CompanyPrivacy,
@@ -162,6 +163,50 @@ function composeEntityGroup(root: EntityGroupMember, members: readonly EntityGro
 
 function hash(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+function normalizeSnapshot(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(normalizeSnapshot);
+  if (value instanceof Date) return value.toISOString();
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, item]) => [key, normalizeSnapshot(item)]),
+    );
+  }
+  return value;
+}
+
+export function stableCompanySnapshot(value: unknown): string {
+  return JSON.stringify(normalizeSnapshot(value));
+}
+
+export function companyFactApprovalSnapshot(fact: CompanyFact): unknown {
+  const semantic = { ...fact.record } as Record<string, unknown>;
+  delete semantic.evidence;
+  if (fact.kind === "entity") {
+    delete semantic.edges;
+    delete semantic.events;
+  }
+  const completeEvidence = [...fact.record.evidence].sort((left, right) =>
+    left.id.localeCompare(right.id),
+  );
+  const evidenceMetadata = completeEvidence
+    .map(
+      ({ quote: _quote, extractorModel: _extractorModel, ...item }: CompanyEvidenceRecord) => item,
+    )
+    .sort((left, right) => left.id.localeCompare(right.id));
+  return {
+    kind: fact.kind,
+    record: {
+      ...semantic,
+      evidence: evidenceMetadata,
+      evidenceFingerprint: createHash("sha256")
+        .update(stableCompanySnapshot(completeEvidence))
+        .digest("hex"),
+    },
+  };
 }
 
 function dateValue(value: CompanyPartialDate | null | undefined): Date | null {
@@ -3751,25 +3796,6 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
           extractorModel: null,
           confidence: proposal.operation === "create" ? proposal.fact.confidence : 1,
         });
-        const stableSnapshot = (value: unknown): string => {
-          const normalize = (item: unknown): unknown => {
-            if (Array.isArray(item)) return item.map(normalize);
-            if (!item || typeof item !== "object") return item;
-            return Object.fromEntries(
-              Object.entries(item as Record<string, unknown>)
-                .filter(
-                  ([key]) =>
-                    !["evidence", "quote", "contentHash", "extractorModel", "sourceKey"].includes(
-                      key,
-                    ),
-                )
-                .sort(([left], [right]) => left.localeCompare(right))
-                .map(([key, child]) => [key, normalize(child)]),
-            );
-          };
-          return JSON.stringify(normalize(value));
-        };
-
         if (proposal.operation === "edit") {
           const id =
             proposal.kind === "entity"
@@ -3787,7 +3813,13 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
           if (
             !current ||
             expected?.kind !== proposal.kind ||
-            stableSnapshot(expected.current) !== stableSnapshot(current)
+            stableCompanySnapshot(expected.current) !==
+              stableCompanySnapshot(
+                companyFactApprovalSnapshot({
+                  kind: proposal.kind,
+                  record: current,
+                } as CompanyFact),
+              )
           ) {
             throw new IsolationError(
               "Company fact changed after approval. Review the proposal again.",

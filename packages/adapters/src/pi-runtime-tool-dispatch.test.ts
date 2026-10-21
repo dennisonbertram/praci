@@ -560,6 +560,50 @@ describe("Pi connector tool dispatch", () => {
     );
   });
 
+  it("does not expose a Company tool omitted from an ordinary helper allowlist", async () => {
+    fakeAgentState.mode = "subagent-inspect";
+    const runtime = new PiAgentRuntime();
+    const request = {
+      botId: "ordinary-agent",
+      threadId: "thread-1",
+      runId: "ordinary-run",
+      prompt: "Delegate a bounded task.",
+      instructions: "Use a helper.",
+      history: [],
+      tools: [
+        {
+          name: "run_subagent",
+          description: "Delegate bounded work",
+          inputSchema: { type: "object", properties: {} },
+        },
+        {
+          name: "company_search",
+          description: "Search Company facts",
+          inputSchema: { type: "object", properties: {} },
+        },
+        {
+          name: "mail_send",
+          description: "Send mail",
+          inputSchema: { type: "object", properties: {} },
+        },
+      ],
+      model: { provider: "test", id: "dispatch-test-model" },
+      executeTool: vi.fn(async () => ({ untrusted: true })),
+      subagentToolNames: new Set(["mail_send"]),
+    };
+    for await (const _event of runtime.run(request, {
+      operationId: "ordinary-run",
+      traceId: "ordinary-run",
+      spaceId: "space-1",
+      userId: "owner-1",
+      signal: new AbortController().signal,
+    })) {
+      // Exhaust the runtime event stream.
+    }
+    expect(fakeAgentState.createdToolSets[1]).toEqual(["mail_send"]);
+    expect(fakeAgentState.createdToolSets[1]).not.toContain("company_search");
+  });
+
   it("injects durable steering at Pi's next safe turn boundary", async () => {
     fakeAgentState.mode = "empty";
     let claimCount = 0;

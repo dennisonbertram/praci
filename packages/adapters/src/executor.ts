@@ -2750,6 +2750,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           run.userId === bot.userId &&
           !thread.groupId &&
           !messagingChannelRun &&
+          run.trigger !== "routine" &&
           !isBackgroundRunTrigger(run.trigger) &&
           OWNER_INITIATED_TRIGGERS.has(run.trigger);
         const meetingAgentToolSet: ReadonlySet<string> = new Set(MEETING_AGENT_BUILTIN_TOOLS);
@@ -6766,6 +6767,27 @@ export function createRunExecutor(deps: ExecutorDeps) {
               history: runtimeHistory,
               currentTurnImages,
               tools,
+              ...(companyImporter
+                ? {
+                    subagentToolNames: new Set([
+                      ...COMPANY_READ_TOOLS,
+                      "company_import_plan",
+                      "company_import_status",
+                    ]),
+                    subagentModelSelectionAllowed: false,
+                  }
+                : companyAgent
+                  ? {
+                      subagentToolNames: new Set([...COMPANY_READ_TOOLS, "company_review_next"]),
+                      subagentModelSelectionAllowed: false,
+                    }
+                  : {
+                      subagentToolNames: new Set(
+                        tools
+                          .map((tool) => tool.name)
+                          .filter((name) => !COMPANY_TOOL_NAMES.has(name)),
+                      ),
+                    }),
               model: {
                 provider: runModelProvider,
                 id: runModelId,

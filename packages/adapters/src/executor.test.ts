@@ -1,6 +1,10 @@
+import type { AgentRunRequest } from "@rakazo/adapter-kit";
 import type { MessageBlock } from "@rakazo/contracts";
 import {
   CLOUDFLARE_AI_GATEWAY_CONFIG_MESSAGE,
+  COMPANY_READ_TOOLS,
+  companyAgentSpawnKey,
+  companyImporterSpawnKey,
   financeAgentSpawnKey,
   GTM_AGENT_BUILTIN_TOOLS,
   VOICE_AGENT_BUILTIN_TOOLS,
@@ -116,6 +120,359 @@ describe("bot tool permissions", () => {
       expect(offered).toEqual(expect.arrayContaining(["mail_search", "mail_grep", "mail_get"]));
     },
   );
+});
+
+async function runIdentityExecutor({
+  spawnKey,
+  trigger = "user",
+  groupId = null,
+  calls = [],
+  autoReview,
+}: {
+  spawnKey: string | null;
+  trigger?: string;
+  groupId?: string | null;
+  calls?: Array<{ name: string; args: Record<string, unknown> }>;
+  autoReview?: { review: ReturnType<typeof vi.fn> };
+}) {
+  const run = {
+    id: "run-1",
+    botId: "bot-1",
+    threadId: "thread-1",
+    taskId: "task-1",
+    spaceId: "space-1",
+    userId: "user-1",
+    status: "queued",
+    trigger,
+    leaseFence: 0,
+  };
+  let request: AgentRunRequest | undefined;
+  const toolResults: Array<{ name: string; result: unknown }> = [];
+  const runtimeRun = vi.fn(async function* (next: AgentRunRequest) {
+    request = next;
+    for (const [index, call] of calls.entries()) {
+      if (!next.executeTool) throw new Error("Runtime tool executor was not provided.");
+      toolResults.push({
+        name: call.name,
+        result: await next.executeTool(call.name, call.args, `forged-${index}`),
+      });
+    }
+    yield { type: "done" as const, text: "Done" };
+  });
+  const pauseRunForInput = vi.fn(
+    async (_input: {
+      blocks: Array<{ kind: string; actions?: Array<{ id: string; label: string }> }>;
+    }) => true,
+  );
+  const finalizeRun = vi.fn(async () => ({ continuationRunId: null }));
+  const mailSend = vi.fn(async () => []);
+  const webFetch = vi.fn(async () => ({ title: "Synthetic" }));
+  const connectorCall = vi.fn(async function* () {
+    yield { type: "result" as const, data: {} };
+  });
+  const prisma = {
+    user: { findUnique: vi.fn(async () => ({ timezone: null })) },
+    run: {
+      findUnique: vi.fn(async () => run),
+      findUniqueOrThrow: vi.fn(async () => run),
+      updateMany: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        Object.assign(run, data);
+        return { count: 1 };
+      }),
+    },
+    bot: {
+      findUniqueOrThrow: vi.fn(async () => ({
+        id: run.botId,
+        userId: run.userId,
+        spaceId: run.spaceId,
+        name: "Company agent",
+        title: "Assistant",
+        description: "Synthetic test agent",
+        spawnKey,
+        modelProvider: null,
+        modelId: null,
+        thinkingLevel: null,
+        computerId: "computer-1",
+        computerSwitching: false,
+        memoryScope: null,
+        computer: { id: "computer-1", scope: "dedicated" },
+        disabledBuiltinTools: [],
+      })),
+      findMany: vi.fn(async () => []),
+    },
+    attempt: {
+      create: vi.fn(async () => ({ id: "attempt-1" })),
+      update: vi.fn(),
+      updateMany: vi.fn(async () => ({ count: 1 })),
+    },
+    thread: {
+      findUniqueOrThrow: vi.fn(async () => ({
+        id: run.threadId,
+        groupId,
+        historyCompactionSummary: null,
+        historyCompactedUpToSeq: null,
+        nextMessageSeq: 3,
+      })),
+    },
+    chatGroup: { findUnique: vi.fn(async () => null) },
+    message: {
+      findMany: vi.fn(async () => [
+        {
+          id: "message-1",
+          threadId: run.threadId,
+          seq: 1,
+          role: "user",
+          runId: run.id,
+          blocks: [{ kind: "text", text: "Synthetic request" }],
+          replyToMessageId: null,
+          replyQuote: null,
+          replyTo: null,
+        },
+      ]),
+      findUnique: vi.fn(async () => null),
+    },
+    task: {
+      findUniqueOrThrow: vi.fn(async () => ({ id: run.taskId, prompt: "Synthetic request" })),
+    },
+    computer: {
+      findUniqueOrThrow: vi.fn(async () => ({
+        id: "computer-1",
+        homeKey: "home-1",
+        scope: "dedicated",
+        state: "running",
+        kind: "e2b",
+        providerRef: "synthetic-computer",
+        spaceId: run.spaceId,
+        maintenanceId: null,
+        updatedAt: new Date(),
+      })),
+      updateMany: vi.fn(async () => ({ count: 1 })),
+    },
+    connection: { findMany: vi.fn(async () => []), findFirst: vi.fn(async () => null) },
+    spaceModelPreference: { findFirst: vi.fn(async () => null) },
+    secret: { findFirst: vi.fn(async () => null) },
+    userModelCredential: { findFirst: vi.fn(async () => null) },
+    spaceBackupModel: { findMany: vi.fn(async () => []) },
+    deploymentSettings: {
+      findUnique: vi.fn(async () => ({
+        defaultModelProvider: "openrouter",
+        defaultModelId: "openai/gpt-4o",
+      })),
+    },
+    aiDataConsent: { findFirst: vi.fn(async () => ({ userId: run.userId })) },
+    taughtSkill: { findMany: vi.fn(async () => []) },
+    agentSecret: { findMany: vi.fn(async () => []) },
+    botSecret: { findMany: vi.fn(async () => []) },
+    agentSkill: { findMany: vi.fn(async () => []) },
+    botSkillSetting: { findMany: vi.fn(async () => []) },
+    scratchpadItem: { findMany: vi.fn(async () => []) },
+    externalEffect: {
+      findMany: vi.fn(async () => []),
+      findUnique: vi.fn(async () => null),
+      create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+        id: "effect-1",
+        ...data,
+      })),
+      update: vi.fn(async () => undefined),
+      updateMany: vi.fn(async () => ({ count: 1 })),
+    },
+    artifact: { findMany: vi.fn(async () => []) },
+    actionApprovalRule: { findMany: vi.fn(async () => []) },
+    actionAutoReviewPreference: { findUnique: vi.fn(async () => ({ enabled: true })) },
+    computerControlLease: { findUnique: vi.fn(async () => null) },
+  };
+  const executor = createRunExecutor({
+    prisma,
+    deploymentModelKey: "synthetic-test-key",
+    runtime: { describe: () => ({ capabilities: {} }), run: runtimeRun },
+    connector: {
+      discoverTools: vi.fn(async () => []),
+      execute: connectorCall,
+    },
+    web: {
+      describe: () => ({ capabilities: {} }),
+      search: vi.fn(async () => []),
+      fetch: webFetch,
+    },
+    mail: { listAccounts: vi.fn(async () => []), send: mailSend },
+    sandbox: {
+      describe: () => ({ capabilities: { graphical: false } }),
+      isRunning: vi.fn(async () => true),
+      prepare: vi.fn(async () => undefined),
+      writeFile: vi.fn(async () => undefined),
+      async *exportWorkspace() {
+        yield* [];
+      },
+    },
+    home: { commit: vi.fn(async () => "fixture-revision") },
+    memory: { read: vi.fn(async () => ({ documents: [] })) },
+    memoryProviders: { resolve: vi.fn(async () => null) },
+    artifacts: { get: vi.fn(async () => new Uint8Array()) },
+    events: {
+      append: vi.fn(async () => undefined),
+      finalizeRun,
+      pauseRunForInput,
+    },
+    jobs: { enqueue: vi.fn(async () => undefined) },
+    autoReview,
+    secrets: [],
+  } as unknown as Parameters<typeof createRunExecutor>[0]);
+  await executor.continueRun(run.id, "worker-1");
+  return {
+    request,
+    toolResults,
+    runtimeRun,
+    pauseRunForInput,
+    finalizeRun,
+    mailSend,
+    connectorCall,
+    webFetch,
+  };
+}
+
+describe("Company identity executor boundaries", () => {
+  it("rejects forged importer source, connector, write, and confirmation tools before provider calls", async () => {
+    const { request, toolResults, mailSend, connectorCall, webFetch } = await runIdentityExecutor({
+      spawnKey: companyImporterSpawnKey("user-1"),
+      calls: [
+        { name: "mail_send", args: {} },
+        { name: "web_fetch", args: { url: "https://example.test" } },
+        { name: "mcp__synthetic__write", args: {} },
+        {
+          name: "company_fact_upsert",
+          args: {
+            operation: "create",
+            kind: "entity",
+            fact: { kind: "person", displayName: "Synthetic Example", attrs: {}, confidence: 0.8 },
+            provenance: "Synthetic owner correction",
+          },
+        },
+        { name: "company_fact_confirm", args: {} },
+      ],
+    });
+    expect(request?.tools.map(({ name }) => name)).not.toContain("mail_send");
+    expect(
+      toolResults.every(({ result }) =>
+        /not available|not offered/i.test((result as { error?: string })?.error ?? ""),
+      ),
+    ).toBe(true);
+    expect(mailSend).not.toHaveBeenCalled();
+    expect(connectorCall).not.toHaveBeenCalled();
+    expect(webFetch).not.toHaveBeenCalled();
+  });
+
+  it("offers ordinary foreground reads and excludes Company access from ordinary helpers", async () => {
+    const { request } = await runIdentityExecutor({ spawnKey: null });
+    expect(request?.tools.map(({ name }) => name)).toEqual(
+      expect.arrayContaining([...COMPANY_READ_TOOLS]),
+    );
+    expect(
+      [...request!.subagentToolNames!].some((name) => COMPANY_READ_TOOLS.includes(name as never)),
+    ).toBe(false);
+  });
+
+  it.each([
+    {
+      label: "group Company mutation",
+      spawnKey: companyAgentSpawnKey("user-1"),
+      trigger: "user",
+      groupId: "group-1",
+      call: {
+        name: "company_fact_upsert",
+        args: {
+          operation: "create",
+          kind: "entity",
+          fact: {
+            kind: "person",
+            displayName: "Synthetic Example",
+            attrs: {},
+            confidence: 0.8,
+          },
+          provenance: "Synthetic owner correction",
+        },
+      },
+      error: /not available/i,
+    },
+    {
+      label: "unattended Company mutation",
+      spawnKey: companyAgentSpawnKey("user-1"),
+      trigger: "routine",
+      groupId: null,
+      call: {
+        name: "company_fact_upsert",
+        args: {
+          operation: "create",
+          kind: "entity",
+          fact: {
+            kind: "person",
+            displayName: "Synthetic Example",
+            attrs: {},
+            confidence: 0.8,
+          },
+          provenance: "Synthetic owner correction",
+        },
+      },
+      error: /direct owner-started foreground|not available/i,
+    },
+    {
+      label: "ordinary group Company read",
+      spawnKey: null,
+      trigger: "user",
+      groupId: "group-1",
+      call: { name: "company_search", args: { text: "Synthetic Example" } },
+      error: /not available/i,
+    },
+  ])("denies $label", async ({ spawnKey, trigger, groupId, call, error }) => {
+    const { request, toolResults, pauseRunForInput } = await runIdentityExecutor({
+      spawnKey,
+      trigger,
+      groupId,
+      calls: [call],
+    });
+    expect((toolResults[0]?.result as { error?: string })?.error).toMatch(error);
+    expect(pauseRunForInput).not.toHaveBeenCalled();
+    if (groupId) {
+      expect(request?.tools.map(({ name }) => name)).not.toContain(call.name);
+    }
+  });
+
+  it("requires explicit approval for Company edits and does not invoke auto-review", async () => {
+    const review = vi.fn(async () => ({ decision: "approve" as const }));
+    const { request, toolResults, pauseRunForInput } = await runIdentityExecutor({
+      spawnKey: companyAgentSpawnKey("user-1"),
+      autoReview: { review },
+      calls: [
+        {
+          name: "company_fact_upsert",
+          args: {
+            operation: "create",
+            kind: "entity",
+            fact: {
+              kind: "person",
+              displayName: "Synthetic Example",
+              attrs: {},
+              confidence: 0.8,
+            },
+            provenance: "Synthetic owner correction",
+          },
+        },
+        { name: "remember", args: { content: "Must not be remembered" } },
+      ],
+    });
+    expect(request?.tools.map(({ name }) => name)).toContain("company_fact_upsert");
+    expect(pauseRunForInput).toHaveBeenCalledTimes(1);
+    const approvalAsk = pauseRunForInput.mock.calls[0]![0].blocks[0]!;
+    expect(approvalAsk.kind).toBe("ask");
+    expect(approvalAsk.actions?.map(({ id }) => id)).toEqual(["allow", "deny"]);
+    expect(toolResults[0]?.result).toEqual({
+      kind: "agent_tool_result",
+      content: [{ type: "text", text: "Waiting for approval." }],
+      details: { approval: "paused" },
+      terminate: true,
+    });
+    expect(review).not.toHaveBeenCalled();
+    expect(request?.tools.map(({ name }) => name)).not.toContain("remember");
+  });
 });
 
 describe("voice agent permissions", () => {

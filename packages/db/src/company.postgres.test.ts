@@ -7,13 +7,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createNorthwindCompanyFixture } from "../../testkit/src/fixtures/company/corpus.js";
 import { northwindGroundTruth } from "../../testkit/src/fixtures/company/ground-truth.js";
 import type { PrismaClient } from "./client.js";
-import { createDb } from "./client.js";
+import { createDb, Prisma } from "./client.js";
 import type {
   CompanyDeferredResult,
   CompanySuppressedResult,
   CompanyWriteResult,
 } from "./company.js";
-import { companyForActor } from "./company.js";
+import { companyFactApprovalSnapshot, companyForActor } from "./company.js";
 import { IsolationError } from "./scope.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -3014,7 +3014,12 @@ describePostgres("company foundation (PostgreSQL)", () => {
       person("Synthetic stale-edit target", "stale-edit-target", "stale-edit-hash"),
     );
     const id = entityId(saved);
-    const snapshot = { kind: "entity", current: await company.detail(id) };
+    const staleRecord = await company.detail(id);
+    expect(staleRecord).not.toBeNull();
+    const snapshot = {
+      kind: "entity",
+      current: companyFactApprovalSnapshot({ kind: "entity", record: staleRecord! }),
+    };
     const editProposal = CompanyFactUpsertInputSchema.parse({
       operation: "edit",
       kind: "entity",
@@ -3033,5 +3038,96 @@ describePostgres("company foundation (PostgreSQL)", () => {
         effectKey: "manual-company-upsert-stale-edit",
       }),
     ).rejects.toThrow(/changed after approval/i);
+
+    const evidenceTarget = await company.importEntity(
+      person("Synthetic evidence-bound edit", "evidence-bound-old", "evidence-bound-old-hash"),
+    );
+    const evidenceTargetId = entityId(evidenceTarget);
+    const evidenceProposal = CompanyFactUpsertInputSchema.parse({
+      operation: "edit",
+      kind: "entity",
+      patch: {
+        entityId: evidenceTargetId,
+        kind: "person",
+        displayName: "Synthetic evidence-bound edit approved",
+      },
+      provenance: "Owner-provided synthetic correction.",
+    });
+    const evidenceRecord = await company.detail(evidenceTargetId);
+    expect(evidenceRecord).not.toBeNull();
+    const approvalSnapshot = {
+      kind: "entity",
+      current: companyFactApprovalSnapshot({ kind: "entity", record: evidenceRecord! }),
+    };
+    await prisma.companyEvidence.create({
+      data: {
+        spaceId,
+        ownerUserId: userId,
+        factKind: "entity",
+        factId: evidenceTargetId,
+        stance: "supports",
+        sourceKind: "slack",
+        connectionId: null,
+        mcpServerId: null,
+        dataRoomItemId: null,
+        sourceItemId: "evidence-bound-new",
+        sourceKey: "evidence-bound-new-key",
+        sourceUrl: null,
+        quote: "Synthetic evidence added after approval.",
+        contentHash: "evidence-bound-new-hash",
+        extractedAt: new Date("2026-01-03T00:00:00.000Z"),
+        extractorRunId: null,
+        extractorModel: Prisma.DbNull,
+        confidence: 0.9,
+      },
+    });
+    await expect(
+      company.manualUpsert({
+        proposal: evidenceProposal,
+        snapshot: approvalSnapshot,
+        effectKey: "manual-company-upsert-stale-evidence",
+      }),
+    ).rejects.toThrow(/changed after approval/i);
+
+    await prisma.companyEvidence.updateMany({
+      where: {
+        id: evidenceRecord!.evidence[0]!.id,
+        spaceId,
+        ownerUserId: userId,
+      },
+      data: { quote: "Synthetic corrected quote with unchanged source content hash." },
+    });
+    await expect(
+      company.manualUpsert({
+        proposal: evidenceProposal,
+        snapshot: approvalSnapshot,
+        effectKey: "manual-company-upsert-stale-quote",
+      }),
+    ).rejects.toThrow(/changed after approval/i);
+
+    const unchangedRecord = await company.detail(evidenceTargetId);
+    expect(unchangedRecord).not.toBeNull();
+    const unchangedSnapshot = {
+      kind: "entity",
+      current: companyFactApprovalSnapshot({ kind: "entity", record: unchangedRecord! }),
+    };
+    expect(JSON.stringify(unchangedSnapshot)).not.toContain("The company source says this.");
+    expect(JSON.stringify(unchangedSnapshot)).not.toContain(
+      "Synthetic evidence added after approval.",
+    );
+    expect(JSON.stringify(unchangedSnapshot)).not.toContain(
+      "Synthetic corrected quote with unchanged source content hash.",
+    );
+    const approvedInput = {
+      proposal: evidenceProposal,
+      snapshot: unchangedSnapshot,
+      effectKey: "manual-company-upsert-current-evidence",
+    };
+    const applied = await company.manualUpsert(approvedInput);
+    expect((applied as { record: { displayName: string } }).record.displayName).toBe(
+      "Synthetic evidence-bound edit approved",
+    );
+    const replay = await company.manualUpsert(approvedInput);
+    expect((replay as { replayed?: boolean }).replayed).toBe(true);
   });
 });

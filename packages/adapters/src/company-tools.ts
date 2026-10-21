@@ -14,6 +14,7 @@ import {
   CompanyGetInputSchema,
   CompanyImportActionToolInputSchema,
   CompanyImportPlanInputSchema,
+  CompanyImportPlanSchema,
   CompanyImportStartInputSchema,
   CompanyImportStatusInputSchema,
   CompanyReviewNextInputSchema,
@@ -22,7 +23,7 @@ import {
   TimelineQueryInputSchema,
 } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
-import { companyForActor, createLegalRepos } from "@rakazo/db";
+import { companyFactApprovalSnapshot, companyForActor, createLegalRepos } from "@rakazo/db";
 import { z } from "zod";
 import type { CompanyImportEngine } from "./company-import-engine.js";
 
@@ -31,10 +32,7 @@ const sanitizeEvidence = <
   T extends { quote: string; contentHash: string; extractorModel: unknown },
 >(
   evidence: T[],
-) =>
-  evidence.map(
-    ({ quote: _quote, contentHash: _contentHash, extractorModel: _model, ...item }) => item,
-  );
+) => evidence.map(({ quote: _quote, extractorModel: _model, ...item }) => item);
 const sanitizeFact = (fact: CompanyFact) => {
   switch (fact.kind) {
     case "entity":
@@ -234,7 +232,9 @@ function dateEnd(date: string, precision: string) {
 function eventOverlaps(event: CompanyEventRecord, from: string, to: string) {
   if (!event.occursOn) return false;
   const start = event.occursOn.date;
-  const end = dateEnd(start, event.occursOn.precision);
+  const end = event.endsOn
+    ? dateEnd(event.endsOn.date, event.endsOn.precision)
+    : dateEnd(start, event.occursOn.precision);
   return start <= to && end >= from;
 }
 
@@ -250,16 +250,28 @@ function safeResult<
 async function visibleFacts(deps: CompanyToolsDeps, text?: string) {
   const store = companyForActor(deps.prisma, deps.actor);
   const [entities, edges, events, shared] = await Promise.all([
-    store.list(text ? { text } : {}),
+    store.list(),
     store.listEdges(),
     store.listEvents(),
-    store.teamFacts(text),
+    store.teamFacts(),
   ]);
-  const facts = visiblePage(entities, edges, events, shared);
   const allowed = await deps.dataRoomAllowed();
-  return facts.filter(
+  const facts = visiblePage(entities, edges, events, shared).filter(
     (fact) => companyFactIsVisible(fact.record) && (allowed || !factHasDataRoomEvidence(fact)),
   );
+  const permittedEntityIds = new Set(
+    facts
+      .filter((fact): fact is Extract<CompanyFact, { kind: "entity" }> => fact.kind === "entity")
+      .map((fact) => fact.record.id),
+  );
+  const relationSafeFacts = facts.filter((fact) => {
+    if (fact.kind === "edge")
+      return permittedEntityIds.has(fact.record.fromId) && permittedEntityIds.has(fact.record.toId);
+    if (fact.kind === "event")
+      return fact.record.entityIds.every((id) => permittedEntityIds.has(id));
+    return true;
+  });
+  return text ? relationSafeFacts.filter((fact) => matchesText(fact, text)) : relationSafeFacts;
 }
 
 async function searchCompany(deps: CompanyToolsDeps, raw: unknown) {
@@ -297,12 +309,14 @@ async function queryTimeline(deps: CompanyToolsDeps, raw: unknown, calendar: boo
     )
     .map((fact) => safeResult(fact.record));
   if (!calendar) return { untrusted: true, events: events.slice(0, input.limit) };
-  const deadlines = await createLegalRepos(deps.prisma).listDeadlines(deps.actor, {
-    status: "open",
-    from: new Date(`${input.from}T00:00:00.000Z`),
-    to: new Date(`${input.to}T23:59:59.999Z`),
-    limit: input.limit,
-  });
+  const deadlines = (await deps.dataRoomAllowed())
+    ? await createLegalRepos(deps.prisma).listDeadlines(deps.actor, {
+        status: "open",
+        from: new Date(`${input.from}T00:00:00.000Z`),
+        to: new Date(`${input.to}T23:59:59.999Z`),
+        limit: input.limit,
+      })
+    : [];
   return {
     untrusted: true,
     events: events.slice(0, input.limit),
@@ -327,9 +341,25 @@ async function reviewNext(deps: CompanyToolsDeps, raw: unknown) {
     store.candidates(),
     deps.dataRoomAllowed(),
   ]);
-  const visibleCandidates = candidates.filter(
-    (candidate) => dataRoomAllowed || candidate.sourceKind !== "data_room",
+  const permittedEntityIds = new Set(
+    entities
+      .filter(
+        (entity) =>
+          companyFactIsVisible(entity) &&
+          (dataRoomAllowed ||
+            !factHasDataRoomEvidence({
+              kind: "entity",
+              record: entity,
+            })),
+      )
+      .map((entity) => entity.id),
   );
+  const visibleCandidates = candidates
+    .filter((candidate) => dataRoomAllowed || candidate.sourceKind !== "data_room")
+    .map((candidate) => ({
+      ...candidate,
+      entityIds: candidate.entityIds.filter((id) => permittedEntityIds.has(id)),
+    }));
   const suggested: CompanyFact[] = [
     ...entities
       .filter((record) => record.status === "suggested")
@@ -344,7 +374,12 @@ async function reviewNext(deps: CompanyToolsDeps, raw: unknown) {
   const facts = suggested
     .filter(
       (fact) =>
-        companyFactIsVisible(fact.record) && (dataRoomAllowed || !factHasDataRoomEvidence(fact)),
+        companyFactIsVisible(fact.record) &&
+        (dataRoomAllowed || !factHasDataRoomEvidence(fact)) &&
+        (fact.kind === "entity" ||
+          (fact.kind === "edge"
+            ? permittedEntityIds.has(fact.record.fromId) && permittedEntityIds.has(fact.record.toId)
+            : fact.record.entityIds.every((id) => permittedEntityIds.has(id)))),
     )
     .map(sanitizeFact);
   const conflicts = visibleCandidates
@@ -412,7 +447,10 @@ async function snapshotFactUpsert(deps: CompanyToolsDeps, input: CompanyFactUpse
     current.evidence.some((item) => item.sourceKind === "data_room")
   )
     throw new Error("Company fact not found.");
-  return { kind: input.kind, current: safeResult(current) };
+  return {
+    kind: input.kind,
+    current: companyFactApprovalSnapshot({ kind: input.kind, record: current } as CompanyFact),
+  };
 }
 
 async function snapshotImportPlan(deps: CompanyToolsDeps, runId: string) {
@@ -425,9 +463,12 @@ async function snapshotImportPlan(deps: CompanyToolsDeps, runId: string) {
       status: true,
       tokenCap: true,
       mode: true,
+      reservedTokens: true,
+      inputTokensUsed: true,
+      outputTokensUsed: true,
       sources: {
         orderBy: { id: "asc" },
-        select: { id: true, sourceKind: true, connectionId: true, scope: true },
+        select: { id: true, sourceKind: true, connectionId: true, scope: true, plan: true },
       },
     },
   });
@@ -438,9 +479,17 @@ async function snapshotImportPlan(deps: CompanyToolsDeps, runId: string) {
   return {
     runId: run.id,
     status: run.status,
-    tokenCap: run.tokenCap,
+    tokenCap: Number(run.tokenCap),
     mode: run.mode,
-    sources: run.sources,
+    usage: {
+      reservedTokens: Number(run.reservedTokens),
+      inputTokensUsed: Number(run.inputTokensUsed),
+      outputTokensUsed: Number(run.outputTokensUsed),
+    },
+    sources: run.sources.map(({ plan, ...source }) => ({
+      ...source,
+      plan: CompanyImportPlanSchema.parse(plan),
+    })),
     consents,
   };
 }
@@ -512,9 +561,20 @@ export async function companyToolFromTool(
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         select: { id: true },
       });
+      const plan = latest ? await snapshotImportPlan(deps, latest.id) : null;
       return {
         untrusted: true,
         link: companyImportPage,
+        plan: plan
+          ? {
+              runId: plan.runId,
+              status: plan.status,
+              tokenCap: plan.tokenCap,
+              mode: plan.mode,
+              usage: plan.usage,
+              sources: plan.sources,
+            }
+          : null,
         progress: latest ? await deps.companyImport.progress(deps.actor, latest.id) : null,
       };
     }
