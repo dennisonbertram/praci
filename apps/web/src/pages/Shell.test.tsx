@@ -21,7 +21,7 @@ vi.mock("@lingui/react/macro", () => {
 });
 
 import { setHideAmounts } from "../lib/hide-amounts-preference";
-import { Composer, chatIsOpening, Transcript } from "./Shell";
+import { BOTS_POLL_MS, Composer, chatIsOpening, Transcript } from "./Shell";
 
 let root: Root | null = null;
 let container: HTMLDivElement | null = null;
@@ -1111,5 +1111,11 @@ describe("chatIsOpening", () => {
   it("is false once a chat is open or the list loaded with nothing to wait for", () => {
     expect(chatIsOpening({ ...open, hasChat: true })).toBe(false);
     expect(chatIsOpening({ ...open, botsLoaded: true })).toBe(false);
+  });
+});
+
+describe("sidebar list refresh", () => {
+  it("polls spaces.list at most every 30 s (it ran every 3 s: about 96 calls in 5 minutes)", () => {
+    expect(BOTS_POLL_MS).toBeGreaterThanOrEqual(30_000);
   });
 });

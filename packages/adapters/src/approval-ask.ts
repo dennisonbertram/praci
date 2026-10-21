@@ -27,6 +27,8 @@ export function buildApprovalAskBlock(
     reviewReason?: string;
     fullMail?: boolean;
     integrationWriteTool?: string;
+    /** Never offer "Always allow": the call asks every time (a run holding untrusted meeting text). */
+    noAlwaysAllow?: boolean;
     /** The From account the mail call will use when it named none (see inferMailAccount). */
     mailAccount?: string;
     /** The MCP server's display name, so the title says which service runs the tool. */
@@ -109,6 +111,7 @@ export function buildApprovalAskBlock(
             { id: "allow", label: "Allow once" },
             ...(options?.fullMail ||
             options?.integrationWriteTool !== undefined ||
+            options?.noAlwaysAllow ||
             toolName === "imessage_send"
               ? []
               : [{ id: "always", label: "Always allow this tool" }]),
