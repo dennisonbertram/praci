@@ -45,6 +45,14 @@ function statusName(status: string) {
   return names[status] ?? status.replaceAll("_", " ");
 }
 function scopeName(source: { sourceKind: string; scope: Record<string, unknown> }) {
+  if (source.sourceKind === "slack" || source.scope.reader === "slack") {
+    const count =
+      (Array.isArray(source.scope.channelIds) ? source.scope.channelIds.length : 0) +
+      (Array.isArray(source.scope.privateChannelIds) ? source.scope.privateChannelIds.length : 0);
+    if (!Array.isArray(source.scope.channelIds))
+      return count ? t`Public and selected private channels` : t`All public channels`;
+    return count === 1 ? t`1 channel` : t`${count} channels`;
+  }
   if (source.sourceKind === "data_room") {
     if (!Array.isArray(source.scope.folderIds)) return t`All folders`;
     const count = source.scope.folderIds.length;
@@ -182,6 +190,7 @@ export function CompanyImportPage({
       .map((source) => ({
         sourceKind: source.sourceKind,
         connectionId: source.connectionId,
+        mcpServerId: source.mcpServerId,
         scope: selected![source.key]!,
       }));
     const progress = await rpc.companyImport.create({

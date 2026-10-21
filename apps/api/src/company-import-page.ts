@@ -1,9 +1,12 @@
 import { ORPCError } from "@orpc/server";
-import type { CompanyImportEngine } from "@rakazo/adapters";
+import type { AdapterContext, CompanyConnectionReader } from "@rakazo/adapter-kit";
+import type { CompanyImportEngine, CompanySlackReader } from "@rakazo/adapters";
 import { companySourceScope } from "@rakazo/adapters";
 import type {
   Actor,
   CompanyImportCatalog,
+  CompanyImportChannels,
+  CompanyImportChannelsInput,
   CompanyImportCreateInput,
   CompanyImportPlan,
   CompanyImportSample,
@@ -21,10 +24,16 @@ import { companyImportEstimate } from "./company-import-estimate.js";
 
 const GMAIL_CONNECT_PATH = "/app/integrations?connect=gmail&returnTo=%2Fapp%2Fcompany%2Fimport";
 
-type PageDeps = { prisma: PrismaClient; engine: CompanyImportEngine };
+type PageDeps = {
+  prisma: PrismaClient;
+  engine: CompanyImportEngine;
+  reader?: CompanyConnectionReader;
+  slack?: CompanySlackReader;
+};
 
 function sourceKind(provider: string): CompanyImportCatalog["sources"][number]["sourceKind"] {
   const value = provider.toLowerCase();
+  if (value === "slack" || value === "slack_v2") return "slack";
   if (CompanySourceKindSchema.options.includes(value as never))
     return value as CompanyImportCatalog["sources"][number]["sourceKind"];
   return value === "mcp" ? "mcp" : "composio";
@@ -130,11 +139,12 @@ export function createCompanyImportPage(deps: PageDeps) {
     actor: Actor,
     sourceKind: string,
     connectionId: string | null,
+    mcpServerId: string | null = null,
   ): Promise<boolean> {
     const locator = {
       sourceKind: sourceKind as CompanyImportCatalog["sources"][number]["sourceKind"],
       connectionId,
-      mcpServerId: null,
+      mcpServerId,
     };
     const blocks = await deps.prisma.companySourceBlock.findMany({
       where: { spaceId: actor.spaceId, ownerUserId: actor.userId },
@@ -157,13 +167,14 @@ export function createCompanyImportPage(deps: PageDeps) {
       deps.prisma.dataRoomFolder.findMany({
         where: { spaceId: actor.spaceId, userId: actor.userId },
         orderBy: [{ name: "asc" }, { id: "asc" }],
-        select: { id: true, name: true },
+        select: { id: true, name: true, enabled: true },
       }),
       deps.prisma.connection.findMany({
         where: { spaceId: actor.spaceId, userId: actor.userId, status: "connected" },
         orderBy: [{ displayName: "asc" }, { id: "asc" }],
         select: {
           id: true,
+          connectorId: true,
           provider: true,
           displayName: true,
           status: true,
@@ -174,18 +185,22 @@ export function createCompanyImportPage(deps: PageDeps) {
       deps.prisma.mcpServer.findMany({
         where: { spaceId: actor.spaceId, userId: actor.userId },
         orderBy: [{ name: "asc" }, { id: "asc" }],
-        select: { id: true, name: true },
+        select: { id: true, name: true, enabled: true },
       }),
       deps.prisma.companySourceBlock.findMany({
         where: { spaceId: actor.spaceId, ownerUserId: actor.userId },
         select: { sourceKind: true, connectionId: true, mcpServerId: true, sourceKey: true },
       }),
     ]);
-    const blocked = (kind: string, connectionId: string | null) => {
+    const blocked = (
+      kind: string,
+      connectionId: string | null,
+      mcpServerId: string | null = null,
+    ) => {
       const locator = {
         sourceKind: kind as CompanyImportCatalog["sources"][number]["sourceKind"],
         connectionId,
-        mcpServerId: null,
+        mcpServerId,
       };
       return blocks.some(
         (block) =>
@@ -210,31 +225,89 @@ export function createCompanyImportPage(deps: PageDeps) {
     for (const connection of connections) {
       const kind = sourceKind(connection.provider);
       const gmail = kind === "gmail";
+      const slack = kind === "slack";
       hasGmail ||= gmail;
       const access = availableConnection(connection);
       const isSourceBlocked = blocked(kind, connection.id);
+      let slackSupported = false;
+      if (slack && access && !isSourceBlocked && deps.slack) {
+        try {
+          slackSupported = await deps.slack.supports(
+            {
+              id: `catalog:${connection.id}`,
+              sourceKind: kind,
+              connectionId: connection.id,
+              scope: { reader: "slack" },
+            },
+            {
+              operationId: "company.import.catalog",
+              traceId: `company.import.catalog:${connection.id}`,
+              spaceId: actor.spaceId,
+              userId: actor.userId,
+              signal: new AbortController().signal,
+            },
+          );
+        } catch {
+          slackSupported = false;
+        }
+      }
       sources.push({
         key: `${kind}:${connection.id}`,
         sourceKind: kind,
         connectionId: connection.id,
         label: connection.displayName,
-        available: gmail && access && !isSourceBlocked,
-        reason: isSourceBlocked || !access ? "access_denied" : gmail ? null : "unsupported",
+        available: (gmail || slackSupported) && access && !isSourceBlocked,
+        reason:
+          isSourceBlocked || !access
+            ? "access_denied"
+            : gmail || slackSupported
+              ? null
+              : "unsupported",
         itemCount: null,
         defaultScope: {},
         connectPath: gmail ? null : "/app/integrations",
       });
     }
     for (const server of mcpServers) {
+      let mcpSupported = false;
+      const isSourceBlocked = blocked("mcp", null, server.id);
+      if (server.enabled && deps.slack && !isSourceBlocked) {
+        try {
+          mcpSupported = await deps.slack.supports(
+            {
+              id: `catalog:${server.id}`,
+              sourceKind: "mcp",
+              connectionId: null,
+              mcpServerId: server.id,
+              scope: { reader: "slack" },
+            },
+            {
+              operationId: "company.import.catalog",
+              traceId: `company.import.catalog:${server.id}`,
+              spaceId: actor.spaceId,
+              userId: actor.userId,
+              signal: new AbortController().signal,
+            },
+          );
+        } catch {
+          mcpSupported = false;
+        }
+      }
       sources.push({
         key: `mcp:${server.id}`,
         sourceKind: "mcp",
         connectionId: null,
+        mcpServerId: server.id,
         label: server.name,
-        available: false,
-        reason: "unsupported",
+        available: mcpSupported && !isSourceBlocked,
+        reason:
+          isSourceBlocked || !server.enabled
+            ? "access_denied"
+            : mcpSupported
+              ? null
+              : "unsupported",
         itemCount: null,
-        defaultScope: {},
+        defaultScope: { reader: "slack" },
         connectPath: "/app/integrations",
       });
     }
@@ -264,16 +337,107 @@ export function createCompanyImportPage(deps: PageDeps) {
       plan: CompanyImportPlan;
     }> = [];
     for (const source of input.sources) {
-      const key = `${source.sourceKind}:${source.connectionId ?? ""}`;
+      const key = `${source.sourceKind}:${source.connectionId ?? source.mcpServerId ?? ""}`;
       if (seen.has(key)) throw new ORPCError("BAD_REQUEST", { message: "Duplicate source" });
       seen.add(key);
-      if (await isBlocked(actor, source.sourceKind, source.connectionId ?? null))
+      if (
+        await isBlocked(
+          actor,
+          source.sourceKind,
+          source.connectionId ?? null,
+          source.mcpServerId ?? null,
+        )
+      )
         throw new ORPCError("FORBIDDEN", { message: "Source access is denied" });
-      if (source.sourceKind !== "data_room" && source.sourceKind !== "gmail") {
+      if (
+        source.sourceKind !== "data_room" &&
+        source.sourceKind !== "gmail" &&
+        source.sourceKind !== "slack" &&
+        source.sourceKind !== "mcp"
+      ) {
         throw new ORPCError("PRECONDITION_FAILED", { message: "Source is unsupported" });
+      }
+      if (source.sourceKind === "mcp") {
+        if (
+          !source.mcpServerId ||
+          source.connectionId ||
+          source.scope.reader !== "slack" ||
+          !deps.slack
+        ) {
+          throw new ORPCError("FORBIDDEN", { message: "MCP source access is denied" });
+        }
+        const server = await deps.prisma.mcpServer.findFirst({
+          where: {
+            id: source.mcpServerId,
+            spaceId: actor.spaceId,
+            userId: actor.userId,
+            enabled: true,
+          },
+          select: { id: true },
+        });
+        if (!server) throw new ORPCError("FORBIDDEN", { message: "MCP source access is denied" });
+        const supported = await deps.slack.supports(
+          {
+            id: `create:${server.id}`,
+            sourceKind: "mcp",
+            connectionId: null,
+            mcpServerId: server.id,
+            scope: source.scope,
+          },
+          {
+            operationId: "company.import.create",
+            traceId: `company.import.create:${server.id}`,
+            spaceId: actor.spaceId,
+            userId: actor.userId,
+            signal: new AbortController().signal,
+          },
+        );
+        if (!supported)
+          throw new ORPCError("PRECONDITION_FAILED", { message: "Source is unsupported" });
       }
       if (source.sourceKind === "gmail" && !source.connectionId) {
         throw new ORPCError("PRECONDITION_FAILED", { message: "Gmail is not connected" });
+      }
+      if (source.sourceKind === "slack") {
+        if (!source.connectionId || !deps.slack)
+          throw new ORPCError("PRECONDITION_FAILED", { message: "Slack is not connected" });
+        const connection = await deps.prisma.connection.findFirst({
+          where: {
+            id: source.connectionId,
+            spaceId: actor.spaceId,
+            userId: actor.userId,
+            status: "connected",
+          },
+          select: {
+            provider: true,
+            status: true,
+            allAgents: true,
+            privateByDefault: true,
+          },
+        });
+        if (
+          !connection ||
+          !["slack", "slack_v2"].includes(connection.provider) ||
+          !availableConnection(connection)
+        )
+          throw new ORPCError("FORBIDDEN", { message: "Slack source access is denied" });
+        const supported = await deps.slack.supports(
+          {
+            id: `create:${source.connectionId}`,
+            sourceKind: "slack",
+            connectionId: source.connectionId,
+            scope: source.scope,
+          },
+          {
+            operationId: "company.import.create",
+            traceId: `company.import.create:${source.connectionId}`,
+            spaceId: actor.spaceId,
+            userId: actor.userId,
+            signal: new AbortController().signal,
+          },
+        );
+        if (!supported)
+          throw new ORPCError("PRECONDITION_FAILED", { message: "Source is unsupported" });
       }
       if (source.connectionId) {
         const connection = await deps.prisma.connection.findFirst({
@@ -304,11 +468,11 @@ export function createCompanyImportPage(deps: PageDeps) {
     });
     const sourceRows = await deps.prisma.companyImportSource.findMany({
       where: { runId: created.runId, spaceId: actor.spaceId, ownerUserId: actor.userId },
-      select: { id: true, sourceKind: true, connectionId: true },
+      select: { id: true, sourceKind: true, connectionId: true, mcpServerId: true },
     });
     const plans = new Map(
       sources.map(({ source, plan }) => [
-        `${source.sourceKind}:${source.connectionId ?? ""}`,
+        `${source.sourceKind}:${source.connectionId ?? ""}:${source.mcpServerId ?? ""}`,
         plan,
       ]),
     );
@@ -316,7 +480,11 @@ export function createCompanyImportPage(deps: PageDeps) {
       sourceRows.map((row) =>
         deps.prisma.companyImportSource.update({
           where: { id: row.id, spaceId: actor.spaceId, ownerUserId: actor.userId },
-          data: { plan: plans.get(`${row.sourceKind}:${row.connectionId ?? ""}`)! },
+          data: {
+            plan: plans.get(
+              `${row.sourceKind}:${row.connectionId ?? ""}:${row.mcpServerId ?? ""}`,
+            )!,
+          },
         }),
       ),
     );
@@ -339,6 +507,7 @@ export function createCompanyImportPage(deps: PageDeps) {
             id: true,
             sourceKind: true,
             connectionId: true,
+            mcpServerId: true,
             scope: true,
             plan: true,
           },
@@ -398,6 +567,7 @@ export function createCompanyImportPage(deps: PageDeps) {
           (source.sourceKind === "data_room" ? "Data Room" : source.sourceKind),
         sourceKind: source.sourceKind as CompanyImportSession["sources"][number]["sourceKind"],
         connectionId: source.connectionId,
+        mcpServerId: source.mcpServerId,
         scope: source.scope as Record<string, unknown>,
         plan: CompanyImportPlanSchema.safeParse(source.plan).success
           ? (source.plan as CompanyImportPlan)
@@ -535,9 +705,47 @@ export function createCompanyImportPage(deps: PageDeps) {
     }
   }
 
+  async function channels(
+    actor: Actor,
+    input: CompanyImportChannelsInput,
+  ): Promise<CompanyImportChannels> {
+    await assertMember(deps.prisma, actor);
+    if (!deps.slack) {
+      throw new ORPCError("PRECONDITION_FAILED", { message: "Slack reader is unavailable" });
+    }
+    if (
+      await isBlocked(
+        actor,
+        input.sourceKind,
+        input.connectionId ?? null,
+        input.mcpServerId ?? null,
+      )
+    )
+      throw new ORPCError("FORBIDDEN", { message: "Source access is denied" });
+    const source = {
+      id: `channels:${input.connectionId ?? input.mcpServerId}`,
+      sourceKind: input.sourceKind,
+      connectionId: input.connectionId ?? null,
+      mcpServerId: input.mcpServerId ?? null,
+      scope: { reader: "slack" },
+    };
+    const context: AdapterContext = {
+      operationId: "company.import.channels",
+      traceId: `company.import.channels:${source.id}`,
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      signal: new AbortController().signal,
+    };
+    return deps.slack.channels(
+      { source, cursor: input.cursor ?? null, includePrivate: input.includePrivate, limit: 100 },
+      context,
+    );
+  }
+
   return {
     catalog,
     create,
+    channels,
     session,
     sample,
     start: async (actor: Actor, runId: string) => {

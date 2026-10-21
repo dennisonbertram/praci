@@ -11,6 +11,7 @@ export async function persistCompanyExtraction(
   source: {
     sourceKind: CompanyEvidenceInput["sourceKind"];
     connectionId: string | null;
+    mcpServerId?: string | null;
     runId: string;
   },
 ) {
@@ -24,6 +25,7 @@ export async function persistCompanyExtraction(
     stance: "supports",
     sourceKind: source.sourceKind,
     connectionId: source.connectionId,
+    mcpServerId: source.mcpServerId ?? null,
     dataRoomItemId: source.sourceKind === "data_room" ? input.sourceItemId : null,
     sourceItemId: input.sourceItemId,
     contentHash: input.contentHash,

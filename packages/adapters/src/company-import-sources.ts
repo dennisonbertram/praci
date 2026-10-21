@@ -9,11 +9,17 @@ import type {
   MailAccount,
   MailProvider,
 } from "@rakazo/adapter-kit";
-import { CompanyDataRoomScopeSchema, CompanyMailScopeSchema } from "@rakazo/contracts";
+import {
+  CompanyDataRoomScopeSchema,
+  CompanyMailScopeSchema,
+  CompanySlackScopeSchema,
+} from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import * as z from "zod";
 import { skipCompanyMail, validateCompanyExtraction } from "./company-extraction-safety.js";
 import { CompanyImportWorkerError } from "./company-import-engine.js";
+import type { CompanySlackReader } from "./company-slack-source.js";
+import { isCompanySlackSource } from "./company-slack-source.js";
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 const noFacts: CompanyImportReadPage = { items: [], facts: [], nextCursor: null, done: true };
@@ -50,8 +56,9 @@ function utf8Prefix(value: string, maxBytes: number) {
 /** Capture the default window once, before consent, rather than moving it on every retry. */
 export function companySourceScope(kind: string, raw: Record<string, unknown>, now = new Date()) {
   if (kind === "data_room") return CompanyDataRoomScopeSchema.parse(raw);
-  if (kind !== "gmail") return raw;
-  const scope = CompanyMailScopeSchema.parse(raw);
+  const slack = isCompanySlackSource({ sourceKind: kind, scope: raw });
+  if (kind !== "gmail" && !slack) return raw;
+  const scope = slack ? CompanySlackScopeSchema.parse(raw) : CompanyMailScopeSchema.parse(raw);
   if (scope.allTime || scope.after) return scope;
   const year = now.getUTCFullYear() - 3;
   const month = now.getUTCMonth();
@@ -63,6 +70,7 @@ export function createCompanySourceWorker(deps: {
   prisma: PrismaClient;
   mail?: MailProvider;
   extractor: CompanyExtractor;
+  slack?: CompanySlackReader;
 }): CompanyImportWorker {
   // Narrow the capability object at construction, not by trusting a model's instructions.
   const mail = deps.mail
@@ -209,6 +217,7 @@ export function createCompanySourceWorker(deps: {
         ownerUserId: context.actor.userId,
         sourceKind: source.sourceKind,
         connectionId: source.connectionId,
+        mcpServerId: source.mcpServerId ?? null,
         sourceItemId: document.id,
         contentHash,
       },
@@ -246,6 +255,10 @@ export function createCompanySourceWorker(deps: {
 
   return {
     async discover({ source, cursor, maxUnits }, context) {
+      if (isCompanySlackSource(source)) {
+        if (!deps.slack) throw new CompanyImportWorkerError("unsupported_reader");
+        return deps.slack.discover(source, cursor, maxUnits, contextFor(context));
+      }
       const page = discoveryCursor.parse(cursor ?? {});
       if (source.sourceKind === "data_room") {
         const rows = await deps.prisma.dataRoomItem.findMany({
@@ -310,6 +323,26 @@ export function createCompanySourceWorker(deps: {
       };
     },
     async read({ source, cursor, maxBytes }, context) {
+      if (isCompanySlackSource(source)) {
+        if (!deps.slack) throw new CompanyImportWorkerError("unsupported_reader");
+        const page = await deps.slack.read(source, cursor, contextFor(context));
+        if (!page.document)
+          return {
+            ...noFacts,
+            nextCursor: page.nextCursor,
+            done: page.done,
+            cooldownMs: page.cooldownMs,
+          };
+        if (Buffer.byteLength(`${page.document.title}\n${page.document.text}`) > maxBytes)
+          throw new CompanyImportWorkerError("source_item_too_large");
+        const result = await extract(source, page.document, maxBytes, context);
+        return {
+          ...result,
+          nextCursor: page.nextCursor,
+          done: page.done,
+          cooldownMs: page.cooldownMs,
+        };
+      }
       const { itemId } = itemCursor.parse(cursor);
       if (source.sourceKind === "data_room") {
         const item = await deps.prisma.dataRoomItem.findFirst({

@@ -387,6 +387,17 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
     expect(await prisma.companyEntity.count({ where: { spaceId, ownerUserId: userId } })).toBe(2);
     expect(await prisma.companyEdge.count({ where: { spaceId, ownerUserId: userId } })).toBe(1);
     expect(await prisma.companyEvent.count({ where: { spaceId, ownerUserId: userId } })).toBe(1);
+    const avery = await prisma.companyEntity.findFirstOrThrow({
+      where: { spaceId, ownerUserId: userId, displayName: "Avery Chen" },
+      select: { id: true, attrs: true },
+    });
+    expect(avery.attrs).toMatchObject({ workEmails: ["avery@northwind.example"] });
+    expect(
+      await prisma.companyEvidence.findMany({
+        where: { spaceId, ownerUserId: userId, factKind: "entity", factId: avery.id },
+        select: { sourceKind: true },
+      }),
+    ).toEqual(expect.arrayContaining([{ sourceKind: "data_room" }, { sourceKind: "gmail" }]));
     const firstObservations = await prisma.companyImportEvidence.findMany({
       where: { runId: created.runId },
       select: { evidenceId: true, spaceId: true, ownerUserId: true },

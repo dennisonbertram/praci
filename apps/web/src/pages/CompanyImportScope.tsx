@@ -1,9 +1,14 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { CompanyImportCatalogSource } from "@rakazo/contracts";
-import { CompanyDataRoomScopeSchema, CompanyMailScopeSchema } from "@rakazo/contracts";
+import type { CompanyImportCatalogSource, CompanyImportChannels } from "@rakazo/contracts";
+import {
+  CompanyDataRoomScopeSchema,
+  CompanyMailScopeSchema,
+  CompanySlackScopeSchema,
+} from "@rakazo/contracts";
 import { Button, Checkbox, Dialog, DialogContent, DialogTitle, Input } from "@rakazo/ui-web";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { rpc } from "../lib/rpc";
 
 export function CompanyImportScope({
   source,
@@ -19,6 +24,75 @@ export function CompanyImportScope({
   onSave: (scope: Record<string, unknown>) => void;
 }) {
   const popup = useRef<HTMLDivElement>(null);
+  const slack =
+    source.sourceKind === "slack" ||
+    (source.sourceKind === "mcp" && source.defaultScope.reader === "slack");
+  const [allPublic, setAllPublic] = useState(scope.channelIds === undefined);
+  const [publicIds, setPublicIds] = useState<string[]>(
+    Array.isArray(scope.channelIds) ? scope.channelIds : [],
+  );
+  const [privateIds, setPrivateIds] = useState<string[]>(
+    Array.isArray(scope.privateChannelIds) ? scope.privateChannelIds : [],
+  );
+  const [showPrivate, setShowPrivate] = useState(privateIds.length > 0);
+  const [channels, setChannels] = useState<{
+    public: CompanyImportChannels;
+    private: CompanyImportChannels;
+  }>({ public: { channels: [], nextCursor: null }, private: { channels: [], nextCursor: null } });
+  const [pendingChannels, setPendingChannels] = useState(0);
+  const loadingChannels = pendingChannels > 0;
+  const [channelErrors, setChannelErrors] = useState<string[]>([]);
+  const channelGeneration = useRef(0);
+  const loadChannels = useCallback(
+    async (includePrivate: boolean, cursor?: string | null) => {
+      const generation = channelGeneration.current;
+      const key = includePrivate ? "private" : "public";
+      setPendingChannels((count) => count + 1);
+      setChannelErrors((errors) => errors.filter((error) => error !== key));
+      try {
+        const page = await rpc.companyImport.channels({
+          sourceKind: source.sourceKind === "mcp" ? "mcp" : "slack",
+          connectionId: source.connectionId,
+          mcpServerId: source.mcpServerId,
+          includePrivate,
+          cursor,
+        });
+        if (channelGeneration.current !== generation) return;
+        setChannels((previous) => ({
+          ...previous,
+          [key]: {
+            ...page,
+            channels: [
+              ...new Map(
+                [...(cursor ? previous[key].channels : []), ...page.channels].map((item) => [
+                  item.id,
+                  item,
+                ]),
+              ).values(),
+            ],
+          },
+        }));
+      } catch {
+        if (channelGeneration.current === generation)
+          setChannelErrors((errors) => [...new Set([...errors, key])]);
+      } finally {
+        if (channelGeneration.current === generation)
+          setPendingChannels((count) => Math.max(0, count - 1));
+      }
+    },
+    [source.sourceKind, source.connectionId, source.mcpServerId],
+  );
+  useEffect(() => {
+    channelGeneration.current++;
+    setPendingChannels(0);
+    if (slack) void loadChannels(false);
+    return () => {
+      channelGeneration.current++;
+    };
+  }, [slack, loadChannels]);
+  useEffect(() => {
+    if (slack && showPrivate) void loadChannels(true);
+  }, [slack, showPrivate, loadChannels]);
   const [allFolders, setAllFolders] = useState(scope.folderIds === undefined);
   const [selected, setSelected] = useState<string[]>(
     Array.isArray(scope.folderIds) ? scope.folderIds : [],
@@ -37,19 +111,28 @@ export function CompanyImportScope({
             ...scope,
             folderIds: allFolders ? undefined : selected,
           })
-        : CompanyMailScopeSchema.safeParse({
-            allTime,
-            ...(!allTime && after ? { after } : {}),
-            ...(before ? { before } : {}),
-            ...(labels.trim()
-              ? {
-                  labelIds: labels
-                    .split(",")
-                    .map((label) => label.trim())
-                    .filter(Boolean),
-                }
-              : {}),
-          });
+        : slack
+          ? CompanySlackScopeSchema.safeParse({
+              ...(source.sourceKind === "mcp" ? { reader: "slack" } : {}),
+              channelIds: allPublic ? undefined : publicIds,
+              privateChannelIds: privateIds,
+              allTime,
+              ...(!allTime && after ? { after } : {}),
+              ...(before ? { before } : {}),
+            })
+          : CompanyMailScopeSchema.safeParse({
+              allTime,
+              ...(!allTime && after ? { after } : {}),
+              ...(before ? { before } : {}),
+              ...(labels.trim()
+                ? {
+                    labelIds: labels
+                      .split(",")
+                      .map((label) => label.trim())
+                      .filter(Boolean),
+                  }
+                : {}),
+            });
     if (!result.success || (source.sourceKind === "data_room" && !allFolders && !selected.length)) {
       setInvalid(true);
       return;
@@ -74,6 +157,111 @@ export function CompanyImportScope({
             save();
           }}
         >
+          {slack && (
+            <fieldset className="space-y-4">
+              <legend className="mb-3 font-medium">
+                <Trans>Channels</Trans>
+              </legend>
+              <label htmlFor="company-import-all-public" className="flex items-center gap-3">
+                <Checkbox
+                  id="company-import-all-public"
+                  checked={allPublic}
+                  onCheckedChange={setAllPublic}
+                />
+                <Trans>All public channels</Trans>
+              </label>
+              {channels.public.channels.map((item) => (
+                <label
+                  key={item.id}
+                  htmlFor={`company-import-public-${item.id}`}
+                  className="flex items-center gap-3"
+                >
+                  <Checkbox
+                    id={`company-import-public-${item.id}`}
+                    disabled={allPublic}
+                    checked={allPublic || publicIds.includes(item.id)}
+                    onCheckedChange={(checked) =>
+                      setPublicIds((ids) =>
+                        checked ? [...ids, item.id] : ids.filter((id) => id !== item.id),
+                      )
+                    }
+                  />
+                  #{item.name}
+                </label>
+              ))}
+              {channels.public.nextCursor && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={loadingChannels}
+                  onClick={() => void loadChannels(false, channels.public.nextCursor)}
+                >
+                  <Trans>More channels</Trans>
+                </Button>
+              )}
+              {!showPrivate ? (
+                <Button type="button" variant="link" onClick={() => setShowPrivate(true)}>
+                  <Trans>Private channels and DMs</Trans>
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">
+                    <Trans>Private channels and DMs</Trans>
+                  </p>
+                  {channels.private.channels.map((item) => (
+                    <label
+                      key={item.id}
+                      htmlFor={`company-import-private-${item.id}`}
+                      className="flex items-center gap-3"
+                    >
+                      <Checkbox
+                        id={`company-import-private-${item.id}`}
+                        checked={privateIds.includes(item.id)}
+                        onCheckedChange={(checked) =>
+                          setPrivateIds((ids) =>
+                            checked ? [...ids, item.id] : ids.filter((id) => id !== item.id),
+                          )
+                        }
+                      />
+                      {item.direct ? item.name : `#${item.name}`}
+                    </label>
+                  ))}
+                  {channels.private.nextCursor && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={loadingChannels}
+                      onClick={() => void loadChannels(true, channels.private.nextCursor)}
+                    >
+                      <Trans>More private channels</Trans>
+                    </Button>
+                  )}
+                </div>
+              )}
+              {loadingChannels && (
+                <p role="status" className="text-sm text-muted-foreground">
+                  <Trans>Loading channels…</Trans>
+                </p>
+              )}
+              {channelErrors.length > 0 && (
+                <div className="flex items-center gap-3">
+                  <p role="alert" className="text-sm text-destructive">
+                    <Trans>Channels unavailable</Trans>
+                  </p>
+                  <Button
+                    type="button"
+                    variant="link"
+                    disabled={loadingChannels}
+                    onClick={() => {
+                      for (const kind of channelErrors) void loadChannels(kind === "private");
+                    }}
+                  >
+                    <Trans>Retry</Trans>
+                  </Button>
+                </div>
+              )}
+            </fieldset>
+          )}
           {source.sourceKind === "data_room" ? (
             <fieldset className="space-y-4">
               <legend className="mb-3 font-medium">
@@ -132,15 +320,17 @@ export function CompanyImportScope({
                   onChange={(e) => setBefore(e.target.value)}
                 />
               </label>
-              <label htmlFor="company-import-scope-labels" className="grid gap-2">
-                <Trans>Label IDs</Trans>
-                <Input
-                  id="company-import-scope-labels"
-                  value={labels}
-                  onChange={(e) => setLabels(e.target.value)}
-                  placeholder={t`INBOX, SENT`}
-                />
-              </label>
+              {!slack && (
+                <label htmlFor="company-import-scope-labels" className="grid gap-2">
+                  <Trans>Label IDs</Trans>
+                  <Input
+                    id="company-import-scope-labels"
+                    value={labels}
+                    onChange={(e) => setLabels(e.target.value)}
+                    placeholder={t`INBOX, SENT`}
+                  />
+                </label>
+              )}
             </fieldset>
           )}
           {invalid && (

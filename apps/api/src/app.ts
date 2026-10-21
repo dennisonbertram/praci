@@ -32,7 +32,9 @@ import {
   createBackgroundJobHandlers,
   createBlueBubblesPollState,
   createCloudAgentConnection,
+  createCompanyConnectionReader,
   createCompanyImportEngine,
+  createCompanySlackReader,
   createCompanySourceWorker,
   createConnectorStack,
   createDevinCallTool,
@@ -590,14 +592,26 @@ export async function createApp(
     },
   });
 
+  const companyReader = createCompanyConnectionReader({ prisma, connectors: stack.connector, mcp });
+  const slackReader = createCompanySlackReader(companyReader);
   companyImport = createCompanyImportEngine({
     prisma,
     jobs,
     realtime,
     resolveModel: executor.resolveModel,
-    worker: createCompanySourceWorker({ prisma, mail, extractor: new LlmCompanyExtractor() }),
+    worker: createCompanySourceWorker({
+      prisma,
+      mail,
+      extractor: new LlmCompanyExtractor(),
+      slack: slackReader,
+    }),
   });
-  const companyImportPage = createCompanyImportPage({ prisma, engine: companyImport });
+  const companyImportPage = createCompanyImportPage({
+    prisma,
+    engine: companyImport,
+    reader: companyReader,
+    slack: slackReader,
+  });
   const jobHandlers = createBackgroundJobHandlers({
     executor,
     prisma,

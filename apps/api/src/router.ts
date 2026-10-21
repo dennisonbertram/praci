@@ -7565,6 +7565,13 @@ export function createRouter(deps: RouterDeps) {
           ? deps.companyImportPage.catalog(context.actor)
           : { sources: [], folders: [] },
       ),
+      channels: authed.companyImport.channels.handler(
+        ({ context, input }) =>
+          deps.companyImportPage?.channels(context.actor, input) ?? {
+            channels: [],
+            nextCursor: null,
+          },
+      ),
       session: authed.companyImport.session.handler(
         ({ context, input }) => deps.companyImportPage?.session(context.actor, input.runId) ?? null,
       ),

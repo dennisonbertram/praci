@@ -254,6 +254,14 @@ describe("Company tools", () => {
           scope: {},
           plan: {},
         },
+        {
+          id: "source-3",
+          sourceKind: "mcp",
+          connectionId: null,
+          mcpServerId: "mcp-server-1",
+          scope: { reader: "slack" },
+          plan: {},
+        },
       ],
     };
     const findFirst = vi.fn(async () => run);
@@ -297,6 +305,13 @@ describe("Company tools", () => {
             },
           },
           { sourceKind: "data_room", connectionId: null, scope: {}, plan: null },
+          {
+            sourceKind: "mcp",
+            connectionId: null,
+            mcpServerId: "mcp-server-1",
+            scope: { reader: "slack" },
+            plan: null,
+          },
         ],
       },
     });

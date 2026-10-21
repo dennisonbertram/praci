@@ -165,6 +165,7 @@ function createHarness(options?: {
   };
   const prisma = {
     spaceMember: { findUnique: vi.fn(async () => ({ userId: actor.userId })) },
+    companySourceBlock: { findFirst: vi.fn(async () => null) },
     companyImportSource: {
       findFirst: vi.fn(async () => ({
         ...source,
@@ -172,6 +173,7 @@ function createHarness(options?: {
         run: { ...source.run, status: options?.runStatus ?? source.run.status },
       })),
     },
+    companyImportRun: { findFirst: vi.fn(async () => ({ mode: "full" })) },
     dataRoomItem: {
       count: vi.fn(async (input: { where: { id: { in: string[] } } }) => {
         const owned = new Set(options?.ownedItemIds ?? []);
@@ -243,6 +245,54 @@ describe("company import engine", () => {
     );
     expect(jobs.enqueue).toHaveBeenCalledTimes(2);
     expect(realtime.publish).toHaveBeenCalledTimes(1);
+  });
+
+  it("schedules units at the later of their availability and source backoff", async () => {
+    const { engine, jobs } = createHarness();
+    const now = Date.now();
+    const unitAvailableAt = new Date(now + 2_000);
+    const sourceBackoffUntil = new Date(now + 5_000);
+    const claimedUntil = new Date(now + 8_000);
+    db.getCompanyImportRunForScheduling.mockResolvedValue({
+      id: "run-1",
+      status: "running",
+      mode: "full",
+    });
+    db.listCompanyImportUnitsForScheduling.mockResolvedValue([
+      {
+        id: "unit-backoff",
+        sourceId: "source-1",
+        status: "waiting",
+        availableAt: unitAvailableAt,
+        claimExpiresAt: null,
+        source: { backoffUntil: sourceBackoffUntil },
+      },
+      {
+        id: "unit-lease",
+        sourceId: "source-1",
+        status: "claimed",
+        availableAt: unitAvailableAt,
+        claimExpiresAt: claimedUntil,
+        source: { backoffUntil: sourceBackoffUntil },
+      },
+    ]);
+
+    await engine.runJob({ spaceId: actor.spaceId, userId: actor.userId, runId: "run-1" });
+
+    expect(jobs.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "company.import.unit",
+        payload: expect.objectContaining({ unitId: "unit-backoff" }),
+        availableAt: sourceBackoffUntil,
+      }),
+    );
+    expect(jobs.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "company.import.unit",
+        payload: expect.objectContaining({ unitId: "unit-lease" }),
+        availableAt: claimedUntil,
+      }),
+    );
   });
 
   it.each([

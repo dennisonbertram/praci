@@ -95,3 +95,26 @@ export const CompanyMailScopeSchema = z
     (scope) => !scope.after || !scope.before || scope.after < scope.before,
     "Empty date window",
   );
+
+export const CompanySlackChannelIdSchema = z.string().regex(/^[CDG][A-Z0-9]{1,100}$/);
+export const CompanySlackScopeSchema = z
+  .strictObject({
+    reader: z.literal("slack").optional(),
+    channelIds: z.array(CompanySlackChannelIdSchema).max(500).optional(),
+    privateChannelIds: z.array(CompanySlackChannelIdSchema).max(100).default([]),
+    after: z.iso.date().optional(),
+    before: z.iso.date().optional(),
+    allTime: z.boolean().optional(),
+  })
+  .refine((scope) => !scope.allTime || !scope.after, "Choose all time or a lower bound")
+  .refine(
+    (scope) => !scope.after || !scope.before || scope.after < scope.before,
+    "Empty date window",
+  )
+  .refine(
+    (scope) =>
+      scope.channelIds === undefined ||
+      scope.channelIds.length > 0 ||
+      scope.privateChannelIds.length > 0,
+    "Choose a channel",
+  );

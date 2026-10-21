@@ -281,6 +281,8 @@ export interface ConnectorRoute {
   endpoint?: string;
   /** The MCP server's display name, shown on approval cards. */
   serverName?: string;
+  /** Fingerprint of live MCP metadata authorized by a server-side capability boundary. */
+  authorizationFingerprint?: string;
   /** Read or write as classified at discovery, for an integration agent's tools. The executor asked for approval on that basis, so execute() refuses a tool that has since become a write. */
   discoveredReadOnly?: boolean;
 }
@@ -897,6 +899,7 @@ export interface CompanyImportSourceDescriptor {
   id: string;
   sourceKind: string;
   connectionId: string | null;
+  mcpServerId?: string | null;
   scope: Record<string, unknown>;
 }
 
@@ -909,6 +912,7 @@ export interface CompanyImportDiscoveryPage {
   units: CompanyImportDiscoveredUnit[];
   nextCursor: unknown | null;
   done: boolean;
+  cooldownMs?: number;
 }
 
 export interface CompanyImportReadItem {
@@ -935,6 +939,21 @@ export interface CompanyImportReadPage {
   reusedEvidenceIds?: string[];
   nextCursor: unknown | null;
   done: boolean;
+  cooldownMs?: number;
+}
+
+/** Owner-authorized reads only; callers cannot supply or override connector routes. */
+export interface CompanyConnectionReader {
+  listTools(
+    source: CompanyImportSourceDescriptor,
+    context: AdapterContext,
+  ): Promise<ConnectorTool[]>;
+  callTool(
+    source: CompanyImportSourceDescriptor,
+    name: string,
+    args: Record<string, unknown>,
+    context: AdapterContext,
+  ): Promise<unknown>;
 }
 
 export interface CompanyImportModelCallResult<T> {
