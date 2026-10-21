@@ -1301,6 +1301,8 @@ export const appContract = {
         /** The space has a Devin connection; the Devin page shows in the sidebar only then. */
         devinConnected: z.boolean(),
         dataRoomWaiting: z.number().int(),
+        /** A ticket exists in the space; the Task board shows in menus only then. */
+        hasTickets: z.boolean(),
         /** Per agent with unseen notifications, the highest-priority kind. */
         botKinds: z.record(z.string(), NotificationKindSchema),
       }),

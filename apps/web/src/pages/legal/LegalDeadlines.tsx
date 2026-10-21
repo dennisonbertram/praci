@@ -155,6 +155,12 @@ export function LegalDeadlines({
           const days = daysBetween(today, deadline.dueDate);
           const overdue = days < 0;
           const late = -days;
+          // The visible title includes the contract, so the button names do too.
+          const name = maskCurrencyWhenHidden(
+            deadline.contractTitle
+              ? `${deadline.title}: ${deadline.contractTitle}`
+              : deadline.title,
+          );
           return (
             <li
               key={deadline.id}
@@ -219,7 +225,7 @@ export function LegalDeadlines({
                   <Button
                     size="sm"
                     variant="outline"
-                    aria-label={t`Ask agent about ${maskCurrencyWhenHidden(deadline.title)}`}
+                    aria-label={t`Ask agent about ${name}`}
                     onClick={() => onAsk(deadline)}
                   >
                     <Trans>Ask agent</Trans>
@@ -229,7 +235,7 @@ export function LegalDeadlines({
                   size="sm"
                   variant="outline"
                   disabled={closing === deadline.id}
-                  aria-label={t`Mark ${maskCurrencyWhenHidden(deadline.title)} done`}
+                  aria-label={t`Mark ${name} done`}
                   onClick={(event) => void close(deadline, "done", rowHeight(event))}
                 >
                   <Trans>Done</Trans>
@@ -239,7 +245,7 @@ export function LegalDeadlines({
                   variant="ghost"
                   disabled={closing === deadline.id}
                   title={t`Not a real deadline: hide it`}
-                  aria-label={t`Dismiss ${maskCurrencyWhenHidden(deadline.title)}`}
+                  aria-label={t`Dismiss ${name}`}
                   onClick={(event) => void close(deadline, "dismissed", rowHeight(event))}
                 >
                   <Trans>Dismiss</Trans>

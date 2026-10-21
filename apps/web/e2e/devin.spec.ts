@@ -27,6 +27,7 @@ async function mockDevin(page: Page, sessions = overview.sessions) {
           devinNeedsYou: 3,
           devinConnected: true,
           dataRoomWaiting: 0,
+          hasTickets: false,
           botKinds: {},
         },
         meta: [],

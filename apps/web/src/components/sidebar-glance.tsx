@@ -11,12 +11,15 @@ export function glanceBadge({
   unseen,
   value,
   valueLabel,
+  failure = false,
   rail,
 }: {
   unseen: number;
   value?: string;
   /** What the value means in words, for the row's accessible name. */
   valueLabel?: string;
+  /** The value counts failures, so it takes the destructive color instead of the muted one. */
+  failure?: boolean;
   rail: boolean;
 }) {
   if (unseen > 0) {
@@ -39,7 +42,7 @@ export function glanceBadge({
       <span
         data-testid="glance-value"
         title={valueLabel}
-        className="ms-auto text-[11.5px] text-muted-foreground tabular-nums"
+        className={`ms-auto text-[11.5px] tabular-nums ${failure ? "font-medium text-destructive" : "text-muted-foreground"}`}
       >
         {value}
       </span>
@@ -55,13 +58,21 @@ const KIND_LABEL: Record<NotificationKind, () => React.ReactNode> = {
   new: () => <Trans> (new)</Trans>,
 };
 
+const KIND_TITLE: Record<NotificationKind, () => string> = {
+  urgent: () => t`Urgent`,
+  needs_input: () => t`Needs input`,
+  failed: () => t`Failed`,
+  done: () => t`Done`,
+  new: () => t`New`,
+};
+
 /**
  * Beside an agent's timestamp while it has unseen notifications: the icon of the highest-priority
  * kind. `botId` seeds the animation so rows do not move in lockstep.
  */
 export function StatusMark({ kind, botId }: { kind: NotificationKind; botId: string }) {
   return (
-    <span className="inline-flex text-foreground" data-kind={kind}>
+    <span className="inline-flex text-foreground" data-kind={kind} title={KIND_TITLE[kind]()}>
       <StatusIcon kind={kind} size={16} seed={botId} />
       <span className="sr-only">{KIND_LABEL[kind]()}</span>
     </span>

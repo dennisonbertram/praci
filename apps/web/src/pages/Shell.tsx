@@ -336,6 +336,7 @@ import {
   spaceHoldingChat,
 } from "./shell/space-sidebar";
 import { AppNavigateContext, Transcript, UnreadDivider } from "./shell/transcript";
+import { endOnWholeRow } from "./shell/whole-rows";
 import { WindowChrome } from "./WindowChrome";
 
 const ArtifactsPage = lazy(() =>
@@ -562,6 +563,7 @@ export function ShellPage() {
   const [archivedGroups, setArchivedGroups] = useState<Group[]>([]);
   const [archivedOpen, setArchivedOpen] = useState(false);
   const [pageAgentsOpen, setPageAgentsOpen] = useState(false);
+  const [emailChatsOpen, setEmailChatsOpen] = useState(false);
   const [collapsedSidebarSections, setCollapsedSidebarSections] = useState(() => new Set<string>());
   const [collapsedRosterParents, setCollapsedRosterParents] = useState(() => new Set<string>());
 
@@ -815,6 +817,26 @@ export function ShellPage() {
   const rosterStopId = useRef<string | null>(null);
   // After every render, since rows come and go: keeps the chat list to one tab stop.
   useEffect(() => syncRosterTabStops(sidebarRef.current, rosterStopId.current));
+  // Keeps the chat list from ending on a half-cut row, as rows come and go and the window resizes.
+  useEffect(() => {
+    const list = sidebarScrollRef.current;
+    if (!list) return;
+    let frame = 0;
+    const trim = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => endOnWholeRow(list));
+    };
+    trim();
+    const resize = new ResizeObserver(trim);
+    resize.observe(list);
+    const mutate = new MutationObserver(trim);
+    mutate.observe(list, { childList: true, subtree: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      resize.disconnect();
+      mutate.disconnect();
+    };
+  }, [mobileSidebarOpen]);
   const closeMobileSidebar = useCallback(() => setMobileSidebarOpen(false), []);
   useDrawerFocus(mobileSidebarOpen, closeMobileSidebar, sidebarRef);
   const mobileSidebarSwipeRef = useRef<{ startX: number; startY: number } | null>(null);
@@ -2146,7 +2168,7 @@ export function ShellPage() {
       { id: "contacts", label: t`Contacts`, icon: <BookUser {...icon} /> },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
       { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
-      ...(bootstrapMe?.ticketBoardEnabled
+      ...(bootstrapMe?.ticketBoardEnabled && glance.hasTickets
         ? [
             {
               id: "board",
@@ -2164,7 +2186,7 @@ export function ShellPage() {
       },
       { id: "settings", label: t`Settings`, icon: <Settings {...icon} /> },
     ];
-  }, [t, bootstrapMe?.ticketBoardEnabled, glance.devinConnected]);
+  }, [t, bootstrapMe?.ticketBoardEnabled, glance.hasTickets, glance.devinConnected]);
   // A page hidden in Page options stays out of search and the command palette too.
   const visiblePages = useMemo(
     () => appPages.filter((page) => !hiddenPages.includes(page.id)),
@@ -3667,6 +3689,14 @@ export function ShellPage() {
   }
 
   const embeddedScreenUrl = embeddableScreenUrl(screenUrl);
+  // A computer that is on but has no screen would show a heading over an empty box.
+  const noComputerScreen =
+    computer?.state === "running" &&
+    !computer.screenAvailable &&
+    computer.kind !== "desktop" &&
+    !embeddedScreenUrl &&
+    !computerError &&
+    !computerOpen;
   const hasControl = userHoldsComputerControl(computer, computerBot?.id);
   const hideScreenLoadError = computerErrorFromScreen && Boolean(embeddedScreenUrl);
   const computerScreenError =
@@ -3980,7 +4010,10 @@ export function ShellPage() {
         </div>
         {pinsList && panel === null ? (
           // 316px sidebar + 288px column leaves 676px of transcript at 1280px; at lg (1024px) only 420px.
-          <aside className="rk-scroll hidden w-72 shrink-0 overflow-y-auto border-s border-border px-4 py-3 xl:block">
+          <aside
+            aria-label={t`List`}
+            className="rk-scroll hidden w-72 shrink-0 overflow-y-auto border-s border-border px-4 py-3 xl:block"
+          >
             <PinsList pins={pinsList} onPins={setBotPins} />
           </aside>
         ) : null}
@@ -4052,6 +4085,7 @@ export function ShellPage() {
       {/* biome-ignore lint/a11y/noStaticElementInteractions: key and focus events bubble up from the row buttons inside */}
       <aside
         ref={sidebarRef}
+        aria-label={t`Sidebar`}
         onKeyDown={(event) => moveRosterFocus(sidebarRef.current, event)}
         onFocus={(event) => {
           const id = rosterRowId(event.target as HTMLElement);
@@ -4343,6 +4377,7 @@ export function ShellPage() {
                     unseen: unseen["data-room"] ?? 0,
                     rail,
                     value: glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
+                    failure: true,
                     // The count is failed files, the only ones a person can retry or remove.
                     valueLabel: plural(glance.dataRoomWaiting, {
                       one: "# file failed",
@@ -4427,24 +4462,33 @@ export function ShellPage() {
                   : undefined;
                 const dragEnabled = activeSpace && !rail && group.kind !== "pinned";
                 const nestedRows = nestRosterByParent(group.bots, collapsedRosterParents);
-                // Page and integration agents fold into one row; Chief and the person's bots stay listed.
-                const isPageAgent = (row: (typeof nestedRows)[number]) => {
-                  const key = "spawnKey" in row.item.chat ? String(row.item.chat.spawnKey) : null;
-                  return (
-                    row.item.kind === "bot" &&
-                    (pageAgentKind(key) !== null || isIntegrationAgentSpawnKey(key))
-                  );
-                };
-                const pageAgentRows =
-                  !rail && !folder && group.kind !== "pinned" ? nestedRows.filter(isPageAgent) : [];
-                const foldPageAgents = pageAgentRows.length >= 2;
-                const showPageAgents = pageAgentsOpen;
-                const displayRows: ((typeof nestedRows)[number] | { pageAgentsHeader: true })[] =
-                  foldPageAgents
+                // Page and integration agents, and the chat made for each email, fold into one row
+                // each; Chief and the person's bots stay listed.
+                const rowKey = (row: (typeof nestedRows)[number]) =>
+                  "spawnKey" in row.item.chat ? String(row.item.chat.spawnKey) : null;
+                const isEmailChat = (row: (typeof nestedRows)[number]) =>
+                  row.item.kind === "bot" && isMailThreadAgentSpawnKey(rowKey(row));
+                const isPageAgent = (row: (typeof nestedRows)[number]) =>
+                  row.item.kind === "bot" &&
+                  (pageAgentKind(rowKey(row)) !== null || isIntegrationAgentSpawnKey(rowKey(row)));
+                const foldable = !rail && !folder && group.kind !== "pinned";
+                const pageAgentRows = foldable ? nestedRows.filter(isPageAgent) : [];
+                const emailChatRows = foldable ? nestedRows.filter(isEmailChat) : [];
+                const holdsActive = (rows: typeof nestedRows) =>
+                  rows.some((row) => row.item.kind === "bot" && row.item.chat.id === active?.id);
+                const showPageAgents = pageAgentsOpen || holdsActive(pageAgentRows);
+                const showEmailChats = emailChatsOpen || holdsActive(emailChatRows);
+                const displayRows: (
+                  | (typeof nestedRows)[number]
+                  | { foldHeader: "page" | "email" }
+                )[] =
+                  pageAgentRows.length || emailChatRows.length
                     ? [
-                        ...nestedRows.filter((row) => !isPageAgent(row)),
-                        { pageAgentsHeader: true },
+                        ...nestedRows.filter((row) => !isPageAgent(row) && !isEmailChat(row)),
+                        ...(pageAgentRows.length ? [{ foldHeader: "page" as const }] : []),
                         ...(showPageAgents ? pageAgentRows : []),
+                        ...(emailChatRows.length ? [{ foldHeader: "email" as const }] : []),
+                        ...(showEmailChats ? emailChatRows : []),
                       ]
                     : nestedRows;
                 const treeActive = nestedRows.some((row) => row.depth > 0 || row.hasChildren);
@@ -4608,17 +4652,25 @@ export function ShellPage() {
                         )}
                       >
                         {displayRows.map((displayRow) => {
-                          if ("pageAgentsHeader" in displayRow) {
+                          if ("foldHeader" in displayRow) {
+                            const email = displayRow.foldHeader === "email";
+                            const rows = email ? emailChatRows : pageAgentRows;
                             return (
                               <PageAgentsRow
-                                key="page-agents"
-                                open={showPageAgents}
-                                count={pageAgentRows.length}
-                                needsYou={pageAgentRows.some(
+                                key={displayRow.foldHeader}
+                                label={email ? t`Email chats` : t`Page agents`}
+                                testId={email ? "sidebar-email-chats" : undefined}
+                                open={email ? showEmailChats : showPageAgents}
+                                count={rows.length}
+                                needsYou={rows.some(
                                   (row) =>
                                     row.item.chat.unread || glance.botKinds[row.item.chat.id],
                                 )}
-                                onToggle={() => setPageAgentsOpen((open) => !open)}
+                                onToggle={() =>
+                                  email
+                                    ? setEmailChatsOpen((open) => !open)
+                                    : setPageAgentsOpen((open) => !open)
+                                }
                               />
                             );
                           }
@@ -5129,7 +5181,7 @@ export function ShellPage() {
             role="menu"
             className="w-[calc(316px-1.5rem)] max-w-[calc(100vw-3rem)] gap-0 p-1 data-closed:animate-none"
           >
-            {bootstrapMe?.ticketBoardEnabled ? (
+            {bootstrapMe?.ticketBoardEnabled && glance.hasTickets ? (
               <Button
                 role="menuitem"
                 variant="ghost"
@@ -5275,6 +5327,14 @@ export function ShellPage() {
             paneDraggingFiles ? "ring-2 ring-inset ring-ring" : ""
           }`}
         >
+          {/* Pages carry their own h1; a chat's title is inside a button, so it is named here. */}
+          {pageMode ? null : (
+            <h1 className="sr-only">
+              {inGroup
+                ? (activeGroup?.name ?? activeSnapshot?.groupName ?? t`Group`)
+                : (active?.name ?? "")}
+            </h1>
+          )}
           {/* Inside main so the composer and its menus stay above it. As wide as the
             12px phone gutter only, so it never covers a tappable control; the swipe
             itself is detected on the shell root from a wider edge zone. */}
@@ -5636,7 +5696,9 @@ export function ShellPage() {
                   ) : panel === "list" ? (
                     <Trans>List</Trans>
                   ) : active ? (
-                    computerStateLabel(computer?.state)
+                    noComputerScreen ? null : (
+                      computerStateLabel(computer?.state)
+                    )
                   ) : (
                     <Trans>Group</Trans>
                   )}
@@ -5713,75 +5775,81 @@ export function ShellPage() {
                     />
                   );
                 })}
-                <div
-                  data-testid="computer-preview"
-                  className={`group relative rounded-[14px] bg-background ${
-                    showingRecoveryHint ? "" : "aspect-[16/10] overflow-hidden"
-                  }`}
-                >
-                  {computerOpen ? (
-                    <div className="grid h-full place-items-center text-sm text-muted-foreground/80">
-                      <Trans>Open in full window</Trans>
-                    </div>
-                  ) : computer?.kind === "desktop" ? (
-                    <DesktopKindEmptyState className="grid h-full place-items-center px-6 text-center text-sm text-muted-foreground/80" />
-                  ) : computer?.state === "running" && embeddedScreenUrl && !computerScreenError ? (
-                    <iframe
-                      title={t`Bot screen preview`}
-                      src={embeddedScreenUrl}
-                      sandbox={screenIframeSandbox(embeddedScreenUrl)}
-                      className="h-full w-full border-0 bg-black"
-                      allow="clipboard-read; clipboard-write"
-                      style={{ pointerEvents: "none" }}
-                    />
-                  ) : (
-                    <div className="grid h-full place-items-center px-6 text-center text-sm text-muted-foreground/80">
-                      {computerScreenError ??
-                        (showComputerRecoveryHint ? (
-                          <ComputersUnavailableHint
-                            sandboxProvider={bootstrapMe?.sandboxProvider}
-                            onRecovered={(sandboxProvider) => {
-                              setBootstrapMe((prev) =>
-                                prev ? { ...prev, sandboxProvider } : prev,
-                              );
-                              holdComputerRecovery();
-                            }}
-                            onRecoveryDismissed={releaseComputerRecovery}
-                            onOpenComputerSettings={
-                              bootstrapMe?.isDeploymentOwner === true
-                                ? () => openSettings("computer")
-                                : undefined
-                            }
-                          />
-                        ) : (
-                          computerPlaceholder(
-                            computer?.state,
-                            booting,
-                            computerLabel(computer?.mode, active.name),
-                          )
-                        ))}
-                    </div>
-                  )}
-                  {!computerScreenError && !showingRecoveryHint ? (
-                    <button
-                      type="button"
-                      data-testid="computer-preview-open"
-                      className="absolute inset-0 flex cursor-pointer items-center justify-center bg-overlay/40 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                      aria-label={t`Open`}
-                      onClick={() => void openComputer()}
+                {noComputerScreen ? null : (
+                  <>
+                    <div
+                      data-testid="computer-preview"
+                      className={`group relative rounded-[14px] bg-background ${
+                        showingRecoveryHint ? "" : "aspect-[16/10] overflow-hidden"
+                      }`}
                     >
-                      <span className="inline-flex items-center gap-2 rounded-full bg-overlay px-3.5 py-2 text-[14px] text-foreground shadow-md">
-                        <Maximize2 size={15} strokeWidth={1.9} aria-hidden />
-                        <Trans>Open</Trans>
-                      </span>
-                    </button>
-                  ) : null}
-                </div>
-                <p className="mt-2 truncate text-[13.5px] text-muted-foreground" dir="auto">
-                  {/s$/i.test(active.name.trim())
-                    ? t`${active.name}' computer`
-                    : t`${active.name}'s computer`}
-                </p>
+                      {computerOpen ? (
+                        <div className="grid h-full place-items-center text-sm text-muted-foreground/80">
+                          <Trans>Open in full window</Trans>
+                        </div>
+                      ) : computer?.kind === "desktop" ? (
+                        <DesktopKindEmptyState className="grid h-full place-items-center px-6 text-center text-sm text-muted-foreground/80" />
+                      ) : computer?.state === "running" &&
+                        embeddedScreenUrl &&
+                        !computerScreenError ? (
+                        <iframe
+                          title={t`Bot screen preview`}
+                          src={embeddedScreenUrl}
+                          sandbox={screenIframeSandbox(embeddedScreenUrl)}
+                          className="h-full w-full border-0 bg-black"
+                          allow="clipboard-read; clipboard-write"
+                          style={{ pointerEvents: "none" }}
+                        />
+                      ) : (
+                        <div className="grid h-full place-items-center px-6 text-center text-sm text-muted-foreground/80">
+                          {computerScreenError ??
+                            (showComputerRecoveryHint ? (
+                              <ComputersUnavailableHint
+                                sandboxProvider={bootstrapMe?.sandboxProvider}
+                                onRecovered={(sandboxProvider) => {
+                                  setBootstrapMe((prev) =>
+                                    prev ? { ...prev, sandboxProvider } : prev,
+                                  );
+                                  holdComputerRecovery();
+                                }}
+                                onRecoveryDismissed={releaseComputerRecovery}
+                                onOpenComputerSettings={
+                                  bootstrapMe?.isDeploymentOwner === true
+                                    ? () => openSettings("computer")
+                                    : undefined
+                                }
+                              />
+                            ) : (
+                              computerPlaceholder(
+                                computer?.state,
+                                booting,
+                                computerLabel(computer?.mode, active.name),
+                              )
+                            ))}
+                        </div>
+                      )}
+                      {!computerScreenError && !showingRecoveryHint ? (
+                        <button
+                          type="button"
+                          data-testid="computer-preview-open"
+                          className="absolute inset-0 flex cursor-pointer items-center justify-center bg-overlay/40 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                          aria-label={t`Open`}
+                          onClick={() => void openComputer()}
+                        >
+                          <span className="inline-flex items-center gap-2 rounded-full bg-overlay px-3.5 py-2 text-[14px] text-foreground shadow-md">
+                            <Maximize2 size={15} strokeWidth={1.9} aria-hidden />
+                            <Trans>Open</Trans>
+                          </span>
+                        </button>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 truncate text-[13.5px] text-muted-foreground" dir="auto">
+                      {/s$/i.test(active.name.trim())
+                        ? t`${active.name}' computer`
+                        : t`${active.name}'s computer`}
+                    </p>
+                  </>
+                )}
               </div>
             ) : null}
             {panel === "create-group" ? (
@@ -6378,7 +6446,8 @@ export function ShellPage() {
         <CommandPalette
           open={commandPaletteOpen}
           onOpenChange={setCommandPaletteOpen}
-          bots={bots}
+          // An email's chat is found once, under Chats.
+          bots={bots.filter((bot) => !isMailThreadAgentSpawnKey(bot.spawnKey))}
           onSelectBot={(id) => {
             setMobileSidebarOpen(false);
             navigate(`/app/${id}`);
