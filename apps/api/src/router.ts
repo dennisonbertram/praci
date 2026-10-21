@@ -7546,7 +7546,7 @@ export function createRouter(deps: RouterDeps) {
             ).update,
         ),
         markDelivered: authed.investors.updates.markDelivered.handler(({ context, input }) =>
-          markInvestorUpdateDelivered(deps.prisma, context.actor, input.id).catch(
+          markInvestorUpdateDelivered(deps.prisma, context.actor, input.id, input.contactIds).catch(
             investorUpdateError,
           ),
         ),

@@ -80,6 +80,29 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
   const loadedId = useRef<string | null>(null);
   // The fields as the server last held them, so opening an update does not save it again.
   const saved = useRef("");
+  const saving = useRef<Promise<unknown>>(Promise.resolve());
+  const pending = useRef<{
+    subject: string;
+    body: string;
+    ticked: string[];
+    from: string | null;
+    key: string;
+  } | null>(null);
+  // Leaving within the autosave delay still saves the last edit.
+  useEffect(
+    () => () => {
+      const last = pending.current;
+      if (last)
+        void rpc.investors.updates.save({
+          id: updateId,
+          subject: last.subject,
+          body: last.body,
+          recipientContactIds: last.ticked,
+          fromConnectionId: last.from,
+        });
+    },
+    [updateId],
+  );
   const wasSending = useRef(false);
 
   const draft = update?.status === "draft";
@@ -154,17 +177,22 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
     const key = fieldsKey(subject, body, ticked, from);
     if (!draft || loadedId.current !== updateId || key === saved.current) return;
     setSaveState("saving");
+    pending.current = { subject, body, ticked, from, key };
     const timer = setTimeout(() => {
-      rpc.investors.updates
-        .save({
-          id: updateId,
-          subject,
-          body,
-          recipientContactIds: ticked,
-          fromConnectionId: from,
-        })
+      // One save at a time, in order, so an older request cannot land after a newer one.
+      saving.current = saving.current
+        .then(() =>
+          rpc.investors.updates.save({
+            id: updateId,
+            subject,
+            body,
+            recipientContactIds: ticked,
+            fromConnectionId: from,
+          }),
+        )
         .then(() => {
           saved.current = key;
+          if (pending.current?.key === key) pending.current = null;
           setSaveState("saved");
         })
         .catch(() => setSaveState("failed"));
@@ -206,14 +234,17 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
     }
   };
 
-  const flushSave = () =>
-    rpc.investors.updates.save({
+  const flushSave = async () => {
+    await saving.current;
+    pending.current = null;
+    return rpc.investors.updates.save({
       id: updateId,
       subject,
       body,
       recipientContactIds: ticked,
       fromConnectionId: from,
     });
+  };
 
   const send = () => {
     setAsking(null);
@@ -230,9 +261,9 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
     wasSending.current = true;
     void run(() => rpc.investors.updates.retry({ id: updateId, contactIds, resendUnknown }));
   };
-  const markDelivered = () => {
+  const markDelivered = (contactIds?: string[]) => {
     setResend(null);
-    void run(() => rpc.investors.updates.markDelivered({ id: updateId }));
+    void run(() => rpc.investors.updates.markDelivered({ id: updateId, contactIds }));
   };
 
   /** Asks the Investors agent to write the body into this draft, then waits for it to appear. */
@@ -442,7 +473,7 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
               <Button size="sm" onClick={() => retry(resend, true)}>
                 <Trans>Send again</Trans>
               </Button>
-              <Button variant="outline" size="sm" onClick={markDelivered}>
+              <Button variant="outline" size="sm" onClick={() => markDelivered(resend)}>
                 <Trans>Mark delivered</Trans>
               </Button>
               <Button
@@ -516,7 +547,7 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
                 </Trans>
               </span>
               {hasUnknown ? (
-                <Button variant="outline" disabled={busy} onClick={markDelivered}>
+                <Button variant="outline" disabled={busy} onClick={() => markDelivered()}>
                   <Trans>Mark delivered</Trans>
                 </Button>
               ) : null}

@@ -249,7 +249,7 @@ it("records an Unknown recipient as Sent with Mark delivered in the footer", asy
     }),
   );
   await click(button("Mark delivered"));
-  expect(rpcMock.markDelivered).toHaveBeenCalledWith({ id: "u1" });
+  expect(rpcMock.markDelivered).toHaveBeenCalledWith({ id: "u1", contactIds: undefined });
 });
 
 it("shows Sending on a disabled button while a send runs", async () => {

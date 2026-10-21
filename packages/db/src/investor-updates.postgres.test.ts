@@ -197,7 +197,7 @@ describePostgres("investor updates (PostgreSQL)", () => {
       data: { updatedAt: new Date(Date.now() - SENDING_STALE_MS - 1000) },
     });
     // Mark delivered records the Unknown recipient as Sent.
-    const marked = await markInvestorUpdateDelivered(prisma, mine, draft.id);
+    const marked = await markInvestorUpdateDelivered(prisma, mine, draft.id, [contact.Ann!]);
     expect(marked.deliveries.find((d) => d.contactId === contact.Ann)?.state).toBe("sent");
     expect(n).toBe(1);
   });

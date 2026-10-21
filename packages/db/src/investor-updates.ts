@@ -314,17 +314,26 @@ export async function claimInvestorUpdateSend(
   prisma: Db,
   actor: Scope,
   id: string,
-  recipientContactIds?: readonly string[],
 ): Promise<Row | null> {
   const scope = ownerOf(actor);
   const { count } = await prisma.investorUpdate.updateMany({
     where: { id, ...scope, status: "draft" },
-    data: {
-      status: "sending",
-      ...(recipientContactIds ? { recipientContactIds: [...recipientContactIds] } : {}),
-    },
+    data: { status: "sending" },
   });
   return count === 0 ? null : prisma.investorUpdate.findFirst({ where: { id, ...scope } });
+}
+
+/** Narrows a claimed update's recipients, so ones that cannot be emailed never wait forever. */
+export async function setInvestorUpdateRecipients(
+  prisma: Db,
+  actor: Scope,
+  id: string,
+  recipientContactIds: readonly string[],
+): Promise<void> {
+  await prisma.investorUpdate.updateMany({
+    where: { id, ...ownerOf(actor), status: "sending" },
+    data: { recipientContactIds: [...recipientContactIds] },
+  });
 }
 
 /**
@@ -357,7 +366,11 @@ export async function claimInvestorUpdateRetry(
       id,
       ...scope,
       updatedAt: row.updatedAt,
-      OR: [{ status: "sent" }, { status: "sending" }],
+      // A send still moving owns the update; only a finished or stalled one can be retried.
+      OR: [
+        { status: "sent" },
+        { status: "sending", updatedAt: { lt: new Date(now.getTime() - SENDING_STALE_MS) } },
+      ],
     },
     data: { status: "sending" },
   });
@@ -411,6 +424,7 @@ export async function markInvestorUpdateDelivered(
   prisma: Db,
   actor: Scope,
   id: string,
+  contactIds?: readonly string[],
   now = new Date(),
 ): Promise<InvestorUpdate> {
   const scope = ownerOf(actor);
@@ -418,6 +432,7 @@ export async function markInvestorUpdateDelivered(
   const states = deliveryStates(row, await composeStatesFor(prisma, scope, [row]), now);
   const deliveries = deliveriesOf(row);
   for (const [contactId, state] of states) {
+    if (contactIds && !contactIds.includes(contactId)) continue;
     const attempts = deliveries[contactId];
     const last = attempts?.at(-1);
     if (state === "unknown" && attempts && last)

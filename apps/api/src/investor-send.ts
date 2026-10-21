@@ -8,6 +8,7 @@ import {
   finishInvestorUpdateSend,
   getInvestorUpdate,
   recordInvestorAttempt,
+  setInvestorUpdateRecipients,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 
@@ -166,10 +167,18 @@ export async function startInvestorUpdateSend(
   if (recipients.length === 0)
     throw new ORPCError("BAD_REQUEST", { message: "Pick at least one recipient" });
   const connectionId = await senderFor(deps, actor, current.fromConnectionId);
-  const claimed = await claimInvestorUpdateSend(deps.prisma, scope, id, recipients);
+  const claimed = await claimInvestorUpdateSend(deps.prisma, scope, id);
   if (!claimed)
     return { update: await getInvestorUpdate(deps.prisma, scope, id), done: Promise.resolve() };
-  const done = sendLoop(deps, actor, claimed, connectionId, recipients);
+  // The recipients are read from the claimed row, so an edit made since the check above holds.
+  const claimedEmailed = await deps.prisma.contact.findMany({
+    where: { ...scope, id: { in: claimed.recipientContactIds }, email: { not: null } },
+    select: { id: true },
+  });
+  const ok = new Set(claimedEmailed.map((c) => c.id));
+  const final = claimed.recipientContactIds.filter((contactId) => ok.has(contactId));
+  await setInvestorUpdateRecipients(deps.prisma, scope, id, final);
+  const done = sendLoop(deps, actor, claimed, connectionId, final);
   return { update: await getInvestorUpdate(deps.prisma, scope, id), done };
 }
 

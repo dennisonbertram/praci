@@ -1560,7 +1560,9 @@ export const appContract = {
       /** Sends again to failed recipients (and Unknown ones only when `resendUnknown`). */
       retry: oc.input(InvestorUpdateRetryInputSchema).output(InvestorUpdateSchema),
       /** Records every Unknown recipient as Sent. */
-      markDelivered: oc.input(z.object({ id: Id })).output(InvestorUpdateSchema),
+      markDelivered: oc
+        .input(z.object({ id: Id, contactIds: z.array(Id).max(1000).optional() }))
+        .output(InvestorUpdateSchema),
       duplicate: oc.input(z.object({ id: Id })).output(InvestorUpdateSchema),
       delete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
     },
