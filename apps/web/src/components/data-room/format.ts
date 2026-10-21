@@ -87,3 +87,20 @@ const LOGO_NAME =
   /^(image\d*|logo|signature|outlook-\w+|icon|banner|spacer|facebook|twitter|linkedin|instagram)\b/i;
 export const isNoiseImage = (file: { filename: string; mimeType: string; size: number }) =>
   file.mimeType.startsWith("image/") && (file.size < 10_000 || LOGO_NAME.test(file.filename));
+
+/**
+ * True when the pipeline said the file's own bytes cannot be read ("This PDF is password-protected."),
+ * so trying again reads the same bytes. Other failures are stored as "Name: message".
+ * ponytail: matches the sentences in packages/adapters data-room-jobs.ts; a flag on the item would be sturdier.
+ */
+export const isUnreadable = (error: string | null) => !!error && /^This (PDF|file)\b/.test(error);
+
+/** "Reading for 5 min" (or hours, days) once a file has been in the pipeline over 2 minutes; empty before that. */
+export function readingAge(createdAt: string, now = Date.now()) {
+  const minutes = Math.floor((now - new Date(createdAt).getTime()) / 60_000);
+  if (minutes < 2) return "";
+  if (minutes < 60) return t`Reading for ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  return days < 1 ? t`Reading for ${hours} h` : t`Reading for ${days} d`;
+}

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { findComponents, storiesFor } from "./design-system.mjs";
+import {
+  findComponents,
+  findSwiftViews,
+  renderComponentsMd,
+  storiesFor,
+} from "./design-system.mjs";
 
 // Same inventory the real run passes: every scanned file, sources and stories together.
 const files = [
@@ -16,6 +21,27 @@ const sources = {
   "apps/web/src/screens/Host.stories.tsx": `import { C } from "../components/C";\n${story}`,
 };
 const read = (f) => sources[f] ?? "";
+
+describe("native SwiftUI catalog", () => {
+  it("lists views without treating models, app entry points, or comments as views", () => {
+    expect(
+      findSwiftViews(`
+      // struct Fake: View {}
+      struct Model: Codable {}
+      struct PraciApp: App {}
+      struct SignIn: View { var body: some View { Text("Sign in") } }
+      struct Status: View, Sendable {}
+    `),
+    ).toEqual(["SignIn", "Status"]);
+    const catalog = renderComponentsMd({
+      web: [],
+      mobile: [],
+      native: [{ file: "apps/ios/Sources/SignIn.swift", names: ["SignIn"] }],
+    });
+    expect(catalog).toContain("SwiftUI views: 1 in 1 files");
+    expect(catalog).toContain("native story pending | iOS |");
+  });
+});
 
 describe("storiesFor", () => {
   it("accepts a sibling stories file", () => {

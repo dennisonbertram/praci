@@ -130,7 +130,8 @@ export function AutoSortDialog({
       <DialogContent showCloseButton={false} className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            <Trans>Auto-sort</Trans>
+            {/* Auto-sort always works on the whole Data room, never on ticked files. */}
+            <Trans>Sort every file in the Data room</Trans>
           </DialogTitle>
         </DialogHeader>
         <div className="max-h-[60dvh] min-h-16 overflow-y-auto">
@@ -143,7 +144,7 @@ export function AutoSortDialog({
             </div>
           ) : !plan ? (
             <div className="flex flex-col gap-2">
-              <LoadingState label={t`Sorting every file in the Data room`} />
+              <LoadingState label={t`Looking for changes`} />
             </div>
           ) : plan.operations.length === 0 && !reasonText ? (
             <p className="text-muted-foreground">

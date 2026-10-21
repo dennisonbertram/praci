@@ -87,7 +87,7 @@ export const overview: LegalOverview = {
     dailyScanActive: true,
     lastScanRun: { id: id(950), status: "completed", error: null },
   },
-  model: { provider: "openrouter", id: "meta/muse-spark-1.2", isPreferred: true },
+  model: { provider: "openrouter", id: "meta/muse-wonder", isPreferred: true },
 };
 
 export const emptyOverview: LegalOverview = {
@@ -101,7 +101,7 @@ export const emptyOverview: LegalOverview = {
     unreviewedDocuments: 0,
   },
   agent: { botId: id(900), lastScanAt: null, dailyScanActive: true, lastScanRun: null },
-  model: { provider: "openrouter", id: "meta/muse-spark-1.2", isPreferred: true },
+  model: { provider: "openrouter", id: "meta/muse-wonder", isPreferred: true },
 };
 
 export const graph: LegalGraph = {
@@ -183,5 +183,5 @@ export const consentFixture = {
   version: "v1",
   allowed: true,
   disclosure: "Document text from your Data room is sent to the model that runs the Legal agent.",
-  recipients: [{ name: "OpenRouter", detail: "Meta Muse Spark 1.2" }],
+  recipients: [{ name: "OpenRouter", detail: "Meta Muse Wonder" }],
 };

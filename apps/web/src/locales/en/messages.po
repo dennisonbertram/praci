@@ -1531,7 +1531,6 @@ msgstr "Auto-renews"
 msgid "Auto-renews, {notice} days notice"
 msgstr "Auto-renews, {notice} days notice"
 
-#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 msgid "Auto-sort"
@@ -3626,6 +3625,7 @@ msgstr "Default ({0})"
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/integrations/StoredMeetingsList.tsx
 #: src/pages/Artifacts.tsx
@@ -5405,6 +5405,10 @@ msgstr "Local Server Settings"
 msgid "Log out"
 msgstr "Log out"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Looking for changes"
+msgstr "Looking for changes"
+
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "Looks like spam"
 msgstr "Looks like spam"
@@ -6617,10 +6621,6 @@ msgstr "Open <0>{0}</0> to finish signing in."
 msgid "Open again"
 msgstr "Open again"
 
-#: src/pages/Artifacts.tsx
-msgid "Open chat"
-msgstr "Open chat"
-
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
 msgstr "Open computer settings"
@@ -7295,6 +7295,18 @@ msgstr "Reading a connected app"
 #: src/pages/Investors.tsx
 msgid "Reading Carta…"
 msgstr "Reading Carta…"
+
+#: src/components/data-room/format.ts
+msgid "Reading for {days} d"
+msgstr "Reading for {days} d"
+
+#: src/components/data-room/format.ts
+msgid "Reading for {hours} h"
+msgstr "Reading for {hours} h"
+
+#: src/components/data-room/format.ts
+msgid "Reading for {minutes} min"
+msgstr "Reading for {minutes} min"
 
 #: src/components/data-room/format.ts
 #: src/components/data-room/ProcessingStrip.tsx
@@ -8237,19 +8249,19 @@ msgstr "See who owns your company"
 msgid "See your cash, burn and runway, pulled from your bank."
 msgstr "See your cash, burn and runway, pulled from your bank."
 
-#: src/components/inbox/InboxRow.tsx
-#: src/components/inbox/InboxSenderGroup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Select"
 msgstr "Select"
 
 #. placeholder {0}: file.name
+#. placeholder {0}: group.sender
 #. placeholder {0}: item.name
-#. placeholder {0}: row.subject
 #: src/components/data-room/DriveRow.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/inbox/CleanupSenderRow.tsx
+#: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 msgid "Select {0}"
 msgstr "Select {0}"
 
@@ -8731,13 +8743,13 @@ msgstr "Sort ascending"
 msgid "Sort descending"
 msgstr "Sort descending"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Sort every file in the Data room"
+msgstr "Sort every file in the Data room"
+
 #: src/components/ListControls.tsx
 msgid "Sort: {fieldLabel}"
 msgstr "Sort: {fieldLabel}"
-
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "Sorting every file in the Data room"
-msgstr "Sorting every file in the Data room"
 
 #: src/pages/Inbox.tsx
 msgid "Sorting is taking longer than usual. Your mail is below."
@@ -8765,10 +8777,6 @@ msgstr "Space changed. Reopen Models to load its backup list."
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Space changed. Reopen Models to save its backup list."
 msgstr "Space changed. Reopen Models to save its backup list."
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Space default"
-msgstr "Space default"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Spaces"
@@ -9019,6 +9027,10 @@ msgstr "Syncing"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
 msgstr "System"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "System model"
+msgstr "System model"
 
 #: src/components/data-room/format.ts
 #: src/components/data-room/ProcessingStrip.tsx
@@ -9656,8 +9668,8 @@ msgid "Type"
 msgstr "Type"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Type here to find any chat, file or email."
-msgstr "Type here to find any chat, file or email."
+msgid "Type here to find any page, chat or email."
+msgstr "Type here to find any page, chat or email."
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Type without recording"
@@ -9990,6 +10002,10 @@ msgstr "Uses Carta figures and asks before sending."
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Using the system model: {unavailableModel} isn't available"
+msgstr "Using the system model: {unavailableModel} isn't available"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Usual charge"

@@ -291,8 +291,9 @@ export function NotificationToaster({
         <Toast.Viewport
           role="status"
           aria-live="polite"
-          // Bottom-right with 16 px side insets, lifted above the chat composer. On phones: centred at the top.
-          className="group/viewport pointer-events-none fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+1rem))] z-50 w-[min(28rem,calc(100vw-2rem))] max-sm:top-[max(1rem,env(safe-area-inset-top))] max-sm:right-auto max-sm:bottom-auto max-sm:left-1/2 max-sm:-translate-x-1/2"
+          // Top-right under the page header, clear of the agent panel's composer, and above dialogs and
+          // their scrim (z-50) so a notice's button stays clickable. On phones: centred at the top.
+          className="group/viewport pointer-events-none fixed top-16 right-[max(1rem,env(safe-area-inset-right))] z-[110] w-[min(28rem,calc(100vw-2rem))] max-sm:top-[max(1rem,env(safe-area-inset-top))] max-sm:right-auto max-sm:left-1/2 max-sm:-translate-x-1/2"
         >
           <ToastList onOpen={onOpen} dismissLabel={dismissLabel} formatTime={formatTime} />
         </Toast.Viewport>

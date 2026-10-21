@@ -1531,7 +1531,6 @@ msgstr ""
 msgid "Auto-renews, {notice} days notice"
 msgstr ""
 
-#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 msgid "Auto-sort"
@@ -3626,6 +3625,7 @@ msgstr "Par défaut ({0})"
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/integrations/StoredMeetingsList.tsx
 #: src/pages/Artifacts.tsx
@@ -5405,6 +5405,10 @@ msgstr "Paramètres du serveur local"
 msgid "Log out"
 msgstr "Se déconnecter"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Looking for changes"
+msgstr ""
+
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "Looks like spam"
 msgstr ""
@@ -6617,10 +6621,6 @@ msgstr ""
 msgid "Open again"
 msgstr ""
 
-#: src/pages/Artifacts.tsx
-msgid "Open chat"
-msgstr ""
-
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
 msgstr ""
@@ -7294,6 +7294,18 @@ msgstr ""
 
 #: src/pages/Investors.tsx
 msgid "Reading Carta…"
+msgstr ""
+
+#: src/components/data-room/format.ts
+msgid "Reading for {days} d"
+msgstr ""
+
+#: src/components/data-room/format.ts
+msgid "Reading for {hours} h"
+msgstr ""
+
+#: src/components/data-room/format.ts
+msgid "Reading for {minutes} min"
 msgstr ""
 
 #: src/components/data-room/format.ts
@@ -8237,19 +8249,19 @@ msgstr ""
 msgid "See your cash, burn and runway, pulled from your bank."
 msgstr ""
 
-#: src/components/inbox/InboxRow.tsx
-#: src/components/inbox/InboxSenderGroup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 msgid "Select"
 msgstr ""
 
 #. placeholder {0}: file.name
+#. placeholder {0}: group.sender
 #. placeholder {0}: item.name
-#. placeholder {0}: row.subject
 #: src/components/data-room/DriveRow.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/inbox/CleanupSenderRow.tsx
+#: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 msgid "Select {0}"
 msgstr ""
 
@@ -8731,12 +8743,12 @@ msgstr ""
 msgid "Sort descending"
 msgstr ""
 
-#: src/components/ListControls.tsx
-msgid "Sort: {fieldLabel}"
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Sort every file in the Data room"
 msgstr ""
 
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "Sorting every file in the Data room"
+#: src/components/ListControls.tsx
+msgid "Sort: {fieldLabel}"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -8765,10 +8777,6 @@ msgstr "L’espace a changé. Rouvrez Modèles pour charger sa liste de secours.
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Space changed. Reopen Models to save its backup list."
 msgstr "L’espace a changé. Rouvrez Modèles pour enregistrer sa liste de secours."
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Space default"
-msgstr "Défaut de l'espace"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Spaces"
@@ -9019,6 +9027,10 @@ msgstr ""
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
 msgstr "Système"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "System model"
+msgstr ""
 
 #: src/components/data-room/format.ts
 #: src/components/data-room/ProcessingStrip.tsx
@@ -9656,7 +9668,7 @@ msgid "Type"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Type here to find any chat, file or email."
+msgid "Type here to find any page, chat or email."
 msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx
@@ -9990,6 +10002,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Utilise les identifiants {hostCredentialSource} propres à ce serveur pour accéder à {selectedProviderName}."
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Using the system model: {unavailableModel} isn't available"
+msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Usual charge"

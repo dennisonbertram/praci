@@ -178,7 +178,7 @@ it("checks the row from its own checkbox without opening it, and passes the shif
   const onOpen = vi.fn();
   await show({ onPick, onOpen });
   const box = document.querySelector<HTMLElement>('[role="checkbox"]');
-  expect(box?.getAttribute("aria-label")).toBe("Select");
+  expect(box?.getAttribute("aria-label")).toBe("Select Sam Rivera");
   // The checkbox is a sibling of the row button, never inside it.
   expect(box?.closest("button[data-row-id]")).toBeNull();
   await act(async () => box?.click());
