@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 240 of 240
-- Web and shared components: 652
+- Web and shared component files with stories: 241 of 241
+- Web and shared components: 653
 - Mobile components: 137 in 94 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
