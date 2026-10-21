@@ -14,6 +14,15 @@ export const mailThreadAgentSpawnKey = (connectionId: string, threadId: string) 
 export const isMailThreadAgentSpawnKey = (spawnKey: string | null | undefined) =>
   Boolean(spawnKey?.startsWith("mail-thread:"));
 
+/**
+ * An agent with the Inbox agent's mail permissions: the Inbox agent itself, and the agent made for
+ * one email conversation. Use this where a check is about tools, approvals or connections. It is not
+ * for what only the one Inbox agent is: the owner other agents ask for mail, the page and its
+ * notifications, or the sidebar folder.
+ */
+export const isMailAgentSpawnKey = (spawnKey: string | null | undefined) =>
+  isInboxAgentSpawnKey(spawnKey) || isMailThreadAgentSpawnKey(spawnKey);
+
 /** Connection.displayName labels the account tab. */
 export const MailAccountSchema = z.object({
   connectionId: Id,

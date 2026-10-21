@@ -210,6 +210,18 @@ describe("cleanup contracts", () => {
   });
 });
 
+describe("mail agent spawn key", () => {
+  it("covers the Inbox agent and an email's own agent, and nothing else", async () => {
+    const { inboxAgentSpawnKey, isMailAgentSpawnKey, mailThreadAgentSpawnKey } = await import(
+      "./inbox.js"
+    );
+    expect(isMailAgentSpawnKey(inboxAgentSpawnKey("u1"))).toBe(true);
+    expect(isMailAgentSpawnKey(mailThreadAgentSpawnKey("c", "t"))).toBe(true);
+    expect(isMailAgentSpawnKey("finance-agent:u1")).toBe(false);
+    expect(isMailAgentSpawnKey(null)).toBe(false);
+  });
+});
+
 describe("mail thread agent spawn key", () => {
   it("is one key per account and thread, and is reserved by its prefix", async () => {
     const { isMailThreadAgentSpawnKey, mailThreadAgentSpawnKey } = await import("./inbox.js");
