@@ -1,4 +1,4 @@
-import type { Contact } from "@rakazo/contracts";
+import type { Contact, InvestorUpdate } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { InvestorsPage } from "./Investors";
@@ -20,6 +20,25 @@ const contacts = [
   contact("c2", "Bo Sample", "auditor", "Sample & Co"),
   contact("c3", "Cy Placeholder", "investor", null),
 ];
+const noUpdates = {
+  "investors.updates.list": [],
+  "investors.reminder": { cadence: "monthly" },
+};
+const update = (over: Partial<InvestorUpdate>): InvestorUpdate => ({
+  id: "u1",
+  audience: "investors",
+  subject: "Example Co · 2026-09 update",
+  period: "2026-09",
+  body: "September went well.",
+  status: "draft",
+  recipientContactIds: ["c1", "c3"],
+  fromConnectionId: null,
+  deliveries: [],
+  sentAt: null,
+  createdAt: "2026-10-01T09:00:00.000Z",
+  updatedAt: "2026-10-01T09:00:00.000Z",
+  ...over,
+});
 const cartaServer = { id: "srv_c", enabled: true, endpoint: "https://mcp.app.carta.com/mcp" };
 
 const snapshot = {
@@ -95,7 +114,38 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  beforeEach: () => mockRpc({ "contacts.list": contacts, "mcp.servers.list": [cartaServer] }),
+  beforeEach: () =>
+    mockRpc({ "contacts.list": contacts, "mcp.servers.list": [cartaServer], ...noUpdates }),
+};
+
+/** A draft waiting in Action items, a Sending row, a Partly sent row with Retry, and a sent update. */
+export const WithUpdates: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [cartaServer],
+      "investors.reminder": { cadence: "quarterly" },
+      "investors.updates.list": [
+        update({ id: "u1" }),
+        update({ id: "u2", subject: "Example Co · 2026-08 update", status: "sending" }),
+        update({
+          id: "u3",
+          subject: "Example Co · 2026-07 update",
+          status: "partly_sent",
+          sentAt: "2026-08-02T09:00:00.000Z",
+          deliveries: [
+            { contactId: "c1", name: "Ada Example", state: "sent" },
+            { contactId: "c3", name: "Cy Placeholder", state: "failed" },
+          ],
+        }),
+        update({
+          id: "u4",
+          subject: "Example Co · 2026-06 update",
+          status: "sent",
+          sentAt: "2026-07-02T09:00:00.000Z",
+        }),
+      ],
+    }),
 };
 
 export const CartaNotConnected: Story = {

@@ -211,7 +211,7 @@ describePostgres("integration agents (PostgreSQL)", () => {
       userId: userA,
       spaceId,
     });
-    expect(bot.instructions).toContain("carta-investor-update");
+    expect(bot.instructions).toContain("ask the Investors agent");
     expect(first.server).toMatchObject({
       agentBotId: first.botId,
       agentExclusive: true,

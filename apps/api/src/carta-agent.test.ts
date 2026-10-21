@@ -126,15 +126,7 @@ describe("ensureCartaAgent", () => {
     const input = (createBot.mock.calls[0] as unknown as [Actor, Record<string, unknown>])[1];
     expect(input.spawnKey).toBe(cartaAgentSpawnKey("user-1"));
     expect(input.name).toBe("Carta agent");
-    for (const word of [
-      "contacts_add",
-      "cap_table_read",
-      "cap_table_update",
-      "Other bots",
-      "carta-investor-update",
-      "carta-audit-response",
-      "TBD",
-    ])
+    for (const word of ["contacts_add", "cap_table_read", "cap_table_update", "Other bots", "TBD"])
       expect(String(input.instructions)).toContain(word);
   });
 

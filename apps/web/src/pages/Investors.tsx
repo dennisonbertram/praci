@@ -1,20 +1,38 @@
 import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { CapTableSource, CapTableState, Contact, ContactKind } from "@rakazo/contracts";
+import type {
+  CapTableSource,
+  CapTableState,
+  Contact,
+  ContactKind,
+  InvestorReminderCadence,
+  InvestorUpdate,
+} from "@rakazo/contracts";
 import { isCartaEndpoint } from "@rakazo/contracts";
 import { capTableMath, isSafeSecurity } from "@rakazo/core";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Badge,
   Button,
   Card,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  enqueueNotificationToast,
   Skeleton,
   Tabs,
   TabsList,
@@ -36,6 +54,7 @@ import { DrivePicker } from "../components/data-room/ImportFromDrive";
 import { DRIVE_PAGE } from "../components/data-room/ImportFromEmail";
 import { CustomConnectionDialog } from "../components/integrations/CustomConnectionDialog";
 import { useIntegrations } from "../components/integrations/useIntegrations";
+import { ActionItems } from "../components/investors/ActionItems";
 import { SearchField } from "../components/ListControls";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { hasConnectedCarta } from "../lib/carta-agent";
@@ -52,7 +71,7 @@ const CAP_TABLE_FOLDER = ["Finance", "Cap Table"];
 type Snapshot = NonNullable<CapTableState["snapshot"]>;
 
 /** The contact tabs: the people this page's relationships involve. */
-const CONTACT_TABS = ["investor", "auditor"] as const satisfies readonly ContactKind[];
+const CONTACT_TABS = ["investor", "board", "auditor"] as const satisfies readonly ContactKind[];
 type ContactTab = (typeof CONTACT_TABS)[number];
 const parseTab = (value: string | null): ContactTab =>
   CONTACT_TABS.find((tab) => tab === value) ?? "investor";
@@ -145,6 +164,207 @@ function ConnectCartaDialog({
       service={carta.name}
       onClose={onClose}
     />
+  );
+}
+
+const updateStatusNames = () => ({
+  draft: t`Draft`,
+  sending: t`Sending`,
+  sent: t`Sent`,
+  partly_sent: t`Partly sent`,
+});
+
+/** Why a Partly sent update is partly sent: failed recipients first, then deliveries nobody confirmed. */
+function problemText(update: InvestorUpdate): string {
+  const failed = update.deliveries.filter((d) => d.state === "failed");
+  const unknown = update.deliveries.filter((d) => d.state === "unknown");
+  const parts: string[] = [];
+  if (failed.length === 1) parts.push(t`${failed[0]?.name ?? ""} failed`);
+  else if (failed.length > 1) parts.push(t`${failed.length} failed`);
+  if (unknown.length === 1) parts.push(t`${unknown[0]?.name ?? ""}: delivery unknown`);
+  else if (unknown.length > 1) parts.push(t`${unknown.length} deliveries unknown`);
+  return parts.join(" · ");
+}
+
+function UpdateRow({
+  update,
+  onOpen,
+  onRetry,
+  onMarkDelivered,
+  onDuplicate,
+  onDelete,
+}: {
+  update: InvestorUpdate;
+  onOpen: () => void;
+  onRetry: () => void;
+  onMarkDelivered: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+}) {
+  const locale = i18n.locale || "en";
+  const sending = update.status === "sending";
+  const partly = update.status === "partly_sent";
+  const hasUnknown = update.deliveries.some((d) => d.state === "unknown");
+  const day = (iso: string) => shortDay(iso.slice(0, 10), new Date(), locale);
+  const subline = partly
+    ? problemText(update)
+    : update.status === "draft"
+      ? t`Drafted ${day(update.createdAt)}`
+      : update.sentAt
+        ? t`Sent ${day(update.sentAt)}`
+        : update.period;
+  return (
+    <li className="flex min-h-11 items-center gap-2 border-t border-border px-2 first:border-t-0">
+      <button
+        type="button"
+        data-row-open
+        className="min-w-0 flex-1 rounded-sm py-1.5 text-start outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={onOpen}
+      >
+        <span className="block truncate text-sm font-medium" title={update.subject}>
+          {update.subject}
+        </span>
+        <span className="block truncate text-xs text-muted-foreground">{subline}</span>
+      </button>
+      <Badge variant={partly ? "destructive" : "secondary"}>
+        {updateStatusNames()[update.status]}
+      </Badge>
+      {partly ? (
+        <Button variant="outline" size="sm" onClick={onRetry}>
+          <Trans>Retry</Trans>
+        </Button>
+      ) : null}
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              disabled={sending}
+              aria-label={t`Actions for ${update.subject}`}
+            />
+          }
+        >
+          <MoreHorizontal aria-hidden="true" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {hasUnknown ? (
+            <DropdownMenuItem onClick={onMarkDelivered}>
+              <Trans>Mark delivered</Trans>
+            </DropdownMenuItem>
+          ) : null}
+          {update.status !== "draft" ? (
+            <DropdownMenuItem onClick={onDuplicate}>
+              <Trans>Duplicate</Trans>
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuItem variant="destructive" onClick={onDelete}>
+            <Trans>Delete</Trans>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </li>
+  );
+}
+
+/** Every update, drafts included, with New update and the Reminder choice. */
+function UpdatesSection({
+  updates,
+  cadence,
+  failed,
+  onNew,
+  onOpen,
+  onRetry,
+  onMarkDelivered,
+  onDuplicate,
+  onDelete,
+  onReminder,
+  onReload,
+}: {
+  updates: InvestorUpdate[] | null;
+  cadence: InvestorReminderCadence;
+  failed: boolean;
+  onNew: () => void;
+  onOpen: (update: InvestorUpdate) => void;
+  onRetry: (update: InvestorUpdate) => void;
+  onMarkDelivered: (update: InvestorUpdate) => void;
+  onDuplicate: (update: InvestorUpdate) => void;
+  onDelete: (update: InvestorUpdate) => void;
+  onReminder: (cadence: InvestorReminderCadence) => void;
+  onReload: () => void;
+}) {
+  return (
+    <section className="mb-5 max-w-5xl" aria-label={t`Updates`}>
+      <div className="mb-1 flex items-center gap-2">
+        <h2 className="me-auto text-sm font-semibold">
+          <Trans>Updates</Trans>
+        </h2>
+        <Button variant="outline" size="sm" onClick={onNew}>
+          <Plus aria-hidden="true" />
+          <Trans>New update</Trans>
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={<Button variant="ghost" size="icon-sm" aria-label={t`Update options`} />}
+          >
+            <MoreHorizontal aria-hidden="true" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Trans>Reminder</Trans>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup
+                  value={cadence}
+                  onValueChange={(next) => onReminder(next as InvestorReminderCadence)}
+                >
+                  <DropdownMenuRadioItem value="monthly">
+                    <Trans>Monthly</Trans>
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="quarterly">
+                    <Trans>Quarterly</Trans>
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="off">
+                    <Trans>Off</Trans>
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      {failed ? (
+        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
+          <span className="text-destructive">
+            <Trans>Could not load updates</Trans>
+          </span>
+          <Button variant="outline" size="sm" onClick={onReload}>
+            <Trans>Try again</Trans>
+          </Button>
+        </div>
+      ) : updates === null ? (
+        <Skeleton className="h-9 w-full" aria-busy="true" />
+      ) : updates.length === 0 ? (
+        <p className="py-3 text-sm text-muted-foreground">
+          <Trans>No updates yet</Trans>
+        </p>
+      ) : (
+        <ul>
+          {updates.map((update) => (
+            <UpdateRow
+              key={update.id}
+              update={update}
+              onOpen={() => onOpen(update)}
+              onRetry={() => onRetry(update)}
+              onMarkDelivered={() => onMarkDelivered(update)}
+              onDuplicate={() => onDuplicate(update)}
+              onDelete={() => onDelete(update)}
+            />
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -268,6 +488,74 @@ export function InvestorsPage({
   const container = useRef<HTMLDivElement>(null);
   const { notify, savedId, setSavedId, deleted } = useContactNotices(load, container, contacts);
 
+  const [updates, setUpdates] = useState<InvestorUpdate[] | null>(null);
+  const [updatesFailed, setUpdatesFailed] = useState(false);
+  const [cadence, setCadence] = useState<InvestorReminderCadence>("monthly");
+  const [deletingUpdate, setDeletingUpdate] = useState<InvestorUpdate | null>(null);
+  const [resending, setResending] = useState<InvestorUpdate | null>(null);
+  const statuses = useRef(new Map<string, string>());
+  const loadUpdates = useCallback(() => {
+    rpc.investors.updates
+      .list()
+      .then((list) => {
+        // A send that finished while this page was open says how many it reached.
+        for (const update of list) {
+          if (statuses.current.get(update.id) === "sending" && update.status === "sent") {
+            const count = update.deliveries.filter((d) => d.state === "sent").length;
+            enqueueNotificationToast({
+              id: `update-sent-${update.id}`,
+              title: t`Sent to ${count}`,
+            });
+          }
+          statuses.current.set(update.id, update.status);
+        }
+        setUpdates(list);
+        setUpdatesFailed(false);
+      })
+      .catch(() => setUpdatesFailed(true));
+  }, []);
+  useEffect(loadUpdates, [loadUpdates]);
+  useEffect(() => {
+    rpc.investors
+      .reminder({})
+      .then((result) => setCadence(result.cadence))
+      .catch(() => undefined);
+  }, []);
+  const anySending = updates?.some((u) => u.status === "sending") ?? false;
+  useEffect(() => {
+    if (!anySending) return;
+    const timer = setInterval(loadUpdates, 2000);
+    return () => clearInterval(timer);
+  }, [anySending, loadUpdates]);
+
+  const updateAction = (call: () => Promise<unknown>, failure: string) =>
+    call()
+      .then(loadUpdates)
+      .catch((cause) => {
+        notify(errorText(cause, failure));
+        loadUpdates();
+      });
+  const startUpdate = (audience: "investors" | "board") =>
+    rpc.investors.updates
+      .save({ audience })
+      .then((created) => navigate(`/app/investors/updates/${created.id}`))
+      .catch((cause) => notify(errorText(cause, t`Could not start an update`)));
+  const retryUpdate = (update: InvestorUpdate) => {
+    if (update.deliveries.some((d) => d.state === "unknown")) return setResending(update);
+    void updateAction(() => rpc.investors.updates.retry({ id: update.id }), t`Could not retry`);
+  };
+  const changeReminder = (next: InvestorReminderCadence) => {
+    const before = cadence;
+    setCadence(next);
+    rpc.investors
+      .reminder({ cadence: next })
+      .then((result) => setCadence(result.cadence))
+      .catch((cause) => {
+        setCadence(before);
+        notify(errorText(cause, t`Could not change the reminder`));
+      });
+  };
+
   const [capFailed, setCapFailed] = useState(false);
   const latestCap = useRef(0);
   const loadCap = useCallback(() => {
@@ -328,9 +616,10 @@ export function InvestorsPage({
     if (wasBusy.current && !agentBusy) {
       load();
       void loadCap();
+      loadUpdates();
     }
     wasBusy.current = agentBusy;
-  }, [agentBusy, load, loadCap]);
+  }, [agentBusy, load, loadCap, loadUpdates]);
   const typedIn = cap?.snapshot?.source === "native";
   const sheetSource = cap?.snapshot?.source === "sheet";
   const watching = serversChecked && (cartaConnected || typedIn || sheetSource) && !capFailed;
@@ -495,11 +784,17 @@ export function InvestorsPage({
           [c.name, c.organization, c.email].some((text) => text?.toLowerCase().includes(needle))),
     )
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-  const tabNames: Record<ContactTab, string> = { investor: t`Investors`, auditor: t`Auditors` };
+  const tabNames: Record<ContactTab, string> = {
+    investor: t`Investors`,
+    board: t`Board`,
+    auditor: t`Auditors`,
+  };
   const emptyText: Record<ContactTab, string> = {
     investor: t`No investors yet`,
+    board: t`No board members yet`,
     auditor: t`No auditors yet`,
   };
+  const hasBoard = allContacts.some((c) => c.kind === "board");
   const addKindLabel = contactAddLabels();
   const addContact = () => setEditing({ name: "", email: null, organization: null, kind: tab });
   const openContact = (id: string) => {
@@ -663,6 +958,10 @@ export function InvestorsPage({
             </Button>
           </div>
         ) : null}
+        <ActionItems
+          drafts={(updates ?? []).filter((u) => u.status === "draft")}
+          onOpen={(update) => navigate(`/app/investors/updates/${update.id}`)}
+        />
 
         {!serversChecked || (cap === null && !capFailed) ? (
           <div className="flex flex-col gap-2" aria-busy="true">
@@ -761,6 +1060,30 @@ export function InvestorsPage({
               </div>
             )}
 
+            <UpdatesSection
+              updates={updates}
+              cadence={cadence}
+              failed={updatesFailed}
+              onNew={() => void startUpdate("investors")}
+              onOpen={(update) => navigate(`/app/investors/updates/${update.id}`)}
+              onRetry={retryUpdate}
+              onMarkDelivered={(update) =>
+                void updateAction(
+                  () => rpc.investors.updates.markDelivered({ id: update.id }),
+                  t`Could not mark delivered`,
+                )
+              }
+              onDuplicate={(update) =>
+                void rpc.investors.updates
+                  .duplicate({ id: update.id })
+                  .then((copy) => navigate(`/app/investors/updates/${copy.id}`))
+                  .catch((cause) => notify(errorText(cause, t`Could not duplicate`)))
+              }
+              onDelete={setDeletingUpdate}
+              onReminder={changeReminder}
+              onReload={loadUpdates}
+            />
+
             <section className="mb-5 max-w-5xl" aria-label={t`Contacts`}>
               <Tabs
                 value={tab}
@@ -781,6 +1104,16 @@ export function InvestorsPage({
                   ))}
                 </TabsList>
               </Tabs>
+              {tab === "board" && hasBoard ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mb-2 me-2"
+                  onClick={() => void startUpdate("board")}
+                >
+                  <Trans>Message the board</Trans>
+                </Button>
+              ) : null}
               {allContacts.length > 0 && !error ? (
                 <SearchField
                   className="mb-2 w-full @md/bd:w-72"
@@ -838,6 +1171,86 @@ export function InvestorsPage({
             <FolderDocuments folderPath={CAP_TABLE_FOLDER} />
           </>
         )}
+
+        <AlertDialog
+          open={deletingUpdate !== null}
+          onOpenChange={(open) => {
+            if (!open) setDeletingUpdate(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                <Trans>Delete this update?</Trans>
+              </AlertDialogTitle>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>
+                <Trans>Cancel</Trans>
+              </AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                onClick={() => {
+                  const target = deletingUpdate;
+                  setDeletingUpdate(null);
+                  if (target)
+                    void updateAction(
+                      () => rpc.investors.updates.delete({ id: target.id }),
+                      t`Could not delete the update`,
+                    );
+                }}
+              >
+                <Trans>Delete</Trans>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog
+          open={resending !== null}
+          onOpenChange={(open) => {
+            if (!open) setResending(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                <Trans>May already be delivered. Send again?</Trans>
+              </AlertDialogTitle>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>
+                <Trans>Close</Trans>
+              </AlertDialogCancel>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const target = resending;
+                  setResending(null);
+                  if (target)
+                    void updateAction(
+                      () => rpc.investors.updates.markDelivered({ id: target.id }),
+                      t`Could not mark delivered`,
+                    );
+                }}
+              >
+                <Trans>Mark delivered</Trans>
+              </Button>
+              <AlertDialogAction
+                onClick={() => {
+                  const target = resending;
+                  setResending(null);
+                  if (target)
+                    void updateAction(
+                      () => rpc.investors.updates.retry({ id: target.id, resendUnknown: true }),
+                      t`Could not retry`,
+                    );
+                }}
+              >
+                <Trans>Send again</Trans>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {connecting ? (
           <ConnectCartaDialog

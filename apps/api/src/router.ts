@@ -155,6 +155,7 @@ import type {
   Actor,
   Bot,
   BotSecretMetadata,
+  ComposeFields,
   ComputerReleaseReason,
   ComputerStatus,
   ExportManifest,
@@ -247,8 +248,10 @@ import {
   defaultModelCredentialCandidates,
   deleteContact,
   deleteEmptySpaceForMember,
+  deleteInvestorUpdate,
   deletePushTokens,
   deleteUnreferencedCredentialSecret,
+  duplicateInvestorUpdate,
   ensureBoard,
   findDefaultModelCredential,
   findDefaultVoiceCredential,
@@ -257,8 +260,10 @@ import {
   findTicket,
   formatMessagingLinkCode,
   getCapTableSnapshot,
+  getInvestorUpdate,
   getNotificationPreferences,
   InvalidSpaceNameError,
+  InvestorUpdateLockedError,
   IsolationError,
   isRecordNotFound,
   issueMessagingLinkCode,
@@ -266,12 +271,14 @@ import {
   linkedImessageIdentities,
   listBoards,
   listContacts,
+  listInvestorUpdates,
   listNotifications,
   listPushEndpoints,
   listSidebarPages,
   listSpaceBackupModels,
   listTicketComments,
   lockOwnedGroup,
+  markInvestorUpdateDelivered,
   markSeen,
   markShown,
   moveSidebarFolder,
@@ -299,6 +306,7 @@ import {
   SpaceNotFoundError,
   saveCapTableSnapshot,
   saveContact,
+  saveInvestorUpdate,
   savePushToken,
   selectSpaceModelPreference,
   selectSpaceVoicePreference,
@@ -421,6 +429,7 @@ import { inboxActionsList, inboxActionsUndo } from "./inbox-actions.js";
 import { ensureInboxAgent } from "./inbox-agent.js";
 import { inboxCleanupArchive, inboxCleanupForget, inboxCleanupList } from "./inbox-cleanup.js";
 import {
+  accountOut,
   inboxComposeDiscard,
   inboxComposeDraftSave,
   inboxComposePrefill,
@@ -447,7 +456,13 @@ import {
   setIntegrationExclusive,
 } from "./integration-agent.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
-import { ensureInvestorsAgent } from "./investors-agent.js";
+import { startInvestorUpdateRetry, startInvestorUpdateSend } from "./investor-send.js";
+import {
+  cadenceOf,
+  ensureInvestorsAgent,
+  INVESTOR_UPDATE_ROUTINE_NAME,
+  setInvestorsReminder,
+} from "./investors-agent.js";
 import { sheetReadState, startSheetRead } from "./investors-sheet-sync.js";
 import {
   legalAgent,
@@ -1045,6 +1060,12 @@ function sidebarPageError(error: unknown): never {
   throw error;
 }
 
+function investorUpdateError(error: unknown): never {
+  if (error instanceof InvestorUpdateLockedError)
+    throw new ORPCError("CONFLICT", { message: error.message });
+  return contactNotFound(error);
+}
+
 function contactNotFound(error: unknown): never {
   if (error instanceof IsolationError) throw new ORPCError("NOT_FOUND", { message: error.message });
   if (error instanceof ContactEmailTakenError) {
@@ -1333,7 +1354,10 @@ export function createRouter(deps: RouterDeps) {
   };
   /** Starts the sheet read and turns its refusals into the messages the page shows. */
   const readSheet = async (actor: Actor) => {
-    const result = await startSheetRead(cartaSyncDeps, actor).catch((error: unknown) => {
+    const result = await startSheetRead(
+      { ...cartaSyncDeps, prisma: deps.prisma, jobs: deps.jobs },
+      actor,
+    ).catch((error: unknown) => {
       throw mapSpaceLifecycleError(error);
     });
     if (result === "no_model")
@@ -1366,6 +1390,19 @@ export function createRouter(deps: RouterDeps) {
     crypto: deps.financeCrypto,
     parseStatement: deps.parseStatement,
     ...(deps.exchangeFetch ? { exchangeFetch: deps.exchangeFetch } : {}),
+  };
+  const investorSendDeps = {
+    prisma: deps.prisma,
+    mailWritesDisabled: deps.env.mailWritesDisabled,
+    compose: (actor: Actor, fields: ComposeFields) =>
+      inboxComposeSend({ ...deps, mailWritesDisabled: deps.env.mailWritesDisabled }, actor, fields),
+    gmailConnectionIds: async (actor: Actor) =>
+      (
+        await deps.mail.listAccounts(
+          { spaceId: actor.spaceId, userId: actor.userId },
+          mailContext(actor, "investors.updates.send"),
+        )
+      ).map((account) => account.id),
   };
   const legalDeps = {
     prisma: deps.prisma,
@@ -7471,10 +7508,87 @@ export function createRouter(deps: RouterDeps) {
     },
     investors: {
       agent: authed.investors.agent.handler(({ context }) =>
-        ensureInvestorsAgent({ repos }, context.actor).catch((error: unknown) => {
-          throw mapSpaceLifecycleError(error);
-        }),
+        ensureInvestorsAgent({ prisma: deps.prisma, jobs: deps.jobs, repos }, context.actor).catch(
+          (error: unknown) => {
+            throw mapSpaceLifecycleError(error);
+          },
+        ),
       ),
+      updates: {
+        list: authed.investors.updates.list.handler(({ context }) =>
+          listInvestorUpdates(deps.prisma, context.actor),
+        ),
+        accounts: authed.investors.updates.accounts.handler(async ({ context }) =>
+          (
+            await deps.mail.listAccounts(
+              { spaceId: context.actor.spaceId, userId: context.actor.userId },
+              mailContext(context.actor, "investors.updates.accounts"),
+            )
+          ).map(accountOut),
+        ),
+        get: authed.investors.updates.get.handler(({ context, input }) =>
+          getInvestorUpdate(deps.prisma, context.actor, input.id).catch(contactNotFound),
+        ),
+        save: authed.investors.updates.save.handler(({ context, input }) =>
+          saveInvestorUpdate(deps.prisma, context.actor, input).catch(investorUpdateError),
+        ),
+        send: authed.investors.updates.send.handler(
+          async ({ context, input }) =>
+            (
+              await startInvestorUpdateSend(investorSendDeps, context.actor, input.id).catch(
+                investorUpdateError,
+              )
+            ).update,
+        ),
+        retry: authed.investors.updates.retry.handler(
+          async ({ context, input }) =>
+            (
+              await startInvestorUpdateRetry(investorSendDeps, context.actor, input).catch(
+                investorUpdateError,
+              )
+            ).update,
+        ),
+        markDelivered: authed.investors.updates.markDelivered.handler(({ context, input }) =>
+          markInvestorUpdateDelivered(deps.prisma, context.actor, input.id, input.contactIds).catch(
+            investorUpdateError,
+          ),
+        ),
+        duplicate: authed.investors.updates.duplicate.handler(({ context, input }) =>
+          duplicateInvestorUpdate(deps.prisma, context.actor, input.id).catch(investorUpdateError),
+        ),
+        delete: authed.investors.updates.delete.handler(async ({ context, input }) => {
+          await deleteInvestorUpdate(deps.prisma, context.actor, input.id).catch(
+            investorUpdateError,
+          );
+          return { ok: true as const };
+        }),
+      },
+      reminder: authed.investors.reminder.handler(async ({ context, input }) => {
+        const bot = await ensureInvestorsAgent(
+          { prisma: deps.prisma, jobs: deps.jobs, repos },
+          context.actor,
+        ).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        });
+        if (input.cadence)
+          return {
+            cadence: await setInvestorsReminder(
+              { prisma: deps.prisma, jobs: deps.jobs },
+              context.actor,
+              bot.id,
+              input.cadence,
+            ),
+          };
+        const routine = await deps.prisma.routine.findFirst({
+          where: {
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+            botId: bot.id,
+            name: INVESTOR_UPDATE_ROUTINE_NAME,
+          },
+        });
+        return { cadence: routine ? cadenceOf(routine) : ("monthly" as const) };
+      }),
       capTable: authed.investors.capTable.handler(({ context }) => capTableState(context.actor)),
       refresh: authed.investors.refresh.handler(async ({ context }) => {
         const current = await deps.prisma.capTableSnapshot.findUnique({

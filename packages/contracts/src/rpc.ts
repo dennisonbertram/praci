@@ -218,6 +218,7 @@ import {
   InboxScopeInputSchema,
   InboxTodoSchema,
   InboxTodosOutputSchema,
+  MailAccountSchema,
   MailActionsListOutputSchema,
   MailActionUndoInputSchema,
   MailActionUndoOutputSchema,
@@ -228,6 +229,12 @@ import {
   IntegrationProviderConfigSchema,
   IntegrationSetupStateSchema,
 } from "./integration-settings.js";
+import {
+  InvestorReminderCadenceSchema,
+  InvestorUpdateRetryInputSchema,
+  InvestorUpdateSaveInputSchema,
+  InvestorUpdateSchema,
+} from "./investors.js";
 import {
   LegalDeadlineSchema,
   LegalGraphSchema,
@@ -1541,6 +1548,28 @@ export const appContract = {
     changeSource: oc.input(CapTableChangeSourceInputSchema).output(CapTableStateSchema),
     /** Restores the table before the last source switch, once. */
     undoSource: oc.output(CapTableStateSchema),
+    updates: {
+      list: oc.output(z.array(InvestorUpdateSchema)),
+      /** The caller's connected Gmail accounts: empty means Send is unavailable. */
+      accounts: oc.output(z.array(MailAccountSchema)),
+      get: oc.input(z.object({ id: Id })).output(InvestorUpdateSchema),
+      /** Adds a draft (no id) or saves one; refused once the update has been sent. */
+      save: oc.input(InvestorUpdateSaveInputSchema).output(InvestorUpdateSchema),
+      /** Starts the send and returns at once; the update reads Sending until every recipient has a result. */
+      send: oc.input(z.object({ id: Id })).output(InvestorUpdateSchema),
+      /** Sends again to failed recipients (and Unknown ones only when `resendUnknown`). */
+      retry: oc.input(InvestorUpdateRetryInputSchema).output(InvestorUpdateSchema),
+      /** Records every Unknown recipient as Sent. */
+      markDelivered: oc
+        .input(z.object({ id: Id, contactIds: z.array(Id).max(1000).optional() }))
+        .output(InvestorUpdateSchema),
+      duplicate: oc.input(z.object({ id: Id })).output(InvestorUpdateSchema),
+      delete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
+    },
+    /** Reads the update reminder; with `cadence` it changes the monthly routine first. */
+    reminder: oc
+      .input(z.object({ cadence: InvestorReminderCadenceSchema.optional() }))
+      .output(z.object({ cadence: InvestorReminderCadenceSchema })),
   },
   carta: {
     agent: oc.output(BotSchema),

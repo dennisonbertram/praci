@@ -26,6 +26,7 @@ model User {
   mailSearches                MailSearch[]
   contacts                    Contact[]
   capTableSnapshots           CapTableSnapshot[]
+  investorUpdates             InvestorUpdate[]
   sidebarPages                SidebarPage[]
   notifications               Notification[]
   notificationEndpoints       NotificationEndpoint[]
@@ -268,6 +269,7 @@ model Space {
   botPins                     BotPins[]
   contacts                    Contact[]
   capTableSnapshots           CapTableSnapshot[]
+  investorUpdates             InvestorUpdate[]
   sidebarPages                SidebarPage[]
   agentHomes                  AgentHome[]
   browserProfiles             BrowserProfile[]
@@ -2468,6 +2470,35 @@ model Contact {
   @@index([spaceId, userId])
   @@index([botId])
   @@map("contacts")
+}
+
+/// An update to investors or the board. Draft, then sending, then sent. A sent update is read-only.
+model InvestorUpdate {
+  id                   String   @id @default(cuid())
+  spaceId              String
+  space                Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// "investors" | "board"
+  audience             String
+  subject              String
+  /// YYYY-MM or YYYY-Qn
+  period               String
+  /// Markdown.
+  body                 String   @default("")
+  /// "draft" | "sending" | "sent" | "posted". Partly sent is derived from the deliveries.
+  status               String   @default("draft")
+  recipientContactIds  String[]
+  fromConnectionId     String?
+  /// { [contactId]: [{ n, at, delivered? }] }. The outcome of attempt n is the ComposeSend row whose clientId is `<id>:<contactId>:<n>`.
+  deliveries           Json     @default("{}")
+  sentAt               DateTime?
+  createdAt            DateTime @default(now())
+  /// Moves on every recorded delivery, so a sending update with no movement for 10 minutes reads Partly sent.
+  updatedAt            DateTime @updatedAt
+
+  @@index([spaceId, userId, createdAt])
+  @@map("investor_updates")
 }
 
 /// The Carta agent's latest read of the company's cap table. One row per user, replaced on each sync.

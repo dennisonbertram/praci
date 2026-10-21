@@ -1,3 +1,4 @@
+import type { JobPublisher } from "@rakazo/adapter-kit";
 import type { Actor, MessageBlock } from "@rakazo/contracts";
 import { actorScope, CapTableSourceRefSchema, investorsAgentSpawnKey } from "@rakazo/contracts";
 import { ACTIVE_RUN_STATUSES } from "@rakazo/core";
@@ -21,7 +22,8 @@ const sheetRunWhere = (actor: Actor) => ({
 });
 
 export type SheetReadDeps = {
-  prisma: Pick<PrismaClient, "run" | "capTableSnapshot" | "$transaction">;
+  prisma: Pick<PrismaClient, "run" | "capTableSnapshot" | "$transaction" | "routine" | "user">;
+  jobs: Pick<JobPublisher, "enqueue" | "cancel">;
   repos: Pick<ReturnType<typeof createRepos>, "createBot">;
   /** False when no model is set up, so a run would only fail. */
   hasModel: (actor: Actor) => Promise<boolean>;
