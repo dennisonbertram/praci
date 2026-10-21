@@ -108,7 +108,7 @@ it("disables Open, with a reason, while amounts are hidden", async () => {
   expect(container.querySelector('button[aria-label="Full screen"]')).toBeNull();
 });
 
-it("leads a failed file with Try again, and keeps Delete as a quieter button", async () => {
+it("shows no file frame for a failed file, with Try again under the heading and Delete below", async () => {
   const onAction = vi.fn();
   const failed = { ...receipt, mimeType: "application/pdf", status: "failed", error: "Not a PDF" };
   await act(async () => {
@@ -116,10 +116,17 @@ it("leads a failed file with Try again, and keeps Delete as a quieter button", a
       <Preview item={failed} folderPath="" onAction={onAction} onClose={() => undefined} />,
     );
   });
-  const buttons = Array.from(container.querySelectorAll("aside > div:last-child > button"));
-  expect(buttons.map((button) => button.textContent)).toEqual(["Try again", "Delete"]);
-  act(() => (buttons[0] as HTMLButtonElement).click());
+  expect(container.querySelector("iframe, object, embed")).toBeNull();
+  const retry = Array.from(container.querySelectorAll("button")).find(
+    (button) => button.textContent === "Try again",
+  );
+  expect(retry).toBeDefined();
+  // It follows the failure message, ahead of the details.
+  expect(retry?.previousElementSibling?.textContent).toBe("Not a PDF");
+  act(() => retry?.click());
   expect(onAction).toHaveBeenCalledWith("retry", failed);
+  const last = Array.from(container.querySelectorAll("aside > div:last-child > button"));
+  expect(last.map((button) => button.textContent)).toEqual(["Delete"]);
 });
 
 it("keeps showing the summary while a renamed file is re-indexed", async () => {

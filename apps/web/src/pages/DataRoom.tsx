@@ -48,7 +48,6 @@ import { useDataRoomImports } from "../components/data-room/use-data-room-import
 import type { Filters, Sort } from "../components/data-room/use-data-room-list";
 import { useDataRoomList } from "../components/data-room/use-data-room-list";
 import { useDataRoomProcessing } from "../components/data-room/use-data-room-processing";
-import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { DATA_ROOM_CHANGED, readDataRoomView, saveDataRoomView } from "../lib/data-room";
@@ -267,9 +266,16 @@ export function DataRoomPage({
     listReload();
     setFacetsVersion((n) => n + 1);
   }, [listReload]);
+  // A poll tick while the list is still loading would cancel that request and start it over, so a
+  // slow search never got to show its answer.
+  const listLoading = useRef(list.loading);
+  listLoading.current = list.loading;
   useEffect(() => {
-    window.addEventListener(DATA_ROOM_CHANGED, reload);
-    return () => window.removeEventListener(DATA_ROOM_CHANGED, reload);
+    const onChanged = () => {
+      if (!listLoading.current) reload();
+    };
+    window.addEventListener(DATA_ROOM_CHANGED, onChanged);
+    return () => window.removeEventListener(DATA_ROOM_CHANGED, onChanged);
   }, [reload]);
 
   // Preview: a click (or Enter) on a row shows it; clicking the shown row again closes the pane.
@@ -489,7 +495,6 @@ export function DataRoomPage({
             <>
               {empty ? null : (
                 <>
-                  <HideAmountsButton />
                   <fieldset className="m-0 flex min-w-0 gap-0.5 border-0 p-0">
                     <legend className="sr-only">{t`View`}</legend>
                     <Tip label={t`List view`}>
@@ -635,12 +640,14 @@ export function DataRoomPage({
                   onDismiss={importActivity.dismiss}
                   hideRunning={processing.active}
                 />
-                {processing.processing && (processing.active || processing.finished) ? (
+                {processing.processing &&
+                (processing.active || processing.finished || processing.processing.failed > 0) ? (
                   <ProcessingStrip
                     importing={processing.active ? importProgress(importActivity.imports) : null}
                     processing={processing.processing}
                     total={processing.total}
                     finished={!processing.active}
+                    onShowFailed={() => setFilters({ ...filters, status: "failed" })}
                   />
                 ) : null}
                 {searching && openFolderPath ? (
@@ -705,7 +712,7 @@ export function DataRoomPage({
                 ) : view === "grid" && !searching ? (
                   <>
                     {subfolderList()}
-                    <GridView rows={rows} o={interaction} />
+                    <GridView rows={rows} o={interaction} sortField={sort?.field} />
                   </>
                 ) : (
                   <ListView

@@ -64,3 +64,7 @@ it("shows the Updates tab only when there is something to update", async () => {
   updates.desktop = true;
   expect(await navIds({})).toContain("settings-nav-updates");
 });
+
+it("lists Privacy and approvals as its own tab", async () => {
+  expect(await navIds({})).toContain("settings-nav-privacy");
+});

@@ -56,7 +56,15 @@ const checking = {
 } as const;
 
 const subs = [
-  ["acme-hosting", "Acme Hosting", 62000, [50000, 56000, 62000], "2026-10-01", [brexCard], null],
+  [
+    "acme-hosting",
+    "Acme Hosting",
+    62000,
+    [50000, 50000, 56000, 62000],
+    "2026-10-01",
+    [brexCard],
+    null,
+  ],
   [
     "globex-compute",
     "Globex Compute",
@@ -66,7 +74,15 @@ const subs = [
     [brexCard],
     null,
   ],
-  ["initech-ai", "Initech AI", 22000, [9000, 15000, 22000], "2026-10-06", [brexCard], "ai-models"],
+  [
+    "initech-ai",
+    "Initech AI",
+    22000,
+    [9000, 9000, 15000, 22000],
+    "2026-10-06",
+    [brexCard],
+    "ai-models",
+  ],
   [
     "umbrella-ai",
     "Umbrella AI",
@@ -76,7 +92,7 @@ const subs = [
     [brexCard, checking],
     "ai-models",
   ],
-  ["hooli-mail", "Hooli Mail", 3000, [3000, 3000, 3000], "2026-10-01", [checking], null],
+  ["hooli-mail", "Hooli Mail", 3000, [3000, 3000, 3000, 3000], "2026-10-01", [checking], null],
 ] as const;
 
 export const connectedOverview: FinanceOverview = {

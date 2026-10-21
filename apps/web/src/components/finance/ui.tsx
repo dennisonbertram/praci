@@ -48,7 +48,6 @@ import {
 } from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
 import { AskBotButton } from "../AskBotButton";
-import { HideAmountsButton } from "../HideAmountsToggle";
 import { shade } from "./charts";
 
 export type FinanceSpace = { id: string; name: string };
@@ -365,21 +364,20 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
           </ol>
         </nav>
       )}
-      <CompanyAndEye />
+      <CompanyMenu />
     </div>
   );
 }
 
 /**
- * The company menu, then Hide amounts, right after the page's title or way back, in the same place
+ * The company menu, right after the page's title or way back, in the same place
  * on every Finance page. On a phone the company name truncates first.
  */
-export function CompanyAndEye({ children }: { children?: ReactNode }) {
+export function CompanyMenu({ children }: { children?: ReactNode }) {
   return (
     <span className="flex min-w-[min(100%,9rem)] shrink items-center gap-0.5">
       <SpaceName />
       <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-muted-foreground">
-        <HideAmountsButton />
         {children}
       </span>
     </span>

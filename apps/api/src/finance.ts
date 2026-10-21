@@ -73,11 +73,7 @@ import {
 } from "@rakazo/core";
 import type { createRepos, Prisma, PrismaClient } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
-import {
-  assignToExistingFinanceAgent,
-  ensureFinanceAgent,
-  financeAgentWhere,
-} from "./finance-agent.js";
+import { ensureFinanceAgent, financeAgentWhere } from "./finance-agent.js";
 import { loadCryptoSummary, syncCryptoQuietly } from "./finance-crypto.js";
 import {
   exchangesDue,
@@ -343,8 +339,9 @@ export async function financeConnect(
         if (!raced) throw error;
         return raced;
       }));
-  // An agent that already exists gets the new server, with read tools only, without waiting for the panel.
-  await assignToExistingFinanceAgent(deps.prisma, actor);
+  // Connecting a bank creates the Finance agent (or gives the new server to the existing one, read
+  // tools only). Without it Chief has no teammate to hand finance questions to and says it has no cash figure.
+  await ensureFinanceAgent(deps, actor);
   // A stored token the vendor refused would otherwise be reused and the sign-in never asked for.
   const state = await deps.prisma.financeSyncState.findFirst({
     where: { mcpServerId: server.id, ...actorScope(actor) },

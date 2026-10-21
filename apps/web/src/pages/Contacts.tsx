@@ -82,7 +82,7 @@ export function ContactsPage() {
       <PageHeader
         title={<Trans>Contacts</Trans>}
         actions={
-          <Button size="sm" onClick={() => setEditing("new")}>
+          <Button onClick={() => setEditing("new")}>
             <Plus aria-hidden="true" />
             <Trans>Add contact</Trans>
           </Button>

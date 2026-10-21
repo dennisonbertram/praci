@@ -1,18 +1,24 @@
 ## Area: Inbox (STORY-INB-nnn)
 
-Source: `docs/ux-paths/inbox/catalog.md`.
 
-
-Generated: 2026-10-17
+Generated: 2026-10-17, refreshed 2026-10-20
 Code read: `the repository root` at `559a76ad` (branch `docs/ux-pass`, merged with current `origin/main`). PR #109 (`origin/feat/legal`) was read with `git show` for the Data room import only; it is not part of this commit.
-Total Stories: 40 (short 23, medium 13, long 4)
+Total Stories: 61 (short 32, medium 23, long 6) as of 2026-10-20
 Previous catalog: 2026-10-16, 24 stories (STORY-INB-001..024). This version keeps every id, rewrites the steps to match the code as it is now, and adds STORY-INB-025..040.
 
 **Persona for every story.** A naive first-time user: a startup founder who has never seen Praci or its code, does not know its words ("triage", "noise", "agent", "Data room", "approval"), and only wants to run their company clearly and consistently. In the stories they are called **Maya**, the founder of the mock company. Steps say what Maya would try, in her words, and mark **Hesitation** where she would likely pause or misread a label. "UNVERIFIED" marks a behaviour read from code but not seen running; the walker should record what actually appears.
 
-**Scope note on the Data room.** On this commit the Data room has **no** "Import from email" and the Inbox has no "Save to Data room" action; the agent has only `data_room_search` and `data_room_read` (`builtin-tools.ts:1021-1028`), no tool that adds files. The way to file a mail attachment is: download it, then **Choose files** on the Data room page or drop it on any app page (STORY-INB-016, 022, 024). **PR #109 (`origin/feat/legal`)** adds `ImportFromEmail.tsx` to the Data room page (a button "Import from email", or "Connect Gmail" when none is connected, that opens a picker of mail with attachments). The main-branch path stays the primary path in every story; each Data-room story says what changes once #109 merges.
+**Scope note on the Data room (written 2026-10-17, superseded: see the Refresh 2026-10-20 block).** On that commit the Data room had **no** "Import from email" and the Inbox has no "Save to Data room" action; the agent has only `data_room_search` and `data_room_read` (`builtin-tools.ts:1021-1028`), no tool that adds files. The way to file a mail attachment is: download it, then **Choose files** on the Data room page or drop it on any app page (STORY-INB-016, 022, 024). **PR #109 (`origin/feat/legal`)** adds `ImportFromEmail.tsx` to the Data room page (a button "Import from email", or "Connect Gmail" when none is connected, that opens a picker of mail with attachments). The main-branch path stays the primary path in every story; each Data-room story says what changes once #109 merges.
 
 ---
+
+### Refresh 2026-10-20 (features merged since 2026-10-17)
+
+- **Added** (21): INB-101, INB-102, INB-103, INB-104, INB-105, INB-106, INB-107, INB-108, INB-109, INB-110, INB-111, INB-112, INB-113, INB-114, INB-115, INB-116, INB-117, INB-118, INB-119, INB-120, INB-121. They sit at the end of this area under "Stories: Added 2026-10-20".
+- **Rewritten in place for the current UI** (same id, new text, marked "Updated 2026-10-20"): INB-007, INB-025, INB-016.
+- **Detail folded into an existing story** (same id, a section "Added 2026-10-20" at the end): INB-015, INB-018.
+- **Marked with a dated note** (the UI changed; the steps below the note are the old steps and were not rewritten): INB-005, INB-014, INB-021, INB-022, INB-030, INB-031, INB-040, INB-001, INB-019, INB-017.
+- The earlier scope note about the Data room (no 'Import from email', no 'Save to Data room', agent cannot add files) no longer holds. PR #109 and later work merged: attachment chips have 'Add to Data room', new mail attachments can be filed automatically, and the Data room has an Import menu. Treat any remark below that says "on main there is no import" as out of date; the current flow is in STORY-INB-016 and the new attachment stories.
 
 ### Changes since the 2026-10-16 catalog
 
@@ -174,6 +180,8 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 
 #### STORY-INB-001: "Where is my email?" — connect mail from an empty Inbox
 
+> **Updated 2026-10-20**: the Integrations card for Gmail and the sidebar 'Connect apps' pill are covered in STORY-APP-378 and STORY-APP-380.
+
 **Type**: short
 **Topic**: Inbox first run
 **Persona**: Maya, first-time founder, just signed in
@@ -220,28 +228,29 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 ##### Edge Cases
 - **Allow** fails (offline) → the card shows a red error line and **Allow** is enabled again (`AiDataSharing.tsx:50-54`).
 
-#### STORY-INB-025: "Sorting your mail…" — the first sort takes a while
+#### STORY-INB-025: Maya waits through "Sorting your mail…" on a fresh account
+
+> **Updated 2026-10-20**: rewritten for the current UI; the sorting states now have their own wording ('Sorting your mail...', 'Sorting is taking longer than usual. Your mail is below.' with 'Try sorting again').
 
 **Type**: short
-**Topic**: Triage in progress and stalled
-**Persona**: Maya, just clicked Allow, impatient
-**Goal**: Know whether the app is working or stuck.
-**Preconditions**: A1 connected; consent just given; triage slow (seed `TRIAGE-SLOW`: stays pending for more than 60 s once, then finishes).
-**Ideal path**: 1 — wait for the page to regroup once.
-**Alternate paths**: **Try sorting again** after the stall message.
-
+**Topic**: inbox-piles-digest-and-cleanup
+**Persona**: Maya, new to Praci, web, just connected Gmail and allowed AI data sharing.
+**Goal**: Know whether the Inbox is broken or still working.
+**Preconditions**: First sync just finished; the model is still classifying; Important pile open.
+**Ideal path**: 1 — read the status line and wait.
+**Alternate paths**: If sorting stalls, "Try sorting again".
 ##### Steps
-1. Right after **Allow**, the consent card is gone and a small spinner line reads "**Sorting your mail…**" (`Inbox.tsx:814-818`). Her rows stay where they are in plain **Today** / **Earlier** groups; badges, Needs reply and the To do card are held back so the page changes only once (`Inbox.tsx:150-151, 314-332`).
-2. She scrolls; nothing jumps. The app checks every 5 s, up to 12 times (`Inbox.tsx:57-58, 249-260`).
-3. After about a minute with no result, the spinner is replaced by "**Sorting is taking longer than usual. Your mail is below.**" and a **Try sorting again** button (`Inbox.tsx:804-813`). She **expects** the text to tell her what to do; the button does.
-4. Clicks **Try sorting again** → the sync is run again and polling restarts (`Inbox.tsx:340-344, 262-282`). When it finishes, Needs reply, Important and To do appear together.
-
+1. Open Inbox → under the tabs a spinner and "Sorting your mail…" appear on the Important pile; the mail is listed below it.
+2. Wait → the status line goes away and "Needs reply" / "Today" sections and the to-do card (if any) fill in.
+3. If it takes too long, the line changes to "Sorting is taking longer than usual. Your mail is below." with a "Try sorting again" button; Maya clicks it → the status returns to "Sorting your mail…".
 ##### Variations
-- Triage finishes during step 2 → the groups and the To do card show together; no stall text.
-- She opens an email while sorting → it opens normally; marking read still works.
-
+- Consent not yet given: instead of the status line, the Important pile shows the consent prompt ("Let Praci sort your mail" with Allow / Not now). After Allow, the status line takes the prompt's place at the same height so the page does not jump. After "Not now" the prompt hides for this visit. 
+- The status shows only on the Important pile; Updates, Newsletters and Spam never show it.
 ##### Edge Cases
-- The unfiltered view only: a search or filter does not show the status line (`Inbox.tsx:792`).
+- Maya thinks: "Is my mail missing?" The words "Your mail is below" are only in the stalled version.
+- The same sorting state also governs whether Needs reply exists; if she gives up and browses Updates, those mails may still shift pile once sorted. UNVERIFIED.
+
+---
 
 #### STORY-INB-026: Change her mind — turn AI sorting off in Settings
 
@@ -316,6 +325,8 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 
 #### STORY-INB-005: "Mark noise" on one newsletter mutes the sender everywhere
 
+> **Updated 2026-10-20**: rows now sit in pile tabs and sender groups; 'Mark noise: all mail from {sender}' still exists on the row, and the learned pile can be forgotten in Cleanup (STORY-INB-102, STORY-INB-107). Re-walk with the Important pile as the starting view.
+
 **Type**: short
 **Topic**: Triage marks
 **Persona**: Maya, wants fewer newsletters at the top
@@ -363,30 +374,30 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 - Search results lose the Needs reply grouping and the To do card; **Clear** restores them.
 - Search plus the Important toggle or a category cannot combine; picking one drops the other (`inbox-list-input.ts:44-60`).
 
-#### STORY-INB-007: "Show me only the important stuff" — Important toggle, filters, categories
+#### STORY-INB-007: Maya finds out why her Inbox opens on "Important" and what the other tabs hold
 
-**Type**: medium
-**Topic**: Filters
-**Persona**: Maya, 30 minutes before a board meeting
-**Goal**: See only mail that matters, then only bills.
-**Preconditions**: A1; CONSENT-GIVEN; M1–M11.
-**Ideal path**: 2 — toggle Important; pick "Bills" from Filter.
-**Alternate paths**: Ask the Inbox agent "what needs my reply today?" (STORY-INB-019).
+> **Updated 2026-10-20**: rewritten for the current UI; the Important toggle button no longer exists. The Inbox opens on the Important pile tab (with Updates, Newsletters and Spam beside it), and the Filter menu has no Important item while sorting is on.
 
+**Type**: short
+**Topic**: inbox-piles-digest-and-cleanup
+**Persona**: Maya, first-time founder of Northwind Robotics, on the web app, Gmail connected two days ago, mail sorting allowed.
+**Goal**: Understand the four pile tabs and see where a vendor receipt and a newsletter went.
+**Preconditions**: One Gmail account (maya@northwind.example) synced; triage finished. Mail exists in all piles; at least 3 spam messages.
+**Ideal path**: 3 — open Inbox, click Updates, click Newsletters.
+**Alternate paths**: Deep link `/app/inbox?pile=newsletters`; Filter menu > Categories > Newsletters (a different view: it clears the pile tab selection, so no tab is highlighted). Command palette "search mail" does not show piles.
 ##### Steps
-1. Clicks **Important** (toggle button next to search) → URL `?view=important`; the list shows mail triage rated important or needing a reply: M1 and M3 (plus M11 only if the seed rated it important), under a result count; Today/Earlier headings disappear (`inbox.ts:363-374`). Hovering a row shows its reason as a tooltip (`InboxRow.tsx:134`).
-2. Opens the Filter (funnel icon) menu → items: Unread, Starred, Has attachment; "Gmail tabs": Primary, Promotions, Social, Updates; "Categories": Bills, Receipts, Scheduling, Newsletters, Security, Notifications, Personal (`Inbox.tsx:642-683`).
-3. **Hesitation**: with sorting on, Gmail's own "Important" item is not in this menu (it is replaced by the toggle, `Inbox.tsx:650-652`). The toggle means the app's own judgement, not Gmail's marker.
-4. Picks **Bills** → Important turns off (they cannot combine); only M2 shows; the Filter button now reads "Bills" and the menu gets a **Clear** item.
-5. Picks **Has attachment** → Bills is replaced, not added. **Hesitation**: she expected to combine "Bills" and "Has attachment".
-6. Clicks the **Clear** button above the results → full list.
-
+1. Click "Inbox" in the sidebar PAGES group → Inbox opens on the Important tab (selected), URL has no `pile` param. Sections read "Needs reply", "Today" (or "Other mail today" when Needs reply is shown) and "Earlier".
+2. Click the "Updates" tab → URL gains `?pile=updates`. Receipts and alerts from e.g. billing@payments.example.test are grouped by sender, each group showing the sender, a count and the newest subject.
+3. Click the "Newsletters" tab → Newsletter senders (e.g. weekly@robotics-digest.example.test) appear grouped the same way, and a newspaper icon (aria "Digest") appears to the right of the tabs.
+4. Notice the "Spam 3" tab at the end → it exists only because the count is above 0.
 ##### Variations
-- With CONSENT-PENDING, the toggle and Categories group are missing and Gmail's "Important" is back inside the menu.
-
+- Maya has two Gmail accounts: a second row of account tabs ("All" plus one per account) appears under the pile tabs; the pile and the account choice combine.
+- Triage is off (no model or no consent): the Important pile has no "Needs reply" and the Filter menu gains an "Important" item. UNVERIFIED whether the pile tabs themselves still show with triage off; the code renders them whenever an account exists.
 ##### Edge Cases
-- Unread / Starred / Has attachment / Gmail tabs read live from Gmail, while Bills and the other categories read the 14-day cache; the two lists can disagree about the same message.
-- A filter that matches nothing → "No mail matches this filter" with **Clear** (`Inbox.tsx:774-782`).
+- Maya thinks: "Where did the receipt go? It is not in Important." She hesitates because nothing says Updates is where receipts live. The only hint is the tab name.
+- Opening a Filter or search clears the pile selection; no tab is highlighted until she clicks one. The same mail can be reached from the pile tab, the Filter menu (Categories) and `from:` search.
+
+---
 
 #### STORY-INB-008: Read the whole term-sheet conversation
 
@@ -606,6 +617,8 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 
 #### STORY-INB-014: Work the "To do" list the app made from mail
 
+> **Updated 2026-10-20**: the Inbox opens on the Important pile; the To do card stays above the list. Re-walk to confirm its position.
+
 **Type**: short
 **Topic**: To-dos from mail
 **Persona**: Maya
@@ -631,6 +644,8 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 
 #### STORY-INB-015: Download attachments, including one that is too big
 
+> **Updated 2026-10-20**: detail added from a newer walk of the same goal, see the section "Added 2026-10-20" at the end of this story.
+
 **Type**: short
 **Topic**: Attachments
 **Persona**: Maya
@@ -650,30 +665,51 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 ##### Edge Cases
 - The 25 MiB download limit and the 10 MB send limit are never stated on screen.
 
-#### STORY-INB-016: Put the signed MSA into the Data room
+##### Added 2026-10-20: Preview a PDF attachment from an email, then download it
+
+**Type**: short
+**Topic**: mail-attachments-ask-agent-auto-file
+**Persona**: Maya, first-time founder of Northwind Robotics
+**Goal**: Read a supplier quote that arrived as a PDF without leaving the Inbox, then keep a copy on her laptop.
+**Preconditions**: Gmail connected. Inbox contains "Quote NR-2041" from `sales@vendor.example.test` with `quote-nr-2041.pdf` (180 KB) attached.
+**Ideal path**: 3 — click the chip, read, click Download.
+**Alternate paths**: Chip three-dot menu then "Download" (skips the preview and shows "Downloaded quote-nr-2041.pdf" under the chips).
+###### Steps
+1. In Inbox, click the "Quote NR-2041" row → the email dialog opens; below the body is an "Attachments" list with a chip `quote-nr-2041.pdf 180 KB` (exact size text from `formatBytes`, UNVERIFIED format).
+2. Click the chip → a large preview dialog opens titled with the filename; a grey pulsing block shows while the file loads, then the PDF renders. Maya thinks: "Good, it did not mark anything or leave the app." The fetch does not mark the message read (code comment says nothing is marked read).
+3. Click "Download" in the preview toolbar → the browser saves `quote-nr-2041.pdf`. In the preview dialog no confirmation text is shown (the status line is in the email dialog behind).
+4. Press Escape → returns to the email; the line under the chips reads "Downloaded quote-nr-2041.pdf".
+###### Variations
+- Narrow phone-width window: the buttons show only icons ("Download", "Add to Data room" are still the accessible names).
+- Maya uses the three-dot menu instead and never sees the preview.
+###### Edge Cases
+- Hesitation: the "Downloaded" line appears only after closing the preview, so she may wonder if the click worked. UNVERIFIED whether the browser's own download bar covers this.
+- If the download fails the line reads "Couldn't download quote-nr-2041.pdf" in red with an alert role.
+
+#### STORY-INB-016: File one attachment to the Data room by hand and see "Added"
+
+> **Updated 2026-10-20**: rewritten for the current UI; Praci now has an 'Add to Data room' action on every attachment chip, so there is no download-and-upload detour. The earlier text said the Data room could not take an attachment from the Inbox.
 
 **Type**: medium
-**Topic**: Attachments into the Data room
-**Persona**: Maya, building a diligence folder for the Series A
-**Goal**: File the signed contract from email into the Data room.
-**Preconditions**: A1; M6; DR-EMPTY (and DR-SEEDED for the duplicate edge case). **State on `main`**: there is no "Import from email" and no "Save to Data room" action anywhere in the Inbox or Data room.
-**Ideal path**: 5 on `main` — open the email, download the PDF, open Data room, Choose files, pick the file. (With PR #109 it becomes 4; see the note below.)
-**Alternate paths**: (a) download, then drag the file onto any app page: the global drop zone shows "Drop to add to Data room" (`DropZone.tsx:100-110`); (b) drag onto the Data room page.
-
+**Topic**: mail-attachments-ask-agent-auto-file
+**Persona**: Maya, first-time founder of Northwind Robotics
+**Goal**: Keep the signed NDA from an email in the Data room so her agents can find it, then confirm it is there.
+**Preconditions**: Auto-filing is turned off (see STORY-INB-114) or the mail is older than 2 days. Email "Signed NDA" from `legal@partner.example.test` with `nda-signed.pdf` (240 KB).
+**Ideal path**: 3 — open the email, open the chip menu, click "Add to Data room".
+**Alternate paths**: Preview toolbar button "Add to Data room"; the Data room page's Import menu → Email (covered by the data-room topic, not repeated here); an agent calling `add_to_data_room`.
 ##### Steps
-1. Opens M6 → looks for a "Save to Data room" or "File" action near the attachment chip → none; the chip only downloads.
-2. Clicks the chip → `Acme_Northwind_MSA_signed.pdf` downloads and "Downloaded Acme_Northwind_MSA_signed.pdf" appears.
-3. Clicks **Data room** in the sidebar → empty page "**Drop files here**" — "Keep contracts, board decks and investor documents in one place." with a **Choose files** button (`DataRoom.tsx:347-362`). There is no Gmail button there on `main`.
-4. Clicks **Choose files** → picks the file → a toast in the lower right with the file name, a progress bar, then "**Uploaded**" and **View** (`DropZone.tsx:158-170`).
-5. **Hesitation**: she expected the Data room to know the file came from Luis's email; it has no link back, and she had to leave the email, find the download, and come back.
-
+1. Open the "Signed NDA" email → chips shown.
+2. Click the three-dot button "More actions for nda-signed.pdf" → menu with "Download" and "Add to Data room".
+3. Click "Add to Data room" → the item is disabled while it files; then the menu item reads "Added" and is disabled. The Data room's import-progress watcher is told an import started.
+4. Click the chip to preview → toolbar button also reads "Added" (disabled), matching the menu. Same state on two surfaces.
+5. Open Data room in the sidebar → the file `nda-signed.pdf` is present; it may show processing first (see the Data room uploads topic).
 ##### Variations
-- She drags the downloaded file onto the Inbox list → the overlay "**Drop to add to Data room**" appears and the file uploads without leaving the Inbox.
-- She drops it on an open composer instead → it attaches to the email, not the Data room (the composer takes the drop first, `DropZone.tsx:61-65`).
-
+- Close the email and reopen it later: the page asks the server which attachments of this message are already imported (`emailImported`), so the buttons still read "Added".
+- File a second attachment of the same email: each is tracked separately.
 ##### Edge Cases
-- DR-SEEDED: uploading the same PDF again → the toast says "**Already in your Data room**" with **View** instead of "Uploaded" (`DropZone.tsx:25-32, 153-161`).
-- **When PR #109 (`origin/feat/legal`) merges**: the Data room gets an **Import from email** button (shown as "Connect Gmail" when no account is connected) next to the add-files control (`ImportFromEmail.tsx:276-318`, `DataRoom.tsx` lines 353 and 371 on that branch). It opens a dialog "Import from email" with a search box (hint "Search mail"), lists mail that has attachments (Gmail's "has attachment" filter, with **Load more**), lets her expand a message to tick up to 20 files, and an **Import** button. Messages: "No files found" when empty; a red line with a **Reconnect** link when Gmail needs reconnecting. The path from the email then becomes: open Data room, **Import from email**, search "Acme", expand the message, tick the PDF, **Import**. It still does not add a button inside the Inbox message itself, so the Inbox-side hesitation in step 1 remains.
+- Double-click: only one request is sent because the id is recorded synchronously.
+- Same file previously filed (for example by auto-filing): the server reports a duplicate and the button still goes to "Added" because imported + duplicates is not zero.
+- Failure (for example a Data room error): the button returns to "Add to Data room" and a red alert line shows under the chips, with the error text from the server. Which folder the file lands in is UNVERIFIED from this code.
 
 ### Stories: Search and finding mail
 
@@ -748,6 +784,8 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 
 #### STORY-INB-017: "Gmail needs to be reconnected"
 
+> **Updated 2026-10-20**: the Inbox notice for rate limits is separate from the reconnect notice; see STORY-INB-018 and STORY-INB-119.
+
 **Type**: short
 **Topic**: Reconnect notice
 **Persona**: Maya, Google sign-in expired
@@ -770,6 +808,8 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 
 #### STORY-INB-018: "Gmail is limiting requests right now"
 
+> **Updated 2026-10-20**: detail added from a newer walk of the same goal, see the section "Added 2026-10-20" at the end of this story.
+
 **Type**: short
 **Topic**: Rate-limit notice
 **Persona**: Maya
@@ -789,6 +829,32 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 
 ##### Edge Cases
 - Nothing refreshes by itself after the minute; she must click.
+
+##### Added 2026-10-20: Gmail rate-limits the sync and Maya sees a notice
+
+**Type**: short
+**Topic**: Gmail rate-limit notice
+**Persona**: Maya, first-time founder at Northwind Robotics, opening her Inbox while Gmail is throttling her account
+**Goal**: Understand why her mail is not showing and what to do.
+**Preconditions**: Demo stack running; signed in; the space "Mail rate-limited" selected (account "Busy mail", always 429, empty cache).
+**Ideal path**: 1 — read the notice and press **Try again** once (STORY-INB-119); nothing else is needed.
+**Alternate paths**: A populated inbox with a throttled account shows the same text as a red line above the rows with a small **Try again** button (not walkable on the demo stack; see the top of this file). Searching while throttled (`searchMail`) also reports the account as rate limited.
+
+###### Steps
+1. Switches to the space "Mail rate-limited" in the space switcher, then clicks **Inbox** → `/app/inbox`. While the first sync runs, the page shows its loading state (UNVERIFIED: how long; the API call `inbox.refresh` runs first, then the list reloads).
+2. The sync fails with a 429; `inboxList` returns the account under `failedAccounts` and `rateLimitedAccounts` → because there are no rows, the page shows a full-page empty state with a mail-warning icon, the title "**Your mail didn't load**", the line "**Gmail is limiting requests right now. Try again in a minute.**" (`syncErrorText`), and a **Try again** button. She does not see **Reconnect Gmail**, because the error is not a sign-in problem. **Hesitation**: "in a minute" is not exact (the server pauses the account for 30 seconds), and the title says "didn't load" without saying the cause; the cause is only in the line below.
+3. Looks for what is broken in her account → nothing else on the page changes; the filter, search and pen icon (Compose) stay as they were for an account without mail (UNVERIFIED: whether Compose is enabled with a throttled account).
+
+###### Variations
+- Reconnect error and rate limit at once, on two accounts: only "Gmail needs to be reconnected." shows (`inbox-sync-error.ts`).
+- Any other failure: "Couldn't reach Gmail." and the same **Try again** button.
+- With a cache but no live data (not walkable on the demo stack): "Your mail didn't load" is replaced by the red alert line above the old rows, with the same text and a small outline **Try again**.
+
+###### Edge Cases
+- She leaves and comes back: the notice shows again on open, because the list API still reports the account while its 30-second pause is active or the last sync ended in a rate-limit error.
+- The notice has no countdown, so she cannot tell when pressing **Try again** will do anything; STORY-INB-119 covers what happens if she presses it early.
+
+---
 
 #### STORY-INB-037: A new email arrives while she is looking at the Inbox
 
@@ -815,6 +881,8 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 ### Stories: Agent and approval cards
 
 #### STORY-INB-019: Ask the Inbox agent "what needs my reply today?"
+
+> **Updated 2026-10-20**: the message dialog now has an 'Ask agent' button that opens one agent per thread (STORY-INB-112, STORY-INB-113, STORY-INB-117). The Inbox agent panel steps below are unchanged.
 
 **Type**: medium
 **Topic**: Inbox agent
@@ -957,6 +1025,8 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 
 #### STORY-INB-030: Clear the Inbox with the keyboard only
 
+> **Updated 2026-10-20**: the keyboard shortcut set was not re-verified; pile tabs and Cleanup add new tab stops (STORY-INB-007, STORY-INB-104).
+
 **Type**: medium
 **Topic**: Keyboard shortcuts
 **Persona**: Maya, learned Gmail shortcuts at her last job
@@ -985,6 +1055,8 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 
 #### STORY-INB-031: Check the Inbox on a phone
 
+> **Updated 2026-10-20**: the phone Inbox has pile tabs and a Cleanup screen (STORY-INB-108). Re-walk the phone layout.
+
 **Type**: medium
 **Topic**: Phone width
 **Persona**: Maya, between meetings, on a 390 px wide phone
@@ -1003,7 +1075,7 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 7. "Sending… Undo" appears at the bottom; she is back on the message. Taps X to return to the list.
 
 ##### Variations
-- She taps **Ask** → the agent panel opens over the page, up to 384 px wide; the collapse icon closes it (STORY-INB-032).
+- She taps **Ask** → the agent panel opens over the page, up to 384 px wide; the collapse icon closes it (see the Inbox "Suspected problems").
 - She rotates to landscape (width above 768 px) → the layout becomes the desktop one with columns.
 
 ##### Edge Cases
@@ -1013,6 +1085,8 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 ### Stories: Accounts
 
 #### STORY-INB-021: Two inboxes, one morning
+
+> **Updated 2026-10-20**: each inbox now opens on the Important pile with pile tabs (Important, Updates, Newsletters, Spam). Re-walk the account switch with that in mind (STORY-INB-007).
 
 **Type**: short
 **Topic**: Multi-account
@@ -1037,6 +1111,8 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 ### Stories: Long end-to-end
 
 #### STORY-INB-022: First morning with the app — from empty Inbox to clear Inbox
+
+> **Updated 2026-10-20**: the first morning now includes the Important pile tab, Digest and Cleanup (STORY-INB-007, STORY-INB-101, STORY-INB-104). Step wording about 'Needs reply' groups holds only inside the Important pile.
 
 **Type**: long
 **Topic**: End-to-end
@@ -1132,6 +1208,8 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 
 #### STORY-INB-040: Monday morning catch-up on a phone
 
+> **Updated 2026-10-20**: the phone Monday catch-up should start in the Important pile and can use Cleanup (STORY-INB-108).
+
 **Type**: long
 **Topic**: End-to-end (phone width, triage, agent, send)
 **Persona**: Maya, in a taxi, 15 minutes before the board meeting
@@ -1141,7 +1219,7 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 **Alternate paths**: use the Inbox agent for steps 4–10 (STORY-INB-019/020).
 
 ##### Steps
-1. Opens the app on the phone and taps **Inbox** in the menu. The unread count is visible beside the name. The agent panel is closed even though she left it open on the desktop (STORY-INB-032).
+1. Opens the app on the phone and taps **Inbox** in the menu. The unread count is visible beside the name. The agent panel is closed even though she left it open on the desktop (see the Inbox "Suspected problems").
 2. The page loads from the cached list at once, then updates after the sync; she sees skeleton rows briefly (`Inbox.tsx:756-761`).
 3. Reads the To do card: two items and "1 more"; taps "1 more" to see T3, then "Show less".
 4. Taps **Important** → M1 and M3 under "2 results" (M11 if the seed rated it important). Taps **Clear**.
@@ -1161,6 +1239,523 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 
 ##### Edge Cases
 - A phone call interrupts step 5: she leaves the composer and comes back → "You have an unsent reply to this email. Continue draft" (STORY-INB-013).
+
+### Stories: Added 2026-10-20, Inbox piles, Digest and Cleanup
+
+#### STORY-INB-101: Maya reads the week's newsletters as a Digest and archives them all
+
+**Type**: short
+**Topic**: inbox-piles-digest-and-cleanup
+**Persona**: Maya, Northwind Robotics founder, web, Monday morning.
+**Goal**: Skim the week's newsletters in one place and clear them.
+**Preconditions**: Newsletters pile has 9 messages from the last 7 days and 6 older ones; Digest off.
+**Ideal path**: 3 — Newsletters tab, Digest toggle, "Archive all".
+**Alternate paths**: Expand each sender group and archive per group (the Archive icon on the group header); tick rows and use the selection bar's Archive. Mobile: the Digest option in the Inbox pile menu then an "Archive all" alert (UNVERIFIED exact control; code in `apps/mobile/app/inbox.tsx`).
+##### Steps
+1. Click the "Newsletters" tab → grouped sender list.
+2. Click the newspaper icon (aria "Digest") → the list becomes cards, newest first, only the 9 messages from the last 7 days. Each card: sender, time, subject, a one-line summary (the model's reason, else the snippet), and an "Open" button.
+3. Click "Open" on one card, "Robotics Weekly #212" → the message dialog opens. She reads it and closes it.
+4. Click the archive icon (aria and tooltip "Archive all") above the cards → the 9 cards disappear and a toast reads "Archived 9" with Undo.
+5. Click the Digest toggle again → back to the grouped list, which still holds the 6 older messages.
+##### Variations
+- Click Undo on the toast → the 9 return. If she waits too long, the toast goes away (Undo from here is gone; the Cleanup History does not list these, since this is a hand-picked archive; UNVERIFIED whether the Inbox archive is logged in History).
+- Switching to Updates and back to Newsletters turns Digest off (it ends when another pile opens).
+##### Edge Cases
+- "Archive all" archives every card shown, not the whole pile. Maya may expect the 6 older ones to go too; the toast count (9) is the only signal.
+- Hide amounts on: dollar figures in subjects and summaries are masked in the cards.
+- A pile with nothing in the last 7 days shows only "No mail" with no toggle hint.
+- Maya hesitates: "Archive all" has no confirmation, so she relies on Undo.
+
+#### STORY-INB-102: Expand a noisy sender and archive just that group
+
+**Type**: short
+**Topic**: inbox-piles-digest-and-cleanup
+**Persona**: A solo technical founder (Dev) at Northwind Robotics, web, keyboard user.
+**Goal**: Clear 14 build-notification emails from one sender without touching other Updates mail.
+**Preconditions**: Updates pile contains 14 messages from ci@buildbot.example.test and 5 other single messages.
+**Ideal path**: 2 — hover the group, click its Archive icon.
+**Alternate paths**: Select the group's checkbox ("Select") then the selection bar's Archive; focus the group header with j/k and press e.
+##### Steps
+1. Open the Updates tab → one group row "buildbot" with count 14, and 5 ordinary rows (single-message senders show as plain rows, not groups).
+2. Click the group header → it expands (chevron rotates, `aria-expanded=true`) and the 14 messages show indented.
+3. Collapse it again, hover the header and click the Archive icon (tooltip "Archive") → toast "Archived 14" with Undo; the group leaves the list.
+##### Variations
+- Tick the group's checkbox (aria "Select"): checking some of the children shows it as indeterminate; the selection bar reads "N selected".
+- Touch screen: the Archive icon is always visible on the group (`pointer-coarse`).
+##### Edge Cases
+- Keyboard: the header has its own id (`group:<key>`), j/k can land on it, Enter toggles it, x selects it.
+- A group with one message is not a group, so there is no count or chevron; Maya might look for a chevron that is not there.
+- Archive moves only inbox mail; messages already archived in the group are not counted. UNVERIFIED how the count handles mixed archived/inbox rows (`archivableIds`).
+
+#### STORY-INB-103: Select several rows across a pile and move them to Spam, then undo
+
+**Type**: medium
+**Topic**: inbox-piles-digest-and-cleanup
+**Persona**: Maya, Northwind Robotics founder, web.
+**Goal**: Mark three suspicious "invoice" emails as spam together, then recover one that was real.
+**Preconditions**: Important pile has 3 emails from "Accounts Dept" at *.example.test addresses with a "Suspicious" icon on one; the Spam tab is not shown yet if the spam count is 0.
+**Ideal path**: 5 — tick three rows, click Spam, read toast, open Spam tab, tick the real one, click Not spam.
+**Alternate paths**: Per-row More menu > Spam (single); Cleanup > More > "Spam N" by sender (see story 7); toast Undo reverses the whole batch.
+##### Steps
+1. Hover the first row and tick its checkbox (aria "Select") → a selection bar appears at the top of the list: "1 selected", Archive, a shield icon (aria "Spam"), a trash icon (aria "Trash"), Clear.
+2. Shift-click the third row's checkbox → rows 1-3 are ticked, bar reads "3 selected".
+3. Click the shield icon (aria and title "Spam") → the rows leave the list at once, toast "Marked 3 as spam" with Undo. The tab strip gains "Spam 3".
+4. Click the "Spam" tab → the three mails show with a Junk or Spam badge. The bar's shield now says "Not spam".
+5. Tick the real invoice and click the shield (title "Not spam") → toast "Marked 1 as not spam"; the Spam count drops to 2.
+6. Click the Important tab → the invoice is back and stays out of Spam (not spam is sticky).
+##### Variations
+- Click Undo in step 3 instead → all three return, Spam tab disappears when count hits 0 (unless it is the open pile).
+- Choose the trash icon instead → "Moved 3 to trash".
+- Press Clear → ticks are removed with no change.
+##### Edge Cases
+- If one message fails: error line "Couldn't archive 1" (reused wording even for spam/trash) and the list reloads to show what really happened.
+- Maya hesitates between Spam and Trash: Spam teaches the sender's reputation; Trash does not. UNVERIFIED whether the UI says so (it does not).
+- The Spam tab disappears if she is on another pile and the count reaches 0; if she is on Spam when it reaches 0 the tab stays so the open tab never vanishes.
+- The same actions appear in the row's More menu (Spam, Trash, Not spam) and on the sender's Cleanup row, so one decision can be made from three surfaces.
+
+#### STORY-INB-104: First Cleanup pass: archive the preselected bulk senders
+
+**Type**: medium
+**Topic**: inbox-piles-digest-and-cleanup
+**Persona**: Maya, Northwind Robotics founder, web, 2,000-message inbox, never opened most promotions.
+**Goal**: Clear out bulk senders in one action.
+**Preconditions**: One Gmail account; sender stats built; five senders qualify for preselection (3+ messages, under 20% read, never written to, not marked important).
+**Ideal path**: 4 — open Cleanup, review ticks, click "Archive N", read toast.
+**Alternate paths**: Per-group archive in the pile tabs (story 3); selection bar after ticking rows (story 4); the Inbox agent via "Ask" (not covered here).
+##### Steps
+1. Click the Cleanup icon (aria and title "Cleanup") in the Inbox header → page "Cleanup" with a Back arrow, then a loading skeleton, then a list of senders ranked by most unopened mail. Five rows are already ticked.
+2. Read a row: "Loop Hardware Deals · deals@loophw.example.test", right side "42 · 0% read · Oct 18". Maya hesitates at the one she half-remembers buying from and unticks "Select Loop Hardware Deals".
+3. Look at the action bar → "Archive 31", "Unsubscribe 29", "Skip inbox 31", and a More button. The numbers count conversations in the inbox for the ticked senders, not messages.
+4. Click "Archive 31" → the button shows a spinner and all controls wait; then a toast "Archived 31" with Undo (10 seconds). The list reloads and the archived senders usually drop off because they no longer have inbox mail.
+5. A History section appears at the bottom: "Archived 31 · Meridian Promos +3" with a time and Undo.
+6. Click the Back arrow → the Inbox returns, unread count in the sidebar is refreshed.
+##### Variations
+- Nothing qualifies: nothing is ticked, the bar buttons show 0 and are disabled until she ticks rows by hand.
+- No senders at all: "Nothing to clean up", no bar.
+- Two accounts: each row also shows the account label.
+##### Edge Cases
+- Archive keeps working in pages of 50 conversations per sender; a large sender may take a few seconds. If a page stops with mail remaining, the row reports "Couldn't update {name}" under the list.
+- Archive does not unsubscribe, so new mail from the same sender will return to the inbox. That is the reason the other two buttons exist; Maya may not realise this.
+- Browser Back from Cleanup returns to the Inbox because cleanup is a URL state (`?cleanup=1`) of the same route.
+- Same info on multiple surfaces: "N% read" and the message count also reflect what the pile tabs hold for that sender; the Updates/Newsletters group count is mail in the window, the Cleanup count is conversations in the inbox. These can differ.
+
+#### STORY-INB-105: Unsubscribe from a newsletter by mailto and by link
+
+**Type**: medium
+**Topic**: inbox-piles-digest-and-cleanup
+**Persona**: Maya, Northwind Robotics founder, web.
+**Goal**: Stop two newsletters for good, and see what happens when the sender needs an email or a web page.
+**Preconditions**: Cleanup lists "Robotics Weekly" (unsubscribe by mailto to unsubscribe@robotics-digest.example.test) and "Sensor Deals" (a web unsubscribe link). A third sender, "Parcel Alerts", has no unsubscribe method.
+**Ideal path**: 6 — tick two senders, click "Unsubscribe N", confirm Send, click Open link, read toast.
+**Alternate paths**: Open the newsletter and use its own unsubscribe link outside Praci; Skip inbox (story 8) when Maya only wants quiet, not removal.
+##### Steps
+1. Open Cleanup and tick "Select Robotics Weekly", "Select Sensor Deals" and "Select Parcel Alerts" → "Unsubscribe N" counts only the first two (senders with no method are left out of that count).
+2. Click "Unsubscribe N" → for the mailto sender the app stops with a dialog "Send an unsubscribe email to unsubscribe@robotics-digest.example.test?" with Cancel and Send.
+3. Click Send → the email is sent for her and the sender's mail is archived. 
+4. For the link sender a line appears under the list: "Sensor Deals" with an "Open link" button (opens in a new tab). Maya clicks "Open link" → the sender's own page loads where she may need to press a final button. 
+5. A toast reads "Unsubscribed from 2" with Undo; History adds "Unsubscribed and archived N".
+##### Variations
+- Click Cancel on the dialog → nothing is sent and that sender is skipped for this run (neither unsubscribed nor archived).
+- Several mailto senders: the dialog appears for each in turn.
+- The unsubscribe fails: line "Couldn't unsubscribe from Sensor Deals", plus an "Open link" if the server has a page to try by hand.
+- Mobile: the same confirmation is a native alert "Send an unsubscribe email to {address}?" with Cancel / Send, and the choice is first confirmed by an alert titled like the button (e.g. "Unsubscribe 29").
+##### Edge Cases
+- Maya hesitates at the mailto dialog: it says only the address, not that her own Gmail will send it; the mail goes from her account. UNVERIFIED what the server uses to send.
+- Mail-writes switched off on the server (`mailWritesDisabled`): the call fails with "Changing mail is turned off." and shows as a failure line. 
+- Undo from the toast reverses the archive, not the unsubscribe request already sent. UNVERIFIED in UI; History Undo works on archive batches only.
+- A "Looks like spam" sender is not unsubscribed from; the server refuses ("This sender looks like spam.") so sending an unsubscribe request to a spammer is avoided.
+
+#### STORY-INB-106: Skip inbox for a sender, see the Gmail filter note, and stop it later
+
+**Type**: medium
+**Topic**: inbox-piles-digest-and-cleanup
+**Persona**: Maya, Northwind Robotics founder, web, wants her investor-update list "out of sight but kept".
+**Goal**: Keep a sender's mail out of the inbox from now on without unsubscribing, then reverse that.
+**Preconditions**: One Gmail account without the Gmail "make filters" permission; the sender "Fund Updates" (updates@fund.example.test) sends monthly.
+**Ideal path**: 6 — tick sender, "Skip inbox N", read row state, later click "Stop".
+**Alternate paths**: Unsubscribe (story 7) removes the mail at the source; Archive (story 6) does it once only; Mark noise on a row (More/hover action "Mark noise: all mail from {sender}") treats mail from the sender as noise in Praci only.
+##### Steps
+1. In Cleanup, tick "Select Fund Updates" and click "Skip inbox 3" → the sender's current inbox mail is archived and a decision is recorded; mail that arrives later is archived by sync. A toast reads "Skipping inbox for 1 sender" with Undo.
+2. The row stays listed (even with nothing left to archive) with the label "Skipping" and a "Stop" link, so the decision can be undone.
+3. Because Gmail has not allowed filters yet, an "Also in Gmail" link appears under the action bar (account label first when there are several accounts). Maya hesitates: it does not say what it does. Clicking it starts a Google sign-in to grant permission.
+4. After granting, she clicks "Skip inbox" again for the sender if the row shows "Couldn't add Gmail filter" → the filter is retried. If it shows "Gmail filter limit reached", no new Gmail filter can be made; the skip still works inside Praci.
+5. Weeks later, Maya opens Cleanup, finds the row with "Skipping" and clicks "Stop" → the decision (and the Gmail filter if one was made) is forgotten and the row loses its label.
+##### Variations
+- Select a "Looks like spam" sender: "Skip inbox N" does not count it; the server also refuses it.
+- History records "Skipped inbox for N" with a "Skip inbox" reason tag shown only when it differs from the action name.
+##### Edge Cases
+- Mail Maya sees arrive in Gmail's own app is archived by the Gmail filter, but in Praci only by sync; the two are different mechanisms. UNVERIFIED timing.
+- Undo on the toast removes the skip for the sender: UNVERIFIED whether History Undo also removes the Gmail filter.
+- "Stop" fails: an error line (red) above the list; the list reloads either way.
+
+#### STORY-INB-107: Undo a Cleanup from History, and forget a learned pile
+
+**Type**: medium
+**Topic**: inbox-piles-digest-and-cleanup
+**Persona**: Maya, Northwind Robotics founder, web. She archived a sender last week and now needs its mail back.
+**Goal**: Restore archived mail from History, and correct Praci's guess that "Jordan at Pacific Supply" is a newsletter.
+**Preconditions**: History holds "Archived 12 · Pacific Supply Co." (source manual) and an "Unsubscribed and archived 8 · Robotics Weekly +1 · Automatic". Pacific Supply has the label "Learned Newsletters".
+**Ideal path**: 4 — open Cleanup, Undo the action, Forget the learned pile, check Inbox.
+**Alternate paths**: Undo from the 10-second toast right after the action; the Inbox "Moved ... to Inbox" Undo. Mark important on a row sets the pile too (explicit marks override learning).
+##### Steps
+1. Open Cleanup and scroll to the History heading → list of actions, newest first, each with a time and an Undo button.
+2. Click Undo on "Archived 12 · Pacific Supply Co." → the button waits; the 12 conversations return to the inbox and the sidebar unread count refreshes. The row's Undo is disabled once the action is undone.
+3. On the Pacific Supply row, read "Learned Newsletters" with a "Forget" link next to it → click Forget. The label goes away.
+4. Click Back and open the Newsletters tab → Pacific Supply mail is judged by the rules again (no learned pile). It may sit under Important or Updates on the next sync. UNVERIFIED whether pile membership changes immediately or after the next sync (`applyPileRules` runs on sync).
+##### Variations
+- The "Automatic" tag marks an action done by the system on Maya's earlier choice (for example mail archived by a Skip inbox decision when it arrived). Maya can undo these too.
+- Undo fails: a red error line above the list.
+##### Edge Cases
+- Unsubscribe actions' Undo brings the mail back but does not re-subscribe her.
+- Where Maya looks for recent actions: History exists only on the Cleanup screen. The Inbox toasts for hand-picked archives have no History equivalent. UNVERIFIED which Inbox bulk actions are logged (spam/trash batches are undone by batch id, so they are logged).
+- The History list names only the first sender and "+N" for the rest; Maya cannot see all senders of a batch without opening the Inbox.
+
+#### STORY-INB-108: Cleanup on the phone
+
+**Type**: medium
+**Topic**: inbox-piles-digest-and-cleanup
+**Persona**: Maya, Northwind Robotics founder, Expo mobile app on iPhone, waiting in a queue.
+**Goal**: Archive and unsubscribe from bulk senders using the phone.
+**Preconditions**: iOS 26 (native header menu) or earlier (fallback button); Gmail connected; same senders as story 6.
+**Ideal path**: 5 — open Cleanup, adjust ticks, choose action from the header menu, confirm alert, read result.
+**Alternate paths**: Do it on the web (stories 6-8). Phone has no Skip-inbox Gmail-permission link in the code read (UNVERIFIED).
+##### Steps
+1. In the Inbox screen, open the header menu and choose "Cleanup" (icon: checklist) → the Cleanup screen shows sender rows; preselected ones are ticked.
+2. Read a row: "Meridian Promos", "42 messages · 0% read · Oct 18", and notes "Looks like spam", "Skipping" + "Stop", "Learned Newsletters" + "Forget".
+3. Open the header menu again → "Archive 31", "Unsubscribe 29", "Skip inbox 31", "Spam 2" (counts as on web).
+4. Tap "Archive 31" → a native alert titled "Archive 31" with Cancel and "Archive 31". Maya confirms.
+5. See the result: the list reloads. Failures appear in the list as "Could not update {name}" with "Open link" when a page is available.
+6. Tap a History item → alert with the action line (for example "Archive · 12 · Pacific Supply Co.") with Cancel / Undo.
+##### Variations
+- Load failure: "Could not load senders" with a "Retry" button. Empty: "Nothing to clean up".
+- Mobile pile picker: Important, Updates, Newsletters, Spam (behind its count) in the Inbox; Newsletters has a digest option with "Archive all" in an alert.
+##### Edge Cases
+- Wording differs from web: "Could not update {name}" (phone) vs "Couldn't update {name}" (web); "Could not load senders" vs "Couldn't load senders". The same screen on two surfaces; a UX catalog should list both.
+- There is no 10-second Undo toast on phone; Undo lives in History only. UNVERIFIED; no toast code was seen in `inbox-cleanup.tsx`.
+
+#### STORY-INB-109: A Monday-morning inbox reset across piles, Digest, Cleanup and Spam
+
+**Type**: long
+**Topic**: inbox-piles-digest-and-cleanup
+**Persona**: Maya, first-time founder of Northwind Robotics, web, first real session after a week away; 340 unread. Gmail account maya@northwind.example, triage on.
+**Goal**: Get to a manageable Important pile, make newsletters a one-minute read, stop three recurring senders, and recover one mistake.
+**Preconditions**: Mail sorted; Newsletters has 12 recent issues; Cleanup has 6 preselected senders; Spam holds 4 messages, one of them a real customer's reply.
+**Ideal path**: 24 — a long journey with natural backtracking; no shortcut covers all of it.
+**Alternate paths**: Ask the Inbox agent to tidy ("Ask"); use only the Filter menu (Unread, Categories); keep a single large Cleanup pass (story 6).
+##### Steps
+1. Click "Inbox" → Important pile; she sees "Needs reply" (2), "Today" ("Other mail today"), "Earlier". Status line "Sorting your mail…" shows briefly and clears.
+2. Open the first Needs reply email → the message dialog opens (prev/next, Reply, Archive). She replies later and closes the dialog → the list is unchanged.
+3. Click the "Spam 4" tab → four mails with Junk/Spam badges. Maya spots "Alex, Brightline Customer" asking about an order.
+4. Tick that row (aria "Select") → bar shows "1 selected" with a shield (title "Not spam"). Click it → toast "Marked 1 as not spam", count becomes "Spam 3".
+5. Tick the other three and click Trash (aria "Trash") → toast "Moved 3 to trash"; the Spam tab remains because it is the open pile.
+6. Click the "Important" tab → the customer's email is back in Important and stays (not spam is sticky).
+7. Click the "Newsletters" tab → groups by sender; she notes 5 groups with counts.
+8. Click the newspaper icon (aria "Digest") → 12 cards from the last 7 days. She reads three summaries and clicks "Open" on one, "Robotics Weekly #212", then closes it.
+9. Click the archive icon "Archive all" → "Archived 12", then clicks the Digest toggle off. 
+10. Click the Cleanup icon in the header (title "Cleanup") → skeleton, then the sender list. Six are preselected.
+11. Untick "Select Loop Hardware Deals" (she buys from them) → action counts drop.
+12. Tick "Select Fund Updates" (investor newsletter she wants kept but quiet).
+13. Click "Archive 31" for the ticked set → toast "Archived 31"; History shows a new row.
+14. Re-tick only "Fund Updates", click "Skip inbox 3" → toast "Skipping inbox for 1 sender"; the row shows "Skipping" with "Stop".
+15. Tick "Robotics Weekly" and "Sensor Deals"; click "Unsubscribe 2" → the dialog "Send an unsubscribe email to unsubscribe@robotics-digest.example.test?" appears; click Send.
+16. Under the list, "Sensor Deals" with "Open link" appears; click it → the sender's page opens in a new tab; she completes it there and returns.
+17. Toast "Unsubscribed from 2". She realises she wanted Sensor Deals' discount codes; scrolls to History.
+18. Click Undo on "Unsubscribed and archived ..." → mail returns to the inbox (the unsubscribe request already sent is not reversed).
+19. Click the Back arrow → Inbox; the sidebar unread count has dropped from 340.
+20. Click the "Updates" tab → groups; expands "buildbot" (14), collapses it, hovers and clicks Archive → "Archived 14".
+21. She leaves the toast alone; after 10 seconds it goes away and the group stays archived.
+22. Open Filter menu > Unread → the pile tabs deselect and a "results" strip with "Clear" appears; she scans unread items and clicks "Clear" → back to the pile.
+23. Click "Important" → a short list. She is done.
+##### Variations
+- Do the Cleanup pass first, then the piles; History then also shows the pile actions that were logged.
+- If sync is still running or the sort is stalled, steps 1 and 7-9 change; see story 5.
+##### Edge Cases
+- Maya hesitates at step 15: nothing in the dialog says it sends from her own address. 
+- The same mailbox state is reflected in five places: the sidebar unread badge, the pile counts (Spam only), the Cleanup rows, History, and the Inbox lists. After each action only some update at once; the others update on reload.
+- Browser Back at step 19-20 returns to the Inbox from Cleanup because it is a URL state, but a refresh keeps `?cleanup=1`.
+- Hide amounts: any amount in a Digest card is masked.
+
+#### STORY-INB-110: Cleanup when Gmail needs permission, mail changes are off, or there is nothing to do
+
+**Type**: short
+**Topic**: inbox-piles-digest-and-cleanup
+**Persona**: The deployment owner on the desktop app, running Praci on a local stack with mail writes disabled for safety.
+**Goal**: See what Cleanup does when it cannot change mail.
+**Preconditions**: `mailWritesDisabled` is on for this deployment (operator setting, name from code); Gmail connected read-only.
+**Ideal path**: 3 — open Cleanup, tick a sender, click Archive and read the error.
+**Alternate paths**: Re-enable mail writes (operator setting; outside the UI).
+##### Steps
+1. Open Cleanup from the Inbox header → senders list loads normally (reading is allowed).
+2. Tick one sender and click "Archive N" → the call fails with "Changing mail is turned off." 
+3. The error shows as a line "Couldn't update {sender name}" under the list and, because the screen already has data, an extra red line above it; no toast, no History row. 
+##### Variations
+- Load fails altogether (Gmail down): a "Couldn't load senders" alert with "Try again" instead of the list.
+- No senders: "Nothing to clean up" and no action bar.
+- Gmail rate limit or sign-out at the Inbox level: see the existing Gmail rate-limit topic (`new-gmail-rate-limit.md`); not repeated here.
+##### Edge Cases
+- The Archive button looks active until clicked; the setting is not shown in the UI before the error. UNVERIFIED whether another place tells the owner mail writes are off.
+- Duplicate failure text: the same failure shows on the sender line and in a red banner, so it can read as two errors.
+
+### Stories: Added 2026-10-20, Mail attachments, Ask agent and auto-filing
+
+#### STORY-INB-111: Step through several attachments with the arrows and keyboard
+
+**Type**: short
+**Topic**: mail-attachments-ask-agent-auto-file
+**Persona**: Maya, first-time founder of Northwind Robotics
+**Goal**: Review three attachments (invoice PDF, cost spreadsheet, site photo) of one email in a row.
+**Preconditions**: Email "Pilot order paperwork" from `ops@customer.example.test` has `invoice.pdf`, `costs.xlsx`, `site.jpg` (90 KB).
+**Ideal path**: 4 — open the first chip, press the right arrow twice, Escape.
+**Alternate paths**: "Next attachment" and "Previous attachment" buttons in the preview toolbar do the same as ArrowRight/ArrowLeft.
+##### Steps
+1. Click the `invoice.pdf` chip → preview opens on index 0; "Previous attachment" is disabled.
+2. Press ArrowRight → `costs.xlsx` loads in the spreadsheet preview (rendered by the server-backed sheet viewer).
+3. Press ArrowRight → `site.jpg` shows as an image. "Next attachment" is now disabled.
+4. Press the letter `e` or `r` → nothing happens: the preview stops key events so the email's Archive and Reply shortcuts do not fire.
+5. Press Escape → back to the email, still open.
+##### Variations
+- The image chip shows a 20 px thumbnail instead of a generic icon because the file is under 512 KB.
+- Large photo (over 10 MB): preview says "Too large to preview" but Download still works.
+##### Edge Cases
+- A `.docx` in the set shows "Preview isn't available for this file type — download it to view it."
+- With "hide amounts" turned on, PDF, image, HTML and sheet previews show "Hidden while amounts are hidden"; text and Markdown still show. Maya may think the file is broken.
+
+#### STORY-INB-112: Ask agent about an email thread for the first time
+
+**Type**: medium
+**Topic**: mail-attachments-ask-agent-auto-file
+**Persona**: Maya, first-time founder of Northwind Robotics
+**Goal**: Get a summary of a long thread with a contract manufacturer and a draft reply.
+**Preconditions**: Gmail connected, inbox page open. Thread "Re: Fwd: Pilot build schedule" with 6 messages from `priya@factory.example.test`. Mail AI data sharing already allowed for the model.
+**Ideal path**: 4 — open the email, click "Ask agent", type the question, send.
+**Alternate paths**: Mobile message screen has the same action in its header (UNVERIFIED label). Ask the Inbox agent instead (less focused; no thread seeded).
+##### Steps
+1. Open the thread's newest message → toolbar shows "Reply", "Reply all", "Forward", "Archive", "Mark read"/"Mark unread" and "Ask agent" (Bot icon).
+2. Click "Ask agent" → the button disables while the agent is created, then the dialog closes into a new chat. The agent is named from the subject with "Re:" and "Fwd:" removed: "Pilot build schedule". Composer is focused.
+3. Look at the transcript → the first item is a collapsed card "Email thread · 6 messages". Maya thinks: "Is it going to read all this without asking me?" Nothing has run yet.
+4. Click the card → it expands to the messages (sender, date, text, and a paperclip line with attachment filenames).
+5. Type "Summarize where the schedule stands and draft a reply asking for a revised date" and send → the agent answers from the thread. The agent can only draft: a reply uses `mail_send` and shows an approval card to approve, edit or discard.
+6. The sidebar lists the new agent; it notifies on finish.
+##### Variations
+- Thread longer than 30 messages: only the newest 30 are seeded (older ones are readable by the agent through `mail_get`).
+- A message that fails to load from Gmail falls back to its cached preview, unless it is the one Maya opened, which must load or the click shows an error.
+##### Edge Cases
+- Attachments appear as filenames only; the agent does not receive their content. UNVERIFIED whether it can open them with other tools.
+- The agent cannot archive or change mail (stated in its instructions).
+
+#### STORY-INB-113: Ask agent when mail AI data sharing is not yet allowed
+
+**Type**: medium
+**Topic**: mail-attachments-ask-agent-auto-file
+**Persona**: Maya, first-time founder of Northwind Robotics
+**Goal**: Find out why the thread agent says it cannot see the email, and fix it.
+**Preconditions**: New account; mail AI data sharing for the chosen model not allowed yet. Email "Term sheet draft" from `partner@fund.example.test`.
+**Ideal path**: 5 — Ask agent, send, see consent card, Allow, resend.
+**Alternate paths**: AI data sharing switches in account Settings (covered by the account-data topic).
+##### Steps
+1. Open the email, click "Ask agent" → new chat "Term sheet draft" with collapsed "Email thread · 3 messages" card.
+2. Maya sends "What are the key terms?" → the agent's history holds only a placeholder instead of the thread (text says the thread is not shared yet and to allow AI data sharing in Settings). The agent tells her to allow it and does not ask her to paste the email.
+3. When the agent tries to read mail, the existing consent card appears with "Allow" and "Not now" (exact wording from the AskCard topic). She hesitates: "I only wanted this one email."
+4. Click "Allow" → the thread now reaches the model on the next run.
+5. Send the question again → the agent answers using the thread.
+##### Variations
+- "Not now" → the agent keeps the placeholder; denying does not loop.
+- Mail consent is per model, and the thread agent runs on the Inbox agent's model override if one exists, so allowing it on the Inbox card already covers this chat.
+##### Edge Cases
+- The seeded card in the transcript is visible to Maya even though the model has not seen it. Same information in two states, which can confuse. UNVERIFIED whether any extra UI explains this.
+
+#### STORY-INB-114: Turn automatic filing off and on in Model settings
+
+**Type**: short
+**Topic**: mail-attachments-ask-agent-auto-file
+**Persona**: Solo technical founder who keeps client contracts out of shared storage
+**Goal**: Stop new attachments from being filed without asking.
+**Preconditions**: Signed in; never touched the setting (so it is on).
+**Ideal path**: 3 — open Model settings, clear the checkbox, check the result.
+**Alternate paths**: none found (no setting on the Data room page itself in the code read).
+##### Steps
+1. Open the Model settings overlay → near the top, under the model row and the "Data room search model" disclosure, a checkbox "Add email attachments to the Data room" is checked. It is disabled for a moment until the saved value loads.
+2. Clear the checkbox → saved immediately on change; no Save button, no toast.
+3. Close and reopen the overlay → checkbox is still cleared.
+4. Check it again → saved the same way.
+##### Variations
+- A new account with no stored row sees it checked (default on).
+##### Edge Cases
+- Save fails: red alert "Could not save the setting" (or the server's message) appears below, and the checkbox keeps the old value. UNVERIFIED because `setEnabled` only runs after success.
+- Turning it on later does not file mail already in the cache (code comment).
+- The setting is per member, not per workspace.
+
+#### STORY-INB-115: An invoice arrives and lands in the Data room automatically
+
+**Type**: medium
+**Topic**: mail-attachments-ask-agent-auto-file
+**Persona**: Maya, first-time founder of Northwind Robotics
+**Goal**: See that a customer's purchase order filed itself without a click.
+**Preconditions**: Setting on. Gmail synced. A new email from `buyer@customer.example.test` arrives with `PO-8812.pdf` (95 KB), no unsubscribe header.
+**Ideal path**: 3 — wait for sync, open the email, see "Added".
+**Alternate paths**: Open the Data room and look for the file.
+##### Steps
+1. The mail sync stores the new message; because it is new and recent, a `mail.attachments` job is queued.
+2. Maya opens the email from the Inbox → chip `PO-8812.pdf` appears. Opening the chip menu shows "Added" (disabled) rather than "Add to Data room", because the dialog asks the server which files are already imported.
+3. Click the chip, then the preview toolbar → "Added" there too.
+4. Open Data room → the file is listed, going through the normal processing steps. She thinks: "I never asked for that. Where do I turn it off?" (see STORY-INB-114). Which folder it lands in is UNVERIFIED.
+##### Variations
+- The email is from yourself to a client with an attached Excel file: filed too, since mail the owner sent to others counts.
+- Zip attachments are filed and then unpacked by the zip import.
+##### Edge Cases
+- No consent is needed for storing the file; sending content to a model still needs consent.
+- Race: if Maya opens the email within seconds, the chip may still say "Add to Data room". Clicking it is safe: the server reports a duplicate and the button goes to "Added".
+
+#### STORY-INB-116: Mail that does not get auto-filed
+
+**Type**: medium
+**Topic**: mail-attachments-ask-agent-auto-file
+**Persona**: Solo technical founder
+**Goal**: Understand why a few attachments never reached the Data room.
+**Preconditions**: Setting on. Inbox holds (a) newsletter PDF from `news@digest.example.test` with unsubscribe link, (b) `logo.png` 4 KB in a signature, (c) `.docx` from `noreply@billing.example.test`, (d) a 4-day-old email with `contract.pdf` that arrived during first sync.
+**Ideal path**: 4 — inspect each email's chips and menus.
+**Alternate paths**: Add each wanted file by hand (STORY-INB-016).
+##### Steps
+1. Open (a) → chip is present; menu shows "Add to Data room" (not "Added") because bulk and List-Unsubscribe mail is skipped.
+2. Open (b) → image inline in signature is not a chip as an attachment, or if it is, it shows "Add to Data room" because it is under 10 KB and not a document type.
+3. Open (c) → no-reply senders are skipped; "Add to Data room" is still available.
+4. Open (d) → older than 2 days at sync time; not filed.
+5. Click "Add to Data room" on (d) → "Added".
+##### Variations
+- A PDF sent by an unusual client labelled `application/octet-stream` is still filed when its extension is pdf, doc, docx, xls, xlsx, csv, pptx or zip.
+##### Edge Cases
+- There is no visible reason on screen for a skipped file. Maya must infer it. The manual button is the only recovery.
+- Manual add accepts files the auto rules skip, but the Data room may still refuse non-documents. UNVERIFIED which messages appear for a refused type.
+
+#### STORY-INB-117: Reopen the same thread agent and handle an unsent reply and a missing email
+
+**Type**: medium
+**Topic**: mail-attachments-ask-agent-auto-file
+**Persona**: Maya, first-time founder of Northwind Robotics
+**Goal**: Come back to the same thread agent the next day, and see how the dialog behaves when the email has gone.
+**Preconditions**: STORY-INB-112 completed. Maya started a reply earlier and closed the composer without sending.
+**Ideal path**: 4 — open the email, read the banner, click "Ask agent" again.
+**Alternate paths**: Find the agent in the sidebar by its name.
+##### Steps
+1. Open the same email → toolbar appears; below it a status line "You have an unsent reply to this email." with a "Continue draft" link.
+2. Click "Continue draft" → the composer opens (the email dialog hides behind it) with the saved reply.
+3. Close the composer → the banner returns, because the draft is kept.
+4. Click "Ask agent" → no new agent: the same chat opens (one agent per account and thread), with the earlier conversation. Maya thinks: "Good, it didn't start over." A newer message in the thread is not added to the seeded card. UNVERIFIED whether the card refreshes.
+5. Later, delete the email in Gmail and open a stale link to it → the dialog title is "Email not found", with "This email isn't in your mail any more. It may have been deleted or moved." and a "Back to Inbox" button.
+##### Variations
+- While loading, the dialog shows the sender, date and snippet from the list row, a skeleton toolbar and a white skeleton body.
+- Load error shows red text and "Try again" instead.
+##### Edge Cases
+- If Ask agent fails (Gmail error on the opened message), a red alert line appears under the toolbar and the button re-enables.
+- Archived agents are ignored and a new one is created. UNVERIFIED in the UI.
+
+#### STORY-INB-118: From a vendor email to a filed document and an agent answer
+
+**Type**: long
+**Topic**: mail-attachments-ask-agent-auto-file
+**Persona**: Maya, first-time founder of Northwind Robotics, new to Praci
+**Goal**: Receive a contract revision, check it, file it, and have an agent compare it with what she asked for, end to end.
+**Preconditions**: Gmail connected; Model settings reachable; auto-filing off (she turned it off in STORY-INB-114); mail AI data sharing not yet allowed; email "Supply agreement v3" from `priya@factory.example.test` with `supply-agreement-v3.pdf` (1.2 MB) and `pricing.xlsx` (60 KB); thread has 4 earlier messages.
+**Ideal path**: 12 — open email, preview both, file the PDF, ask agent, allow sharing, ask question, read result, check Data room.
+**Alternate paths**: Skip the manual filing and let auto-filing do it (setting on); ask the Inbox agent instead of a thread agent.
+##### Steps
+1. Sidebar → Inbox; click the "Supply agreement v3" row → dialog opens with the loading skeleton, then the body; the thread above shows "4 earlier messages" as a collapsed list.
+2. Click one earlier row in the thread list ("You" rows have a Sent mark) → its text expands under the row.
+3. Scroll to the attachment chips; click `supply-agreement-v3.pdf` → PDF preview.
+4. Press ArrowRight → `pricing.xlsx` shows in the sheet viewer with tabs.
+5. Press ArrowLeft, then click "Add to Data room" in the toolbar → button disables, then reads "Added".
+6. Escape back to the email. Maya thinks: "Do I also want the spreadsheet in there?" Opens the three-dot menu for `pricing.xlsx` → "Add to Data room" → "Added".
+7. Click "Ask agent" → chat "Supply agreement v3" opens; the card "Email thread · 5 messages" is collapsed.
+8. Send "Did Priya change the payment terms from v2?" → the agent replies it cannot see the thread because AI data sharing is not allowed for mail, and points at Settings.
+9. The consent card appears when it reads mail; click "Allow".
+10. Send the question again → the agent summarizes the changes, naming the attachment files from the thread card (names only).
+11. Ask "Draft a reply asking for net 45" → a reply approval card appears; Maya edits and approves, or discards. Nothing is sent without her.
+12. Open Data room in the sidebar → both files are present. Optionally use the Data room agent ("Ask", covered in the Data room topics) to ask about the PDF contents, which the thread agent could not read.
+##### Variations
+- With auto-filing on, step 5 and 6 are unnecessary and both buttons already read "Added" on opening.
+- On phone: the same actions are on the mobile message screen (UNVERIFIED layout).
+##### Edge Cases
+- Two surfaces say the same thing: "Added" in the chip menu and in the preview toolbar; the filename list in the thread card and the chips.
+- Hesitation points: whether Ask agent reads attachments (it does not, by name only), whether Allow covers all mail (it is per model), and whether the filed document is searchable yet (processing may still be running).
+- If the email is deleted mid-journey, step 7 returns an error line under the toolbar.
+
+### Stories: Added 2026-10-20, Gmail rate-limit notice
+
+#### STORY-INB-119: Maya presses "Try again" during the pause
+
+**Type**: short
+**Topic**: Try again during a rate-limit pause
+**Persona**: Maya, impatient, presses the button right after she sees the notice
+**Goal**: Get her mail to load now.
+**Preconditions**: As STORY-INB-018, immediately after the notice appeared (less than 30 seconds since the last failed sync).
+**Ideal path**: 1 — one click, then wait.
+**Alternate paths**: Switch to another tab and back to the Inbox tab: a visibility change re-runs the sync without a click (`Inbox.tsx`, around line 203). The page also looks for new mail about once a minute (`NEW_MAIL_POLL_MS`).
+
+##### Steps
+1. Clicks **Try again** within a few seconds of the notice → the button text becomes "**Trying again…**" and is disabled (`retrying` is true until the sync call answers). The notice stays on screen.
+2. Waits → the API (`inboxRefresh` → `waitOutBackoff`) reads the remaining pause from the database clock. If 30 seconds or less remain, it waits until the pause ends (plus 50 ms), then runs the sync. Maya sees only "Trying again…" for up to about 30 seconds. **Hesitation**: nothing says it is waiting for Gmail's pause; she may think the page is frozen.
+3. The sync runs. On the demo stack Gmail still answers 429 → "Trying again…" returns to **Try again**, and the same "Gmail is limiting requests right now. Try again in a minute." text shows. A new 30-second pause starts. She cannot tell that the retry ran, except that the button was busy.
+4. On a Gmail that has recovered (not walkable on the demo stack) → the notice goes, rows load, and the sidebar unread count refreshes (`onRefreshed`).
+
+##### Variations
+- She clicks **Try again** several times in a row: the button is disabled while the sync runs, so extra clicks do nothing (UNVERIFIED).
+- She clicks after the pause has already ended: no wait; the sync runs at once.
+- She leaves the page while "Trying again…" shows: the wait stops (the request is aborted) and no sync runs.
+
+##### Edge Cases
+- If more than 30 seconds remain (only possible if the pause was set longer than 30 seconds), `waitOutBackoff` does not wait, the sync is skipped as inside the pause, and the notice returns at once with no retry.
+- A retry with two accounts: each account waits out its own pause, at most four at a time. A slow second account keeps "Trying again…" on screen after the first has recovered (UNVERIFIED).
+
+#### STORY-INB-120: The notice clears once the pause is over
+
+**Type**: short
+**Topic**: Rate-limit notice clearing
+**Persona**: Maya, back from making coffee
+**Goal**: See her mail again without doing anything special.
+**Preconditions**: An account whose Gmail was throttled and has since recovered; at least 30 seconds since the last 429. **Not reachable on the unmodified demo stack** (its throttled account never recovers). Needs a `failNext(429, ...)` hook, or read `apps/api/src/inbox.postgres.test.ts`.
+**Ideal path**: 1 — open or return to the Inbox tab and the notice is gone.
+**Alternate paths**: Press **Try again** (STORY-INB-119).
+
+##### Steps
+1. Returns to the Inbox tab after more than 30 seconds → the tab becoming visible re-runs the sync (`setAttempt`). The sync is no longer inside the pause and goes to Gmail.
+2. Gmail answers normally → the sync clears the error and the pause (`lastErrorAt = NULL`, `backoffUntil = NULL`, `mail-sync.ts`); the list reloads with her mail and no notice.
+3. If she only reloaded the list without a sync: `inboxList` keeps a rate-limited account in `failedAccounts` only while its `backoffUntil` is in the future, so once the 30 seconds have passed the notice also stops showing on the next list read, even before a successful sync (`inbox.ts`, the `current` filter). A reconnect error is different: it stays until fixed.
+
+##### Variations
+- Within the 30 seconds: the notice still shows after returning to the tab; the sync is skipped.
+- Gmail throttles again on the first sync after the pause: the notice returns and a new 30-second pause starts.
+
+##### Edge Cases
+- The notice disappears with no confirmation. She may not notice that mail refreshed.
+- After a long outage with a stale cache, the rows she sees may be old until the sync completes (UNVERIFIED).
+
+#### STORY-INB-121: Maya taps Reply while Gmail is failing
+
+**Type**: short
+**Topic**: Reply fallback composer
+**Persona**: Maya, replying to an email from Luis Romero while Gmail is throttling or down
+**Goal**: Start a reply even though Gmail will not return the full message.
+**Preconditions**: A message M3 (Luis Romero, received, not sent by Maya) is in the cache; the inbox row is visible; Gmail now answers 429 (or fails) for the single-message fetch. **Not reachable on the unmodified demo stack** (the throttled space has no cached mail; the other spaces never fail). Covered by Vitest cases in `apps/api/src/inbox-compose.postgres.test.ts`.
+**Ideal path**: 3 — open the message, click Reply, then fill To herself.
+**Alternate paths**: Forward (the same fallback; the body is empty and no attachments are carried); Reply all; reply from a row's quick action (UNVERIFIED if one exists).
+
+##### Steps
+1. Opens M3 from the list → the preview comes from the cache. If the full message was not cached, the page shows the error "Gmail is busy. Try again in a moment." (`mailUnavailable`, status TOO_MANY_REQUESTS) instead of the body (UNVERIFIED which of these shows).
+2. Clicks **Reply** → the composer opens anyway. The server could not fetch the original (`inboxComposePrefill` caught a rate-limit or outage error), so it built the reply from the cached copy and returned `quoteUnavailable: true`.
+3. The composer shows the subject from the cache ("Re: Can we move Thursday's demo to Friday?"), an empty body with nothing quoted, and the red note "**The original message didn't load.**" (`ComposeEmail.tsx`). The note stays through autosave unless a different error takes its place.
+4. Looks at **To** → it is empty (and Cc is empty), because the cache has no Reply-To header and the app will not guess the address. **Hesitation**: she expects Luis's address to be filled in and may not see why it is blank; the note does not mention To.
+5. Types Luis's address, writes the reply and sends → the send path behaves as in a normal reply. If Gmail is still throttled, the send fails with "Gmail is limiting requests. Try again in a minute." (`problemText`) and the composer stays open with her text.
+
+##### Variations
+- Reply to her own sent message (the sent-mail variant): To is filled from the cached To list, because her own message answers to its recipients; the note still shows.
+- Auth error instead of a rate limit: no fallback; the composer gives a reconnect error (the API throws PRECONDITION_FAILED).
+- Message deleted in Gmail (not found): no fallback; the error is a not-found message.
+- Reply all or Forward: same note; Forward also has no attachments.
+
+##### Edge Cases
+- She closes and reopens Reply after Gmail recovers: the prefill runs again and quotes the original normally (UNVERIFIED that the earlier draft is kept).
+- Replies sent in this state carry no quote, so the recipient sees no earlier text.
+- Gmail's own threading still applies, because `replyToMessageId` is sent (UNVERIFIED in the Gmail emulator).
 
 ### Redundancy Candidates (this area)
 
@@ -1188,3 +1783,6 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 13. **Compose icon on phones has no visible label** and a greyed pen (no mail connected) gives no reason (`Inbox.tsx:695-711`).
 14. **Account tab is not remembered or in the URL** (`Inbox.tsx:117`), and rows in the All tab do not show which account they belong to.
 15. **Data room cannot take an email attachment on `main`**; filing needs download plus re-upload (STORY-INB-016). PR #109 adds an Import from email dialog on the Data room page only, not an action inside the email.
+
+
+---

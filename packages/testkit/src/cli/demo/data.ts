@@ -374,6 +374,260 @@ const MAIL: Mail[] = [
 ];
 
 /** The second connected account, so the account tabs and the From picker have something to show. */
+// More everyday mail, so the Inbox piles read like a working company's.
+const DAILY: Array<[string, string, string, string, number, string?, boolean?]> = [
+  [
+    "Riley Testwell",
+    "riley@bookkeeping.example.test",
+    "September books are closed",
+    "The September books are closed. Net burn was $67,600 and the card reconciliation is attached to the data room.",
+    1.2,
+    undefined,
+    true,
+  ],
+  [
+    "Casey Coworker",
+    "casey@northwind.example.test",
+    "Receipts for the Austin trip",
+    "I uploaded the receipts for the Austin trip. Three are still missing a vendor name.",
+    1.6,
+  ],
+  [
+    "Sam Samplesworth",
+    "sam@pilot-customer.example.test",
+    "Site two network access",
+    "Our IT approved the robot network ports. Can you send the MAC addresses before Thursday?",
+    2.1,
+    undefined,
+    true,
+  ],
+  [
+    "Delta Desk Rentals",
+    "no-reply@delta-desk.example.test",
+    "Invoice 3023 for October",
+    "Your October invoice for $420 is attached. Payment is due in 30 days.",
+    2.4,
+  ],
+  [
+    "Acme Servo Supply",
+    "no-reply@acme-servo.example.test",
+    "Order NW-1044 has shipped",
+    "Your order of 40 servo motors shipped today and arrives in four days.",
+    2.8,
+  ],
+  [
+    "Jamie Placeholder",
+    "jamie@placeholder-ventures.example.test",
+    "Great meeting at demo day",
+    "Maya, great talking at demo day. Could you send the deck and the current metrics?",
+    3.0,
+    undefined,
+    true,
+  ],
+  [
+    "Cobalt Cloud Hosting",
+    "no-reply@cobalt-hosting.example.test",
+    "Your October invoice",
+    "Your hosting invoice for $1,850 is ready. Your plan renews automatically on Dec 8.",
+    3.3,
+  ],
+  [
+    "Fictional Law Group",
+    "counsel@fictional-law.example.test",
+    "Trademark response draft",
+    "I attached a draft response to the office action. Please review the claims narrowing on page two.",
+    3.6,
+  ],
+  [
+    "Orchard Fulfillment",
+    "ops@orchard-fulfillment.example.test",
+    "Interested in a pilot",
+    "We run three warehouses and would like to see the picking robot. Do you have time next week?",
+    4.2,
+    undefined,
+    true,
+  ],
+  [
+    "Brightsign Ads",
+    "support@brightsign.example.test",
+    "Your campaign paused",
+    "As requested, your November campaign is paused. Resume it any time from the dashboard.",
+    4.8,
+  ],
+  [
+    "Alex Firmware",
+    "alex@northwind.example.test",
+    "Firmware 2.4 release notes",
+    "Firmware 2.4 is in staging. It fixes the arm calibration drift reported by Halcyon.",
+    5.0,
+  ],
+  [
+    "Quinn Auditwell",
+    "quinn@auditwell.example.test",
+    "409A refresh timing",
+    "The 409A valuation from July is valid for 12 months, but a new round would void it. Want me to schedule a refresh after you close?",
+    5.4,
+  ],
+  [
+    "Cascade Robotics",
+    "partners@cascade-robotics.example.test",
+    "Reseller onboarding call",
+    "We are ready to onboard our sales team. Can we book 45 minutes on Nov 4?",
+    5.9,
+  ],
+  [
+    "Shieldwell Insurance",
+    "policy@shieldwell.example.test",
+    "Certificate of insurance",
+    "The certificate Halcyon asked for is attached.",
+    6.3,
+  ],
+  [
+    "Mock Payments",
+    "no-reply@mock-payments.example.test",
+    "Payout of $18,400 sent",
+    "A payout of $18,400 was sent to your Mercury account ending 4417.",
+    6.8,
+    "CATEGORY_UPDATES",
+  ],
+  [
+    "Founder Digest",
+    "digest@founder-digest.example.test",
+    "The seed round checklist",
+    "Twelve things to prepare before the first investor meeting.",
+    3.1,
+    "CATEGORY_UPDATES",
+  ],
+  [
+    "The Mock Weekly",
+    "news@mock-weekly.example.test",
+    "Warehouse automation hits a record",
+    "Orders for warehouse robots rose 31 percent this year, from an invented survey.",
+    4.4,
+    "CATEGORY_UPDATES",
+  ],
+  [
+    "Robotics Roundup",
+    "editor@robotics-roundup.example.test",
+    "Five grippers compared",
+    "We tested five grippers on the same bin picking task.",
+    6.1,
+    "CATEGORY_PROMOTIONS",
+  ],
+  [
+    "Docuflow Sales",
+    "sales@docuflow.example.test",
+    "Last chance: 20 percent off",
+    "Your offer ends tonight.",
+    5.2,
+    "CATEGORY_PROMOTIONS",
+  ],
+  [
+    "SaaS Metrics Monthly",
+    "hello@saas-metrics.example.test",
+    "Net revenue retention by size",
+    "Median retention figures for companies under $5M ARR, from invented data.",
+    9.0,
+    "CATEGORY_UPDATES",
+  ],
+  [
+    "Mock Conference",
+    "team@mock-conference.example.test",
+    "Speaker slots for Robotics Week",
+    "Slots are open until Nov 15. Submit a 200 word abstract.",
+    8.4,
+    "CATEGORY_PROMOTIONS",
+  ],
+  [
+    "Casey Coworker",
+    "casey@northwind.example.test",
+    "Offsite venue shortlist",
+    "Both venues have space for 14 people. The lakeside one is $200 cheaper.",
+    7.5,
+  ],
+  [
+    "Priya Placeholder",
+    "priya@quill-capital.example.test",
+    "Intro to a warehouse operator",
+    "I introduced you to a warehouse operator I know. Expect an email from them this week.",
+    7.9,
+  ],
+  [
+    "Sam Engineer",
+    "sam@northwind.example.test",
+    "Interview feedback: firmware candidate",
+    "Strong on embedded C, weaker on testing. I recommend a second round.",
+    8.2,
+  ],
+  [
+    "Dana Fakename",
+    "dana@acme-ventures.example.test",
+    "Thanks for the deck",
+    "The partners will look at it Monday. I will send questions after.",
+    9.4,
+  ],
+  [
+    "Riley Testwell",
+    "riley@bookkeeping.example.test",
+    "Sales tax question",
+    "Do you need to collect sales tax on the service plan? I put my notes in the data room.",
+    10.3,
+  ],
+  [
+    "Mock Bank Alerts",
+    "no-reply@mock-bank.example.test",
+    "Large transfer completed",
+    "A transfer of $58,400 left your account for payroll.",
+    11.0,
+    "CATEGORY_UPDATES",
+  ],
+  [
+    "Delta Desk Rentals",
+    "no-reply@delta-desk.example.test",
+    "Invoice 2991 for September",
+    "Your September invoice for $420 was paid. Thank you.",
+    31,
+  ],
+];
+DAILY.forEach(([name, email, subject, text, days, label, unread], index) => {
+  MAIL.push({
+    thread: `daily-${index}`,
+    agoMs: days * DAY_MS,
+    from: `${name} <${email}>`,
+    subject,
+    text,
+    ...(label ? { labels: [label] } : {}),
+    ...(unread ? { unread: true } : {}),
+  });
+});
+// Mail the founder sent, for the Sent folder.
+const SENT: Array<[string, string, string, string, number]> = [
+  [
+    "priya@quill-capital.example.test",
+    "Re: Q3 numbers",
+    "Priya, runway is 24 months at the current burn and the pilot converted. I will send the full update Friday.",
+    "sent-1",
+    1.1,
+  ],
+  [
+    "dana@halcyon-logistics.example.test",
+    "Security questionnaire",
+    "Dana, attached is the completed security questionnaire. Shout if anything is unclear.",
+    "sent-2",
+    2.7,
+  ],
+  [
+    "casey@northwind.example.test",
+    "Offsite date",
+    "Let us do Nov 21. Please book the lakeside venue.",
+    "sent-3",
+    6.9,
+  ],
+];
+for (const [to, subject, text, thread, days] of SENT) {
+  MAIL.push({ thread, agoMs: days * DAY_MS, from: ME, to, subject, text, sent: true });
+}
+
 const SALES_MAIL: Mail[] = [
   {
     thread: "sales-lead",
@@ -393,6 +647,8 @@ const SALES_MAIL: Mail[] = [
     text: "Your booth B14 is confirmed for Nov 20-22.\n\nMock Expo",
   },
 ];
+
+const BULK_SENDER = /Weekly|Roundup|Conference|Docuflow|Expo Organizers/;
 
 function toMessages(prefix: string, mail: Mail[], now: Date): EmulatedMessage[] {
   const seen = new Map<string, number>();
@@ -416,6 +672,15 @@ function toMessages(prefix: string, mail: Mail[], now: Date): EmulatedMessage[] 
       subject: `${count > 1 ? "Re: " : ""}${MOCK_SUBJECT_PREFIX} ${item.subject}`,
       text: `${item.text}${FOOTER}`,
       ...(item.attachments ? { attachments: item.attachments } : {}),
+      // Bulk senders carry list headers, which is how Praci files them under Newsletters.
+      ...(BULK_SENDER.test(item.from)
+        ? {
+            headers: [
+              { name: "List-Unsubscribe", value: "<mailto:unsubscribe@lists.example.test>" },
+              { name: "List-Id", value: "<updates.lists.example.test>" },
+            ],
+          }
+        : {}),
     };
   });
 }
@@ -1055,6 +1320,69 @@ export const DEMO_CONTACTS = [
     kind: "legal" as const,
     notes: `${MOCK_NOTE}: outside counsel.`,
   },
+  {
+    name: "Sora Angel (Mock)",
+    email: "sora@angel.example.test",
+    organization: "Independent angel (Mock)",
+    kind: "investor" as const,
+    notes: `${MOCK_NOTE}: angel, $25,000 SAFE.`,
+  },
+  {
+    name: "Tomas Operator (Mock)",
+    email: "tomas@operator-angels.example.test",
+    organization: "Operator angels (Mock)",
+    kind: "investor" as const,
+    notes: `${MOCK_NOTE}: operator angel, $25,000 SAFE, offers customer intros.`,
+  },
+  {
+    name: "Casey Advisor (Mock)",
+    email: "casey.advisor@advisors.example.test",
+    organization: "Independent advisor (Mock)",
+    kind: "other" as const,
+    notes: `${MOCK_NOTE}: advisor with 250,000 common shares.`,
+  },
+  {
+    name: "Morgan Pretend",
+    email: "morgan@halcyon-logistics.example.test",
+    organization: "Halcyon Logistics (Mock)",
+    kind: "other" as const,
+    notes: `${MOCK_NOTE}: head of operations at our first annual customer.`,
+  },
+  {
+    name: "Dana Counselor",
+    email: "dana@halcyon-logistics.example.test",
+    organization: "Halcyon Logistics (Mock)",
+    kind: "other" as const,
+    notes: `${MOCK_NOTE}: Halcyon's legal counsel.`,
+  },
+  {
+    name: "Robin Prospect",
+    email: "robin@bolt-freight.example.test",
+    organization: "Bolt Freight (Mock)",
+    kind: "other" as const,
+    notes: `${MOCK_NOTE}: prospect asking for pricing on 20 units.`,
+  },
+  {
+    name: "Riley Testwell",
+    email: "riley@bookkeeping.example.test",
+    organization: "Testwell Bookkeeping (Mock)",
+    kind: "other" as const,
+    notes: `${MOCK_NOTE}: outside bookkeeper, closes the month.`,
+  },
+  {
+    name: "Jamie Placeholder",
+    email: "jamie@placeholder-ventures.example.test",
+    organization: "Placeholder Ventures (Mock)",
+    kind: "investor" as const,
+    notes: `${MOCK_NOTE}: prospective seed investor, met at demo day.`,
+  },
+  {
+    name: "Sam Samplesworth",
+    email: "sam@pilot-customer.example.test",
+    organization: "Pilot customer (Mock)",
+    kind: "other" as const,
+    notes: `${MOCK_NOTE}: runs the second pilot site.`,
+  },
 ];
 
 /** The Carta agent's last read of the mock cap table; matches the MOCK Cap Table Summary in the data room. */
@@ -1062,12 +1390,12 @@ export const DEMO_CAP_TABLE = {
   companyName: DEMO_COMPANY,
   asOf: "2026-10-01",
   fullyDilutedShares: 10_000_000,
-  amountRaisedUsd: 300_000,
+  amountRaisedUsd: 350_000,
   optionPoolAvailable: 600_000,
   latest409a: { pricePerShareUsd: 0.42, date: "2026-07-01" },
   shareClasses: [
-    { name: "Common (Mock)", shares: 8_500_000, percent: 85 },
-    { name: "Option pool (Mock)", shares: 1_500_000, percent: 15 },
+    { name: "Common (Mock)", shares: 8_400_000, percent: 84 },
+    { name: "Option pool (Mock)", shares: 1_600_000, percent: 16 },
   ],
   holders: [
     {
@@ -1093,18 +1421,54 @@ export const DEMO_CAP_TABLE = {
       email: null,
       organization: null,
       security: "Common",
-      shares: 1_500_000,
+      shares: 1_150_000,
       amountUsd: null,
-      percent: 15,
+      percent: 11.5,
     },
     {
-      name: "Granted options (Mock)",
+      name: "Casey Advisor (Mock)",
+      email: "casey.advisor@advisors.example.test",
+      organization: "Independent advisor (Mock)",
+      security: "Common",
+      shares: 250_000,
+      amountUsd: null,
+      percent: 2.5,
+    },
+    {
+      name: "Sam Engineer (Mock)",
       email: null,
       organization: null,
       security: "Options",
-      shares: 900_000,
+      shares: 400_000,
       amountUsd: null,
-      percent: 9,
+      percent: 4,
+    },
+    {
+      name: "Jo Designer (Mock)",
+      email: null,
+      organization: null,
+      security: "Options",
+      shares: 250_000,
+      amountUsd: null,
+      percent: 2.5,
+    },
+    {
+      name: "Alex Firmware (Mock)",
+      email: null,
+      organization: null,
+      security: "Options",
+      shares: 250_000,
+      amountUsd: null,
+      percent: 2.5,
+    },
+    {
+      name: "Riley Operations (Mock)",
+      email: null,
+      organization: null,
+      security: "Options",
+      shares: 100_000,
+      amountUsd: null,
+      percent: 1,
     },
     {
       name: "Priya Placeholder",
@@ -1122,6 +1486,24 @@ export const DEMO_CAP_TABLE = {
       security: "SAFE",
       shares: null,
       amountUsd: 50_000,
+      percent: null,
+    },
+    {
+      name: "Sora Angel (Mock)",
+      email: "sora@angel.example.test",
+      organization: "Independent angel (Mock)",
+      security: "SAFE",
+      shares: null,
+      amountUsd: 25_000,
+      percent: null,
+    },
+    {
+      name: "Tomas Operator (Mock)",
+      email: "tomas@operator-angels.example.test",
+      organization: "Operator angels (Mock)",
+      security: "SAFE",
+      shares: null,
+      amountUsd: 25_000,
       percent: null,
     },
   ],
@@ -1211,6 +1593,36 @@ export const DEMO_DOCUMENT_FACETS: Record<
   string,
   { docType: string; daysAgo: number; parties: string[] }
 > = {
+  "MOCK Statement of Work - Halcyon Logistics.pdf": {
+    docType: "contract",
+    daysAgo: 95,
+    parties: ["Halcyon Logistics (Mock)"],
+  },
+  "MOCK SaaS Subscription - Cobalt Cloud Hosting.pdf": {
+    docType: "contract",
+    daysAgo: 316,
+    parties: ["Cobalt Cloud Hosting (Mock)"],
+  },
+  "MOCK Equipment Lease - Delta Desk Rentals.pdf": {
+    docType: "contract",
+    daysAgo: 165,
+    parties: ["Delta Desk Rentals (Mock)"],
+  },
+  "MOCK Reseller Agreement - Cascade Robotics.pdf": {
+    docType: "contract",
+    daysAgo: 20,
+    parties: ["Cascade Robotics (Mock)"],
+  },
+  "MOCK Insurance Policy - Shieldwell.pdf": {
+    docType: "contract",
+    daysAgo: 324,
+    parties: ["Shieldwell Insurance (Mock)"],
+  },
+  "MOCK Consulting Agreement - Fictional Law Group.pdf": {
+    docType: "contract",
+    daysAgo: 300,
+    parties: ["Fictional Law Group (Mock)"],
+  },
   "MOCK Master Services Agreement - Halcyon Logistics.pdf": {
     docType: "contract",
     daysAgo: 95,
@@ -1259,6 +1671,36 @@ const doc = (folder: string, name: string, text: string, kind: DemoDocument["kin
 export const DEMO_DOCUMENTS: DemoDocument[] = [
   doc(
     "Legal",
+    "MOCK Statement of Work - Halcyon Logistics.pdf",
+    "Statement of Work for 20 picking robots at Halcyon Logistics Mock. Term 12 months. Fees 48000 dollars.",
+  ),
+  doc(
+    "Legal",
+    "MOCK SaaS Subscription - Cobalt Cloud Hosting.pdf",
+    "Subscription agreement for cloud hosting between Northwind Robotics Mock and Cobalt Cloud Hosting Mock. Fees 22200 dollars a year. Renews automatically unless notice is given 30 days before.",
+  ),
+  doc(
+    "Legal",
+    "MOCK Equipment Lease - Delta Desk Rentals.pdf",
+    "Equipment lease for desks and lab benches between Northwind Robotics Mock and Delta Desk Rentals Mock. Total 12600 dollars.",
+  ),
+  doc(
+    "Legal",
+    "MOCK Reseller Agreement - Cascade Robotics.pdf",
+    "Reseller agreement between Northwind Robotics Mock and Cascade Robotics Mock. Margin 15 percent. Renews for two years unless notice is given 90 days before.",
+  ),
+  doc(
+    "Legal",
+    "MOCK Insurance Policy - Shieldwell.pdf",
+    "General liability policy from Shieldwell Insurance Mock. Premium 3100 dollars a year. Limit 1000000 dollars. Renews December 1.",
+  ),
+  doc(
+    "Legal",
+    "MOCK Consulting Agreement - Fictional Law Group.pdf",
+    "Consulting agreement for legal services between Northwind Robotics Mock and Fictional Law Group Mock. Retainer 2500 dollars a month.",
+  ),
+  doc(
+    "Legal",
     "MOCK Master Services Agreement - Halcyon Logistics.pdf",
     "Master Services Agreement between Northwind Robotics Mock and Halcyon Logistics Mock. Term 24 months. Liability cap one times annual fees. Termination for convenience on 60 days notice.",
   ),
@@ -1280,7 +1722,7 @@ export const DEMO_DOCUMENTS: DemoDocument[] = [
   doc(
     "Finance",
     "MOCK Q3 Board Deck.pdf",
-    "Board deck for the third quarter. Cash 412000 dollars. Monthly net burn 46000 dollars. Runway 8.9 months.",
+    "Board deck for the third quarter. Cash 1633221 dollars. Monthly net burn 67621 dollars. Runway 24.2 months.",
   ),
   doc(
     "Finance",
@@ -1301,7 +1743,7 @@ export const DEMO_DOCUMENTS: DemoDocument[] = [
   doc(
     "Fundraising",
     "MOCK Investor Update Draft.pdf",
-    "Draft investor update. Highlights: pilot converted to an annual contract; runway 8.9 months.",
+    "Draft investor update. Highlights: pilot converted to an annual contract; runway 24.2 months.",
   ),
   doc(
     "Fundraising",
@@ -1438,7 +1880,7 @@ Hi Priya, Dana and Lee,
 
 Highlights
 - The Halcyon Logistics (Mock) pilot converted to an annual contract.
-- Cash is $412,000 with $46,000 monthly net burn: about 8.9 months of runway.
+- Cash is $1,633,221 with $67,621 monthly net burn: about 24 months of runway.
 
 Asks
 - Intros to robotics buyers in warehousing.
@@ -1472,7 +1914,7 @@ export const DEMO_ARTIFACTS = [
     text: `# MOCK DEMO DATA: Q3 board deck
 
 1. Results: 3 pilots, 1 annual contract
-2. Cash: $412,000, 8.9 months of runway
+2. Cash: $1,633,221, 24.2 months of runway
 3. Plan for Q4: 2 hires, 5 new pilots
 4. Asks for the board
 
@@ -1485,7 +1927,7 @@ ${MOCK_NOTE}: invented for UX testing.
     description: "Cash, burn and runway at a glance",
     text: `<!doctype html><html><body style="font-family:sans-serif;padding:24px">
 <h1>MOCK DEMO DATA: Cash dashboard</h1>
-<p>Cash: $412,000 · Monthly burn: $46,000 · Runway: 8.9 months</p>
+<p>Cash: $1,633,221 · Monthly burn: $67,621 · Runway: 24.2 months</p>
 <p>${MOCK_NOTE}: invented for UX testing.</p>
 </body></html>
 `,
@@ -1495,9 +1937,9 @@ ${MOCK_NOTE}: invented for UX testing.
     mimeType: "text/csv",
     description: "Runway if burn changes",
     text: `scenario,monthly_burn_usd,runway_months
-current,46000,8.9
-hire two engineers,64000,6.4
-cut tools 10%,44000,9.4
+current,67621,24.2
+hire two engineers,101600,16.1
+cut tools 10%,60859,26.8
 ${MOCK_NOTE},,
 `,
   },
@@ -1506,12 +1948,12 @@ ${MOCK_NOTE},,
     mimeType: "text/csv",
     description: "Monthly net burn for the last six months",
     text: `month,net_burn_usd
-2026-04,41000
-2026-05,43000
-2026-06,44000
-2026-07,45000
-2026-08,47000
-2026-09,46000
+2026-04,58200
+2026-05,61000
+2026-06,63400
+2026-07,64900
+2026-08,66800
+2026-09,67600
 ${MOCK_NOTE},
 `,
   },
@@ -1523,6 +1965,64 @@ ${MOCK_NOTE},
 
 - Senior robotics engineer, from November
 - Field deployment lead, from December
+
+${MOCK_NOTE}: invented for UX testing.
+`,
+  },
+  {
+    name: "MOCK Customer Pipeline.csv",
+    mimeType: "text/csv",
+    description: "Open pilots and deals by stage",
+    text: `customer,stage,value_usd,next_step
+Halcyon Logistics (Mock),Won,120000,Q1 deployment kickoff
+Bolt Freight (Mock),Negotiation,60000,Resend the signed NDA
+Cascade Robotics (Mock),Won,0,Reseller onboarding
+Pilot customer (Mock),Pilot,25000,Review results on Nov 6
+Orchard Fulfillment (Mock),Qualified,45000,Site visit
+${MOCK_NOTE},,,
+`,
+  },
+  {
+    name: "MOCK Vendor Spend Review.md",
+    mimeType: "text/markdown",
+    description: "Where the monthly spend goes and what to trim",
+    text: `# MOCK DEMO DATA: Vendor spend review
+
+| Vendor | Monthly | Note |
+| --- | --- | --- |
+| Placeholder Street Landlord (Mock) | $7,500 | Lease renews in 106 days |
+| Cobalt Cloud Hosting (Mock) | $1,850 | Renews in 49 days; right-size the instances |
+| Brightsign Ads (Mock) | $1,800 | Paused in November |
+| Cursor Seats (Mock) | $200 | Keep |
+
+Trimming hosting and ads saves about $900 a month.
+
+${MOCK_NOTE}: invented for UX testing.
+`,
+  },
+  {
+    name: "MOCK Seed Fundraising Plan.md",
+    mimeType: "text/markdown",
+    description: "Target round, investor list and timeline",
+    text: `# MOCK DEMO DATA: Seed fundraising plan
+
+- Target: $2,000,000 on top of the $350,000 in SAFEs
+- Lead candidates: Quill Capital (Mock), Acme Ventures (Mock), Placeholder Ventures (Mock)
+- Timeline: first meetings in November, close in January
+- The SAFEs convert at the $8,000,000 cap
+
+${MOCK_NOTE}: invented for UX testing.
+`,
+  },
+  {
+    name: "MOCK All-hands Notes - October.md",
+    mimeType: "text/markdown",
+    description: "Decisions and owners from the October all-hands",
+    text: `# MOCK DEMO DATA: All-hands notes, October
+
+- Pilot site two goes live Nov 6 (owner: Sam)
+- Offsite on Nov 21 (owner: Casey)
+- Security questionnaire for Halcyon due Friday (owner: Maya)
 
 ${MOCK_NOTE}: invented for UX testing.
 `,
@@ -1554,7 +2054,10 @@ export const DEMO_CHIEF_HISTORY: Array<{ role: "user" | "bot"; text: string }> =
     text: "The pilot converted to an annual contract for 20 picking robots, starting in Q1.",
   },
   { role: "user", text: "Remind me what our runway was last month." },
-  { role: "bot", text: "About 8.9 months, from $412,000 cash and $46,000 monthly net burn." },
+  {
+    role: "bot",
+    text: "About 24 months, from $1,633,221 cash and $67,621 monthly net burn.",
+  },
   { role: "user", text: "Who still owes us a signed NDA?" },
   {
     role: "bot",
@@ -1698,10 +2201,184 @@ export const DEMO_LEGAL = {
       renewalQuote: null,
       summary: `${MOCK_NOTE}: SAFE for 250,000 dollars at an 8,000,000 dollar valuation cap.`,
     },
+    {
+      document: "MOCK Statement of Work - Halcyon Logistics.pdf",
+      title: "MOCK Statement of Work - Halcyon Logistics",
+      contractType: "SOW",
+      party: "Halcyon Logistics (Mock)",
+      jurisdiction: "Delaware",
+      effectiveInDays: -60,
+      expiresInDays: 305,
+      autoRenews: false,
+      renewalNoticeDays: null,
+      valueCents: 4_800_000n,
+      partyQuote:
+        "Statement of Work under the Master Services Agreement between Northwind Robotics Mock and Halcyon Logistics Mock.",
+      renewalQuote: null,
+      summary: `${MOCK_NOTE}: 12-month deployment of 20 picking robots, billed monthly after acceptance.`,
+    },
+    {
+      document: "MOCK SaaS Subscription - Cobalt Cloud Hosting.pdf",
+      title: "MOCK SaaS Subscription - Cobalt Cloud Hosting",
+      contractType: "Subscription",
+      party: "Cobalt Cloud Hosting (Mock)",
+      jurisdiction: "California",
+      effectiveInDays: -316,
+      expiresInDays: 49,
+      autoRenews: true,
+      renewalNoticeDays: 30,
+      valueCents: 2_220_000n,
+      partyQuote:
+        "Subscription agreement between Northwind Robotics Mock and Cobalt Cloud Hosting Mock.",
+      renewalQuote:
+        "The subscription renews for another year unless notice is given 30 days before the term ends.",
+      summary: `${MOCK_NOTE}: annual cloud hosting; renews unless cancelled 30 days before the end of the term.`,
+    },
+    {
+      document: "MOCK Equipment Lease - Delta Desk Rentals.pdf",
+      title: "MOCK Equipment Lease - Delta Desk Rentals",
+      contractType: "Lease",
+      party: "Delta Desk Rentals (Mock)",
+      jurisdiction: "California",
+      effectiveInDays: -165,
+      expiresInDays: 200,
+      autoRenews: false,
+      renewalNoticeDays: null,
+      valueCents: 1_260_000n,
+      partyQuote: "Equipment lease between Northwind Robotics Mock and Delta Desk Rentals Mock.",
+      renewalQuote: null,
+      summary: `${MOCK_NOTE}: desk and lab bench rental, 12,600 dollars over the term, ends without renewal.`,
+    },
+    {
+      document: "MOCK Reseller Agreement - Cascade Robotics.pdf",
+      title: "MOCK Reseller Agreement - Cascade Robotics",
+      contractType: "Reseller",
+      party: "Cascade Robotics (Mock)",
+      jurisdiction: "Delaware",
+      effectiveInDays: -20,
+      expiresInDays: 710,
+      autoRenews: true,
+      renewalNoticeDays: 90,
+      valueCents: null,
+      partyQuote: "Reseller agreement between Northwind Robotics Mock and Cascade Robotics Mock.",
+      renewalQuote:
+        "The agreement renews for two years unless notice is given 90 days before the term ends.",
+      summary: `${MOCK_NOTE}: non-exclusive reseller rights in two regions, 15 percent margin.`,
+    },
+    {
+      document: "MOCK Insurance Policy - Shieldwell.pdf",
+      title: "MOCK Insurance Policy - Shieldwell",
+      contractType: "Insurance",
+      party: "Shieldwell Insurance (Mock)",
+      jurisdiction: "California",
+      effectiveInDays: -324,
+      expiresInDays: 41,
+      autoRenews: true,
+      renewalNoticeDays: 30,
+      valueCents: 310_000n,
+      partyQuote:
+        "General liability policy issued by Shieldwell Insurance Mock to Northwind Robotics Mock.",
+      renewalQuote: "The policy renews on December 1 unless cancelled 30 days before.",
+      summary: `${MOCK_NOTE}: general liability, 1,000,000 dollar limit, 3,100 dollars a year.`,
+    },
+    {
+      document: "MOCK Consulting Agreement - Fictional Law Group.pdf",
+      title: "MOCK Consulting Agreement - Fictional Law Group",
+      contractType: "Services",
+      party: "Fictional Law Group (Mock)",
+      jurisdiction: "California",
+      effectiveInDays: -300,
+      expiresInDays: 330,
+      autoRenews: false,
+      renewalNoticeDays: null,
+      valueCents: 3_000_000n,
+      partyQuote:
+        "Consulting agreement between Northwind Robotics Mock and Fictional Law Group Mock.",
+      renewalQuote: null,
+      summary: `${MOCK_NOTE}: outside counsel on a 2,500 dollar monthly retainer.`,
+    },
   ],
   /** Deadlines added by hand, not tied to a contract: one overdue, one coming up. */
   manualDeadlines: [
     { title: "Q3 board consent signature", kind: "compliance", dueInDays: -5 },
     { title: "Trademark office action response", kind: "filing", dueInDays: 28 },
+    { title: "Delaware franchise tax and annual report", kind: "filing", dueInDays: 47 },
+    { title: "Refresh the 409A valuation", kind: "compliance", dueInDays: 72 },
+    { title: "Pay Cascade Robotics onboarding fee", kind: "payment", dueInDays: 9 },
   ],
 } as const;
+
+/** Routines the demo agents run on a schedule (created active, so the bot page lists them). */
+export const DEMO_ROUTINES = [
+  {
+    bot: "Chief",
+    name: "Morning briefing",
+    prompt:
+      "Summarize what needs the founder today: unread mail that needs a reply, deadlines due this week and payments leaving in the next 3 days.",
+    crons: ["0 8 * * 1-5"],
+    timezone: "America/New_York",
+  },
+  {
+    bot: "Finance agent",
+    name: "Monday receipt chase",
+    prompt: "List card transactions from the last week that have no receipt and post the list.",
+    crons: ["0 9 * * 1"],
+    timezone: "America/New_York",
+  },
+  {
+    bot: "Inbox agent",
+    name: "Daily inbox triage",
+    prompt: "Sort new mail into reply, read and archive. Draft replies to the first group.",
+    crons: ["0 7 * * 1-5"],
+    timezone: "America/New_York",
+  },
+  {
+    bot: "Investor Relations (mock)",
+    name: "Monthly investor update draft",
+    prompt: "Draft the monthly investor update from last month's update and the Finance numbers.",
+    crons: ["0 9 1 * *"],
+    timezone: "America/New_York",
+  },
+] as const;
+
+/** Skills a founder taught the agents, saved and ready to use. */
+export const DEMO_SKILLS = [
+  {
+    bot: "Finance agent",
+    name: "Month-end close",
+    goal: "Close the books for the month and report what is left to do.",
+    playbook: {
+      whenToUse: "In the first three business days of a month.",
+      inputs: ["Month to close"],
+      steps: [
+        "Read the month's transactions from Mercury and Brex.",
+        "List transactions with no receipt or category.",
+        "Compare spend by category with the previous month.",
+        "Post a short summary and the open items.",
+      ],
+      howToCheck: "Totals match the bank balances to the dollar.",
+      whatToReturn: "A summary with total spend, the three biggest changes and the open items.",
+      approvalBoundaries: "Never pay a bill or email a vendor without approval.",
+      failureHandling: "If a bank connection is expired, say which one and stop.",
+    },
+  },
+  {
+    bot: "Investor Relations (mock)",
+    name: "Monthly investor update",
+    goal: "Write the monthly update to investors in the usual shape.",
+    playbook: {
+      whenToUse: "Around the 5th of each month.",
+      inputs: ["Last month's update", "Finance overview", "Pipeline"],
+      steps: [
+        "Start from last month's update.",
+        "Update cash, burn and runway from Finance.",
+        "Add three highlights and one ask.",
+        "Save the draft as an artifact.",
+      ],
+      howToCheck: "Every number matches the Finance page.",
+      whatToReturn: "A one-page markdown draft.",
+      approvalBoundaries: "Never send the update; the founder sends it.",
+      failureHandling: "If the Finance numbers are stale, refresh before writing.",
+    },
+  },
+] as const;

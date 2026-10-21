@@ -12,8 +12,11 @@ import { TourPopover } from "./TourPopover";
 export function FirstRunTour({
   open,
   onClose,
+  onConnectApps,
 }: {
   open: boolean;
+  /** The last step's button: finishes the tour and opens the Connect apps page. */
+  onConnectApps: () => void;
   /** Called once the tour ends, with the updated profile when the server saved it. */
   onClose: (me: Me | null) => void;
 }) {
@@ -22,7 +25,7 @@ export function FirstRunTour({
     () => [
       {
         id: "chat",
-        anchor: "[data-sidebar-group]",
+        anchor: '[data-tour="sidebar-chat"]',
         text: t`Chat with Chief here. Agents ask before they send, pay or change anything.`,
       },
       {
@@ -51,11 +54,6 @@ export function FirstRunTour({
         text: t`The Data room holds your files. Artifacts holds what agents make.`,
       },
       {
-        id: "apps",
-        anchor: '[data-tour="sidebar-integrations"]',
-        text: t`Connect the apps you already use.`,
-      },
-      {
         id: "search",
         anchor: '[data-tour="sidebar-search"]',
         text: t`Search chats, files and mail.`,
@@ -63,7 +61,12 @@ export function FirstRunTour({
       {
         id: "account",
         anchor: '[data-tour="user-menu"]',
-        text: t`Settings, backups and Export my data are here, and so is Take the tour.`,
+        text: t`Settings, Export my data and Take the tour are in your account menu.`,
+      },
+      {
+        id: "apps",
+        anchor: '[data-tour="sidebar-integrations"]',
+        text: t`Connect the apps you already use, so agents can work with your mail and files.`,
       },
     ],
     [t],
@@ -77,5 +80,12 @@ export function FirstRunTour({
     [onClose],
   );
   if (!open) return null;
-  return <TourPopover steps={steps} onFinish={finish} />;
+  return (
+    <TourPopover
+      steps={steps}
+      onFinish={finish}
+      doneLabel={t`Connect apps`}
+      onDone={onConnectApps}
+    />
+  );
 }

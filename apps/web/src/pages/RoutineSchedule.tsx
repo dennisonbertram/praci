@@ -3,7 +3,6 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { CronFreq, CronPreset, CronUnit } from "@rakazo/core";
 import { CRON_FREQS, clampIntervalAmount, cronFromPreset, cronIntervalAmounts } from "@rakazo/core";
 import { Input, NativeSelect, NativeSelectOption } from "@rakazo/ui-web";
-import { Clock } from "lucide-react";
 
 const UNITS: CronUnit[] = ["minutes", "hours", "days"];
 const TIMES = [
@@ -106,58 +105,7 @@ function russianIntervalControlLead(): string {
   return "Раз в";
 }
 
-/** Build the Russian summary shown above the interval controls. */
-function describeRussianInterval(
-  value: number,
-  unit: CronUnit,
-): {
-  lead: string;
-  detail: string;
-} {
-  return {
-    lead: russianIntervalLead(value, unit),
-    detail:
-      value === 1
-        ? russianIntervalUnit(value, unit)
-        : `${value} ${russianIntervalUnit(value, unit)}`,
-  };
-}
-
-/** Build the localized summary for any routine schedule preset. */
-function describeCronPresetLocalized(
-  preset: CronPreset,
-  locale: string,
-): { lead: string; detail: string } {
-  if (preset.freq === "Interval") {
-    if (locale === "ru") {
-      return describeRussianInterval(preset.n, preset.unit);
-    }
-    const unitLabel =
-      preset.n === 1 ? cronUnitLabelSingular(preset.unit) : cronUnitLabel(preset.unit);
-    return {
-      lead: t`Every`,
-      detail: t`${preset.n} ${unitLabel}`,
-    };
-  }
-  if (preset.freq === "Every hour") {
-    return { lead: t`Every hour`, detail: "" };
-  }
-  if (preset.freq === "Advanced") {
-    return { lead: t`Cron`, detail: preset.cron || "*/3 * * * *" };
-  }
-  if (preset.freq === "Weekdays") {
-    return { lead: t`Weekdays`, detail: t`at ${preset.time}` };
-  }
-  if (preset.freq === "Every week") {
-    return { lead: t`Every Monday`, detail: t`at ${preset.time}` };
-  }
-  if (preset.freq === "Every month") {
-    return { lead: t`Monthly`, detail: t`on the 1st at ${preset.time}` };
-  }
-  return { lead: t`Every day`, detail: t`at ${preset.time}` };
-}
-
-/** Render schedule selectors and the localized summary for a routine. */
+/** Render schedule selectors for a routine. */
 export function RoutineSchedule({
   value,
   onChange,
@@ -166,7 +114,6 @@ export function RoutineSchedule({
   onChange: (next: CronPreset) => void;
 }) {
   const { i18n, t } = useLingui();
-  const { lead, detail } = describeCronPresetLocalized(value, i18n.locale);
   const times = TIMES.includes(value.time) ? TIMES : [...TIMES, value.time];
   const numbers = cronIntervalAmounts(value.unit, value.n);
 
@@ -224,14 +171,7 @@ export function RoutineSchedule({
 
   return (
     <div className="mt-2 rounded-xl border border-border p-3">
-      <div className="flex items-center gap-2.5 px-0.5">
-        <Clock size={17} strokeWidth={1.6} className="shrink-0 text-muted-foreground" aria-hidden />
-        <span className="text-[14.5px] text-foreground">{lead}</span>
-        {detail ? (
-          <span className="flex-1 text-[14.5px] text-muted-foreground">{detail}</span>
-        ) : null}
-      </div>
-      <div className="mt-2.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
         <NativeSelect
           size="sm"
           value={value.freq}

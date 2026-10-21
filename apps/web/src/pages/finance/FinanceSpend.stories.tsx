@@ -80,7 +80,7 @@ const recurring: FinanceRecurringOutput = {
     chargeCount: 8,
     lastChargeAt: "2026-03-12T12:00:00.000Z",
     nextExpectedAt: "2026-04-12T12:00:00.000Z",
-    trendCents: [4900, 4900, 4900],
+    trendCents: [4900, 4900, 4900, 4900],
     classification: "spend",
     paidWith: [{ provider: "mercury", kind: "card", name: "Demo card", lastFour: "4242" }],
   },

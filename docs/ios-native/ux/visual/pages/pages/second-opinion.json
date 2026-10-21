@@ -1,0 +1,421 @@
+{
+  "mode": "inspect",
+  "images": [
+    "PG-B-Finance.png",
+    "PG-B-Legal.png",
+    "PG-B-DataRoom.png",
+    "PG-A-Computer.png",
+    "PG-A-Routine.png",
+    "PG-A-Image.png",
+    "PG-B-CapTable.png",
+    "Desk.png"
+  ],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 90,
+      "costUsd": 0.269352,
+      "result": {
+        "verdict": "Not ship-ready. The boards are visually coherent and state coverage is unusually thorough, but several core first-founder tasks are blocked or misdirected: adding a cap-table holder, typing during computer takeover, scanning legal contracts without developer setup, and identifying the one prominent action. The laptop Desk pose also truncates the Finance page at the fold seam.",
+        "findings": [
+          {
+            "level": "component",
+            "element": "Add holder sheet — Role field showing “Sam Ortiz / Seed investor”",
+            "problem": "The Role field is populated with an existing person's name rather than a role. A first-time founder cannot tell whether they are choosing a role, copying Sam Ortiz, or assigning Priya Nair to Sam Ortiz.",
+            "norm": "Form fields must contain values of the labelled type and must not reuse sample/person data as a controlled value.",
+            "severity": "P0",
+            "screenshot": "PG-B-CapTable.png",
+            "fix": "Replace the value with role options such as Founder, Employee, Seed investor, Advisor, and Unissued/Option pool; never prefill Role with a holder's name."
+          },
+          {
+            "level": "page",
+            "element": "Add holder sheet — Name, Email, Role fields only",
+            "problem": "There is no shares, ownership, security type, or vesting field, so the sheet cannot create a meaningful cap-table holder even though Save is enabled and cream.",
+            "norm": "A creation form must collect the minimum data required for the created object to be valid and useful.",
+            "severity": "P0",
+            "screenshot": "PG-B-CapTable.png",
+            "fix": "Add Shares and security type at minimum, with optional vesting; validate before enabling Save and explain that manual holders differ from Carta-synced holders."
+          },
+          {
+            "level": "page",
+            "element": "In control — browser viewport with only the “Esc Tab Ctrl ← ↓ ↑ →” accessory strip",
+            "problem": "The core takeover case is signing in when a bot waits, but no alphanumeric keyboard, text-entry state, password affordance, paste, or submit path is shown. The accessory strip alone cannot enter credentials.",
+            "norm": "Remote-control takeover must make text entry obvious before the user takes control, especially for login tasks.",
+            "severity": "P0",
+            "screenshot": "PG-A-Computer.png",
+            "fix": "When a field is focused, show the full keyboard plus this accessory row; add explicit keyboard toggle, paste, and secure-entry handling, and show a state for typing into the remote browser."
+          },
+          {
+            "level": "group",
+            "element": "Scan blocked banner — “No OpenRouter key / Needed to read contracts” with “Open Models” button",
+            "problem": "A non-technical founder is blocked by developer/API jargon with no explanation of cost, account, key entry, or why Praci cannot scan. “Open Models” does not say it fixes the missing key.",
+            "norm": "Consumer setup blockers must use plain language, explain the next action and consequence, and avoid exposing infrastructure vendor names.",
+            "severity": "P1",
+            "screenshot": "PG-B-Legal.png",
+            "fix": "Rename to plain language such as “Contract scanning isn't set up” and use a labelled action like “Set up scanning”; explain what will happen and offer help from the Legal agent."
+          },
+          {
+            "level": "page",
+            "element": "Not scanned yet — header and Scan now banner with empty body below",
+            "problem": "The contract list disappears entirely in the unscanned state, so the user cannot see, open, or verify contracts before scanning, although the screen's job is to show contracts and status.",
+            "norm": "An analysis-not-run state should preserve the underlying inventory and distinguish unscanned items from missing items.",
+            "severity": "P1",
+            "screenshot": "PG-B-Legal.png",
+            "fix": "Keep the contracts list with an “Not scanned” status per item, or add an explicit empty explanation plus Add/open contract actions if no contracts exist."
+          },
+          {
+            "level": "group",
+            "element": "Legal “Scan”/“Scan now” and Cap table “Connect Carta”/“Reconnect” dark buttons, contrasted with the cream circular chat button at bottom-left",
+            "problem": "The sole task action is low-emphasis dark grey while an unrelated icon-only chat button is the only high-contrast cream element, inverting the visual hierarchy and violating the one-tinted-prominent-action rule.",
+            "norm": "Exactly one prominent tinted action per view should be the primary task action; secondary utilities must be visually subordinate.",
+            "severity": "P1",
+            "screenshot": "PG-B-Legal.png",
+            "fix": "Make Scan now, Connect Carta, and Reconnect the cream prominent action in their states; demote the chat launcher to a glass/dark control with a label."
+          },
+          {
+            "level": "component",
+            "element": "Cap table donut chart above Holders list",
+            "problem": "Donut segments use near-identical whites and greys and holders are matched only by tiny coloured dots in the rows. The founder cannot reliably map Ana Ruiz, Jordan Lee, Sam Ortiz, and Option pool to segments or judge relative ownership from the chart.",
+            "norm": "Charts must be readable without cross-referencing tiny legends; segment identity needs labels, leader lines, or interaction state plus accessible contrast.",
+            "severity": "P1",
+            "screenshot": "PG-B-CapTable.png",
+            "fix": "Label segments with name and percentage, enlarge and differentiate legend swatches, and highlight the corresponding segment when a holder row is focused/selected."
+          },
+          {
+            "level": "component",
+            "element": "Amounts hidden — “•• mo”, “••••”, and “Monthly burn, 12 months” bars with “Oct •••” callout",
+            "problem": "Masking is inconsistent in dot length and the bar chart still exposes relative monthly burn while amounts are supposedly hidden. This creates a false sense of privacy on a shared or shoulder-surfed screen.",
+            "norm": "Privacy masking must apply consistently to values, chart scales, callouts, and inferable magnitudes.",
+            "severity": "P1",
+            "screenshot": "PG-B-Finance.png",
+            "fix": "Use a fixed mask independent of digit count and either hide/flatten the burn chart or clearly state that trends remain visible while numbers are hidden."
+          },
+          {
+            "level": "page",
+            "element": "Open file — “Pitch deck v3.pdf” grey preview area with centred file icon",
+            "problem": "Opening a file shows no readable page, thumbnail fidelity, page count, zoom, or paging. The user cannot inspect the file in place and must rely on the separate Open action hidden under More.",
+            "norm": "A file viewer must render the document preview with page navigation and zoom before offering secondary actions.",
+            "severity": "P1",
+            "screenshot": "PG-B-DataRoom.png",
+            "fix": "Render the first page, add page indicator/thumbnails, pinch/scroll affordance, and a visible Open/full-screen control; reserve the placeholder for true loading with progress."
+          },
+          {
+            "level": "layout",
+            "element": "Desk Finance upper view ending after “Operating / Mercury agent” account row",
+            "problem": "In laptop pose the Finance view is cut at the inter-half seam: Cards and Upcoming disappear with no fade, scrollbar, “continued below”, or scroll cue. It reads as though only one account exists rather than the page continuing.",
+            "norm": "Split/fold layouts must signal scroll continuation at the boundary and must not clip grouped content mid-section without an affordance.",
+            "severity": "P1",
+            "screenshot": "Desk.png",
+            "fix": "Add a bottom fade/scroll indicator and section continuation cue on the upper view, or paginate Finance so Accounts completes in the top half; make the seam behaviour explicit."
+          },
+          {
+            "level": "component",
+            "element": "Control denied — “Jordan has control right now. Try again when they release it.” with cream “Try again” button",
+            "problem": "The primary action directly contradicts the message: tapping Try again now will predictably fail. There is no request-control, notify, or wait option.",
+            "norm": "Recovery actions must be viable at the moment offered and match the explanatory copy.",
+            "severity": "P1",
+            "screenshot": "PG-A-Computer.png",
+            "fix": "Replace Try again with “Ask Jordan for control” or “Notify me when free”; enable Try again only when control becomes available."
+          },
+          {
+            "level": "page",
+            "element": "Private — “Private computer / Nobody is driving” with full-width “Take control”",
+            "problem": "If nobody is driving and the computer is private to the user, requiring Take control is unexplained and makes ownership feel shared or unsafe. The distinction between Team and Private control semantics is not taught.",
+            "norm": "Control state language must explain why action is needed, particularly where privacy boundaries differ.",
+            "severity": "P1",
+            "screenshot": "PG-A-Computer.png",
+            "fix": "Label it “Start driving” for Private when idle, explain “Only you can see this computer”, and reserve Take control for shared/agent-driven sessions."
+          },
+          {
+            "level": "group",
+            "element": "Bottom-left cream circular speech-bubble button on Finance, Legal, and Cap table default views",
+            "problem": "The highest-contrast control is an unlabelled speech-bubble icon detached in the left rail. A first-time founder cannot know it opens the relevant bot chat, which bot it reaches, or whether it creates a new thread.",
+            "norm": "Primary communication entry points need a text label or agent identity, especially for novice users and AI-mediated tasks.",
+            "severity": "P1",
+            "screenshot": "PG-B-Finance.png",
+            "fix": "Label it “Ask Finance agent” or show the agent name/avatar in an expanded pill; keep it subordinate to the page's main task action where one exists."
+          },
+          {
+            "level": "group",
+            "element": "Agent waiting — black instruction banner “Sign in to the bank portal, then tap I'm done.” overlapping the browser viewport top",
+            "problem": "The instruction covers browser content exactly where portal titles, fields, and security cues appear. It also provides no direct “Take control” wording even though the user must drive to sign in.",
+            "norm": "Task instructions must not occlude the work surface or security-relevant browser chrome; required interaction mode must be explicit.",
+            "severity": "P2",
+            "screenshot": "PG-A-Computer.png",
+            "fix": "Place the instruction above the viewport as non-overlapping chrome and change the action group to “Take control to sign in” followed by “I'm done” once driving."
+          },
+          {
+            "level": "layout",
+            "element": "In control — top Team pill, driver status pill, left X/fullscreen rail, keyboard strip, browser card, and Release control bar",
+            "problem": "There are well over three floating/glass control groups competing around the browser, breaking the stated glass budget and making the remote screen feel like nested toolbars rather than one work surface.",
+            "norm": "Per the design rules, glass is limited to floating nav and controls with at most three glass groups; content remains solid.",
+            "severity": "P2",
+            "screenshot": "PG-A-Computer.png",
+            "fix": "Consolidate into three groups: session header/status, side utility rail, and bottom control/keyboard dock; make the browser and instruction solid."
+          },
+          {
+            "level": "component",
+            "element": "Monthly burn, 12 months bar chart with only “Oct [AMOUNT]” callout",
+            "problem": "There is no y-axis, unit, average, or visible value affordance for Nov–Sep. A founder can see Oct is highest but cannot answer how much burn changed or whether the trend is dangerous without guessing that bars are tappable.",
+            "norm": "Financial trend charts need a readable scale, units, and discoverable inspection for every data point.",
+            "severity": "P2",
+            "screenshot": "PG-B-Finance.png",
+            "fix": "Add a compact axis/baseline label and show month plus amount on touch/selection for every bar; include average burn as a reference line or caption."
+          },
+          {
+            "level": "component",
+            "element": "Contract status labels “• Signed”, “• Awaiting”, “• Expired”, “• Unreadable” in small green/yellow/red text",
+            "problem": "Status relies on tiny coloured dot/text pairs in a dark list. Yellow and red are low contrast at this size and the categories are hard to scan quickly.",
+            "norm": "Status must remain legible without colour alone and meet small-text contrast expectations; critical states need stronger text and shape cues.",
+            "severity": "P2",
+            "screenshot": "PG-B-Legal.png",
+            "fix": "Use labelled status chips with icon plus text, larger hit/reading size, and keep colour as reinforcement rather than the main differentiator."
+          },
+          {
+            "level": "group",
+            "element": "Plus menu — Files/Photos menu overlapping Recently added rows",
+            "problem": "The menu covers the list and clips row text, including “Cap table export.csv” being visually truncated behind the menu. Its anchor to the small left-rail plus is not obvious once open.",
+            "norm": "Menus must anchor clearly to their trigger, avoid obscuring the item the user is acting on, and preserve readable context.",
+            "severity": "P2",
+            "screenshot": "PG-B-DataRoom.png",
+            "fix": "Present add-source choices as a bottom sheet or anchored popover with scrim and full row labels: “Add from Files” and “Add from Photos”."
+          },
+          {
+            "level": "component",
+            "element": "Search: no results — magnifier icon and “No results” only",
+            "problem": "For “term sheet” there is no recovery path: no clear-search action, spelling/files suggestion, or Add files action. A founder who expected a file is dead-ended.",
+            "norm": "Empty search states must offer the most likely recovery actions in context.",
+            "severity": "P2",
+            "screenshot": "PG-B-DataRoom.png",
+            "fix": "Add Clear search and Add files actions, and state that search covers names and folders or expand scope if content search is expected."
+          },
+          {
+            "level": "component",
+            "element": "Edit routine sheet — X at top-left and cream Save, with long editable Prompt field",
+            "problem": "After editing the long prompt or schedule, tapping X has no visible discard confirmation or unsaved-changes signal. Accidental loss is likely and the founder cannot tell whether edits are already saved.",
+            "norm": "Editors with destructive exit paths must warn on unsaved changes or autosave with explicit saved state.",
+            "severity": "P1",
+            "screenshot": "PG-A-Routine.png",
+            "fix": "Disable X-to-discard when dirty or show “Discard changes?”; alternatively autosave drafts and show “Saved” state while keeping Save for applying the routine."
+          },
+          {
+            "level": "group",
+            "element": "Routine detail actions — “Open last run” and “Run now” equal dark pills",
+            "problem": "Neither action is the single cream prominent action, and in the Last run failed state “Open last run” ambiguously suggests opening a successful output while the adjacent action becomes “Run again”. The hierarchy between inspecting failure and retrying is unclear.",
+            "norm": "Detail screens need one clear primary action; labels must distinguish output, logs, and retry.",
+            "severity": "P2",
+            "screenshot": "PG-A-Routine.png",
+            "fix": "Make Run now/Run again the cream primary when action is needed; rename the secondary to “View failed run” or “Open Runway summary” according to destination."
+          },
+          {
+            "level": "component",
+            "element": "Image left rail — cream share icon above “Save” download control and vertical ellipsis",
+            "problem": "Share receives the prominent cream treatment while Save is a smaller labelled utility and Delete hides behind the ellipsis. The icons for share/upload and save/download are easy to confuse, and the destructive path is adjacent to Versions in the More menu.",
+            "norm": "Media viewers use conventional share/save placement and separate destructive actions from navigation/version actions.",
+            "severity": "P2",
+            "screenshot": "PG-A-Image.png",
+            "fix": "Label Share and Save consistently in one toolbar, demote icon-only prominence, and place Delete in a separated destructive section with its existing confirmation."
+          },
+          {
+            "level": "group",
+            "element": "Desk — “Finance agent” pill sitting on the boundary between the Finance card and chat area",
+            "problem": "The agent identity pill floats over the fold seam and visually belongs to neither the Finance page above nor the conversation below, weakening the otherwise clear page-plus-chat laptop composition.",
+            "norm": "In split layouts, headers must be owned by one pane with clear alignment to that pane's content.",
+            "severity": "P2",
+            "screenshot": "Desk.png",
+            "fix": "Anchor the Finance agent header fully inside the bottom chat pane with matching insets, or integrate it into the composer/header bar rather than straddling the seam."
+          },
+          {
+            "level": "page",
+            "element": "Loading — Upcoming “Acme Payroll / Due Oct 31” skeleton row clipped by the bottom edge",
+            "problem": "The Finance loading state extends below the visible frame without a scroll cue, so content appears cut rather than loading. It undermines confidence that the full page fits the outer display.",
+            "norm": "Skeleton states should preserve the final layout footprint and fit or clearly indicate scrollability.",
+            "severity": "P2",
+            "screenshot": "PG-B-Finance.png",
+            "fix": "Constrain skeletons to the final visible sections, reduce placeholder rows, or add a scroll/fade cue consistent with the loaded state."
+          },
+          {
+            "level": "component",
+            "element": "Routines list — cream circular “+” button in the left rail",
+            "problem": "Creating a routine, a key action, is an unlabelled plus in the navigation rail rather than a discoverable “New routine” action near the Routines heading. First-time users may read it as adding something to the current bot or page.",
+            "norm": "Create actions should be labelled and located with the collection they create.",
+            "severity": "P2",
+            "screenshot": "PG-A-Routine.png",
+            "fix": "Use a labelled “New routine” button in the list header or empty/primary area; keep the rail for navigation only."
+          },
+          {
+            "level": "component",
+            "element": "Starting — disabled full-width “Take control” bar under “Starting Team computer”",
+            "problem": "The disabled bar retains the shape and position of the main CTA, inviting taps during startup. There is no progress percentage, cancel in the main area, or explanation of expected wait.",
+            "norm": "Disabled primary actions must be unmistakably inactive and loading states should provide progress or cancellation.",
+            "severity": "P2",
+            "screenshot": "PG-A-Computer.png",
+            "fix": "Remove the CTA until the computer is ready, show determinate/indeterminate startup progress with “Cancel” in the loading card, then reveal Take control."
+          },
+          {
+            "level": "component",
+            "element": "Saved to Photos green toast spanning the top beside the Dynamic Island",
+            "problem": "The success toast is a full-width floating bar that competes with the image viewer header and persists as a large banner for a simple confirmation, while the filename pill remains at the bottom with no version context.",
+            "norm": "Transient confirmations should be brief, compact, and not displace viewer chrome or duplicate persistent metadata.",
+            "severity": "P3",
+            "screenshot": "PG-A-Image.png",
+            "fix": "Use a compact auto-dismissing toast aligned to the viewer controls; keep filename and current version together in one bottom metadata label."
+          }
+        ],
+        "excellent": [
+          "PG-B-Finance.png — Amounts-hidden is specified as remembered on this device and in every pose, and Sync failed keeps previous figures visible with “Try again”; both are exactly the trust-preserving behaviours a founder checking runway needs.",
+          "PG-B-Legal.png — Unreadable file gives two concrete recoveries, “Try again” and “Replace file”, while Scan failed and Scan running preserve previous results instead of blanking contracts.",
+          "PG-B-DataRoom.png — Uploading shows “Q3 board deck.pdf”, a progress bar, 60%, and a cancel X, and Upload failed separates “Try again” from dismiss; the empty room correctly makes “Add files” the cream main action.",
+          "PG-A-Computer.png — Driver states are exceptionally explicit in plain language: “Finance agent is driving”, “You are driving”, “Jordan is driving”, and “Finance agent is waiting for you”.",
+          "PG-A-Routine.png — Last run failed explains “The bank connection could not be reached” and Paused changes the secondary action to “Resume”, so state and available action stay in sync.",
+          "PG-A-Image.png — Delete confirmation states the shared consequence “removed from Artifacts for everyone in the space. This cannot be undone.”, and Older version offers a clear cream “Restore”.",
+          "PG-B-CapTable.png — Access expired keeps showing the last sync and the holder list under “Carta access expired”, avoiding a blank cap table during reconnection.",
+          "Desk.png — Combining the solid Finance page on top with the Finance agent thread and labelled composer “Message Finance agent” below is a strong laptop-pose pattern for asking “Why did spend jump last month?” without leaving the figures."
+        ]
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 173,
+      "costUsd": 0.153754,
+      "result": {
+        "verdict": "Praci demonstrates an exceptionally disciplined dark-mode visual system, thoughtful state coverage (preserving last-known data during sync/scan failures), and a clear spatial model for its novel dual-pose hardware. However, several critical logic, usability, and design-rule defects undermine the experience for a first-time founder: a broken 'Add holder' form with copy-pasted data and missing equity fields, out-of-order and omitted contract deadlines, raw AI-plumbing jargon ('No OpenRouter key'), missing close controls in active Team Computer states, truncated financial data in the laptop pose, and violations of the single-cream-action rule.",
+        "findings": [
+          {
+            "level": "component",
+            "element": "Add holder form (sheet) — 'Role' field and form schema",
+            "problem": "In the 'Add holder' sheet for 'Priya Nair', the 'Role' selector displays 'Sam Ortiz / Seed investor'—a copy-paste error from the Holders list where another person's name is rendered inside the Role field. Furthermore, the sheet is titled 'Add holder' on the Cap table screen, yet it only collects Name, Email, and Role with no fields for Shares, Share Class, or Ownership %, contradicting the Holders list (where every row shows '[N]%') and Holder detail (which shows Shares, Ownership, and Vested).",
+            "norm": "Form fields must display valid domain values matching their label, and an entity creation flow must either capture the core attributes displayed in the list ('Shares' / 'Ownership') or be clearly labeled 'Add contact' if equity data is strictly read-only from Carta.",
+            "severity": "P0",
+            "screenshot": "PG-B-CapTable.png",
+            "fix": "Replace the 'Sam Ortiz / Seed investor' value in the Role picker with a valid role label (e.g., 'Seed investor' or 'Advisor'), and either rename the sheet and action to 'Add contact' or include Share count/class fields if manual cap table entries are supported."
+          },
+          {
+            "level": "group",
+            "element": "Deadlines tab ('Upcoming' list) vs. Contract detail ('Northwind services agreement')",
+            "problem": "In the 'Deadlines' tab under 'Upcoming', 'Northwind services agreement (Ends Dec 31, in [N] days)' is listed above 'Design partner NDA (Signature due Nov 3, in [N] days)', sorting a late-December date ahead of an early-November date. Worse, 'Contract detail' (bottom-right frame) reveals that 'Northwind services agreement' has a 'Notice due: Nov 30' deadline, which is completely omitted from the 'Deadlines' tab—causing a founder to miss the Nov 30 termination/renewal notice window.",
+            "norm": "Deadline views must sort upcoming dates strictly in chronological order (soonest first) and surface earliest actionable notice dates rather than only final contract expiration dates.",
+            "severity": "P1",
+            "screenshot": "PG-B-Legal.png",
+            "fix": "Sort the 'Upcoming' list chronologically (Nov 3 first, then Nov 30, then Dec 31) and surface 'Notice due Nov 30' as the primary upcoming deadline for 'Northwind services agreement'."
+          },
+          {
+            "level": "component",
+            "element": "Scan blocked banner ('No OpenRouter key / Needed to read contracts' and 'Open Models' CTA)",
+            "problem": "When contract scanning is blocked, the alert banner exposes raw LLM infrastructure terminology: 'No OpenRouter key' and 'Open Models'. The brief explicitly defines the persona as a non-technical first-time founder who needs to get tasks done 'without jargon'.",
+            "norm": "User-facing error states for non-technical users should explain the issue in plain product language and route directly to the fix without exposing third-party API router names.",
+            "severity": "P1",
+            "screenshot": "PG-B-Legal.png",
+            "fix": "Rewrite the banner to plain language (e.g., 'AI connection needed / Connect an AI provider to read contracts' with CTA 'Set up AI') or handle model routing keys transparently behind the scenes."
+          },
+          {
+            "level": "page",
+            "element": "Left floating control strip in 'In control', 'Agent waiting', and 'Reconnecting' frames",
+            "problem": "In 'In control', 'Agent waiting', and 'Reconnecting', the close button ('×') in the left vertical glass rail disappears, leaving only the fullscreen toggle icon. If a bot pauses for user input ('Agent waiting') or the network drops ('Reconnecting'), the user is trapped in the Team computer view with no close/back affordance in the navigation rail.",
+            "norm": "Modal or full-screen workspaces must maintain a persistent, predictable exit/back control in the navigation rail across all connection and control states.",
+            "severity": "P1",
+            "screenshot": "PG-A-Computer.png",
+            "fix": "Keep the '×' close button visible in the left vertical control rail across all states ('In control', 'Agent waiting', and 'Reconnecting') so the founder can always exit the view."
+          },
+          {
+            "level": "group",
+            "element": "'In control' bottom controls — soft-key bar and 'Release control' button",
+            "problem": "In 'In control', the full-width bright cream button 'Release control' sits just ~4pt below the compact soft-key bar ('Esc', 'Tab', 'Ctrl', arrow keys) that the user actively taps while driving the remote browser, creating a high risk of accidentally ending control on a slight mis-tap. Additionally, styling 'Release control' with the exact same high-emphasis cream fill as 'Take control' fails to distinguish active driving from passive watching, and visually blends into the bright white browser canvas directly above it.",
+            "norm": "Destructive or session-ending actions should not sit immediately adjacent to high-frequency input keys, and toggle states ('Take control' vs. 'Release control') should have distinct visual emphasis.",
+            "severity": "P1",
+            "screenshot": "PG-A-Computer.png",
+            "fix": "Increase separation between the keyboard bar and the bottom bar, style 'Release control' as a secondary/dark-surface button (reserving the cream fill for 'Take control' and 'I'm done'), and add a clear dark border between the bottom of the browser viewport and the control bar."
+          },
+          {
+            "level": "page",
+            "element": "'Open file' ('Pitch deck v3.pdf') preview card and 'File overflow menu (More)'",
+            "problem": "Tapping 'Pitch deck v3.pdf' from the Data room opens a screen that displays a large blank grey rectangle with a tiny generic document icon instead of rendering the PDF content. Opening the '...' menu in the left rail then shows 'Open' as the top menu item—even though the user has already opened the file row from the list.",
+            "norm": "Opening a document from a file list should render an actual inline document preview (or page thumbnails), and overflow menus on an already-open file view should not repeat 'Open' unless labeled specifically as 'Open in external app'.",
+            "severity": "P1",
+            "screenshot": "PG-B-DataRoom.png",
+            "fix": "Render the actual PDF page preview inside the document container on the 'Open file' screen, and rename the '...' menu's 'Open' action to 'Open in...' (or remove it if Share already covers system handoff)."
+          },
+          {
+            "level": "layout",
+            "element": "Top half ('Finance' live view) in 'Laptop: Live view + controls'",
+            "problem": "In the 626x890 laptop pose, the top half clips the 'Finance' page immediately after the 'Operating (Mercury agent)' row—completely hiding the 'Cards (Brex agent)' account row and the entire 'Upcoming' bills section ('Northwind invoice', 'Acme Payroll') with no scroll indicator or visual peek. It also omits the 'Synced [TIME]' subtitle shown under 'Finance' on the outer display.",
+            "norm": "Split-screen laptop poses must either compact the dashboard layout so key summary sections fit above the fold, or show a visible partial row/scroll indicator so the user knows additional accounts and upcoming bills exist below.",
+            "severity": "P1",
+            "screenshot": "Desk.png",
+            "fix": "Reduce the vertical height of the 'Monthly burn' chart card in laptop pose so the 'Cards' row and a peek of 'Upcoming' bills fit in the top half, and restore the 'Synced [TIME]' timestamp next to the header."
+          },
+          {
+            "level": "component",
+            "element": "Bottom-half chat composer Send button ('[↑]') in 'Laptop: Live view + controls'",
+            "problem": "The composer input field is empty (displaying the placeholder 'Message Finance agent'), yet the right-hand Send button ('[↑]') is rendered as an active, high-contrast cream circle. This contradicts 'PG-B-DataRoom.png' (Frame 10), where an empty composer shows a muted microphone icon, and creates two cream elements across the screen.",
+            "norm": "A Send button in a chat composer should only become active/prominent after text or an attachment is entered; when empty, it should be disabled, hidden, or replaced by voice input.",
+            "severity": "P2",
+            "screenshot": "Desk.png",
+            "fix": "Replace the active cream Send ('[↑]') button on the empty composer with the muted microphone icon (matching 'PG-B-DataRoom.png') or a disabled Send state until the user types a message."
+          },
+          {
+            "level": "page",
+            "element": "Left-rail '+' button and bottom-left Chat button in 'Routines' (Frame 1)",
+            "problem": "In the 'Routines' list frame, both the '+' button in the left vertical strip and the floating chat button in the bottom-left corner are filled with the bright cream tint. This directly violates the brief's design rule: 'exactly one tinted (cream) prominent action per view' and contradicts 'PG-B-DataRoom.png' and 'PG-B-CapTable.png', where the left-rail '+' button is dark glass.",
+            "norm": "Adhere strictly to the system rule of a single tinted primary action per view and keep left-rail utility controls visually consistent across screens.",
+            "severity": "P2",
+            "screenshot": "PG-A-Routine.png",
+            "fix": "Change the '+' button in the 'Routines' left control strip from solid cream to the standard dark glass surface used in Data room and Cap table."
+          },
+          {
+            "level": "group",
+            "element": "'More menu' and 'Edit routine' sheet",
+            "problem": "While users can create routines via the '+' button in Frame 1, neither the 'More menu' ('Pause routine', 'Edit routine') nor the 'Edit routine' sheet provides a 'Delete routine' option. Additionally, the 'Edit routine' sheet is asymmetrically pushed against the right edge of the screen (leaving the left rail column half-empty) and contains ~150pt of unused blank space below the 'Prompt' field.",
+            "norm": "Any user-creatable scheduled job must support deletion, and bottom sheets should be balanced across the viewport without excessive dead space.",
+            "severity": "P2",
+            "screenshot": "PG-A-Routine.png",
+            "fix": "Add a destructive 'Delete routine' option to the 'More menu' (or at the bottom of the 'Edit routine' sheet) and size the 'Edit routine' sheet to hug its form content."
+          },
+          {
+            "level": "component",
+            "element": "Left vertical glass control pill ('Share', 'Save', 'More') and 'Older version' bottom bar",
+            "problem": "Inside the left vertical control pill, the middle icon ('Save') has a tiny text label crammed beneath the arrow icon, whereas the 'Share' icon above it and 'More' icon below it are icon-only—making 'Save' the only labeled icon in the left control rail across the entire app. Additionally, when viewing an 'Older version' (Frame 4), the bottom bar ('Version 2 · Oct 17 [Restore]') provides no direct button to return to the latest version without overwriting it.",
+            "norm": "Icon strips must maintain uniform icon-only styling (using distinct glyphs rather than tiny sub-labels on a single item), and version preview bars should include a clear 'Back to current' / '×' dismiss action alongside 'Restore'.",
+            "severity": "P2",
+            "screenshot": "PG-A-Image.png",
+            "fix": "Remove the tiny 'Save' text label from the left control pill so all three controls are icon-only, and add a dismiss ('×') button to the 'Version 2 · Oct 17' bar to exit version preview without restoring."
+          },
+          {
+            "level": "layout",
+            "element": "'Thread composer: attachment sources' bottom message bar and 'Empty room' search bar",
+            "problem": "In Frame 10 ('Thread composer'), the bottom input bar ('+ Message Data room agent') extends all the way to the left edge of the device (underneath the left control rail column), breaking the strict vertical column alignment maintained on every other outer-display screen. In Frame 6 ('Empty room'), an active 'Search all items' input is displayed at the top of the screen when there are 'No files yet' to search, and the bottom-left chat icon is dimmed out.",
+            "norm": "Maintain consistent horizontal margins for the right-hand content column across all views, and hide or disable search bars when a collection is completely empty.",
+            "severity": "P2",
+            "screenshot": "PG-B-DataRoom.png",
+            "fix": "Align the left edge of the chat composer in Frame 10 with the right-hand content column (to the right of the floating navigation strip), and hide the 'Search all items' bar in the 'No files yet' empty state."
+          },
+          {
+            "level": "component",
+            "element": "Donut chart segments and 'Holders' list legend dots ('Default' and 'Access expired')",
+            "problem": "The ownership donut chart and the 8pt legend dots next to each holder ('Ana Ruiz', 'Jordan Lee', 'Sam Ortiz', 'Option pool') use four closely spaced shades of achromatic grey. At 8pt diameter, the mid-tone grey dots for 'Jordan Lee', 'Sam Ortiz', and 'Option pool' are nearly indistinguishable, making it difficult to map holders to donut slices.",
+            "norm": "Data visualizations linking a chart to a list via color-coded dots require high perceptual contrast (distinct hues or patterns) rather than subtle steps of neutral grey.",
+            "severity": "P2",
+            "screenshot": "PG-B-CapTable.png",
+            "fix": "Use distinct, muted categorical accent tones (or clearly differentiated luminance/pattern steps) for the donut slices and holder dots, and align the dot in 'Holder detail' (Frame 7) vertically with the title text."
+          },
+          {
+            "level": "layout",
+            "element": "'Sync failed (previous figures stay)' bottom 'Upcoming' card and 'Amounts hidden' bar chart",
+            "problem": "In 'Sync failed', inserting the error banner pushes the 'Upcoming' card down so the 'Acme Payroll' row crowds the bottom edge of the screen next to the floating chat button with almost no bottom margin. In 'Amounts hidden', the 'Monthly burn' chart flattens Nov–Sep to identical heights to hide relative spend, but leaves the 'Oct' bar visibly taller than the other 11 months.",
+            "norm": "Dynamic banners should scroll the content container cleanly with consistent bottom padding, and masked charts should equalize all bars (including the selected month) so no relative comparison leaks.",
+            "severity": "P3",
+            "screenshot": "PG-B-Finance.png",
+            "fix": "Make all 12 bars identical height in the 'Amounts hidden' state, and ensure the scrollable content view maintains standard bottom inset clearance when the 'Sync failed' banner is present."
+          }
+        ],
+        "excellent": [
+          "PG-B-Finance.png, PG-B-Legal.png, PG-B-CapTable.png: Exemplary resilience in error and loading states—sync and scan failures preserve previously loaded figures and lists on screen with a non-destructive retry banner rather than wiping out the founder's view.",
+          "PG-A-Computer.png: Clear, human-readable multi-actor status pills ('Finance agent is driving', 'You are driving', 'Finance agent is waiting for you', 'Jordan is driving') paired with concise contextual instruction banners make human-AI browser handoffs immediately understandable.",
+          "All outer-display boards: Disciplined spatial separation between the left vertical floating glass control strip (below the Dynamic Island) and the solid dark content cards on the right, with clean concentric corner radii and zero visual clutter."
+        ]
+      }
+    }
+  ]
+}

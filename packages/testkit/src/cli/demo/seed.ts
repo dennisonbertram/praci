@@ -18,6 +18,8 @@ import {
   saveCapTableSnapshot,
 } from "@rakazo/db";
 import { makePdf } from "../../../../adapters/src/data-room-test-fakes.js";
+import type { Turn } from "./conversations.js";
+import { DEMO_CONVERSATIONS } from "./conversations.js";
 import {
   DEMO_ARCHIVED_BOT,
   DEMO_ARTIFACTS,
@@ -40,7 +42,9 @@ import {
   DEMO_RATE_LIMIT_SPACE,
   DEMO_READING_DOCUMENT,
   DEMO_RECONNECT_SPACE,
+  DEMO_ROUTINES,
   DEMO_RUNNING_RUN,
+  DEMO_SKILLS,
   DEMO_USER_NAME,
   DEMO_WAITING_RUN,
   DEMO_WALLET,
@@ -239,10 +243,12 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
       },
     });
     // Without a model the Carta agent could never have read Carta, so there is no snapshot.
-    if (!options.noModel) await saveCapTableSnapshot(prisma, scope, DEMO_CAP_TABLE);
+    // DEMO_SEED_CAP_TABLE=1 (used to record the homepage demo) seeds the read even with no model.
+    const readCapTable = !options.noModel || process.env.DEMO_SEED_CAP_TABLE === "1";
+    if (readCapTable) await saveCapTableSnapshot(prisma, scope, DEMO_CAP_TABLE);
     await session.rpc("carta/agent");
     done.push(
-      `Carta (mock login; its tools reach only the emulator), ${options.noModel ? "no cap table read yet" : "mock cap table"}, Carta agent`,
+      `Carta (mock login; its tools reach only the emulator), ${readCapTable ? "mock cap table" : "no cap table read yet"}, Carta agent`,
     );
     // A bank with no integration: last month's statement, uploaded and imported as a user would.
     const statement = demoStatementCsv();
@@ -339,11 +345,11 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     });
     done.push("Finance agent pins (Cash, Runway) and a Month-end close checklist");
     // One earlier question and answer, so Hide amounts can be checked on runway months and a
-    // run-out date in a reply without a live (paid) model call.
+    // run-out month in a reply (the exact day moves with the calendar, so a stored answer names the month) without a live (paid) model call.
     if (overview.runway.months !== null && overview.runway.runOutDate) {
       const runOut = new Date(`${overview.runway.runOutDate}T00:00:00Z`).toLocaleDateString(
         "en-US",
-        { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" },
+        { month: "long", year: "numeric", timeZone: "UTC" },
       );
       const thread = await prisma.thread.upsert({
         where: { botId: agent.id },
@@ -601,6 +607,11 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
           startedAt: new Date(),
         },
       });
+      // Earlier work with this bot comes first, so the question is the newest message.
+      const history = DEMO_CONVERSATIONS[DEMO_WAITING_RUN.botName];
+      if (history) {
+        await writeConversation(db.prisma, thread.id, bot.id, history, artifactIds, new Map());
+      }
       await db.prisma.$transaction(async (tx) => {
         await createThreadMessageInTransaction(tx, {
           threadId: thread.id,
@@ -685,6 +696,76 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     `${DEMO_BOTS.length + 1} extra bots, 1 archived bot, 1 group chat, 1 run waiting on an answer, 1 run working (${MOCK_NOTE})`,
   );
 
+  // The Data room agent is created on first use; create it now so it has a conversation.
+  await session.rpc("dataRoom/agent");
+
+  // The agents' earlier conversations, routines and saved skills, written straight to the database
+  // (no model call). Each bot's own introduction run is waited for first, then replaced.
+  {
+    const db = createDb(options.databaseUrl);
+    try {
+      const bots = await db.prisma.bot.findMany({ where: { spaceId } });
+      for (const bot of bots) await waitForIdleBot(db.prisma, bot.id);
+      for (const [name, conversation] of Object.entries(DEMO_CONVERSATIONS)) {
+        if (name === DEMO_WAITING_RUN.botName) continue;
+        const group = await db.prisma.chatGroup.findFirst({ where: { spaceId, name } });
+        const owner = bots[0];
+        if (!owner) continue;
+        const botFor = bots.find((bot) => bot.name === name);
+        if (!group && !botFor) continue;
+        // A group's thread is created with its first message, so it may not exist yet.
+        const key = group ? { groupId: group.id } : { botId: botFor?.id ?? "" };
+        const target =
+          (await db.prisma.thread.findUnique({ where: key })) ??
+          (await db.prisma.thread.create({
+            data: { spaceId: owner.spaceId, userId: owner.userId, ...key },
+          }));
+        await db.prisma.message.deleteMany({ where: { threadId: target.id } });
+        await db.prisma.thread.update({
+          where: { id: target.id },
+          data: { nextMessageSeq: 0, lastReadSeq: -1, unread: false },
+        });
+        await writeConversation(
+          db.prisma,
+          target.id,
+          group ? null : (bots.find((bot) => bot.name === name)?.id ?? null),
+          conversation,
+          artifactIds,
+          new Map(bots.map((bot) => [bot.name, bot.id])),
+        );
+      }
+      const botId = (name: string) => bots.find((bot) => bot.name === name)?.id;
+      for (const routine of DEMO_ROUTINES) {
+        const id = botId(routine.bot);
+        if (!id) continue;
+        const { bot: _bot, ...input } = routine;
+        await session.rpc("routines/create", { botId: id, active: true, notify: true, ...input });
+      }
+      for (const skill of DEMO_SKILLS) {
+        const id = botId(skill.bot);
+        if (!id) continue;
+        await db.prisma.taughtSkill.create({
+          data: {
+            spaceId,
+            userId: bots[0]?.userId ?? "",
+            botId: id,
+            name: skill.name,
+            goal: skill.goal,
+            status: "saved",
+            playbook: skill.playbook,
+            stoppedAt: new Date(),
+          },
+        });
+      }
+    } finally {
+      await db.prisma.$disconnect();
+      await db.pool.end();
+    }
+    done.push(
+      `${Object.keys(DEMO_CONVERSATIONS).length} agent conversations, ${DEMO_ROUTINES.length} routines, ${DEMO_SKILLS.length} saved skills`,
+    );
+  }
+
   // A second, empty space: what a founder sees before connecting anything (switch to it to test).
   await session.rpc("spaces/create", { name: DEMO_EMPTY_SPACE });
   done.push(`empty space "${DEMO_EMPTY_SPACE}"`);
@@ -734,6 +815,46 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     done.push("Data room consent");
   }
   return done;
+}
+
+/**
+ * Writes a seeded conversation to a thread, one message a step, spaced `gapHours` apart and ending
+ * a few minutes ago, so the chat shows a few days of history. A bot message belongs to the thread's
+ * bot, or to the bot named in the turn (a group chat).
+ */
+async function writeConversation(
+  prisma: PrismaClient,
+  threadId: string,
+  threadBotId: string | null,
+  conversation: { gapHours: number; turns: Turn[] },
+  artifactIds: ReadonlyMap<string, string>,
+  botIdsByName: ReadonlyMap<string, string>,
+) {
+  const { turns, gapHours } = conversation;
+  const end = Date.now() - 5 * 60_000;
+  for (const [index, turn] of turns.entries()) {
+    const createdAt = new Date(end - (turns.length - 1 - index) * gapHours * 60 * 60_000 * 0.5);
+    const botId =
+      turn.role === "bot" ? (turn.botName && botIdsByName.get(turn.botName)) || threadBotId : null;
+    const blocks =
+      turn.role === "user"
+        ? [{ kind: "text" as const, text: turn.text }]
+        : turn.blocks.map((block) =>
+            block.kind === "text"
+              ? { ...block, text: linkDemoArtifacts(block.text, artifactIds) }
+              : block,
+          );
+    const message = await prisma.$transaction((tx) =>
+      createThreadMessageInTransaction(tx, {
+        threadId,
+        role: turn.role,
+        blocks,
+        ...(botId ? { botId } : {}),
+        markUnread: false,
+      }),
+    );
+    await prisma.message.update({ where: { id: message.id }, data: { createdAt } });
+  }
 }
 
 /** Waits up to 90 seconds for a bot's own runs (its introduction) to finish. */

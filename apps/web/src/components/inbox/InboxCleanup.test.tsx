@@ -96,7 +96,12 @@ const click = (el: Element | null | undefined) =>
   act(async () => {
     el?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
-const boxes = () => [...document.querySelectorAll<HTMLElement>('[role="checkbox"]')];
+const boxes = () =>
+  [...document.querySelectorAll<HTMLElement>("[data-sender] [role='checkbox']")];
+const selectAll = () =>
+  [...document.querySelectorAll<HTMLElement>("label")]
+    .find((l) => l.textContent === "Select all")
+    ?.querySelector<HTMLElement>("[role='checkbox']");
 const checked = () => boxes().map((b) => b.getAttribute("aria-checked"));
 
 const news = sender("news@lists.example.test");
@@ -153,7 +158,21 @@ describe("InboxCleanup", () => {
     expect(button("Archive 4")).toBeDefined();
     expect(button("Skip inbox 4")).toBeDefined();
     await click(boxes()[0]);
-    expect(button("Archive 0")?.hasAttribute("disabled")).toBe(true);
+    expect(button(/^Archive/)).toBeUndefined();
+  });
+
+  it("shows the action bar only while a sender is ticked, and Select all ticks and clears every row", async () => {
+    rpcMock.list.mockResolvedValue(
+      output([sender("a@lists.example.test", { preselected: false }), friend]),
+    );
+    await render();
+    expect(button(/^Archive/)).toBeUndefined();
+    await click(selectAll());
+    expect(checked()).toEqual(["true", "true"]);
+    expect(button("Archive 6")).toBeDefined();
+    await click(selectAll());
+    expect(checked()).toEqual(["false", "false"]);
+    expect(button(/^Archive/)).toBeUndefined();
   });
 
   it("archives the ticked senders, then offers Undo that reverses the batch", async () => {

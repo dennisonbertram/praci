@@ -62,7 +62,7 @@ test("local settings open and save integrations without an app session", async (
     } as typeof window.rakazoDesktop;
   });
   await page.goto("/desktop-settings");
-  await page.getByRole("button", { name: "Server integrations", exact: true }).click();
+  await page.getByRole("button", { name: "Server apps", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Apps with their own server", exact: true }),
   ).toBeHidden();

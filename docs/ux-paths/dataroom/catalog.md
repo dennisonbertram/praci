@@ -1,18 +1,25 @@
 ## Area: Data room (STORY-DRM-nnn)
 
-Source: `docs/ux-paths/dataroom/catalog.md`.
 
-
-Generated: 2026-10-17
+Generated: 2026-10-17, refreshed 2026-10-20
 Repository: `the repository root` (branch `docs/ux-pass`, code read at HEAD `559a76ad`). PR #109 stories were read from `origin/feat/legal` at commit `f2b8fc1e` ("Legal: regenerate translation catalogs after the e2e fixes").
-Total Stories: 44 (short 26, medium 17, long 1)
+Total Stories: 65 (short 32, medium 30, long 3) as of 2026-10-20, of which 1 retired
 Persona for every story: Maya, a naive first-time founder of Northwind Robotics ("Northwind Robotics") who has never seen Praci, does not know its vocabulary ("Data room", "folder", "filing", "agent", "approval", "space"), and wants to keep the company's documents in order and find them again.
+
+### Refresh 2026-10-20 (features merged since 2026-10-17)
+
+- **Added** (21): DRM-101, DRM-102, DRM-103, DRM-104, DRM-105, DRM-106, DRM-107, DRM-108, DRM-109, DRM-110, DRM-111, DRM-112, DRM-113, DRM-114, DRM-115, DRM-116, DRM-117, DRM-118, DRM-119, DRM-120, DRM-121. They sit at the end of this area under "Stories: Added 2026-10-20".
+- **Rewritten in place for the current UI** (same id, new text, marked "Updated 2026-10-20"): DRM-004, DRM-002, DRM-005.
+- **Detail folded into an existing story** (same id, a section "Added 2026-10-20" at the end): DRM-027, DRM-001, DRM-036.
+- **Retired**: DRM-041. The story keeps its text for history and points at the story that replaces it.
+- **Marked with a dated note** (the UI changed; the steps below the note are the old steps and were not rewritten): DRM-003, DRM-007, DRM-008, DRM-012, DRM-020, DRM-021, DRM-039, DRM-040, DRM-042, DRM-043, DRM-044, DRM-024, DRM-025, DRM-026, DRM-027, DRM-028, DRM-029, DRM-037, DRM-038, DRM-009.
+- PR #109 has merged. Remarks below that say a story "requires PR #109", "is not on main" or that the Data room has icon-only import buttons are out of date: Import is a header menu (Email, Google Drive, Box). Data room sharing still does not exist (STORY-DRM-022).
 
 ### Changes since the 2026-10-16 catalog
 
 The Data room changed a lot on main since the last catalog (`git log -- apps/web/src/components/data-room apps/web/src/pages/DataRoom.tsx`, most recent: `78d97779` phone toolbar, `b302756f` folder URL authoritative, `f162d56f` folder in the URL, `a2d42924` folder rename/move/delete, `c3e1c923` consent prompt on the page, `ab20ab44` delete confirm + duplicate toast).
 
-- **Retired**: STORY-DRM-004 (50 MB refusal toast). Uploads have no size limit; a file too large to read is stored and the preview says "Too large to search inside".
+- **Rewritten 2026-10-20**: STORY-DRM-004 is now "Upload a large file" (it was the 50 MB refusal toast, which no longer exists). Uploads have no size limit; a file too large to read is stored and the preview says "Too large to search inside".
 - **Changed (same id, rewritten to match code)**:
   - 001 empty state now has a sentence ("Keep contracts, board decks and investor documents in one place.").
   - 002, 003 the finished-upload toast says "Uploaded" (no longer "Filed"), stays 10 s.
@@ -54,7 +61,7 @@ Main (`559a76ad`):
 - Consent card (`ConsentPrompt.tsx`): "Let Praci read your documents" + Allow, or, with no model, a grey note telling the founder to set up a model in Settings. After Allow, items that were waiting go through reading and filing again (`apps/api/src/data-room.ts:245-290`).
 - Settings: "Embedding model" in the model settings overlay enables semantic search.
 
-Requires PR #109 (origin/feat/legal, commit `f2b8fc1e`):
+Note (refresh 2026-10-20): PR #109 has merged; the Legal and import features below are in the current build:
 
 - `ImportSources` in the Data room header (`ImportFromEmail.tsx:274-331`, `ImportFromDrive.tsx`): in the empty state two buttons beside "Choose files" ("Import from email" or "Connect Gmail"; "Import from Google Drive" or "Connect Google Drive"); once the room has items they become icon buttons with those aria labels. A picker dialog per source; after import a 6 s notice "Imported N file(s)" / "Already in the Data room" / "Couldn't import N file(s)".
 - Preview "Source" shows "From email" (link back into the Inbox message) or "From Google Drive" (link that opens Drive).
@@ -150,21 +157,23 @@ STORY-DRM-001 (Find the Data room, empty)
 │   └── STORY-DRM-031 (Keyboard only)
 ├── STORY-DRM-018 (LONG: first week setting up documents)
 ├── STORY-DRM-019 (LONG: investor diligence request)
-├── STORY-DRM-020 (LONG: month-end invoices from Gmail)      [Requires PR #109]
-│   ├── STORY-DRM-039 (Email picker problems)                [Requires PR #109]
-│   ├── STORY-DRM-041 (Connect Gmail / Drive first)           [Requires PR #109]
-│   └── STORY-DRM-042 (Source link and repeat import notice)  [Requires PR #109]
-├── STORY-DRM-021 (Bring in Google Drive)                    [Requires PR #109]
-│   ├── STORY-DRM-040 (Browse Drive, Google Docs, unsupported) [Requires PR #109]
-│   └── STORY-DRM-043 (Import into the open folder)           [Requires PR #109]
+├── STORY-DRM-020 (LONG: month-end invoices from Gmail)
+│   ├── STORY-DRM-039 (Email picker problems)
+│   ├── STORY-DRM-041 (Connect Gmail / Drive first)
+│   └── STORY-DRM-042 (Source link and repeat import notice)
+├── STORY-DRM-021 (Bring in Google Drive)
+│   ├── STORY-DRM-040 (Browse Drive, Google Docs, unsupported)
+│   └── STORY-DRM-043 (Import into the open folder)
 ├── STORY-DRM-022 (Share with cofounder)  [gap on both branches]
-└── STORY-DRM-023 (Agent over documents)                      [Requires PR #109]
-    └── STORY-DRM-044 (An agent files an attachment by itself) [Requires PR #109]
+└── STORY-DRM-023 (Agent over documents)
+    └── STORY-DRM-044 (An agent files an attachment by itself)
 ```
 
 ### Stories: Getting started and uploading
 
 #### STORY-DRM-001: Find where documents go
+
+> **Updated 2026-10-20**: detail added from a newer walk of the same goal, see the section "Added 2026-10-20" at the end of this story.
 
 **Type**: short
 **Topic**: Navigation / empty state
@@ -186,30 +195,58 @@ STORY-DRM-001 (Find the Data room, empty)
 ##### Edge Cases
 - The first list call fails: the page is not "empty", so the full filter bar shows with a red error line and "Retry" instead of the drop box (`DataRoom.tsx:396-403`).
 
-#### STORY-DRM-002: Upload the first documents with "Choose files"
+##### Added 2026-10-20: First arrival in an empty Data room
 
 **Type**: short
-**Topic**: Upload
-**Persona**: Maya; wants to put the pitch deck and the SAFE in.
-**Goal**: Get two PDFs into the Data room.
-**Preconditions**: S0; walker has `MOCK Northwind pitch deck.pdf` and `MOCK Northwind SAFE - Jane Angel.pdf`. On main.
-**Ideal path**: 2 — pick files, see them listed.
-**Alternate paths**: Drag onto the page; drag onto any other page (STORY-DRM-003); "+" ("Add files") in the header once the room is not empty.
+**Topic**: data-room-navigate-inspect-organize
+**Persona**: Maya on day one at Northwind Robotics.
+**Goal**: Understand what the page is for and add the first file.
+**Preconditions**: New space with no files and no folders.
+**Ideal path**: 2 — "Choose files", pick a file.
+**Alternate paths**: Drag a file anywhere in the window; "Import" menu in the card.
+###### Steps
+1. Open Data room → header shows only "Data room" (no view switch, no Add files, no Import); a dashed card "Drop files here" with "Keep contracts, board decks and investor documents in one place."
+2. Click "Choose files" → file picker; choose "Northwind Bylaws.pdf".
+3. Upload toast shows progress; the page switches to the normal layout with the file in the list; header now shows the three view toggles, "Import" and "Add files".
+4. A card reads that Praci does not tag files until it can read them ("Let Praci read your documents" with Allow, or the line about setting up a model in Settings if no model exists). Maya hesitates about sending text to an AI service.
+###### Variations
+- Drag a file over the window → full-window drop target appears; drop → same as step 3.
+- "Import" in the card → same menu as STORY-DRM-119.
+###### Edge Cases
+- Upload fails → toast with a reason such as "Unsupported file name" or "Upload failed".
+- A zip → toasts "Opening <name>", "Adding 3 of 120 · <file>", "Reading 10 of 120"; failures: "This zip is password-protected", "This zip has more than 10,000 files", "This zip is too large to unpack", "This zip has unsafe file paths", "This zip can't be read".
+- Hide amounts is hidden until there are files.
+
+---
+
+#### STORY-DRM-002: Choose several files with "Add files" and get one card per file
+
+> **Updated 2026-10-20**: rewritten for the current UI; files are now uploaded as streamed cards (one per file) and the list shows a processing strip.
+
+**Type**: short
+**Topic**: data-room-big-uploads-zips-processing
+**Persona**: Maya, Northwind Robotics
+**Goal**: Add a 409A report, a signed SAFE and a cap table export in one go.
+**Preconditions**: Data room open, folder "Legal" selected in the folder tree.
+**Ideal path**: 3 — "Add files", multi-select in the picker, confirm.
+**Alternate paths**: Drag the three files onto the window; both go to the open folder.
 
 ##### Steps
-1. Click "Choose files" → The operating system file picker opens; several files can be selected (`DataRoom.tsx:53-62`).
-2. Select both PDFs and confirm → One toast per file at the lower right (centred on a phone) with the file name, a percentage and a progress bar.
-3. Wait → Each toast shows green "Uploaded" and a "View" link and disappears after 10 s. **Expectation:** that the file is now read and sorted; it has only been stored.
-4. Look at the page → The empty box is replaced by the search box, the filters that have values, and a list with two rows. Each row has a spinner and the word "Reading" in grey until it is read.
+1. Click "Add files" in the toolbar (tooltip also "Add files"). → The OS file picker opens; it allows multiple selection.
+2. Select three files and confirm. → Three separate cards stack bottom right, each with its own percent and bar.
+3. As each finishes, its card changes to "Uploaded" plus "View". → Files appear in "Legal" because uploads go to the folder the page currently shows.
 
 ##### Variations
-- Click "View" in the toast → URL becomes `/app/data-room?item=<id>` and that item is open in the preview (STORY-DRM-029).
-- The first time, the grey card or the "Allow" card appears above the list (STORY-DRM-009, 032).
+- From a folder that is empty, the line "This folder is empty. Drop files here or add them." has its own outlined "Add files" button; same behavior.
+- On the empty Data room, the button reads "Choose files" next to the Import menu.
 
 ##### Edge Cases
-- Network drops mid-upload → the toast says "Upload failed" in red with a Dismiss X; stays 15 s; nothing retries.
+- If the "Legal" folder was deleted in another tab, the card reads "This folder no longer exists" with a link "Upload to All items". Clicking it re-uploads the same file at the top level (see STORY-DRM-107).
+- A file name the server rejects shows "Unsupported file name".
 
 #### STORY-DRM-003: Drop a file while on another page
+
+> **Updated 2026-10-20**: drops from another page now show the upload card lines and the processing strip (STORY-DRM-107).
 
 **Type**: short
 **Topic**: Upload (drop anywhere)
@@ -231,44 +268,59 @@ STORY-DRM-001 (Find the Data room, empty)
 ##### Edge Cases
 - Dragging text or a link (not a file) → no overlay (`dragHasFiles`).
 
-#### STORY-DRM-004: Upload a file that is over 50 MB
+#### STORY-DRM-004: Drop one large board deck onto the Data room and watch the upload card
+
+> **Updated 2026-10-20**: rewritten for the current UI; uploads have no size limit any more; the earlier version was the 50 MB refusal.
 
 **Type**: short
-**Topic**: Large uploads
-**Persona**: Maya, trying to keep the board meeting recording.
-**Goal**: Store a 60 MB video.
-**Preconditions**: S1; walker has `MOCK board-video.mp4` (~60 MB). On main.
-**Ideal path**: 1 — upload it and download it again.
-**Alternate paths**: none found.
+**Topic**: data-room-big-uploads-zips-processing
+**Persona**: Maya, first-time founder of Northwind Robotics, preparing for investor diligence
+**Goal**: Get a 700 MB recorded board meeting walkthrough PDF into the Data room and know when it is safely there.
+**Preconditions**: Signed in; Data room open at All items; space has at least one item; file is on the desktop.
+**Ideal path**: 2 — drag the file onto the window, then click "View" on the finished card.
+**Alternate paths**: "Add files" toolbar button (file picker); empty-state "Choose files" button; drop on any other page.
 
 ##### Steps
-1. Click "+" ("Add files") and choose the video → A toast shows the name and a progress bar, then "Uploaded". There is no size limit.
-2. Open the item → Download works. A PDF, Office file or image over 50 MB also shows "Too large to search inside", because it is stored but not read for search.
-
-##### Edge Cases
-- The server refuses a file name with a slash (400) → "Unsupported file name". A real file name cannot contain a slash, so the walker can only reach this by calling the upload endpoint directly.
-
-#### STORY-DRM-005: Upload the same file twice
-
-**Type**: short
-**Topic**: Upload duplicates
-**Persona**: Maya, unsure whether the lease was already uploaded.
-**Goal**: Make sure the lease is in the Data room without creating a copy.
-**Preconditions**: S1; walker has a byte-identical copy of `Northwind HQ lease renewal 2027.pdf` (named `lease copy.pdf`). On main.
-**Ideal path**: 1 — upload and be told it already exists, and where.
-**Alternate paths**: Search "lease" first (STORY-DRM-013).
-
-##### Steps
-1. Drop `lease copy.pdf` on the Data room → Toast progress, then the line "Already in Legal / Contracts as Northwind HQ lease renewal 2027.pdf" with a "View" link (`DropZone.tsx:25-31`, `upload-toasts.ts:106-123`).
-2. Look at the list → No second row appears.
-3. Click "View" → The original opens in the preview. **Expectation met:** she knows where it is.
+1. Drag the file over the window. → Full-window overlay with dashed box "Drop to add to Data room". Any open menu closes (an Escape is dispatched, unless a dialog is open).
+2. Release over the page. → Overlay goes away. A card appears bottom right with the file name (truncated, full name on hover), a percentage such as "12%", and a thin progress bar. Maya thinks: "Is it really uploading, or frozen?" The percent ticking is her reassurance.
+3. Wait until 100%. → Percent is replaced by an X (aria-label "Dismiss"). Line below shows "Uploaded" in green and a "View" link. The card auto-dismisses after 10 seconds, but not while her pointer rests on it.
+4. Click "View". → Card closes and the item's preview opens. The row also appears in the list (Data room reloads on upload).
 
 ##### Variations
-- Same file when the original has no folder → "Already in your Data room as <original name>".
-- Same name as the original → the "as …" part is left out.
+- Dismiss with the X before it finishes: not available while uploading (the percent replaces the X). UNVERIFIED whether the upload can be cancelled; no cancel control exists in the card.
+- Maya navigates to Inbox mid-upload: the card stays (drop zone is mounted app-wide).
 
 ##### Edge Cases
-- The original was stuck or failed → the duplicate upload restarts its processing (`apps/api/src/data-room.ts`, `requeueStuck`), invisible to her except that a Failed row may become "Reading".
+- Maya hesitates at 100% while the file is still "Reading" in the list: "Uploaded" only means stored, not searchable. Processing is shown separately (see STORY-DRM-102).
+- Closing the tab mid-upload loses the upload; no resume control found in code.
+- Switching space or signing out clears all cards and stops reporting from running uploads.
+
+#### STORY-DRM-005: Upload a file that is already there (duplicate)
+
+> **Updated 2026-10-20**: rewritten for the current UI; the duplicate check and its message were rewritten with the streamed upload.
+
+**Type**: short
+**Topic**: data-room-big-uploads-zips-processing
+**Persona**: Maya, Northwind Robotics
+**Goal**: Drop "SAFE-Acme-signed.pdf" again, not remembering she filed it last week.
+**Preconditions**: Same bytes already in folder "Investors / SAFEs" as "Acme SAFE (signed).pdf".
+**Ideal path**: 2 — drop; read "Already in ...".
+**Alternate paths**: A zip full of known files (STORY-DRM-101 edge case).
+
+##### Steps
+1. Drop the file while viewing All items. → Normal upload card with percent.
+2. Upload ends. → No green "Uploaded". The card reads "Already in Investors / SAFEs as Acme SAFE (signed).pdf" with a "View" link. Maya thinks: "Good, no second copy."
+3. Click "View". → Opens the existing item, not a new one.
+
+##### Variations
+- Same name, same folder: line reads "Already in Investors / SAFEs" (no "as" part).
+- Item at the top level with a different name: "Already in your Data room as Acme SAFE (signed).pdf".
+- Item at top level with the same name: "Already in your Data room".
+- Files are matched by contents (SHA-256), not by name.
+
+##### Edge Cases
+- The folder path is looked up after the upload; if that lookup fails, the card falls back to the shorter "Already in your Data room" wording.
+- The bytes still travel over the network in full before the duplicate is found (the server checks after the write), so a duplicate 700 MB file takes the full upload time.
 
 #### STORY-DRM-006: Upload into the folder she is looking at
 
@@ -299,6 +351,8 @@ STORY-DRM-001 (Find the Data room, empty)
 
 #### STORY-DRM-007: Watch a new document get read
 
+> **Updated 2026-10-20**: reading, indexing and tagging now show in a processing strip with Details (STORY-DRM-102).
+
 **Type**: medium
 **Topic**: Ingestion status
 **Persona**: Maya just uploaded the pitch deck and wants to know whether the app "understood" it.
@@ -323,6 +377,8 @@ STORY-DRM-001 (Find the Data room, empty)
 
 #### STORY-DRM-008: A document failed to read
 
+> **Updated 2026-10-20**: a failed read says 'Couldn't read this file' with Try again and Delete; a batch shows 'N couldn't be read' (STORY-DRM-105).
+
 **Type**: short
 **Topic**: Ingestion status / errors
 **Persona**: Maya scanning the list who sees a red row.
@@ -345,6 +401,8 @@ STORY-DRM-001 (Find the Data room, empty)
 - Clicking Delete: confirm dialog "Delete Old cap table export.xlsx?" (STORY-DRM-017).
 
 #### STORY-DRM-009: "Why didn't it tag anything?" (the Allow card)
+
+> **Updated 2026-10-20**: the consent card text is now 'Let Praci read your documents' with Allow; see also STORY-APP-345 and STORY-APP-346.
 
 **Type**: medium
 **Topic**: Consent card
@@ -416,6 +474,8 @@ STORY-DRM-001 (Find the Data room, empty)
 - Open folder holds nothing → text "This folder is empty. Drop files here to add them." (`DataRoom.tsx:411-417`).
 
 #### STORY-DRM-012: Switch to grid and change the sort
+
+> **Updated 2026-10-20**: the view switch now has List, Grid and Stats (STORY-DRM-114).
 
 **Type**: short
 **Topic**: Views and sort
@@ -602,15 +662,17 @@ STORY-DRM-001 (Find the Data room, empty)
 ##### Edge Cases
 - The investor asks for "everything from Harbor Ventures" → Party menu offers "MOCK Harbor Ventures" (full name); she picks it and gets the term sheet; others without a party name are missed.
 
-### Stories: Importing from Gmail and Google Drive, and sharing (Requires PR #109 unless noted)
+### Stories: Importing from Gmail and Google Drive, and sharing
 
 #### STORY-DRM-020: Monthly close: get vendor invoices out of Gmail into the Data room
+
+> **Updated 2026-10-20**: the envelope button is gone. Import is now a menu in the header with Email, Google Drive and Box; the attachment chip in the Inbox also has 'Add to Data room', and new mail attachments can be filed automatically (STORY-DRM-119, STORY-INB-016, STORY-INB-115). The goal of this story is unchanged; the steps below describe the old button.
 
 **Type**: medium
 **Topic**: Email attachment import + filters
 **Persona**: Maya doing month-end bookkeeping; invoices arrive as Gmail attachments.
 **Goal**: Have this month's invoices in `Finance / Invoices` next to last month's.
-**Preconditions**: **Requires PR #109 (origin/feat/legal, `f2b8fc1e`).** S1; mock Gmail connected with thread "MOCK Acme Servo Supply – invoice NW-1044" (PDF attachment `invoice-1044.pdf`); M1; consent C1.
+**Preconditions**: S1; mock Gmail connected with thread "MOCK Acme Servo Supply – invoice NW-1044" (PDF attachment `invoice-1044.pdf`); M1; consent C1.
 **Ideal path**: 3 — "Import from email", tick the attachment, Import.
 **Alternate paths**: On current main (without the PR) there is no import button: download the attachment from the Inbox message and drop it on the app (the only route; Source "Gmail" never matches anything). Upload then Move. Tell an agent to add it (STORY-DRM-044).
 
@@ -638,11 +700,13 @@ STORY-DRM-001 (Find the Data room, empty)
 
 #### STORY-DRM-021: Bring in files from Google Drive
 
+> **Updated 2026-10-20**: Drive import is now the Import menu item 'Google Drive' (whole Drive folders and multi-select are supported); see STORY-DRM-119. The steps below describe the old hard-disk button.
+
 **Type**: medium
 **Topic**: Google Drive import
 **Persona**: Maya whose legal documents already live in Google Drive.
 **Goal**: Copy the customer contract and the quarterly plan from Drive into the Data room.
-**Preconditions**: **Requires PR #109 (origin/feat/legal, `f2b8fc1e`).** S1; Google Drive connected; Drive has a folder `Contracts` with `MOCK Customer MSA - Bolt Freight.pdf` and a Google Doc `Quarterly plan`.
+**Preconditions**: S1; Google Drive connected; Drive has a folder `Contracts` with `MOCK Customer MSA - Bolt Freight.pdf` and a Google Doc `Quarterly plan`.
 **Ideal path**: 3 — open the picker, tick two files, Import.
 **Alternate paths**: On main without the PR there is no Drive import: download from Drive and upload by hand (STORY-DRM-002). Agents can read Drive with `drive_search`/`drive_read` but results never enter the Data room unless the agent calls `add_to_data_room` (STORY-DRM-044, also needs the PR).
 
@@ -685,7 +749,7 @@ STORY-DRM-001 (Find the Data room, empty)
 **Topic**: Agent tools over documents
 **Persona**: Maya wants a quick answer: "What's the notice period in our office lease?"
 **Goal**: Get the answer from the stored lease without reading it herself.
-**Preconditions**: **Requires PR #109 (origin/feat/legal, `f2b8fc1e`).** S1; M2; consent C1; a chat agent in her own space, run by her (not a group chat, not a messaging-channel run).
+**Preconditions**: S1; M2; consent C1; a chat agent in her own space, run by her (not a group chat, not a messaging-channel run).
 **Ideal path**: 1 — ask the agent in plain words.
 **Alternate paths**: On main without the PR the agent has no Data room tools: it says it cannot see the document, and Maya attaches the PDF in the chat (a separate copy). Data room search with a question (STORY-DRM-013). Download and read.
 
@@ -706,6 +770,8 @@ STORY-DRM-001 (Find the Data room, empty)
 ### Stories: Folders in the URL
 
 #### STORY-DRM-024: Bookmark a folder and open it again
+
+> **Updated 2026-10-20**: the page now has a path bar and a resizable folder column (STORY-DRM-111, STORY-DRM-112); bookmarks and the Back button are unchanged.
 
 **Type**: short
 **Topic**: Folder in the URL (deep link)
@@ -730,6 +796,8 @@ STORY-DRM-001 (Find the Data room, empty)
 
 #### STORY-DRM-025: Back button through folders
 
+> **Updated 2026-10-20**: the path bar adds another way to move up (STORY-DRM-111).
+
 **Type**: short
 **Topic**: Folder in the URL (history)
 **Persona**: Maya who clicks folders like web pages and presses Back.
@@ -753,6 +821,8 @@ STORY-DRM-001 (Find the Data room, empty)
 
 #### STORY-DRM-026: A stale or mistyped folder id
 
+> **Updated 2026-10-20**: the page now has a path bar (STORY-DRM-111); re-read what a stale folder id shows.
+
 **Type**: short
 **Topic**: Folder in the URL (bad id)
 **Persona**: Maya who clicks an old bookmark to a folder that no longer exists.
@@ -771,6 +841,10 @@ STORY-DRM-001 (Find the Data room, empty)
 - An empty room with a bad folder id → after the id is removed the first-run box shows.
 
 #### STORY-DRM-027: Rename, move and delete folders
+
+> **Updated 2026-10-20**: folder and file rename, move and delete are re-walked with the tree and menus in the folded-in section below.
+
+> **Updated 2026-10-20**: detail added from a newer walk of the same goal, see the section "Added 2026-10-20" at the end of this story.
 
 **Type**: medium
 **Topic**: Folder housekeeping
@@ -794,7 +868,38 @@ STORY-DRM-001 (Find the Data room, empty)
 ##### Edge Cases
 - Renaming or moving the folder that is currently open keeps the URL (same id).
 
+##### Added 2026-10-20: Rename, move and delete from menus and tree
+
+**Type**: medium
+**Topic**: data-room-navigate-inspect-organize
+**Persona**: Maya tidying folders by hand.
+**Goal**: Rename a folder, move a file into it, delete an empty folder, and learn why a full one is refused.
+**Preconditions**: Folder "Misc" containing one file; empty folder "Old"; file "scan0012.pdf" at top level.
+**Ideal path**: 3 per action — menu, dialog, confirm.
+**Alternate paths**: Right-click on a folder in the tree; context-menu key or Shift+F10; "…" in the tree row (shown on hover or focus).
+###### Steps
+1. Right-click folder "Misc" in the tree → menu "Move", "Rename", "Delete".
+2. Choose "Rename" → dialog "Rename Misc" with the name field; type "Reference" and "Save" → toast "Renamed" with the new name; tree and Path bar update.
+3. Click "More actions for scan0012.pdf" → "Move" → dialog "Move scan0012.pdf to" with a "Folder" select ("No folder", folders by path, "New folder…").
+4. Pick "Reference" and Save → file leaves All items top level; if she is viewing "All items" it still shows with its Folder path.
+5. Open the menu for "Reference" → "Delete" → dialog "The folder Reference isn't empty" explaining "It holds 2 items. Move or delete what is in it first; only an empty folder can be deleted." Buttons "Cancel" and "Open folder".
+6. Click "Open folder" → the folder opens so she can clear it.
+7. Delete the empty "Old" folder → "Delete the folder Old?" "This can't be undone." Click "Delete" → toast "Deleted" with "Old".
+###### Variations
+- Choose "New folder…" in the Move dialog → extra field "New folder name" and "Inside" select; the new folder is created and the file moved in one step.
+- Delete a file that backs a Legal contract → description adds "This also removes the Legal contract <title> ... and its links in the Legal graph. This can't be undone."
+- Delete the previewed file → the pane shows its neighbour; the last item closes the pane.
+- Delete the open folder → the parent opens.
+###### Edge Cases
+- Name containing a slash → "Enter a name without slashes".
+- Move into itself or a child → blocked options in the select (UNVERIFIED how they are shown).
+- Server conflict on a non-empty folder → "Move or delete what is in this folder first."
+
+---
+
 #### STORY-DRM-028: A folder is deleted in another tab while it is open
+
+> **Updated 2026-10-20**: the resizable tree and path bar changed the folder display; re-read (STORY-DRM-111).
 
 **Type**: short
 **Topic**: Folder in the URL (deleted elsewhere)
@@ -814,6 +919,8 @@ STORY-DRM-001 (Find the Data room, empty)
 - Pressing Back in tab B after the id was removed goes to the previous entry, which may be a folder that no longer exists, repeating step 2 of STORY-DRM-026.
 
 #### STORY-DRM-029: Open a document from a link or toast
+
+> **Updated 2026-10-20**: the preview header now has icons 'Open in new tab', 'Download', 'Full screen' and 'Close preview' (STORY-DRM-115).
 
 **Type**: short
 **Topic**: `?item=` deep link
@@ -961,6 +1068,8 @@ STORY-DRM-001 (Find the Data room, empty)
 
 #### STORY-DRM-036: Search while a folder is open
 
+> **Updated 2026-10-20**: detail added from a newer walk of the same goal, see the section "Added 2026-10-20" at the end of this story.
+
 **Type**: short
 **Topic**: Search + folder
 **Persona**: Maya who opened `Investors` and then searched "lease".
@@ -977,7 +1086,33 @@ STORY-DRM-001 (Find the Data room, empty)
 ##### Edge Cases
 - Result rows show "folder · source" but sub-folder rows are hidden during a search.
 
+##### Added 2026-10-20: Search inside a folder, then widen to all items
+
+**Type**: medium
+**Topic**: data-room-navigate-inspect-organize
+**Persona**: A solo technical founder looking for a clause.
+**Goal**: Find "indemnification" in Legal, then check the whole room.
+**Preconditions**: Text-indexed files in Legal and Finance; one file in Finance also contains the word.
+**Ideal path**: 3 — open folder, type, click "Search all items" if needed.
+**Alternate paths**: Filter pills; Data room agent.
+###### Steps
+1. Open "Legal" → file list.
+2. Click "Search documents" (placeholder "Search names and text") and type "indemnification" → after a short pause the list changes to matching rows with highlighted snippets; a line "Searching in Legal" appears with a "Search all items" link; sub-folder rows are hidden while searching and the grid view falls back to the list.
+3. Sort control now offers "Relevance" and "Document date".
+4. Click the first result → pane opens; if the result set changes and drops the file, the pane closes rather than picking another.
+5. Click "Search all items" → folder filter clears; results now include the Finance file with Source in its row.
+6. Clear the search box → list returns at once (no wait), with the previous sort.
+###### Variations
+- Add a Type pill filter while searching; pills show only values present in the open folder given other filters (no combination that yields nothing).
+- Click the "x" on a pill ("Remove filter Type") to clear it.
+###### Edge Cases
+- No match → "No results", "Search looks for these words in names and text.", and "Clear filters" when a filter is on.
+- List request fails → red error with "Retry".
+- Large result sets show "Load more".
+
 #### STORY-DRM-037: A library with many documents
+
+> **Updated 2026-10-20**: large libraries now show a processing strip, 'Load more', and thumbnails in Grid view (STORY-DRM-111, STORY-DRM-102).
 
 **Type**: medium
 **Topic**: Load more, list errors
@@ -1003,6 +1138,8 @@ STORY-DRM-001 (Find the Data room, empty)
 
 #### STORY-DRM-038: Grid view with sub-folder tiles
 
+> **Updated 2026-10-20**: Grid view now shows thumbnails of documents (STORY-DRM-111, STORY-DRM-116).
+
 **Type**: short
 **Topic**: Grid + folders
 **Persona**: Maya who prefers tiles.
@@ -1019,15 +1156,17 @@ STORY-DRM-001 (Find the Data room, empty)
 ##### Edge Cases
 - A folder with no files and no sub-folders → "This folder is empty. Drop files here to add them."
 
-### Stories: PR #109 import edge cases and agents (Requires PR #109, `f2b8fc1e`)
+### Stories: Import edge cases and agents (steps use the earlier import buttons; see the dated notes)
 
 #### STORY-DRM-039: The email picker has problems
+
+> **Updated 2026-10-20**: the email picker is now the Email item in the Import menu; the error texts and the 20-file cap below were not re-read (STORY-DRM-119).
 
 **Type**: medium
 **Topic**: Email import errors and limits
 **Persona**: Maya importing attachments when mail is not perfect.
 **Goal**: Import what she can and understand what failed.
-**Preconditions**: **Requires PR #109 (origin/feat/legal, `f2b8fc1e`).** S1; Gmail connected with threads: one with a PDF, one with only a 4 kB logo and a calendar invite, one account needing reconnect.
+**Preconditions**: S1; Gmail connected with threads: one with a PDF, one with only a 4 kB logo and a calendar invite, one account needing reconnect.
 **Ideal path**: 3.
 **Alternate paths**: Download and upload.
 
@@ -1045,11 +1184,13 @@ STORY-DRM-001 (Find the Data room, empty)
 
 #### STORY-DRM-040: Browse Drive and meet unsupported files
 
+> **Updated 2026-10-20**: browsing Drive now starts from the Import menu; the unsupported-file notes below were not re-read (STORY-DRM-119).
+
 **Type**: medium
 **Topic**: Drive picker behaviour
 **Persona**: Maya hunting for a contract in a big Drive.
 **Goal**: Find and import it, and understand why some files cannot be ticked.
-**Preconditions**: **Requires PR #109 (origin/feat/legal, `f2b8fc1e`).** Drive connected; Drive has a Google Form `Customer survey`, a large video, and a Google Doc.
+**Preconditions**: Drive connected; Drive has a Google Form `Customer survey`, a large video, and a Google Doc.
 **Ideal path**: 3.
 **Alternate paths**: Search.
 
@@ -1067,11 +1208,13 @@ STORY-DRM-001 (Find the Data room, empty)
 
 #### STORY-DRM-041: Connect Gmail or Drive first
 
+> **Retired 2026-10-20**: the 'Connect Gmail' and 'Connect Google Drive' buttons were replaced by the Import menu, which sends an unconnected source to its connect page. See STORY-DRM-119.
+
 **Type**: short
 **Topic**: Import buttons when not connected
 **Persona**: Maya who has not connected Google.
 **Goal**: Import her mail attachments.
-**Preconditions**: **Requires PR #109 (origin/feat/legal, `f2b8fc1e`).** No Gmail or Drive connection.
+**Preconditions**: No Gmail or Drive connection.
 **Ideal path**: 2.
 **Alternate paths**: none found.
 
@@ -1086,11 +1229,13 @@ STORY-DRM-001 (Find the Data room, empty)
 
 #### STORY-DRM-042: Source links on imported files
 
+> **Updated 2026-10-20**: imported files show Source 'From email' or 'From Google Drive' in the preview pane; the repeat-import notice was not re-read (STORY-DRM-119).
+
 **Type**: short
 **Topic**: Preview source link
 **Persona**: Maya who wants to see where a file came from.
 **Goal**: Open the original email or Drive file.
-**Preconditions**: **Requires PR #109 (origin/feat/legal, `f2b8fc1e`).** One imported mail file and one imported Drive file.
+**Preconditions**: One imported mail file and one imported Drive file.
 **Ideal path**: 1.
 **Alternate paths**: none found.
 
@@ -1105,11 +1250,13 @@ STORY-DRM-001 (Find the Data room, empty)
 
 #### STORY-DRM-043: Import into the folder she has open
 
+> **Updated 2026-10-20**: importing into the open folder now starts from the Import menu (STORY-DRM-119).
+
 **Type**: short
 **Topic**: Import destination
 **Persona**: Maya has `Finance / Invoices` open.
 **Goal**: The imported invoice lands there.
-**Preconditions**: **Requires PR #109 (origin/feat/legal, `f2b8fc1e`).** S1; Gmail connected.
+**Preconditions**: S1; Gmail connected.
 **Ideal path**: 2.
 **Alternate paths**: Move afterwards.
 
@@ -1123,11 +1270,13 @@ STORY-DRM-001 (Find the Data room, empty)
 
 #### STORY-DRM-044: An agent files an attachment on its own
 
+> **Updated 2026-10-20**: the agent can still file an attachment, and Praci now also files new mail attachments by itself when 'Add email attachments to the Data room' is on (STORY-INB-114, STORY-INB-115, STORY-INB-116).
+
 **Type**: medium
 **Topic**: `add_to_data_room`
 **Persona**: Maya whose Inbox agent reads her mail.
 **Goal**: Have invoices filed without asking.
-**Preconditions**: **Requires PR #109 (origin/feat/legal, `f2b8fc1e`).** S1; consent C1 (and C0 for the variation); the Inbox agent runs on her mail with the Acme thread.
+**Preconditions**: S1; consent C1 (and C0 for the variation); the Inbox agent runs on her mail with the Acme thread.
 **Ideal path**: 1.
 **Alternate paths**: Manual import (STORY-DRM-020).
 
@@ -1150,6 +1299,544 @@ STORY-DRM-001 (Find the Data room, empty)
 - Re-run the PR #109 stories once it merges; on current main the import buttons and agent tools do not exist.
 - Unverified in code: what a signed-out visitor sees when opening a `?folder=` link (STORY-DRM-024), and the exact copy of the Hide-amounts toggle.
 
+### Stories: Added 2026-10-20, Data room: big uploads, zips and processing
+
+#### STORY-DRM-101: Upload a zip of diligence documents and follow the card line by line
+
+**Type**: medium
+**Topic**: data-room-big-uploads-zips-processing
+**Persona**: Maya, Northwind Robotics, handed a "Series A diligence.zip" (about 340 files, 1.2 GB) by her lawyer
+**Goal**: Unpack the zip into the Data room without handling files one by one.
+**Preconditions**: Data room open, All items. AI consent granted so tagging will run later.
+**Ideal path**: 2 — drop the zip; wait for "Added 340 files".
+**Alternate paths**: "Add files" and pick the zip; drop it on another page (same card).
+
+##### Steps
+1. Drop the zip on the window. → Overlay "Drop to add to Data room", then a card named "Series A diligence.zip" with a percent and bar while the bytes upload.
+2. Upload reaches 100%. → The server answers with an import id (HTTP 202). The card switches to an animated full-width pulsing bar and a shimmering line "Opening Series A diligence.zip". Maya thinks: "Has the upload finished? Why a new line?"
+3. A second or two later (the card polls the import row every 1 second). → Line becomes "Found 340 files".
+4. Files start landing. → Line reads "Adding 12 of 340 · term-sheet-v3.pdf", with the current file name changing.
+5. All files are filed. → Line reads "Reading 40 of 340" while text is extracted for the first files.
+6. Import finishes. → Card turns to green "Added 340 files" with "View". Autodismiss after 10 seconds.
+7. Click "View". → Data room opens at its root; the new items are listed, many with the Reading state.
+
+##### Variations
+- Only the card narrates this zip. The page-level import row ("Importing 12 of 340") deliberately leaves it out so the same import is not shown twice.
+- Zip with folders: only files are counted; folders, `__MACOSX` and hidden files are skipped.
+
+##### Edge Cases
+- If Maya reloads the page during step 4, the card is gone. The import itself continues on the server, and the import appears in the page-level "Importing X of Y" row, since the page no longer treats it as narrated. UNVERIFIED in a live browser.
+- A zip that holds only files already in the Data room finishes with "Already in your Data room" instead of "Added N files".
+
+#### STORY-DRM-102: Read the processing strip and open Details
+
+**Type**: medium
+**Topic**: data-room-big-uploads-zips-processing
+**Persona**: Maya, Northwind Robotics
+**Goal**: After the zip lands, see how much is still being read and tagged, and decide whether to wait before asking the Data room agent questions.
+**Preconditions**: STORY-DRM-101 just finished; 340 files, roughly 300 still in the pipeline.
+**Ideal path**: 3 — glance at the strip, click "Details", close it.
+**Alternate paths**: The Stats view shows a "Reading" and "Failed" count (see STORY-DRM-108).
+
+##### Steps
+1. Look at the top of the list, below the path bar. → One slim line: shimmering "Processing 298 files", then a step word and file name such as "Reading board-minutes-2025.pdf". A thin bar along the bottom edge fills as the backlog shrinks.
+2. Click the chevron button with aria-label "Details". → The chevron rotates and a list opens: "Reading text 120", "Indexing for search 60", "Tagging 118". Steps with a zero count are hidden.
+3. Click it again. → The list closes. Maya thinks: "Reading, indexing, tagging: do I need all three?" The current-step word is the earliest step that still has files, so the word moves from Reading to Indexing to Tagging.
+4. Keep working: search for "safe". → The strip stays; the list keeps refreshing (the page asks for a reload every 3 seconds while files remain).
+5. The last file finishes. → Strip becomes "All files processed" for about 3 seconds, then disappears.
+
+##### Variations
+- With "Hide amounts" on, the current file name is masked in the strip.
+- If an import is also running (for example from the Import menu), the strip starts with a spinner and "Importing 10 of 40" followed by a dot and the processing count.
+
+##### Edge Cases
+- The bar percent uses the largest backlog seen in this batch, so adding more files mid-run makes the bar jump forward rather than backward.
+- If files fail, a line "N couldn't be read" sits in the strip. When nothing else remains, that line is all the strip shows and it does not offer a Retry (Retry is per item; see STORY-DRM-105).
+- When only the "Reading" row hint shows on item rows, hovering shows the longer step title (for example "Indexing for search").
+
+#### STORY-DRM-103: A password-protected zip is refused before anything is added
+
+**Type**: short
+**Topic**: data-room-big-uploads-zips-processing
+**Persona**: Maya, Northwind Robotics, received "payroll-2025.zip" from an outside accountant
+**Goal**: Understand why her zip did not import and what to do next.
+**Preconditions**: Data room open.
+**Ideal path**: 2 — drop zip, read the red line.
+**Alternate paths**: none found for entering the password in-app.
+
+##### Steps
+1. Drop the zip. → Card shows upload percent as normal.
+2. The server inspects the zip directory and answers 400 with code `encrypted`. → The card turns to a red line "This zip is password-protected" with an X. No import is queued and no "Opening" line appears.
+3. Maya has no way to type a password. She dismisses the card (it also disappears by itself after 15 seconds) and unpacks the zip on her computer. → She drops the extracted files instead (STORY-DRM-002).
+
+##### Variations
+- The same card shape appears for four more whole-zip refusals: "This zip has unsafe file paths" (entries that escape the folder, or symlinks), "This zip is too large to unpack" (bomb-like compression ratio or oversized directory), "This zip has more than 10,000 files", and "This zip can't be read" (damaged archive).
+- Any other server failure shows the generic "Upload failed".
+
+##### Edge Cases
+- The refusal arrives after the whole zip has uploaded, so a 3 GB protected zip wastes the full upload time first. Maya hesitates: "Could it have said so earlier?" No client-side check found.
+- Nothing is added when a zip is refused; no partial results.
+
+#### STORY-DRM-104: A zip with 12,000 files and a zip with unsafe paths
+
+**Type**: medium
+**Topic**: data-room-big-uploads-zips-processing
+**Persona**: A solo technical founder exporting a repository archive plus a downloaded customer data pack
+**Goal**: Try to import two large archives and learn what the limits are.
+**Preconditions**: Data room open; archive A has 12,000 small files; archive B was made on an unusual tool and holds a path starting with `../`.
+**Ideal path**: 4 — drop both; read two red lines; split archive A into smaller zips.
+**Alternate paths**: Drive or Box folder import for very large trees (Import menu), UNVERIFIED whether it has a file count limit.
+
+##### Steps
+1. Drop archive A and B at the same time. → Two cards, each with its own percent.
+2. Archive A finishes uploading. → Red line "This zip has more than 10,000 files".
+3. Archive B finishes uploading. → Red line "This zip has unsafe file paths".
+4. Maya re-zips A as three zips of 4,000 files and drops all three. → Three cards run in parallel: "Opening ...", "Found 4000 files", "Adding ...".
+5. She waits; the three finish with "Added 4000 files" style lines. → The strip "Processing N files" covers all three zips together because it counts the whole Data room pipeline, not one zip.
+
+##### Variations
+- Dotfiles and `__MACOSX` entries in the zip are skipped, so the counted total can be lower than the file count in Finder.
+
+##### Edge Cases
+- The limit is checked against entries counted while reading the zip directory; whether skipped hidden files count toward 10,000 is UNVERIFIED.
+- Three simultaneous zips make three polling loops (one request per second each). Slow machines may feel it; UNVERIFIED.
+
+#### STORY-DRM-105: A zip finishes but some files could not be read, then retry one
+
+**Type**: medium
+**Topic**: data-room-big-uploads-zips-processing
+**Persona**: Maya, Northwind Robotics
+**Goal**: After a diligence zip, find the one scanned file that failed and read it again.
+**Preconditions**: Zip imported earlier; one 90 MB scanned PDF failed during ingest.
+**Ideal path**: 4 — see the strip's failed count, open the failed row, choose "Try again".
+**Alternate paths**: Right-click or the row's menu "Try again" without opening the preview.
+
+##### Steps
+1. After the zip card says "Added 338 files", look at the strip. → "2 couldn't be read" is shown in the strip. (The plural form is the same for one or many.)
+2. Look for the file in the list. → A failing row shows a red icon with label "Failed" and no longer shows the working "Reading" hint.
+3. Click the row. → The preview shows the file viewer, then a red heading "Couldn't read this file" and the server's error text below it, if any.
+4. Open the row's menu and choose "Try again". → A notice toast "Reading board-scan.pdf again" appears. The row goes back to "Reading".
+5. The strip counts it again as "Processing 1 file", then "All files processed". → Maya thinks: "Good, but did it truly fix it?" If it fails again, the "couldn't be read" line returns.
+
+##### Variations
+- "Try again" only appears in the menu when the item status is failed.
+- Stats view card "Failed" shows the same count with a "Failed" entry in its status breakdown.
+
+##### Edge Cases
+- A file that imports with `0` successes and only failures makes the zip card say "This zip can't be read" (red) instead of "Added 0 files". Maya sees the same red line as a damaged zip.
+- If only some entries failed, the card says "Added N files" with no mention of failed ones; the failures show only in the strip and in the page import row, which skips narrated imports. So failed entries of a zip you watched appear on one surface only (the strip count).
+
+#### STORY-DRM-106: Large file that is stored but "Too large to search inside"
+
+**Type**: medium
+**Topic**: data-room-big-uploads-zips-processing
+**Persona**: Maya, Northwind Robotics, with a 400 MB scanned PDF of the original incorporation binder
+**Goal**: Find out why searching for a phrase from the binder returns nothing, though the file is listed.
+**Preconditions**: A PDF over 50 MiB uploaded earlier and fully processed.
+**Ideal path**: 3 — search by name, open item, read the small note.
+**Alternate paths**: Data room agent ("Ask") also cannot read its text; UNVERIFIED how the agent words that.
+
+##### Steps
+1. Type a phrase from inside the binder in the search field. → Result list says "No results" and, under it, "Search looks for these words in names and text."
+2. Search for the file's name instead. → The row appears (still findable by name).
+3. Click it. → The preview opens; the file viewer shows the PDF. Under the summary area a small gray note: "Too large to search inside". No red error and no "Try again".
+4. Maya hesitates: "Can I fix this?" The UI offers no action next to the note. She splits the PDF into smaller files and drops them (STORY-DRM-002).
+
+##### Variations
+- Text files over 5 MiB are read from their first 5 MiB at any size; they do not get this note.
+- Video and other types with no reader are never read.
+- Size in the row shows MB only (the formatter stops at megabytes), so a 3 GB file would read as thousands of MB; UNVERIFIED how it looks in a live row.
+
+##### Edge Cases
+- This note does not appear while the item is still Reading, only when it is settled.
+- Priority of notes in the preview: "Too large to search inside" wins over "Couldn't classify" and over "Not tagged yet..."; Maya may miss a tagging problem on the same file.
+
+#### STORY-DRM-107: Drop a file from another page, then recover when the folder is gone
+
+**Type**: medium
+**Topic**: data-room-big-uploads-zips-processing
+**Persona**: Maya, Northwind Robotics, in the middle of reading email
+**Goal**: Save an attachment she just downloaded without leaving the Inbox, and recover when the target folder has been deleted by a teammate.
+**Preconditions**: Inbox open. Earlier she left the Data room with the folder "Q3 board" selected. A teammate deleted "Q3 board" afterwards.
+**Ideal path**: 3 — drop on Inbox, see the card, click "Upload to All items" when told.
+**Alternate paths**: "Add to Data room" on an email attachment chip (mail attachments are a separate flow).
+
+##### Steps
+1. Drag a file from Finder over the Inbox. → The "Drop to add to Data room" overlay appears, unless a composer or other drop target on the page claims the drag first (then no overlay and no Data room upload).
+2. Release. → Card appears with percent. Because Maya is not on the Data room page, the file goes to the top level. (The open-folder memory is cleared when she leaves the page.)
+3. The upload completes. → "Uploaded" and "View"; "View" opens the item.
+4. Later she goes back to the Data room, selects "Q3 board" from an old link, and drops a file there. → Card turns red: "This folder no longer exists" with a link "Upload to All items". The page reloads and falls back to All items.
+5. Click "Upload to All items". → That card closes and a new card starts uploading the same file at the top level.
+
+##### Variations
+- The "Add files" input in a sidebar-created folder path creates the folder first; if folder creation fails a notice shows the error text.
+
+##### Edge Cases
+- Dropping a file on the compose box in the Inbox attaches it instead; both surfaces use the same drag, so Maya must watch for the overlay text.
+- The 404 for a folder is the only 404 the upload can get, so the message is always about the folder.
+
+#### STORY-DRM-108: Stats view and failed counts while a batch is processing
+
+**Type**: short
+**Topic**: data-room-big-uploads-zips-processing
+**Persona**: Maya, Northwind Robotics
+**Goal**: See, in numbers, how much of the new batch is read and how many files failed.
+**Preconditions**: Batch from STORY-DRM-101 still processing; Data room open.
+**Ideal path**: 2 — toggle "Stats", read the cards.
+**Alternate paths**: The processing strip's "Details" (STORY-DRM-102).
+
+##### Steps
+1. In the view switch, click the "Stats" toggle (next to the list and grid toggles). → The list is replaced by Stats for the same folder and filters.
+2. Read the status cards. → "Reading" shows files still working and "Failed" shows files that failed.
+3. If the stats call fails, an error with a "Retry" button appears. Click "Retry". → Stats reload. If there is nothing, "No results" is shown.
+4. Click the list toggle. → Back to the file list; the processing strip is still on top.
+
+##### Variations
+- Stats count only the open folder and active filters, while the processing strip counts the whole Data room, so the two numbers can differ. Maya may think one is wrong.
+
+##### Edge Cases
+- Stats are read only while shown; the 3-second refresh is for the list and strip. Whether Stats auto-refresh is UNVERIFIED.
+
+#### STORY-DRM-109: End-to-end diligence day, from zip to answered question
+
+**Type**: long
+**Topic**: data-room-big-uploads-zips-processing
+**Persona**: Maya, first-time founder of Northwind Robotics, with a Series A investor asking for a data room by end of day
+**Goal**: Get a 1.2 GB lawyer zip, a loose 600 MB walkthrough video, a duplicate SAFE and a protected payroll zip into one tidy Data room, then ask the Data room agent about it.
+**Preconditions**: AI consent granted; embedding model configured; Data room has about 20 existing items; Gmail connected.
+**Ideal path**: 14 — upload, wait on the strip, fix failures, sort, ask.
+**Alternate paths**: Import menu (Email, Drive, Box) for the same documents without downloading.
+
+##### Steps
+1. Open Data room. → List and folder tree load; no strip.
+2. Drag "Series A diligence.zip" onto the window. → Overlay "Drop to add to Data room"; card with percent.
+3. While it uploads, drag "SAFE-Acme-signed.pdf" too. → Second card; a third later for the video. Maya thinks: "Can I keep working?" Yes, the app stays usable.
+4. Zip reaches 100%. → Card moves to "Opening Series A diligence.zip", then "Found 340 files", then "Adding 12 of 340 · name.pdf".
+5. The SAFE finishes first. → Card reads "Already in Investors / SAFEs as Acme SAFE (signed).pdf" with "View". She clicks "View" to confirm. → The existing item opens.
+6. Drop "payroll-2025.zip". → After upload, red "This zip is password-protected". She dismisses the card.
+7. Zip card progresses to "Reading 40 of 340". → Strip above the list now shows "Processing 298 files".
+8. Open "Details". → "Reading text", "Indexing for search" and "Tagging" counts.
+9. Video upload ends. → "Uploaded" and "View". The video is stored and downloadable; no search text expected (types with no reader are never read).
+10. Zip card turns to "Added 340 files". → She clicks "View".
+11. Strip continues until "All files processed" shows for a few seconds. → Strip disappears; a line "2 couldn't be read" may remain.
+12. Open one failed row. → "Couldn't read this file" plus error. Menu "Try again" → notice "Reading ... again".
+13. Open "Auto-sort" (toolbar) to file the new loose items into folders. → The sort proposal flow; after applying, a toast "Sorted N items" with "Undo". (Auto-sort details are covered in other topics.)
+14. Use the Data room agent ("Ask" panel) with "Which contracts mention a change of control?" → An answer that cites the files that finished indexing. Files marked "Too large to search inside" or still processing are not searched; UNVERIFIED how the agent states that gap.
+
+##### Variations
+- Maya on the desktop app: same page hosted by Electron; the OS file picker replaces the browser's.
+- If AI consent is off: items settle without tags and the preview says "Not tagged yet. Files are tagged once you let Praci read documents; you can still search it by name and text."
+
+##### Edge Cases
+- Many toasts at once stack above the bottom bar on phones; on wide screens they are 18rem wide at bottom right and can cover the lower right of the list.
+- The same zip progress appears on one surface (its card) during the upload, then the processing strip takes over, then the final result is a plain list: three places tell the same story with different words ("Adding", "Processing", "Reading").
+
+#### STORY-DRM-110: Another import runs while the strip is showing
+
+**Type**: medium
+**Topic**: data-room-big-uploads-zips-processing
+**Persona**: A solo technical founder with a Drive folder of 200 spreadsheets and a zip of PDFs
+**Goal**: Understand why the same page shows a card for the zip but a different line for the Drive import.
+**Preconditions**: Data room open; Drive connected. Import menu available.
+**Ideal path**: 5 — start both, read the two surfaces.
+**Alternate paths**: none found.
+
+##### Steps
+1. Use the Import menu to import a Drive folder. → An import row begins: a spinner and "Importing 3 of 200" (page-level import activity).
+2. Drop a zip of PDFs. → The zip gets its own card ("Opening ...", "Adding ..."). The page-level row ignores it.
+3. Files from both begin to be read. → The two surfaces merge: the strip shows a spinner, "Importing 3 of 200", a dot and "Processing 40 files". The separate import row hides itself (it would repeat the same count).
+4. Drive import ends. → An import row appears: "Imported 200 files" (or "Already in the Data room" if nothing new) plus up to three file names as links, with an X "Dismiss".
+5. Click a file name link. → That file opens in the preview.
+6. Click "Dismiss". → The row goes away.
+
+##### Variations
+- Partial failures: the row also shows "Couldn't import 3 files".
+
+##### Edge Cases
+- Dismissing the row only dismisses those imports for the list; whether the dismissal persists after reload is UNVERIFIED.
+- Zip imports are never in this row, even after the card is gone, because the page treats the id as narrated for the session.
+
+### Stories: Added 2026-10-20, Data room: navigate, inspect, organize
+
+#### STORY-DRM-111: Find a file by walking the folder tree and path bar
+
+**Type**: short
+**Topic**: data-room-navigate-inspect-organize
+**Persona**: Maya, first-time founder of Northwind Robotics, looking for the signed SAFE she filed last month.
+**Goal**: Open the folder that holds the SAFE and get back to the top without losing her place.
+**Preconditions**: Data room has folders Finance, Finance / Cap Table, Legal, Legal / Contracts and at least a dozen files. Window wider than 800 px.
+**Ideal path**: 3 — click the folder, click the file, read the preview.
+**Alternate paths**: Folder picker pill when the tree is hidden; type in "Search names and text"; deep link `/app/data-room?folder=<id>`.
+##### Steps
+1. Open Data room in the sidebar → page header "Data room", the folder tree on the left starting with "All items", list on the right.
+2. Click "Legal" in the tree → list shows Legal's files and sub-folder rows; the URL gains `?folder=<id>`; a Path bar appears above the list: "All items" (link) › "Legal" (plain text).
+3. Click the sub-folder "Contracts" in the list's sub-folder rows (or in the tree) → Path bar reads All items › Legal › Contracts; the tree row is highlighted.
+4. Click the file "Northwind SAFE - Harbor Ventures.pdf" → preview pane opens on the right with the file, Type, Date, Parties, Folder "Legal / Contracts".
+5. Maya thinks: "Which folder am I in?" She reads the Path bar and the Folder row in the pane, and sees the same path twice.
+6. Click "Legal" in the Path bar → the list shows Legal; the pane stays only if the file is still in the results, otherwise it closes (the page never picks another file for her).
+7. Click "All items" in the Path bar → Path bar disappears (nothing at top level), the whole room shows.
+##### Variations
+- Press browser Back after step 3 → returns to Legal (a folder she chose is a new history entry).
+- Reload on step 3 → the same folder opens (URL holds it); the pane is closed because nothing is previewed until she picks a file.
+##### Edge Cases
+- Deep path of more than 4 folders → Path bar shows All items, a "Hidden folders" "…" menu and the last two; she hesitates over the "…" button because it has no label until opened.
+- A bookmarked folder that was deleted in another tab → toast "That folder no longer exists" and All items shows.
+
+#### STORY-DRM-112: Resize the folder column and keep it that way
+
+**Type**: short
+**Topic**: data-room-navigate-inspect-organize
+**Persona**: A solo technical founder with long folder names such as "Board materials 2026 Q3".
+**Goal**: Make folder names readable and have the width stick.
+**Preconditions**: Page body at least 800 px wide, folders with long names.
+**Ideal path**: 1 — drag the edge once.
+**Alternate paths**: Keyboard on the handle; double-click to reset.
+##### Steps
+1. Look at the folder column → names truncate with an ellipsis; hovering a name shows its full text as a tooltip (title).
+2. Hover the right edge of the column → cursor becomes a column resize cursor and a thin line appears (handle "Resize folders").
+3. Drag right → the column widens, no wider than half the page body.
+4. Tab to the handle and press Left Arrow, Right Arrow, Home, End → width moves in 32 px steps, Home goes to 180 px, End to the maximum.
+5. Double-click the handle → width returns to 244 px.
+6. Reload → the last width is used.
+##### Variations
+- Shrink the browser below 800 px body width → the whole column disappears; a folder picker pill, "New folder" and "Auto-sort" icon buttons appear in the filter row (see STORY-DRM-113). The saved width is not lost.
+- Right-to-left language → arrow keys swap direction.
+##### Edge Cases
+- Storage blocked → width lasts until the page closes (no message).
+- Drag to the minimum → the column stops at 180 px; names are cut more.
+
+#### STORY-DRM-113: Navigate and organize on a narrow window
+
+**Type**: medium
+**Topic**: data-room-navigate-inspect-organize
+**Persona**: Maya on a laptop with the sidebar open, so the Data room body is narrower than 800 px.
+**Goal**: Reach a folder, create a new one and open a file without a visible tree.
+**Preconditions**: Folders exist; browser width small enough that the body is under 800 px but over 560 px.
+**Ideal path**: 4 — folder picker, New folder, name, Create.
+**Alternate paths**: Make the window wider; use search.
+##### Steps
+1. Open Data room → no tree; the filter row has a pill reading "All items" with a chevron, then two icon buttons.
+2. Click the pill → radio menu of "All items" and every folder by full path (for example "Finance / Cap Table").
+3. Choose "Finance / Cap Table" → pill shows the folder's own name; list shows its files; Path bar shows the path.
+4. Hover the folder icon button → tooltip "New folder"; click it → dialog "New folder" with an input labelled "New folder name", an "Inside" selector and "Cancel" / "Create".
+5. Type "Fundraising 2026" and press Create → toast "Created Fundraising 2026"; the new folder opens (it is empty: "This folder is empty. Drop files here or add them." with an "Add files" button).
+6. Maya hesitates because the new folder was created inside the open folder (Inside defaults to the open folder, UNVERIFIED which value the selector starts with); she reads the Path bar to confirm.
+7. Click "Add files" in the empty state → file picker; choose a PDF → upload toast appears; the file lands in this folder (files go into whatever folder is open).
+##### Variations
+- Below 560 px body width: clicking a file opens the preview in a dialog titled "Preview" instead of a side pane.
+- Name with a slash → inline error "Enter a folder name without slashes".
+##### Edge Cases
+- Create fails (name in use or server error) → error text stays in the dialog; UNVERIFIED exact wording from the server.
+
+#### STORY-DRM-114: Stats view and drill into a result
+
+**Type**: medium
+**Topic**: data-room-navigate-inspect-organize
+**Persona**: Maya, wanting to know what is in the room before a board meeting.
+**Goal**: See counts by type, source and month, then jump to the matching files.
+**Preconditions**: At least 20 files, mixed sources (Upload, Gmail, Google Drive), some tagged, one failed, one duplicate.
+**Ideal path**: 3 — click Stats, click a bar, read the list.
+**Alternate paths**: Use filter pills "Type" or "Source" directly.
+##### Steps
+1. Click the "Stats" toggle (chart icon) in the header → list replaced by cards: Documents, Size, Searchable (percent), Failed; headed by the scope "All items".
+2. Read "Documents over time" → month bars; hover shows "Oct 2026: 6". A small top-of-scale number sits at the left.
+3. Read the Types, Sources, Top parties, Largest files, Status and Amounts cards → each is a bar list; Status shows Ready / Reading / Not searchable / Failed; a line "# duplicates" appears when duplicates exist.
+4. Click the "Contracts" row in Types (label from the doc type) → Stats closes, List returns, the Type pill reads "Type: <name>", only matching files show.
+5. Click "Stats" again → the scope header still says the folder or "All items" and shows "Clear filters" because a filter is on; counts now match the filtered set.
+6. Click "Clear filters" → counts return to the whole room.
+7. Click a row in "Largest files" → Stats closes and that file opens in the preview via `?item=`.
+##### Variations
+- Click a month bar → the Document date pill becomes "Document date: Oct 1, 2026 – Oct 31, 2026".
+- Open a folder first, then Stats → scope header shows the folder path; all counts are for that folder only.
+- Hide amounts on → the Amounts card shows masked values and no bars.
+##### Edge Cases
+- No documents match → "No results".
+- Stats request fails → red error text with "Retry".
+- Searching: the "Searchable" card equals Ready / Documents, so a room with many "Reading" files shows a low percent; Maya may read this as a failure (UNVERIFIED whether she would).
+
+#### STORY-DRM-115: Inspect a PDF: open in new tab, download, full screen
+
+**Type**: medium
+**Topic**: data-room-navigate-inspect-organize
+**Persona**: Maya checking the signature page of a 40-page PDF.
+**Goal**: Read the PDF at a usable size and keep a copy.
+**Preconditions**: A ready, tagged PDF "Series Seed Term Sheet.pdf" in Legal / Contracts.
+**Ideal path**: 3 — click file, click "Full screen", read.
+**Alternate paths**: "Open in new tab"; "Download".
+##### Steps
+1. Click the file → pane shows a "Preview" header, the file name as a heading, a skeleton box while it loads, then the PDF inside a frame about 60% of the viewport height.
+2. Scroll inside the frame → the browser's PDF viewer scrolls; there is no toolbar in the frame (hidden on purpose, so no second Download or Print).
+3. Hover the icons in the pane header → tooltips "Open in new tab", "Download", "Full screen".
+4. Click "Full screen" → a nearly full-window dialog titled with the file name, with Open in new tab and Download icons and the PDF filling the dialog; it reuses the file already loaded, so there is no second wait.
+5. Press Esc → dialog closes, pane remains.
+6. Click "Open in new tab" → a new tab opens at once and shows the file; the tab title is the file name.
+7. Click "Download" → the browser saves the file with its name.
+##### Variations
+- In the Electron desktop app, if a new tab is refused, Open falls back to saving the file (UNVERIFIED which the walker sees).
+- Hide amounts on → the frame is replaced by "Hidden while amounts are hidden"; Open in new tab is disabled; "Full screen" is not offered.
+##### Edge Cases
+- File cannot be read → file icon in a grey box, no Full screen button.
+- Download fails → red text under the pane header with the error.
+- Failed file (status Failed) → Open in new tab disabled; Download still enabled.
+
+#### STORY-DRM-116: Preview a spreadsheet with several sheets
+
+**Type**: short
+**Topic**: data-room-navigate-inspect-organize
+**Persona**: Maya, a founder reviewing a cap table export.
+**Goal**: See each sheet without leaving the Data room.
+**Preconditions**: A ready xlsx "Northwind Cap Table Export.xlsx" with sheets "Common", "Options", "SAFEs"; and a csv with more rows than the first page.
+**Ideal path**: 2 — click file, click a sheet tab.
+**Alternate paths**: "Full screen" for a wider grid; Download for Excel.
+##### Steps
+1. Click the xlsx file → pane shows a bordered sheet viewer about half the screen high, with a "Sheets" tab row.
+2. Click the "Options" tab → grid switches to that sheet.
+3. Click "Full screen" → dialog with the same viewer at full size.
+4. Close, select the csv, scroll to the bottom → a "Load more" button appears; click it → more rows load.
+##### Variations
+- Pick another file then return → the viewer reloads per file (key is the item id).
+##### Edge Cases
+- A sheet with no cells → "This sheet is empty."
+- Load fails → "Could not load this file."; loading more rows fails → "Could not load more rows."
+- A type the viewer cannot show → "Preview isn't available for this file type — download it to view it."
+- A Word file → the pane shows only the file icon plus facets; UNVERIFIED whether any Office preview exists elsewhere.
+
+#### STORY-DRM-117: Send a document to an agent
+
+**Type**: medium
+**Topic**: data-room-navigate-inspect-organize
+**Persona**: Maya, wanting her Legal bot to summarize a term sheet.
+**Goal**: Start a chat with the file already attached.
+**Preconditions**: At least two agents (a general agent, "Legal", and "Carta" integration agent); one PDF in the room.
+**Ideal path**: 3 — open the file's menu, Send to agent, pick an agent.
+**Alternate paths**: Right-click the row; the pane's "More actions" menu; ask in an agent chat with the file referenced.
+##### Steps
+1. Hover the row of "Series Seed Term Sheet.pdf" → a "More actions for Series Seed Term Sheet.pdf" button shows.
+2. Click it → menu: "Send to agent" (submenu), "Move", "Rename", "Delete".
+3. Hover "Send to agent" → list of agents with avatars, most recently active first.
+4. Choose "Legal" → app navigates to that agent's chat; the composer shows a file chip for the document (sent by reference because the agent can read the Data room).
+5. Maya thinks: "Is it uploaded again?" The chip refers to the Data room file; no copy is uploaded.
+6. Go back to Data room, repeat and choose "Carta" → the app downloads the file and attaches it as an ordinary attachment (Carta has no Data room tools). A moment of delay while it is copied.
+##### Variations
+- Right-click on the row opens the same items.
+- Open the pane's own menu: same items.
+- No agents available → the "Send to agent" item is not shown at all.
+##### Edge Cases
+- Copy fails → composer notice "Skipped Series Seed Term Sheet.pdf".
+- Sending the same file to the same agent twice → the earlier chip for that agent is replaced, not duplicated.
+- More files than the per-message limit are not possible here (one file at a time).
+
+#### STORY-DRM-118: Auto-sort a messy room, apply some, undo
+
+**Type**: medium
+**Topic**: data-room-navigate-inspect-organize
+**Persona**: Maya after importing 40 unsorted attachments.
+**Goal**: Let Praci propose folders, accept most, and reverse the batch.
+**Preconditions**: Model configured and "Let Praci read your documents" allowed; many files at the top level; two near-duplicate folders "Contracts" and "Contract".
+**Ideal path**: 4 — Auto-sort, review, Apply, done.
+**Alternate paths**: The narrow-window "Auto-sort" icon button; none from the file menu.
+##### Steps
+1. Click "Auto-sort" at the bottom of the folder tree → dialog "Auto-sort" with a loading line "Reviewing 40 files" and the file names shimmering.
+2. Wait → each file's outcome appears in turn (for example "Move → Legal / Contracts", "No change"), within about 1.5 seconds of reveal, then the review replaces the list. Apply is disabled meanwhile.
+3. Read the review → sections "Merge" (Contract → Contracts), "Move" (file with from → to), "Rename" (old name, "→ new name"). Every row is ticked.
+4. Maya unticks one Rename she does not like → Apply stays enabled while at least one row is ticked.
+5. Click "Apply" → dialog closes, list refreshes, folders reload; toast "Sorted 17 items" with an "Undo" link.
+6. She dislikes the merge; click "Undo" → toast "Undid 17" (or "Undid 15, skipped 2" if some changed since); list reloads.
+##### Variations
+- Click "Cancel" at step 3 → nothing changes.
+- Only the first 300 newest classified files are planned; with more loaded, the list shows "+N more".
+##### Edge Cases
+- Nothing to change → "Already tidy." and Apply disabled.
+- AI not allowed or no model → "Turn on a model and allow AI access to sort files." with "Retry".
+- Model failure → "The model could not sort your files." with "Retry".
+- Plan request fails → red error with "Retry"; Apply failure shows the error under the list.
+- Untick everything → Apply disabled.
+
+#### STORY-DRM-119: Import from Email, Drive and Box when some are not connected
+
+**Type**: medium
+**Topic**: data-room-navigate-inspect-organize
+**Persona**: A solo technical founder who connected Gmail but not Drive or Box.
+**Goal**: Pull a Gmail attachment into the open folder, then discover how to connect Drive.
+**Preconditions**: Gmail connected, Google Drive not connected but offered, no Box MCP server. Folder "Finance" open.
+**Ideal path**: 3 — Import, Email, pick, Import.
+**Alternate paths**: Mail attachment chip "Add to Data room" in the Inbox; auto-file setting (different topic).
+##### Steps
+1. Click "Import" (download icon with chevron) → menu "Email", "Google Drive", "Box".
+2. Click "Email" → dialog "Import from email" with a "Search mail" box and a list of attachments from mail.
+3. Tick two PDFs → the button changes from "Import" to "Import 2 files".
+4. Click it → dialog closes; an Import activity strip "Importing 2 of 2" appears above the list, then a Processing strip counting files through "Reading text", "Indexing for search", "Tagging"; files land in "Finance".
+5. Back in the Import menu click "Google Drive" → the app leaves the page and opens `/app/integrations/app/google/googledrive` (the Drive connect page), because it is not connected.
+6. After connecting she navigates back; she hesitates because she lost her place unless she returns by the Back button.
+7. Choose "Box" → goes to `/app/integrations?connect=box`.
+##### Variations
+- Drive connected → dialog "Import from Google Drive" with "Search Drive", a "Back" button to leave a folder, files and whole folders; button reads "Import 3" after picking three.
+- Box connected → "Import from Box" with "Search Box".
+- Items already in the room → notice "Already in your Data room" instead of a strip.
+- Catalog without Gmail or Drive → those two menu items are absent; Box always shows.
+##### Edge Cases
+- Mail problem → text with "Reconnect" and "Couldn't load mail" fallback.
+- Empty search → "No files found"; "Load more" for more results.
+- Import started from the empty room: same Import control sits under "Drop files here" (see STORY-DRM-001).
+
+#### STORY-DRM-120: Cap table "Documents" list opens a file in the Data room
+
+**Type**: short
+**Topic**: data-room-navigate-inspect-organize
+**Persona**: Maya, working on the Cap table page and wanting the signed SAFE.
+**Goal**: See documents for the Cap table without opening the Data room first.
+**Preconditions**: The Data room folder "Finance / Cap Table" holds at least one file; none for a second space.
+**Ideal path**: 2 — scroll to Documents, click the name.
+**Alternate paths**: Data room page, Finance / Cap Table folder.
+##### Steps
+1. Open the Cap table page and scroll below the table → a "Documents" section with columns "Name", "Type", "Added" (Type hides on narrow widths); up to 10 newest files.
+2. Click the name "Harbor Ventures SAFE.pdf" → app goes to `/app/data-room?item=<id>`, opens the "Finance / Cap Table" folder and shows the file's preview in the pane (or a dialog on narrow widths).
+3. Click "Close preview" → focus returns to that row.
+##### Variations
+- Upload or import via the Cap table page's own Import and Add files → the Documents list reloads (via a change event).
+- Hide amounts on → file names that contain currency amounts are masked.
+##### Edge Cases
+- Folder missing, empty or unreadable → the Documents section does not appear at all (no message).
+- A deleted document link → toast "That document could not be found" and the query param is removed.
+
+#### STORY-DRM-121: Quarter-end clean-up, a long cross-feature journey
+
+**Type**: long
+**Topic**: data-room-navigate-inspect-organize
+**Persona**: Maya, first-time founder of Northwind Robotics, preparing a data room for an investor diligence call at the end of Q3.
+**Goal**: Import scattered documents, let Praci tag and sort them, check what is in the room, read a few files, ask an agent about one, and tidy the folders.
+**Preconditions**: Gmail connected; Drive not connected; a model configured; the room holds 8 uploaded files at the top level; 5 PDFs with attachments in Gmail; the Cap table has an existing "Finance / Cap Table" folder; two agents exist ("Legal" and a general agent).
+**Ideal path**: 18 — import, wait, auto-sort, stats, preview, send, tidy.
+**Alternate paths**: Mail attachment "Add to Data room" from the Inbox; drag files in; ask the Data room agent instead of browsing.
+##### Steps
+1. Open Data room → list of 8 files, "Reading" labels on some rows, a Processing strip "Processing 3 files" with a thin progress bar.
+2. Click the chevron "Details" on the strip → step counts: "Reading text 2", "Indexing for search 1".
+3. Maya waits; strip turns into "All files processed" briefly, then goes away.
+4. A card says Praci does not tag new files until she allows it; she reads the text and clicks Allow in "Let Praci read your documents" → files are tagged; list shows types and dates; "Not tagged" labels disappear.
+5. Click "Import" › "Email" → pick the five PDFs → "Import 5 files".
+6. Watch the Import strip "Importing 2 of 5" then the Processing strip; the five files appear with Source "Gmail".
+7. Click "Auto-sort" in the tree → review: a "Move" group of 9 files, a "Rename" group of 3 ("scan0012.pdf → Harbor SAFE.pdf"), no merges. She unticks one rename.
+8. Click "Apply" → toast "Sorted 11 items" with "Undo"; the tree shows new folders such as "Legal".
+9. Click "Stats" → cards: 13 Documents, Size, Searchable 100%, Failed 1; Types, Sources (Upload 8, Gmail 5), Status.
+10. She notices Failed 1; click the Failed status isn't a button (status rows have no pick) → she switches back to List view.
+11. Click "List view", then the Type pill and choose a type, or scroll → finds a red-marked file "Failed".
+12. Click the failed file → pane shows "Couldn't read this file", the error, and two buttons "Try again" and "Delete"; click "Try again" → toast "Reading <name> again"; the row shows "Reading".
+13. Open "Legal / Contracts", click the term sheet PDF → pane with the PDF; click "Full screen", scroll, press Esc.
+14. Open "More actions for <name>" › "Send to agent" › "Legal" → chat opens with the chip; she asks for a summary (chat is another topic).
+15. Return via the sidebar to Data room; the room opens at All items (the folder was not remembered other than in the URL); she opens the browser Back to return to the folder.
+16. Rename the folder "Contracts" to "Executed contracts" using right-click › "Rename" → toast "Renamed".
+17. Create a folder "Diligence" with "New folder" at the bottom of the tree; drag-free: move three files into it using each file's "Move" dialog.
+18. Click the Cap table page → "Documents" list shows the new Cap Table files; she clicks one to return to the Data room preview.
+##### Variations
+- At step 4 she picks the dismiss option instead; a line "Praci doesn't tag new files." with "Let Praci read documents" stays as a quiet reminder.
+- At step 7 with no model → "Turn on a model and allow AI access to sort files." and she cancels.
+- Ask the "Data room agent" from the header at the start instead of browsing; agent button is hidden when its chat is already open.
+##### Edge Cases
+- Auto-sort moves a file that was previewed → pane keeps it if still in results, otherwise closes.
+- Unseen "Hide amounts" on during step 13 → PDF hidden; she must turn it off to read.
+- Importing while processing → the Import strip is hidden and the Processing strip carries the "Importing x of y" line.
+- Information repeated: the folder appears in tree, Path bar, preview "Folder" and Move dialog; status appears in the row, the Processing strip and Stats.
+
 ### Redundancy Candidates (this area)
 - Three ways to start an upload (header "+", "Choose files" in the empty state, drop anywhere) plus, with PR #109, two import buttons: four add-file buttons in one header row that look alike (STORY-DRM-002, 020).
 - The folder pill (narrow) and the folder tree (wide) are two controls for one choice; a sub-folder row or tile is a third (STORY-DRM-011, 030, 038).
@@ -1158,6 +1845,8 @@ STORY-DRM-001 (Find the Data room, empty)
 - The Settings "AI data sharing" switches and the Data room "Allow" card both talk about sending documents to a model; the Data room needs its own consent (STORY-DRM-009).
 
 ### Suspected problems (this area)
+
+Refresh 2026-10-20: items marked "PR #109" below describe the earlier icon-only import buttons; the Import menu replaced them, so re-check before filing issues.
 1. **Top-level folders cannot be renamed, moved or deleted.** Only the open folder's children get rows with a "…" menu (`DataRoom.tsx:149-155`), and the tree has no menu (`FolderTree.tsx`). A top-level folder is nobody's child, so no menu reaches it. STORY-DRM-027.
 2. **"New folder…" always creates a top-level folder** (`ItemDialogs.tsx:146-151` calls `folderCreate({ name })` with no parent), so nested folders can only come from the classifier. STORY-DRM-033.
 3. **A folder shows only its own files, not those of its sub-folders** (`packages/db/src/data-room.ts:168-172`, equality on `folderId`). Clicking `Finance` shows only folder rows. STORY-DRM-011.
@@ -1172,3 +1861,6 @@ STORY-DRM-001 (Find the Data room, empty)
 12. **PR #109: the import notice and the upload toasts occupy the same corner** (`DataRoom.tsx` notice `fixed end-4 bottom-20 z-100`; `DropZone.tsx` toasts `fixed inset-x-4 bottom-20 z-100`), so they can overlap if both are visible. STORY-DRM-020.
 13. **PR #109: Drive picker disables unsupported files with no explanation** (`ImportFromDrive.tsx:44-47`), and uses the first connected Drive account with no chooser. STORY-DRM-040.
 14. **PR #109: the connection list is read once**; the import buttons do not appear until it loads, and a failed read shows "Connect …" even when connected (`ImportFromEmail.tsx:289-305`). STORY-DRM-041.
+
+
+---

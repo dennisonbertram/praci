@@ -24,7 +24,6 @@ import {
 import {
   Button,
   Input,
-  ModelThinkingOptions,
   Select,
   SelectContent,
   SelectItem,
@@ -42,7 +41,6 @@ import {
 import { ShellSkeleton } from "../components/ShellSkeleton";
 import { useCopyText } from "../lib/copy-text";
 import type { ModelCatalogEntry } from "../lib/model-auth";
-import { thinkingLevelLabel } from "../lib/model-catalog";
 import type { ModelPreflightFailure } from "../lib/model-connection-preflight";
 import {
   classifyModelConnectionFailure,
@@ -59,7 +57,7 @@ import { errorText } from "../lib/user-error";
 const CHATGPT_PROVIDER = "openai-codex";
 const OPENROUTER_PROVIDER = "openrouter";
 const CUSTOM_MODEL_OPTION = "__rakazo_custom_model__";
-const DEFAULT_THINKING_LEVEL_OPTION = "__rakazo_default_thinking__";
+const _DEFAULT_THINKING_LEVEL_OPTION = "__rakazo_default_thinking__";
 const FIRST_BOT_NAME = "Chief";
 const FIRST_BOT_SPAWN_KEY = "onboarding:first";
 const FIRST_BOT_LOCK = "rakazo:onboarding-first-bot";
@@ -247,12 +245,6 @@ export function OnboardingPage() {
   const isCloudflareGateway = provider === CLOUDFLARE_AI_GATEWAY_PROVIDER_ID;
   const cloudflareRoutingReady =
     !isCloudflareGateway || cloudflareGatewayRouting({ accountId, gatewayId }) !== undefined;
-  // Effort levels for the staged catalog model — "off" stays out, matching the
-  // model settings and per-bot Thinking pickers.
-  const catalogThinkingLevels =
-    !isOpenAiCompatible && selected
-      ? (selected.thinkingLevels ?? []).filter((level) => level !== "off")
-      : [];
   const subscriptionSignIn = selected?.signIn !== undefined;
   const acceptsKey = selected?.auth !== "oauth";
   const signInLabel = selected?.oauthLabel ?? t`Sign in`;
@@ -280,16 +272,6 @@ export function OnboardingPage() {
   const modelItems = useMemo(
     () => modelsForProvider.map((entry) => ({ value: entry.id, label: entry.label })),
     [modelsForProvider],
-  );
-  const thinkingLevelItems = useMemo(
-    () => [
-      {
-        value: DEFAULT_THINKING_LEVEL_OPTION,
-        label: t`Default (${thinkingLevelLabel("medium")})`,
-      },
-      ...catalogThinkingLevels.map((level) => ({ value: level, label: thinkingLevelLabel(level) })),
-    ],
-    [catalogThinkingLevels, t],
   );
   const probeModelItems = useMemo(
     () => [
@@ -854,41 +836,6 @@ export function OnboardingPage() {
                         </Button>
                       ) : null}
                     </div>
-                    <ModelThinkingOptions
-                      reasoning={reasoning}
-                      onReasoningChange={(value) => {
-                        setReasoning(value);
-                        if (!value) setThinkingLevel(null);
-                      }}
-                      advancedLabel={t`Advanced`}
-                      thinkingLabel={t`Supports thinking`}
-                      thinkingLevel={thinkingLevel}
-                      onThinkingLevelChange={(value) =>
-                        setThinkingLevel(value as ThinkingLevel | null)
-                      }
-                      thinkingLevelOptions={[
-                        { value: "minimal", label: t`Minimal` },
-                        { value: "low", label: t`Low` },
-                        { value: "medium", label: t`Medium` },
-                        { value: "high", label: t`High` },
-                        { value: "xhigh", label: t`Extra high` },
-                        { value: "max", label: t`Max` },
-                      ]}
-                      thinkingLevelLabel={t`Reasoning effort`}
-                      thinkingLevelDefaultLabel={t`Default`}
-                      maxTokens={maxTokens}
-                      onMaxTokensChange={setMaxTokens}
-                      maxTokensLabel={t`Maximum output tokens`}
-                      contextWindow={contextWindow}
-                      onContextWindowChange={setContextWindow}
-                      contextWindowLabel={t`Context limit`}
-                      supportsImages={supportsImages}
-                      onSupportsImagesChange={setSupportsImages}
-                      imagesLabel={t`Supports images`}
-                      maxImagesPerPrompt={maxImagesPerPrompt}
-                      onMaxImagesPerPromptChange={setMaxImagesPerPrompt}
-                      maxImagesLabel={t`Maximum images per request`}
-                    />
                   </>
                 ) : (
                   <>
@@ -918,39 +865,6 @@ export function OnboardingPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    {catalogThinkingLevels.length ? (
-                      <div className="mt-4 block">
-                        <span className="font-medium">
-                          <Trans>Thinking</Trans>
-                        </span>
-                        <Select
-                          value={thinkingLevel ?? DEFAULT_THINKING_LEVEL_OPTION}
-                          onValueChange={(value) => {
-                            const next = String(value);
-                            setThinkingLevel(
-                              next === DEFAULT_THINKING_LEVEL_OPTION
-                                ? null
-                                : (next as ThinkingLevel),
-                            );
-                          }}
-                          items={thinkingLevelItems}
-                        >
-                          <SelectTrigger aria-label={t`Thinking`} className="mt-2 w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={DEFAULT_THINKING_LEVEL_OPTION}>
-                              {t`Default (${thinkingLevelLabel("medium")})`}
-                            </SelectItem>
-                            {catalogThinkingLevels.map((level) => (
-                              <SelectItem key={level} value={level}>
-                                {thinkingLevelLabel(level)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    ) : null}
                   </>
                 )}
               </div>

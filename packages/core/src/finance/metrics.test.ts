@@ -647,7 +647,7 @@ describe("detectRecurring", () => {
       variable: false,
       chargeCount: 4,
       classification: "spend",
-      trendCents: [1000, 1000, 1000],
+      trendCents: [1000, 1000, 1000, 1000],
       nextExpectedAt: "2026-10-05T00:00:00.000Z",
     });
   });
@@ -769,7 +769,7 @@ describe("detectRecurring", () => {
     ].map((d, i) => txn(d, -(100 + i * 40), "Claude"));
     const [r] = detectRecurring(topUps, NOW);
     expect(r).toMatchObject({ key: "claude", cadence: "monthly", variable: true });
-    expect(r?.trendCents).toEqual([24000, 66000, 102000]);
+    expect(r?.trendCents).toEqual([0, 24000, 66000, 102000]);
     expect(r?.amountCents).toBe(Math.round((24000 + 66000 + 102000) / 3));
   });
   it("drops a usage-based vendor that skipped one of the last 3 months", () => {

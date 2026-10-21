@@ -52,13 +52,20 @@ export const SIDEBAR_AUTO_FOLDERS = {
 export type SidebarAutoFolderName =
   (typeof SIDEBAR_AUTO_FOLDERS)[keyof typeof SIDEBAR_AUTO_FOLDERS];
 
-/** The folder Auto-group files an item into: page agents, integration agents, other bots, groups. */
+/** The bot first-run onboarding creates (Chief); see apps/web Onboarding. */
+export const FIRST_BOT_SPAWN_KEY = "onboarding:first";
+
+/**
+ * The folder Auto-group files an item into: page agents, integration agents, other bots, groups.
+ * Null for Chief, which stays at the top of the list.
+ */
 export function autoGroupFolderName(item: {
   kind: "bot" | "group";
   spawnKey?: string | null;
-}): SidebarAutoFolderName {
+}): SidebarAutoFolderName | null {
   if (item.kind === "group") return SIDEBAR_AUTO_FOLDERS.groups;
   const key = item.spawnKey;
+  if (key === FIRST_BOT_SPAWN_KEY) return null;
   if (
     isInboxAgentSpawnKey(key) ||
     isFinanceAgentSpawnKey(key) ||

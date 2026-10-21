@@ -1,0 +1,36 @@
+[
+  {
+    "id": "F-MX-5-1",
+    "kind": "plan",
+    "severity": "medium",
+    "category": "error-handling",
+    "criterion": "Error messages",
+    "score": "warn",
+    "description": "A summary-only meeting yields no stated wording: the user finds out only by asking for a quote, and a to-do from a summary looks like one from a transcript.",
+    "expected": "Agent says once that only a summary exists.",
+    "actual": "Not drawn; answer chips look identical to transcript-backed ones.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-MX-5/screenshots/step-2.png",
+    "suggested_fix": "Return the literal text 'no transcript' from meetings_get and tell the skill to say so when quoting is asked.",
+    "catalog_ref": "JF-26",
+    "plan_section": "Flow S5 #450; Granola S4",
+    "files_likely_involved": []
+  },
+  {
+    "id": "F-MX-5-2",
+    "kind": "mockup",
+    "severity": "low",
+    "category": "visual",
+    "criterion": "Information stated once",
+    "score": "warn",
+    "description": "Author note rendered inside the frame under the answer.",
+    "expected": "Notes outside the frame.",
+    "actual": "Muted footnote.",
+    "screenshot": "docs/ux-walker/meetings-voice/stories/STORY-MX-5/screenshots/step-2.png",
+    "suggested_fix": "Move into an HTML comment.",
+    "catalog_ref": "NEW",
+    "plan_section": "wispr-flow mockup screen-flow-meetings",
+    "files_likely_involved": [
+      "docs/granola/mockup.html"
+    ]
+  }
+]

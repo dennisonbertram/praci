@@ -1,0 +1,2793 @@
+{
+ "Desk-Computer": {
+  "layout": {
+   "viewport": {
+    "width": 1276,
+    "height": 954,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     18,
+     22,
+     24
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      22,
+      24
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "15px",
+     "13px",
+     "14px"
+    ],
+    "sizes": {
+     "15px/600": 6,
+     "13px/600": 2,
+     "15px/500": 9,
+     "13px/500": 2,
+     "15px/400": 2,
+     "14px/400": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.clear \"TeamPrivate\"",
+     "children": 2,
+     "widths": [
+      74,
+      85
+     ]
+    },
+    {
+     "container": "div \"Release control\"",
+     "children": 2,
+     "widths": [
+      100,
+      186
+     ]
+    },
+    {
+     "container": "div",
+     "children": 9,
+     "widths": [
+      62,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      62
+     ]
+    },
+    {
+     "container": "div",
+     "children": 3,
+     "widths": [
+      70,
+      190,
+      70
+     ]
+    },
+    {
+     "container": "div.clear \"TeamPrivate\"",
+     "children": 2,
+     "widths": [
+      74,
+      85
+     ]
+    },
+    {
+     "container": "div \"Sign in to the bank portal, th\"",
+     "children": 2,
+     "widths": [
+      18,
+      283
+     ]
+    },
+    {
+     "container": "div \"I\u2019m doneSkip\"",
+     "children": 2,
+     "widths": [
+      100,
+      184
+     ]
+    },
+    {
+     "container": "div.glass \"I\u2019m doneSkip\"",
+     "children": 2,
+     "widths": [
+      105,
+      67
+     ]
+    },
+    {
+     "container": "div",
+     "children": 9,
+     "widths": [
+      62,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      50,
+      62
+     ]
+    },
+    {
+     "container": "div",
+     "children": 3,
+     "widths": [
+      70,
+      190,
+      70
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button \"Team\"",
+    "button \"Private\"",
+    "button \"Esc\"",
+    "button \"Tab\"",
+    "button \"Ctrl\"",
+    "button \"Team\"",
+    "button \"Private\"",
+    "button \"I\u2019m done\"",
+    "button \"Skip\"",
+    "button \"Esc\"",
+    "button \"Tab\"",
+    "button \"Ctrl\""
+   ]
+  }
+ },
+ "Desk": {
+  "layout": {
+   "viewport": {
+    "width": 626,
+    "height": 890,
+    "pageScrollY": 28,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     22,
+     24,
+     159
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14,
+     22,
+     159
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      22,
+      24
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "12px",
+     "13px",
+     "26px",
+     "22px",
+     "11px",
+     "16px",
+     "15px"
+    ],
+    "sizes": {
+     "12px/400": 4,
+     "13px/600": 2,
+     "26px/600": 1,
+     "22px/600": 2,
+     "11px/400": 13,
+     "13px/400": 2,
+     "16px/400": 2,
+     "15px/400": 3,
+     "15px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      21,
+      23
+     ],
+     [
+      559,
+      561
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "PG-A-AgentList": {
+  "layout": {
+   "viewport": {
+    "width": 1446,
+    "height": 1440,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div \"Finance agentClose checklistAd\"",
+     "w": 466,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div \"Finance agentClose checklistAd\"",
+     "w": 466,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div \"Finance agentCouldn\u2019t load thi\"",
+     "w": 466,
+     "h": 678,
+     "fillPct": 7,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div \"Finance agentCouldn\u2019t load thi\"",
+     "w": 466,
+     "h": 678,
+     "fillPct": 7,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div \"Finance agentClose checklistAd\"",
+     "w": 394,
+     "h": 678,
+     "fillPct": 5,
+     "pctOfViewport": 13
+    },
+    {
+     "el": "div \"Finance agentCouldn\u2019t load thi\"",
+     "w": 394,
+     "h": 678,
+     "fillPct": 4,
+     "pctOfViewport": 13
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18,
+     22,
+     96
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "12px",
+     "15px",
+     "24px",
+     "13px",
+     "16px",
+     "18px",
+     "17px",
+     "14px"
+    ],
+    "sizes": {
+     "12px/400": 6,
+     "15px/600": 6,
+     "24px/600": 5,
+     "13px/400": 6,
+     "16px/400": 23,
+     "12px/600": 6,
+     "18px/400": 26,
+     "15px/400": 2,
+     "17px/400": 2,
+     "14px/400": 1,
+     "16px/600": 2,
+     "17px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      71,
+      74
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [
+    {
+     "a": "button \"Mark done Confirm card limits\"",
+     "b": "button.mi \"Clear done items\"",
+     "w": 44,
+     "h": 23
+    },
+    {
+     "a": "button \"Mark done File Q4 tax estimate\"",
+     "b": "button.mi \"Clear done items\"",
+     "w": 44,
+     "h": 16
+    }
+   ],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"123add\"",
+     "children": 3,
+     "widths": [
+      64,
+      200,
+      84
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button \"Retry\""
+   ]
+  }
+ },
+ "PG-A-AgentPage": {
+  "layout": {
+   "viewport": {
+    "width": 956,
+    "height": 718,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div \"Load errorFinance agentCouldn\u2019\"",
+     "w": 466,
+     "h": 718,
+     "fillPct": 12,
+     "pctOfViewport": 49
+    },
+    {
+     "el": "div \"Finance agentCouldn\u2019t load thi\"",
+     "w": 466,
+     "h": 678,
+     "fillPct": 6,
+     "pctOfViewport": 46
+    },
+    {
+     "el": "div \"Finance agentCouldn\u2019t load thi\"",
+     "w": 394,
+     "h": 678,
+     "fillPct": 5,
+     "pctOfViewport": 39
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     3,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     22,
+     24,
+     96
+    ],
+    "offScale": [
+     3,
+     6,
+     10,
+     14,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      22,
+      24
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "15px",
+     "24px",
+     "13px",
+     "12px",
+     "18px",
+     "10px",
+     "17px",
+     "16px"
+    ],
+    "sizes": {
+     "15px/600": 4,
+     "24px/600": 1,
+     "13px/400": 1,
+     "12px/400": 6,
+     "18px/600": 3,
+     "15px/400": 3,
+     "12px/600": 2,
+     "10px/500": 2,
+     "17px/600": 1,
+     "16px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"Sep 20Oct 5Oct 20\"",
+     "children": 3,
+     "widths": [
+      40,
+      30,
+      38
+     ]
+    },
+    {
+     "container": "a \"4 card expenses need receipts\"",
+     "children": 2,
+     "widths": [
+      316,
+      16
+     ]
+    },
+    {
+     "container": "a \"One invoice is due Friday\"",
+     "children": 2,
+     "widths": [
+      316,
+      16
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "PG-A-Artifact": {
+  "layout": {
+   "viewport": {
+    "width": 956,
+    "height": 1460,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 23
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 23
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     8,
+     10,
+     14,
+     16,
+     18,
+     20,
+     24
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ],
+     [
+      18,
+      20
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "15px",
+     "22px",
+     "13px",
+     "12px",
+     "17px",
+     "14px"
+    ],
+    "sizes": {
+     "15px/600": 6,
+     "22px/600": 4,
+     "13px/400": 10,
+     "12px/400": 9,
+     "17px/600": 8,
+     "15px/400": 4,
+     "14px/400": 16,
+     "12px/600": 4,
+     "17px/400": 8
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"Acme Payroll[AMOUNT]\"",
+     "children": 2,
+     "widths": [
+      83,
+      69
+     ]
+    },
+    {
+     "container": "div \"Acme Payroll[AMOUNT]\"",
+     "children": 2,
+     "widths": [
+      83,
+      69
+     ]
+    },
+    {
+     "container": "div \"Acme Payroll[AMOUNT]\"",
+     "children": 2,
+     "widths": [
+      83,
+      69
+     ]
+    },
+    {
+     "container": "button.mi \"Version 6Today\"",
+     "children": 3,
+     "widths": [
+      163,
+      35,
+      20
+     ]
+    },
+    {
+     "container": "button.mi \"Version 5Oct 18\"",
+     "children": 2,
+     "widths": [
+      161,
+      37
+     ]
+    },
+    {
+     "container": "button.mi \"Version 4Oct 17\"",
+     "children": 2,
+     "widths": [
+      162,
+      36
+     ]
+    },
+    {
+     "container": "button.mi \"Version 3Oct 15\"",
+     "children": 2,
+     "widths": [
+      160,
+      38
+     ]
+    },
+    {
+     "container": "button.mi \"Version 2Oct 12\"",
+     "children": 2,
+     "widths": [
+      160,
+      38
+     ]
+    },
+    {
+     "container": "button.mi \"Version 1Oct 10\"",
+     "children": 2,
+     "widths": [
+      160,
+      38
+     ]
+    },
+    {
+     "container": "div \"Acme Payroll[AMOUNT]\"",
+     "children": 2,
+     "widths": [
+      83,
+      69
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.mi \"Version 5Oct 18\"",
+    "button.mi \"Version 4Oct 17\"",
+    "button.mi \"Version 3Oct 15\"",
+    "button.mi \"Version 2Oct 12\"",
+    "button.mi \"Version 1Oct 10\"",
+    "button \"Restore\""
+   ]
+  }
+ },
+ "PG-A-Artifacts": {
+  "layout": {
+   "viewport": {
+    "width": 1446,
+    "height": 1460,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div \"ArtifactsNo artifacts yet.9:41\"",
+     "w": 466,
+     "h": 678,
+     "fillPct": 9,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div \"ArtifactsCouldn\u2019t load artifac\"",
+     "w": 466,
+     "h": 678,
+     "fillPct": 10,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div \"ArtifactsNo artifacts yet.\"",
+     "w": 394,
+     "h": 678,
+     "fillPct": 10,
+     "pctOfViewport": 13
+    },
+    {
+     "el": "div \"ArtifactsCouldn\u2019t load artifac\"",
+     "w": 394,
+     "h": 678,
+     "fillPct": 11,
+     "pctOfViewport": 13
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     22,
+     24,
+     72,
+     96
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      22,
+      24
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "15px",
+     "28px",
+     "13px",
+     "12px",
+     "17px",
+     "16px"
+    ],
+    "sizes": {
+     "15px/600": 6,
+     "28px/600": 6,
+     "13px/600": 10,
+     "15px/500": 8,
+     "13px/400": 16,
+     "12px/600": 6,
+     "15px/400": 2,
+     "17px/600": 1,
+     "16px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Search artifacts\"",
+     "w": 290,
+     "h": 21
+    },
+    {
+     "el": "input \"Search artifacts\"",
+     "w": 290,
+     "h": 21
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"All agentsFinance agentLegal a\"",
+     "children": 5,
+     "widths": [
+      90,
+      116,
+      101,
+      61,
+      102
+     ]
+    },
+    {
+     "container": "div \"All agentsFinance agentLegal a\"",
+     "children": 5,
+     "widths": [
+      90,
+      116,
+      101,
+      61,
+      102
+     ]
+    },
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      40,
+      316
+     ],
+     "topDriftPx": 4
+    },
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      40,
+      316
+     ],
+     "topDriftPx": 4
+    },
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      40,
+      316
+     ],
+     "topDriftPx": 4
+    },
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      40,
+      316
+     ],
+     "topDriftPx": 4
+    },
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      40,
+      316
+     ],
+     "topDriftPx": 4
+    },
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      40,
+      316
+     ],
+     "topDriftPx": 4
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button \"All agents\"",
+    "button \"Finance agent\"",
+    "button \"Legal agent\"",
+    "button \"Chief\"",
+    "button \"Inbox agent\"",
+    "button \"All agents\"",
+    "button \"Finance agent\"",
+    "button \"Legal agent\"",
+    "button \"Chief\"",
+    "button \"Inbox agent\""
+   ]
+  }
+ },
+ "PG-A-Computer": {
+  "layout": {
+   "viewport": {
+    "width": 1936,
+    "height": 2202,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     18,
+     20,
+     22,
+     24
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      18,
+      20
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      22,
+      24
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "15px",
+     "17px",
+     "13px",
+     "16px",
+     "12px",
+     "14px"
+    ],
+    "sizes": {
+     "15px/600": 15,
+     "17px/600": 12,
+     "13px/400": 11,
+     "13px/500": 9,
+     "15px/500": 7,
+     "16px/600": 9,
+     "12px/600": 9,
+     "14px/500": 17,
+     "14px/400": 3
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      86,
+      87
+     ],
+     [
+      575,
+      576
+     ],
+     [
+      576,
+      577
+     ],
+     [
+      1065,
+      1066
+     ],
+     [
+      1066,
+      1067
+     ],
+     [
+      1556,
+      1557
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div.clear \"TeamPrivate\"",
+     "children": 2,
+     "widths": [
+      74,
+      85
+     ]
+    },
+    {
+     "container": "div \"Sign in to the bank portal, th\"",
+     "children": 2,
+     "widths": [
+      18,
+      283
+     ]
+    },
+    {
+     "container": "div.clear \"I\u2019m doneSkip\"",
+     "children": 2,
+     "widths": [
+      274,
+      84
+     ]
+    },
+    {
+     "container": "div.clear \"TeamPrivate\"",
+     "children": 2,
+     "widths": [
+      74,
+      85
+     ]
+    },
+    {
+     "container": "div.clear \"TeamPrivate\"",
+     "children": 2,
+     "widths": [
+      74,
+      85
+     ]
+    },
+    {
+     "container": "div \"Your control ended because the\"",
+     "children": 2,
+     "widths": [
+      18,
+      308
+     ]
+    },
+    {
+     "container": "div.clear \"TeamPrivate\"",
+     "children": 2,
+     "widths": [
+      74,
+      85
+     ]
+    },
+    {
+     "container": "div \"Jordan has control right now. \"",
+     "children": 2,
+     "heights": [
+      19,
+      39
+     ],
+     "widths": [
+      18,
+      310
+     ]
+    },
+    {
+     "container": "div.clear \"TeamPrivate\"",
+     "children": 2,
+     "widths": [
+      74,
+      85
+     ]
+    },
+    {
+     "container": "div.clear \"TeamPrivate\"",
+     "children": 2,
+     "widths": [
+      74,
+      87
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button \"Team\"",
+    "button \"Private\"",
+    "button \"Take control\"",
+    "button \"Esc\"",
+    "button \"Tab\"",
+    "button \"Ctrl\"",
+    "button \"\u2190\"",
+    "button \"\u2193\"",
+    "button \"\u2191\"",
+    "button \"\u2192\"",
+    "button \"Release control\"",
+    "button \"Esc\""
+   ],
+   "wrappedControlsTruncated": true
+  }
+ },
+ "PG-A-Image": {
+  "layout": {
+   "viewport": {
+    "width": 1446,
+    "height": 1460,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 10,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 15
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     3,
+     4,
+     6,
+     8,
+     10,
+     14,
+     16,
+     18,
+     20,
+     22,
+     24,
+     28
+    ],
+    "offScale": [
+     3,
+     6,
+     10,
+     14,
+     18,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ],
+     [
+      18,
+      20
+     ],
+     [
+      20,
+      22
+     ],
+     [
+      22,
+      24
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "15px",
+     "14px",
+     "12px",
+     "10px",
+     "17px",
+     "13px",
+     "16px"
+    ],
+    "sizes": {
+     "15px/600": 7,
+     "14px/500": 6,
+     "12px/600": 6,
+     "10px/500": 6,
+     "17px/400": 6,
+     "12px/400": 1,
+     "13px/400": 4,
+     "16px/600": 1,
+     "17px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      70,
+      50
+     ]
+    },
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      70,
+      50
+     ]
+    },
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      70,
+      50
+     ]
+    },
+    {
+     "container": "button.mi \"Version 3Today\"",
+     "children": 3,
+     "widths": [
+      163,
+      35,
+      20
+     ]
+    },
+    {
+     "container": "button.mi \"Version 2Oct 17\"",
+     "children": 2,
+     "widths": [
+      162,
+      36
+     ]
+    },
+    {
+     "container": "button.mi \"Version 1Oct 15\"",
+     "children": 2,
+     "widths": [
+      160,
+      38
+     ]
+    },
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      70,
+      50
+     ]
+    },
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      70,
+      50
+     ]
+    },
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      70,
+      50
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.mi \"Version 2Oct 17\"",
+    "button.mi \"Version 1Oct 15\"",
+    "button \"Restore\"",
+    "button \"Cancel\"",
+    "button \"Delete\""
+   ]
+  }
+ },
+ "PG-A-Routine": {
+  "layout": {
+   "viewport": {
+    "width": 1446,
+    "height": 2202,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div \"Load errorFinance agentCouldn\u2019\"",
+     "w": 466,
+     "h": 718,
+     "fillPct": 12,
+     "pctOfViewport": 11
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 10
+    },
+    {
+     "el": "div \"Finance agentCouldn\u2019t load thi\"",
+     "w": 466,
+     "h": 678,
+     "fillPct": 6,
+     "pctOfViewport": 10
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 10
+    },
+    {
+     "el": "div \"Finance agentCouldn\u2019t load thi\"",
+     "w": 394,
+     "h": 678,
+     "fillPct": 5,
+     "pctOfViewport": 8
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18,
+     22,
+     24,
+     96
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ],
+     [
+      22,
+      24
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "15px",
+     "24px",
+     "13px",
+     "12px",
+     "17px",
+     "16px"
+    ],
+    "sizes": {
+     "15px/600": 26,
+     "24px/600": 7,
+     "15px/500": 10,
+     "13px/400": 17,
+     "12px/600": 8,
+     "15px/400": 38,
+     "12px/400": 5,
+     "17px/400": 2,
+     "17px/600": 3,
+     "16px/600": 1,
+     "16px/400": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      586,
+      589
+     ]
+    ]
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Name\"",
+     "w": 332,
+     "h": 21
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [
+    {
+     "a": "a \"UpdatesRunway summary\"",
+     "b": "button.mi \"Edit routine\"",
+     "w": 225,
+     "h": 26
+    },
+    {
+     "a": "a \"UpdatesRunway summary\"",
+     "b": "input \"Name\"",
+     "w": 332,
+     "h": 14
+    }
+   ],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"Last ranMon, Oct 19 \u00b7 Done\"",
+     "children": 2,
+     "widths": [
+      56,
+      272
+     ]
+    },
+    {
+     "container": "a \"UpdatesRunway summary\"",
+     "children": 3,
+     "widths": [
+      57,
+      247,
+      16
+     ]
+    },
+    {
+     "container": "a \"History4 runs\"",
+     "children": 3,
+     "widths": [
+      49,
+      255,
+      16
+     ]
+    },
+    {
+     "container": "div \"Last ranMon, Oct 19 \u00b7 Done\"",
+     "children": 2,
+     "widths": [
+      56,
+      272
+     ]
+    },
+    {
+     "container": "a \"UpdatesRunway summary\"",
+     "children": 3,
+     "widths": [
+      57,
+      247,
+      16
+     ]
+    },
+    {
+     "container": "a \"History4 runs\"",
+     "children": 3,
+     "widths": [
+      49,
+      255,
+      16
+     ]
+    },
+    {
+     "container": "a \"Mon, Oct 19 \u00b7 8:00 AMDone\"",
+     "children": 3,
+     "widths": [
+      287,
+      45,
+      16
+     ]
+    },
+    {
+     "container": "a \"Mon, Oct 12 \u00b7 8:00 AMDone\"",
+     "children": 3,
+     "widths": [
+      287,
+      45,
+      16
+     ]
+    },
+    {
+     "container": "a \"Mon, Oct 5 \u00b7 8:00 AMFailed\"",
+     "children": 3,
+     "widths": [
+      282,
+      50,
+      16
+     ]
+    },
+    {
+     "container": "a \"Mon, Sep 28 \u00b7 8:00 AMDone\"",
+     "children": 3,
+     "widths": [
+      287,
+      45,
+      16
+     ]
+    },
+    {
+     "container": "a \"UpdatesRunway summary\"",
+     "children": 3,
+     "widths": [
+      57,
+      247,
+      16
+     ]
+    },
+    {
+     "container": "a \"History4 runs\"",
+     "children": 3,
+     "widths": [
+      49,
+      255,
+      16
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [],
+   "unevenRowsTruncated": true
+  }
+ },
+ "PG-B-BotSettings": {
+  "layout": {
+   "viewport": {
+    "width": 1446,
+    "height": 1440,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 15
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     4,
+     6,
+     10,
+     12,
+     14,
+     20,
+     22
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "12px",
+     "28px",
+     "13px",
+     "16px",
+     "15px",
+     "14px",
+     "17px"
+    ],
+    "sizes": {
+     "12px/400": 5,
+     "28px/600": 5,
+     "13px/400": 21,
+     "16px/400": 15,
+     "15px/400": 5,
+     "12px/600": 5,
+     "15px/600": 4,
+     "14px/400": 1,
+     "17px/600": 2,
+     "17px/400": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Name this agent\"",
+     "w": 298,
+     "h": 21
+    },
+    {
+     "el": "input \"Role\"",
+     "w": 346,
+     "h": 21
+    },
+    {
+     "el": "input \"Name this agent\"",
+     "w": 298,
+     "h": 21
+    },
+    {
+     "el": "input \"Role\"",
+     "w": 346,
+     "h": 21
+    },
+    {
+     "el": "input \"Name this agent\"",
+     "w": 298,
+     "h": 21
+    },
+    {
+     "el": "input \"Role\"",
+     "w": 346,
+     "h": 21
+    },
+    {
+     "el": "input \"Name this agent\"",
+     "w": 298,
+     "h": 21
+    },
+    {
+     "el": "input \"Role\"",
+     "w": 346,
+     "h": 21
+    },
+    {
+     "el": "input \"Name this agent\"",
+     "w": 298,
+     "h": 21
+    },
+    {
+     "el": "input \"Role\"",
+     "w": 346,
+     "h": 21
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [
+    {
+     "a": "button \"Color 2\"",
+     "b": "button \"Keep editing\"",
+     "w": 44,
+     "h": 15
+    },
+    {
+     "a": "button \"Color 3\"",
+     "b": "button \"Keep editing\"",
+     "w": 44,
+     "h": 15
+    },
+    {
+     "a": "button \"Color 4\"",
+     "b": "button \"Keep editing\"",
+     "w": 27,
+     "h": 15
+    },
+    {
+     "a": "button \"Color 5\"",
+     "b": "button \"Discard\"",
+     "w": 44,
+     "h": 15
+    },
+    {
+     "a": "button \"Color 6\"",
+     "b": "button \"Discard\"",
+     "w": 44,
+     "h": 15
+    },
+    {
+     "a": "button \"Color 7\"",
+     "b": "button \"Discard\"",
+     "w": 7,
+     "h": 15
+    }
+   ],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.act \"Save\"",
+    "button.act \"Save\"",
+    "button.act \"Retry\"",
+    "button.act \"Save\"",
+    "button \"Keep editing\"",
+    "button \"Discard\""
+   ]
+  }
+ },
+ "PG-B-CapTable": {
+  "layout": {
+   "viewport": {
+    "width": 1446,
+    "height": 2190,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div \"Cap tableShow holders and owne\"",
+     "w": 466,
+     "h": 678,
+     "fillPct": 11,
+     "pctOfViewport": 10
+    },
+    {
+     "el": "div \"Cap tableShow holders and owne\"",
+     "w": 466,
+     "h": 678,
+     "fillPct": 11,
+     "pctOfViewport": 10
+    },
+    {
+     "el": "div \"Cap tableWaiting for CartaAppr\"",
+     "w": 466,
+     "h": 678,
+     "fillPct": 12,
+     "pctOfViewport": 10
+    },
+    {
+     "el": "div \"Cap tableWaiting for CartaAppr\"",
+     "w": 466,
+     "h": 678,
+     "fillPct": 12,
+     "pctOfViewport": 10
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 10
+    },
+    {
+     "el": "div \"Cap tableShow holders and owne\"",
+     "w": 394,
+     "h": 678,
+     "fillPct": 11,
+     "pctOfViewport": 8
+    },
+    {
+     "el": "div \"Cap tableWaiting for CartaAppr\"",
+     "w": 394,
+     "h": 678,
+     "fillPct": 12,
+     "pctOfViewport": 8
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "12px",
+     "28px",
+     "11px",
+     "15px",
+     "13px",
+     "16px",
+     "17px"
+    ],
+    "sizes": {
+     "12px/400": 7,
+     "28px/600": 7,
+     "11px/400": 3,
+     "15px/600": 6,
+     "13px/400": 20,
+     "16px/400": 13,
+     "15px/400": 15,
+     "12px/600": 7,
+     "17px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Name\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Email\"",
+     "w": 332,
+     "h": 21
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.sbtn \"Reconnect\"",
+    "button.sbtn \"Connect Carta\"",
+    "button.sbtn \"Cancel\""
+   ]
+  }
+ },
+ "PG-B-DataRoom": {
+  "layout": {
+   "viewport": {
+    "width": 1446,
+    "height": 2920,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "12px",
+     "28px",
+     "13px",
+     "16px",
+     "15px",
+     "14px",
+     "17px",
+     "24px",
+     "22px"
+    ],
+    "sizes": {
+     "12px/400": 10,
+     "28px/600": 7,
+     "13px/400": 51,
+     "16px/400": 24,
+     "15px/600": 2,
+     "12px/600": 10,
+     "14px/600": 1,
+     "17px/600": 3,
+     "24px/600": 2,
+     "16px/600": 2,
+     "17px/400": 8,
+     "22px/600": 1,
+     "15px/400": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      77,
+      78
+     ],
+     [
+      78,
+      81
+     ],
+     [
+      81,
+      82
+     ]
+    ]
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Search all items\"",
+     "w": 320,
+     "h": 21
+    },
+    {
+     "el": "input \"Search all items\"",
+     "w": 320,
+     "h": 21
+    },
+    {
+     "el": "input \"Search all items\"",
+     "w": 320,
+     "h": 21
+    },
+    {
+     "el": "input \"Search all items\"",
+     "w": 253,
+     "h": 21
+    },
+    {
+     "el": "input \"Search all items\"",
+     "w": 253,
+     "h": 21
+    },
+    {
+     "el": "input \"Search all items\"",
+     "w": 320,
+     "h": 21
+    },
+    {
+     "el": "input \"Search all items\"",
+     "w": 320,
+     "h": 21
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [
+    {
+     "a": "a \"Cap table export.csvCSV \u00b7 Ana \"",
+     "b": "button.mi \"Files\"",
+     "w": 181,
+     "h": 44
+    },
+    {
+     "a": "a \"Northwind agreement.pdfPDFOct \"",
+     "b": "button.mi \"Photos\"",
+     "w": 181,
+     "h": 32
+    }
+   ],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button \"Load more\"",
+    "button.sbtn \"Try again\"",
+    "a \"Cancel\"",
+    "a \"Cancel\"",
+    "button.act \"Ask about this file\"",
+    "button.act \"Ask about this file\"",
+    "button \"Load more\""
+   ]
+  }
+ },
+ "PG-B-Finance": {
+  "layout": {
+   "viewport": {
+    "width": 1446,
+    "height": 1436,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     18
+    ],
+    "offScale": [
+     5,
+     6,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "12px",
+     "28px",
+     "22px",
+     "11px",
+     "10px",
+     "13px",
+     "16px",
+     "15px"
+    ],
+    "sizes": {
+     "12px/400": 24,
+     "28px/600": 5,
+     "22px/600": 8,
+     "11px/400": 4,
+     "10px/400": 60,
+     "13px/400": 20,
+     "13px/600": 10,
+     "16px/400": 18,
+     "15px/400": 15,
+     "13px/500": 8,
+     "12px/600": 5,
+     "15px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.sbtn \"Try again\""
+   ]
+  }
+ },
+ "PG-B-GroupSettings": {
+  "layout": {
+   "viewport": {
+    "width": 1446,
+    "height": 2174,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 10
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 10
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     4,
+     6,
+     10,
+     12,
+     14,
+     20,
+     22
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      20,
+      22
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "12px",
+     "28px",
+     "13px",
+     "16px",
+     "15px",
+     "17px",
+     "14px"
+    ],
+    "sizes": {
+     "12px/400": 8,
+     "28px/600": 7,
+     "13px/400": 23,
+     "16px/400": 35,
+     "12px/600": 7,
+     "15px/600": 6,
+     "17px/600": 4,
+     "17px/400": 2,
+     "14px/400": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Group name\"",
+     "w": 346,
+     "h": 21
+    },
+    {
+     "el": "input \"Group name\"",
+     "w": 346,
+     "h": 21
+    },
+    {
+     "el": "input \"Group name\"",
+     "w": 346,
+     "h": 21
+    },
+    {
+     "el": "input \"Group name\"",
+     "w": 346,
+     "h": 21
+    },
+    {
+     "el": "input \"Group name\"",
+     "w": 346,
+     "h": 21
+    },
+    {
+     "el": "input \"Group name\"",
+     "w": 346,
+     "h": 21
+    },
+    {
+     "el": "input \"Group name\"",
+     "w": 346,
+     "h": 21
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [
+    {
+     "a": "a \"Legal agent\"",
+     "b": "button \"Cancel\"",
+     "w": 135,
+     "h": 46
+    },
+    {
+     "a": "a \"Finance agent\"",
+     "b": "button \"Keep editing\"",
+     "w": 135,
+     "h": 20
+    },
+    {
+     "a": "a \"Legal agent\"",
+     "b": "button \"Keep editing\"",
+     "w": 135,
+     "h": 27
+    }
+   ],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Delete group\"",
+    "button.act \"Save\"",
+    "a \"Delete group\"",
+    "button.act \"Save\"",
+    "a \"Delete group\"",
+    "a \"Delete group\"",
+    "button.act \"Save\"",
+    "button \"Cancel\"",
+    "button \"Delete\"",
+    "a \"Delete group\"",
+    "button.act \"Save\"",
+    "a \"Delete group\""
+   ],
+   "wrappedControlsTruncated": true
+  }
+ },
+ "PG-B-Legal": {
+  "layout": {
+   "viewport": {
+    "width": 1446,
+    "height": 2190,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     18,
+     46
+    ],
+    "offScale": [
+     3,
+     5,
+     6,
+     10,
+     14,
+     18,
+     46
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "12px",
+     "28px",
+     "14px",
+     "15px",
+     "16px",
+     "13px"
+    ],
+    "sizes": {
+     "12px/400": 24,
+     "28px/600": 8,
+     "14px/600": 7,
+     "14px/400": 7,
+     "15px/400": 11,
+     "15px/600": 9,
+     "16px/400": 23,
+     "13px/400": 25,
+     "12px/600": 8
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      78,
+      81
+     ],
+     [
+      568,
+      571
+     ],
+     [
+      1058,
+      1061
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"Try againReplace file\"",
+     "children": 2,
+     "widths": [
+      102,
+      121
+     ]
+    },
+    {
+     "container": "div \"StatusSigned\"",
+     "children": 2,
+     "widths": [
+      45,
+      63
+     ]
+    },
+    {
+     "container": "div \"EndsDec 31\"",
+     "children": 2,
+     "widths": [
+      34,
+      49
+     ]
+    },
+    {
+     "container": "div \"Notice dueNov 30\"",
+     "children": 2,
+     "widths": [
+      74,
+      54
+     ]
+    },
+    {
+     "container": "div \"Signed byJordan Lee\"",
+     "children": 2,
+     "widths": [
+      68,
+      82
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.sbtn \"Scan\"",
+    "button.sbtn \"Scan\"",
+    "button.sbtn \"Try again\"",
+    "button.sbtn \"Replace file\"",
+    "button.sbtn \"Scan now\"",
+    "button.sbtn \"Cancel\"",
+    "button.sbtn \"Try again\"",
+    "button.sbtn \"Open Models\"",
+    "button.sbtn \"Scan\""
+   ]
+  }
+ }
+}

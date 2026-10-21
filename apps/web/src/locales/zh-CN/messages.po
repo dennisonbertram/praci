@@ -59,6 +59,11 @@ msgstr ""
 msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
 msgstr ""
 
+#. placeholder {0}: glance.legalDueSoon
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# due soon} other {# due soon}}"
+msgstr ""
+
 #. placeholder {0}: stats.duplicates
 #: src/components/data-room/DataRoomStats.tsx
 msgid "{0, plural, one {# duplicate} other {# duplicates}}"
@@ -92,6 +97,11 @@ msgstr ""
 #. placeholder {0}: usage.runs
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "{0, plural, one {# task done by your bots} other {# tasks done by your bots}}"
+msgstr ""
+
+#. placeholder {0}: glance.dataRoomWaiting
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# waiting} other {# waiting}}"
 msgstr ""
 
 #. placeholder {0}: rows.length
@@ -177,11 +187,6 @@ msgstr ""
 msgid "{0} (overdue)"
 msgstr ""
 
-#. placeholder {0}: preset.n
-#: src/pages/RoutineSchedule.tsx
-msgid "{0} {unitLabel}"
-msgstr "{0} {unitLabel}"
-
 #. placeholder {0}: bot.name
 #: src/components/integrations/parts.tsx
 msgid "{0} can use {appName}"
@@ -243,6 +248,11 @@ msgstr ""
 #. placeholder {0}: sender.name
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} rollup hours"
+msgstr ""
+
+#. placeholder {0}: runwayGlance(glance.financeRunwayMonths, hideAmounts)
+#: src/pages/Shell.tsx
+msgid "{0} runway"
 msgstr ""
 
 #. placeholder {0}: statement.transactionCount
@@ -485,6 +495,10 @@ msgid "{service} agent"
 msgstr ""
 
 #: src/pages/Finance.tsx
+msgid "{soFar} · {spentRange}"
+msgstr ""
+
+#: src/pages/Finance.tsx
 msgid "{soFar} · spent {spentRange}"
 msgstr ""
 
@@ -562,6 +576,10 @@ msgstr "什么都做一点"
 
 #: src/components/finance/WalletDialog.tsx
 msgid "A deposit address at an exchange."
+msgstr ""
+
+#: src/components/sidebar-folders/FolderHeader.tsx
+msgid "A folder with that name already exists"
 msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
@@ -666,6 +684,7 @@ msgid "Active model"
 msgstr "当前模型"
 
 #: src/components/computer/TerminalApp.tsx
+#: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
 msgid "Activity"
 msgstr "动态"
@@ -765,7 +784,7 @@ msgstr ""
 msgid "Add email"
 msgstr ""
 
-#: src/pages/ModelSettingsOverlay.tsx
+#: src/components/AutoFileEmailSetting.tsx
 msgid "Add email attachments to the Data room"
 msgstr ""
 
@@ -864,7 +883,6 @@ msgstr ""
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -963,7 +981,6 @@ msgstr ""
 
 #: src/components/AiDataSharing.tsx
 #: src/components/AskCard.tsx
-#: src/components/legal/ConsentPrompt.tsx
 msgid "Allow"
 msgstr ""
 
@@ -983,19 +1000,11 @@ msgid "Allow {0} without asking"
 msgstr "允许 {0}，无需询问"
 
 #: src/components/AiDataSharing.tsx
-msgid "Allow {name}"
-msgstr ""
-
-#: src/components/AiDataSharing.tsx
-msgid "Allow {name}, {detail}"
+msgid "Allow {model}"
 msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Allow access below first."
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -1104,10 +1113,6 @@ msgstr ""
 msgid "Amounts"
 msgstr ""
 
-#: src/components/HideAmountsToggle.tsx
-msgid "Amounts are hidden: money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show. A reply you write keeps the original amounts."
-msgstr ""
-
 #: src/lib/model-connection-preflight.ts
 msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "此提供方存储的是 API 密钥，不是订阅登录。"
@@ -1202,6 +1207,14 @@ msgstr "批准"
 msgid "Approve this server to let your bot use its tools."
 msgstr ""
 
+#: src/components/ConnectAppsButton.tsx
+#: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/McpDetail.tsx
+#: src/pages/Shell.tsx
+msgid "Apps"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Apps with their own server"
 msgstr ""
@@ -1273,10 +1286,6 @@ msgstr ""
 msgid "Artifacts"
 msgstr ""
 
-#: src/components/ListControls.tsx
-msgid "Ascending"
-msgstr ""
-
 #: src/components/AskBotButton.tsx
 msgid "Ask"
 msgstr ""
@@ -1345,11 +1354,6 @@ msgstr ""
 #: src/components/legal/LegalGraph.tsx
 msgid "Asset"
 msgstr ""
-
-#. placeholder {0}: preset.time
-#: src/pages/RoutineSchedule.tsx
-msgid "at {0}"
-msgstr "{0}"
 
 #: src/pages/RoutineSchedule.tsx
 msgid "at {timeSelect}"
@@ -1586,7 +1590,7 @@ msgid "Blocked"
 msgstr ""
 
 #: src/components/NotificationSettings.tsx
-msgid "Blocked in browser settings"
+msgid "Blocked. Allow notifications for this site in your browser settings."
 msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
@@ -1620,6 +1624,10 @@ msgstr "Bot 屏幕"
 #: src/pages/Shell.tsx
 msgid "Bot screen preview"
 msgstr "Bot 屏幕预览"
+
+#: src/pages/BotContextMenu.tsx
+msgid "Bot settings"
+msgstr ""
 
 #: src/pages/IntegrationSetup.tsx
 msgid "Bot that gets the apps you connect here"
@@ -1700,6 +1708,11 @@ msgstr ""
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "内置"
+
+#. placeholder {0}: builtins.length
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Built-in skills ({0})"
+msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
 msgid "Bulleted list"
@@ -2259,10 +2272,6 @@ msgstr "颜色 {color}"
 msgid "Comfortable"
 msgstr ""
 
-#: src/pages/RoutineEditor.tsx
-msgid "Coming soon"
-msgstr "即将推出"
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Command"
 msgstr "命令"
@@ -2426,13 +2435,17 @@ msgstr ""
 msgid "Connect a provider to add backups."
 msgstr "连接提供商后即可添加备用模型。"
 
+#: src/pages/Shell.tsx
+msgid "Connect a voice provider to call Elio."
+msgstr ""
+
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Connect Alchemy"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
-msgid "Connect any app that offers an MCP server URL."
+msgid "Connect any other app by its address."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2440,6 +2453,7 @@ msgid "Connect API key"
 msgstr "连接 API 密钥"
 
 #: src/components/ConnectAppsButton.tsx
+#: src/components/tour/FirstRunTour.tsx
 msgid "Connect apps"
 msgstr ""
 
@@ -2468,7 +2482,7 @@ msgid "Connect MCP server “{name}”"
 msgstr "连接 MCP 服务器“{name}”"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Connect the apps you already use."
+msgid "Connect the apps you already use, so agents can work with your mail and files."
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -2556,7 +2570,6 @@ msgid "Contacts are your address book. They do not change Carta."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Context limit"
 msgstr "上下文限制"
 
@@ -2593,6 +2606,10 @@ msgstr ""
 #: src/pages/Legal.tsx
 #: src/pages/legal/LegalContracts.tsx
 msgid "Contracts"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "contracts, NDA, deadlines"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
@@ -3090,7 +3107,7 @@ msgstr ""
 msgid "Could not save the page."
 msgstr ""
 
-#: src/pages/ModelSettingsOverlay.tsx
+#: src/components/AutoFileEmailSetting.tsx
 msgid "Could not save the setting"
 msgstr ""
 
@@ -3356,10 +3373,6 @@ msgid "Credentials are encrypted and never sent to the model."
 msgstr "凭据已加密，不会发送给模型。"
 
 #: src/pages/RoutineSchedule.tsx
-msgid "Cron"
-msgstr "Cron"
-
-#: src/pages/RoutineSchedule.tsx
 msgid "Cron expression"
 msgstr "Cron 表达式"
 
@@ -3449,7 +3462,6 @@ msgid "Decline"
 msgstr "拒绝"
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Default"
 msgstr "默认"
@@ -3460,9 +3472,7 @@ msgstr "默认"
 msgid "Default ({0})"
 msgstr "默认（{0}）"
 
-#. placeholder {0}: thinkingLevelLabel("medium")
 #. placeholder {0}: thinkingLevelLabel(defaultThinkingLevel)
-#: src/pages/Onboarding.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Default ({0})"
@@ -3564,10 +3574,6 @@ msgstr "拒绝"
 msgid "Deployment default"
 msgstr "部署默认"
 
-#: src/components/ListControls.tsx
-msgid "Descending"
-msgstr ""
-
 #: src/pages/Board.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -3586,6 +3592,7 @@ msgstr ""
 msgid "Desktop update"
 msgstr ""
 
+#: src/components/AskCard.tsx
 #: src/components/data-room/ProcessingStrip.tsx
 msgid "Details"
 msgstr ""
@@ -3722,6 +3729,10 @@ msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
 msgid "Documents over time"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Does a similar job to another subscription"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
@@ -4007,7 +4018,6 @@ msgid "Error"
 msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
-#: src/pages/RoutineSchedule.tsx
 msgid "Every"
 msgstr "每"
 
@@ -4028,10 +4038,6 @@ msgstr "每天"
 #: src/pages/RoutineSchedule.tsx
 msgid "Every hour"
 msgstr "每小时"
-
-#: src/pages/RoutineSchedule.tsx
-msgid "Every Monday"
-msgstr "每周一"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
@@ -4096,7 +4102,6 @@ msgid "External conversation"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Extra high"
 msgstr "极高"
 
@@ -4110,6 +4115,7 @@ msgid "failed"
 msgstr "失败"
 
 #: src/components/data-room/DataRoomStats.tsx
+#: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/format.ts
 #: src/components/data-room/ItemRows.tsx
 #: src/components/integrations/parts.tsx
@@ -4137,6 +4143,10 @@ msgstr "失败处理"
 msgid "Fee"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Fetching…"
+msgstr ""
+
 #: src/pages/SpaceSearch.tsx
 msgid "File"
 msgstr ""
@@ -4161,6 +4171,10 @@ msgstr ""
 #: src/components/data-room/FilterBar.tsx
 #: src/components/ListControls.tsx
 msgid "Filter by {label}"
+msgstr ""
+
+#: src/pages/Artifacts.tsx
+msgid "Filter by bot"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -4538,13 +4552,8 @@ msgstr "隐藏文字记录"
 msgid "Hides money amounts in finance, chat and email."
 msgstr ""
 
-#: src/components/HideAmountsToggle.tsx
-msgid "Hides money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show. A reply you write keeps the original amounts."
-msgstr ""
-
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "High"
 msgstr "高"
 
@@ -4783,14 +4792,6 @@ msgstr "指令"
 msgid "Integration options"
 msgstr ""
 
-#: src/components/ConnectAppsButton.tsx
-#: src/components/integrations/AppDetail.tsx
-#: src/components/integrations/IntegrationsHome.tsx
-#: src/components/integrations/McpDetail.tsx
-#: src/pages/Shell.tsx
-msgid "Integrations"
-msgstr "集成"
-
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Interval"
@@ -4894,6 +4895,10 @@ msgstr ""
 msgid "Language"
 msgstr "语言"
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Language and time zone"
+msgstr ""
+
 #: src/components/data-room/DataRoomStats.tsx
 msgid "Largest files"
 msgstr ""
@@ -4920,11 +4925,11 @@ msgid "Last run failed."
 msgstr ""
 
 #: src/pages/Legal.tsx
-msgid "Last scan {lastScan}. Daily scan paused."
+msgid "Last scan {lastScan}"
 msgstr ""
 
 #: src/pages/Legal.tsx
-msgid "Last scan {lastScan}. Daily scans wait until you allow access."
+msgid "Last scan {lastScan}. Daily scan paused."
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -5000,8 +5005,16 @@ msgstr ""
 msgid "Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
 msgstr ""
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Let other agents use {service} directly"
+msgstr ""
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Let Praci read documents"
+msgstr ""
+
+#: src/components/legal/ConsentPrompt.tsx
+msgid "Let Praci read your contracts"
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
@@ -5012,10 +5025,6 @@ msgstr ""
 msgid "Let Praci sort your mail"
 msgstr ""
 
-#: src/components/legal/ConsentPrompt.tsx
-msgid "Let the Legal agent read your documents"
-msgstr ""
-
 #: src/components/data-room/format.ts
 msgid "Letter or email"
 msgstr ""
@@ -5023,10 +5032,6 @@ msgstr ""
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Light"
 msgstr "浅色"
-
-#: src/pages/RoutineEditor.tsx
-msgid "Linear issue"
-msgstr "Linear 工单"
 
 #: src/pages/SpaceSearch.tsx
 msgid "Link"
@@ -5164,7 +5169,6 @@ msgstr ""
 
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Low"
 msgstr "低"
 
@@ -5186,8 +5190,9 @@ msgstr ""
 msgid "Mail data from this account that Praci cached is removed."
 msgstr ""
 
+#. placeholder {0}: accountCount > 1 ? "these accounts" : "this account"
 #: src/components/integrations/AppDetail.tsx
-msgid "Mail data Praci cached from these accounts is removed."
+msgid "Mail data Praci cached from {0} is removed."
 msgstr ""
 
 #. placeholder {0}: status.sender
@@ -5299,7 +5304,6 @@ msgid "Marked unread"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Max"
 msgstr "最大"
 
@@ -5313,7 +5317,6 @@ msgid "Maximize"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Maximum images per request"
 msgstr "每次请求的最大图像数"
 
@@ -5322,7 +5325,6 @@ msgid "Maximum of 10 backup models."
 msgstr "最多可添加 10 个备用模型。"
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Maximum output tokens"
 msgstr "最大输出 token 数"
 
@@ -5331,7 +5333,6 @@ msgid "MCP endpoint"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Medium"
 msgstr "中"
 
@@ -5436,7 +5437,6 @@ msgid "Microphone failed"
 msgstr "麦克风失败"
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Minimal"
 msgstr "最低"
 
@@ -5527,7 +5527,6 @@ msgid "Month to date"
 msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
-#: src/pages/RoutineSchedule.tsx
 msgid "Monthly"
 msgstr "每月"
 
@@ -5560,6 +5559,7 @@ msgstr ""
 #: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/transcript.tsx
 msgid "More"
 msgstr ""
@@ -5687,10 +5687,6 @@ msgstr ""
 msgid "Needs input"
 msgstr "需要输入"
 
-#: src/pages/Legal.tsx
-msgid "Needs Muse Spark 1.2."
-msgstr ""
-
 #: src/components/integrations/parts.tsx
 msgid "Needs reconnect"
 msgstr ""
@@ -5711,10 +5707,6 @@ msgstr "需要接管"
 #: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
 msgid "Needs you"
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Needs your OpenRouter key."
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -6175,10 +6167,6 @@ msgstr ""
 msgid "Not now"
 msgstr "暂不"
 
-#: src/pages/CapTable.tsx
-msgid "Not on Carta? You can still keep your investors and advisors below."
-msgstr ""
-
 #: src/pages/Legal.tsx
 msgid "Not scanned yet"
 msgstr ""
@@ -6282,6 +6270,10 @@ msgid "Obligation"
 msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Off: other agents reach {service} only through this agent."
+msgstr ""
+
+#: src/components/integrations/IntegrationAgentSection.tsx
 msgid "Off: the agent only reads. On: it can also make changes, and asks you before each one."
 msgstr ""
 
@@ -6293,11 +6285,6 @@ msgstr "正在与 {0} 通话"
 #: src/pages/RoutineEditor.tsx
 msgid "On a schedule"
 msgstr "按计划"
-
-#. placeholder {0}: preset.time
-#: src/pages/RoutineSchedule.tsx
-msgid "on the 1st at {0}"
-msgstr "每月 1 日 {0}"
 
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
@@ -6434,7 +6421,7 @@ msgid "Open receipt"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
-msgid "Open server integrations"
+msgid "Open server apps"
 msgstr ""
 
 #: src/pages/shell/composer.tsx
@@ -6601,10 +6588,6 @@ msgstr ""
 #: src/components/SidebarPagesGroup.tsx
 msgid "Page options"
 msgstr ""
-
-#: src/pages/RoutineEditor.tsx
-msgid "PagerDuty incident"
-msgstr "PagerDuty 事件"
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
@@ -6804,15 +6787,15 @@ msgid "Posted"
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
-msgid "Praci can tag files you add and sort them into folders. To do that, their text (and images) is sent to the AI service that runs your bots ({names}). Files that already have tags keep them."
-msgstr ""
-
-#: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Praci keeps itself up to date. If an update ever needs you, it shows here."
+msgstr ""
+
+#: src/components/DataExport.tsx
+msgid "Preparing…"
 msgstr ""
 
 #. placeholder {0}: job.progress
@@ -6858,6 +6841,10 @@ msgstr ""
 
 #: src/pages/Board.tsx
 msgid "Priority"
+msgstr ""
+
+#: src/pages/SettingsOverlay.tsx
+msgid "Privacy and approvals"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -7036,7 +7023,6 @@ msgid "Ready until {0}"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Reasoning effort"
 msgstr "推理强度"
 
@@ -7420,6 +7406,10 @@ msgstr ""
 msgid "Request export"
 msgstr ""
 
+#: src/components/DataExport.tsx
+msgid "Request new export"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Research & writing"
 msgstr "调研和写作"
@@ -7697,6 +7687,7 @@ msgstr "保存工作区并安装最新软件。"
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/ExternalConversationSettings.tsx
+#: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Saved"
 msgstr "已保存"
@@ -7932,6 +7923,10 @@ msgstr "选择 Bot"
 msgid "Select a connected model"
 msgstr "选择已连接的模型"
 
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Select all"
+msgstr ""
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Select an item to see its relations."
 msgstr ""
@@ -7985,10 +7980,6 @@ msgstr ""
 msgid "Send to agent"
 msgstr ""
 
-#: src/components/AiDataSharing.tsx
-msgid "Senders, recipients, subjects and short previews go to the AI service that runs your bots ({name})."
-msgstr ""
-
 #: src/components/MailApprovalCard.tsx
 msgid "Sending is off for {botName}. Turn it back on in its tools."
 msgstr ""
@@ -8013,10 +8004,6 @@ msgstr ""
 msgid "Sent to {forwardedName}"
 msgstr ""
 
-#: src/pages/RoutineEditor.tsx
-msgid "Sentry alert"
-msgstr "Sentry 告警"
-
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Serenity endpoint is required."
 msgstr ""
@@ -8024,7 +8011,7 @@ msgstr ""
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/LocalSettings.tsx
-msgid "Server integrations"
+msgid "Server apps"
 msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
@@ -8061,7 +8048,6 @@ msgid "Set up app catalog"
 msgstr ""
 
 #: src/components/call/CallCard.tsx
-#: src/pages/BotContextMenu.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -8069,7 +8055,7 @@ msgid "Settings"
 msgstr "设置"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Settings, backups and Export my data are here, and so is Take the tour."
+msgid "Settings, Export my data and Take the tour are in your account menu."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -8080,10 +8066,6 @@ msgstr "设置帮助"
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Shape"
 msgstr "形状"
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Share with all agents"
-msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Shared"
@@ -8355,10 +8337,6 @@ msgstr ""
 msgid "Slack message"
 msgstr "Slack 消息"
 
-#: src/pages/RoutineEditor.tsx
-msgid "Slack not enabled"
-msgstr ""
-
 #: src/pages/shell/message-cards.tsx
 msgid "Slack, calendar and email"
 msgstr ""
@@ -8384,6 +8362,14 @@ msgstr "软件更新"
 #: src/lib/user-error.ts
 msgid "Something went wrong. Try again."
 msgstr "出了点问题。请重试。"
+
+#: src/components/ListControls.tsx
+msgid "Sort ascending"
+msgstr ""
+
+#: src/components/ListControls.tsx
+msgid "Sort descending"
+msgstr ""
 
 #: src/components/ListControls.tsx
 msgid "Sort: {fieldLabel}"
@@ -8470,6 +8456,10 @@ msgstr ""
 msgid "Spent {spentRange}"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Spent so far this month"
+msgstr ""
+
 #: src/components/FinanceCards.tsx
 msgid "Spent this month"
 msgstr ""
@@ -8536,6 +8526,7 @@ msgid "Stats"
 msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
+#: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/ActivityList.tsx
@@ -8557,6 +8548,10 @@ msgstr ""
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Steps"
 msgstr "步骤"
+
+#: src/components/ShellSkeleton.tsx
+msgid "Still opening…"
+msgstr ""
 
 #: src/pages/shell/transcript.tsx
 msgid "Still waiting on {service}"
@@ -8638,12 +8633,10 @@ msgid "Summarize what's new this week"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Supports images"
 msgstr "支持图片"
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Supports thinking"
 msgstr "支持思考"
 
@@ -8717,10 +8710,6 @@ msgstr ""
 msgid "Teams message"
 msgstr "Teams 消息"
 
-#: src/pages/RoutineEditor.tsx
-msgid "Teams not enabled"
-msgstr ""
-
 #: src/pages/legal/LegalContracts.tsx
 msgid "Term"
 msgstr ""
@@ -8779,6 +8768,10 @@ msgstr ""
 msgid "The agent will be able to change your {service} data. It asks before each change."
 msgstr ""
 
+#: src/components/integrations/McpDetail.tsx
+msgid "The agent will be able to move money and change your {service} accounts. It asks before each change."
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "The AI your bots think with. They already have one, so change this only to use another AI company or your own key."
 msgstr ""
@@ -8832,6 +8825,10 @@ msgstr "连接超时。"
 msgid "The Data room holds your files. Artifacts holds what agents make."
 msgstr ""
 
+#: src/components/DataExport.tsx
+msgid "The export failed. Try again."
+msgstr ""
+
 #: src/components/finance/StatementImport.tsx
 msgid "The file is too large"
 msgstr ""
@@ -8851,10 +8848,6 @@ msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
-msgstr ""
-
-#: src/components/legal/ConsentPrompt.tsx
-msgid "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
 msgstr ""
 
 #: src/lib/run-phase.ts
@@ -8886,6 +8879,10 @@ msgstr "所选记忆提供方在此构建中不可用。"
 msgid "the statement through {0}"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
+msgid "The text is sent to the AI model that runs your bots."
+msgstr ""
+
 #: src/components/finance/StatementReviewCard.tsx
 msgid "The transactions read add up to the closing balance"
 msgstr ""
@@ -8899,7 +8896,6 @@ msgid "These saved settings can't be read. Remove it and add it again."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/transcript.tsx
@@ -9123,8 +9119,9 @@ msgstr "今天"
 msgid "Token"
 msgstr ""
 
+#. placeholder {0}: formatBytes(attachment.size)
 #: src/components/inbox/MailAttachments.tsx
-msgid "Too large to preview"
+msgid "Too large to preview ({0})"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
@@ -9231,6 +9228,7 @@ msgstr ""
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
+#: src/components/ShellSkeleton.tsx
 #: src/lib/use-contact-notices.ts
 #: src/pages/ActivityList.tsx
 #: src/pages/CapTable.tsx
@@ -9325,6 +9323,10 @@ msgstr ""
 #: src/pages/Inbox.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Undo"
+msgstr ""
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Undone"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -9531,11 +9533,10 @@ msgid "URL"
 msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
-#: src/pages/Shell.tsx
 msgid "Usage"
 msgstr "用量"
 
-#. placeholder {0}: entry.name
+#. placeholder {0}: label.title
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Use {0}"
 msgstr ""

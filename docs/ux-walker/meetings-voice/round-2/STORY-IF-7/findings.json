@@ -1,0 +1,24 @@
+{
+  "story_id": "STORY-IF-7",
+  "result": "SKIPPED",
+  "round1_status": [],
+  "findings": [
+    {
+      "id": "F2-IF-7-01",
+      "severity": "low",
+      "category": "happy-path",
+      "criterion": "Recovery",
+      "score": "warn",
+      "kind": "plan",
+      "description": "The citation popover's 'Open in Granola' link may point at a note the user deleted in Granola. The plan has no text for it; the stored copy stays and can be removed with Delete.",
+      "expected": "Decide: leave the link or hide it after a failed open.",
+      "actual": "Not drawn.",
+      "screenshot": "cite-open.png",
+      "suggested_fix": "Record a decision.",
+      "files_likely_involved": [],
+      "jf": null,
+      "plan_section": "granola.md S3 / S6",
+      "story_id": "STORY-IF-7"
+    }
+  ]
+}

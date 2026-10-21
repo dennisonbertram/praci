@@ -70,6 +70,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Separator,
   Spinner,
 } from "@rakazo/ui-web";
 import {
@@ -83,7 +84,6 @@ import {
   FileText,
   FolderOpen,
   FolderPlus,
-  Gauge,
   History,
   LayoutGrid,
   ListTodo,
@@ -209,7 +209,7 @@ import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-pref
 import { findInboxAgent } from "../lib/inbox-agent";
 import { appPath } from "../lib/integrations";
 import { findLegalAgent } from "../lib/legal-agent";
-import { localTimezone, markTimezoneReported, timezoneToReport } from "../lib/local-timezone";
+import { accountTimezone, markTimezoneReported, timezoneToReport } from "../lib/local-timezone";
 import { parseModelOptionKey } from "../lib/model-catalog";
 import { createAgentSendWatch } from "../lib/outbox";
 import {
@@ -317,7 +317,12 @@ import {
 } from "./shell/dialogs";
 import { GroupIntro } from "./shell/GroupIntro";
 import { SidebarHeaderRow, TOP_BAR_HEIGHT } from "./shell/sidebar-header-row";
-import { activeSpaceFirst, commitSpaceRename, sidebarGroupsForSpaces } from "./shell/space-sidebar";
+import {
+  activeSpaceFirst,
+  commitSpaceRename,
+  sidebarGroupsForSpaces,
+  spaceHoldingChat,
+} from "./shell/space-sidebar";
 import { AppNavigateContext, Transcript, UnreadDivider } from "./shell/transcript";
 import { WindowChrome } from "./WindowChrome";
 
@@ -775,6 +780,17 @@ export function ShellPage() {
   const [initialBotsLoaded, setInitialBotsLoaded] = useState(false);
   const [bootstrapMe, setBootstrapMe] = useState<Me | null>();
   const [tourRestart, setTourRestart] = useState(false);
+  // The tour waits for the first-run focus question, so its popovers never cover the choices.
+  const firstQuestionOpen = Boolean(
+    snapshot?.messages.some((message) =>
+      message.blocks.some(
+        (block) =>
+          block.kind === "choice" &&
+          block.question === "What do you want me on first?" &&
+          !block.answerId,
+      ),
+    ),
+  );
   const activeSpaceId = bootstrapMe?.spaceId;
   const agentAppFor = useAgentApp(
     userId,
@@ -1364,6 +1380,16 @@ export function ShellPage() {
           !bootstrap.spaces.some((space) => space.hasContent)
         ) {
           navigate("/onboarding", { replace: true });
+          return;
+        }
+        // A link from another of the person's spaces switches to that space and reloads.
+        const otherSpaceId = spaceHoldingChat(
+          bootstrap.spaces,
+          bootstrap.me.spaceId,
+          groupId ?? botId ?? "",
+        );
+        if (otherSpaceId && selectSpace(otherSpaceId)) {
+          window.location.assign(window.location.pathname);
           return;
         }
         if (groupId) {
@@ -1959,23 +1985,34 @@ export function ShellPage() {
         icon: <PieChart {...icon} />,
       },
       { id: "contacts", label: t`Contacts`, icon: <BookUser {...icon} /> },
+      {
+        id: "legal",
+        label: t`Legal`,
+        keywords: t`contracts, NDA, deadlines`,
+        icon: <Scale {...icon} />,
+      },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
-      { id: "integrations", label: t`Integrations`, icon: <LayoutGrid {...icon} /> },
+      { id: "integrations", label: t`Apps`, icon: <LayoutGrid {...icon} /> },
       { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
       { id: "settings", label: t`Settings`, icon: <Settings {...icon} /> },
     ];
   }, [t]);
+  // A page hidden in Page options stays out of search and the command palette too.
+  const visiblePages = useMemo(
+    () => appPages.filter((page) => !hiddenPages.includes(page.id)),
+    [appPages, hiddenPages],
+  );
   // Matched by name, so "Finance" finds the Finance page and not only the Finance agent.
   const searchPages = useMemo(() => {
     const needle = spaceQuery.toLocaleLowerCase();
     return needle
-      ? appPages.filter((page) =>
+      ? visiblePages.filter((page) =>
           `${page.label} ${"keywords" in page ? page.keywords : ""}`
             .toLocaleLowerCase()
             .includes(needle),
         )
       : [];
-  }, [appPages, spaceQuery]);
+  }, [visiblePages, spaceQuery]);
   const [searchDocuments, setSearchDocuments] = useState<SearchLink[]>([]);
   const [searchArtifacts, setSearchArtifacts] = useState<SearchLink[]>([]);
 
@@ -2426,6 +2463,7 @@ export function ShellPage() {
   async function startElioCall() {
     if (voiceCallStarting.current) return;
     if (!voiceStatus?.ready) {
+      setSendError(t`Connect a voice provider to call Elio.`);
       openSettings("voice");
       return;
     }
@@ -3949,7 +3987,8 @@ export function ShellPage() {
           className="rk-scroll rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5"
         >
           {/* While searching, matching pages are listed with the results instead. */}
-          {showSpaceSearch && !rail ? null : (
+          {(showSpaceSearch && !rail) || bootstrapMe === undefined ? null : (
+            // Waiting for the account (undefined) keeps pages the user hid from flashing in.
             // Inside the scroll area, so on a short screen the chats are never squeezed out.
             <div className="flex shrink-0 flex-col">
               <SidebarPagesGroup
@@ -4004,6 +4043,7 @@ export function ShellPage() {
                       unseen: unseen.finance ?? 0,
                       rail,
                       value: runwayGlance(glance.financeRunwayMonths, hideAmounts),
+                      valueLabel: t`${runwayGlance(glance.financeRunwayMonths, hideAmounts)} runway`,
                     })}
                   />
                 )}
@@ -4022,6 +4062,10 @@ export function ShellPage() {
                       unseen: unseen.legal ?? 0,
                       rail,
                       value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
+                      valueLabel: plural(glance.legalDueSoon, {
+                        one: "# due soon",
+                        other: "# due soon",
+                      }),
                     })}
                   />
                 )}
@@ -4068,6 +4112,10 @@ export function ShellPage() {
                       rail,
                       value:
                         glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
+                      valueLabel: plural(glance.dataRoomWaiting, {
+                        one: "# waiting",
+                        other: "# waiting",
+                      }),
                     })}
                   />
                 )}
@@ -4111,8 +4159,11 @@ export function ShellPage() {
               onSelectDocument={(id) =>
                 openSearchResult(`/app/data-room?item=${encodeURIComponent(id)}`)
               }
-              onSearchMail={() =>
-                openSearchResult(`/app/inbox?q=${encodeURIComponent(spaceQuery)}`)
+              // A page name is a navigation query, so the mail row would only be a second answer.
+              onSearchMail={
+                searchPages.length
+                  ? undefined
+                  : () => openSearchResult(`/app/inbox?q=${encodeURIComponent(spaceQuery)}`)
               }
             />
           ) : (
@@ -4174,11 +4225,7 @@ export function ShellPage() {
                     name: group.relabeled ? `${group.title} (${group.spaceName})` : group.title,
                   };
                   return (
-                    <div
-                      key={group.key}
-                      data-sidebar-group={group.key}
-                      data-sidebar-current={group.current ? "" : undefined}
-                    >
+                    <div key={group.key} data-sidebar-group={group.key}>
                       {rail ? (
                         <div
                           className={
@@ -4207,6 +4254,7 @@ export function ShellPage() {
                           onRename={(name) => void renameFolder(folder, name)}
                           onCancelRename={() => setEditingFolderId(null)}
                           onDelete={() => void deleteFolder(folder)}
+                          takenNames={botSections.map((section) => section.name)}
                         />
                       ) : null}
                       {!rail && !folder && (group.title || hasSpaceActions) ? (
@@ -4221,6 +4269,7 @@ export function ShellPage() {
                             <button
                               type="button"
                               aria-current={group.current ? "true" : undefined}
+                              data-sidebar-current={group.current ? "" : undefined}
                               title={group.relabeled ? group.spaceName : undefined}
                               className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-muted-foreground/60"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
                               onClick={() => {
@@ -4374,6 +4423,7 @@ export function ShellPage() {
                                   <div
                                     ref={row.setNodeRef}
                                     data-drops-before={row.dropsBefore ? "" : undefined}
+                                    data-tour={selected ? "sidebar-chat" : undefined}
                                     className={`group/row relative mb-1 data-drops-before:border-t-2 data-drops-before:border-ring ${
                                       !rail && (folder || group.kind === "pinned") ? "ms-3" : ""
                                     }`}
@@ -4795,7 +4845,14 @@ export function ShellPage() {
           />
         </div>
         <FirstRunTour
-          open={tourRestart || (bootstrapMe?.tourSeen === false && bots.length > 0)}
+          open={
+            tourRestart ||
+            (bootstrapMe?.tourSeen === false && bots.length > 0 && !firstQuestionOpen)
+          }
+          onConnectApps={() => {
+            setMobileSidebarOpen(false);
+            navigate("/app/integrations");
+          }}
           onClose={(me) => {
             setTourRestart(false);
             setBootstrapMe((current) => me ?? (current && { ...current, tourSeen: true }));
@@ -4820,10 +4877,12 @@ export function ShellPage() {
               side="top"
               align="start"
               alignOffset={11}
+              role="menu"
               className="w-[calc(316px-1.5rem)] max-w-[calc(100vw-3rem)] gap-0 p-1 data-closed:animate-none"
             >
               {bootstrapMe?.ticketBoardEnabled ? (
                 <Button
+                  role="menuitem"
                   variant="ghost"
                   className="w-full justify-start font-normal"
                   onClick={() => {
@@ -4837,6 +4896,7 @@ export function ShellPage() {
                 </Button>
               ) : null}
               <Button
+                role="menuitem"
                 variant="ghost"
                 className="w-full justify-start font-normal"
                 aria-label={t`Settings`}
@@ -4850,6 +4910,7 @@ export function ShellPage() {
               </Button>
               <HideAmountsMenuItem onDone={() => setMenuOpen(false)} />
               <Button
+                role="menuitem"
                 variant="ghost"
                 className="w-full justify-start font-normal"
                 data-testid="take-tour"
@@ -4861,19 +4922,9 @@ export function ShellPage() {
                 <Compass className="text-muted-foreground" strokeWidth={1.75} />
                 <Trans>Take the tour</Trans>
               </Button>
+              <Separator className="my-1" />
               <Button
-                variant="ghost"
-                className="w-full justify-start font-normal"
-                aria-label={t`Usage`}
-                onClick={() => {
-                  setMenuOpen(false);
-                  openSettings("usage");
-                }}
-              >
-                <Gauge className="text-muted-foreground" strokeWidth={1.75} />
-                <Trans>Usage</Trans>
-              </Button>
-              <Button
+                role="menuitem"
                 variant="ghost"
                 className="w-full justify-start font-normal"
                 onClick={() =>
@@ -5523,7 +5574,7 @@ export function ShellPage() {
                 draft={routineDraft}
                 onChange={setRoutineDraft}
                 editing={editingRoutine}
-                timezone={editingRoutine?.timezone ?? localTimezone()}
+                timezone={editingRoutine?.timezone ?? accountTimezone(bootstrapMe)}
                 webhook={{
                   path:
                     typeof window !== "undefined"
@@ -5621,7 +5672,7 @@ export function ShellPage() {
                         name: routineDraft.name || t`Routine`,
                         prompt: routineDraft.prompt || t`Check in.`,
                         crons,
-                        timezone: localTimezone(),
+                        timezone: accountTimezone(bootstrapMe),
                         active: routineDraft.active,
                         notify: true,
                         webhookEnabled: routineDraft.webhookEnabled,
@@ -6022,7 +6073,7 @@ export function ShellPage() {
             setMobileSidebarOpen(false);
             navigate(`/app/${id}`);
           }}
-          pages={appPages}
+          pages={visiblePages}
           groups={groups.map((group) => ({
             id: group.id,
             label: group.name,
@@ -6128,7 +6179,7 @@ export function ShellPage() {
               const nextMe = await rpc.preferences.update({ avatarStyle });
               setBootstrapMe(nextMe);
             }}
-            timezone={bootstrapMe?.timezone ?? localTimezone()}
+            timezone={accountTimezone(bootstrapMe)}
             onTimezoneChange={async (timezone) => {
               setBootstrapMe(await rpc.preferences.update({ timezone }));
             }}

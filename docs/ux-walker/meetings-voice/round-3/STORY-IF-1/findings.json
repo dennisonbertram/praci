@@ -1,0 +1,23 @@
+{
+  "story_id": "STORY-IF-1",
+  "round": 3,
+  "result": "PASS",
+  "round2_status": [
+    {
+      "id": "F2-IF-1-01",
+      "status": "fixed",
+      "evidence": "Mobile: row tap does nothing, only the 44x44 checkbox button completes (live click test)."
+    },
+    {
+      "id": "F2-IF-1-02",
+      "status": "still-open",
+      "evidence": "Inbox badge stays mail-only by plan decision (Deliberate choices). Low, accepted."
+    },
+    {
+      "id": "F2-IF-1-03",
+      "status": "still-open",
+      "evidence": "'Connect Gmail...' card still sits under the to-dos for a meeting-only user (plan keeps it below the card). Low, accepted."
+    }
+  ],
+  "findings": []
+}

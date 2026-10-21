@@ -283,3 +283,15 @@ it("marks the Email invalid and focuses it when another contact has it", async (
   ).toContain("Another contact already has this email.");
   expect(document.activeElement).toBe(email);
 });
+
+it("shows the organization, else the email, under the name", async () => {
+  rpcMock.list.mockResolvedValue([
+    contact("c1", "Ada", "customer"),
+    { ...contact("c3", "Cy", "vendor"), organization: null },
+  ]);
+  await show();
+  const under = [...container.querySelectorAll("tbody td:first-child div")].map(
+    (div) => div.textContent,
+  );
+  expect(under).toEqual(["Acme Corp", "cy@example.test"]);
+});

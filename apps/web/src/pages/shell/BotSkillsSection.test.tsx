@@ -120,7 +120,8 @@ it("lists skills with a source badge only for non-user skills and a switch each"
   const onSkillsChange = vi.fn();
   const view = await mount(onSkillsChange);
   expect(api.forBot).toHaveBeenCalledWith({ botId: "bot-1" });
-  expect(view.button("Interrogate").textContent).toContain("Built-in");
+  expect(view.button("Interrogate").textContent).not.toContain("Built-in");
+  expect(view.container.querySelector("details")?.textContent).toContain("Built-in skills (");
   expect(view.button("greeting").textContent).not.toContain("Built-in");
   expect(view.toggle("Interrogate").checked).toBe(true);
   expect(view.toggle("greeting").checked).toBe(false);
@@ -220,11 +221,12 @@ it("shows the server's reason when a skill cannot be saved, and clears it on ret
   await view.unmount();
 });
 
-it("caps the skills list height so it scrolls on its own", async () => {
+it("scrolls with the panel and keeps built-ins folded, custom skills first", async () => {
   const view = await mount();
-  expect(view.container.querySelector("[data-testid=bot-skills-list]")?.className).toContain(
-    "overflow-y-auto",
-  );
+  const list = view.container.querySelector("[data-testid=bot-skills-list]");
+  expect(list?.className ?? "").not.toContain("overflow");
+  expect(list?.querySelector("details")?.hasAttribute("open")).toBe(false);
+  expect(list?.firstElementChild?.getAttribute("data-skill-id")).not.toContain("builtin:");
   await view.unmount();
 });
 

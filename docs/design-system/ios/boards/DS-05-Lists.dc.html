@@ -353,8 +353,7 @@ class Component extends DCLogic {
       archive: 'M3 4h18v4H3z M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8 M10 12h4',
       mailOpen: 'M3 9l9-6 9 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M3 9l9 6 9-6',
       mail: 'M3 5h18v14H3z M3 7l9 6 9-6',
-      star: 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z',
-      bellOff: 'M8.7 3A6 6 0 0 1 18 8c0 3 .7 5 1.5 6.5 M17 17H3s3-2 3-9c0-.5 0-1 .2-1.5 M10.3 21a1.9 1.9 0 0 0 3.4 0 M2 2l20 20',
+      spam: 'M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9z M12 8v5 M12 16h.01',
       chat: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
       doc: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z M14 3v5h5',
       chevR: 'M9 6l6 6-6 6',
@@ -403,14 +402,13 @@ class Component extends DCLogic {
     const ARCH = (w, full) => act('Archive', P.archive, '#F1F0EB', '#1C1C1A', w, full);
     const READ = act('Mark read', P.mailOpen, '#4A4944', '#ECEBE6', 88);
     const UNREAD = act('Mark unread', P.mail, '#4A4944', '#ECEBE6', 88);
-    const STAR = act('Star', P.star, '#33322F', '#ECEBE6', 88);
-    const MUTE = act('Mute', P.bellOff, '#4A4944', '#ECEBE6', 88);
+    const SPAM = act('Spam', P.spam, '#4A4944', '#ECEBE6', 88);
     const sw = (cap, tx, lead, trail, unread) => ({ cap, tx, lead, trail, dot: unread ? D.ink : 'transparent', weight: unread ? 600 : 400, sender: 'Ana Ruiz' });
     const swipeRows = [
       sw('At rest', 0, [], [], true),
       sw('Swipe right: leading action (unread row offers Mark read)', 88, [READ], [], true),
       sw('Swipe right on a read row: Mark unread', 88, [UNREAD], [], false),
-      sw('Swipe left, released part way: Mute, Star, Archive (Archive outermost)', -264, [], [MUTE, STAR, ARCH(88)], true),
+      sw('Swipe left, released part way: Spam, Archive (Archive outermost)', -176, [], [SPAM, ARCH(88)], true),
       sw('Swipe left past the threshold: Archive fills the row and commits', -330, [], [ARCH(330, true)], true)
     ];
 
@@ -570,13 +568,13 @@ class Component extends DCLogic {
 
       { name: 'Swipe actions', isSwipe: true, spec: spec([
         ['Purpose', 'Triage a mail row without opening it.'],
-        ['Actions', 'Leading (swipe right): Mark read, or Mark unread on a read row; full swipe commits. Trailing (swipe left): Archive outermost with full-swipe commit, then Star, then Mute. Matches the four row buttons in InboxRow.'],
-        ['Metrics', 'Row height 62. Each revealed action is 88pt wide, 22pt glyph over a 12/500 label, so the target is 88 by 62. Archive is the only ink-filled action (primary on-primary), the rest are neutral fills (#4A4944, #33322F); no status colors because none is a status.'],
+        ['Actions', 'Leading (swipe right): Mark read, or Mark unread on a read row; full swipe commits. Trailing (swipe left): Archive outermost with full-swipe commit, then Spam. Two actions only; Star and Mute are not swipe actions.'],
+        ['Metrics', 'Row height 62. Each revealed action is 88pt wide, 22pt glyph over a 12/500 label, so the target is 88 by 62. Archive is the only ink-filled action (primary on-primary), the rest are neutral fills (#4A4944); no status colors because none is a status.'],
         ['Layer', 'Content. Actions sit under the row inside the list; they are native SwiftUI swipeActions, not glass.'],
         ['States', 'At rest, leading revealed, trailing revealed, full-swipe commit. Every action also has a VoiceOver custom action and a long-press menu item.'],
-        ['SF Symbols', 'archivebox, envelope.open, envelope.badge (Mark unread), star, bell.slash.'],
+        ['SF Symbols', 'archivebox, envelope.open, envelope.badge (Mark unread), exclamationmark.octagon (Spam).'],
         ['Replaces', 'New on mobile. Pattern source: apps/mobile/components/archived-bot-list.ios.tsx (@expo/ui SwipeActions with Restore and Delete); web buttons in apps/web/src/components/inbox/InboxRow.tsx.'],
-        ['Do / Don’t', 'Do keep Archive as the full-swipe action. Don’t add a fifth action; overflow goes to the long-press menu.']
+        ['Do / Don’t', 'Do keep Archive as the full-swipe action. Don’t add a third trailing action; anything else goes to the long-press menu.']
       ]), swatches: [ swatch(D, 'Dark, outer display (406pt)', 406, { rows: swipeRows }) ] },
 
       { name: 'Section header', isHeader: true, spec: spec([

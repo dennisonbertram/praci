@@ -145,11 +145,11 @@ export const fileIcon = (item: Pick<DataRoomApiItem, "mimeType" | "name">) =>
 const DASH = "—";
 const empty = <span className="text-muted-foreground">{DASH}</span>;
 /** Hidden until the list pane is wide enough, then shown as a table cell. */
-const MID_COL = "hidden @min-[500px]/list:table-cell";
-const PARTIES_COL = "hidden @min-[640px]/list:table-cell";
+const MID_COL = "hidden @min-[640px]/list:table-cell";
+const PARTIES_COL = "hidden @min-[900px]/list:table-cell";
 // A <col> must show as table-column: table-cell on it breaks the fixed column sizing.
-const MID_COLUMN = "hidden @min-[500px]/list:table-column";
-const PARTIES_COLUMN = "hidden @min-[640px]/list:table-column";
+const MID_COLUMN = "hidden @min-[640px]/list:table-column";
+const PARTIES_COLUMN = "hidden @min-[900px]/list:table-column";
 /** The "⋯" shows on hover or focus, while its menu is open, and always on touch screens. */
 const ROW_ACTIONS =
   "opacity-0 group-hover/row:opacity-100 group-focus-visible/row:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100 pointer-coarse:opacity-100";
@@ -157,7 +157,7 @@ const ROW_ACTIONS =
 const LIST_PAD = "px-4 md:px-7 @min-[800px]/bd:px-2";
 /** The Date column follows the sort: when the file was added, or the date on the document. */
 const dateOf = (item: DataRoomApiItem, field: SortField | undefined) =>
-  dateText(field === "date" ? item.facets.docDate : item.createdAt);
+  field === "date" ? dateText(item.facets.docDate) : dateText(item.createdAt, true);
 
 /** Fixed widths, so a one-row list leaves no stretched empty area and columns never shift. */
 function Columns() {
@@ -177,7 +177,7 @@ function ListHead({ sortField }: { sortField: SortField | undefined }) {
   return (
     <TableHeader
       data-testid="data-room-head"
-      className="sticky top-0 z-10 hidden bg-background @min-[500px]/list:table-header-group"
+      className="sticky top-0 z-10 hidden bg-background @min-[640px]/list:table-header-group"
     >
       <TableHeadRow>
         <TableHead>
@@ -260,7 +260,7 @@ function ItemRow({
             <div className="flex min-w-0 flex-col">
               <span
                 className={cn(
-                  "truncate font-medium",
+                  "line-clamp-2 font-medium break-words",
                   !isSettled(item.status) && item.status !== "failed" && "text-muted-foreground",
                 )}
                 title={item.name}
@@ -274,7 +274,7 @@ function ItemRow({
               <span
                 data-testid="data-room-subline"
                 className={cn(
-                  "truncate text-xs text-muted-foreground @min-[500px]/list:hidden",
+                  "truncate text-xs text-muted-foreground @min-[640px]/list:hidden",
                   item.status === "failed" && "text-destructive",
                 )}
               >
@@ -455,7 +455,7 @@ export function ListView({
   sortField?: SortField;
 }) {
   return (
-    <div className={LIST_PAD}>
+    <div className={cn(LIST_PAD, "max-w-300")}>
       <Table>
         <Columns />
         <ListHead sortField={sortField} />
@@ -566,7 +566,15 @@ function TilePreview({ item }: { item: DataRoomApiItem }) {
   );
 }
 
-export function GridView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
+export function GridView({
+  rows,
+  o,
+  sortField,
+}: {
+  rows: Row[];
+  o: RowInteraction;
+  sortField?: SortField;
+}) {
   return (
     <ul aria-label={t`Items`} data-rows className={TILE_GRID}>
       {rows.map(({ item }) => (
@@ -611,10 +619,11 @@ export function GridView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
             ) : (
               <>
                 <span>{typeLabel(item.facets.docType) || <NotTagged />}</span>
-                <span>{dateText(item.facets.docDate)}</span>
+                <span>{dateOf(item, sortField)}</span>
               </>
             )}
           </span>
+          {item.status === "failed" ? <RetryButton item={item} o={o} /> : null}
         </FileContext>
       ))}
     </ul>

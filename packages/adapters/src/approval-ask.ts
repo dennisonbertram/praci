@@ -49,6 +49,7 @@ export function buildApprovalAskBlock(
     options?.integrationWriteTool !== undefined ||
     options?.imessage ||
     options?.schedule;
+  const fullDetailOpen = options?.fullMail || options?.imessage || options?.schedule;
   const detail = options?.schedule
     ? [options.reviewReason?.trim(), options.schedule.detail].filter(Boolean).join("\n")
     : options?.imessage
@@ -74,6 +75,8 @@ export function buildApprovalAskBlock(
       ),
       MAX_APPROVAL_SUMMARY_LENGTH,
     ),
+    // Raw tool arguments sit behind a Details disclosure; a card the person reads to decide stays open.
+    detailFolded: options?.integrationWriteTool !== undefined && !fullDetailOpen ? true : undefined,
     // A full mail send shows every recipient and the whole body, never a cut-off one.
     detail: safeDetail
       ? fullDetail
@@ -312,9 +315,22 @@ function formatApprovalDetail(
 function pickScopeLabel(args: Record<string, unknown>): string | undefined {
   for (const key of ["to", "title", "collection", "subject", "amount"]) {
     const value = args[key];
-    if (value != null && value !== "") return String(value);
+    if (value == null || value === "") continue;
+    return key === "amount" ? formatAmount(value, args.currency) : String(value);
   }
   return undefined;
+}
+
+/** "1200" becomes "$1,200.00"; a value that is not a number, or an unknown currency, stays as written. */
+function formatAmount(value: unknown, currency: unknown): string {
+  const number = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(number) || typeof value === "boolean") return String(value);
+  const code = typeof currency === "string" && /^[A-Za-z]{3}$/.test(currency) ? currency : "USD";
+  try {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: code }).format(number);
+  } catch {
+    return String(value);
+  }
 }
 
 function truncate(value: string, maxLength: number): string {
