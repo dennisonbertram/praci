@@ -263,7 +263,7 @@ What v4 draws, and the agreed target (the mockup is updated to the Target column
 | Sections | "Needs you", "Working", "Earlier" | Same; Needs you includes Error rows and the tile counts them |
 | Session action | Title link with external glyph, screen-reader "(opens in Devin)", stretched row target | Same; the row is the single link; no "Answer in Devin" |
 | Question | Full text, no clamp | Same |
-| PR | Text spans | Same, text only, "+{n}" for several |
+| PR | Text spans | Same, text only; several PRs stack one per line (comma-separated in the narrow list) |
 | Narrow rows | Compact "PR state · time" line, Source omitted | Same, switching at `@2xl` (672 px) |
 | Empty | "No Devin sessions yet." + "Open Devin" | Same |
 | Key rejected | Notice replaces tiles, rows muted, dot hidden, "Alerts are paused." | Same; Reconnect only for owners |
@@ -289,16 +289,18 @@ Each visible string, where it appears, and why it exists.
 | "(opens in Devin)" | row link, screen-reader only | The row leaves the app; sighted users get the glyph. |
 | "Untitled session" | Session cell | A session without a title still needs a row. |
 | "Web", "Slack", "Teams", "API", "Linear", "Jira", "Automation", "CLI", "Desktop", "Code scan", "Other" | Source cell | Devin's origin values in plain words; "Other" covers unknown ones. |
-| "+{n}" | Pull request cell | Several PRs in one slot. |
+| (several PRs) | Pull request cell | Each PR on its own line; no extra copy needed. |
 | "—" | empty cells | Existing dash convention. |
 | "Updated {time}" | header meta, only when stale | Says the rows are old; hidden when fresh. |
 | "No Devin sessions yet." / "Open Devin" | empty state | Distinguishes an empty organization from a failed load; the link is the only way to start work. |
 | "Could not load Devin sessions." + "Try again" | `ErrorNotice` | One message for every non-auth failure; the component's existing button. |
 | "Devin rejected the key. Alerts are paused." + "Reconnect" | notice replacing the tiles | The one failure an owner fixes; the second sentence says why no alert will come (GAP-49). |
 | "The member who connected Devin left this space. Alerts are paused." + "Reconnect" | notice | Without it the page looks healthy while nobody is alerted (GAP-53). |
-| "Some sessions could not be read." | under the table | Tiles may undercount; silence would hide it (GAP-27). |
+| "Some sessions could not be read." | between the tiles and the table | Tiles may undercount; silence would hide it (GAP-27). |
 | "Connect Devin to see its sessions here." / "Connect Devin" | not connected, owner | One sentence of purpose and the one action. |
 | "Ask a space owner to connect Devin." | not connected, member | Says who can act; without it the page is a dead end (STORY-031). |
+| "Ask a space owner to reconnect." | key rejected and connector gone, member | Says who can fix it; members have no Reconnect button (STORY-036). |
+| "Waiting {n}m" / "Waiting {n}h" / "Waiting {n}d" | Updated cell, needs-you and error rows | Says how long Devin has been blocked; other rows keep the relative time. |
 | "Connect Devin" | dialog title | Existing title. |
 | "Connects Devin for everyone in this space. Read-only." | dialog description | The sharing fact a member would otherwise learn by surprise (GAP-50) and the promise the page keeps. |
 | "Organization service-user key" | field label | The only key kind that works through the bearer token; a personal `cog_` token is refused. |
@@ -433,7 +435,7 @@ Waves: S1 → (S2 ∥ S3a) → S3b → S4a → S4b → S5. S2 and S3a share no f
 | GAP-30 | Page and refresh share one operation and table |
 | GAP-31 | S2 skill line |
 | GAP-34 | Stale-only header |
-| GAP-35 | "+{n}" (S4a) |
+| GAP-35 | PRs stacked one per line (S4a) |
 | GAP-36 | Origin map, "Untitled session" (S4a) |
 | GAP-37 | Link always shown (S4b) |
 | GAP-38 | Field label and help link (S4b); the error split is Not in this epic |
