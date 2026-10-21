@@ -187,11 +187,6 @@ msgstr ""
 msgid "{0} (overdue)"
 msgstr ""
 
-#. placeholder {0}: preset.n
-#: src/pages/RoutineSchedule.tsx
-msgid "{0} {unitLabel}"
-msgstr "{0} {unitLabel}"
-
 #. placeholder {0}: bot.name
 #: src/components/integrations/parts.tsx
 msgid "{0} can use {appName}"
@@ -689,6 +684,7 @@ msgid "Active model"
 msgstr "Modelo ativo"
 
 #: src/components/computer/TerminalApp.tsx
+#: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
 msgid "Activity"
 msgstr "Atividade"
@@ -861,6 +857,11 @@ msgstr ""
 msgid "Added"
 msgstr ""
 
+#. placeholder {0}: contact.addedBy.name
+#: src/components/ContactDialog.tsx
+msgid "Added by {0}"
+msgstr ""
+
 #. placeholder {0}: currentName ?? ""
 #: src/components/data-room/DropZone.tsx
 msgid "Adding {added} of {total} · {0}"
@@ -980,7 +981,6 @@ msgstr ""
 
 #: src/components/AiDataSharing.tsx
 #: src/components/AskCard.tsx
-#: src/components/legal/ConsentPrompt.tsx
 msgid "Allow"
 msgstr ""
 
@@ -1000,11 +1000,7 @@ msgid "Allow {0} without asking"
 msgstr "Permitir {0} sem perguntar"
 
 #: src/components/AiDataSharing.tsx
-msgid "Allow {name}"
-msgstr ""
-
-#: src/components/AiDataSharing.tsx
-msgid "Allow {name}, {detail}"
+msgid "Allow {model}"
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -1358,11 +1354,6 @@ msgstr ""
 #: src/components/legal/LegalGraph.tsx
 msgid "Asset"
 msgstr ""
-
-#. placeholder {0}: preset.time
-#: src/pages/RoutineSchedule.tsx
-msgid "at {0}"
-msgstr "em {0}"
 
 #: src/pages/RoutineSchedule.tsx
 msgid "at {timeSelect}"
@@ -2117,6 +2108,7 @@ msgstr ""
 #: src/components/data-room/DataRoomStats.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/CapTable.tsx
+#: src/pages/Contacts.tsx
 #: src/pages/DataRoom.tsx
 msgid "Clear filters"
 msgstr ""
@@ -2278,10 +2270,6 @@ msgstr "Cor {color}"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Comfortable"
-msgstr ""
-
-#: src/pages/RoutineEditor.tsx
-msgid "Coming soon"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -3051,8 +3039,8 @@ msgstr "Não foi possível renderizar o gráfico"
 msgid "Could not reset password"
 msgstr "Não foi possível redefinir a senha"
 
-#: src/lib/use-contact-notice.ts
-msgid "Could not restore {name}: {reason}. If you dismiss this, {name} stays deleted."
+#: src/lib/use-contact-notices.ts
+msgid "Could not restore {name}"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -3385,10 +3373,6 @@ msgid "Credentials are encrypted and never sent to the model."
 msgstr "As credenciais são criptografadas e nunca são enviadas ao modelo."
 
 #: src/pages/RoutineSchedule.tsx
-msgid "Cron"
-msgstr "Cron"
-
-#: src/pages/RoutineSchedule.tsx
 msgid "Cron expression"
 msgstr "Expressão cron"
 
@@ -3565,7 +3549,7 @@ msgstr "excluído"
 msgid "Deleted"
 msgstr ""
 
-#: src/lib/use-contact-notice.ts
+#: src/lib/use-contact-notices.ts
 msgid "Deleted {name}"
 msgstr ""
 
@@ -3682,7 +3666,6 @@ msgid "Disconnecting…"
 msgstr "Desconectando…"
 
 #: src/components/ComputerUpdateProgress.tsx
-#: src/components/ContactNotice.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ImportActivity.tsx
 #: src/components/finance/StatementImport.tsx
@@ -3985,6 +3968,7 @@ msgstr "Digite uma senha"
 msgid "Enter a username and password"
 msgstr ""
 
+#: src/components/ContactDialog.tsx
 #: src/lib/user-error.ts
 msgid "Enter a valid email"
 msgstr "Digite um e-mail válido"
@@ -4034,7 +4018,6 @@ msgid "Error"
 msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
-#: src/pages/RoutineSchedule.tsx
 msgid "Every"
 msgstr "A cada"
 
@@ -4055,10 +4038,6 @@ msgstr "Todos os dias"
 #: src/pages/RoutineSchedule.tsx
 msgid "Every hour"
 msgstr "A cada hora"
-
-#: src/pages/RoutineSchedule.tsx
-msgid "Every Monday"
-msgstr "Toda segunda-feira"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
@@ -5034,16 +5013,16 @@ msgstr ""
 msgid "Let Praci read documents"
 msgstr ""
 
+#: src/components/legal/ConsentPrompt.tsx
+msgid "Let Praci read your contracts"
+msgstr ""
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Let Praci read your documents"
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
 msgid "Let Praci sort your mail"
-msgstr ""
-
-#: src/components/legal/ConsentPrompt.tsx
-msgid "Let the Legal agent read your documents"
 msgstr ""
 
 #: src/components/data-room/format.ts
@@ -5053,10 +5032,6 @@ msgstr ""
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Light"
 msgstr "Claro"
-
-#: src/pages/RoutineEditor.tsx
-msgid "Linear issue"
-msgstr ""
 
 #: src/pages/SpaceSearch.tsx
 msgid "Link"
@@ -5552,7 +5527,6 @@ msgid "Month to date"
 msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
-#: src/pages/RoutineSchedule.tsx
 msgid "Monthly"
 msgstr "Mensalmente"
 
@@ -6312,11 +6286,6 @@ msgstr "Em chamada com {0}"
 msgid "On a schedule"
 msgstr ""
 
-#. placeholder {0}: preset.time
-#: src/pages/RoutineSchedule.tsx
-msgid "on the 1st at {0}"
-msgstr "no dia 1º às {0}"
-
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
 msgstr ""
@@ -6620,10 +6589,6 @@ msgstr ""
 msgid "Page options"
 msgstr ""
 
-#: src/pages/RoutineEditor.tsx
-msgid "PagerDuty incident"
-msgstr ""
-
 #: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
 #: src/pages/SpaceSearch.tsx
@@ -6819,10 +6784,6 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Posted"
-msgstr ""
-
-#: src/components/data-room/ConsentPrompt.tsx
-msgid "Praci can tag files you add and sort them into folders. To do that, their text (and images) is sent to the AI service that runs your bots ({names}). Files that already have tags keep them."
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
@@ -7511,7 +7472,7 @@ msgstr "Restaurar o último espaço de trabalho salvo."
 msgid "Restore the last saved workspace. Unsaved work on the computer is lost."
 msgstr "Restaure o último espaço de trabalho salvo. O trabalho não salvo no computador será perdido."
 
-#: src/lib/use-contact-notice.ts
+#: src/lib/use-contact-notices.ts
 msgid "Restored {name}"
 msgstr ""
 
@@ -7726,12 +7687,13 @@ msgstr "Salvar o espaço de trabalho e instalar o software atual."
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/ExternalConversationSettings.tsx
+#: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Saved"
 msgstr "Salva"
 
-#. placeholder {0}: contact.name
-#: src/lib/use-contact-notice.ts
+#. placeholder {0}: saved.name
+#: src/pages/CapTable.tsx
 msgid "Saved {0}"
 msgstr ""
 
@@ -8018,10 +7980,6 @@ msgstr ""
 msgid "Send to agent"
 msgstr ""
 
-#: src/components/AiDataSharing.tsx
-msgid "Senders, recipients, subjects and short previews go to the AI service that runs your bots ({name})."
-msgstr ""
-
 #: src/components/MailApprovalCard.tsx
 msgid "Sending is off for {botName}. Turn it back on in its tools."
 msgstr ""
@@ -8044,10 +8002,6 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Sent to {forwardedName}"
-msgstr ""
-
-#: src/pages/RoutineEditor.tsx
-msgid "Sentry alert"
 msgstr ""
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
@@ -8381,10 +8335,6 @@ msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Slack message"
-msgstr ""
-
-#: src/pages/RoutineEditor.tsx
-msgid "Slack not enabled"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -8760,10 +8710,6 @@ msgstr ""
 msgid "Teams message"
 msgstr ""
 
-#: src/pages/RoutineEditor.tsx
-msgid "Teams not enabled"
-msgstr ""
-
 #: src/pages/legal/LegalContracts.tsx
 msgid "Term"
 msgstr ""
@@ -8904,10 +8850,6 @@ msgstr ""
 msgid "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
 msgstr ""
 
-#: src/components/legal/ConsentPrompt.tsx
-msgid "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
-msgstr ""
-
 #: src/lib/run-phase.ts
 msgid "the model"
 msgstr ""
@@ -8935,6 +8877,10 @@ msgstr "O provedor de memória selecionado não está disponível nesta compila�
 #. placeholder {0}: shortDay(first.dueFor)
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "the statement through {0}"
+msgstr ""
+
+#: src/components/AiDataSharing.tsx
+msgid "The text is sent to the AI model that runs your bots."
 msgstr ""
 
 #: src/components/finance/StatementReviewCard.tsx
@@ -9273,7 +9219,6 @@ msgid "Try {name} again"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
-#: src/components/ContactNotice.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
@@ -9284,8 +9229,10 @@ msgstr ""
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
 #: src/components/ShellSkeleton.tsx
+#: src/lib/use-contact-notices.ts
 #: src/pages/ActivityList.tsx
 #: src/pages/CapTable.tsx
+#: src/pages/Contacts.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/Shell.tsx
@@ -9366,13 +9313,13 @@ msgstr ""
 msgid "Undid {restored}, skipped {skipped}"
 msgstr ""
 
-#: src/components/ContactNotice.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
 #: src/components/inbox/CleanupHistory.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/MailOutbox.tsx
 #: src/components/sidebar-folders/SidebarUndoNotice.tsx
+#: src/lib/use-contact-notices.ts
 #: src/pages/Inbox.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Undo"

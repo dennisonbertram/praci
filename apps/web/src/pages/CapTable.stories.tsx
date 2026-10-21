@@ -10,6 +10,7 @@ const contact = (id: string, name: string, kind: Contact["kind"], organization: 
   organization,
   kind,
   notes: null,
+  addedBy: null,
   createdAt: "2026-10-15T00:00:00.000Z",
   updatedAt: "2026-10-15T00:00:00.000Z",
 });

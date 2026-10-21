@@ -1,0 +1,80 @@
+{
+  "mode": "judge",
+  "images": [],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 35,
+      "costUsd": 0.08042,
+      "result": {
+        "scores": {
+          "A": {
+            "criteria": 2,
+            "simplicity": 4,
+            "consistency": 2,
+            "usability": 2,
+            "visual": 4,
+            "effort": 5
+          },
+          "B": {
+            "criteria": 3,
+            "simplicity": 4,
+            "consistency": 4,
+            "usability": 4,
+            "visual": 4,
+            "effort": 3
+          },
+          "C": {
+            "criteria": 5,
+            "simplicity": 3,
+            "consistency": 5,
+            "usability": 5,
+            "visual": 3,
+            "effort": 4
+          }
+        },
+        "winner": "C",
+        "graft": "From B, use 'Preferences' as a section header grouping Hide amounts, Appearance, and Language within C's flat list, improving scanability without adding a page.",
+        "defense": "C is the only proposal meeting every criterion literally: 'Allowed without asking (3)' is a top-level row beside AI data sharing, Hide amounts and Appearance are directly in Settings, Language is represented there via the native iOS per-app setting, Server appears once, and Account becomes identity-only. A fails because Language, Appearance, and Hide amounts remain buried in Account, so the founder seeking dark mode in Settings still fails despite A's low effort. B makes preferences findable and keeps Account clean, but renames and nests 'Allowed without asking' under 'Agent permissions' and adds a tap before Hide amounts or Appearance, weakening the urgent screen-share and permission tasks while requiring two new pages. C's inline switch and menu make masking and dark mode immediate, its '(3)' count surfaces current agent exposure, and scrolling on the short Duo display is an acceptable, familiar Apple Settings trade-off."
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 25,
+      "costUsd": 0.018372,
+      "result": {
+        "scores": {
+          "A": {
+            "criteria": 2,
+            "simplicity": 4,
+            "consistency": 2,
+            "usability": 2,
+            "visual": 4,
+            "effort": 5
+          },
+          "B": {
+            "criteria": 4,
+            "simplicity": 3,
+            "consistency": 3,
+            "usability": 3,
+            "visual": 4,
+            "effort": 3
+          },
+          "C": {
+            "criteria": 5,
+            "simplicity": 5,
+            "consistency": 5,
+            "usability": 5,
+            "visual": 4,
+            "effort": 4
+          }
+        },
+        "winner": "C",
+        "graft": null,
+        "defense": "Proposal C is the only option that satisfies every acceptance criterion while adhering to native iOS/SwiftUI conventions and solving directly for the founder persona's high-frequency tasks. By surfacing 'Hide amounts' as an inline toggle and 'Appearance' as a native pull-down menu directly in a grouped Settings list, a founder about to start a screen share or switch to dark mode can act in one tap without drilling into subpages. Delegating Language to iOS per-app settings and displaying the active tool count on 'Allowed without asking (3)' alongside 'AI data sharing' maximizes clarity without adding a single new screen. Proposal A fails the core acceptance criteria by leaving Language, Appearance, and Hide amounts buried inside Account rather than moving them to Settings. Proposal B meets the criteria in spirit but introduces redundant navigation ('Preferences' inside 'Settings' is an iOS anti-pattern), requires designing a new subpage for just three controls, and adds unnecessary tap friction to quick toggles."
+      }
+    }
+  ]
+}

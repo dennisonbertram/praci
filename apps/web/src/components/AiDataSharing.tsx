@@ -9,19 +9,18 @@ import { aiConsentStatus, allowRecipient, revokeRecipient } from "../lib/ai-cons
 import { INBOX_CHANGED_EVENT } from "../lib/inbox-message-cache";
 import { errorText } from "../lib/user-error";
 
-/** A card that asks once for consent: a heading, what is sent where, and one Allow button. */
+/** The one card that asks for AI data sharing, in one row: what Praci would read, a sentence, Allow. */
 export function ConsentCard({
   id,
   heading,
-  children,
   onAllow,
   onDismiss,
   className,
 }: {
   /** Prefix for the heading's id, unique on the page. */
   id: string;
+  /** Names the area, e.g. "Let Praci sort your mail". */
   heading: ReactNode;
-  children: ReactNode;
   /** Rejects with the reason to show. */
   onAllow: () => Promise<unknown>;
   /** Not now: when given, a second button hides the card for this visit. */
@@ -41,18 +40,17 @@ export function ConsentCard({
     <Card
       size="sm"
       role="region"
-      className={cn("gap-1 px-3.5", className)}
+      className={cn("flex-row flex-wrap items-center gap-x-3 gap-y-1 px-3.5", className)}
       aria-labelledby={`${id}-heading`}
     >
-      <h2 id={`${id}-heading`} className="text-sm font-medium">
-        {heading}
-      </h2>
-      <p className="text-xs text-muted-foreground">{children}</p>
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
+      <div className="flex min-w-0 flex-1 basis-64 flex-col">
+        <h2 id={`${id}-heading`} className="text-sm font-medium">
+          {heading}
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          <Trans>The text is sent to the AI model that runs your bots.</Trans>
         </p>
-      ) : null}
+      </div>
       <div className="flex gap-2">
         <Button size="sm" disabled={pending} onClick={allow}>
           <Trans>Allow</Trans>
@@ -63,6 +61,11 @@ export function ConsentCard({
           </Button>
         ) : null}
       </div>
+      {error ? (
+        <p role="alert" className="basis-full text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
     </Card>
   );
 }
@@ -78,7 +81,6 @@ export function InboxConsentPrompt({
   /** Not now: hides the prompt for this visit; it shows again next time. */
   onDismiss?: () => void;
 }) {
-  const { name } = recipient;
   return (
     <ConsentCard
       id="inbox-consent"
@@ -86,14 +88,12 @@ export function InboxConsentPrompt({
       heading={<Trans>Let Praci sort your mail</Trans>}
       onAllow={() => allowRecipient(recipient.key).then(onAllowed)}
       onDismiss={onDismiss}
-    >
-      <Trans>
-        Senders, recipients, subjects and short previews go to the AI service that runs your bots (
-        {name}).
-      </Trans>
-    </ConsentCard>
+    />
   );
 }
+
+/** "vendor/gpt-6-luna, forwarded to its provider" -> "gpt-6-luna". */
+const modelLabel = (detail: string) => detail.split(",")[0]?.split("/").pop()?.trim() ?? "";
 
 /** One switch per AI model that receives data; hidden when there is none or it cannot load. */
 export function AiDataSharingSection() {
@@ -139,19 +139,20 @@ export function AiDataSharingSection() {
       ) : null}
       <ul className="mt-3 flex flex-col gap-3">
         {recipients.map((recipient) => {
-          const { name, detail } = recipient;
+          const { name } = recipient;
+          const model = modelLabel(recipient.detail) || name;
           return (
             <li key={recipient.key} className="flex items-center gap-3">
               <Switch
-                aria-label={detail ? t`Allow ${name}, ${detail}` : t`Allow ${name}`}
+                aria-label={t`Allow ${model}`}
                 checked={recipient.allowed}
                 disabled={pending}
                 onCheckedChange={(allowed) => set(recipient, allowed)}
               />
               <span className="flex min-w-0 flex-col">
-                <span className="text-[14px] text-foreground/75">{name}</span>
-                {detail ? (
-                  <span className="text-[12.5px] text-muted-foreground">{detail}</span>
+                <span className="text-[14px] text-foreground/75">{model}</span>
+                {model !== name ? (
+                  <span className="text-[12.5px] text-muted-foreground">{name}</span>
                 ) : null}
               </span>
             </li>

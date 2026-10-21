@@ -1,0 +1,80 @@
+{
+  "mode": "judge",
+  "images": [],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 26,
+      "costUsd": 0.066584,
+      "result": {
+        "scores": {
+          "A": {
+            "criteria": 3,
+            "simplicity": 5,
+            "consistency": 3,
+            "usability": 3,
+            "visual": 3,
+            "effort": 4
+          },
+          "B": {
+            "criteria": 4,
+            "simplicity": 3,
+            "consistency": 3,
+            "usability": 2,
+            "visual": 4,
+            "effort": 3
+          },
+          "C": {
+            "criteria": 5,
+            "simplicity": 4,
+            "consistency": 5,
+            "usability": 5,
+            "visual": 5,
+            "effort": 4
+          }
+        },
+        "winner": "C",
+        "graft": "B's has-[:focus-visible] row-level outline, without its overlay, layered with C's name ring and row tint so keyboard focus marks the full actionable row width.",
+        "defense": "C is the only option that fully satisfies all criteria on both pages: onOpen makes the whole row clickable with pointer cursor, the closest('button,a,input') guard keeps Cap table 'Save as contact'/'Add email' and other nested controls from also opening the contact, Carta-only rows without onOpen stay inert, and the name remains the single tab stop with a 2px focus-visible ring. It also preserves text selection (Gmail behaviour, important when copying names/emails) and centralises the pattern in ui-web with a story, matching Linear/Google Contacts/Attio and preventing future drift. Against A: copying the finance call-site pattern is simplest, but it duplicates logic across two pages, relies on bubbling so nested-button clicks would also trigger row-open unless each control remembers stopPropagation, and has no selection guard. Against B: the stretched-link overlay does handle nesting via z-10 and gives a strong row focus outline (grafted above), but the inset-0 overlay blocks text selection across the row, depends on positioning/z-index in every cell (fragile with menus/popovers), and replaces the prescribed name focus ring with only a row outline. C's slightly higher implementation effort is contained in one optional, backwards-compatible design-system prop."
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 28,
+      "costUsd": 0.018368,
+      "result": {
+        "scores": {
+          "A": {
+            "criteria": 4,
+            "simplicity": 5,
+            "consistency": 3,
+            "usability": 3,
+            "visual": 4,
+            "effort": 5
+          },
+          "B": {
+            "criteria": 4,
+            "simplicity": 3,
+            "consistency": 4,
+            "usability": 2,
+            "visual": 4,
+            "effort": 3
+          },
+          "C": {
+            "criteria": 5,
+            "simplicity": 4,
+            "consistency": 5,
+            "usability": 5,
+            "visual": 5,
+            "effort": 5
+          }
+        },
+        "winner": "C",
+        "graft": null,
+        "defense": "C solves the problem systematically in the design system while respecting critical table ergonomics. Unlike A, which duplicates ad-hoc click handlers across pages, hijacks clicks when users drag-select text (like copying an email), and breaks whenever a nested button forgets stopPropagation(), C centralizes row-opening logic in TableRow and automatically guards both text selection and nested interactive controls. Unlike B, which relies on a stretched-link overlay that blocks text selection in data rows and requires brittle z-index management on secondary buttons inside HTML table elements, C keeps native DOM interactions intact and provides superior keyboard feedback with both a 2px focus ring on the name and a focus row tint."
+      }
+    }
+  ]
+}

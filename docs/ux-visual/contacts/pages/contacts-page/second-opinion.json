@@ -1,0 +1,282 @@
+{
+  "mode": "inspect",
+  "images": [
+    "1440x900-populated.png",
+    "1920x1080-populated.png",
+    "375x812-populated.png",
+    "1440x900-no-matches.png",
+    "375x812-deleted-undo.png",
+    "768x1024-toast-collision.png",
+    "375x812-toast-collision.png",
+    "1440x900-sb-page-empty.png"
+  ],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 61,
+      "costUsd": 0.153816,
+      "result": {
+        "verdict": "Not shippable: the Contacts table looks clean at a glance in dark theme, but the row interaction model lies to users, wide screens destroy column relatedness, mobile silently discards Email/Organization, and at 768px and 375px the independent agent-toast system physically covers the deletion notice — at 768px covering Undo/Dismiss itself. The recovery path for a destructive action is therefore unreliable exactly when it matters.",
+        "findings": [
+          {
+            "level": "component",
+            "element": "Table rows — whole row hover tint vs. only the Name text link",
+            "problem": "In 1440x900-populated.png and 1920x1080-populated.png every row reads as one clickable table row (full-width divider, full-width hover surface described in the brief), but only the bold Name text is actually clickable; Email, Organization, Kind and all the blank space in the 56px row are inert. A first-time user will click the row, get nothing, and conclude the list is broken. There is also no chevron, hover underline, or row action to teach the real target.",
+            "norm": "interaction / accessibility — affordance must match the hit area; Fitts's law and WCAG target-size expectations forbid a large visual target with a small text-only hit area",
+            "severity": "P1",
+            "screenshot": "1440x900-populated.png",
+            "fix": "Make the entire row the link/button that opens the contact (with a visible focus ring around the row), or remove the full-row hover tint and style only the Name as a link with underline/colour on hover. Add a trailing chevron or Edit affordance so the target is discoverable."
+          },
+          {
+            "level": "layout",
+            "element": "Name / Email / Organization / Kind column distribution",
+            "problem": "In 1920x1080-populated.png the four columns are stretched edge-to-edge across the full content width: Email sits far from Name, Organization sits far from Email, and Kind is stranded at the extreme right edge. The eye has to cross large empty black gaps to associate one contact's fields, and rows read as four unrelated lists. 1440x900-populated.png shows the same problem in milder form.",
+            "norm": "layout / hierarchy — Gestalt proximity: fields belonging to one record must stay visually grouped; data tables should cap content width or size columns to content, not distribute leftover space between groups",
+            "severity": "P1",
+            "screenshot": "1920x1080-populated.png",
+            "fix": "Constrain the table to a readable max-width or give Name/Email/Organization fixed content-based widths and let only one column absorb slack. Keep Kind adjacent to the record data or as a compact tag near the name, and left-align the whole cluster."
+          },
+          {
+            "level": "page",
+            "element": "Responsive table at 375px — Email and Organization columns",
+            "problem": "In 375x812-populated.png the table silently reduces to Name + Kind only. Email and Organization vanish with no horizontal-scroll hint, no 'more fields in detail' cue, no card reflow — the user cannot know these contacts even have email addresses, and cannot verify identity (e.g. two contacts distinguished only by email) without discovering the hidden name-tap.",
+            "norm": "clarity / interaction — responsive tables must either reflow into stacked cards, indicate scrollability, or explicitly prioritise and disclose hidden data; silently dropping record fields breaks data integrity",
+            "severity": "P1",
+            "screenshot": "375x812-populated.png",
+            "fix": "Reflow each contact into a stacked row (Name, then Email, then Organization · Kind as secondary lines) or add a visible disclosure that tapping opens full details. At minimum show Email under the name — it is the primary identifier in this dataset."
+          },
+          {
+            "level": "layout",
+            "element": "ContactNotice ('Deleted Zed Longname… Undo Dismiss') vs. agent toast ('Chief finished / Hi') stacking",
+            "problem": "In 768x1024-toast-collision.png the bottom-right agent toast overlaps the bottom-left ContactNotice and sits directly on top of its right-hand end: 'Undo' and 'Dismiss' are visible only as faint ghost text underneath the toast card. The only way to recover a deleted contact is physically covered and unclickable while the toast is present.",
+            "norm": "layout / interaction — independent overlay systems must share one stacking/queueing context; a destructive-action recovery control must never be occluded by an unrelated notification",
+            "severity": "P0",
+            "screenshot": "768x1024-toast-collision.png",
+            "fix": "Put notices and agent toasts in a single toast stack with one anchor and vertical stacking (notice above/below toasts), or offset the notice anchor so they can never overlap. While an Undo notice is live, queue or displace agent toasts, and pause the notice's dismissal timer until it is uncovered."
+          },
+          {
+            "level": "layout",
+            "element": "ContactNotice vs. agent toast at 375px",
+            "problem": "In 375x812-toast-collision.png the full-width agent toast covers the top half of the ContactNotice: the notice's opening 'Deleted …' line and the start of the contact's name are hidden behind 'Chief finished / Hi', leaving only 'Hyphenated-Verylongsurname-Placeholder 🚀 (Visual)' plus Undo/Dismiss visible below it. The user can see actions but cannot read what was deleted, and the toast also covers the 'Quinn Auditwell' row above it.",
+            "norm": "layout / clarity — stacked overlays may not obscure the message they act on; below 640px full-width toasts must push, queue behind, or replace lower-priority notices rather than overlap them",
+            "severity": "P0",
+            "screenshot": "375x812-toast-collision.png",
+            "fix": "At narrow widths use a single-column overlay queue: agent toast stacks above the notice and pushes it down (or waits), with the notice fully readable. Reserve bottom inset on the page so neither overlay covers table rows."
+          },
+          {
+            "level": "component",
+            "element": "ContactNotice with a long contact name",
+            "problem": "In 375x812-deleted-undo.png the 'pill' stops being a pill: 'Deleted Zed Longname-Hyphenated-Verylongsurname-Placeholder 🚀 (Visual)' wraps to three left-aligned lines inside a tall rounded card, with Undo/Dismiss floating mid-height on the right. The notice dominates the bottom of the screen, covers where 'Sam Walker (WalkC)' sits in the populated view, and the wrapped name competes with the actions for attention.",
+            "norm": "density / hierarchy — a snackbar/notice is a one-or-two-line transient element; message text must truncate or the layout must restructure so actions stay primary and content underneath is not permanently obscured",
+            "severity": "P1",
+            "screenshot": "375x812-deleted-undo.png",
+            "fix": "Truncate the name with ellipsis (full name in the message is unnecessary — 'Contact deleted' suffices), put Undo/Dismiss on their own action row when space runs out, and add bottom padding to the list so the notice never covers the last row."
+          },
+          {
+            "level": "component",
+            "element": "ContactNotice actions 'Undo' and 'Dismiss'",
+            "problem": "In 375x812-deleted-undo.png, Undo and Dismiss are identical plain white text words side by side with no button chrome, no weight, colour, or separation difference between them. The consequential action (Undo) has no more presence than the throwaway one (Dismiss), and neither reads as tappable next to the toast system's 'x' close icon seen in 375x812-toast-collision.png — two different dismissal languages on the same screen.",
+            "norm": "hierarchy / clarity / accessibility — actions in a notice need button affordance, a clear primary action, adequate touch targets, and one consistent dismissal pattern across the app's notification systems",
+            "severity": "P2",
+            "screenshot": "375x812-deleted-undo.png",
+            "fix": "Style Undo as a distinct high-emphasis text button (accent colour, semibold, padded hit area), make Dismiss a standard close icon or clearly secondary button matching the agent toast's 'x', and separate the two so they cannot be mis-tapped."
+          },
+          {
+            "level": "page",
+            "element": "Empty state — 'No contacts yet'",
+            "problem": "In 1440x900-sb-page-empty.png the entire page is a blank off-white void with one small grey line, 'No contacts yet', floating near the top. There is no explanation of what Contacts is for, no 'Add your first contact' call-to-action in the state itself, no illustration or structure — and Search and the Kind filter, present in every populated view, are entirely absent, so a first-time user (or a user facing a load failure) has no way to tell 'genuinely empty' from 'broken'.",
+            "norm": "clarity / hierarchy — an empty state is onboarding: it must explain the feature, offer the primary next action in the state, and be distinguishable from an error/loading failure",
+            "severity": "P1",
+            "screenshot": "1440x900-sb-page-empty.png",
+            "fix": "Centre a real empty state: what contacts are, a primary '+ Add contact' button inside it (not just the header button), and keep the page chrome consistent. Add a separate error state with retry so failure never renders as 'No contacts yet'."
+          },
+          {
+            "level": "group",
+            "element": "No-matches state — 'No matches' + 'Clear filters'",
+            "problem": "In 1440x900-no-matches.png two words, 'No matches', and one button float in the upper-middle of an otherwise completely empty dark page. The state does not restate what was searched ('zzz', Kind: Legal are only visible back up in the filter row), gives no suggestion (check spelling, broaden filters), and leaves the lower two-thirds of the viewport as dead space. It reads as a loading failure rather than a filtered result.",
+            "norm": "clarity / density — zero-result states must echo the active criteria, explain why there are no results, and offer the corrective action in context; vast unstructured voids break the page's density rhythm",
+            "severity": "P2",
+            "screenshot": "1440x900-no-matches.png",
+            "fix": "Echo the criteria in the state ('No contacts match \"zzz\" in Legal'), add a supporting line and keep 'Clear filters' directly beneath it, vertically centred as a composed block. Consider showing the zero count in the header so the result is understood before the eye travels."
+          },
+          {
+            "level": "component",
+            "element": "Empty Organization cells (Ada Example, Eve Example rows)",
+            "problem": "In 1440x900-populated.png, Ada Example (WalkB), Eve Example (WalkB), and Sam Walker (WalkC) have entirely blank Organization cells while neighbours have full organisation names. The blanks are indistinguishable from data still loading, a rendering bug, or missing data, and they punch holes in the row rhythm that make scanning the Organization column unreliable.",
+            "norm": "clarity — missing data needs an explicit, consistent representation (e.g. a muted '—' or 'No organisation'); a blank cell is ambiguous between empty, loading, and error",
+            "severity": "P2",
+            "screenshot": "1440x900-populated.png",
+            "fix": "Render a muted em-dash or '—' placeholder for missing Organization (and any field) so intentional emptiness reads differently from failure, keeping column alignment scannable."
+          },
+          {
+            "level": "group",
+            "element": "Two 'Search' fields — sidebar global Search and Contacts Search",
+            "problem": "In 1440x900-populated.png and 1440x900-no-matches.png there are two identically labelled 'Search' inputs on one screen: the app-wide Search at the top of the left sidebar and the Contacts Search directly under the 'Contacts' title. Nothing in either label states scope, so a first-time user cannot predict whether typing searches contacts or the whole workspace.",
+            "norm": "clarity / hierarchy — duplicate controls with identical labels and different scopes on one screen violate one-label-one-meaning; scoped search must be labelled or placeholdered with its scope",
+            "severity": "P2",
+            "screenshot": "1440x900-populated.png",
+            "fix": "Change the contacts field placeholder to 'Search contacts…' (and the global one to its real scope), and visually subordinate or icon-differentiate one of them so scope is obvious without experimentation."
+          },
+          {
+            "level": "group",
+            "element": "Kind filter — dropdown in populated view vs. 'Kind: Legal ✕' chip in filtered view",
+            "problem": "In 1440x900-populated.png the filter is a quiet 'Kind ⌄' pill with no visible selected value, while in 1440x900-no-matches.png the same filter appears as a filled 'Kind: Legal ✕' chip next to a search box that has grown its own '✕'. The control changes shape, position-relationship, and removal mechanics between states, and in the populated view there is no way to tell whether a filter is active at all.",
+            "norm": "clarity / interaction — a filter control must keep one consistent representation, always show its active value, and offer one obvious way to clear it; pattern-switching between states forces relearning",
+            "severity": "P2",
+            "screenshot": "1440x900-no-matches.png",
+            "fix": "Keep the 'Kind' control in place and show its value inside it ('Kind: Legal ⌄') with a clear affordance on the control itself; drop the duplicate chip, and keep 'Clear filters' in the empty state only as a secondary shortcut."
+          },
+          {
+            "level": "page",
+            "element": "Vertical density — 10-row table in a full-height viewport",
+            "problem": "In 1440x900-populated.png the ten contacts end well above the bottom of the screen and the remaining lower portion is unbroken empty black; 1920x1080-populated.png is worse, with the table occupying roughly the top half and a full screen-height of void below. There is no count, no grouping, and no use of the space — the page feels unfinished rather than spacious, and on 1920 the sidebar's dense agent list makes the imbalance more obvious.",
+            "norm": "density / layout — whitespace must structure content; a primary list page should show its total/scale, anchor content deliberately, and not leave an unstructured void that reads as missing content",
+            "severity": "P2",
+            "screenshot": "1920x1080-populated.png",
+            "fix": "Add a result count ('10 contacts') to the header area, set a deliberate max content height/width rhythm, and let the layout acknowledge end-of-list (footer rule or end cap) so the empty remainder reads as intentional."
+          },
+          {
+            "level": "component",
+            "element": "Table column headers 'Name / Email / Organization / Kind'",
+            "problem": "In 768x1024-toast-collision.png and 1440x900-populated.png the headers are small, muted grey, and visually detached from the bold white row content; 'Kind' — a low-information category like 'Investor'/'Other' in plain text at the far right — gets a full column of equal billing to Email, the field users actually scan for. There are no sort indicators on any header, so headers read as inert labels occupying a row.",
+            "norm": "hierarchy — header weight/contrast must support scanning without competing with data, and column prominence should match information value; table headers conventionally signal sortability or clearly read as static",
+            "severity": "P3",
+            "screenshot": "1440x900-populated.png",
+            "fix": "Raise header contrast slightly, render Kind as a compact muted tag rather than a full text column, and either add sort affordances or restyle headers as unambiguous static labels."
+          },
+          {
+            "level": "component",
+            "element": "Truncated Email/Organization values at 768px",
+            "problem": "In 768x1024-toast-collision.png values are cut mid-token throughout — 'ada.walkb@quill.example.te…', 'Extremely Long Organizatio…', 'ben.walkb@auditors.exampl…' — so the very data needed to distinguish and contact people is unreadable at tablet width, with no tooltip, expansion, or row detail hint visible in the list itself.",
+            "norm": "clarity / accessibility — truncated primary data must be recoverable (tooltip, detail view signposting, or reflow); ellipsis on an identifier is data loss, not compression",
+            "severity": "P2",
+            "screenshot": "768x1024-toast-collision.png",
+            "fix": "At this width switch to the stacked mobile layout before columns have to truncate identifiers, and anywhere truncation remains, expose the full value on focus/hover and make the row's detail affordance explicit."
+          }
+        ],
+        "excellent": [
+          "The '+ Add contact' primary action in 1440x900-populated.png, 375x812-populated.png, and 1440x900-sb-page-empty.png is consistently placed top-right and rendered as a high-contrast filled pill — it is the one element findable instantly at every width and in both themes.",
+          "The no-matches recovery in 1440x900-no-matches.png gets the essentials right in principle: the active 'Kind: Legal' filter is shown as removable and a single 'Clear filters' button offers one-click recovery instead of forcing manual filter archaeology.",
+          "Row legibility basics in 1440x900-populated.png are sound: consistent hairline dividers, bold white Name anchoring each row against regular-weight secondary fields, and even vertical rhythm — the structure would scan well if the columns stayed close together.",
+          "Providing an Undo path at all in 375x812-deleted-undo.png — 'Deleted … Undo / Dismiss' as a persistent notice rather than a confirmation dialog — is the right interaction model for deletion; it is the implementation and collision handling, not the concept, that fail."
+        ]
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 80,
+      "costUsd": 0.078442,
+      "result": {
+        "verdict": "The Contacts surface suffers from a P0 overlapping notification collision that blocks the 'Undo' action on deleted contacts at tablet and mobile widths, misleading row hover affordances where 56px rows tint on hover while only the unstyled name text is clickable, flat typographic hierarchy across table columns, uncontained horizontal column sprawl on wide monitors, and anemic empty states.",
+        "findings": [
+          {
+            "level": "layout",
+            "element": "ContactNotice pill and Agent Toast ('Chief finished / Hi')",
+            "problem": "In 768x1024-toast-collision.png, the bottom-right agent toast ('Chief finished') directly overlaps the right edge of the bottom-left ContactNotice pill, covering the end of '(Visual)' and burying the 'Undo' and 'Dismiss' actions underneath the top border of the toast so they cannot be clicked. In 375x812-toast-collision.png, both notifications span full width at the bottom of the viewport and collide in the same z-plane: the 'Chief finished' toast renders directly on top of the top half of ContactNotice, obscuring 'Deleted Zed Longname-' while leaving the truncated bottom half and 'Undo / Dismiss' poking out underneath.",
+            "norm": "layout",
+            "severity": "P0",
+            "screenshot": "768x1024-toast-collision.png, 375x812-toast-collision.png",
+            "fix": "Consolidate ContactNotice and agent toasts into a single shared toast/notification viewport container (or coordinated flex column stack) so simultaneous notices stack vertically with a consistent 8px–12px gap rather than occupying independent fixed bottom coordinates that collide."
+          },
+          {
+            "level": "interaction",
+            "element": "Contact table rows ('Lee Notarealperson' hovered row and contact name text)",
+            "problem": "In 768x1024-toast-collision.png, hovering the 'Lee Notarealperson' row applies a full-row background highlight across the entire 56px-tall row, signaling that the entire row is clickable. However, only the contact's Name text is actually clickable while the rest of the row is inert, and the Name text itself has no distinct link styling or chevron to indicate it is the sole interactive target.",
+            "norm": "interaction",
+            "severity": "P1",
+            "screenshot": "768x1024-toast-collision.png, 1440x900-populated.png",
+            "fix": "Make the entire table row clickable to open the edit contact dialog so the click target matches the full-row hover highlight (while allowing text selection or dedicated copy/mailto actions on the email cell)."
+          },
+          {
+            "level": "component",
+            "element": "ContactNotice ('Deleted Zed Longname-... Undo Dismiss')",
+            "problem": "In 375x812-deleted-undo.png, a long contact name forces the notice to wrap across four lines into a tall block that covers the bottom rows of the list. Additionally, 'Undo' and 'Dismiss' are styled identically as plain white bold text labels placed side by side with minimal separation, making it easy to accidentally tap 'Dismiss' instead of 'Undo' on touch devices and permanently lose the contact.",
+            "norm": "clarity",
+            "severity": "P1",
+            "screenshot": "375x812-deleted-undo.png",
+            "fix": "Truncate the deleted contact's name to a single line with an ellipsis inside the notice, style 'Undo' as a distinct pill/button or accent link, and replace the text 'Dismiss' with a standard subtle '×' icon button."
+          },
+          {
+            "level": "layout",
+            "element": "Contacts table columns ('Name', 'Email', 'Organization', 'Kind')",
+            "problem": "In 1920x1080-populated.png and 1440x900-populated.png, the table stretches fluidly across the entire viewport width, creating vast horizontal gaps of empty dark space between Name, Email, Organization, and Kind. Scanning across a single contact row requires excessive horizontal eye travel, aggravated by completely blank cells when Email ('Sam Walker (WalkC)') or Organization ('Ada Example (WalkB)', 'Eve Example (WalkB)') is empty.",
+            "norm": "layout",
+            "severity": "P1",
+            "screenshot": "1920x1080-populated.png, 1440x900-populated.png",
+            "fix": "Constrain the Contacts page content container to a readable max-width (e.g., 1120px–1200px) or allocate tighter proportional column widths, and render a muted em-dash ('—') in empty Email and Organization cells to anchor horizontal row scanning."
+          },
+          {
+            "level": "group",
+            "element": "Table cell typography and 'Kind' column cells",
+            "problem": "In 1440x900-populated.png and 1920x1080-populated.png, all four columns (Name, Email, Organization, Kind) use nearly identical font size, weight, and high-brightness white text. Secondary metadata (Email, Organization) competes equally with the primary identifier (Name), and categorical Kind values ('Investor', 'Legal', 'Other', 'Advisor', 'Customer') look like plain text strings rather than structured tags.",
+            "norm": "hierarchy",
+            "severity": "P2",
+            "screenshot": "1440x900-populated.png, 1920x1080-populated.png",
+            "fix": "Establish clear typographic hierarchy: keep Name in primary high-contrast medium-weight text, step down Email and Organization to muted secondary text color, and render Kind values as subtle semantic pill badges."
+          },
+          {
+            "level": "group",
+            "element": "Tablet table column allocation and mobile column hiding",
+            "problem": "In 768x1024-toast-collision.png, seven of the eleven email addresses ('ada.walkb@quill.example.te...', 'ben.walkb@auditors.exampl...', etc.) and 'Bartholomew-Maximilian F...' / 'Extremely Long Organizatio...' truncate prematurely because the 'Kind' column reserves disproportionate trailing width on the right. Conversely, in 375x812-populated.png, Email and Organization are hidden completely, leaving no secondary context (such as company or email) to distinguish contacts in the mobile list.",
+            "norm": "density",
+            "severity": "P2",
+            "screenshot": "768x1024-toast-collision.png, 375x812-populated.png",
+            "fix": "At 768px, shrink the Kind column to fit its content ('Customer' / 'Investor') and give the reclaimed width to Email and Organization. Below 640px, stack Organization (or Email when Organization is absent) as a muted second line directly beneath Name inside each row."
+          },
+          {
+            "level": "page",
+            "element": "Top app bar and scrolling filter bar on mobile",
+            "problem": "In 375x812-toast-collision.png, as the page scrolls slightly, the 'Kind' filter pill is sliced horizontally in half at the top edge below the hamburger button bar, with the bottom half of the letters 'Kind' visibly clipped and no visual separation or sticky header behavior.",
+            "norm": "layout",
+            "severity": "P2",
+            "screenshot": "375x812-toast-collision.png",
+            "fix": "Add a subtle bottom border or backdrop blur to the fixed mobile top bar so scrolling content passes cleanly underneath it, or keep the Search and Kind filter bar sticky with the table header."
+          },
+          {
+            "level": "page",
+            "element": "Empty state ('No contacts yet')",
+            "problem": "In 1440x900-sb-page-empty.png, the first-time empty state consists solely of tiny, low-contrast 'No contacts yet' text floating in the center of a vast 1440x900 canvas, while the '+ Add contact' CTA is stranded in the far top-right corner. It provides no explanation of how contacts work with workspace agents and no primary action at the user's focal point.",
+            "norm": "clarity",
+            "severity": "P2",
+            "screenshot": "1440x900-sb-page-empty.png",
+            "fix": "Build a complete empty state in the center of the canvas with an icon, a clear title ('No contacts yet'), a one-line value proposition explaining that saved investors, legal counsel, and customers can be referenced by workspace agents, and a centered '+ Add contact' button."
+          },
+          {
+            "level": "page",
+            "element": "Filtered no-match state ('No matches' / 'Clear filters')",
+            "problem": "In 1440x900-no-matches.png, searching 'zzz' with 'Kind: Legal' hides the table column headers and renders only a small 'No matches' label and 'Clear filters' pill in the upper-middle of the screen, without echoing the active query or offering a quick way to add the searched person as a new contact.",
+            "norm": "clarity",
+            "severity": "P3",
+            "screenshot": "1440x900-no-matches.png",
+            "fix": "State specifically why no results appeared (e.g., 'No Legal contacts matching \"zzz\"') and provide a secondary action to '+ Add contact' alongside 'Clear filters'."
+          },
+          {
+            "level": "component",
+            "element": "Agent toast close button ('Chief finished')",
+            "problem": "In 375x812-toast-collision.png, the 'Chief finished' toast displays an explicit '×' dismiss button in the top-right corner next to 'just now', whereas in 768x1024-toast-collision.png (a tablet touch breakpoint), the '×' dismiss button is absent.",
+            "norm": "accessibility",
+            "severity": "P2",
+            "screenshot": "768x1024-toast-collision.png, 375x812-toast-collision.png",
+            "fix": "Always render a persistent, touch-accessible '×' dismiss button on agent toasts across all viewports rather than hiding it on viewports wider than mobile."
+          },
+          {
+            "level": "group",
+            "element": "Mobile search and Kind filter controls",
+            "problem": "In 375x812-populated.png, the Search input takes 100% width and pushes the compact 'Kind' filter button onto a second line by itself, consuming extra vertical height above the fold while leaving 75% of the second row empty.",
+            "norm": "density",
+            "severity": "P3",
+            "screenshot": "375x812-populated.png",
+            "fix": "Place the Search input (flex-1) and the 'Kind' filter dropdown inline on a single horizontal row on mobile viewports."
+          }
+        ],
+        "excellent": [
+          "1440x900-no-matches.png: Active search and Kind filter states provide both granular inline clear buttons ('×' inside the search input and '×' on the 'Kind: Legal' chip) and a one-click 'Clear filters' reset button.",
+          "1440x900-populated.png, 375x812-populated.png: High-contrast primary '+ Add contact' CTA is consistently anchored in the page header across desktop, tablet, and mobile viewports.",
+          "375x812-deleted-undo.png: Destructive contact deletion supports immediate Undo recovery rather than permanent silent deletion."
+        ]
+      }
+    }
+  ]
+}

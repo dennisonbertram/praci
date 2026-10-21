@@ -15,18 +15,21 @@ type Scope = { spaceId: string; userId: string };
 const ownerOf = ({ spaceId, userId }: Scope): Scope => ({ spaceId, userId });
 type Db = Pick<PrismaClient, "contact">;
 
-export const toContact = (row: Prisma.ContactGetPayload<object>): Contact => ({
+const withBot = { bot: { select: { id: true, name: true } } } as const;
+
+export const toContact = (row: Prisma.ContactGetPayload<{ include: typeof withBot }>): Contact => ({
   id: row.id,
   name: row.name,
   email: row.email,
   organization: row.organization,
   kind: row.kind as ContactKind,
   notes: row.notes,
+  addedBy: row.bot,
   createdAt: row.createdAt.toISOString(),
   updatedAt: row.updatedAt.toISOString(),
 });
 
-/** The user's contacts by name, optionally one kind and/or text found in name, email or organization. */
+/** The user's contacts by name, optionally one kind and/or text found in name, email, organization or notes. */
 export async function listContacts(
   prisma: Db,
   actor: Scope,
@@ -34,15 +37,18 @@ export async function listContacts(
 ): Promise<Contact[]> {
   const scope = ownerOf(actor);
   const text = filter.text?.trim();
-  const contains = (field: "name" | "email" | "organization") => ({
+  const contains = (field: "name" | "email" | "organization" | "notes") => ({
     [field]: { contains: text, mode: "insensitive" as const },
   });
   const rows = await prisma.contact.findMany({
     where: {
       ...scope,
       ...(filter.kind ? { kind: filter.kind } : {}),
-      ...(text ? { OR: [contains("name"), contains("email"), contains("organization")] } : {}),
+      ...(text
+        ? { OR: [contains("name"), contains("email"), contains("organization"), contains("notes")] }
+        : {}),
     },
+    include: withBot,
     orderBy: [{ name: "asc" }, { id: "asc" }],
   });
   return rows.map(toContact);
@@ -55,10 +61,13 @@ export async function listContacts(
 async function writeContact(prisma: Db, actor: Scope, input: ContactSaveInput): Promise<Contact> {
   const scope = ownerOf(actor);
   const { id, ...fields } = input;
-  if (!id) return toContact(await prisma.contact.create({ data: { ...scope, ...fields } }));
+  if (!id)
+    return toContact(
+      await prisma.contact.create({ data: { ...scope, ...fields }, include: withBot }),
+    );
   const { count } = await prisma.contact.updateMany({ where: { id, ...scope }, data: fields });
   if (count === 0) throw new IsolationError("Contact not found");
-  return toContact(await prisma.contact.findUniqueOrThrow({ where: { id } }));
+  return toContact(await prisma.contact.findUniqueOrThrow({ where: { id }, include: withBot }));
 }
 
 export async function deleteContact(prisma: Db, actor: Scope, id: string): Promise<void> {
@@ -70,12 +79,13 @@ export async function deleteContact(prisma: Db, actor: Scope, id: string): Promi
 /**
  * Saves a contact without ever changing an existing one: a contact with the same email
  * or, without an email, the same name and organization (case-insensitive) is returned as is.
- * Safe for unattended callers.
+ * Safe for unattended callers. `botId` is the agent adding it, set by the caller, never from model input.
  */
 export async function addContactIfNew(
   prisma: Db,
   actor: Scope,
   input: Omit<ContactSaveInput, "id">,
+  botId: string | null = null,
 ): Promise<{ contact: Contact; created: boolean }> {
   const scope = ownerOf(actor);
   // Prisma turns an insensitive equals into ILIKE, so escape its wildcards.
@@ -93,17 +103,27 @@ export async function addContactIfNew(
         name: insensitive(name),
         organization: organization ? insensitive(organization) : null,
       };
-  const existing = await prisma.contact.findFirst({ where, orderBy: { id: "asc" } });
+  const existing = await prisma.contact.findFirst({
+    where,
+    orderBy: { id: "asc" },
+    include: withBot,
+  });
   if (existing) return { contact: toContact(existing), created: false };
   // ponytail: only email is unique, so concurrent no-email adds can both insert a duplicate row;
   // upgrade to a unique index on lower(name) plus organization, or an advisory lock.
   try {
-    const row = await prisma.contact.create({ data: { ...scope, ...input, name, organization } });
+    const row = await prisma.contact.create({
+      data: { ...scope, ...input, name, organization, botId },
+      include: withBot,
+    });
     return { contact: toContact(row), created: true };
   } catch (error) {
     // A concurrent run saved the same email first.
     if (isUniqueViolation(error) && input.email) {
-      const row = await prisma.contact.findFirst({ where: { ...scope, email: input.email } });
+      const row = await prisma.contact.findFirst({
+        where: { ...scope, email: input.email },
+        include: withBot,
+      });
       if (row) return { contact: toContact(row), created: false };
     }
     throw error;
