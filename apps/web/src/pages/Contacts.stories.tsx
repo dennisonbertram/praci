@@ -16,6 +16,7 @@ const contact = (
   organization,
   kind,
   notes: null,
+  addedBy: null,
   createdAt: "2026-10-15T00:00:00.000Z",
   updatedAt: "2026-10-15T00:00:00.000Z",
 });
@@ -48,5 +49,38 @@ export const NoMatches: Story = {
   beforeEach: () => mockRpc({ "contacts.list": contacts }),
   play: async ({ canvasElement }) => {
     await userEvent.type(await within(canvasElement).findByRole("searchbox"), "zzz");
+  },
+};
+
+export const LoadError: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": () => {
+        throw new Error("Could not load contacts");
+      },
+    }),
+};
+
+/** Deleting a contact keeps a notice with Undo and Dismiss on screen. */
+export const DeletedWithUndo: Story = {
+  beforeEach: () => mockRpc({ "contacts.list": contacts, "contacts.delete": { ok: true } }),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      await within(canvasElement).findByRole("button", { name: "Ada Example" }),
+    );
+    await userEvent.click(await within(document.body).findByRole("button", { name: "Delete" }));
+  },
+};
+
+/** The agent that added a contact is named in its dialog. */
+export const AddedByAgent: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": [{ ...contacts[2], addedBy: { id: "b1", name: "Chief" } }, ...contacts],
+    }),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      (await within(canvasElement).findAllByRole("button", { name: "Cy Placeholder" }))[0]!,
+    );
   },
 };

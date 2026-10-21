@@ -194,3 +194,120 @@ it("renders no avatar or time when the notification has none", async () => {
   expect(cards()[0]?.querySelector("[data-testid]")).toBeNull();
   expect(cards()[0]?.querySelector("button")?.textContent).toBe("Title 1");
 });
+
+const actionButton = () =>
+  [...document.querySelectorAll<HTMLButtonElement>('[data-slot="notification-toast"] button')].find(
+    (b) => b.textContent === "Undo",
+  );
+
+it("renders an action as a button that runs it, closes the toast and does not open the link", async () => {
+  const onOpen = vi.fn();
+  const onClick = vi.fn();
+  await mount(onOpen);
+  await act(async () => {
+    enqueueNotificationToast({
+      id: "a1",
+      title: "Deleted Ada",
+      timeout: 0,
+      href: "/x",
+      action: { label: "Undo", onClick },
+    });
+  });
+  // Clicking the text must not dismiss the toast and lose the action.
+  await act(async () => (cards()[0]?.querySelector("span") as HTMLElement | null)?.click());
+  expect(cards()).toHaveLength(1);
+  await act(async () => actionButton()?.click());
+  expect(onClick).toHaveBeenCalledTimes(1);
+  expect(onOpen).not.toHaveBeenCalled();
+  await expectClosed();
+});
+
+it("keeps a toast with an action open past the usual delay", () =>
+  withFakeTimers(async () => {
+    await mount();
+    await act(async () => {
+      enqueueNotificationToast({
+        id: "a2",
+        title: "Deleted Ada",
+        timeout: 0,
+        action: { label: "Undo", onClick: () => {} },
+      });
+    });
+    await advance(60_000);
+    expect(cards()).toHaveLength(1);
+  }));
+
+const addUndo = (n: number) =>
+  act(async () => {
+    for (let i = 1; i <= n; i++)
+      enqueueNotificationToast({
+        id: `a${i}`,
+        title: `Deleted ${i}`,
+        timeout: 0,
+        action: { label: "Undo", onClick: () => {} },
+      });
+  });
+
+it("keeps plain toasts for their full delay while three Undo toasts are pending", () =>
+  withFakeTimers(async () => {
+    await mount();
+    await addUndo(3);
+    await act(async () => enqueueNotificationToast({ id: "p1", title: "Chief finished" }));
+    await advance(5_000);
+    expect(document.body.textContent).toContain("Chief finished");
+    expect(cards()).toHaveLength(4);
+    await advance(SLOW);
+    expect(document.body.textContent).not.toContain("Chief finished");
+    expect(cards()).toHaveLength(3);
+  }));
+
+it("does not move focus when a plain toast arrives while Undo has focus", async () => {
+  await mount();
+  await addUndo(1);
+  const undo = actionButton();
+  await act(async () => undo?.focus());
+  expect(document.activeElement).toBe(undo);
+  await act(async () => enqueueNotificationToast({ id: "p1", title: "Chief finished" }));
+  expect(document.activeElement).toBe(undo);
+  expect(actionButton()).toBe(undo);
+});
+
+it("moves a toast with an action in front of toasts that arrive later", async () => {
+  await mount();
+  await act(async () => {
+    enqueueNotificationToast({
+      id: "a3",
+      title: "Deleted Ada",
+      timeout: 0,
+      action: { label: "Undo", onClick: () => {} },
+    });
+  });
+  await add(2);
+  expect(cards()[0]?.textContent).toContain("Deleted Ada");
+  expect(cards()).toHaveLength(3);
+  expect(actionButton()).toBeDefined();
+});
+
+it("renders a toast without an action as before: one button for the card, no action button", async () => {
+  await mount();
+  await add(1);
+  expect(cards()[0]?.hasAttribute("data-has-action")).toBe(false);
+  expect(cards()[0]?.querySelectorAll("button")).toHaveLength(2);
+});
+
+it("caps the column of Undo toasts so the newest one stays reachable", async () => {
+  await mount();
+  await addUndo(5);
+  const column = cards()[0]?.parentElement as HTMLElement;
+  expect(column.className).toContain("max-h-");
+  expect(column.className).toContain("overflow-y-auto");
+  expect(cards()[0]?.textContent).toContain("Deleted 5");
+});
+
+it("reserves the peek of the rear sheets above the front toast", async () => {
+  await mount();
+  await add(3);
+  const stack = cards()[0]?.parentElement as HTMLElement;
+  // jsdom measures no heights, so the front is 0px and two rear sheets reserve 2 x 16px.
+  expect(stack.style.getPropertyValue("--stack")).toBe("32px");
+});

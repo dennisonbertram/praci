@@ -1,0 +1,19 @@
+[
+  {
+    "id": "F-017-01",
+    "story_id": "STORY-017",
+    "severity": "medium",
+    "category": "layout",
+    "criterion": "Visual correctness / recovery",
+    "score": "fail",
+    "description": "Agent notification toast ('Inbox agent finished') covered the Undo/Dismiss bar after a Contacts delete; clicking Undo failed because another element sat on top.",
+    "expected": "Undo stays reachable while other toasts appear.",
+    "actual": "Undo button at the bottom right of the bar was covered; click rejected as covered by the toast.",
+    "screenshot": "STORY-017/screenshots/step-7.png",
+    "suggested_fix": "Stack the toasts (offset the Undo bar) or place the Undo bar where toasts do not appear.",
+    "files_likely_involved": [
+      "apps/web/src/components/contacts/undo-bar.tsx",
+      "apps/web/src/components/ui/sonner.tsx"
+    ]
+  }
+]

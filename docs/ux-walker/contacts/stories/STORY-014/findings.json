@@ -1,0 +1,18 @@
+[
+  {
+    "id": "F-014-01",
+    "story_id": "STORY-014",
+    "severity": "low",
+    "category": "feedback",
+    "criterion": "Error clarity",
+    "score": "warn",
+    "description": "After a duplicate-email error, editing the email leaves the error text but moves it from under Email to the bottom of the form, and the 'Open <name>' button disappears.",
+    "expected": "Error stays under Email with its Open button, or clears once the email changes.",
+    "actual": "Message jumps below Notes (generic alert position) and no longer relates to a field; stays until the next Save.",
+    "screenshot": "STORY-014/screenshots/step-2b.png",
+    "suggested_fix": "Clear the duplicate error when Email changes, or keep it attached to Email.",
+    "files_likely_involved": [
+      "apps/web/src/components/contacts/contact-dialog.tsx"
+    ]
+  }
+]

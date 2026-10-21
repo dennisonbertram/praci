@@ -857,6 +857,11 @@ msgstr ""
 msgid "Added"
 msgstr ""
 
+#. placeholder {0}: contact.addedBy.name
+#: src/components/ContactDialog.tsx
+msgid "Added by {0}"
+msgstr ""
+
 #. placeholder {0}: currentName ?? ""
 #: src/components/data-room/DropZone.tsx
 msgid "Adding {added} of {total} · {0}"
@@ -2103,6 +2108,7 @@ msgstr ""
 #: src/components/data-room/DataRoomStats.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/CapTable.tsx
+#: src/pages/Contacts.tsx
 #: src/pages/DataRoom.tsx
 msgid "Clear filters"
 msgstr ""
@@ -3033,8 +3039,8 @@ msgstr "Não foi possível renderizar o gráfico"
 msgid "Could not reset password"
 msgstr "Não foi possível redefinir a senha"
 
-#: src/lib/use-contact-notice.ts
-msgid "Could not restore {name}: {reason}. If you dismiss this, {name} stays deleted."
+#: src/lib/use-contact-notices.ts
+msgid "Could not restore {name}"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -3543,7 +3549,7 @@ msgstr "excluído"
 msgid "Deleted"
 msgstr ""
 
-#: src/lib/use-contact-notice.ts
+#: src/lib/use-contact-notices.ts
 msgid "Deleted {name}"
 msgstr ""
 
@@ -3660,7 +3666,6 @@ msgid "Disconnecting…"
 msgstr "Desconectando…"
 
 #: src/components/ComputerUpdateProgress.tsx
-#: src/components/ContactNotice.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ImportActivity.tsx
 #: src/components/finance/StatementImport.tsx
@@ -3963,6 +3968,7 @@ msgstr "Digite uma senha"
 msgid "Enter a username and password"
 msgstr ""
 
+#: src/components/ContactDialog.tsx
 #: src/lib/user-error.ts
 msgid "Enter a valid email"
 msgstr "Digite um e-mail válido"
@@ -7466,7 +7472,7 @@ msgstr "Restaurar o último espaço de trabalho salvo."
 msgid "Restore the last saved workspace. Unsaved work on the computer is lost."
 msgstr "Restaure o último espaço de trabalho salvo. O trabalho não salvo no computador será perdido."
 
-#: src/lib/use-contact-notice.ts
+#: src/lib/use-contact-notices.ts
 msgid "Restored {name}"
 msgstr ""
 
@@ -7686,8 +7692,8 @@ msgstr "Salvar o espaço de trabalho e instalar o software atual."
 msgid "Saved"
 msgstr "Salva"
 
-#. placeholder {0}: contact.name
-#: src/lib/use-contact-notice.ts
+#. placeholder {0}: saved.name
+#: src/pages/CapTable.tsx
 msgid "Saved {0}"
 msgstr ""
 
@@ -9213,7 +9219,6 @@ msgid "Try {name} again"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
-#: src/components/ContactNotice.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
@@ -9224,8 +9229,10 @@ msgstr ""
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
 #: src/components/ShellSkeleton.tsx
+#: src/lib/use-contact-notices.ts
 #: src/pages/ActivityList.tsx
 #: src/pages/CapTable.tsx
+#: src/pages/Contacts.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/Shell.tsx
@@ -9306,13 +9313,13 @@ msgstr ""
 msgid "Undid {restored}, skipped {skipped}"
 msgstr ""
 
-#: src/components/ContactNotice.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
 #: src/components/inbox/CleanupHistory.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/MailOutbox.tsx
 #: src/components/sidebar-folders/SidebarUndoNotice.tsx
+#: src/lib/use-contact-notices.ts
 #: src/pages/Inbox.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Undo"
