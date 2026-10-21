@@ -66,6 +66,14 @@ const pageAgentBots = [
     updatedAt: "2026-01-01T00:04:00.000Z",
   }),
 ];
+const emailChatBots = [
+  makeBot({
+    id: "bot_email_thread",
+    name: "Client email",
+    spawnKey: "mail-thread:conn_demo:thread_demo",
+    updatedAt: "2026-01-01T00:05:00.000Z",
+  }),
+];
 const operationsGroup: Group = {
   id: "group_operations",
   spaceId: "space_demo",
@@ -94,7 +102,10 @@ export function SidebarFixture({
   devinNeedsYou = 0,
   investorsMode = false,
   pageAgents = false,
+  singlePageAgent = false,
+  emailChats = false,
   activePageAgent = false,
+  activeEmailChat = false,
 }: {
   mode: Mode;
   devinMode?: boolean;
@@ -102,7 +113,10 @@ export function SidebarFixture({
   devinNeedsYou?: number;
   investorsMode?: boolean;
   pageAgents?: boolean;
+  singlePageAgent?: boolean;
+  emailChats?: boolean;
   activePageAgent?: boolean;
+  activeEmailChat?: boolean;
 }) {
   const navigate = useNavigate();
   const sidebarRef = useRef<HTMLElement>(null);
@@ -129,7 +143,11 @@ export function SidebarFixture({
     id: string;
     position: { x: number; y: number };
   } | null>(null);
-  const fixtureBots = pageAgents ? [...bots, ...pageAgentBots] : bots;
+  const fixtureBots = [
+    ...bots,
+    ...(pageAgents ? (singlePageAgent ? pageAgentBots.slice(0, 1) : pageAgentBots) : []),
+    ...(emailChats ? emailChatBots : []),
+  ];
   const [, setDeleteTarget] = useState<ReturnType<typeof makeBot> | null>(null);
   const [, setDeleteGroupTarget] = useState<typeof operationsGroup | null>(null);
   const rail = mode === "rail";
@@ -178,7 +196,7 @@ export function SidebarFixture({
     inboxUnread: 0,
     financeMode: false,
     glance: {
-      financeRunwayMonths: null,
+      hasTickets: false,
       devinConnected,
       devinNeedsYou,
       legalDueSoon: 0,
@@ -218,7 +236,11 @@ export function SidebarFixture({
     setSpaceMenu,
     inGroup: false,
     pageMode: false,
-    active: activePageAgent ? pageAgentBots[0] : fixtureBots[0],
+    active: activeEmailChat
+      ? emailChatBots[0]
+      : activePageAgent
+        ? pageAgentBots[0]
+        : fixtureBots[0],
     activeGroup: undefined,
     dismissedRunErrorIds: new Set<string>(),
     displayedRunError: null,

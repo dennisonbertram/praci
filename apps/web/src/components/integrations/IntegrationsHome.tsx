@@ -66,6 +66,7 @@ import type { IntegrationsData } from "./useIntegrations";
 import { agentsFor } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
 
+const PHONE_POPULAR = 3;
 const GRANOLA_PATH = "/app/integrations/granola";
 
 function hostOf(value: string | null) {
@@ -397,6 +398,8 @@ export function IntegrationsHome({
   const returnTo = useRef(appReturnPath(params.get("returnTo")));
   const navigate = useNavigate();
   const [visible, setVisible] = useState(CONNECTION_CATALOG_PAGE_SIZE);
+  /** On a phone the Popular list starts at three apps, so the whole page is not one long scroll. */
+  const [phoneAll, setPhoneAll] = useState(false);
   const [connecting, setConnecting] = useState<ConnectionCatalogItem | null>(null);
   /** The signed-out account a reconnect replaces once the new sign-in succeeds. */
   const [replacing, setReplacing] = useState<Connection | null>(null);
@@ -491,6 +494,7 @@ export function IntegrationsHome({
     (server) => !financeServerIds.includes(server.id) && server !== cryptoServer,
   );
   const filtering = Boolean(query.trim()) || category !== "all";
+  const phoneCollapsed = !phoneAll && !filtering;
   // Connected narrows to the chip's category and to apps whose name matches the search, so an app
   // that is already connected still turns up when searched for.
   const searching = Boolean(query.trim());
@@ -746,10 +750,7 @@ export function IntegrationsHome({
               ) : null}
               {notSetUp ? null : (
                 <>
-                  <SectionTitle>
-                    <Trans>Find an app</Trans>
-                  </SectionTitle>
-                  <div className="relative mb-3 max-w-[420px]">
+                  <div className="relative mt-6 mb-3 max-w-[420px]">
                     <Search
                       aria-hidden="true"
                       className="pointer-events-none absolute start-2.5 top-2.5 size-4 text-muted-foreground"
@@ -813,26 +814,49 @@ export function IntegrationsHome({
                             <Trans>No apps match.</Trans>
                           </p>
                         ) : (
-                          <div
-                            data-testid="app-grid"
-                            data-flat={filtering ? "" : undefined}
-                            className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
-                          >
-                            {results.slice(0, visible).map((item) => (
-                              <AppTile
-                                key={`${item.connectorId}:${item.slug}`}
-                                name={item.name}
-                                logo={item.logo}
-                                description={item.description}
-                                onConnect={() => setConnecting(item)}
-                              />
-                            ))}
-                          </div>
+                          <>
+                            <div
+                              data-testid="app-grid"
+                              data-flat={filtering ? "" : undefined}
+                              className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
+                            >
+                              {results.slice(0, visible).map((item, index) => (
+                                <div
+                                  key={`${item.connectorId}:${item.slug}`}
+                                  className={
+                                    index >= PHONE_POPULAR && phoneCollapsed
+                                      ? "contents max-sm:hidden"
+                                      : "contents"
+                                  }
+                                >
+                                  <AppTile
+                                    name={item.name}
+                                    logo={item.logo}
+                                    description={item.description}
+                                    onConnect={() => setConnecting(item)}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                            {phoneCollapsed ? (
+                              <div className="mt-3 flex justify-center sm:hidden">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setPhoneAll(true)}
+                                >
+                                  <Trans>Show more</Trans>
+                                </Button>
+                              </div>
+                            ) : null}
+                          </>
                         )}
                       </>
                     )}
                     {results.length > visible ? (
-                      <div className="col-span-full mt-4 flex justify-center">
+                      <div
+                        className={`col-span-full mt-4 flex justify-center ${phoneCollapsed ? "max-sm:hidden" : ""}`}
+                      >
                         <Button
                           variant="outline"
                           size="sm"
@@ -849,7 +873,7 @@ export function IntegrationsHome({
                   <div
                     ref={financeRef}
                     data-flat={filtering ? "" : undefined}
-                    className="scroll-mt-4"
+                    className={`scroll-mt-4 ${phoneCollapsed ? "max-sm:hidden" : ""}`}
                   >
                     {filtering ? null : (
                       <SectionTitle>
@@ -868,7 +892,11 @@ export function IntegrationsHome({
                 {(["social", "equity", "tools"] as const).map((section) => {
                   const entries = firstPartyMcp.filter((entry) => entry.section === section);
                   return entries.length > 0 ? (
-                    <div key={section} data-flat={filtering ? "" : undefined}>
+                    <div
+                      key={section}
+                      data-flat={filtering ? "" : undefined}
+                      className={phoneCollapsed ? "max-sm:hidden" : undefined}
+                    >
                       {filtering ? null : (
                         <SectionTitle>{firstPartySections[section]}</SectionTitle>
                       )}

@@ -28,7 +28,6 @@ import {
   DEFAULT_AVATAR_STYLE,
   FIRST_BOT_SPAWN_KEY,
   isMailThreadAgentSpawnKey,
-  LEGAL_AGENT_MODEL,
   LEGAL_CONSENT_REQUIRED_MESSAGE,
   RunPhaseSchema,
 } from "@rakazo/contracts";
@@ -168,6 +167,7 @@ import { startCall, useCallSession } from "../lib/call-session";
 import {
   cartaPanelState,
   findCartaAgent,
+  listedInSidebar,
   useAutoCreateCartaAgent,
   useOnPhoneWidth,
 } from "../lib/carta-agent";
@@ -184,6 +184,7 @@ import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent"
 import { useHideAmounts } from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
 import { appPath } from "../lib/integrations";
+import { findInvestorsAgent, investorsAgentSuggestions } from "../lib/investors-agent";
 import { findLegalAgent } from "../lib/legal-agent";
 import { accountTimezone, markTimezoneReported, timezoneToReport } from "../lib/local-timezone";
 import { parseModelOptionKey } from "../lib/model-catalog";
@@ -558,6 +559,8 @@ export function ShellPage() {
   // Reported by the Cap Table page. Without Carta the agent has nothing to read, so its panel stays shut.
   const [cartaConnected, setCartaConnected] = useState(false);
   const [cartaAgentError, setCartaAgentError] = useState("");
+  const [creatingInvestorsAgent, setCreatingInvestorsAgent] = useState(false);
+  const [investorsAgentError, setInvestorsAgentError] = useState("");
   useEffect(() => {
     const phone = !wideScreen();
     setInboxAgentCollapsed(readInboxAgentCollapsed(userId) || phone);
@@ -1067,7 +1070,7 @@ export function ShellPage() {
               : devinMode
                 ? bots.find((bot) => bot.id === devinAgentId)
                 : investorsMode
-                  ? findCartaAgent(bots, userId)
+                  ? findInvestorsAgent(bots, userId)
                   : routeBot.bot;
   // A bot made with "New bot" opens with only its name until it has answered a message.
   useEffect(() => {
@@ -1782,11 +1785,17 @@ export function ShellPage() {
     };
   }, [activeGroup?.id, groupId]);
 
+  const listedBots = useMemo(
+    () => bots.filter((bot) => listedInSidebar(bot, botId)),
+    [bots, botId],
+  );
   const sidebarGroups = useMemo(() => {
     const sidebarSpaces =
       spaces.length > 0
         ? activeSpaceFirst(spaces, bootstrapMe?.spaceId).map((space) =>
-            space.id === bootstrapMe?.spaceId ? { ...space, bots, groups, botSections } : space,
+            space.id === bootstrapMe?.spaceId
+              ? { ...space, bots: listedBots, groups, botSections }
+              : space,
           )
         : bootstrapMe
           ? [
@@ -1797,14 +1806,14 @@ export function ShellPage() {
                 hasContent: true,
                 canRename: false,
                 canDelete: false,
-                bots,
+                bots: listedBots,
                 groups,
                 botSections,
               },
             ]
           : [];
     return sidebarGroupsForSpaces(sidebarSpaces, "", bootstrapMe?.spaceId, t`Personal`);
-  }, [bootstrapMe, botSections, bots, groups, spaces, t]);
+  }, [bootstrapMe, botSections, listedBots, groups, spaces, t]);
   // What the list shows now, so a drop can be turned into a move.
   const sidebarLayout = useMemo<SidebarLayout>(() => {
     const folders: string[] = [];
@@ -2097,7 +2106,7 @@ export function ShellPage() {
       { id: "contacts", label: t`Contacts`, icon: <BookUser {...icon} /> },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
       { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
-      ...(bootstrapMe?.ticketBoardEnabled
+      ...(bootstrapMe?.ticketBoardEnabled && glance.hasTickets
         ? [
             {
               id: "board",
@@ -2115,7 +2124,7 @@ export function ShellPage() {
       },
       { id: "settings", label: t`Settings`, icon: <Settings {...icon} /> },
     ];
-  }, [t, bootstrapMe?.ticketBoardEnabled, glance.devinConnected]);
+  }, [t, bootstrapMe?.ticketBoardEnabled, glance.hasTickets, glance.devinConnected]);
   // A page hidden in Page options stays out of search and the command palette too.
   const visiblePages = useMemo(
     () => appPages.filter((page) => !hiddenPages.includes(page.id)),
@@ -3130,6 +3139,25 @@ export function ShellPage() {
     }
   }
 
+  function askInvestorsAgent() {
+    setCartaAgentCollapsedPref(false);
+    // The agent may have been archived since the page opened.
+    if (!active && !creatingInvestorsAgent) void createInvestorsAgent();
+  }
+
+  async function createInvestorsAgent() {
+    setCreatingInvestorsAgent(true);
+    setInvestorsAgentError("");
+    try {
+      await rpc.investors.agent();
+      await refreshBots();
+    } catch (error) {
+      setInvestorsAgentError(errorText(error, t`Could not create the Investors agent`));
+    } finally {
+      setCreatingInvestorsAgent(false);
+    }
+  }
+
   function askFinanceAgent() {
     setFinanceAgentOpen(true);
     if (!active && !creatingFinanceAgent) void createFinanceAgent();
@@ -3156,12 +3184,25 @@ export function ShellPage() {
     bots,
   );
 
-  const cartaPanel = cartaPanelState({
-    connected: cartaConnected,
+  // The Investors agent is made when the page first opens, with or without Carta.
+  const investorsAgentAsked = useRef(false);
+  const hasInvestorsAgent = findInvestorsAgent(bots, userId) !== undefined;
+  useEffect(() => {
+    if (!investorsMode || !initialBotsLoaded || !userId || hasInvestorsAgent) return;
+    if (investorsAgentAsked.current) return;
+    investorsAgentAsked.current = true;
+    void createInvestorsAgent();
+  });
+  useEffect(() => {
+    if (!investorsMode) investorsAgentAsked.current = false;
+  }, [investorsMode]);
+  // One collapsed preference (kept under its original Carta key) serves the Investors panel.
+  const investorsPanel = cartaPanelState({
+    connected: true,
     collapsed: cartaAgentCollapsed,
     hasAgent: Boolean(active),
-    creating: creatingCartaAgent,
-    error: cartaAgentError,
+    creating: creatingInvestorsAgent,
+    error: investorsAgentError,
   });
   // A window dragged down to phone width would leave a remembered-open panel covering the page.
   // Only the view collapses; the saved preference comes back when the window is wide again.
@@ -3176,7 +3217,7 @@ export function ShellPage() {
     },
   );
 
-  const cartaSuggestions = [t`Who are our investors?`, t`Draft this month's investor update`];
+  const cartaSuggestions = [t`Who are our investors?`];
   const cartaAgentIntro = t`The Carta agent reads your cap table from Carta and answers questions about it. Try one:`;
   // The connector's agent is made on first visit, as the plan says; anyone else gets null.
   useEffect(() => {
@@ -3262,19 +3303,18 @@ export function ShellPage() {
               }
             : investorsMode
               ? {
-                  name: "carta-agent",
-                  testId: "carta-agent-panel",
+                  name: "investors-agent",
+                  testId: "investors-agent-panel",
                   // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
-                  // Without Carta the agent can read nothing, so the page's Connect Carta card shows instead.
-                  open: cartaPanel.open,
+                  open: investorsPanel.open,
                   collapse: () => setCartaAgentCollapsedPref(true),
-                  collapseLabel: t`Collapse Carta agent`,
+                  collapseLabel: t`Collapse Investors agent`,
                   // A failed creation is retried from the panel; the agent otherwise appears by itself.
-                  create: cartaAgentError ? createCartaAgent : undefined,
+                  create: investorsAgentError ? createInvestorsAgent : undefined,
                   createLabel: t`Try again`,
-                  creating: creatingCartaAgent,
-                  error: cartaAgentError,
-                  suggestions: cartaSuggestions,
+                  creating: creatingInvestorsAgent,
+                  error: investorsAgentError,
+                  suggestions: investorsAgentSuggestions(),
                 }
               : null;
   // The Carta agent opened full screen from its panel: same intro, and a way back to Investors.
@@ -3618,6 +3658,14 @@ export function ShellPage() {
   }
 
   const embeddedScreenUrl = embeddableScreenUrl(screenUrl);
+  // A computer that is on but has no screen would show a heading over an empty box.
+  const noComputerScreen =
+    computer?.state === "running" &&
+    !computer.screenAvailable &&
+    computer.kind !== "desktop" &&
+    !embeddedScreenUrl &&
+    !computerError &&
+    !computerOpen;
   const hasControl = userHoldsComputerControl(computer, computerBot?.id);
   const hideScreenLoadError = computerErrorFromScreen && Boolean(embeddedScreenUrl);
   const computerScreenError =
@@ -3685,18 +3733,13 @@ export function ShellPage() {
     if (!focusComposerBotId || active?.id !== focusComposerBotId) return;
     const input = document.querySelector<HTMLTextAreaElement>("textarea[name='chat-message']");
     input?.focus();
-    // The tour's last step leaves a sample question to send or edit; an existing draft stays.
-    if (input && tourQuestion.current && !input.value) {
-      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(
-        input,
-        t`What should I do first this week?`,
-      );
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      input.select();
+    // The tour's last step sends its sample question at once, so it never lands in a draft.
+    if (tourQuestion.current) {
+      void sendMessage(t`What should I do first this week?`, [], newClientId());
     }
     tourQuestion.current = false;
     setFocusComposerBotId(null);
-  }, [active?.id, focusComposerBotId, t]);
+  }, [active?.id, focusComposerBotId, sendMessage, t]);
   const threadView = (
     <>
       {cartaAgentPage ? (
@@ -3930,7 +3973,10 @@ export function ShellPage() {
         </div>
         {pinsList && panel === null ? (
           // 316px sidebar + 288px column leaves 676px of transcript at 1280px; at lg (1024px) only 420px.
-          <aside className="rk-scroll hidden w-72 shrink-0 overflow-y-auto border-s border-border px-4 py-3 xl:block">
+          <aside
+            aria-label={t`List`}
+            className="rk-scroll hidden w-72 shrink-0 overflow-y-auto border-s border-border px-4 py-3 xl:block"
+          >
             <PinsList pins={pinsList} onPins={setBotPins} />
           </aside>
         ) : null}
@@ -4169,6 +4215,14 @@ export function ShellPage() {
             paneDraggingFiles ? "ring-2 ring-inset ring-ring" : ""
           }`}
         >
+          {/* Pages carry their own h1; a chat's title is inside a button, so it is named here. */}
+          {pageMode ? null : (
+            <h1 className="sr-only">
+              {inGroup
+                ? (activeGroup?.name ?? activeSnapshot?.groupName ?? t`Group`)
+                : (active?.name ?? "")}
+            </h1>
+          )}
           {/* Inside main so the composer and its menus stay above it. As wide as the
             12px phone gutter only, so it never covers a tappable control; the swipe
             itself is detected on the shell root from a wider edge zone. */}
@@ -4358,7 +4412,7 @@ export function ShellPage() {
               onAskAgent={legalAgentOpen ? undefined : askLegalAgent}
               onAskAbout={askLegalAgentAbout}
               onConsentChange={setLegalConsentMissing}
-              onOpenSettings={() => openSettings("models", LEGAL_AGENT_MODEL.provider)}
+              onOpenSettings={() => openSettings("models")}
               settingsOpen={settingsOpen}
               spaces={spaces}
               spaceId={bootstrapMe?.spaceId}
@@ -4376,7 +4430,7 @@ export function ShellPage() {
             />
           ) : investorsMode ? (
             <InvestorsPage
-              onShowAgent={cartaPanel.canShow ? () => setCartaAgentCollapsedPref(false) : undefined}
+              onShowAgent={investorsPanel.open ? undefined : askInvestorsAgent}
               onCartaStatus={setCartaConnected}
               onOpenModelSettings={() => openSettings("models")}
               needsModel={bootstrapMe?.needsModel === true}
@@ -4479,11 +4533,9 @@ export function ShellPage() {
                   (!investorsMode || activeSnapshot) ? (
                     <AgentPanelIntro
                       description={
-                        investorsMode
-                          ? cartaAgentIntro
-                          : devinMode
-                            ? t`Answers questions about what Devin is working on.`
-                            : active.description
+                        devinMode
+                          ? t`Answers questions about what Devin is working on.`
+                          : active.description
                       }
                       suggestions={agentPanel.suggestions ?? []}
                       onAddModel={pageAgentNeedsModel ? () => openSettings("models") : undefined}
@@ -4530,7 +4582,9 @@ export function ShellPage() {
                   ) : panel === "list" ? (
                     <Trans>List</Trans>
                   ) : active ? (
-                    computerStateLabel(computer?.state)
+                    noComputerScreen ? null : (
+                      computerStateLabel(computer?.state)
+                    )
                   ) : (
                     <Trans>Group</Trans>
                   )}
@@ -4607,75 +4661,81 @@ export function ShellPage() {
                     />
                   );
                 })}
-                <div
-                  data-testid="computer-preview"
-                  className={`group relative rounded-[14px] bg-background ${
-                    showingRecoveryHint ? "" : "aspect-[16/10] overflow-hidden"
-                  }`}
-                >
-                  {computerOpen ? (
-                    <div className="grid h-full place-items-center text-sm text-muted-foreground/80">
-                      <Trans>Open in full window</Trans>
-                    </div>
-                  ) : computer?.kind === "desktop" ? (
-                    <DesktopKindEmptyState className="grid h-full place-items-center px-6 text-center text-sm text-muted-foreground/80" />
-                  ) : computer?.state === "running" && embeddedScreenUrl && !computerScreenError ? (
-                    <iframe
-                      title={t`Bot screen preview`}
-                      src={embeddedScreenUrl}
-                      sandbox={screenIframeSandbox(embeddedScreenUrl)}
-                      className="h-full w-full border-0 bg-black"
-                      allow="clipboard-read; clipboard-write"
-                      style={{ pointerEvents: "none" }}
-                    />
-                  ) : (
-                    <div className="grid h-full place-items-center px-6 text-center text-sm text-muted-foreground/80">
-                      {computerScreenError ??
-                        (showComputerRecoveryHint ? (
-                          <ComputersUnavailableHint
-                            sandboxProvider={bootstrapMe?.sandboxProvider}
-                            onRecovered={(sandboxProvider) => {
-                              setBootstrapMe((prev) =>
-                                prev ? { ...prev, sandboxProvider } : prev,
-                              );
-                              holdComputerRecovery();
-                            }}
-                            onRecoveryDismissed={releaseComputerRecovery}
-                            onOpenComputerSettings={
-                              bootstrapMe?.isDeploymentOwner === true
-                                ? () => openSettings("computer")
-                                : undefined
-                            }
-                          />
-                        ) : (
-                          computerPlaceholder(
-                            computer?.state,
-                            booting,
-                            computerLabel(computer?.mode, active.name),
-                          )
-                        ))}
-                    </div>
-                  )}
-                  {!computerScreenError && !showingRecoveryHint ? (
-                    <button
-                      type="button"
-                      data-testid="computer-preview-open"
-                      className="absolute inset-0 flex cursor-pointer items-center justify-center bg-overlay/40 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                      aria-label={t`Open`}
-                      onClick={() => void openComputer()}
+                {noComputerScreen ? null : (
+                  <>
+                    <div
+                      data-testid="computer-preview"
+                      className={`group relative rounded-[14px] bg-background ${
+                        showingRecoveryHint ? "" : "aspect-[16/10] overflow-hidden"
+                      }`}
                     >
-                      <span className="inline-flex items-center gap-2 rounded-full bg-overlay px-3.5 py-2 text-[14px] text-foreground shadow-md">
-                        <Maximize2 size={15} strokeWidth={1.9} aria-hidden />
-                        <Trans>Open</Trans>
-                      </span>
-                    </button>
-                  ) : null}
-                </div>
-                <p className="mt-2 truncate text-[13.5px] text-muted-foreground" dir="auto">
-                  {/s$/i.test(active.name.trim())
-                    ? t`${active.name}' computer`
-                    : t`${active.name}'s computer`}
-                </p>
+                      {computerOpen ? (
+                        <div className="grid h-full place-items-center text-sm text-muted-foreground/80">
+                          <Trans>Open in full window</Trans>
+                        </div>
+                      ) : computer?.kind === "desktop" ? (
+                        <DesktopKindEmptyState className="grid h-full place-items-center px-6 text-center text-sm text-muted-foreground/80" />
+                      ) : computer?.state === "running" &&
+                        embeddedScreenUrl &&
+                        !computerScreenError ? (
+                        <iframe
+                          title={t`Bot screen preview`}
+                          src={embeddedScreenUrl}
+                          sandbox={screenIframeSandbox(embeddedScreenUrl)}
+                          className="h-full w-full border-0 bg-black"
+                          allow="clipboard-read; clipboard-write"
+                          style={{ pointerEvents: "none" }}
+                        />
+                      ) : (
+                        <div className="grid h-full place-items-center px-6 text-center text-sm text-muted-foreground/80">
+                          {computerScreenError ??
+                            (showComputerRecoveryHint ? (
+                              <ComputersUnavailableHint
+                                sandboxProvider={bootstrapMe?.sandboxProvider}
+                                onRecovered={(sandboxProvider) => {
+                                  setBootstrapMe((prev) =>
+                                    prev ? { ...prev, sandboxProvider } : prev,
+                                  );
+                                  holdComputerRecovery();
+                                }}
+                                onRecoveryDismissed={releaseComputerRecovery}
+                                onOpenComputerSettings={
+                                  bootstrapMe?.isDeploymentOwner === true
+                                    ? () => openSettings("computer")
+                                    : undefined
+                                }
+                              />
+                            ) : (
+                              computerPlaceholder(
+                                computer?.state,
+                                booting,
+                                computerLabel(computer?.mode, active.name),
+                              )
+                            ))}
+                        </div>
+                      )}
+                      {!computerScreenError && !showingRecoveryHint ? (
+                        <button
+                          type="button"
+                          data-testid="computer-preview-open"
+                          className="absolute inset-0 flex cursor-pointer items-center justify-center bg-overlay/40 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                          aria-label={t`Open`}
+                          onClick={() => void openComputer()}
+                        >
+                          <span className="inline-flex items-center gap-2 rounded-full bg-overlay px-3.5 py-2 text-[14px] text-foreground shadow-md">
+                            <Maximize2 size={15} strokeWidth={1.9} aria-hidden />
+                            <Trans>Open</Trans>
+                          </span>
+                        </button>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 truncate text-[13.5px] text-muted-foreground" dir="auto">
+                      {/s$/i.test(active.name.trim())
+                        ? t`${active.name}' computer`
+                        : t`${active.name}'s computer`}
+                    </p>
+                  </>
+                )}
               </div>
             ) : null}
             {panel === "create-group" ? (
@@ -5272,7 +5332,8 @@ export function ShellPage() {
         <CommandPalette
           open={commandPaletteOpen}
           onOpenChange={setCommandPaletteOpen}
-          bots={bots}
+          // An email's chat is found once, under Chats.
+          bots={bots.filter((bot) => !isMailThreadAgentSpawnKey(bot.spawnKey))}
           onSelectBot={(id) => {
             setMobileSidebarOpen(false);
             navigate(`/app/${id}`);

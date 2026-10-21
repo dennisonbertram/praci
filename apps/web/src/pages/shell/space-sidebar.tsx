@@ -1,7 +1,11 @@
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Bot, Group, Me, ThreadSnapshot } from "@rakazo/contracts";
-import { isIntegrationAgentSpawnKey, NOTIFICATION_KINDS } from "@rakazo/contracts";
+import {
+  isIntegrationAgentSpawnKey,
+  isMailThreadAgentSpawnKey,
+  NOTIFICATION_KINDS,
+} from "@rakazo/contracts";
 import { nestRosterByParent, sidebarSections } from "@rakazo/core";
 import {
   BotAvatar,
@@ -88,6 +92,7 @@ import type { SettingsSection } from "../SettingsOverlay";
 import { BotCreatePicker, pickerInitialFocus } from "./bot-picker";
 import { moveRosterFocus, rosterRowId, syncRosterTabStops } from "./roster-tab-stops";
 import { SidebarHeaderRow } from "./sidebar-header-row";
+import { endOnWholeRow } from "./whole-rows";
 
 type SidebarChat = {
   id: string;
@@ -329,7 +334,7 @@ export type SpaceSidebarProps = {
   inboxUnread: number;
   financeMode: boolean;
   glance: {
-    financeRunwayMonths: number | null;
+    hasTickets: boolean;
     legalDueSoon: number;
     devinConnected: boolean;
     devinNeedsYou: number;
@@ -509,10 +514,31 @@ export function SpaceSidebar({
   const { t } = useLingui();
   const rosterStopId = useRef<string | null>(null);
   useEffect(() => syncRosterTabStops(sidebarRef.current, rosterStopId.current));
+  useEffect(() => {
+    const list = sidebarScrollRef.current;
+    if (!list) return;
+    let frame = 0;
+    const trim = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => endOnWholeRow(list));
+    };
+    trim();
+    const resize = new ResizeObserver(trim);
+    resize.observe(list);
+    const mutate = new MutationObserver(trim);
+    mutate.observe(list, { childList: true, subtree: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      resize.disconnect();
+      mutate.disconnect();
+    };
+  }, [mobileSidebarOpen]);
   const [pageAgentsOpen, setPageAgentsOpen] = useState(false);
+  const [emailChatsOpen, setEmailChatsOpen] = useState(false);
   return (
     <aside
       ref={sidebarRef}
+      aria-label={t`Sidebar`}
       onKeyDown={(event) => moveRosterFocus(sidebarRef.current, event)}
       onFocus={(event) => {
         const id = rosterRowId(event.target as HTMLElement);
@@ -806,6 +832,7 @@ export function SpaceSidebar({
                     one: "# file failed",
                     other: "# files failed",
                   }),
+                  failure: true,
                 })}
               />
             )}
@@ -884,23 +911,31 @@ export function SpaceSidebar({
               : undefined;
             const dragEnabled = activeSpace && !rail && group.kind !== "pinned";
             const nestedRows = nestRosterByParent(group.bots, collapsedRosterParents);
+            const rowKey = (row: (typeof nestedRows)[number]) =>
+              "spawnKey" in row.item.chat ? String(row.item.chat.spawnKey) : null;
+            const isEmailChat = (row: (typeof nestedRows)[number]) =>
+              row.item.kind === "bot" && isMailThreadAgentSpawnKey(rowKey(row));
             const isPageAgent = (row: (typeof nestedRows)[number]) => {
-              const key = "spawnKey" in row.item.chat ? String(row.item.chat.spawnKey) : null;
               return (
                 row.item.kind === "bot" &&
-                (pageAgentKind(key) !== null || isIntegrationAgentSpawnKey(key))
+                (pageAgentKind(rowKey(row)) !== null || isIntegrationAgentSpawnKey(rowKey(row)))
               );
             };
-            const pageAgentRows =
-              !rail && !folder && group.kind !== "pinned" ? nestedRows.filter(isPageAgent) : [];
-            const foldPageAgents = pageAgentRows.length >= 2;
-            const showPageAgents = pageAgentsOpen;
-            const displayRows: ((typeof nestedRows)[number] | { pageAgentsHeader: true })[] =
-              foldPageAgents
+            const foldable = !rail && !folder && group.kind !== "pinned";
+            const pageAgentRows = foldable ? nestedRows.filter(isPageAgent) : [];
+            const emailChatRows = foldable ? nestedRows.filter(isEmailChat) : [];
+            const holdsActive = (rows: typeof nestedRows) =>
+              rows.some((row) => row.item.kind === "bot" && row.item.chat.id === active?.id);
+            const showPageAgents = pageAgentsOpen || holdsActive(pageAgentRows);
+            const showEmailChats = emailChatsOpen || holdsActive(emailChatRows);
+            const displayRows: ((typeof nestedRows)[number] | { foldHeader: "page" | "email" })[] =
+              pageAgentRows.length || emailChatRows.length
                 ? [
-                    ...nestedRows.filter((row) => !isPageAgent(row)),
-                    { pageAgentsHeader: true },
+                    ...nestedRows.filter((row) => !isPageAgent(row) && !isEmailChat(row)),
+                    ...(pageAgentRows.length ? [{ foldHeader: "page" as const }] : []),
                     ...(showPageAgents ? pageAgentRows : []),
+                    ...(emailChatRows.length ? [{ foldHeader: "email" as const }] : []),
+                    ...(showEmailChats ? emailChatRows : []),
                   ]
                 : nestedRows;
             const treeActive = nestedRows.some((row) => row.depth > 0 || row.hasChildren);
@@ -1060,16 +1095,24 @@ export function SpaceSidebar({
                     )}
                   >
                     {displayRows.map((displayRow) => {
-                      if ("pageAgentsHeader" in displayRow) {
+                      if ("foldHeader" in displayRow) {
+                        const email = displayRow.foldHeader === "email";
+                        const rows = email ? emailChatRows : pageAgentRows;
                         return (
                           <PageAgentsRow
-                            key="page-agents"
-                            open={showPageAgents}
-                            count={pageAgentRows.length}
-                            needsYou={pageAgentRows.some(
+                            key={displayRow.foldHeader}
+                            label={email ? t`Email chats` : t`Page agents`}
+                            testId={email ? "sidebar-email-chats" : undefined}
+                            open={email ? showEmailChats : showPageAgents}
+                            count={rows.length}
+                            needsYou={rows.some(
                               (row) => row.item.chat.unread || glance.botKinds[row.item.chat.id],
                             )}
-                            onToggle={() => setPageAgentsOpen((open) => !open)}
+                            onToggle={() =>
+                              email
+                                ? setEmailChatsOpen((open) => !open)
+                                : setPageAgentsOpen((open) => !open)
+                            }
                           />
                         );
                       }
@@ -1554,7 +1597,7 @@ export function SpaceSidebar({
           role="menu"
           className="w-[calc(316px-1.5rem)] max-w-[calc(100vw-3rem)] gap-0 p-1 data-closed:animate-none"
         >
-          {bootstrapMe?.ticketBoardEnabled ? (
+          {bootstrapMe?.ticketBoardEnabled && glance.hasTickets ? (
             <Button
               role="menuitem"
               variant="ghost"

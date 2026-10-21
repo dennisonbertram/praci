@@ -15,26 +15,29 @@ import { axisTicks, BurnLines, LineChart } from "./charts";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 afterEach(() => setHideAmounts(false));
 
-it("does not draw a finance chart while amounts are hidden, so its shape shows no trend", async () => {
-  const el = document.createElement("div");
-  document.body.append(el);
-  const root = createRoot(el);
-  setHideAmounts(true);
-  await act(async () =>
-    root.render(
-      <LineChart
-        label="Projected cash"
-        height={160}
-        values={[300, 200, 100, 0]}
-        labels={["Oct", "Nov", "Dec", "Jan"]}
-      />,
-    ),
-  );
-  expect(el.querySelector("svg")).toBeNull();
-  expect(el.textContent).toContain("Chart hidden while amounts are hidden");
-  await act(async () => setHideAmounts(false));
-  expect(el.querySelector("[data-testid=chart-hidden]")).toBeNull();
-  act(() => root.unmount());
+it("draws the line without a money axis while amounts are hidden", async () => {
+  await withWidth(async (el) => {
+    const root = createRoot(el);
+    setHideAmounts(true);
+    await act(async () =>
+      root.render(
+        <LineChart
+          label="Projected cash"
+          height={160}
+          values={[300, 200, 100, 0]}
+          labels={["Oct", "Nov", "Dec", "Jan"]}
+        />,
+      ),
+    );
+    // The shape and the dates stay; no dollar figure and no box standing in for the chart.
+    expect(el.querySelector("svg polyline")).not.toBeNull();
+    expect(el.querySelector("[data-testid=chart-hidden]")).toBeNull();
+    expect(el.textContent).toContain("Oct");
+    expect(el.textContent).not.toContain("$");
+    await act(async () => setHideAmounts(false));
+    expect(el.textContent).toContain("$");
+    act(() => root.unmount());
+  });
 });
 
 it("draws a chart that first appeared hidden once amounts are shown again", async () => {
@@ -86,7 +89,9 @@ it("scales the Burn lines to spend, and cuts a much larger raise at the top with
       />,
     ),
   );
-  expect(el.querySelector("[data-testid=financing-clipped]")?.textContent).toBe("↑ $250,000");
+  expect(el.querySelector("[data-testid=financing-clipped]")?.textContent).toBe(
+    "Financing, Oct 2 ↑ $250,000",
+  );
   // The raise is a marker on its date, not a line ramping up to it.
   expect(el.querySelector("[data-testid=burn-financing-line]")).toBeNull();
   // The spend line sits high in the plot instead of being a sliver under a $300k axis.
@@ -315,7 +320,7 @@ it("draws a single bucket as a dot, with no line, dashed segment or area", async
   });
 });
 
-it("hides the grouped Burn chart while amounts are hidden", async () => {
+it("draws the grouped Burn chart without figures while amounts are hidden", async () => {
   await withWidth(async (el) => {
     const root = createRoot(el);
     setHideAmounts(true);
@@ -332,8 +337,11 @@ it("hides the grouped Burn chart while amounts are hidden", async () => {
         />,
       ),
     );
-    expect(el.querySelector("svg")).toBeNull();
-    expect(el.textContent).not.toContain("$");
+    expect(el.querySelector("svg")).not.toBeNull();
+    expect(el.querySelectorAll("text:not([aria-hidden])")).not.toHaveLength(0);
+    expect([...el.querySelectorAll("text")].some((t) => t.textContent?.startsWith("$"))).toBe(
+      false,
+    );
     act(() => root.unmount());
   });
 });

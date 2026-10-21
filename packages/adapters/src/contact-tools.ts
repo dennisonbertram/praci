@@ -3,6 +3,7 @@ import {
   ContactKindSchema,
   ContactSaveInputSchema,
   isCartaAgentSpawnKey,
+  isInvestorsAgentSpawnKey,
 } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import {
@@ -26,11 +27,14 @@ export const CONTACT_TOOL_NAMES = new Set([...CONTACT_ONLY_TOOL_NAMES, ...CAP_TA
 /** Any agent, on a run its owner started (a direct message or their own routine). */
 export const contactToolsAllowed = mailToolsAllowed;
 
-/** Only the Carta agent, on a run its owner started. */
+/** Only the Carta and Investors agents, on a run their owner started. */
 export function capTableToolsAllowed(
   options: Parameters<typeof mailToolsAllowed>[0] & { botSpawnKey: string | null | undefined },
 ): boolean {
-  return isCartaAgentSpawnKey(options.botSpawnKey) && mailToolsAllowed(options);
+  return (
+    (isCartaAgentSpawnKey(options.botSpawnKey) || isInvestorsAgentSpawnKey(options.botSpawnKey)) &&
+    mailToolsAllowed(options)
+  );
 }
 
 type ContactToolDeps = {

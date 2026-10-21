@@ -48,10 +48,7 @@ async function show() {
   );
   await flush();
 }
-const toggle = () =>
-  [...container.querySelectorAll("button")].find((b) =>
-    /^(Count crypto|Counting)/.test(b.textContent ?? ""),
-  ) as HTMLButtonElement | undefined;
+const toggle = () => container.querySelector('[role="switch"]') as HTMLButtonElement | null;
 beforeEach(() => {
   container = document.createElement("div");
   document.body.append(container);
@@ -73,7 +70,8 @@ it("breaks cash into bank, stablecoins and other crypto, with the saved scope se
   expect(page).not.toContain("$25,000 · not in runway");
   expect(page).toContain("Other crypto$30,000 · not in runway");
   expect(page).toContain("In runway$125,000");
-  expect(toggle()?.textContent).toBe("Counting stablecoins");
+  expect(toggle()?.getAttribute("aria-checked")).toBe("true");
+  expect(container.textContent).toContain("Stablecoins only");
 });
 
 it("saves the chosen scope and reloads the runway", async () => {
@@ -102,7 +100,7 @@ it("hides the scope control when there is no crypto", async () => {
     runway({ breakdown: { bankCents: 100_000_00, stablecoinCents: 0, otherCryptoCents: 0 } }),
   );
   await show();
-  expect(toggle()).toBeUndefined();
+  expect(toggle()).toBeNull();
   expect(container.textContent).not.toContain("Other crypto");
 });
 

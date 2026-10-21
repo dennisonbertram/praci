@@ -154,3 +154,21 @@ it("says there are no follow-ups only for a synced source with consent, includin
   render([], undefined);
   expect(document.body.textContent).toBe("");
 });
+
+it("labels a due date with the day and date, or Tomorrow", () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(2026, 9, 21, 12));
+  try {
+    const due = (n: number, dueOn: string) => ({ ...todo(n), dueOn });
+    act(() =>
+      root.render(
+        <TodoCard todos={[due(1, "2026-10-22"), due(2, "2026-10-23")]} onChange={() => {}} />,
+      ),
+    );
+    const text = document.body.textContent ?? "";
+    expect(text).toContain("Tomorrow");
+    expect(text).toContain("Fri, Oct 23");
+  } finally {
+    vi.useRealTimers();
+  }
+});

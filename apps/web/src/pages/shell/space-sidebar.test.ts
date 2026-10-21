@@ -30,6 +30,20 @@ function CurrentPath() {
   return createElement("output", { "data-testid": "current-path" }, useLocation().pathname);
 }
 
+function stubSidebarObservers() {
+  let frame = 0;
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  vi.stubGlobal("requestAnimationFrame", () => ++frame);
+  vi.stubGlobal("cancelAnimationFrame", () => undefined);
+}
+
 function chat(id: string, name: string) {
   return {
     id,
@@ -260,14 +274,7 @@ it("shows Devin's needs-you count and opens its page", async () => {
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
   }));
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    },
-  );
+  stubSidebarObservers();
   Element.prototype.scrollIntoView ??= () => undefined;
 
   const container = document.createElement("div");
@@ -328,14 +335,7 @@ it("marks Investors as current and opens its page", async () => {
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
   }));
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    },
-  );
+  stubSidebarObservers();
   Element.prototype.scrollIntoView ??= () => undefined;
 
   const container = document.createElement("div");
@@ -378,14 +378,7 @@ it("navigates to Integrations from the account menu", async () => {
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
   }));
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    },
-  );
+  stubSidebarObservers();
   Element.prototype.scrollIntoView ??= () => undefined;
 
   const container = document.createElement("div");
@@ -431,21 +424,14 @@ it("navigates to Integrations from the account menu", async () => {
   }
 });
 
-it("expands folded page agents only when asked, even with an active page agent", async () => {
+it("folds a lone page agent and reveals it when active", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("matchMedia", () => ({
     matches: false,
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
   }));
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    },
-  );
+  stubSidebarObservers();
   Element.prototype.scrollIntoView ??= () => undefined;
 
   const container = document.createElement("div");
@@ -458,6 +444,7 @@ it("expands folded page agents only when asked, even with an active page agent",
       createElement(SidebarFixture, {
         mode: "expanded",
         pageAgents: true,
+        singlePageAgent: true,
         activePageAgent,
       }),
     );
@@ -468,6 +455,7 @@ it("expands folded page agents only when asked, even with an active page agent",
       '[data-testid="sidebar-page-agents"]',
     );
     expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle?.textContent).toContain("1");
     expect(container.textContent).not.toContain("Inbox agent");
 
     await act(async () => toggle?.click());
@@ -481,12 +469,68 @@ it("expands folded page agents only when asked, even with an active page agent",
     const activeToggle = container.querySelector<HTMLButtonElement>(
       '[data-testid="sidebar-page-agents"]',
     );
-    expect(activeToggle?.getAttribute("aria-expanded")).toBe("false");
-    expect(container.textContent).not.toContain("Inbox agent");
-
-    await act(async () => activeToggle?.click());
     expect(activeToggle?.getAttribute("aria-expanded")).toBe("true");
     expect(container.textContent).toContain("Inbox agent");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("folds email chats separately and reveals the active email chat", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  stubSidebarObservers();
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const renderFixture = (activeEmailChat: boolean) =>
+    createElement(
+      MemoryRouter,
+      null,
+      createElement(SidebarFixture, {
+        mode: "expanded",
+        pageAgents: true,
+        emailChats: true,
+        activeEmailChat,
+      }),
+    );
+  try {
+    await act(async () => root.render(renderFixture(false)));
+
+    const pageAgents = container.querySelector<HTMLButtonElement>(
+      '[data-testid="sidebar-page-agents"]',
+    );
+    const emailChats = container.querySelector<HTMLButtonElement>(
+      '[data-testid="sidebar-email-chats"]',
+    );
+    expect(pageAgents?.getAttribute("aria-expanded")).toBe("false");
+    expect(emailChats?.textContent).toContain("Email chats");
+    expect(emailChats?.getAttribute("aria-expanded")).toBe("false");
+    expect(container.textContent).not.toContain("Client email");
+
+    await act(async () => emailChats?.click());
+    expect(emailChats?.getAttribute("aria-expanded")).toBe("true");
+    expect(container.textContent).toContain("Client email");
+    expect(pageAgents?.getAttribute("aria-expanded")).toBe("false");
+
+    await act(async () => emailChats?.click());
+    expect(emailChats?.getAttribute("aria-expanded")).toBe("false");
+    expect(container.textContent).not.toContain("Client email");
+
+    await act(async () => root.render(renderFixture(true)));
+    const activeEmailChats = container.querySelector<HTMLButtonElement>(
+      '[data-testid="sidebar-email-chats"]',
+    );
+    expect(activeEmailChats?.getAttribute("aria-expanded")).toBe("true");
+    expect(container.textContent).toContain("Client email");
   } finally {
     await act(async () => root.unmount());
     container.remove();
@@ -501,14 +545,7 @@ it("keeps one roster row tabbable and moves focus down with ArrowDown", async ()
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
   }));
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    },
-  );
+  stubSidebarObservers();
   Element.prototype.scrollIntoView ??= () => undefined;
 
   const container = document.createElement("div");
@@ -550,14 +587,7 @@ it("opens the command palette from expanded and rail Search", async () => {
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
   }));
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    },
-  );
+  stubSidebarObservers();
   Element.prototype.scrollIntoView ??= () => undefined;
 
   const container = document.createElement("div");
