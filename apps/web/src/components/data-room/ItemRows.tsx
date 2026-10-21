@@ -294,7 +294,8 @@ function ItemRow({
     >
       <TableCell data-testid="data-room-name">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="relative inline-flex shrink-0">
+          {/* On touch the checkbox always shows, so the slot is a 44 px target. */}
+          <span className="relative inline-flex shrink-0 pointer-coarse:size-11 pointer-coarse:items-center pointer-coarse:justify-center">
             <Marker item={item} />
             {o.onCheck ? (
               <Checkbox
@@ -304,7 +305,7 @@ function ItemRow({
                 onCheckedChange={() => o.onCheck?.(item)}
                 onClick={(event) => event.stopPropagation()}
                 // Over the icon: shown on hover, while ticked, and always on touch screens.
-                className="absolute -inset-0.5 size-auto bg-background opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100 data-checked:opacity-100"
+                className="absolute -inset-0.5 size-auto bg-background opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 pointer-coarse:inset-3.25 pointer-coarse:opacity-100 data-checked:opacity-100"
               />
             ) : null}
           </span>

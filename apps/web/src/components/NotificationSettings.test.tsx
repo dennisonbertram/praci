@@ -12,6 +12,7 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: React.ReactNode }) => children,
 }));
 vi.mock("@rakazo/ui-web", () => ({
+  Label: (props: React.ComponentProps<"label">) => <label {...props} />,
   Switch: ({
     checked,
     onCheckedChange,

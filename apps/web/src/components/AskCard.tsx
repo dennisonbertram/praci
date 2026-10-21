@@ -136,7 +136,7 @@ export function AskCard({
       role="group"
       aria-labelledby={questionId}
       data-testid={secretInput ? "secret-ask-card" : undefined}
-      className="w-xl max-w-full rounded-2xl border border-border bg-card px-5 py-4"
+      className="w-160 max-w-full rounded-2xl border border-border bg-card px-5 py-4"
     >
       <div id={questionId} className="text-[15.5px] leading-[1.5] text-foreground">
         <ChatMarkdown>{block.text}</ChatMarkdown>
