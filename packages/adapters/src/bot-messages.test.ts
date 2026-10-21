@@ -1,5 +1,8 @@
+import { BOT_SHARE_HELD_MESSAGE } from "@rakazo/contracts";
+import { PrivateFragments } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
+import type { MessageBotOptions } from "./bot-messages.js";
 import {
   currentBotMessageHop,
   EXTERNAL_MESSAGE_REFUSED,
@@ -54,6 +57,10 @@ function deps(
       findFirst: vi.fn().mockResolvedValue(options.targetArchived ? null : { id: "bot-target" }),
     },
     task: { create: vi.fn().mockResolvedValue({ id: "task-1" }) },
+    externalEffect: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({ id: "effect-1" }),
+    },
     message: {
       findUnique: messageFindUnique,
       create: vi.fn().mockResolvedValue({ id: "message-1", seq: 1 }),
@@ -86,6 +93,10 @@ function deps(
       ),
     },
     message: { findUnique: messageFindUnique, findMany: vi.fn().mockResolvedValue([]) },
+    externalEffect: { findUnique: vi.fn().mockResolvedValue(null) },
+    notificationPreference: {
+      findUnique: vi.fn().mockResolvedValue({ finish: false, help: false, takeover: false }),
+    },
     run: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     $transaction: vi.fn(async (fn: (client: unknown) => unknown) => {
       transactionAttempts += 1;
@@ -932,13 +943,13 @@ describe("the automatic result return and audience", () => {
     externalMessageTargets,
     thread: { id: "thread-caller" },
   });
-  const reply = (harness: ReturnType<typeof deps>) =>
+  const reply = (harness: ReturnType<typeof deps>, extra: MessageBotOptions = {}) =>
     messageBot(
       harness.deps,
       { ...run, sourceMessageId: "msg-1" },
       sender,
       { bot_id: "bot-caller", message: "done", intent: "result" },
-      { allowTerminalSource: true },
+      { allowTerminalSource: true, ...extra },
     );
 
   it("returns to an internal caller", async () => {
@@ -954,7 +965,26 @@ describe("the automatic result return and audience", () => {
       bots: [caller("external", ["bot-sender"])],
       hopBlocks: asked,
     });
-    expect((await reply(allowed)).ok).toBe(true);
+    expect((await reply(allowed, { outbound: async () => new PrivateFragments() })).ok).toBe(true);
+  });
+
+  it("holds the automatic result when it repeats something the run read, and sends the fixed words", async () => {
+    const fragments = new PrivateFragments();
+    fragments.addPrivate('{"from":"Priya Shah <priya@halcyon.example>"}');
+    const h = deps({ bots: [caller("external", ["bot-sender"])], hopBlocks: asked });
+    const sent = await messageBot(
+      h.deps,
+      { ...run, sourceMessageId: "msg-1" },
+      sender,
+      { bot_id: "bot-caller", message: "It is priya@halcyon.example", intent: "result" },
+      { allowTerminalSource: true, outbound: async () => fragments },
+    );
+    expect(sent).toMatchObject({ ok: true, held: true });
+    const texts = h.tx.message.create.mock.calls
+      .flatMap(([call]) => (call as { data: { blocks: { text?: string }[] } }).data.blocks)
+      .map((block) => block.text);
+    expect(texts).not.toContain("It is priya@halcyon.example");
+    expect(texts).toContain(BOT_SHARE_HELD_MESSAGE);
   });
 
   it("an external sender cannot use the return to reach another external bot", async () => {
@@ -1071,5 +1101,136 @@ describe("the external chain mark", () => {
         data: expect.objectContaining({ prompt: expect.stringContaining("Security notice") }),
       }),
     );
+  });
+});
+
+describe("messages to an external bot are checked against what the run read", () => {
+  const external = {
+    id: "bot-ext",
+    name: "Support",
+    title: "",
+    audience: "external",
+    externalMessageTargets: ["bot-sender"],
+    thread: { id: "t-ext" },
+  };
+  const secretFragments = () => {
+    const f = new PrivateFragments();
+    f.addPrivate('{"from":"Priya Shah <priya@halcyon.example>"}');
+    return f;
+  };
+  const send = (h: ReturnType<typeof deps>, message: string, extra: MessageBotOptions = {}) =>
+    messageBot(h.deps, run, sender, { bot_id: "bot-ext", message }, extra);
+  const delivered = (h: ReturnType<typeof deps>) =>
+    h.tx.message.create.mock.calls
+      .flatMap(
+        ([call]) => (call as { data: { blocks: { kind: string; text?: string }[] } }).data.blocks,
+      )
+      .filter((block) => block.kind === "bot_message_received")
+      .map((block) => block.text);
+
+  it("holds a message that repeats a private fragment and sends the external bot only the fixed words", async () => {
+    const h = deps({ bots: [external] });
+    const sent = await send(h, "Her address is PRIYA@halcyon.example", {
+      outbound: async () => secretFragments(),
+    });
+    expect(sent).toMatchObject({ ok: true, held: true });
+    expect(delivered(h)).toEqual([BOT_SHARE_HELD_MESSAGE]);
+    expect(h.tx.externalEffect.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          kind: "bot_message_share",
+          status: "intended",
+          request: expect.objectContaining({ text: "Her address is PRIYA@halcyon.example" }),
+        }),
+      }),
+    );
+  });
+
+  it("sends a message that repeats nothing", async () => {
+    const h = deps({ bots: [external] });
+    const sent = await send(h, "We open at 9am.", { outbound: async () => secretFragments() });
+    expect(sent).not.toHaveProperty("held");
+    expect(delivered(h)).toEqual(["We open at 9am."]);
+    expect(h.tx.externalEffect.create).not.toHaveBeenCalled();
+  });
+
+  it("holds when the run's reads are unknown", async () => {
+    const h = deps({ bots: [external] });
+    expect(await send(h, "anything")).toMatchObject({ held: true });
+    expect(delivered(h)).toEqual([BOT_SHARE_HELD_MESSAGE]);
+  });
+
+  it("never checks traffic to an internal bot", async () => {
+    const h = deps();
+    await messageBot(h.deps, run, sender, {
+      bot_id: "bot-target",
+      message: "Priya <priya@halcyon.example>",
+    });
+    expect(h.tx.externalEffect.create).not.toHaveBeenCalled();
+  });
+
+  it("replays an earlier delivery under the same key instead of holding it again", async () => {
+    const h = deps({ bots: [external], alreadyDelivered: { id: "earlier" } });
+    const sent = await messageBot(
+      h.deps,
+      run,
+      sender,
+      {
+        bot_id: "bot-ext",
+        message: "Her address is priya@halcyon.example",
+        deliveryKey: "auto-outcome:r1",
+      },
+      { outbound: async () => secretFragments() },
+    );
+    expect(sent).toMatchObject({ ok: true, replayed: true });
+    expect(h.tx.externalEffect.create).not.toHaveBeenCalled();
+    expect(h.tx.message.create).not.toHaveBeenCalled();
+  });
+
+  it("tells the caller a returned outcome was held", async () => {
+    const asked = [
+      {
+        kind: "bot_message_received",
+        fromBotId: "bot-ext",
+        fromBotName: "Support",
+        text: "q",
+        hop: 1,
+        intent: "request",
+        returnToMessageId: "m0",
+      },
+    ];
+    const h = deps({
+      bots: [{ ...external, id: "bot-ext" }],
+      hopBlocks: asked,
+    });
+    let held = false;
+    const ok = await returnBotMessageOutcome(
+      h.deps,
+      { ...run, sourceMessageId: "msg-1" },
+      sender,
+      "It is priya@halcyon.example",
+      "result",
+      { outbound: async () => secretFragments(), onHeld: () => (held = true) },
+    );
+    expect(ok).toBe(true);
+    expect(held).toBe(true);
+  });
+
+  it("sends no pending notice for a hold the owner already answered", async () => {
+    for (const status of ["denied", "executing"]) {
+      const h = deps({ bots: [external] });
+      const found = { id: "effect-1", status };
+      h.tx.externalEffect.findUnique.mockResolvedValue(found);
+      (h.deps.prisma as unknown as { externalEffect: { findUnique: unknown } }).externalEffect = {
+        findUnique: vi.fn().mockResolvedValue(found),
+      };
+      const sent = await send(h, "Her address is priya@halcyon.example", {
+        outbound: async () => secretFragments(),
+      });
+      expect(sent).toMatchObject({ ok: true });
+      expect(sent).not.toHaveProperty("held", true);
+      expect(delivered(h), status).toEqual([]);
+      expect(h.tx.externalEffect.create).not.toHaveBeenCalled();
+    }
   });
 });

@@ -30,8 +30,10 @@ const flush = () => act(async () => {});
 async function show(scope: RunwayCryptoScope) {
   await act(async () => root.render(<CountCryptoButton scope={scope} onSaved={onSaved} />));
 }
-const main = () => container.querySelector("button") as HTMLButtonElement;
-const openMenu = () => act(async () => main().click());
+const main = () => container.querySelector('[role="switch"]') as HTMLButtonElement;
+const scopeButton = () =>
+  container.querySelector("button:not([role=switch])") as HTMLButtonElement | null;
+const openMenu = () => act(async () => scopeButton()?.click());
 const menuItems = () => [...document.body.querySelectorAll('[role^="menuitem"]')] as HTMLElement[];
 beforeEach(() => {
   container = document.createElement("div");
@@ -45,10 +47,11 @@ afterEach(() => {
   vi.resetAllMocks();
 });
 
-it("is an outline Count crypto tag when off, and one click counts all crypto", async () => {
+it("is an off Count crypto switch when not counting, and one click counts all crypto", async () => {
   await show("bank");
-  expect(main().textContent).toBe("Count crypto");
-  expect(main().getAttribute("aria-pressed")).toBe("false");
+  expect(container.textContent).toBe("Count crypto");
+  expect(main().getAttribute("aria-checked")).toBe("false");
+  expect(scopeButton()).toBeNull();
   await act(async () => main().click());
   await flush();
   expect(rpcMock.setPreferences).toHaveBeenCalledWith({ runwayCrypto: "all" });
@@ -56,25 +59,19 @@ it("is an outline Count crypto tag when off, and one click counts all crypto", a
 });
 
 it.each([
-  ["all", "Counting all crypto"],
-  ["stablecoins", "Counting stablecoins"],
-] as const)("names what counts when on (%s)", async (scope, label) => {
+  ["all", "All crypto"],
+  ["stablecoins", "Stablecoins only"],
+] as const)("is on and names what counts (%s)", async (scope, label) => {
   await show(scope);
-  expect(main().textContent).toBe(label);
-  expect(main().getAttribute("aria-pressed")).toBeNull();
-  await act(async () => main().focus());
-  expect(main().textContent).toBe(label);
+  expect(main().getAttribute("aria-checked")).toBe("true");
+  expect(scopeButton()?.textContent).toBe(label);
 });
 
-it("offers all crypto, stablecoins only and Don't count crypto, without wrapping", async () => {
+it("offers all crypto and stablecoins only, without wrapping", async () => {
   await show("all");
   await openMenu();
   const items = menuItems();
-  expect(items.map((i) => i.textContent)).toEqual([
-    "All crypto",
-    "Stablecoins only",
-    "Don't count crypto",
-  ]);
+  expect(items.map((i) => i.textContent)).toEqual(["All crypto", "Stablecoins only"]);
   expect(items[0]?.getAttribute("aria-checked")).toBe("true");
   for (const item of items) expect(item.className).toContain("whitespace-nowrap");
 });
@@ -88,10 +85,9 @@ it("switches to stablecoins only from the menu", async () => {
   expect(onSaved).toHaveBeenCalledTimes(1);
 });
 
-it("turns counting off from the menu", async () => {
+it("turns counting off with the switch", async () => {
   await show("stablecoins");
-  await openMenu();
-  await act(async () => menuItems()[2]?.click());
+  await act(async () => main().click());
   await flush();
   expect(rpcMock.setPreferences).toHaveBeenCalledWith({ runwayCrypto: "bank" });
   expect(onSaved).toHaveBeenCalledTimes(1);
@@ -106,15 +102,15 @@ it("shows the server error and does not reload when saving fails", async () => {
   expect(onSaved).not.toHaveBeenCalled();
 });
 
-it("disables the tag while a save is pending", async () => {
+it("disables the switch while a save is pending", async () => {
   let finish: (v: unknown) => void = () => {};
   rpcMock.setPreferences.mockImplementation(() => new Promise((resolve) => (finish = resolve)));
   await show("bank");
   await act(async () => main().click());
-  expect(main().disabled).toBe(true);
+  expect(main().hasAttribute("data-disabled")).toBe(true);
   await act(async () => main().click());
   expect(rpcMock.setPreferences).toHaveBeenCalledTimes(1);
   await act(async () => finish({}));
   await flush();
-  expect(main().disabled).toBe(false);
+  expect(main().hasAttribute("data-disabled")).toBe(false);
 });

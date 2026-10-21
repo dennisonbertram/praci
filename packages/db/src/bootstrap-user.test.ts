@@ -26,6 +26,9 @@ function makePrisma(settings: { id: string; ownerUserId: string | null } | null)
     },
     memoryDocument: { findFirst: vi.fn(async () => null), create: create() },
     notificationPreference: { create: create() },
+    actionApprovalRule: {
+      createMany: vi.fn(async (_input: { data: Record<string, unknown>[] }) => ({})),
+    },
   };
   return prisma;
 }
@@ -146,6 +149,29 @@ describe("bootstrapUserSpace", () => {
     expect(prefData.spaceId).toBe(spaceId);
     expect(prefData.userId).toBe("user-1");
   });
+
+  it("starts a new user asking before external email and purchases", async () => {
+    const prisma = makePrisma({ id: "default", ownerUserId: "user-1" });
+    const { spaceId } = await bootstrapUserSpace(
+      prisma as unknown as PrismaClient,
+      { id: "user-1" },
+      env,
+    );
+
+    const rules = prisma.actionApprovalRule.createMany.mock.calls[0]![0].data;
+    expect(
+      rules.map((rule) => [
+        rule.spaceId,
+        rule.createdByUserId,
+        rule.effect,
+        rule.matchKind,
+        rule.matchValue,
+      ]),
+    ).toEqual([
+      [spaceId, "user-1", "require_approval", "category", "email"],
+      [spaceId, "user-1", "require_approval", "category", "purchase"],
+    ]);
+  });
 });
 
 describe("bootstrapUserSpace concurrency", () => {
@@ -173,6 +199,7 @@ describe("bootstrapUserSpace concurrency", () => {
         create: vi.fn(async () => ({})),
       },
       notificationPreference: { create: vi.fn(uniqueViolation) },
+      actionApprovalRule: { createMany: vi.fn(async () => ({})) },
     };
     const result = await bootstrapUserSpace(
       prisma as unknown as PrismaClient,

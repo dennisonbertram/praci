@@ -47,7 +47,13 @@ export const ValuesAndDot: Story = {
       {row(
         "Data room",
         <FolderOpen size={15} aria-hidden="true" />,
-        glanceBadge({ unseen: 0, value: "1", valueLabel: "1 file failed", rail: false }),
+        glanceBadge({
+          unseen: 0,
+          value: "1",
+          valueLabel: "1 file failed",
+          failure: true,
+          rail: false,
+        }),
       )}
       {row(
         "Legal",

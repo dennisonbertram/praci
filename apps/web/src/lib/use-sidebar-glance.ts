@@ -36,6 +36,7 @@ const EMPTY: Glance = {
   devinNeedsYou: 0,
   devinConnected: false,
   dataRoomWaiting: 0,
+  hasTickets: false,
   botKinds: {},
 };
 

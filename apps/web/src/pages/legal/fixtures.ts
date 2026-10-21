@@ -88,7 +88,6 @@ export const overview: LegalOverview = {
     lastScanRun: { id: id(950), status: "completed", error: null },
   },
   model: { provider: "openrouter", id: "meta/muse-spark-1.2", isPreferred: true },
-  modelBlocker: null,
 };
 
 export const emptyOverview: LegalOverview = {
@@ -103,14 +102,6 @@ export const emptyOverview: LegalOverview = {
   },
   agent: { botId: id(900), lastScanAt: null, dailyScanActive: true, lastScanRun: null },
   model: { provider: "openrouter", id: "meta/muse-spark-1.2", isPreferred: true },
-  modelBlocker: null,
-};
-
-/** No OpenRouter key of the user's own: the agent falls back to the space model and cannot run. */
-export const needsKeyOverview: LegalOverview = {
-  ...emptyOverview,
-  model: { provider: "openrouter", id: "openai/gpt-6-luna", isPreferred: false },
-  modelBlocker: "own_key",
 };
 
 export const graph: LegalGraph = {

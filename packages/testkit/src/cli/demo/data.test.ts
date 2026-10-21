@@ -472,7 +472,9 @@ describe("mock demo data", () => {
     const { callToolFor } = demoFinance(new Date("2026-10-16T12:00:00Z"));
     const mercury = await callToolFor({ id: "s", provider: "mercury", endpoint: "" } as never);
     expect(await mercury("getRecipients", {})).toMatchObject({
-      recipients: [{ id: "recipient_mock_acme", name: "Acme (Mock)", status: "active" }],
+      recipients: [
+        { id: "recipient_mock_acme", name: "Acme Servo Supply (Mock)", status: "active" },
+      ],
     });
   });
 
@@ -482,7 +484,7 @@ describe("mock demo data", () => {
     expect(tools).toEqual(expect.arrayContaining(["getRecipient", "getAccount"]));
     expect(await server.call("getRecipient", { recipientId: "recipient_mock_acme" })).toMatchObject(
       {
-        name: "Acme (Mock)",
+        name: "Acme Servo Supply (Mock)",
       },
     );
     expect(await server.call("getAccount", { accountId: "chk-1111" })).toMatchObject({

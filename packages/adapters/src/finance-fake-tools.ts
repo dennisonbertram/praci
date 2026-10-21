@@ -98,7 +98,7 @@ export const mercuryTreasuryResponse = {
 };
 
 const DEFAULT_RECIPIENTS: Array<Record<string, unknown>> = [
-  { id: "recipient_mock_acme", name: "Acme (Mock)", status: "active" },
+  { id: "recipient_mock_acme", name: "Acme Servo Supply (Mock)", status: "active" },
 ];
 
 export interface MercuryOptions {

@@ -184,6 +184,12 @@ export const MailEditsSchema = z
   .strict();
 export type MailEdits = z.infer<typeof MailEditsSchema>;
 
+/** The effect kind of a bot-to-bot message held for the owner before it reaches an external bot. */
+export const BOT_SHARE_EFFECT_KIND = "bot_message_share";
+/** Server-written replies to the external bot; never model text. */
+export const BOT_SHARE_HELD_MESSAGE = "This needs the owner's approval before it can be shared.";
+export const BOT_SHARE_DECLINED_MESSAGE = "That isn't available.";
+
 export const MessageBlock = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("text"), text: z.string() }),
   z.object({
@@ -198,6 +204,11 @@ export const MessageBlock = z.discriminatedUnion("kind", [
     /** Show `detail` behind a "Details" disclosure (raw tool arguments), not open on the card. */
     detailFolded: z.boolean().optional(),
     mail: MailApprovalSchema.optional(),
+    /**
+     * A held message from one bot to an external bot: Allow delivers exactly the text on the card,
+     * once. It is answered without a waiting run.
+     */
+    share: z.boolean().optional(),
     /** An AI data sharing request: the card's Allow records consent for the disclosure `version`. */
     consent: z.object({ version: z.string() }).optional(),
     input: z.enum(["text", "secret"]).optional(),

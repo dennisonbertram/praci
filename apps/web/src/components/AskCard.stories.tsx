@@ -29,6 +29,20 @@ const consentAsk = (overrides: Partial<AskBlock> = {}): AskBlock =>
     ...overrides,
   });
 
+const shareAsk = (overrides: Partial<AskBlock> = {}): AskBlock =>
+  ask({
+    text: "Share with Support?",
+    detail: "Our lead investor is Halcyon Ventures. You can reach them at priya@halcyon.example.",
+    approvalEffectId: "effect_share",
+    share: true,
+    actions: [
+      { id: "allow", label: "Share" },
+      { id: "deny", label: "Don't share" },
+    ],
+    status: "pending",
+    ...overrides,
+  });
+
 const meta = {
   title: "Chat/AskCard",
   component: AskCard,
@@ -250,4 +264,15 @@ export const ConsentAllowed: Story = {
 
 export const ConsentDeclined: Story = {
   args: { block: consentAsk({ status: "answered", answer: "deny" }) },
+};
+
+/** A message from one bot to an external bot, held for the owner: the exact text, Share once or Don't share. */
+export const HeldShare: Story = { args: { block: shareAsk() } };
+
+export const HeldShareShared: Story = {
+  args: { block: shareAsk({ status: "answered", answer: "allow" }) },
+};
+
+export const HeldShareDeclined: Story = {
+  args: { block: shareAsk({ status: "answered", answer: "deny" }) },
 };
