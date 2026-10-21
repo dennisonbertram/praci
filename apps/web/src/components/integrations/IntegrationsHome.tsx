@@ -577,7 +577,7 @@ export function IntegrationsHome({
   return (
     <div className="rk-scroll h-full overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
       <div className="max-w-[1040px]">
-        <PageHeader title={<Trans>Apps</Trans>} className="mb-1" />
+        <PageHeader title={<Trans>Integrations</Trans>} className="mb-1" />
         <p className="mb-5 max-w-[640px] text-muted-foreground">
           <Trans>
             Connect the apps you use so your bots can read and act in them. You choose which bots
