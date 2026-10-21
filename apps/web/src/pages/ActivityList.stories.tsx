@@ -121,3 +121,16 @@ export const WithFilterChips: Story = {
     );
   },
 };
+
+/** Inside the sidebar's scrolling column the section keeps its height next to a tall sibling. */
+export const InSidebarColumn: Story = {
+  beforeEach: () => mockRpc({ "runs.list": byFilter }),
+  decorators: [
+    (Story) => (
+      <div className="flex h-[640px] w-72 flex-col overflow-y-auto border border-border">
+        <Story />
+        <div className="h-[900px] shrink-0 px-2.5 text-[13px] text-muted-foreground">Chat list</div>
+      </div>
+    ),
+  ],
+};

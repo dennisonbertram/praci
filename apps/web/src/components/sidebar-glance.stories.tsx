@@ -47,7 +47,7 @@ export const ValuesAndDot: Story = {
       {row(
         "Finance",
         <ChartColumn size={15} aria-hidden="true" />,
-        glanceBadge({ unseen: 0, value: runwayGlance(24.4, false), rail: false }),
+        glanceBadge({ unseen: 0, value: runwayGlance(24.4), rail: false }),
       )}
       {row(
         "Legal",
@@ -56,16 +56,6 @@ export const ValuesAndDot: Story = {
       )}
     </>
   ),
-};
-
-/** Hide money is on: the runway value is gone. */
-export const RunwayHidden: Story = {
-  render: () =>
-    row(
-      "Finance",
-      <ChartColumn size={15} aria-hidden="true" />,
-      glanceBadge({ unseen: 0, value: runwayGlance(24.4, true), rail: false }),
-    ),
 };
 
 const agents: [string, string, NotificationKind][] = [

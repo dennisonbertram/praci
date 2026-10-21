@@ -3,6 +3,7 @@ import { useState } from "react";
 
 const SIZES = {
   sm: "size-5 rounded-md text-[10px]",
+  row: "size-9 rounded-[9px] text-sm",
   md: "size-10 rounded-[10px] text-base",
   lg: "size-12 rounded-xl text-lg",
   xl: "size-14 rounded-[14px] text-xl",

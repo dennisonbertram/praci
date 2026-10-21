@@ -17,6 +17,11 @@ export function LegalConsentPrompt({
       id="legal-consent"
       className="mb-4"
       heading={<Trans>Let Praci read your contracts</Trans>}
+      sends={
+        <Trans>
+          The text of your Data room documents is sent to the AI model that runs your bots.
+        </Trans>
+      }
       onAllow={async () => {
         try {
           onChange(await rpc.legal.consentGrant({ key: consent.key, version: consent.version }));

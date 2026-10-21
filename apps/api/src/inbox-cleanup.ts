@@ -187,7 +187,9 @@ export async function inboxCleanupList(
     const skipInbox = Boolean(decision?.skipInboxAt);
     const learnedPile = parsePile(stat.learnedPile);
     // A skipped or learned sender stays listed so the decision can be undone.
-    if (saved.has(fact.address) && !skipInbox && learnedPile === null) return [];
+    const decided = skipInbox || learnedPile !== null;
+    // Someone saved in Contacts, or whose newest mail sorted into Important, is not clutter.
+    if ((saved.has(fact.address) || fact.newestPile === "important") && !decided) return [];
     if (
       !isCleanupListed({
         messageCount: stat.messageCount,

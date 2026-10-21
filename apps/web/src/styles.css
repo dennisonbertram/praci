@@ -58,3 +58,29 @@ body,
     linear-gradient(transparent, var(--sidebar) 70%) bottom / 100% 24px no-repeat local,
     linear-gradient(transparent, var(--sidebar-border)) bottom / 100% 24px no-repeat scroll;
 }
+
+/* Phones: every tappable control is at least 44 px. Unlayered, so it wins over
+   per-component size utilities; it only grows a control, never shrinks it.
+   Switches and checkboxes keep their size and get a 44 px hit area from ui-web. */
+@media (pointer: coarse) {
+  button:not([role="switch"], [role="checkbox"]),
+  [role="tab"],
+  select,
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="hidden"]) {
+    min-height: 44px;
+  }
+  button:not([role="switch"], [role="checkbox"]),
+  [role="tab"] {
+    min-width: 44px;
+  }
+  textarea {
+    min-height: 44px;
+  }
+  /* A standalone link (not one inside a sentence) on a phone. */
+  .rk-tap {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    min-width: 44px;
+  }
+}

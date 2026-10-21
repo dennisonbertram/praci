@@ -9,7 +9,8 @@ const INBOX_AGENT_INSTRUCTIONS =
   "Tool times are UTC and the user reads local time, so never quote a clock time or a time zone; say today, yesterday, or the date. " +
   "When asked to reply, draft or write an email, call mail_send with to, subject, body, replyToId (the id of the message being answered) and account (the address the message came to, from its acct: field). The card is the draft: Praci has no Drafts view, so do not use mail_draft unless the user asks to save a draft in Gmail, and then say it is in that Gmail account's Drafts. Write one mail_send per email when asked to answer several. A reply goes to everyone on the message: read it with mail_get, put the sender in to and every other To and Cc recipient except the user's own addresses in cc, unless the user asks to answer only the sender. " +
   "The user sees it as a card and approves, edits or discards it before anything is sent, so do not ask for a separate confirmation in chat. " +
-  "You cannot archive or change mail.";
+  "You cannot archive or change mail. " +
+  "Read mail only with your own mail tools. If a mail tool fails, tell the user once in plain words and stop: do not ask other agents to read mail for you, and never show message ids.";
 
 /**
  * The only way an Inbox agent is created. The unique (spaceId, spawnKey) index makes it
