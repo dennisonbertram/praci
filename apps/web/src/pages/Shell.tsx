@@ -209,7 +209,7 @@ import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-pref
 import { findInboxAgent } from "../lib/inbox-agent";
 import { appPath } from "../lib/integrations";
 import { findLegalAgent } from "../lib/legal-agent";
-import { localTimezone, markTimezoneReported, timezoneToReport } from "../lib/local-timezone";
+import { accountTimezone, markTimezoneReported, timezoneToReport } from "../lib/local-timezone";
 import { parseModelOptionKey } from "../lib/model-catalog";
 import { createAgentSendWatch } from "../lib/outbox";
 import {
@@ -5574,7 +5574,7 @@ export function ShellPage() {
                 draft={routineDraft}
                 onChange={setRoutineDraft}
                 editing={editingRoutine}
-                timezone={editingRoutine?.timezone ?? localTimezone()}
+                timezone={editingRoutine?.timezone ?? accountTimezone(bootstrapMe)}
                 webhook={{
                   path:
                     typeof window !== "undefined"
@@ -5672,7 +5672,7 @@ export function ShellPage() {
                         name: routineDraft.name || t`Routine`,
                         prompt: routineDraft.prompt || t`Check in.`,
                         crons,
-                        timezone: localTimezone(),
+                        timezone: accountTimezone(bootstrapMe),
                         active: routineDraft.active,
                         notify: true,
                         webhookEnabled: routineDraft.webhookEnabled,
@@ -6179,7 +6179,7 @@ export function ShellPage() {
               const nextMe = await rpc.preferences.update({ avatarStyle });
               setBootstrapMe(nextMe);
             }}
-            timezone={bootstrapMe?.timezone ?? localTimezone()}
+            timezone={accountTimezone(bootstrapMe)}
             onTimezoneChange={async (timezone) => {
               setBootstrapMe(await rpc.preferences.update({ timezone }));
             }}

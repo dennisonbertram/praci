@@ -6,6 +6,11 @@ export function localTimezone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
 
+/** The zone new routines default to: the one saved on the account, else this browser's. */
+export function accountTimezone(me: { timezone: string | null } | null | undefined): string {
+  return me?.timezone ?? localTimezone();
+}
+
 /** A timezone as people say it ("Eastern Daylight Time"), falling back to the IANA name. */
 export function timezoneLabel(timeZone: string, locale?: string, at = new Date()): string {
   try {

@@ -114,12 +114,14 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
   if (!hasAnyRuns && !filtersOn) {
     if (!error)
       return (
-        <p
-          className="mb-2 border-b border-border px-2.5 pb-3 pt-1 text-[13px] text-muted-foreground/80"
-          role="status"
-        >
-          <Trans>Nothing needs you right now.</Trans>
-        </p>
+        <div className="mb-2 border-b border-border px-2.5 pb-3 pt-1">
+          <h2 className="text-[13px] font-medium text-foreground">
+            <Trans>Activity</Trans>
+          </h2>
+          <p className="text-[13px] text-muted-foreground/80" role="status">
+            <Trans>Nothing needs you right now.</Trans>
+          </p>
+        </div>
       );
     return (
       <div className="px-2.5 py-2" role="alert">
@@ -133,7 +135,10 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
       {showFilters || filtersOn ? (
         <ActivityFilters filters={filters} onChange={setFilters} />
       ) : (
-        <div className="flex justify-end px-2.5 pb-1">
+        <div className="flex items-center justify-between px-2.5 pb-1">
+          <h2 className="text-[13px] font-medium text-foreground">
+            <Trans>Activity</Trans>
+          </h2>
           <Button
             type="button"
             variant="ghost"
