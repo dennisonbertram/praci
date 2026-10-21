@@ -47,3 +47,6 @@ export const Employment: Story = {
 export const Event: Story = {
   args: { fact: { kind: "event", record: companyFixture.events[0]! } },
 };
+export const Roleless: Story = {
+  args: { fact: { kind: "edge", record: { ...companyFixture.edges[0]!, role: null } } },
+};

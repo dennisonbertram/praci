@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useFinanceQuery } from "../components/finance/ui";
 import { HideAmountsButton } from "../components/HideAmountsToggle";
-import { companyDate } from "../lib/company-format";
+import { companyDate, companyDateEnd } from "../lib/company-format";
 import { money } from "../lib/finance-format";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { todayIso } from "../lib/legal-format";
@@ -49,7 +49,7 @@ export function CompanyPage() {
     data?.edges.filter((row) => row.fromId === id && row.relation === "works_at") ?? [];
   const past = (row: CompanyEntityRecord) =>
     roles(row.id).length > 0 &&
-    roles(row.id).every((edge) => edge.endsOn && edge.endsOn.date < todayIso());
+    roles(row.id).every((edge) => edge.endsOn && companyDateEnd(edge.endsOn) < todayIso());
   const showEntity = (record: CompanyEntityRecord) => setFact({ kind: "entity", record });
   const rows = (entities: CompanyEntityRecord[]) => (
     <Table>
@@ -84,7 +84,7 @@ export function CompanyPage() {
             </TableCell>
             <TableCell>
               {roles(row.id)
-                .filter((edge) => !edge.endsOn || edge.endsOn.date >= todayIso())
+                .filter((edge) => !edge.endsOn || companyDateEnd(edge.endsOn) >= todayIso())
                 .map((edge) => (
                   <Button
                     key={edge.id}
@@ -152,12 +152,12 @@ export function CompanyPage() {
                 <Trans>Partial import</Trans>
               </p>
             )}
-          {data.entities.length === 0 && (
+          {data.entities.length === 0 && data.events.length === 0 && (
             <div className="py-16 text-center text-muted-foreground">
               <Trans>No company facts yet</Trans>
             </div>
           )}
-          {view === "overview" && data.entities.length > 0 && (
+          {view === "overview" && (data.entities.length > 0 || data.events.length > 0) && (
             <>
               {profile && (
                 <section className="space-y-3">
@@ -225,7 +225,7 @@ export function CompanyPage() {
                   <Trans>Next dates</Trans>
                 </h2>
                 {data.events
-                  .filter((event) => event.occursOn && event.occursOn.date >= todayIso())
+                  .filter((event) => event.occursOn && companyDateEnd(event.occursOn) >= todayIso())
                   .slice(0, 5)
                   .map((event) => (
                     <button
@@ -244,7 +244,7 @@ export function CompanyPage() {
                   <Trans>Latest events</Trans>
                 </h2>
                 {data.events
-                  .filter((event) => event.occursOn && event.occursOn.date <= todayIso())
+                  .filter((event) => event.occursOn && companyDateEnd(event.occursOn) <= todayIso())
                   .slice(-5)
                   .reverse()
                   .map((event) => (

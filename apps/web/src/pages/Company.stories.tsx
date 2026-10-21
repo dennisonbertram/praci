@@ -27,6 +27,18 @@ export const Running: Story = {
       "company.page": { ...companyFixture, latestRun: { id: "run", status: "running" } },
     }),
 };
+export const EventsOnly: Story = {
+  beforeEach: () =>
+    mockRpc({
+      ...responses,
+      "company.page": {
+        entities: [],
+        edges: [],
+        latestRun: null,
+        events: companyFixture.events.map((event) => ({ ...event, entityIds: [] })),
+      },
+    }),
+};
 export const Partial: Story = {
   beforeEach: () =>
     mockRpc({

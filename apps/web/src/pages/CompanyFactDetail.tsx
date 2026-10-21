@@ -26,7 +26,8 @@ export function CompanyFactDetail({
   const popupRef = useRef<HTMLDivElement>(null);
   const hidden = useHideAmounts();
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(companyFactTitle(fact));
+  const initialName = fact.kind === "edge" ? (fact.record.role ?? "") : companyFactTitle(fact);
+  const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(
     fact.kind === "entity" ? String(fact.record.attrs.description ?? "") : "",
   );
@@ -54,6 +55,7 @@ export function CompanyFactDetail({
       if (description !== String(fact.record.attrs.description ?? ""))
         attrs.description = description;
       if (whatWeDo !== String(fact.record.attrs.whatWeDo ?? "")) attrs.whatWeDo = whatWeDo;
+      if (name.trim() === initialName && Object.keys(attrs).length === 0) return;
       await rpc.company.editEntity(
         CompanyEntityEditInputSchema.parse({
           entityId: fact.record.id,
@@ -63,10 +65,12 @@ export function CompanyFactDetail({
         }),
       );
     } else if (fact.kind === "edge") {
+      if (name.trim() === initialName) return;
       await rpc.company.editEdge(
-        CompanyEdgeEditInputSchema.parse({ edgeId: fact.record.id, role: name }),
+        CompanyEdgeEditInputSchema.parse({ edgeId: fact.record.id, role: name.trim() || null }),
       );
     } else {
+      if (name.trim() === initialName) return;
       await rpc.company.editEvent(
         CompanyEventEditInputSchema.parse({ eventId: fact.record.id, title: name }),
       );
@@ -172,7 +176,7 @@ export function CompanyFactDetail({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={200}
-                required
+                required={fact.kind !== "edge"}
               />
             </label>
             {fact.kind === "entity" &&
