@@ -1926,7 +1926,7 @@ export function ShellPage() {
         icon: <Scale {...icon} />,
       },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
-      { id: "integrations", label: t`Integrations`, icon: <LayoutGrid {...icon} /> },
+      { id: "integrations", label: t`Apps`, icon: <LayoutGrid {...icon} /> },
       { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
       { id: "settings", label: t`Settings`, icon: <Settings {...icon} /> },
     ];

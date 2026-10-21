@@ -127,6 +127,18 @@ it("opens a class breakdown by holder from a legend row, with totals that add up
   expect(el.querySelector("[data-testid=donut-projection]")).not.toBeNull();
 });
 
+it("opens a class whose name differs from the holders' security only by case or a note", async () => {
+  const el = await mount(
+    <OwnershipDonut
+      {...drillProps}
+      classes={[{ name: "Common (Mock)", shares: 600 }, ...classes.slice(1)]}
+    />,
+  );
+  await click(rowFor(el, "Common (Mock)"));
+  expect(isOpen(el)).toBe("true");
+  expect(legendRows(el)).toEqual(["Ada50.00%300", "Ben33.33%200", "Cy16.67%100"]);
+});
+
 it("opens from a slice with Enter and Space, and names it", async () => {
   const el = await mount(<OwnershipDonut {...drillProps} />);
   const slice = el.querySelector("path[aria-label='Show Common breakdown']");

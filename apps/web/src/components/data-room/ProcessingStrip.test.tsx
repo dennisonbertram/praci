@@ -117,3 +117,19 @@ it("puts running imports on the same line as the processing count", () => {
   expect(container.textContent).toContain("Importing 399 of 1104");
   expect(container.textContent).toContain("Processing 837 files");
 });
+
+it("makes the failed count a button that lists those files, even when nothing is processing", () => {
+  const onShowFailed = vi.fn();
+  const idle = { reading: 0, indexing: 0, tagging: 0, failed: 2, current: null };
+  act(() =>
+    root.render(
+      <ProcessingStrip processing={idle} total={5} finished onShowFailed={onShowFailed} />,
+    ),
+  );
+  const button = Array.from(container.querySelectorAll("button")).find((b) =>
+    b.textContent?.includes("couldn't be read"),
+  );
+  expect(button?.textContent).toBe("2 couldn't be read");
+  act(() => button?.click());
+  expect(onShowFailed).toHaveBeenCalledTimes(1);
+});

@@ -1,0 +1,108 @@
+{
+  "story_id": "STORY-GS-2",
+  "result": "PASS",
+  "round1_status": [
+    {
+      "id": "F-GS-2-01",
+      "status": "still-open",
+      "evidence": "Plan keeps a single line 'Granola rejected this key' for every cause and says it has not verified that Granola distinguishes 401 from 403. Mitigated by the 'Business plan' hint on the label. Kept at medium, see F2-GS-2-01."
+    },
+    {
+      "id": "F-GS-2-02",
+      "status": "still-open",
+      "evidence": "Mobile draws 'Could not reach Granola' (placeholder per mockup comment). Web draws nothing and the plan only says 'existing generic error style'. Wording undecided. See F2-GS-2-02."
+    },
+    {
+      "id": "F-GS-2-03",
+      "status": "still-open",
+      "evidence": "Field is still masked (plan requires type=password). See F2-GS-2-03."
+    },
+    {
+      "id": "F-GS-2-04",
+      "status": "fixed",
+      "evidence": "Plan: 'the error line clears when the user edits the field'. Verified live in the mockup (alert hidden after typing)."
+    },
+    {
+      "id": "F-GS-2-05",
+      "status": "fixed",
+      "evidence": "Rejected field is editable (readOnly false) and Connect re-submits."
+    },
+    {
+      "id": "F-GS-2-06",
+      "status": "fixed",
+      "evidence": "No design note is visible in any card state; notes are HTML comments now."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F2-GS-2-01",
+      "severity": "medium",
+      "category": "happy-path",
+      "criterion": "Recovery",
+      "score": "warn",
+      "kind": "plan",
+      "description": "One rejection line for truncated, expired, wrong-scope and no-API-plan keys. The recovery link 'Get a key in Granola' disappears as soon as the field has text, so it is not offered after a rejection.",
+      "expected": "After a rejection the user sees what to try: copy the key again or create a new one.",
+      "actual": "key-rejected.png shows the error, the field and Connect only.",
+      "screenshot": "key-rejected.png",
+      "suggested_fix": "Show the 'Get a key in Granola' link in the rejected state too (plan Surfaces says 'shown only while the field is empty'; change to 'empty or rejected').",
+      "files_likely_involved": [],
+      "jf": "JF-4",
+      "plan_section": "granola.md Surfaces (Errors)",
+      "story_id": "STORY-GS-2"
+    },
+    {
+      "id": "F2-GS-2-02",
+      "severity": "medium",
+      "category": "happy-path",
+      "criterion": "Error handling",
+      "score": "warn",
+      "kind": "plan",
+      "description": "Web has no drawn state for 'could not reach Granola' on the first Connect; mobile draws a placeholder string. The two surfaces will diverge unless the plan fixes the wording once.",
+      "expected": "One decided string and a drawn web state.",
+      "actual": "Mobile: 'Could not reach Granola' (placeholder). Web: none.",
+      "screenshot": "mob-key-offline.png",
+      "suggested_fix": "Decide the string in granola.md and draw it in the web key card.",
+      "files_likely_involved": [],
+      "jf": "JF-25",
+      "plan_section": "granola.md Surfaces (Errors)",
+      "story_id": "STORY-GS-2"
+    },
+    {
+      "id": "F2-GS-2-03",
+      "severity": "low",
+      "category": "happy-path",
+      "criterion": "Feedback",
+      "score": "warn",
+      "kind": "plan",
+      "description": "The secure field gives no way to reveal what was pasted, so a truncated paste cannot be seen.",
+      "expected": "A reveal toggle or a masked preview of the key ending.",
+      "actual": "Dots only (key-rejected.png).",
+      "screenshot": "key-rejected.png",
+      "suggested_fix": "Optional: show-last-4 or a reveal control. If not wanted, record the decision in the plan.",
+      "files_likely_involved": [],
+      "jf": null,
+      "plan_section": "granola.md Surfaces",
+      "story_id": "STORY-GS-2"
+    },
+    {
+      "id": "F2-GS-2-04",
+      "severity": "low",
+      "category": "visual",
+      "criterion": "Visual consistency",
+      "score": "warn",
+      "kind": "mockup",
+      "description": "After the error line clears on edit, the field keeps its red border and aria-invalid=true.",
+      "expected": "Border and aria-invalid reset when the error clears.",
+      "actual": "Border rgb(229,100,90) and aria-invalid true after typing (verified).",
+      "screenshot": "key-rejected-edited.png",
+      "suggested_fix": "Clear the invalid style in the input handler.",
+      "files_likely_involved": [
+        "docs/granola/mockup.html"
+      ],
+      "jf": null,
+      "plan_section": null,
+      "story_id": "STORY-GS-2"
+    }
+  ]
+}

@@ -44,7 +44,9 @@ it("shows the agent link and both switches, and reports changes", async () => {
   );
   expect(container.querySelector("a")?.getAttribute("href")).toBe("/app/bot_1");
   expect(container.textContent).toContain("Allow changes in Mercury");
-  expect(container.textContent).toContain("Share with all agents");
+  expect(container.textContent).toContain("Let other agents use Mercury directly");
+  expect(container.textContent).toContain("Off: other agents reach Mercury only through");
+  expect(container.textContent).not.toContain("Share with all agents");
   expect(container.textContent).not.toContain("Other agents ask");
   expect(container.textContent).not.toContain("Per-agent list");
   await act(async () => container.querySelector<HTMLElement>("#server-writes")?.click());

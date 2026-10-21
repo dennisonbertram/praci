@@ -39,7 +39,7 @@ export function LocalSettingsPage() {
                 variant="outline"
                 onClick={() => setSection(section === "integrations" ? null : "integrations")}
               >
-                <Trans>Server integrations</Trans>
+                <Trans>Server apps</Trans>
               </Button>
             </nav>
             {section === "models" ? (

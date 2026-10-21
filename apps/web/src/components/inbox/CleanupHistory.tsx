@@ -58,14 +58,20 @@ export function CleanupHistory({
             >
               {formatMailTime(action.createdAt)}
             </time>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={action.undone || busyBatchId === action.batchId}
-              onClick={() => onUndo(action.batchId)}
-            >
-              <Trans>Undo</Trans>
-            </Button>
+            {action.undone ? (
+              <span className="text-xs text-muted-foreground">
+                <Trans>Undone</Trans>
+              </span>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busyBatchId === action.batchId}
+                onClick={() => onUndo(action.batchId)}
+              >
+                <Trans>Undo</Trans>
+              </Button>
+            )}
           </li>
         ))}
       </ul>

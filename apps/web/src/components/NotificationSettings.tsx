@@ -77,7 +77,7 @@ export function NotificationSettingsSection() {
               {permission === undefined ? (
                 <Trans>Not supported here</Trans>
               ) : (
-                <Trans>Blocked in browser settings</Trans>
+                <Trans>Blocked. Allow notifications for this site in your browser settings.</Trans>
               )}
             </span>
           ) : null}

@@ -23,6 +23,7 @@ import {
   SenderRuleStatusSchema,
 } from "@rakazo/contracts";
 import {
+  isCleanupListed,
   isCleanupPreselected,
   planUnsubscribe,
   rankCleanupSenders,
@@ -178,6 +179,15 @@ export async function inboxCleanupList(
     if (!stat) return [];
     const decision = decisionOf.get(key(fact.connectionId, fact.address));
     const skipInbox = Boolean(decision?.skipInboxAt);
+    const learnedPile = parsePile(stat.learnedPile);
+    if (
+      !isCleanupListed({
+        messageCount: stat.messageCount,
+        priorContact: stat.priorContact,
+        keep: skipInbox || learnedPile !== null,
+      })
+    )
+      return [];
     const rule = SenderRuleStatusSchema.safeParse(decision?.ruleStatus);
     const plan = planUnsubscribe(fact.signals, fact.spamLike);
     return [
@@ -204,7 +214,7 @@ export async function inboxCleanupList(
         skipInbox,
         unsubscribeStatus: parseStatus(decision?.unsubscribeStatus),
         ...(skipInbox && rule.success ? { rule: rule.data } : {}),
-        learnedPile: parsePile(stat.learnedPile),
+        learnedPile,
       },
     ];
   });

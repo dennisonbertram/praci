@@ -1,0 +1,344 @@
+{
+  "mode": "inspect",
+  "images": [
+    "1440x900-light-inbox-todos.png",
+    "1440x900-light-inbox-consent.png",
+    "1440x900-dark-inbox-mail.png",
+    "1440x900-dark-settings-voice-connected.png",
+    "1440x900-light-settings-voice-rejected.png",
+    "1440x900-light-call-cap.png",
+    "1440x900-light-consent-x-wispr-off.png",
+    "1440x900-light-flow-meetings-agent.png"
+  ],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 56,
+      "costUsd": 0.178488,
+      "result": {
+        "verdict": "Not ready to ship: the monochrome system, provenance lines and capability labels are clean, but the three core journeys all break at their decision point — a first-time user cannot tell which voice provider is active, what happens when transcription stops mid-call or when data-sharing is off for a connected provider, or which source each cited meeting came from. Consent, connection and error states also lack ordering, consequences and recovery actions.",
+        "findings": [
+          {
+            "level": "component",
+            "element": "To-do date labels 'Fri' / 'Today' / [blank on 'Book a legal review of the vendor MSA']",
+            "problem": "First-time user cannot tell which Friday, whether 'Fri' is overdue or upcoming, or when the third item is due; only 'Today' is coloured amber, with no legend. Urgency is therefore unscannable across the three rows.",
+            "norm": "Task lists show unambiguous, consistently-present due dates and a single, explained overdue/today treatment (Material / Apple HIG date clarity).",
+            "severity": "P2",
+            "screenshot": "1440x900-light-inbox-todos.png",
+            "fix": "Use full relative dates on every row ('Today', 'Fri 18 Oct', 'Overdue — 12 Oct') in the same position, and reserve amber/red for overdue+today with text, not colour alone."
+          },
+          {
+            "level": "component",
+            "element": "'From: Pricing review, 12 Oct' provenance line under each to-do",
+            "problem": "The meeting source is plain grey text with no link styling, chevron or icon, so a user cannot tell it is tappable or jump from a to-do back to the Granola meeting notes to verify it. The core meeting-to-action journey dead-ends.",
+            "norm": "AI-extracted actions must be traceable to their source in one click (cited-source convention in Granola/Notion AI).",
+            "severity": "P1",
+            "screenshot": "1440x900-light-inbox-todos.png",
+            "fix": "Make the provenance a real link/chip with the Granola icon and meeting title, opening the note/transcript; add hover/open affordance."
+          },
+          {
+            "level": "component",
+            "element": "'Connect Gmail to read, sort and answer your mail here.' card with 'Connect mail' button",
+            "problem": "Heading copy says 'Gmail' but the button says 'Connect mail'; no Gmail icon, account expectation, or permissions summary. First-time user cannot tell which service/account will be connected or what access is granted.",
+            "norm": "OAuth connect cards name the exact service consistently in copy and CTA and preview scopes before redirect.",
+            "severity": "P2",
+            "screenshot": "1440x900-light-inbox-todos.png",
+            "fix": "Label the button 'Connect Gmail' with the Gmail mark, and add one line: 'Reads mail in this inbox only — change any time in Integrations.'"
+          },
+          {
+            "level": "group",
+            "element": "'Let Praci sort your mail' consent card stacked above the 'Connect Gmail' card",
+            "problem": "Two independent-looking cards with no ordering or dependency: a user can apparently tap 'Connect mail' before 'Allow', or tap 'Not now' and still connect. First-time user cannot tell if consent is required for sorting, what happens after 'Not now', where to re-enable it, or why an inbox whose meeting to-dos exist has lost its 'To do' card in this state.",
+            "norm": "Consent must be gated in-sequence with the connection it enables, with consequence of declining stated at the point of decision (GDPR/consent UX, progressive disclosure).",
+            "severity": "P1",
+            "screenshot": "1440x900-light-inbox-consent.png",
+            "fix": "Merge into one stepped flow: 1) Connect Gmail, 2) Allow AI sorting — disable/grey step 2 until connected, state 'Without this, mail arrives unsorted; enable later in Settings > AI data sharing', and keep the To do card visible."
+          },
+          {
+            "level": "component",
+            "element": "Consent body 'Senders, recipients, subjects and short previews go to the AI service that runs your bots (Anthropic).' with 'Allow' / 'Not now'",
+            "problem": "Commendably specific about fields, but silent on retention, training use, full-body access, and who 'Praci' is versus the brief's product name; 'Not now' is low-contrast grey text that reads as disabled next to the solid black 'Allow', biasing the choice and looking untappable.",
+            "norm": "Informed consent states retention/training, names the controller consistently, and gives accept/decline equal visual weight (dark-pattern prohibition).",
+            "severity": "P2",
+            "screenshot": "1440x900-light-inbox-consent.png",
+            "fix": "Add 'Not used for training; deleted after sorting' (or true policy) + 'Learn more'; style 'Not now' as a bordered secondary button with equal tap target."
+          },
+          {
+            "level": "component",
+            "element": "Mail-connected header row: 'All' pill + 'acme@example.com'",
+            "problem": "A user cannot tell whether 'All' is a filter, a folder, or an account switcher, nor whether the email address is a second tab, the connected account, or a filter. No unread counts, no other folders/filters are shown.",
+            "norm": "Mailbox filter/account switchers use a labelled segmented control or dropdown with counts and a clear selected state (Gmail/Superhuman convention).",
+            "severity": "P2",
+            "screenshot": "1440x900-dark-inbox-mail.png",
+            "fix": "Label as an account menu ('acme@example.com ▾') separate from filter tabs ('All · Needs reply · Done') with unread counts."
+          },
+          {
+            "level": "group",
+            "element": "Mail list rows 'Dana Reyes / Re: Q4 pricing / 9:12' and 'Priya Natarajan / Board pack draft / Yesterday'",
+            "problem": "Rows show only sender, one-line subject and time — no snippet, unread/read distinction, avatar, attachment or AI-sort label, despite the product promise to 'sort and answer' mail. First-time user cannot triage or tell whether Praci has sorted these, and two of the senders match to-do names with no visible link between mail and to-do.",
+            "norm": "Inbox rows carry read state, snippet preview and any automation label so triage is possible without opening (category standard).",
+            "severity": "P1",
+            "screenshot": "1440x900-dark-inbox-mail.png",
+            "fix": "Add bold/unread dot, 1-line snippet, sort/category chip where applied, and link related mail to its to-do ('To-do created' marker)."
+          },
+          {
+            "level": "component",
+            "element": "To-do checkboxes in dark mode (solid white squares)",
+            "problem": "In dark Inbox the empty checkboxes render as solid white squares that read as already-checked/selected, opposite to the light version's outlined empty boxes. Completion state is ambiguous at a glance.",
+            "norm": "Checkbox checked/unchecked states must be visually distinct and theme-consistent; empty = outline only.",
+            "severity": "P2",
+            "screenshot": "1440x900-dark-inbox-mail.png",
+            "fix": "Use outlined empty boxes in dark mode with a check glyph only when completed; test contrast of the box border on the card surface."
+          },
+          {
+            "level": "group",
+            "element": "Providers list: 'ElevenLabs — Connected' and 'Wispr Flow — Connected' with no active/default marker",
+            "problem": "Two providers are 'Connected' simultaneously while capabilities overlap on transcription (ElevenLabs 'Speak + transcribe', Wispr Flow 'Transcribe only'). A first-time user cannot tell which provider will actually transcribe the next call, or how to choose/change it. This undermines the entire connect-Flow journey.",
+            "norm": "Settings with multiple connected providers must expose one explicit active/default per capability with a radio/'Use for transcription' control.",
+            "severity": "P1",
+            "screenshot": "1440x900-dark-settings-voice-connected.png",
+            "fix": "Add per-capability active selectors: 'Transcription: Wispr Flow ▾' and 'Speech: ElevenLabs ▾' at the top of the panel, with 'Connected' demoted to a status dot."
+          },
+          {
+            "level": "component",
+            "element": "Right-hand detail panel headed only 'API key' / 'Paste a replacement key' / 'Replace key' / 'Disconnect'",
+            "problem": "The panel never names the provider it belongs to and no row in the left list shows a selected state in dark mode, so the user cannot confirm whose key they would replace or disconnect — a destructive action ('Disconnect', red outline) with no confirmation copy or consequence. 'Replace key' also looks disabled with an empty field and gives no hint where to get a key.",
+            "norm": "Master-detail settings title the detail pane with the selected item, mark selection visibly, and confirm destructive actions with consequences.",
+            "severity": "P1",
+            "screenshot": "1440x900-dark-settings-voice-connected.png",
+            "fix": "Title the panel 'Wispr Flow — Transcribe only', highlight the selected row, enable 'Replace key' only with input, add 'Get a key ↗', and confirm Disconnect with 'Calls will fall back to ElevenLabs transcription.'"
+          },
+          {
+            "level": "component",
+            "element": "Error 'Could not connect this voice provider' under the masked API-key field",
+            "problem": "Generic error gives no cause (invalid/revoked key, network, quota), no field-level guidance, and 'Connect' simply retries the same rejected key. First-time user cannot self-recover and cannot tell whether the dots are the rejected key, a saved key, or a placeholder.",
+            "norm": "Form errors state cause and next action inline, preserve and identify the entered value, and link to credential recovery (NN/g error-message guidelines).",
+            "severity": "P1",
+            "screenshot": "1440x900-light-settings-voice-rejected.png",
+            "fix": "Use 'Wispr Flow rejected this key. Check for extra spaces or generate a new key ↗', add Show/paste affordance, and keep 'Try again' distinct from entering a new key."
+          },
+          {
+            "level": "group",
+            "element": "Disclosure 'Sends your recordings, text near the cursor and workspace names to Wispr Flow.' placed below the 'Connect' button",
+            "problem": "The most surprising data types ('text near the cursor', 'workspace names') are disclosed only after the primary action and after an error, in small grey text. Consent is effectively post-hoc; in the connected dark state this disclosure disappears entirely.",
+            "norm": "Material data-sharing disclosures precede the consent/CTA and persist in connected state.",
+            "severity": "P1",
+            "screenshot": "1440x900-light-settings-voice-rejected.png",
+            "fix": "Move the disclosure above 'Connect' with an info link to AI data sharing, and keep a persistent 'What Wispr Flow receives' line in the connected panel."
+          },
+          {
+            "level": "component",
+            "element": "Call card: red text 'Daily transcription limit reached' with only 'Mute' and 'End' buttons",
+            "problem": "No provider name, no reset time, no usage amount, and no recovery path. A first-time user mid-call cannot tell: has transcription stopped but the call continues? Is the conversation still recorded/saved? Whose limit (Wispr Flow's or Rakazo's)? When does it reset? Can they switch to ElevenLabs (also connected) or continue without a transcript? The only offered exits are mute or end the call.",
+            "norm": "Quota-exhaustion states must explain scope, impact and reset, and offer a fallback/continue path without terminating the primary task.",
+            "severity": "P0",
+            "screenshot": "1440x900-light-call-cap.png",
+            "fix": "Replace with: 'Wispr Flow daily transcription limit reached — resets 00:00. This call continues but is no longer transcribed.' plus actions 'Switch to ElevenLabs' and 'Continue without transcript', and note whether the partial transcript is saved."
+          },
+          {
+            "level": "group",
+            "element": "Call card identity: orange 'E' avatar, 'Elio', sidebar 'BOTS / Elio', selected nav 'Inbox'",
+            "problem": "Nothing on the card says this is a voice call, with whom/what, its duration, or that Flow transcription was active: no timer, mic/waveform, recording or transcribing indicator. 'Elio' reads as a bot in the sidebar, so the user cannot tell if they are talking to a person or an agent, and the highlighted 'Inbox' nav contradicts being in a call.",
+            "norm": "In-call surfaces always show call status, elapsed time, audio state and capture/transcription indicators.",
+            "severity": "P1",
+            "screenshot": "1440x900-light-call-cap.png",
+            "fix": "Add 'Voice call · 12:34 · Transcribing with Wispr Flow' status line (changing to 'Not transcribing' at cap), live mic indicator, and highlight the Elio bot row as the active surface."
+          },
+          {
+            "level": "group",
+            "element": "'Wispr Flow — Voice · recordings, text near the cursor and workspace names' switch set OFF, while Voice settings show Wispr Flow 'Connected'",
+            "problem": "Two settings surfaces contradict each other with no explanation: a first-time user cannot tell what turning this off actually does — stop transcription, pause data sharing, break the connected provider, or only affect future calls — nor that ElevenLabs above it stays on. There is no warning, link back to Voice settings, or status change shown.",
+            "norm": "Interdependent settings cross-link and state consequences at the toggle; a disabled data pipeline must reflect in the provider's connected/active status.",
+            "severity": "P1",
+            "screenshot": "1440x900-light-consent-x-wispr-off.png",
+            "fix": "Add consequence copy on toggle ('Wispr Flow will stop transcribing calls until this is back on') and mirror the state in Settings > Voice as 'Connected — paused by AI data sharing', with a deep link each way."
+          },
+          {
+            "level": "page",
+            "element": "'AI data sharing' page with left nav 'Inbox' highlighted and bot 'Research agent'",
+            "problem": "The user is on a settings-type page but navigation insists they are in Inbox, and the sidebar bot changes to 'Research agent' with no relation to the listed recipients. First-time user cannot tell where this page lives, how they got here, or how to return — there is no Settings breadcrumb, back, or close.",
+            "norm": "Selected nav state must match the current surface; settings pages carry a breadcrumb/back path.",
+            "severity": "P2",
+            "screenshot": "1440x900-light-consent-x-wispr-off.png",
+            "fix": "Highlight the true parent (Settings/Integrations), add 'Settings / AI data sharing' breadcrumb, and keep the sidebar bot list stable across surfaces."
+          },
+          {
+            "level": "component",
+            "element": "Citation chips 'Security sync, 14 Oct' and 'Vendor call, 16 Oct' in the agent answer",
+            "problem": "The journey is asking one agent about meetings from two sources, yet both chips are visually identical with no source icon/name (Granola vs Wispr Flow). A first-time user cannot tell which meeting came from which source, verify a claim against its transcript, or judge trust — the citations prove a date, not a provenance.",
+            "norm": "Multi-source AI answers label every citation with its source system and open the underlying record.",
+            "severity": "P1",
+            "screenshot": "1440x900-light-flow-meetings-agent.png",
+            "fix": "Prefix each chip with its source mark ('G Security sync, 14 Oct', 'W Vendor call, 16 Oct'), and make chips open the meeting note/transcript at the cited moment."
+          },
+          {
+            "level": "page",
+            "element": "Wispr Flow agent conversation: question bubble and answer, no composer visible inside the window frame",
+            "problem": "The frame ends after the answer with no input field, send control, or suggested follow-ups. A first-time user cannot tell how the question was asked or how to ask the next one — the primary interaction of an agent surface is missing.",
+            "norm": "Conversational surfaces keep a persistent, labelled composer anchored at the bottom of the conversation pane.",
+            "severity": "P1",
+            "screenshot": "1440x900-light-flow-meetings-agent.png",
+            "fix": "Anchor a composer ('Ask about your meetings…') to the bottom of the right pane, visible in all agent states, with the active agent named in its placeholder."
+          },
+          {
+            "level": "component",
+            "element": "'Searched meetings' status pill in the agent answer",
+            "problem": "The pill states a search happened but not its scope: how many meetings, which sources/date range, or whether mail/other data was excluded. Combined with 'Two meetings covered it', the user cannot tell if the answer is exhaustive or a partial retrieval.",
+            "norm": "Agent retrieval transparency shows scope ('Searched 12 meetings · Granola + Wispr Flow · last 90 days') expandable to the result list.",
+            "severity": "P2",
+            "screenshot": "1440x900-light-flow-meetings-agent.png",
+            "fix": "Make the pill expandable with scope and the full matched-meeting list, including sources searched with zero results."
+          },
+          {
+            "level": "layout",
+            "element": "Window frame content column ('To do' / connect cards, provider detail, call card) occupying roughly the left 60% with empty space to the right and below inside the frame",
+            "problem": "Across Inbox, Voice settings and the call card, content is fixed at a narrow width leaving large dead areas inside the app window at 1440×900; nothing adapts, docks, or fills. It reads as unfinished rather than intentionally minimal, and wastes the space the mail list and provider detail need.",
+            "norm": "Desktop workspace layouts use responsive max-widths with a clear rationale, secondary panels/docks filling available width at large viewports.",
+            "severity": "P3",
+            "screenshot": "1440x900-light-inbox-todos.png",
+            "fix": "Either cap and centre the column deliberately with a visible measure, or let content breathe: widen lists, add a right-hand detail/preview pane when a to-do or mail row is selected."
+          },
+          {
+            "level": "layout",
+            "element": "Sidebar across Inbox/call/AI-data-sharing frames: text-only 'Search', 'Integrations' pinned to the bottom, no icons, counts or settings entry",
+            "problem": "'Search' is plain text with no field, icon or shortcut hint, so it is unclear it is interactive; 'Integrations' floats alone at the bottom with no indication it houses Gmail/Voice connections, and there is no visible route to Settings > Voice or AI data sharing — the very pages in this feature set are unreachable from the shown chrome.",
+            "norm": "Primary nav items need recognisable affordances and the IA must expose the destinations the current flows depend on.",
+            "severity": "P2",
+            "screenshot": "1440x900-light-call-cap.png",
+            "fix": "Render Search as a real field ('Search  ⌘K'), give Integrations an icon/chevron, and add a Settings entry so Voice and AI data sharing are discoverable from every surface."
+          }
+        ],
+        "excellent": [
+          "1440x900-light-inbox-todos.png — 'To do' card grouping three meeting actions above the Gmail upsell is the right hierarchy for a meeting-only founder: value first, integration second, with consistent 'From: <meeting>, <date>' provenance on every row.",
+          "1440x900-light-inbox-consent.png — Consent copy is unusually honest and specific: it enumerates exactly 'Senders, recipients, subjects and short previews' and names the processor '(Anthropic)' instead of vague 'AI' wording.",
+          "1440x900-dark-settings-voice-connected.png — Provider capability labels 'Speak + transcribe', 'Speak only', 'Transcribe only' make a transcribe-only provider legible in one scan, and 'Connected' in green is consistently placed.",
+          "1440x900-light-settings-voice-rejected.png — The selected 'Wispr Flow' row is clearly highlighted, the invalid field gets a red border plus adjacent error text (not colour alone), and the data disclosure names the surprising 'text near the cursor and workspace names' explicitly.",
+          "1440x900-light-flow-meetings-agent.png — Answer structure is excellent: one claim per sentence, each immediately followed by its inline meeting citation chip in chronological order (14 Oct, then 16 Oct), matching how the meetings occurred.",
+          "1440x900-light-consent-x-wispr-off.png — Per-recipient switches with a plain-language data summary under each name ('Voice · recordings and text you play') is the correct granularity for AI data sharing; the on/off states are instantly readable.",
+          "Cross-screen — Monochrome palette, card borders, type hierarchy and the single orange agent-avatar accent are disciplined and consistent between light and dark; selected nav pills ('Inbox', 'Wispr Flow agent') are unambiguous."
+        ]
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 107,
+      "costUsd": 0.103482,
+      "result": {
+        "verdict": "Rakazo achieves an admirable calm, low-noise aesthetic with generous whitespace, crisp typography, and restrained progressive disclosure, all fitting comfortably within a single viewport. However, the minimalism frequently strips away essential state, provenance, and recovery affordances—leaving a first-time user unable to tell which provider is selected before clicking Disconnect, whether a call is still working when a transcription limit hits, how to ask a follow-up question in a chat view that lacks an input bar, or why their sidebar still highlights Inbox while they are on completely different screens.",
+        "findings": [
+          {
+            "level": "component",
+            "element": "Checkbox inputs in the 'To do' card (white squares next to 'Send Dana the revised pricing', 'Share the Q4 hiring plan with Priya', 'Book a legal review of the vendor MSA')",
+            "problem": "In dark mode, unchecked checkboxes are rendered as solid pure-white squares (#FFFFFF) with no border or dark surface fill. A first-time user cannot tell from the screen alone whether all three tasks are already selected/checked (merely missing a checkmark glyph) or unchecked.",
+            "norm": "Material Design / Apple HIG dark-mode form controls: unchecked checkboxes must use a transparent or dark surface background with a subtle stroke so solid high-contrast fills are reserved exclusively for checked/active states.",
+            "severity": "P1",
+            "screenshot": "1440x900-dark-inbox-mail.png",
+            "fix": "Set unchecked dark-mode checkboxes to a transparent or #1E1E1E background with a 1px #555555 border, reserving solid white fills (with a contrasting dark checkmark) for the checked state."
+          },
+          {
+            "level": "group",
+            "element": "'Providers' list ('ElevenLabs' and 'Wispr Flow' both marked 'Connected') and the right-hand 'API key' / 'Disconnect' detail card",
+            "problem": "Unlike light mode (where the selected row has a subtle gray fill), dark mode renders no visible selection highlight on any row in the 'Providers' list while two providers ('ElevenLabs' and 'Wispr Flow') both show 'Connected', and the right-hand detail card omits the selected provider's name. A first-time user cannot tell from the screen alone which provider they are about to disconnect or replace the API key for, nor which of the two connected transcription-capable providers is actively transcribing their voice.",
+            "norm": "Master-detail pattern & Nielsen's Visibility of System Status: the active master row must have high-contrast selection styling in dark mode, the detail pane must echo the selected entity's title, and mutually overlapping capabilities ('Speak + transcribe' vs 'Transcribe only') must indicate which provider is currently primary.",
+            "severity": "P0",
+            "screenshot": "1440x900-dark-settings-voice-connected.png",
+            "fix": "Add a clear active row background (e.g., #262626) and left accent indicator on 'Wispr Flow' in dark mode, title the right-hand card 'Wispr Flow API key', disable 'Replace key' until text is entered, and clarify in the list whether Wispr Flow overrides ElevenLabs for transcription."
+          },
+          {
+            "level": "page",
+            "element": "Main conversation canvas for 'Wispr Flow agent'",
+            "problem": "The agent chat view displays a user prompt bubble and the agent's response, but has no message input field, composer bar, or voice button anywhere on the screen. A first-time user cannot tell from the screen alone how to ask a follow-up question or start a new query with the Wispr Flow agent.",
+            "norm": "Conversational UI standard: every chat or agent thread surface must include a persistent bottom composer input (text/voice) so users understand how to interact with the agent.",
+            "severity": "P0",
+            "screenshot": "1440x900-light-flow-meetings-agent.png",
+            "fix": "Anchor a minimal monochrome message composer input ('Ask Wispr Flow agent...') with voice/send affordances at the bottom of the main conversation panel."
+          },
+          {
+            "level": "group",
+            "element": "Sidebar 'BOTS' list ('Wispr Flow agent', 'Granola agent') and response citation chips ('Searched meetings', 'Security sync, 14 Oct', 'Vendor call, 16 Oct')",
+            "problem": "Two separate meeting bots ('Wispr Flow agent' and 'Granola agent') appear in the sidebar with identical orange avatars, yet asking 'Wispr Flow agent' searches across meetings from both sources (including 'Vendor call, 16 Oct', which appeared under Granola in Screen 1) without source badges on the citation chips. A first-time user cannot tell from the screen alone why there are two separate meeting agents if one searches across all meetings, which source recorded each cited meeting, or whether the citation chips are clickable links to the transcripts.",
+            "norm": "Information scent and source attribution in multi-source RAG interfaces: unified vs source-specific agents must be clearly differentiated, and inline citation chips should display source provenance icons and interactive link affordances.",
+            "severity": "P1",
+            "screenshot": "1440x900-light-flow-meetings-agent.png",
+            "fix": "Either unify meeting Q&A under a single 'Meetings' agent or clearly scope each bot, and prefix citation chips with a small source indicator or arrow (e.g., 'G · Vendor call, 16 Oct ↗') to signal provenance and clickability."
+          },
+          {
+            "level": "group",
+            "element": "Voice call card ('Elio', 'Daily transcription limit reached', 'Mute', 'End')",
+            "problem": "When the red 'Daily transcription limit reached' alert appears mid-call, only 'Mute' and 'End' buttons are offered. A first-time user cannot tell from the screen alone whether the voice call is now broken (i.e., whether Elio can still hear them without transcription or if it fell back to another connected provider), which service's limit was reached (Rakazo vs Wispr Flow), or how to switch transcription providers without ending the call.",
+            "norm": "Nielsen's Help Users Recognize, Diagnose, and Recover from Errors: runtime quota errors must state the impact on the active session and provide an immediate recovery path (e.g., fallback or provider switch).",
+            "severity": "P1",
+            "screenshot": "1440x900-light-call-cap.png",
+            "fix": "Specify the provider and session status (e.g., 'Wispr Flow daily limit reached · Paused listening') and provide an inline recovery action ('Switch to ElevenLabs' or 'Voice settings') alongside 'Mute' and 'End'."
+          },
+          {
+            "level": "layout",
+            "element": "Left navigation sidebar ('Inbox' active pill vs 'Elio' under 'BOTS')",
+            "problem": "While the main canvas displays only the active voice call card with 'Elio', the left sidebar highlights 'Inbox' as the active view and leaves 'Elio' unselected. A first-time user cannot tell from the screen alone whether they are viewing the Inbox or the Elio bot surface, why their Inbox items disappeared, or how to return to their Inbox during a call.",
+            "norm": "Navigation state consistency: the highlighted nav item must always match the primary content canvas, or an active call must be rendered as a persistent floating/docked widget over the Inbox rather than replacing the Inbox canvas.",
+            "severity": "P2",
+            "screenshot": "1440x900-light-call-cap.png",
+            "fix": "Either highlight 'Elio' in the sidebar when the Elio call view owns the main canvas, or keep the Inbox list visible and dock the call card as a compact floating bar."
+          },
+          {
+            "level": "group",
+            "element": "'To do' card rows ('From: Pricing review, 12 Oct' with 'Fri', 'From: Weekly sync, 14 Oct' with 'Today', 'From: Vendor call, 16 Oct' with no right-side label)",
+            "problem": "The three meeting to-dos show meeting dates spanning Oct 12 to Oct 16 alongside right-aligned labels 'Fri', 'Today' (in amber), and blank. Because '16 Oct' is two days after '14 Oct' ('Today'), 'Today' and 'Fri' must be due dates rather than meeting dates, but nothing labels them as such. Furthermore, a first-time user cannot tell from the screen alone that these tasks were automatically extracted by the Granola integration, whether clicking 'From: Pricing review, 12 Oct' opens the meeting notes, or how to dismiss/delete an inaccurate AI-extracted task without marking it completed.",
+            "norm": "AI transparency and task-list conventions: AI-generated tasks require clear source provenance, dismiss/edit controls for false positives, and unambiguous date semantics ('Due today' vs 'Due Fri').",
+            "severity": "P1",
+            "screenshot": "1440x900-light-inbox-todos.png",
+            "fix": "Prefix due dates when ambiguous ('Due today', 'Due Fri'), make the 'From: [Meeting]' subtitle an explicit clickable chip/link with a subtle Granola indicator, and provide a hover/menu action to dismiss unwanted AI-extracted to-dos."
+          },
+          {
+            "level": "page",
+            "element": "'Let Praci sort your mail' consent card stacked above the 'Connect Gmail' card",
+            "problem": "The user has not connected an email account yet (shown by the 'Connect Gmail' card below), yet the top card asks 'Let Praci sort your mail'. Worse, compared to Screen 1, turning off consent also caused all Granola meeting to-dos to vanish from the Inbox, and introduces the unexplained name 'Praci'. A first-time user cannot tell from the screen alone who or what 'Praci' is, why they must grant mail-sorting AI consent before connecting Gmail, or why declining/disabling mail AI consent hides their meeting to-dos.",
+            "norm": "Logical onboarding sequence & progressive disclosure: do not ask for permission to process a data source before the user initiates connecting that data source, and keep branding terminology consistent across the app.",
+            "severity": "P1",
+            "screenshot": "1440x900-light-inbox-consent.png",
+            "fix": "Show the 'Let Rakazo sort your mail' (fixing 'Praci') consent step after the user clicks 'Connect mail' (or when mail is connected but consent is off), and keep Granola meeting to-dos visible if Granola consent is still active."
+          },
+          {
+            "level": "group",
+            "element": "Inbox filter pills ('All' and 'acme@example.com') positioned above both the 'To do' card and the mail list card",
+            "problem": "The filter bar sits at the page level above both 'To do' and the email threads, with options 'All' and 'acme@example.com'. A first-time user cannot tell from the screen alone whether selecting 'acme@example.com' filters the entire Inbox (hiding Granola meeting to-dos) or only filters email accounts, nor whether 'All' means 'All mail accounts' or 'To-dos + Mail'. Similarly, in the mail card below, both sender names are bold with no unread indicator dot, so a first-time user cannot tell unread mail from read mail.",
+            "norm": "Visual hierarchy and scoping of filter controls: filters must sit directly inside or above the specific collection they control, and email lists must visually distinguish unread vs read threads.",
+            "severity": "P2",
+            "screenshot": "1440x900-dark-inbox-mail.png",
+            "fix": "Move the 'All | acme@example.com' account filter directly above the mail section (below the 'To do' card), and reserve bold sender/subject typography or an unread dot for unread emails only."
+          },
+          {
+            "level": "component",
+            "element": "Masked API key input, 'Could not connect this voice provider' error text, and privacy footnote in 'Wispr Flow' settings",
+            "problem": "When the API key fails, the error message 'Could not connect this voice provider' is generic, and the input masks the key with dots without a 'Show/Hide' toggle or 'Clear' button. Additionally, the data-sharing disclosure ('Sends your recordings, text near the cursor and workspace names to Wispr Flow.') sits below the primary 'Connect' CTA and disappears once connected (Screen 4). A first-time user cannot tell from the screen alone whether their key was rejected as invalid (401) vs a network timeout, cannot inspect the pasted key for a trailing space, and may click 'Connect' before reading the privacy disclosure below it.",
+            "norm": "Form validation & informed consent: password/API-key inputs should allow un-masking on error, error copy should state the specific failure reason ('Invalid API key'), and privacy disclosures must precede the submit CTA and remain visible when connected.",
+            "severity": "P2",
+            "screenshot": "1440x900-light-settings-voice-rejected.png",
+            "fix": "Change the error copy to 'API key rejected by Wispr Flow — check your key and try again', add a show/clear icon inside the input, and place the data-sharing notice above the 'Connect' button (keeping it visible in the connected state)."
+          },
+          {
+            "level": "page",
+            "element": "'AI data sharing' switch list ('ElevenLabs' toggled on, 'Wispr Flow' toggled off) and left sidebar ('Inbox' highlighted)",
+            "problem": "First, the left sidebar highlights 'Inbox' as the active page while the canvas shows 'AI data sharing' with no back button, Settings frame, or breadcrumb. Second, 'Wispr Flow' is toggled off without explaining the effect on the connected integration. A first-time user cannot tell from the screen alone how they reached 'AI data sharing', how to click back to 'Inbox' (which already appears selected), or whether toggling 'Wispr Flow' off disables voice transcription entirely or only strips context ('text near the cursor and workspace names').",
+            "norm": "Wayfinding and setting dependency clarity: settings views must sit within a consistent Settings container or highlight their true nav item, and privacy toggles must state the functional impact of turning a connected provider off.",
+            "severity": "P1",
+            "screenshot": "1440x900-light-consent-x-wispr-off.png",
+            "fix": "Present 'AI data sharing' inside the Settings modal/navigation (or highlight 'Integrations' in the sidebar), and add status subtext when toggled off (e.g., 'Paused — Wispr Flow transcription is disabled while data sharing is off')."
+          }
+        ],
+        "excellent": [
+          "1440x900-light-inbox-todos.png: Excellent visual restraint, card grouping, and scannable hierarchy—a meeting-only founder immediately sees actionable follow-ups at the top of Inbox with zero visual clutter and a non-intrusive secondary prompt to connect Gmail below.",
+          "1440x900-light-inbox-consent.png: Plain-English, jargon-free privacy copy ('Senders, recipients, subjects and short previews go to the AI service that runs your bots (Anthropic).') is a model of transparent, readable disclosure compared to typical legalistic banners.",
+          "1440x900-dark-inbox-mail.png: The unified Inbox layout cleanly separates structured meeting action items ('To do') from chronological email threads without overwhelming the single-screen viewport.",
+          "1440x900-dark-settings-voice-connected.png: Explicit capability sub-labels under each voice provider ('Speak + transcribe', 'Speak only', 'Transcribe only') make asymmetric provider capabilities immediately understandable at a glance.",
+          "1440x900-light-settings-voice-rejected.png: Clean inline error containment within the provider detail card, pairing a subtle red input border with concise error typography without jarring toast popups.",
+          "1440x900-light-call-cap.png: Ultra-clean, distraction-free voice call card layout with clear spatial separation between status text and call controls.",
+          "1440x900-light-consent-x-wispr-off.png: Granular per-provider data-sharing toggles with explicit payload inventories ('recordings, text near the cursor and workspace names') give privacy-conscious users exceptional transparency.",
+          "1440x900-light-flow-meetings-agent.png: The compact 'Searched meetings' tool-use badge and inline meeting citation pills ('Security sync, 14 Oct', 'Vendor call, 16 Oct') keep the agent's answer grounded, brief, and easy to verify."
+        ]
+      }
+    }
+  ]
+}

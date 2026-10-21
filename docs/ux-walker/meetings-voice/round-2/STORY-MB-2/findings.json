@@ -1,0 +1,72 @@
+{
+  "story": "STORY-MB-2",
+  "round": 2,
+  "verdict": "PASS",
+  "round1_dispositions": [
+    {
+      "id": "F-MB-2-1",
+      "sev": "high",
+      "status": "still-open",
+      "evidence": "Hint \"Business plan\" now exists (FX-24) but only in the Empty state; in the rejected state the footer is not drawn. Downgraded to medium (N1): the hint was seen once before the error."
+    },
+    {
+      "id": "F-MB-2-2",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Line is destructive color, 13 pt footnote."
+    },
+    {
+      "id": "F-MB-2-3",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Offline and needs_reconnect drawn; 429 retries silently by plan."
+    },
+    {
+      "id": "F-MB-2-4",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "Field shows dots only after a paste; no clear control. A native SecureField has a system clear option on focus; not annotated."
+    }
+  ],
+  "new_findings": [
+    {
+      "kind": "mockup",
+      "severity": "medium",
+      "category": "error-handling",
+      "description": "Rejected state drops the \"Business plan\" footer, which is the only clue to why a valid-looking key fails.",
+      "suggested_fix": "Keep the footer under the rejection line, or put it above it.",
+      "screenshot": "screenshots/steps-rejected-reconnect-offline.png",
+      "plan_section": "Granola S6",
+      "catalog_ref": "NEW",
+      "id": "F2-MB-2-1",
+      "score": "warn",
+      "story_id": "STORY-MB-2"
+    },
+    {
+      "kind": "mockup",
+      "severity": "medium",
+      "category": "consistency",
+      "description": "Needs reconnect reads \"Synced 42 meetings\" with Disconnect directly above a rejected-key form, with no time. The status row suggests sync works, and a second headerless group repeats Connect.",
+      "suggested_fix": "Say \"Reconnect needed\" in the status row or merge into one group.",
+      "screenshot": "screenshots/steps-rejected-reconnect-offline.png",
+      "plan_section": "Granola S3/S6",
+      "catalog_ref": "NEW",
+      "id": "F2-MB-2-2",
+      "score": "warn",
+      "story_id": "STORY-MB-2"
+    },
+    {
+      "kind": "plan",
+      "severity": "low",
+      "category": "error-handling",
+      "description": "\"Could not reach Granola\" is a placeholder wording.",
+      "suggested_fix": "Decide the wording in S6.",
+      "screenshot": "screenshots/steps-rejected-reconnect-offline.png",
+      "plan_section": "Granola S6",
+      "catalog_ref": "NEW",
+      "id": "F2-MB-2-3",
+      "score": "warn",
+      "story_id": "STORY-MB-2"
+    }
+  ]
+}

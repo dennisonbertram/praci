@@ -1,0 +1,87 @@
+[
+  {
+    "id": "F-GS-5-01",
+    "story_id": "STORY-GS-5",
+    "severity": "high",
+    "category": "error-handling",
+    "criterion": "Error messages / state",
+    "score": "fail",
+    "kind": "plan",
+    "description": "The needs_reconnect state reuses the first-connect rejected view: an empty-looking masked field, 'Granola rejected this key', Connect. It drops the 'Synced 42 meetings' history and the Disconnect button, so Amara cannot tell her stored meetings still exist or that the connection (and agent) are being reused. Revoked and never-connected look identical.",
+    "expected": "A stale state that says sync stopped, keeps the last-synced info, and offers a replace-key path.",
+    "actual": "Rejected view with no history.",
+    "screenshot": "screenshots/step-2-rejected.png",
+    "suggested_fix": "Keep the status line (last good sync) above the field and use a different line, for example 'Sync stopped: Granola rejected the key'.",
+    "files_likely_involved": [],
+    "jf": "JF-5",
+    "plan_section": "granola.md Sync (needs_reconnect), S6"
+  },
+  {
+    "id": "F-GS-5-02",
+    "story_id": "STORY-GS-5",
+    "severity": "high",
+    "category": "happy-path",
+    "criterion": "Journey surface",
+    "score": "fail",
+    "kind": "plan",
+    "description": "Step 1 and Inbox: journey breaks, nothing outside Integrations shows that sync stopped. The agent answers from stale meetings with no marker and no notification or Inbox message exists; Amara notices only by a missing meeting.",
+    "expected": "A signal where the stale data is read (agent answer or sidebar).",
+    "actual": "No surface drawn.",
+    "screenshot": null,
+    "suggested_fix": "Add a stale-data marker to agent answers or a one-time Integrations badge.",
+    "files_likely_involved": [],
+    "jf": "JF-5",
+    "plan_section": "granola.md Sync, Surfaces"
+  },
+  {
+    "id": "F-GS-5-03",
+    "story_id": "STORY-GS-5",
+    "severity": "medium",
+    "category": "flow",
+    "criterion": "Recovery",
+    "score": "warn",
+    "kind": "plan",
+    "description": "Step 3: the card shows 'Connect' only; whether she must Disconnect first, and whether the same connection and agent are reused, is not drawn or stated. The MCP detail's 'Reconnect' button has no equivalent on the key card.",
+    "expected": "One obvious replace-key action with the connection reused.",
+    "actual": "Single Connect, no Reconnect/Disconnect.",
+    "screenshot": "screenshots/step-2-rejected.png",
+    "suggested_fix": "State the rule and draw it.",
+    "files_likely_involved": [],
+    "jf": "JF-18",
+    "plan_section": "granola.md Surfaces; discovery ambiguity 6"
+  },
+  {
+    "id": "F-GS-5-04",
+    "story_id": "STORY-GS-5",
+    "severity": "medium",
+    "category": "flow",
+    "criterion": "Recovery",
+    "score": "fail",
+    "kind": "mockup",
+    "description": "Rejected state draws the field as readonly (see GS-2 F-5), so pasting the new key as in step 4 cannot be shown.",
+    "expected": "Editable field.",
+    "actual": "readonly.",
+    "screenshot": "screenshots/step-2-rejected.png",
+    "suggested_fix": "Make editable.",
+    "files_likely_involved": [
+      "docs/granola/mockup.html"
+    ]
+  },
+  {
+    "id": "F-GS-5-05",
+    "story_id": "STORY-GS-5",
+    "severity": "low",
+    "category": "visual",
+    "criterion": "Mockup annotation",
+    "score": "warn",
+    "kind": "mockup",
+    "description": "The explanatory sentence 'Rejected state also appears for a key that worked earlier and was revoked in Granola.' is visible under the card and reads as product text; it is also the only place the mockup admits needs_reconnect is not separately designed.",
+    "expected": "Notes outside the product canvas.",
+    "actual": "Muted note under the card.",
+    "screenshot": "screenshots/step-2-rejected.png",
+    "suggested_fix": null,
+    "files_likely_involved": [
+      "docs/granola/mockup.html"
+    ]
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "story": "STORY-MB-6",
+  "round": 4,
+  "verdict": "PASS",
+  "round3_dispositions": [
+    {
+      "id": "F3-MB-6-1",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "Still no phone call frame for the cap caption. The plan now states the phone path (the existing error caption, shown once, composer stays), so this stays a low mockup note."
+    }
+  ],
+  "new_findings": []
+}
