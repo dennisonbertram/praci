@@ -61,14 +61,16 @@ export function buildApprovalAskBlock(
       ? imessageSendDetail(args, options.imessage, options.reviewReason)
       : options?.fullMail
         ? fullMailDetail(args, options.reviewReason)
-        : options?.integrationWriteTool !== undefined
-          ? integrationWriteDetail(
-              toolName,
-              options.integrationWriteTool,
-              args,
-              options.reviewReason,
-            )
-          : formatApprovalDetail(toolName, args, options?.reviewReason);
+        : isSendMoney(toolName)
+          ? moneyDetail(args, options?.moneyNames, options?.reviewReason)
+          : options?.integrationWriteTool !== undefined
+            ? integrationWriteDetail(
+                toolName,
+                options.integrationWriteTool,
+                args,
+                options.reviewReason,
+              )
+            : formatApprovalDetail(toolName, args, options?.reviewReason);
   const safeDetail = detail ? redactSecrets(detail, secrets) : undefined;
   return {
     kind: "ask",
@@ -206,6 +208,23 @@ export function cartaMailSendIsComplete(args: Record<string, unknown>): boolean 
 }
 
 /** The raw tool name and every argument, nested ones included, so the user sees the operation. */
+/** A money request as labelled rows: what, to whom, from where. No tool id and no raw JSON. */
+function moneyDetail(
+  args: Record<string, unknown>,
+  names: MoneyNames | undefined,
+  reviewReason?: string,
+): string {
+  const lines = reviewReason?.trim() ? [reviewReason.trim()] : [];
+  lines.push(
+    `Amount: ${args.amount == null ? "not given" : formatAmount(args.amount, args.currency)}`,
+    `To: ${names?.recipient ?? String(args.recipientId ?? "not given")}`,
+    `From account: ${names?.account ?? String(args.accountId ?? "not given")}`,
+  );
+  for (const key of ["note", "memo", "externalMemo"])
+    if (typeof args[key] === "string" && args[key]) lines.push(`Note: ${args[key]}`);
+  return lines.join("\n");
+}
+
 function integrationWriteDetail(
   toolName: string,
   rawTool: string,

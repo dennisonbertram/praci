@@ -150,10 +150,10 @@ export function integrationAgentDenial(
 
 const denialMessage = (
   denial: "belongs-to-agent" | "writes-off",
-  server: { name?: string },
+  server: { id: string; name?: string },
 ): string =>
   denial === "writes-off"
-    ? `Changes are off for ${server.name ?? "this integration"}. The user can turn on "Allow changes".`
+    ? `Changes are off for ${server.name ?? "this integration"}, so nothing was done. Tell the user in one sentence that changes are off and link [Open ${server.name ?? "the integration"}](/app/integrations/mcp/${server.id}) so they can turn on "Allow changes".`
     : `This tool belongs to the ${server.name ?? "integration"} agent. Ask it with message_bot.`;
 
 /**
