@@ -365,6 +365,20 @@ export function monthlySeries(txns: FinanceTransaction[], now: Date): MonthlyPoi
   return monthTotals(txns, 12, now);
 }
 
+/**
+ * The one per-month figure for a vendor: spend over the full months since it was first seen (at
+ * most the months given), counting months with no charge as zero. The subscriptions list and the
+ * vendor page both take it from here.
+ */
+export function averageMonthCents(
+  full: MonthCents[],
+  firstSeenAt: string,
+): { cents: number; months: number } {
+  const since = full.filter((m) => m.month >= firstSeenAt.slice(0, 7));
+  const months = Math.max(since.length, 1);
+  return { cents: Math.round(full.reduce((total, m) => total + m.cents, 0) / months), months };
+}
+
 /** Average of (spend out - revenue) over the 3 full months before `now`'s month; financing and transfers excluded. */
 export function monthlyBurn(txns: FinanceTransaction[], now: Date): MonthlyBurn {
   const months = monthTotals(txns, 4, now).slice(0, 3);
@@ -676,6 +690,7 @@ export function detectRecurring(
   // window the vendor page uses; the usage-based average takes the last 3 full months.
   const changeMonths = lastMonths(now, 5).slice(0, 4);
   const trendMonths = changeMonths.slice(1);
+  const sixMonths = lastMonths(now, 7).slice(0, 6);
   const byVendor = new Map<string, FinanceTransaction[]>();
   for (const t of txns) {
     if (!counts(t) || t.amountCents >= 0) continue;
@@ -703,12 +718,19 @@ export function detectRecurring(
     let amountCents: number;
     let monthlyCents: number;
     let variable = false;
+    let windowMonths: number | undefined;
     if (USAGE_BASED.some((vendor) => hasToken(key, vendor))) {
       const totals = trendMonths.map((m) => monthTotal(occurrences, m));
       if (totals.some((total) => total <= 0)) continue;
       chain = occurrences;
       cadence = "monthly";
-      amountCents = monthlyCents = Math.round(totals.reduce((a, b) => a + b, 0) / 3);
+      // The same average the vendor page shows: up to 6 full months since the first charge.
+      const average = averageMonthCents(
+        sixMonths.map((month) => ({ month, cents: monthTotal(occurrences, month) })),
+        txnDay(all[0] as FinanceTransaction),
+      );
+      amountCents = monthlyCents = average.cents;
+      windowMonths = average.months;
       variable = totals.some(
         (total) => Math.abs(total - amountCents) > amountCents * AMOUNT_TOLERANCE,
       );
@@ -756,6 +778,7 @@ export function detectRecurring(
       amountCents,
       monthlyCents,
       variable,
+      ...(windowMonths === undefined ? {} : { windowMonths }),
       chargeCount: chain.length,
       lastChargeAt: lastTxn.purchasedAt ?? lastTxn.postedAt,
       nextExpectedAt: `${nextAfter(last.day, cadence)}T00:00:00.000Z`,
