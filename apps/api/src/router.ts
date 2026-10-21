@@ -252,6 +252,7 @@ import {
   claimEmptySpaceDeletionForMember,
   closeAuditRequest,
   closeRound,
+  companyForActor,
   createExternalConversationRepos,
   createGroupRepos,
   createRepos,
@@ -383,6 +384,7 @@ import {
   onMcpServerConnected,
   startCartaSync,
 } from "./carta-agent.js";
+import { companyFact, companyPage } from "./company-page.js";
 import {
   executionBlocksUserTakeover,
   resolveBusyBotName,
@@ -7459,6 +7461,38 @@ export function createRouter(deps: RouterDeps) {
           update: { enabled: input.enabled },
         });
         return loadAutoReviewSettings(deps, context.actor);
+      }),
+    },
+    company: {
+      page: authed.company.page.handler(({ context }) => companyPage(deps.prisma, context.actor)),
+      fact: authed.company.fact.handler(({ context, input }) =>
+        companyFact(deps.prisma, context.actor, input),
+      ),
+      confirm: authed.company.confirm.handler(async ({ context, input }) => {
+        const store = companyForActor(deps.prisma, context.actor);
+        if (input.kind === "entity") await store.confirm(input.id);
+        else if (input.kind === "edge") await store.confirmEdge(input.id);
+        else await store.confirmEvent(input.id);
+        return { ok: true as const };
+      }),
+      reject: authed.company.reject.handler(async ({ context, input }) => {
+        const store = companyForActor(deps.prisma, context.actor);
+        if (input.kind === "entity") await store.reject(input.id);
+        else if (input.kind === "edge") await store.rejectEdge(input.id);
+        else await store.rejectEvent(input.id);
+        return { ok: true as const };
+      }),
+      editEntity: authed.company.editEntity.handler(async ({ context, input }) => {
+        await companyForActor(deps.prisma, context.actor).edit(input);
+        return { ok: true as const };
+      }),
+      editEdge: authed.company.editEdge.handler(async ({ context, input }) => {
+        await companyForActor(deps.prisma, context.actor).editEdge(input);
+        return { ok: true as const };
+      }),
+      editEvent: authed.company.editEvent.handler(async ({ context, input }) => {
+        await companyForActor(deps.prisma, context.actor).editEvent(input);
+        return { ok: true as const };
       }),
     },
     companyImport: {
