@@ -437,10 +437,6 @@ msgstr "{minutes}m ago"
 msgid "{monthlyTotal}/mo"
 msgstr "{monthlyTotal}/mo"
 
-#: src/pages/Finance.tsx
-msgid "{name} accounts"
-msgstr "{name} accounts"
-
 #: src/components/integrations/AppDetail.tsx
 msgid "{name} agent"
 msgstr "{name} agent"
@@ -525,6 +521,23 @@ msgstr "{sourceName} cash"
 msgid "{sourceName} spend"
 msgstr "{sourceName} spend"
 
+#: src/pages/Finance.tsx
+msgid "{sourceNames} · synced {updated}"
+msgstr "{sourceNames} · synced {updated}"
+
+#: src/pages/Finance.tsx
+msgid "{sourceNames} · syncing…"
+msgstr "{sourceNames} · syncing…"
+
+#. placeholder {0}: data.excludedNonUsdCount
+#: src/pages/Finance.tsx
+msgid "{sourceNames}, {0} non-USD not counted"
+msgstr "{sourceNames}, {0} non-USD not counted"
+
+#: src/pages/Finance.tsx
+msgid "{stablecoins} stablecoins in runway"
+msgstr "{stablecoins} stablecoins in runway"
+
 #: src/components/ToolActivityDisclosure.tsx
 msgid "{stepCount, plural, one {Done · # tool} other {Done · # tools}}"
 msgstr "{stepCount, plural, one {Done · # tool} other {Done · # tools}}"
@@ -552,10 +565,6 @@ msgstr "{workingBotName} is working"
 #: src/pages/Finance.tsx
 msgid "{year} so far"
 msgstr "{year} so far"
-
-#: src/pages/Finance.tsx
-msgid "{yieldAmount} last month"
-msgstr "{yieldAmount} last month"
 
 #. placeholder {0}: mention.name
 #: src/pages/shell/composer.tsx
@@ -916,10 +925,6 @@ msgstr "Advanced..."
 #: src/components/ContactDialog.tsx
 msgid "Advisor"
 msgstr "Advisor"
-
-#: src/pages/Finance.tsx
-msgid "after fees"
-msgstr "after fees"
 
 #: src/components/integrations/IntegrationAgentSection.tsx
 #: src/pages/shell/BotSkillsSection.tsx
@@ -1876,7 +1881,6 @@ msgid "Cap table, equity and investors"
 msgstr "Cap table, equity and investors"
 
 #: src/pages/finance/FinanceAccounts.tsx
-#: src/pages/finance/FinanceBurn.tsx
 msgid "Card balance owed"
 msgstr "Card balance owed"
 
@@ -3777,10 +3781,6 @@ msgstr "Documents"
 msgid "Documents over time"
 msgstr "Documents over time"
 
-#: src/pages/Finance.tsx
-msgid "Does a similar job to another subscription"
-msgstr "Does a similar job to another subscription"
-
 #: src/components/finance/CountCryptoButton.tsx
 msgid "Don't count crypto"
 msgstr "Don't count crypto"
@@ -4252,7 +4252,6 @@ msgstr "Finance"
 
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
-#: src/pages/finance/FinanceBurn.tsx
 msgid "Financing"
 msgstr "Financing"
 
@@ -4573,7 +4572,6 @@ msgstr "Hi, this is how I'll sound when I read replies out loud."
 msgid "Hidden folders"
 msgstr "Hidden folders"
 
-#: src/components/data-room/Preview.tsx
 #: src/components/inbox/MailAttachments.tsx
 msgid "Hidden while amounts are hidden"
 msgstr "Hidden while amounts are hidden"
@@ -4760,10 +4758,6 @@ msgstr "Importing {done} of {total}"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "In"
 msgstr "In"
-
-#: src/pages/finance/FinanceBurn.tsx
-msgid "In cash, not counted as burn"
-msgstr "In cash, not counted as burn"
 
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "In Data room"
@@ -4966,6 +4960,10 @@ msgstr "Last charge"
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Last month vs 3 mo ago"
 msgstr "Last month vs 3 mo ago"
+
+#: src/pages/Finance.tsx
+msgid "Last month, after fees"
+msgstr "Last month, after fees"
 
 #: src/pages/shell/transcript.tsx
 msgid "Last run failed: {failedNote}"
@@ -6192,10 +6190,6 @@ msgstr "Not confirmed as sent. Check Sent in your mail before trying again."
 msgid "Not connected"
 msgstr "Not connected"
 
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Not counted"
-msgstr "Not counted"
-
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Not counted in cash"
 msgstr "Not counted in cash"
@@ -6606,10 +6600,6 @@ msgstr "Out"
 msgid "Overdue"
 msgstr "Overdue"
 
-#: src/pages/Finance.tsx
-msgid "overlaps"
-msgstr "overlaps"
-
 #: src/pages/Board.tsx
 msgid "Owner"
 msgstr "Owner"
@@ -6751,10 +6741,6 @@ msgstr "pending"
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
 msgstr "Pending"
-
-#: src/pages/Finance.tsx
-msgid "Per month"
-msgstr "Per month"
 
 #: src/components/finance/ui.tsx
 msgid "Period"
@@ -7114,7 +7100,6 @@ msgid "Reconnect"
 msgstr "Reconnect"
 
 #: src/components/integrations/FinanceSection.tsx
-#: src/pages/Finance.tsx
 msgid "Reconnect {name}"
 msgstr "Reconnect {name}"
 
@@ -7573,7 +7558,6 @@ msgstr "Return to Praci"
 
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
-#: src/pages/finance/FinanceBurn.tsx
 msgid "Revenue"
 msgstr "Revenue"
 
@@ -8307,6 +8291,11 @@ msgstr "Signed in with {signedInLabel}"
 msgid "Signed out. Reconnect to keep reading this account's mail."
 msgstr "Signed out. Reconnect to keep reading this account's mail."
 
+#. placeholder {0}: other.name
+#: src/pages/Finance.tsx
+msgid "Similar to {0}"
+msgstr "Similar to {0}"
+
 #. placeholder {0}: shortDay(card.from)
 #: src/components/FinanceCards.tsx
 msgid "since {0}"
@@ -8491,10 +8480,6 @@ msgstr "Spend"
 msgid "Spend, changes, and new or upcoming charges."
 msgstr "Spend, changes, and new or upcoming charges."
 
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Spending minus revenue, 3-mo avg"
-msgstr "Spending minus revenue, 3-mo avg"
-
 #: src/pages/Finance.tsx
 msgid "Spent {spentRange}"
 msgstr "Spent {spentRange}"
@@ -8523,10 +8508,6 @@ msgstr "Stablecoins"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Stablecoins count as cash in this runway; other crypto does not."
 msgstr "Stablecoins count as cash in this runway; other crypto does not."
-
-#: src/pages/Finance.tsx
-msgid "Stablecoins in runway"
-msgstr "Stablecoins in runway"
 
 #: src/components/finance/CountCryptoButton.tsx
 msgid "Stablecoins only"
@@ -8667,10 +8648,6 @@ msgstr "Subscriptions"
 msgid "Subscriptions / mo"
 msgstr "Subscriptions / mo"
 
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Subtracted from burn"
-msgstr "Subtracted from burn"
-
 #: src/lib/slash-skills.ts
 msgid "Suggests categories for uncategorized transactions."
 msgstr "Suggests categories for uncategorized transactions."
@@ -8694,10 +8671,6 @@ msgstr "Suspicious"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Switching…"
 msgstr "Switching…"
-
-#: src/pages/Finance.tsx
-msgid "Syncing…"
-msgstr "Syncing…"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
@@ -9242,7 +9215,6 @@ msgid "Trash"
 msgstr "Trash"
 
 #: src/pages/Finance.tsx
-#: src/pages/finance/FinanceBurn.tsx
 msgid "Treasury yield"
 msgstr "Treasury yield"
 
@@ -9500,7 +9472,6 @@ msgstr "Updated"
 msgid "Updated {0}"
 msgstr "Updated {0}"
 
-#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/shell/bot-credentials.tsx
 #: src/pages/shell/bot-pins.tsx
@@ -9643,8 +9614,12 @@ msgid "Uses this server's own {hostCredentialSource} credentials to access {sele
 msgstr "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 
 #: src/pages/Finance.tsx
-msgid "Usual charge scaled to a month. A vendor page shows the average of actual spend."
-msgstr "Usual charge scaled to a month. A vendor page shows the average of actual spend."
+msgid "Usual charge scaled to a month; usage-based vendors use the last 3 months. A vendor page shows the average of actual spend over the months it names."
+msgstr "Usual charge scaled to a month; usage-based vendors use the last 3 months. A vendor page shows the average of actual spend over the months it names."
+
+#: src/pages/Finance.tsx
+msgid "Usual per month"
+msgstr "Usual per month"
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx

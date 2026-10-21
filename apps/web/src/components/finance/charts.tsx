@@ -226,7 +226,7 @@ export function LineChart({
                       key={i}
                       x={x(i)}
                       y={height - 6}
-                      textAnchor="middle"
+                      textAnchor={i === values.length - 1 && x(i) > width - 24 ? "end" : "middle"}
                       className="fill-muted-foreground"
                       fontSize={10}
                     >
@@ -377,9 +377,7 @@ export function BurnLines({
         const start = (p: [number, number] | undefined) =>
           `M${p?.[0].toFixed(1)},${p?.[1].toFixed(1)}`;
         const hasRevenue = series.some((m) => m.revenueCents > 0);
-        const hasFinancing = series.some((m) => m.financingCents > 0);
         const rev = line((m) => m.revenueCents);
-        const fin = line((m) => m.financingCents);
         const area = (pts: [number, number][], segs: string[]) =>
           `${start(pts[0])}${segs.join("")}L${pts.at(-1)?.[0].toFixed(1)},${base}L${pts[0]?.[0].toFixed(1)},${base}Z`;
         const shown = active === null ? null : series[active];
@@ -479,17 +477,6 @@ export function BurnLines({
                     className="stroke-foreground"
                     strokeWidth={1.75}
                     strokeDasharray="4 4"
-                    strokeLinecap="round"
-                  />
-                ) : null}
-                {hasFinancing ? (
-                  <path
-                    data-testid="burn-financing-line"
-                    d={`${start(fin[0])}${monotoneSegments(fin).join("")}`}
-                    fill="none"
-                    className="stroke-foreground"
-                    strokeWidth={1.25}
-                    strokeDasharray="1 4"
                     strokeLinecap="round"
                   />
                 ) : null}

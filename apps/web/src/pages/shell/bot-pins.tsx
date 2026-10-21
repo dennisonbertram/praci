@@ -1,6 +1,6 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import { maskPinFigures } from "@rakazo/chat-ui/mask-currency";
+import { maskCurrencyText } from "@rakazo/chat-ui/mask-currency";
 import type { BotPins, PinItem, PinList } from "@rakazo/contracts";
 import {
   addItem,
@@ -38,7 +38,7 @@ export function useBotPins(botId: string | undefined, reloadKey: number) {
 
 export function PinsStrip({ pins, onPins }: { pins: BotPins; onPins: (pins: BotPins) => void }) {
   const hidden = useHideAmounts();
-  const shown = (text: string) => (hidden ? maskPinFigures(text) : text);
+  const shown = (text: string) => (hidden ? maskCurrencyText(text) : text);
   const [refreshing, setRefreshing] = useState(false);
   if (pins.stats.length === 0) return null;
   const updated = pins.refreshedAt ? formatRelativeTime(pins.refreshedAt) : "";

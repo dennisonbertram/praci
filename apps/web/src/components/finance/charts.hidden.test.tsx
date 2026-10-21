@@ -87,6 +87,8 @@ it("scales the Burn lines to spend, and cuts a much larger raise at the top with
     ),
   );
   expect(el.querySelector("[data-testid=financing-clipped]")?.textContent).toBe("↑ $250,000");
+  // The raise is a marker on its date, not a line ramping up to it.
+  expect(el.querySelector("[data-testid=burn-financing-line]")).toBeNull();
   // The spend line sits high in the plot instead of being a sliver under a $300k axis.
   const firstY = Number(
     el
@@ -332,6 +334,28 @@ it("hides the grouped Burn chart while amounts are hidden", async () => {
     );
     expect(el.querySelector("svg")).toBeNull();
     expect(el.textContent).not.toContain("$");
+    act(() => root.unmount());
+  });
+});
+
+it("anchors the last axis label of a line chart inside the svg", async () => {
+  await withWidth(async (el) => {
+    const root = createRoot(el);
+    await act(async () =>
+      root.render(
+        <LineChart
+          label="Crypto"
+          height={160}
+          values={[3, 2, 1]}
+          labels={["Oct 1", "Oct 2", "Oct 21"]}
+        />,
+      ),
+    );
+    const anchors = [...el.querySelectorAll("text")].map((t) => [
+      t.textContent,
+      t.getAttribute("text-anchor"),
+    ]);
+    expect(anchors.at(-1)).toEqual(["Oct 21", "end"]);
     act(() => root.unmount());
   });
 });

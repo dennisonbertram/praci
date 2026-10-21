@@ -437,10 +437,6 @@ msgstr "{minutes} मिनट पहले"
 msgid "{monthlyTotal}/mo"
 msgstr ""
 
-#: src/pages/Finance.tsx
-msgid "{name} accounts"
-msgstr ""
-
 #: src/components/integrations/AppDetail.tsx
 msgid "{name} agent"
 msgstr ""
@@ -525,6 +521,23 @@ msgstr ""
 msgid "{sourceName} spend"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "{sourceNames} · synced {updated}"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "{sourceNames} · syncing…"
+msgstr ""
+
+#. placeholder {0}: data.excludedNonUsdCount
+#: src/pages/Finance.tsx
+msgid "{sourceNames}, {0} non-USD not counted"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "{stablecoins} stablecoins in runway"
+msgstr ""
+
 #: src/components/ToolActivityDisclosure.tsx
 msgid "{stepCount, plural, one {Done · # tool} other {Done · # tools}}"
 msgstr ""
@@ -551,10 +564,6 @@ msgstr "{workingBotName} काम कर रहा है"
 
 #: src/pages/Finance.tsx
 msgid "{year} so far"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "{yieldAmount} last month"
 msgstr ""
 
 #. placeholder {0}: mention.name
@@ -915,10 +924,6 @@ msgstr ""
 
 #: src/components/ContactDialog.tsx
 msgid "Advisor"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "after fees"
 msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
@@ -1876,7 +1881,6 @@ msgid "Cap table, equity and investors"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
-#: src/pages/finance/FinanceBurn.tsx
 msgid "Card balance owed"
 msgstr ""
 
@@ -3777,10 +3781,6 @@ msgstr ""
 msgid "Documents over time"
 msgstr ""
 
-#: src/pages/Finance.tsx
-msgid "Does a similar job to another subscription"
-msgstr ""
-
 #: src/components/finance/CountCryptoButton.tsx
 msgid "Don't count crypto"
 msgstr ""
@@ -4252,7 +4252,6 @@ msgstr ""
 
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
-#: src/pages/finance/FinanceBurn.tsx
 msgid "Financing"
 msgstr ""
 
@@ -4573,7 +4572,6 @@ msgstr "नमस्ते, उत्तर पढ़कर सुनाते �
 msgid "Hidden folders"
 msgstr ""
 
-#: src/components/data-room/Preview.tsx
 #: src/components/inbox/MailAttachments.tsx
 msgid "Hidden while amounts are hidden"
 msgstr ""
@@ -4759,10 +4757,6 @@ msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "In"
-msgstr ""
-
-#: src/pages/finance/FinanceBurn.tsx
-msgid "In cash, not counted as burn"
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
@@ -4965,6 +4959,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Last month vs 3 mo ago"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Last month, after fees"
 msgstr ""
 
 #: src/pages/shell/transcript.tsx
@@ -6192,10 +6190,6 @@ msgstr ""
 msgid "Not connected"
 msgstr "कनेक्ट नहीं है"
 
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Not counted"
-msgstr ""
-
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Not counted in cash"
 msgstr ""
@@ -6606,10 +6600,6 @@ msgstr ""
 msgid "Overdue"
 msgstr ""
 
-#: src/pages/Finance.tsx
-msgid "overlaps"
-msgstr ""
-
 #: src/pages/Board.tsx
 msgid "Owner"
 msgstr ""
@@ -6750,10 +6740,6 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Per month"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -7114,7 +7100,6 @@ msgid "Reconnect"
 msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
-#: src/pages/Finance.tsx
 msgid "Reconnect {name}"
 msgstr ""
 
@@ -7573,7 +7558,6 @@ msgstr "Praci पर लौटें"
 
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
-#: src/pages/finance/FinanceBurn.tsx
 msgid "Revenue"
 msgstr ""
 
@@ -8307,6 +8291,11 @@ msgstr ""
 msgid "Signed out. Reconnect to keep reading this account's mail."
 msgstr ""
 
+#. placeholder {0}: other.name
+#: src/pages/Finance.tsx
+msgid "Similar to {0}"
+msgstr ""
+
 #. placeholder {0}: shortDay(card.from)
 #: src/components/FinanceCards.tsx
 msgid "since {0}"
@@ -8491,10 +8480,6 @@ msgstr ""
 msgid "Spend, changes, and new or upcoming charges."
 msgstr ""
 
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Spending minus revenue, 3-mo avg"
-msgstr ""
-
 #: src/pages/Finance.tsx
 msgid "Spent {spentRange}"
 msgstr ""
@@ -8522,10 +8507,6 @@ msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Stablecoins count as cash in this runway; other crypto does not."
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Stablecoins in runway"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
@@ -8667,10 +8648,6 @@ msgstr ""
 msgid "Subscriptions / mo"
 msgstr ""
 
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Subtracted from burn"
-msgstr ""
-
 #: src/lib/slash-skills.ts
 msgid "Suggests categories for uncategorized transactions."
 msgstr ""
@@ -8694,10 +8671,6 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Switching…"
 msgstr "बदला जा रहा है…"
-
-#: src/pages/Finance.tsx
-msgid "Syncing…"
-msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
@@ -9242,7 +9215,6 @@ msgid "Trash"
 msgstr ""
 
 #: src/pages/Finance.tsx
-#: src/pages/finance/FinanceBurn.tsx
 msgid "Treasury yield"
 msgstr ""
 
@@ -9500,7 +9472,6 @@ msgstr ""
 msgid "Updated {0}"
 msgstr ""
 
-#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/shell/bot-credentials.tsx
 #: src/pages/shell/bot-pins.tsx
@@ -9643,7 +9614,11 @@ msgid "Uses this server's own {hostCredentialSource} credentials to access {sele
 msgstr "{selectedProviderName} तक पहुँचने के लिए इस सर्वर के अपने {hostCredentialSource} क्रेडेंशियल का उपयोग करता है।"
 
 #: src/pages/Finance.tsx
-msgid "Usual charge scaled to a month. A vendor page shows the average of actual spend."
+msgid "Usual charge scaled to a month; usage-based vendors use the last 3 months. A vendor page shows the average of actual spend over the months it names."
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Usual per month"
 msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
