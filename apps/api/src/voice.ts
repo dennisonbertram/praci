@@ -10,6 +10,7 @@ import {
   MAX_SPEAK_CHARS,
   MAX_TRANSCRIBE_BYTES,
   NoVoiceConfigured,
+  persistPreparedSecret,
   voiceCatalogEntry,
 } from "@rakazo/adapters";
 import type { Actor, VoiceCredential, VoiceStatus } from "@rakazo/contracts";
@@ -104,32 +105,35 @@ export async function setTranscription(
   if (!verified.ok) {
     throw new ORPCError("BAD_REQUEST", { message: verified.message ?? "That key was rejected." });
   }
-  const stored = await deps.secrets.put(input.apiKey, voiceContext(actor, input.signal));
-  await withSerializableRetry(() =>
-    deps.prisma.$transaction(
-      async (tx) => {
-        const existing = await tx.transcriptionSelection.findUnique({
-          where: { userId: actor.userId },
-        });
-        await tx.secret.create({
-          data: {
-            id: stored.id,
-            userId: actor.userId,
-            spaceId: null,
-            kind: "voice",
-            ciphertext: stored.ciphertext,
-          },
-        });
-        await tx.transcriptionSelection.upsert({
-          where: { userId: actor.userId },
-          create: { userId: actor.userId, provider: input.provider, secretId: stored.id },
-          update: { provider: input.provider, secretId: stored.id },
-        });
-        if (existing) await tx.secret.deleteMany({ where: { id: existing.secretId } });
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-    ),
-  );
+  // Each attempt prepares its own secret: a rolled-back attempt cleans up the reference it wrote.
+  await withSerializableRetry(async () => {
+    const stored = await deps.secrets.put(input.apiKey, voiceContext(actor, input.signal));
+    await persistPreparedSecret(deps.prisma, deps.secrets, stored, () =>
+      deps.prisma.$transaction(
+        async (tx) => {
+          const existing = await tx.transcriptionSelection.findUnique({
+            where: { userId: actor.userId },
+          });
+          await tx.secret.create({
+            data: {
+              id: stored.id,
+              userId: actor.userId,
+              spaceId: null,
+              kind: "voice",
+              ciphertext: stored.ciphertext,
+            },
+          });
+          await tx.transcriptionSelection.upsert({
+            where: { userId: actor.userId },
+            create: { userId: actor.userId, provider: input.provider, secretId: stored.id },
+            update: { provider: input.provider, secretId: stored.id },
+          });
+          if (existing) await tx.secret.deleteMany({ where: { id: existing.secretId } });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      ),
+    );
+  });
   return { provider: input.provider };
 }
 

@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { createRouterClient } from "@orpc/server";
-import { SCRIPTED_TRANSCRIPT } from "@rakazo/adapters";
+import { SCRIPTED_TRANSCRIPT, withSecretPersistence } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { RouterDeps } from "./router.js";
 import { createRouter } from "./router.js";
-import { transcribeVoice } from "./voice.js";
+import { clearTranscription, setTranscription, transcribeVoice } from "./voice.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =
@@ -191,5 +191,68 @@ describePostgres("transcription selection (PostgreSQL)", () => {
     await b.voice.clearTranscription();
     expect(await prisma.transcriptionSelection.count({ where: { userId: userA } })).toBe(1);
     await client(actor(userA)).voice.clearTranscription();
+  });
+
+  it("retries a serialization conflict with a fresh remote secret and leaves no orphan", async () => {
+    const remote = new Map<string, string>();
+    let puts = 0;
+    const store = {
+      put: async (plaintext: string) => {
+        puts += 1;
+        const ref = `remote-ref-${puts}`;
+        remote.set(ref, plaintext);
+        return { id: `remote-id-${puts}`, ciphertext: ref };
+      },
+      load: async (ref: string) => remote.get(ref) ?? "",
+      delete: async (ref: string) => {
+        remote.delete(ref);
+      },
+      describe: () => ({}),
+      redact: (value: string) => value,
+      onChange: () => () => undefined,
+    };
+    const wrapped = withSecretPersistence(prisma, store as never);
+    let conflicted = false;
+    const flaky = new Proxy(wrapped, {
+      get(target, property, receiver) {
+        if (property !== "$transaction") return Reflect.get(target, property, receiver);
+        return (fn: (tx: never) => Promise<unknown>, options: never) =>
+          target.$transaction(async (tx) => {
+            const result = await fn(tx as never);
+            if (!conflicted) {
+              conflicted = true;
+              throw Object.assign(new Error("conflict"), { code: "P2034" });
+            }
+            return result;
+          }, options);
+      },
+    });
+    const flakyDeps = { prisma: flaky, secrets: store } as never;
+
+    await setTranscription(flakyDeps, actor(userA), {
+      provider: "scripted-transcribe",
+      apiKey: "retried-key-1",
+    });
+    expect(conflicted).toBe(true);
+    expect(puts).toBe(2);
+    const row = await prisma.transcriptionSelection.findUniqueOrThrow({ where: { userId: userA } });
+    const secret = await prisma.secret.findUniqueOrThrow({ where: { id: row.secretId } });
+    expect(remote.get(secret.ciphertext)).toBe("retried-key-1");
+    expect([...remote.keys()]).toEqual([secret.ciphertext]);
+
+    await setTranscription(flakyDeps, actor(userA), {
+      provider: "scripted-transcribe",
+      apiKey: "replaced-key-1",
+    });
+    const replaced = await prisma.transcriptionSelection.findUniqueOrThrow({
+      where: { userId: userA },
+    });
+    const replacedSecret = await prisma.secret.findUniqueOrThrow({
+      where: { id: replaced.secretId },
+    });
+    expect([...remote.keys()]).toEqual([replacedSecret.ciphertext]);
+
+    await clearTranscription(flakyDeps, actor(userA));
+    expect(remote.size).toBe(0);
   });
 });
