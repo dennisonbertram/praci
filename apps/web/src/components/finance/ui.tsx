@@ -304,7 +304,16 @@ export function hereCrumb(own: Crumb[], cameFrom: Crumb | null, to: string): Cru
  * One way back for every detail page, then the company and Hide amounts: a Back button one level
  * down, or, deeper, a breadcrumb whose links lead back (the last crumb is the page itself).
  */
-export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
+export function DetailHead({
+  crumbs: own,
+  title,
+  actions,
+}: {
+  crumbs: Crumb[];
+  /** With a title, Back, the title and the actions share one row, so the title sits where the overview's does. */
+  title?: ReactNode;
+  actions?: ReactNode;
+}) {
   const cameFrom = useCameFrom();
   const crumbs = trailFor(own, cameFrom);
   // Before the page's own name loads (or when it never will), Back still returns to the real origin.
@@ -312,58 +321,79 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
   // The page's own name is the heading below, so the trail stops at the page before it.
   const trail = crumbs.slice(0, -1);
   const collapsed = (i: number) => trail.length > 3 && i > 0 && i < trail.length - 1;
+  const back = crumbs.length <= 3;
+  const heading =
+    title === undefined ? null : (
+      <h1 className="min-w-0 text-lg leading-7 font-semibold">{title}</h1>
+    );
+  const end = actions ? <div className="ms-auto flex items-center gap-2">{actions}</div> : null;
   return (
-    <div className="mb-1.5 flex min-h-8 flex-wrap items-center gap-x-2.5 gap-y-1">
-      {/* Back names the page before, for every page up to two levels down; only a charge, four
+    <>
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-x-2.5 gap-y-1",
+          heading && back ? "min-h-10" : "mb-1.5 min-h-8",
+        )}
+      >
+        {/* Back names the page before, for every page up to two levels down; only a charge, four
       levels down, needs the trail's links. */}
-      {crumbs.length <= 3 ? (
-        <Link
-          to={previous?.to ?? financePath.dashboard()}
-          state={crumbState(previous)}
-          className="inline-flex h-8 pointer-coarse:h-11 shrink-0 items-center whitespace-nowrap rounded-lg border border-border bg-card px-2.5 text-sm font-semibold hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
-        >
-          <span aria-hidden="true">←</span>
-          <span className="ms-1">{previous?.label ?? t`Finance`}</span>
-        </Link>
-      ) : (
-        // The trail keeps its width; when it leaves too little room for the company and the eye,
-        // they move to the next line rather than cutting the company's name to a letter or two.
-        <nav aria-label={t`Breadcrumb`} className="min-w-0 max-w-full shrink-0">
-          <ol className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
-            {trail.map((crumb, i) => (
-              <li
-                key={i}
-                // Narrow, a deep trail keeps Finance, the page before and this page.
-                className={cn("flex items-center gap-1", collapsed(i) && "hidden @md:flex")}
-              >
-                {crumb.to ? (
-                  <Link
-                    to={crumb.to}
-                    state={crumbState(crumb)}
-                    className="hover:text-foreground hover:underline"
-                  >
-                    {crumb.label}
-                  </Link>
-                ) : (
-                  <span className="text-foreground">
-                    <WithEndings text={crumb.label} />
-                  </span>
-                )}
-                {/* The slash ends a crumb, so a wrapped trail never starts a line with one. */}
-                {i < trail.length - 1 ? <span aria-hidden="true">/</span> : null}
-                {i === 0 && trail.length > 3 ? (
-                  <span aria-hidden="true" className="flex items-center gap-1 @md:hidden">
-                    <span>…</span>
-                    <span>/</span>
-                  </span>
-                ) : null}
-              </li>
-            ))}
-          </ol>
-        </nav>
-      )}
-      <CompanyMenu />
-    </div>
+        {back ? (
+          <Link
+            to={previous?.to ?? financePath.dashboard()}
+            state={crumbState(previous)}
+            className="inline-flex h-8 pointer-coarse:h-11 shrink-0 items-center whitespace-nowrap rounded-lg border border-border bg-card px-2.5 text-sm font-semibold hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+          >
+            <span aria-hidden="true">←</span>
+            <span className="ms-1">{previous?.label ?? t`Finance`}</span>
+          </Link>
+        ) : (
+          // The trail keeps its width; when it leaves too little room for the company and the eye,
+          // they move to the next line rather than cutting the company's name to a letter or two.
+          <nav aria-label={t`Breadcrumb`} className="min-w-0 max-w-full shrink-0">
+            <ol className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+              {trail.map((crumb, i) => (
+                <li
+                  key={i}
+                  // Narrow, a deep trail keeps Finance, the page before and this page.
+                  className={cn("flex items-center gap-1", collapsed(i) && "hidden @md:flex")}
+                >
+                  {crumb.to ? (
+                    <Link
+                      to={crumb.to}
+                      state={crumbState(crumb)}
+                      className="hover:text-foreground hover:underline"
+                    >
+                      {crumb.label}
+                    </Link>
+                  ) : (
+                    <span className="text-foreground">
+                      <WithEndings text={crumb.label} />
+                    </span>
+                  )}
+                  {/* The slash ends a crumb, so a wrapped trail never starts a line with one. */}
+                  {i < trail.length - 1 ? <span aria-hidden="true">/</span> : null}
+                  {i === 0 && trail.length > 3 ? (
+                    <span aria-hidden="true" className="flex items-center gap-1 @md:hidden">
+                      <span>…</span>
+                      <span>/</span>
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+          </nav>
+        )}
+        {back ? heading : null}
+        <CompanyMenu />
+        {back ? end : null}
+      </div>
+      {heading && !back ? (
+        <div className="flex min-h-10 flex-wrap items-center gap-3">
+          {heading}
+          {end}
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -453,7 +483,16 @@ export function DetailPage({
   return (
     <BackHere value={here}>
       <div>
-        <DetailHead crumbs={crumbs} />
+        <DetailHead
+          crumbs={crumbs}
+          title={notFound || error || loading ? undefined : title}
+          actions={
+            <>
+              {action}
+              <AskAgentButton />
+            </>
+          }
+        />
         {notFound ? (
           <NotFoundNotice />
         ) : error ? (
@@ -469,14 +508,6 @@ export function DetailPage({
           </div>
         ) : (
           <>
-            {/* The page's actions and Ask share the title's row. */}
-            <div className="mt-1.5 flex flex-wrap items-center gap-3">
-              <h1 className="min-w-0 text-xl font-semibold">{title}</h1>
-              <div className="ms-auto flex items-center gap-2">
-                {action}
-                <AskAgentButton />
-              </div>
-            </div>
             {subtitle ? <div className="mb-3 text-xs text-muted-foreground">{subtitle}</div> : null}
             <div className={cn("flex flex-col gap-3", subtitle ? "" : "mt-3")}>{children}</div>
           </>

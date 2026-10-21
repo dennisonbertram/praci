@@ -664,8 +664,8 @@ function Overview({
             ) : null}
           </Section>
 
-          {/* Each card keeps the height of its own rows, so a short one is not stretched. */}
-          <div className="grid items-start gap-3 @3xl:grid-cols-2">
+          {/* Side by side, the two cards end on the same line. */}
+          <div className="grid items-stretch gap-3 @3xl:grid-cols-2">
             <BackHere
               value={{
                 label: t`Breakdown`,
