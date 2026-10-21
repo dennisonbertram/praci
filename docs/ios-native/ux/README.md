@@ -36,13 +36,13 @@ Round 3's fixes have not been re-audited. Low findings are mostly polish and wer
 The boards use these defaults. Each one can be changed by the owner.
 
 - Standard iPhone coverage: Artifacts, Artifact, Image, Agent page, Routine and the form sheets are drawn for the Duo only.
-- Reactions in chat: out of v1.
+- Reactions in chat: in v1, with the six-emoji picker specified in `DS-06-Chat` and drawn on `PH-Thread`.
 - Sample signed-in person: Alex Morgan (AM) everywhere.
 - Inner display: Compose sits in More while a message is open.
 - Provider failure copy (contract scanning, Carta, Mercury): plain wording, no vendor names.
 - Delete account for SSO users: re-authenticate with the provider, then confirm. The server must support this.
-- Standing "Always allow" for money or send tools: never offered in a thread; only in Settings.
-- Unsubscribe in Cleanup cannot be undone, and the Done screen says so.
+- Standing "Always allow" is offered only for read-only tools. Money and send tools always ask, in the thread and in Settings (`DS-06-Chat`, `PG-B-Settings`).
+- Unsubscribe in Cleanup cannot be undone, and the confirmation says so before it runs.
 - Inbox swipe actions: Archive and Spam only, matching the API.
 - Routine actions: Pause and Edit; "Run now" waits for an API.
 - Hosted voice, the banking connector and "Allow writes" confirmation are drawn as specified; their server behavior is still planned.

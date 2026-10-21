@@ -365,15 +365,15 @@
       "x": 3052,
       "y": 26422,
       "w": 1440,
-      "h": 3918,
+      "h": 4090,
       "title": "Rules · core pages",
       "page": "screens"
     },
     "PG-B-Rules.dc.html": {
       "x": 0,
-      "y": 30540,
+      "y": 30712,
       "w": 1440,
-      "h": 3989,
+      "h": 4230,
       "title": "Rules · secondary pages",
       "page": "screens"
     },
@@ -397,7 +397,7 @@
     },
     "PG-A-Activity.dc.html": {
       "x": 1520,
-      "y": 30540,
+      "y": 30712,
       "w": 956,
       "h": 2184,
       "title": "Activity · 956×2184 pt",
@@ -406,7 +406,7 @@
     },
     "PG-A-Cleanup.dc.html": {
       "x": 2556,
-      "y": 30540,
+      "y": 30712,
       "w": 1984,
       "h": 2209,
       "title": "Cleanup · 1984×2209 pt",
@@ -415,7 +415,7 @@
     },
     "PG-A-Compose.dc.html": {
       "x": 0,
-      "y": 34729,
+      "y": 35142,
       "w": 1984,
       "h": 2936,
       "title": "Compose · 1984×2936 pt",
@@ -424,7 +424,7 @@
     },
     "PG-A-HomeNoModel.dc.html": {
       "x": 2064,
-      "y": 34729,
+      "y": 35142,
       "w": 1936,
       "h": 2163,
       "title": "Outer home, no model · 1936×2163 pt",
@@ -433,7 +433,7 @@
     },
     "PG-A-ThreadStates.dc.html": {
       "x": 0,
-      "y": 37865,
+      "y": 38278,
       "w": 1936,
       "h": 5074,
       "title": "Outer thread, states · 1936×5074 pt",
@@ -442,7 +442,7 @@
     },
     "PG-B-Account.dc.html": {
       "x": 2016,
-      "y": 37865,
+      "y": 38278,
       "w": 1446,
       "h": 4356,
       "title": "Account · 1446×4356 pt",
@@ -451,7 +451,7 @@
     },
     "PG-B-Consent.dc.html": {
       "x": 3542,
-      "y": 37865,
+      "y": 38278,
       "w": 956,
       "h": 1436,
       "title": "AI data sharing · 956×1436 pt",
@@ -460,7 +460,7 @@
     },
     "PG-B-ForgotPassword.dc.html": {
       "x": 0,
-      "y": 43139,
+      "y": 43552,
       "w": 1446,
       "h": 3090,
       "title": "Forgot password · 1446×3090 pt",
@@ -469,7 +469,7 @@
     },
     "PG-B-SignUp.dc.html": {
       "x": 1526,
-      "y": 43139,
+      "y": 43552,
       "w": 1446,
       "h": 2360,
       "title": "Sign up · 1446×2360 pt",
@@ -478,7 +478,7 @@
     },
     "PG-B-Spaces.dc.html": {
       "x": 3052,
-      "y": 43139,
+      "y": 43552,
       "w": 1446,
       "h": 1436,
       "title": "Spaces · 1446×1436 pt",
