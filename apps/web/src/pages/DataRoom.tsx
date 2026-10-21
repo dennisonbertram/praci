@@ -48,7 +48,6 @@ import { useDataRoomImports } from "../components/data-room/use-data-room-import
 import type { Filters, Sort } from "../components/data-room/use-data-room-list";
 import { useDataRoomList } from "../components/data-room/use-data-room-list";
 import { useDataRoomProcessing } from "../components/data-room/use-data-room-processing";
-import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { DATA_ROOM_CHANGED, readDataRoomView, saveDataRoomView } from "../lib/data-room";
@@ -496,7 +495,6 @@ export function DataRoomPage({
             <>
               {empty ? null : (
                 <>
-                  <HideAmountsButton />
                   <fieldset className="m-0 flex min-w-0 gap-0.5 border-0 p-0">
                     <legend className="sr-only">{t`View`}</legend>
                     <Tip label={t`List view`}>

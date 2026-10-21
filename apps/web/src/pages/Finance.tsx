@@ -44,7 +44,7 @@ import {
   BreakdownRows,
   BurnLegend,
   Chevron,
-  CompanyAndEye,
+  CompanyMenu,
   cashSubtitle,
   ErrorNotice,
   FinanceChromeProvider,
@@ -249,7 +249,7 @@ function EmptyState({ cryptoCents, onAdd }: { cryptoCents: number | null; onAdd:
   return (
     <div>
       {/* The page title stays where every page has it, with the empty state under it. */}
-      <PageHeader title={<Trans>Finance</Trans>} meta={<CompanyAndEye />} />
+      <PageHeader title={<Trans>Finance</Trans>} meta={<CompanyMenu />} />
       <PageEmptyState
         icon={FINANCE_PROVIDERS.map(({ provider, name, logo }) => (
           <AppLogo key={provider} name={name} logo={logo} size="lg" />
@@ -421,7 +421,7 @@ function Overview({
         title={<Trans>Finance</Trans>}
         meta={
           <>
-            <CompanyAndEye>
+            <CompanyMenu>
               {/* Both labels share one cell, so the chips beside them do not move when it changes. */}
               <span className={cn("grid", !syncing && !updated && "hidden")}>
                 <span
@@ -459,7 +459,7 @@ function Overview({
                   <Trans>Refresh</Trans>
                 </TooltipContent>
               </Tooltip>
-            </CompanyAndEye>
+            </CompanyMenu>
             {data.excludedNonUsdCount > 0 ? (
               <span className="text-[11px] text-muted-foreground">
                 {t`${data.excludedNonUsdCount} non-USD not counted`}

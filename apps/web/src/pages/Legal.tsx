@@ -12,7 +12,6 @@ import {
   SpaceName,
   useFinanceQuery,
 } from "../components/finance/ui";
-import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { LegalConsentPrompt } from "../components/legal/ConsentPrompt";
 import { LegalGraphView } from "../components/legal/LegalGraph";
 import { PageHeader } from "../components/PageHeader";
@@ -212,7 +211,6 @@ function Legal({
             <Button variant="outline" disabled={scanDisabled} onClick={() => void scan()}>
               {running ? <Trans>Scanning…</Trans> : <Trans>Scan now</Trans>}
             </Button>
-            <HideAmountsButton />
             <AskAgentButton />
           </>
         }

@@ -6,15 +6,6 @@ import { isCartaEndpoint } from "@rakazo/contracts";
 import {
   Button,
   Card,
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Input,
-  Label,
-  NativeSelect,
-  NativeSelectOption,
   Skeleton,
   Table,
   TableBody,
@@ -26,7 +17,6 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  Textarea,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -44,7 +34,6 @@ import {
 import { ContactNotice } from "../components/ContactNotice";
 import { OwnershipDonut } from "../components/cap-table/OwnershipDonut";
 import { FolderDocuments } from "../components/data-room/FolderDocuments";
-import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { CustomConnectionDialog } from "../components/integrations/CustomConnectionDialog";
 import { useIntegrations } from "../components/integrations/useIntegrations";
 import { PickFilter, SearchField, SortControl } from "../components/ListControls";
@@ -517,8 +506,6 @@ export function CapTablePage({
         }
         actions={
           <>
-            {/* Only figures from Carta can be hidden. */}
-            {snapshot ? <HideAmountsButton /> : null}
             {/* Without a model a refresh cannot start; the card below offers Add a model instead. */}
             {cartaConnected && !(needsModel && neverRead) ? (
               <Tooltip>
@@ -607,14 +594,12 @@ export function CapTablePage({
                 <Trans>Your Carta sign-in ended. Sign in again to see holders here.</Trans>
               </p>
             ) : (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  <Trans>
-                    Carta is the service many startups use to record who owns shares, options and
-                    SAFEs. Connect it to see them here and to ask the Carta agent about them.
-                  </Trans>
-                </p>
-              </>
+              <p className="text-sm text-muted-foreground">
+                <Trans>
+                  Carta is the service many startups use to record who owns shares, options and
+                  SAFEs. Connect it to see them here and to ask the Carta agent about them.
+                </Trans>
+              </p>
             )}
           </div>
           <Button onClick={() => setConnecting(true)}>

@@ -70,6 +70,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Separator,
   Spinner,
 } from "@rakazo/ui-web";
 import {
@@ -316,7 +317,12 @@ import {
 } from "./shell/dialogs";
 import { GroupIntro } from "./shell/GroupIntro";
 import { SidebarHeaderRow, TOP_BAR_HEIGHT } from "./shell/sidebar-header-row";
-import { activeSpaceFirst, commitSpaceRename, sidebarGroupsForSpaces } from "./shell/space-sidebar";
+import {
+  activeSpaceFirst,
+  commitSpaceRename,
+  sidebarGroupsForSpaces,
+  spaceHoldingChat,
+} from "./shell/space-sidebar";
 import { AppNavigateContext, Transcript, UnreadDivider } from "./shell/transcript";
 import { WindowChrome } from "./WindowChrome";
 
@@ -1374,6 +1380,16 @@ export function ShellPage() {
           !bootstrap.spaces.some((space) => space.hasContent)
         ) {
           navigate("/onboarding", { replace: true });
+          return;
+        }
+        // A link from another of the person's spaces switches to that space and reloads.
+        const otherSpaceId = spaceHoldingChat(
+          bootstrap.spaces,
+          bootstrap.me.spaceId,
+          groupId ?? botId ?? "",
+        );
+        if (otherSpaceId && selectSpace(otherSpaceId)) {
+          window.location.assign(window.location.pathname);
           return;
         }
         if (groupId) {
@@ -4861,10 +4877,12 @@ export function ShellPage() {
               side="top"
               align="start"
               alignOffset={11}
+              role="menu"
               className="w-[calc(316px-1.5rem)] max-w-[calc(100vw-3rem)] gap-0 p-1 data-closed:animate-none"
             >
               {bootstrapMe?.ticketBoardEnabled ? (
                 <Button
+                  role="menuitem"
                   variant="ghost"
                   className="w-full justify-start font-normal"
                   onClick={() => {
@@ -4878,6 +4896,7 @@ export function ShellPage() {
                 </Button>
               ) : null}
               <Button
+                role="menuitem"
                 variant="ghost"
                 className="w-full justify-start font-normal"
                 aria-label={t`Settings`}
@@ -4891,6 +4910,7 @@ export function ShellPage() {
               </Button>
               <HideAmountsMenuItem onDone={() => setMenuOpen(false)} />
               <Button
+                role="menuitem"
                 variant="ghost"
                 className="w-full justify-start font-normal"
                 data-testid="take-tour"
@@ -4902,7 +4922,9 @@ export function ShellPage() {
                 <Compass className="text-muted-foreground" strokeWidth={1.75} />
                 <Trans>Take the tour</Trans>
               </Button>
+              <Separator className="my-1" />
               <Button
+                role="menuitem"
                 variant="ghost"
                 className="w-full justify-start font-normal"
                 onClick={() =>
