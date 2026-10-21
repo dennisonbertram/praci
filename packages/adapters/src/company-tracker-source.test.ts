@@ -93,7 +93,6 @@ function githubTools(): ConnectorTool[] {
     return {
       name,
       description: name,
-      readOnly: true,
       inputSchema: {
         type: "object",
         properties,

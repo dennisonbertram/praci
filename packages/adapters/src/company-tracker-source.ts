@@ -202,6 +202,8 @@ const githubOperations = {
     args: ["org", "after", "per_page"],
   },
 } as const;
+export const COMPANY_GITHUB_READ_TOOLS = Object.values(githubOperations).map((tool) => tool.name);
+
 const linearToolNames = [
   "list_users",
   "list_teams",
