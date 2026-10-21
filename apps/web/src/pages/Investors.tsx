@@ -3,7 +3,7 @@ import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { CapTableSource, CapTableState, Contact, ContactKind } from "@rakazo/contracts";
 import { isCartaEndpoint } from "@rakazo/contracts";
-import { capTableMath } from "@rakazo/core";
+import { capTableMath, isSafeSecurity } from "@rakazo/core";
 import {
   Button,
   Card,
@@ -99,7 +99,10 @@ function Summary({ snapshot }: { snapshot: Snapshot }) {
   useHideAmounts();
   const math = capTableMath(snapshot);
   const a = snapshot.latest409a;
-  const raised = snapshot.holders.some((h) => h.amountUsd != null) ? usd(math.raisedUsd) : DASH;
+  // Nothing known to add up shows a dash, not $0; SAFE money is never counted.
+  const raised = snapshot.holders.some((h) => h.amountUsd != null && !isSafeSecurity(h.security))
+    ? usd(math.raisedUsd)
+    : DASH;
   return (
     <div className="grid grid-cols-2 gap-2 @md/bd:gap-3">
       <Figure

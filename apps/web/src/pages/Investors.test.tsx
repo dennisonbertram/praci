@@ -5,8 +5,8 @@ import { NotificationToaster, notificationToastManager } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter, useLocation } from "react-router-dom";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const text = vi.hoisted(
   () =>
@@ -570,6 +570,17 @@ it("shows the figures, source line and holdings of a Carta table; SAFEs sit outs
   expect(safe).toContain("$250,000");
   expect(safe).toContain("—");
   expect(safe).not.toContain("%");
+});
+
+it("shows a dash for Equity raised when only SAFEs have amounts", async () => {
+  rpcMock.capTable.mockResolvedValue(
+    state({
+      ...carta,
+      holders: carta.holders.map((h) => ({ ...h, amountUsd: h.security === "SAFE" ? 1 : null })),
+    }),
+  );
+  await show();
+  expect(container.textContent).toContain("Equity raised—");
 });
 
 it("shows no percentages when the rows do not add up to the source's total", async () => {

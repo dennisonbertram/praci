@@ -3,7 +3,7 @@ import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { CapTableSnapshot, CapTableSnapshotInput } from "@rakazo/contracts";
 import { NATIVE_SECURITIES } from "@rakazo/contracts";
-import { capTableMath } from "@rakazo/core";
+import { capTableMath, isSafeSecurity } from "@rakazo/core";
 import {
   Button,
   DropdownMenu,
@@ -143,7 +143,7 @@ export function CapTableEditor({
   const poolShares = parseShares(pool) ?? null;
   const math = capTableMath({
     fullyDilutedShares: parsed.reduce(
-      (sum, { row, shares }) => sum + (/safe/i.test(row.security) ? 0 : (shares ?? 0)),
+      (sum, { row, shares }) => sum + (isSafeSecurity(row.security) ? 0 : (shares ?? 0)),
       poolShares ?? 0,
     ),
     optionPoolAvailable: poolShares,
@@ -191,7 +191,7 @@ export function CapTableEditor({
     }));
     const poolCount = parseShares(currentPool) ?? null;
     const total = holders.reduce(
-      (sum, h) => sum + (/safe/i.test(h.security) ? 0 : (h.shares ?? 0)),
+      (sum, h) => sum + (isSafeSecurity(h.security) ? 0 : (h.shares ?? 0)),
       poolCount ?? 0,
     );
     const shareClasses = capTableMath({
