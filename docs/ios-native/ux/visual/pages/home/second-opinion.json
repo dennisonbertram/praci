@@ -1,0 +1,390 @@
+{
+  "mode": "inspect",
+  "images": [
+    "PG-A-Home.png",
+    "PG-A-HomeNoModel.png",
+    "PG-B-Spaces.png",
+    "Main.png",
+    "PG-B-NewBot.png",
+    "PG-B-NewGroup.png",
+    "PG-B-NewSpace.png"
+  ],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 50,
+      "costUsd": 0.1294352,
+      "result": {
+        "verdict": "Not ready: strong dark grouping and a clear model-connection CTA, but the daily Home does not fit or prioritise one screen, first-time creation flows lack selection/validation/labelling, and several primary actions are unlabelled icons placed away from their content.",
+        "findings": [
+          {
+            "level": "page",
+            "element": "Entire scroll stack: Inbox card + ACTIVITY + PAGES + PERSONNEL + floating +",
+            "problem": "Daily landing does not fit the 466x678 surface: PERSONNEL starts only in the lower third and 'Carta agent' is cut off at the bottom edge. A first-time founder cannot glance at inbox, approvals, pages and bots in one screen as the brief requires.",
+            "norm": "One-screen daily glance surface; primary status visible without scrolling; clipped rows only with a clear scroll affordance.",
+            "severity": "P1",
+            "screenshot": "PG-A-Home.png",
+            "fix": "Compress to Inbox + Activity needing approval + a 2-row Pages summary above the fold; move full Personnel list behind 'See all' or collapse Pages to a horizontal chip row so Chief/Finance agent are fully visible."
+          },
+          {
+            "level": "group",
+            "element": "ACTIVITY rows 'Finance agent / Working', 'Inbox agent / Approve', 'Weekly runway / Done'",
+            "problem": "The one item needing action, 'Approve', is styled identically to passive 'Working' and 'Done' rows except a small yellow dot. Nothing looks tappable or urgent, so the approval the Home exists to surface can be missed.",
+            "norm": "Items requiring user action must be visually distinct and afford action; status must not rely on dot colour alone.",
+            "severity": "P1",
+            "screenshot": "PG-A-Home.png",
+            "fix": "Give 'Inbox agent / Approve' an outlined Approve button or chevron and stronger row emphasis; render Working/Done as muted read-only status."
+          },
+          {
+            "level": "component",
+            "element": "PAGES row 'Finance — [N] mo' and 'Legal — 2'",
+            "problem": "Raw placeholder '[N] mo' is shipped in the UI and the trailing values are unlabelled: '2' could be documents, deadlines or alerts. Legal's meaning cannot be inferred.",
+            "norm": "No placeholder tokens in mockups intended for build; trailing metadata must be labelled or self-evident.",
+            "severity": "P1",
+            "screenshot": "PG-A-Home.png",
+            "fix": "Replace with real labelled values, e.g. 'Finance — 4 mo runway', 'Legal — 2 deadlines', or remove the trailing value."
+          },
+          {
+            "level": "component",
+            "element": "Inbox card 'Inbox / 3 need reply' with trailing '42'",
+            "problem": "Two competing numbers with no label on '42'. First-time users cannot tell whether 42 is total, unread or archived, while the actionable '3 need reply' is the smaller, lower-contrast line.",
+            "norm": "One primary count per summary card; secondary counts must be labelled.",
+            "severity": "P2",
+            "screenshot": "PG-A-Home.png",
+            "fix": "Label it '42 total · 3 need reply' or show only a '3 need reply' badge and move total inside Inbox."
+          },
+          {
+            "level": "layout",
+            "element": "Left side strip: 'AB' circle, bell, magnifier, document icons in vertical capsule",
+            "problem": "Four unlabelled, unexplained controls with no selected state. 'AB' is ambiguous (profile, space, initials?) and bell/search/document destinations are guesswork for a non-technical first-time user; the strip permanently consumes scarce width on a 466pt display.",
+            "norm": "Icon-only navigation requires familiar icons, labels or tooltips, and a visible selected state; 44pt targets with clear hit areas.",
+            "severity": "P1",
+            "screenshot": "PG-A-Home.png",
+            "fix": "Add text labels or a labelled bottom/side bar, highlight the current destination, and rename/replace 'AB' with a recognisable avatar + name."
+          },
+          {
+            "level": "component",
+            "element": "Floating white '+' button, bottom-left",
+            "problem": "The sole prominent action is an unlabelled '+' floating over the Personnel list. It does not say whether it creates a bot, group, space or page, yet those are four different flows in this set.",
+            "norm": "One prominent action per view must be labelled with its outcome, per the brief's one-action rule.",
+            "severity": "P1",
+            "screenshot": "PG-A-Home.png",
+            "fix": "Label it ('New bot') or open a clearly titled create menu (Bot / Group / Space) on tap; do not let it overlap list content."
+          },
+          {
+            "level": "component",
+            "element": "Title 'Personal' with small chevron",
+            "problem": "The space switcher — a core navigation control — reads as a static heading. The chevron is tiny and low-contrast, so users may never discover PG-B-Spaces switching exists.",
+            "norm": "Menus disguised as titles need a clear affordance and a ≥44pt tap target.",
+            "severity": "P2",
+            "screenshot": "PG-A-Home.png",
+            "fix": "Put 'Personal' in a pill/chip with a larger chevron and increase the hit area to at least 44pt high."
+          },
+          {
+            "level": "component",
+            "element": "Secondary text: '3 need reply', 'Reading card expenses', timestamps '2:59 PM / Yesterday', 'See all'",
+            "problem": "Small mid-grey text on near-black cards is low contrast throughout, and 'See all' is a small text-only target well under 44pt. Status and recency — the scanning cues of this page — are the hardest things to read.",
+            "norm": "WCAG AA contrast (4.5:1 for small text) and 44pt minimum targets.",
+            "severity": "P2",
+            "screenshot": "PG-A-Home.png",
+            "fix": "Raise secondary text to a lighter grey, enlarge timestamps/status to ≥12–13pt, and give 'See all' padding to reach 44pt."
+          },
+          {
+            "level": "page",
+            "element": "'Connect a model to start chatting.' card + PERSONNEL 'Chief — No messages yet'",
+            "problem": "Chief remains listed and apparently tappable below a card saying chat cannot work yet. Nothing shows Chief as disabled, so the blocking state contradicts the content beneath it.",
+            "norm": "Blocking prerequisites must visibly disable dependent content.",
+            "severity": "P1",
+            "screenshot": "PG-A-HomeNoModel.png",
+            "fix": "Grey/lock the Chief row with 'Connect a model first' or hide Personnel until connection succeeds."
+          },
+          {
+            "level": "component",
+            "element": "Sheet list 'Hosted provider / Local server / Subscription sign-in' and unlabelled dotted field '............'",
+            "problem": "Pure developer jargon for a non-technical founder, with no recommendation, cost or explanation, and a credential field with no label (API key? password? URL?), no show/hide, and no help link. This is the first-run gate and it is uncompletable without outside knowledge.",
+            "norm": "First-run setup must use plain language, recommend a default, label every credential field, and link to where the credential is obtained.",
+            "severity": "P0",
+            "screenshot": "PG-A-HomeNoModel.png",
+            "fix": "Default-select 'Hosted provider — recommended', add one-line explanations, label the field 'API key' with paste/show controls and a 'Where do I find this?' link."
+          },
+          {
+            "level": "group",
+            "element": "Middle panel: dimmed 'Connect a model' button behind the 'Connect a model' sheet, side 'X' replacing 'AB'",
+            "problem": "The same action appears twice (inactive behind, active in sheet) and the sheet has no in-sheet close control; dismissal depends on a side-strip 'X' whose position previously held 'AB'. Users may not connect the X to the sheet.",
+            "norm": "Sheets carry their own close/cancel affordance; global chrome must not change meaning contextually without labelling.",
+            "severity": "P2",
+            "screenshot": "PG-A-HomeNoModel.png",
+            "fix": "Add a Cancel/× inside the sheet header, keep the side strip unchanged, and remove the duplicated background CTA while the sheet is open."
+          },
+          {
+            "level": "page",
+            "element": "Right panel 'Model connected.' + 'Create a bot' above 'Chief — Hello! How can I help?'",
+            "problem": "Success state contradicts itself: it prompts 'Create a bot' while Chief already exists and has already greeted the user. It also never names which model/provider was connected, so the user cannot verify the costly setup step.",
+            "norm": "Confirmation states must name what succeeded and offer the true next step.",
+            "severity": "P2",
+            "screenshot": "PG-A-HomeNoModel.png",
+            "fix": "Show 'Connected to Hosted provider' with a Change link, and make the CTA 'Chat with Chief' since Chief already exists."
+          },
+          {
+            "level": "component",
+            "element": "Space settings bottom bar 'Delete space' beside floating white check button",
+            "problem": "A destructive, irreversible action sits as a full-width bar in the primary action position next to an unlabelled ✓ save button — two competing prominent actions, violating the one-prominent-action rule. No confirmation step is implied anywhere.",
+            "norm": "Destructive actions must be de-emphasised, separated, and confirmed; exactly one prominent action per view.",
+            "severity": "P0",
+            "screenshot": "PG-B-Spaces.png",
+            "fix": "Move 'Delete space' into a separated destructive section with a confirmation dialog typing the space name; label the primary button 'Save'."
+          },
+          {
+            "level": "page",
+            "element": "Space settings body: single 'Name / Personal' field above ~60% empty black space",
+            "problem": "A settings page containing only a rename field implies missing functionality (members, model, pages) and gives no feedback on what the ✓ does or whether changes are saved. The emptiness reads as a broken/loading screen.",
+            "norm": "Settings surfaces must expose the editable attributes of the object or state why only the name is editable.",
+            "severity": "P2",
+            "screenshot": "PG-B-Spaces.png",
+            "fix": "Add the real settings groups (members, connected model, danger zone) or collapse this into the space menu as an inline rename."
+          },
+          {
+            "level": "group",
+            "element": "Space menu 'Personal ✓ / Northwind / Side project / New space + / Space settings'",
+            "problem": "This is the clearest control in the set, but 'Space settings' gives no indication it edits the currently selected 'Personal' space, and the translucent grey menu floating over dimmed list content blurs the glass-on-floating-controls boundary — the menu reads as content, not chrome.",
+            "norm": "Floating menus may use glass, but must read as transient overlays with clear scope ('Settings for Personal').",
+            "severity": "P3",
+            "screenshot": "PG-B-Spaces.png",
+            "fix": "Rename to 'Personal settings…' or add the current space name as a menu header; strengthen shadow/separation from the list behind."
+          },
+          {
+            "level": "page",
+            "element": "Whole screen divergence from PG-A-Home: no 'Personal' title, no ACTIVITY, no PAGES, Inbox + PERSONNEL only",
+            "problem": "Two incompatible Homes exist in the same set. A founder moving between them loses the space switcher, approvals and pages with no explanation, breaking the learned layout.",
+            "norm": "One canonical Home structure; older variants must be removed or visibly superseded.",
+            "severity": "P1",
+            "screenshot": "Main.png",
+            "fix": "Retire Main.png in favour of PG-A-Home structure, or annotate it deprecated so it is not built."
+          },
+          {
+            "level": "component",
+            "element": "PERSONNEL row 'Mercury agent — Balance as of this morning: [AMOUNT]'",
+            "problem": "Another raw placeholder token in user-facing copy, in the most sensitive category (money). It signals unfinished data binding exactly where trust matters.",
+            "norm": "No bracketed placeholder tokens in presented UI.",
+            "severity": "P1",
+            "screenshot": "Main.png",
+            "fix": "Use a realistic formatted amount or an honest empty state ('Balance unavailable')."
+          },
+          {
+            "level": "component",
+            "element": "Fields 'Title — Describe what this bot does' and 'Description — What this bot is for'",
+            "problem": "Title and Description ask the same question twice. A non-technical founder cannot know what distinguishes them, so they will duplicate text or abandon creation.",
+            "norm": "Each form field must have a distinct, plain-language purpose with an example.",
+            "severity": "P1",
+            "screenshot": "PG-B-NewBot.png",
+            "fix": "Rename to 'Job (e.g. Bookkeeper)' and 'What should it do? (e.g. Chase receipts every Friday)' or merge into one field."
+          },
+          {
+            "level": "page",
+            "element": "New bot sheet: three text fields, no icon/colour, model, capabilities or templates; white ✓ in side strip bottom-left",
+            "problem": "Creation offers no identity (yet every bot elsewhere has a distinct icon/colour), no starting template, and the confirm control is an unlabelled ✓ far from the form in the side strip — and it appears enabled while all fields are empty. Nothing teaches what a bot needs to work.",
+            "norm": "Creation flows need defaults/templates, inline validation, and a labelled primary action adjacent to the form; disabled until valid.",
+            "severity": "P0",
+            "screenshot": "PG-B-NewBot.png",
+            "fix": "Disable ✓ until Name is filled, label it 'Create bot', add icon/colour picker and 2–3 starter templates; keep close as in-sheet 'Cancel'."
+          },
+          {
+            "level": "group",
+            "element": "Members list 'Chief / Inbox agent / Finance agent / Legal agent' with no checkboxes, ticks or counts",
+            "problem": "There is no selection affordance at all: it is impossible to tell whether all four bots are members, none are, or rows are tappable toggles. Creating a group with chosen members — the page's only job — cannot be performed or verified.",
+            "norm": "Multi-select lists require visible check states, a selected count, and ≥44pt rows.",
+            "severity": "P0",
+            "screenshot": "PG-B-NewGroup.png",
+            "fix": "Add trailing check circles with filled selected state, a '3 of 4 selected' header, and require ≥2 members before enabling the confirm button."
+          },
+          {
+            "level": "component",
+            "element": "Header/back affordances across creation flows: side-strip 'X' (New bot, New space), side-strip '<' (New group, Space settings), in-sheet grabber with no title-bar buttons",
+            "problem": "Sheet vs page is signalled only by swapping X for '<' in a remote side strip, disconnected from the surface it closes. First-time users must learn two inconsistent dismissal locations instead of the standard in-surface Cancel/Back.",
+            "norm": "Consistent, co-located navigation: sheets get Cancel/Create in their own header; pages get a standard back chevron with label.",
+            "severity": "P1",
+            "screenshot": "PG-B-NewGroup.png",
+            "fix": "Standardise: in-surface top-left Cancel/Back and top-right labelled Create/Save on every creation surface; retire side-strip dismissal."
+          },
+          {
+            "level": "component",
+            "element": "Error text 'Could not create space' under Name field 'Customer support'",
+            "problem": "The error gives no cause or remedy — duplicate name, network, permissions? — the field itself is not highlighted, and the white ✓ remains enabled, inviting an identical retry. Above the sheet, unexplained dim skeleton bars leak through, reading as a broken background screen.",
+            "norm": "Errors must state cause and next step, mark the offending field, and the background must be a recognisable dimmed real screen.",
+            "severity": "P1",
+            "screenshot": "PG-B-NewSpace.png",
+            "fix": "Use specific copy ('A space named Customer support already exists'), red field outline + icon, disable ✓ until the name changes, and show the real Home dimmed behind the sheet."
+          },
+          {
+            "level": "layout",
+            "element": "Confirm/cancel chrome placement (bottom-left ✓ / X / <) shared across New bot, New group, New space, Space settings",
+            "problem": "All commit actions sit bottom-left in the side strip, far from right-handed thumb reach and visually detached from the forms they commit — the opposite of iOS convention (top-right or bottom-right primary action). Combined with icon-only glyphs, commit vs cancel must be memorised per screen (✓ vs X vs < in the same slot region).",
+            "norm": "Primary actions in consistent, reachable, labelled positions; identical slots must not change meaning between screens.",
+            "severity": "P1",
+            "screenshot": "PG-B-NewBot.png",
+            "fix": "Place a labelled primary button inside each surface (bottom, full-width or trailing) and keep the side strip reserved for app navigation only."
+          }
+        ],
+        "excellent": [
+          "PG-A-Home.png — ACTIVITY/PAGES/PERSONNEL section headers with grouped solid cards give a genuinely scannable hierarchy; content is solid while only the side strip and '+' float, respecting the glass rule.",
+          "PG-A-Home.png — Status is never colour-only: Working/Approve/Done pair a dot with a text label, which is the right accessibility pattern.",
+          "PG-A-HomeNoModel.png — Left panel has exactly one prominent action: the white 'Connect a model' pill inside a single explanatory card, with all other content muted — a model first-run pattern.",
+          "PG-B-Spaces.png — Space menu uses a checkmark on the current 'Personal' space and separates switching (above the divider) from creating/editing (below it), matching iOS menu conventions.",
+          "PG-B-NewSpace.png — The error message is placed directly beneath the Name field it belongs to rather than in a detached banner, the correct location even though the wording needs specifics."
+        ]
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 104,
+      "costUsd": 0.09675,
+      "result": {
+        "verdict": "Praci establishes a sleek, restrained dark-mode aesthetic and a clever left-rail ergonomic model tailored for the 466x678 pt iPhone Duo outer display, but fails critical first-time user usability, information hierarchy, and interaction consistency standards across its onboarding and creation flows.",
+        "findings": [
+          {
+            "level": "group",
+            "element": "Connect a model bottom sheet (provider list and masked input field)",
+            "problem": "The first-run model setup asks a non-technical founder to choose between 'Hosted provider', 'Local server', and 'Subscription sign-in' using generic letter avatars (H, L, S), followed by a completely unlabeled password-masked input field ('••••••••••••') with no placeholder, label, provider selector (e.g., OpenAI, Anthropic), or help link explaining what credential is required.",
+            "norm": "First-run onboarding for non-technical users must use recognizable brand/service names, clear semantic icons, explicit field labels (e.g., 'OpenAI API Key'), and helper links for retrieving credentials.",
+            "severity": "P0",
+            "screenshot": "PG-A-HomeNoModel.png",
+            "fix": "Replace technical jargon with specific provider choices or plain-language options, add an explicit label and placeholder above the input field (e.g., 'API key' with 'Paste sk-... key'), and include a 'Where do I get a key?' helper link."
+          },
+          {
+            "level": "group",
+            "element": "Members list in New group",
+            "problem": "The 'Members' list displays four bots (Chief, Inbox agent, Finance agent, Legal agent) with zero selection affordances—no checkboxes, radio circles, checkmarks, or selected states—making it impossible to tell which bots are selected for the group or that the rows are multi-selectable.",
+            "norm": "Multi-select creation lists require explicit selection controls (e.g., trailing checkmark circles or checkboxes) and a clear distinction between selected and unselected items.",
+            "severity": "P0",
+            "screenshot": "PG-B-NewGroup.png",
+            "fix": "Add a 24pt selection circle/checkmark on the trailing edge of each bot row, display a count in the header (e.g., 'Members (2 selected)'), and list all available bots in the workspace."
+          },
+          {
+            "level": "page",
+            "element": "Main content stack (Inbox, Activity, Pages, Personnel)",
+            "problem": "Stacking Inbox, three Activity rows, and four Pages rows pushes the core 'PERSONNEL' bot list off the bottom of the 678pt screen—only two bots are visible and 'Carta agent' is clipped at the bottom edge—defeating the primary daily goal of picking a bot to chat with.",
+            "norm": "Primary daily destinations on compact displays must fit key navigation groups above the fold or condense secondary sections so core items are not clipped.",
+            "severity": "P1",
+            "screenshot": "PG-A-Home.png",
+            "fix": "Condense 'PAGES' into a compact 2x2 grid or horizontal chip row (or rely on the side-strip pages icon) so the 'PERSONNEL' bot list fits comfortably within the 678pt viewport without clipping."
+          },
+          {
+            "level": "component",
+            "element": "Inbox agent row ('• Approve' status indicator) in ACTIVITY",
+            "problem": "The 'Approve' action on the 'Inbox agent' row is styled identically to passive status labels ('• Working', '• Done') using small muted gray text and a status dot, providing no button affordance or 44pt tap cue for an item requiring founder approval.",
+            "norm": "Actionable approvals must be visually distinct from passive status readouts and provide a clear interactive button affordance with a minimum 44x44pt hit target.",
+            "severity": "P1",
+            "screenshot": "PG-A-Home.png",
+            "fix": "Style 'Approve' as a distinct pill button (or high-contrast interactive chip with chevron) so founders immediately recognize it as a tappable action rather than a passive status label."
+          },
+          {
+            "level": "layout",
+            "element": "Connect a model sheet vs. side-strip controls",
+            "problem": "In the middle board ('Connect a model'), three prominent interactive controls compete simultaneously: the side-strip 'X' button, the still-visible 'Connect a model' pill button on the background card, and the full-width 'Connect' button inside the sheet. Additionally, this sheet places its primary CTA inside the sheet bottom, whereas PG-B-NewBot.png and PG-B-NewSpace.png place their primary CTA as a floating checkmark ('✓') in the bottom-left side strip.",
+            "norm": "Adhere to the brief's 'one prominent action per view' rule and maintain a single, consistent submission pattern across all modal sheets in the app.",
+            "severity": "P1",
+            "screenshot": "PG-A-HomeNoModel.png",
+            "fix": "Dim the background canvas when the sheet is presented to suppress the underlying 'Connect a model' card button, expand the sheet to match the standard content column width, and standardize whether modal sheets submit via an internal button or the bottom-left side-strip checkmark."
+          },
+          {
+            "level": "group",
+            "element": "'After connecting' banner ('Model connected. Create a bot')",
+            "problem": "Immediately after a first-time founder connects a model on a new account, the primary prominent CTA is 'Create a bot' in a non-dismissible top card, even though 'Chief' has just greeted them below ('Hello! How can I help?'). Building a custom bot from scratch is an advanced power-user action, not the logical next step before having a first conversation.",
+            "norm": "First-run post-setup states should guide the user to immediate core value (chatting with their default AI Chief) rather than pushing advanced configuration.",
+            "severity": "P1",
+            "screenshot": "PG-A-HomeNoModel.png",
+            "fix": "Either auto-dismiss the setup card into a transient toast ('Model connected') so the user can tap 'Chief' immediately, or change the primary CTA to 'Chat with Chief' with a dismiss control."
+          },
+          {
+            "level": "group",
+            "element": "Title and Description fields in New bot",
+            "problem": "The 'Title' field uses the placeholder 'Describe what this bot does' while the 'Description' field uses 'What this bot is for'—two nearly identical prompts that confuse role title with system instructions—and both are rendered as single-line 44pt text inputs that cannot accommodate multi-line bot instructions.",
+            "norm": "Form labels and placeholders must have distinct, unambiguous meanings, and prompt/description fields must use multi-line text areas.",
+            "severity": "P1",
+            "screenshot": "PG-B-NewBot.png",
+            "fix": "Clarify the fields into 'Name' ('e.g., Tax Agent'), 'Role / Title' ('e.g., Corporate CPA'), and 'Instructions' (a multi-line text area explaining how the bot should behave)."
+          },
+          {
+            "level": "component",
+            "element": "Customer support input field and 'Could not create space' error",
+            "problem": "In the error state, the user's typed input ('Customer support') is rendered in the exact same low-contrast muted gray (#7E7E7E) as empty placeholder text in PG-B-NewBot.png and PG-B-NewGroup.png (unlike active white input text in PG-B-Spaces.png), the input field lacks an error border, and 'Could not create space' gives zero actionable reason why creation failed.",
+            "norm": "Entered text must use high-contrast foreground color distinct from placeholders, and error states must highlight the invalid field and state the cause and remedy.",
+            "severity": "P1",
+            "screenshot": "PG-B-NewSpace.png",
+            "fix": "Render entered text in bright primary white, add a subtle red border to the input container on error, and specify the cause (e.g., 'A space named Customer support already exists' or 'Connection offline—try again')."
+          },
+          {
+            "level": "group",
+            "element": "Bottom action bar ('✓' primary button and 'Delete space' button) in Space settings",
+            "problem": "The full-width destructive 'Delete space' button is placed along the exact same bottom horizontal axis right next to the bright white primary save checkmark ('✓'), creating high mis-tap risk and visual competition at the bottom of the screen. Furthermore, both a back chevron ('<') and an active save checkmark ('✓') are shown simultaneously when no edits have been made.",
+            "norm": "Destructive actions should be visually separated from primary confirmation controls, and save controls should only be active when form state is dirty.",
+            "severity": "P1",
+            "screenshot": "PG-B-Spaces.png",
+            "fix": "Move 'Delete space' directly below the Name field group (with adequate spacing) rather than pinning it beside the bottom-left primary action slot, and disable or hide the '✓' button until the space name is modified."
+          },
+          {
+            "level": "component",
+            "element": "Finance row ('[N] mo') in PAGES and Mercury agent row ('[AMOUNT]') in PERSONNEL",
+            "problem": "Raw template placeholders '[N] mo' (in PG-A-Home.png and PG-B-Spaces.png) and '[AMOUNT]' (in Main.png) are left unpopulated in the UI, and '[N] mo' lacks the word 'runway' to explain what the duration metric represents to a first-time user.",
+            "norm": "Mockups and production UI must use realistic formatted data values with self-explanatory units (e.g., '14 mo runway', '$420,500').",
+            "severity": "P2",
+            "screenshot": "PG-A-Home.png",
+            "fix": "Replace '[N] mo' with '14 mo runway' and '[AMOUNT]' in Main.png with a formatted currency value like '$248,000'."
+          },
+          {
+            "level": "layout",
+            "element": "Creation flow navigation model (New bot vs. New group vs. New space)",
+            "problem": "Creating a bot (PG-B-NewBot.png) and creating a space (PG-B-NewSpace.png) use modal bottom sheets with a top grabber and a side-strip 'X' close button, whereas creating a group (PG-B-NewGroup.png) uses a full-screen pushed page with a '<' back button and no sheet container. Additionally, in PG-B-NewSpace.png, the half-height bottom sheet sits at the bottom half of the screen while its 'X' close button floats near the top-left beside empty blurred background lines.",
+            "norm": "Equivalent creation flows should use a consistent presentation model (all modal sheets), and close controls should remain visually anchored to the surface they dismiss.",
+            "severity": "P2",
+            "screenshot": "PG-B-NewGroup.png",
+            "fix": "Present 'New group' as a modal sheet matching 'New bot' for consistency, and in 'New bot', 'New group', and 'New space', disable (dim) the bottom-left '✓' button until required fields are filled."
+          },
+          {
+            "level": "page",
+            "element": "Space dropdown menu over Home content",
+            "problem": "When the 'Personal' title menu is open, the underlying Home cards and the bright white bottom-left '+' FAB remain at full opacity, violating the 'one prominent action per view' rule and reducing visual separation between the floating menu and background text.",
+            "norm": "Open menus and popovers over dense dark-mode surfaces should dim background content and suppress background floating action buttons.",
+            "severity": "P2",
+            "screenshot": "PG-B-Spaces.png",
+            "fix": "Apply a 40–50% black scrim over the Home canvas and dim or hide the '+' FAB while the Space switcher menu is open."
+          },
+          {
+            "level": "group",
+            "element": "PERSONNEL list ordering and unread indicators",
+            "problem": "In Main.png (and PG-A-Home.png), bot rows show timestamps out of chronological order (2:59 PM, Yesterday, 2:44 PM, 7:51 AM, 2:06 PM, Yesterday) with no unread badges or visual hierarchy to tell the founder which bots have new messages requiring action versus old read threads. Additionally, third-party agents (Carta, Mercury, Brex) use generic gray letter squares ('C', 'M', 'B') that clash with the expressive geometric bot avatars.",
+            "norm": "Message lists must be ordered deterministically (by recency or pinned priority) and clearly distinguish unread/action-needed threads from read threads.",
+            "severity": "P2",
+            "screenshot": "Main.png",
+            "fix": "Sort the bot list chronologically (or clearly separate pinned bots), add unread indicator dots or bold subtitle text for new messages, and give all agents cohesive avatar styling."
+          },
+          {
+            "level": "layout",
+            "element": "Left alignment of PERSONNEL rows vs. boxed sections (Inbox, ACTIVITY, PAGES)",
+            "problem": "Boxed sections (Inbox, ACTIVITY, PAGES) have container left edges at x=76pt with inner icons starting at x=92pt, whereas unboxed PERSONNEL rows start their avatars at x=88pt while aligning their right-hand timestamps ('2:59 PM', 'Yesterday') to the outer container edge rather than the inner text column.",
+            "norm": "Vertical lists and cards sharing a single column must align consistently to a shared left/right keyline grid.",
+            "severity": "P3",
+            "screenshot": "PG-A-Home.png",
+            "fix": "Either wrap PERSONNEL rows in a matching rounded section container or align the avatars and timestamps to the exact left and right outer keylines of the cards above."
+          },
+          {
+            "level": "component",
+            "element": "'See all' link next to ACTIVITY header",
+            "problem": "The 'See all' action is rendered in small 12pt muted gray text tight against the top of the ACTIVITY card, lacking both visual button affordance and a clear 44pt vertical hit target without overlapping the Inbox card above or Activity row below.",
+            "norm": "Interactive header actions must meet the 44x44pt minimum touch target requirement and provide clear tap affordance.",
+            "severity": "P3",
+            "screenshot": "PG-A-Home.png",
+            "fix": "Increase vertical spacing around the section header or move 'See all' into a 44pt footer row at the bottom of the ACTIVITY card."
+          }
+        ],
+        "excellent": [
+          "Ergonomic adaptation for the 466x678 pt iPhone Duo outer display: placing persistent navigation, back/close controls, and primary confirmation actions in the dedicated left rail below the Dynamic Island keeps the main content canvas unobstructed for one-handed thumb reach.",
+          "Disciplined visual restraint and adherence to the Liquid Glass brief: translucent glass treatments are strictly reserved for floating side-strip controls and menus, while content cards use clean, solid dark surfaces with crisp typography.",
+          "Expressive, memorable custom bot avatars (Chief, Finance agent, Inbox agent, Legal agent) that give AI agents distinct visual personalities at a glance without cluttering the interface."
+        ]
+      }
+    }
+  ]
+}

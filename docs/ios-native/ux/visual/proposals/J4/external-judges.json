@@ -1,0 +1,80 @@
+{
+  "mode": "judge",
+  "images": [],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 16,
+      "costUsd": 0.057112,
+      "result": {
+        "scores": {
+          "A": {
+            "criteria": 3,
+            "simplicity": 5,
+            "consistency": 3,
+            "usability": 3,
+            "visual": 4,
+            "effort": 5
+          },
+          "B": {
+            "criteria": 4,
+            "simplicity": 2,
+            "consistency": 2,
+            "usability": 3,
+            "visual": 2,
+            "effort": 1
+          },
+          "C": {
+            "criteria": 5,
+            "simplicity": 4,
+            "consistency": 5,
+            "usability": 5,
+            "visual": 4,
+            "effort": 3
+          }
+        },
+        "winner": "C",
+        "graft": "From A: use the solid neutral #33322F fill for the demoted composer control instead of C's 12% translucent fill, preserving legibility without introducing a second tint.",
+        "defense": "C is the only proposal meeting all five criteria: it hides the working line while paused, uses the shipped DS-06 avatar colour, defines Stop/typing/Stopping including failure, makes the tint rule depend on thread state rather than scroll position, and provides a genuinely tappable approval cue. Against A: A is cheaper and simpler, but its non-tappable title-capsule dot explicitly fails acceptance (3), relies on colour alone, and is not a recognisable iOS jump pattern; it also leaves Stop's tint ambiguous when another agent runs beside a pending card. Against B: B prevents scrolling away by construction, but its 230pt tray crowds the thread, duplicates subject/status, creates an undefined multi-card queue, requires a major new component, and conflicts with DS-06's in-scroll card model and the floating/glass layer rules. C instead follows the native Messages/Mail off-screen pill pattern, reuses the card's existing 'Needs approval' wording, indicates direction, disappears when the card is sufficiently visible, preserves VoiceOver and 44pt access, adds no glass group, and uses only native SwiftUI visibility and scrolling APIs with a stated fallback."
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 32,
+      "costUsd": 0.026032,
+      "result": {
+        "scores": {
+          "Proposal A": {
+            "criteria": 3,
+            "simplicity": 5,
+            "consistency": 3,
+            "usability": 2,
+            "visual": 4,
+            "effort": 5
+          },
+          "Proposal B": {
+            "criteria": 4,
+            "simplicity": 2,
+            "consistency": 2,
+            "usability": 2,
+            "visual": 2,
+            "effort": 1
+          },
+          "Proposal C": {
+            "criteria": 5,
+            "simplicity": 4,
+            "consistency": 5,
+            "usability": 5,
+            "visual": 5,
+            "effort": 4
+          }
+        },
+        "winner": "Proposal C",
+        "graft": null,
+        "defense": "Proposal C is the only option that satisfies all five acceptance criteria while strictly respecting Praci's platform and design system rules. By keeping the approval card in the scroll and surfacing a solid-fill 'Needs approval' jump pill only when the card scrolls out of view, it solves navigation using a familiar iOS pattern (Messages/Mail) without violating the three-glass-group cap or inventing new copy. Its state-based rule for the single tinted action—keeping the card's Send prominent and demoting the composer's trailing control across both single and group threads—prevents visual flickering during scroll. It also thoroughly specifies the Stopping timeout and failure fallback. Proposal A fails Acceptance Criterion 3 because its 8pt dot on the title capsule is not tappable, remains visible even when the card is on screen, and relies solely on colour to convey meaning. Proposal B over-engineers the solution by docking the card in a persistent bottom tray, which consumes roughly a third of the compact 678pt strip height, duplicates card metadata in the scroll, violates the DS-06 rule that cards live in the message stream, and introduces high layout and queuing complexity when multiple agents request approval."
+      }
+    }
+  ]
+}

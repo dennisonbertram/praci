@@ -1,0 +1,366 @@
+{
+  "mode": "inspect",
+  "images": [
+    "PG-B-SignIn.png",
+    "PG-B-Account.png",
+    "PG-B-Settings.png",
+    "PG-B-Models.png",
+    "PG-B-Voice.png",
+    "PG-B-Integrations.png",
+    "PG-B-Server.png",
+    "PG-B-ForgotPassword.png"
+  ],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 53,
+      "costUsd": 0.134136,
+      "result": {
+        "verdict": "Not shippable for first-time founder Sam: the visual system is clean and consistent, but core recovery and completion paths are broken or ambiguous — Server has no in-sheet confirm/retry, Models reports 'Found 3 models' without listing them, Server integrations errors with a mismatched 'Get credentials' CTA, and Sign out confirmation has no Cancel. SignUp (PG-B-SignUp) was not in the attached set and could not be evaluated.",
+        "findings": [
+          {
+            "level": "component",
+            "element": "'Could not continue' error text below Password",
+            "problem": "Error is vague, unattached to Email, Password, or SSO, gives no cause or recovery action, and appears in the empty-form error state shown. Sam cannot tell whether password, network, or server failed.",
+            "norm": "iOS auth errors must be specific, field-associated where possible, and offer a recovery path.",
+            "severity": "P1",
+            "screenshot": "PG-B-SignIn.png",
+            "fix": "Replace with e.g. 'Incorrect email or password' under the relevant field, or 'No connection — check network and try again' with Retry; add inline icon and VoiceOver announcement."
+          },
+          {
+            "level": "component",
+            "element": "'Forgot password?', 'Sign up', and 'Use a custom server' text links",
+            "problem": "All three are small underlined text with tap areas visibly well under the stated 44pt target; 'Use a custom server' is stranded at the very bottom of an otherwise empty screen, far from the form.",
+            "norm": "44pt minimum targets per brief and Apple HIG; related actions grouped by proximity.",
+            "severity": "P2",
+            "screenshot": "PG-B-SignIn.png",
+            "fix": "Give each link a 44pt hit area, move 'Use a custom server' directly under the Sign in button as a tertiary row, and keep Forgot password adjacent to Password."
+          },
+          {
+            "level": "component",
+            "element": "Email / Password grouped fields with placeholder-only labels",
+            "problem": "Placeholders 'Email' and 'Password' disappear on entry; there is no password visibility toggle, no caps/autofill affordance, and no per-field validation, so Sam loses context and cannot check a mistyped password in an error state.",
+            "norm": "Persistent labels, Show/Hide password, and appropriate keyboard/autofill content types are standard for iOS auth.",
+            "severity": "P2",
+            "screenshot": "PG-B-SignIn.png",
+            "fix": "Add floating/persistent labels, eye toggle on Password, email keyboard + AutoFill content types, and inline validation on blur/submit."
+          },
+          {
+            "level": "group",
+            "element": "'Continue with Example SSO' dark button vs white 'Sign in' button",
+            "problem": "Two equal-size pill buttons compete; the white Sign in reads as the only real action while SSO looks disabled/dimmed, yet for many founders SSO is the faster path. 'Example SSO' is placeholder copy leaking into a production-intent screen.",
+            "norm": "One tinted prominent action per view (brief); secondary SSO should be clearly enabled but subordinate, with real provider naming/branding.",
+            "severity": "P2",
+            "screenshot": "PG-B-SignIn.png",
+            "fix": "Use the real provider name/icon on a clearly enabled secondary button, keep Sign in as the single prominent action, and remove 'Example' placeholder language."
+          },
+          {
+            "level": "component",
+            "element": "'Sign out' red text inside 'Sign out of Praci?' confirmation card (middle state)",
+            "problem": "The confirmation offers only 'Sign out' with no Cancel button; Sam must guess that the floating back '<' dismisses it. The card is also not a standard iOS alert/action sheet, so the pattern is unfamiliar.",
+            "norm": "Destructive confirmations on iOS require an explicit, safe Cancel/default option (HIG alerts).",
+            "severity": "P1",
+            "screenshot": "PG-B-Account.png",
+            "fix": "Use a native confirmation dialog with 'Sign out' (destructive) and 'Cancel' (default, separated), or add an explicit Cancel row to the card."
+          },
+          {
+            "level": "component",
+            "element": "'Delete' button in 'Delete your account?' dialog with empty 'Current password' field",
+            "problem": "'Delete' renders in active red while Current password is empty, implying an irreversible action is tappable before its guard is satisfied; no password requirements, error, or show/hide are shown.",
+            "norm": "Destructive irreversible actions must be disabled until preconditions are met, per HIG and standard account-deletion flows.",
+            "severity": "P0",
+            "screenshot": "PG-B-Account.png",
+            "fix": "Disable Delete (visibly dimmed, non-tappable) until a password is entered, add Show/Hide and an inline error state for wrong password."
+          },
+          {
+            "level": "group",
+            "element": "'Change password' row (in Account) duplicated as 'Change password' row in Settings root",
+            "problem": "The same destination appears under both Account and Settings root, creating two competing paths and implying they might differ; Account itself is reached from the Sam Rivera row in Settings, adding a redundant layer.",
+            "norm": "Single canonical location per setting; avoid duplicate navigation entries in settings IA.",
+            "severity": "P2",
+            "screenshot": "PG-B-Account.png",
+            "fix": "Keep Change password only inside Account; remove it from PG-B-Settings root."
+          },
+          {
+            "level": "component",
+            "element": "'Integrations  [N]' value label on Integrations row",
+            "problem": "Literal placeholder '[N]' ships in the UI instead of a connected count, so Sam cannot tell how many integrations are active and the build reads as unfinished.",
+            "norm": "Settings rows show real summary values; no unresolved template tokens in production UI.",
+            "severity": "P2",
+            "screenshot": "PG-B-Settings.png",
+            "fix": "Render the actual count (e.g. '2') or 'None'; add a lint/check blocking bracketed placeholder tokens."
+          },
+          {
+            "level": "component",
+            "element": "'AI data sharing' row with chevron and no current value",
+            "problem": "A privacy-critical setting shows no state summary (On/Off/what is shared), unlike Models ('Model A') and Voice ('Device') rows; Sam must open it to learn whether his startup data is being shared.",
+            "norm": "Privacy settings surface current state at point of decision (Apple privacy UX guidance); consistent row summaries.",
+            "severity": "P1",
+            "screenshot": "PG-B-Settings.png",
+            "fix": "Add the current value (e.g. 'Off' / 'Anonymous only') and a one-line explanation of what is shared before any toggle."
+          },
+          {
+            "level": "page",
+            "element": "Whole Settings list: Account, Models, Voice, Integrations, AI data sharing, Archived bots, Change password",
+            "problem": "No Support, Privacy/Terms, About/version, or sign-out at root; ordering mixes privacy ('AI data sharing') between feature rows without grouping or section headers, so first-time Sam gets no mental model of the categories.",
+            "norm": "iOS Settings conventions group rows under labeled sections and include About/Support/Legal.",
+            "severity": "P3",
+            "screenshot": "PG-B-Settings.png",
+            "fix": "Group into e.g. 'Workspace' (Models, Voice, Integrations), 'Privacy' (AI data sharing), 'Data' (Archived bots), 'Account', and add About/Support/Legal footer."
+          },
+          {
+            "level": "group",
+            "element": "'Found 3 models.' text under 'Find models' in Add a server",
+            "problem": "Success is announced but the 3 models are never listed or selectable — the connect-a-model journey dead-ends. 'Find models' is styled as a plain list row, not a button, and there is no prominent Add/Connect action anywhere on the page.",
+            "norm": "Task flows must show results and a clear next step; one prominent action per view (brief).",
+            "severity": "P1",
+            "screenshot": "PG-B-Models.png",
+            "fix": "List the 3 found models with selection radio rows and a prominent 'Use selected model' CTA; restyle Find models as a secondary button with loading state."
+          },
+          {
+            "level": "component",
+            "element": "'Now using Model A.' green status line under Thinking row",
+            "problem": "Status is conveyed by green text alone, uses placeholder name 'Model A', and contradicts nothing shows which provider serves Model A; color-blind users get no icon/label differentiation.",
+            "norm": "Status must not rely on color alone (WCAG/HIG); avoid placeholder model names in user-facing copy.",
+            "severity": "P2",
+            "screenshot": "PG-B-Models.png",
+            "fix": "Add a checkmark icon + text like 'Active: Model A · Hosted provider', and use real model names."
+          },
+          {
+            "level": "component",
+            "element": "'Thinking  Default (Medium)' row",
+            "problem": "'Thinking' level is unexplained jargon for a first-time founder — no hint of cost, speed, or quality trade-offs anywhere on the page, yet it materially affects both.",
+            "norm": "Explain consequential, non-obvious settings in plain language at point of choice.",
+            "severity": "P2",
+            "screenshot": "PG-B-Models.png",
+            "fix": "Add a subtitle or info sheet: 'Higher thinking = better answers, slower and costlier' with per-level descriptions in the picker."
+          },
+          {
+            "level": "group",
+            "element": "'Use this device voice' toggle ON together with 'Hosted voice · Connected'",
+            "problem": "Two voice sources are simultaneously active with no indication of precedence; Sam cannot tell which voice will actually speak/transcribe, and 'Paste a replacement key' sits between them with no Save or masked/secure entry.",
+            "norm": "Mutually exclusive sources need a single selector or explicit precedence; API keys use secure fields with explicit save.",
+            "severity": "P1",
+            "screenshot": "PG-B-Voice.png",
+            "fix": "Make device vs hosted a single-choice picker (turning one on disables the other), mask the key field, and add Save/Replace with confirmation feedback."
+          },
+          {
+            "level": "component",
+            "element": "Floating white play (▶) button at bottom of nav column",
+            "problem": "An unlabeled play button floats far from the 'Sounds' section it presumably previews; in every other screen that slot holds back/close/confirm, so its meaning and target sound are guesswork.",
+            "norm": "Floating nav column is reserved for back/close/confirm per brief; controls belong next to the content they affect, with labels.",
+            "severity": "P2",
+            "screenshot": "PG-B-Voice.png",
+            "fix": "Remove it from the nav column; put a labeled 'Preview' play button inside each Sounds row (Call sounds / Waiting sound)."
+          },
+          {
+            "level": "group",
+            "element": "'Mail connector / Calendar connector / Documents connector / Banking connector / Tickets connector' rows with single-letter avatars",
+            "problem": "Generic placeholder names and letter tiles give Sam no real app identity, publisher, permissions, or data-access scope — especially dangerous for 'Banking connector', which asks for trust with zero disclosure before tapping Add.",
+            "norm": "Connector marketplaces show real app name/icon, publisher, and scopes/permissions before connect (OAuth marketplace convention).",
+            "severity": "P1",
+            "screenshot": "PG-B-Integrations.png",
+            "fix": "Use real service names/icons and open a detail sheet listing requested permissions and data use before Add connects anything."
+          },
+          {
+            "level": "component",
+            "element": "'Get credentials' button under 'Could not verify or save these credentials' error (Server integrations)",
+            "problem": "The error says verification/save failed, but the only CTA is 'Get credentials' — there is no Save, Verify, or Retry, so Sam cannot recover; API key is also a plain (unmasked) field and 'Composio / Direct MCP' is unexplained jargon.",
+            "norm": "Error states must offer a matching retry path; secrets use secure entry; explain advanced method choices.",
+            "severity": "P1",
+            "screenshot": "PG-B-Integrations.png",
+            "fix": "Change CTA to 'Verify and save' (prominent) with 'Get credentials' as a secondary help link, mask API key with Show/Hide, and add one-line explanations for Composio vs Direct MCP."
+          },
+          {
+            "level": "page",
+            "element": "Server sheet: address field, 'Could not reach this server', and 'Use default server' button",
+            "problem": "Inside the sheet there is no 'Use this server'/Connect/Retry primary action at all — the only confirm is the white ✓ floating at the bottom of the distant nav column, spatially severed from the field and error, so in the error state Sam's only in-sheet option is to abandon to the default server.",
+            "norm": "Sheets contain their own primary action adjacent to the form (HIG); error recovery must be next to the error.",
+            "severity": "P0",
+            "screenshot": "PG-B-Server.png",
+            "fix": "Add a prominent 'Connect'/'Retry' button inside the sheet under the field (disabled until a valid address), keep 'Use default server' as secondary, and remove reliance on the floating ✓."
+          },
+          {
+            "level": "group",
+            "element": "Floating nav controls across screens: '<' (Models/Voice/Integrations), '×' (Settings, Server integrations, Server), '✓' (Server, Server integrations), '▶' (Voice)",
+            "problem": "The same column unpredictably mixes back, close, confirm, and play with no labels; '×' on pushed-looking screens (Server integrations) vs '<' on Integrations implies different dismissal consequences that are never signaled, and ✓ appears only after leaving the form's visual area.",
+            "norm": "Consistent navigation semantics: '<' for push/back, '×' only for modal sheets, confirm actions labeled and in-context.",
+            "severity": "P1",
+            "screenshot": "PG-B-Integrations.png",
+            "fix": "Standardize: '<' for all pushed screens, '×' only for true sheets, text-labeled Done/Connect inside sheets, and never put media controls in the nav column."
+          },
+          {
+            "level": "component",
+            "element": "'Back to sign in' underlined link duplicated with floating '<' back button (both states)",
+            "problem": "Two controls do the identical back action on both Reset password and Check your email; the text link is also a sub-44pt target, and 'Resend' shows no cooldown/sent confirmation while 'Send link' appears enabled with an empty Email field.",
+            "norm": "One clear back affordance; disable submit until valid input; rate-limit feedback on resend (auth convention).",
+            "severity": "P2",
+            "screenshot": "PG-B-ForgotPassword.png",
+            "fix": "Drop the 'Back to sign in' link (keep '<'), disable Send link until a valid email is entered, and show 'Link sent — resend in 30s' state on Resend."
+          },
+          {
+            "level": "layout",
+            "element": "Content column vs large empty lower half (Sign in, Settings, Models, Account)",
+            "problem": "Every screen fits one screen (good), but most content clusters in the top third with a vast dead void below, pushing key links like 'Use a custom server' to the bottom edge and making pages feel unfinished; no scroll or safe-area anchoring logic is evident.",
+            "norm": "Use vertical space intentionally: anchor primary CTAs predictably, distribute or bottom-pin with purpose, avoid accidental-looking voids.",
+            "severity": "P3",
+            "screenshot": "PG-B-SignIn.png",
+            "fix": "Bottom-pin the primary CTA block above the safe area on form screens, or vertically distribute sections; keep secondary links grouped with the form instead of screen-bottom."
+          }
+        ],
+        "excellent": [
+          "PG-B-ForgotPassword.png — 'Check your email' state names the exact address 'sam@example.com' and pairs one prominent 'Open Mail' with a subordinate 'Resend': textbook recovery hierarchy.",
+          "PG-B-Account.png — 'Delete your account?' dialog clearly enumerates irreversible consequences ('bots, conversations, memories, files, and saved connections. This cannot be undone') and requires Current password before Delete.",
+          "PG-B-Voice.png — 'Use this device voice' subtitle 'On · Free, works offline' communicates cost/offline benefit in-line, exactly the plain-language help missing elsewhere.",
+          "PG-B-Integrations.png — Connected vs Available grouping with 'Added' status dots vs 'Add' pills makes connection state scannable at a glance.",
+          "PG-B-Settings.png / PG-B-Models.png — Consistent solid dark cards, single-column list rhythm, and glass restricted to the floating nav controls, honoring the brief's material rule throughout."
+        ]
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 116,
+      "costUsd": 0.104306,
+      "result": {
+        "verdict": "Praci establishes a sleek, high-contrast dark mode aesthetic well-suited to a compact 466x678 outer display, with clean typographic hierarchy and scannable grouped lists. However, several critical UX, state-logic, and design-rule issues prevent this from being production-ready: literal template placeholder text ('[N]') leaks into Settings, error states are triggered on empty input fields, the Sign Out confirmation popover lacks a Cancel action and violates the 'solid content' rule via background bleed, connected integrations cannot be managed or removed, and primary form submission actions ('✓' and '▷') are spatially detached into the bottom-left navigation rail where users will overlook them.",
+        "findings": [
+          {
+            "level": "component",
+            "element": "Integrations row value '[N]'",
+            "problem": "The Integrations row displays a raw template placeholder string '[N]' instead of an actual count (e.g., '2') or status label.",
+            "norm": "Production UI mockups and interfaces must never expose uninterpolated variable tokens or bracketed placeholders to end users.",
+            "severity": "P0",
+            "screenshot": "PG-B-Settings.png",
+            "fix": "Replace '[N]' with the actual count of connected integrations matching PG-B-Integrations.png ('2' or '2 added')."
+          },
+          {
+            "level": "group",
+            "element": "Sign out confirmation popover ('Sign out of Praci?')",
+            "problem": "First, the popover provides only the destructive 'Sign out' action with no 'Cancel' button and no dimmed backdrop to indicate tap-outside dismissal. Second, the popover background is semi-translucent, allowing the red glow of the covered 'Delete account' button to bleed through, violating the brief's 'glass only on floating nav controls, solid content' rule.",
+            "norm": "Destructive confirmation dialogs on iOS must always provide an explicit 'Cancel' affordance, and content surfaces must obey the system's solid-surface rule.",
+            "severity": "P0",
+            "screenshot": "PG-B-Account.png",
+            "fix": "Use a solid opaque surface for the confirmation dialog, dim the underlying screen consistently with the Delete confirmation state, and include an explicit 'Cancel' button alongside 'Sign out'."
+          },
+          {
+            "level": "group",
+            "element": "'Add a server' card and 'Found 3 models.' state",
+            "problem": "After 'Find models' succeeds and displays 'Found 3 models.' in the footer, there is no UI to view which models were found, nor any 'Add' or 'Save' button to actually save the server. Additionally, the URL input shows 'http://127.0.0.1:8000/v1' styled as muted placeholder text that duplicates the 'Local server' already connected above.",
+            "norm": "A multi-step discovery flow ('Find models') must reveal the discovered items or provide a clear primary commit action ('Add server') once discovery succeeds.",
+            "severity": "P0",
+            "screenshot": "PG-B-Models.png",
+            "fix": "Display the discovered models in a selectable list or summary row and provide a clear primary action button ('Add server') to complete adding the provider. Use a realistic LAN/remote placeholder URL rather than '127.0.0.1' (which refers to the iPhone's own loopback interface)."
+          },
+          {
+            "level": "group",
+            "element": "'Connected' section ('Mail connector', 'Calendar connector')",
+            "problem": "Connected integrations display a static grey '• Added' label with no disclosure chevron, button, or interaction affordance to configure, re-authenticate, or disconnect them. Furthermore, the section header says 'Connected' while the row status says 'Added' with an inactive-looking grey dot.",
+            "norm": "Any list of connected third-party integrations must allow users to inspect, manage, or disconnect an existing connection, and status terminology should be consistent.",
+            "severity": "P1",
+            "screenshot": "PG-B-Integrations.png",
+            "fix": "Make connected connector rows tappable with a trailing chevron ('>') leading to a detail/disconnect sheet, or provide a manage/remove action. Unify terminology to 'Connected' with a green status dot."
+          },
+          {
+            "level": "page",
+            "element": "Voice active state ('Use this device voice' vs 'Hosted voice')",
+            "problem": "'Use this device voice' is toggled ON ('On · Free, works offline'), while 'Hosted voice' directly below it simultaneously reads 'Connected · Speak + transcribe' with no indication that it is inactive or overridden. Users cannot tell which voice engine is actually speaking.",
+            "norm": "Mutually exclusive or hierarchical audio/voice routing options must clearly indicate which provider is currently active versus merely configured as a fallback.",
+            "severity": "P1",
+            "screenshot": "PG-B-Voice.png",
+            "fix": "If device voice overrides Hosted voice, change the Hosted voice subtitle to 'Connected · Inactive while Device Voice is on' (or use a single radio/picker group for active voice output). Also add a submit/save affordance when pasting into 'Paste a replacement key'."
+          },
+          {
+            "level": "layout",
+            "element": "Bottom-left floating Play ('▷') button in nav column",
+            "problem": "A prominent tinted play button ('▷') sits isolated in the bottom-left navigation rail with no label or proximity to indicate whether it previews the Device voice, Hosted voice, Call sounds, or Waiting sound.",
+            "norm": "Audio preview controls should be contextually bound to the specific voice or sound setting they preview, or clearly labeled ('Preview voice').",
+            "severity": "P1",
+            "screenshot": "PG-B-Voice.png",
+            "fix": "Move the voice preview action inline into the active voice card (e.g., a 'Preview' button with play icon) or add a clear label so the user knows what audio will play."
+          },
+          {
+            "level": "layout",
+            "element": "Bottom-left confirm ('✓') button vs inline action buttons in 'Server integrations' and 'Server'",
+            "problem": "In 'Server integrations' (PG-B-Integrations.png) and 'Server' (PG-B-Server.png), the primary form submission button is an unlabelled '✓' circle isolated at the bottom-left of the outer nav rail, while prominent full-width buttons directly below the text inputs are secondary actions ('Get credentials' and 'Use default server'). Users reading top-to-bottom will mistake the full-width inline button for the form submit action or miss the '✓' button entirely.",
+            "norm": "Primary form submission actions should follow the user's vertical reading flow below the inputs (like 'Sign in' and 'Send link' do on other screens), rather than being detached into an external corner rail while secondary actions occupy the primary inline slot.",
+            "severity": "P1",
+            "screenshot": "PG-B-Integrations.png",
+            "fix": "Place the primary 'Save' / 'Connect' action directly below the form fields in the main content column, and style 'Get credentials' (with an external link icon '↗') and 'Use default server' as secondary actions."
+          },
+          {
+            "level": "group",
+            "element": "Empty inputs in error states ('PG-B-SignIn.png' and 'PG-B-Integrations.png')",
+            "problem": "In PG-B-SignIn.png ('Could not continue') and PG-B-Integrations.png ('Could not verify or save these credentials'), post-submission error messages are displayed while the Email/Password and Project ID/API key fields are completely empty. Additionally, 'Could not continue' is too vague to help the user recover.",
+            "norm": "Error states must reflect realistic populated input values when demonstrating failed verification, and error copy must state what went wrong and how to fix it (e.g., 'Incorrect email or password').",
+            "severity": "P1",
+            "screenshot": "PG-B-SignIn.png",
+            "fix": "Show populated input values in validation failure states, disable submission when required fields are empty, and replace 'Could not continue' with specific error messaging (e.g., 'Incorrect email or password' or 'SSO sign-in was canceled')."
+          },
+          {
+            "level": "page",
+            "element": "'Change password' row in Settings root vs Account screen",
+            "problem": "'Change password' appears both at the bottom of the root Settings screen (grouped inside the same card as 'Archived bots') and inside the 'Account' screen. Grouping password management with 'Archived bots' breaks categorical logic and duplicates navigation paths.",
+            "norm": "Settings information architecture should group related items logically and avoid duplicating account-security actions at both the root level and inside Account.",
+            "severity": "P2",
+            "screenshot": "PG-B-Settings.png",
+            "fix": "Remove 'Change password' from the bottom card of PG-B-Settings.png so 'Archived bots' stands in its own bot-management group, keeping 'Change password' exclusively inside 'Account'."
+          },
+          {
+            "level": "component",
+            "element": "'Add' pill buttons and underlined text links ('Forgot password?', 'Sign up', 'Use a custom server', 'Back to sign in', 'Show more')",
+            "problem": "The 'Add' pill buttons in PG-B-Integrations.png (~28pt tall) and the inline underlined text links across Sign In, Forgot Password, and Integrations have compact visual and vertical hit heights below 44pt, and use web-style text underlines rather than native SwiftUI button treatments.",
+            "norm": "iOS Human Interface Guidelines and the project's design rules mandate a minimum 44x44pt touch target for all interactive controls and native button styling instead of HTML-style underlined links.",
+            "severity": "P2",
+            "screenshot": "PG-B-Integrations.png",
+            "fix": "Increase the hit target height of 'Add' buttons and secondary links to at least 44pt, and replace web-style underlines with standard SwiftUI plain/tinted button styles."
+          },
+          {
+            "level": "page",
+            "element": "Redundant '<' back button and 'Back to sign in' link",
+            "problem": "Both states of PG-B-ForgotPassword.png display a circular '<' back button in the left navigation column AND a 'Back to sign in' link at the bottom of the form, creating two competing back-navigation affordances on a small screen.",
+            "norm": "A view should provide a single clear back-navigation mechanism rather than duplicating back navigation in both the navigation rail and body content.",
+            "severity": "P2",
+            "screenshot": "PG-B-ForgotPassword.png",
+            "fix": "Remove the inline 'Back to sign in' link on 'Reset password' (relying on the left-rail '<' button), and on 'Check your email' use a single clear navigation action back to Sign In."
+          },
+          {
+            "level": "group",
+            "element": "'Delete your account?' modal password field and 'Delete' button state",
+            "problem": "The destructive 'Delete' button in the alert appears active even though the 'Current password' field is empty. Also, if Sam signed in via SSO ('Continue with Example SSO'), requiring a 'Current password' blocks account deletion.",
+            "norm": "Destructive actions gated by a confirmation input must appear disabled until the required input is entered, and SSO-authenticated accounts should re-verify via SSO or confirmation text rather than a password.",
+            "severity": "P2",
+            "screenshot": "PG-B-Account.png",
+            "fix": "Dim/disable the 'Delete' action until 'Current password' is non-empty, or show a populated masked password in the mockup."
+          },
+          {
+            "level": "component",
+            "element": "'Now using Model A.' status text and 'Speech model: Optional' label",
+            "problem": "In PG-B-Models.png, the bright green footer 'Now using Model A.' repeats the exact value already shown two rows above ('Model: Model A'). In PG-B-Voice.png, the 'Speech model' row displays 'Optional' as its current value instead of the active/default model name (e.g., 'Default' or 'Auto').",
+            "norm": "Picker rows should display the currently active selection (e.g., 'Default'), and persistent section footers should explain behavior rather than repeating the selected value verbatim.",
+            "severity": "P3",
+            "screenshot": "PG-B-Models.png",
+            "fix": "Remove the redundant 'Now using Model A.' footer (or show it only transiently when switching models), and change the 'Speech model' value in PG-B-Voice.png from 'Optional' to 'Default'."
+          },
+          {
+            "level": "layout",
+            "element": "Navigation transition mismatch between 'Advanced >' and 'Server integrations'",
+            "problem": "In PG-B-Integrations.png, 'Advanced >' uses a push disclosure chevron ('>'), which sets the expectation of a pushed drill-down view with a '<' back button. However, 'Server integrations' displays a modal close ('X') button without a sheet grabber.",
+            "norm": "iOS navigation affordances should match the transition style: push chevrons ('>') pair with '<' back buttons, while modal sheets pair with a sheet grabber and 'X' close button.",
+            "severity": "P3",
+            "screenshot": "PG-B-Integrations.png",
+            "fix": "Use a '<' back button on 'Server integrations' to match the 'Advanced >' push chevron (or present 'Server integrations' as a sheet like PG-B-Server.png)."
+          }
+        ],
+        "excellent": [
+          "High-contrast dark mode palette and crisp typographic hierarchy make every screen immediately scannable despite the compact 466x678 outer-display viewport.",
+          "The left-hand floating navigation rail cleanly consolidates the camera/sensor cutout, clock ('9:41'), and glass back/dismiss controls without consuming vertical header height.",
+          "The 'Delete your account?' alert in PG-B-Account.png uses exemplary, transparent microcopy that explicitly enumerates every data type that will be permanently erased ('account, bots, conversations, memories, files, and saved connections').",
+          "Settings overview rows in PG-B-Settings.png ('Models: Model A', 'Voice: Device') surface current configuration states right at the root level, reducing unnecessary drill-downs.",
+          "The two-step password recovery flow in PG-B-ForgotPassword.png ('Reset password' -> 'Check your email' with a direct 'Open Mail' primary CTA) is focused and friction-free."
+        ]
+      }
+    }
+  ]
+}

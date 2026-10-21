@@ -11,7 +11,9 @@
   "board": "PG-B-SignIn",
   "phase_issue": "#414",
   "quick_fix": false,
-  "suggested_fix": "Draw sign-up mode on PG-B-SignIn: Name above Email, button 'Sign up', switch link back. Decide launch mode (sign-in vs sign-up)."
+  "suggested_fix": "Draw sign-up mode on PG-B-SignIn: Name above Email, button 'Sign up', switch link back. Decide launch mode (sign-in vs sign-up).",
+  "status": "resolved",
+  "note": "PG-B-SignUp draws Name, Email, Password, Create account, Sign in link. Launch mode still undecided (see R1-006)."
  },
  {
   "id": "F-first-run-home-002",
@@ -25,7 +27,9 @@
   "board": "PG-B-SignIn",
   "phase_issue": "#414",
   "quick_fix": false,
-  "suggested_fix": "Draw forgot mode and the Check your email state, including how the user returns from Mail/Safari and how to resend."
+  "suggested_fix": "Draw forgot mode and the Check your email state, including how the user returns from Mail/Safari and how to resend.",
+  "status": "resolved",
+  "note": "PG-B-ForgotPassword draws Reset password, Check your email, Open Mail, Resend, Back to sign in. Reset-link return is a new finding (R1-008)."
  },
  {
   "id": "F-first-run-home-003",
@@ -39,7 +43,9 @@
   "board": "PG-B-SignIn",
   "phase_issue": "#414",
   "quick_fix": false,
-  "suggested_fix": "Add two boards: loading and failed options; keep 'Use a custom server' reachable and label it."
+  "suggested_fix": "Add two boards: loading and failed options; keep 'Use a custom server' reachable and label it.",
+  "status": "open",
+  "note": "No board for capabilities Loading or 'Could not load sign-in options' with Retry. PG-B-SignIn draws only the loaded state."
  },
  {
   "id": "F-first-run-home-004",
@@ -53,7 +59,9 @@
   "board": "PG-B-Settings",
   "phase_issue": "#414",
   "quick_fix": false,
-  "suggested_fix": "Design the Account page, the password-confirm delete alert and the SSO re-auth/email-code variant before phase 2/9."
+  "suggested_fix": "Design the Account page, the password-confirm delete alert and the SSO re-auth/email-code variant before phase 2/9.",
+  "status": "resolved",
+  "note": "PG-B-Account draws Account, Sign out confirm and Delete confirmation with password. SSO and emailed-code variants remain (R1-001)."
  },
  {
   "id": "F-first-run-home-005",
@@ -67,7 +75,9 @@
   "board": "PG-B-SignIn",
   "phase_issue": "#414",
   "quick_fix": false,
-  "suggested_fix": "Add a one-line 'Your session ended. Sign in again.' state (shown only after a forced sign-out) and decide the outbox rule."
+  "suggested_fix": "Add a one-line 'Your session ended. Sign in again.' state (shown only after a forced sign-out) and decide the outbox rule.",
+  "status": "open",
+  "note": "PG-B-SignIn has no 'session ended' line; no board for forced sign-out or outbox fate."
  },
  {
   "id": "F-first-run-home-006",
@@ -81,7 +91,9 @@
   "board": "PG-B-SignIn, PG-B-Server, PG-B-NewSpace, PG-B-BotSettings",
   "phase_issue": "#414",
   "quick_fix": false,
-  "suggested_fix": "Draw each board's clean state as the default and move error lines to a labeled error variant (or mark them clearly as the error state)."
+  "suggested_fix": "Draw each board's clean state as the default and move error lines to a labeled error variant (or mark them clearly as the error state).",
+  "status": "open",
+  "note": "PG-B-SignIn still shows 'Could not continue' in the default state; PG-B-Server shows 'Could not reach this server'; PG-B-NewSpace shows 'Could not create space'; PG-B-BotSettings shows 'Could not save bot'."
  },
  {
   "id": "F-first-run-home-007",
@@ -95,7 +107,9 @@
   "board": "PG-B-SignIn, PG-B-Server",
   "phase_issue": "#414",
   "quick_fix": true,
-  "suggested_fix": "Drop the product name from the title ('Sign in') or the wordmark; settle Rakazo vs Praci and the 'this/that server' wording."
+  "suggested_fix": "Drop the product name from the title ('Sign in') or the wordmark; settle Rakazo vs Praci and the 'this/that server' wording.",
+  "status": "resolved",
+  "note": "Wordmark is now a small 'Praci' label above 'Sign in'; product name matches. A leftover host 'rakazo.example.net' is a new low finding (R1-005)."
  },
  {
   "id": "F-first-run-home-008",
@@ -109,7 +123,9 @@
   "board": "PG-B-Server",
   "phase_issue": "#414",
   "quick_fix": true,
-  "suggested_fix": "Reduce the Server sheet to the New space height or add the missing validation/http warning lines that would fill it."
+  "suggested_fix": "Reduce the Server sheet to the New space height or add the missing validation/http warning lines that would fill it.",
+  "status": "open",
+  "note": "PG-B-Server sheet still starts at y=170 of 678 (about 75% tall) with a large empty lower half; PG-B-NewSpace starts near y=300."
  },
  {
   "id": "F-first-run-home-009",
@@ -123,7 +139,9 @@
   "board": "PG-B-Server",
   "phase_issue": "#414",
   "quick_fix": false,
-  "suggested_fix": "Add a Server board variant sheet listing each state; add a confirm alert for a signed-in server change."
+  "suggested_fix": "Add a Server board variant sheet listing each state; add a confirm alert for a signed-in server change.",
+  "status": "open",
+  "note": "PG-B-Server still draws only the unreachable error; no invalid URL, spinner, http warning or signed-in change confirmation."
  },
  {
   "id": "F-first-run-home-010",
@@ -137,7 +155,9 @@
   "board": "PG-B-Server, PG-B-NewBot, PG-B-NewGroup, PG-B-NewSpace, PG-B-BotSettings",
   "phase_issue": "#415",
   "quick_fix": false,
-  "suggested_fix": "Specify accessibilityLabel for each checkmark and draw disabled and pending states (DS-02 icon button states)."
+  "suggested_fix": "Specify accessibilityLabel for each checkmark and draw disabled and pending states (DS-02 icon button states).",
+  "status": "open",
+  "note": "PG-B-Server, NewBot, NewSpace, BotSettings, NewGroup, GroupSettings still use icon-only checkmark; no Create disabled/pending state drawn."
  },
  {
   "id": "F-first-run-home-011",
@@ -151,7 +171,9 @@
   "board": "PG-B-SignIn, PG-B-Server",
   "phase_issue": "#419",
   "quick_fix": false,
-  "suggested_fix": "Draw inner (380pt card on 2/3) and half-folded (card left, sheet right) boards for Sign in and Server."
+  "suggested_fix": "Draw inner (380pt card on 2/3) and half-folded (card left, sheet right) boards for Sign in and Server.",
+  "status": "open",
+  "note": "No inner-display or half-folded Sign in or Server board; Inner and Split show Inbox/Home only."
  },
  {
   "id": "F-first-run-home-012",
@@ -165,7 +187,9 @@
   "board": "PG-B-SignIn",
   "phase_issue": "#414",
   "quick_fix": false,
-  "suggested_fix": "Design the post-SSO setup screen and cancel/failure copy; truncate rule for long provider names."
+  "suggested_fix": "Design the post-SSO setup screen and cancel/failure copy; truncate rule for long provider names.",
+  "status": "open",
+  "note": "No board for first-time SSO setup, SSO cancel or failure, or long provider name."
  },
  {
   "id": "F-first-run-home-013",
@@ -179,7 +203,9 @@
   "board": "PG-A-Home",
   "phase_issue": "#415",
   "quick_fix": false,
-  "suggested_fix": "Add a 393 pt Home board (horizontal toolbar) and cover New, sheets and forms at that width."
+  "suggested_fix": "Add a 393 pt Home board (horizontal toolbar) and cover New, sheets and forms at that width.",
+  "status": "resolved",
+  "note": "PH-Home (393x852) now draws toolbar (account, search, New), title, Pages and Activity. Remaining standard-iPhone gaps are covered by new findings."
  },
  {
   "id": "F-first-run-home-014",
@@ -193,7 +219,9 @@
   "board": "PG-A-Home, Split",
   "phase_issue": "#415",
   "quick_fix": false,
-  "suggested_fix": "Decide the pattern (header menu vs inline groups), then draw it on Home, the Duo sidebar and the post-create state."
+  "suggested_fix": "Decide the pattern (header menu vs inline groups), then draw it on Home, the Duo sidebar and the post-create state.",
+  "status": "resolved",
+  "note": "Title menu 'Personal v' with spaces, New space and Space settings is drawn on PG-B-Spaces and PH-Spaces; PH-Home shows the current space name. Inner display switcher still missing (F-023)."
  },
  {
   "id": "F-first-run-home-015",
@@ -207,7 +235,9 @@
   "board": "PG-A-Home",
   "phase_issue": "#415",
   "quick_fix": false,
-  "suggested_fix": "Draw loading, error, stale-snapshot and offline variants of Home; pick the retry gesture (pull to refresh)."
+  "suggested_fix": "Draw loading, error, stale-snapshot and offline variants of Home; pick the retry gesture (pull to refresh).",
+  "status": "open",
+  "note": "Home loading, 'Could not load bots' plus Try again, stale snapshot marker and the empty-Home copy are still rule-card text only; no board."
  },
  {
   "id": "F-first-run-home-016",
@@ -221,7 +251,9 @@
   "board": "PG-A-Home",
   "phase_issue": "#415",
   "quick_fix": false,
-  "suggested_fix": "Add a single Home prompt/empty-state variant with a 'Connect a model' action that opens Models and returns."
+  "suggested_fix": "Add a single Home prompt/empty-state variant with a 'Connect a model' action that opens Models and returns.",
+  "status": "resolved",
+  "note": "PG-A-HomeNoModel draws the Connect a model card, the sheet, and the Model connected state. Minor issues in R1-013."
  },
  {
   "id": "F-first-run-home-017",
@@ -235,7 +267,9 @@
   "board": "PG-A-Home",
   "phase_issue": "#415",
   "quick_fix": false,
-  "suggested_fix": "Draw the empty Home with one action button; reword to match the visible control."
+  "suggested_fix": "Draw the empty Home with one action button; reword to match the visible control.",
+  "status": "open",
+  "note": "Rule card still says 'Tap + to create a bot'; no zero-bot Home board; HomeNoModel keeps Chief so true empty Home is undrawn."
  },
  {
   "id": "F-first-run-home-018",
@@ -249,7 +283,9 @@
   "board": "PG-A-Home",
   "phase_issue": "#415",
   "quick_fix": false,
-  "suggested_fix": "Draw the full Activity list and its empty state."
+  "suggested_fix": "Draw the full Activity list and its empty state.",
+  "status": "open",
+  "note": "Activity 'See all' and the bell dot still have no destination board."
  },
  {
   "id": "F-first-run-home-019",
@@ -263,7 +299,9 @@
   "board": "PG-A-Home, PG-B-NewGroup, PG-B-GroupSettings, PG-B-BotSettings",
   "phase_issue": "#412",
   "quick_fix": false,
-  "suggested_fix": "Fix one bot to shape+color map (README: shipped shapes) and re-render the avatars on those boards."
+  "suggested_fix": "Fix one bot to shape+color map (README: shipped shapes) and re-render the avatars on those boards.",
+  "status": "open",
+  "note": "Avatars now agree on Home, NewGroup, GroupSettings (Inbox blue pill, Finance orange triangle, Legal purple drop). PG-B-BotSettings for Inbox agent selects the teal swatch, which is Chief's color, and shows no avatar shape."
  },
  {
   "id": "F-first-run-home-020",
@@ -277,7 +315,9 @@
   "board": "PG-B-NewGroup, PG-A-Home",
   "phase_issue": "#415",
   "quick_fix": true,
-  "suggested_fix": "Show two members ticked on PG-B-NewGroup; add a group row to Personnel."
+  "suggested_fix": "Show two members ticked on PG-B-NewGroup; add a group row to Personnel.",
+  "status": "open",
+  "note": "PG-B-NewGroup still draws no ticked members and no empty/pending state; group rows in Personnel not drawn."
  },
  {
   "id": "F-first-run-home-021",
@@ -291,7 +331,9 @@
   "board": "PG-A-Thread, PG-B-Settings",
   "phase_issue": "#415",
   "quick_fix": false,
-  "suggested_fix": "Draw the thread More menu with its items and the alerts using the DS-04 patterns."
+  "suggested_fix": "Draw the thread More menu with its items and the alerts using the DS-04 patterns.",
+  "status": "open",
+  "note": "PG-A-Thread and PH-Thread have no entry to bot settings, archive, restore or delete; only Settings has an 'Archived bots' row. GroupSettings Delete group has no confirmation board."
  },
  {
   "id": "F-first-run-home-022",
@@ -305,7 +347,9 @@
   "board": "PG-A-Home",
   "phase_issue": "#415",
   "quick_fix": false,
-  "suggested_fix": "Add a Home variant with Pinned and a section and the organize sheet; show unread on rows."
+  "suggested_fix": "Add a Home variant with Pinned and a section and the organize sheet; show unread on rows.",
+  "status": "open",
+  "note": "Pinned/section headings, organize sheet and unread state are not drawn on Home, PH-Home or Split."
  },
  {
   "id": "F-first-run-home-023",
@@ -319,7 +363,9 @@
   "board": "Split",
   "phase_issue": "#419",
   "quick_fix": false,
-  "suggested_fix": "Draw the inner Home with Activity and last thread in the detail pane; resolve duplicate Finance/Legal entries."
+  "suggested_fix": "Draw the inner Home with Activity and last thread in the detail pane; resolve duplicate Finance/Legal entries.",
+  "status": "open",
+  "note": "Split sidebar has Inbox, pages, Personnel and Connect apps but no Activity and no space control; no Home detail pane."
  },
  {
   "id": "F-first-run-home-024",
@@ -333,7 +379,9 @@
   "board": "PG-B-BotSettings",
   "phase_issue": "#415",
   "quick_fix": true,
-  "suggested_fix": "Retitle to 'Bot settings'; record the landing decision."
+  "suggested_fix": "Retitle to 'Bot settings'; record the landing decision.",
+  "status": "resolved",
+  "note": "Page now titled 'Bot settings' on PG-B-BotSettings. Landing after Create is a rule decision, noted in R1-004."
  },
  {
   "id": "F-first-run-home-025",
@@ -347,7 +395,9 @@
   "board": "PG-A-Home",
   "phase_issue": "#415",
   "quick_fix": true,
-  "suggested_fix": "Label the count or remove it."
+  "suggested_fix": "Label the count or remove it.",
+  "status": "open",
+  "note": "Inbox row on PG-A-Home, PH-Home and Split still shows '42' next to '3 need reply'."
  },
  {
   "id": "F-first-run-home-026",
@@ -361,7 +411,9 @@
   "board": "PG-B-SignIn",
   "phase_issue": "#414",
   "quick_fix": false,
-  "suggested_fix": "Raise link size and tap area to 44 pt and check contrast."
+  "suggested_fix": "Raise link size and tap area to 44 pt and check contrast.",
+  "status": "open",
+  "note": "PG-B-SignIn and SignUp links ('Forgot password?', 'Sign up', 'Use a custom server') are small underlined grey text, under 44 pt tall."
  },
  {
   "id": "F-first-run-home-027",
@@ -375,7 +427,9 @@
   "board": "PG-A-Rules, PG-B-Rules",
   "phase_issue": "#415",
   "quick_fix": true,
-  "suggested_fix": "Use 'Try again' in the Sign in rule card."
+  "suggested_fix": "Use 'Try again' in the Sign in rule card.",
+  "status": "open",
+  "note": "Home rule card says 'Try again'; PG-A-ThreadStates and sign-in rule use 'Retry'."
  },
  {
   "id": "F-first-run-home-028",
@@ -389,6 +443,168 @@
   "board": "PG-A-Home, Main",
   "phase_issue": "#415",
   "quick_fix": false,
-  "suggested_fix": "Note in the rule card that these stand for masked figures."
+  "suggested_fix": "Note in the rule card that these stand for masked figures.",
+  "status": "open",
+  "note": "[N] still appears on Finance row and Integrations; hide-amounts rendering unspecified."
+ },
+ {
+  "id": "F-first-run-home-R1-001",
+  "story_id": "STORY-007",
+  "severity": "medium",
+  "category": "error-handling",
+  "criterion": "error-handling",
+  "description": "Delete confirmation draws only the password variant. SSO users and emailed-code users have no board; wrong-password error, pending state and the screen after deletion are not drawn.",
+  "expected": "Each step's screen is drawn with label, control and state.",
+  "actual": "Delete confirmation draws only the password variant. SSO users and emailed-code users have no board; wrong-password error, pending state and the screen after deletion are not drawn.",
+  "board": "PG-B-Account",
+  "phase_issue": "#414",
+  "quick_fix": false,
+  "suggested_fix": "Add variants: SSO re-auth, emailed code, wrong password, Deleting, then landing on Sign in.",
+  "status": "open",
+  "note": "New in round 1"
+ },
+ {
+  "id": "F-first-run-home-R1-002",
+  "story_id": "STORY-007",
+  "severity": "low",
+  "category": "consistency",
+  "criterion": "consistency",
+  "description": "'Change password' appears on Settings and again on Account. Settings has no Sign out or Server row, so the profile row labeled 'Account' is the only path to Sign out.",
+  "expected": "Each step's screen is drawn with label, control and state.",
+  "actual": "'Change password' appears on Settings and again on Account. Settings has no Sign out or Server row, so the profile row labeled 'Account' is the only path to Sign out.",
+  "board": "PG-B-Settings, PG-B-Account",
+  "phase_issue": "#414",
+  "quick_fix": true,
+  "suggested_fix": "Keep Change password only on Account; show Sign out reachable from Settings profile row.",
+  "status": "open",
+  "note": "New in round 1"
+ },
+ {
+  "id": "F-first-run-home-R1-003",
+  "story_id": "STORY-011",
+  "severity": "medium",
+  "category": "consistency",
+  "criterion": "consistency",
+  "description": "PH-Home puts Pages above Activity and lists Artifacts as a Pages row with no bell; PG-A-Home and PG-B-Spaces put Activity above Pages and Artifacts in the side strip. Same Home, two orders.",
+  "expected": "Each step's screen is drawn with label, control and state.",
+  "actual": "PH-Home puts Pages above Activity and lists Artifacts as a Pages row with no bell; PG-A-Home and PG-B-Spaces put Activity above Pages and Artifacts in the side strip. Same Home, two orders.",
+  "board": "PH-Home, PG-A-Home, PG-B-Spaces",
+  "phase_issue": "#415",
+  "quick_fix": false,
+  "suggested_fix": "Pick one section order (Activity first, since it holds what needs me) and use it on both.",
+  "status": "open",
+  "note": "New in round 1"
+ },
+ {
+  "id": "F-first-run-home-R1-004",
+  "story_id": "STORY-012, STORY-014, STORY-015",
+  "severity": "medium",
+  "category": "happy-path",
+  "criterion": "happy-path",
+  "description": "The New menu (New bot, New group, New space) is not drawn on any Home board; steps 1 to 2 of creating a bot, group or space have no screen. Landing after Create (thread or Home) is undecided.",
+  "expected": "Each step's screen is drawn with label, control and state.",
+  "actual": "The New menu (New bot, New group, New space) is not drawn on any Home board; steps 1 to 2 of creating a bot, group or space have no screen. Landing after Create (thread or Home) is undecided.",
+  "board": "PG-A-Home, PH-Home",
+  "phase_issue": "#415",
+  "quick_fix": false,
+  "suggested_fix": "Draw the open menu on PH-Home and PG-A-Home; state where each Create lands.",
+  "status": "open",
+  "note": "New in round 1"
+ },
+ {
+  "id": "F-first-run-home-R1-005",
+  "story_id": "STORY-002",
+  "severity": "low",
+  "category": "consistency",
+  "criterion": "consistency",
+  "description": "Server field example shows 'https://rakazo.example.net'.",
+  "expected": "Each step's screen is drawn with label, control and state.",
+  "actual": "Server field example shows 'https://rakazo.example.net'.",
+  "board": "PG-B-Server",
+  "phase_issue": "#414",
+  "quick_fix": true,
+  "suggested_fix": "Use a Praci example host such as praci.example.net.",
+  "status": "open",
+  "note": "New in round 1"
+ },
+ {
+  "id": "F-first-run-home-R1-006",
+  "story_id": "STORY-001, STORY-004",
+  "severity": "medium",
+  "category": "happy-path",
+  "criterion": "happy-path",
+  "description": "A first-run user has no account, yet the root screen is Sign in and Sign up is a small link; Expo opens sign-up. Both modes drawn, launch mode undecided.",
+  "expected": "Each step's screen is drawn with label, control and state.",
+  "actual": "A first-run user has no account, yet the root screen is Sign in and Sign up is a small link; Expo opens sign-up. Both modes drawn, launch mode undecided.",
+  "board": "PG-B-SignIn, PG-B-SignUp",
+  "phase_issue": "#414",
+  "quick_fix": false,
+  "suggested_fix": "Decide and document the launch mode; for first launch show Sign up or a two-choice start.",
+  "status": "open",
+  "note": "New in round 1"
+ },
+ {
+  "id": "F-first-run-home-R1-007",
+  "story_id": "STORY-002",
+  "severity": "low",
+  "category": "happy-path",
+  "criterion": "happy-path",
+  "description": "Rule says the Server sheet opens 'from Sign in or Settings' but Settings has no Server row.",
+  "expected": "Each step's screen is drawn with label, control and state.",
+  "actual": "Rule says the Server sheet opens 'from Sign in or Settings' but Settings has no Server row.",
+  "board": "PG-B-Settings",
+  "phase_issue": "#414",
+  "quick_fix": false,
+  "suggested_fix": "Add Server row to Settings (or change rule).",
+  "status": "open",
+  "note": "New in round 1"
+ },
+ {
+  "id": "F-first-run-home-R1-008",
+  "story_id": "STORY-004, STORY-005",
+  "severity": "medium",
+  "category": "happy-path",
+  "criterion": "happy-path",
+  "description": "Link tapped in Mail returns to the app with no drawn 'Set new password' screen; email-verification after sign-up reuses 'We sent a link' copy with no verification variant; Resend has no confirmation or cooldown state.",
+  "expected": "Each step's screen is drawn with label, control and state.",
+  "actual": "Link tapped in Mail returns to the app with no drawn 'Set new password' screen; email-verification after sign-up reuses 'We sent a link' copy with no verification variant; Resend has no confirmation or cooldown state.",
+  "board": "PG-B-ForgotPassword",
+  "phase_issue": "#414",
+  "quick_fix": false,
+  "suggested_fix": "Draw Set new password, verify-email variant, and Resend sent/cooldown.",
+  "status": "open",
+  "note": "New in round 1"
+ },
+ {
+  "id": "F-first-run-home-R1-009",
+  "story_id": "STORY-015, STORY-016",
+  "severity": "medium",
+  "category": "error-handling",
+  "criterion": "error-handling",
+  "description": "Space settings for the current space 'Personal' offers a red Delete space with no confirmation drawn and no rule for deleting the default space; space switch has no loading state.",
+  "expected": "Each step's screen is drawn with label, control and state.",
+  "actual": "Space settings for the current space 'Personal' offers a red Delete space with no confirmation drawn and no rule for deleting the default space; space switch has no loading state.",
+  "board": "PG-B-Spaces",
+  "phase_issue": "#415",
+  "quick_fix": false,
+  "suggested_fix": "Hide Delete for Personal; draw delete confirm and the switch loading state.",
+  "status": "open",
+  "note": "New in round 1"
+ },
+ {
+  "id": "F-first-run-home-R1-010",
+  "story_id": "STORY-019",
+  "severity": "low",
+  "category": "happy-path",
+  "criterion": "happy-path",
+  "description": "After connecting, the card offers 'Create a bot' although Chief already exists; the key field shows dots with no label and is the same for Local server and Subscription.",
+  "expected": "Each step's screen is drawn with label, control and state.",
+  "actual": "After connecting, the card offers 'Create a bot' although Chief already exists; the key field shows dots with no label and is the same for Local server and Subscription.",
+  "board": "PG-A-HomeNoModel",
+  "phase_issue": "#415",
+  "quick_fix": false,
+  "suggested_fix": "Offer 'Message Chief'; label the field per provider.",
+  "status": "open",
+  "note": "New in round 1"
  }
 ]

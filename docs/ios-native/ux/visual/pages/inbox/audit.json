@@ -1,0 +1,882 @@
+{
+ "PG-A-Compose": {
+  "layout": {
+   "viewport": {
+    "width": 1494,
+    "height": 754,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div \"ReplyReplyFromme@example.testT\"",
+     "w": 466,
+     "h": 703,
+     "fillPct": 10,
+     "pctOfViewport": 29
+    },
+    {
+     "el": "div \"ReplyFromme@example.testToAna \"",
+     "w": 466,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 28
+    },
+    {
+     "el": "div \"ReplyFromme@example.testToAna \"",
+     "w": 394,
+     "h": 678,
+     "fillPct": 7,
+     "pctOfViewport": 24
+    },
+    {
+     "el": "div \"ReplyFromme@example.testToAna \"",
+     "w": 394,
+     "h": 678,
+     "fillPct": 7,
+     "pctOfViewport": 24
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     8,
+     10,
+     11,
+     12,
+     14,
+     16,
+     24
+    ],
+    "offScale": [
+     6,
+     10,
+     11,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      11
+     ],
+     [
+      11,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "13px",
+     "22px",
+     "14px",
+     "15px",
+     "12px",
+     "16px"
+    ],
+    "sizes": {
+     "13px/600": 3,
+     "22px/600": 3,
+     "14px/400": 12,
+     "15px/400": 9,
+     "14px/500": 4,
+     "12px/400": 1,
+     "12px/600": 3,
+     "16px/400": 3
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"Cc, Bcc\"",
+     "children": 2,
+     "widths": [
+      52,
+      16
+     ]
+    },
+    {
+     "container": "div \"Cc, Bcc\"",
+     "children": 2,
+     "widths": [
+      52,
+      16
+     ]
+    },
+    {
+     "container": "div \"Cc, Bcc\"",
+     "children": 2,
+     "widths": [
+      52,
+      16
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "PG-A-Cleanup": {
+  "layout": {
+   "viewport": {
+    "width": 1984,
+    "height": 754,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div \"DoneCleanup3 senders cleaned u\"",
+     "w": 466,
+     "h": 703,
+     "fillPct": 12,
+     "pctOfViewport": 22
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 21
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 21
+    },
+    {
+     "el": "div \"Cleanup3 senders cleaned up101\"",
+     "w": 466,
+     "h": 678,
+     "fillPct": 10,
+     "pctOfViewport": 21
+    },
+    {
+     "el": "div \"Cleanup3 senders cleaned up101\"",
+     "w": 394,
+     "h": 678,
+     "fillPct": 10,
+     "pctOfViewport": 18
+    },
+    {
+     "el": "div \"3 senders cleaned up101 conver\"",
+     "w": 376,
+     "h": 622,
+     "fillPct": 5,
+     "pctOfViewport": 16
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     22,
+     24
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     22
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      22,
+      24
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "13px",
+     "28px",
+     "15px",
+     "14px",
+     "12px",
+     "16px",
+     "22px",
+     "17px"
+    ],
+    "sizes": {
+     "13px/600": 4,
+     "28px/600": 1,
+     "15px/500": 15,
+     "13px/400": 14,
+     "14px/400": 5,
+     "12px/600": 4,
+     "16px/400": 5,
+     "22px/600": 3,
+     "16px/600": 2,
+     "17px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"Jordan Lee8:20 AM\"",
+     "children": 2,
+     "widths": [
+      78,
+      51
+     ]
+    },
+    {
+     "container": "div \"Acme Payroll3:25 PM\"",
+     "children": 2,
+     "widths": [
+      92,
+      51
+     ]
+    },
+    {
+     "container": "div \"Example Weekly3:02 PM\"",
+     "children": 2,
+     "widths": [
+      115,
+      51
+     ]
+    },
+    {
+     "container": "div \"Example Weekly48 emails \u00b7 last\"",
+     "children": 2,
+     "heights": [
+      24,
+      38
+     ],
+     "widths": [
+      24,
+      332
+     ],
+     "topDriftPx": 7
+    },
+    {
+     "container": "div \"Northwind Deals31 emails \u00b7 las\"",
+     "children": 2,
+     "heights": [
+      24,
+      38
+     ],
+     "widths": [
+      24,
+      332
+     ],
+     "topDriftPx": 7
+    },
+    {
+     "container": "div \"Acme Digest22 emails \u00b7 last Oc\"",
+     "children": 2,
+     "heights": [
+      24,
+      38
+     ],
+     "widths": [
+      24,
+      332
+     ],
+     "topDriftPx": 7
+    },
+    {
+     "container": "div \"Orbit Product News9 emails \u00b7 l\"",
+     "children": 2,
+     "heights": [
+      24,
+      38
+     ],
+     "widths": [
+      24,
+      332
+     ],
+     "topDriftPx": 7
+    },
+    {
+     "container": "div \"Pilot Community6 emails \u00b7 last\"",
+     "children": 2,
+     "heights": [
+      24,
+      38
+     ],
+     "widths": [
+      24,
+      332
+     ],
+     "topDriftPx": 7
+    },
+    {
+     "container": "div \"Archive 3\"",
+     "children": 2,
+     "widths": [
+      304,
+      54
+     ]
+    },
+    {
+     "container": "div \"Example Weekly48 emails \u00b7 last\"",
+     "children": 2,
+     "heights": [
+      24,
+      38
+     ],
+     "widths": [
+      24,
+      332
+     ],
+     "topDriftPx": 7
+    },
+    {
+     "container": "div \"Northwind Deals31 emails \u00b7 las\"",
+     "children": 2,
+     "heights": [
+      24,
+      38
+     ],
+     "widths": [
+      24,
+      332
+     ],
+     "topDriftPx": 7
+    },
+    {
+     "container": "div \"Acme Digest22 emails \u00b7 last Oc\"",
+     "children": 2,
+     "heights": [
+      24,
+      38
+     ],
+     "widths": [
+      24,
+      332
+     ],
+     "topDriftPx": 7
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [],
+   "unevenRowsTruncated": true
+  }
+ },
+ "PG-A-InboxMessage": {
+  "layout": {
+   "viewport": {
+    "width": 466,
+    "height": 678,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     10,
+     12,
+     14,
+     16
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "22px",
+     "13px",
+     "15px",
+     "14px",
+     "12px"
+    ],
+    "sizes": {
+     "22px/600": 1,
+     "13px/600": 1,
+     "15px/600": 1,
+     "13px/400": 2,
+     "15px/400": 4,
+     "14px/500": 2,
+     "12px/400": 2,
+     "12px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "Sheet": {
+  "layout": {
+   "viewport": {
+    "width": 466,
+    "height": 678,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     7,
+     8,
+     10,
+     14
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      10
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "28px",
+     "13px",
+     "15px",
+     "14px",
+     "12px"
+    ],
+    "sizes": {
+     "28px/600": 1,
+     "13px/600": 2,
+     "13px/400": 12,
+     "15px/400": 3,
+     "14px/400": 5,
+     "15px/600": 2,
+     "12px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "a \"Ana Ruiz10:30 AM Re: Pilot tim\"",
+     "children": 2,
+     "widths": [
+      8,
+      348
+     ]
+    },
+    {
+     "container": "a \"Jordan Lee8:20 AM Intro: desig\"",
+     "children": 2,
+     "widths": [
+      8,
+      348
+     ]
+    },
+    {
+     "container": "div \"Jordan Lee8:20 AM\"",
+     "children": 2,
+     "widths": [
+      77,
+      50
+     ]
+    },
+    {
+     "container": "a \"Northwind SupportOct 18 Your t\"",
+     "children": 2,
+     "widths": [
+      8,
+      348
+     ]
+    },
+    {
+     "container": "div \"Northwind SupportOct 18\"",
+     "children": 2,
+     "widths": [
+      130,
+      40
+     ]
+    },
+    {
+     "container": "a \"Acme Payroll3:25 PM Payment co\"",
+     "children": 2,
+     "widths": [
+      8,
+      348
+     ]
+    },
+    {
+     "container": "div \"Acme Payroll3:25 PM\"",
+     "children": 2,
+     "widths": [
+      94,
+      50
+     ]
+    },
+    {
+     "container": "a \"Example Weekly3:02 PM Five too\"",
+     "children": 2,
+     "widths": [
+      8,
+      348
+     ]
+    },
+    {
+     "container": "div \"Example Weekly3:02 PM\"",
+     "children": 2,
+     "widths": [
+      118,
+      50
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "Split": {
+  "layout": {
+   "viewport": {
+    "width": 890,
+    "height": 626,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     8,
+     9,
+     10,
+     12,
+     14,
+     18,
+     26
+    ],
+    "offScale": [
+     6,
+     9,
+     10,
+     14,
+     18,
+     26
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "15px",
+     "12px",
+     "11px",
+     "14px",
+     "26px",
+     "13px"
+    ],
+    "sizes": {
+     "16px/400": 2,
+     "15px/400": 9,
+     "12px/400": 7,
+     "11px/600": 1,
+     "14px/400": 17,
+     "11px/400": 4,
+     "12px/600": 2,
+     "26px/600": 1,
+     "13px/600": 2,
+     "13px/400": 8,
+     "15px/600": 3,
+     "12px/500": 3
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input#sb",
+     "w": 174,
+     "h": 20
+    },
+    {
+     "el": "input#sm",
+     "w": 369,
+     "h": 20
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "a \"Inbox 42\"",
+     "children": 3,
+     "widths": [
+      18,
+      175,
+      14
+     ]
+    },
+    {
+     "container": "a \"Finance [N] mo\"",
+     "children": 3,
+     "widths": [
+      18,
+      152,
+      38
+     ]
+    },
+    {
+     "container": "a \"Legal 2\"",
+     "children": 3,
+     "widths": [
+      18,
+      182,
+      7
+     ]
+    },
+    {
+     "container": "a \"Cap table\"",
+     "children": 2,
+     "widths": [
+      18,
+      189
+     ]
+    },
+    {
+     "container": "a \"Data room\"",
+     "children": 2,
+     "widths": [
+      18,
+      189
+     ]
+    },
+    {
+     "container": "a \"Artifacts\"",
+     "children": 2,
+     "widths": [
+      18,
+      189
+     ]
+    },
+    {
+     "container": "div \"Chief2:59 PM\"",
+     "children": 2,
+     "widths": [
+      34,
+      43
+     ]
+    },
+    {
+     "container": "div \"Finance agentYesterday\"",
+     "children": 2,
+     "widths": [
+      91,
+      49
+     ]
+    },
+    {
+     "container": "a \"C Carta agent2:44 PM Option po\"",
+     "children": 2,
+     "widths": [
+      30,
+      195
+     ]
+    },
+    {
+     "container": "div \"Carta agent2:44 PM\"",
+     "children": 2,
+     "widths": [
+      75,
+      43
+     ]
+    },
+    {
+     "container": "div \"Legal agent7:51 AM\"",
+     "children": 2,
+     "widths": [
+      75,
+      39
+     ]
+    },
+    {
+     "container": "a \"Ana Ruiz10:30 AM Re: Pilot tim\"",
+     "children": 2,
+     "heights": [
+      8,
+      37
+     ],
+     "widths": [
+      8,
+      469
+     ],
+     "topDriftPx": 15
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"Connect apps\""
+   ],
+   "unevenRowsTruncated": true
+  }
+ }
+}

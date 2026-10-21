@@ -1,0 +1,973 @@
+{
+ "PG-A-Thread": {
+  "layout": {
+   "viewport": {
+    "width": 466,
+    "height": 678,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     3,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16
+    ],
+    "offScale": [
+     3,
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "15px",
+     "13px",
+     "14px",
+     "12px",
+     "16px"
+    ],
+    "sizes": {
+     "15px/600": 2,
+     "15px/400": 3,
+     "13px/400": 2,
+     "14px/600": 1,
+     "12px/400": 1,
+     "14px/400": 3,
+     "16px/400": 1,
+     "12px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"Re: Pilot timelineNeeds approv\"",
+     "children": 2,
+     "widths": [
+      114,
+      85
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button \"Save\"",
+    "button \"Send\""
+   ]
+  }
+ },
+ "PG-A-ThreadStates": {
+  "layout": {
+   "viewport": {
+    "width": 1446,
+    "height": 718,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div \"Inbox agentOffline. Messages s\"",
+     "w": 394,
+     "h": 678,
+     "fillPct": 10,
+     "pctOfViewport": 26
+    },
+    {
+     "el": "div \"Inbox agentAnything else for A\"",
+     "w": 394,
+     "h": 678,
+     "fillPct": 11,
+     "pctOfViewport": 26
+    },
+    {
+     "el": "div \"Inbox agentAnything else for A\"",
+     "w": 394,
+     "h": 678,
+     "fillPct": 11,
+     "pctOfViewport": 26
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     24
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "15px",
+     "13px",
+     "12px",
+     "16px"
+    ],
+    "sizes": {
+     "15px/600": 6,
+     "13px/400": 1,
+     "15px/400": 6,
+     "12px/400": 3,
+     "16px/400": 3,
+     "12px/600": 3,
+     "13px/600": 2
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "PG-B-Consent": {
+  "layout": {
+   "viewport": {
+    "width": 466,
+    "height": 678,
+    "pageScrollY": 40,
+    "pageScrollX": 490
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 100
+    },
+    {
+     "el": "div \"Inbox agentSummarize my unread\"",
+     "w": 394,
+     "h": 678,
+     "fillPct": 4,
+     "pctOfViewport": 85
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     24
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "15px",
+     "12px",
+     "20px",
+     "16px",
+     "13px",
+     "28px"
+    ],
+    "sizes": {
+     "15px/600": 3,
+     "15px/400": 2,
+     "12px/600": 2,
+     "20px/600": 1,
+     "16px/600": 1,
+     "16px/400": 4,
+     "13px/400": 5,
+     "28px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "a \"Privacy details\"",
+     "w": 86,
+     "h": 17
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 490,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button \"Allow\"",
+    "button \"Not now\"",
+    "a \"Change in Settings\""
+   ]
+  }
+ },
+ "PG-A-GroupThread": {
+  "layout": {
+   "viewport": {
+    "width": 466,
+    "height": 678,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     3,
+     4,
+     6,
+     8,
+     10,
+     14,
+     16
+    ],
+    "offScale": [
+     3,
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "15px",
+     "11px",
+     "12px",
+     "13px",
+     "16px"
+    ],
+    "sizes": {
+     "15px/600": 1,
+     "11px/600": 1,
+     "15px/400": 3,
+     "12px/400": 2,
+     "13px/400": 2,
+     "16px/400": 1,
+     "12px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "Inner": {
+  "layout": {
+   "viewport": {
+    "width": 890,
+    "height": 626,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     8,
+     9,
+     10,
+     12,
+     14,
+     16,
+     22,
+     173
+    ],
+    "offScale": [
+     6,
+     9,
+     10,
+     14,
+     22,
+     173
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "26px",
+     "13px",
+     "15px",
+     "14px",
+     "12px",
+     "16px"
+    ],
+    "sizes": {
+     "26px/600": 1,
+     "13px/600": 2,
+     "13px/400": 8,
+     "15px/400": 6,
+     "14px/400": 15,
+     "15px/600": 5,
+     "14px/600": 1,
+     "12px/400": 1,
+     "16px/400": 1,
+     "12px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "a \"Ana Ruiz10:30 AM Re: Pilot tim\"",
+     "children": 2,
+     "heights": [
+      8,
+      37
+     ],
+     "widths": [
+      8,
+      361
+     ],
+     "topDriftPx": 15
+    },
+    {
+     "container": "a \"Jordan Lee8:20 AM Intro: desig\"",
+     "children": 2,
+     "heights": [
+      8,
+      37
+     ],
+     "widths": [
+      8,
+      361
+     ],
+     "topDriftPx": 15
+    },
+    {
+     "container": "div \"Jordan Lee8:20 AM\"",
+     "children": 2,
+     "widths": [
+      77,
+      51
+     ]
+    },
+    {
+     "container": "a \"Northwind SupportOct 18 Your t\"",
+     "children": 2,
+     "heights": [
+      8,
+      37
+     ],
+     "widths": [
+      8,
+      361
+     ],
+     "topDriftPx": 15
+    },
+    {
+     "container": "div \"Northwind SupportOct 18\"",
+     "children": 2,
+     "widths": [
+      130,
+      37
+     ]
+    },
+    {
+     "container": "a \"Acme Payroll3:25 PM Payment co\"",
+     "children": 2,
+     "heights": [
+      8,
+      37
+     ],
+     "widths": [
+      8,
+      361
+     ],
+     "topDriftPx": 15
+    },
+    {
+     "container": "div \"Acme Payroll3:25 PM\"",
+     "children": 2,
+     "widths": [
+      94,
+      51
+     ]
+    },
+    {
+     "container": "a \"Example Weekly3:02 PM Five too\"",
+     "children": 2,
+     "heights": [
+      8,
+      37
+     ],
+     "widths": [
+      8,
+      361
+     ],
+     "topDriftPx": 15
+    },
+    {
+     "container": "div \"Example Weekly3:02 PM\"",
+     "children": 2,
+     "widths": [
+      118,
+      51
+     ]
+    },
+    {
+     "container": "a \"Deals Daily2:41 PM Last chance\"",
+     "children": 2,
+     "heights": [
+      8,
+      37
+     ],
+     "widths": [
+      8,
+      361
+     ],
+     "topDriftPx": 15
+    },
+    {
+     "container": "div \"Deals Daily2:41 PM\"",
+     "children": 2,
+     "widths": [
+      80,
+      47
+     ]
+    },
+    {
+     "container": "div \"Re: Pilot timelineNeeds approv\"",
+     "children": 2,
+     "widths": [
+      114,
+      85
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button \"Save\"",
+    "button \"Send\""
+   ]
+  }
+ },
+ "DS-06-Chat": {
+  "layout": {
+   "viewport": {
+    "width": 1200,
+    "height": 900,
+    "pageScrollY": 6500,
+    "pageScrollX": 240
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "section.sec \"Mail approval cardCONTENTPurpo\"",
+     "w": 1440,
+     "h": 695,
+     "fillPct": 9,
+     "pctOfViewport": 93
+    },
+    {
+     "el": "section.sec \"Inline image attachmentCONTENT\"",
+     "w": 1440,
+     "h": 607,
+     "fillPct": 6,
+     "pctOfViewport": 81
+    },
+    {
+     "el": "section.sec \"Working indicator and agent ev\"",
+     "w": 1440,
+     "h": 449,
+     "fillPct": 11,
+     "pctOfViewport": 60
+    },
+    {
+     "el": "div.spx \"Needs approval, with CcRe: Pil\"",
+     "w": 968,
+     "h": 630,
+     "fillPct": 12,
+     "pctOfViewport": 56
+    },
+    {
+     "el": "section.sec \"Pins stripCONTENTPurpose. Pinn\"",
+     "w": 1440,
+     "h": 380,
+     "fillPct": 11,
+     "pctOfViewport": 51
+    },
+    {
+     "el": "div.spec \"ComposerGLASSPurpose. Floating\"",
+     "w": 360,
+     "h": 1502,
+     "fillPct": 10,
+     "pctOfViewport": 50
+    },
+    {
+     "el": "div.spx \"Loadedchart.png248 KBLoadingch\"",
+     "w": 968,
+     "h": 542,
+     "fillPct": 5,
+     "pctOfViewport": 49
+    },
+    {
+     "el": "div.spx \"WorkingLet me look at that.Chi\"",
+     "w": 968,
+     "h": 384,
+     "fillPct": 10,
+     "pctOfViewport": 34
+    },
+    {
+     "el": "div.spec \"Mail approval cardCONTENTPurpo\"",
+     "w": 360,
+     "h": 630,
+     "fillPct": 9,
+     "pctOfViewport": 21
+    },
+    {
+     "el": "div.spec \"Inline image attachmentCONTENT\"",
+     "w": 360,
+     "h": 542,
+     "fillPct": 11,
+     "pctOfViewport": 18
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     20,
+     24,
+     32,
+     40,
+     80,
+     81,
+     98,
+     118
+    ],
+    "offScale": [
+     3,
+     5,
+     6,
+     10,
+     14,
+     81,
+     98,
+     118
+    ],
+    "nearDupes": [
+     [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      80,
+      81
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "36px",
+     "15px",
+     "20px",
+     "11px",
+     "13px",
+     "12px",
+     "19px",
+     "16px",
+     "10px",
+     "14px"
+    ],
+    "sizes": {
+     "36px/600": 1,
+     "15px/400": 48,
+     "20px/600": 11,
+     "11px/600": 11,
+     "13px/400": 92,
+     "13px/500": 86,
+     "11px/400": 31,
+     "12px/400": 45,
+     "19px/600": 1,
+     "16px/600": 2,
+     "13px/600": 9,
+     "10px/600": 1,
+     "12px/600": 3,
+     "16px/400": 7,
+     "15px/500": 4,
+     "14px/600": 4,
+     "14px/400": 15,
+     "15px/600": 7
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      868,
+      870
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "span \"Needs approval\"",
+     "ratio": 3.64
+    },
+    {
+     "el": "button \"Deny\"",
+     "ratio": 4.13
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 240,
+   "unevenRows": [
+    {
+     "container": "div \"VendorStatusAmount\"",
+     "children": 3,
+     "widths": [
+      116,
+      83,
+      83
+     ]
+    },
+    {
+     "container": "div \"NorthwindPaid[AMOUNT]\"",
+     "children": 3,
+     "widths": [
+      116,
+      83,
+      83
+     ]
+    },
+    {
+     "container": "div \"Acme PayrollDue[AMOUNT]\"",
+     "children": 3,
+     "widths": [
+      116,
+      83,
+      83
+     ]
+    },
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      36,
+      56
+     ]
+    },
+    {
+     "container": "div \"Ana RuizCan we move the pilot \"",
+     "children": 3,
+     "widths": [
+      2,
+      252,
+      30
+     ]
+    },
+    {
+     "container": "div \"Ana RuizCan we move the pilot \"",
+     "children": 3,
+     "widths": [
+      2,
+      252,
+      30
+     ]
+    },
+    {
+     "container": "div \"Add Jordan on Cc\"",
+     "children": 2,
+     "widths": [
+      131,
+      2
+     ]
+    },
+    {
+     "container": "div",
+     "children": 2,
+     "widths": [
+      36,
+      56
+     ]
+    },
+    {
+     "container": "div \"Check the attached\"",
+     "children": 2,
+     "widths": [
+      143,
+      2
+     ]
+    },
+    {
+     "container": "div \"@Fi\"",
+     "children": 2,
+     "widths": [
+      28,
+      2
+     ]
+    },
+    {
+     "container": "div \"Re: Pilot timelineNeeds approv\"",
+     "children": 2,
+     "widths": [
+      114,
+      85
+     ]
+    },
+    {
+     "container": "div \"ToAna Ruiz\"",
+     "children": 2,
+     "widths": [
+      20,
+      56
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "a \"EExample Weekly: pilot checkli\"",
+    "button \"Save\"",
+    "button \"Send\"",
+    "button \"Save\"",
+    "button \"Send\"",
+    "button \"Allow once\"",
+    "button \"Always allow\"",
+    "button \"Deny\"",
+    "button \"Work calendar\"",
+    "button \"Personal calendar\"",
+    "button \"Skip\"",
+    "button \"30 minutesFits Ana's open slot\""
+   ],
+   "unevenRowsTruncated": true,
+   "wrappedControlsTruncated": true
+  }
+ }
+}

@@ -1,0 +1,910 @@
+{
+ "PG-B-NewSpace": {
+  "layout": {
+   "viewport": {
+    "width": 466,
+    "height": 678,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 100
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 85
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     4,
+     6,
+     8,
+     10,
+     14,
+     20,
+     30
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     30
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "22px",
+     "13px",
+     "14px",
+     "12px"
+    ],
+    "sizes": {
+     "22px/600": 1,
+     "13px/400": 1,
+     "14px/400": 1,
+     "12px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Name\"",
+     "w": 332,
+     "h": 21
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "PG-B-NewBot": {
+  "layout": {
+   "viewport": {
+    "width": 466,
+    "height": 678,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 100
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 85
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     4,
+     6,
+     8,
+     10,
+     14,
+     20,
+     30
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     30
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "22px",
+     "13px",
+     "12px"
+    ],
+    "sizes": {
+     "22px/600": 1,
+     "13px/400": 3,
+     "12px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Name\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Title\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Description\"",
+     "w": 332,
+     "h": 21
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "PG-A-HomeNoModel": {
+  "layout": {
+   "viewport": {
+    "width": 1446,
+    "height": 716,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 31
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     7,
+     10,
+     12,
+     14,
+     16,
+     18,
+     20,
+     24
+    ],
+    "offScale": [
+     6,
+     7,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ],
+     [
+      18,
+      20
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "12px",
+     "17px",
+     "16px",
+     "11px",
+     "13px",
+     "20px"
+    ],
+    "sizes": {
+     "12px/400": 3,
+     "17px/600": 4,
+     "16px/500": 6,
+     "16px/600": 3,
+     "11px/600": 5,
+     "13px/400": 3,
+     "12px/600": 3,
+     "20px/600": 1,
+     "13px/600": 3,
+     "17px/400": 3
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"API key\"",
+     "w": 330,
+     "h": 22
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button \"Connect a model\"",
+    "button.gbtn \"AB\"",
+    "button \"Connect a model\"",
+    "button \"Connect\"",
+    "button \"Create a bot\"",
+    "button.gbtn \"AB\""
+   ]
+  }
+ },
+ "PG-A-Home": {
+  "layout": {
+   "viewport": {
+    "width": 466,
+    "height": 678,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     7,
+     8,
+     9,
+     10,
+     12,
+     14
+    ],
+    "offScale": [
+     6,
+     7,
+     9,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "17px",
+     "16px",
+     "13px",
+     "11px",
+     "12px",
+     "15px"
+    ],
+    "sizes": {
+     "17px/600": 1,
+     "16px/500": 6,
+     "13px/400": 12,
+     "11px/600": 4,
+     "12px/400": 9,
+     "15px/500": 7,
+     "13px/600": 1,
+     "15px/600": 2,
+     "12px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"ACTIVITYSee all\"",
+     "children": 2,
+     "widths": [
+      53,
+      37
+     ]
+    },
+    {
+     "container": "div \"Finance agentYesterday\"",
+     "children": 2,
+     "widths": [
+      106,
+      54
+     ]
+    },
+    {
+     "container": "a \"CCarta agent2:44 PMThe option \"",
+     "children": 2,
+     "widths": [
+      40,
+      304
+     ]
+    },
+    {
+     "container": "div \"Carta agent2:44 PM\"",
+     "children": 2,
+     "widths": [
+      88,
+      47
+     ]
+    },
+    {
+     "container": "div \"Legal agent7:51 AM\"",
+     "children": 2,
+     "widths": [
+      88,
+      43
+     ]
+    },
+    {
+     "container": "a \"MMercury agent2:06 PMBalance a\"",
+     "children": 2,
+     "widths": [
+      40,
+      304
+     ]
+    },
+    {
+     "container": "div \"Mercury agent2:06 PM\"",
+     "children": 2,
+     "widths": [
+      109,
+      47
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.gbtn \"AB\""
+   ]
+  }
+ },
+ "PG-B-Spaces": {
+  "layout": {
+   "viewport": {
+    "width": 956,
+    "height": 716,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 46
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     7,
+     8,
+     9,
+     10,
+     12,
+     14,
+     24
+    ],
+    "offScale": [
+     6,
+     7,
+     9,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "12px",
+     "17px",
+     "16px",
+     "13px",
+     "11px",
+     "15px",
+     "28px"
+    ],
+    "sizes": {
+     "12px/400": 11,
+     "17px/600": 1,
+     "16px/500": 6,
+     "13px/400": 13,
+     "11px/600": 4,
+     "15px/500": 7,
+     "13px/600": 1,
+     "15px/600": 2,
+     "12px/600": 2,
+     "17px/400": 5,
+     "28px/600": 1,
+     "16px/400": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      76,
+      77
+     ]
+    ]
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Name\"",
+     "w": 346,
+     "h": 21
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [
+    {
+     "a": "a \"Inbox3 need reply42\"",
+     "b": "button.mi \"Personal\"",
+     "w": 260,
+     "h": 44
+    },
+    {
+     "a": "a \"Finance agentReading card expe\"",
+     "b": "button.mi \"Side project\"",
+     "w": 260,
+     "h": 44
+    },
+    {
+     "a": "a \"Inbox agentReply to Ana is rea\"",
+     "b": "button.mi \"New space\"",
+     "w": 260,
+     "h": 44
+    },
+    {
+     "a": "a \"RWeekly runwayRan at 8:00 AMDo\"",
+     "b": "button.mi \"Space settings\"",
+     "w": 260,
+     "h": 42
+    }
+   ],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"ACTIVITYSee all\"",
+     "children": 2,
+     "widths": [
+      53,
+      37
+     ]
+    },
+    {
+     "container": "div \"Finance agentYesterday\"",
+     "children": 2,
+     "widths": [
+      106,
+      54
+     ]
+    },
+    {
+     "container": "a \"CCarta agent2:44 PMThe option \"",
+     "children": 2,
+     "widths": [
+      40,
+      304
+     ]
+    },
+    {
+     "container": "div \"Carta agent2:44 PM\"",
+     "children": 2,
+     "widths": [
+      88,
+      47
+     ]
+    },
+    {
+     "container": "div \"Legal agent7:51 AM\"",
+     "children": 2,
+     "widths": [
+      88,
+      43
+     ]
+    },
+    {
+     "container": "a \"MMercury agent2:06 PMBalance a\"",
+     "children": 2,
+     "widths": [
+      40,
+      304
+     ]
+    },
+    {
+     "container": "div \"Mercury agent2:06 PM\"",
+     "children": 2,
+     "widths": [
+      109,
+      47
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.gbtn \"AB\"",
+    "button.mi \"Northwind\"",
+    "button.mi \"Side project\"",
+    "a \"Delete space\""
+   ]
+  }
+ },
+ "Main": {
+  "layout": {
+   "viewport": {
+    "width": 466,
+    "height": 678,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     18
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "16px",
+     "13px",
+     "11px",
+     "12px",
+     "15px"
+    ],
+    "sizes": {
+     "16px/500": 7,
+     "13px/400": 8,
+     "11px/600": 2,
+     "12px/400": 6,
+     "15px/600": 3,
+     "12px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"Finance agentYesterday\"",
+     "children": 2,
+     "widths": [
+      106,
+      54
+     ]
+    },
+    {
+     "container": "a \"C Carta agent2:44 PM The optio\"",
+     "children": 2,
+     "widths": [
+      40,
+      304
+     ]
+    },
+    {
+     "container": "div \"Carta agent2:44 PM\"",
+     "children": 2,
+     "widths": [
+      88,
+      47
+     ]
+    },
+    {
+     "container": "div \"Legal agent7:51 AM\"",
+     "children": 2,
+     "widths": [
+      88,
+      43
+     ]
+    },
+    {
+     "container": "a \"M Mercury agent2:06 PM Balance\"",
+     "children": 2,
+     "widths": [
+      40,
+      304
+     ]
+    },
+    {
+     "container": "div \"Mercury agent2:06 PM\"",
+     "children": 2,
+     "widths": [
+      109,
+      47
+     ]
+    },
+    {
+     "container": "a \"B Brex agentYesterday 4 card e\"",
+     "children": 2,
+     "widths": [
+      40,
+      304
+     ]
+    },
+    {
+     "container": "div \"Brex agentYesterday\"",
+     "children": 2,
+     "widths": [
+      81,
+      54
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.gbtn \"AB\""
+   ]
+  }
+ },
+ "PG-B-NewGroup": {
+  "layout": {
+   "viewport": {
+    "width": 466,
+    "height": 678,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     4,
+     6,
+     10,
+     12,
+     14
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "28px",
+     "13px",
+     "16px",
+     "12px"
+    ],
+    "sizes": {
+     "28px/600": 1,
+     "13px/400": 2,
+     "16px/400": 4,
+     "12px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Name this group\"",
+     "w": 346,
+     "h": 21
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ }
+}

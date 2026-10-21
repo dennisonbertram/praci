@@ -1,57 +1,65 @@
 # STORY-043 journey critique: long founder session (attach, reply, fail, recover)
 
-Boards judged: `DS-06-Chat` (composer, chips, failed bubble, reply line, working indicator), `PG-A-Thread` (outer phone, 466x678), `Inner` (inner display, 890x626). Screenshots viewed: `DS-06-Chat.png` (tall, downscaled, so small text was not legible), `PG-A-Thread.png`, `Inner.png`. The boards are static; steps were judged against the board that defines them.
+Previous round: acceptable (about 24 taps vs 22 ideal; offline, attach, menus had no board).
+
+Round 1 boards judged: `PG-A-ThreadStates` (new: Offline, Failed, Refused), `PH-Thread` (new, standard iPhone), `PG-A-Thread` (Duo outer, edited), `Inner` (Duo inner), `DS-06-Chat` (composer, chips, failed bubble, reply line; tall and downscaled, details checked against its source text). All screenshots viewed. Boards are static; each step is judged against the board that draws it.
 
 ## 1. Friction scorecard
 
 | Measure | Result |
 | --- | --- |
 | Ideal path (catalog) | about 22 taps |
-| Actual as designed | about 24 taps. Count: open thread 1; photo 3 (plus, Photo library, pick); three files 9; send 1; Expand and close 2; long-press and Reply 2; send 1; Retry 1; React 3 (long-press, React, thumbs up) |
-| Extra steps | 2, both from the attach flow (below) |
-| Needless decisions | The Attach menu is opened four times and asks "Photo library or File" each time. One document picker that allows multiple selection would replace three of the four trips. Step 6 lets the user open the menu at the limit and only then says "(max 4 attachments)". |
-| Re-entry of known data | None. The composer text, chips and queue state must carry to the inner display (step 14); no board says they do. |
-| Dead ends | Step 13 "Not sent / Retry" is a clear exit. Offline "Sending" (step 8) has no designed state beyond the caption, so a long outage has no visible next action. |
-| Screens with no board | Attach menu, upload progress, offline/queued waiting, long-press menu (Reply, React), reaction picker, table Expand sheet, "max 4 attachments" message, composer carry-over on posture change. 8 of the 15 steps rely on at least one of these. |
+| Actual as designed | about 24 taps (open thread 1; photo 3; three files 9; send 1; Expand and close 2; long-press Reply 2; send 1; Retry 1; React 3) |
+| Needless decisions | The Attach menu is opened four times and asks "Photo library or File" each time. At 4 chips the plus still opens the menu and errors afterward. |
+| Re-entry | None drawn. Composer text, chips and queue on posture change are not drawn (`Inner` composer is empty). |
+| Dead ends | None now. `PG-A-ThreadStates` gives Offline ("Waiting to send"), Failed ("Not sent" + Retry) and Refused ("Not sent: Attachment is too large" + Edit). Open: after Edit, whether the chips return to the composer is not shown. |
+| Steps with no board | Attach menu (2-6), upload progress (7), chips at the 4 limit (6), table Expand sheet (10), long-press menu with Reply/React (11, 15), reaction picker (15), posture-change carry-over (14). 6 of 15 steps. Down from 8 last round: steps 8, 9 (offline, queued, working) and 13 (failed, retry) are now drawn. |
 
-What is drawn: composer empty, typing, agent working, attachment chips plus reply preview, failed bubble with Retry, reply line, working indicator (`DS-06-Chat`); thread with working indicator (`PG-A-Thread`); thread beside a list on the inner display (`Inner`).
-
-Mismatch: step 14 says the inner display shows Personnel in the 1/3 pane. `Inner.png` shows an Inbox list in that pane instead, so the Finance-agent case is not drawn.
+Mismatch kept from last round: step 14 says Personnel in the 1/3 pane beside the Finance thread. `Inner` shows an Inbox list beside the Inbox agent thread. The Finance agent thread is not drawn on any board (all thread boards use Inbox agent).
 
 ## 2. Take-away pass
 
-- Composer (`PG-A-Thread.png`): plus, text field, mic. One element per job; nothing to remove. When text is typed, DS-06 swaps the mic for Send, which keeps one action. Good.
-- Chips row (`DS-06-Chat`): needed. Each chip needs a remove control; keep it small.
-- Failed bubble: "Not sent" plus Retry is stated once. Keep.
-- Working indicator: "Inbox agent is working" text above the composer. The composer placeholder in DS-06 also changes to "Agent is working" with a stop control, so the working state is stated twice (indicator row and placeholder). Remove one; keep the indicator row because the placeholder disappears once the user types.
-- Thread header capsule (`PG-A-Thread.png`): agent name stated once in the header and again in the placeholder ("Message Inbox agent"). Acceptable, since the placeholder is the standard prompt.
-- Side toolbar with back, two page icons, and a "more" button at the bottom: three glass groups, which is the maximum. The two page icons are used by no step in this story; they are navigation to other things, so they stay, but they are the first thing to cut if the screen feels busy.
-- Prominent action: in the thread there is no tinted prominent button; the cream Allow button in the approval card is the loudest element. That card does not occur in this story, so for this story the composer's Send is the single prominent action. Right.
-- Same fact twice: the "max 4 attachments" limit is stated only after the fact; better to state it once by disabling the plus (see section 3).
+- `PH-Thread` / `PG-A-Thread`: header name capsule, two page icons, composer (plus, field, mic). Nothing the story needs is missing from these; nothing in them is unused except the two page icons, which this story does not use but are navigation. Keep.
+- Offline (`PG-A-ThreadStates`): the banner "Offline. Messages send when you reconnect." and the caption "Waiting to send" both say the message is waiting. Keep the caption (per message), drop the banner text once the message exists, or keep the banner only when nothing is queued. Low.
+- Working state: in `PH-Thread` the indicator row "Inbox agent is working" is the only statement and the placeholder stays "Message Inbox agent". Good. `DS-06-Chat` still draws both an indicator and an "Agent is working" placeholder; say which wins. Low.
+- Failed vs Refused: Retry for a transient failure, Edit for an oversize refusal. Each has one action. Good; this fixes last round's "Retry on a refusal" ambiguity.
+- Prominent action: the thread has no tinted button. In this story the composer send (on typing) is the one prominent action. `PH-Thread` shows the cream Send in the mail card, which does not occur here, and there is no competing second one. Pass.
+- Facts stated twice: "max 4" appears only after the fact (see simpler version).
 
 ## 3. Simpler version
 
-1. Open "Finance agent" thread (1 tap). Unchanged.
-2. Tap plus once. The menu offers "Photos" and "Files". Both pickers allow multiple selection. Select the HEIC screenshot in Photos (3 taps). Select the three PDFs in Files in one trip (about 5 taps: plus, Files, three checks, Done). This saves about 2 taps and 2 menu trips.
-3. At 4 chips, disable plus (grey, no menu) instead of opening it and showing "(max 4 attachments)". Removes step 6 entirely (1 tap) and the error text.
-4. Show upload progress as a thin ring on each chip. This needs a board.
-5. Queued send: keep the bubble at 70% with "Sending"; add "Waiting for connection" in the caption only when offline. No extra control.
-6. Reply: swipe right on a message to reply (alternate to long-press, saves 1 tap). React stays on long-press. Keep the long-press menu as the canonical route; swipe is an accelerator only.
-7. Duo unfold: carry over composer text, chips, queue. Show the Personnel list in the 1/3 pane, as the story says.
+1. Open Finance agent thread (1).
+2. Plus, once: menu "Photos" / "Files", both multi-select. Photo 3 taps, three PDFs in one trip about 5. Saves about 2 taps.
+3. At 4 chips, plus is disabled; no menu, no error text. Removes step 6.
+4. Progress ring on each chip while uploading.
+5. Offline: caption "Waiting to send" is enough; banner only when nothing is queued.
+6. Reply and React from one long-press menu (Reply, React, Copy); swipe-to-reply as accelerator only.
+7. Unfold: composer text, chips and queue carry over; Finance thread in 2/3, Personnel in 1/3.
 
-Result: about 20 taps against the 22 ideal. Needs boards for: Attach menu, chip progress ring, disabled plus at the limit, offline caption, long-press menu with Reply and React, reaction picker.
+Result: about 20 taps against 22 ideal.
 
 ## 4. Beauty check
 
-- Glass only on floating bars: `PG-A-Thread.png` shows glass on the side toolbar capsules, the header name capsule and the composer. The bubbles, the approval card, the search-result line and its buttons are solid. Follows the rule.
-- At most three glass groups: header capsule, side toolbar (back; page icons; more are separate capsules), composer. That is four items counting the more button on its own; it reads as three groups plus the composer. Borderline; the "more" circle at the bottom-left sits against the composer and could join the toolbar capsule group. I could not confirm the count from the downscaled DS-06.
-- One tinted prominent action: on `PG-A-Thread.png` the cream Allow button is the only filled action; blue is used only for the "working" text. Pass.
-- Concentric corners: the composer pill and the more circle share a baseline and height in `PG-A-Thread.png`; the card corners look consistent with the bubbles. No defect seen at this resolution.
-- Spacing and type: consistent between `PG-A-Thread.png` and `Inner.png`. The Duo inner layout keeps the same bubble and card styles. Pass.
-- Not checkable: DS-06 text and chip details, because the screenshot is downscaled.
+- Glass only on floating controls: `PH-Thread` and `PG-A-Thread` show glass on back, name capsule, page icons, composer and (Duo) the more button; bubbles and the mail card are solid. Pass.
+- At most three glass groups: `PH-Thread` has back plus name, the page-icon pair, the composer (three). `PG-A-Thread` has back, page icons, name capsule, composer and more button; the side strip groups back and icons as separate capsules, so it reads as four to five. Borderline; join back, icons and more into one strip capsule (low).
+- One tinted prominent action per view: pass in all four thread boards.
+- Concentric corners: composer pill, more circle and capsules align on `PG-A-Thread` and `Inner`. Pass.
+- Error styling: red outline on the bubble plus red caption in `PG-A-ThreadStates`; destructive token only, no extra chrome. Pass.
+- Name: all boards use "Inbox agent" with the shipped blue bot avatar. Pass.
 
 ## 5. Verdict
 
 acceptable
 
-The tap count is close to the ideal (about 24 vs 22) and the boards follow the design rules. The weaknesses are the repeated Attach menu, the late "max 4" error, a duplicated working-state statement, and eight steps with no board.
+Offline, failed and refused recovery are now drawn and have one clear action each. The attach flow (four menu trips, late limit error), the long-press menu, and the Duo carry-over are still undrawn or repeated.
+
+## 6. Issues
+
+- STORY-043-R1-1 (medium) `PH-Thread`, `PG-A-Compose`, `DS-06-Chat`. Steps 2-6: the plus opens a Photo/File menu four times, and at 4 chips still opens then errors "(max 4 attachments)". No board draws the menu. Fix: draw a plus menu with "Photos" and "Files" (both multi-select); disable the plus at 4 chips (grey, no menu).
+- STORY-043-R1-2 (medium) `DS-06-Chat`, `PH-Thread`. Steps 11, 15: Reply and React depend on a long-press menu that is drawn only for failed bubbles (Retry, Delete). Fix: draw one long-press menu on a reply bubble with Reply, React, Copy, and the reaction row.
+- STORY-043-R1-3 (medium) `Inner`, `Split`. Step 14: the inner display shows Inbox list plus Inbox agent thread, not the Finance thread with Personnel; composer is empty so carry-over of text, chips and queue is not shown. Fix: add an inner-display variant with a draft and two chips in the composer, or change the story to match the Inbox board.
+- STORY-043-R1-4 (low) `PG-A-ThreadStates` (Refused). After Edit on "Attachment is too large", it is not shown whether the chips and text return to the composer. Fix: add a fourth state with the composer holding the text and chips and the oversize chip marked.
+- STORY-043-R1-5 (low) `PG-A-ThreadStates` (Offline). The banner and the "Waiting to send" caption both say the same thing. Fix: show the banner only while no message is queued, or drop its second sentence.
+- STORY-043-R1-6 (low) `DS-06-Chat`. The working state is drawn as indicator row and as placeholder "Agent is working". Fix: keep the indicator row only, as in `PH-Thread`; the placeholder stays "Message <agent>".
+- STORY-043-R1-7 (low) `PG-A-Thread`. Side strip has separate capsules for back, page icons and more; reads as more than three glass groups. Fix: one strip capsule holding back, the two icons and more.
+- STORY-043-R1-8 (low) all thread boards. Step 1 and the whole story use the Finance agent, but no board shows a Finance agent thread or its attachment chips with upload progress. Fix: use "Finance agent" in one thread board with four chips and a progress ring.

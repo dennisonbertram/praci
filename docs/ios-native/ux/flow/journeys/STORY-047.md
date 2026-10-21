@@ -1,53 +1,56 @@
 # STORY-047: Fix the recipient list, then edit and send
 
-Target: planned native SwiftUI iPhone app (epic #427; phases #417, #418, #419). Device: Duo outer display, 466x678 pt.
-Evidence viewed: `PG-A-Thread.png` (outer display thread), `Inner.png` (inner display), `DS-06-Chat.png` (tall, downscaled; the Mail approval card and Composer sections were read at reduced size). No live board was opened.
+Previous round: convoluted (5 of 7 steps had no board; card had two label pairs).
+Round 1 verdict: **acceptable** (label conflict fixed; one entry point to the editor is still undrawn).
+
+Target: planned native SwiftUI iPhone app (epic #427; phases #417, #418, #419). Device: Duo outer display 466x678 pt; PH-Thread for the 393x852 phone.
+Boards viewed (screenshots, all opened): PG-A-Thread, PH-Thread, Inner, PG-A-ThreadStates, PG-A-Compose, PG-A-InboxMessage, DS-06-Chat (tall, downscaled; card states and the "Add Jordan on Cc" composer state are visible but small).
 
 ## 1. Friction scorecard
 
 | Measure | Result |
 |---|---|
 | Ideal path (catalog) | 7 steps |
-| Steps as designed | 7 steps written, but only step 1 has a board. Steps 2-5 (edit control, editor form, Cc field, body field) and the confirm in step 6 have NO BOARD. Step 7 (check the Inbox) is outside the card and has no board for this story. |
-| Steps that can be walked against a board | 1 of 7 (step 1), plus the final "Sent" state, which DS-06 draws |
-| Needless decisions | Two routes exist for the same edit: edit form (NO BOARD) or tell the agent (drawn). Users must choose. "Save" vs "Send", and "Deny" vs "Allow" (see below), are two label sets for one card. |
-| Re-entry of known data | Jordan Lee is already a known contact (shown as a mention in the DS-06 composer suggestions and in `Inner.png` Inbox list), but the editor path has him typed as comma-separated text with contact suggestions "not designed". The user retypes a known person. |
-| Dead ends | Abandoned edit (swipe down) has no defined outcome. Invalid email has no error state. Removing the only recipient hides "Send" per DS-06, but nothing shows what replaces it. |
-| Screens with no board | Edit-and-send screen, its entry point, keyboard layout on the 466x678 display, Duo inner editor layout, post-send verification screen. |
-| Board conflict | `PG-A-Thread.png` card shows "Send reply", To, body, "Deny" and "Allow". `Inner.png` and DS-06 show "Re: Pilot timeline", To, body, "Save" and "Send". Same card, two label sets. |
-
-Also: the card in `PG-A-Thread.png` shows only a To row. The draft needs a Cc row to show the edit. DS-06 does draw a Cc row ("Jordan Lee") in the "Needs approval, with Cc" state, so the result of the edit is drawn; the way to get there is not.
+| Simplest path on current boards | 3 actions: open card, type "Add Jordan on Cc and make it 10:30" in the composer, tap Send on the new card |
+| Direct-edit path | Card (PG-A-Thread, PH-Thread, Inner: drawn) -> entry to editor (NO BOARD) -> editor (PG-A-Compose draws To, Cc/Bcc, Subject, body, send, but for composing mail, not for a draft card) -> return to card (NO BOARD) -> Send. About 5 actions; 2 of the transitions have no board. |
+| Steps with no board | Edit entry on the card; confirm/return from the editor; "Replaced" state of the old card; sent-confirmation check in the Inbox (step 7, should be dropped). |
+| Needless decisions | Two ways to make the same change (composer or editor). Acceptable if the composer is the main route and editing is secondary. |
+| Re-entry of known data | PG-A-Compose shows To as a contact chip ("Ana Ruiz"), so a known contact is not retyped. Cc/Bcc is one collapsed row; adding Jordan Lee means expanding it and picking the contact. No suggestion state is drawn. |
+| Dead ends | Abandoned edit, invalid address, and removing the only recipient have no drawn outcome. After "Save" there is no drawn post-save state. |
+| Board conflict | Resolved. PG-A-Thread, PH-Thread and Inner all show "Save" and "Send". |
 
 ## 2. Take-away pass
 
-- Outer thread (`PG-A-Thread.png`): The "Searched mail, 12 results" line and the "Inbox agent is working" line sit beside a card that is already waiting for approval. The working line is stale while the approval is pending (the agent has finished the draft); remove it when a card needs approval. Everything else (header pill, back, two side buttons, composer) is needed. One prominent action: "Allow" is the light filled button and "Deny" is quieter, which is correct. The card title "Send reply" and the agent text "Here is a draft. I have not sent it." both say this is an unsent draft, and the "Needs approval" tag says it a third time. Remove the agent sentence or the tag. The sentence is chat, the tag is the card state, so the sentence is the one to drop.
-- Inner (`Inner.png`): The Inbox list on the left is useful context and is the only place the user can see Jordan Lee is a contact. The body here includes "I'll send an invite shortly", which differs from the outer board's draft text; fixture drift only. "Save" is secondary, "Send" is the single prominent action. Good.
-- DS-06 Mail approval card: Four states are drawn (Needs approval with Cc, Sent, Not sent, light mode). Good coverage of the static card. Nothing to remove.
-- Edit screen: does not exist, so there is nothing to take away. Its existence would add a screen, a keyboard presentation and a discard decision.
+- PG-A-Thread and PH-Thread: the blue "Inbox agent is working" line sits under a card that is already waiting for approval. The agent has finished, so the line is stale and competes with the yellow "Needs approval" tag. Remove it while a card awaits approval. The sentence "Here is a draft. I have not sent it." repeats the "Needs approval" tag; drop the sentence. One prominent action: "Send" (light filled); "Save" is quiet. Correct.
+- Inner: the Inbox list is useful context. Same card, same labels.
+- PG-A-Thread card: shows To only. The Cc row appears only in DS-06's "Needs approval, with Cc" state, so the result of the edit is drawn; the way there is not.
+- PG-A-Compose: the editor surface exists and is clean. It is a send-new-mail screen: its send arrow would send directly, which is wrong for editing an approval draft. It needs a "Done" that returns to the card.
+- DS-06 card states (Needs approval with Cc, Sent, Not sent, light): nothing to remove.
 
 ## 3. Simpler version
 
-Use the route DS-06 already draws and delete the edit screen from this story.
+1. Open the Inbox agent thread at the pending card ("Send" prominent).
+2. In the composer type "Add Jordan on Cc and make it 10:30" and send. The agent posts a new card with the Cc row and the new time; the old card shows "Replaced".
+3. Tap "Send" on the new card; it shows "Sent". This is the confirmation, so the story ends here.
 
-1. Open the Inbox agent thread at the pending card (a push notification or the Inbox row deep-links here). Card shows "Send" prominent.
-2. In the composer type "Add Jordan on Cc and make it 10:30" (DS-06 shows "Add Jordan on Cc" in the typing state) and tap send. The agent replaces the draft with a new card that shows the Cc row "Jordan Lee" and the changed time. The old card goes to a "Replaced" state (not drawn; one-word state to add).
-3. Read the new card and tap "Send". The card shows "Sent".
-
-That is 3 actions against the ideal of 7, uses only drawn components, needs no keyboard-over-form layout, no Cc text parsing and no discard rule. It also removes the "unsaved edits when backgrounded" and "invalid email" edge cases, because the agent resolves "Jordan" to a contact.
-
-If direct editing is still wanted (offline, exact wording), add one control only: tapping the card body opens a native sheet with To, Cc and body fields and a single prominent "Done" that returns to the card; "Send" stays on the card. That is 5 actions. Ship it after the composer route (the plan already says edit-and-send comes after approve and deny).
-
-Also needed whichever route is chosen:
-- Pick one label pair for the card. Recommendation: "Save" and "Send" (it tells the user what happens; "Allow" does not), with "Deny" removed because "Save" keeps the draft and not sending is the default of doing nothing.
-- Move the Inbox check (step 7) out of the journey; the "Sent" state on the card is the confirmation.
+Secondary route, only if exact wording must be typed: tapping the card body opens the PG-A-Compose layout as a sheet with To/Cc/Subject/body prefilled; its single prominent control reads "Done" (not send) and returns to the card; "Send" stays on the card.
 
 ## 4. Beauty check
 
-- `PG-A-Thread.png`: Card and bubbles are solid content. Glass is on the floating header pill, the side buttons and the composer only, which matches the rule. Prominent action is the single light filled "Allow". Corner radii on the card (about 14 pt) and its inner buttons (capsule) look concentric. Spacing between the bubble, tool line and card is even. One issue: the "Inbox agent is working" blue line under the card competes with "Needs approval" yellow; two status colors in the same area.
-- `Inner.png`: Same pattern; two glass groups on the right (side buttons, more button) plus the composer, within the limit of three. Card and list are solid. Consistent.
-- DS-06 (downscaled): card states are consistent in dark and light. I could not read the exact radii and padding values at this size, so I make no claim about them.
-- No screen exists for the edit form, so it cannot be checked.
+- PG-A-Thread, PH-Thread, Inner: card and bubbles are solid; glass only on the title pill, side buttons and composer (within three groups). One prominent action; card and capsule corners look concentric. Two status colors (blue working line, yellow tag) in one area; removing the working line fixes it.
+- PG-A-ThreadStates: Offline, Failed, Refused are consistent with the thread. They cover chat messages, not the mail card.
+- PG-A-Compose: consistent with the rules; one prominent action; contact chip for Ana Ruiz.
+- DS-06: radii and padding could not be read at this size; no claim made.
 
 ## 5. Verdict
 
-**convoluted** as written: 5 of 7 steps have no board, the card has two conflicting label sets, and the route needs a screen that the design system does not draw. The journey becomes **minimal** (3 steps) if the composer route in section 3 replaces the edit screen.
+**acceptable.** The composer route is drawn except the "Replaced" state; the direct-edit route lacks its entry and return.
+
+## ISSUES
+
+- STORY-047-R1-1 | high | PG-A-Thread.dc.html, PH-Thread.dc.html, PG-A-Compose.dc.html | Step 2-3 (edit the draft): the card has no edit entry and PG-A-Compose draws a send-new-mail screen, not a draft editor. Fix: tapping the card body opens the PG-A-Compose layout as a sheet prefilled with the draft; the arrow becomes "Done" (returns to the card); the card keeps "Send". Add a board.
+- STORY-047-R1-2 | medium | PG-A-Thread.dc.html, PH-Thread.dc.html, Inner.dc.html | Step 1: "Inbox agent is working" shows under a card that already needs approval, beside the yellow "Needs approval" tag. Fix: hide the working line while a card awaits approval.
+- STORY-047-R1-3 | medium | PG-A-Thread.dc.html, DS-06-Chat.dc.html | Step 2 (composer route): after "Add Jordan on Cc" the old card has no state. Fix: draw the old card with a "Replaced" tag and no buttons, above the new card.
+- STORY-047-R1-4 | medium | PG-A-Compose.dc.html | Step 4: Cc/Bcc is a collapsed row and no contact suggestions or invalid-address error are drawn. Fix: draw the expanded Cc row with a suggestion list (Jordan Lee) and an inline error state.
+- STORY-047-R1-5 | low | PG-A-Thread.dc.html, PH-Thread.dc.html | Step 1: "Here is a draft. I have not sent it." repeats the "Needs approval" tag. Fix: remove the sentence when a card follows.
+- STORY-047-R1-6 | low | PG-A-Thread.dc.html | Steps 6-7: no drawn outcome for "Save" or for removing the only recipient. Fix: draw a "Saved to drafts" tag on the card and a card with an empty To row and Send hidden; drop catalog step 7 (check the Inbox).

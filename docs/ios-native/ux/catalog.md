@@ -1,34 +1,46 @@
 # UX Path Catalog: Praci iOS (native, planned)
 
-Generated: 2026-10-20
+Generated: 2026-10-20. Refreshed: 2026-10-20 (round 1, after the gap-fix pass on the design boards).
 
 Status: planning only. No Swift code exists. Every story below describes planned behavior, built from the design boards in `docs/design-system/ios/boards/`, the build brief and phased plan in `docs/ios-native/`, and the existing Expo app. Nothing here was observed in a running native app. Epic: #427. Phase issues: #412 to #426 (phase N is issue 412+N).
 
-Inputs: `docs/ios-native/ux/discovery.md` and the ten topic files in `docs/ios-native/ux/topics/`. Story IDs below are catalog IDs (STORY-001 to STORY-108, assigned in topic order). Each story keeps a **Source** line pointing to its original topic-local ID.
+Inputs: `docs/ios-native/ux/discovery.md` and the ten topic files in `docs/ios-native/ux/topics/`. Story IDs below are catalog IDs (STORY-001 to STORY-117; 001 to 108 were assigned in topic order, 109 to 117 were added in round 1 and sit at the end of their topic). Each original story keeps a **Source** line pointing to its topic-local ID; the new stories name the boards that enabled them.
 
-**Total Stories**: 105 unique stories (108 written; 3 merged as duplicates, see "Merged stories").
+**Total Stories**: 114 unique stories (117 written; 3 merged as duplicates, see "Merged stories").
 
 **Coverage**: 24 of 32 feature areas are fully covered (75%); 5 more are partially covered (so 29 of 32, or 91%, have at least one story); 3 have no story. Details are in the Coverage Matrix. Phases #412, #413 and #426 have no user interface to walk, so no story is expected for them.
+
+## Round 1 refresh
+
+The boards grew from 40 to 54 in the gap-fix pass. New boards: `PH-Home`, `PH-Thread`, `PH-Inbox`, `PH-Computer`, `PH-Spaces` (standard iPhone, 393 pt), `PG-A-HomeNoModel`, `PG-B-Spaces`, `PG-A-ThreadStates`, `PG-B-Consent`, `PG-B-SignUp`, `PG-B-ForgotPassword`, `PG-B-Account`, `PG-A-Compose`, `PG-A-Cleanup`. Edited boards: `PG-A-Home` (PAGES section, space title menu), `PG-A-Thread` (mail card now "Save" and "Send", "Agent actions" button). Boards were judged from screenshots; they are static, so transitions, pending states and keyboard behavior are not verified. The rule cards in `PG-A-Rules.dc.html` and `PG-B-Rules.dc.html` were not updated and now disagree with several boards (Home PAGES and empty text, the thread's prominent action "Allow", Inbox sections and prominent action, "Failed to send message").
+
+What changed in this file:
+
+- **Stories added (9)**: 109 and 110 (switch spaces on a standard iPhone and on the outer display, with rename and delete), 111 (connect the first model from Home), 112 (delete the account), 113 (resend a password reset link), 114 (compose new mail on a standard iPhone), 115 (clean up the Inbox and undo), 116 (recover from offline, failed and refused sends), 117 (decline, then allow, AI data sharing).
+- **Stories updated (70 of the original 105)**: Design source, Steps and Design gaps re-checked against the boards; every story that named a board that now exists, or a mismatch a board settled, was edited.
+- **Story-level gaps**: 29 closed in full, 51 narrowed (a board now draws part of it), 7 reworded with board evidence (still open), 27 opened on existing stories, plus the Design gaps of the nine new stories.
+- **Ideal paths re-set** where a board changed the count: 007, 015, 019, 039, 059, 062, 086, 087, 089, 094.
+- **Correction**: the earlier device table counted one laptop-pose story too many and one outer-display story too few.
 
 ## Summary by Type
 
 | Type | Count | Meaning |
 | --- | --- | --- |
-| short | 32 | One feature exercised in roughly 3 to 6 steps |
-| medium | 52 | One flow with variations, roughly 5 to 10 steps |
+| short | 36 | One feature exercised in roughly 3 to 6 steps |
+| medium | 57 | One flow with variations, roughly 5 to 10 steps |
 | long | 21 | End-to-end session across several features or display modes |
-| **Total** | **105** | 108 written minus 3 merged (1 long, 2 medium merged away) |
+| **Total** | **114** | 117 written minus 3 merged (1 long, 2 medium merged away) |
 
 ## Summary by Topic
 
 | Topic | Stories | Story IDs | Primary phase issue |
 | --- | --- | --- | --- |
-| First run: server, sign in and recovery | 10 | 001 to 010 | #414 |
-| Home, Personnel and spaces | 10 | 011 to 020 | #415 |
+| First run: server, sign in and recovery | 12 | 001 to 010, 112, 113 | #414 |
+| Home, Personnel and spaces | 13 | 011 to 020, 109 to 111 | #415 |
 | Thread: read and live | 12 | 021 to 032 | #416 |
-| Thread: send, attachments and offline | 12 | 033 to 044 | #417 |
-| Approvals and AI data consent | 10 (011 written, 1 merged) | 045 to 055 | #417 |
-| Inbox triage and compose | 11 | 056 to 066 | #418 |
+| Thread: send, attachments and offline | 13 | 033 to 044, 116 | #417 |
+| Approvals and AI data consent | 11 (12 written, 1 merged) | 045 to 055, 117 | #417 |
+| Inbox triage and compose | 13 | 056 to 066, 114, 115 | #418 |
 | Team Computer, artifacts, pages, routines | 11 | 067 to 077 | #420 |
 | Finance, Legal, Cap table, Data room | 9 | 078 to 086 | #424 |
 | Settings, models, voice, integrations | 10 (11 written, 1 merged) | 087 to 097 | #421 |
@@ -36,17 +48,17 @@ Inputs: `docs/ios-native/ux/discovery.md` and the ten topic files in `docs/ios-n
 
 ## Summary by Device
 
-Counts use the first device named in the Device field of the 105 surviving stories.
+Counts use the first device named in the Device field of the 114 surviving stories (the earlier table listed 18 outer and 4 laptop; a recount gives 19 and 3 for the original 105).
 
 | Device | Stories |
 | --- | --- |
-| Standard iPhone (393 pt) | 76 |
-| iPhone Duo outer display (466x678 pt) | 18 |
+| Standard iPhone (393 pt) | 81 |
+| iPhone Duo outer display (466x678 pt) | 23 |
 | iPhone Duo inner display, flat (890x626 pt) | 6 |
 | iPhone Duo half-folded (1/2 + 1/2) | 1 |
-| iPhone Duo laptop pose (626x890 pt) | 4 |
+| iPhone Duo laptop pose (626x890 pt) | 3 |
 
-Duo is the declared primary target, yet 76 stories start on a standard iPhone because the standard-iPhone layouts are mostly not drawn (see Design Gaps, #415, #416 and #419). Several of those stories also describe a Duo variation.
+Duo is the declared primary target, yet 81 stories start on a standard iPhone. Standard layouts are now drawn for Home, Thread, Inbox, Computer and the space menu (`PH-*`), but not for Artifacts, Settings, sign-in, compose or the Pages, so many of those stories still judge a standard iPhone step against an outer-display board. Several also describe a Duo variation.
 
 ## Coverage Matrix
 
@@ -57,32 +69,32 @@ Feature areas come from the Feature Map in `docs/ios-native/ux/discovery.md`, pl
 | 1 | Scaffold, tokens | #412 | none | N/A (no UI) | Light mode and Dynamic Type are not walked by any story |
 | 2 | Contracts export | #413 | 010, 028 (indirect) | N/A (no UI) | Older-server and unknown-block behavior only |
 | 3 | Server selection | #414 | 002, 006, 009, 010 | Covered | |
-| 4 | Sign in, sign up, reset, SSO | #414 | 001, 003, 004, 005, 008 | Covered | |
-| 5 | Home (Inbox row, Activity, Personnel) | #415 | 011, 013, 012 | Covered | Saved snapshot and Activity "See all" have no story outcome |
-| 6 | Spaces (list, switch, create) | #415 | 015, 016 | Covered | No switcher board |
+| 4 | Sign in, sign up, reset, SSO | #414 | 001, 003, 004, 005, 008, 113 | Covered | Sign-up, forgot-password and "Check your email" are drawn; pending, error and return-to-app states are not |
+| 5 | Home (Inbox row, Activity, Pages, Personnel) | #415 | 011, 013, 012, 111 | Covered | Standard Home drawn (`PH-Home`); Activity "See all", saved snapshot and Home error states have no board |
+| 6 | Spaces (list, switch, create, rename, delete) | #415 | 015, 016, 109, 110 | Covered | Title menu and Space settings drawn; inner placement, switch failure and delete confirmation are not |
 | 7 | Create bot, create group | #415 | 012, 014, 104 | Covered | |
 | 8 | Bot and group settings, archive, sections, pins | #415 | 017, 018, 020 | Covered | Group delete and section removal only as edge cases |
 | 9 | Thread read | #416 | 021 to 032 | Covered | |
 | 10 | Thread write (composer, attachments, outbox, reactions, replies, stop) | #417 | 033 to 044 | Covered | |
-| 11 | Approvals (tool, mail, secret, MCP, choice) | #417 | 045, 046, 047, 050, 051, 053, 054 | Covered | Always-allow review (055) has no planned screen |
-| 12 | AI data consent prompt | #417 | 048, 094, 052 | Covered | Prompt has no board |
-| 13 | Inbox list (sections, filters, search, swipe) | #418 | 056, 060, 064, 063 | Covered | |
+| 11 | Approvals (tool, mail, secret, MCP, choice) | #417 | 045, 046, 047, 050, 051, 053, 054 | Covered | Mail card is one design (Save / Send); no decline control; always-allow review (055) has no planned screen |
+| 12 | AI data consent prompt | #417 | 048, 094, 052, 117 | Covered | Sheet and Settings page drawn (`PG-B-Consent`); voice wording, "Not now" outcome and the in-thread card are not |
+| 13 | Inbox list (sections, filters, search, swipe) | #418 | 056, 060, 064, 063 | Covered | Standard list drawn (`PH-Inbox`); section names differ from the outer boards; no standard message view |
 | 14 | Inbox message | #418 | 057 | Covered | |
-| 15 | Compose, reply, forward, to-dos | #418 | 058, 059, 061, 065 | Covered | Compose has no board |
-| 16 | Inbox cleanup and unsubscribe | #418 | 062 | Covered | Scope in phase 6 unconfirmed |
+| 15 | Compose, reply, forward, to-dos | #418 | 058, 059, 061, 065, 114 | Covered | Compose page drawn for the outer display only; states, standard iPhone and inner placement are not |
+| 16 | Inbox cleanup and unsubscribe | #418 | 062, 115 | Covered | List, action bar and Done drawn; confirmations, outcomes, History and a standard iPhone entry are not; scope in phase 6 unconfirmed |
 | 17 | Duo layouts (outer, inner, half-folded, laptop) | #419 | 029, 030, 064, 085, 098 to 108 | Covered | Laptop pose only drawn for Finance |
-| 18 | Team Computer | #420 | 067, 068, 102 | Covered | |
-| 19 | Artifacts (browse, versions, share, delete, image) | #420 | 069, 070, 071, 072, 108 | Covered | |
+| 18 | Team Computer | #420 | 067, 068, 102 | Covered | Standard iPhone drawn (`PH-Computer`); booting, handoff, lease and reconnect states are not |
+| 19 | Artifacts (browse, versions, share, delete, image) | #420 | 069, 070, 071, 072, 108 | Covered | Standard Home has an Artifacts row; the list at 393 pt is not drawn |
 | 20 | Agent pages and lists | #420 | 073, 074 | Covered | |
 | 21 | Routines | #420 | 075, 076 | Partial | No routines list, history or create/edit story |
-| 22 | Settings (account, models) | #421 | 087, 088, 089, 090, 007, 095 | Covered | Account, password, archived bots have no board |
+| 22 | Settings (account, models) | #421 | 087, 088, 089, 090, 007, 095, 112 | Covered | Account and AI data sharing drawn; Change password and Archived bots pages are not |
 | 23 | Integrations | #421 | 093, 097 | Covered | |
 | 24 | Push | #422 | 106 | Partial | No story for permission prompt, banner suppression for the open thread, or Activity dot |
 | 25 | Voice (dictation, call loop, settings, player) | #423 | 091, 092, 052 | Partial | No dictation or call-loop story; no call screen board |
-| 26 | Finance | #424 | 078, 079, 103 | Covered | |
-| 27 | Legal | #424 | 080, 081 | Covered | |
-| 28 | Cap table | #424 | 082 | Covered | |
-| 29 | Data room | #424 | 083, 084 | Covered | |
+| 26 | Finance | #424 | 078, 079, 103 | Covered | Entry drawn (PAGES row) |
+| 27 | Legal | #424 | 080, 081 | Covered | Entry drawn (PAGES row with deadline count) |
+| 28 | Cap table | #424 | 082 | Covered | Entry drawn (PAGES row) |
+| 29 | Data room | #424 | 083, 084 | Covered | Entry drawn (PAGES row) |
 | 30 | Platform extras (Live Activities, App Intents, share extension, widgets) | #425 | 106 (mention only) | None | No story; no boards |
 | 31 | Release (TestFlight, screenshots) | #426 | none | N/A (no UI) | |
 | 32 | Global search (`search.query`, jump) | #416 | 031, 060 (mail search only) | Partial | Cross-thread search results screen is not drawn or walked |
@@ -103,12 +115,13 @@ Install, signed out
   010 older API server
   009 Duo setup with custom server (-> 001)
   001 sign in
-    003 SSO              004 sign up (+ verify)      005 reset password
+    003 SSO              004 sign up (+ verify)      005 reset password -> 113 resend the link
     008 session rejected (re-enter at 001)
     -> 011 Home (needs-me, Activity approve)
          013 Home load failure / recovery
          012 first bot (empty Home)
            -> 019 no model connected
+                -> 111 connect from the Home card (-> 044 first message)
                 -> 089 connect hosted provider  -> 088 default model  -> 090 local server
                 -> 040 send with no model, connect, resend
            -> 044 first message from empty thread (-> 027 empty thread read)
@@ -116,8 +129,10 @@ Install, signed out
                 034 attach -> 035 attach limits / HEIC
                 036 reply   042 react   041 stop   037 mention (needs 014)
                 038 offline -> 039 refused -> 043 long session (038 + 034 + 036 + 039)
+                                           -> 116 offline, failed and refused in one thread (038 + 039)
          014 group (-> 026 group thread read, 037 mention)
          015 second space -> 016 space switch on inner display
+                             109 switch on standard iPhone    110 switch, rename, delete on outer
          017 bot settings -> 018 archive -> 095 restore archived bot
          020 organize Personnel (pins, sections)
          Read side (all assume a bot exists, 012)
@@ -127,11 +142,11 @@ Install, signed out
          Approvals (assume a running thread, 023)
            045 tool Allow -> 050 CONFLICT (second device) -> 055 review Always allow
            046 mail draft approve -> 047 edit and send (needs 058/065 compose)
-           048 first consent -> 094 review and withdraw consent  (-> 052 voice consent)
+           048 first consent -> 117 decline, then allow in Settings -> 094 review and withdraw consent  (-> 052 voice consent)
            051 secret      053 MCP server      054 choice card + writes on
          Inbox (needs mail connected, 066)
            066 first open / first sync -> 056 triage -> 057 read message -> 058 reply -> 059 forward
-           060 search and filter   061 to-do   062 cleanup   063 writes off   065 compose
+           060 search and filter   061 to-do   062 cleanup (-> 115 archive three senders, undo)   063 writes off   065 compose (-> 114 on a standard iPhone)
            064 inner-display session (needs 056 to 058)
          Agent surfaces
            067 watch computer -> 068 take control -> 102 laptop pose
@@ -145,7 +160,7 @@ Install, signed out
            085 four pages on Duo     086 sidebar glance
          Settings
            087 open Settings -> 088, 089, 090, 091 -> 092 hosted voice, 093 integrations -> 097 server credentials
-           007 sign out and delete account (merged 096)
+           007 sign out and delete account (merged 096)   112 delete account
          Duo device stories (assume the matching base story)
            098 outer approve (045)  099 outer mail (056, 057)  100 unfold (any open thread)
            104 create bot (012)  105 short outer (any)  106 push tap (needs 011)  107 inner Settings (087, 088)
@@ -155,7 +170,7 @@ Longest chain: 006 or 002 -> 001 -> 011 -> 012 -> 019 -> 089 -> 040 -> 033 -> 02
 
 ## All Stories
 
-Stories are grouped by topic in the order the topics were written. Headings use catalog IDs. Inside each story, references such as "STORY-003" have been rewritten to catalog IDs. The three-digit gaps in numbering (049, 096, 101) are merged stories, listed next.
+Stories are grouped by topic in the order the topics were written. Headings use catalog IDs. Inside each story, references such as "STORY-003" have been rewritten to catalog IDs. The three-digit gaps in numbering (049, 096, 101) are merged stories, listed next. Stories 109 to 117 were added in round 1 and sit at the end of their topic.
 
 ### Merged stories
 
@@ -171,14 +186,14 @@ Stories kept separate because they differ in device, phase or failure mode, but 
 
 | Cluster | Stories | Why related |
 | --- | --- | --- |
-| Session end and sign out | 007 (merged 096), 008, 106 | Sign out, forced sign out and push token cleanup share the 401 and Keychain rules |
-| No model connected | 019, 040, 089, 088 | Same `needsModel` state seen from Home, from a send, and from Settings |
-| AI data consent | 048, 094 (merged 049), 052, 061, 066, 092 | One consent state surfaces at send, voice, triage and Settings; the prompt has no board |
+| Session end and sign out | 007 (merged 096), 008, 106, 112 | Sign out, forced sign out and push token cleanup share the 401 and Keychain rules |
+| No model connected | 019, 040, 089, 088, 111 | Same `needsModel` state seen from the Home card, from a send, and from Settings |
+| AI data consent | 048, 094 (merged 049), 052, 061, 066, 092, 117 | One consent state surfaces at send, voice, triage and Settings; the sheet and the Settings page are drawn, the voice and in-thread variants are not |
 | Mail draft approval | 032, 046, 047, 099 | One approval card in read-only (phase 4), act (phase 5), edit-and-send and outer display |
 | Approval on a tool | 011, 045, 050, 098 | Home Activity approve, thread Allow, CONFLICT, and the outer-display variant |
 | Inbox on Duo | 060, 064 (merged 101), 099 | Search and filter, inner two-pane, and outer triage |
-| Compose | 058, 059, 065, 047 | Four entry points to one compose sheet that has no board |
-| Space switching | 015, 016, 106 | Switcher control, inner display, and push tap that switches first |
+| Compose | 058, 059, 065, 114, 047 | Entry points to one compose page (Compose, Reply, the Reply title menu); drawn for the outer display only |
+| Space switching | 015, 016, 106, 109, 110 | Create, inner display, push tap that switches first, the standard title menu, and the outer menu with Space settings |
 | Create bot | 012, 014, 104, 019 | Empty Home, group, per-display, and first run |
 | Team Computer | 067, 068, 076, 102 | Phone, Duo outer, handoff session, laptop pose |
 | Image viewer | 072, 108 | Standard iPhone and across display modes |
@@ -186,6 +201,9 @@ Stories kept separate because they differ in device, phase or failure mode, but 
 | Settings on Duo | 087, 088, 107 | Same pages, nested split on inner display |
 | Archived bots | 018, 095 | Archive from a thread, restore from Settings |
 | Data room | 083, 084, 085 | Upload and search, share into chat, four pages on Duo |
+| Sends that wait or fail | 038, 039, 043, 116 | Offline banner, "Waiting to send", "Not sent" with Retry, "Not sent" with a reason and Edit |
+| Mail cleanup | 056, 062, 115 | Swipe archive, the long unsubscribe and spam session, and the short archive-and-undo pass |
+| Password reset | 005, 113 | First email arrives, and Resend when it does not |
 
 
 ## Topic: First run: server, sign in and recovery
@@ -203,10 +221,10 @@ Source file: `docs/ios-native/ux/topics/first-run.md`
 **Device**: standard iPhone
 **Ideal path**: 4 — type Email, type Password, tap Sign in, land on Home.
 **Alternate paths**: Press the keyboard Go key (`returnKeyType="go"` in Expo) in the Password field instead of tapping Sign in. Continue with SSO (STORY-003). Sign up first (STORY-004).
-**Design source**: Sign in screen: `PG-B-SignIn.dc.html`, rule card "Sign in" (prominent action: "Sign in", full-width ink pill). Home after sign-in: `PG-A-Home.dc.html` (out of scope here).
+**Design source**: Sign in screen: `PG-B-SignIn.dc.html` (wordmark "Praci", title "Sign in", prominent action "Sign in", full-width ink pill; links "Forgot password?", "Sign up" and "Use a custom server"), rule card "Sign in". Home after sign-in: `PG-A-Home.dc.html` and `PH-Home.dc.html` (out of scope here).
 
 #### Steps
-1. Launch the app → The root screen shows the wordmark, the title "Sign in to Rakazo" and grouped fields. No Back control. Capabilities load first ("Loading…" per the rule card).
+1. Launch the app → The root screen shows the wordmark "Praci", the title "Sign in", the SSO button and "or" (the board draws them even though this server reports no SSO), then grouped Email and Password fields. No Back control. Capabilities load first ("Loading…" per the rule card).
 2. Tap the "Email" field and type `maya@example.com` → Keyboard opens, field shows text.
 3. Tap the "Password" field and type the password → Text is masked.
 4. Tap "Sign in" → Button shows a working state, `POST /api/auth/sign-in/email` succeeds, the token goes to the Keychain, the selected space is cleared first, and the app replaces the root with Home.
@@ -221,10 +239,9 @@ Source file: `docs/ios-native/ux/topics/first-run.md`
 - Double tap on Sign in: the Expo app ignores a second submit while pending.
 
 #### Design gaps
-- Title mismatch: board "Sign in to Rakazo" vs Expo "Sign in to Praci".
 - No board for the button's pending label (Expo: "Working…") or for local validation messages.
 - No board for the Password field Go key behavior or focus order.
-- Which mode (sign in or sign up) the app opens in for a first launch is not decided; Expo opens sign-up, the board shows sign-in.
+- DECISION: which mode (sign in or sign up) the app opens in for a first launch is not decided; Expo opens sign-up. Both modes are now drawn (`PG-B-SignIn`, `PG-B-SignUp`), so the choice no longer needs a board, only a decision.
 
 
 ### STORY-002: Switch to a self-hosted server before signing in
@@ -238,11 +255,11 @@ Source file: `docs/ios-native/ux/topics/first-run.md`
 **Device**: standard iPhone
 **Ideal path**: 7 — open the sheet, type the address, Save, then email, password, Sign in.
 **Alternate paths**: Open the same Server sheet later from Settings (rule card: "Sheet, medium detent, from Sign in or Settings"; the Settings board has no visible Server row). Type the address without a scheme; the Expo app adds `https://`.
-**Design source**: `PG-B-SignIn.dc.html` ("Use a custom server" link); `PG-B-Server.dc.html`, rule card "Server" (Cancel xmark, Save prominent checkmark, one sentence, URL field, "Use default server").
+**Design source**: `PG-B-SignIn.dc.html` ("Use a custom server" link); `PG-B-Server.dc.html`, rule card "Server" (Cancel xmark, Save prominent checkmark, one sentence "Enter your Praci server address.", URL field, "Use default server"). `PG-B-SignUp.dc.html` carries the same link.
 
 #### Steps
 1. On the sign-in screen tap "Use a custom server" → The Server sheet opens at a medium detent.
-2. Read "Enter your Rakazo server address." → The URL field (placeholder `https://app.example.com`, accessibility label "Server address") shows the default host as its placeholder.
+2. Read "Enter your Praci server address." → The URL field (placeholder `https://app.example.com`, accessibility label "Server address") shows the default host as its placeholder.
 3. Type `praci.example.test` → Field accepts input; any earlier error clears. "Use default server" appears once the text differs from the current address.
 4. Tap Save → Save shows a spinner while the app probes `POST /rpc/health`; the address is normalized to origin only (scheme, host, port).
 5. The sheet closes → Sign in shows the new host. The link now reads "Custom server praci.example.test" (Expo accessibility label "Custom server {host}").
@@ -261,7 +278,7 @@ Source file: `docs/ios-native/ux/topics/first-run.md`
 - Tap Cancel (xmark) with an unsaved address: no change.
 
 #### Design gaps
-- Label mismatch: board "Could not reach this server" vs Expo "Could not reach that server"; board "Rakazo server" vs Expo "Praci server".
+- Label mismatch: board "Could not reach this server" vs Expo "Could not reach that server". The product name now matches (board and Expo both say "Praci server").
 - The other validation errors and the http warning line have no board.
 - No Server row on the Settings board even though the rule card says the sheet opens from Settings.
 - No design for a confirmation before a server change wipes a signed-in session.
@@ -279,7 +296,7 @@ Source file: `docs/ios-native/ux/topics/first-run.md`
 **Device**: standard iPhone
 **Ideal path**: 3 — tap "Continue with Example SSO", complete the provider page, land on Home.
 **Alternate paths**: Email and password if the server also allows password auth (STORY-001). On a server with SSO only, SSO is the only route.
-**Design source**: `PG-B-SignIn.dc.html` (SSO button at the top of the card, "or" divider), rule card "Sign in". The provider page and consent sheet are system UI (`ASWebAuthenticationSession`): NO BOARD.
+**Design source**: `PG-B-SignIn.dc.html` and `PG-B-SignUp.dc.html` (SSO button at the top of the card, "or" divider, same on both modes), rule card "Sign in". The provider page and consent sheet are system UI (`ASWebAuthenticationSession`): NO BOARD.
 
 #### Steps
 1. Open the app → Sign in shows the button "Continue with Example SSO", then "or", then the email fields.
@@ -313,15 +330,15 @@ Source file: `docs/ios-native/ux/topics/first-run.md`
 **Device**: standard iPhone
 **Ideal path**: 8 — switch to sign up, name, email, password, Sign up, read "Check your email", open the mail link, return and Sign in.
 **Alternate paths**: A server that does not require verification returns a session directly and Jamal lands on Home after step 5. SSO sign-up (STORY-003).
-**Design source**: `PG-B-SignIn.dc.html` ("Don’t have an account? Sign up" link only). Sign-up form with the "Name" field: NO BOARD. "Check your email" state: described in the rule card ("Reset sent: title becomes Check your email") but not drawn, and described for reset only. Mail app and link: system UI.
+**Design source**: `PG-B-SignIn.dc.html` ("Don’t have an account? Sign up"); sign-up form: `PG-B-SignUp.dc.html` (wordmark "Praci", title "Sign up", SSO button, "or", Name, Email, Password, ink "Create account", "Already have an account? Sign in", "Use a custom server"). "Check your email" state: `PG-B-ForgotPassword.dc.html` right frame ("We sent a link to sam@example.com.", "Open Mail", "Resend", "Back to sign in"), drawn for reset and reusable for verification. Mail app and link: system UI.
 
 #### Steps
-1. On Sign in tap "Sign up" in "Don’t have an account? Sign up" → The screen switches to sign-up mode: title becomes "Sign up for Praci" (Expo), a "Name" field appears above Email, the button reads "Sign up", the link reads "Already have an account? Sign in".
+1. On Sign in tap "Sign up" in "Don’t have an account? Sign up" → The screen switches to sign-up mode: title becomes "Sign up" (board; Expo says "Sign up for Praci"), a "Name" field appears above Email, the button reads "Create account" (board; Expo says "Sign up"), the link reads "Already have an account? Sign in".
 2. Type name "Jamal Reyes", email and an 8-or-more character password → Fields accept input. Name is optional; Expo falls back to the part of the email before `@`.
-3. Tap "Sign up" → `POST /api/auth/sign-up/email` runs.
-4. Server answers with verification required and no session → Title becomes "Check your email" and VoiceOver announces it.
-5. Open the Mail app, tap the verification link → The link verifies the account in the browser.
-6. Return to Praci → The screen still shows "Check your email" with a "Back to sign in" link.
+3. Tap "Create account" → `POST /api/auth/sign-up/email` runs.
+4. Server answers with verification required and no session → Title becomes "Check your email" with "We sent a link to {email}", an ink "Open Mail", a quieter "Resend" and a "Back to sign in" link; VoiceOver announces the title.
+5. Tap "Open Mail", tap the verification link → The link verifies the account in the browser.
+6. Return to Praci → The screen still shows "Check your email" with "Resend" and "Back to sign in".
 7. Tap "Back to sign in", enter Email and Password, tap "Sign in" → Signed in.
 8. Home loads → New account, empty Personnel list (`PG-A-Home` empty state "Tap + to create a bot").
 
@@ -335,10 +352,11 @@ Source file: `docs/ios-native/ux/topics/first-run.md`
 - Rate limit (10 per 15 minutes) applies to sign-up too.
 
 #### Design gaps
-- No board for sign-up mode (Name field, button, switch links).
-- The "Check your email" variant is described only for password reset; verification reuse is a Expo behavior not in the plan.
-- No design for returning to the app after verification, or resending the email.
+- Sign-up form copy and states: the board does not mark Name as optional, shows no password rule (8 or more characters), and draws no error line (email taken, weak password) or pending state on "Create account".
+- The "Check your email" screen is drawn once (`PG-B-ForgotPassword`) with copy written for reset; whether verification reuses it unchanged is not stated.
+- No design for returning to the app after verification: the link opens in Safari and the app stays on "Check your email" (Resend is now drawn).
 - Default launch mode (sign-up in Expo, sign-in on the board) is undecided.
+- Label mismatch between the board and Expo: "Create account" and "Sign up" (title) vs Expo "Sign up" (button) and "Sign up for Praci" (title).
 
 
 ### STORY-005: Reset a forgotten password
@@ -352,14 +370,14 @@ Source file: `docs/ios-native/ux/topics/first-run.md`
 **Device**: standard iPhone
 **Ideal path**: 7 — Forgot password?, type Email, Send reset link, read confirmation, open mail link and set password, Back to sign in, Sign in.
 **Alternate paths**: SSO if the account is linked (STORY-003). Change password from Settings once signed in (STORY-007 mentions it; no screen).
-**Design source**: "Forgot password?" link on `PG-B-SignIn.dc.html`. Forgot-password form: NO BOARD (rule card only says "Reset sent: title becomes Check your email"). Web reset page: not part of the app.
+**Design source**: "Forgot password?" link on `PG-B-SignIn.dc.html`. Forgot form and "Check your email": `PG-B-ForgotPassword.dc.html` (frame 1: wordmark, title "Reset password", Email, ink "Send link", "Back to sign in", strip Back chevron; frame 2: title "Check your email", "We sent a link to sam@example.com.", "Open Mail", "Resend", "Back to sign in"). Web reset page: not part of the app.
 
 #### Steps
-1. On Sign in tap "Forgot password?" → The screen changes to forgot mode: title "Reset your password" (Expo), only the Email field remains, the button reads "Send reset link", the bottom link reads "Back to sign in".
+1. On Sign in tap "Forgot password?" → The screen changes to forgot mode: title "Reset password" (board; Expo says "Reset your password"), only the Email field remains, the ink button reads "Send link" (board; Expo says "Send reset link"), the bottom link reads "Back to sign in", and a Back chevron sits in the strip.
 2. Type the email address → Field accepts input.
-3. Tap "Send reset link" → The app calls the server password-reset request with the server's `resetUrl`.
-4. Request succeeds → Title becomes "Check your email"; VoiceOver announces it.
-5. In Mail, open the reset link → The browser shows the server's web reset page. Lena sets a new password there.
+3. Tap "Send link" → The app calls the server password-reset request with the server's `resetUrl`.
+4. Request succeeds → Title becomes "Check your email" with "We sent a link to {email}", "Open Mail", "Resend" and "Back to sign in"; VoiceOver announces the title.
+5. Tap "Open Mail", open the reset link → The browser shows the server's web reset page. Lena sets a new password there.
 6. Return to Praci and tap "Back to sign in" → Sign-in mode returns with the error line cleared.
 7. Enter Email and the new password and tap "Sign in" → Signed in.
 
@@ -368,13 +386,13 @@ Source file: `docs/ios-native/ux/topics/first-run.md`
 
 #### Edge Cases
 - Server has no reset: the link is not shown. If reached anyway, Expo throws "Password recovery is not configured for this server".
-- Capabilities request fails: Expo shows "Could not load sign-in options" with "Retry" in place of the form; the rule card names this state ("Options failed: message with Retry") but the board does not draw it.
+- Capabilities request fails: Expo shows "Could not load sign-in options" with "Retry" in place of the form; the rule card names this state ("Options failed: message with Try again") but the board does not draw it.
 - Unknown email: the server's behavior is not stated in the plan; the screen would show the same confirmation or an error.
 
 #### Design gaps
-- No board for forgot mode, "Check your email", "Back to sign in", or "Retry".
-- The confirmation gives no way to resend or to open the Mail app.
 - The reset page is in a browser outside the app; returning to the app is manual.
+- Two ways back are drawn on both screens (strip Back chevron and the "Back to sign in" link); one is redundant. Error lines (unknown email, rate limit), a Resend cooldown and the case of no mail app on the phone are not drawn.
+- Label mismatch between the board and Expo: "Reset password" and "Send link" vs "Reset your password" and "Send reset link".
 
 
 ### STORY-006: Server is unreachable or capabilities fail on first launch
@@ -386,14 +404,14 @@ Source file: `docs/ios-native/ux/topics/first-run.md`
 **Goal**: Recover from a failed first load and reach the sign-in form.
 **Preconditions**: Fresh install, no connectivity to the default server at first.
 **Device**: standard iPhone
-**Ideal path**: 3 — see the error, tap Retry, form appears once the network returns.
+**Ideal path**: 3 — see the error, tap Try again, form appears once the network returns.
 **Alternate paths**: Open "Use a custom server" and pick another address (STORY-002). Wait for the network and relaunch.
-**Design source**: Rule card "Sign in" ("Loading options: Loading text. Options failed: message with Retry"). The states are not drawn on `PG-B-SignIn.dc.html`: NO BOARD for the visible layout of loading and failed options.
+**Design source**: Rule card "Sign in" ("Loading options: Loading text. Options failed: message with Try again"). The states are not drawn on `PG-B-SignIn.dc.html` or `PG-B-SignUp.dc.html`: NO BOARD for the visible layout of loading and failed options.
 
 #### Steps
 1. Launch the app with no signal → Sign in shows "Loading…" while `GET /api/auth/capabilities` runs (8 s timeout in the Expo client).
-2. The request fails → Message "Could not load sign-in options" and a "Retry" button replace the form. The "Use a custom server" link stays reachable.
-3. Signal returns, tap "Retry" → Capabilities load and the form appears with the right SSO and reset options.
+2. The request fails → Message "Could not load sign-in options" and a "Try again" button (rule card; Expo says "Retry") replace the form. The "Use a custom server" link stays reachable.
+3. Signal returns, tap "Try again" → Capabilities load and the form appears with the right SSO and reset options.
 
 #### Variations
 - An old server returns the legacy capabilities shape: the client treats it as password only; the SSO button and "Forgot password?" do not appear.
@@ -406,7 +424,6 @@ Source file: `docs/ios-native/ux/topics/first-run.md`
 #### Design gaps
 - No drawn layout for loading or the failed-options message; unclear whether the email fields are hidden or disabled.
 - No board for the "sign-in screen when offline" in general; no distinction between "no network" and "server wrong".
-- "Retry" vs the "Try again" used on Home and Artifacts boards.
 
 
 ### STORY-007: Sign out, then delete the account
@@ -418,14 +435,14 @@ Source file: `docs/ios-native/ux/topics/first-run.md`
 **Goal**: Sign out of the app, sign back in, and permanently delete the account.
 **Preconditions**: Signed in with email and password on the default server. Two bots, several saved chats, push enabled.
 **Device**: standard iPhone
-**Ideal path**: 12 — Settings, profile, Sign out, sign in, Settings, profile, Delete account, confirm with password, land on Sign in.
-**Alternate paths**: Delete an SSO-only account with "Sign in again" (re-authenticate) or "Send deletion code" and the emailed code (steps 9 to 10 variations). Sign out from Duo inner display Settings (detail in the 2/3 pane).
-**Design source**: `PG-B-Settings.dc.html` rule card (profile row "Account"; "Sign-out and delete account live on the profile detail (Account)"). The Account detail screen itself, the delete confirmation and the re-authentication dialog: NO BOARD. `DS-04-Overlays.dc.html` holds the generic alert pattern (confirm with Cancel / Delete, as used in group delete).
+**Ideal path**: 13 (12 steps below; step 3 holds two taps) — Settings, profile, Sign out, confirm, sign in, Settings, profile, Delete account, type password, Delete, land on Sign in.
+**Alternate paths**: Delete without signing out first (STORY-112). Delete an SSO-only account with "Sign in again" (re-authenticate) or "Send deletion code" and the emailed code (steps 9 to 10 variations). Sign out from Duo inner display Settings (detail in the 2/3 pane).
+**Design source**: `PH-Home.dc.html` and `PG-A-Home.dc.html` (round "AB" avatar at top left), `PG-B-Settings.dc.html` (profile row "Sam Rivera / Account"), `PG-B-Account.dc.html` (Account detail: profile, Email, Change password, Sign out, red Delete account; frame 2 "Sign out of Praci?" with a red "Sign out"; frame 3 alert "Delete your account?" with the full warning text, "Current password" field, Cancel and red Delete). The SSO re-authentication and email-code variants: NO BOARD.
 
 #### Steps
-1. On Home open the account entry in the sidebar or top bar → The Settings sheet opens (rule card: "Opened as a sheet from the sidebar profile").
+1. On Home tap the "AB" avatar at the top left → The Settings sheet opens (rule card: "Opened as a sheet from the sidebar profile"; the avatar is the drawn entry on both standard and outer Home).
 2. Tap the profile row showing the user name and "Account" → The Account detail pushes.
-3. Tap "Sign out" → The app calls sign-out, clears the Keychain token, selected space, saved chats, outbox and caches, and bumps the session generation.
+3. Tap "Sign out", then the red "Sign out" in the confirmation "Sign out of Praci?" → The app calls sign-out, clears the Keychain token, selected space, saved chats, outbox and caches, and bumps the session generation.
 4. App replaces everything with Sign in → The settings sheet closes at any depth; Sign in is the only screen. Push notification registration for this device should end (not specified).
 5. Enter Email and Password, tap "Sign in" → Home loads, caches are empty and refetched.
 6. Reopen Settings → profile row → Account.
@@ -448,11 +465,11 @@ Source file: `docs/ios-native/ux/topics/first-run.md`
 - App Store rule 5.1.1(v) requires in-app deletion; this path satisfies it only if the entry point is visible from the app.
 
 #### Design gaps
-- No board for the Account detail screen, which carries both Sign out and Delete account.
-- No board for the delete confirmation or the SSO re-authentication and email-code variants.
+- The delete confirmation (password) is drawn; the SSO re-authentication and email-code variants have no board.
 - The settings board shows "Change password" but the destination screen (and its token replacement) has no board.
-- The plan does not state whether sign-out unregisters the push token, or warns about unsent outbox messages.
+- The plan does not state whether sign-out unregisters the push token, and the sign-out confirmation says nothing about messages still "Waiting to send" (`PG-A-ThreadStates`), which are wiped with the session.
 - The settings board lists "Account" under the profile; the Expo screen also has appearance, language, notifications. These are not on the iOS Settings board.
+- "Change password" appears twice: as a row in Settings and as a row in Account; its destination has no board.
 
 
 ### STORY-008: Session rejected by the server while using the app
@@ -486,7 +503,7 @@ Source file: `docs/ios-native/ux/topics/first-run.md`
 
 #### Design gaps
 - No message tells the user why they were signed out (Sign in looks the same as a first run).
-- No board for recovery from a stale space (space picker or empty state after the space is removed).
+- Recovery from a stale space: the space menu (`PH-Spaces`, `PG-B-Spaces`) can host it, but nothing is drawn for the moment a space disappears (which space is selected, whether the user is told).
 - The outbox and unsent drafts after a forced sign-out are undefined.
 - Offline-first launch with a saved-chat snapshot while the token is invalid: the plan shows snapshot first, but not what happens before the 401.
 
@@ -565,6 +582,91 @@ Source file: `docs/ios-native/ux/topics/first-run.md`
 
 
 
+### STORY-112: Delete the account from Settings
+**Type**: medium
+**Topic**: First run: server, sign in and recovery
+**Source**: ux-paths round 1 refresh (boards `PG-B-Settings`, `PG-B-Account`)
+**Phase issue**: #421 (P9)
+**Persona**: Corin Whitlock, founder who is closing a pilot workspace and wants all data removed
+**Goal**: Permanently delete the account and its data, and confirm that the app no longer opens it.
+**Preconditions**: Signed in with email and password on the default server; two bots, saved chats and push enabled.
+**Device**: standard iPhone
+**Ideal path**: 6 — tap the "AB" avatar, tap the profile row, tap "Delete account", type the password, tap "Delete", land on Sign in.
+**Alternate paths**: (a) Sign out first (STORY-007 covers both). (b) An SSO-only account re-authenticates or uses an emailed code (not drawn). (c) Ask for a data export first (`account.exportRequest`; no entry is drawn).
+**Design source**: `PH-Home.dc.html` ("AB" avatar), `PG-B-Settings.dc.html` (profile row "Sam Rivera / Account"), `PG-B-Account.dc.html` frame 1 (profile row, Email "sam@example.com", "Change password", "Sign out", and a red "Delete account" set apart at the bottom) and frame 3 (alert "Delete your account?", the text "This permanently deletes your account, bots, conversations, memories, files, and saved connections. This cannot be undone.", a "Current password" field, Cancel and a red Delete).
+
+#### Steps
+1. On Home tap the "AB" avatar → Settings opens as a sheet.
+2. Tap the profile row "Sam Rivera / Account" → the Account page pushes.
+3. Read the page → profile, Email, "Change password", "Sign out", and "Delete account" in red, separated from the rest.
+4. Tap "Delete account" → an alert "Delete your account?" with the permanent-deletion text, a secure "Current password" field, Cancel and a red "Delete".
+5. Type the password → the field is masked.
+6. Tap "Delete" → `/api/auth/delete-user` runs with the password; a pending state is needed (not drawn).
+7. Success → the app clears the Keychain token, the selected space, saved chats, the outbox and caches, and shows Sign in.
+8. Try the old email and password → the red line "Could not continue".
+
+#### Variations
+- Wrong password: Expo shows "Could not delete account" in the alert; nothing is deleted.
+- Tap Cancel: the alert closes and nothing changes.
+- SSO-only account: the dialog offers "Sign in again" or "Send deletion code" and a "Deletion code" field instead of the password (Expo; not drawn).
+
+#### Edge Cases
+- Offline: the call fails and the account remains; the error copy is not drawn.
+- Another device deletes first: the next call returns 401 (STORY-008).
+- The user owns a shared space, or has an active hosted plan: what happens to them is not stated.
+- Messages still "Waiting to send" are lost with the account; the alert does not mention them.
+- App Store rule 5.1.1(v): the path is three taps from Home, so the in-app entry requirement is met by this board.
+
+#### Design gaps
+- No pending, error or wrong-password state on the alert, and "Delete" is not drawn disabled until a password is typed.
+- No SSO re-authentication or email-code variant.
+- Nothing says what happens to shared spaces, active runs and routines, or a hosted subscription; "saved connections" is the only mention of integrations.
+- No data export entry on the Account page.
+- Whether sign-out and deletion unregister the push token is not stated.
+
+
+### STORY-113: Resend the reset link when the email does not arrive
+**Type**: short
+**Topic**: First run: server, sign in and recovery
+**Source**: ux-paths round 1 refresh (board `PG-B-ForgotPassword`); STORY-005 covers the main path
+**Phase issue**: #414 (P2)
+**Persona**: Maren Kovacs, operations lead whose reset email lands late
+**Goal**: Get a working reset link after the first email did not arrive, set a new password and sign in.
+**Preconditions**: Server capabilities report `passwordReset: true`. The account exists.
+**Device**: standard iPhone
+**Ideal path**: 7 — Forgot password?, type Email, Send link, Resend, Open Mail and set the password, Back to sign in, Sign in.
+**Alternate paths**: (a) The first email arrives: STORY-005. (b) The address was mistyped: tap the Back chevron, correct it and send again. (c) Give up and use SSO if the account is linked (STORY-003).
+**Design source**: `PG-B-ForgotPassword.dc.html` (frame 1: "Reset password", Email, ink "Send link", "Back to sign in", strip Back chevron; frame 2: "Check your email", "We sent a link to sam@example.com.", ink "Open Mail", quieter "Resend", "Back to sign in"); `PG-B-SignIn.dc.html` ("Forgot password?").
+
+#### Steps
+1. On Sign in tap "Forgot password?" → the Reset password screen shows only the Email field.
+2. Type `maren@example.com`, tap "Send link" → the screen becomes "Check your email" with "We sent a link to maren@example.com.".
+3. Tap "Open Mail" → the Mail app opens; after a minute there is no message.
+4. Return to Praci and tap "Resend" → another reset request is sent; feedback is not drawn.
+5. The message arrives; open the link in Mail → the browser shows the server's reset page; set a new password there.
+6. Return to Praci and tap "Back to sign in" → the sign-in form returns.
+7. Enter the email and the new password, tap "Sign in" → Home.
+
+#### Variations
+- The address was wrong: the confirmation names the address, so the user sees the typo; the way to fix it is the strip Back chevron (the link "Back to sign in" goes further back).
+- Resend twice: both links may work; which one the server honors is not stated.
+
+#### Edge Cases
+- Rate limit (10 requests per 15 minutes on auth routes): Resend returns an error; none is drawn.
+- No mail app on the phone: "Open Mail" has nothing to open.
+- Link expired: the browser page says so; the app cannot tell.
+- Unknown email: the server's reply is not stated; the screen would show the same confirmation or an error.
+- Offline: the request fails; no error is drawn.
+
+#### Design gaps
+- "Resend" has no visible result (no "Sent" toast, no cooldown or count), so a user may tap it repeatedly.
+- The confirmation has no "Change email" action; Back is the only way to correct the address.
+- Two back controls (strip chevron and "Back to sign in") do different things without saying so.
+- "Open Mail" opens only the default mail app; webmail users get nothing.
+- Returning to the app after the browser step is manual; no deep link signs the user in.
+- Error lines for the request (unknown email, rate limit, offline) are not drawn.
+
+
 ## Topic: Home, Personnel and space switching: user stories
 
 Source file: `docs/ios-native/ux/topics/home-spaces.md`
@@ -578,18 +680,18 @@ Source file: `docs/ios-native/ux/topics/home-spaces.md`
 **Goal**: See at a glance whether anything needs her, then approve the Inbox agent's reply without hunting through threads.
 **Preconditions**: Signed in, Personal space selected, Inbox agent has a drafted reply waiting for approval, Finance agent is mid-run.
 **Device**: standard iPhone
-**Ideal path**: 3 — open the app (Home is the root), tap the "Approve" row in ACTIVITY, tap the approval card's Allow in the thread.
-**Alternate paths**: (a) Activity icon in the side strip/toolbar (carries a dot when something needs you) then the same row. (b) PERSONNEL row "Inbox agent" then find the approval card in the thread. (c) Push notification tap (phase 10, no board for the banner) routes straight to the thread.
-**Design source**: PG-A-Home / PG-A-Rules "Home" (Inbox row card, ACTIVITY card, Personnel rows, Activity dot); PG-A-Thread / PG-A-Rules "Agent thread" for the approval card (prominent action is Allow). Standard iPhone layout of Home: NO BOARD (boards are 466x678 outer display, inner and half-folded only).
+**Ideal path**: 3 — open the app (Home is the root), tap the "Approve" row in ACTIVITY, tap Send on the drafted reply in the thread.
+**Alternate paths**: (a) On the outer display, the Activity bell in the side strip (carries a dot and the label "2 need you") opens the Activity list, then the same row; the standard iPhone has no bell, only the inline card. (b) PERSONNEL row "Inbox agent" then find the approval card in the thread. (c) Push notification tap (phase 10, no board for the banner) routes straight to the thread.
+**Design source**: `PH-Home.dc.html` (standard iPhone: "AB" avatar, Search, prominent "New", space title, Inbox row, PAGES, ACTIVITY with "See all", PERSONNEL), `PG-A-Home.dc.html` (outer display), PG-A-Rules "Home"; `PH-Thread.dc.html` and `PG-A-Thread.dc.html` for the drafted-reply card ("Re: Pilot timeline", "Needs approval", "Save", "Send").
 
 #### Steps
 1. Launch the app with a saved session → Home shows the saved Home snapshot, then fresh `bootstrap`/`spaces.list` data replaces it; Inbox row reads "Inbox", "3 need reply".
-2. Glance at the ACTIVITY card → "Finance agent / Reading card expenses / Working" and "Inbox agent / Reply to Ana is ready to send / Approve".
-3. Tap the "Inbox agent" Activity row → the agent thread opens with the approval card visible; Home's Activity dot clears once nothing needs her.
-4. Tap Allow in the approval card → run continues; "Approve" row disappears from ACTIVITY when she navigates Back.
+2. Glance at the ACTIVITY card → "Finance agent / Reading card expenses / Working", "Inbox agent / Reply to Ana is ready to send / Approve" and "Weekly runway / Ran at 8:00 AM / Done".
+3. Tap the "Inbox agent" Activity row → the agent thread opens with the draft card visible; the Activity count clears once nothing needs her.
+4. Tap Send in the draft card (the prominent one of "Save" and "Send") → the card shows "Sent"; the "Approve" row disappears from ACTIVITY when she navigates Back.
 
 #### Variations
-- Nothing running: ACTIVITY card is hidden ("Activity hides when nothing is running"); Home shows only the Inbox row and PERSONNEL.
+- Nothing running: ACTIVITY card is hidden ("Activity hides when nothing is running"); Home shows the Inbox row, PAGES and PERSONNEL.
 - Several approvals: rows stack in ACTIVITY; "See all" opens the full list (destination of "See all" is NO BOARD).
 
 #### Edge Cases
@@ -597,10 +699,10 @@ Source file: `docs/ios-native/ux/topics/home-spaces.md`
 - Approval was already answered on web: the thread shows the ask as resolved; a second Allow returns CONFLICT (discovery: "A second answer to the same ask returns CONFLICT").
 
 #### Design gaps
-- "See all" destination (full Activity list) has no board; the Activity icon in the side strip also has no destination board.
-- Standard iPhone (393 pt) Home layout is not drawn; where Account/Activity/Search/Artifacts and New sit in the horizontal toolbar is only described in text.
-- Expo labels these header controls "Account", "Activity", "Search", "Artifacts", "Create"; the board names the prominent button "New". Pick one accessible name.
+- "See all" (standard and outer Home) and the outer Activity bell have no destination board.
+- Expo labels the header controls "Account", "Activity", "Search", "Artifacts", "Create"; `PH-Home` uses "Account", "Search" and "New" (aria labels) and a space title. Pick one accessible name for the plus control.
 - Saved-Home-snapshot behavior (stale marker, timestamp) is in the plan but not drawn.
+- The Activity row says "Approve" while the card it opens says "Send": two labels for the same decision.
 
 
 ### STORY-012: Create the first bot from an empty Home
@@ -610,14 +712,14 @@ Source file: `docs/ios-native/ux/topics/home-spaces.md`
 **Phase issue**: #415 (P3)
 **Persona**: Tomas Reyes, first-time founder who just signed up
 **Goal**: Create a bot named "Bookkeeper" and be ready to chat with it.
-**Preconditions**: New account, Personal space with no bots.
+**Preconditions**: A space with no bots (every bot archived or deleted). A brand-new account is drawn with Chief already present (`PG-A-HomeNoModel`).
 **Device**: standard iPhone
 **Ideal path**: 4 — New, New bot, type Name, Create.
 **Alternate paths**: (a) Tap the Personnel row for an existing integration agent instead of creating a bot. (b) Create from the empty state itself: the empty copy says "Tap + to create a bot" but is not tappable in the board. (c) Create via web and wait for sync.
-**Design source**: PG-A-Home / PG-A-Rules "Home" (empty state, New menu); PG-B-NewBot / PG-B-Rules "New bot" (large sheet; fields Name, Title, Description; Create disabled until Name has text; pending "Creating").
+**Design source**: PG-A-Home / `PH-Home.dc.html` / PG-A-Rules "Home" (New menu; the "+" button is the prominent New). The empty state is rule-card text only: `PG-A-HomeNoModel.dc.html` draws a new account with one seeded bot, Chief. PG-B-NewBot / PG-B-Rules "New bot" (large sheet; fields Name, Title, Description; Create disabled until Name has text; pending "Creating").
 
 #### Steps
-1. Open Home → centered empty line "Tap + to create a bot".
+1. Open Home → centered empty line "Tap + to create a bot" (rule-card text; no board draws this state).
 2. Tap the prominent New (plus) → menu with "New bot", "New group", "New space".
 3. Tap "New bot" → large sheet "New bot" with grabber and fields Name, Title, Description; Cancel (xmark) top-left, Create prominent but disabled.
 4. Type "Bookkeeper" in Name → Create becomes enabled.
@@ -635,8 +737,9 @@ Source file: `docs/ios-native/ux/topics/home-spaces.md`
 #### Design gaps
 - Discard-changes confirmation for a dirty New bot sheet is described but not drawn.
 - After Create, is the user taken to the thread or returned to Home? Rules do not say; Expo opens the thread.
-- Empty-state copy "Tap + to create a bot" names a "+" but the board's button is labeled New; also does not mention groups or spaces.
+- The empty state is not drawn and its copy ignores groups and spaces; on `PH-Home` the button is a plus icon, so "+" now matches the control (the "New" name remains an aria label only).
 - Expo `app/index.tsx` has a fallback that creates a bot literally named "New Bot" without a form; the board has no such path.
+- Boards show a new account with Chief already listed (`PG-A-HomeNoModel`), so an empty Personnel list only occurs after archiving or deleting every bot; whether a new space also starts with Chief is not stated.
 
 
 ### STORY-013: Recover when Home fails to load, then reach Personnel
@@ -650,7 +753,7 @@ Source file: `docs/ios-native/ux/topics/home-spaces.md`
 **Device**: standard iPhone
 **Ideal path**: 2 — open Home and see the error, tap "Try again".
 **Alternate paths**: (a) Pull to refresh (not specified in boards). (b) Force quit and relaunch to re-run bootstrap. (c) Switch network and wait for automatic retry (not specified).
-**Design source**: PG-A-Rules "Home" empty/loading/error text; no Home error board is drawn. Loading: three placeholder rows (text only). Error: "Could not load bots" plus "Try again" (text only).
+**Design source**: PG-A-Rules "Home" empty/loading/error text; no Home error board is drawn (`PH-Home` and `PG-A-Home` show only the loaded state). Loading: three placeholder rows (text only). Error: "Could not load bots" plus "Try again" (text only).
 
 #### Steps
 1. Launch app → three placeholder rows show while `bootstrap`, `me`, `spaces.list` load.
@@ -718,19 +821,19 @@ Source file: `docs/ios-native/ux/topics/home-spaces.md`
 **Goal**: Create the space "Acme Labs" and work in it with a clean Personnel list.
 **Preconditions**: Signed in, one space ("Personal") exists.
 **Device**: standard iPhone
-**Ideal path**: 5 — New, New space, type name, Create space, (space opens automatically).
-**Alternate paths**: (a) Create the space on web, then pull it into the app with a space switcher (NO BOARD). (b) Accept an invite to a shared space (no API: "space member management" is a missing API in plan.md).
-**Design source**: PG-A-Home (New menu includes "New space"); PG-B-NewSpace / PG-B-Rules "New space" (medium-detent sheet, Cancel xmark, prominent "Create space", error "Could not create space"). The switcher: NO BOARD.
+**Ideal path**: 4 — tap the space title, New space, type name, Create space (the space opens automatically). The prominent New menu also offers "New space".
+**Alternate paths**: (a) Create the space on web, then pick it from the space title menu. (b) Accept an invite to a shared space (no API: "space member management" is a missing API in plan.md).
+**Design source**: `PH-Spaces.dc.html` (standard iPhone) and `PG-B-Spaces.dc.html` (outer display): tapping the space title opens a menu with the spaces (check on the current one), a divider, "New space" (+) and "Space settings"; PG-A-Home (New menu includes "New space"); PG-B-NewSpace / PG-B-Rules "New space" (medium-detent sheet, Cancel xmark, prominent "Create space", error "Could not create space").
 
 #### Steps
-1. Tap New on Home → menu; tap "New space".
+1. Tap the space title on Home, then "New space" in the menu (or tap New, then "New space").
 2. Medium sheet "New space" slides up with a Name field and prominent "Create space"; detent grows with the keyboard.
 3. Type "Acme Labs" → Create space enabled (inferred).
 4. Tap "Create space" → `spaces.create` succeeds, client sets `x-rakazo-space-id`, wipes or re-keys caches, reloads Home.
-5. Home now shows Acme Labs' own Personnel (empty state "Tap + to create a bot") and an empty ACTIVITY.
+5. Home now shows "Acme Labs" in the title and its own Personnel (empty state "Tap + to create a bot") and an empty ACTIVITY.
 
 #### Variations
-- Rename later: Expo reuses the same sheet titled "Rename space" with button "Rename space"; the board has no rename variant.
+- Rename later: "Space settings" in the title menu pushes a page with a Name field and a check to save (`PG-B-Spaces`); Expo reuses the New space sheet titled "Rename space".
 - Space name limit: contract says 1 to 60 characters, trimmed; the board shows no counter or error for 61+ characters.
 
 #### Edge Cases
@@ -739,11 +842,10 @@ Source file: `docs/ios-native/ux/topics/home-spaces.md`
 - The user's Inbox summary row refers to the Personal space's mail; in the new space it should show the new space's own connections (not specified).
 
 #### Design gaps
-- No space switcher board: how a user sees all spaces, which one is current, and how to leave Acme and return to Personal is undesigned (Expo lists spaces as headed groups in the Home list with a per-space actions menu).
-- No indicator of the current space's name anywhere on the Home board.
-- The rule "Try again from the sidebar" assumes a sidebar that standard iPhone does not have.
-- Space rename, delete, and "default space" (all in Expo) have no boards and no confirmation copy.
+- The alert text "Try again from the sidebar" points at a sidebar the standard iPhone lacks; it should name the space title menu.
+- Space rename and delete are drawn on `PG-B-Spaces` (Space settings: Name, check, red "Delete space") but only on the outer display; the delete confirmation, "default space" (Expo only) and the standard iPhone settings page are not drawn.
 - Space membership/invite flows have no API (plan.md "Missing server APIs").
+- "New space" appears twice: in the space title menu and in the New menu; the switcher also has no loading or failure state and no behavior for many spaces.
 
 
 ### STORY-016: Switch between two spaces while a thread is open elsewhere
@@ -757,10 +859,10 @@ Source file: `docs/ios-native/ux/topics/home-spaces.md`
 **Device**: iPhone Duo inner flat
 **Ideal path**: 3 — open switcher, choose Personal, tap Finance agent.
 **Alternate paths**: (a) Tap a push notification from a Personal agent: client switches space first, then opens the thread (phase 10, no board). (b) Tap a search hit from another space (search board NO BOARD). (c) Tap that space's bot row directly if the Home list shows all spaces together, as Expo does.
-**Design source**: Home on the inner book: Main / Inner boards and PG-A-Rules "Home" (inner: Personnel with Inbox pinned on the left third, Activity and last thread on the right). Space switcher: NO BOARD.
+**Design source**: Home on the inner book: Main / Inner boards and PG-A-Rules "Home" (inner: Personnel with Inbox pinned on the left third, Activity and last thread on the right). The space menu is drawn for the standard iPhone and the outer display (`PH-Spaces`, `PG-B-Spaces`); its place in the inner 1/3 sidebar (`Split.dc.html`) is NO BOARD.
 
 #### Steps
-1. On the inner display's left third, open the space control (NO BOARD) → list of spaces ("Personal", "Acme Labs").
+1. On the inner display's left third, open the space control (placement NO BOARD; the menu itself is drawn on the other displays) → list of spaces ("Personal", "Acme Labs").
 2. Choose "Personal" → client calls `spaces.setActive`-style switch, sets `x-rakazo-space-id`, discards or re-keys every cache; Home reloads; the right pane shows Personal's Activity and last thread.
 3. Tap "Finance agent" in the left third → right pane shows the Finance agent thread; Home stays visible in the left third.
 
@@ -775,10 +877,10 @@ Source file: `docs/ios-native/ux/topics/home-spaces.md`
 - A 401 with a stale space header recovers to the default space silently.
 
 #### Design gaps
-- Entire switcher control (placement, current-space indicator, loading and failure state) has no board.
+- Inner display: placement of the space control in the 1/3 sidebar is not drawn (`Split.dc.html` has Search, Create and Personnel only); the menu, current-space check, "New space" and "Space settings" are drawn for standard and outer, but not its loading or failure state.
 - Inner display detail pane when the new space has no last thread: undefined.
 - Which space is "default" and how to change it: Expo has it, plan does not mention it.
-- The same Personnel data is rendered on web, Expo and native; Expo shows all spaces inline in one list, the boards show one flat Personnel list. This is a behavior decision, not a style one.
+- The boards choose one flat Personnel list per space with a title menu; Expo lists all spaces inline in one list. This is a behavior decision, now made on the boards.
 
 
 ### STORY-017: Edit a bot's profile, voice and model, and save
@@ -792,11 +894,11 @@ Source file: `docs/ios-native/ux/topics/home-spaces.md`
 **Device**: standard iPhone
 **Ideal path**: 7 — Home, Finance agent row, thread menu, bot settings, edit name, toggle voice, Save.
 **Alternate paths**: (a) Long-press the bot row in Personnel (Expo opens the organize sheet, which is pin/move, not settings; settings is not reachable there). (b) Open the agent page's menu (NO BOARD for a settings entry). (c) Account settings > Models for model defaults (PG-B-Models), not per-bot.
-**Design source**: PG-A-Thread (More menu, entry point not drawn); PG-B-BotSettings / PG-B-Rules "Bot settings" (large title "Chat settings", grouped fields, Voice group, Advanced row, prominent Save with spinner); DS-04 for pickers.
+**Design source**: PG-A-Thread (the "Agent actions" button; the menu itself is not drawn); `PH-Thread.dc.html` (no actions button); PG-B-BotSettings / PG-B-Rules "Bot settings" (title "Bot settings", grouped fields, Voice group, Advanced row, prominent Save with spinner); DS-04 for pickers.
 
 #### Steps
 1. On Home tap "Finance agent" → thread opens.
-2. Open the bot menu in the trailing toolbar group → choose settings (menu item label NO BOARD) → pushed "Chat settings" with Back and prominent Save (checkmark).
+2. Open the bot menu: on the outer display the "Agent actions" button at the bottom of the strip (`PG-A-Thread`); `PH-Thread` draws no such button → choose settings (menu item label NO BOARD) → pushed "Bot settings" with Back and prominent Save (checkmark).
 3. Edit Name to "Money desk" → field updates.
 4. Tap a color swatch in Color → swatch selected (Expo: eight colors plus "Custom image").
 5. Turn on "Read replies aloud" → Voice group shows voice choice and "Device voice" option.
@@ -816,8 +918,7 @@ Source file: `docs/ios-native/ux/topics/home-spaces.md`
 - Back with unsaved edits: no rule.
 
 #### Design gaps
-- How to reach bot settings from a thread or Personnel row is not drawn ("Push from the bot menu" only).
-- Board title "Chat settings" vs the object being a bot (rule card calls it "Bot settings"); naming mismatch.
+- Entry to bot settings: the outer thread draws an "Agent actions" button but not its menu; the standard iPhone thread (`PH-Thread`) draws only Back, Page and List, so settings, archive, clear and delete have no entry there.
 - Skills and Notifications rows exist in Expo but not on PG-B-BotSettings.
 - Unsaved-changes handling and per-field validation are undefined.
 - Voice sample button "Hear a sample" belongs to PG-B-Voice, not to this page; Expo plays "Hi, this is how I'll sound." inline.
@@ -838,9 +939,9 @@ Source file: `docs/ios-native/ux/topics/home-spaces.md`
 
 #### Steps
 1. Tap "Old Recruiter" in PERSONNEL → thread.
-2. Open the bot menu → tap "Archive" → confirmation (Expo uses an alert; wording NO BOARD).
+2. Open the bot menu ("Agent actions" on the outer strip; no control on `PH-Thread`) → tap "Archive" → confirmation (Expo uses an alert; wording NO BOARD).
 3. Confirm → `bots.archive`; thread closes or shows the archived state; Home PERSONNEL no longer lists the bot.
-4. Two weeks later: open Account from the Home side strip → Settings sheet; tap "Archived bots" → list; empty state would read "No archived bots".
+4. Two weeks later: tap the "AB" avatar on Home → Settings sheet; tap "Archived bots" → list; empty state would read "No archived bots".
 5. Tap "Old Recruiter" → restore choice (Expo calls `restoreArchivedBot`); on success the bot returns to Personnel.
 6. Back to Home → bot visible again with its history.
 
@@ -855,7 +956,7 @@ Source file: `docs/ios-native/ux/topics/home-spaces.md`
 - A push notification arrives for an archived bot: routing undefined.
 
 #### Design gaps
-- Archive entry point, confirmation, and the thread's archived banner have no board.
+- Archive: the outer strip draws an "Agent actions" button but not its menu, the standard iPhone thread draws none, and the confirmation and the thread's archived banner have no board.
 - Archived bots list and its empty/error states are not on any Home board; PG-B-Settings does not draw the "Archived bots" row in the version read.
 - Groups can be archived and restored through the API (`groups.archive`, `groups.listArchived`), but Expo's list and the boards cover only bots.
 - Delete (separate from archive) has no board and no copy for the memory choice.
@@ -867,31 +968,31 @@ Source file: `docs/ios-native/ux/topics/home-spaces.md`
 **Source**: topics/home-spaces.md STORY-009
 **Phase issue**: #415 (P3), #417 (P5), #421 (P9)
 **Persona**: Ravi Patel, solo founder who signed up with a new account on the default server
-**Goal**: Land on Home, understand a model is needed, connect one, create a bot, and send a first message.
-**Preconditions**: New account, new Personal space, no model, no bots, no integrations, `me.needsModel = true`.
+**Goal**: Land on Home, understand a model is needed, connect one, and send a first message to Chief (or to a new bot).
+**Preconditions**: New account, new Personal space, no model, no integrations, `me.needsModel = true`. The board shows one seeded bot, Chief ("No messages yet").
 **Device**: standard iPhone
-**Ideal path**: 14 — see below; an ideal flow would pre-empt the dead end with a single prompt on Home.
-**Alternate paths**: (a) Create the bot first and be told at first send ("Connect a model to start a run."). (b) Settings > Models directly from Account. (c) A deployment-provided model (`defaultProvider` without a key) means `needsModel` is false and the flow shortens to STORY-012.
-**Design source**: PG-A-Home empty state; PG-B-NewBot; PG-B-Models and PG-B-Settings for model connection (not read in depth here); Sign in handoff: PG-B-SignIn. The `needsModel` prompt: NO BOARD.
+**Ideal path**: 8 — Connect a model, paste the key, Connect, open Chief, type, Send, Allow data sharing, read the reply. Creating a bot is optional because Chief is already listed.
+**Alternate paths**: (a) Create the bot first and be told at first send ("Connect a model to start a run."). (b) Settings > Models directly from the "AB" avatar. (c) A deployment-provided model (`defaultProvider` without a key) means `needsModel` is false and the flow shortens to step 7 (open Chief).
+**Design source**: `PG-A-HomeNoModel.dc.html` (outer display, three frames: "New account, no model" with the Home card "Connect a model to start chatting." and a prominent "Connect a model"; the "Connect a model" sheet with Hosted provider (checked), Local server, Subscription sign-in, a masked key field and "Connect"; "After connecting" with "Model connected." and "Create a bot"); `PG-B-Consent.dc.html` for the first-send prompt; PG-B-Models and PG-B-Settings for the model page; Sign in handoff: PG-B-SignIn. A standard iPhone version of these frames: NO BOARD.
 
 #### Steps
-1. Finish Sign in → bootstrap, `me`, `spaces.list` run; Home loads with three placeholder rows then the empty state "Tap + to create a bot".
-2. Client notes `me.needsModel` and routes toward connecting a model (destination and prompt copy NO BOARD).
-3. Tap Account in the toolbar → Settings opens as a sheet.
-4. Tap "Models" → pushed Models page (PG-B-Models); list of providers.
-5. Choose a provider and enter an API key (secrets are never shown after entry) → connection succeeds; `needsModel` becomes false.
-6. Close Settings → back on Home, empty state remains.
-7. Tap New → tap "New bot" → New bot sheet opens.
-8. Type Name "Chief of staff", Title "Runs my week" → Create enabled.
-9. Tap Create → "Creating", sheet closes, bot in PERSONNEL.
-10. Tap the bot row → empty agent greeting and suggestions appear in the thread.
-11. Type "What should I do first?" in the floating composer → send.
-12. Working indicator "Chief of staff is working" with a stop control appears.
-13. Reply streams in; Home's Activity card (after Back) briefly shows "Working" then "Done".
-14. Back to Home → bot row preview shows the first reply line and time.
+1. Finish Sign in → bootstrap, `me`, `spaces.list` run; Home loads with three placeholder rows.
+2. Client notes `me.needsModel` → Home shows the card "Connect a model to start chatting." with a prominent "Connect a model"; PERSONNEL lists Chief with "No messages yet".
+3. Tap "Connect a model" → a sheet "Connect a model" rises over Home (dimmed), with a Cancel xmark in the strip, the providers Hosted provider (checked), Local server and Subscription sign-in, a masked key field and a full-width "Connect".
+4. Paste the API key (secrets are never shown after entry) → the field shows dots.
+5. Tap "Connect" → connection succeeds; `needsModel` becomes false; the sheet closes.
+6. Home now reads "Model connected." with a prominent "Create a bot"; Chief shows "Hello! How can I help?".
+7. Tap the Chief row (the board offers "Create a bot", but Chief already exists) → the thread opens.
+8. Type "What should I do first?" in the floating composer → tap Send.
+9. First use asks to share data: the sheet "Share data with Model A?" with "Allow", "Not now" and "Change in Settings" (`PG-B-Consent`) → tap "Allow"; the message is sent.
+10. Working indicator "Chief is working" with a stop control appears.
+11. Reply streams in; Home's Activity card (after Back) briefly shows "Working" then "Done".
+12. Back to Home → the Chief row preview shows the first reply line and time.
 
 #### Variations
-- Rotate the order: create the bot (step 7 to 9) before the model; first send then fails with the no-model error and a path to Models.
+- Tap "Create a bot" at step 6 instead of opening Chief: the New bot sheet opens (Name, Title, Description) and creates a second bot.
+- Rotate the order: open Chief before connecting a model; first send then fails with the no-model error (no board links it to the Home sheet).
+- Choose "Local server" or "Subscription sign-in" in the sheet: their forms are not drawn.
 - Use the Server board's custom server: deployment owner may have a model preset.
 
 #### Edge Cases
@@ -900,11 +1001,10 @@ Source file: `docs/ios-native/ux/topics/home-spaces.md`
 - Network drop between steps 5 and 6: Models shows saved state on reopen.
 
 #### Design gaps
-- The `needsModel` handoff has no screen: no banner, no empty-state variant, no deep link from Home to Models.
-- Expo's `lib/api.ts` carries `needsModel` but no Home UI for it was found (Expo discovers it only as a server error at send time).
-- AI data sharing consent prompt: no board; only Account settings text.
-- Model picker rows and key entry are on PG-B-Models, outside this topic's scope.
-- Home empty state has one line of text and no action; the rule says "Tap + to create a bot" only.
+- The sheet draws the key field and Connect for Hosted provider only; the Local server URL form, the Subscription sign-in code flow, a wrong-key error, a loading state on Connect and what "checked" means for a provider are not drawn.
+- `PG-A-HomeNoModel` is drawn for the outer display only; the standard iPhone Home (`PH-Home`) has no no-model variant.
+- After connecting, the card offers "Create a bot" although Chief is already listed; the next action should be "Message Chief". When "Model connected." disappears is not stated.
+- Whether the first-send consent sheet appears right after connecting (before the first message) or only at the first send is not stated; the Home sheet and the consent sheet are two separate prompts.
 
 
 ### STORY-020: Organize Personnel with a pin and a section, then trim a group
@@ -918,7 +1018,7 @@ Source file: `docs/ios-native/ux/topics/home-spaces.md`
 **Device**: iPhone Duo inner flat (1/3 Personnel, 2/3 detail)
 **Ideal path**: 16 — see steps; each organize action costs 2 taps (long-press, choose), the section creation 4.
 **Alternate paths**: (a) Web Personnel drag-and-drop (not available on iPhone). (b) Group membership via Group settings only; no shortcut from Personnel. (c) On standard iPhone the same actions in a single column.
-**Design source**: Home Personnel list: PG-A-Home / PG-A-Rules "Home" (flat list, no sections or pins drawn). Organize and member pickers: DS-04 (listed in discovery as the source, no per-page board). Group settings: PG-B-GroupSettings / PG-B-Rules "Group settings" (Name, Members list, "Delete group", Save prominent, "Delete asks first (alert, Cancel / Delete)").
+**Design source**: Home Personnel list: PG-A-Home, `PH-Home.dc.html` and PG-A-Rules "Home" (flat list, no sections or pins drawn). Organize and member pickers: DS-04 (listed in discovery as the source, no per-page board). Group settings: PG-B-GroupSettings / PG-B-Rules "Group settings" (Name, Members list, "Delete group", Save prominent, "Delete asks first (alert, Cancel / Delete)").
 
 #### Steps
 1. On the inner display's left third find "Finance agent" in Personnel; long-press it → organize sheet (Expo: "Pin", "Silence notifications", "Move to", "New section").
@@ -961,6 +1061,128 @@ Source file: `docs/ios-native/ux/topics/home-spaces.md`
 
 
 
+### STORY-109: Switch spaces from the Home title on a standard iPhone
+**Type**: short
+**Topic**: Home, Personnel and space switching
+**Source**: ux-paths round 1 refresh (boards `PH-Home`, `PH-Spaces`)
+**Phase issue**: #415 (P3)
+**Persona**: Tessa Brandvold, operator who runs her own company and advises another
+**Goal**: Move from her "Personal" space to "Northwind" and see only Northwind's Inbox, Pages, Activity and Personnel.
+**Preconditions**: Signed in; three spaces exist ("Personal", "Northwind", "Side project"); "Personal" is selected. Network is up.
+**Device**: standard iPhone
+**Ideal path**: 2 — tap the space title, tap "Northwind".
+**Alternate paths**: (a) Tap a push notification from a Northwind agent: the app switches first (STORY-106). (b) Create a space from the same menu (STORY-015). (c) Rename or delete a space (STORY-110, drawn for the outer display only).
+**Design source**: `PH-Spaces.dc.html` (title "Personal ⌄" and the open menu: "Personal" with a check, "Northwind", "Side project", a divider, "New space" with a plus, "Space settings" with a sliders icon; Home dims behind it); `PH-Home.dc.html` (the result: title "Northwind ⌄", Inbox row, PAGES, ACTIVITY, PERSONNEL).
+
+#### Steps
+1. Open Home → the large title reads "Personal" with a chevron; the Inbox row, PAGES, ACTIVITY and PERSONNEL belong to Personal. The title carries the accessible name "Space: Personal".
+2. Tap the title → a glass menu drops from it listing the three spaces (check beside the current one), then "New space" and "Space settings"; the rest of Home dims.
+3. Tap "Northwind" → the client sets `x-rakazo-space-id`, discards or re-keys every cache, reloads Home; the menu closes and the title reads "Northwind".
+4. Read the ACTIVITY card → rows for Northwind only ("Finance agent / Reading card expenses / Working", "Inbox agent / Reply to Ana is ready to send / Approve", "Weekly runway / Done" in the sample data).
+
+#### Variations
+- Choose "New space" in the menu: the New space sheet opens (STORY-015).
+- Choose the space that is already checked: the menu closes and nothing reloads.
+- Nothing is running in the new space: ACTIVITY is hidden (Home rule card).
+
+#### Edge Cases
+- Switch fails: Expo alert "Could not switch spaces" / "Try again."; the previous space stays selected and its title stays.
+- A response from the previous space arrives after the switch: it must be dropped (requests are tagged with the space).
+- Someone in another space needs the user (an approval): the menu does not say so (see gaps).
+- A 401 with a stale space header silently recovers to the default space (STORY-008).
+- Two spaces with the same name: the menu shows names only.
+
+#### Design gaps
+- The menu is drawn open; the loading state after choosing a space and the failure alert are not drawn.
+- The menu gives no sign that another space has something that needs the user (the outer Activity bell says "2 need you"; whether that counts only the current space is not stated).
+- Long space names and many spaces (a menu with 20 rows, scrolling, search) are not drawn.
+- "New space" is in this menu and in the New menu; two entries for one action.
+- "Space settings" is drawn as an outer-display page only (`PG-B-Spaces`); the standard iPhone page is not drawn.
+- The standard Home (`PH-Home`) title reads "Northwind" while `PH-Spaces` shows "Personal" over identical sample content, so the boards do not show that the content changes with the space.
+
+
+### STORY-110: Switch, rename and delete a space on the outer display
+**Type**: medium
+**Topic**: Home, Personnel and space switching
+**Source**: ux-paths round 1 refresh (board `PG-B-Spaces`)
+**Phase issue**: #415 (P3), #419 (P7)
+**Persona**: Mara Osei, founder who runs a side project next to her main company
+**Goal**: Switch to "Side project", rename it "Studio", and later delete a space she no longer uses.
+**Preconditions**: Signed in; spaces "Personal", "Northwind" and "Side project" exist; "Personal" is selected. iPhone Duo closed (outer display, 466x678 pt).
+**Device**: iPhone Duo outer
+**Ideal path**: 2 to switch (tap the title, tap the space); rename adds 3 (Space settings, edit the name, tap the check); delete adds 2 plus a confirmation that is not drawn.
+**Alternate paths**: (a) New space from the same menu (STORY-015). (b) On a standard iPhone the menu is drawn (STORY-109) but the Space settings page is not.
+**Design source**: `PG-B-Spaces.dc.html` (frame 1 "Space menu from the title": the title "Personal ⌄" in the content column opens "Personal" (check), "Northwind", "Side project", a divider, "New space" and "Space settings"; the strip keeps the "AB" avatar and the Activity, Search and Artifacts group, with a bell dot "2 need you". Frame 2 "Space settings": title "Space settings", Back chevron, a Name field, a prominent check (accessible name "Save name") and a red "Delete space" row at the bottom).
+
+#### Steps
+1. On Home tap the title "Personal" → the menu opens in the content column, to the right of the strip.
+2. Tap "Side project" → caches are re-keyed, Home reloads, the title reads "Side project".
+3. Tap the title again, then "Space settings" → a page pushes: title "Space settings", the Name field holding "Side project", the Back chevron in the strip, the prominent check at the bottom of the strip and a red "Delete space" row at the bottom of the content. (The page edits the current space; the board does not name it.)
+4. Edit the Name to "Studio" → the field updates.
+5. Tap the check → the name is saved, the page pops, the title reads "Studio".
+6. Later, with the unused space selected, open the title menu, "Space settings", then tap "Delete space" → a confirmation (not drawn; Expo asks first) → on confirm the space is deleted and its bots, chats and files go with it.
+7. The app selects another space → Home reloads in that space (which one is not drawn).
+
+#### Variations
+- Tap Back after editing the Name: whether unsaved edits are kept or dropped is not drawn.
+- A name of 61 or more characters: the contract allows 1 to 60, trimmed; no counter or error is drawn.
+- Delete the only space: not stated.
+
+#### Edge Cases
+- Another phone is inside the space that is deleted: its next call returns 401 with a space header and recovers to the default space (STORY-008).
+- Rename fails: red line "Could not save" (wording not drawn); the field keeps the text.
+- Delete fails: not drawn.
+
+#### Design gaps
+- No confirmation or consequence text for "Delete space" (what is lost, whether it can be undone, whether other members lose access), and no rule for which space is selected afterward.
+- "Delete space" sits directly under the Name field as a full-width row with no separation from the edit controls.
+- Space settings holds only the Name; default space (Expo) and member or invite management (no API) are absent.
+- Who may rename or delete a shared space is not stated.
+- The standard iPhone Space settings page is not drawn (`PH-Spaces` draws only the menu).
+
+
+### STORY-111: Connect the first model from the Home card
+**Type**: short
+**Topic**: Home, Personnel and space switching
+**Source**: ux-paths round 1 refresh (board `PG-A-HomeNoModel`)
+**Phase issue**: #415 (P3), #421 (P9)
+**Persona**: Elif Sandberg, founder who just signed up on her iPhone Duo
+**Goal**: Connect a hosted model so the Chief agent can answer.
+**Preconditions**: New account; no model connected (`me.needsModel` is true); Chief is listed with "No messages yet". Outer display.
+**Device**: iPhone Duo outer
+**Ideal path**: 3 — tap "Connect a model", paste the key, tap "Connect".
+**Alternate paths**: (a) Settings, Models (STORY-089, 8 taps). (b) Skip: open Chief and send; the send fails with the no-model message (STORY-040). (c) Cancel the sheet and come back later.
+**Design source**: `PG-A-HomeNoModel.dc.html` (three frames). Frame 1: title "Personal ⌄", a card "Connect a model to start chatting." with a prominent "Connect a model", PERSONNEL with Chief "No messages yet"; the strip has the "AB" avatar and the Activity, Search and Artifacts group, and no New button. Frame 2: the dimmed Home with a Cancel xmark in the strip and the sheet "Connect a model": Hosted provider (checked), Local server, Subscription sign-in, a masked key field and a full-width "Connect". Frame 3: the card reads "Model connected." with a prominent "Create a bot"; Chief shows "Hello! How can I help?".
+
+#### Steps
+1. Open Home after signing in → the card "Connect a model to start chatting." is the only prominent action; Chief is listed below.
+2. Tap "Connect a model" → the sheet rises over Home; the strip shows Cancel (xmark).
+3. Read the providers → "Hosted provider" is checked; "Local server" and "Subscription sign-in" are the other choices.
+4. Paste the API key into the field → dots appear.
+5. Tap "Connect" → the key is verified and saved (`models.connect`), `needsModel` becomes false, the sheet closes.
+6. Read the card → "Model connected." with "Create a bot"; Chief now previews "Hello! How can I help?".
+7. Tap "Chief" → the thread opens (first message: STORY-044; the data-sharing sheet follows: STORY-048).
+
+#### Variations
+- Pick "Local server": a URL form is needed (STORY-090); it is not drawn here.
+- Pick "Subscription sign-in": a Safari round trip with a code (STORY-089); not drawn here.
+- Tap Cancel (xmark) or swipe the sheet down: nothing is saved and the card stays.
+- Tap "Create a bot" at step 6: the New bot sheet opens (STORY-012).
+
+#### Edge Cases
+- Wrong or revoked key: the sheet must show an error and keep the typed key; no error is drawn.
+- Network drops while connecting: the sheet must not close on a failed call; not drawn.
+- The key is never shown again and never stored on the phone beyond the request.
+- The deployment already provides a model: `needsModel` is false and the card never appears.
+
+#### Design gaps
+- The frames draw no New button while the card is shown, so a user with a model-less space cannot create a bot, group or space; whether that is intended is not stated.
+- "Connect" has no pending, disabled-until-filled or error state drawn.
+- After connecting, the card offers "Create a bot" although Chief is already listed; the better next action is "Message Chief". When "Model connected." goes away is not stated.
+- Only the outer display is drawn; `PH-Home` has no no-model variant.
+- The checked row means "selected provider" here, but a checkmark means "connected" on the Models page; the two meanings are not reconciled.
+
+
 ## Topic: Stories: Talking to an agent: read and live thread
 
 Source file: `docs/ios-native/ux/topics/thread-read.md`
@@ -976,7 +1198,7 @@ Source file: `docs/ios-native/ux/topics/thread-read.md`
 **Device**: standard iPhone
 **Ideal path**: 3 — tap the agent row on Home, see the saved snapshot at once, then the server snapshot replaces it with no extra action.
 **Alternate paths**: (a) tap the Inbox agent's row inside the Activity card on Home (PG-A-Home); (b) tap "Ask Inbox agent" (prominent button) from Inbox or Inbox message, which lands in the same thread; (c) tap a push notification (phase #422, no board); (d) Open chat from Agent page (PG-A-AgentPage).
-**Design source**: Step 1: `PG-A-Home.dc.html` (Personnel row; Home rule card). Steps 2-3: `PG-A-Thread.dc.html`, Thread rules, `DS-06-Chat.dc.html` (user bubble and agent message, tool-call label). Standard-iPhone top bar: NO BOARD (boards only draw the Duo outer strip; discovery says ordinary iPhones use a standard top bar).
+**Design source**: Step 1: `PG-A-Home.dc.html` / `PH-Home.dc.html` (Personnel row; Home rule card). Steps 2-3: `PH-Thread.dc.html` (standard iPhone top bar: Back, title capsule with avatar and name, Page and List group; composer with Attach, field and Dictate), `PG-A-Thread.dc.html`, Thread rules, `DS-06-Chat.dc.html` (user bubble and agent message, tool-call label).
 
 #### Steps
 1. On Home, tap the "Inbox agent" row under Personnel → thread opens; the title capsule reads "Inbox agent" and the saved snapshot is on screen immediately, bottom-aligned.
@@ -994,8 +1216,8 @@ Source file: `docs/ios-native/ux/topics/thread-read.md`
 
 #### Design gaps
 - Initial loading state of a thread with no snapshot is not drawn (only "small spinner when loading earlier messages").
-- Failed refresh over a saved snapshot ("Couldn't refresh — showing the last loaded messages.") has no board.
-- Standard iPhone top bar for a thread (title, back, agent actions) has no board; the outer strip has Back, Page/List, More only.
+- Failed refresh over a saved snapshot ("Couldn't refresh — showing the last loaded messages.") has no board; `PG-A-ThreadStates` draws an "Offline" banner for a device with no network, not a server error with the network up.
+- The standard iPhone thread top bar is drawn (`PH-Thread`) but has no "Agent actions" button, which the outer strip has (`PG-A-Thread`).
 - Archived or deleted bot thread state ("Restore") has no board.
 
 
@@ -1048,7 +1270,7 @@ Source file: `docs/ios-native/ux/topics/thread-read.md`
 **Device**: standard iPhone
 **Ideal path**: 2 — open the thread, watch it fill in live; no taps are needed after opening.
 **Alternate paths**: (a) watch the same run from a Group thread member line (STORY-026); (b) the Home Activity card shows the run as working (PG-A-Home) and opens the thread.
-**Design source**: `PG-A-Thread.dc.html`; `DS-06-Chat.dc.html` (working indicator, tool-call label running state, agent message); Thread rules (Working row).
+**Design source**: `PG-A-Thread.dc.html`, `PH-Thread.dc.html` (blue dots and blue "Inbox agent is working"); `DS-06-Chat.dc.html` (working indicator, tool-call label running state, agent message); Thread rules (Working row).
 
 #### Steps
 1. Open "Legal agent" → snapshot arrives; the footer shows the working indicator: a 28 pt bot avatar with a rotating ring and a pill of three pulsing dots, with the label "Legal agent is working".
@@ -1068,7 +1290,7 @@ Source file: `docs/ios-native/ux/topics/thread-read.md`
 
 #### Design gaps
 - Working label text differs: board shows "Inbox agent is working" with three dots; DS-06 specimen shows a name-less 36 pt slot; Expo shows "{name} is working" plus a status line and "Still waiting on {service}". The status-line behavior has no board.
-- The rule card says "three blue dots" but DS-06 says dots use `mutedForeground` and the ring `statusWorking`; colour needs reconciliation.
+- The Thread rule card and the thread boards (`PG-A-Thread`, `PH-Thread`) draw blue dots, while DS-06 says dots use `mutedForeground` and the ring `statusWorking`; one colour still has to be chosen.
 - Failed-run note ("Last run failed") has no board; only the failed send bubble is drawn.
 - Streaming partial markdown (open code fence, half a table) rendering is not specified.
 
@@ -1084,11 +1306,11 @@ Source file: `docs/ios-native/ux/topics/thread-read.md`
 **Device**: standard iPhone
 **Ideal path**: 1 — do nothing; the app reconnects itself. (Zero user taps is the target.)
 **Alternate paths**: (a) pull up from Home and reopen the thread to force a fresh `threads/get`; (b) none for manual reconnect is planned.
-**Design source**: NO BOARD for reconnecting, offline or stale state. Working indicator and bubbles: `DS-06-Chat.dc.html`. Behavior: `docs/ios-native/plan.md` Phase 4 and discovery "State Transitions".
+**Design source**: Offline banner for a device with no network: `PG-A-ThreadStates.dc.html` ("Offline. Messages send when you reconnect."). NO BOARD for "Reconnecting" after a dropped stream or for a stale thread. Working indicator and bubbles: `DS-06-Chat.dc.html`. Behavior: `docs/ios-native/plan.md` Phase 4 and discovery "State Transitions".
 
 #### Steps
 1. Train enters a tunnel while the Finance agent streams a reply → no data arrives; after 20 s idle the client sends a heartbeat; nothing returns.
-2. At 45 s of silence the watchdog drops the connection → the thread stays on screen with the partial bubble; no error is drawn (undefined, see gaps).
+2. At 45 s of silence the watchdog drops the connection → the thread stays on screen with the partial bubble. In a real tunnel the phone also has no network, so the "Offline" banner appears; for a drop with network up nothing is drawn (undefined, see gaps).
 3. The client retries with backoff 250 ms, 500 ms, 1 s, 2 s, then 5 s steady → each attempt first refetches the snapshot (`threads/get`) and then resubscribes from the highest `seq`.
 4. Signal returns → the snapshot now contains the full reply; the partial bubble is replaced by the final bubble with no duplicate.
 5. The stream resumes; the working indicator clears because the run is complete → the thread is quiet again.
@@ -1103,7 +1325,7 @@ Source file: `docs/ios-native/ux/topics/thread-read.md`
 - The user taps Stop while offline: not covered by this topic.
 
 #### Design gaps
-- No board shows an offline, "Reconnecting" or stale-thread indicator; the brief lists it as "required by the brief but no board".
+- The "Offline" banner is drawn (`PG-A-ThreadStates`), but its copy is about sending; a "Reconnecting" or stale marker for a dropped stream with the network up is not drawn.
 - The 401 error frame outcome (signed out or left space) has no board for the thread.
 - Whether the user can see that a heartbeat or retry is happening is undecided; silent retry is assumed.
 - Backoff reset behavior is not stated.
@@ -1215,6 +1437,7 @@ Source file: `docs/ios-native/ux/topics/thread-read.md`
 - Empty agent greeting and suggestion layout is described in the rule card but not drawn.
 - "Connect a model to start a run" has no board.
 - Whether suggestions send immediately or only fill the composer is undecided.
+- Home previews show "No messages yet" before a model is connected and "Hello! How can I help?" after (`PG-A-HomeNoModel`), which reads as a message the agent sent; whether a new bot's thread starts with that greeting or with an empty state plus suggestions is not drawn.
 
 
 ### STORY-028: Hit an unknown message block from a newer server
@@ -1262,9 +1485,9 @@ Source file: `docs/ios-native/ux/topics/thread-read.md`
 **Design source**: `PG-A-Thread.dc.html`; Thread rules (outer layout); `PG-A-AgentPage.dc.html` for the Page destination; `Main.dc.html` for the outer chrome (not read in full).
 
 #### Steps
-1. From Home tap "Inbox agent" → thread opens; the 60 pt left strip shows the Dynamic Island, time, a Back group, Page and List icons, a spacer, and a More group.
+1. From Home tap "Inbox agent" → thread opens; the 60 pt left strip shows the Dynamic Island, time, a Back group, Page and List icons, a spacer, and the "Agent actions" button.
 2. Read the content column (starts at x=72): glass title capsule "Inbox agent" at top, messages bottom-aligned, floating composer with "Message Inbox agent".
-3. Read the "Needs approval" mail card: "Send reply", "To Ana Ruiz", body text, and the two actions "Deny" and "Allow" (Allow is the one prominent button).
+3. Read the "Needs approval" mail card: title "Re: Pilot timeline", "To Ana Ruiz", body text, and the two actions "Save" and "Send" (Send is the one prominent button).
 4. Tap the Page icon (doc.text) in the strip → the agent's pinned Page opens, titled with the agent name, with "Open chat" as its prominent button.
 5. Tap "Open chat" → return to the thread at the same scroll position.
 6. Tap More → a menu lists the agent actions (settings, open computer, clear, archive, delete).
@@ -1281,10 +1504,10 @@ Source file: `docs/ios-native/ux/topics/thread-read.md`
 - Back goes to Home or to the Agent page depending on how the thread was entered; stack behavior is not specified.
 
 #### Design gaps
-- The approval card on `PG-A-Thread` is the only card drawn at outer width; its action labels are "Deny" and "Allow" (board) while DS-06 uses "Allow once / Always allow / Deny" for MCP and "Save / Send" for mail; the board's mail card differs from DS-06's mail card (title "Send reply" vs "Re: Pilot timeline").
+- The mail card now agrees across `PG-A-Thread`, `PH-Thread`, `Inner` and DS-06 ("Re: Pilot timeline", "Save" and "Send"). The tool approval card ("Allow once / Always allow / Deny") is drawn only in DS-06, and the Agent thread rule card still says "Allow" is the one prominent control.
 - No message-level context menu is drawn for the strip layout (long-press menu is native, not shown).
 - Pins strip placement relative to the glass title capsule on the outer layout is not drawn.
-- Standard-iPhone parity of Page and List is not drawn.
+- Standard-iPhone parity: `PH-Thread` draws Page and List but no "Agent actions" button.
 
 
 ### STORY-030: Read the thread beside the Personnel list on the inner display
@@ -1336,7 +1559,7 @@ Source file: `docs/ios-native/ux/topics/thread-read.md`
 **Preconditions**: Finance agent thread has about 600 messages across many pages. A saved-chat snapshot of the last 50 exists on the device. Global search exists in the API (`search.query`) but is not drawn.
 **Device**: standard iPhone
 **Ideal path**: 6 — open thread, scroll up with paging, find the message, tap a pin chip if one exists, read, "Jump to latest".
-**Alternate paths**: (a) Search from Home side strip (Search icon, PG-A-Home) and tap a hit to jump with `threads/messages({around})`; (b) tap a pinned-message chip under the title capsule (pins strip, DS-06); (c) open from a notification linking to a specific message (no board).
+**Alternate paths**: (a) Search from Home (Search icon in the outer strip, `PG-A-Home`, or top right on `PH-Home`) and tap a hit to jump with `threads/messages({around})`; (b) tap a pinned-message chip under the title capsule (pins strip, DS-06); (c) open from a notification linking to a specific message (no board).
 **Design source**: `PG-A-Thread.dc.html`, Thread rules (loading earlier); `DS-06-Chat.dc.html` (pins strip). Search results screen: NO BOARD. Pagination boundary and "around" window: NO BOARD.
 
 #### Steps
@@ -1379,7 +1602,7 @@ Source file: `docs/ios-native/ux/topics/thread-read.md`
 **Device**: standard iPhone
 **Ideal path**: 5 — open thread, wait for the card, read, (decide in the write topic), watch the status flip.
 **Alternate paths**: (a) approve from the web app; (b) approve from the Inbox message view via "Ask Inbox agent" thread; (c) decide in the phone thread (write behavior is the Approvals topic, #417).
-**Design source**: `PG-A-Thread.dc.html` (Needs approval card, "Deny", "Allow"); `DS-06-Chat.dc.html` (Mail approval card: Needs approval, Sent, Not sent). Read-only phase-4 rendering of approval cards: NO BOARD.
+**Design source**: `PG-A-Thread.dc.html` and `PH-Thread.dc.html` (card "Re: Pilot timeline", "Needs approval", "To", body, "Save", "Send"); `DS-06-Chat.dc.html` (Mail approval card: Needs approval, Sent, Not sent). Read-only phase-4 rendering of approval cards: NO BOARD.
 
 #### Steps
 1. Open "Inbox agent" → snapshot arrives; the working indicator "Inbox agent is working" is at the bottom.
@@ -1402,10 +1625,9 @@ Source file: `docs/ios-native/ux/topics/thread-read.md`
 
 #### Design gaps
 - The thread rule card names "Allow" as the one prominent action, but phase 4 is read only; interim behavior of approval cards in the read-only phase is undefined.
-- Board mail card (title "Send reply", actions "Deny" / "Allow") and DS-06 mail card (subject "Re: Pilot timeline", actions "Save" / "Send") do not match.
 - Live status flip from another device is not drawn; the "Sent" and "Not sent" specimens exist but no transition.
 - "Changing mail is turned off." and CONFLICT outcomes have no board.
-- The same approval is rendered on the thread, on the Inbox message view, on Home Activity ("needs approval") and in push; their labels need one source.
+- The same approval is rendered on the thread, on the Inbox message view, on Home Activity (row label "Approve") and in push; the card says "Send" while Activity says "Approve", so the labels still need one source.
 
 
 
@@ -1424,7 +1646,7 @@ Source file: `docs/ios-native/ux/topics/thread-send.md`
 **Device**: standard iPhone
 **Ideal path**: 3 — type, tap Send, read the reply.
 **Alternate paths**: Dictate with the mic in the empty composer (mic becomes Send once text appears); voice call from the thread (see the voice topic); reply to an existing message (STORY-036).
-**Design source**: `DS-06-Chat.dc.html` Composer (Empty, Typing states) and "User bubble and agent message"; `PG-A-Thread.dc.html`; `PG-A-Rules.dc.html` Agent thread card ("With nothing pending, send in the composer").
+**Design source**: `DS-06-Chat.dc.html` Composer (Empty, Typing states) and "User bubble and agent message"; `PH-Thread.dc.html` (composer: Attach plus, "Message Inbox agent", Dictate mic); `PG-A-Thread.dc.html`; `PG-A-Rules.dc.html` Agent thread card ("With nothing pending, send in the composer").
 
 #### Steps
 1. Tap the glass capsule labelled "Message Inbox agent" → keyboard rises, composer lifts above the keyboard and home indicator inset. Trailing control is the bare mic (Dictate). Send is not shown yet.
@@ -1456,7 +1678,7 @@ Source file: `docs/ios-native/ux/topics/thread-send.md`
 **Device**: standard iPhone
 **Ideal path**: 7 — Attach, pick photo, Attach, pick file, type, Send, wait.
 **Alternate paths**: Take a photo via the Camera source instead of the library; attach an existing artifact or Data room item (the contract has `artifactIds` and `dataRoomItemIds` on `threads/send`, but the plan names no picker for them); share a file into the app from another app (share extension, phase 11, #425, no board).
-**Design source**: `DS-06-Chat.dc.html` Composer and "Attachment chips and reply preview" specimen (chips "terms.pdf" and "chart.png", message "Check the attached"). The Attach menu itself: NO BOARD.
+**Design source**: `DS-06-Chat.dc.html` Composer and "Attachment chips and reply preview" specimen (chips "terms.pdf" and "chart.png", message "Check the attached"); `PH-Thread.dc.html` draws the Attach plus on the standard iPhone composer. The Attach menu itself: NO BOARD.
 
 #### Steps
 1. Tap the 44pt glass circle with `plus` (Attach) at the left of the composer → a source menu opens. Expo labels: "Photo library", "Camera", "File". The native menu is NO BOARD.
@@ -1481,6 +1703,7 @@ Source file: `docs/ios-native/ux/topics/thread-send.md`
 - The chip row has no board state for 4 chips at once (it can need to scroll or wrap inside a capsule that grows to 6 lines).
 - No picker for artifacts or Data room items even though `threads/send` accepts them.
 - Expo reads "Photo library / Camera / File"; the board shows only the `plus` button and no labels.
+- The outer-display composers (`PG-A-Thread`, `PG-A-ThreadStates`) show only the field and the mic, without the Attach plus that `PH-Thread` and DS-06 draw; the Attach control is missing on the outer display.
 
 
 ### STORY-035: Attach a HEIC photo, a too-large video and a fifth file
@@ -1594,16 +1817,16 @@ Source file: `docs/ios-native/ux/topics/thread-send.md`
 **Device**: standard iPhone
 **Ideal path**: 3 — type, Send, wait for reconnection.
 **Alternate paths**: Retry by hand with the "Retry" control; background the app and return.
-**Design source**: `DS-06-Chat.dc.html` "Failed send bubble and reply line" and caption states (sending 70% opacity). Offline and queued states: NO BOARD (the discovery map lists "offline (saved snapshots and outbox 'queued')" as a state the brief requires and no board shows).
+**Design source**: `PG-A-ThreadStates.dc.html` frame "Offline" (banner "Offline. Messages send when you reconnect.", a sent bubble captioned "Waiting to send", composer still active); `DS-06-Chat.dc.html` "Failed send bubble and reply line" and caption states (sending 70% opacity). Stale-snapshot marker and the 20-entry cap: NO BOARD.
 
 #### Steps
-1. Open the thread with no network → the saved chat snapshot shows (last 100 messages). An offline indicator is NO BOARD.
-2. Type "Order 40 crates of oats for Friday." and tap Send → the bubble appears at 70% opacity with caption "Sending". The send is stored in the outbox as queued because the server is unreachable.
+1. Open the thread with no network → the saved chat snapshot shows (last 100 messages) with a banner under the title capsule: "Offline. Messages send when you reconnect."
+2. Type "Order 40 crates of oats for Friday." and tap Send → the bubble appears with the caption "Waiting to send" (not "Sending") because the send is stored in the outbox as queued while the server is unreachable.
 3. The network returns → the app resends the queued message (the unreachable case "goes back to queued" and is retried automatically; the exact trigger is the reachability subscription seen in `apps/mobile/lib/unsent-sends.ts`).
 4. Delivery succeeds → caption changes to "Delivered" and the working indicator for the Ops agent appears.
 
 #### Variations
-- Rate limit (429): the entry returns to queued rather than failing; the user sees "Sending" until it passes.
+- Rate limit (429): the entry returns to queued rather than failing; the user sees "Waiting to send" until it passes.
 - Kill the app while queued: on relaunch the outbox is restored from disk and the send continues.
 - Send three messages offline: all three queue in order.
 
@@ -1613,8 +1836,7 @@ Source file: `docs/ios-native/ux/topics/thread-send.md`
 - The user switches space or signs out with queued messages: Expo scopes entries by server, space and user; the user-visible behavior is not designed.
 
 #### Design gaps
-- NO BOARD for offline: no banner, no "queued" caption (the board offers only "Sending", "Delivered" and "Not sent"), no stale snapshot marker.
-- Treating a message that waits for hours as "Sending" at 70% opacity is misleading; a distinct "Waiting for connection" state is needed.
+- Offline is drawn (banner and "Waiting to send"); not drawn: a stale-snapshot marker, how many messages are waiting, a way to cancel a waiting message, and the banner when the network is up but the server is down.
 - Eviction of the cache directory loses queued sends without notice.
 
 
@@ -1627,17 +1849,17 @@ Source file: `docs/ios-native/ux/topics/thread-send.md`
 **Goal**: Recover from a failed send of a message with an attachment, then send successfully.
 **Preconditions**: Thread with "Legal agent" open; a 9 MiB PDF is attached; the server returns a 4xx (for example payload too large) on the first try.
 **Device**: standard iPhone
-**Ideal path**: 6 — Send, see Not sent, long-press, edit, Retry, delivered.
-**Alternate paths**: Tap "Retry" directly without editing; long-press then "Delete" to discard; reduce the attachment and send a new message.
-**Design source**: `DS-06-Chat.dc.html` "Failed send bubble and reply line" (border `#F46262`, row `exclamationmark.circle` "Not sent", "Retry" `arrow.counterclockwise`, long-press "Retry, Delete"). `PG-A-Rules.dc.html` Agent thread card: "Error: inline 'Failed to send message' with retry". Refused-state copy: NO BOARD.
+**Ideal path**: 5 — Send, read "Not sent: Attachment is too large", tap Edit, swap the attachment, Send.
+**Alternate paths**: For a failed (not refused) send, tap "Retry" without editing; discard with a long-press "Delete" (the menu is not drawn); reduce the attachment and send a new message.
+**Design source**: `PG-A-ThreadStates.dc.html` frames "Failed" (bubble with a destructive outline, row "Not sent" with "Retry") and "Refused" (row "Not sent: Attachment is too large" with "Edit" and no Retry); `DS-06-Chat.dc.html` "Failed send bubble and reply line". The rule card line "inline 'Failed to send message' with retry" is now stale.
 
 #### Steps
 1. Attach the PDF, type "Please review the contract.", tap Send → bubble at 70% opacity, caption "Sending".
-2. The server rejects with a 4xx other than 408, 425, 429 → the outbox entry becomes refused; the bubble gets a 1px destructive border and a right-aligned row "Not sent" with "Retry" below it. Message text is not red.
-3. Tap "Retry" immediately → row shows "Sending", then "Not sent" again because the cause is unchanged.
-4. Long-press the bubble → a menu with "Retry" and "Delete". The board says failed text stays editable "on Retry via long-press", but no "Edit" item is listed in the menu.
-5. Choose "Delete" → the failed bubble and its stored attachment leave the thread and the outbox.
-6. Attach a smaller PDF, retype and tap Send → delivered.
+2. The server rejects with a 4xx other than 408, 425, 429 → the outbox entry becomes refused; the bubble gets a destructive outline and a right-aligned row "Not sent: Attachment is too large" with "Edit" (no Retry, because a retry would fail again). Message text is not red.
+3. Tap "Edit" → the message returns to the composer for editing (inferred; the board draws only the link, not the result).
+4. Remove the PDF chip and attach a smaller PDF → the chip row updates.
+5. Tap Send → bubble "Sending", then delivered.
+6. (A failed, not refused, send keeps "Not sent" with "Retry": tap it to send again.)
 
 #### Variations
 - A failed (not refused) send, for example a 500: stored as failed, same bubble and row, Retry allowed.
@@ -1646,14 +1868,13 @@ Source file: `docs/ios-native/ux/topics/thread-send.md`
 
 #### Edge Cases
 - Refused entries count toward the 20-entry cap until deleted; a thread full of refused entries blocks new sends ("Too many unsent messages").
-- A refused send with an attachment: whether Retry re-uploads the artifacts or reuses ids is not specified.
+- A refused send with an attachment: whether Edit keeps the uploaded artifacts or re-uploads them is not specified.
 - The "AI data sharing" consent block ("Review AI data sharing in Account settings before continuing.") is also a 4xx and would land here as refused with no way to fix it from the bubble.
 
 #### Design gaps
-- The refused state looks identical to failed, so the user cannot tell that Retry will never work. The brief defines three outbox states but the board has one "Not sent" row.
-- The long-press menu on the failed bubble shows "Retry, Delete" but the text says the message is editable via long-press; the edit action is not in the menu.
-- Copy mismatch: rule card says "Failed to send message", component board says "Not sent"; Expo uses "Failed to send message" in an alert.
-- NO BOARD for the error reason text (where "payload too large" is shown).
+- A way to discard a failed or refused message (long-press "Delete") is not drawn; only "Retry" and "Edit" links are.
+- Copy: the boards agree on "Not sent" (with a reason for refused); the Agent thread rule card and Expo still say "Failed to send message".
+- What "Edit" does with attachments (keep, drop, re-upload), the reason copy for other refusals (no model, no consent), and how a failed send becomes refused or gives up after automatic retries are not drawn.
 
 
 ### STORY-040: Send with no model connected, then connect one and resend
@@ -1667,13 +1888,13 @@ Source file: `docs/ios-native/ux/topics/thread-send.md`
 **Device**: standard iPhone
 **Ideal path**: 7 — Send, read error, open settings, connect model, return, Retry.
 **Alternate paths**: Connect the model first from Settings, "Models", then open the thread; use a subscription sign-in instead of an API key (see the settings topic).
-**Design source**: `DS-06-Chat.dc.html` failed bubble and reply line. The no-model message: NO BOARD. Models setup: `PG-B-Models.dc.html` (settings topic).
+**Design source**: Prevention: `PG-A-HomeNoModel.dc.html` (Home card "Connect a model to start chatting." and the "Connect a model" sheet). `PG-A-ThreadStates.dc.html` frame "Refused" is the nearest style for a send-time error. The in-thread no-model message: NO BOARD.
 
 #### Steps
 1. Open "Chief" thread → empty state: agent greeting and suggestions (Agent thread rule card).
 2. Type "Draft my weekly update." and tap Send → the server returns "Connect a model to start a run" (README). The README names the string; the server source (`packages/adapters/src/executor.ts`) uses "Connect a model in Settings before running bots." The strings differ, so the exact wording the app shows is TBD.
 3. The bubble goes to "Not sent" with "Retry" (or the message is accepted and a run error appears; which of the two happens is not stated).
-4. Open Settings from the Home account control → find "Models" (see the settings topic for the route).
+4. Go Back to Home and tap "Connect a model" (drawn in `PG-A-HomeNoModel`), or tap the "AB" avatar → Settings → "Models".
 5. Connect a provider key or sign in → return to the thread.
 6. Tap "Retry" on the bubble → status "Sending", then the working indicator.
 7. The reply arrives and the caption reads "Delivered".
@@ -1687,7 +1908,7 @@ Source file: `docs/ios-native/ux/topics/thread-send.md`
 - Expo also renders "Waiting for this bot's response." in the thread (line 4257 of `thread.tsx`); its native equivalent is undefined.
 
 #### Design gaps
-- NO BOARD for the no-model block or any deep link from the error to "Models".
+- Home now has a "Connect a model" card and sheet, but the in-thread block has no board and no link to that sheet; "Edit" on a refused message would not fix this cause.
 - Message text conflict between README ("Connect a model to start a run") and server ("Connect a model in Settings before running bots.").
 - It is unclear whether this is a refused send (Not sent bubble) or a run error (`run.failed`) with no bubble change.
 
@@ -1767,7 +1988,7 @@ Source file: `docs/ios-native/ux/topics/thread-send.md`
 **Device**: standard iPhone, later moved to iPhone Duo inner display (flat)
 **Ideal path**: 22 — about 22 taps for a complete session.
 **Alternate paths**: Put the files in the Data room first and ask the agent to read them (Data room topic); send each file as its own message.
-**Design source**: `DS-06-Chat.dc.html` (Composer, chips, failed bubble, reply line, working indicator); `PG-A-Thread.dc.html`; inner layouts in `Inner.dc.html` and the Agent thread rule card; offline, notices and menus: NO BOARD.
+**Design source**: `DS-06-Chat.dc.html` (Composer, chips, failed bubble, reply line, working indicator); `PG-A-Thread.dc.html`, `PH-Thread.dc.html`; `PG-A-ThreadStates.dc.html` (Offline, Failed, Refused); inner layouts in `Inner.dc.html` and the Agent thread rule card; the Attach menu, upload progress and the long-press menu: NO BOARD.
 
 #### Steps
 1. Open the "Finance agent" thread → saved snapshot shows, then the latest page replaces it.
@@ -1777,12 +1998,12 @@ Source file: `docs/ios-native/ux/topics/thread-send.md`
 5. Tap `plus` → "File" → pick `cap-notes.pdf` → fourth chip (the limit).
 6. Tap `plus` again → the menu still opens; picking any file shows "(max 4 attachments)".
 7. Type "Summarize runway risks from these." and tap Send → four uploads then the send; bubble at 70%, caption "Sending".
-8. Signal drops during step 7 → the entry is queued; the user keeps reading.
+8. Signal drops during step 7 → the banner "Offline. Messages send when you reconnect." appears and the bubble reads "Waiting to send"; the user keeps reading.
 9. Signal returns → delivered; "Finance agent is working" appears with Stop.
 10. The reply arrives with a table; tap Expand on the table → full-height sheet opens.
 11. Close the sheet; long-press the reply → "Reply".
 12. Type "What if hiring slips two months?" and tap Send → reply line quoted above the new bubble.
-13. The send is refused (rate or size) → "Not sent" with "Retry"; tap "Retry" → delivered.
+13. The send is refused as too large → "Not sent: Attachment is too large" with "Edit" (a rate limit is retried automatically instead); remove one PDF, tap Send → delivered.
 14. Open the inner display (unfold) → the thread appears in the 2/3 pane with Personnel in the 1/3 pane; the composer text, chips and queue state must carry over.
 15. Long-press the final reply → "React" → thumbs up.
 
@@ -1795,7 +2016,7 @@ Source file: `docs/ios-native/ux/topics/thread-send.md`
 - Cache eviction of the outbox during the long session.
 
 #### Design gaps
-- NO BOARD for offline, queued waiting, upload progress, the Attach menu, the long-press menu, reaction picker, or posture-change continuity of the composer.
+- NO BOARD for upload progress, the Attach menu, the long-press menu, the reaction picker, or posture-change continuity of the composer. Offline, "Waiting to send", "Not sent" and "Edit" are drawn in `PG-A-ThreadStates`.
 - Attachment total (4 files, up to 40 MiB of base64) against the 50 MB outbox cap leaves room for about one such message; no warning is designed.
 
 
@@ -1822,12 +2043,54 @@ Source file: `docs/ios-native/ux/topics/thread-send.md`
 - Speech permission denied: Expo shows "Allow speech recognition in Settings, or connect ElevenLabs, OpenAI, or Fish Audio."
 
 #### Edge Cases
-- No model connected: see STORY-040.
+- No model connected: see STORY-040. First model use also shows the data-sharing sheet (STORY-048).
 
 #### Design gaps
 - NO BOARD for the suggestion chips and no rule for tap behavior (fill versus send).
 - The empty thread is described only in the rule card text.
 
+
+
+### STORY-116: Recover from an offline, a failed and a refused send in one thread
+**Type**: medium
+**Topic**: Sending, attachments and offline
+**Source**: ux-paths round 1 refresh (board `PG-A-ThreadStates`); STORY-038 and STORY-039 cover each case alone
+**Phase issue**: #417 (P5)
+**Persona**: Callum Ferreira, founder replying to a customer from a train
+**Goal**: Keep working with the Inbox agent while the signal comes and goes, and know which messages need him.
+**Preconditions**: Thread "Inbox agent" open on the outer display; a saved snapshot exists; a model is connected.
+**Device**: iPhone Duo outer
+**Ideal path**: 7 — send while offline (nothing else to do), tap Retry on the failed one, tap Edit on the refused one, drop the attachment, Send.
+**Alternate paths**: (a) Wait: the signal returns and the queued message goes out by itself (STORY-038). (b) Delete a failed message instead of retrying (the menu is not drawn).
+**Design source**: `PG-A-ThreadStates.dc.html` (frame "Offline": the banner "Offline. Messages send when you reconnect." under the title capsule, a bubble "Thursday works for me." captioned "Waiting to send"; frame "Failed": the bubble has a destructive outline and the row "Not sent" with "Retry"; frame "Refused": "Attached the pilot deck." with "Not sent: Attachment is too large" and "Edit").
+
+#### Steps
+1. Open the thread in a tunnel → the snapshot shows with the banner "Offline. Messages send when you reconnect."
+2. Type "Thursday works for me." and tap Send → the bubble appears captioned "Waiting to send"; the composer stays usable.
+3. The signal returns → the banner clears and the message is delivered (not drawn).
+4. A send fails with a server error → the bubble gets a destructive outline and "Not sent" with "Retry".
+5. Tap "Retry" → the row shows "Sending", then the message is delivered.
+6. Attach the pilot deck and send → the server refuses it; the bubble reads "Not sent: Attachment is too large" with "Edit" and no Retry.
+7. Tap "Edit" → the message returns to the composer (inferred); remove the deck, or attach a smaller file.
+8. Tap Send → "Sending", then delivered.
+
+#### Variations
+- Three messages sent offline: all queue in order and go out together.
+- App killed while a message waits: the outbox is restored on relaunch.
+- A message hits the rate limit (429): it goes back to "Waiting to send" and is retried without the user.
+
+#### Edge Cases
+- 20 queued entries or 50 MB: the composer stops accepting new messages ("Too many unsent messages"); no state is drawn.
+- The cache directory is evicted: waiting messages vanish without notice.
+- Space switch or sign-out with messages waiting: they are discarded (STORY-007).
+
+#### Design gaps
+- The banner says messages will send but not how many are waiting, and there is no way to cancel one.
+- "Waiting to send" is a small caption; a message that waits for hours is easy to miss when the banner has gone.
+- "Edit" is drawn as a link only; what it does with attachments, and the reason copy for refusals other than size (no model, no consent), are not drawn.
+- How a failed send turns into a refused one, and when automatic retries stop, are not stated.
+- The banner when the network is up but the server is down is not drawn.
+- The outer composers draw no Attach control, yet "Attachment is too large" assumes one.
 
 
 ## Topic: Approvals and AI data consent: user stories
@@ -1845,7 +2108,7 @@ Source file: `docs/ios-native/ux/topics/approvals-consent.md`
 **Device**: standard iPhone
 **Ideal path**: 3 — read the card, tap "Allow once", see the resolved line
 **Alternate paths**: (a) Answer from the iPhone Duo inner display in the 2/3 thread pane (same card). (b) Answer from the web app or Expo app; the native card then shows the resolved state after the next `threads/get` or event. (c) Tap the push notification, which opens the thread at the card (push tap behavior is not specified for approvals).
-**Design source**: DS-06-Chat "MCP tool approval" card (all steps); PG-A-Thread rule card ("Allow in the approval card is the one prominent control"); resolved line from DS-06 "Resolved".
+**Design source**: DS-06-Chat "MCP tool approval" card (all steps; the only board with "Allow once / Always allow / Deny"); the PG-A-Thread rule card ("Allow in the approval card is the one prominent control") is stale, since `PG-A-Thread` now draws the mail card with "Save" and "Send"; resolved line from DS-06 "Resolved".
 
 #### Steps
 1. Open the Mercury agent thread from Home → the thread shows the "Mercury agent wants to run requestSendMoney" card with Amount, Recipient "Northwind", Memo "Pilot invoice" in an inset well.
@@ -1879,7 +2142,7 @@ Source file: `docs/ios-native/ux/topics/approvals-consent.md`
 **Device**: standard iPhone
 **Ideal path**: 3 — open the agent thread, check the draft, tap "Send"
 **Alternate paths**: (a) Start from Inbox message → "Ask Inbox agent", then land on the same card. (b) On Duo inner display the same card appears in the right 2/3 pane beside the inbox list (Inner board). (c) Tap "Save" to keep only a draft in the mail account. (d) Edit-and-send (STORY-047).
-**Design source**: PG-A-Thread (card with "Needs approval", "Deny", "Allow" on the inbox agent thread); Inner (card with "Save" and "Send"); DS-06-Chat "Mail approval card" (anatomy, states Needs approval, Sent, Not sent). The two boards disagree on the buttons: PG-A-Thread shows "Deny"/"Allow", Inner and DS-06 show "Save"/"Send".
+**Design source**: `PG-A-Thread`, `PH-Thread` and `Inner` (card "Re: Pilot timeline", "Needs approval", "To Ana Ruiz", body, "Save", "Send"); DS-06-Chat "Mail approval card" (anatomy, states Needs approval, Sent, Not sent). All boards now agree on Save and Send.
 
 #### Steps
 1. In the Inbox, tap the row "Re: Pilot timeline" from Ana Ruiz, then tap "Ask Inbox agent" (prominent) → the Inbox agent thread opens with the composer "Message Inbox agent".
@@ -1890,7 +2153,7 @@ Source file: `docs/ios-native/ux/topics/approvals-consent.md`
 
 #### Variations
 - Tap "Save": outcome `saved`; the card shows a saved state (no board for the word).
-- Tap "Deny" (PG-A-Thread version): outcome "Not sent" with an x mark.
+- Decline the draft: no "Deny" is drawn any more; the user ignores the card or tells the agent in the composer.
 - Draft has a Cc: DS-06 shows a Cc row between To and the body.
 
 #### Edge Cases
@@ -1900,9 +2163,9 @@ Source file: `docs/ios-native/ux/topics/approvals-consent.md`
 - Same information appears on Inbox agent thread, Inbox message (as agent entry) and Duo inner pane; the card is one component.
 
 #### Design gaps
-- Conflict between PG-A-Thread ("Deny"/"Allow") and Inner/DS-06 ("Save"/"Send") for the same card.
 - No board for the `unknown` and `failed` outcomes or for the post-save state.
 - "View draft" (README mentions it) has no board; unclear whether the body is truncated on the card.
+- No way to decline a mail draft is drawn (Deny was removed with the old PG-A-Thread card); the card has no "Not now" or dismiss control.
 
 
 ### STORY-047: Fix the recipient list, then edit and send
@@ -1916,7 +2179,7 @@ Source file: `docs/ios-native/ux/topics/approvals-consent.md`
 **Device**: iPhone Duo outer display
 **Ideal path**: 7 — open card, open editor, change Cc and body, confirm, send
 **Alternate paths**: (a) Tell the agent in the composer "Add Jordan on Cc" (DS-06 shows this exact composer text) and let it produce a new draft, which needs a second approval. (b) Edit on web, then return. (c) Save only, edit in the mail account later.
-**Design source**: DS-06-Chat "Mail approval card" (static card only); edit-and-send screen is NO BOARD; composer text "Add Jordan on Cc" is from DS-06 composer states.
+**Design source**: DS-06-Chat "Mail approval card" (static card only); `PG-A-Compose.dc.html` draws a mail form (From, To, Cc/Bcc, Subject, body) that edit-and-send could reuse, but no entry from the approval card is drawn; composer text "Add Jordan on Cc" is from DS-06 composer states.
 
 #### Steps
 1. Open the Inbox agent thread at the pending card "Re: Pilot timeline — Needs approval" → card shown with "Save" and "Send".
@@ -1938,7 +2201,7 @@ Source file: `docs/ios-native/ux/topics/approvals-consent.md`
 - Unsaved edits when the app is backgrounded (the plan says saved chats redact secret asks only).
 
 #### Design gaps
-- The whole edit-and-send screen (entry point, fields, Bcc, validation) is NO BOARD. Plan says "approve and deny first, edit-and-send after", so this may ship later.
+- The edit-and-send entry from the card (and its fields, validation and Duo layouts) is NO BOARD; the form in `PG-A-Compose` could host it. Plan says "approve and deny first, edit-and-send after", so this may ship later.
 - Duo inner and half-folded layout for the editor is not drawn.
 - The Expo app has no equivalent screen found in the files read, so there is no label to match.
 
@@ -1954,12 +2217,12 @@ Source file: `docs/ios-native/ux/topics/approvals-consent.md`
 **Device**: standard iPhone
 **Ideal path**: 3 — type, tap send, tap "Allow" in the prompt
 **Alternate paths**: (a) Pre-grant in Settings → "AI data sharing" (STORY-094) before the first message. (b) A routine run or a mid-run `ai_consent` ask card (effect kind `ai_consent`) shows "Allow" and "Not now" inside the thread. (c) Voice first: needs consent for `voice` (STORY-052).
-**Design source**: NO BOARD for the prompt. Composer states from DS-06-Chat; settings row "AI data sharing" only in PG-B-Settings. The Expo app shows a system alert titled "Share data with {name}?" with buttons "Not now", "Privacy policy", "Allow".
+**Design source**: `PG-B-Consent.dc.html` frame "First use": over the thread a sheet "Share data with Model A?", "Your messages, chat history and attachments are sent to Model A to run your agents.", prominent "Allow", "Not now", and a link "Change in Settings". Composer states from DS-06-Chat. The Expo app shows a system alert titled "Share data with {name}?" with buttons "Not now", "Privacy policy", "Allow".
 
 #### Steps
 1. Open any agent thread and type "Draft a launch note" in the composer → "Send" becomes prominent (DS-06 Typing state).
 2. Tap Send → the client maps `threads/send` through `aiDataUsesForProcedure` to model and memory, calls `aiConsent/status` and finds unallowed recipients.
-3. A prompt appears: "Share data with {provider}?" with the recipient detail, the disclosure text, and "You can turn this off in Account → AI data sharing." (Expo copy; no iOS board).
+3. A sheet rises from the bottom: "Share data with Model A?", the disclosure text, a full-width "Allow", a quieter "Not now" and a small "Change in Settings" link (board copy; Expo adds a "Privacy policy" button, which the board moves to "Privacy details" on the Settings page).
 4. Tap "Allow" → client calls `aiConsent/allow` with scope, version and the recipient key, then sends the message.
 5. The message appears in the thread and the agent starts working.
 
@@ -1974,9 +2237,9 @@ Source file: `docs/ios-native/ux/topics/approvals-consent.md`
 - Tapping Send twice quickly: pending prompts are coalesced per recipient in `packages/core/src/ai-consent.ts`.
 
 #### Design gaps
-- The consent prompt itself has no board (alert, sheet, or inline card?).
-- No recipient icon, no layout for several recipients, no placement of the privacy link.
+- One recipient is drawn; several recipients in a row (Model A, then Memory A) and the position of the privacy link on the sheet are not; the sheet also hides the pending message, so the user cannot see what they are about to send.
 - Behavior of the composer text after "Not now" is not stated.
+- The sheet text names only the model ("to run your agents"); memory and speech recipients need their own wording, and the link "Change in Settings" does not say where in Settings.
 
 
 ### STORY-050: Second device answers the same approval first (CONFLICT)
@@ -2052,7 +2315,7 @@ Source file: `docs/ios-native/ux/topics/approvals-consent.md`
 **Device**: standard iPhone
 **Ideal path**: 3 — tap call, tap "Allow", call starts
 **Alternate paths**: (a) Grant in Settings → "AI data sharing" first (STORY-094). (b) "Not now" and use text only.
-**Design source**: NO BOARD for the prompt or the call screen (DS-07 lists "Calls", no PG page). Settings root row "AI data sharing" on PG-B-Settings.
+**Design source**: The prompt shape is drawn for the model in `PG-B-Consent` (bottom sheet, Allow / Not now); its voice wording and the call screen are NO BOARD (DS-07 lists "Calls", no PG page). Settings page "AI data sharing" lists "Speech A, Recordings and spoken text".
 
 #### Steps
 1. Open a thread and start a call (control from the thread header; the call entry has no PG page) → client maps `voice/prepare` to the `voice` use and checks consent.
@@ -2067,7 +2330,7 @@ Source file: `docs/ios-native/ux/topics/approvals-consent.md`
 - Dictation permission denied: Expo shows "Calls need transcription" with "Not now" and "Open Voice" — a different gate from consent.
 
 #### Design gaps
-- Call screen has no PG page; consent prompt in the middle of a call start has no board.
+- The call screen has no PG page; the consent sheet is drawn for the model only, so the voice variant (copy about recordings and spoken text) in the middle of starting a call is not drawn.
 
 
 ### STORY-053: Approve a new MCP server from the thread
@@ -2173,6 +2436,47 @@ Source file: `docs/ios-native/ux/topics/approvals-consent.md`
 
 
 
+### STORY-117: Decline data sharing at first use, then allow it from Settings
+**Type**: medium
+**Topic**: Approvals and AI data consent
+**Source**: ux-paths round 1 refresh (board `PG-B-Consent`); STORY-048 and STORY-094 cover the accept path and the Settings page
+**Phase issue**: #417 (P5), #421 (P9)
+**Persona**: Rosalind Pereira, careful founder with customer data in her chats
+**Goal**: Say "Not now" at the first prompt, read what each service receives, and allow only the model.
+**Preconditions**: New account, a model connected, no recipient allowed yet (`aiConsent.status`).
+**Device**: standard iPhone
+**Ideal path**: 7 — type, Send, "Change in Settings", switch "Model A" on, Back, Send again, read the reply.
+**Alternate paths**: (a) Tap "Allow" at once (STORY-048). (b) Tap "Not now" and later allow from Settings by hand (AB avatar, Settings, AI data sharing: 4 taps). (c) Allow nothing and use the app without agents.
+**Design source**: `PG-B-Consent.dc.html` (frame "First use": a bottom sheet "Share data with Model A?", "Your messages, chat history and attachments are sent to Model A to run your agents.", prominent "Allow", "Not now", and the link "Change in Settings"; frame "Settings, AI data sharing": three switch rows "Model A / Messages and attachments", "Speech A / Recordings and spoken text", "Memory A / Summaries and memories", and "Privacy details").
+
+#### Steps
+1. In the Inbox agent thread type "Summarize my unread mail." and tap Send → the data-sharing sheet rises; the typed message is not visible behind it.
+2. Read the sheet → one recipient (Model A), the data sent (messages, history, attachments), and three controls.
+3. Tap "Not now" → the sheet closes and the message is not sent; the composer text is expected to stay (not drawn).
+4. Tap Send again and, this time, tap "Change in Settings" → Settings opens at "AI data sharing" (the target is inferred).
+5. Read the page → "Model A" and "Speech A" show green switches, "Memory A" is off; "Privacy details" is a link below.
+6. Switch "Model A" on → allowed at once (`aiConsent.allow`); leave "Memory A" off.
+7. Tap Back to the thread and Send → no prompt appears; the agent starts working without memory.
+
+#### Variations
+- Tap "Privacy details": the privacy policy opens in Safari, then the user returns to the page.
+- Starting a call later needs Speech A (STORY-052).
+- Switch "Model A" off again: the next send shows the sheet again (STORY-094).
+
+#### Edge Cases
+- The consent text changes (a new version): the sheet appears again for that recipient.
+- A switch fails to save: the switch must return to its old position; not drawn.
+- Consent is revoked while a run is in progress: not stated.
+- Two recipients are needed for one send (model and memory): Expo prompts once per recipient in turn.
+
+#### Design gaps
+- What happens to the typed message after "Not now" is not drawn.
+- The link "Change in Settings" does not say where in Settings it leads.
+- Nothing explains what stops working with "Memory A" off, or that agents run without recalling earlier chats.
+- The sheet names only the model; the memory and speech recipients have no first-use wording.
+- The page has no master switch and no "Withdraw all permissions" (STORY-094); the sheet has no "Privacy details" link while the page does.
+
+
 ## Topic: Topic: Inbox triage and compose
 
 Source file: `docs/ios-native/ux/topics/inbox.md`
@@ -2188,15 +2492,15 @@ Source file: `docs/ios-native/ux/topics/inbox.md`
 **Device**: standard iPhone
 **Ideal path**: 3 — pull to refresh, swipe left on a row, release past the threshold (full swipe commits Archive).
 **Alternate paths**: Long-press the row and choose "Archive" from the context menu (DS-05 says every swipe action has a long-press menu item). Open the message and tap Archive in its toolbar. VoiceOver custom action "Archive". In Expo today the only per-row action is the row menu (Archive, Spam, Trash) and the "Archive all" bulk button in the Newsletters digest.
-**Design source**: Inbox list on a standard iPhone: NO BOARD (rule card in `PG-A-Rules.dc.html` "Inbox" gives only the outer layout). Row and swipe: `DS-05-Lists.dc.html` "Mail row" and "Swipe actions". Section header: `DS-05-Lists.dc.html` "Section headers".
+**Design source**: Inbox list on a standard iPhone: `PH-Inbox.dc.html` (title "Inbox", Back, Search and Filter in one capsule, prominent Compose; sections "Needs reply 3", "Today 24", "Earlier"; unread dot plus semibold sender; labels "Needs attention", "Newsletter", "Junk"; one row swiped to a single "Archive" action). Outer display: `Sheet.dc.html`. Row and swipe: `DS-05-Lists.dc.html` "Mail row" and "Swipe actions". Section header: `DS-05-Lists.dc.html` "Section headers".
 
 #### Steps
-1. Open the app and tap the Inbox row on Home → Inbox opens with a 28 pt title "Inbox" and sections "Needs reply" (count 3), then the date sections. The list shows placeholder rows while loading, then mail from the cache.
+1. Open the app and tap the Inbox row on Home → Inbox opens with a 28 pt title "Inbox" and sections "Needs reply" (count 3), "Today" (24) and "Earlier". The list shows placeholder rows while loading, then mail from the cache.
 2. Pull the list down → the list calls `inbox.refresh` (with `waitMs`) and then `inbox.list`; new mail appears at the top with a filled unread dot and semibold sender.
-3. Swipe the row "Example Weekly / Five tools worth trying" left, past the threshold → "Archive" fills the row and commits (`inbox.archive`); the row leaves the list.
+3. Swipe the row "Example Weekly / Five tools worth trying" left, past the threshold → "Archive" fills the row (drawn on `PH-Inbox`) and commits (`inbox.archive`); the row leaves the list.
 
 #### Variations
-- Swipe left only part way: three buttons appear in this order from the outside: "Archive", "Star", "Mute". Tap "Star" or "Mute" instead (see Design gaps).
+- Swipe left only part way: the DS-05 specimen shows three buttons in this order from the outside: "Archive", "Star", "Mute" (`PH-Inbox` shows only "Archive"). Tap "Star" or "Mute" instead (see Design gaps).
 - Swipe right on an unread row: "Mark read" (calls `inbox.markRead`). On a read row it reads "Mark unread".
 - Several accounts connected: Expo shows an "Account" picker with "All"; the boards do not show one.
 
@@ -2206,11 +2510,12 @@ Source file: `docs/ios-native/ux/topics/inbox.md`
 - Offline pull to refresh: the list keeps the cached rows; the board shows "Could not load mail." with retry only for a first load.
 
 #### Design gaps
-- No standard iPhone Inbox board.
-- "Star" has no write procedure in `rpc.ts` (`InboxFilter` has `starred` as a read filter only). "Mute" could map to `inbox.feedback` with mark `noise`, but the plan does not say so. Both appear on the swipe specimen.
+- "Star" has no write procedure in `rpc.ts`, and "Mute" maps to `inbox.feedback` by inference only. `PH-Inbox` shows only "Archive" on the swipe while the DS-05 specimen lists Archive, Star and Mute; which swipe set ships is undecided.
 - No Undo toast after Archive, though the API supports undo.
-- Section names differ: board "Other mail today" (Sheet, Inner) versus plan and Expo "Today" and "Earlier". The "Earlier" header is drawn in DS-05 only.
+- DECISION: section names: `PH-Inbox` and the plan use "Today" and "Earlier"; the outer boards (`Sheet`, `Inner`, `Split`) and the Inbox rule card still say "Other mail today".
 - Expo row menu offers Spam and Trash; the swipe specimen and the row menu text on the board list only Archive, Star, Mute, Mark read.
+- The prominent action differs by display: `PH-Inbox` makes Compose the tinted action and draws no "Ask Inbox agent"; the outer boards make "Ask Inbox agent" prominent and Compose an ordinary button.
+- Pull to refresh and loading rows are not drawn on `PH-Inbox`, and its "Needs attention" and "Junk" label chips are not in the plan.
 
 
 ### STORY-057: Read a message with attachments and ask the Inbox agent
@@ -2223,7 +2528,7 @@ Source file: `docs/ios-native/ux/topics/inbox.md`
 **Preconditions**: Gmail connected. "Re: Pilot timeline" from Ana Ruiz is in "Needs reply". The Inbox agent exists (or will be created on first use). A model is connected.
 **Device**: standard iPhone
 **Ideal path**: 2 — tap the row, tap "Ask Inbox agent".
-**Alternate paths**: From the Inbox list, tap the prominent "Ask Inbox agent" button (opens the general Inbox agent, no message context; `inbox.agent`). From Home, open "Inbox agent" in Personnel. Expo labels the same message action "Ask agent" and the general one "Inbox agent".
+**Alternate paths**: On the outer display, from the Inbox list tap the prominent "Ask Inbox agent" button (opens the general Inbox agent, no message context; `inbox.agent`); `PH-Inbox` draws no such button. From Home, open "Inbox agent" in Personnel. Expo labels the same message action "Ask agent" and the general one "Inbox agent".
 **Design source**: `PG-A-InboxMessage.dc.html` (message screen) and the "Inbox message" rule card in `PG-A-Rules.dc.html`. Attachment row: `DS-05-Lists.dc.html`. Agent thread: `PG-A-Thread.dc.html` ("Inbox agent is working"). Attachment preview screen: NO BOARD.
 
 #### Steps
@@ -2251,6 +2556,7 @@ Source file: `docs/ios-native/ux/topics/inbox.md`
 - Unsubscribe from the message screen is not drawn, although `inbox.unsubscribe` exists.
 - Label mismatch: board "Ask Inbox agent" versus Expo "Ask agent" (message) and "Inbox agent" (list).
 - Sender avatar is listed in the rule card ("Domain (sender avatar)") and drawn as initials "AR" on the board, but the plan says nothing about where avatars come from.
+- The standard iPhone message view is not drawn (`PH-Inbox` shows only the list); where "Archive", "Reply" and "Ask Inbox agent" sit at 393 pt is unknown.
 
 
 ### STORY-058: Reply to a customer and send
@@ -2263,13 +2569,13 @@ Source file: `docs/ios-native/ux/topics/inbox.md`
 **Preconditions**: Gmail connected, mail writes on. "Re: Pilot timeline" is open.
 **Device**: standard iPhone
 **Ideal path**: 4 — tap "Reply", type the reply, tap Send; the sheet closes.
-**Alternate paths**: Ask the Inbox agent to draft and send; approve the card "view draft", "Send" (Approvals topic). Reply-all and Forward are modes of the same screen (`ComposeMode`: reply, replyAll, forward), but the entry point for Reply all is not drawn.
-**Design source**: Reply button: `PG-A-InboxMessage.dc.html`. Compose sheet, From line, Send, Discard: NO BOARD. Keyboard and sheet patterns: `DS-04-Overlays.dc.html` (sheets).
+**Alternate paths**: Ask the Inbox agent to draft and send; approve the card "Send" (Approvals topic). Reply all and Forward are modes of the same screen (`ComposeMode`), reached from the title menu "Reply ⌄" (Reply, Reply all, Forward).
+**Design source**: Reply button: `PG-A-InboxMessage.dc.html`. Compose form: `PG-A-Compose.dc.html` frames "Reply" and "Reply, title menu open" (title "Reply ⌄", From picker, To chip, "Cc, Bcc" row, Subject "Re: Pilot timeline", body, a "…" button for the quoted text; strip: Cancel xmark, Attach paperclip, prominent Send arrow). Keyboard and sheet patterns: `DS-04-Overlays.dc.html`.
 
 #### Steps
-1. On the message, tap "Reply" → a compose sheet opens. The app calls `inbox.compose.prefill` with mode `reply` and the device time zone and locale; To is Ana Ruiz, Subject is "Re: Pilot timeline", and the body holds the quote. A `clientId` is generated for idempotency.
+1. On the message, tap "Reply" → a full-height compose page opens titled "Reply ⌄". The app calls `inbox.compose.prefill` with mode `reply` and the device time zone and locale; To is the chip "Ana Ruiz", Subject is "Re: Pilot timeline", and the quote sits behind a "…" button. A `clientId` is generated for idempotency.
 2. Type "Thursday morning works. See you then." above the quote → text appears; the draft is held on the device.
-3. Tap Send → `inbox.compose.send` runs and the sheet shows a progress state.
+3. Tap the prominent Send (up arrow) in the strip → `inbox.compose.send` runs and the page shows a progress state (not drawn).
 4. The result is `sent` → the sheet closes and the original message shows a confirmation (not designed).
 
 #### Variations
@@ -2287,11 +2593,10 @@ Source file: `docs/ios-native/ux/topics/inbox.md`
 - Double tap on Send: the same `clientId` makes the second call idempotent.
 
 #### Design gaps
-- Compose sheet has no board: fields, From account picker, Cc/Bcc reveal, attachment picker, formatting (the API takes `html`), sending state, error banner.
+- The compose page is drawn for the outer display (fields, From picker, Cc/Bcc row, attachment chip); not drawn: the From account list, the expanded Cc and Bcc rows, the sending and error states, a Cancel prompt (keep draft or discard), and compose at 393 pt or inside the inner and half-folded panes.
 - Outcome copy for `saved`, `sent`, `unknown`, `reconnect`, `disabled`, `failed` is not defined.
-- Whether the sheet is medium or large, and how it behaves on the outer display, is not stated.
-- Reply is an "ordinary glass button" per the rule card, but the glass toolbar group on a standard iPhone has no board.
-- Reply-all has no control.
+- The board shows a full-height page with a Cancel xmark, not a sheet; whether iOS presents it as a large sheet or a pushed page is not stated.
+- Reply is an "ordinary glass button" per the rule card, but no standard iPhone message board draws the toolbar group.
 
 
 ### STORY-059: Forward a message with its attachments
@@ -2303,17 +2608,17 @@ Source file: `docs/ios-native/ux/topics/inbox.md`
 **Goal**: Forward the pilot timeline and agenda to a teammate.
 **Preconditions**: "Re: Pilot timeline" open, two attachments (212 KB and 4 KB). A second Gmail account is connected.
 **Device**: standard iPhone
-**Ideal path**: 6 — find forward, choose forward, enter a recipient, check attachments, send (the entry point is not drawn, so the count is a best estimate).
+**Ideal path**: 5 — Reply, open the title menu, Forward, type a recipient, Send. The attachments come along without a step.
 **Alternate paths**: Ask the Inbox agent to forward it (agent tools). Long-press the row in the list (menu content not drawn for forward).
-**Design source**: Forward entry point: NO BOARD. Compose sheet: NO BOARD. Attachment rows: `DS-05-Lists.dc.html`.
+**Design source**: Forward entry: `PG-A-Compose.dc.html` frame "Reply, title menu open" (the title "Reply ⌄" opens Reply, Reply all, Forward); the message board `PG-A-InboxMessage.dc.html` has no Forward button. Compose form: `PG-A-Compose.dc.html` (attachment chip "kickoff-agenda.md 4 KB" with a remove control). Attachment rows: `DS-05-Lists.dc.html`.
 
 #### Steps
-1. On the open message, look for a way to forward → the toolbar shows only "Archive" and "Reply" on the board. Open the Reply control's menu if one exists (undefined).
-2. Choose Forward → `inbox.compose.prefill` with mode `forward`; the sheet opens with Subject "Fwd: Re: Pilot timeline", the forwarded header in the body, and the two original files listed as attachments to be re-attached on the server (`forwardOf`).
+1. On the open message, tap "Reply" (the only compose entry on the board) → the compose page opens in Reply mode; tap the title "Reply ⌄" → a menu lists Reply, Reply all, Forward.
+2. Choose Forward → `inbox.compose.prefill` with mode `forward`; the page switches to Forward mode with Subject "Fwd: Re: Pilot timeline", the forwarded header in the body, and the two original files listed as attachments to be re-attached on the server (`forwardOf`).
 3. Type a recipient in To (for example `sam@example.com`) → the field accepts a comma-separated list. Contact suggestions are not described.
 4. Check the From line, which shows the account the original arrived on → switch it with the picker if needed.
 5. Tap Send → `inbox.compose.send` with `forwardOf.attachmentIds`; files are attached by the server and do not travel from the phone.
-6. Result `sent` → sheet closes.
+6. Result `sent` → the page closes.
 
 #### Variations
 - Remove one attachment before sending (the list is editable in the API through `attachmentIds`).
@@ -2326,8 +2631,8 @@ Source file: `docs/ios-native/ux/topics/inbox.md`
 - Two accounts: the From account must default to the original's account, and the app must not send from the wrong one.
 
 #### Design gaps
-- No Forward control on the message board.
-- No compose screen, no attachment list, no From picker.
+- Forward is reachable only by opening Reply and then the title menu (two extra taps) and has no control on the message board; a user who wants Forward must guess that Reply leads to it.
+- The compose form and attachment chip are drawn; the forward-specific parts (the "Fwd:" subject, the forwarded header, the list of original files with their remove controls, an empty To) are not drawn.
 - No recipient autocomplete; `contacts.list` exists but is not tied to mail.
 - No copy for "files left out".
 
@@ -2342,7 +2647,7 @@ Source file: `docs/ios-native/ux/topics/inbox.md`
 **Preconditions**: Gmail connected, about 200 messages cached, mail writes on.
 **Device**: iPhone Duo outer (466x678 pt)
 **Ideal path**: 5 — "Search mail", type, open "Filter", pick an option, swipe or archive.
-**Alternate paths**: Global Search (`DS-04-Overlays`, "Search across agents, mail and artifacts from anywhere") returns "Mail" results with a message jump, but `search.query` is not planned for this phase. Ask the Inbox agent "find unread mail from Northwind".
+**Alternate paths**: On a standard iPhone Search and Filter sit in one capsule at the top (`PH-Inbox`). Global Search (`DS-04-Overlays`, "Search across agents, mail and artifacts from anywhere") returns "Mail" results with a message jump, but `search.query` is not planned for this phase. Ask the Inbox agent "find unread mail from Northwind".
 **Design source**: `Sheet.dc.html` (side strip: Back, "Search mail", "Filter", "Compose", prominent "Ask Inbox agent"). Filter content: `DS-04-Overlays.dc.html`. Search results state: `DS-05-Lists.dc.html` "Results 3". No-results text: `DS-04-Overlays.dc.html` ("No results for pilotx", "Try a sender, agent or file name.").
 
 #### Steps
@@ -2370,6 +2675,7 @@ Source file: `docs/ios-native/ux/topics/inbox.md`
 - `Split.dc.html` has a star-shaped "Important only" button next to Filter. It is not in the rule card or in `Sheet.dc.html`.
 - "Select messages" mode, bulk Archive, and its confirmation have no board.
 - Search result rows for the user's own sent mail (`fromSelf`) have no distinct treatment.
+- The Inbox strip is drawn two ways: `Sheet.dc.html` (Search mail, Filter, Compose, Ask Inbox agent) and `PG-A-Cleanup.dc.html` (adds a "More" button to the same group, four icons in one capsule).
 
 
 ### STORY-061: Check off a to-do from the Inbox
@@ -2383,7 +2689,7 @@ Source file: `docs/ios-native/ux/topics/inbox.md`
 **Device**: standard iPhone
 **Ideal path**: 2 — open Inbox, tap the checkbox.
 **Alternate paths**: Open the to-do's message (the row links to its message when `messageId` is not null). Ask the Inbox agent to mark it done (no such agent tool is documented).
-**Design source**: To do card: `DS-05-Lists.dc.html` ("To do card"). Inbox screen on a standard iPhone: NO BOARD.
+**Design source**: To do card: `DS-05-Lists.dc.html` ("To do card"). `PH-Inbox.dc.html` draws no To do card above "Needs reply", so its place on a standard iPhone is not drawn.
 
 #### Steps
 1. Open Inbox → a "To do" card sits on top of the list (card radius 14, title "To do"). Rows show the text, "sender · detail" and a due label on the right.
@@ -2400,7 +2706,7 @@ Source file: `docs/ios-native/ux/topics/inbox.md`
 
 #### Design gaps
 - No undo for a completed to-do.
-- No explanation or "turn on" path when triage is blocked (consent prompt has no board).
+- No explanation or "turn on" path when triage is blocked: the data-sharing sheet exists (`PG-B-Consent`) but nothing in the Inbox links a missing To do card to it.
 - The to-do due label ("Today" style) has a formatting rule only in Expo (`apps/mobile/lib/mail-inbox.ts`).
 - Whether a done to-do can be seen again (history) is undefined.
 
@@ -2414,29 +2720,28 @@ Source file: `docs/ios-native/ux/topics/inbox.md`
 **Goal**: Unsubscribe from five newsletter senders, archive their old mail and mark one as spam, then undo one choice.
 **Preconditions**: Gmail connected, mail writes on, triage enabled. Cleanup list is populated by the server.
 **Device**: standard iPhone
-**Ideal path**: 18 — open Cleanup, then per sender select an action, confirm, review the history, undo.
+**Ideal path**: 17 — the steps below: More, Cleanup, tick five senders, "Unsubscribe 5" with its confirmation, handle the link and email results, "Archive 2", "Spam 1", then Undo on the Done screen (three fewer steps than before, because the Done screen replaces the History visit).
 **Alternate paths**: In Expo, the Newsletters filter has a "Senders" / "Digest" switch with "Archive all". The row menu offers "Archive", "Spam", "Trash" per message. Ask the Inbox agent to "archive newsletters older than a week" (DS-05 shows this as an Inbox agent preview).
-**Design source**: NO BOARD for the Cleanup screen, its action bar, its confirmations or its history. Entry point: NO BOARD (Expo puts "Cleanup" in the "More" menu of `inbox.tsx`; the boards have no "More" menu in the Inbox strip).
+**Design source**: `PG-A-Cleanup.dc.html` (outer display, four frames: Inbox with the "More" menu showing "Cleanup"; "Cleanup" list of senders with a circle checkbox, name and "48 emails · last Oct 19" and a bottom prominent "Archive 3" with a chevron button; the bulk menu "Archive 3", "Unsubscribe 2", "Skip inbox 3", "Spam 0"; the Done state "3 senders cleaned up", "101 conversations archived", "Undo"). Not drawn: confirmations, unsubscribe outcomes, History, "Looks like spam", "% read", "Not spam", "Trash", "Forget", "Skipping / Stop", loading, empty and error states. Standard iPhone: `PH-Inbox.dc.html` has no More button.
 
 #### Steps
-1. Open Inbox, then the "More" menu → Expo shows "Cleanup" with a checklist icon. The boards have no matching control (see gaps).
-2. Tap "Cleanup" → the cleanup screen loads (`inbox.cleanup.list`) with a spinner, then a list of senders. Each row shows the sender name and "{count} messages · {percent}% read". Some rows show "Looks like spam".
-3. Tap the first sender "Example Weekly" → the row is selected (checkbox).
-4. Select four more senders → the selection count updates.
-5. Open the action menu → options are "Archive", "Skip inbox", "Unsubscribe", "Spam", "Not spam", "Trash" (Expo labels).
-6. Choose "Unsubscribe 5" → a confirmation alert lists the label and offers "Cancel" and the action.
+1. Open Inbox, then the "More" button in the strip (ellipsis, under Search, Filter and Compose) → a menu with one item, "Cleanup" (checklist icon).
+2. Tap "Cleanup" → the cleanup screen loads (`inbox.cleanup.list`) with a spinner (not drawn), then the title "Cleanup" and a list of senders. Each row shows a circle, the sender name and "{count} emails · last {date}" (Expo: "{count} messages · {percent}% read"; some rows "Looks like spam", not drawn).
+3. Tap the first sender "Example Weekly" → the circle fills with a check.
+4. Select four more senders → the prominent bottom button counts them ("Archive 5").
+5. Tap the chevron beside it → a menu: "Archive 5", "Unsubscribe", "Skip inbox", "Spam" with counts (the board shows "Archive 3", "Unsubscribe 2", "Skip inbox 3", "Spam 0"; Expo also has "Not spam" and "Trash").
+6. Choose "Unsubscribe 5" → a confirmation alert lists the label and offers "Cancel" and the action (not drawn).
 7. Confirm → `inbox.unsubscribe` runs per sender and returns one of: `done`, `opened` (open a link), `sent`, `unknown`, `refused`, `disabled`, `unavailable`.
 8. For a sender that returns `opened` → the row shows "Open link"; tap it to open the page in a browser; return to the app.
 9. For a sender whose unsubscribe is by mail → an alert "Send an unsubscribe email to {address}?" with "Cancel" and "Send"; tap "Send".
 10. For a sender that returns `refused` or `unavailable` → the row shows "Could not update {name}" and, where possible, "Open link".
 11. Select two other senders and choose "Archive 2" → a confirmation, then `inbox.cleanup.archive`; the senders leave the list.
 12. Select "Deals Daily" ("Looks like spam") and choose "Spam 1" → confirmation, then `inbox.moveMany` with `op: spam`; `batchId` is returned.
-13. Scroll to "History" → rows list the past actions (`inbox.actions.list`).
-14. Tap the "Spam" history row → an alert with "Cancel" and "Undo".
-15. Tap "Undo" → `inbox.actions.undo` returns `restored` and `failed` counts; the sender returns to the Inbox.
-16. Tap "Forget" on a sender with "Learned Newsletters" → `inbox.cleanup.forget` clears the learned pile.
-17. See a sender with "Skipping" and a "Stop" link → tap "Stop" to stop skipping the Inbox.
-18. Go back to Inbox → the list reflects the changes after the next `inbox.list`.
+13. The Done screen appears ("1 sender cleaned up", conversation count) → the board shows one "Undo" button.
+14. Tap "Undo" → `inbox.actions.undo` returns `restored` and `failed` counts; the sender returns to the Inbox. (Expo reaches Undo through a "History" list that the board does not draw; an older action can only be undone there.)
+15. Tap "Forget" on a sender with "Learned Newsletters" → `inbox.cleanup.forget` clears the learned pile.
+16. See a sender with "Skipping" and a "Stop" link → tap "Stop" to stop skipping the Inbox.
+17. Go back to Inbox → the list reflects the changes after the next `inbox.list`.
 
 #### Variations
 - A sender marked with "Gmail filter limit reached" or "Couldn't add Gmail filter": the row shows the message and the action is not applied for future mail.
@@ -2451,11 +2756,11 @@ Source file: `docs/ios-native/ux/topics/inbox.md`
 - Mail writes off: every action returns `disabled` ("Changing mail is turned off.").
 
 #### Design gaps
-- The whole Cleanup flow has no board (the discovery doc already flagged this).
-- No planned entry point from the Inbox on the outer display. The strip has "Search mail", "Filter", "Compose" and "Ask Inbox agent"; no "More".
-- "Skip inbox", "Not spam", "Trash", "Learned" and "Forget" have no explanation in the design and no named iOS control (action sheet versus menu).
-- The history and Undo flow is only an alert in Expo; the planned native pattern is not defined.
-- Whether Cleanup is inside the phase 6 scope (#418 "implied") should be confirmed.
+- The Cleanup list, bulk action bar, bulk menu and Done state are drawn (`PG-A-Cleanup`); not drawn: confirmations, the unsubscribe outcomes (`done`, `opened`, `sent`, `unknown`, `refused`), a per-row result, loading, empty and error states, History, "Looks like spam", "% read", "Learned / Forget" and "Skipping / Stop".
+- The outer Inbox strip now has a "More" button with "Cleanup" (`PG-A-Cleanup`), but `PH-Inbox` (standard iPhone) has no More button, so Cleanup has no entry there.
+- The bulk menu is a pull-down from a chevron; "Skip inbox" has no explanation, and "Not spam", "Trash", "Learned" and "Forget" are not in it.
+- Undo is drawn only as a button on the Done screen; the History list and undoing older actions are not drawn.
+- DECISION: Cleanup now has a board; confirm it belongs to phase 6 (#418).
 
 
 ### STORY-063: Mail writes are turned off, or the Gmail account needs reconnecting
@@ -2504,7 +2809,7 @@ Source file: `docs/ios-native/ux/topics/inbox.md`
 **Device**: inner flat (890x626 pt, 1/3 sidebar + 2/3 detail, side bar on the right edge)
 **Ideal path**: 24 — one tap per list selection plus one tap per action; the steps below are the full session, not a shortcut.
 **Alternate paths**: Half-folded 1/2 + 1/2 with the same content. Keyboard shortcuts are not planned. The Inbox agent thread can occupy the detail pane beside the list ("Left: list. Right: selected message or Inbox agent thread").
-**Design source**: `Inner.dc.html` (inbox beside the Inbox agent thread), `Split.dc.html` (side strip: "Hide amounts", "Important only", "Filter", "Compose", "Ask Inbox agent"), rule cards "Inbox" and "Inbox message" in `PG-A-Rules.dc.html`. Reply composer in the detail pane: NO BOARD.
+**Design source**: `Inner.dc.html` (inbox beside the Inbox agent thread), `Split.dc.html` (side strip: "Hide amounts", "Important only", "Filter", "Compose", "Ask Inbox agent"), rule cards "Inbox" and "Inbox message" in `PG-A-Rules.dc.html`. Reply and compose form: `PG-A-Compose.dc.html` (outer display only); its place in the inner detail pane and the half-folded layout: NO BOARD.
 
 #### Steps
 1. Open the app on the inner display → Home shows Personnel with the Inbox row pinned in the third and Activity plus the last thread on the right.
@@ -2545,7 +2850,7 @@ Source file: `docs/ios-native/ux/topics/inbox.md`
 - A Send in progress when the user switches to another message: the compose state must not be lost or sent twice.
 
 #### Design gaps
-- No board for the compose or reply surface on either posture.
+- `PG-A-Compose` draws the form for the outer display only; the inner 2/3 pane (sheet inside the detail) and the half-folded "composer under the message" are not drawn.
 - "Important only" appears only in `Split.dc.html` and is not mentioned in rule cards.
 - The folders list in the 1/3 sidebar is named but not drawn; sections (Needs reply, Other mail today) are drawn.
 - Selection behavior after Archive (next, previous, none) is not defined.
@@ -2564,13 +2869,13 @@ Source file: `docs/ios-native/ux/topics/inbox.md`
 **Device**: iPhone Duo outer (466x678 pt)
 **Ideal path**: 4 — tap "Compose", fill To, Subject and body, tap Send.
 **Alternate paths**: Ask the Inbox agent "email sam@example.com about an intro" (mail approval card). A bot's own thread can draft mail.
-**Design source**: "Compose" button: `Sheet.dc.html`. Compose sheet itself: NO BOARD.
+**Design source**: "Compose" button: `Sheet.dc.html` (strip) and `PH-Inbox.dc.html` (prominent). Compose form: `PG-A-Compose.dc.html` frame "New message" (title "New message", From picker "me@example.test ⌄", To chip, "Cc, Bcc" row, Subject, body, attachment chip with a remove control; strip: Cancel xmark, Attach paperclip, prominent Send arrow).
 
 #### Steps
-1. In Inbox, tap "Compose" in the strip group → a compose sheet opens in the content area beside the strip (sheets stay in the content area on the outer display). The From line defaults to one account; no `prefill` call is needed for a blank message.
+1. In Inbox, tap "Compose" in the strip group → a compose page titled "New message" opens in the content area beside the strip. The From line defaults to one account; no `prefill` call is needed for a blank message.
 2. Enter `sam@example.com` in To, "Intro" in Subject, and a short message in the body → the fields hold text and a `clientId` is created.
 3. Tap the From line and choose the second account → `connectionId` changes.
-4. Tap Send → `inbox.compose.send` with no `replyToMessageId`; result `sent`, the sheet closes.
+4. Tap the prominent Send (up arrow) → `inbox.compose.send` with no `replyToMessageId`; result `sent`, the page closes.
 
 #### Variations
 - Close with Cancel while there is text: choose to save as draft (`draftSave`, result `saved`) or discard.
@@ -2583,9 +2888,9 @@ Source file: `docs/ios-native/ux/topics/inbox.md`
 - Saved drafts are not listed anywhere in the planned app (no Drafts view).
 
 #### Design gaps
-- No compose sheet board; no way to open saved drafts (`draftSave` has no list procedure in `rpc.ts`).
 - No contact autocomplete.
-- No guidance for choosing the From account when several accounts exist.
+- The From row is drawn as a picker with a chevron; the account list, the default rule when several accounts exist and any warning for the wrong account are not drawn.
+- Saved drafts are not listed anywhere in the planned app (no Drafts view, `draftSave` has no list procedure in `rpc.ts`), and no board draws the Cancel prompt (keep or discard).
 
 
 ### STORY-066: First open with no mail account, then the first sync
@@ -2619,8 +2924,87 @@ Source file: `docs/ios-native/ux/topics/inbox.md`
 #### Design gaps
 - "Connect mail" empty state is not drawn; the "Inbox zero" text could mislead a user with no account.
 - The first-sync loading state does not say that triage is still running.
-- No board for triage blocked states, and the AI data consent prompt has no board.
+- No board for triage-blocked states: the data-sharing sheet (`PG-B-Consent`) is drawn, but nothing in the Inbox leads to it.
 
+
+
+### STORY-114: Compose a new email from the standard iPhone Inbox
+**Type**: short
+**Topic**: Inbox triage and compose
+**Source**: ux-paths round 1 refresh (boards `PH-Inbox`, `PG-A-Compose`)
+**Phase issue**: #418 (P6)
+**Persona**: Marguerite Voss, founder who emails a new advisor between meetings
+**Goal**: Send a short intro email with one attachment from the second Gmail account.
+**Preconditions**: Two Gmail accounts connected, mail writes on, Inbox open on a standard iPhone.
+**Device**: standard iPhone
+**Ideal path**: 6 — tap Compose, type To, type Subject, type the body, tap Attach and pick a file, tap Send. (Without an attachment: 5.)
+**Alternate paths**: (a) Ask the Inbox agent to write it (the agent is reachable from Personnel; `PH-Inbox` has no button for it). (b) The same on the outer display (STORY-065). (c) Reply from a message (STORY-058).
+**Design source**: `PH-Inbox.dc.html` (prominent Compose at the top right, beside the Search and Filter capsule); `PG-A-Compose.dc.html` frame "New message" (outer layout: title "New message", From picker, To chip, "Cc, Bcc", Subject, body, attachment chip with remove; strip: Cancel xmark, Attach paperclip, prominent Send arrow). Compose at 393 pt: NO BOARD.
+
+#### Steps
+1. In Inbox tap the prominent Compose (pencil) at the top right → a compose page titled "New message" opens.
+2. Type the address in To → it becomes a chip (contact suggestions are not drawn).
+3. Tap From and pick the second account → the account changes (the list is not drawn).
+4. Type the Subject and the body → text appears.
+5. Tap Attach (paperclip) → the system picker opens; pick `kickoff-agenda.md` → a chip "kickoff-agenda.md 4 KB" with a remove control appears under the body.
+6. Tap Send (prominent up arrow) → `inbox.compose.send` runs; result `sent`; the page closes.
+
+#### Variations
+- Tap Cancel (xmark) with text typed: keep as draft or discard (not drawn).
+- Tap "Cc, Bcc" to reveal the two rows (not drawn expanded).
+- Remove the attachment with the x on its chip.
+
+#### Edge Cases
+- Invalid address: the API accepts text; validation copy is not drawn.
+- Empty subject: Gmail sends without one; the app does not warn.
+- Result `unknown`, `reconnect`, `disabled` or `failed`: copy is not drawn (STORY-058, STORY-063).
+- Attachments over 10 MB together or more than 20 files: the limit message is not drawn.
+
+#### Design gaps
+- Compose at 393 pt is not drawn; the outer board puts Cancel, Attach and Send in the side strip, and the standard iPhone equivalent (toolbar, keyboard accessory) is unknown.
+- The prominent action differs by display: Compose is tinted on `PH-Inbox`, while the outer boards tint "Ask Inbox agent" and keep Compose ordinary.
+- Nothing on `PH-Inbox` reaches the Inbox agent from the list, so "ask the agent" and "write it myself" are not offered side by side.
+- Contact autocomplete, the From account list, the Cancel prompt and saved drafts are not drawn.
+
+
+### STORY-115: Archive three newsletter senders in one pass, then undo
+**Type**: medium
+**Topic**: Inbox triage and compose
+**Source**: ux-paths round 1 refresh (board `PG-A-Cleanup`); STORY-062 covers the long unsubscribe and spam variant
+**Phase issue**: #418 (P6)
+**Persona**: Aurelia Pike, founder with a crowded Inbox who wants the noise gone before Monday
+**Goal**: Archive all mail from three newsletter senders at once, and put one sender back because she still needs it.
+**Preconditions**: Gmail connected, mail writes on, triage on; the Cleanup list is populated (five senders). iPhone Duo outer display.
+**Device**: iPhone Duo outer
+**Ideal path**: 6 — More, Cleanup, tick three senders, "Archive 3"; read the result; "Undo" is a 7th tap only when needed.
+**Alternate paths**: (a) Choose "Unsubscribe 2" or "Skip inbox 3" from the chevron menu instead of Archive (STORY-062). (b) Archive one sender at a time by swiping rows in the Inbox (STORY-056), which is slower for 100 or more messages.
+**Design source**: `PG-A-Cleanup.dc.html` (four frames: Inbox with the strip button "More" open on one item "Cleanup"; "Cleanup" with five senders and the prominent "Archive 3" beside a chevron; the bulk menu "Archive 3", "Unsubscribe 2", "Skip inbox 3", "Spam 0"; the Done state with a check, "3 senders cleaned up", "101 conversations archived" and "Undo"). The standard iPhone Inbox (`PH-Inbox`) has no More button.
+
+#### Steps
+1. In Inbox tap "More" (ellipsis) in the strip → a menu with "Cleanup" opens.
+2. Tap "Cleanup" → the list shows five senders, each with a circle, a name and "48 emails · last Oct 19" style counts.
+3. Tap "Example Weekly", "Northwind Deals" and "Acme Digest" → three circles fill; the bottom button reads "Archive 3".
+4. Tap "Archive 3" → the three senders' messages are archived (`inbox.cleanup.archive`); a confirmation is not drawn.
+5. Read the Done screen → a check, "3 senders cleaned up", "101 conversations archived" and "Undo".
+6. Realize Northwind Deals had a receipt she needs; tap "Undo" → `inbox.actions.undo` restores the archived mail (the board does not say whether all three senders return or one).
+
+#### Variations
+- Open the chevron menu instead of tapping the main button: "Unsubscribe 2" is offered for two of the three ticked senders, "Skip inbox 3" for all three, and "Spam 0" has nothing to act on.
+- Tick nothing: the bottom bar's state is not drawn.
+
+#### Edge Cases
+- Mail writes are off: every action returns `disabled` ("Changing mail is turned off."); no state is drawn.
+- Partial failure: only the failed senders should stay ticked; not drawn.
+- More than 50 messages in one move: the client batches (`MAX_BULK_ARCHIVE`).
+- Undo after leaving the Done screen: whether it is still possible is not drawn (Expo keeps a History list).
+
+#### Design gaps
+- The prominent default "Archive 3" acts on 101 conversations with no confirmation and no per-sender preview; "Undo" is the only safety net.
+- "Undo" restores all three senders or none; undoing one sender is not offered.
+- The counts in the menu differ ("Unsubscribe 2" of 3 ticked, "Spam 0") without saying why.
+- No loading, empty ("Nothing to clean up") or error states, no "select all", and no sample subject line to recognize a sender.
+- The Done screen leaves with the Back chevron only; where Back lands and whether the Inbox list refreshes is not stated.
+- `PH-Inbox` has no More button, so the standard iPhone has no entry.
 
 
 ## Topic: Topic: Team Computer, artifacts, agent pages and routines
@@ -2638,11 +3022,11 @@ Source file: `docs/ios-native/ux/topics/computer-artifacts.md`
 **Device**: standard iPhone
 **Ideal path**: 3 — More menu, Open computer, read the screen.
 **Alternate paths**: (a) tap a computer block in the thread (Expo `ComputerCard` opens `/computer`); (b) laptop pose, where the thread stays in the bottom half while the screen is on top.
-**Design source**: Agent thread: PG-A-Thread, PG-A-Rules "Agent thread" (More group lists "open computer"). Computer: PG-A-Computer, PG-A-Rules "Computer". The standard-iPhone top bar for Computer is NO BOARD (boards show the Duo outer display).
+**Design source**: Agent thread: PG-A-Thread (outer strip with "Agent actions"), PG-A-Rules "Agent thread" (More group lists "open computer"); `PH-Thread.dc.html` has no actions button. Computer: `PH-Computer.dc.html` (standard iPhone: Close, Team/Private picker, status chip "Watching", bottom "Take control"), PG-A-Computer, PG-A-Rules "Computer".
 
 #### Steps
-1. In the Finance agent thread, tap the trailing More group, then "Open computer" → Team Computer screen pushes; clear-glass controls over the live screen; "Booting [name]" is not shown because it is already running.
-2. Read the screen. The "Team" picker is top-left, the control chip is top-right. → The screen is view-only; no key bar is shown. Screen URL comes from `computer/screenUrl`; status is polled about every 2 s.
+1. In the Finance agent thread, tap "Agent actions" (outer strip; `PH-Thread` draws no such button), then "Open computer" → Team Computer screen pushes; clear-glass controls over the live screen; "Booting [name]" is not shown because it is already running.
+2. Read the screen. The "Team / Private" picker and the chip "Watching" sit at the top (standard iPhone) or the picker is top-left and the chip top-right (outer). → The screen is view-only; no key bar is shown. Screen URL comes from `computer/screenUrl`; status is polled about every 2 s.
 3. Tap "Close" → Returns to the thread.
 
 #### Variations
@@ -2654,8 +3038,8 @@ Source file: `docs/ios-native/ux/topics/computer-artifacts.md`
 - Backgrounding the app during a long watch: heartbeat (every 60 s) behavior is not specified.
 
 #### Design gaps
-- No standard-iPhone layout for Computer: the board only shows the 466x678 outer display (side strip, clear glass). The Close, Keyboard, Fit to screen and Take control placement on a 393 pt iPhone is undefined.
 - The More menu label "open computer" is lowercase in the rule card; the Expo label is "Open computer". Pick one.
+- `PH-Computer` omits "Fit to screen", which the outer strip has; and `PH-Thread` has no "Agent actions" button, so "Open computer" has no drawn entry on a standard iPhone (only a computer block inside a message).
 
 
 ### STORY-068: Boot a stopped Team Computer and take control for a login
@@ -2669,7 +3053,7 @@ Source file: `docs/ios-native/ux/topics/computer-artifacts.md`
 **Device**: iPhone Duo outer
 **Ideal path**: 14 — open, boot wait, Take control, tap field, show keyboard, type, tab, enter, hide keyboard, Release, answer handoff, close.
 **Alternate paths**: (a) use Release, "I'm done" in the handoff prompt instead of the Release button; (b) Skip in the handoff prompt when the user cannot log in; (c) laptop pose, key bar and Release on the bottom half; (d) inner display, thread beside the screen so the user can tell the agent what happened.
-**Design source**: PG-A-Computer and PG-A-Rules "Computer" for screen, control chip, Team/Private picker, key bar (Esc, Tab, Ctrl, arrows), Take control and Release. Handoff Skip / "I'm done": described in the rule card text only, no drawn screen (NO BOARD for the handoff prompt itself). The thread message that asks for the handoff: DS-06-Chat / DS-07-Domain computer and handoff blocks (not verified in detail).
+**Design source**: PG-A-Computer, `PH-Computer.dc.html` (standard iPhone: "Take control" wide pill at the bottom while watching; "In control" chip, Keyboard and prominent Release with a key bar of Esc, Tab, Ctrl and arrows) and PG-A-Rules "Computer" for screen, control chip, Team/Private picker, key bar (Esc, Tab, Ctrl, arrows), Take control and Release. Handoff Skip / "I'm done": described in the rule card text only, no drawn screen (NO BOARD for the handoff prompt itself). The thread message that asks for the handoff: DS-06-Chat / DS-07-Domain computer and handoff blocks (not verified in detail).
 
 #### Steps
 1. In the thread, a "Needs you" computer block appears from the agent; tap it → Computer screen opens.
@@ -2723,7 +3107,7 @@ Source file: `docs/ios-native/ux/topics/computer-artifacts.md`
 **Design source**: PG-A-Home / PG-A-Rules "Home" for the Artifacts entry (side-strip group Activity / Search / Artifacts). PG-A-Artifacts and PG-A-Rules "Artifacts" for the list. PG-A-Artifact and PG-A-Rules "Artifact" for the preview.
 
 #### Steps
-1. On Home, tap "Artifacts" (side-strip group on Duo; Home on a standard iPhone has an Artifacts entry in Expo at `index.tsx` but its native position is undefined) → Artifacts list opens with large title "Artifacts", chip row starting with "All bots" (active chip is ink), then divided rows.
+1. On Home, tap "Artifacts" (last row of PAGES on a standard iPhone, `PH-Home`; icon in the side-strip group on the Duo outer display) → Artifacts list opens with large title "Artifacts", chip row starting with "All bots" (active chip is ink), then divided rows.
 2. Tap the "Chief" chip → List filters to Chief's artifacts. Row shows "Board update draft", "Chief · HTML · v2", "Yesterday".
 3. Tap the "Board update draft" row → Artifact preview opens. Title capsule shows "Loading…" then the name. The HTML renders in a sandbox inside a preview card; floating version pill reads "v2 of 2".
 4. Scroll and read → Content scrolls under the capsule and pill.
@@ -2740,7 +3124,7 @@ Source file: `docs/ios-native/ux/topics/computer-artifacts.md`
 - Many bots: the chip row must scroll sideways; not drawn.
 
 #### Design gaps
-- Standard iPhone entry point to Artifacts is not specified (the Home rule card places it in the outer side strip only).
+- Standard iPhone entry: `PH-Home` lists "Artifacts" as the last row of PAGES, while the outer Home keeps it as an icon in the strip and omits it from PAGES; the Artifacts list at 393 pt is not drawn.
 - The search field on the list is only an icon ("Search artifacts") in the strip; how it expands on a standard iPhone is not drawn.
 - Chip overflow (more than about four bots) is not drawn.
 - Row sort order and date grouping labels ("Today", "Yesterday", "Oct 17") are shown, but the rule is not stated.
@@ -3013,6 +3397,7 @@ Source file: `docs/ios-native/ux/topics/computer-artifacts.md`
 - The same Runway data appears on four screens; no deep link from the artifact to the page or from the routine to the artifact.
 - The routine's link to "the conversation" does not say which run (see STORY-075).
 - Selection and scroll survival across posture changes is not specified in the docs read.
+- Home Activity rows draw three statuses (Working, Approve, Done), so the "needs you" computer handoff in step 1 has no drawn status or row label.
 
 
 ### STORY-077: Recover when artifacts, the page and the computer fail to load
@@ -3067,10 +3452,10 @@ Source file: `docs/ios-native/ux/topics/finance-legal.md`
 **Device**: standard iPhone
 **Ideal path**: 6 — open Finance, switch period, read KPIs, tap Ask Finance agent, type question, send.
 **Alternate paths**: (a) Home > "Finance agent" row in Personnel > ask in the thread directly, which answers with an inline finance card (no Finance page needed). (b) Tap a push notification whose `surface` is "finance" (Expo already routes `/finance` taps; native must too). (c) Ask from the Desk laptop-pose composer "Message Finance agent". (d) Voice: dictate the question into the Finance agent thread.
-**Design source**: Steps 1-2 NO BOARD for the entry point (rule card says "Push from sidebar Finance row", no board draws the row). Steps 3-5 `PG-B-Finance.dc.html`, `PG-B-Rules.dc.html` Finance card. Step 6 `PG-A-Thread.dc.html`, `Desk.dc.html` (reply wording "Why did spend jump last month?").
+**Design source**: Steps 1-2: Home PAGES section, row "Finance" with "[N] mo" (`PH-Home.dc.html`, `PG-A-Home.dc.html`). Steps 3-5 `PG-B-Finance.dc.html`, `PG-B-Rules.dc.html` Finance card. Step 6 `PG-A-Thread.dc.html`, `Desk.dc.html` (reply wording "Why did spend jump last month?").
 
 #### Steps
-1. From Home, reach the Finance page (entry point undefined; see gaps) → Finance page pushes with a Back chevron. Skeleton KPIs show while `finance.overview` loads.
+1. From Home, tap "Finance" under PAGES (the row shows the runway, "[N] mo") → Finance page pushes with a Back chevron. Skeleton KPIs show while `finance.overview` loads.
 2. Wait for load → "Runway [N] mo", "Cash [AMOUNT]", "Monthly burn", then "Accounts" with "Operating" (Mercury agent) and "Cards" (Brex agent), and "Upcoming" with "Northwind invoice, Due Oct 24" and "Acme Payroll, Oct 31".
 3. Tap "90 days" in the period tabs (30 days, 90 days, 12 months) → burn chart and burn figure change to the 90-day range.
 4. Read the burn bars; tap the highlighted bar → selection announces "Sep, [AMOUNT]" to VoiceOver and highlights the bar (DS-07 Spend bar chart).
@@ -3091,7 +3476,6 @@ Source file: `docs/ios-native/ux/topics/finance-legal.md`
 - Non-USD transactions are left out of totals; no indicator is drawn.
 
 #### Design gaps
-- Entry point to the page on the outer display (no sidebar row drawn).
 - Runway/Cash/Burn when value is unavailable (null runway).
 - Pull to refresh and refresh progress (top-bar refresh icon has no loading state).
 - Tapping an account row, an Upcoming row, or a burn bar for detail: no screen (account detail, transaction detail have API `finance.account`, `finance.transaction` but no board).
@@ -3142,10 +3526,10 @@ Source file: `docs/ios-native/ux/topics/finance-legal.md`
 **Device**: standard iPhone
 **Ideal path**: 5 — open Legal, tap scan, wait, read Contracts, switch to Deadlines.
 **Alternate paths**: (a) Home > "Legal agent" row ("2 deadlines due this week") > ask the agent in chat instead of using the page. (b) Push notification that taps through to Legal. (c) Ask Legal agent in the page to explain a specific contract.
-**Design source**: `PG-B-Legal.dc.html`, `PG-B-Rules.dc.html` Legal card, `DS-07-Domain.dc.html` Deadline row and Document card. Scan progress and result toast: NO BOARD.
+**Design source**: Entry: Home PAGES row "Legal" with the count "2" (`PH-Home`, `PG-A-Home`). `PG-B-Legal.dc.html`, `PG-B-Rules.dc.html` Legal card, `DS-07-Domain.dc.html` Deadline row and Document card. Scan progress and result toast: NO BOARD.
 
 #### Steps
-1. Open Legal (entry point undefined) → Back chevron, scan icon, "Ask Legal agent"; segmented "Contracts" and "Deadlines"; summary "Last scan today, 8:05 AM" and "2 deadlines this week".
+1. Tap "Legal" under PAGES (badge "2" counts deadlines due) → Back chevron, scan icon, "Ask Legal agent"; segmented "Contracts" and "Deadlines"; summary "Last scan today, 8:05 AM" and "2 deadlines this week".
 2. Tap the scan icon in the top bar ("scan now") → `legal.scanNow` starts a run; progress state (not drawn).
 3. Read the contract rows → "Northwind services agreement, Ends Dec 31, Signed"; "Design partner NDA, Sent to Jordan Lee, Awaiting"; "Office lease renewal, Expired Sep 30, Expired"; "Acme Payroll terms, Updated Oct 12".
 4. Tap "Deadlines" → deadline rows with a calendar tile, status chip with clock icon and words: "Due in 3 days" (warning), "Overdue" (destructive), "On track".
@@ -3223,7 +3607,7 @@ Source file: `docs/ios-native/ux/topics/finance-legal.md`
 **Design source**: `PG-B-CapTable.dc.html`, `PG-B-Rules.dc.html` Cap table card, `DS-07-Domain.dc.html` Ownership summary and Holder row, `PG-B-Integrations.dc.html` (connect pending alert), `DS-07-Domain.dc.html` AppConnectCard. Not-connected screen is described in the rule card only. Contact form: NO BOARD.
 
 #### Steps
-1. Open Cap table (entry point undefined) → not-connected state: "See who owns your company" with "Connect Carta".
+1. Tap "Cap table" under PAGES on Home (no badge) → not-connected state: "See who owns your company" with "Connect Carta".
 2. Tap "Connect Carta" → app opens `authorizationUrl` in Safari (`ASWebAuthenticationSession`).
 3. Sign in to Carta and approve in Safari → returns to the app.
 4. App shows "Connect pending: alert to finish in browser, then refresh." until `connections.complete` polling (every 2 s) succeeds.
@@ -3272,7 +3656,7 @@ Source file: `docs/ios-native/ux/topics/finance-legal.md`
 **Design source**: `PG-B-DataRoom.dc.html`, `PG-B-Rules.dc.html` Data room card, `DS-07-Domain.dc.html` Folder and file rows, Upload progress. Search result row, file preview: NO BOARD.
 
 #### Steps
-1. Open Data room (entry point undefined) → search field, "Recently added" rows ("Cap table export.csv, CSV · Ana Ruiz", "Northwind agreement.pdf", "Pitch deck v3.pdf"), folders ("Board materials, [N] items"; "Diligence"), and "Load more".
+1. Tap "Data room" under PAGES on Home (no badge) → search field, "Recently added" rows ("Cap table export.csv, CSV · Ana Ruiz", "Northwind agreement.pdf", "Pitch deck v3.pdf"), folders ("Board materials, [N] items"; "Diligence"), and "Load more".
 2. Tap the plus (add files) in the top bar → system file picker opens.
 3. Choose "Term sheet.pdf" → picker closes; upload row appears: file tile, name, 4 pt progress bar and percent ("62%"), cancel (x).
 4. Wait for completion → row becomes a normal file row; upload response is 201 (new). Item processing continues asynchronously.
@@ -3348,7 +3732,7 @@ Source file: `docs/ios-native/ux/topics/finance-legal.md`
 **Design source**: `PG-B-Rules.dc.html` rule cards for the four pages (Inner book, Half-folded, Laptop pose), `Inner.dc.html`, `Split.dc.html`, `Desk.dc.html` (Finance laptop desk pose), `PG-B-*.dc.html`. Inner/half-folded layouts for Legal, Cap table, Data room beyond the rule text: NO BOARD (only Finance has a laptop board).
 
 #### Steps
-1. On the outer display (466x678 pt), open Finance → single column with period tabs, KPIs, burn chart, Accounts, Upcoming.
+1. On the outer display (466x678 pt), tap Finance under PAGES on Home → single column with period tabs, KPIs, burn chart, Accounts, Upcoming.
 2. Tap the eye to hide amounts → masked.
 3. Unfold to the inner display held as a book (890x626 pt) → page becomes 1/3 + 2/3: the left third shows Finance sections "Overview, Accounts, Burn, Spend", the right two thirds shows the selected section.
 4. Tap "Burn" in the left list → right pane shows the burn chart; Hide amounts is still on.
@@ -3384,7 +3768,7 @@ Source file: `docs/ios-native/ux/topics/finance-legal.md`
 - Selection and scroll preservation across posture changes.
 - Finance "Spend" and "Burn" sections are listed for the inner view but the outer page has a single scroll with no equivalent split.
 - Where Ask [page] agent lives in the inner and laptop layouts (outer: prominent bubble in the top bar).
-- Where the four pages are reached on the inner display; the inner sidebar board would need rows for them.
+- The four pages are rows in PAGES on the outer and standard Home, but the inner sidebar (`Split.dc.html`: Search, Create, Personnel, "Connect apps") has no PAGES rows, so the inner route to them is still not drawn.
 
 
 ### STORY-086: Sidebar glance and badges lead to the right page
@@ -3396,14 +3780,14 @@ Source file: `docs/ios-native/ux/topics/finance-legal.md`
 **Goal**: Notice from Home that a legal deadline is near and runway has changed, then open the page.
 **Preconditions**: `notifications.glance` returns `financeRunwayMonths`, `legalDueSoon` (2), `dataRoomWaiting`.
 **Device**: standard iPhone
-**Ideal path**: 3 — open Home, spot the Legal glance, tap through to Legal.
+**Ideal path**: 2 — open Home, read the "2" beside Legal, tap the row.
 **Alternate paths**: (a) Tap the "Legal agent" Personnel row ("2 deadlines due this week") to land in the chat instead. (b) Tap the push notification. (c) Open Legal from a sidebar row (the rule card says this, but no row is drawn).
-**Design source**: `PG-A-Home.dc.html`, `Main.dc.html` (Personnel rows), `PG-B-Rules.dc.html` (Presentation). Glance badges and the sidebar rows for the four pages: NO BOARD.
+**Design source**: `PG-A-Home.dc.html` and `PH-Home.dc.html` (PAGES section: "Finance [N] mo", "Legal 2", "Cap table", "Data room"; Personnel rows with the agents), `Main.dc.html` (older outer Home without PAGES), `PG-B-Rules.dc.html` (Presentation). A Data room "waiting" count, and PAGES rows on the inner sidebar: NO BOARD.
 
 #### Steps
 1. Open the app to Home → Personnel list shows "Finance agent: Runway summary for the last 30 days", "Legal agent: 2 deadlines due this week", "Carta agent", "Mercury agent", "Brex agent: 4 card expenses need receipts".
-2. Look for the glance (runway months, deadlines due, items waiting) → NO BOARD shows these beside page rows.
-3. Tap the Legal entry → either the Legal agent chat or the Legal page, depending on which entry exists.
+2. Read the PAGES rows → "Finance" shows "[N] mo" and "Legal" shows "2" (deadlines due); "Cap table" and "Data room" show no value (the `dataRoomWaiting` count is not drawn).
+3. Tap the "Legal" row under PAGES → the Legal page opens (the "Legal agent" Personnel row opens the chat instead).
 
 #### Variations
 - Data room "waiting" count after an upload (`dataRoomWaiting`) points at items still processing.
@@ -3413,9 +3797,8 @@ Source file: `docs/ios-native/ux/topics/finance-legal.md`
 - Two entries for one concept (a Personnel agent row and a page row) could duplicate each other for Finance, Legal and Cap table.
 
 #### Design gaps
-- The page rows and glance values the API provides (`notifications.glance`) have no drawn home. This is the biggest gap in the topic.
-- Whether the rows are always visible or added by the user (`sidebarPages` add/remove exists but only the "team-health" template is defined, and it is `available: false` and web/desktop only).
-- Duplication between the agent row and the page row for the same capability.
+- DECISION: whether the PAGES rows are always visible or added by the user (`sidebarPages` add/remove exists, only the "team-health" template is defined and it is `available: false`); the boards draw four fixed rows and no Data room or Cap table glance value.
+- Now drawn on the same screen: "Finance" in PAGES, "Finance agent" in Personnel and "Finance agent" in ACTIVITY all lead to the same domain; two entries per capability (page and agent) coexist.
 
 
 
@@ -3432,14 +3815,14 @@ Source file: `docs/ios-native/ux/topics/settings.md`
 **Goal**: Find out which model and voice her agents currently use.
 **Preconditions**: Signed in, one space, a hosted model connected, voice on the device voice.
 **Device**: standard iPhone
-**Ideal path**: 3 — tap the profile in the sidebar, read the values on the list, tap "Done".
-**Alternate paths**: Opening the Account row instead of the profile row (the board draws both "Sam Rivera" profile row and an "Account" row; see Design gaps). Deep link from the Legal page "Add your OpenRouter key", which opens Models directly (not Settings root).
-**Design source**: PG-B-Settings, rule card "Settings" (steps 1-3). The sidebar profile entry point is described in the rule card text only; the Home board does not draw it as a labeled control.
+**Ideal path**: 4 — tap the "AB" avatar on Home, read the values on the list, tap "Done" (the X).
+**Alternate paths**: Deep link from the Legal page "Add your OpenRouter key", which opens Models directly (not Settings root).
+**Design source**: PG-B-Settings, rule card "Settings" (steps 1-3): one profile row "Sam Rivera / Account", then Models, Voice, Integrations, AI data sharing, then Archived bots and Change password; X (Done) in the strip. Entry: the round "AB" avatar at the top left of `PH-Home.dc.html` and `PG-A-Home.dc.html`.
 
 #### Steps
-1. Tap the profile at the bottom of the sidebar → Settings opens as a sheet with large title "Settings", the profile row "Sam Rivera", then "Account", "Models", "Voice", "Integrations", "AI data sharing", "Archived bots", "Change password".
+1. Tap the "AB" avatar at the top left of Home → Settings opens as a sheet with large title "Settings", the profile row "Sam Rivera" (subtitle "Account"), then "Models", "Voice", "Integrations", "AI data sharing", "Archived bots", "Change password".
 2. Read the row values → Models shows the default model name ("Model A"), Voice shows "Device", Integrations shows a connected count. Rows show no value until it loads, then the value appears without moving the row.
-3. Tap "Done" → the sheet closes and Home is visible again.
+3. Tap "Done" (the X in the strip) → the sheet closes and Home is visible again.
 
 #### Variations
 - Inner display (890x626 pt): the settings list sits in the 1/3 column with the selected row filled, the detail fills the 2/3 column. Half-folded: list left, detail right, each scrolls alone. Outer display: "Done" is in the left strip group.
@@ -3451,10 +3834,9 @@ Source file: `docs/ios-native/ux/topics/settings.md`
 - Signed-out session ends while the sheet is open (401): the app returns to Sign in; the sheet is dismissed.
 
 #### Design gaps
-- Entry point: "sidebar profile" is the only entry in the rule card, but the outer Home board (strip with Activity, Search, Artifacts) does not draw a profile control. The standard-iPhone entry is not drawn either.
-- The Settings board has both a profile row and an "Account" row. The rule card says sign-out and delete account "live on the profile detail (Account)". It is unclear whether the two rows open the same page.
 - Expo `account.tsx` also holds Language, Appearance, Avatar style, Hide amounts, Notifications, Phone notifications, Usage and Live update settings. None of these are on the Settings board or the Account description. Hide amounts is explicitly a device-only setting in the plan; its home in the native app is undefined.
 - The "Integrations" count value "[N]" is a placeholder; what N counts (connected apps, accounts) is not stated.
+- Sample data disagrees: the Home avatar reads "AB" while Settings and Account show "SR / Sam Rivera" for the same signed-in user.
 
 
 ### STORY-088: Change the default model and thinking level
@@ -3502,9 +3884,9 @@ Source file: `docs/ios-native/ux/topics/settings.md`
 **Goal**: Make her first agent run work by connecting a provider.
 **Preconditions**: New account, `me.needsModel` is true, no provider connected.
 **Device**: standard iPhone
-**Ideal path**: 8 — Settings, Models, tap provider, enter key, Connect, check default.
-**Alternate paths**: Subscription sign-in ("Subscription sign-in", Safari round trip with a code); OpenRouter OAuth (`models.beginOpenRouterOAuth`); a thread's blocker message "Connect a model to start a run" taking her straight to Models (no board); Legal page "Add your OpenRouter key" taking her to Models.
-**Design source**: PG-B-Models rule card (Providers list rows "Hosted provider" Connected, "Local server", "Subscription sign-in" Not connected). The key-entry form: NO BOARD.
+**Ideal path**: 4 — on the Home card: Connect a model, paste the key, Connect (Hosted provider is preselected). Through Settings it is 8: Settings, Models, tap provider, enter key, Connect, check default.
+**Alternate paths**: From Home, tap "Connect a model" (STORY-111). Subscription sign-in ("Subscription sign-in", Safari round trip with a code); OpenRouter OAuth (`models.beginOpenRouterOAuth`); a thread's blocker message "Connect a model to start a run" taking her straight to Models (no board); Legal page "Add your OpenRouter key" taking her to Models.
+**Design source**: PG-B-Models rule card (Providers list rows "Hosted provider" Connected, "Local server", "Subscription sign-in" Not connected). A first-run form for one provider is drawn in the "Connect a model" sheet of `PG-A-HomeNoModel.dc.html` (Hosted provider checked, masked key field, full-width "Connect"). The provider detail page inside Models: NO BOARD.
 
 #### Steps
 1. Tap "Models" in Settings → Providers shows "Hosted provider", "Local server", "Subscription sign-in", each with a status ("Connected" or "Not connected"). Default model section has nothing to pick.
@@ -3524,10 +3906,10 @@ Source file: `docs/ios-native/ux/topics/settings.md`
 - Disconnecting later: Expo alert "Disconnect {name}?" with "This removes the connection from every space." and actions Cancel/Disconnect. No board.
 
 #### Design gaps
-- NO BOARD for the provider detail (API key form, show/hide, "Use your own key", "Replace API key", "Disconnect").
+- The Home sheet draws the key field and Connect for Hosted provider; the provider detail inside Models, show/hide for the key, "Use your own key", "Replace API key", "Disconnect" and a wrong-key error are not drawn.
 - NO BOARD for the subscription sign-in page ("Finish signing in in your browser:", code copy, "Paste its URL or code here", "Waiting for sign-in — the code expires in about {minutes} minutes.").
 - The board shows three provider rows only; Expo has a featured list, "Show more" and "All providers" (many providers). The native provider list for more than three providers is undefined.
-- The first-run route from `needsModel` to this page is not drawn (see also the sign-in topic).
+- Two connect surfaces exist for one job: the Home sheet (three providers plus key) and the Models page (providers, Default model, Add a server); how they relate (same screen, or a trimmed copy) is not stated.
 
 
 ### STORY-090: Add a local model server and find its models
@@ -3567,6 +3949,7 @@ Source file: `docs/ios-native/ux/topics/settings.md`
 - NO BOARD for the advanced limits fields, the model picker for found models, or the manual model name state.
 - "Add a server" vs. the existing row "Local server" with a URL: when one is saved, whether "Add a server" is still shown and how a second server is added is not drawn.
 - Local network permission prompt and the loopback caveat are undocumented.
+- The Home "Connect a model" sheet (`PG-A-HomeNoModel`) offers "Local server" as a provider but draws no URL form for it, so the first-run path to a local model ends at the same undrawn form.
 
 
 ### STORY-091: Turn on the device voice and play a sample
@@ -3636,7 +4019,7 @@ Source file: `docs/ios-native/ux/topics/settings.md`
 
 #### Design gaps
 - NO BOARD for the voice picker, the voice-list state, or the speech model picker contents.
-- The consent check before the first hosted voice use is not designed (the sample button simply errors on older servers). The client should check `aiDataUsesForProcedure` first (discovery notes).
+- The consent sheet is drawn for the model (`PG-B-Consent`) and the Settings page has "Speech A, Recordings and spoken text"; the voice wording of the sheet and its trigger before the first hosted voice use (the sample button simply errors on older servers) are not designed.
 - Where a bot's own "device voice" flag (bot settings) interacts with this global switch is not stated.
 
 
@@ -3671,7 +4054,7 @@ Source file: `docs/ios-native/ux/topics/settings.md`
 - Rename or remove an account: Expo has "Could not rename connection" and "Remove {name}" / "Could not revoke connection". No board for rename or remove.
 
 #### Edge Cases
-- Catalog load failure: message with "Retry" (rule card).
+- Catalog load failure: message with "Try again" (rule card).
 - The Safari sign-in fails or is cancelled: the poll never succeeds; the pending alert is the only feedback. Whether the app returns via a universal link or the user switches back by hand is not specified.
 - Revoking an account used by agents: `connections.effectiveAccess` shows which agents lose access; no confirmation is drawn.
 - Writes are off by default for connected apps (`connections.setWrites`); no setting for it exists on the board.
@@ -3694,19 +4077,19 @@ Source file: `docs/ios-native/ux/topics/settings.md`
 **Goal**: See which AI services receive data, withdraw one, and understand a blocked action.
 **Preconditions**: Some permissions granted earlier; the data room agent is in use.
 **Device**: standard iPhone
-**Ideal path**: 5 — Settings, AI data sharing, switch off one service, confirm, Back.
-**Alternate paths**: Accept the prompt shown when an action needs consent (NO BOARD, #417); Data room and Legal pages call `consent` and `consentGrant` themselves (their own consent state in #424); "Withdraw all permissions" for a single reset.
-**Design source**: Only the Settings row "AI data sharing" (PG-B-Settings). The page and the in-flow prompt: NO BOARD.
+**Ideal path**: 4 — tap the "AB" avatar, Settings, AI data sharing, switch one service off, Back (no confirmation is drawn).
+**Alternate paths**: Accept the prompt shown when an action needs consent (drawn in `PG-B-Consent`, #417); Data room and Legal pages call `consent` and `consentGrant` themselves (their own consent state in #424); "Withdraw all permissions" for a single reset.
+**Design source**: `PG-B-Consent.dc.html` frame "Settings, AI data sharing": title "AI data sharing", three rows with switches ("Model A, Messages and attachments" on; "Speech A, Recordings and spoken text" on; "Memory A, Summaries and memories" off) and a "Privacy details" link; the first-use sheet in the left frame. The Settings row "AI data sharing" on PG-B-Settings. "Withdraw all permissions", empty, loading and error states: NO BOARD.
 
 #### Steps
-1. Tap "AI data sharing" in Settings → page lists services that receive data (Expo groups: "AI models", "Memory", "Voice", and recipients such as "Praci"), each with an "Allow {name} on mobile" switch, plus "Privacy policies" and "Withdraw all permissions".
-2. Switch off "Allow Voice on mobile" → the switch turns off at once (`aiConsent.revoke`).
+1. Tap "AI data sharing" in Settings → page lists the services that receive data, each as a row with a name, a one-line description and a green switch ("Model A", "Speech A", "Memory A"), plus a "Privacy details" link (Expo groups them as "AI models", "Memory", "Voice" and adds "Withdraw all permissions", which the board does not draw).
+2. Switch off "Speech A" → the switch turns off at once (`aiConsent.revoke`).
 3. Open Voice and tap "Hear a sample" (hosted voice) → fails with "Review AI data sharing in Account settings before continuing."
 4. Return to AI data sharing and switch it back on → allowed (`aiConsent.allow`).
-5. Tap "Withdraw all permissions" → alert "Withdraw all permissions?" with Cancel and "Withdraw"; Cancel leaves everything as is.
+5. Tap "Withdraw all permissions" (Expo only; not on the board) → alert "Withdraw all permissions?" with Cancel and "Withdraw"; Cancel leaves everything as is.
 
 #### Variations
-- Native prompt before an AI data use (the discovery notes list this as required in phase 5): a card or sheet offering Allow or Not now, with the same recipient names. Not designed.
+- Native prompt before an AI data use (required in phase 5): drawn as a bottom sheet "Share data with Model A?" with Allow, Not now and "Change in Settings" (`PG-B-Consent`); see STORY-048 and STORY-117.
 - Space-scoped vs. account-scoped consent is not stated.
 
 #### Edge Cases
@@ -3714,9 +4097,9 @@ Source file: `docs/ios-native/ux/topics/settings.md`
 - Consent change in flight when the sheet is dismissed: unspecified.
 
 #### Design gaps
-- NO BOARD for the AI data sharing page and for the consent prompt in the thread/composer; only a row exists.
 - Error text uses "Account settings" while the row is under Settings > "AI data sharing"; the label mismatch (and the Account page not listing it in the board) may send a user to the wrong page.
 - Expo `account.tsx` also carries an "AI data sharing" row, so the page is reachable from two places in Expo; the board shows only the root row.
+- The page has no loading, error or empty state, no "Withdraw all permissions", and no consequence text when a service is switched off (what stops working with Memory A off).
 
 
 ### STORY-095: Change a password and restore an archived bot
@@ -3730,7 +4113,7 @@ Source file: `docs/ios-native/ux/topics/settings.md`
 **Device**: standard iPhone
 **Ideal path**: 10 — Change password (5 steps), then Archived bots (4 steps) and Back.
 **Alternate paths**: Forgot password from Sign in (mail link) instead of changing it; SSO users use "Link SSO" (Expo account only); restore from bot settings (#415) while the bot is archived (NO BOARD for the archive state); restore from Home sections (archived bots do not appear there).
-**Design source**: Rows only in PG-B-Settings ("Archived bots", "Change password"). Pages: NO BOARD.
+**Design source**: Rows in PG-B-Settings ("Archived bots", "Change password") and a "Change password" row in `PG-B-Account.dc.html`. Pages: NO BOARD.
 
 #### Steps
 1. Tap "Change password" → form with "Current password", "New password", "Confirm password" (Expo labels), Save disabled until all are filled.
@@ -3753,6 +4136,7 @@ Source file: `docs/ios-native/ux/topics/settings.md`
 - NO BOARD for Change password, Archived bots list, its empty state, or the restore confirmation.
 - Password rules (Expo requires 8 characters at sign up) are not given for the change form.
 - Where restore happens (list row action, swipe, or bot detail) is undefined.
+- "Change password" is reachable twice (Settings root and Account) and goes to the same undrawn page; one entry is enough.
 
 
 ### STORY-097: Set up server credentials for an integration provider (Advanced)
@@ -3807,14 +4191,14 @@ Source file: `docs/ios-native/ux/topics/duo-adaptation.md`
 **Goal**: Read the Finance agent's latest message and allow a pending action without unfolding the phone.
 **Preconditions**: Signed in, space selected, Finance agent has a message with an approval card pending. Phone closed, outer display (466x678).
 **Device**: iPhone Duo outer
-**Ideal path**: 3 — tap the agent row, scroll to the approval card, tap Allow. No other control is needed.
+**Ideal path**: 3 — tap the agent row, scroll to the approval card, tap "Allow once". No other control is needed.
 **Alternate paths**: (a) Home Activity (bell icon with a dot) opens the "needs approval" item and lands in the same thread. (b) Tap the push notification, which lands in the thread directly (phase 10). (c) Home search (magnifier) then the agent.
-**Design source**: Home: `Main.dc.html`, PG-A-Rules > Home. Thread: PG-A-Rules > Agent thread (`PG-A-Thread.dc.html` for the approval card). Activity list: NO BOARD for the Activity screen itself (only the icon and its dot are defined).
+**Design source**: Home: `PG-A-Home.dc.html`, PG-A-Rules > Home. Thread: PG-A-Rules > Agent thread (`PG-A-Thread.dc.html` now draws the mail card with "Save" and "Send"; the tool approval card with "Allow once / Always allow / Deny" is drawn only in DS-06-Chat). Activity list: NO BOARD for the Activity screen itself (only the icon and its dot are defined).
 
 #### Steps
 1. On Home, find "Finance agent" under PERSONNEL (preview "Runway summary for the last 30 days", time "Yesterday") and tap the row. → Thread opens. The 60 pt strip stays; the content column pushes in. A Back group fades in at the top of the strip.
 2. Read the glass title capsule and the latest message. → Messages are bottom-aligned; the composer floats 12 pt above the bottom.
-3. Tap "Allow" on the approval card. → "Allow" is the one prominent control on this page. The run resumes (`run.waiting_input` to running); the card collapses to its resolved state.
+3. Tap "Allow once" on the tool approval card (DS-06). → "Allow once" is the prominent control inside the card. The run resumes (`run.waiting_input` to running); the card collapses to its resolved state.
 
 #### Variations
 - The approval card is taller than the visible column: it scrolls with the messages, and Allow stays inside the card, not the strip.
@@ -3862,7 +4246,7 @@ Source file: `docs/ios-native/ux/topics/duo-adaptation.md`
 
 #### Design gaps
 - The Filter menu contents (and "Important only" shown on `Split.dc.html`) are not defined in Rules; only icon names exist.
-- Compose screen has NO BOARD. Reply composer is described only as "Reply opens the composer under it" for half-folded.
+- The compose page is drawn for the outer display (`PG-A-Compose`); the Reply composer "under the message" for half-folded is not.
 - Search mail overlay appears in DS-03 (TOP HITS) but not as a page rule with empty/error states.
 - Label mismatch: Expo uses `t("inbox")` / "Inbox"; the board "Ask Inbox agent" has no Expo equivalent string found in `apps/mobile/app/index.tsx`.
 
@@ -3934,7 +4318,7 @@ Source file: `docs/ios-native/ux/topics/duo-adaptation.md`
 #### Variations
 - Switch the Team/Private picker: the screen URL is re-read on each control change.
 - Rotate to portrait while in control: the pose layout goes away; the thread should move into the sidebar third (inner) or behind a Back (outer). Not defined.
-- Standard iPhone (393 pt): same screen and controls in the horizontal bar.
+- Standard iPhone (393 pt): `PH-Computer` draws the same controls: "Take control" as a bottom pill while watching, "Release" at the top right and a key bar (Esc, Tab, Ctrl, arrows) at the bottom while in control.
 - The same Team Computer information (screen, control state) is shown on outer display (clear strip, thread not visible), inner flat (thread 1/3, screen 2/3), half-folded (1/2 + 1/2), and laptop pose.
 
 #### Edge Cases
@@ -3965,7 +4349,7 @@ Source file: `docs/ios-native/ux/topics/duo-adaptation.md`
 **Design source**: `Desk.dc.html` (laptop pose), PG-B-Rules > Finance, `PG-B-Finance.dc.html`, DS-03-Navigation laptop pose.
 
 #### Steps
-1. In the sidebar/Home, open "Finance" (meta "[N] mo"). → Finance page: period tabs, "Runway [N] mo", "Cash [AMOUNT]", "Monthly spend / Last 6 months" bar chart (May to Oct, Sep highlighted).
+1. On Home, tap "Finance" under PAGES (it shows "[N] mo"). → Finance page: period tabs, "Runway [N] mo", "Cash [AMOUNT]", "Monthly spend / Last 6 months" bar chart (May to Oct, Sep highlighted).
 2. Tap "Hide amounts" (eye) in the horizontal bar. → Amounts show a mask; this is a device-only setting and also hides amounts in chat finance cards.
 3. Tap the highlighted Sep bar or read the chart. → Chart detail is shown on the top half (tap behavior on bars is not defined).
 4. In the bottom bar, tap "Message Finance agent" and type "Why did spend jump last month?". → The agent replies "Two annual renewals landed in the same month, [AMOUNT] together. Without them, spend was flat." in a compact thread above the composer.
@@ -4040,7 +4424,7 @@ Source file: `docs/ios-native/ux/topics/duo-adaptation.md`
 #### Steps
 1. Open the Chief thread. → At 420 pt the strip cannot hold every group.
 2. Observe the strip. → Items collapse bottom to top into More: last action in the actions group first; the prominent action collapses last (below about 300 pt). More stays pinned at the bottom.
-3. Tap More. → Menu lists collapsed items plus agent actions: "Chat settings" (Expo label; the board says "settings"), "Open computer", "Clear conversation", "Archive", "Delete…".
+3. Tap More ("Agent actions"). → Menu lists collapsed items plus agent actions: "Bot settings" (the page is now titled "Bot settings"; Expo says "Chat settings"), "Open computer", "Clear conversation", "Archive", "Delete…". The menu itself is not drawn.
 4. Tap "Clear conversation". → Confirm alert with "Clear"; on confirm the thread empties.
 
 #### Variations
@@ -4052,7 +4436,7 @@ Source file: `docs/ios-native/ux/topics/duo-adaptation.md`
 - "Archive" failure shows "Could not archive bot" (Expo copy).
 
 #### Design gaps
-- Label mismatch: PG-A-Rules uses "settings" while Expo uses "Chat settings" and, for groups, "Group settings".
+- The Agent actions menu items are not drawn; the settings page is titled "Bot settings" while the rule card says "settings" and Expo says "Chat settings" and "Group settings".
 - The collapse order is described for one example (Inbox); the order for Agent thread, Computer and Finance is not listed.
 - What happens to a prominent action that collapses (e.g., "Ask Inbox agent") on the Inbox is not shown.
 
@@ -4067,7 +4451,7 @@ Source file: `docs/ios-native/ux/topics/duo-adaptation.md`
 **Preconditions**: Two spaces ("Personal", "Northwind"); Northwind is not the selected space. APNs token registered (phase 10). App in background.
 **Device**: iPhone Duo outer, then inner flat (variation)
 **Ideal path**: 1 — tap the notification; the app switches space and opens the thread.
-**Alternate paths**: Open the app, switch space from the sidebar, find the Legal agent row. Or use Home Activity.
+**Alternate paths**: Open the app, switch space from the title menu (STORY-109, STORY-110), find the Legal agent row. Or use Home Activity.
 **Design source**: NO BOARD for the notification itself. Landing screens: `Main.dc.html` Home, PG-A-Rules > Agent thread. Plan: `docs/ios-native/plan.md` phase 10; discovery "Push" transition.
 
 #### Steps
@@ -4116,14 +4500,14 @@ Source file: `docs/ios-native/ux/topics/duo-adaptation.md`
 #### Variations
 - Outer display: each row pushes inside the sheet with Back; no split.
 - Voice shows "Hear a sample" as the prominent button; Integrations "Continue" only inside setup.
-- Account (profile detail) holds sign out and delete account; no board for the detail.
+- Account (profile detail) holds Change password, sign out and delete account (`PG-B-Account`, drawn for the outer layout only).
 
 #### Edge Cases
 - Values load after the list renders; rows show no value until loaded.
 - Self-hosted older server: the model procedure returns 404 meaning "not supported".
 
 #### Design gaps
-- Account, AI data sharing, Archived bots, Change password: NO BOARD (the list rows exist; the details do not).
+- Archived bots and the Change password destination: NO BOARD. Account and AI data sharing are drawn for the outer display only, not inside the inner nested split.
 - Boards show "Settings" as a sheet from the profile, but the inner sidebar bar has no visible entry for it besides the profile row; Expo calls it "Account" (Home icon label "Account").
 - A sheet containing its own split view (list 1/3 + detail 2/3) inside a 2/3 content area is not drawn; width of the nested split is unspecified.
 
@@ -4169,35 +4553,39 @@ Built from the **Alternate paths** fields and the multi-surface notes in the Des
 
 | # | What the user wants | Paths | Stories | Suggested direction |
 | --- | --- | --- | --- | --- |
-| P1 | Open the Inbox agent | Inbox message "Ask Inbox agent", list prominent action, Home Personnel row, Inbox row on Home | 057, 060, 099, 011 | Keep one prominent entry per page; keep the Personnel row as the always-available route |
-| P2 | Reach Settings | Home profile control, sidebar profile, Account icon (Expo), Server/Models rows, "Review AI data sharing in Account settings" message | 087, 094, 107, 002 | Pick one entry (profile) and one name; the error message should deep-link, not name a path |
-| P3 | Fix a missing model | Home banner (undrawn), error at send, Settings > Models, Legal "Add your OpenRouter key" | 019, 040, 089, 081 | One reusable "Connect a model" action that opens Models and returns |
+| P1 | Open the Inbox agent | Inbox message "Ask Inbox agent", outer list prominent action (the standard `PH-Inbox` draws none), Home Personnel row, Inbox row on Home | 057, 060, 099, 011, 114 | Keep one prominent entry per page; keep the Personnel row as the always-available route |
+| P2 | Reach Settings | The "AB" avatar on standard and outer Home (drawn), the inner sidebar profile row, Account icon (Expo), Server/Models rows, "Review AI data sharing in Account settings" message, "Change in Settings" link | 087, 094, 107, 002, 117 | The avatar is now the one entry; the server error should deep-link, not name a path |
+| P3 | Fix a missing model | Home "Connect a model" card and sheet (drawn, outer only), error at send, Settings > Models, Legal "Add your OpenRouter key" | 019, 040, 089, 081, 111 | One reusable "Connect a model" action that opens the same sheet from the error and from Legal, and returns |
 | P4 | Archive mail | Swipe, row menu, message Archive, bulk select, Cleanup | 056, 057, 060, 062 | Keep swipe + message Archive; bulk only in Cleanup |
-| P5 | Grant AI data consent | Settings page, prompt before first send, in-thread `ai_consent` card, voice start | 048, 094, 052, 066 | One consent component reused in all four places |
+| P5 | Grant AI data consent | Settings page and first-send sheet (both drawn), in-thread `ai_consent` card, voice start | 048, 094, 052, 066, 117 | One consent component reused in all four places |
 | P6 | Open an agent's conversation | Thread from Home, Page "Open chat", Routine "Open conversation", Artifact "Ask", push tap | 011, 073, 075, 106 | Same thread screen; make sure all routes land on the same state |
-| P7 | Create a bot | Home New menu, empty-state "+", Expo fallback "New Bot", inner Create icon | 012, 104, 019 | Remove the no-form fallback; one New menu |
-| P8 | Create a space and switch | New space sheet, inline space groups (Expo), switcher | 015, 016 | Decide one pattern (see DECISION in #415) |
-| P9 | Answer an approval | Thread card, Home Activity "approve", Inbox message view, push | 011, 045, 046, 106 | One source of labels and one outcome handler (including CONFLICT) |
+| P7 | Create a bot | Home New menu, empty-state "+", the "Create a bot" button after a model connects, Expo fallback "New Bot", inner Create icon | 012, 104, 019, 111 | Remove the no-form fallback; one New menu |
+| P8 | Create a space and switch | "New space" in the New menu, "New space" in the space title menu, inline space groups (Expo) | 015, 016, 109, 110 | The boards chose the title menu; drop one of the two "New space" entries and Expo's inline list |
+| P9 | Answer an approval | Thread card ("Send" for mail), Home Activity "Approve", Inbox message view, push | 011, 045, 046, 106 | One source of labels (Activity says "Approve", the card says "Send") and one outcome handler (including CONFLICT) |
 | P10 | Share a file or image | Artifact Share, Image Share and Save, Data room "Ask about this file", composer attach | 070, 072, 084, 034 | System share sheet everywhere; no separate Data room share control |
 | P11 | Hide amounts | Finance page toggle, chat finance card, Expo Account screen | 079, 087 | One device-only setting with one home |
-| P12 | Open a Duo page | Sidebar rows, Home strip icons, More menu | 086, 098, 105 | Keep the same item list on every display |
-| P13 | Retry a failed load | "Try again" (Home, Artifacts), "Retry" (sign-in), Refresh (Finance banner), no control (page, list, routine) | 006, 013, 077, 078 | One retry label and control |
+| P12 | Open a page | PAGES rows (standard and outer Home), Home strip icons, More menu; the inner sidebar has no PAGES rows | 086, 098, 105 | Keep the same item list on every display |
+| P13 | Retry a failed load | "Try again" (Home, Artifacts, sign-in rule card), "Retry" (failed sends only), Refresh (Finance banner), no control (page, list, routine) | 006, 013, 077, 078 | One retry label and control for loads; keep "Retry" for sends |
 | P14 | Finish a Safari round trip | Integration connect, Carta connect, SSO, billing checkout | 003, 082, 093 | Same return handling and polling rules |
+| P15 | Write mail | Compose (tinted on `PH-Inbox`, ordinary on the outer boards), Reply, the "Reply" title menu (Reply all, Forward), an agent draft card, "Ask Inbox agent" | 058, 059, 065, 114, 057 | One compose page; one rule for which action is tinted in the Inbox |
+| P16 | Change a password | "Change password" row in Settings and in Account | 095, 007 | Keep one row |
 
 ### Duplicate information (same facts shown in several places)
 
 | # | Information | Where it appears | Stories | Risk |
 | --- | --- | --- | --- | --- |
-| I1 | Pending approval | Thread card, Home Activity, Inbox message, push text | 011, 032, 046, 106 | Labels and states can disagree (Deny/Allow vs Save/Send) |
+| I1 | Pending approval | Thread card, Home Activity, Inbox message, push text | 011, 032, 046, 106 | Mail labels now agree (Save / Send) but Activity says "Approve"; tool approvals use a third set |
 | I2 | Working state of an agent | Thread indicator, group footer lines, Home Activity card, later Live Activities | 023, 026, 011 | Four renderers to keep in sync |
 | I3 | Runway and cash figures | Finance page, agent page tiles, "Runway summary" artifact, routine prompt, chat finance card | 078, 073, 070, 075, 079 | No cross-links; Hide amounts must mask all |
 | I4 | Connected apps | Settings Integrations value, catalog page, chat `app_connect` card | 093, 087 | Card rendering undefined |
 | I5 | Server host | Sign-in link, Server sheet, Settings | 002 | Format defined only in Expo |
 | I6 | Personnel order and pins | Web, Expo, native | 020 | Native must match server order exactly |
 | I7 | Unread state | Home row (not drawn), sidebar on inner display, thread divider, Activity dot | 022, 030, 011 | Four unread indicators, only one drawn |
-| I8 | Sidebar page rows and the agent for the same capability | Finance row and Finance agent row; Legal; Carta; Data room | 086, 085 | Two entries for one thing |
-| I9 | Sections inside Inbox | "Needs reply / Other mail today" vs "Today / Earlier"; filter chips vs Expo categories | 056, 060 | Two vocabularies |
+| I8 | Page row and the agent for the same capability | PAGES row, Personnel agent row and Activity row on one Home (Finance appears three times on `PH-Home`); Legal; Carta; Data room | 086, 085 | Two to three entries for one thing, now visible on the board |
+| I9 | Sections inside Inbox | Outer boards "Needs reply / Other mail today"; `PH-Inbox` "Needs reply / Today / Earlier"; filter chips vs Expo categories | 056, 060 | Two vocabularies, now on two boards |
 | I10 | Routines and checklists | Routine prompt, agent page lines, list items | 075, 073, 074, 076 | The same task can be tracked in a routine, a page and a list |
+| I11 | Consent state | The first-send sheet, the Settings page rows ("Model A", "Speech A", "Memory A"), the server error text | 048, 094, 117 | Recipient names and wording must come from one source |
+| I12 | Unsent message state | The "Offline" banner and the "Waiting to send" caption | 038, 116 | Two signals for one state; fine if the banner clears on reconnect and the caption stays until delivery |
 
 ### Overlapping features and tools
 
@@ -4209,20 +4597,20 @@ Built from the **Alternate paths** fields and the multi-surface notes in the Des
 | F4 | Search: mail search, global search, Artifacts search, Data room search | 060, 031, 069, 083 | Four search fields, one global search not drawn |
 | F5 | Device voice vs hosted voice vs dictation | 091, 092, 033 | The bot-level device voice flag and the global switch interact in an unstated way |
 | F6 | Open computer vs Page vs List (agent actions) | 067, 073, 074 | Strip actions differ by agent |
-| F7 | Mail Compose vs Reply vs Forward vs Edit-and-send | 058, 059, 065, 047 | Same sheet, four entries |
-| F8 | Settings Account vs Profile row vs Home Account icon | 087, 007 | Possibly the same page under two names |
-| F9 | Cleanup vs swipe Mute/Star vs Newsletter filter | 062, 056, 060 | Three ways to deal with newsletters |
-| F10 | Space vs group vs section | 015, 014, 020 | Three grouping levels; the switcher design decides how visible they are |
+| F7 | Mail Compose vs Reply vs Forward vs Edit-and-send | 058, 059, 065, 047, 114 | One compose page; Forward is two taps deep (Reply, then the title menu); edit-and-send has no entry |
+| F8 | Settings Account vs Profile row vs Home avatar | 087, 007, 112 | One profile row now; the "AB" avatar opens Settings, not Account |
+| F9 | Cleanup vs swipe Archive vs Newsletter and Junk labels | 062, 115, 056, 060 | Three ways to deal with newsletters; the standard iPhone has no Cleanup entry |
+| F10 | Space vs group vs section | 015, 014, 020, 109 | Three grouping levels; the title menu now shows spaces, groups and sections are still undrawn |
 
 ## Design Gaps by Phase
 
-Each bullet is one deduplicated gap. Story IDs cite the stories whose Design gaps named it (catalog IDs; a merged story's gaps are cited under its survivor). **DECISION:** marks a gap that needs a product decision, not just a missing board. "NO BOARD" means no board exists in `docs/design-system/ios/boards/`.
+Each bullet is one deduplicated gap. Story IDs cite the stories whose Design gaps named it (catalog IDs; a merged story's gaps are cited under its survivor). **DECISION:** marks a gap that needs a product decision, not just a missing board. "NO BOARD" means no board exists in `docs/design-system/ios/boards/`. Round 1: gaps that the 14 new boards close were removed, gaps they close only in part were narrowed to what is still missing, and new gaps found while re-reading the boards were added.
 
 ### #412 (P0): Scaffold and tokens
 
 - Light-mode layouts: the boards read were dark only; the same layout is claimed for light but not shown (025).
 - Dynamic Type and accessibility behavior of long markdown, tables and cards is not verified on any board (025, 087).
-- DECISION: working-indicator color: the Thread rule card says "three blue dots", DS-06 says neutral dots with a `statusWorking` ring. Choose the token (023, 033).
+- DECISION: working-indicator color: the Thread rule card and the thread boards (`PG-A-Thread`, `PH-Thread`) draw blue dots, DS-06 says neutral dots with a `statusWorking` ring. Choose the token (023, 033).
 
 ### #413 (P1): Contracts export
 
@@ -4231,56 +4619,55 @@ Each bullet is one deduplicated gap. Story IDs cite the stories whose Design gap
 
 ### #414 (P2): Server selection and sign in
 
-- DECISION: product name in strings: board "Sign in to Rakazo" / "Rakazo server" vs Expo "Sign in to Praci" / "Praci server" (001, 002).
-- DECISION: which mode the app opens in on first launch: Expo opens sign-up, the board shows sign-in (001, 004).
+- DECISION: which mode the app opens in on first launch: Expo opens sign-up; both modes are now drawn (`PG-B-SignIn`, `PG-B-SignUp`) (001, 004).
 - Sign-in states without boards: pending button label ("Working..."), local validation messages, Go key and focus order (001).
-- Sign-up mode has no board: Name field, button label, mode switch links (004).
-- Forgot-password mode has no board: "Check your email" title, "Back to sign in", Retry, resend, opening the Mail app (004, 005).
-- Return to the app after email verification or password reset is manual and undesigned (004, 005).
-- Loading and failed-options layout for capabilities: whether email fields are hidden or disabled; no distinction between no network and wrong server; "Retry" vs "Try again" (006).
+- Sign-up (`PG-B-SignUp`) draws the form; not drawn: Name marked optional, the password rule, an error line (email taken, weak password), the pending state; board "Create account" and "Sign up" vs Expo "Sign up" (004).
+- Forgot password and "Check your email" are drawn (`PG-B-ForgotPassword`); not drawn: error lines (unknown email, rate limit, offline), feedback or a cooldown for Resend, a "Change email" action, "Open Mail" for webmail users; two different back controls on both screens (004, 005, 113).
+- Return to the app after email verification or password reset is manual and undesigned (004, 005, 113).
+- Loading and failed-options layout for capabilities: whether email fields are hidden or disabled; no distinction between no network and wrong server (006).
 - Server sheet: validation errors ("Enter a server URL", missing host, wrong scheme), the http-on-public-host warning, the "not a Praci server" line and the board's "Could not reach this server" vs Expo "Could not reach that server" (002).
 - DECISION: confirmation before a server change wipes a signed-in session (002).
 - Server host display format on the sign-in link (Expo `displayApiHost`) is not defined on boards (002).
 - SSO: cancel and failure after the web sheet, long provider names beyond "Example SSO", and the first-time SSO setup screen (`integrationSetup/get` `needsSetup`) NO BOARD (003).
-- Session end: no message telling the user why they were signed out; recovery from a stale space; offline launch with a saved snapshot before the 401 (008).
-- DECISION: what happens to the outbox and unsent drafts after a forced sign-out (008, 007).
+- Session end: no message telling the user why they were signed out; the space menu exists but the moment a space disappears is not drawn; offline launch with a saved snapshot before the 401 (008).
+- DECISION: what happens to the outbox and unsent drafts after a forced sign-out; the sign-out confirmation does not mention messages "Waiting to send" (008, 007).
 
 ### #415 (P3): Home, spaces, bots and groups
 
-- Activity: "See all" destination and the side-strip Activity icon destination have no board (011, 098).
-- Standard iPhone (393 pt) Home layout is not drawn; toolbar placement of Account, Activity, Search, Artifacts and New is text only (011).
-- DECISION: accessible names for Home controls: Expo "Account / Activity / Search / Artifacts / Create" vs board "New" (011, 012).
-- Saved Home snapshot: stale marker and timestamp not drawn (011, 013).
-- Home loading, error, stale and partial-failure states; "Could not load bots" is shown even when spaces or Inbox summary fail; pull-to-refresh is not specified (013).
+- Activity: "See all" (standard and outer Home) and the outer Activity bell have no destination board (011, 098).
+- Standard Home (`PH-Home`) and the space menu (`PH-Spaces`) are drawn; not drawn: the standard Home loading, error, stale and partial-failure states, pull-to-refresh, the contents of the New menu (New bot, New group, New space exist as rule-card text only) and the saved-snapshot stale marker (011, 013).
+- DECISION: accessible names for Home controls: Expo "Account / Activity / Search / Artifacts / Create" vs board "Account / Search / New" and the Home sheet button "Create a bot" (011, 012).
 - New bot: discard-changes confirmation not drawn (012); Expo fallback that creates a bot named "New Bot" with no form has no board path (012).
 - DECISION: where Create lands (thread or back to Home) for a new bot and a new group (012, 014).
-- Empty-state copy "Tap + to create a bot" names a "+" while the board button is "New", ignores groups and spaces, and offers no action (012, 019).
+- Empty Home is not drawn and the rule card still says "Tap + to create a bot"; new accounts are drawn with Chief already listed, and whether a new space starts with Chief is not stated (012, 019).
 - New group: whether Create is disabled with no name or members; where groups appear in Personnel; group row design (avatar stack, preview) exists only in Expo (014).
-- DECISION: space switcher: control, current-space indicator, loading and failure states are NO BOARD; Expo lists spaces as inline headed groups while the boards show one flat Personnel list (015, 016).
-- The rule "Try again from the sidebar" assumes a sidebar a standard iPhone lacks (015).
-- DECISION: space rename, delete and "default space" (Expo only) and member or invite flows (no API) (015, 016).
+- Space switcher: the title menu is drawn for standard and outer (check on the current space, "New space", "Space settings"); not drawn: its placement in the inner 1/3 sidebar, the loading and failure state, many or long space names, a sign that another space needs the user, and "New space" appearing in both this menu and the New menu (015, 016, 109).
+- Space settings (`PG-B-Spaces`, outer only): Name and a red "Delete space" are drawn; not drawn: the delete confirmation and consequences, which space is selected after a delete, the standard iPhone page, who may rename or delete a shared space (015, 110).
+- DECISION: "default space" (Expo only) and member or invite flows (no API) (015, 016, 110).
+- The alert text "Try again from the sidebar" points at a sidebar the standard iPhone lacks (015).
 - Inner display detail pane when the new space has no last thread (016, 030).
-- Bot settings: entry point from a thread or Personnel row; board title "Chat settings" vs "Bot settings"; Skills and Notifications rows missing; unsaved-changes and per-field validation; voice sample button belongs to Voice (017).
+- Bot settings: the outer thread draws an "Agent actions" button but not its menu, `PH-Thread` draws none (so settings, archive, clear and delete have no standard-iPhone entry); Skills and Notifications rows missing; unsaved-changes and per-field validation; voice sample belongs to Voice (017, 018, 021, 105).
 - Group settings entry is "push from the group thread header" but the control is not drawn (020).
-- Archive: entry point, confirmation, archived banner on the thread, archived groups, and bot delete with its memory choice (018).
-- `needsModel` handoff has no screen: no banner, no empty-state variant, no deep link from Home to Models (019).
+- Archive: confirmation, archived banner on the thread, archived groups, and bot delete with its memory choice (018).
+- Connect a model: the Home card, sheet and "Model connected." state are drawn for the outer display only (`PG-A-HomeNoModel`); not drawn: the standard iPhone variant, a wrong-key or pending state on "Connect", the Local server and Subscription sign-in forms, why no New button shows while the card is up, the card offering "Create a bot" when Chief exists, and when "Model connected." goes away (019, 089, 090, 111).
 - Organize Personnel: pinned and section headings, collapse, long-press organize sheet, VoiceOver action, section removal and reorder; DS-04 pickers not shown in context (020).
-- Unread indicator on Personnel rows (not drawn; only the Activity dot exists) (022, 030).
+- Unread indicator on Personnel rows (not drawn; only the Activity dot and count exist) (022, 030).
+- Home Activity draws three statuses (Working, Approve, Done); a computer handoff request has no status, and "Approve" disagrees with the card's "Send" (011, 032, 076).
 - DECISION: onboarding choice cards and focus prompts (`onboarding/*`) have no planned screen (054).
 
 ### #416 (P4): Thread read
 
-- Thread states: initial loading with no snapshot, failed refresh over a snapshot, archived or deleted bot with Restore (021).
-- Standard iPhone thread top bar (title, back, agent actions) and Page and List parity are not drawn (021, 029).
+- Thread states: initial loading with no snapshot, failed refresh over a snapshot (an "Offline" banner is drawn, a server-error banner is not), archived or deleted bot with Restore (021).
+- The standard thread top bar is drawn (`PH-Thread`: Back, title capsule, Page, List) but lacks the "Agent actions" button the outer strip has; the group-thread entry to Members and settings is not drawn on either (021, 026, 029).
 - Unread divider "New", "Jump to latest" and "new messages" pill are not on any board; entry for `threads/markUnread` undefined (022, 031).
 - DECISION: paging UX: Expo has a "Load earlier messages" button, the rule card shows a spinner only (022).
 - End-of-history marker, paging failure, saved-chat stale signal and retention (031).
 - Working indicator: label text ("Inbox agent is working" vs "{name} is working" + status line "Still waiting on {service}"), failed-run note "Last run failed", and rendering of partial markdown (open code fence, half a table) (023).
-- Connection state: no "Reconnecting" or offline indicator; 401 error-frame outcome in a thread; whether heartbeat or retry is visible; backoff reset (024).
-- DECISION: silent retry vs visible offline state in a thread (024, 038).
+- Connection state: the "Offline" banner is drawn for a phone with no network; "Reconnecting" or a stale marker for a dropped stream with the network up, the 401 error-frame outcome in a thread and backoff reset are not (024).
+- DECISION: whether a dropped stream shows anything when the network is up (the offline banner settles the no-network case) (024, 038).
 - Table Expand and code Expand sheets have no PG board; link tap behavior (in-app vs Safari) unspecified; image viewer Close and Share placement on standard iPhone (025).
 - Group thread: member list pane, standard iPhone entry to Members and group settings, "Message the group" empty copy, maximum visible working lines for 6 members (026).
-- Empty agent greeting and suggestion chips layout (027, 044).
+- Empty agent greeting and suggestion chips layout; Home previews "No messages yet" then "Hello! How can I help?", which reads as an agent-sent greeting rather than an empty state (027, 044).
 - DECISION: suggestion chips send immediately or only fill the composer (027, 044).
 - Unknown block placeholder: copy, icon, whether it names the kind, "open on web" path (028).
 - DECISION: interim behavior of approval cards in the read-only phase 4 versus phase 5 (028, 032).
@@ -4290,27 +4677,27 @@ Each bullet is one deduplicated gap. Story IDs cite the stories whose Design gap
 
 ### #417 (P5): Thread write, approvals and consent
 
-- Message states: "Sending" caption with two messages in flight; a distinct "Waiting for connection" or queued state; stale snapshot marker (033, 038, 043).
-- Offline: no banner, no queued caption; messages may wait hours at 70% opacity; cache eviction loses queued sends without notice (038, 043).
-- Attach: source menu labels, per-chip upload progress, chip error state, four-chip row layout, picker for artifacts or Data room items (034, 043, 084).
+- Message states: "Offline" banner, "Waiting to send", "Not sent" with "Retry" and "Not sent: {reason}" with "Edit" are drawn (`PG-A-ThreadStates`); not drawn: how many messages wait, a way to cancel one, a stale-snapshot marker, the caption with two messages in flight, the banner when the network is up but the server is down (033, 038, 043, 116).
+- Cache eviction loses queued sends without notice; the 20-entry cap shows no state (038, 116).
+- Attach: source menu labels, per-chip upload progress, chip error state, four-chip row layout, picker for artifacts or Data room items; the outer-display composers (`PG-A-Thread`, `PG-A-ThreadStates`) draw no Attach control while `PH-Thread` and DS-06 do (034, 043, 084).
 - Skipped-attachment notice style and position, "Converting" state for HEIC, reason copy and MB vs MiB (035).
 - Message long-press menu, part-message quote, unavailable original, and whether a reply target survives relaunch or posture change (036, 039, 043).
 - Mentions: empty popover, token look in composer and bubble (037).
 - DECISION: scope of mentions: agents only, or humans too ("Teammate" appears on the board) (037).
-- Refused vs failed: both look like "Not sent"; the edit action is missing from the long-press menu; "Failed to send message" vs "Not sent" copy; reason text location (039).
-- No-model block and deep link from the error to Models; README text "Connect a model to start a run" vs server text "Connect a model in Settings before running bots."; whether it is a refused send or `run.failed` (040, 019).
+- Refused vs failed are now drawn differently; not drawn: what "Edit" does with attachments, a way to delete a failed or refused message, the reason copy for other refusals, how a failed send becomes refused or gives up; the rule card and Expo still say "Failed to send message" (039, 116).
+- No-model block: the Home card and sheet are drawn, but the in-thread error is not and does not link to them; README text "Connect a model to start a run" vs server text "Connect a model in Settings before running bots."; whether it is a refused send or `run.failed` (040, 019).
 - DECISION: one trailing slot cannot be both Send and Stop when text is typed during a run; "stopping" and stop-failure states; "Work stopped, but the thread could not refresh" (041).
 - Reactions: picker, display under a bubble, mine vs others, offline behavior (042).
 - Attachment total (4 files, up to 40 MiB base64) against the 50 MB outbox cap: no warning (043).
 - Approval card: read-only state, expanding truncated money arguments before approving, confirmation for "Always allow" (045).
-- DECISION: mail approval card shows "Deny / Allow" (PG-A-Thread) in one board and "Save / Send" (Inner, DS-06) in another; also the card title ("Send reply" vs "Re: Pilot timeline") (029, 032, 046).
+- Mail approval card is now one design ("Re: Pilot timeline", "Save", "Send") on every board; the Agent thread rule card still names "Allow" as the prominent action, and no decline control is drawn after "Deny" was removed (029, 032, 046).
 - Mail card outcomes `unknown`, `failed`, post-save state, "View draft", draft truncation (046).
-- DECISION: edit-and-send screen (entry, fields, Bcc, validation, Duo layouts) is NO BOARD and may ship after approve/deny (047).
-- Consent prompt form (alert, sheet or inline card), recipient icons, privacy link placement, composer text after "Not now" (048, 066).
+- DECISION: edit-and-send entry from the card (fields, validation, Duo layouts) is NO BOARD and may ship after approve/deny; the form in `PG-A-Compose` could host it (047).
+- Consent sheet (`PG-B-Consent`) is drawn for one recipient; not drawn: the pending message behind it, multiple recipients (model, memory), memory and speech wording, the "Not now" outcome for the typed text, where "Change in Settings" leads (048, 066, 117).
 - Error text says "Account settings" while the row is under Settings > "AI data sharing" (048, 094).
 - CONFLICT: no message designed and thread refetch not specified (032, 050).
 - Secret ask: card, destination line, "Saved" and error states, Keychain and AutoFill, retry loses typed value (051).
-- Voice-consent prompt in the middle of starting a call (052).
+- Voice-consent variant of the sheet and its trigger in the middle of starting a call (052).
 - MCP approval: the server-connect card is NO BOARD and is easily confused with the DS-06 MCP card; "MCP settings" destination does not exist (053).
 - Choice card: multi- vs single-select and free-text keyboard; the writes switch and its warning copy; a "writes are off" message in the thread (054).
 - DECISION: "Always allow" rules and auto review (`approvalRules.*`, `autoReview.*`) have API but no planned iOS screen (045, 055).
@@ -4318,17 +4705,18 @@ Each bullet is one deduplicated gap. Story IDs cite the stories whose Design gap
 
 ### #418 (P6): Inbox
 
-- Standard iPhone Inbox board (list and toolbar) is not drawn (056).
-- Swipe actions: Star has no write procedure; Mute maps to `inbox.feedback` by inference only; no Undo toast after Archive though the API supports it; Spam and Trash exist in Expo but not on the swipe specimen (056).
-- DECISION: section names: board "Other mail today" vs plan and Expo "Today" and "Earlier" (056, 060).
+- Standard iPhone Inbox list is drawn (`PH-Inbox`); not drawn: the standard message view, a To do card, an "Ask Inbox agent" control, a More button for Cleanup, pull-to-refresh and loading rows (056, 057, 061, 062).
+- Swipe actions: `PH-Inbox` shows only "Archive" while the DS-05 specimen has Archive, Star, Mute; Star has no write procedure and Mute maps to `inbox.feedback` by inference only; no Undo toast after Archive; Spam and Trash exist in Expo but not on either board (056).
+- DECISION: section names: `PH-Inbox` and the plan use "Today" and "Earlier"; the outer boards and the Inbox rule card say "Other mail today" (056, 060).
+- DECISION: the tinted action differs by display: Compose on `PH-Inbox`, "Ask Inbox agent" on the outer boards; the label chips "Needs attention" and "Junk" are not in the plan (056, 114).
 - Message: attachment preview (PDFKit, Quick Look), multi-message conversations, Unsubscribe from the message, "Ask Inbox agent" vs Expo "Ask agent", where sender avatars come from (057).
-- Compose sheet NO BOARD: fields, From account picker, Cc and Bcc, attachments, formatting (`html`), sending state, error banner, detent, outer-display behavior, reply-all, saved drafts list, contact autocomplete (058, 059, 065, 099).
+- Compose (`PG-A-Compose`) is drawn for the outer display: not drawn: the From account list, expanded Cc and Bcc, sending and error states, the Cancel prompt (keep draft or discard), whether it is a page or a sheet, contact autocomplete, saved drafts list, standard iPhone layout, and the inner and half-folded placement (058, 059, 065, 064, 099, 114).
 - Compose outcome copy for `saved`, `sent`, `unknown`, `reconnect`, `disabled`, `failed` (058).
-- Forward: no control on the message board, "files left out" copy (059).
-- Filters: popover items ("Needs reply", "Newsletters", "Read mail") do not match Expo categories; "Read mail" has no `InboxFilter` value; Filter placement differs between DS-04 and `Sheet.dc.html`; "Important only" star appears only on `Split.dc.html`; "Select messages" bulk mode NO BOARD; own sent-mail rows (060, 064).
+- Forward is reachable only through Reply and then the title menu; the forward-specific layout (forwarded header, original attachments) and "files left out" copy are not drawn (059).
+- Filters: popover items ("Needs reply", "Newsletters", "Read mail") do not match Expo categories; "Read mail" has no `InboxFilter` value; Filter placement differs between DS-04 and `Sheet.dc.html`; "Important only" star appears only on `Split.dc.html`; the outer strip is drawn two ways (with and without a More button); "Select messages" bulk mode NO BOARD; own sent-mail rows (060, 064).
 - Search overlay empty and error states (099).
-- To-do: undo, history, consent-blocked explanation, due-label rule (061).
-- DECISION: Cleanup and unsubscribe flow: whole flow NO BOARD, entry point missing on the outer display, action vocabulary ("Skip inbox", "Not spam", "Trash", "Learned", "Forget"), undo pattern; confirm it is in phase 6 (062).
+- To-do: undo, history, consent-blocked explanation and a link to the consent sheet, due-label rule (061).
+- DECISION: Cleanup: list, action bar, bulk menu and Done state with Undo are drawn (`PG-A-Cleanup`), but confirmations, unsubscribe outcomes, History, "Looks like spam", "Not spam", "Trash", "Learned / Forget", loading, empty and error states and a standard iPhone entry are not; no confirmation before "Archive 3" acts on 101 conversations; confirm it belongs to phase 6 (062, 115).
 - DECISION: mail connection states: banner for writes off, reconnect, rate limited, "No mail account connected"; the client cannot learn writes-off before a failed write (063, 066).
 - "Inbox zero" does not distinguish never synced from synced and empty; first-sync loading does not say triage is running; "Connect mail" empty state (063, 066).
 - Inner two-pane Inbox: folders in the 1/3 sidebar, selection after Archive, "Inbox zero" detail, location of Cleanup, Star and Mute, what tapping a label does (064).
@@ -4337,20 +4725,21 @@ Each bullet is one deduplicated gap. Story IDs cite the stories whose Design gap
 
 - Sign-in and Server sheets have only an outer-display board; inner and half-folded versions, sheet and keyboard placement in half-fold, and state kept while typing across posture change are undrawn (009).
 - DECISION: posture change behavior: relaunch vs scene change, and survival of drafts, scroll position, selected row and reply target (100, 076, 085, 043).
-- Sidebar: highlighted row for a group thread or an open page; sidebar Search results state (100).
+- Sidebar: highlighted row for a group thread or an open page; sidebar Search results state; the inner sidebar has no space control and no PAGES rows (100, 016, 085).
 - Inner thread: default thread when nothing is selected, per-agent unread in the sidebar, behavior below iOS 27.1, parity of pins strip and unread divider (030).
 - Outer thread strip has no prominent button and no "jump to approval" control when the card is off-screen (098).
 - Collapse order on a short outer display for every page (only Inbox is listed) and what happens to a collapsed prominent action (105).
-- Label mismatches between boards: "settings" vs Expo "Chat settings" / "Group settings"; Create vs Done vs New for creating a bot; sheet at 466x420 (104, 105).
-- Laptop pose: only Finance has a mockup; Computer, Legal, Cap table and Data room are rule-card text; software keyboard covers the bottom half; transition between laptop-capable and not-applicable pages (Routine, Artifacts); where Ask [page] agent and its reply live; where the four pages are reached on the inner display (085, 102, 103, 076, 108).
-- Settings on inner display: a sheet containing its own 1/3 + 2/3 split inside a 2/3 area is not drawn (107).
+- Label mismatches between boards: "Create" vs "Done" vs "New" for creating a bot; sheet at 466x420; the Agent actions menu items are not drawn while the page is titled "Bot settings" (104, 105).
+- Laptop pose: only Finance has a mockup; Computer, Legal, Cap table and Data room are rule-card text; software keyboard covers the bottom half; transition between laptop-capable and not-applicable pages (Routine, Artifacts); where Ask [page] agent and its reply live (085, 102, 103, 076, 108).
+- Settings on inner display: a sheet containing its own 1/3 + 2/3 split inside a 2/3 area is not drawn, and Account and AI data sharing are drawn for the outer layout only (107).
 - Push tap on Duo: which display opens and sidebar selection after a space switch (106).
+- Compose (`PG-A-Compose`) and Cleanup (`PG-A-Cleanup`) are outer-display boards; their inner and half-folded layouts are not drawn (064, 115).
 
 ### #420 (P8): Computer, artifacts, pages, routines
 
-- Computer: standard iPhone layout; More label "open computer" vs Expo "Open computer"; entry from a thread's computer block (067, 102).
-- Handoff prompt (Skip or "I'm done") presentation; lease expiry, "Reconnecting", takeover-denied and "Could not switch computer" states; maintenance actions (Recover, Reset, Update); key bar labels (Return, Control, Escape); pointer, scroll and clipboard input; leaving Computer while holding the lease (068, 076, 102).
-- Artifacts: standard iPhone entry point, search field expansion, chip overflow beyond about four bots, sort order and date grouping rule (069).
+- Computer: the standard iPhone layout is drawn (`PH-Computer`); not drawn: "Fit to screen" on the standard layout, an entry from the standard thread (no "Agent actions" button), More label "open computer" vs Expo "Open computer", entry from a thread's computer block (067, 102).
+- Handoff prompt (Skip or "I'm done") presentation and the Booting state; lease expiry, "Reconnecting", takeover-denied and "Could not switch computer" states; maintenance actions (Recover, Reset, Update); key bar labels (Return, Control, Escape); pointer, scroll and clipboard input; leaving Computer while holding the lease (068, 076, 102).
+- Artifacts: the standard Home has an Artifacts row (outer Home keeps an icon); the list at 393 pt, search field expansion, chip overflow beyond about four bots, sort order and date grouping rule are not drawn (069).
 - Versions menu contents and selected state, no diff view, newer version arriving while viewing, Share placement on standard iPhone (070).
 - DECISION: delete dialog copy and whether it deletes all versions (`artifactId` semantics), undo, multi-select (071).
 - Image: Save to Photos feedback, More contents, "Save to Photos" is new vs Expo Share only, permission-denied state, back-to-list in inner mode, which screen an image artifact uses (072, 108).
@@ -4361,19 +4750,19 @@ Each bullet is one deduplicated gap. Story IDs cite the stories whose Design gap
 
 ### #421 (P9): Settings
 
-- Settings entry: no profile control drawn on the outer Home strip or standard iPhone; profile row vs "Account" row may be one page; "Integrations [N]" count undefined (087).
-- DECISION: Expo Account extras (Language, Appearance, Avatar style, Hide amounts, Notifications, Usage, Live update) have no home in the iOS Settings board (087, 007, 079).
-- Account screen NO BOARD: profile, sign out, delete flow, Link SSO, export (`account.exportRequest`) (007, 087).
-- DECISION: destructive confirmation pattern (alert, sheet or typed), SSO re-authentication and email-code variants; push token and outbox on sign out (007).
-- Change password screen and rules; Archived bots list, empty state, restore location (095, 018, 007).
+- Settings entry is the "AB" avatar (drawn); the profile row and "Account" are one row; "Integrations [N]" count undefined; the avatar initials ("AB") differ from the profile ("SR") in sample data (087).
+- DECISION: Expo Account extras (Language, Appearance, Avatar style, Hide amounts, Notifications, Usage, Live update) have no home in the iOS Settings board or the Account page (087, 007, 079).
+- Account (`PG-B-Account`) is drawn: profile, Email, Change password, Sign out with a confirmation, Delete account with a password alert; not drawn: pending and error states on Delete, the SSO re-authentication and email-code variants, Link SSO, data export (`account.exportRequest`), what deletion does to shared spaces, runs, routines and a hosted plan (007, 087, 112).
+- DECISION: the confirmation pattern is drawn (a pop-up with one red action for sign-out, an alert with a typed password for delete); remaining: SSO re-authentication, and what happens to the push token and the outbox on sign-out and delete (007, 112).
+- Change password screen and rules (the row appears in both Settings and Account); Archived bots list, empty state, restore location (095, 018, 007).
 - Server row in Settings (the Server rule card says the sheet opens from Settings) (002).
 - Models: backup models (reorder, max 10), embedding model and auto-file email, "Thinking" state for non-reasoning models (088).
-- Provider detail (key form, replace, disconnect), subscription sign-in page, provider list beyond three rows, first-run route from `needsModel` (089, 019).
-- Local server: limits fields, model picker, manual model name, add-vs-existing row, local network permission (090).
-- Voice settings: voice and speech-model pickers, consent check before hosted voice, interaction between a bot's device-voice flag and the global switch (092).
+- Provider detail inside Models (replace, disconnect, show/hide key, "Use your own key"), subscription sign-in page, provider list beyond three rows; the Home sheet draws the key field for Hosted provider only and the two connect surfaces are not reconciled (089, 019, 111).
+- Local server: limits fields, model picker, manual model name, add-vs-existing row, local network permission; the Home sheet lists "Local server" with no form (090).
+- Voice settings: voice and speech-model pickers, interaction between a bot's device-voice flag and the global switch; the consent sheet for voice use is not drawn (092).
 - Integrations: app detail page (accounts, tools, access per agent, writes toggle, remove), pending alert wording, polling stopping when the page is left, Show more and search, Safari return path, `app_connect` card rendering (093).
 - DECISION: server-credentials setup: owner vs member role and read-only state, Direct MCP fields, whether the sheet auto-opens, detent (097).
-- AI data sharing detail page and its empty, loading and error states; link from the blocked-send error (094, 048).
+- AI data sharing page is drawn (`PG-B-Consent`); not drawn: loading, error and empty states, "Withdraw all permissions", what stops working when a service is off (094, 117).
 - Writes switch UI (`connections.setWrites`, `mcp.servers.setWrites`) and an MCP settings page (053, 054).
 - Approval rules and auto review screen (055, 045).
 - DECISION: usage and billing screens, and in-app purchase vs "manage on web" (no story; discovery).
@@ -4388,11 +4777,11 @@ Each bullet is one deduplicated gap. Story IDs cite the stories whose Design gap
 
 - Microphone and speech-recognition permission prompts and the denied state (091).
 - Sounds section ("Call sounds", "Waiting sound") control types and choices (091).
-- Active call screen has no PG page; consent prompt in the middle of starting a call (052).
+- Active call screen has no PG page; the consent sheet's voice wording in the middle of starting a call (052).
 
 ### #424 (P12): Finance, Legal, Cap table, Data room
 
-- Entry to the pages on the outer display (no sidebar row drawn) and on inner display (078, 085, 086).
+- Entry to the pages: PAGES rows are drawn on standard and outer Home (Finance "[N] mo", Legal "2", Cap table, Data room); the inner sidebar has none (078, 085, 086).
 - Finance: null runway, refresh progress, account and transaction detail, burn bar detail, "Spend" vs "Upcoming" naming (078, 085).
 - DECISION: Hide amounts scope: agent-written text, push, Home Personnel preview, Live Activities; no Settings home; hidden-state chat card not drawn (079).
 - Legal: scan running, completed and cancelled states; contract detail and deadline edit; status chips mapping; "Never scanned" and "Scan failed" not drawn; Legal consent (080, 081).
@@ -4402,7 +4791,7 @@ Each bullet is one deduplicated gap. Story IDs cite the stories whose Design gap
 - DECISION: Data room "Shared / Only me / View only" chips vs README "no share links" (083).
 - Select a Data room file to ask about it; composer picker; tap on a Data room reference in a message (084).
 - Legal, Cap table and Data room inner, half-folded and laptop layouts; where Ask [page] agent sits (085).
-- DECISION: sidebar page rows and glance values (`notifications.glance`) have no home; whether rows are fixed or user-added (`sidebarPages`); duplicate agent row and page row (086).
+- DECISION: PAGES rows are drawn as four fixed rows with only Finance and Legal showing a value (Data room waiting and any Cap table value are not drawn); whether rows are fixed or user-added (`sidebarPages`); Finance appears as a page row, a Personnel agent and an Activity row on one screen (086).
 
 ### #425 (P13): Platform extras
 
@@ -4415,41 +4804,48 @@ Each bullet is one deduplicated gap. Story IDs cite the stories whose Design gap
 
 ## Copy and naming conflicts
 
-Conflicts between boards, rule cards, DS-06 and the Expo app that need one chosen string.
+Conflicts between boards, rule cards, DS-06 and the Expo app that need one chosen string. Round 1 settled four (listed last); eight new ones appeared.
 
-1. Product name: "Rakazo" (Sign in board "Sign in to Rakazo", "Enter your Rakazo server address.") vs "Praci" (Expo "Sign in to Praci", "Praci server") (001, 002).
-2. Unreachable server: "Could not reach this server" (board) vs "Could not reach that server" (Expo) (002).
-3. Retry label: "Retry" (sign-in), "Try again" (Home, Artifacts), "Refresh" (Finance banner) (006, 013, 078).
-4. Home create button: "New" (board) vs "Create" (Expo, inner `aria-label`) vs "+" in "Tap + to create a bot"; inner sheet confirm "Done" vs outer "Create" (011, 012, 104).
-5. Home control names: Expo "Account / Activity / Search / Artifacts" vs board icons and strip (011).
-6. Bot settings title: "Chat settings" (board) vs "Bot settings" (rule card); More-menu item "settings" vs "Chat settings" / "Group settings" (017, 105).
-7. Consent error: "Review AI data sharing in Account settings before continuing." vs the Settings row "AI data sharing" with no Account screen (048, 094).
-8. No-model text: "Connect a model to start a run" (README) vs "Connect a model in Settings before running bots." (server) (040).
-9. Mail approval buttons and title: "Deny / Allow", "Send reply" (PG-A-Thread) vs "Save / Send", "Re: Pilot timeline" (Inner, DS-06) (032, 046).
-10. MCP approval: "Allow once / Always allow / Deny" (DS-06) vs "Deny / Allow" (PG-A-Thread) (029).
-11. Failed send: "Failed to send message" (rule card, Expo alert) vs "Not sent" (DS-06) (039).
-12. Size unit: "MB" (brief) vs "MiB" (Expo) (035).
-13. Working indicator: "Inbox agent is working" (board) vs "{name} is working" with status line (Expo) (023).
-14. Inbox sections: "Other mail today" (boards) vs "Today" and "Earlier" (plan, Expo, DS-05) (056).
-15. Inbox filters: "Needs reply / Newsletters / Read mail" (board) vs All / Important / Updates / Newsletters / Spam (Expo) (060).
-16. Ask agent: "Ask Inbox agent" (board) vs "Ask agent" (Expo message) vs "Inbox agent" (list) (057, 099).
-17. Computer menu: "open computer" (rule card) vs "Open computer" (Expo); key bar "Ctrl / Esc" (board) vs "Control / Escape / Return" (Expo accessibility names) (067, 068).
-18. List title: list name (board) vs "List" (Expo) (074).
-19. Cap table groups: "Founders / Option pool / Seed investors / Advisors" (page) vs "Founders / Investors / Pool / Other" (DS-07) (082).
-20. Finance sections: "Spend" (inner rule card) vs "Upcoming" (outer page) (078, 085).
-21. Group of settings rows: "Account" (Expo Home label) vs profile row (iOS Settings board) (087, 107).
+1. Unreachable server: "Could not reach this server" (board) vs "Could not reach that server" (Expo) (002).
+2. Home create control: "New" (aria label) and a plus icon (boards) vs "Create" (Expo, inner `aria-label`); the Home sheet button "Create a bot"; inner sheet confirm "Done" vs outer "Create" (011, 012, 104, 111).
+3. Home control names: Expo "Account / Activity / Search / Artifacts" vs board "Account / Search / New / Space: {name}" (011).
+4. Bot settings: page "Bot settings" (board) vs Expo "Chat settings" and "Group settings"; the More-menu item label is not drawn (017, 105).
+5. Consent error: "Review AI data sharing in Account settings before continuing." vs the Settings row "AI data sharing" and the sheet link "Change in Settings" (048, 094).
+6. No-model text: "Connect a model to start a run" (README) vs "Connect a model in Settings before running bots." (server) vs "Connect a model to start chatting." (Home card) (040, 111).
+7. Agent thread rule card: "Allow" is the one prominent control; `PG-A-Thread` draws "Send" (029, 045).
+8. Failed send: "Not sent" (boards) vs "Failed to send message" (rule card, Expo alert) (039).
+9. Size unit: "MB" (brief) vs "MiB" (Expo) (035).
+10. Working indicator: "Inbox agent is working" (board) vs "{name} is working" with status line (Expo); blue dots (boards) vs neutral dots (DS-06) (023).
+11. Inbox sections: "Other mail today" (outer boards, rule card) vs "Today" and "Earlier" (`PH-Inbox`, plan, Expo, DS-05) (056).
+12. Inbox filters: "Needs reply / Newsletters / Read mail" (board) vs All / Important / Updates / Newsletters / Spam (Expo); `PH-Inbox` labels "Needs attention / Newsletter / Junk" (060).
+13. Ask agent: "Ask Inbox agent" (outer boards) vs "Ask agent" (Expo message) vs no control (`PH-Inbox`) (057, 099).
+14. Computer menu: "open computer" (rule card) vs "Open computer" (Expo); key bar "Ctrl / Esc" (boards) vs "Control / Escape / Return" (Expo accessibility names) (067, 068).
+15. List title: list name (board) vs "List" (Expo) (074).
+16. Cap table groups: "Founders / Option pool / Seed investors / Advisors" (page) vs "Founders / Investors / Pool / Other" (DS-07) (082).
+17. Finance sections: "Spend" (inner rule card) vs "Upcoming" (outer page) (078, 085).
+18. Settings: "Account" (Expo Home label) vs the profile row (iOS Settings board); avatar initials "AB" vs "SR" (087, 107).
+19. New: sign-up and reset copy: "Create account" vs "Sign up", "Send link" vs "Send reset link", "Reset password" vs "Reset your password" (004, 005).
+20. New: Activity row "Approve" vs the card button "Send" for the same mail draft (011, 032).
+21. New: Cleanup rows say "emails" (board) vs "messages" (Expo) (062).
+22. New: "Retry" (failed sends) vs "Try again" (loads) is now consistent on the boards; Expo still uses "Retry" on sign-in (006, 039).
+
+Settled in round 1: product name (boards say "Praci"), "Retry" vs "Try again" for load failures (the sign-in rule card now says "Try again"), the mail approval card (one pair, "Save" and "Send", title "Re: Pilot timeline" on every board), and the bot settings page title ("Bot settings").
 
 ## Gaps & Recommendations
 
 Findings from consolidation. These are observations and proposals, not decisions.
 
-1. **Draw the standard iPhone first.** 76 of 105 stories start on a standard iPhone but the boards draw the outer Duo display; Home, Thread, Inbox, Computer, Artifacts and the Settings entry have no 393 pt layout. Ship phases 3 and 4 only after a standard layout exists for Home and Thread.
-2. **One consent and one approval component.** Consent (no board), approval cards (two conflicting mail cards), CONFLICT, secret asks and choice cards are one visual family. Decide the card vocabulary before #417.
-3. **Decide the space switcher before #415.** It blocks stories 015, 016, 106 and every story that assumes a current space.
-4. **Mail has the largest undrawn surface.** Compose, forward, cleanup, writes-off banner, connect-mail empty state and the filter vocabulary are all NO BOARD. Confirm Cleanup is in phase 6.
-5. **Account is the largest missing screen.** Profile, sign out, delete, change password, archived bots and AI data sharing all hang from rows with no detail boards; they gate stories 007, 094 and 095.
-6. **Laptop pose has one board.** Only Finance has a laptop mockup; Computer is the main laptop use and is text only.
-7. **Offline is not designed.** No offline banner, queued caption, Reconnecting indicator or stale marker exists, yet 024, 038, 043 and 013 depend on them.
-8. **Cheap fixes.** Retry label, "Rakazo" vs "Praci", MB vs MiB, "Today/Earlier" and the 21 conflicts above are string decisions that cost nothing.
-9. **Stories missing for planned work.** Add stories for dictation and the call loop (#423), notification permission and banner suppression (#422), Live Activities, App Intents, share extension and widgets (#425), routines list and history (#420), global search (#416), and usage and billing (#421) once boards exist.
-10. **Unverified.** Everything in this catalog is planned behavior. No story was run against a native build, and no story has been checked against the full text of every board; gaps reflect what the topic files recorded.
+1. **The standard iPhone is half drawn.** Home, Thread, Inbox, Computer and the space menu now have 393 pt boards (`PH-*`); sign-in, compose, Cleanup, Artifacts, Settings, the message view, Legal and the other pages still show only the outer display. 81 of 114 stories start on a standard iPhone. Draw compose and the Inbox message view next.
+2. **One standard iPhone gap breaks several stories: the thread has no "Agent actions" button.** `PH-Thread` draws Back, title, Page and List only, so bot settings, "Open computer", clear, archive and delete have no entry (017, 018, 067, 105).
+3. **The Inbox disagrees with itself.** `PH-Inbox` tints Compose and has no "Ask Inbox agent", no To do card and no More; the outer boards tint "Ask Inbox agent" and add More with Cleanup. Pick one set of actions per display and one section vocabulary ("Today" and "Earlier").
+4. **One consent and one approval component.** Consent now has a sheet and a Settings page; the mail card is one design. Still open: a decline control for the mail card, the in-thread `ai_consent` card, the voice wording, CONFLICT, secret asks and choice cards.
+5. **The space switcher is decided.** The title menu with "New space" and "Space settings" is drawn for standard and outer; draw it in the inner sidebar, add a delete confirmation, and remove the duplicate "New space" entry.
+6. **First-run model connection is drawn once, for the outer display.** The Home card and sheet need a standard iPhone version, the wrong-key and pending states, and a better next action than "Create a bot" when Chief already exists.
+7. **Account is drawn; two pages it links to are not.** Change password and Archived bots still have no board. Change password appears in two places.
+8. **Mail is mostly drawn.** Compose, Reply, Forward (inside the Reply title menu) and Cleanup exist for the outer display. Missing: confirmations, outcome copy, compose and Cleanup on a standard iPhone, and the writes-off and reconnect banners.
+9. **Offline is drawn for sends only.** The "Offline" banner, "Waiting to send", "Not sent" with Retry and with Edit exist; a "Reconnecting" state for a dropped stream, a stale marker and a way to cancel a waiting message do not.
+10. **Laptop pose still has one board.** Only Finance has a laptop mockup; Computer is the main laptop use and is text only.
+11. **Update the rule cards.** `PG-A-Rules` and `PG-B-Rules` still describe the old Home (no PAGES, "Tap + to create a bot"), "Allow" as the thread's prominent action, "Other mail today", "Failed to send message" and "Ask Inbox agent" as the Inbox action.
+12. **Cheap fixes.** "Create account" vs "Sign up", "Send link" vs "Send reset link", "Approve" vs "Send", MB vs MiB, "emails" vs "messages" and the other string conflicts above cost nothing.
+13. **Stories still missing for planned work.** Add stories for dictation and the call loop (#423), notification permission and banner suppression (#422), Live Activities, App Intents, share extension and widgets (#425), routines list and history (#420), global search (#416), and usage and billing (#421) once boards exist.
+14. **Unverified.** Everything in this catalog is planned behavior judged from static boards. No story was run against a native build; transitions, pending states, keyboard and posture changes are not shown by any board.

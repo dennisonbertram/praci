@@ -1,0 +1,424 @@
+{
+  "mode": "inspect",
+  "images": [
+    "PH-Home.png",
+    "PH-Spaces.png",
+    "PH-Inbox.png",
+    "PH-Thread.png",
+    "PH-Computer.png"
+  ],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 72,
+      "costUsd": 0.1541112,
+      "result": {
+        "verdict": "Not ship-ready: the visual system is coherent and several approval controls are strong, but the founder's core jobs are undermined by buried priorities, an approval shown without its source email, an unreliable space-switch state, and a Computer view too small to read or operate. Revise and re-review.",
+        "findings": [
+          {
+            "level": "page",
+            "element": "Vertical order: Inbox card, PAGES list, ACTIVITY list",
+            "problem": "Needs-attention work is buried. On this screen 'Inbox / 3 need reply' is followed by five equally weighted Pages rows before 'Inbox agent / Reply to Ana is ready to send / Approve' appears in ACTIVITY. The persona's primary job - see what needs attention - requires scanning past Finance, Legal and Cap table first.",
+            "norm": "Task-first hierarchy for a glanceable founder home: pending approvals and needs-reply above reference/navigation content.",
+            "severity": "P1",
+            "screenshot": "PH-Home.png",
+            "fix": "Put a single 'Needs attention' group directly under the space title containing the 3 replies and the Ana approval; demote PAGES below ACTIVITY."
+          },
+          {
+            "level": "component",
+            "element": "Inbox card trailing '42' vs subtitle '3 need reply'",
+            "problem": "Two unexplained numbers compete in one row: the urgent '3 need reply' is small grey text while '42' is the large right-aligned figure a user will read as the count that matters. Nothing says 42 is total/unread.",
+            "norm": "One primary metric per row; every count labelled in place, not by convention.",
+            "severity": "P1",
+            "screenshot": "PH-Home.png",
+            "fix": "Label it, e.g. '42 unread · 3 need reply', or drop 42 and show a '3' badge on the envelope icon."
+          },
+          {
+            "level": "component",
+            "element": "PAGES rows trailing values '[N] mo' (Finance) and '2' (Legal)",
+            "problem": "'[N] mo' reads as unresolved placeholder/truncated text and '2' has no unit or label; Cap table, Data room and Artifacts have no value at all. A first-time user cannot tell whether these are alerts, counts, ages or runway figures - yet Finance is presumably the runway-critical one.",
+            "norm": "Trailing metadata must be self-describing; no placeholder or unlabelled numeric metadata ships.",
+            "severity": "P1",
+            "screenshot": "PH-Home.png",
+            "fix": "Resolve to real labelled values ('6 mo runway', '2 to sign') with consistent presence, or remove the values and keep clean disclosure rows."
+          },
+          {
+            "level": "group",
+            "element": "ACTIVITY list and PERSONNEL list both containing Finance agent / Inbox agent",
+            "problem": "The same agents appear as activity items ('Finance agent / Reading card expenses') and again as people to chat with ('Finance agent' under PERSONNEL). It is unclear whether tapping opens the work, the transcript or a new chat, so 'talk to a bot' has no unambiguous entry point.",
+            "norm": "One object, one home: status/activity and conversation entry must be distinguishable affordances.",
+            "severity": "P1",
+            "screenshot": "PH-Home.png",
+            "fix": "Merge into one Agents list where each row shows live status and opens the conversation with its activity inline; remove the duplicate PERSONNEL section."
+          },
+          {
+            "level": "layout",
+            "element": "Whole screen below PERSONNEL, incl. cut-off 'Finance agent / Yesterday' row",
+            "problem": "Content does not resolve on one 393x852 screen: the last PERSONNEL row is clipped by the home indicator with no visible scroll affordance, and there is no floating bottom navigation or composer despite glass being reserved for floating nav. Top-right search and '+' are also the farthest reach for one-handed use.",
+            "norm": "Brief: app surfaces should fit one screen; floating glass nav at thumb reach; 44 pt targets in the lower arc for one-handed use.",
+            "severity": "P1",
+            "screenshot": "PH-Home.png",
+            "fix": "Add one glass bottom bar (Home, Inbox with '3' badge, Ask/agent) and condense PAGES to fit so PERSONNEL is not clipped; demote search into that bar or the title area."
+          },
+          {
+            "level": "component",
+            "element": "Top-right white '+' button",
+            "problem": "The single prominent action on the landing screen is an unlabelled '+' whose result is unknowable - new space exists inside the space menu on the next board, new page, new chat and compose all plausibly live behind it. The most visually dominant control is the most ambiguous.",
+            "norm": "Exactly one tinted prominent action per view, and it must be the view's primary, self-evident action.",
+            "severity": "P2",
+            "screenshot": "PH-Home.png",
+            "fix": "Make the prominent action explicit (e.g. 'Ask Chief' opening agent chat) and move creation into a labelled menu or the relevant sections."
+          },
+          {
+            "level": "page",
+            "element": "Header title 'Personal' + checked menu row 'Personal' over unchanged Northwind content ('42', '[N] mo', '2')",
+            "problem": "State is contradictory: the title and checkmark say the space already switched to Personal, but every value underneath is still the Northwind home from the previous board. The user cannot tell whether the switch happened, is pending, or the data is stale - dangerous when approvals differ per company.",
+            "norm": "A selection control reflects selection only after the underlying content commits; never show space A's title over space B's data.",
+            "severity": "P1",
+            "screenshot": "PH-Spaces.png",
+            "fix": "Keep 'Northwind' as title/checkmark while the menu is open; on selection, close the menu, swap title and content together (with a brief loading state if needed)."
+          },
+          {
+            "level": "group",
+            "element": "Space menu card (Personal / Northwind / Side project / New space / Space settings)",
+            "problem": "The menu floats over a barely dimmed home screen whose Inbox '42', PAGES values and chevrons remain legible and tappable-looking behind it; there is no clear scrim or dismissal cue, and the menu's grey fill is close in value to the cards beneath, weakening modal separation.",
+            "norm": "Menus/popovers need unmistakable elevation and background de-emphasis (iOS menu convention).",
+            "severity": "P2",
+            "screenshot": "PH-Spaces.png",
+            "fix": "Strengthen the scrim/blur behind the menu, raise menu contrast, and ensure background rows are inert while it is open."
+          },
+          {
+            "level": "component",
+            "element": "'Space settings' row icon (horizontal sliders) and 'Northwind' title chevron trigger",
+            "problem": "The sliders glyph reads as 'filters/equaliser', not workspace settings, and the only way to discover switching is a small chevron beside the title - the checkmark/title affordance is well under the visual weight of the adjacent '+' and search buttons.",
+            "norm": "Icons must match platform conventions (gear for settings); the space switcher is a primary navigation control and must be discoverable.",
+            "severity": "P2",
+            "screenshot": "PH-Spaces.png",
+            "fix": "Use a gear for Space settings, widen the title+chevron hit area to at least 44 pt tall, and consider showing the current space avatar in the switcher."
+          },
+          {
+            "level": "page",
+            "element": "List grouping: 'Needs reply 3' (Ana Ruiz, Jordan Lee, Northwind Support) vs 'Today 24'",
+            "problem": "The highest-priority rows get the weakest styling: the three needs-reply senders are regular weight with no unread dot, while lower-priority 'Acme Payroll' and 'Deals Daily' below are bold with unread dots. Bold/dot conventions fight the section priority, so triage order is not scannable at a glance.",
+            "norm": "Mail triage convention: unread = bold + dot consistently; priority sections must also be visually stronger than routine mail.",
+            "severity": "P1",
+            "screenshot": "PH-Inbox.png",
+            "fix": "Apply unread styling consistently, and give Needs reply rows a distinct treatment (e.g. reply arrow or amber marker) that outranks Today."
+          },
+          {
+            "level": "component",
+            "element": "Row text pattern 'Ana Ruiz / Re: Pilot timeline - Can we move the kickoff to Thu...'",
+            "problem": "Subject and snippet are fused into one truncated line with an em-dash, so subject vs preview cannot be separated and every row ends mid-word ('two t...', 'are...'). Across 24 Today rows this forces opening mail to triage it - the opposite of the brief.",
+            "norm": "Standard mail row: sender, subject on its own line, snippet line, time; truncation at line level, not mid-subject.",
+            "severity": "P2",
+            "screenshot": "PH-Inbox.png",
+            "fix": "Give subject its own line and let the snippet take the second line; reserve the dash-merge for nothing."
+          },
+          {
+            "level": "component",
+            "element": "Revealed 'Archive' swipe cell swallowing the 'Weekly' row ('orth trying - Notes, shaders, and more')",
+            "problem": "Mid-swipe the sender name itself is clipped ('Weekly' loses its left edge, the snippet starts 'orth trying'), so the user is archiving a row they can no longer identify. There is also no undo affordance shown and no indication of other swipe actions.",
+            "norm": "Swipe actions must keep row identity legible throughout the gesture and offer recovery (Mail's undo/full-swipe conventions).",
+            "severity": "P2",
+            "screenshot": "PH-Inbox.png",
+            "fix": "Keep sender and subject pinned/readable while the cell reveals, size the action to its icon+label, and show an Undo toast after archiving."
+          },
+          {
+            "level": "component",
+            "element": "Tags 'Needs attention' (Acme Payroll) and 'Junk' (Deals Daily) inside Today",
+            "problem": "Two unexplained classification pills contradict the list: a 'Junk' message sits in the main Today stream and a 'Needs attention' item is not in 'Needs reply 3'. The founder is given labels with no action and no trust cue about the agent's sorting.",
+            "norm": "Agent-applied labels must be actionable/explainable; junk belongs out of the primary inbox by default.",
+            "severity": "P2",
+            "screenshot": "PH-Inbox.png",
+            "fix": "Make tags tappable ('Why?' / Move / Not junk), route Junk out of Today, and reconcile 'Needs attention' with the Needs reply grouping logic."
+          },
+          {
+            "level": "component",
+            "element": "Top-right glass pill pairing search magnifier with unlabeled filter/sort icon next to compose",
+            "problem": "The second icon (horizontal sliders/lines) is ambiguous - filter, sort, or view options - inside a shared glass pill where the two targets are not visually separated, inviting mis-taps at speed.",
+            "norm": "44 pt distinct targets; unfamiliar icons need labels or standard glyphs (line.3.horizontal.decrease for filter).",
+            "severity": "P3",
+            "screenshot": "PH-Inbox.png",
+            "fix": "Separate the targets or add a text label ('Filter'), and show the active filter state on the Inbox title area."
+          },
+          {
+            "level": "page",
+            "element": "Approval card 'Re: Pilot timeline / To Ana Ruiz / Hi Ana, Thursday works. Let's start at 10am.' with no source message",
+            "problem": "The user is asked to Send an agent draft without ever seeing Ana's original email - the only context is their own instruction bubble 'Reply to Ana: Thursday works, 10am.' 'Thursday' has no date, and there is no From/account shown. One-tap Send on unverifiable content is exactly how a founder sends the wrong commitment.",
+            "norm": "Approval UX: the artefact, its source and its destination must be co-visible before the commit action.",
+            "severity": "P1",
+            "screenshot": "PH-Thread.png",
+            "fix": "Embed or stack Ana's original message above the draft (collapsed to 3 lines, expandable), show the sending account, and render the resolved date ('Thu 30 Oct, 10:00 AM') in the draft."
+          },
+          {
+            "level": "group",
+            "element": "Draft card actions 'Save' (dark) and 'Send' (white) - no Edit or Discard",
+            "problem": "The brief's 'approve with Send or keep with Save' is met literally, but there is no way to fix the draft in place: 'Save' semantics are unstated (draft where? will the agent stop?) and any correction requires abandoning the card and typing a new chat instruction.",
+            "norm": "Draft review pattern: Send / Edit / Discard with unambiguous persistence of the non-destructive option.",
+            "severity": "P1",
+            "screenshot": "PH-Thread.png",
+            "fix": "Add 'Edit' that makes the card text editable in place, and label Save's outcome (e.g. 'Save draft' with the card collapsing to a saved-draft state)."
+          },
+          {
+            "level": "component",
+            "element": "Status line '... Inbox agent is working' directly below a completed draft card",
+            "problem": "The agent simultaneously presents a finished draft awaiting approval and announces it is still working. The founder cannot know whether Send will race further edits or whether the card is final.",
+            "norm": "One truthful agent state at a time; working indicators resolve before an approval is requested.",
+            "severity": "P2",
+            "screenshot": "PH-Thread.png",
+            "fix": "End the working state when the draft is presented ('Draft ready - not sent'), and only resume 'working' after the user responds."
+          },
+          {
+            "level": "component",
+            "element": "Top-right glass pill with document and list icons beside 'Inbox agent' title pill",
+            "problem": "Two unlabelled glyphs (page, bullet-list) share one pill with no visible divider or labels; their functions - source mail? thread files? task list? - are undiscoverable, and each sub-target is narrower than the back button beside them.",
+            "norm": "Unlabelled utilities must use universally recognised glyphs and keep 44 pt independent targets.",
+            "severity": "P2",
+            "screenshot": "PH-Thread.png",
+            "fix": "Label or replace with one clear control (e.g. 'Original email') tied to the approval task; separate the targets if both are kept."
+          },
+          {
+            "level": "layout",
+            "element": "Conversation column: ~50% empty dark space between header pills and the first bubble",
+            "problem": "Half the screen is void while the decision content (instruction, draft, Save/Send) is compressed into the bottom third. Nothing fills the gap - no original thread, no agent summary - so the screen feels broken rather than minimal and wastes the space the missing source email needed.",
+            "norm": "Density/whitespace balance: empty space must frame content, not displace task-critical context off-screen.",
+            "severity": "P2",
+            "screenshot": "PH-Thread.png",
+            "fix": "Anchor the thread from the top under the header and use the reclaimed space for Ana's original message and the draft card; keep the composer pinned below."
+          },
+          {
+            "level": "group",
+            "element": "Glass groups: back pill + 'Inbox agent' pill + utilities pill + bottom 'Message Inbox agent' composer",
+            "problem": "Four separate glass groups float on this view (three in the header, one composer), exceeding the brief's maximum of three glass groups per view, and the three header pills fragment what is one navigation bar.",
+            "norm": "Brief: glass only on floating nav/controls, at most three glass groups per view; concentric corners within grouped controls.",
+            "severity": "P2",
+            "screenshot": "PH-Thread.png",
+            "fix": "Consolidate the header into a single glass bar (back, agent identity, one utility) so header + composer = two glass groups."
+          },
+          {
+            "level": "page",
+            "element": "Browser viewport card (web page skeleton) occupying only the upper ~55% of both states",
+            "problem": "The shared computer - the entire purpose of this screen - is rendered as a small, illegible grey skeleton floating over empty navy space, in portrait, with no zoom, pan, fullscreen or rotate affordance. The founder can neither read what the team/agent is doing ('Watching') nor click targets accurately ('In control').",
+            "norm": "Remote-view convention: viewport maximises the screen, supports pinch-zoom/pan and a fit/fill toggle; legibility precedes chrome.",
+            "severity": "P0",
+            "screenshot": "PH-Computer.png",
+            "fix": "Expand the viewport to near full-bleed, add pinch-zoom plus a fit-width control, and consider prompting landscape for control mode; show a live cursor and agent activity narration over it."
+          },
+          {
+            "level": "group",
+            "element": "'In control' (right) header: X pill, 'In control' pill, keyboard pill, 'Release' pill",
+            "problem": "Four separate glass groups across the top, breaching the three-group limit, and the count grows exactly when the user takes control. Meanwhile the 'Team / Private' segmented control from the Watching state vanishes, so the sharing scope cannot be checked or changed while controlling.",
+            "norm": "Brief: at most three glass groups per view; safety-relevant state (who can see this session) must persist across mode changes.",
+            "severity": "P1",
+            "screenshot": "PH-Computer.png",
+            "fix": "Merge status + Release into one trailing glass group (two groups total with close), and retain the Team/Private indicator - at minimum as a read-only 'Team can watch' chip - in control mode."
+          },
+          {
+            "level": "component",
+            "element": "'Watching' (left) and 'In control' (right) status pills with blue/green dot",
+            "problem": "Both are styled identically to the tappable segmented control and Release button around them, so the most safety-critical fact - 'am I driving someone else's session?' - looks like another button and relies on a small coloured dot plus 13 pt text. There is also no statement of who else is watching or which agent is at the machine.",
+            "norm": "Mode/state indicators must be visually distinct from controls and readable at a glance (remote-desktop 'you are controlling' banners).",
+            "severity": "P1",
+            "screenshot": "PH-Computer.png",
+            "fix": "Restyle status as a non-interactive banner/chip with an icon + words ('You're watching - Finance agent is driving'), differentiated from buttons by shape and fill."
+          },
+          {
+            "level": "component",
+            "element": "Bottom key bar 'Esc Tab Ctrl <- v ^ ->' with macOS traffic-light window above it",
+            "problem": "The modifier offered is Ctrl while the window chrome is unmistakably macOS (red/yellow/green) - no Cmd, Shift, Delete/Backspace, or Enter, and no way to type text until the separate keyboard icon is discovered. Taking over a Mac desktop with this bar alone strands the user at the first shortcut or text field.",
+            "norm": "Remote-control key bars mirror the host OS modifier set and include Esc, Tab, Shift, Cmd/Ctrl, arrows and Enter/Delete.",
+            "severity": "P1",
+            "screenshot": "PH-Computer.png",
+            "fix": "Match modifiers to the host (add Cmd and Shift as sticky toggles, plus Enter/Delete), and auto-raise the keyboard affordance when a text field gains focus."
+          },
+          {
+            "level": "component",
+            "element": "Close 'X' pill in 'In control' state (top-left, right panel)",
+            "problem": "While controlling, X is ambiguous and risky: does it exit the viewer, or release control first? Its identical placement to the harmless Watching-state X invites a habitual tap that could either abandon a live session mid-action or leave the machine still under the user's control.",
+            "norm": "Destructive/modal exits in a live-control state must be explicit; Release is the sanctioned exit and must dominate.",
+            "severity": "P2",
+            "screenshot": "PH-Computer.png",
+            "fix": "Remove X in control mode (or make it trigger the Release confirmation), leaving Release as the single, labelled way out."
+          },
+          {
+            "level": "layout",
+            "element": "Cross-screen continuity: PH-Home and PH-Inbox have no bottom navigation, PH-Thread hides navigation behind a back chevron",
+            "problem": "There is no persistent wayfinding across the journey: from Home the only routes are rows; in Inbox the back chevron returns to Home; in Thread another back chevron. A founder mid-triage who wants Computer or a different agent must unwind the whole stack, one-handed, via top-left chevrons - the least reachable corner.",
+            "norm": "Persistent primary navigation (or a thumb-zone back pattern) across peer destinations in a multi-module app.",
+            "severity": "P2",
+            "screenshot": "PH-Home.png",
+            "fix": "Introduce the single glass bottom bar (Home / Inbox / Agents / Computer) on Home and Inbox, and keep back chevrons only for true drill-ins like Thread."
+          }
+        ],
+        "excellent": [
+          "PH-Thread.png - Draft card 'Save'/'Send': exactly one tinted prominent action (white Send) beside a quiet secondary, sitting in the thumb zone - the brief's one-prominent-action rule executed correctly and the fastest approval path in the product.",
+          "PH-Computer.png - 'Take control' (Watching) and 'Release' (In control) are each the single large, labelled, bottom-anchored prominent action in their state, with a persistent dot+word status - an exemplary control-handover pattern, undermined only by the viewport size.",
+          "PH-Home.png - ACTIVITY rows pair a coloured dot with a text label ('Working', 'Approve', 'Done') rather than colour alone, so agent state survives colour-blindness and greyscale glances.",
+          "PH-Spaces.png - Space menu groups switching (Personal/Northwind/Side project with checkmark on current) above a separated New space / Space settings section, matching iOS menu conventions for scanability.",
+          "PH-Inbox.png - 'Needs reply 3' is promoted to its own section above 'Today 24' and 'Earlier', the right information architecture for needs-reply-first triage even though row styling does not yet match it."
+        ]
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 146,
+      "costUsd": 0.10517,
+      "result": {
+        "verdict": "Praci establishes a sleek, low-glare dark aesthetic with calm typography, but fails several core functional flows, persona ergonomics (one-handed founder), and its own Liquid Glass design rules. Critical issues include an unreplaced template placeholder ('[N] mo') on Home, a broken state transition in the Spaces menu, missing original email context and a contradictory 'agent is working' state during draft approval in Thread, no navigation path to the shared Computer view, and violations of the 3-glass-group limit.",
+        "findings": [
+          {
+            "level": "component",
+            "element": "PAGES -> Finance row ('[N] mo')",
+            "problem": "The trailing metric on the Finance row literally displays the raw template placeholder string '[N] mo' instead of an actual runway value (e.g., '18 mo').",
+            "norm": "Production design boards and UI states must populate realistic domain values; raw bracket placeholders break trust and indicate unfinished bindings.",
+            "severity": "P0",
+            "screenshot": "PH-Home.png",
+            "fix": "Replace '[N] mo' with a realistic runway metric such as '18 mo' (and update PH-Spaces.png to match)."
+          },
+          {
+            "level": "page",
+            "element": "Space switcher header ('Personal') vs. underlying page content",
+            "problem": "In PH-Spaces.png, described as 'Home with the space menu open', the page title and menu checkmark have already switched from 'Northwind' to 'Personal', while all underlying data (42 emails, Finance '[N] mo', Legal 2, Cap table, Data room, and Northwind's 'Reply to Ana' activity) remains Northwind's company data.",
+            "norm": "Opening a context menu must reflect the currently active workspace ('Northwind') until a new selection is committed; if 'Personal' is selected, startup-only pages like Cap table and Northwind's agent activity must update accordingly.",
+            "severity": "P0",
+            "screenshot": "PH-Spaces.png",
+            "fix": "Keep the header title and active checkmark on 'Northwind' while the menu is open, or update the background content to reflect a Personal space."
+          },
+          {
+            "level": "page",
+            "element": "Navigation to Shared Computer view",
+            "problem": "PH-Computer.png presents a core feature for watching and controlling the team's shared computer, but PH-Home.png provides no entry point to access it under Pages, Activity, or top navigation controls.",
+            "norm": "Every primary surface in a user journey must have a discoverable entry point from the landing screen or active agent rows.",
+            "severity": "P0",
+            "screenshot": "PH-Home.png",
+            "fix": "Add a 'Computer' row (with live status, e.g., 'Finance agent active') or a dedicated live-view pill on the Home screen and inside active agent threads."
+          },
+          {
+            "level": "page",
+            "element": "Chat history, missing email context, and 'Inbox agent is working' status",
+            "problem": "Three compounding logic flaws hurt the approval flow: (1) Ana Ruiz's incoming email is nowhere visible (despite 320pt of empty black space above the chat), forcing the founder to approve a reply blind; (2) the chat shows the user manually typing 'Reply to Ana: Thursday works, 10am.' to which the agent searches 12 emails just to repeat the user's exact words back, contradicting PH-Home where the agent proactively drafted the reply; (3) the bottom status says '••• Inbox agent is working' at the exact same moment the agent says 'Here is a draft' and awaits human approval.",
+            "norm": "Human-in-the-loop approval views must show the source message being replied to, clearly distinguish proactive agent drafts from user-prompted ones, and show an idle/awaiting-approval state rather than an active 'working' spinner when paused for user input.",
+            "severity": "P1",
+            "screenshot": "PH-Thread.png",
+            "fix": "Render Ana Ruiz's incoming email card in the upper viewport, remove the redundant user prompt bubble for proactive drafts, and remove the '••• Inbox agent is working' indicator while the draft is awaiting approval."
+          },
+          {
+            "level": "layout",
+            "element": "Floating glass control groups across Thread and Computer views",
+            "problem": "The brief mandates 'at most three glass groups per view'. PH-Thread.png has 4 glass groups (Back button, 'Inbox agent' pill, right utility pill, and bottom message bar, plus the 'Save' button). PH-Computer.png has 4 glass groups in 'Watching' and 5 glass groups in 'In control' (Close button, status pill, keyboard button, Release pill, and bottom key bar).",
+            "norm": "Strict adherence to the design system constraint of <= 3 floating glass groups per screen prevents control clutter and preserves hierarchy.",
+            "severity": "P1",
+            "screenshot": "PH-Computer.png",
+            "fix": "Consolidate top navigation items into at most two floating glass pills (e.g., merging Back/Close with the title/status pill on the left, and actions on the right) plus one bottom bar to stay within the 3-group limit on both PH-Thread and PH-Computer."
+          },
+          {
+            "level": "group",
+            "element": "Top bar vs. bottom bar transition ('Take control' to 'Release')",
+            "problem": "In 'Watching' (left), the primary action 'Take control' is a full-width button at the bottom of the screen in the thumb zone. Once tapped ('In control', right), the counterpart action 'Release' jumps to the top-right corner of the 852pt screen, the 'Team | Private' toggle vanishes, and the status indicator jumps from top-right ('Watching') to top-left ('In control').",
+            "norm": "Stateful toggle actions and status indicators should maintain spatial constancy, especially for a one-handed mobile persona.",
+            "severity": "P1",
+            "screenshot": "PH-Computer.png",
+            "fix": "Keep the status/control bar spatially consistent at the top or bottom across both states so the user does not have to hunt for 'Release' at the opposite end of the screen."
+          },
+          {
+            "level": "group",
+            "element": "Email rows, unread dots, and section dividers",
+            "problem": "All email sender and subject lines are permanently indented to x ≈ 36pt regardless of whether they are read or unread, while section headers ('Needs reply 3', 'Today 24', 'Earlier') and row dividers start at x ≈ 16pt. Unread dots on 'Acme Payroll' and 'Deals Daily' are placed in the left gutter aligned with the second line (subject) rather than the sender name.",
+            "norm": "In iOS list views, read and unread text should align cleanly with section headers (or unread dots should align vertically with the primary sender title line), and dividers should align with the leading text edge.",
+            "severity": "P1",
+            "screenshot": "PH-Inbox.png",
+            "fix": "Align the unread indicator with the sender name on row line 1, and match the leading edge of section headers and row dividers with the text column."
+          },
+          {
+            "level": "group",
+            "element": "Inbox rows under 'Needs reply 3' and 'Today 24'",
+            "problem": "In PH-Home.png, the Inbox agent already has a draft ready to approve for Ana Ruiz ('Reply to Ana is ready to send'), yet the 'Ana Ruiz' row in PH-Inbox.png shows no badge or indicator that a draft is ready. Meanwhile, an unread 'Deals Daily' email tagged 'Junk' sits prominently in the 'Today 24' list with an unread dot.",
+            "norm": "An AI-triaged inbox should surface agent draft status ('Draft ready') directly on 'Needs reply' rows so the founder knows a one-tap approval awaits, and auto-demote or mute 'Junk' from unread counts.",
+            "severity": "P1",
+            "screenshot": "PH-Inbox.png",
+            "fix": "Add a 'Draft ready' / 'Approve' badge on the Ana Ruiz row in 'Needs reply 3', and suppress unread dots on 'Junk' items or move them to a collapsed footer."
+          },
+          {
+            "level": "component",
+            "element": "ACTIVITY -> Inbox agent row ('Approve' status indicator)",
+            "problem": "In the Activity card, 'Approve' is styled identically to passive statuses 'Working' and 'Done' (a small colored dot plus muted grey label), giving no visual affordance that it requires user action or can be tapped to approve.",
+            "norm": "Actionable states requiring human approval should be visually distinct from passive system statuses ('Working', 'Done').",
+            "severity": "P2",
+            "screenshot": "PH-Home.png",
+            "fix": "Style 'Approve' as a compact pill button or add a trailing chevron/badge to distinguish actionable approvals from passive agent logs."
+          },
+          {
+            "level": "component",
+            "element": "Draft card action buttons ('Save' vs. 'Send')",
+            "problem": "The draft approval card offers 'Save' and 'Send', but the message is already an unsent draft ('Here is a draft. I have not sent it.'). 'Save' is ambiguous, while essential actions like 'Edit' or 'Discard' are missing.",
+            "norm": "Draft review cards should provide clear actions for modifying ('Edit') or approving ('Send') the draft.",
+            "severity": "P2",
+            "screenshot": "PH-Thread.png",
+            "fix": "Replace 'Save' with 'Edit' (or make the body text clearly tappable to edit inline and offer 'Discard' / 'Send')."
+          },
+          {
+            "level": "group",
+            "element": "Segmented control ('Team | Private') and primary CTA ('Take control')",
+            "problem": "The brief specifies 'exactly one tinted prominent action per view'. None of the prominent actions use a color tint (all use neutral off-white #E5E5E0), and in PH-Computer ('Watching'), both the active 'Team' segment at top-left and the 'Take control' CTA at bottom use the exact same high-contrast off-white fill.",
+            "norm": "Active segmented-control tabs should use a subtle elevated glass/surface fill so they do not compete visually with the single prominent primary CTA on the screen.",
+            "severity": "P2",
+            "screenshot": "PH-Computer.png",
+            "fix": "Use a translucent elevated surface for the active 'Team' segment and reserve the high-contrast prominent fill (or brand tint) exclusively for 'Take control'."
+          },
+          {
+            "level": "group",
+            "element": "Space dropdown menu alignment and backdrop",
+            "problem": "Inside the space menu, 'New space' and 'Space settings' are indented on the left by the same ~36pt checkmark gutter used for 'Personal', even though their icons ('+' and sliders) are placed on the trailing edge, leaving dead space on the left. Additionally, the menu lacks backdrop separation from the underlying cards, causing '[N] mo >' and '2 >' to create visual noise along its right border.",
+            "norm": "Native iOS menus either place all icons on the same side (trailing checkmarks + trailing action icons) or left-align text when trailing icons are used, and apply subtle dimming/blur separation over underlying content.",
+            "severity": "P2",
+            "screenshot": "PH-Spaces.png",
+            "fix": "Left-align all menu labels and move the active checkmark to the trailing edge (matching native iOS UIMenu conventions), and add a subtle backdrop dim behind the open menu."
+          },
+          {
+            "level": "component",
+            "element": "Swiped row ('Weekly') and 'Archive' action button",
+            "problem": "On the swiped 'Weekly' row, the row height is taller than adjacent 2-line rows (leaving dead space below the second line), the left text is hard-clipped ('orth trying') against an invisible inset rather than the screen edge, and the 'Archive' button has sharp 0pt corners that clash with the app's concentric rounded geometry.",
+            "norm": "Swipe-to-action rows must maintain consistent row height, clip cleanly at the container boundary, and use rounded/concentric action cells.",
+            "severity": "P2",
+            "screenshot": "PH-Inbox.png",
+            "fix": "Match the 'Weekly' row height to standard 2-line rows, clip swiped content cleanly at the screen edge, and apply concentric rounded corners to the Archive action button."
+          },
+          {
+            "level": "layout",
+            "element": "Remote desktop viewport size and bottom whitespace",
+            "problem": "In both 'Watching' and 'In control' states, the remote desktop window is rendered as a small ~360x460pt box that leaves over 200pt of empty dark-slate space above the bottom controls, while providing no indication of which agent is currently using the computer or where the software keyboard appears when the top-right keyboard button is tapped.",
+            "norm": "Remote desktop viewers on mobile should maximize viewport area or use the space below for agent activity context and keyboard ergonomics.",
+            "severity": "P2",
+            "screenshot": "PH-Computer.png",
+            "fix": "Expand the computer viewport vertically (or display the active agent's live action log below the viewport) and ensure the modifier-key bar docks cleanly above the iOS keyboard when active."
+          },
+          {
+            "level": "group",
+            "element": "Bottom key bar ('Esc | Tab | Ctrl | ← | ↓ | ↑ | →') and inner corners",
+            "problem": "Fitting 7 keys with gaps inside a 361pt-wide pill squeezes individual key widths below the 44pt minimum touch target (~42pt wide), and the inner key corners (~8pt radius) are non-concentric with the fully rounded stadium pill container (~26pt radius).",
+            "norm": "Touch targets must meet the 44x44pt minimum and inner button radii must be concentric with their outer container (R_outer = R_inner + padding).",
+            "severity": "P2",
+            "screenshot": "PH-Computer.png",
+            "fix": "Reduce the outer pill corner radius to ~14pt so inner keys with 8pt corners are concentric, or make the key bar horizontally scrollable / fewer keys so each key is at least 44pt wide."
+          },
+          {
+            "level": "component",
+            "element": "Inbox card vs. Pages rows disclosure indicators and 'PERSONNEL' bottom clipping",
+            "problem": "On PH-Home.png, the Inbox card has no trailing chevron '>' unlike the Pages rows below it, despite both navigating to child screens. At the bottom of the screen, the second row under PERSONNEL ('Finance agent') is clipped and faded out right where a one-handed user's thumb naturally rests.",
+            "norm": "Consistent disclosure indicators clarify navigational affordance, and primary 'talk to a bot' entry points should be accessible in the thumb zone without awkward clipping.",
+            "severity": "P3",
+            "screenshot": "PH-Home.png",
+            "fix": "Add a trailing chevron '>' to the Inbox card and tighten vertical spacing slightly so the second Personnel row is fully visible above the home indicator."
+          }
+        ],
+        "excellent": [
+          "Clean dark-mode surface hierarchy on PH-Home.png with well-proportioned card grouping, calm typography, and scannable status dots.",
+          "Distinctive, memorable geometric bot avatars (Chief, Finance agent, Inbox agent) that give each AI agent immediate visual identity across Home and Thread views.",
+          "Clear, scannable inline draft card design in PH-Thread.png that separates email metadata ('Re: Pilot timeline', 'To Ana Ruiz') from the conversational stream."
+        ]
+      }
+    }
+  ]
+}

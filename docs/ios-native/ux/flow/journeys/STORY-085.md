@@ -1,50 +1,61 @@
 # STORY-085 journey critique: the four pages on Duo, inner display and laptop pose
 
-Target: planned native SwiftUI iPhone app (epic #427; P12 #424, P7 #419). Boards are static, so each step is judged against the board that defines it. Boards read: `Desk`, `Inner`, `Split`, `PG-B-Finance`, `PG-B-Legal`, `PG-B-CapTable`, `PG-B-DataRoom`, `PG-B-Rules` (screenshots in the run scratchpad). Live browser use was not needed.
+Target: planned native SwiftUI iPhone app (epic #427; P12 #424, P7 #419). Boards are static; each step is judged against the board that draws it. Round 1 of the gap-fix pass. Boards read (screenshots opened): `PG-B-Finance`, `PG-B-Legal`, `PG-B-CapTable`, `PG-B-DataRoom`, `PG-B-Rules`, `Desk`, `Inner`, `Split`, `PG-A-Home`, `PG-B-Spaces`.
+
+Previous round: acceptable (20 vs 20 steps, 9 steps without a board, 1 dead end at step 16).
+
+## What the gap-fix pass closed
+
+- Where the four pages are reached: `Split` (inner sidebar) now lists Finance, Legal, Cap table, Data room as rows with glance values (`[N] mo`, 2), and `PG-A-Home` has a PAGES section with the same four rows. Steps 1, 7, 9, 11 and 17 now have an entry point on both displays.
+- Switching space on the outer display: `PG-B-Spaces` draws the title menu. Step 20 is covered on outer only (see R1-4).
 
 ## 1. Friction scorecard
 
 | Measure | Result |
 |---|---|
-| Steps actual vs ideal | 20 vs 20 (the story lists 20 steps and the ideal says 20). No extra screens. |
-| Needless decisions | 0 on the happy path. Posture changes are physical, not choices. |
-| Re-entry of known data | 0. Hide-amounts is meant to persist across poses (steps 4, 18); no board shows where that state lives. |
-| Dead ends | 1: step 16 (fold back to outer with the agent thread open) has no defined result. Selection and scroll preservation across posture changes is "not specified" in the README. |
-| Steps with no board | Steps 7-15 for Legal, Cap table, Data room on inner, half-folded and laptop pose (9 steps). Only the outer layouts exist (`PG-B-Legal/CapTable/DataRoom`) plus rule-card text. Step 5 (Finance half-folded 1/2 + 1/2) has no mockup either; `Split` shows Inbox, not Finance. Step 3 (Finance 1/3 + 2/3) has no Finance board; `Inner` shows Inbox. Steps 13-14 (file picker, upload row) and 19 (push) have no board. |
-| Board that contradicts the text | Step 6 says laptop bottom half holds period tabs, accounts and "Ask Finance agent". `Desk` bottom half is the agent thread with a "Message Finance agent" composer; no tabs or accounts are visible. Top half shows "Monthly spend / Last 6 months", while outer `PG-B-Finance` shows "Monthly burn" with 30 days / 90 days / 12 months tabs. |
-
-Verdict on steps: the design is not long-winded; it is under-specified. Most friction risk sits in the missing boards, not in the screens that exist.
+| Steps actual vs ideal | 20 vs 20. No extra screens. |
+| Needless decisions | 0 on the happy path. Posture changes are physical. |
+| Re-entry | 0. Hide amounts should persist (steps 4, 18), but no board shows where it lives (only the eye in the `PG-B-Finance` capsule and the `Desk` bottom capsule). |
+| Dead ends | 1: step 16 (fold to outer with an agent thread open) still has no stated result. The rule card only says the fold area stays empty. |
+| Steps with no board | Step 3 and 4 (Finance 1/3 + 2/3; `Inner` shows an Inbox thread, `Split` shows Inbox), step 5 (Finance 1/2 + 1/2), steps 7-12 (Legal, Cap table, Data room on inner and half-folded), laptop poses for Legal, Cap table, Data room (steps 8, 9, 11), steps 13-14 (file picker, upload row), step 19 (push landing), step 20 on inner. About 14 of 20 steps rest on rule-card text alone. |
+| Board contradicting text | Step 6 and the Finance rule card say the laptop bottom half holds period tabs, accounts and "Ask Finance agent". `Desk` bottom half is the agent thread with a composer; there are no tabs or accounts. Top half says "Monthly spend / Last 6 months", outer says "Monthly burn" with 30 days / 90 days / 12 months. |
 
 ## 2. Take-away pass
 
-- Finance outer (`PG-B-Finance`): primary action is the bottom bubble (Ask Finance agent), which matches the rule card. Removable: the refresh button in the side capsule (data should refresh on open and pull-to-refresh); the 12 bars and "[AMOUNT]" label in the chart header duplicate the KPI row's cash/runway story only partly, so keep. Account rows repeat "Mercury agent", "Brex agent" under the name; this is a useful source label, keep. "Upcoming" is the only section with no use in any story step.
-- Finance laptop (`Desk`): one tinted action is not obvious. The composer mic and the Finance agent pill both look like controls; no prominent button. The eye and ellipsis in a glass capsule sit inside content flow at y 492, not on a floating bar; the "Finance agent" pill and back button are also glass. That is three glass groups on a screen that otherwise follows the rules. Removable: the "..." menu if it only holds items shown elsewhere.
-- Legal outer (`PG-B-Legal`): the "2 deadlines this week / Last scan today, 8:05 AM" card repeats the Deadlines tab and the Legal agent's push text ("2 deadlines due this week"). Scan and refresh both sit in the capsule; two near-identical icons (scan, refresh) are a candidate to merge. Status words are colored text with dots, which is fine.
-- Cap table outer (`PG-B-CapTable`): "Carta is connected / Reconnect" is permanent status chrome. Show it only when disconnected or expired (rule card already defines the Expired state). The legend repeats holder names that appear again in the Holders list directly below; holders list percentages appear twice (legend and rows show [N]% and [N]).
-- Data room outer (`PG-B-DataRoom`): "Load more" text link is acceptable. Filter button in the capsule is not used in any step. Search bar is used by no step in this story.
-- Inner (`Inner`, Inbox shown as the pattern): the sidebar lists all pages and Personnel; the right capsule shows four icons (eye, star, filter, compose) with a chat bubble below as the prominent action. Four icons in one capsule is the upper end.
-- Cross-surface duplicate fact: the left list section "Spend" (story step 3) vs outer "Upcoming" vs Desk "Monthly spend" vs outer "Monthly burn". One concept has three names.
+- `PG-B-Finance`: one prominent action (pale bubble). Removable: the refresh button (refresh on open and pull to refresh). "Upcoming" is used by no step. "Accounts" source labels (Mercury agent, Brex agent) are useful, keep.
+- `Desk`: no tinted prominent action; composer is plain. Two glass groups (back + agent pill, eye + "..."), within the limit. The "..." has no step that uses it. The Finance agent thread is the whole bottom half, so accounts and upcoming are not reachable in this pose.
+- `PG-B-Legal`: the card "2 deadlines this week / Last scan today, 8:05 AM" repeats the Deadlines tab and the Legal agent's push text. Scan and refresh icons sit side by side and look alike.
+- `PG-B-CapTable`: "Carta is connected / Reconnect" is permanent status; the rule card already defines Not connected and Expired states, so the connected line can go. The legend repeats the four holder names and percentages that the Holders list shows directly below. The plus button has no step.
+- `PG-B-DataRoom`: search bar and filter button are used by no step. "Load more" is fine.
+- `Split` (inner sidebar): the sidebar already shows Finance `[N] mo` and Legal 2; this is the glance, so facts are not repeated on the pages themselves.
+- Facts stated twice: Legal deadline count (card, tab, agent row, sidebar badge); Cap table holders (legend and list); Finance runway (sidebar glance and KPI, acceptable since glance leads to page).
 
 ## 3. Simpler version
 
-Same 20 steps, fewer undefined moments:
-1. Define one section list for Finance across all poses: Overview, Accounts, Burn, Upcoming. Rename "Spend" to match the outer page and drop "Monthly spend" in favor of "Burn" on Desk.
-2. Make the laptop bottom half the same for all four pages: the page's agent thread with its composer (as `Desk` already does). Move period tabs into the top half next to the chart. This removes the contradiction between rule text and board and removes a separate set of "controls" per page.
-3. Hide the Carta connection line unless it is not connected; hide the Legal scan card unless there are deadlines or a failed scan.
-4. Drop the refresh button from the side capsule on all four pages; refresh on open and pull to refresh.
-5. State once, for all pages: on posture change, keep the selected row and scroll position; on fold to outer with an agent thread open, show that thread (the bot wins, same as the push rule in step 19).
-6. Keep the eye (hide amounts) only on Finance and Cap table, where amounts appear; Legal and Data room never need it in this story.
+Same 20 steps. (1) One section list for Finance in every pose: Overview, Accounts, Burn, Upcoming; rename "Spend" and "Monthly spend" to "Burn". (2) Laptop pose for all four pages: content on top, page's agent thread with composer on the bottom (as `Desk` draws it), and move period tabs and accounts into the top half. (3) Hide the Carta connected line and the Legal scan card unless there is something to act on. (4) Drop refresh from the side capsule. (5) State once: on posture change keep the selected row and scroll; on fold to outer with a thread open, show the thread. (6) Remove Data room search and filter from the outer page until a step needs them, or keep search only.
 
 ## 4. Beauty check
 
-- `PG-B-Finance`, `PG-B-Legal`, `PG-B-CapTable`, `PG-B-DataRoom`: glass is limited to the side strip (back group, action group, bubble). Content is solid inset lists with consistent radius and spacing. One prominent action: the pale bubble. Follows the rules.
-- `Inner`: floating sidebar is a rounded glass panel and the right strip is a capsule; the list rows are solid. The corner radius of the sidebar looks concentric with the screen. Passes.
-- `Split` (Inbox, half-folded): the approval card sits as solid content, with Send as the one bright button; but the right strip capsule plus a separate round "..." button and the "Inbox agent" pill make three glass groups near the limit. Passes at the limit.
-- `Desk` (Finance laptop): glass controls appear mid-screen below the fold (back, agent pill, eye and "..." capsule), which the README allows only for floating navigation; this works as a bar, but there is no tinted prominent action (composer is plain). Mild deviation from "one tinted prominent action per view".
-- No board shows Legal, Cap table or Data room in inner, half-folded or laptop pose, so those cannot be checked.
+- Outer pages (`PG-B-*`): glass only on the side strip, solid inset lists, one pale prominent bubble, SF-style icons, shipped bot colors on the Finance agent avatar. Passes.
+- `Split`: floating sidebar glass, right capsule, bubble. Three glass groups, at the limit. Passes.
+- `Desk`: glass controls sit mid-screen under the fold, which acts as a floating bar; no tinted prominent action, so the "exactly one" rule is not met. Mild.
+- No board for Legal, Cap table, Data room on inner or laptop, so they cannot be checked.
 
 ## 5. Verdict
 
-acceptable
+acceptable. Steps equal the ideal and the existing boards follow the rules, and the missing page entry points are now drawn. The journey still rests mostly on rule-card text, one board contradicts the rule, and one dead end remains. Nothing structural, so not convoluted.
 
-Reason: steps equal the ideal (20/20) and the existing boards follow the glass rules, but the journey relies on 9+ steps with no board, one dead end (step 16), a rule-text/board mismatch on the laptop pose, and a few removable elements (refresh, Carta connected line, Legal scan card, Spend/Burn/Upcoming naming). Nothing structural, so not convoluted.
+## 6. ISSUES
+
+- STORY-085-R1-1 (high): `Desk.dc.html`, `PG-B-Rules.dc.html`, step 6. The Finance rule card says period tabs, accounts and Ask controls are in the bottom half; `Desk` shows only the agent thread and composer, with top-half title "Monthly spend / Last 6 months" instead of "Monthly burn" with period tabs. Fix: change the rule card laptop line to "Content on top (KPIs, burn chart, period tabs), agent thread and composer below", and redraw `Desk` top half with the 30 days / 90 days / 12 months tabs and the title "Monthly burn".
+- STORY-085-R1-2 (high): no board, steps 3-5 and 7-12. Finance, Legal, Cap table, Data room have no inner (1/3 + 2/3) or half-folded board, and `Inner`/`Split` show Inbox. Fix: add one inner board for Finance (sections list left, selected section right) and one for Legal (contracts left, contract detail right); the other two follow the same pattern by rule card.
+- STORY-085-R1-3 (medium): no board, steps 8, 9, 11. Laptop pose for Legal, Cap table, Data room exists only as text. Fix: add a laptop board for Data room (file preview top, list and Add files below), since it is the one with an action; keep Legal and Cap table as text.
+- STORY-085-R1-4 (medium): `Split.dc.html`, step 20. The inner sidebar has Search and plus at the top but no space title, so there is no way to switch space on the inner display; `PG-B-Spaces` only draws the outer menu. Fix: put the "Personal v" space title as the sidebar header on inner, opening the same menu.
+- STORY-085-R1-5 (medium): `PG-B-DataRoom.dc.html`, steps 13-14. No board shows the file picker result or the upload row. Fix: draw one upload row in "Recently added" with a progress line and a failed state with "Try again".
+- STORY-085-R1-6 (medium): `PG-B-Rules.dc.html`, step 16. Fold to outer with an agent thread open is still unspecified. Fix: add to Shared rules: "Fold to outer keeps the open thread; Back returns to the page you came from. Selection and scroll are kept across all posture changes."
+- STORY-085-R1-7 (low): `PG-B-CapTable.dc.html`. "Carta is connected / Reconnect" is permanent chrome. Fix: show the line only when Not connected or Expired (already in the rule card).
+- STORY-085-R1-8 (low): `PG-B-CapTable.dc.html`. Legend and Holders list state the same names and percentages. Fix: drop the legend text and color the holder rows with the ring swatch, or drop the percentage column from the list.
+- STORY-085-R1-9 (low): `PG-B-Legal.dc.html`. The scan summary card repeats the Deadlines tab, and scan and refresh icons are near duplicates. Fix: show the card only when a scan failed or never ran; keep one "scan" icon and remove refresh.
+- STORY-085-R1-10 (low): all four `PG-B-*` outer boards. The refresh icon in the side capsule is used by no step. Fix: refresh on open and pull to refresh; remove the button.
+- STORY-085-R1-11 (low): `Desk.dc.html`. No tinted prominent action, and the "..." menu has no step. Fix: remove "..." (put its items, if any, in the agent header) and make the composer send button the single tinted control once text is entered.
+- STORY-085-R1-12 (low): `PG-B-Finance.dc.html`, `PG-B-DataRoom.dc.html`. Upcoming (Finance) and search/filter (Data room) are used by no step. Fix: keep Upcoming only if it has rows; drop the Data room filter button.

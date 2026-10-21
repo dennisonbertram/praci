@@ -1,0 +1,931 @@
+{
+ "PH-Home": {
+  "layout": {
+   "viewport": {
+    "width": 393,
+    "height": 852,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     4,
+     6,
+     7,
+     8,
+     9,
+     10,
+     12,
+     14,
+     16,
+     18
+    ],
+    "offScale": [
+     6,
+     7,
+     9,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "15px",
+     "12px",
+     "32px",
+     "16px",
+     "13px",
+     "11px"
+    ],
+    "sizes": {
+     "15px/600": 2,
+     "12px/600": 1,
+     "32px/600": 1,
+     "16px/500": 4,
+     "13px/400": 10,
+     "11px/600": 3,
+     "16px/400": 5,
+     "12px/400": 7,
+     "15px/500": 3,
+     "13px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      16,
+      17
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"AB\"",
+     "children": 3,
+     "gaps": [
+      215,
+      8
+     ]
+    },
+    {
+     "container": "a \"Finance[N] mo\"",
+     "children": 4,
+     "widths": [
+      20,
+      218,
+      41,
+      16
+     ]
+    },
+    {
+     "container": "a \"Legal2\"",
+     "children": 4,
+     "widths": [
+      20,
+      251,
+      8,
+      16
+     ]
+    },
+    {
+     "container": "a \"Cap table\"",
+     "children": 3,
+     "widths": [
+      20,
+      259,
+      16
+     ],
+     "gaps": [
+      12,
+      24
+     ]
+    },
+    {
+     "container": "a \"Data room\"",
+     "children": 3,
+     "widths": [
+      20,
+      259,
+      16
+     ],
+     "gaps": [
+      12,
+      24
+     ]
+    },
+    {
+     "container": "a \"Artifacts\"",
+     "children": 3,
+     "widths": [
+      20,
+      259,
+      16
+     ],
+     "gaps": [
+      12,
+      24
+     ]
+    },
+    {
+     "container": "div \"ACTIVITYSee all\"",
+     "children": 2,
+     "widths": [
+      53,
+      37
+     ]
+    },
+    {
+     "container": "div \"Finance agentYesterday\"",
+     "children": 2,
+     "widths": [
+      106,
+      54
+     ]
+    },
+    {
+     "container": "a \"CCarta agent2:44 PMThe option \"",
+     "children": 2,
+     "widths": [
+      40,
+      301
+     ]
+    },
+    {
+     "container": "div \"Carta agent2:44 PM\"",
+     "children": 2,
+     "widths": [
+      88,
+      47
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.gbtn \"AB\""
+   ]
+  }
+ },
+ "PH-Thread": {
+  "layout": {
+   "viewport": {
+    "width": 393,
+    "height": 852,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     3,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16
+    ],
+    "offScale": [
+     3,
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "15px",
+     "17px",
+     "13px",
+     "14px",
+     "12px",
+     "16px"
+    ],
+    "sizes": {
+     "15px/600": 2,
+     "17px/600": 1,
+     "15px/400": 3,
+     "13px/400": 2,
+     "14px/600": 1,
+     "12px/400": 1,
+     "14px/400": 3,
+     "16px/400": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"Inbox agent\"",
+     "children": 3,
+     "widths": [
+      46,
+      158,
+      90
+     ],
+     "gaps": [
+      8,
+      59
+     ]
+    },
+    {
+     "container": "div \"Re: Pilot timelineNeeds approv\"",
+     "children": 2,
+     "widths": [
+      114,
+      85
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button \"Save\"",
+    "button \"Send\""
+   ]
+  }
+ },
+ "PH-Inbox": {
+  "layout": {
+   "viewport": {
+    "width": 393,
+    "height": 852,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14
+    ],
+    "offScale": [
+     6,
+     10,
+     14
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "15px",
+     "32px",
+     "13px",
+     "16px",
+     "14px",
+     "12px"
+    ],
+    "sizes": {
+     "15px/600": 1,
+     "32px/600": 1,
+     "13px/600": 3,
+     "13px/400": 10,
+     "16px/400": 5,
+     "14px/400": 16,
+     "16px/600": 3,
+     "12px/500": 3,
+     "13px/500": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div",
+     "children": 3,
+     "widths": [
+      46,
+      90,
+      46
+     ],
+     "gaps": [
+      171,
+      8
+     ]
+    },
+    {
+     "container": "a \"Ana Ruiz10:30 AMRe: Pilot time\"",
+     "children": 2,
+     "heights": [
+      8,
+      39
+     ],
+     "widths": [
+      8,
+      341
+     ],
+     "topDriftPx": 16
+    },
+    {
+     "container": "a \"Jordan Lee8:20 AMIntro: design\"",
+     "children": 2,
+     "heights": [
+      8,
+      39
+     ],
+     "widths": [
+      8,
+      341
+     ],
+     "topDriftPx": 16
+    },
+    {
+     "container": "div \"Jordan Lee8:20 AM\"",
+     "children": 2,
+     "widths": [
+      82,
+      50
+     ]
+    },
+    {
+     "container": "a \"Northwind SupportOct 18Your ti\"",
+     "children": 2,
+     "heights": [
+      8,
+      39
+     ],
+     "widths": [
+      8,
+      341
+     ],
+     "topDriftPx": 16
+    },
+    {
+     "container": "div \"Northwind SupportOct 18\"",
+     "children": 2,
+     "widths": [
+      139,
+      40
+     ]
+    },
+    {
+     "container": "div \"Acme Payroll3:25 PM\"",
+     "children": 2,
+     "widths": [
+      100,
+      50
+     ]
+    },
+    {
+     "container": "div \"Example Weekly3:02 PM\"",
+     "children": 2,
+     "widths": [
+      126,
+      50
+     ]
+    },
+    {
+     "container": "div \"Deals Daily2:41 PM\"",
+     "children": 2,
+     "widths": [
+      85,
+      50
+     ]
+    },
+    {
+     "container": "a \"Rivera StudioOct 17Draft logos\"",
+     "children": 2,
+     "heights": [
+      8,
+      39
+     ],
+     "widths": [
+      8,
+      341
+     ],
+     "topDriftPx": 16
+    },
+    {
+     "container": "div \"Rivera StudioOct 17\"",
+     "children": 2,
+     "widths": [
+      97,
+      40
+     ]
+    },
+    {
+     "container": "a \"Example BankOct 16Statement is\"",
+     "children": 2,
+     "heights": [
+      8,
+      39
+     ],
+     "widths": [
+      8,
+      341
+     ],
+     "topDriftPx": 16
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [],
+   "unevenRowsTruncated": true
+  }
+ },
+ "PH-Computer": {
+  "layout": {
+   "viewport": {
+    "width": 810,
+    "height": 882,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div",
+     "w": 393,
+     "h": 170,
+     "fillPct": 0,
+     "pctOfViewport": 9
+    },
+    {
+     "el": "div",
+     "w": 393,
+     "h": 170,
+     "fillPct": 0,
+     "pctOfViewport": 9
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     2,
+     3,
+     4,
+     6,
+     8,
+     10,
+     14,
+     18,
+     24
+    ],
+    "offScale": [
+     3,
+     6,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "13px",
+     "15px",
+     "14px",
+     "16px"
+    ],
+    "sizes": {
+     "13px/600": 2,
+     "15px/600": 3,
+     "14px/600": 1,
+     "14px/500": 10,
+     "16px/600": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": []
+   },
+   "smallTargets": [],
+   "lowContrast": [
+    {
+     "el": "button \"Team\"",
+     "ratio": 1.02
+    }
+   ],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"TeamPrivateWatching\"",
+     "children": 3,
+     "widths": [
+      46,
+      150,
+      108
+     ],
+     "gaps": [
+      8,
+      49
+     ]
+    },
+    {
+     "container": "div.clear \"TeamPrivate\"",
+     "children": 2,
+     "widths": [
+      64,
+      74
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button \"Team\"",
+    "button \"Private\"",
+    "button \"Take control\"",
+    "button \"Esc\"",
+    "button \"Tab\"",
+    "button \"Ctrl\"",
+    "button \"←\"",
+    "button \"↓\"",
+    "button \"↑\"",
+    "button \"→\""
+   ]
+  }
+ },
+ "PH-Spaces": {
+  "layout": {
+   "viewport": {
+    "width": 393,
+    "height": 852,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div",
+     "w": 393,
+     "h": 852,
+     "fillPct": 0,
+     "pctOfViewport": 100
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     4,
+     6,
+     7,
+     8,
+     9,
+     10,
+     12,
+     14,
+     16,
+     18
+    ],
+    "offScale": [
+     6,
+     7,
+     9,
+     10,
+     14,
+     18
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      14,
+      16
+     ],
+     [
+      16,
+      18
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "15px",
+     "12px",
+     "32px",
+     "16px",
+     "13px",
+     "11px",
+     "17px"
+    ],
+    "sizes": {
+     "15px/600": 2,
+     "12px/600": 1,
+     "32px/600": 1,
+     "16px/500": 4,
+     "13px/400": 10,
+     "11px/600": 3,
+     "16px/400": 5,
+     "12px/400": 7,
+     "15px/500": 3,
+     "13px/600": 1,
+     "17px/400": 5
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      16,
+      17
+     ]
+    ]
+   },
+   "smallTargets": [],
+   "lowContrast": [],
+   "overlaps": [
+    {
+     "a": "a \"Inbox3 need reply42\"",
+     "b": "button.mi \"Personal\"",
+     "w": 260,
+     "h": 44
+    },
+    {
+     "a": "a \"Finance[N] mo\"",
+     "b": "button.mi \"Side project\"",
+     "w": 260,
+     "h": 35
+    },
+    {
+     "a": "a \"Legal2\"",
+     "b": "button.mi \"New space\"",
+     "w": 260,
+     "h": 42
+    },
+    {
+     "a": "a \"Cap table\"",
+     "b": "button.mi \"Space settings\"",
+     "w": 260,
+     "h": 44
+    }
+   ],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"AB\"",
+     "children": 3,
+     "gaps": [
+      215,
+      8
+     ]
+    },
+    {
+     "container": "a \"Finance[N] mo\"",
+     "children": 4,
+     "widths": [
+      20,
+      218,
+      41,
+      16
+     ]
+    },
+    {
+     "container": "a \"Legal2\"",
+     "children": 4,
+     "widths": [
+      20,
+      251,
+      8,
+      16
+     ]
+    },
+    {
+     "container": "a \"Cap table\"",
+     "children": 3,
+     "widths": [
+      20,
+      259,
+      16
+     ],
+     "gaps": [
+      12,
+      24
+     ]
+    },
+    {
+     "container": "a \"Data room\"",
+     "children": 3,
+     "widths": [
+      20,
+      259,
+      16
+     ],
+     "gaps": [
+      12,
+      24
+     ]
+    },
+    {
+     "container": "a \"Artifacts\"",
+     "children": 3,
+     "widths": [
+      20,
+      259,
+      16
+     ],
+     "gaps": [
+      12,
+      24
+     ]
+    },
+    {
+     "container": "div \"ACTIVITYSee all\"",
+     "children": 2,
+     "widths": [
+      53,
+      37
+     ]
+    },
+    {
+     "container": "div \"Finance agentYesterday\"",
+     "children": 2,
+     "widths": [
+      106,
+      54
+     ]
+    },
+    {
+     "container": "a \"CCarta agent2:44 PMThe option \"",
+     "children": 2,
+     "widths": [
+      40,
+      301
+     ]
+    },
+    {
+     "container": "div \"Carta agent2:44 PM\"",
+     "children": 2,
+     "widths": [
+      88,
+      47
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": [
+    "button.gbtn \"AB\"",
+    "button.mi \"Northwind\"",
+    "button.mi \"Side project\""
+   ]
+  }
+ }
+}

@@ -1,0 +1,80 @@
+{
+  "mode": "judge",
+  "images": [],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 25,
+      "costUsd": 0.064432,
+      "result": {
+        "scores": {
+          "A": {
+            "criteria": 2,
+            "simplicity": 3,
+            "consistency": 2,
+            "usability": 2,
+            "visual": 3,
+            "effort": 5
+          },
+          "B": {
+            "criteria": 3,
+            "simplicity": 3,
+            "consistency": 3,
+            "usability": 4,
+            "visual": 3,
+            "effort": 4
+          },
+          "C": {
+            "criteria": 5,
+            "simplicity": 4,
+            "consistency": 5,
+            "usability": 5,
+            "visual": 4,
+            "effort": 3
+          }
+        },
+        "winner": "C",
+        "graft": "From B: title the shared sheet 'Edit draft' when opened from a card, distinguishing it from new-mail Compose without adding card copy.",
+        "defense": "C best serves the founder: explicit Edit (plus body tap) opens a native prefilled sheet where Cc gets contact suggestions and the time can be edited directly, then Done and Send — no extra Save decision because autosave removes it, leaving Send as the sole tinted action. It also uniquely unifies Compose X 'Save draft' with the card draft and collapses superseded cards to 'Replaced'. A is cheapest but forces a typed agent round-trip, cannot disambiguate Jordan Lee via a Cc picker, risks unwanted body rewrites, and is not fewest-tap. B is direct and reusable, but keeps a redundant Save draft alongside Done (two commit points, ambiguous meaning), leaves Compose-X equivalence unspecified, and omits the Replaced state. C's autosave/unified-store work is moderate but safe to build now in a greenfield SwiftUI app using native sheet and Discard/Keep-editing patterns."
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 30,
+      "costUsd": 0.022122,
+      "result": {
+        "scores": {
+          "A": {
+            "criteria": 2,
+            "simplicity": 3,
+            "consistency": 2,
+            "usability": 2,
+            "visual": 3,
+            "effort": 5
+          },
+          "B": {
+            "criteria": 3,
+            "simplicity": 3,
+            "consistency": 3,
+            "usability": 3,
+            "visual": 3,
+            "effort": 4
+          },
+          "C": {
+            "criteria": 5,
+            "simplicity": 5,
+            "consistency": 5,
+            "usability": 5,
+            "visual": 5,
+            "effort": 4
+          }
+        },
+        "winner": "C",
+        "graft": "From B, adopt the explicit \"Edit draft\" navigation title on the prefilled PG-A-Compose sheet so users immediately distinguish editing an in-place card from starting a new mail.",
+        "defense": "C is the only proposal that resolves every open question while honoring the founder's minimum-tap workflow and iOS conventions. By treating an agent-generated draft as already saved, C eliminates the confusing \"Save\" vs. \"Save draft\" action and replaces it with an explicit \"Edit\" button (plus body tap), keeping the card footer to two crisp actions with \"Send\" as the single prominent button. Reusing PG-A-Compose as the edit sheet provides native Cc autocomplete for adding Jordan Lee, inline recipient error states, unified draft persistence with Compose X, and a clean collapsed \"Replaced\" state when the agent regenerates a card in chat. Proposal A fails usability for surgical edits: forcing the founder to prompt the agent in chat to add a Cc and change a meeting time adds LLM round-trip latency, removes contact autocomplete, and clutters the thread with replaced cards. Proposal B enables direct editing via PG-A-Compose, but hides the entry point behind an unlabelled body tap, retains the redundant \"Save draft\" footer button alongside in-place edits, and leaves the \"Replaced\" card state undefined."
+      }
+    }
+  ]
+}
