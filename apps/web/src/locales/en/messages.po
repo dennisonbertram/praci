@@ -7926,6 +7926,10 @@ msgstr "Select a bot"
 msgid "Select a connected model"
 msgstr "Select a connected model"
 
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Select all"
+msgstr "Select all"
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Select an item to see its relations."
 msgstr "Select an item to see its relations."
@@ -9318,6 +9322,10 @@ msgstr "Undid {restored}, skipped {skipped}"
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Undo"
 msgstr "Undo"
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Undone"
+msgstr "Undone"
 
 #: src/components/finance/ui.tsx
 #: src/components/MailApprovalCard.tsx

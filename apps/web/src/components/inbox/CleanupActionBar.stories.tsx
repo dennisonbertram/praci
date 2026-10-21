@@ -14,14 +14,9 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-/** A choice that touches nothing is disabled, such as Unsubscribe when no ticked sender has a link. */
+/** A choice that touches nothing is left out, such as Unsubscribe when no ticked sender has a link. */
 export const SomeEmpty: Story = {
   args: { counts: { archive: 12, unsubscribe: 0, skip_inbox: 12, spam: 12 } },
-};
-
-/** Nothing ticked. */
-export const NothingTicked: Story = {
-  args: { counts: { archive: 0, unsubscribe: 0, skip_inbox: 0, spam: 0 } },
 };
 
 /** An action is running. */
