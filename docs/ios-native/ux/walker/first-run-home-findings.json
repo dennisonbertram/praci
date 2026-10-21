@@ -172,8 +172,8 @@
   "phase_issue": "#419",
   "quick_fix": false,
   "suggested_fix": "Draw inner (380pt card on 2/3) and half-folded (card left, sheet right) boards for Sign in and Server.",
-  "status": "open",
-  "note": "Sign in and Server are still drawn only for the outer display; no inner or half-folded frame. Sign-in does not appear on Inner, Split or Main."
+  "status": "resolved",
+  "note": "PG-B-SignIn draws \"Inner display, flat\" with the form in the right pane and an inner/half-folded rule card; PG-B-Server states the sheet is the same on every display (text only, no inner frame)."
  },
  {
   "id": "F-first-run-home-012",
@@ -348,8 +348,8 @@
   "phase_issue": "#415",
   "quick_fix": false,
   "suggested_fix": "Add a Home variant with Pinned and a section and the organize sheet; show unread on rows.",
-  "status": "open",
-  "note": "Home draws a Pinned section and unread dots, but no long-press organize sheet, section creation or collapsed section (STORY-020)."
+  "status": "resolved",
+  "note": "PG-A-Home draws the organize sheet (Pin, Silence notifications, Move to, New section, Cancel), a Pinned section and a collapsed INVESTORS section. Name field and Rename are new finding R3-010."
  },
  {
   "id": "F-first-run-home-023",
@@ -413,7 +413,7 @@
   "quick_fix": false,
   "suggested_fix": "Raise link size and tap area to 44 pt and check contrast.",
   "status": "open",
-  "note": "Custom server, Forgot password and Sign up links are still small grey text (about 13 pt) on all Sign in, Sign up and Reset frames."
+  "note": "Forgot password? and Use a custom server are still small grey text (about 13 pt) on Sign in, Sign up and Reset frames; Sign up is now a button. Use a custom server is the only route to a self-hosted server before sign-in."
  },
  {
   "id": "F-first-run-home-027",
@@ -429,7 +429,7 @@
   "quick_fix": true,
   "suggested_fix": "Use 'Try again' in the Sign in rule card.",
   "status": "open",
-  "note": "Home and rule cards use \"Try again\"; Sign in and Server use \"Retry\" (PG-B-SignIn has both)."
+  "note": "Sign in and Server use \"Retry\"; Home, Activity, PG-A-Rules use \"Try again\" (7 vs 2 uses in rule cards)."
  },
  {
   "id": "F-first-run-home-028",
@@ -540,8 +540,8 @@
   "phase_issue": "#414",
   "quick_fix": false,
   "suggested_fix": "Decide and document the launch mode; for first launch show Sign up or a two-choice start.",
-  "status": "open",
-  "note": "Root is still Sign in; a first-run user must tap the small \"Sign up\" link. Launch mode not stated."
+  "status": "resolved",
+  "note": "Decided and drawn: launch mode stays Sign in; Sign up is a visible secondary button (PG-B-SignIn rule card)."
  },
  {
   "id": "F-first-run-home-R1-007",
@@ -556,8 +556,8 @@
   "phase_issue": "#414",
   "quick_fix": false,
   "suggested_fix": "Add Server row to Settings (or change rule).",
-  "status": "open",
-  "note": "Server sheet draws a \"Signed in: confirm switch\" frame, but Settings has no Server row, so a signed-in user has no entry to it."
+  "status": "resolved",
+  "note": "Settings now has a Server row (Default) with a frame where it opens the Server sheet; Account also has one."
  },
  {
   "id": "F-first-run-home-R1-008",
@@ -610,7 +610,7 @@
  {
   "id": "F-first-run-home-R2-001",
   "story_id": "STORY-012, STORY-017, STORY-018",
-  "severity": "medium",
+  "severity": "low",
   "category": "consistency",
   "criterion": "Visual consistency",
   "description": "Same object is called agent and bot: Home says 'No agents yet' and the New menu says 'New agent', but the sheet is 'New bot', the page is 'Bot settings', Settings has 'Archived bots', and the chat menu says 'Agent settings'.",
@@ -621,7 +621,7 @@
   "quick_fix": true,
   "suggested_fix": "Pick one word (README says bots; Expo uses agent in the New menu) and apply it on every board, menu, sheet title and rule card.",
   "status": "open",
-  "note": "New in round 2"
+  "note": "Mostly fixed: sheet \"New agent\", page \"Agent settings\". Remaining \"bot\" strings: Settings \"Archived bots\", \"No archived bots\", \"bots cannot reply\", \"bots do not keep summaries\" (PG-B-Settings); PG-B-Rules \"Bot\" names. Severity lowered to low."
  },
  {
   "id": "F-first-run-home-R2-002",
@@ -636,8 +636,8 @@
   "phase_issue": "",
   "quick_fix": false,
   "suggested_fix": "Draw Clear and Delete confirmations stating what is removed; make the Archive alert name the bot and say where it goes.",
-  "status": "open",
-  "note": "New in round 2"
+  "status": "resolved",
+  "note": "PG-A-Thread draws \"Clear this chat?\" and \"Delete this chat?\" alerts with Cancel and a red action; Archive has an Undo toast."
  },
  {
   "id": "F-first-run-home-R2-003",
@@ -652,8 +652,8 @@
   "phase_issue": "",
   "quick_fix": true,
   "suggested_fix": "Update the rule card copy to match the drawn frame.",
-  "status": "open",
-  "note": "New in round 2"
+  "status": "resolved",
+  "note": "\"Tap +\" text is gone from the rule cards; Empty space frame matches."
  },
  {
   "id": "F-first-run-home-R2-004",
@@ -668,7 +668,151 @@
   "phase_issue": "",
   "quick_fix": true,
   "suggested_fix": "Use the same labeled Save control on Space settings.",
+  "status": "resolved",
+  "note": "Space settings now uses a labeled Save button like Bot and Group settings."
+ },
+ {
+  "id": "F-first-run-home-R3-001",
+  "story_id": "STORY-126, STORY-008",
+  "severity": "medium",
+  "category": "flow",
+  "criterion": "flow",
+  "description": "The \"Switch server?\" alert says saved conversations are removed but not that messages Waiting to send and unsent drafts are lost, while Sign in \"Session ended\" promises \"Unsent drafts are kept\". After Switch the user lands on Sign in with no note that the server changed.",
+  "expected": "The journey step is drawn and consistent with the README rules.",
+  "actual": "The \"Switch server?\" alert says saved conversations are removed but not that messages Waiting to send and unsent drafts are lost, while Sign in \"Session ended\" promises \"Unsent drafts are kept\". After Switch the user lands on Sign in with no note that the server changed.",
+  "board": "PG-B-Server, PG-B-SignIn",
+  "phase_issue": "#414",
+  "quick_fix": false,
+  "suggested_fix": "Add one line to the alert about unsent messages (or keep them) and use one drafts rule for both paths; show the new host on Sign in after Switch.",
   "status": "open",
-  "note": "New in round 2"
+  "note": "New in round 3"
+ },
+ {
+  "id": "F-first-run-home-R3-002",
+  "story_id": "STORY-016, STORY-109, STORY-110, STORY-012",
+  "severity": "medium",
+  "category": "flow",
+  "criterion": "flow",
+  "description": "The space title menu and the New menu (New agent, New group, New space) are drawn only on the outer display (PG-A-Home, PG-B-Spaces) and, for the space menu, on PH-Spaces. The inner sidebar (Split, Inner) shows \"Personal v\" and New but no open menu; PH-Home has no open New menu.",
+  "expected": "The journey step is drawn and consistent with the README rules.",
+  "actual": "The space title menu and the New menu (New agent, New group, New space) are drawn only on the outer display (PG-A-Home, PG-B-Spaces) and, for the space menu, on PH-Spaces. The inner sidebar (Split, Inner) shows \"Personal v\" and New but no open menu; PH-Home has no open New menu.",
+  "board": "Split, Inner, PH-Home",
+  "phase_issue": "#415",
+  "quick_fix": false,
+  "suggested_fix": "Add an open space menu and New menu frame to Split and PH-Home.",
+  "status": "open",
+  "note": "New in round 3"
+ },
+ {
+  "id": "F-first-run-home-R3-003",
+  "story_id": "STORY-015, STORY-109",
+  "severity": "low",
+  "category": "consistency",
+  "criterion": "consistency",
+  "description": "The \"Switching to Northwind\" frame shows only a skeleton; there is no failure or way back if the switch fails (offline, space removed).",
+  "expected": "The journey step is drawn and consistent with the README rules.",
+  "actual": "The \"Switching to Northwind\" frame shows only a skeleton; there is no failure or way back if the switch fails (offline, space removed).",
+  "board": "PG-B-Spaces, PH-Spaces",
+  "phase_issue": "#415",
+  "quick_fix": false,
+  "suggested_fix": "Draw a switch failure frame with the previous space restored and a Try again.",
+  "status": "open",
+  "note": "New in round 3"
+ },
+ {
+  "id": "F-first-run-home-R3-004",
+  "story_id": "STORY-012",
+  "severity": "low",
+  "category": "hierarchy",
+  "criterion": "hierarchy",
+  "description": "Empty space frame offers a \"New agent\" pill and the floating New button for the same action.",
+  "expected": "The journey step is drawn and consistent with the README rules.",
+  "actual": "Empty space frame offers a \"New agent\" pill and the floating New button for the same action.",
+  "board": "PG-A-Home",
+  "phase_issue": "#415",
+  "quick_fix": false,
+  "suggested_fix": "Drop one of them; keep the floating New (one prominent action).",
+  "status": "open",
+  "note": "New in round 3"
+ },
+ {
+  "id": "F-first-run-home-R3-005",
+  "story_id": "STORY-007, STORY-112",
+  "severity": "low",
+  "category": "consistency",
+  "criterion": "consistency",
+  "description": "After delete shows \"Have an account? Sign in\" as a link, but the Sign up board uses a secondary \"Sign in\" button. The After delete frame also shows the Sign up screen with a banner, unlike the SignUp frames.",
+  "expected": "The journey step is drawn and consistent with the README rules.",
+  "actual": "After delete shows \"Have an account? Sign in\" as a link, but the Sign up board uses a secondary \"Sign in\" button. The After delete frame also shows the Sign up screen with a banner, unlike the SignUp frames.",
+  "board": "PG-B-Account, PG-B-SignUp",
+  "phase_issue": "#415",
+  "quick_fix": false,
+  "suggested_fix": "Reuse the Sign up frame (secondary Sign in button) under the banner.",
+  "status": "open",
+  "note": "New in round 3"
+ },
+ {
+  "id": "F-first-run-home-R3-006",
+  "story_id": "STORY-004",
+  "severity": "low",
+  "category": "consistency",
+  "criterion": "consistency",
+  "description": "The Confirm your email screen has no Back chevron on PG-B-SignUp but has one on PG-B-ForgotPassword; \"Use a different email\" is the only way out in the first.",
+  "expected": "The journey step is drawn and consistent with the README rules.",
+  "actual": "The Confirm your email screen has no Back chevron on PG-B-SignUp but has one on PG-B-ForgotPassword; \"Use a different email\" is the only way out in the first.",
+  "board": "PG-B-SignUp, PG-B-ForgotPassword",
+  "phase_issue": "#414",
+  "quick_fix": false,
+  "suggested_fix": "Draw the same screen once and reference it.",
+  "status": "open",
+  "note": "New in round 3"
+ },
+ {
+  "id": "F-first-run-home-R3-007",
+  "story_id": "STORY-126",
+  "severity": "low",
+  "category": "flow",
+  "criterion": "flow",
+  "description": "Server sheet has two entry rows (Settings and Account) for one task.",
+  "expected": "The journey step is drawn and consistent with the README rules.",
+  "actual": "Server sheet has two entry rows (Settings and Account) for one task.",
+  "board": "PG-B-Settings, PG-B-Account",
+  "phase_issue": "#414",
+  "quick_fix": false,
+  "suggested_fix": "Keep one entry (Account, next to Sign out) or state that both are intended.",
+  "status": "open",
+  "note": "New in round 3"
+ },
+ {
+  "id": "F-first-run-home-R3-008",
+  "story_id": "STORY-015",
+  "severity": "low",
+  "category": "layout",
+  "criterion": "layout",
+  "description": "The New space sheet is about half empty below one Name field.",
+  "expected": "The journey step is drawn and consistent with the README rules.",
+  "actual": "The New space sheet is about half empty below one Name field.",
+  "board": "PG-B-NewSpace",
+  "phase_issue": "#415",
+  "quick_fix": false,
+  "suggested_fix": "Use a smaller detent or leave as medium by rule; confirm.",
+  "status": "open",
+  "note": "New in round 3"
+ },
+ {
+  "id": "F-first-run-home-R3-009",
+  "story_id": "STORY-020",
+  "severity": "low",
+  "category": "simplicity",
+  "criterion": "simplicity",
+  "description": "Section creation (name field with Create) and Rename section are specified in DS-04 text but not drawn on Home or the inner sidebar; long-press has no visible hint.",
+  "expected": "The journey step is drawn and consistent with the README rules.",
+  "actual": "Section creation (name field with Create) and Rename section are specified in DS-04 text but not drawn on Home or the inner sidebar; long-press has no visible hint.",
+  "board": "PG-A-Home",
+  "phase_issue": "#419",
+  "quick_fix": false,
+  "suggested_fix": "Draw the name field frame and a rename frame; add a VoiceOver action line.",
+  "status": "open",
+  "note": "New in round 3"
  }
 ]

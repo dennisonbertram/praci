@@ -5,75 +5,75 @@
     {
       "model": "meta/muse-wonder",
       "ok": true,
-      "seconds": 24,
-      "costUsd": 0.0548,
+      "seconds": 41,
+      "costUsd": 0.087268,
       "result": {
         "scores": {
           "A": {
-            "criteria": 5,
+            "criteria": 4,
             "simplicity": 4,
             "consistency": 5,
-            "usability": 5,
+            "usability": 3,
             "visual": 4,
             "effort": 5
           },
           "B": {
             "criteria": 3,
-            "simplicity": 5,
+            "simplicity": 2,
             "consistency": 3,
+            "usability": 3,
+            "visual": 2,
+            "effort": 2
+          },
+          "C": {
+            "criteria": 2,
+            "simplicity": 4,
+            "consistency": 5,
             "usability": 3,
             "visual": 4,
             "effort": 3
-          },
-          "C": {
-            "criteria": 4,
-            "simplicity": 5,
-            "consistency": 5,
-            "usability": 4,
-            "visual": 5,
-            "effort": 5
           }
         },
         "winner": "A",
-        "graft": "From C: also allow scrim-tap/swipe-down to dismiss the sheet and keep editing, as a secondary path to A's explicit Keep editing action.",
-        "defense": "A is the only proposal that explicitly satisfies every criterion: persistent Send in the same place in all frames, no Done, dimmed Send for missing/invalid recipients, and exactly one conditional close sheet. Its explicit Keep editing removes any dead end when reopening or closing an edited draft. B fails the stated one-sheet requirement, does not state dimming, and replaces a deliberate choice with transient toast recovery—risking unwanted autosaved drafts, a missed Delete window, and extra autosave/toast engineering. C is a strong, native runner-up, but as written it omits dimming and makes Keep editing discoverable only via the scrim; on this small display and for non-expert users that hidden gesture is weaker than A's labelled action, despite C's cleaner two-button sheet."
+        "graft": "From C: add its single post-Archive Undo toast, shown once, while keeping A's separate Archive confirm for bulk scope.",
+        "defense": "A literally delivers separate Archive and Unsubscribe confirms, one More entry on every board including replacing the Duo capsule, and Skip-inbox removal, without adding glass or competing tinted actions. B improves discovery but its capsule on every Inner/Sheet/Split bar risks the three-glass-group and one-prominent-action rules, crowds bars, and puts a bulk tool in single-message contexts. C does not meet 'separate confirms': it replaces the Archive confirm with an expiring Undo toast, risky for multi-sender bulk archive unlike single-message Apple Mail swipes, and its Done-view unsubscribe prompt re-links the separated actions. The graft supplies A's missing one-time Undo without waiving the required confirm."
       }
     },
     {
       "model": "google/gemini-4-argon",
       "ok": true,
-      "seconds": 32,
-      "costUsd": 0.019368,
+      "seconds": 49,
+      "costUsd": 0.036292,
       "result": {
         "scores": {
           "A": {
             "criteria": 5,
             "simplicity": 5,
             "consistency": 5,
-            "usability": 5,
-            "visual": 5,
+            "usability": 4,
+            "visual": 4,
             "effort": 5
           },
           "B": {
-            "criteria": 3,
-            "simplicity": 3,
+            "criteria": 4,
+            "simplicity": 2,
             "consistency": 3,
             "usability": 3,
-            "visual": 4,
-            "effort": 2
+            "visual": 2,
+            "effort": 3
           },
           "C": {
-            "criteria": 4,
+            "criteria": 3,
             "simplicity": 4,
-            "consistency": 4,
-            "usability": 3,
-            "visual": 4,
+            "consistency": 5,
+            "usability": 5,
+            "visual": 5,
             "effort": 4
           }
         },
         "winner": "A",
-        "graft": null,
-        "defense": "Proposal A directly satisfies every acceptance criterion with the lowest risk and highest usability: it places the Send arrow in every compose frame, removes the ambiguous Done capsule, dims Send when recipients are missing or invalid, and unifies the two conflicting close prompts into a single sheet ('Save draft / Discard / Keep editing') triggered on X only when edits exist. Proposal B fails the 'one close sheet' criterion, clutters Drafts when users miss the transient delete toast, and introduces a new floating toast state on the return view that risks violating glass-group constraints. Proposal C is close to A, but omitting an explicit 'Keep editing' / 'Cancel' button and relying solely on tapping the scrim deviates from native SwiftUI confirmationDialog behavior and harms discoverability and accessibility."
+        "graft": "From C, graft the post-Archive Done-view action ('Unsubscribe from N senders') that launches the separate Unsubscribe confirmation dialog, so users who want both outcomes do not have to re-tick the same senders.",
+        "defense": "Proposal A wins (weighted score 56 vs. C's 51 and B's 35) because it is the only option that satisfies every acceptance criterion and visual rule without compromise. It unifies Cleanup inside the '...' More menu across all boards (fixing the PG-A-Cleanup outer-strip anomaly while keeping compact bars within the three-glass-group and minimal-copy limits), removes the unexplained 'Skip inbox for future mail' item, and provides explicit, separate confirmation sheets for bulk Archive and irreversible Unsubscribe alongside a single Undo. Against Proposal B, adding a labeled Cleanup capsule to PH-Inbox, Split, Sheet, and Inner-Message over-promotes a periodic maintenance tool into single-message and sheet chrome, crowds compact bars, and risks violating the three-glass-group cap. Against Proposal C, while C's immediate Archive with Undo toast aligns well with Apple Mail conventions, it fails the explicit acceptance criterion that 'Archive and Unsubscribe have separate confirms'—it separates the combined confirm into one confirm and zero confirms, which is also risky when archiving across bulk senders at once. Adopting A with C's post-Archive 'Unsubscribe from N senders' follow-up preserves strict criteria compliance while keeping sequential Archive-then-Unsubscribe effortless."
       }
     }
   ]

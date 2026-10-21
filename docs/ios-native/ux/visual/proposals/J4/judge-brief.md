@@ -1,14 +1,14 @@
-# Judge brief: J4 Home order of Inbox, Pages and Personnel
+# Judge brief: J4 Home roster and section noun
 
-Product: Praci, a planned native SwiftUI iPhone app for founders (chat with agents, plus pages such as Inbox, Finance, Legal). Boards are static mockups. Rules: glass only on floating nav; solid content; one tinted prominent action per view; prefer native iOS controls; minimal copy.
+Product: Praci, a planned native SwiftUI iPhone app for founders (chat with agents, plus pages such as Inbox, Finance, Legal). Boards are static mockups. Rules: glass only on floating nav; solid content; one tinted prominent action per view; minimal copy; prefer native iOS controls.
 
-Problem: on the standard iPhone Home (393x852) the Inbox row ("3 need reply") sits in the PAGES card below the Personnel list and is cut off at the fold. The Duo sidebar (Split) orders Pages before Personnel, which disagrees with phone Home (Personnel before Pages). Personnel is sorted by recency (decided). Persona: a founder opening the app to see what needs them, then replying to mail or chatting with an agent.
+Problem: the Home section called PERSONNEL holds agents and a group, and the empty state says "No agents yet". Finance agent and Legal agent appear only in Activity (they have tasks), so they have no list entry without recent work. Standard iPhone 393x852 and Duo outer display 466x678. The Home currently shows four agent rows then PAGES. The New menu and sheet say "New agent". The group member picker lists only four agents.
 
-Current phone order: Activity card (3 rows), Personnel (4 agents, 54 px rows), Pages card (Inbox, Finance, Legal, Cap table, Data room, Team computer; 44 px rows).
+Acceptance: every agent is reachable from Home; one noun for the section; groups handled; Pages stay reachable; no new copy without need.
 
-Proposals:
-A. Move Pages above Personnel on every surface. Inbox stays first in Pages.
-B. Replace the Pages card with a wrapping strip of chips (icon, name, count) above Personnel. Inbox first chip shows "3". Row subtitles such as "6 mo runway" are dropped.
-C. Pinned smart-list row (Things Inbox / Apple Mail Inboxes / Linear Inbox): one Inbox row under the Activity card, above Personnel, removed from Pages. Same order everywhere: Activity, Inbox, Personnel, Pages.
+Options:
+A: rename to AGENTS, list every agent (7 rows) and group, recency sorted. No new control. Pages pushed lower.
+B: section becomes RECENT (4 rows); a new "Agents" row in PAGES opens a new alphabetical Agents screen with search. New route and frames.
+C: section AGENTS, 4 most recent rows (plus any unread row), then an inline "Show 3 more" disclosure row that expands in place (Things / Apple Mail Show More pattern).
 
-Score each proposal 1-5 on: (1) Inbox visible without scrolling on phone and Duo outer display, and one consistent order across Home, Main, Split [x3]; (2) simplicity [x2]; (3) consistency with system patterns [x2]; (4) usability [x2]; (5) visual quality [x2]; (6) effort and risk in SwiftUI [x1]. Return a winner, an optional graft, and a short defense.
+Score each option 1-5 on: criteria (x3), simplicity (x2), consistency (x2), usability (x2), visual (x2), effort and risk (x1; 5 = small and safe). Return JSON with scores per option, winner, optional graft and a short defense.

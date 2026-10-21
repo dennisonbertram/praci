@@ -2,22 +2,14 @@
  "PG-A-Home": {
   "layout": {
    "viewport": {
-    "width": 1600,
-    "height": 1000,
-    "pageScrollY": 436,
-    "pageScrollX": 336
+    "width": 1936,
+    "height": 2163,
+    "pageScrollY": 0,
+    "pageScrollX": 0
    },
    "offscreenPrimary": [],
    "scrollers": [],
-   "deadSpace": [
-    {
-     "el": "div",
-     "w": 466,
-     "h": 678,
-     "fillPct": 0,
-     "pctOfViewport": 20
-    }
-   ],
+   "deadSpace": [],
    "spacing": {
     "observed": [
      1,
@@ -80,20 +72,27 @@
      "11px",
      "15px",
      "13px",
-     "16px"
+     "16px",
+     "14px",
+     "20px"
     ],
     "sizes": {
-     "12px/400": 49,
-     "17px/600": 7,
-     "11px/600": 40,
-     "15px/500": 9,
-     "13px/400": 60,
-     "12px/600": 11,
-     "16px/500": 19,
-     "15px/600": 9,
-     "16px/400": 56,
+     "12px/400": 66,
+     "17px/600": 9,
+     "11px/600": 55,
+     "15px/500": 15,
+     "13px/400": 78,
+     "12px/600": 15,
+     "11px/400": 15,
+     "16px/400": 69,
+     "16px/500": 26,
+     "15px/600": 12,
      "17px/400": 3,
-     "16px/600": 4
+     "15px/400": 1,
+     "13px/600": 1,
+     "16px/600": 5,
+     "14px/600": 1,
+     "20px/600": 1
     }
    },
    "alignment": {
@@ -111,73 +110,91 @@
      "a": "a \"Data room\"",
      "b": "button \"Space: Personal\"",
      "w": 376,
-     "h": 8
+     "h": 20
     },
     {
      "a": "a \"Team computerOnline\"",
      "b": "button \"Space: Personal\"",
      "w": 376,
-     "h": 28
+     "h": 16
     },
     {
      "a": "a \"Pilot planDoc\"",
-     "b": "a \"Finance agentApprove $1,200 pa\"",
+     "b": "a \"Finance agentApproval needs a \"",
      "w": 376,
-     "h": 40
+     "h": 44
     },
     {
      "a": "a \"Runway modelSheet\"",
-     "b": "a \"Finance agentApprove $1,200 pa\"",
+     "b": "a \"Finance agentApproval needs a \"",
      "w": 376,
-     "h": 14
+     "h": 6
     },
     {
-     "a": "a \"Inbox3 need reply\"",
+     "a": "a \"Inbox agentYesterdaySorted 14 \"",
      "b": "button.mi \"New agent\"",
      "w": 217,
-     "h": 41
+     "h": 27
     },
     {
      "a": "a \"Finance6 mo runway\"",
      "b": "button.mi \"New group\"",
      "w": 217,
-     "h": 41
+     "h": 29
     },
     {
      "a": "a \"Legal2 deadlines\"",
      "b": "button.mi \"New space\"",
      "w": 217,
-     "h": 41
+     "h": 29
     },
     {
      "a": "a \"Data room\"",
      "b": "button \"Space: Side project\"",
      "w": 376,
-     "h": 8
+     "h": 20
     },
     {
      "a": "a \"Team computerOnline\"",
      "b": "button \"Space: Side project\"",
      "w": 376,
-     "h": 28
-    },
-    {
-     "a": "a \"Pilot planDoc\"",
-     "b": "button \"New agent\"",
-     "w": 122,
-     "h": 23
+     "h": 16
     },
     {
      "a": "a \"Runway modelSheet\"",
      "b": "button \"New agent\"",
      "w": 122,
-     "h": 21
+     "h": 31
+    },
+    {
+     "a": "a \"Data room\"",
+     "b": "button \"Space: Personal\"",
+     "w": 376,
+     "h": 36
+    },
+    {
+     "a": "a \"Team computerOnline\"",
+     "b": "a \"Finance agentApprove $1,200 pa\"",
+     "w": 376,
+     "h": 14
+    },
+    {
+     "a": "a \"Finance6 mo runway\"",
+     "b": "button \"Cancel\"",
+     "w": 360,
+     "h": 19
+    },
+    {
+     "a": "a \"Legal2 deadlines\"",
+     "b": "button \"Cancel\"",
+     "w": 360,
+     "h": 29
     }
    ],
    "fixedOverlays": []
   },
   "geometry": {
-   "pageOverflowX": 336,
+   "pageOverflowX": 0,
    "unevenRows": [
     {
      "container": "div \"ACTIVITYSee all\"",
@@ -188,24 +205,52 @@
      ]
     },
     {
-     "container": "span \"Needs you\"",
+     "container": "span \"Needs you2m ago\"",
      "children": 2,
      "heights": [
-      26,
+      40,
       16
      ],
      "widths": [
       80,
       16
      ],
-     "topDriftPx": 5
+     "topDriftPx": 12
     },
     {
-     "container": "div \"Inbox agentYesterday\"",
+     "container": "span \"Working4m ago\"",
      "children": 2,
+     "heights": [
+      32,
+      16
+     ],
      "widths": [
-      89,
-      54
+      58,
+      16
+     ],
+     "topDriftPx": 8
+    },
+    {
+     "container": "span \"Done8:00 AM\"",
+     "children": 2,
+     "heights": [
+      32,
+      16
+     ],
+     "widths": [
+      43,
+      16
+     ],
+     "topDriftPx": 8
+    },
+    {
+     "container": "a \"Inbox3 need reply\"",
+     "children": 4,
+     "widths": [
+      20,
+      192,
+      84,
+      16
      ]
     },
     {
@@ -225,13 +270,11 @@
      ]
     },
     {
-     "container": "a \"Inbox3 need reply\"",
-     "children": 4,
+     "container": "div \"Inbox agentYesterday\"",
+     "children": 2,
      "widths": [
-      20,
-      192,
-      84,
-      16
+      89,
+      54
      ]
     },
     {
@@ -271,47 +314,32 @@
       288,
       16
      ]
-    },
-    {
-     "container": "a \"Team computerOnline\"",
-     "children": 4,
-     "widths": [
-      20,
-      225,
-      51,
-      16
-     ]
-    },
-    {
-     "container": "div \"ARTIFACTSSee all\"",
-     "children": 2,
-     "widths": [
-      64,
-      37
-     ]
     }
    ],
    "overflowSpills": [],
    "wrappedControls": [
-    "button.gbtn \"AB\"",
-    "button.gbtn \"AB\"",
-    "button.gbtn \"AB\"",
+    "button.gbtn \"AM\"",
+    "button.gbtn \"AM\"",
+    "button.gbtn \"AM\"",
+    "button \"Could not load activityTry aga\"",
     "button \"Try again\"",
-    "button.gbtn \"AB\"",
-    "button.gbtn \"AB\"",
+    "button.gbtn \"AM\"",
+    "button.gbtn \"AM\"",
     "button \"New agent\"",
-    "button.gbtn \"AB\"",
-    "button.gbtn \"AB\"",
-    "button.gbtn \"AB\""
+    "button.gbtn \"AM\"",
+    "button.gbtn \"AM\"",
+    "button.gbtn \"AM\"",
+    "button.gbtn \"AM\""
    ],
-   "unevenRowsTruncated": true
+   "unevenRowsTruncated": true,
+   "wrappedControlsTruncated": true
   }
  },
  "PG-A-Activity": {
   "layout": {
    "viewport": {
-    "width": 1600,
-    "height": 1000,
+    "width": 956,
+    "height": 2184,
     "pageScrollY": 0,
     "pageScrollX": 0
    },
@@ -323,39 +351,77 @@
      "w": 466,
      "h": 702,
      "fillPct": 10,
-     "pctOfViewport": 20
+     "pctOfViewport": 16
+    },
+    {
+     "el": "div \"Could not loadActivityCould no\"",
+     "w": 466,
+     "h": 702,
+     "fillPct": 11,
+     "pctOfViewport": 16
     },
     {
      "el": "div \"ActivityNo activityAgents appe\"",
      "w": 466,
      "h": 678,
      "fillPct": 9,
-     "pctOfViewport": 20
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div \"ActivityTODAY9:41\"",
+     "w": 466,
+     "h": 678,
+     "fillPct": 11,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div \"ActivityCould not load activit\"",
+     "w": 466,
+     "h": 678,
+     "fillPct": 9,
+     "pctOfViewport": 15
     },
     {
      "el": "div.col \"ActivityNo activityAgents appe\"",
      "w": 394,
      "h": 678,
      "fillPct": 9,
-     "pctOfViewport": 17
+     "pctOfViewport": 13
+    },
+    {
+     "el": "div.col \"ActivityCould not load activit\"",
+     "w": 394,
+     "h": 678,
+     "fillPct": 10,
+     "pctOfViewport": 13
     },
     {
      "el": "div \"No activityAgents appear here \"",
      "w": 374,
      "h": 614,
      "fillPct": 2,
-     "pctOfViewport": 14
+     "pctOfViewport": 11
+    },
+    {
+     "el": "div \"Could not load activityTry aga\"",
+     "w": 374,
+     "h": 614,
+     "fillPct": 4,
+     "pctOfViewport": 11
     }
    ],
    "spacing": {
     "observed": [
      1,
+     2,
      4,
      6,
+     8,
      9,
      10,
      12,
      14,
+     20,
      24
     ],
     "offScale": [
@@ -368,6 +434,14 @@
      [
       4,
       6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      9
      ],
      [
       9,
@@ -393,14 +467,16 @@
      "16px"
     ],
     "sizes": {
-     "12px/400": 6,
-     "28px/600": 2,
-     "11px/600": 2,
-     "15px/500": 5,
-     "13px/400": 6,
-     "12px/600": 3,
-     "13px/600": 1,
-     "16px/500": 1
+     "12px/400": 14,
+     "28px/600": 5,
+     "11px/600": 5,
+     "15px/500": 10,
+     "13px/400": 11,
+     "12px/600": 7,
+     "11px/400": 10,
+     "13px/600": 2,
+     "16px/500": 2,
+     "16px/600": 1
     }
    },
    "alignment": {
@@ -415,54 +491,157 @@
    "pageOverflowX": 0,
    "unevenRows": [
     {
-     "container": "span \"Needs you\"",
+     "container": "span \"Needs you2m ago\"",
      "children": 2,
      "heights": [
-      26,
+      40,
       16
      ],
      "widths": [
       80,
       16
      ],
-     "topDriftPx": 5
+     "topDriftPx": 12
+    },
+    {
+     "container": "span \"Working4m ago\"",
+     "children": 2,
+     "heights": [
+      32,
+      16
+     ],
+     "widths": [
+      58,
+      16
+     ],
+     "topDriftPx": 8
+    },
+    {
+     "container": "span \"Done8:00 AM\"",
+     "children": 2,
+     "heights": [
+      32,
+      16
+     ],
+     "widths": [
+      43,
+      16
+     ],
+     "topDriftPx": 8
+    },
+    {
+     "container": "span \"DoneYesterday\"",
+     "children": 2,
+     "heights": [
+      32,
+      16
+     ],
+     "widths": [
+      49,
+      16
+     ],
+     "topDriftPx": 8
+    },
+    {
+     "container": "span \"DoneYesterday\"",
+     "children": 2,
+     "heights": [
+      32,
+      16
+     ],
+     "widths": [
+      49,
+      16
+     ],
+     "topDriftPx": 8
+    },
+    {
+     "container": "span \"Needs you5m ago\"",
+     "children": 2,
+     "heights": [
+      40,
+      16
+     ],
+     "widths": [
+      80,
+      16
+     ],
+     "topDriftPx": 12
+    },
+    {
+     "container": "span \"Working4m ago\"",
+     "children": 2,
+     "heights": [
+      32,
+      16
+     ],
+     "widths": [
+      58,
+      16
+     ],
+     "topDriftPx": 8
+    },
+    {
+     "container": "span \"Done8:00 AM\"",
+     "children": 2,
+     "heights": [
+      32,
+      16
+     ],
+     "widths": [
+      43,
+      16
+     ],
+     "topDriftPx": 8
+    },
+    {
+     "container": "span \"DoneYesterday\"",
+     "children": 2,
+     "heights": [
+      32,
+      16
+     ],
+     "widths": [
+      49,
+      16
+     ],
+     "topDriftPx": 8
+    },
+    {
+     "container": "span \"DoneYesterday\"",
+     "children": 2,
+     "heights": [
+      32,
+      16
+     ],
+     "widths": [
+      49,
+      16
+     ],
+     "topDriftPx": 8
     }
    ],
    "overflowSpills": [],
-   "wrappedControls": []
+   "wrappedControls": [
+    "button \"Try again\""
+   ]
   }
  },
  "PG-A-HomeNoModel": {
   "layout": {
    "viewport": {
-    "width": 1600,
-    "height": 1000,
+    "width": 1936,
+    "height": 2163,
     "pageScrollY": 0,
-    "pageScrollX": 336
+    "pageScrollX": 0
    },
    "offscreenPrimary": [],
    "scrollers": [],
-   "deadSpace": [
-    {
-     "el": "div",
-     "w": 466,
-     "h": 678,
-     "fillPct": 0,
-     "pctOfViewport": 20
-    },
-    {
-     "el": "div",
-     "w": 466,
-     "h": 678,
-     "fillPct": 0,
-     "pctOfViewport": 20
-    }
-   ],
+   "deadSpace": [],
    "spacing": {
     "observed": [
      1,
      2,
-     3,
      4,
      6,
      7,
@@ -476,7 +655,6 @@
      24
     ],
     "offScale": [
-     3,
      6,
      7,
      10,
@@ -529,117 +707,180 @@
      "16px",
      "11px",
      "13px",
-     "20px"
+     "14px"
     ],
     "sizes": {
-     "12px/400": 12,
-     "17px/600": 6,
-     "16px/500": 8,
-     "16px/600": 4,
-     "11px/600": 11,
-     "13px/400": 21,
-     "16px/400": 24,
-     "12px/600": 4,
-     "20px/600": 2,
-     "17px/400": 6
+     "12px/400": 15,
+     "17px/600": 19,
+     "16px/600": 8,
+     "16px/400": 54,
+     "11px/600": 29,
+     "16px/500": 11,
+     "12px/600": 9,
+     "17px/400": 15,
+     "13px/400": 22,
+     "14px/400": 1
     }
    },
    "alignment": {
-    "nearMissEdges": []
+    "nearMissEdges": [
+     [
+      85,
+      86
+     ]
+    ]
    },
    "smallTargets": [
     {
-     "el": "input \"API key\"",
-     "w": 330,
+     "el": "input \"Model A API key\"",
+     "w": 328,
      "h": 22
     },
     {
      "el": "a \"Privacy details\"",
-     "w": 80,
-     "h": 16
+     "w": 86,
+     "h": 17
     },
     {
-     "el": "input \"API key\"",
-     "w": 330,
+     "el": "input \"Model A API key\"",
+     "w": 328,
      "h": 22
     },
     {
      "el": "a \"Privacy details\"",
-     "w": 80,
-     "h": 16
+     "w": 86,
+     "h": 17
+    },
+    {
+     "el": "input \"Address\"",
+     "w": 328,
+     "h": 22
+    },
+    {
+     "el": "a \"Privacy details\"",
+     "w": 86,
+     "h": 17
+    },
+    {
+     "el": "a \"Privacy details\"",
+     "w": 86,
+     "h": 17
+    },
+    {
+     "el": "input \"Model A API key\"",
+     "w": 328,
+     "h": 22
+    },
+    {
+     "el": "a \"Privacy details\"",
+     "w": 86,
+     "h": 17
     }
    ],
    "lowContrast": [],
    "overlaps": [
     {
-     "a": "a \"Cap table\"",
-     "b": "input \"API key\"",
-     "w": 330,
-     "h": 13
-    },
-    {
-     "a": "a \"Data room\"",
-     "b": "input \"API key\"",
-     "w": 330,
-     "h": 9
-    },
-    {
-     "a": "a \"Team computerOnline\"",
-     "b": "button \"Connect\"",
-     "w": 362,
-     "h": 41
+     "a": "a \"Inbox\"",
+     "b": "button.gbtn \"Cancel\"",
+     "w": 44,
+     "h": 38
     },
     {
      "a": "a \"Cap table\"",
-     "b": "input \"API key\"",
-     "w": 330,
-     "h": 13
+     "b": "input \"Model A API key\"",
+     "w": 328,
+     "h": 22
+    },
+    {
+     "a": "a \"Inbox\"",
+     "b": "button.gbtn \"Cancel\"",
+     "w": 44,
+     "h": 38
+    },
+    {
+     "a": "a \"Cap table\"",
+     "b": "input \"Model A API key\"",
+     "w": 328,
+     "h": 22
+    },
+    {
+     "a": "a \"Inbox\"",
+     "b": "button.gbtn \"Cancel\"",
+     "w": 44,
+     "h": 38
+    },
+    {
+     "a": "a \"Cap table\"",
+     "b": "input \"Address\"",
+     "w": 328,
+     "h": 22
+    },
+    {
+     "a": "a \"Inbox\"",
+     "b": "button.gbtn \"Cancel\"",
+     "w": 44,
+     "h": 38
+    },
+    {
+     "a": "a \"Cap table\"",
+     "b": "button \"Sign in\"",
+     "w": 360,
+     "h": 34
     },
     {
      "a": "a \"Data room\"",
-     "b": "input \"API key\"",
-     "w": 330,
-     "h": 9
+     "b": "button \"Sign in\"",
+     "w": 360,
+     "h": 14
     },
     {
-     "a": "a \"Team computerOnline\"",
-     "b": "button \"Connect\"",
-     "w": 362,
-     "h": 28
+     "a": "a \"Team computer\"",
+     "b": "a \"Privacy details\"",
+     "w": 86,
+     "h": 15
+    },
+    {
+     "a": "a \"Inbox\"",
+     "b": "button.gbtn \"Cancel\"",
+     "w": 44,
+     "h": 38
+    },
+    {
+     "a": "a \"Cap table\"",
+     "b": "input \"Model A API key\"",
+     "w": 328,
+     "h": 22
     }
    ],
    "fixedOverlays": []
   },
   "geometry": {
-   "pageOverflowX": 336,
+   "pageOverflowX": 0,
    "unevenRows": [
     {
-     "container": "a \"Inbox3 need reply\"",
-     "children": 4,
+     "container": "a \"Inbox\"",
+     "children": 3,
      "widths": [
       20,
-      192,
-      84,
+      288,
       16
      ]
     },
     {
-     "container": "a \"Finance6 mo runway\"",
-     "children": 4,
+     "container": "a \"Finance\"",
+     "children": 3,
      "widths": [
       20,
-      200,
-      76,
+      288,
       16
      ]
     },
     {
-     "container": "a \"Legal2 deadlines\"",
-     "children": 4,
+     "container": "a \"Legal\"",
+     "children": 3,
      "widths": [
       20,
-      207,
-      69,
+      288,
       16
      ]
     },
@@ -662,42 +903,38 @@
      ]
     },
     {
-     "container": "a \"Team computerOnline\"",
-     "children": 4,
+     "container": "a \"Team computer\"",
+     "children": 3,
      "widths": [
       20,
-      225,
-      51,
+      288,
       16
      ]
     },
     {
-     "container": "a \"Inbox3 need reply\"",
-     "children": 4,
+     "container": "a \"Inbox\"",
+     "children": 3,
      "widths": [
       20,
-      192,
-      84,
+      288,
       16
      ]
     },
     {
-     "container": "a \"Finance6 mo runway\"",
-     "children": 4,
+     "container": "a \"Finance\"",
+     "children": 3,
      "widths": [
       20,
-      200,
-      76,
+      288,
       16
      ]
     },
     {
-     "container": "a \"Legal2 deadlines\"",
-     "children": 4,
+     "container": "a \"Legal\"",
+     "children": 3,
      "widths": [
       20,
-      207,
-      69,
+      288,
       16
      ]
     },
@@ -720,12 +957,11 @@
      ]
     },
     {
-     "container": "a \"Team computerOnline\"",
-     "children": 4,
+     "container": "a \"Team computer\"",
+     "children": 3,
      "widths": [
       20,
-      225,
-      51,
+      288,
       16
      ]
     }
@@ -733,23 +969,28 @@
    "overflowSpills": [],
    "wrappedControls": [
     "button \"Connect a model\"",
-    "button.gbtn \"AB\"",
+    "button.gbtn \"AM\"",
     "button \"Connect a model\"",
-    "button \"Connect\"",
+    "button.gbtn \"AM\"",
     "button \"Connect a model\"",
-    "button \"Connect\"",
-    "button \"Message Chief\"",
-    "button.gbtn \"AB\""
+    "button.gbtn \"AM\"",
+    "button \"Connect a model\"",
+    "button.gbtn \"AM\"",
+    "button \"Connect a model\"",
+    "button.gbtn \"AM\"",
+    "button \"Sign in\"",
+    "button \"Connect a model\""
    ],
-   "unevenRowsTruncated": true
+   "unevenRowsTruncated": true,
+   "wrappedControlsTruncated": true
   }
  },
  "PG-B-Spaces": {
   "layout": {
    "viewport": {
-    "width": 1600,
-    "height": 1000,
-    "pageScrollY": 436,
+    "width": 1446,
+    "height": 1436,
+    "pageScrollY": 0,
     "pageScrollX": 0
    },
    "offscreenPrimary": [],
@@ -760,14 +1001,14 @@
      "w": 466,
      "h": 678,
      "fillPct": 0,
-     "pctOfViewport": 20
+     "pctOfViewport": 15
     },
     {
      "el": "div",
      "w": 466,
      "h": 678,
      "fillPct": 0,
-     "pctOfViewport": 20
+     "pctOfViewport": 15
     }
    ],
    "spacing": {
@@ -846,16 +1087,17 @@
      "28px"
     ],
     "sizes": {
-     "12px/400": 15,
+     "12px/400": 14,
      "17px/600": 4,
-     "11px/600": 11,
+     "11px/600": 14,
      "15px/500": 3,
-     "13px/400": 19,
+     "13px/400": 16,
      "12px/600": 6,
+     "11px/400": 3,
+     "16px/400": 10,
      "16px/500": 4,
      "15px/600": 2,
-     "16px/400": 16,
-     "17px/400": 6,
+     "17px/400": 5,
      "28px/600": 3
     }
    },
@@ -904,19 +1146,13 @@
      "a": "a \"Legal agentReading contractsWo\"",
      "b": "button.mi \"Northwind\"",
      "w": 260,
-     "h": 9
+     "h": 5
     },
     {
-     "a": "a \"Weekly runwayRan at 8:00 AMDon\"",
-     "b": "button.mi \"New space\"",
-     "w": 260,
-     "h": 41
-    },
-    {
-     "a": "a \"Chief2:59 PMHello! How can I h\"",
+     "a": "a \"Weekly runwayWeekly summary se\"",
      "b": "button.mi \"Space settings\"",
      "w": 260,
-     "h": 15
+     "h": 44
     },
     {
      "a": "a \"Pilot planDoc\"",
@@ -928,7 +1164,7 @@
      "a": "a \"Runway modelSheet\"",
      "b": "a \"Delete space\"",
      "w": 374,
-     "h": 19
+     "h": 31
     }
    ],
    "fixedOverlays": []
@@ -945,24 +1181,52 @@
      ]
     },
     {
-     "container": "span \"Needs you\"",
+     "container": "span \"Needs you2m ago\"",
      "children": 2,
      "heights": [
-      26,
+      40,
       16
      ],
      "widths": [
       80,
       16
      ],
-     "topDriftPx": 5
+     "topDriftPx": 12
     },
     {
-     "container": "div \"Inbox agentYesterday\"",
+     "container": "span \"Working4m ago\"",
      "children": 2,
+     "heights": [
+      32,
+      16
+     ],
      "widths": [
-      89,
-      54
+      58,
+      16
+     ],
+     "topDriftPx": 8
+    },
+    {
+     "container": "span \"Done8:00 AM\"",
+     "children": 2,
+     "heights": [
+      32,
+      16
+     ],
+     "widths": [
+      43,
+      16
+     ],
+     "topDriftPx": 8
+    },
+    {
+     "container": "a \"Inbox3 need reply\"",
+     "children": 4,
+     "widths": [
+      20,
+      192,
+      84,
+      16
      ]
     },
     {
@@ -982,13 +1246,11 @@
      ]
     },
     {
-     "container": "a \"Inbox3 need reply\"",
-     "children": 4,
+     "container": "div \"Inbox agentYesterday\"",
+     "children": 2,
      "widths": [
-      20,
-      192,
-      84,
-      16
+      89,
+      54
      ]
     },
     {
@@ -1028,32 +1290,14 @@
       288,
       16
      ]
-    },
-    {
-     "container": "a \"Team computerOnline\"",
-     "children": 4,
-     "widths": [
-      20,
-      225,
-      51,
-      16
-     ]
-    },
-    {
-     "container": "div \"ARTIFACTSSee all\"",
-     "children": 2,
-     "widths": [
-      64,
-      37
-     ]
     }
    ],
    "overflowSpills": [],
    "wrappedControls": [
-    "button.gbtn \"AB\"",
+    "button.gbtn \"AM\"",
     "button.mi \"Northwind\"",
     "button.mi \"Side project\"",
-    "button.gbtn \"AB\"",
+    "button.gbtn \"AM\"",
     "a \"Delete space\"",
     "a \"Delete space\"",
     "button \"Cancel\"",
@@ -1065,8 +1309,8 @@
  "Main": {
   "layout": {
    "viewport": {
-    "width": 1600,
-    "height": 1000,
+    "width": 466,
+    "height": 678,
     "pageScrollY": 0,
     "pageScrollX": 0
    },
@@ -1142,9 +1386,10 @@
      "15px/500": 3,
      "13px/400": 12,
      "12px/600": 2,
+     "11px/400": 3,
+     "16px/400": 8,
      "16px/500": 4,
-     "15px/600": 2,
-     "16px/400": 8
+     "15px/600": 2
     }
    },
    "alignment": {
@@ -1167,24 +1412,52 @@
      ]
     },
     {
-     "container": "span \"Needs you\"",
+     "container": "span \"Needs you2m ago\"",
      "children": 2,
      "heights": [
-      26,
+      40,
       16
      ],
      "widths": [
       80,
       16
      ],
-     "topDriftPx": 5
+     "topDriftPx": 12
     },
     {
-     "container": "div \"Inbox agentYesterday\"",
+     "container": "span \"Working4m ago\"",
      "children": 2,
+     "heights": [
+      32,
+      16
+     ],
      "widths": [
-      89,
-      54
+      58,
+      16
+     ],
+     "topDriftPx": 8
+    },
+    {
+     "container": "span \"Done8:00 AM\"",
+     "children": 2,
+     "heights": [
+      32,
+      16
+     ],
+     "widths": [
+      43,
+      16
+     ],
+     "topDriftPx": 8
+    },
+    {
+     "container": "a \"Inbox3 need reply\"",
+     "children": 4,
+     "widths": [
+      20,
+      192,
+      84,
+      16
      ]
     },
     {
@@ -1204,13 +1477,11 @@
      ]
     },
     {
-     "container": "a \"Inbox3 need reply\"",
-     "children": 4,
+     "container": "div \"Inbox agentYesterday\"",
+     "children": 2,
      "widths": [
-      20,
-      192,
-      84,
-      16
+      89,
+      54
      ]
     },
     {
@@ -1250,29 +1521,11 @@
       288,
       16
      ]
-    },
-    {
-     "container": "a \"Team computerOnline\"",
-     "children": 4,
-     "widths": [
-      20,
-      225,
-      51,
-      16
-     ]
-    },
-    {
-     "container": "div \"ARTIFACTSSee all\"",
-     "children": 2,
-     "widths": [
-      64,
-      37
-     ]
     }
    ],
    "overflowSpills": [],
    "wrappedControls": [
-    "button.gbtn \"AB\""
+    "button.gbtn \"AM\""
    ],
    "unevenRowsTruncated": true
   }
@@ -1280,9 +1533,9 @@
  "PG-B-NewBot": {
   "layout": {
    "viewport": {
-    "width": 1600,
-    "height": 1000,
-    "pageScrollY": 440,
+    "width": 1446,
+    "height": 1440,
+    "pageScrollY": 0,
     "pageScrollX": 0
    },
    "offscreenPrimary": [],
@@ -1293,252 +1546,76 @@
      "w": 466,
      "h": 678,
      "fillPct": 0,
-     "pctOfViewport": 20
+     "pctOfViewport": 15
     },
     {
      "el": "div",
      "w": 466,
      "h": 678,
      "fillPct": 0,
-     "pctOfViewport": 20
+     "pctOfViewport": 15
     },
     {
      "el": "div",
      "w": 466,
      "h": 678,
      "fillPct": 0,
-     "pctOfViewport": 20
+     "pctOfViewport": 15
     },
     {
      "el": "div",
      "w": 466,
      "h": 678,
      "fillPct": 0,
-     "pctOfViewport": 20
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 15
     },
     {
      "el": "div",
      "w": 394,
      "h": 678,
      "fillPct": 8,
-     "pctOfViewport": 17
+     "pctOfViewport": 13
     },
     {
      "el": "div",
      "w": 394,
      "h": 678,
      "fillPct": 8,
-     "pctOfViewport": 17
+     "pctOfViewport": 13
     },
     {
      "el": "div",
      "w": 394,
      "h": 678,
      "fillPct": 8,
-     "pctOfViewport": 17
+     "pctOfViewport": 13
     },
     {
      "el": "div",
      "w": 394,
      "h": 678,
      "fillPct": 8,
-     "pctOfViewport": 17
+     "pctOfViewport": 13
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 13
     }
    ],
    "spacing": {
     "observed": [
      1,
-     6,
-     8,
-     10,
-     14,
-     18,
-     20,
-     30
-    ],
-    "offScale": [
-     6,
-     10,
-     14,
-     18,
-     30
-    ],
-    "nearDupes": [
-     [
-      6,
-      8
-     ],
-     [
-      8,
-      10
-     ],
-     [
-      18,
-      20
-     ]
-    ]
-   },
-   "type": {
-    "distinctFontSizes": [
-     "12px",
-     "17px",
-     "13px",
-     "14px"
-    ],
-    "sizes": {
-     "12px/400": 4,
-     "17px/600": 7,
-     "13px/400": 12,
-     "12px/600": 4,
-     "14px/400": 1
-    }
-   },
-   "alignment": {
-    "nearMissEdges": [
-     [
-      208,
-      211
-     ]
-    ]
-   },
-   "smallTargets": [
-    {
-     "el": "input \"Name\"",
-     "w": 332,
-     "h": 21
-    },
-    {
-     "el": "input \"Role\"",
-     "w": 332,
-     "h": 21
-    },
-    {
-     "el": "input \"Name\"",
-     "w": 332,
-     "h": 21
-    },
-    {
-     "el": "input \"Role\"",
-     "w": 332,
-     "h": 21
-    },
-    {
-     "el": "input \"Name\"",
-     "w": 332,
-     "h": 21
-    },
-    {
-     "el": "input \"Role\"",
-     "w": 332,
-     "h": 21
-    },
-    {
-     "el": "input \"Name\"",
-     "w": 332,
-     "h": 21
-    },
-    {
-     "el": "input \"Role\"",
-     "w": 332,
-     "h": 21
-    }
-   ],
-   "lowContrast": [],
-   "overlaps": [],
-   "fixedOverlays": []
-  },
-  "geometry": {
-   "pageOverflowX": 0,
-   "unevenRows": [],
-   "overflowSpills": [],
-   "wrappedControls": []
-  }
- },
- "PG-B-NewGroup": {
-  "layout": {
-   "viewport": {
-    "width": 1600,
-    "height": 1000,
-    "pageScrollY": 440,
-    "pageScrollX": 0
-   },
-   "offscreenPrimary": [],
-   "scrollers": [],
-   "deadSpace": [
-    {
-     "el": "div",
-     "w": 466,
-     "h": 678,
-     "fillPct": 0,
-     "pctOfViewport": 20
-    },
-    {
-     "el": "div",
-     "w": 466,
-     "h": 678,
-     "fillPct": 0,
-     "pctOfViewport": 20
-    },
-    {
-     "el": "div",
-     "w": 466,
-     "h": 678,
-     "fillPct": 0,
-     "pctOfViewport": 20
-    },
-    {
-     "el": "div",
-     "w": 466,
-     "h": 678,
-     "fillPct": 0,
-     "pctOfViewport": 20
-    },
-    {
-     "el": "div",
-     "w": 466,
-     "h": 678,
-     "fillPct": 0,
-     "pctOfViewport": 20
-    },
-    {
-     "el": "div",
-     "w": 394,
-     "h": 678,
-     "fillPct": 8,
-     "pctOfViewport": 17
-    },
-    {
-     "el": "div",
-     "w": 394,
-     "h": 678,
-     "fillPct": 8,
-     "pctOfViewport": 17
-    },
-    {
-     "el": "div",
-     "w": 394,
-     "h": 678,
-     "fillPct": 8,
-     "pctOfViewport": 17
-    },
-    {
-     "el": "div",
-     "w": 394,
-     "h": 678,
-     "fillPct": 8,
-     "pctOfViewport": 17
-    },
-    {
-     "el": "div",
-     "w": 394,
-     "h": 678,
-     "fillPct": 8,
-     "pctOfViewport": 17
-    }
-   ],
-   "spacing": {
-    "observed": [
-     1,
+     4,
      6,
      8,
      10,
@@ -1556,6 +1633,251 @@
      30
     ],
     "nearDupes": [
+     [
+      4,
+      6
+     ],
+     [
+      6,
+      8
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
+     ],
+     [
+      18,
+      20
+     ]
+    ]
+   },
+   "type": {
+    "distinctFontSizes": [
+     "12px",
+     "17px",
+     "13px",
+     "18px",
+     "15px",
+     "14px"
+    ],
+    "sizes": {
+     "12px/400": 6,
+     "17px/600": 9,
+     "13px/400": 15,
+     "12px/600": 5,
+     "18px/400": 26,
+     "15px/400": 2,
+     "14px/400": 1
+    }
+   },
+   "alignment": {
+    "nearMissEdges": [
+     [
+      144,
+      147
+     ],
+     [
+      198,
+      201
+     ],
+     [
+      634,
+      637
+     ],
+     [
+      1124,
+      1127
+     ]
+    ]
+   },
+   "smallTargets": [
+    {
+     "el": "input \"Name\"",
+     "w": 284,
+     "h": 21
+    },
+    {
+     "el": "input \"Role\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Name\"",
+     "w": 284,
+     "h": 21
+    },
+    {
+     "el": "input \"Role\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Name\"",
+     "w": 284,
+     "h": 21
+    },
+    {
+     "el": "input \"Role\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Name\"",
+     "w": 284,
+     "h": 21
+    },
+    {
+     "el": "input \"Role\"",
+     "w": 332,
+     "h": 21
+    },
+    {
+     "el": "input \"Name\"",
+     "w": 284,
+     "h": 21
+    },
+    {
+     "el": "input \"Role\"",
+     "w": 332,
+     "h": 21
+    }
+   ],
+   "lowContrast": [],
+   "overlaps": [],
+   "fixedOverlays": []
+  },
+  "geometry": {
+   "pageOverflowX": 0,
+   "unevenRows": [
+    {
+     "container": "div \"123return\"",
+     "children": 3,
+     "widths": [
+      64,
+      200,
+      84
+     ]
+    }
+   ],
+   "overflowSpills": [],
+   "wrappedControls": []
+  }
+ },
+ "PG-B-NewGroup": {
+  "layout": {
+   "viewport": {
+    "width": 1446,
+    "height": 1440,
+    "pageScrollY": 0,
+    "pageScrollX": 0
+   },
+   "offscreenPrimary": [],
+   "scrollers": [],
+   "deadSpace": [
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 13
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 13
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 13
+    },
+    {
+     "el": "div",
+     "w": 394,
+     "h": 678,
+     "fillPct": 8,
+     "pctOfViewport": 13
+    }
+   ],
+   "spacing": {
+    "observed": [
+     1,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     18,
+     20,
+     30
+    ],
+    "offScale": [
+     6,
+     10,
+     14,
+     18,
+     30
+    ],
+    "nearDupes": [
+     [
+      4,
+      6
+     ],
      [
       6,
       8
@@ -1584,26 +1906,35 @@
      "17px",
      "13px",
      "16px",
+     "18px",
+     "15px",
      "14px"
     ],
     "sizes": {
-     "12px/400": 7,
-     "17px/600": 9,
-     "13px/400": 15,
-     "16px/400": 20,
-     "12px/600": 5,
+     "12px/400": 8,
+     "17px/600": 11,
+     "13px/400": 18,
+     "16px/400": 24,
+     "12px/600": 6,
+     "18px/400": 26,
+     "15px/400": 2,
      "14px/400": 1
     }
    },
    "alignment": {
     "nearMissEdges": [
      [
-      198,
-      201
+      688,
+      691
      ]
     ]
    },
    "smallTargets": [
+    {
+     "el": "input \"Name this group\"",
+     "w": 332,
+     "h": 21
+    },
     {
      "el": "input \"Name this group\"",
      "w": 332,
@@ -1636,7 +1967,17 @@
   },
   "geometry": {
    "pageOverflowX": 0,
-   "unevenRows": [],
+   "unevenRows": [
+    {
+     "container": "div \"123return\"",
+     "children": 3,
+     "widths": [
+      64,
+      200,
+      84
+     ]
+    }
+   ],
    "overflowSpills": [],
    "wrappedControls": []
   }
@@ -1644,9 +1985,9 @@
  "PG-B-NewSpace": {
   "layout": {
    "viewport": {
-    "width": 1600,
-    "height": 1000,
-    "pageScrollY": 440,
+    "width": 1446,
+    "height": 1440,
+    "pageScrollY": 0,
     "pageScrollX": 0
    },
    "offscreenPrimary": [],
@@ -1657,84 +1998,88 @@
      "w": 466,
      "h": 678,
      "fillPct": 0,
-     "pctOfViewport": 20
+     "pctOfViewport": 15
     },
     {
      "el": "div",
      "w": 466,
      "h": 678,
      "fillPct": 0,
-     "pctOfViewport": 20
+     "pctOfViewport": 15
     },
     {
      "el": "div",
      "w": 466,
      "h": 678,
      "fillPct": 0,
-     "pctOfViewport": 20
+     "pctOfViewport": 15
     },
     {
      "el": "div",
      "w": 466,
      "h": 678,
      "fillPct": 0,
-     "pctOfViewport": 20
+     "pctOfViewport": 15
     },
     {
      "el": "div",
      "w": 466,
      "h": 678,
      "fillPct": 0,
-     "pctOfViewport": 20
+     "pctOfViewport": 15
+    },
+    {
+     "el": "div",
+     "w": 466,
+     "h": 678,
+     "fillPct": 0,
+     "pctOfViewport": 15
     },
     {
      "el": "div",
      "w": 394,
      "h": 678,
      "fillPct": 8,
-     "pctOfViewport": 17
+     "pctOfViewport": 13
     },
     {
      "el": "div",
      "w": 394,
      "h": 678,
      "fillPct": 8,
-     "pctOfViewport": 17
+     "pctOfViewport": 13
     },
     {
      "el": "div",
      "w": 394,
      "h": 678,
      "fillPct": 8,
-     "pctOfViewport": 17
+     "pctOfViewport": 13
     },
     {
      "el": "div",
      "w": 394,
      "h": 678,
      "fillPct": 8,
-     "pctOfViewport": 17
-    },
-    {
-     "el": "div",
-     "w": 394,
-     "h": 678,
-     "fillPct": 8,
-     "pctOfViewport": 17
+     "pctOfViewport": 13
     }
    ],
    "spacing": {
     "observed": [
      1,
+     4,
+     5,
      6,
      8,
      10,
+     12,
      14,
      18,
      20,
      30
     ],
     "offScale": [
+     5,
      6,
      10,
      14,
@@ -1743,12 +2088,28 @@
     ],
     "nearDupes": [
      [
+      4,
+      5
+     ],
+     [
+      5,
+      6
+     ],
+     [
       6,
       8
      ],
      [
       8,
       10
+     ],
+     [
+      10,
+      12
+     ],
+     [
+      12,
+      14
      ],
      [
       18,
@@ -1764,17 +2125,27 @@
      "14px"
     ],
     "sizes": {
-     "12px/400": 5,
-     "17px/600": 9,
-     "13px/400": 5,
-     "12px/600": 5,
-     "14px/400": 2
+     "12px/400": 6,
+     "17px/600": 11,
+     "13px/400": 6,
+     "12px/600": 6,
+     "14px/400": 3
     }
    },
    "alignment": {
-    "nearMissEdges": []
+    "nearMissEdges": [
+     [
+      1177,
+      1180
+     ]
+    ]
    },
    "smallTargets": [
+    {
+     "el": "input \"Name\"",
+     "w": 332,
+     "h": 21
+    },
     {
      "el": "input \"Name\"",
      "w": 332,
@@ -1807,7 +2178,17 @@
   },
   "geometry": {
    "pageOverflowX": 0,
-   "unevenRows": [],
+   "unevenRows": [
+    {
+     "container": "div",
+     "children": 3,
+     "widths": [
+      60,
+      240,
+      90
+     ]
+    }
+   ],
    "overflowSpills": [],
    "wrappedControls": []
   }

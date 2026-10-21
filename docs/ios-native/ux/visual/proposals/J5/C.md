@@ -1,13 +1,19 @@
-# J5 proposal C (convention): Apple Stocks / Health chart pattern, range segmented control attached to the chart
+# J5 proposal C (convention): Apple Settings pattern, one grouped list with simple controls inline
 
-Pattern: Apple Stocks and Apple Health put the range picker (1D 1W 1M 6M 1Y) directly under the chart it controls. The headline number above the chart follows the range; anything that is "as of now" sits outside the chart card.
+Pattern named: iOS Settings app (and Apple Mail's Settings in the Settings app). One inset grouped list; a profile header at the top opens Account; a control that is only a switch or a short choice sits in the list as a switch or a menu row; a detail page exists only when there is a list to manage. Things 3 and Linear follow the same rule: Preferences are flat and short, and identity lives behind the profile row.
 
 ## Design
-- Runway and Cash stay at the top as "Runway now" and "Cash today", with no range control above them.
-- The Burn card holds the chart, then a segmented control at its bottom edge (30 days / 90 days / 12 months), with "Monthly burn" headline showing the average per month for the range ("[AMOUNT] avg").
-- Range changes the bar count (4 weekly, 3 monthly, 12 monthly) and the average. Scrubbing a bar shows its value in the callout.
-- Three data frames are drawn in PG-B-Finance. Hidden frame masks the average, the callout, Runway, and flattens bars.
-- Desk gets the same card; eye and chevron moves as in A.
+Settings root, top to bottom (PG-B-Settings frame "Settings", mirrored on PH-Pages):
+1. Profile row "Sam Rivera / Account" (unchanged position on PG-B-Settings; PH-Pages moves it from the bottom to the top).
+2. Models, Voice, Integrations.
+3. AI data sharing, **Allowed without asking (3)**. The list leaves the AI data sharing page, which keeps only its three toggles.
+4. **Hide amounts** (switch), **Appearance** (value System, opens a native menu: System, Light, Dark), **Language** (value English; opens the iOS Settings page for Praci, which is where iOS keeps per-app language).
+5. Server (value Default; the only Server row in the app after sign-in) and Archived bots.
+
+Account keeps only identity: name, email, Change password, Sign out, Delete account. Its Server, Hide amounts, Language and Appearance rows are deleted, and its note about Server is removed. PH-Pages Settings becomes the same list, and "Archived agents" is replaced by the label PG-B-Settings uses. Hide amounts here is the same flag as the eye on Finance; no new copy is added.
 
 ## Cost
-Same three data sets as B; control sits at the card bottom so the Duo top half (399pt tall) has to shed a row; SwiftUI Picker(.segmented) under a Chart with chartXSelection. Less new UI than B, more than A.
+Rows move, one new row, no new pages. Root grows to 10 rows plus the profile row; it scrolls on the 466 pt strip, which is normal for a Settings list. SwiftUI: List with Section, Toggle with @AppStorage, Picker with .menu style, a Button calling UIApplication.open with openSettingsURLString.
+
+## Weakness
+Root is longer than today. Language leaves the app for iOS Settings; if the product wants an in-app picker it is a standard pushed list, and nothing else in this proposal changes.

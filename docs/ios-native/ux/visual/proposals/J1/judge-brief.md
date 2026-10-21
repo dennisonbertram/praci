@@ -1,10 +1,12 @@
-# Judge brief J1: model-provider consent (Praci iOS, design boards only)
+# Judge brief: J1 which model-connect method leads on first run
 
-Persona: a founder on first run. Gate 1 is Connect a model (API key sheet). The old "Share data with Model A?" sheet was removed; the Connect sheet now carries one footer line naming Model A. Gaps: no frame shows what happens after declining or turning sharing off, nor a way to allow later.
-Rules: glass only on floating nav, solid content, exactly one tinted prominent action per view, minimal copy, product name Praci.
+Product: Praci, a planned native iPhone app. Persona: a non-technical founder who has just installed the app and has no model connected. Home shows "Connect a model"; thread with no model shows Not sent with Connect.
+Problem: the Connect sheet lists API key (marked Recommended), Local server, Subscription. API key is the universal path, but the screen gives no way to get a key or paste one. Local server only works on the same network and was prefilled with localhost. Subscription Sign in appears as a gray bar next to a dimmed Connect.
+Acceptance: one prominent action per frame; Get a key link and Paste on the key frame; Local server Address empty with a LAN placeholder; Home card says Chief cannot reply until a model is connected; no-model thread disables the composer with a plain line and a real Connect button.
+Design rules: glass only on floating nav and controls, solid content, at most three glass groups, exactly one tinted prominent action per view.
 
-A: keep inline footer; add Not sent row "sharing is off" with Open settings; Settings off-state line; 44 pt link. Allow later = 4 taps via Settings.
-B: remove the footer; restore a first-send sheet "Share data with Model A?" (Allow, Not now). After Not now the draft stays with an "Allow" strip.
-C: keep the inline footer; draw sharing-off as a permission placeholder card (one sentence, "Turn on" flips the switch in place with a disclosure line) on Thread, Home and Inbox; draft kept, Send disabled.
+A (minimal): keep API key first; add a Get a key link and a Paste button; empty Local server address; fix card and thread copy.
+B (restructure): sheet opens on one Sign in with Model A button; "Other ways to connect" expands inline to API key and Local server.
+C (Mail Add Account pattern): sheet opens on Sign in with Model A; an inset list "Other ways" with API key and Local server rows pushes to detail screens (key screen has Paste and Get a key); each detail has one Connect capsule.
 
-Score each of A, B, C 1-5 on: meets acceptance (consent moment named, declined state drawn, allow-later path), simplicity, consistency, usability, visual quality, effort/risk (5 small). Return a winner, optional graft, and a short defense as JSON.
+Score each 1-5 on criteria, simplicity, consistency, usability, visual, effort. Pick a winner, at most one graft.

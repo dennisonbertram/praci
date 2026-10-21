@@ -1,16 +1,15 @@
-# J4 proposal A: minimal change, Pages above Personnel everywhere
+# J4 proposal A (minimal change): rename to AGENTS and list every agent
 
 ## Idea
-Adopt the order that Split already uses on every Home surface: Activity, then Pages, then Personnel. Inbox stays the first row of Pages, so "3 need reply" moves up the screen without any new element. Nothing else changes.
+Rename the section label PERSONNEL to AGENTS on every Home surface. List every agent and group in it, sorted by recency as decided before. Finance agent and Legal agent get a row in AGENTS even while they also appear in Activity (Activity is a copy of rows that need attention). The empty state "No agents yet" and the "New agent" button already match the new noun. No new row, screen or control.
 
-## Edits
-- PH-Home, PG-A-Home, Main: move the PAGES block (label plus card) above the PERSONNEL block in every frame.
-- Split: no change.
+## What changes
+- PH-Home, PG-A-Home, Main, PG-A-HomeNoModel, PH-Spaces, PG-B-Spaces, Split, DS-03, DS-04, PG-A-Rules: label text PERSONNEL becomes AGENTS.
+- PH-Home Connected and PG-A-Home Home, New menu, Offline: add Brex agent, Finance agent and Legal agent rows after Inbox agent (7 agent rows).
+- PG-B-NewGroup: member picker lists the same agents as Home.
 
-## What the persona sees
-On PH-Home (393x852) Activity ends near y=383, then Pages (six rows, about 264 px) ends near y=700, then the PERSONNEL label and Chief at about y=760. Inbox is visible. On the Duo outer display (466x678) Pages ends near y=560, so Chief is the only agent row that fits and the other three are below the fold.
+## Cost
+Seven rows of 54 pt each push PAGES below the fold on PH-Home (393x852) and push Pages further down on the Duo outer display (466x678). The Home list gets about 160 pt longer. Groups still sit in a section named for agents.
 
-## Trade-offs
-- Inbox is fixed, but the main conversation list (Personnel, which is recency sorted and holds Chief) is pushed down on every device. The product is chat with agents first, so the most used list gets worse to fix the second most used one.
-- The six Pages rows are mostly static (Cap table and Data room have no count), so the extra space above Personnel carries little news.
-- Smallest diff, no new component, lowest build risk.
+## Persona check
+Someone looking for the Finance agent finds it in the list. Chat stays the primary path. Reaching Pages (Finance, Legal, Cap table) now needs a scroll past every agent, which is the secondary path.

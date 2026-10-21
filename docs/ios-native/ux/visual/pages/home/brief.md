@@ -1,4 +1,4 @@
-# Brief: Praci iOS home and creation boards (round 2)
+# Brief: Praci iOS home and creation boards (round 3)
 
 Praci is a planned native SwiftUI iPhone app for founders. A founder runs a small team of AI bots ("agents") in spaces, chats with them, approves their work (payments, drafts), and opens pages such as Inbox, Finance, Legal and Cap table. There is no Swift code yet; these are static dark-mode design boards for the iPhone Duo outer display (466x678 pt, a narrow side strip with avatar, bell, search and New).
 

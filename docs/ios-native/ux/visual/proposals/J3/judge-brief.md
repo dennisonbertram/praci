@@ -1,11 +1,13 @@
-# Judge brief: J3 Scope of missing inner, laptop and standard-iPhone boards
+# Judge brief: J3 (round 3, cluster C7) Chat: typing during a run, reactions, landing after archive
 
-Praci is a planned native SwiftUI iPhone app (no Swift code yet; the design boards are the spec). Poses: Duo outer display 466x678 (side strip), inner display 890x626 (1/3 + 2/3 flat, 1/2 + 1/2 half-folded, nothing interactive at x 435 to 455), laptop pose 626x890 (view top, controls bottom), standard iPhone 393x852. Rules: glass only for floating controls; at most three glass groups plus one tinted prominent action per view. Persona: a founder triaging mail with an Inbox agent and checking Finance.
+Context: Praci's planned native SwiftUI iPhone app (design boards only). Rules: glass only on floating controls, solid content, at most three glass groups, exactly one tinted prominent action per view. Persona: a founder who types a follow-up while the agent is still running, wants to thumbs-up an answer, and archives a chat.
 
-Problem: most screens are drawn only for the outer display. Missing: Reply composer, Archive result, Inbox zero and Cleanup on the inner display (high/medium); Finance 1/3 + 2/3 and 1/2 + 1/2; where "Ask [page] agent" opens on inner; an agent thread with draft, chips and a queued message beside the Personnel sidebar; laptop poses for Artifact, Agent page, Agent list; standard iPhone boards for Artifacts, Settings, Account, Finance and sheets. The rules boards already hold a 12-step generation recipe and one rule card per page with inner, half-folded and laptop lines.
+Problem: (1) DS-06 says typed text stays a draft during a run, but a board shows "Sends after run". (2) DS-06 says React is deferred but PH-Thread draws an emoji row and a React menu item. (3) After Archive the user stays in the archived chat with a top toast over a still-live thread; Inbox toasts sit at the bottom.
+Acceptance: running composer behavior drawn once and matching DS-06; Archive returns to the list with a bottom Undo toast; reaction rule identical in DS-06 and PH-Thread; at most three glass groups; toast, menu and Settings use one noun.
 
-Option A (minimal): no new frames. Add rule lines only: Ask-agent destination, remove "folders" from the Inbox story, 393 pt rule, laptop-capable list.
-Option B (draw every pose): a drawn frame for every page in every pose (about 30 frames and 6 new boards).
-Option C (adaptive split view, as Apple Mail, Messages and Settings do with NavigationSplitView): one derivation recipe per layout family (List + detail, Live view + controls, Form/sheet, Thread) plus one drawn exemplar per behaviour that is not derivable: inner Reply, After Archive, Inbox zero and Cleanup frames; Finance 1/3 + 2/3 and half-folded with agent thread, chips and a queued bubble; one new PH-Pages board with Finance and Settings at 393 pt; recipe text states sheets and the other pages follow.
+Proposals:
+A: delete the "Sends after run" caption (draft kept, no new frame); keep reactions as drawn including the React menu item; Archive returns to Home with bottom toast, text unchanged.
+B: queue with a Send control beside Stop and a "Queued" bubble (needs backend queue); remove reactions; Archive returns Home; remove Clear chat.
+C: draft kept with Stop in the slot and a "Run finished, draft kept" frame (ChatGPT/Claude pattern); reactions shipped Messages-style (row is the picker, React menu item removed); Archive returns Home with bottom toast "<Name> archived" and Undo (Mail/Things pattern), menu says "Archive agent"/"Archive group".
 
-Score each option 1-5 on: meets acceptance, simplicity, consistency, usability, visual quality, effort and risk (5 = small and safe). Return a winner, an optional graft, and a short defense.
+Score each 1-5 on: meets criteria x3, simplicity x2, consistency x2, usability x2, visual quality x2, effort/risk x1 (5 = small and safe). Return a winner, optional graft, and a short defense.

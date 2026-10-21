@@ -1,19 +1,18 @@
-# J4 proposal C: pinned smart-list row (Things Inbox, Apple Mail Inboxes, Linear Inbox)
+# J4 proposal C (best-in-class pattern): bounded list with an inline "Show N more" row
 
 ## Pattern
-Best-in-class apps give the one triage destination a pinned row at the top of the list, outside the ordinary list of items. Things puts Inbox above Today and the projects, Apple Mail lists "Inboxes" above accounts and mailboxes, and Linear puts Inbox first in the sidebar. The pinned row is the same row style as the rest, carries a count, and is never repeated lower in the list.
+Things and Apple Mail both keep a long, complete list short with an in-place disclosure row ("Show N more", Mail's "Show More" under Mailboxes), and Messages never hides a conversation that has an unread dot. The list is complete, ordered by recency, bounded by default, and expands in the same place without opening a new screen.
 
 ## Idea
-Inbox becomes a standalone row directly under the Activity card, above PERSONNEL, with no section label. It is removed from the PAGES list, so there is one Inbox entry. Everywhere (phone, outer display, sidebar) the order is the same: Activity, Inbox, Personnel, Pages.
+- Section label: AGENTS (matches the New agent menu item, the New agent sheet title and the "No agents yet" empty state). Groups stay in the list because a group is a chat with agents; the row already shows two avatars.
+- The list is every agent and group, sorted by recency. Collapsed it shows the four most recent rows plus any row with an unread dot. Chief, Carta, Mercury and Inbox agent are the four on the current boards.
+- One extra row follows the last visible agent: "Show 3 more" in secondary text (#9C9A93), aligned to the name column, with a chevron.down at the right. Tap expands in place; the row becomes "Show less" with chevron.up.
+- Finance agent and Legal agent appear in the expanded list even if they have never had a task. Activity stays a copy of rows needing attention.
+- When there are four agents or fewer, no extra row appears. The empty space keeps "No agents yet" and "New agent".
+- PG-B-NewGroup member picker lists every agent (same order), scrolling inside the sheet.
 
-## Edits
-- PH-Home, PG-A-Home, Main: after the Activity card add one row (solid #252523 card, radius 18, same 44 px row recipe as Pages: mail icon, "Inbox", "3 need reply" pill, chevron). Delete the Inbox row from the PAGES card, leaving Finance, Legal, Cap table, Data room, Team computer.
-- Frames with no Activity card (Loading, Could not load agents, Empty space, Scrolled to the end): the Inbox row sits first under the header (or after the "Connect a model" card on the No model frame). Loading shows a skeleton row with no count, not a stale count.
-- Split sidebar: Inbox is a pinned row under the Activity row, then PERSONNEL, then PAGES (Finance, Legal, Cap table, Data room, Artifacts). This removes the Pages-before-Personnel mismatch.
+## Persona check
+The first four rows are the same as today, so Pages stay about where they are (one 44 pt row lower). Any agent is one tap away, in the place the person already looks, with no new screen.
 
-## What the persona sees
-On PH-Home the Inbox row is at y about 395 to 447, Chief at about 485 and Mercury at about 647; Pages begin below the fold but they are reference destinations. On the Duo outer display the Inbox row is at y about 290 to 340, with all four agents still on screen (Mercury ends near y 560 of 678). The Pages label follows near y 590.
-
-## Trade-offs
-- One new row style position, but no new component: it reuses the Pages row recipe.
-- Inbox is no longer "a page among pages". Mitigated because the row looks the same and opens the same screen.
+## Cost
+One new row style (a copy of the See all affordance, plain row). In SwiftUI this is a `List` section with a state flag and a `ForEach` over a prefix, or a `DisclosureGroup` for the remaining rows.

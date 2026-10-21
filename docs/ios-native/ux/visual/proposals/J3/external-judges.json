@@ -5,29 +5,29 @@
     {
       "model": "meta/muse-wonder",
       "ok": true,
-      "seconds": 19,
-      "costUsd": 0.052708,
+      "seconds": 22,
+      "costUsd": 0.0599912,
       "result": {
         "scores": {
           "A": {
-            "criteria": 1,
-            "simplicity": 4,
+            "criteria": 2,
+            "simplicity": 5,
             "consistency": 2,
-            "usability": 2,
-            "visual": 2,
-            "effort": 3
+            "usability": 3,
+            "visual": 4,
+            "effort": 5
           },
           "B": {
-            "criteria": 5,
-            "simplicity": 1,
+            "criteria": 2,
+            "simplicity": 2,
             "consistency": 2,
             "usability": 3,
             "visual": 3,
             "effort": 1
           },
           "C": {
-            "criteria": 4,
-            "simplicity": 5,
+            "criteria": 5,
+            "simplicity": 4,
             "consistency": 5,
             "usability": 5,
             "visual": 4,
@@ -35,34 +35,34 @@
           }
         },
         "winner": "C",
-        "graft": "From B, add one drawn 626x890 laptop exemplar for Artifact (live view top, controls bottom, max three glass groups plus one tinted action); derive Agent page and Agent list from that family recipe.",
-        "defense": "C wins because its NavigationSplitView family recipes, matching Apple Mail/Messages/Settings, cover derivable pages consistently while drawn exemplars prove the non-derivable risks: inner Reply, post-Archive, Inbox zero/Cleanup, Finance 1/3+2/3 and 1/2+1/2 splits avoiding x435-455, and the agent thread with draft, chips and queued message beside the sidebar. A adds only text, so hinge behavior, Ask-agent destination, glass limits and queued-state layout remain untested and ambiguous for SwiftUI implementation. B meets coverage literally but ~30 frames and 6 boards invite visual drift, duplicated glass violations and high maintenance before any code exists; C's single 393pt Finance/Settings board plus recipes gives founders and implementers a clearer, safer spec, with only sheets and clearly derivable pages left undrawn."
+        "graft": "From A: delete the 'Sends after run' caption outright with no replacement caption during the run, so C's only added drawing is the 'Run finished, draft kept' frame.",
+        "defense": "C is the only proposal meeting all acceptance points: draft-kept matches DS-06 with Stop occupying the existing composer slot (one prominent action, no added glass group), the Messages-style row becomes the sole reaction picker after removing the duplicate React menu item so DS-06 and PH-Thread can state the same shipped rule, and Archive returns Home with a named bottom Undo toast while menu/Settings/toast share 'agent'/'group'. A merely deletes the caption but leaves deferred-vs-drawn reactions contradictory, keeps both reaction entry points, and leaves toast text/noun unchanged without Undo. B contradicts DS-06's draft rule, requires a backend queue, crowds Stop with a second Send action, removes the persona's desired thumbs-up entirely, and specifies no bottom Undo toast."
       }
     },
     {
       "model": "google/gemini-4-argon",
       "ok": true,
-      "seconds": 31,
-      "costUsd": 0.016972,
+      "seconds": 27,
+      "costUsd": 0.021838,
       "result": {
         "scores": {
-          "Option A": {
-            "criteria": 2,
-            "simplicity": 4,
+          "A": {
+            "criteria": 3,
+            "simplicity": 5,
             "consistency": 3,
             "usability": 3,
-            "visual": 2,
+            "visual": 4,
             "effort": 5
           },
-          "Option B": {
-            "criteria": 4,
+          "B": {
+            "criteria": 2,
             "simplicity": 2,
-            "consistency": 3,
-            "usability": 4,
-            "visual": 4,
-            "effort": 1
+            "consistency": 2,
+            "usability": 3,
+            "visual": 3,
+            "effort": 2
           },
-          "Option C": {
+          "C": {
             "criteria": 5,
             "simplicity": 4,
             "consistency": 5,
@@ -71,9 +71,9 @@
             "effort": 4
           }
         },
-        "winner": "Option C",
-        "graft": "From Option A: include the explicit rule-card text updates—removing 'folders' from the Inbox story, stating the exact Ask-agent inner destination rule, and explicitly listing which pages are laptop-pose capable—inside Option C's layout-family derivation recipes.",
-        "defense": "Option C wins because it models how SwiftUI actually works (adaptive layout families like NavigationSplitView) while visually specifying every high-risk, non-derivable state in the founder's core Inbox and Finance journeys. Because the design boards are the spec, Option A fails acceptance criteria: prose rules alone cannot verify spatial edge cases like the x 435-455 crease dead-zone in half-folded Finance, the three-glass-group cap during inner Reply/Cleanup, or the density of an agent thread with draft, chips, and a queued bubble beside the sidebar. Conversely, Option B's brute-force 30 frames across 6 new boards creates massive maintenance bloat and drift risk for trivial permutations (like standard sheets or repetitive settings pages) that follow deterministic SwiftUI scaling. Option C hits the sweet spot—drawing the exact exemplars where layout math, glass budgets, and multi-pane states collide, and governing the rest through systematic layout-family recipes."
+        "winner": "C",
+        "graft": "From A, skip adding the extra 'Run finished, draft kept' board frame and simply remove the 'Sends after run' caption so the running composer is drawn only once.",
+        "defense": "C is the only proposal that fulfills every acceptance criterion and persona goal: it preserves typed text as a draft with a single Stop control in the composer slot, aligns DS-06 and PH-Thread on a clean iOS Messages-style emoji row (removing the redundant React menu item so the founder can easily thumbs-up), and pops Archive back to Home with a bottom Undo toast and unified nouns across menu, toast, and Settings. A falls short because leaving toast and menu copy unchanged fails the single-noun rule and keeping both the emoji row and a 'React' menu item duplicates the interaction. B is rejected because introducing a 'Queued' bubble and a Send button alongside Stop requires backend queuing (high effort/risk), crowds the composer against the single prominent action rule, and strips out reactions that the persona explicitly needs."
       }
     }
   ]

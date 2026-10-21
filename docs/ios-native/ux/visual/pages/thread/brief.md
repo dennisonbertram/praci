@@ -1,15 +1,15 @@
-# Brief: Thread screens, round 2
+# Brief: Thread screens, round 3
 
-Praci is a planned native SwiftUI iPhone app for founders and small teams. Users chat with AI agents (Inbox agent, Finance agent, Legal agent) that read mail and documents and draft work. The agents never send mail or spend money without an explicit approval tap. The app is monochrome, with glass only on floating navigation and controls, one prominent action per view, and per-agent avatar shapes and colors.
+Praci is a planned native SwiftUI iPhone app for founders and small teams. Users chat with AI agents (Inbox agent, Finance agent, Legal agent, Chief) that read mail and documents and draft work. Agents never send mail or spend money without an explicit approval tap. The app is monochrome. Glass is used only on floating navigation and controls, with one prominent action per view and per-agent avatar shapes and colors.
 
-Persona: a startup founder, non-technical, using the phone one-handed between meetings. First visit: they must agree to share data with the AI model provider. After that they ask an agent to reply to a customer email, review the draft, and send it.
+Persona: a startup founder, non-technical, using the phone one-handed between meetings. First visit: they must agree to share data with the AI providers. After that they ask an agent to reply to a customer email, review the draft, and send it.
 
-Screens (static mockups, fixed-size devices):
-- PG-A-Thread: Duo outer display (466x678). Single-agent thread. Step: review the agent's drafted reply and press Send or Save.
-- PG-A-ThreadStates: three Duo outer panels. Step: understand and recover when a message is waiting offline, failed to send, or was refused.
-- PG-B-Consent: Duo outer. Left panel: first-use sheet asking to share data with the model provider. Right panel: Settings, AI data sharing toggles.
-- PG-A-GroupThread: Duo outer. Group thread with two agents answering.
-- Inner: Duo inner display (890x626). Inbox list beside the Inbox agent thread.
-- DS-06-Chat: design-system spec of chat components (bubbles, composer, mail approval card, tool approval, ask card, voice player).
+Screens (static mockups, fixed-size devices; judge each frame of each grid):
+- PG-A-Thread: Duo outer display (466x678) frames: thread with a mail draft card, chat menu, clear and delete confirmations, archive with Undo, archived, draft replaced, empty recipient, agent editing the draft. Step: review the drafted reply and press Send.
+- PG-A-ThreadStates: 20 frames of thread states (offline, failed, refused, oversize file, file limit, new messages, loading, could not refresh, archived, read only, session ended, reconnecting, first message, no model, computer block, approval scrolled away, running, stopping, approval pending). Step: understand and recover.
+- PG-B-Consent: Duo outer. First-use speech consent sheet, after "Not now", model sharing off, Settings AI data sharing.
+- PG-A-GroupThread: Duo outer. Group thread with two agents answering, menu, confirmations, archive.
+- Inner: Duo inner display (890x626 per half). Inbox list beside the Inbox agent thread, and Finance beside its agent thread.
+- DS-06-Chat: design-system spec of chat components.
 
-Round 2 notes: boards were revised after round 2. ThreadStates is now a grid of 20 labeled states (offline, failed, refused, oversize file, loading, archived, read only, session ended, first message, no model, computer block, running, stopping, approval pending). PG-A-Thread is a grid of chat menu, archive confirmation, archived, draft replaced, empty recipient and agent-editing-the-draft states. Judge every frame, and whether the persona knows what is happening and what to do next in each.
+Round 3: judge whether the gap-fix pass left anything below excellent, and whether earlier findings are fixed.

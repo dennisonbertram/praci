@@ -1,7 +1,9 @@
-# J2 (round 2, problem cluster C4) proposal C: Apple Mail convention
+# J2 / C (best-in-class): Apple Mail pattern, More menu plus "confirm only what cannot be undone"
 
-Pattern: Apple Mail compose. Send is the one prominent control at all times; Cancel asks only if the draft changed; the sheet offers Save Draft and Delete Draft, and tapping outside it keeps editing.
-- Every frame draws Send; dimmed when no recipient or an address is invalid (Mail dims Send the same way).
-- X on an unchanged draft closes with no sheet. X on a changed draft shows a two-action sheet: "Save draft", "Discard draft" (red). The "Keep editing" button is dropped; the scrim is the way back.
-- Both existing sheets (frames 7 and 8) become this same two-action sheet.
-Costs: on the 466 pt strip the scrim is a thin area, and VoiceOver and SwiftUI confirmationDialog always add a Cancel button, so the two-action sheet cannot ship natively as drawn. The board would draw something the app will not render.
+Pattern name: Apple Mail's "..." menu for rare list actions, with Mail's rule that Archive runs at once with an Undo toast while Unsubscribe asks first in a native confirmation dialog (Messages and Things use the same split: reversible actions never prompt, irreversible ones use a destructive-role dialog).
+- Entry: Cleanup in the "..." menu on every inbox board (PG-A strip gets the "..." circle in place of the capsule; PH-Inbox and Sheet draw the same menu frame as Split).
+- Archive 101 emails: no confirm. It runs, shows "Archiving 40 of 101", then the Done frame with Undo.
+- Unsubscribe: native confirmationDialog "Unsubscribe from 3 senders?" with message "Unsubscribing can't be undone.", a destructive "Unsubscribe" button and Cancel.
+- After Archive, the Done frame also offers "Unsubscribe from 3 senders" so the sender list vanishing does not strand the second step.
+- "Skip inbox for future mail" and its chevron are removed.
+Cost for both actions: select, Archive, Unsubscribe, confirm = 3 actions after selecting. Weakness: Archive has no confirm, so the acceptance line "Archive and Unsubscribe have separate confirms" is only half met.

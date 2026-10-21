@@ -28,8 +28,8 @@
   "phase_issue": "#424",
   "quick_fix": false,
   "suggested_fix": "Add a states strip to PG-B-Legal: blocker row, Not scanned yet with Scan now, scan in progress on the toolbar scan icon, failed warning row.",
-  "status": "open",
-  "note": "Legal states mostly drawn now (default, Blocked row for an unreadable PDF, Not scanned yet, scan running, scan failed). Still undrawn: the STORY-081 blocker (no OpenRouter key, row opens Models) and the consent prompt. The drawn Blocked row is a different state (one file unreadable). Reduced from high."
+  "status": "resolved",
+  "note": "Legal now draws \"Scan blocked: no OpenRouter key\" (No OpenRouter key / Needed to read contracts / Open Models), and Models draws the connect sheet and key states."
  },
  {
   "id": "F-finance-settings-003",
@@ -109,7 +109,7 @@
   "quick_fix": false,
   "suggested_fix": "Add Inner and Desk boards for Legal, Cap table and Data room, and update the Finance laptop rule or the Desk board so they agree.",
   "status": "open",
-  "note": "Desk draws Finance in laptop pose correctly (page top, thread bottom). Legal, Cap table and Data room have only rule-card laptop templates, no board. Reduced from high because the template is shared."
+  "note": "Desk draws Finance only. Legal, Cap table and Data room laptop pose and inner Settings remain rule-card text (\"No board on purpose\"). Low because the template is shared."
  },
  {
   "id": "F-finance-settings-008",
@@ -141,7 +141,7 @@
   "quick_fix": true,
   "suggested_fix": "Make the Home avatar and Settings profile use the same initials, and correct the catalog text to say the X closes Settings and there is one profile row.",
   "status": "open",
-  "note": "Remaining: the Settings strip control is an xmark while the rule card and catalog name it Done; avatar initials and names differ across boards (Home AB, Settings and Account Sam Rivera SR, Split sidebar Alex Morgan AM)."
+  "note": "Home, Main, Inner and Split show Alex Morgan (AM); Settings and Account show Sam Rivera (SR) and sam@example.com. Settings strip is an X; rule card calls it Done (xmark)."
  },
  {
   "id": "F-finance-settings-010",
@@ -188,8 +188,8 @@
   "phase_issue": "#421",
   "quick_fix": false,
   "suggested_fix": "Add provider detail (not connected, connecting, connected, error) and subscription sign-in boards; add a Connect action to the blocker message in the thread.",
-  "status": "open",
-  "note": "Provider detail (connected) and the Subscription sign-in page are drawn, but the first-run connect is not: no empty API key field with Connect, no connecting or error state, and no sign-in code, Safari wait or failure state. Reduced from high."
+  "status": "resolved",
+  "note": "Models draws provider detail with empty key, key not accepted and key saved; sign-in code, waiting and failed; Connect sheet empty, keyboard, pasted, checking, rejected, and the after-connect state."
  },
  {
   "id": "F-finance-settings-013",
@@ -349,7 +349,7 @@
   "quick_fix": false,
   "suggested_fix": "Split into Folders and Recently added sections and drop the permission chips from DS-07 until sharing is planned.",
   "status": "open",
-  "note": "Folders (Board materials, Diligence) still sit under Recently added with files; DS-07 still draws Shared, Only me and View only chips although the plan has no share links."
+  "note": "Folders still sit under Recently added with files; DS-07 still defines Shared / Only me / View only chips with no sharing feature."
  },
  {
   "id": "F-finance-settings-R1-001",
@@ -380,8 +380,8 @@
   "phase_issue": "#424",
   "quick_fix": false,
   "suggested_fix": "Keep Change password on Account only, or note the Settings row as a shortcut in the rule card.",
-  "status": "open",
-  "note": "Change password is still reachable from Settings-adjacent Account only as a row; no board draws the form (current, new, confirm, error, success). Raised to medium because STORY-095 cannot be walked."
+  "status": "resolved",
+  "note": "Account draws the Change password page: empty, filled, wrong current, mismatch, saving, keyboard, and Password changed. Settings no longer has the row. Leftover rule card text is R3-003."
  },
  {
   "id": "F-finance-settings-R1-003",
@@ -397,7 +397,7 @@
   "quick_fix": false,
   "suggested_fix": "Replace the Presentation line with Push from the Pages section on Home.",
   "status": "open",
-  "note": "Rule cards still say Push from sidebar ... row for Finance, Legal, Cap table, Data room. Data room card says Choose files for the empty state; the board shows Add files."
+  "note": "PG-B-Rules cards for the four pages still say \"Push from sidebar ... row\" (Pages section on Home now)."
  },
  {
   "id": "F-finance-settings-R1-004",
@@ -428,8 +428,8 @@
   "phase_issue": "#424",
   "quick_fix": true,
   "suggested_fix": "Change the label to Connect Carta and add the purpose line from the rule card; draw the pending state.",
-  "status": "open",
-  "note": "New in round 2."
+  "status": "resolved",
+  "note": "Never connected now reads \"Show holders and ownership\" with Connect Carta; Connection pending (Waiting for Carta, Cancel) is drawn."
  },
  {
   "id": "F-finance-settings-R2-002",
@@ -444,8 +444,8 @@
   "phase_issue": "#424",
   "quick_fix": false,
   "suggested_fix": "Draw the Set up page (empty key, Connect, error) and merge the two hosted rows.",
-  "status": "open",
-  "note": "New in round 2."
+  "status": "resolved",
+  "note": "Voice draws Hosted voice setup: empty key, pasted, Checking key, key not accepted, speech model menu, connected."
  },
  {
   "id": "F-finance-settings-R2-003",
@@ -461,7 +461,7 @@
   "quick_fix": false,
   "suggested_fix": "Add a masked chat card frame to the thread states board.",
   "status": "open",
-  "note": "New in round 2."
+  "note": "No board draws the finance card in a thread with Hide amounts on."
  },
  {
   "id": "F-finance-settings-R2-004",
@@ -477,6 +477,70 @@
   "quick_fix": false,
   "suggested_fix": "Add the picker and attached chip frames.",
   "status": "open",
-  "note": "New in round 2."
+  "note": "Composer menu draws Data room as a source; the picker and the thread with the attached file are not drawn."
+ },
+ {
+  "id": "F-finance-settings-R3-001",
+  "story_id": "STORY-107",
+  "severity": "medium",
+  "category": "happy-path",
+  "criterion": "Happy path clarity",
+  "description": "Settings on the inner display has no board. The rule card says \"Settings list in 1/3, selected detail in 2/3\", but the inner 1/3 is already the Personnel sidebar (Split), whose only Settings entry is the gear next to the profile name. It is unclear whether Settings replaces the sidebar, opens as a sheet over it, or nests a second split.",
+  "expected": "A drawn inner Settings frame in Split or Inner showing where the list and the detail sit.",
+  "actual": "Rule-card text only; a user on the inner display cannot be shown how to get back to Personnel from a Settings detail.",
+  "board": "PG-B-Rules.dc.html",
+  "phase_issue": "#421",
+  "quick_fix": false,
+  "suggested_fix": "Add one Split frame: gear tapped, sidebar swapped for the Settings list in 1/3 with Models selected in 2/3, and a Back control to Personnel.",
+  "status": "open",
+  "note": "New in round 3."
+ },
+ {
+  "id": "F-finance-settings-R3-002",
+  "story_id": "STORY-082",
+  "severity": "low",
+  "category": "happy-path",
+  "criterion": "Happy path clarity",
+  "description": "In the Add holder sheet the field labeled Role shows \"Sam Ortiz / Seed investor\", a person name under a role label, so the field looks like a holder picker or has wrong sample text.",
+  "expected": "Role field shows a role (Founder, Seed investor, Advisor).",
+  "actual": "Role = \"Sam Ortiz, Seed investor\".",
+  "board": "PG-B-CapTable.dc.html",
+  "phase_issue": "#424",
+  "quick_fix": true,
+  "suggested_fix": "Change sample to \"Seed investor\" only, or relabel the field Holder if it links a contact to an existing holder.",
+  "status": "open",
+  "note": "New in round 3."
+ },
+ {
+  "id": "F-finance-settings-R3-003",
+  "story_id": "STORY-087",
+  "severity": "low",
+  "category": "happy-path",
+  "criterion": "Happy path clarity",
+  "description": "The Settings rule card still lists \"Archived agents, Change password\" as root rows, but the board has \"Archived bots\" and no Change password row (it lives on Account).",
+  "expected": "Rule card matches the board.",
+  "actual": "Rule card names a row the board does not draw and uses \"agents\" where the board says \"bots\".",
+  "board": "PG-B-Rules.dc.html",
+  "phase_issue": "#421",
+  "quick_fix": true,
+  "suggested_fix": "Edit the card: remove Change password, use the board label.",
+  "status": "open",
+  "note": "New in round 3."
+ },
+ {
+  "id": "F-finance-settings-R3-004",
+  "story_id": "STORY-078, STORY-079",
+  "severity": "low",
+  "category": "happy-path",
+  "criterion": "Happy path clarity",
+  "description": "Catalog STORY-078 still describes period tabs (30 days, 90 days, 12 months) and \"Show amounts\" wording; PG-B-Finance now has no period control (12-month chart only) and a plain eye button.",
+  "expected": "Story steps match the board.",
+  "actual": "Steps ask the persona to switch to 90 days, which no board draws.",
+  "board": "catalog.md",
+  "phase_issue": "#421",
+  "quick_fix": true,
+  "suggested_fix": "Rewrite STORY-078 steps and ideal path to read the 12-month chart and tap a bar.",
+  "status": "open",
+  "note": "New in round 3."
  }
 ]

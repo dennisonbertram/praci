@@ -1,14 +1,15 @@
-# J5 proposal A (minimal): remove the range control, label the periods
+# J5 proposal A (minimal): add one permissions row, keep Account as the preferences home
 
-Problem: the 30 days / 90 days / 12 months control only changes which bars are lit. Runway, Cash and the chart never change, so the control promises a filter it does not provide. Runway and Cash are point-in-time figures; a range cannot change them truthfully.
+Problem: "Allowed without asking" (the tools an agent may run without a prompt) is a row at the bottom of the AI data sharing page (PG-B-Settings, frame "AI data sharing"). Language, Appearance and Hide amounts are only in Account (PG-B-Account, frame "Account"). Server has a row in Settings and another in Account, plus the sign-in links. On PH-Pages the Settings frame differs from PG-B-Settings: it has "Archived agents", no Server row, and the profile and Account sit under the list.
 
 ## Design
-- Delete the segmented control from every frame of PG-B-Finance and from Desk.
-- Label each figure with its period: tiles read "Runway now" and "Cash today"; the chart card header reads "Monthly burn, 12 months".
-- The chart keeps 12 bars and the selected-month callout. The callout names the month ("Oct [AMOUNT]"). Unselected bars lighten to `#7E7C75` (about 3.6:1 on the `#252523` card) and a 1px baseline in `#3A3935` is added, so months can be read and compared.
-- Hidden-amounts frame masks everything inferable: Runway reads "•• mo", the callout reads "Oct ••••", and all 12 bars are drawn at one equal height (selected bar still lighter), so burn shape cannot be read.
-- Desk: the eye moves to the top-right of the top half, level with the "Finance" title. The back chevron moves to the top-left of the top half before the title; the chat half keeps only the Finance agent pill. Frame captions state that Hide amounts is remembered on this device and in every pose.
-- Questions about a shorter window go to the Finance agent in the chat half ("Why did spend jump last month?" already shows the pattern).
+- PG-B-Settings root: add a row "Allowed without asking" with the count "3" directly under "AI data sharing". Remove the "Allowed without asking" row from the end of the AI data sharing page, so the list lives in one place.
+- PG-B-Account: delete the "Server" row. Server stays in the Settings root (and in the signed-out "Use a custom server" links). Update the Account note that said the row matches Settings.
+- Language, Appearance and Hide amounts stay in Account.
+- PH-Pages Settings frame: add the same rows so it matches PG-B-Settings.
 
 ## Cost
-Two boards edited, no new data sets drawn. SwiftUI: one Swift Charts BarMark chart, one Text label per tile, one `@AppStorage` flag.
+Smallest edit: two boards plus the PH-Pages frame. SwiftUI: one more NavigationLink. No new screens.
+
+## Weakness
+It does not move Language, Appearance or Hide amounts (RED-R3-19, V-account-R3-9). A person looking for Appearance still opens Settings and finds nothing, and Account keeps mixing identity with preferences.

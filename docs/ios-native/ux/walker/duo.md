@@ -1,4 +1,4 @@
-# UX Walk: iPhone Duo and device adaptation (round 2)
+# UX Walk: iPhone Duo and device adaptation (round 3)
 
 Walker: walk-duo. Date: 2026-10-20. Target: the planned native SwiftUI iPhone app (epic #427, phase 7 is #419). No Swift code exists; the boards are the app.
 Scope: catalog stories STORY-098 to STORY-108 (STORY-101 merged into STORY-064) and the standard iPhone (PH-*) adaptation.
@@ -83,3 +83,14 @@ PH-Home, PH-Thread, PH-GroupThread, PH-Inbox, PH-Computer and PH-Spaces follow t
 
 ## Design rules check
 Glass stays on bars, menus and the prominent control; content is solid. No view draws more than three glass groups plus the prominent one. Avatars use the shipped shapes. One tinted prominent action per view holds except as noted. Product name is Praci (Account 'After delete' frame).
+
+
+## Round 3 update
+
+Date: 2026-10-20. All boards were re-screenshotted; the geometry audit ran once per board used (30 boards). No page overflow on any board. Uneven-row hits are icon and text pairs (false positives).
+
+Resolved this round: F-duo-007 (DS-06 draws the mail conflict), F-duo-R2-001 (PH-GroupThread header now fits), F-duo-R2-003 (Desk-Computer draws a labelled Release control).
+Still open: F-duo-001 (medium: no inner or half-folded boards for the thread beside Personnel, Computer, Artifacts, Image, Settings, form sheets), F-duo-R2-002 (medium: agent vs bot remains in Settings, DS-03, DS-04), F-duo-R2-004 (downgraded to low: PH-Pages now draws Finance and Settings; Artifacts, Image, Account and sheets at 393 pt are not drawn), F-duo-033 (Alex Morgan vs Sam Rivera), F-duo-039 (chip row clipped).
+New: F-duo-R3-001 (low: Settings uses an X on PG-B-Settings and a back chevron on PH-Pages).
+
+Totals: see duo-findings.json. Open: 0 critical, 0 high, 2 medium, 14 low, 1 suggestion.

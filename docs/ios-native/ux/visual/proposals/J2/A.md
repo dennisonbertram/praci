@@ -1,10 +1,11 @@
-# J2 (round 2, problem cluster C4) proposal A: minimal change
+# J2 / A (minimal change): Cleanup in More everywhere, two confirms
 
-Board: PG-A-Compose. Frames 4 to 7 (Edit draft, Cc suggestions, Invalid address, Discard prompt) swap the Send arrow for a "Done" capsule.
+Evidence read: r3/PG-A-Cleanup.png, r3/PH-Inbox.png, r3/Split.png, r3/Inner-Message.png (Sheet source checked for text; no Cleanup entry drawn).
 
-Idea: delete Done. Every compose frame draws the same Send arrow (bottom of the side strip, the one tinted action). The X stays the only way out.
-- Send is dimmed (opacity 0.35, aria-disabled) when there is no recipient or any address is invalid. This answers STORY-047-R2-3 because Done no longer exists to dim.
-- Edit draft opened from a thread card: Send sends the edited draft. One tap fewer than Done then Send on the card.
-- Merge the two close-with-edits sheets into one: "Save draft", "Discard" (red), "Keep editing". It appears on X only when the text differs from what was last saved. Frame 7 (Discard prompt) and frame 8 (Close with typed text) both show this sheet.
-- Edit-draft attach button uses the paperclip like every other frame (frames 4 to 7 draw a page icon labelled "Attach file").
-Cost: five small markup edits; no new frames.
+Idea: keep everything the Cleanup screen draws today, change only the entry and the confirm.
+- Entry: Cleanup lives in the "..." (More) menu on every inbox board. PG-A-Cleanup frame 1 swaps the labeled "Cleanup" capsule for the same 44 pt "..." circle used by Split and Inner-Message, and shows the popover.
+- Confirm: delete the combined "Archive and unsubscribe" sheet. Archive 101 emails opens a sheet "Archive 101 emails?" with Archive and Cancel. Unsubscribe opens "Unsubscribe from 3 senders?" with Unsubscribe and Cancel, noting it can't be undone.
+- Remove the chevron and the "Skip inbox for future mail" menu (frame 4 deleted); nothing in the app explains it.
+- Done frame: "101 emails archived" with Undo.
+Cost for a user who wants both: select, Archive, confirm, Unsubscribe, confirm = 5 actions after selecting.
+Weakness: the Archive confirm duplicates the Undo that already exists, so a reversible action gets a speed bump.

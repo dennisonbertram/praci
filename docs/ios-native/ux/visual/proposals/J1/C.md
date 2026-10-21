@@ -1,12 +1,16 @@
-# J1 proposal C (round 2): disclosure beside the action, permission placeholder in place of the feature
+# J1 proposal C (convention): Mail "Add Account" pattern, sign in first, "Other options" push to a detail screen
 
-Pattern: the iOS permission placeholder. Camera, Photos and Maps do not show an error when access is off. They show the feature's own space with one sentence and one button that fixes it in place (Camera: "Camera access is off", button inside the viewfinder). Messages does the same for a failed send: the failed row itself is the repair control. Settings keeps the master switch.
+Pattern named: Apple Mail / Settings Add Account. A first screen offers the easy provider sign-in as the one prominent action; secondary methods are a grouped inset list that pushes to a detail screen, which has its own back button. Linear and Things do the same: one primary continue button, and "use a key / other" as a quiet link.
 
-- Consent stays where it is: Connect is consent, with the footer line naming Model A. No first-send sheet (keeps the STORY-019 saving). Speech and Memory ask the first time they are used.
-- Sharing off becomes a drawn state with one pattern everywhere. A solid card (same shape as the no-model card) replaces the feature's entry point and holds one sentence, one prominent "Turn on" button, and a disclosure line "Sends messages and attachments to Model A." The button flips the switch in place, so allowing later takes one tap and the disclosure is next to it.
-- Thread: typed text is kept, the composer stays visible but its Send is disabled, and the card sits above it. No Not sent bubble is created, because nothing was sent.
-- Home: the card replaces the Chief CTA; Chief row subtitle "Sharing is off".
-- Inbox after Not now: the existing "Changes to mail are off" card shape, "Inbox agent is off" with "Allow", mail listed unsorted.
-- Speech after Not now: composer in typing mode, mic asks again on next tap. Privacy details is a 44 pt row. Settings shows the off state with "Agents are paused until Model A is on."
+Changes
+- PG-A-HomeNoModel, first frame "Connect a model": sheet has only the close X (no header capsule). Body: capsule "Sign in with Model A" (the one tinted prominent action), caption "Uses your Model A plan." Below, an inset grouped list titled "Other ways": rows "API key" and "Local server", each with a chevron. Privacy footer unchanged.
+- API key detail (pushed, back chevron "Back"): field with a Paste button on its right, "Get a key" link below it, then a capsule "Connect", dimmed until text exists. Frames: empty, filled, not accepted (red field, "Key not accepted."), connecting (spinner in the capsule).
+- Local server detail (pushed): Address empty, placeholder "http://192.168.1.20:8000/v1", helper "Only works on the same network.", capsule "Connect".
+- Sign-in states: a Safari handoff frame is reused from PG-B-Models (Acme AI sign-in code sheet).
+- After connecting: card "Model A connected. Chief can reply now." with Message Chief. New hidden until first message; Chief row previews the latest message after the first send.
+- No-model Home card: "Chief cannot reply until a model is connected." with Connect capsule.
+- PG-A-ThreadStates, No model: composer disabled, line "Connect a model to send messages.", real Connect capsule.
+- PG-B-Models: Connect sheet uses the same screens; "Sign in with Acme AI instead" link becomes the primary capsule; API key lives under "Other ways".
 
-Allow-later path: one tap, in place, with disclosure. Risk: moderate, mostly new board frames; SwiftUI needs a Toggle bound to the consent record and a reusable card view.
+Cost: sheet becomes a NavigationStack, two detail frames per board. Native: List with insetGrouped style, NavigationLink, PasteButton, Link.
+Weakness: API key users need one more tap than today (one tap on the row; the key is then on its own focused screen).

@@ -1,7 +1,6 @@
-# J2 (round 2, problem cluster C4) proposal B: restructure (autosave, no close sheet)
+# J2 / B (restructure): labeled Cleanup capsule everywhere
 
-Idea: remove the close prompt completely. Compose autosaves, as Things and Linear do. Send is the one tinted action in every frame (Done removed, dimmed for no recipient or invalid address).
-- X always closes. The draft is kept in Drafts (new message, reply) or on the thread card (edited agent draft).
-- After closing, the previous screen shows a short toast "Draft saved" with "Delete". Delete is the only discard route; it is also undoable for a few seconds.
-- Frames 7 and 8 become "Closed" frames showing the toast instead of a sheet. No sheet remains on the board.
-Costs: needs server autosave on every pause in typing (more writes, conflict handling with the agent replacing a draft), a new toast frame on three boards that return from Compose, and abandoned experiments pile up in Drafts. Discard is less discoverable. Edit-from-card discard (reverting to the agent version) has no obvious home.
+Idea: the entry is always visible. PG-A strip keeps its labeled capsule. On PH-Inbox, Split, Sheet and Inner-Message a labeled "Cleanup" capsule is added next to the toolbar group (iPhone: between the "..." pill and Ask) so nobody has to open a menu.
+- Confirm: Archive and Unsubscribe get separate confirmation sheets as in A. "Skip inbox for future mail" is removed.
+- The "..." menu stays for its other items.
+Problems seen on the boards: the PH-Inbox top bar already holds back, a four-button glass pill and Ask; a labeled capsule adds a third glass group, which leaves no room under the README limit of three glass groups once the toast and bar are counted. Inner and Sheet boards have no strip with room for a labeled control. A once-a-month task takes permanent chrome on every inbox view, against the "what can be removed" rule.

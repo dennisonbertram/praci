@@ -1,19 +1,9 @@
-# J3 Option A: minimal change (rule text only)
+# J3 (round 3, cluster C7) proposal A: minimal change
 
-Round 2. Scope of missing inner, laptop and standard-iPhone boards.
+Boards: PG-A-ThreadStates, DS-06-Chat, PH-Thread, PG-A-Thread, PG-A-GroupThread, PH-GroupThread.
 
-## Idea
-Draw nothing new. The two rules boards already hold a 12-step generation recipe and one rule card per page. Close the findings by editing text.
-
-## Edits
-- PG-A-Rules, Inbox card: remove "folders" from the left-third description (STORY-064-R2-5; Inbox is one page with Needs reply and Other mail sections).
-- PG-A-Rules / PG-B-Rules shared rules: add "Ask [page] agent opens the thread in the right half (half-folded) or replaces the detail pane with Back to [page] (inner flat)" (STORY-085-R2-3).
-- PG-B-Rules shared rules: add a 393 pt line: "Standard iPhone: the outer-display content column with a top bar instead of the side strip; sheets use the same medium and large detents" (F-duo-R2-004, F-inbox-computer-026).
-- PG-A-Rules Artifact, Agent page, Agent list cards: laptop line reads "Full height; no split" (STORY-076-R2-6).
-- Reply, Archive result, Inbox zero, Cleanup, Finance inner: add one sentence each to the Inbox, Inbox message and Finance cards describing the inner pose.
-
-## What it does not do
-No frame shows the Reply form between the list and the fold gap, the snackbar after Archive, Cleanup in the detail pane, Finance beside the sidebar, or an agent thread with chips and a queued bubble. An implementer must infer the layout from prose, and the hinge keep-out (x 435 to 455) is untested on every new surface.
-
-## Fit
-Smallest effort and no drift risk. Fails the cluster acceptance (STORY-064-R2-1 is rated high and asks for a board). Persona view: the founder's primary inner-display task (reply to the top Needs reply mail) has no drawn path.
+Idea: make the boards agree with the cheapest reading of each rule. Change as few frames as possible.
+- Typing during a run: keep the draft (DS-06 already says so). Delete the "Sends after run" caption in PG-A-ThreadStates "Running, text typed". The slot stays Stop; Send returns when the run ends. No new frame.
+- Reactions: ship them as PH-Thread draws them. Replace "(React is deferred)" in DS-06 with one sentence describing the six-emoji row, the "React" menu item and the chip under the bubble. Update STORY-042 to remove the DECISION line.
+- Archive: in the four "Archive, with Undo" frames, replace the thread behind the toast with the Home list (archived row removed) and move the toast to the bottom as a solid bar, like PH-Inbox "Archived, Undo". Keep the toast text "<Name> chat archived / Find it in Archived."
+Cost: 1 caption deleted, 1 DS-06 sentence, 4 frames redrawn. Leaves: the menu still says Reply, React, Copy (two ways to react); no frame shows the Send returning; toast says "chat archived" while Settings says "Archived agents" (RED-R3-11 open).

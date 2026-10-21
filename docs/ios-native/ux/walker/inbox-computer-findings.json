@@ -13,7 +13,7 @@
   "quick_fix": false,
   "suggested_fix": "Add a PG-A-Compose board and one rule card; draw the six outcome states.",
   "status": "resolved",
-  "note": "PG-A-Compose draws New message, Reply and the Reply/Reply all/Forward title menu with From, To, Cc/Bcc, Subject, body, attachment, Send, Close. Remaining outcome states split into F-inbox-computer-R1-002."
+  "note": "PG-A-Compose draws New message, Reply and the Reply/Reply all/Forward title menu with From, To, Cc/Bcc, Subject, body, attachment, Send, Close. Remaining outcome states split into F-inbox-computer-R1-002. (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-002",
@@ -29,7 +29,7 @@
   "quick_fix": false,
   "suggested_fix": "Add standard-iPhone Inbox list and message boards, or state that the Duo layout is the only target for phase 6.",
   "status": "resolved",
-  "note": "PH-Inbox now draws the standard iPhone Inbox list with sections, chips, unread dots and swipe. Message view and Ask Inbox agent at 393 pt split into F-inbox-computer-R1-001."
+  "note": "PH-Inbox now draws the standard iPhone Inbox list with sections, chips, unread dots and swipe. Message view and Ask Inbox agent at 393 pt split into F-inbox-computer-R1-001. (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-003",
@@ -45,7 +45,7 @@
   "quick_fix": false,
   "suggested_fix": "Decide whether Cleanup is in phase 6; if so draw it and add a More group to the Inbox strip.",
   "status": "resolved",
-  "note": "PG-A-Cleanup draws the More menu entry, senders ticked, bulk action menu and Done with Undo. Remaining gaps split into R1-003 and R1-004."
+  "note": "PG-A-Cleanup draws the More menu entry, senders ticked, bulk action menu and Done with Undo. Remaining gaps split into R1-003 and R1-004. (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-004",
@@ -61,7 +61,7 @@
   "quick_fix": false,
   "suggested_fix": "Draw the five states and the first-sync loading state.",
   "status": "resolved",
-  "note": "PH-Inbox and Sheet draw Inbox zero, Mail changes off (Turn on), Gmail needs reconnecting (Reconnect), No mail account (Connect Gmail), Consent needed (Allow / Not now) and First sync. Rate-limited state not drawn (minor). PG-A-Rules Inbox card still lists only the old states (R2-001)."
+  "note": "PH-Inbox and Sheet draw Inbox zero, Mail changes off (Turn on), Gmail needs reconnecting (Reconnect), No mail account (Connect Gmail), Consent needed (Allow / Not now) and First sync. Rate-limited state not drawn (minor). PG-A-Rules Inbox card still lists only the old states (R2-001). (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-005",
@@ -77,7 +77,7 @@
   "quick_fix": false,
   "suggested_fix": "Add an Undo toast and a row-failure state to the Swipe actions specimen.",
   "status": "resolved",
-  "note": "PH-Inbox and Sheet draw an Archived toast with Undo and a Couldn't archive toast with Try again; the same pair appears on PG-A-InboxMessage."
+  "note": "PH-Inbox and Sheet draw an Archived toast with Undo and a Couldn't archive toast with Try again; the same pair appears on PG-A-InboxMessage. (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-006",
@@ -93,7 +93,7 @@
   "quick_fix": false,
   "suggested_fix": "Drop Star until a write exists; map Mute to inbox.feedback or remove it; add Spam and Trash to the long-press menu.",
   "status": "resolved",
-  "note": "DS-05 swipe specimen now offers Spam and Archive (Mark read / Mark unread on the leading side); Star and Mute are gone and PH-Inbox/Sheet match."
+  "note": "DS-05 swipe specimen now offers Spam and Archive (Mark read / Mark unread on the leading side); Star and Mute are gone and PH-Inbox/Sheet match. (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-007",
@@ -109,7 +109,7 @@
   "quick_fix": false,
   "suggested_fix": "Remove the eye from Inbox; pick one place for Filter and Important only; align filter options with InboxFilter values.",
   "status": "resolved",
-  "note": "Sheet, PH-Inbox and Split now share Search, Filter, Compose, More and the prominent Ask Inbox agent; eye and star are gone (Split keeps an inline search field in the list header, as the rule card says). Filter menu contents appear only in DS-04 (R2-003)."
+  "note": "Sheet, PH-Inbox and Split now share Search, Filter, Compose, More and the prominent Ask Inbox agent; eye and star are gone (Split keeps an inline search field in the list header, as the rule card says). Filter menu contents appear only in DS-04 (R2-003). (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-008",
@@ -125,7 +125,7 @@
   "quick_fix": false,
   "suggested_fix": "Make Reply a pull-down menu with three items, or add Forward to the long-press menu and draw it.",
   "status": "resolved",
-  "note": "Forward and Reply all are reachable from the Reply title menu drawn in PG-A-Compose. Discoverability (menu only after opening Reply) is R1-005."
+  "note": "Forward and Reply all are reachable from the Reply title menu drawn in PG-A-Compose. Discoverability (menu only after opening Reply) is R1-005. (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-009",
@@ -141,7 +141,7 @@
   "quick_fix": false,
   "suggested_fix": "Pick one card in DS-06 and redraw the two boards from it.",
   "status": "resolved",
-  "note": "PG-A-Thread and Inner now draw the same card: 'Re: Pilot timeline', Needs approval, Save and Send."
+  "note": "PG-A-Thread and Inner draw the same card: 'Re: Pilot timeline', Needs approval, Edit and Send (round 3 re-check)."
  },
  {
   "id": "F-inbox-computer-010",
@@ -157,7 +157,7 @@
   "quick_fix": false,
   "suggested_fix": "Specify VoiceOver labels per screen in the rule cards; use a different glyph for 'Open conversation' on the routine.",
   "status": "resolved",
-  "note": "Each screen now has its own accessible name in the rule cards (Ask Inbox agent, Open chat, Open conversation) and the Routine board has a separate Open last run with a clock glyph. The bubble still means \"go to the agent thread\" everywhere."
+  "note": "Each screen now has its own accessible name in the rule cards (Ask Inbox agent, Open chat, Open conversation) and the Routine board has a separate Open last run with a clock glyph. The bubble still means \"go to the agent thread\" everywhere. (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-011",
@@ -173,7 +173,7 @@
   "quick_fix": false,
   "suggested_fix": "Add a thread variant and an attachment preview board.",
   "status": "resolved",
-  "note": "PG-A-InboxMessage now draws attachment preview, multi-message thread, Unsubscribe row and confirm, next message after Archive, Archive failed and Ask Inbox agent failed."
+  "note": "PG-A-InboxMessage now draws attachment preview, multi-message thread, Unsubscribe row and confirm, next message after Archive, Archive failed and Ask Inbox agent failed. (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-012",
@@ -189,7 +189,7 @@
   "quick_fix": false,
   "suggested_fix": "Remove the snippet bullet and add the chips to Sheet.",
   "status": "resolved",
-  "note": "Sheet rows now have one unread dot and label chips (Draft ready, Needs attention, Newsletter, Junk), matching PH-Inbox."
+  "note": "Sheet rows now have one unread dot and label chips (Draft ready, Needs attention, Newsletter, Junk), matching PH-Inbox. (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-013",
@@ -205,7 +205,7 @@
   "quick_fix": false,
   "suggested_fix": "Add the card to the standard Inbox list board.",
   "status": "resolved",
-  "note": "PH-Inbox and Sheet draw the To do card above Needs reply. Split and Inner do not show it (low; the inner list header could carry it)."
+  "note": "PH-Inbox and Sheet draw the To do card above Needs reply. Split and Inner do not show it (low; the inner list header could carry it). (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-014",
@@ -220,8 +220,8 @@
   "phase_issue": "#419",
   "quick_fix": false,
   "suggested_fix": "Draw message-selected and empty detail on Inner and name what the strip holds for each.",
-  "status": "open",
-  "note": "Inner-Message draws the message pane beside the list (resolved part). Still missing: compose pane beside the list, empty detail pane, and folders. Severity lowered to low."
+  "status": "resolved",
+  "note": "Inner-Message now draws the message beside the list, Reply in the inner and half-folded layouts, After Archive, Inbox zero (empty detail) and Cleanup. Folders do not exist in the Inbox plan (sidebar is Inbox only)."
  },
  {
   "id": "F-inbox-computer-015",
@@ -237,7 +237,7 @@
   "quick_fix": false,
   "suggested_fix": "Draw boot, watch, handoff prompt and error states; add Return to the key bar.",
   "status": "resolved",
-  "note": "PG-A-Computer and PH-Computer draw Watching, In control, Agent waiting (I'm done / Skip), Starting, Control ended (idle), Reconnecting, Control denied and Can't connect (Retry). Return is not on the key bar, but the system keyboard has it (Desk-Computer shows the keyboard)."
+  "note": "PG-A-Computer and PH-Computer draw Watching, In control, Agent waiting (I'm done / Skip), Starting, Control ended (idle), Reconnecting, Control denied and Can't connect (Retry). Return is not on the key bar, but the system keyboard has it (Desk-Computer shows the keyboard). (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-016",
@@ -253,7 +253,7 @@
   "quick_fix": false,
   "suggested_fix": "Merge picker and chip into one clear capsule and fold Keyboard/Fit into the key bar, or document the exception for clear glass over media.",
   "status": "resolved",
-  "note": "In control the outer and standard boards now show a Team chip, a Fit button and the key bar over the screen (three clear glass groups) plus the one prominent Release control; Close is hidden while in control per the rule card."
+  "note": "In control the outer and standard boards now show a Team chip, a Fit button and the key bar over the screen (three clear glass groups) plus the one prominent Release control; Close is hidden while in control per the rule card. (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-017",
@@ -269,7 +269,7 @@
   "quick_fix": false,
   "suggested_fix": "Move Share to the prominent slot at the bottom of the strip.",
   "status": "resolved",
-  "note": "PG-A-Artifact draws Share as the ink-filled prominent button at the bottom of the strip."
+  "note": "PG-A-Artifact draws Share as the ink-filled prominent button at the bottom of the strip. (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-018",
@@ -285,7 +285,7 @@
   "quick_fix": false,
   "suggested_fix": "Drop the card heading or the capsule; keep the pill and make Versions a list menu only if the pill cannot jump.",
   "status": "resolved",
-  "note": "The card heading is gone (title in the capsule only) and versions switch through the pill; the Versions list lives in the More menu (drawn on PG-A-Image)."
+  "note": "The card heading is gone (title in the capsule only) and versions switch through the pill; the Versions list lives in the More menu (drawn on PG-A-Image). (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-019",
@@ -301,7 +301,7 @@
   "quick_fix": false,
   "suggested_fix": "Add the versions menu, delete alert and Photos toast to DS-04 and reference them.",
   "status": "resolved",
-  "note": "PG-A-Image draws the More menu (Versions, Delete), the Versions menu, the Delete confirmation with its warning copy and the Saved to Photos toast."
+  "note": "PG-A-Image draws the More menu (Versions, Delete), the Versions menu, the Delete confirmation with its warning copy and the Saved to Photos toast. (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-020",
@@ -317,7 +317,7 @@
   "quick_fix": true,
   "suggested_fix": "Make the three tiles flex: 1 so they share width equally.",
   "status": "resolved",
-  "note": "Tile widths remain equal (116, 118, 116) in the current board."
+  "note": "Tile widths remain equal (116, 118, 116) in the current board. (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-021",
@@ -333,7 +333,7 @@
   "quick_fix": false,
   "suggested_fix": "Draw the list and a failed-run status; say which run the conversation belongs to.",
   "status": "resolved",
-  "note": "PG-A-Routine draws the Routines list (with Paused and Last run failed rows), Routine, More menu (Pause, Edit), Run history, Last run failed with Run again, and Load error."
+  "note": "PG-A-Routine draws the Routines list (with Paused and Last run failed rows), Routine, More menu (Pause, Edit), Run history, Last run failed with Run again, and Load error. (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-022",
@@ -349,7 +349,7 @@
   "quick_fix": false,
   "suggested_fix": "Add 'Try again.' to the four error states and draw one offline banner.",
   "status": "resolved",
-  "note": "Agent page, Agent list, Routine and Artifact-family load errors on the boards now show an icon, title and a Retry button; Computer shows Retry. The rule cards still read as text only (R2-001)."
+  "note": "Agent page, Agent list, Routine and Artifact-family load errors on the boards now show an icon, title and a Retry button; Computer shows Retry. The rule cards still read as text only (R2-001). (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-023",
@@ -365,7 +365,7 @@
   "quick_fix": false,
   "suggested_fix": "Add swipe-to-delete and the conflict alert.",
   "status": "open",
-  "note": "PG-A-AgentList is unchanged: list and load error only. No conflict alert (\"The bot changed this list\"), no swipe-to-delete, no keyboard-open state."
+  "note": "PG-A-AgentList now draws empty, keyboard-open, Agent actions menu (Clear done items, Copy as text), Save error with Retry and Load error. Still missing: the 'The bot changed this list' conflict alert and a delete affordance for one item. Clear done items has no confirm drawn."
  },
  {
   "id": "F-inbox-computer-024",
@@ -381,7 +381,7 @@
   "quick_fix": false,
   "suggested_fix": "Draw the expanded search and a trailing fade on the chips.",
   "status": "open",
-  "note": "PG-A-Artifacts is a single frame: the chip row still runs off the right edge (\"Chief\" clipped, no fade), and there are no search-open, no-results, empty or error frames; no standard iPhone Artifacts board."
+  "note": "PG-A-Artifacts now has empty, loading, load error, search and no-results frames. Still open: the chip row is cut at the right edge ('Chief') with no fade, and no standard iPhone Artifacts board or entry from Home."
  },
  {
   "id": "F-inbox-computer-025",
@@ -397,7 +397,7 @@
   "quick_fix": false,
   "suggested_fix": "Draw Computer in laptop pose first, as the rule card calls it the main use.",
   "status": "resolved",
-  "note": "Desk-Computer draws the Computer in laptop pose (screen above, Keyboard/Fit group, Release, key bar, system keyboard). Other pages derive their laptop pose from the rule cards, which is acceptable for static reading pages."
+  "note": "Desk-Computer draws the Computer in laptop pose (screen above, Keyboard/Fit group, Release, key bar, system keyboard). Other pages derive their laptop pose from the rule cards, which is acceptable for static reading pages. (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-026",
@@ -413,7 +413,7 @@
   "quick_fix": false,
   "suggested_fix": "Add a standard-width recipe to PG-A-Rules and one drawn example.",
   "status": "open",
-  "note": "PH-Computer covers the Computer at 393 pt. Artifacts, Artifact, Image, Agent page, Agent list and Routine still have only the Duo outer board; no standard iPhone variants or entry to Artifacts."
+  "note": "Still open: PH-Inbox and PH-Computer exist, but Artifacts, Artifact, Image, Agent page, Agent list and Routine have only Duo outer boards; the 393 pt placement of their strip controls is unspecified."
  },
  {
   "id": "F-inbox-computer-027",
@@ -429,7 +429,7 @@
   "quick_fix": false,
   "suggested_fix": "Pick the board names and update the catalog and plan.",
   "status": "open",
-  "note": "Mixed names remain: Sheet, Split, Inner and the rule card say \"Other mail today\" while PH-Inbox and Sheet frames use \"Today\" and \"Earlier\"; Desk-Computer says \"You have control\" while the other Computer boards say \"You are driving\"; Rule card says \"Open conversation\" while the Routine board has \"Open last run\"."
+  "note": "Still mixed: Inner and the Inbox rule card say 'Other mail today 24' while PH-Inbox, Sheet and Inner-Message use Today and Earlier; Desk-Computer says 'You have control' while the other Computer boards say 'You are driving'; the Routine rule card says 'Open last run' as the prominent bubble while the board names it Open conversation/bubble differently."
  },
  {
   "id": "F-inbox-computer-028",
@@ -445,7 +445,7 @@
   "quick_fix": false,
   "suggested_fix": "Make bullets link to the relevant screen, or drop duplicated tiles.",
   "status": "open",
-  "note": "Suggestion. Runway figures still repeat on the Finance page, artifact, agent page and routine prompt; page bullets are not links."
+  "note": "Suggestion, unchanged: runway figures repeat on Finance page, artifact, agent page and routine prompt; the two page rows have chevrons but no board shows where they lead."
  },
  {
   "id": "F-inbox-computer-R1-001",
@@ -457,7 +457,7 @@
   "suggested_fix": "Add the prominent Ask Inbox agent control to PH-Inbox (or say compose stays the single prominent action and the agent is in More) and add PH message and compose boards.",
   "phase_issue": "#418",
   "status": "open",
-  "note": "Ask Inbox agent is now the prominent bubble on PH-Inbox (resolved part). Still missing at 393 pt: message view and compose page (STORY-057, 058, 114 judge them against the outer-display boards), and the Cleanup entry/Reply menu."
+  "note": "PH-Inbox covers the list at 393 pt and its note sends the reader to the Duo outer boards for message view, Reply menu, compose and Cleanup. Standard iPhone is the main device, so these four screens are still undesigned at 393 pt."
  },
  {
   "id": "F-inbox-computer-R1-002",
@@ -469,7 +469,7 @@
   "suggested_fix": "Add one row of states under the three panels: Send disabled, Sending, error banner with Retry, unknown, writes off, and a Close action sheet with Keep draft / Discard.",
   "phase_issue": "#418",
   "status": "resolved",
-  "note": "PG-A-Compose now draws Cc suggestions, invalid address, send disabled, sending, not sent (Retry), result unknown (Open Sent / Send again), mail changes off (Turn on), and the discard and save-draft sheets."
+  "note": "PG-A-Compose now draws Cc suggestions, invalid address, send disabled, sending, not sent (Retry), result unknown (Open Sent / Send again), mail changes off (Turn on), and the discard and save-draft sheets. (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-R1-003",
@@ -481,7 +481,7 @@
   "suggested_fix": "Draw loading, empty, confirm dialog, partial failure with Retry, and where history lives.",
   "phase_issue": "#418",
   "status": "resolved",
-  "note": "PG-A-Cleanup now draws confirm, in progress, failed (Try again), done with Undo, empty and History (with Undo per entry). Unsubscribe has no confirmation (R2-002)."
+  "note": "PG-A-Cleanup now draws confirm, in progress, failed (Try again), done with Undo, empty and History (with Undo per entry). Unsubscribe has no confirmation (R2-002). (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-R1-004",
@@ -493,7 +493,7 @@
   "suggested_fix": "Add the same More control to Sheet and PH-Inbox, or move Cleanup to the filter menu and redraw the first panel.",
   "phase_issue": "#418",
   "status": "resolved",
-  "note": "PH-Inbox and Sheet now have a More button in the control group; PG-A-Cleanup frame 1 draws the menu with Cleanup."
+  "note": "PH-Inbox and Sheet now have a More button in the control group; PG-A-Cleanup frame 1 draws the menu with Cleanup. (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-R1-005",
@@ -505,7 +505,7 @@
   "suggested_fix": "Add a chevron or long-press hint on the message Reply button, or draw the three-item menu on the message board.",
   "phase_issue": "#418",
   "status": "resolved",
-  "note": "PG-A-InboxMessage frame 2 draws the Reply menu (Reply, Reply all, Forward) from the Reply button."
+  "note": "PG-A-InboxMessage frame 2 draws the Reply menu (Reply, Reply all, Forward) from the Reply button. (round 3: still holds)"
  },
  {
   "id": "F-inbox-computer-R2-001",
@@ -517,19 +517,19 @@
   "suggested_fix": "Rewrite the Inbox, Inbox message, Computer, Routine, Agent page/list and Artifact empty/error lines from the drawn frames.",
   "phase_issue": "#418",
   "status": "open",
-  "note": "New in round 2."
+  "note": "Rule cards still disagree with boards: Inbox card says 'Other mail today' and lists only zero/loading/error; Computer card says Booting with a progress bar and puts Take control in the strip, while boards show 'Starting Team computer' with Take control at the bottom; Artifact card says Share/Versions group, version pill, 'Could not load this artifact', while the board has Share only, Versions in More and 'Couldn't load'; Routine card says one prominent Open last run, while the board has Open last run inline and a bubble; Agent list card says floating Add item field, while the board has an inline row."
  },
  {
   "id": "F-inbox-computer-R2-002",
   "story_id": "STORY-062, 115",
-  "severity": "medium",
+  "severity": "low",
   "category": "error-handling",
   "board": "PG-A-Cleanup.dc.html",
   "description": "Archive has a confirm sheet, but Unsubscribe from 2 senders does not; it cannot be undone (only said afterwards: \"Unsubscribing can't be undone\"), and the menu says \"2 senders\" while 3 are ticked with no reason given.",
   "suggested_fix": "Draw a confirm for Unsubscribe saying it cannot be undone, and say why only 2 of 3 senders qualify (for example, \"1 has no unsubscribe link\").",
   "phase_issue": "#418",
   "status": "open",
-  "note": "New in round 2."
+  "note": "Archive and unsubscribe has a confirm sheet that says Unsubscribing can't be undone (resolved part). Tapping Unsubscribe alone has no confirm drawn, and the menu item 'Skip inbox for future mail' is not explained."
  },
  {
   "id": "F-inbox-computer-R2-003",
@@ -541,6 +541,118 @@
   "suggested_fix": "Add frames for the Filter menu, search results and no results to PH-Inbox.",
   "phase_issue": "#418",
   "status": "open",
-  "note": "New in round 2."
+  "note": "Unchanged: no Inbox board draws the Filter menu, an active filter chip, search results or No matching mail."
+ },
+ {
+  "id": "F-inbox-computer-R3-001",
+  "story_id": "STORY-056, STORY-057, STORY-061",
+  "severity": "medium",
+  "category": "consistency",
+  "criterion": "Round 3",
+  "description": "The one prominent action differs by device: on PH-Inbox the Compose button is the white filled control and Ask is glass; on Sheet, Inner-Message and PG-A-InboxMessage the Ask Inbox agent bubble is white and Compose is glass.",
+  "expected": "Pick one prominent Inbox action for every layout and fill only that one.",
+  "actual": "The one prominent action differs by device: on PH-Inbox the Compose button is the white filled control and Ask is glass; on Sheet, Inner-Message and PG-A-InboxMessage the Ask Inbox agent bubble is white and Compose is glass.",
+  "board": "PH-Inbox.dc.html",
+  "phase_issue": "#418",
+  "quick_fix": false,
+  "suggested_fix": "Pick one prominent Inbox action for every layout and fill only that one.",
+  "status": "open",
+  "note": "New in round 3."
+ },
+ {
+  "id": "F-inbox-computer-R3-002",
+  "story_id": "STORY-070, STORY-071",
+  "severity": "medium",
+  "category": "consistency",
+  "criterion": "Round 3",
+  "description": "In the Older version frame (Image and Artifact) both Share and the Restore pill are white and filled, so there are two prominent actions and the user cannot tell which is the next step.",
+  "expected": "Make Share glass while an older version is shown; leave Restore as the only prominent action.",
+  "actual": "In the Older version frame (Image and Artifact) both Share and the Restore pill are white and filled, so there are two prominent actions and the user cannot tell which is the next step.",
+  "board": "PG-A-Image.dc.html",
+  "phase_issue": "#418",
+  "quick_fix": false,
+  "suggested_fix": "Make Share glass while an older version is shown; leave Restore as the only prominent action.",
+  "status": "open",
+  "note": "New in round 3."
+ },
+ {
+  "id": "F-inbox-computer-R3-003",
+  "story_id": "STORY-074",
+  "severity": "low",
+  "category": "consistency",
+  "criterion": "Round 3",
+  "description": "Save error frame shows a white Retry button beside the white prominent chat bubble, and the Clear done items menu entry has no confirm.",
+  "expected": "Draw Retry as a glass or text control, and add a confirm or Undo for Clear done items.",
+  "actual": "Save error frame shows a white Retry button beside the white prominent chat bubble, and the Clear done items menu entry has no confirm.",
+  "board": "PG-A-AgentList.dc.html",
+  "phase_issue": "#418",
+  "quick_fix": false,
+  "suggested_fix": "Draw Retry as a glass or text control, and add a confirm or Undo for Clear done items.",
+  "status": "open",
+  "note": "New in round 3."
+ },
+ {
+  "id": "F-inbox-computer-R3-004",
+  "story_id": "STORY-058, STORY-065",
+  "severity": "low",
+  "category": "visual",
+  "criterion": "Round 3",
+  "description": "Not sent shows Retry as small text inside a 38 pt circle, and Send result unknown wraps its message to three lines with Open Sent and Send again squeezed beside it.",
+  "expected": "Make Retry the normal Send control with a label, and stack Open Sent and Send again under the message.",
+  "actual": "Not sent shows Retry as small text inside a 38 pt circle, and Send result unknown wraps its message to three lines with Open Sent and Send again squeezed beside it.",
+  "board": "PG-A-Compose.dc.html",
+  "phase_issue": "#418",
+  "quick_fix": false,
+  "suggested_fix": "Make Retry the normal Send control with a label, and stack Open Sent and Send again under the message.",
+  "status": "open",
+  "note": "New in round 3."
+ },
+ {
+  "id": "F-inbox-computer-R3-005",
+  "story_id": "STORY-064",
+  "severity": "low",
+  "category": "consistency",
+  "criterion": "Round 3",
+  "description": "Inner draws mail rows differently from Sheet, PH-Inbox and Inner-Message: unread dot before the sender name, no label chips, Example Weekly has no unread dot, and the section is Other mail today 24.",
+  "expected": "Reuse the PH-Inbox row (dot, chips, Today/Earlier) on Inner.",
+  "actual": "Inner draws mail rows differently from Sheet, PH-Inbox and Inner-Message: unread dot before the sender name, no label chips, Example Weekly has no unread dot, and the section is Other mail today 24.",
+  "board": "Inner.dc.html",
+  "phase_issue": "#418",
+  "quick_fix": false,
+  "suggested_fix": "Reuse the PH-Inbox row (dot, chips, Today/Earlier) on Inner.",
+  "status": "open",
+  "note": "New in round 3."
+ },
+ {
+  "id": "F-inbox-computer-R3-006",
+  "story_id": "STORY-056",
+  "severity": "low",
+  "category": "visual",
+  "criterion": "Round 3",
+  "description": "In the Archived and Couldn't archive frames the translucent toast lets row text show through and a stray character pokes out at the right edge (also on Sheet).",
+  "expected": "Make the toast background solid enough to hide rows, or clip the list above it.",
+  "actual": "In the Archived and Couldn't archive frames the translucent toast lets row text show through and a stray character pokes out at the right edge (also on Sheet).",
+  "board": "PH-Inbox.dc.html",
+  "phase_issue": "#418",
+  "quick_fix": false,
+  "suggested_fix": "Make the toast background solid enough to hide rows, or clip the list above it.",
+  "status": "open",
+  "note": "New in round 3."
+ },
+ {
+  "id": "F-inbox-computer-R3-007",
+  "story_id": "STORY-056",
+  "severity": "low",
+  "category": "consistency",
+  "criterion": "Round 3",
+  "description": "The Sheet swipe frame offers only Archive while PH-Inbox swipe offers Spam and Archive; Spam on Sheet appears only in the press-and-hold menu.",
+  "expected": "Show the same swipe actions on both boards.",
+  "actual": "The Sheet swipe frame offers only Archive while PH-Inbox swipe offers Spam and Archive; Spam on Sheet appears only in the press-and-hold menu.",
+  "board": "Sheet.dc.html",
+  "phase_issue": "#418",
+  "quick_fix": false,
+  "suggested_fix": "Show the same swipe actions on both boards.",
+  "status": "open",
+  "note": "New in round 3."
  }
 ]

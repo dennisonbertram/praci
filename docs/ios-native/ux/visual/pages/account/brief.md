@@ -1,17 +1,18 @@
-# Brief (round 2)
+# Brief: Praci native iPhone app, account and settings boards (round 3)
 
-Praci is a planned native SwiftUI iPhone app: a startup operating system where the user talks to bots (agents) in spaces. These boards are static iPhone Duo outer-display mockups (466x678, a narrow content strip beside a side strip holding the time and floating glass back/close buttons). Each board is a grid of labeled states.
+Praci is a startup operating system: a chat app where a founder talks to bots (inbox agent, planner, data room, banking) that read mail, files and bank data and ask approval before writing. The native SwiftUI iPhone app is planned; these are static design boards for the iPhone Duo outer display (466x678, one narrow column). Each board is a grid of labeled states.
 
-Persona: Sam, a first-time founder installing Praci, who signs up, confirms email, connects a model, then adjusts voice, integrations and privacy settings, and may switch server, sign out or delete the account.
+Persona: Sam Rivera, a founder, first install, signs in on a phone, later connects a model and integrations and checks what bots may do. Not a developer; "server" and "API key" are unfamiliar words.
 
 Screens and journey step:
-- PG-B-SignIn (8 states), PG-B-SignUp (1 state): get into the app by SSO or email.
-- PG-B-ForgotPassword: reset password and confirm email (6 states).
-- PG-B-Server: sheet to point the app at a custom server (7 states).
-- PG-B-Account: view account, sign out, delete account (7 states).
-- PG-B-Settings: settings root, archived bots, AI data sharing (4 states).
-- PG-B-Models: default model, thinking level, providers, add server (8 states).
-- PG-B-Voice: device voice vs hosted voice, sounds (7 states).
-- PG-B-Integrations: connectors, connector detail, server integrations (6 states).
+- PG-B-SignIn: first launch, sign in with SSO or email and password; error, loading, session ended, keyboard states.
+- PG-B-SignUp: create an account; field errors, email in use, confirm email hand-off.
+- PG-B-ForgotPassword: reset password and confirm email flows.
+- PG-B-Server: sheet to point the app at a custom Praci server.
+- PG-B-Account: profile, change password, sign out, delete account flows.
+- PG-B-Settings: settings hub, archived bots, AI data sharing, allowed-without-asking list.
+- PG-B-Models: choose default model, connect a provider, add a local server.
+- PG-B-Voice: pick device or hosted voice, sounds, hosted key setup.
+- PG-B-Integrations: connect mail/calendar/banking connectors, allow writes, server integrations.
 
-Design rules: glass only on floating nav controls, solid content, one tinted prominent action per view, 44 pt targets, product name Praci. Judge each frame for: does Sam know where he is, what to do next, and is every state (error, loading, empty, disabled) drawn.
+Rules: glass only on floating controls, one prominent action per view, 44 pt targets, product name Praci.

@@ -20,7 +20,7 @@
   "quick_fix": false,
   "suggested_fix": "Add mockups for thread flat, Computer laptop, Settings sheet inner, form sheet inner before phase 7 starts.",
   "status": "open",
-  "status_note": "Open, downgraded from high. Laptop pose Computer is now drawn (Desk-Computer, keyboard open) and Inbox message half-folded (Inner-Message). Still no Duo inner or half-folded board for the thread beside the Personnel sidebar, Computer 1/2 + 1/2, Artifacts, Image, Settings (list + detail) or the New bot / New space sheets centered over the 2/3 pane."
+  "status_note": "Round 3: re-checked, unchanged. Open, downgraded from high. Laptop pose Computer is now drawn (Desk-Computer, keyboard open) and Inbox message half-folded (Inner-Message). Still no Duo inner or half-folded board for the thread beside the Personnel sidebar, Computer 1/2 + 1/2, Artifacts, Image, Settings (list + detail) or the New bot / New space sheets centered over the 2/3 pane."
  },
  {
   "id": "F-duo-002",
@@ -132,8 +132,8 @@
   "phase_issue": "#417",
   "quick_fix": false,
   "suggested_fix": "Add three card states to DS-06 and reference them from the thread rule.",
-  "status": "open",
-  "status_note": "Open, downgraded. DS-06 and PG-A-ThreadStates draw Draft replaced, Updating, Empty recipient (Send dimmed), Not sent / Retry. A CONFLICT result (another device answered first) and a failed Send on the draft card are still not drawn."
+  "status": "resolved",
+  "status_note": "Round 3: DS-06 now draws Mail: conflict; Not sent / Retry is on DS-06 and PG-A-ThreadStates."
  },
  {
   "id": "F-duo-008",
@@ -227,7 +227,7 @@
   "quick_fix": false,
   "suggested_fix": "Draw a second small group on the list half or state they move into More.",
   "status": "open",
-  "status_note": "Open, downgraded. Inner-Message adds the message with Archive and Reply in the strip, so the Inbox half is usable, but half-folded still has no Search, Filter or Compose and no chat button for the Inbox agent."
+  "status_note": "Round 3: re-checked, unchanged. Open, downgraded. Inner-Message adds the message with Archive and Reply in the strip, so the Inbox half is usable, but half-folded still has no Search, Filter or Compose and no chat button for the Inbox agent."
  },
  {
   "id": "F-duo-013",
@@ -429,7 +429,7 @@
   "quick_fix": true,
   "suggested_fix": "Swap the avatar arguments in PG-B-NewGroup to tablet #3B82F6 for Inbox and wedge #F5A03C for Finance; use the wedge in the toast.",
   "status": "open",
-  "status_note": "Open, downgraded. NewGroup and Home use the shipped avatar shapes. The DS-04 toast and member-list specimens were not re-verified at a readable scale."
+  "status_note": "Round 3: re-checked, unchanged. Open, downgraded. NewGroup and Home use the shipped avatar shapes. The DS-04 toast and member-list specimens were not re-verified at a readable scale."
  },
  {
   "id": "F-duo-024",
@@ -486,7 +486,7 @@
   "quick_fix": false,
   "suggested_fix": "Test on the simulator or device and record the result in the board.",
   "status": "open",
-  "status_note": "Open, downgraded. DS-04 now frames it as a requirement on custom placement code with a drawn fallback (alert centered in the trailing pane), but still says platform behavior is unconfirmed."
+  "status_note": "Round 3: re-checked, unchanged. Open, downgraded. DS-04 now frames it as a requirement on custom placement code with a drawn fallback (alert centered in the trailing pane), but still says platform behavior is unconfirmed."
  },
  {
   "id": "F-duo-027",
@@ -504,7 +504,7 @@
   "quick_fix": true,
   "suggested_fix": "Change PG-B-Rules shared rules to 8 pt or DS-04 to 6 pt.",
   "status": "open",
-  "status_note": "Open. DS-04 sheet inset 8 pt and medium detent about 50%; PG-B-Rules still says 6 pt."
+  "status_note": "Round 3: re-checked, unchanged. Open. DS-04 sheet inset 8 pt and medium detent about 50%; PG-B-Rules still says 6 pt."
  },
  {
   "id": "F-duo-028",
@@ -560,7 +560,7 @@
   "quick_fix": true,
   "suggested_fix": "Change 62 pt to 60 pt in PG-A-Rules and label 297 as sidebar plus margins.",
   "status": "open",
-  "status_note": "Open. PG-A-Rules says 62 pt strip, DS-03 and boards 60 pt; sidebar 277 pt (spec) vs 297 pt (fold schematic)."
+  "status_note": "Round 3: re-checked, unchanged. Open. PG-A-Rules says 62 pt strip, DS-03 and boards 60 pt; sidebar 277 pt (spec) vs 297 pt (fold schematic)."
  },
  {
   "id": "F-duo-031",
@@ -599,7 +599,7 @@
   "quick_fix": false,
   "suggested_fix": "Raise to 44 pt or add a larger hit area in the build.",
   "status": "open",
-  "status_note": "Open. Not changed; Split sidebar rows and Create button flagged again by the geometry audit as uneven siblings (deliberate icon/text mix)."
+  "status_note": "Round 3: re-checked, unchanged. Open. Not changed; Split sidebar rows and Create button flagged again by the geometry audit as uneven siblings (deliberate icon/text mix)."
  },
  {
   "id": "F-duo-033",
@@ -617,7 +617,7 @@
   "quick_fix": true,
   "suggested_fix": "Use one invented name and 'Settings' as the label.",
   "status": "open",
-  "status_note": "Open. Home avatar AB, Account SR 'Sam Rivera', Split and DS-03 profile 'Alex Morgan' (AM). Home control opens Settings."
+  "status_note": "Round 3: Home avatar AM and Split/DS-03 profile Alex Morgan, but Settings shows Sam Rivera (SR). Settings is reached from the AM avatar."
  },
  {
   "id": "F-duo-034",
@@ -636,7 +636,7 @@
   "quick_fix": true,
   "suggested_fix": "Add bottom margin to the States block and move the annotation label.",
   "status": "open",
-  "status_note": "Open. Not re-verified at a readable scale; DS-03 and DS-04 specimens were not changed in this pass."
+  "status_note": "Round 3: re-checked, unchanged. Open. Not re-verified at a readable scale; DS-03 and DS-04 specimens were not changed in this pass."
  },
  {
   "id": "F-duo-035",
@@ -654,7 +654,7 @@
   "quick_fix": true,
   "suggested_fix": "Reduce capsule max width or add an 8 pt gap.",
   "status": "open",
-  "status_note": "Open. Not re-verified at a readable scale; DS-03 section 2 specimen not changed."
+  "status_note": "Round 3: re-checked, unchanged. Open. Not re-verified at a readable scale; DS-03 section 2 specimen not changed."
  },
  {
   "id": "F-duo-036",
@@ -672,7 +672,7 @@
   "quick_fix": false,
   "suggested_fix": "Decide the location and redraw one board.",
   "status": "open",
-  "status_note": "Open. Outer thread More sits in the strip; half-folded Inner thread More sits beside the composer."
+  "status_note": "Round 3: re-checked, unchanged. Open. Outer thread More sits in the strip; half-folded Inner thread More sits beside the composer."
  },
  {
   "id": "F-duo-037",
@@ -690,7 +690,7 @@
   "quick_fix": false,
   "suggested_fix": "Redraw the DS-03 sample with divided rows.",
   "status": "open",
-  "status_note": "Open. Not re-verified; DS-03 section 1 Inbox specimen draws card rows while Sheet, Split, PH-Inbox draw divided rows."
+  "status_note": "Round 3: re-checked, unchanged. Open. Not re-verified; DS-03 section 1 Inbox specimen draws card rows while Sheet, Split, PH-Inbox draw divided rows."
  },
  {
   "id": "F-duo-038",
@@ -727,7 +727,7 @@
   "quick_fix": false,
   "suggested_fix": "Add an edge fade to the chip row.",
   "status": "open",
-  "status_note": "Open. PG-A-Artifacts chip row still runs past the right edge ('Chief' cut at the edge) with no fade."
+  "status_note": "Round 3: chip row still runs past the right edge (Chief and Inbox agent clipped); horizontal scroll is the only cue. Geometry audit: no page overflow."
  },
  {
   "id": "F-duo-R1-001",
@@ -782,7 +782,7 @@
   "quick_fix": false,
   "suggested_fix": "Add a Finance approval card state to PG-A-ThreadStates, or change STORY-098 to the mail draft.",
   "status": "open",
-  "status_note": "Open. The stacked Allow once / Always allow / Deny card is still drawn on DS-06 only; the thread boards draw only the mail draft card (Edit / Send)."
+  "status_note": "Round 3: re-checked, unchanged. Open. The stacked Allow once / Always allow / Deny card is still drawn on DS-06 only; the thread boards draw only the mail draft card (Edit / Send)."
  },
  {
   "id": "F-duo-R1-004",
@@ -836,8 +836,8 @@
   "phase_issue": "#419",
   "quick_fix": true,
   "suggested_fix": "Shorten the group capsule (avatars only plus name truncated) or drop one trailing button into the chat menu.",
-  "status": "open",
-  "status_note": "New in round 2."
+  "status": "resolved",
+  "status_note": "Round 3: PH-GroupThread header fits with a 16 pt margin on the right (screenshot); geometry audit shows no page overflow."
  },
  {
   "id": "F-duo-R2-002",
@@ -855,9 +855,9 @@
   "board": "PG-A-Home.dc.html, PG-B-NewBot.dc.html, PG-B-Settings.dc.html, PG-A-Thread.dc.html",
   "phase_issue": "#415",
   "quick_fix": true,
-  "suggested_fix": "Use 'agent' everywhere (matches Personnel rows and names such as 'Finance agent'): sheet 'New agent', 'Archived agents', and update the stories.",
+  "suggested_fix": "Use agent everywhere: Archived agents, No archived agents, New agent and Agent settings in Settings, DS-03 and DS-04.",
   "status": "open",
-  "status_note": "New in round 2."
+  "status_note": "Round 3: New agent is now used on Home, empty Home and PG-B-NewBot, but PG-B-Settings still says Archived bots / No archived bots while PH-Pages says Archived agents; DS-03 and DS-04 specimens still say New bot / Bot settings."
  },
  {
   "id": "F-duo-R2-003",
@@ -874,8 +874,8 @@
   "phase_issue": "#420",
   "quick_fix": true,
   "suggested_fix": "Redraw Desk-Computer with the labelled pill and collapsed picker.",
-  "status": "open",
-  "status_note": "New in round 2."
+  "status": "resolved",
+  "status_note": "Round 3: Desk-Computer now draws a labelled Release control pill. The Team / Private picker stays expanded in laptop pose, which is acceptable with the wider surface."
  },
  {
   "id": "F-duo-R2-004",
@@ -886,7 +886,7 @@
    "STORY-108",
    "STORY-085"
   ],
-  "severity": "medium",
+  "severity": "low",
   "category": "happy-path",
   "criterion": "Every step has a drawn screen",
   "description": "Standard iPhone (393 pt) boards exist only for Home, Thread, Group thread, Inbox, Computer and the space menu. Artifacts, Artifact, Image, Settings, Account, Finance and the New bot / New space / New group sheets exist only as 466 pt outer-display boards with a 60 pt side strip. Stories for these start on a standard iPhone, where the strip becomes a top bar and the sheets span the full width.",
@@ -897,6 +897,25 @@
   "quick_fix": false,
   "suggested_fix": "Add PH-Pages (Artifacts, Settings, Finance) and PH-Sheets boards before phases 7 to 9.",
   "status": "open",
-  "status_note": "New in round 2."
+  "status_note": "Round 3: PH-Pages now draws Finance and Settings at 393 pt. Still no standard iPhone board for Artifacts, Artifact, Image, Account or the form sheets. Downgraded to low."
+ },
+ {
+  "id": "F-duo-R3-001",
+  "story_id": [
+   "STORY-104",
+   "STORY-108"
+  ],
+  "severity": "low",
+  "category": "consistency",
+  "criterion": "Same facts across boards",
+  "description": "PG-A-Rules says the strip is 62 pt wide; DS-03 and PG-B-Rules say 60 pt (already F-duo-030). New this round: Settings opens from the AM avatar on Home but PG-B-Settings has an X close and PH-Pages draws a Back chevron for the same page.",
+  "expected": "One dismiss control for Settings on both displays.",
+  "actual": "X on PG-B-Settings, chevron on PH-Pages.",
+  "board": "PG-B-Settings.dc.html, PH-Pages.dc.html",
+  "phase_issue": "#419",
+  "quick_fix": true,
+  "suggested_fix": "Choose one and draw it on both boards.",
+  "status": "open",
+  "status_note": "New in round 3."
  }
 ]

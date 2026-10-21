@@ -1,11 +1,16 @@
-# J5 proposal B (restructure): range menu inside the burn card, three data sets drawn
+# J5 proposal B (restructure): Agent permissions and Preferences as new Settings pages, Account is identity only
 
 ## Design
-- Split the page into "Now" (Runway now, Cash today; never change) and a Burn card.
-- The Burn card header carries a Menu button "Last 12 months" with a chevron (Linear-style filter pill). Choices: Last 30 days, Last 90 days, Last 12 months. The label always states the period shown.
-- Each choice redraws the chart and a headline "Total [AMOUNT]" in the card: 30 days = 30 thin daily bars with a week axis (4 week ticks), 90 days = 13 weekly bars, 12 months = 12 monthly bars.
-- PG-B-Finance gets three burn frames with different bar shapes and totals. Hidden frame replaces the total and callout with dots and flattens bars. Runway masked as "•• mo".
-- Desk gets the same card and the same eye and chevron move as in A.
+Settings root becomes four labeled groups (inset grouped lists, as PG-B-Settings already draws them):
+1. Profile row "Sam Rivera / Account" at the top (as PG-B-Settings, not the bottom of PH-Pages).
+2. Models, Voice, Integrations.
+3. "Agent permissions" (page) and "AI data sharing" (page). Agent permissions holds the "Allowed without asking" list (3 rows, Remove with confirm). AI data sharing keeps its three toggles only.
+4. "Preferences" (new page: Hide amounts toggle, Appearance, Language), then Server (value Default) and Archived bots.
+
+Account keeps only: name, email, Change password, Sign out, Delete account. Its Server, Hide amounts, Language and Appearance rows are deleted. A new frame "Preferences" is added to PG-B-Settings. PH-Pages Settings gets the same root.
 
 ## Cost
-Three chart data sets to draw and keep consistent, a new menu pill component, a new headline figure. SwiftUI: Menu + Picker binding + three queries; daily data adds backend load for a view few users change.
+Two new pages and one new board frame; one extra tap to reach Hide amounts (Settings, Preferences, toggle). The Preferences page has only three rows, which looks sparse on the 466 pt strip.
+
+## Weakness
+Two new top-level destinations for four small items. "Agent permissions" is a new label for a page that holds one list, so the new page costs a tap without hiding anything.
