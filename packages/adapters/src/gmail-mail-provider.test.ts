@@ -133,6 +133,20 @@ describe("GmailMailProvider with the emulator", () => {
 });
 
 describe("listMessages", () => {
+  it("passes native label IDs to the Gmail list endpoint", async () => {
+    const gmail = box([msg("inbox", { labels: ["INBOX"] }), msg("sent", { labels: ["SENT"] })]);
+    const { provider } = over(gmail);
+    await provider.listMessages(
+      account(),
+      { query: "", labelIds: ["INBOX", "IMPORTANT"], pageSize: 5 },
+      context(),
+    );
+    const request = gmail.requests.find((entry) => entry.url.includes("/messages?"));
+    expect(request).toBeDefined();
+    const params = new URL(request!.url).searchParams;
+    expect(params.getAll("labelIds")).toEqual(["INBOX", "IMPORTANT"]);
+  });
+
   it("measures newer_than and older_than from the injected clock", async () => {
     const gmail = new GmailApiEmulator({
       clock: () => NOW,

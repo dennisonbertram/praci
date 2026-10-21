@@ -43,6 +43,8 @@ import {
   updateCompanyImportRun,
 } from "@rakazo/db";
 import { aiRecipient } from "./ai-consent.js";
+import { validateCompanyExtraction } from "./company-extraction-safety.js";
+import { companySourceScope } from "./company-import-sources.js";
 
 const MAX_DISCOVERY_UNITS = 100;
 const MAX_READ_BYTES = 500_000;
@@ -205,6 +207,37 @@ function assertFactProvenance(
   sourceKind: string,
   connectionId: string | null,
 ) {
+  if (
+    page.extractions !== undefined &&
+    (!Array.isArray(page.extractions) || page.extractions.length > MAX_READ_ITEMS)
+  )
+    throw new CompanyImportWorkerError("invalid_extractions");
+  if (
+    page.reusedEvidenceIds !== undefined &&
+    (!Array.isArray(page.reusedEvidenceIds) ||
+      page.reusedEvidenceIds.length > 10_000 ||
+      page.reusedEvidenceIds.some((id) => typeof id !== "string"))
+  )
+    throw new CompanyImportWorkerError("invalid_reused_evidence");
+  let count = page.facts.length;
+  for (const extraction of page.extractions ?? []) {
+    const item = page.items.find((candidate) => candidate.sourceItemId === extraction.sourceItemId);
+    if (
+      !item ||
+      item.contentHash !== extraction.contentHash ||
+      createHash("sha256").update(item.content).digest("hex") !== item.contentHash
+    )
+      throw new CompanyImportWorkerError("invalid_fact_provenance");
+    extraction.extraction = validateCompanyExtraction(extraction.extraction, {
+      title: "",
+      text: item.content,
+    });
+    count +=
+      extraction.extraction.entities.length +
+      extraction.extraction.edges.length +
+      extraction.extraction.events.length;
+    if (count > MAX_READ_ITEMS) throw new CompanyImportWorkerError("too_many_facts");
+  }
   for (const fact of page.facts) {
     const evidence = fact.input.evidence;
     const item = page.items.find((candidate) => candidate.sourceItemId === evidence.sourceItemId);
@@ -565,6 +598,12 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
           itemsDiscovered: 0,
           itemsRead: page.items.length,
           facts: page.facts,
+          extractions: page.extractions,
+          reusedEvidenceIds: page.reusedEvidenceIds,
+          readItems: page.items.map(({ sourceItemId, contentHash }) => ({
+            sourceItemId,
+            contentHash,
+          })),
         });
       }
       await publish(actor, payload.runId);
@@ -645,7 +684,13 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
 
   return {
     create: async (actor: Actor, input: CompanyImportCreateInput) => {
-      const run = await createCompanyImportRun(deps.prisma, actor, input);
+      const run = await createCompanyImportRun(deps.prisma, actor, {
+        ...input,
+        sources: input.sources.map((source) => ({
+          ...source,
+          scope: companySourceScope(source.sourceKind, source.scope),
+        })),
+      });
       return publish(actor, run.id);
     },
     progress: (actor: Actor, runId: string) => getCompanyImportProgress(deps.prisma, actor, runId),

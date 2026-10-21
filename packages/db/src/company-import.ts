@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { AgentUsage, UsageOperationKind } from "@rakazo/adapter-kit";
+import type { AgentUsage, CompanyImportReadPage, UsageOperationKind } from "@rakazo/adapter-kit";
 import type {
   Actor,
   CompanyEdgeImportInput,
@@ -9,10 +9,11 @@ import type {
   CompanyImportProgress,
   CompanyImportSourceInput,
 } from "@rakazo/contracts";
-import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
+import { AI_DISCLOSURE_VERSION, CompanySourceKindSchema } from "@rakazo/contracts";
 import type { PrismaClient } from "./client.js";
 import { Prisma } from "./client.js";
 import { companyWriter } from "./company.js";
+import { persistCompanyExtraction } from "./company-import-extraction.js";
 import { withTransactionRetry } from "./transaction-retry.js";
 import { recordUsage } from "./usage.js";
 
@@ -935,6 +936,9 @@ export async function completeCompanyImportUnit(
     itemsDiscovered: number;
     itemsRead: number;
     facts: ImportWrite[];
+    extractions?: CompanyImportReadPage["extractions"];
+    reusedEvidenceIds?: string[];
+    readItems?: { sourceItemId: string; contentHash: string }[];
     discoveredUnits?: { unitKey: string; cursor: unknown }[];
     nextSourceCursor?: unknown | null;
   },
@@ -982,7 +986,7 @@ export async function completeCompanyImportUnit(
       });
       const source = await tx.companyImportSource.findFirst({
         where: { ...scope, id: input.sourceId, runId: input.runId },
-        select: { id: true },
+        select: { id: true, sourceKind: true, connectionId: true },
       });
       if (!unit || !run || !source) throw new CompanyImportError("stale_claim");
       const writer = companyWriter(tx, actor);
@@ -996,6 +1000,39 @@ export async function completeCompanyImportUnit(
               ? await writer.importEdge({ ...fact.input, evidence })
               : await writer.importEvent({ ...fact.input, evidence });
         if (!("suppressed" in result) && !("deferred" in result)) persistedFacts++;
+      }
+      for (const extraction of input.extractions ?? []) {
+        if (
+          !input.readItems?.some(
+            (item) =>
+              item.sourceItemId === extraction.sourceItemId &&
+              item.contentHash === extraction.contentHash,
+          )
+        )
+          throw new CompanyImportError("invalid_state");
+        persistedFacts += await persistCompanyExtraction(tx, actor, extraction, {
+          sourceKind: CompanySourceKindSchema.parse(source.sourceKind),
+          connectionId: source.connectionId,
+          runId: run.id,
+        });
+      }
+      if (input.reusedEvidenceIds?.length) {
+        const ids = [...new Set(input.reusedEvidenceIds)];
+        const prior = await tx.companyEvidence.findMany({
+          where: {
+            ...scope,
+            id: { in: ids },
+            sourceKind: source.sourceKind,
+            connectionId: source.connectionId,
+            OR: input.readItems ?? [],
+          },
+          select: { id: true },
+        });
+        if (prior.length !== ids.length) throw new CompanyImportError("invalid_state");
+        await tx.companyImportEvidence.createMany({
+          data: prior.map((evidence) => ({ ...scope, runId: run.id, evidenceId: evidence.id })),
+          skipDuplicates: true,
+        });
       }
       for (const discovered of input.discoveredUnits ?? []) {
         await tx.companyImportUnit.createMany({

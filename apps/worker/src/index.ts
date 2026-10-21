@@ -19,6 +19,7 @@ import {
   createBackgroundJobHandlers,
   createCloudAgentConnection,
   createCompanyImportEngine,
+  createCompanySourceWorker,
   createConnectorStack,
   createDevinCallTool,
   createFinanceCallToolFor,
@@ -40,6 +41,7 @@ import {
   isComposioEnabled,
   isMessagingSurfaceEnabled,
   isPipedreamEnabled,
+  LlmCompanyExtractor,
   McpConnector,
   McpOAuthBroker,
   MessagingSettings,
@@ -258,6 +260,7 @@ async function main() {
     jobs,
     realtime,
     resolveModel: executor.resolveModel,
+    worker: createCompanySourceWorker({ prisma, mail, extractor: new LlmCompanyExtractor() }),
   });
   const jobHandlers = createBackgroundJobHandlers({
     executor,

@@ -174,6 +174,7 @@ export class GmailMailProvider implements MailProvider {
     let resultSizeEstimate: number | undefined;
     if (!ids) {
       const params = new URLSearchParams({ maxResults: String(pageSize) });
+      for (const label of request.labelIds ?? []) params.append("labelIds", label);
       const q = buildQuery(request);
       if (q) params.set("q", q);
       if (request.pageToken) params.set("pageToken", request.pageToken);

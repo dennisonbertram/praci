@@ -118,11 +118,15 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
     await close();
   });
 
-  async function runWithSources(tokenCap: number, count = 1) {
+  async function runWithSources(
+    tokenCap: number,
+    count = 1,
+    sourceKind: "data_room" | "slack" = "data_room",
+  ) {
     const run = await createCompanyImportRun(prisma, actor, {
       tokenCap,
       sources: Array.from({ length: count }, (_, index) => ({
-        sourceKind: "data_room" as const,
+        sourceKind,
         scope: { index },
       })),
     });
@@ -651,5 +655,180 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
     expect(await prisma.companyEvidence.count({ where: { id: evidence.id } })).toBe(0);
     expect(await prisma.companyEntity.count({ where: { id: evidence.factId } })).toBe(0);
     expect(await prisma.companyIdentity.count({ where: { entityId: evidence.factId } })).toBe(0);
+  });
+
+  it("defers relations for rejected name-only subjects and skips suppressed subjects", async () => {
+    const company = companyForActor(prisma, actor);
+    const sourceItemId = "mapper-source";
+    const contentHash = "mapper-source-hash";
+    const deferredQuote = "Taylor Nguyen works at Pinecone Systems.";
+    const suppressedQuote = "Suppressed Systems partnered with Pinecone Systems.";
+    const baselineEvidence = (quote: string) => ({
+      stance: "supports" as const,
+      sourceKind: "slack" as const,
+      sourceItemId,
+      quote,
+      contentHash,
+      extractedAt: "2026-01-02T03:04:05.000Z",
+      extractorModel: null,
+      confidence: 0.9,
+    });
+    const rejectedPerson = await company.importEntity({
+      entity: {
+        kind: "person",
+        displayName: "Taylor Nguyen",
+        attrs: {},
+        confidence: 0.9,
+      },
+      evidence: baselineEvidence("Taylor Nguyen was introduced in an earlier report."),
+    });
+    if ("suppressed" in rejectedPerson || "deferred" in rejectedPerson)
+      throw new Error("Expected baseline person to persist");
+    await company.reject(rejectedPerson.id, "Name-only person is unresolved");
+    const rejectedOrganisation = await company.importEntity({
+      entity: {
+        kind: "organisation",
+        displayName: "Suppressed Systems",
+        attrs: {},
+        confidence: 0.9,
+      },
+      evidence: baselineEvidence(suppressedQuote),
+    });
+    if ("suppressed" in rejectedOrganisation || "deferred" in rejectedOrganisation)
+      throw new Error("Expected baseline organisation to persist");
+    await company.reject(rejectedOrganisation.id, "Organisation is incorrect");
+
+    const { runId, claims } = await runWithSources(100, 1, "slack");
+    const claim = claims[0]!;
+    await completeCompanyImportUnit(prisma, actor, {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      nextCursor: null,
+      done: true,
+      itemsDiscovered: 1,
+      itemsRead: 1,
+      facts: [],
+      readItems: [{ sourceItemId, contentHash }],
+      extractions: [
+        {
+          sourceItemId,
+          contentHash,
+          extraction: {
+            entities: [
+              {
+                ref: "person",
+                entity: {
+                  kind: "person",
+                  displayName: "Taylor Nguyen",
+                  attrs: {},
+                  confidence: 0.9,
+                },
+                quote: deferredQuote,
+              },
+              {
+                ref: "organisation",
+                entity: {
+                  kind: "organisation",
+                  displayName: "Pinecone Systems",
+                  attrs: { domain: "pinecone.example" },
+                  confidence: 0.9,
+                },
+                quote: deferredQuote,
+              },
+              {
+                ref: "suppressed",
+                entity: {
+                  kind: "organisation",
+                  displayName: "Suppressed Systems",
+                  attrs: {},
+                  confidence: 0.9,
+                },
+                quote: suppressedQuote,
+              },
+            ],
+            edges: [
+              {
+                fromRef: "person",
+                toRef: "organisation",
+                relation: "works_at",
+                startsOn: null,
+                endsOn: null,
+                role: null,
+                confidence: 0.9,
+                quote: deferredQuote,
+              },
+              {
+                fromRef: "suppressed",
+                toRef: "organisation",
+                relation: "part_of",
+                startsOn: null,
+                endsOn: null,
+                role: null,
+                confidence: 0.9,
+                quote: suppressedQuote,
+              },
+            ],
+            events: [
+              {
+                stream: "people",
+                kind: "hire",
+                title: "Taylor joined Pinecone Systems",
+                occursOn: { date: "2025-01-01", precision: "year" },
+                endsOn: null,
+                entityRefs: ["person"],
+                confidence: 0.9,
+                quote: "Pinecone Systems hired Taylor in 2025.",
+              },
+              {
+                stream: "company",
+                kind: "other",
+                title: "Suppressed Systems partnership",
+                occursOn: null,
+                endsOn: null,
+                entityRefs: ["suppressed"],
+                confidence: 0.9,
+                quote: suppressedQuote,
+              },
+            ],
+          },
+          model: { provider: "synthetic", model: "recorded" },
+        },
+      ],
+    });
+    expect(
+      await prisma.companyEntity.count({
+        where: { spaceId, ownerUserId: userId, displayName: "Pinecone Systems" },
+      }),
+    ).toBe(1);
+    const candidates = await prisma.companyCandidate.findMany({
+      where: {
+        spaceId,
+        ownerUserId: userId,
+        importRunId: runId,
+        reason: "unresolved_import_subjects",
+      },
+      select: { kind: true, proposedFact: true },
+    });
+    expect(candidates).toHaveLength(2);
+    expect(candidates.map(({ kind }) => kind).sort()).toEqual(["edge", "event"]);
+    for (const { kind, proposedFact } of candidates) {
+      expect(proposedFact).toMatchObject({
+        entities: expect.any(Array),
+        candidateRefs: expect.objectContaining({ person: expect.any(String) }),
+      });
+      if (kind === "edge")
+        expect(proposedFact).toMatchObject({
+          resolvedRefs: expect.objectContaining({ organisation: expect.any(String) }),
+        });
+    }
+    expect(
+      candidates.some((candidate) =>
+        JSON.stringify(candidate.proposedFact).includes("Suppressed Systems"),
+      ),
+    ).toBe(false);
+    expect(await prisma.companyEdge.count({ where: { spaceId, ownerUserId: userId } })).toBe(0);
+    expect(await prisma.companyEvent.count({ where: { spaceId, ownerUserId: userId } })).toBe(0);
   });
 });

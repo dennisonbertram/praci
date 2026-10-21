@@ -1,5 +1,3 @@
-export * from "./company.js";
-export * from "./company-import.js";
 export * from "./agent-colors.js";
 export * from "./ai-consent.js";
 export * from "./attachments.js";
@@ -11,6 +9,9 @@ export * from "./box.js";
 export * from "./builtin-tools.js";
 export * from "./carta.js";
 export * from "./cloudflare-ai-gateway.js";
+export * from "./company.js";
+export * from "./company-extraction.js";
+export * from "./company-import.js";
 export * from "./contacts.js";
 export * from "./data-room.js";
 export * from "./data-room-api.js";
