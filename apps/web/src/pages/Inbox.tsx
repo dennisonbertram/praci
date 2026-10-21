@@ -158,6 +158,14 @@ export function InboxPage(props: InboxPageProps) {
       connectionId={rememberedTab}
       onRefreshed={props.onRefreshed}
       onAllowMailRules={props.onAllowMailRules}
+      onOpenNewsletters={() =>
+        setParams((before) => {
+          const next = new URLSearchParams(before);
+          next.delete("cleanup");
+          next.set("pile", "newsletters");
+          return next;
+        })
+      }
       onBack={() =>
         setParams((before) => {
           const next = new URLSearchParams(before);
@@ -533,6 +541,11 @@ function InboxListPage({
   // The messages the open message's arrows and the prefetch can reach.
   const messageIds = useMemo(() => ids.filter((id) => !isSenderGroupId(id)), [ids]);
   const accounts = data?.accounts ?? [];
+  // With two or more accounts the Filter menu picks one; the button then names it.
+  const tabLabel =
+    accounts.length > 1
+      ? accounts.find((account) => account.connectionId === tab)?.label
+      : undefined;
   const failed = error || (shown ? syncErrorText(shown, retried && !retrying) : "");
   const limited =
     !error && Boolean(shown?.rateLimitedAccounts?.length) && !shown?.reconnectAccounts.length;
@@ -1138,19 +1151,25 @@ function InboxListPage({
                             data-testid="inbox-filter"
                             render={
                               <Button
-                                variant={filter || (triage && category) ? "secondary" : "outline"}
+                                variant={
+                                  filter || (triage && category) || tabLabel
+                                    ? "secondary"
+                                    : "outline"
+                                }
                                 size="sm"
                                 className="pointer-coarse:h-10 pointer-coarse:min-w-10"
                               />
                             }
-                            aria-label={filter || (triage && category) ? undefined : t`Filter`}
+                            aria-label={
+                              filter || (triage && category) || tabLabel ? undefined : t`Filter`
+                            }
                           >
                             <ListFilter aria-hidden="true" />
                             {filter
                               ? filterLabels()[filter]
                               : triage && category
                                 ? categoryLabels()[category]
-                                : null}
+                                : tabLabel}
                           </DropdownMenuTrigger>
                         }
                       />
@@ -1199,6 +1218,35 @@ function InboxListPage({
                           </>
                         ) : null}
                       </DropdownMenuRadioGroup>
+                      {accounts.length > 1 ? (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuGroup>
+                            <DropdownMenuLabel>
+                              <Trans>Account</Trans>
+                            </DropdownMenuLabel>
+                            <DropdownMenuRadioGroup
+                              value={tab ?? ALL}
+                              onValueChange={(value) =>
+                                setTab(value === ALL ? undefined : String(value))
+                              }
+                            >
+                              <DropdownMenuRadioItem value={ALL} closeOnClick>
+                                <Trans>All</Trans>
+                              </DropdownMenuRadioItem>
+                              {accounts.map((account) => (
+                                <DropdownMenuRadioItem
+                                  key={account.connectionId}
+                                  value={account.connectionId}
+                                  closeOnClick
+                                >
+                                  {account.label}
+                                </DropdownMenuRadioItem>
+                              ))}
+                            </DropdownMenuRadioGroup>
+                          </DropdownMenuGroup>
+                        </>
+                      ) : null}
                       {filter || (triage && category) ? (
                         <>
                           <DropdownMenuSeparator />
@@ -1235,58 +1283,29 @@ function InboxListPage({
             }
           />
           {tools ? (
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex flex-wrap items-start gap-2">
               <InboxPileTabs
                 value={pile}
                 counts={pileCounts}
                 onChange={(next) => setParam("pile", next === "important" ? "" : next)}
               />
               {pile === "newsletters" ? (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Toggle
-                        size="sm"
-                        className="-mt-2 mb-4 aria-pressed:bg-primary aria-pressed:text-primary-foreground"
-                        aria-label={t`Digest`}
-                        pressed={digest}
-                        onPressedChange={(on) => {
-                          const next = new URLSearchParams(params);
-                          if (on) next.set("digest", "1");
-                          else next.delete("digest");
-                          setParams(next);
-                        }}
-                      />
-                    }
-                  >
-                    <Newspaper aria-hidden="true" />
-                  </TooltipTrigger>
-                  <TooltipContent>{t`Digest`}</TooltipContent>
-                </Tooltip>
+                <Toggle
+                  size="sm"
+                  className="-mt-2 mb-4 aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+                  pressed={digest}
+                  onPressedChange={(on) => {
+                    const next = new URLSearchParams(params);
+                    if (on) next.set("digest", "1");
+                    else next.delete("digest");
+                    setParams(next);
+                  }}
+                >
+                  <Newspaper aria-hidden="true" />
+                  <Trans>Digest</Trans>
+                </Toggle>
               ) : null}
             </div>
-          ) : null}
-          {accounts.length > 1 ? (
-            <Tabs
-              className="-mt-2 mb-4"
-              value={tab ?? ALL}
-              onValueChange={(value) => setTab(value === ALL ? undefined : value)}
-            >
-              <TabsList className="max-w-full rounded-full">
-                <TabsTrigger value={ALL} className="rounded-full px-3">
-                  <Trans>All</Trans>
-                </TabsTrigger>
-                {accounts.map((account) => (
-                  <TabsTrigger
-                    key={account.connectionId}
-                    value={account.connectionId}
-                    className="max-w-40 rounded-full px-3"
-                  >
-                    <span className="truncate">{account.label}</span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
           ) : null}
         </div>
 

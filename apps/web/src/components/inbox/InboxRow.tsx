@@ -91,12 +91,14 @@ export function InboxGroup({
   hideAttention?: boolean;
 } & RowPicking) {
   if (rows.length === 0) return null;
+  // The same number the sidebar badge counts: mail not yet read, not every row in the group.
+  const unread = rows.filter((row) => row.unread).length;
   return (
     <section className="mb-5">
       {title ? (
         <h2 className="mb-2 text-[13px] font-semibold text-muted-foreground">
           {title}
-          <span className="ms-1.5 font-normal tabular-nums">{rows.length}</span>
+          {unread > 0 ? <span className="ms-1.5 font-normal tabular-nums">{unread}</span> : null}
         </h2>
       ) : null}
       <div className="border-t border-foreground/10">

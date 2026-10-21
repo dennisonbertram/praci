@@ -34,6 +34,10 @@ vi.mock("../../lib/rpc", () => ({
   },
 }));
 
+vi.mock("../AutoFileEmailSetting", () => ({
+  AutoFileEmailSetting: () => <span data-testid="auto-file-email">Add new email attachments</span>,
+}));
+
 import { ImportSources } from "./ImportFromEmail";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -150,6 +154,8 @@ it("imports the ticked attachment into the open folder", async () => {
   await choose("Email");
   expect(rpcMock.list).toHaveBeenCalledWith({ filter: "attachment" });
   expect(button("Import")?.disabled).toBe(true);
+  // The switch that files new attachments automatically lives here, not in Settings.
+  expect(document.body.querySelector('[data-testid="auto-file-email"]')).not.toBeNull();
   expect(button("Import 1 file")).toBeUndefined();
   await click(fileBox("invoice.pdf"));
   expect(button("Import 1 file")?.disabled).toBe(false);

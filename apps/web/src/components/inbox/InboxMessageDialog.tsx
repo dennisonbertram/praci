@@ -9,6 +9,10 @@ import {
   DialogClose,
   DialogContent,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Skeleton,
 } from "@rakazo/ui-web";
 import {
@@ -17,6 +21,7 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Ellipsis,
   Forward,
   Inbox,
   Mail,
@@ -371,17 +376,9 @@ function InboxMessage({
         ) : null}
         {message ? (
           <div className="flex flex-wrap gap-1.5">
-            <Button variant="outline" size="sm" onClick={() => setComposing("reply")}>
+            <Button size="sm" onClick={() => setComposing("reply")}>
               <Reply aria-hidden="true" />
               <Trans>Reply</Trans>
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setComposing("replyAll")}>
-              <ReplyAll aria-hidden="true" />
-              <Trans>Reply all</Trans>
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setComposing("forward")}>
-              <Forward aria-hidden="true" />
-              <Trans>Forward</Trans>
             </Button>
             {canArchive ? (
               <Button variant="outline" size="sm" onClick={canArchive}>
@@ -395,39 +392,54 @@ function InboxMessage({
                 <Trans>Move to Inbox</Trans>
               </Button>
             ) : null}
-            {onRead && shownUnread !== undefined ? (
-              <Button variant="outline" size="sm" onClick={() => onRead(shownUnread)}>
-                {shownUnread ? <MailOpen aria-hidden="true" /> : <Mail aria-hidden="true" />}
-                {shownUnread ? <Trans>Mark read</Trans> : <Trans>Mark unread</Trans>}
-              </Button>
-            ) : null}
-            {onAskAgent || onAskAgentPanel ? (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={asking}
-                onClick={() => {
-                  setAsking(true);
-                  setAskError("");
-                  (onAskAgentPanel
-                    ? onAskAgentPanel().then((bot) => {
-                        // This message is gone if the user moved on or closed the dialog meanwhile.
-                        if (mounted.current) setAgentBot(bot);
-                      })
-                    : (onAskAgent?.() ?? Promise.resolve())
-                  ).then(
-                    () => setAsking(false),
-                    (cause) => {
-                      setAsking(false);
-                      setAskError(errorText(cause));
-                    },
-                  );
-                }}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={<Button variant="outline" size="icon-sm" aria-label={t`More`} />}
               >
-                <Bot aria-hidden="true" />
-                <Trans>Ask agent</Trans>
-              </Button>
-            ) : null}
+                <Ellipsis aria-hidden="true" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => setComposing("replyAll")}>
+                  <ReplyAll aria-hidden="true" />
+                  <Trans>Reply all</Trans>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setComposing("forward")}>
+                  <Forward aria-hidden="true" />
+                  <Trans>Forward</Trans>
+                </DropdownMenuItem>
+                {onRead && shownUnread !== undefined ? (
+                  <DropdownMenuItem onClick={() => onRead(shownUnread)}>
+                    {shownUnread ? <MailOpen aria-hidden="true" /> : <Mail aria-hidden="true" />}
+                    {shownUnread ? <Trans>Mark read</Trans> : <Trans>Mark unread</Trans>}
+                  </DropdownMenuItem>
+                ) : null}
+                {onAskAgent || onAskAgentPanel ? (
+                  <DropdownMenuItem
+                    disabled={asking}
+                    onClick={() => {
+                      setAsking(true);
+                      setAskError("");
+                      (onAskAgentPanel
+                        ? onAskAgentPanel().then((bot) => {
+                            // This message is gone if the user moved on or closed the dialog meanwhile.
+                            if (mounted.current) setAgentBot(bot);
+                          })
+                        : (onAskAgent?.() ?? Promise.resolve())
+                      ).then(
+                        () => setAsking(false),
+                        (cause) => {
+                          setAsking(false);
+                          setAskError(errorText(cause));
+                        },
+                      );
+                    }}
+                  >
+                    <Bot aria-hidden="true" />
+                    <Trans>Ask agent</Trans>
+                  </DropdownMenuItem>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
             {/* In the toolbar, so it neither covers the email nor moves the dialog. */}
             {notice ? <div className="ms-auto flex min-w-0 max-w-full">{notice}</div> : null}
           </div>
@@ -526,7 +538,7 @@ function InboxMessage({
         </div>
       </div>
       {agentBot ? (
-        <div className="absolute inset-y-0 end-0 z-10 w-full max-w-[384px] shadow-xl md:relative md:-my-4 md:-me-4 md:max-w-none md:w-96 md:shrink-0 md:shadow-none">
+        <div className="absolute inset-y-0 end-0 z-10 w-full max-w-[384px] shadow-xl md:relative md:-my-4 md:-me-4 md:w-96 md:max-w-none md:shrink-0 md:shadow-none">
           <EmailAgentPanel
             bot={agentBot}
             onClose={() => setAgentBot(null)}

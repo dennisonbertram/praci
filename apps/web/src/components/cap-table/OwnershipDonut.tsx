@@ -375,7 +375,7 @@ export function OwnershipDonut({
   };
 
   return (
-    <Card className="mb-4 p-4 @md:p-6">
+    <Card className="p-4">
       <div ref={wrap} className="w-full">
         <div
           className="relative mx-auto"

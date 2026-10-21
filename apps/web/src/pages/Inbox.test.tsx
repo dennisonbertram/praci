@@ -233,6 +233,15 @@ const press = (key: string, target: Element | Document = document.body) =>
     vi.setSystemTime(Date.now() + 200); // j/k are throttled to one step per 150ms
     target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
   });
+// The account choice lives in the Filter menu, as a radio group under "Account".
+const pickAccount = async (name: string) => {
+  await click(document.querySelector('[data-testid="inbox-filter"]'));
+  const item = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find(
+    (el) => el.textContent === name,
+  );
+  await click(item);
+};
+
 const click = (el: Element | null | undefined) =>
   act(async () => {
     el?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -1044,12 +1053,10 @@ it("shows meeting follow-ups on every account tab", async () => {
   rpcMock.todos.mockImplementation(async (input: { connectionId?: string }) => forTab(input));
   const c = await render();
   expect(c.textContent).toContain("From a meeting");
-  const tab = (name: string) =>
-    [...c.querySelectorAll<HTMLElement>('[role="tab"]')].find((el) => el.textContent === name);
-  await click(tab("Sales") ?? null);
+  await pickAccount("Sales");
   expect(c.textContent).toContain("From a meeting");
   expect(c.textContent).toContain("Mail on Sales");
-  await click(tab("All") ?? null);
+  await pickAccount("All");
 });
 
 it("shows meeting follow-ups even when the mail list is empty, on All and on an account tab", async () => {
@@ -1066,15 +1073,9 @@ it("shows meeting follow-ups even when the mail list is empty, on All and on an 
   const c = await render();
   expect(c.textContent).toContain("No mail");
   expect(c.textContent).toContain("From a meeting");
-  const sales = [...c.querySelectorAll<HTMLElement>('[role="tab"]')].find(
-    (el) => el.textContent === "Sales",
-  );
-  await click(sales ?? null);
+  await pickAccount("Sales");
   expect(c.textContent).toContain("From a meeting");
-  const all = [...c.querySelectorAll<HTMLElement>('[role="tab"]')].find(
-    (el) => el.textContent === "All",
-  );
-  await click(all ?? null);
+  await pickAccount("All");
 });
 
 it("opens the shortcut list with ? while a message is open", async () => {
@@ -1090,20 +1091,15 @@ it("keeps the chosen account tab after leaving the Inbox and coming back", async
   ] as InboxListOutput["accounts"];
   rpcMock.list.mockResolvedValue(list([row("a")], { accounts }));
   const c = await render();
-  const sales = [...c.querySelectorAll<HTMLElement>('[role="tab"]')].find(
-    (el) => el.textContent === "Sales",
-  );
-  await click(sales ?? null);
+  expect(c.querySelectorAll('[role="tab"]')).toHaveLength(3);
+  await pickAccount("Sales");
   expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ connectionId: "c2" }));
   for (const cleanup of cleanups.splice(0)) await cleanup();
   rpcMock.list.mockClear();
   await render();
   expect(rpcMock.list).toHaveBeenCalledWith(expect.objectContaining({ connectionId: "c2" }));
   // Back to All for the tests that follow.
-  const again = [...document.querySelectorAll<HTMLElement>('[role="tab"]')].find(
-    (el) => el.textContent === "All",
-  );
-  await click(again ?? null);
+  await pickAccount("All");
 });
 
 it("polls refresh while it reports syncing and reloads the list once when it stops", async () => {

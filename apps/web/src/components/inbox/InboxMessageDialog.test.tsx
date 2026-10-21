@@ -98,6 +98,13 @@ const flush = () =>
   act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
+const menuItem = async (name: string) => {
+  await act(async () => document.querySelector<HTMLElement>('button[aria-label="More"]')?.click());
+  return [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+    (el) => el.textContent === name,
+  );
+};
+
 const press = (key: string, target: Element = document.body, init: KeyboardEventInit = {}) =>
   act(() => {
     target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, ...init }));
@@ -258,10 +265,10 @@ it("archives with the button or e, and marks read or unread, when the page allow
   await act(async () => button("Archive")?.click());
   await press("e");
   expect(onArchive).toHaveBeenCalledTimes(2);
-  await act(async () => button("Mark read")?.click());
+  await act(async () => (await menuItem("Mark read"))?.click());
   expect(onRead).toHaveBeenLastCalledWith(true);
   await render(false);
-  await act(async () => button("Mark unread")?.click());
+  await act(async () => (await menuItem("Mark unread"))?.click());
   expect(onRead).toHaveBeenLastCalledWith(false);
 });
 
@@ -272,15 +279,12 @@ it("Ask agent runs the page's action, and shows why it failed", async () => {
     root.render(<InboxMessageDialog messageId="m2" onAskAgent={onAskAgent} onClose={() => {}} />),
   );
   await flush();
-  const button = () =>
-    [...document.querySelectorAll("button")].find((b) => b.textContent === "Ask agent");
-  await act(async () => button()?.click());
+  await act(async () => (await menuItem("Ask agent"))?.click());
   expect(onAskAgent).toHaveBeenCalledTimes(1);
   expect(document.querySelector('[role="alert"]')).toBeNull();
   onAskAgent.mockRejectedValueOnce(new Error("Mail is unavailable"));
-  await act(async () => button()?.click());
+  await act(async () => (await menuItem("Ask agent"))?.click());
   expect(document.querySelector('[role="alert"]')?.textContent).toContain("Mail is unavailable");
-  expect(button()?.disabled).toBe(false);
 });
 
 it("Ask agent opens the email's agent in a panel, which closes again and can start a reply", async () => {
@@ -297,7 +301,7 @@ it("Ask agent opens the email's agent in a panel, which closes again and can sta
       [...document.querySelectorAll("button")].find((b) => b.textContent === name)?.click(),
     );
   expect(document.querySelector('[data-testid="agent-panel"]')).toBeNull();
-  await click("Ask agent");
+  await act(async () => (await menuItem("Ask agent"))?.click());
   expect(onAskAgentPanel).toHaveBeenCalledTimes(1);
   expect(document.querySelector('[data-testid="agent-panel"]')?.textContent).toContain(
     "Thread agent",
@@ -326,9 +330,7 @@ it("drops a late Ask agent answer when the user has moved to another email", asy
     );
   render("early");
   await flush();
-  await act(async () =>
-    [...document.querySelectorAll("button")].find((b) => b.textContent === "Ask agent")?.click(),
-  );
+  await act(async () => (await menuItem("Ask agent"))?.click());
   render("later");
   await flush();
   await act(async () => resolve({ id: "bot-a", name: "Agent for early" }));
@@ -337,9 +339,21 @@ it("drops a late Ask agent answer when the user has moved to another email", asy
 
 it("shows no Ask agent button when the page gives no action", async () => {
   await open();
-  expect([...document.querySelectorAll("button")].some((b) => b.textContent === "Ask agent")).toBe(
-    false,
+  expect(await menuItem("Ask agent")).toBeUndefined();
+});
+
+it("keeps Reply as the one filled button, with Reply all and Forward in More", async () => {
+  get.mockImplementation(async ({ messageId }) => message(messageId));
+  act(() =>
+    root.render(<InboxMessageDialog messageId="m2" onArchive={() => {}} onClose={() => {}} />),
   );
+  await flush();
+  const visible = [...document.querySelectorAll("button")]
+    .map((b) => b.textContent || b.getAttribute("aria-label"))
+    .filter((name) => ["Reply", "Reply all", "Forward", "Archive", "More"].includes(name ?? ""));
+  expect(visible).toEqual(["Reply", "Archive", "More"]);
+  expect(await menuItem("Reply all")).toBeDefined();
+  expect(document.querySelector('[role="menuitem"]:nth-child(2)')?.textContent).toBe("Forward");
 });
 
 it("shows no archive or read buttons and ignores e without them", async () => {
@@ -442,8 +456,7 @@ it("takes the read state from the message and hides Archive once it left the Inb
   await flush();
   const names = [...document.querySelectorAll("button")].map((b) => b.textContent);
   expect(names).not.toContain("Archive");
-  const read = [...document.querySelectorAll("button")].find((b) => b.textContent === "Mark read");
-  await act(async () => read?.click());
+  await act(async () => (await menuItem("Mark read"))?.click());
   expect(onRead).toHaveBeenCalledWith(true);
 });
 

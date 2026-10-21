@@ -40,7 +40,7 @@ import {
 import { appReturnPath } from "../../lib/return-to";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
-import { PageHeader } from "../PageHeader";
+import { PAGE_GUTTER_X, PageHeader } from "../PageHeader";
 import { AppLogo } from "./AppLogo";
 import { ConnectAppDialog } from "./ConnectAppDialog";
 import { CustomConnectionDialog } from "./CustomConnectionDialog";
@@ -82,7 +82,7 @@ function OpenPageLink({ to, children }: { to: string; children: ReactNode }) {
   return (
     <Link
       to={to}
-      className="relative z-10 ms-auto inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
+      className="relative z-10 ms-auto inline-flex h-7 pointer-coarse:h-11 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
     >
       {children}
     </Link>
@@ -337,9 +337,12 @@ function AppTile({
 }) {
   const { t } = useLingui();
   return (
-    <IntegrationTile>
-      <CardHead name={name} logo={logo} sub={description ?? undefined} />
-      <div className="mt-auto flex items-center gap-2">
+    // Below 640px the tile is one row, Connect beside the name: 25 apps then fit in a few screens.
+    <IntegrationTile className="max-sm:flex-row max-sm:items-center max-sm:p-3">
+      <div className="min-w-0 sm:contents max-sm:flex-1">
+        <CardHead name={name} logo={logo} sub={description ?? undefined} />
+      </div>
+      <div className="mt-auto flex items-center gap-2 max-sm:mt-0 max-sm:shrink-0">
         <Button
           size="sm"
           variant="outline"
@@ -575,329 +578,337 @@ export function IntegrationsHome({
   }
 
   return (
-    <div className="rk-scroll h-full overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
-      <div className="max-w-[1040px]">
-        <PageHeader title={<Trans>Integrations</Trans>} className="mb-1" />
-        <p className="mb-5 max-w-[640px] text-muted-foreground">
-          <Trans>
-            Connect the apps you use so your bots can read and act in them. You choose which bots
-            get access to each one.
-          </Trans>
-        </p>
-        {/* Until everything has loaded, show placeholders, not tiles that read "Not connected". */}
-        {!data.loaded ? (
-          <div
-            aria-busy="true"
-            className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
-          >
-            {[0, 1, 2, 3, 4, 5].map((n) => (
-              <Skeleton key={n} className="h-28 w-full rounded-xl" />
-            ))}
-          </div>
-        ) : null}
-        {data.error || data.catalogFailed ? (
-          <p role="alert" className="mb-4 text-sm text-destructive">
-            {data.error ?? <Trans>Could not load the app list. Reload to try again.</Trans>}
+    <div className="flex h-full min-h-0 flex-col">
+      <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
+        <div className="max-w-[1040px]">
+          <PageHeader title={<Trans>Integrations</Trans>} className="mb-1" />
+        </div>
+      </div>
+      <div className={`rk-scroll min-h-0 flex-1 overflow-y-auto ${PAGE_GUTTER_X} pb-6`}>
+        <div className="max-w-[1040px]">
+          <p className="mb-5 max-w-[640px] text-muted-foreground">
+            <Trans>
+              Connect the apps you use so your bots can read and act in them. You choose which bots
+              get access to each one.
+            </Trans>
           </p>
-        ) : null}
-        {data.loaded ? (
-          <>
-            {(searching ? connectedApps.length > 0 : hasConnected) ? (
-              <>
-                <SectionTitle>
-                  <Trans>Connected</Trans>
-                </SectionTitle>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
-                  {connectedApps.map((app) => (
-                    <AppCard
-                      key={app.key}
-                      app={app}
-                      data={data}
-                      onRetry={retry}
-                      onReconnect={retry}
+          {/* Until everything has loaded, show placeholders, not tiles that read "Not connected". */}
+          {!data.loaded ? (
+            <div
+              aria-busy="true"
+              className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
+            >
+              {[0, 1, 2, 3, 4, 5].map((n) => (
+                <Skeleton key={n} className="h-28 w-full rounded-xl" />
+              ))}
+            </div>
+          ) : null}
+          {data.error || data.catalogFailed ? (
+            <p role="alert" className="mb-4 text-sm text-destructive">
+              {data.error ?? <Trans>Could not load the app list. Reload to try again.</Trans>}
+            </p>
+          ) : null}
+          {data.loaded ? (
+            <>
+              {(searching ? connectedApps.length > 0 : hasConnected) ? (
+                <>
+                  <SectionTitle>
+                    <Trans>Connected</Trans>
+                  </SectionTitle>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
+                    {connectedApps.map((app) => (
+                      <AppCard
+                        key={app.key}
+                        app={app}
+                        data={data}
+                        onRetry={retry}
+                        onReconnect={retry}
+                      />
+                    ))}
+                    {(wholeList && !searching ? servers : []).map((server) => (
+                      <McpCard
+                        key={server.id}
+                        server={server}
+                        data={data}
+                        descriptions={firstPartyDescription}
+                        onReconnectDevin={() => setDevinDialog("replace")}
+                      />
+                    ))}
+                    {granolaKey && keyOnlyGranola && wholeList && !searching ? (
+                      <GranolaKeyCard
+                        status={granolaKey}
+                        description={firstPartyDescription.granola}
+                      />
+                    ) : null}
+                    {(wholeList && !searching ? data.sources : []).map((source) => (
+                      <SourceCard key={source.id} source={source} onRemove={setRemoving} />
+                    ))}
+                    {!searching && (wholeList || category === "finance") ? (
+                      <FinanceSection
+                        mode="connected"
+                        sources={data.financeSources}
+                        status={financeStatus}
+                        onChanged={() => void data.refresh()}
+                        extras={{
+                          ...Object.fromEntries(
+                            data.financeSources.flatMap((source) =>
+                              source.serverId
+                                ? [
+                                    [
+                                      source.provider,
+                                      <UsedBy key="used" bots={botsOn(source.serverId)} />,
+                                    ],
+                                  ]
+                                : [],
+                            ),
+                          ),
+                          ...(cryptoServer
+                            ? { crypto: <UsedBy key="used" bots={botsOn(cryptoServer.id)} /> }
+                            : {}),
+                        }}
+                        cryptoManageTo={
+                          cryptoServer ? `/app/integrations/mcp/${cryptoServer.id}` : undefined
+                        }
+                      />
+                    ) : null}
+                  </div>
+                </>
+              ) : null}
+
+              {notSetUp ? (
+                <div
+                  className="mt-6 rounded-xl border border-border bg-card p-5"
+                  data-testid="catalog-not-set-up"
+                >
+                  {data.setup?.canConfigure ? (
+                    <>
+                      <b className="mb-1 block">
+                        <Trans>
+                          Connect a Composio or Pipedream account to add apps like Slack, Notion and
+                          GitHub.
+                        </Trans>
+                      </b>
+                      <div className="mt-3">
+                        <Link
+                          to="/app/integrations/setup?next=/app/integrations"
+                          className="inline-flex h-8 pointer-coarse:h-11 items-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground"
+                        >
+                          <Trans>Set up app catalog</Trans>
+                        </Link>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <b className="mb-1 block">
+                        <Trans>App connections aren't set up on this server yet.</Trans>
+                      </b>
+                      <span className="text-muted-foreground">
+                        <Trans>Custom connections still work.</Trans>
+                      </span>
+                      <div className="mt-1.5 text-muted-foreground">
+                        <Trans>Ask the server owner to set up the app catalog.</Trans>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : null}
+              {notSetUp && results.length > 0 ? (
+                // Native Google apps need no managed provider, so they stay connectable here.
+                <div
+                  data-testid="app-grid"
+                  className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
+                >
+                  {results.map((item) => (
+                    <AppTile
+                      key={`${item.connectorId}:${item.slug}`}
+                      name={item.name}
+                      logo={item.logo}
+                      description={item.description}
+                      onConnect={() => setConnecting(item)}
                     />
                   ))}
-                  {(wholeList && !searching ? servers : []).map((server) => (
-                    <McpCard
-                      key={server.id}
-                      server={server}
-                      data={data}
-                      descriptions={firstPartyDescription}
-                      onReconnectDevin={() => setDevinDialog("replace")}
+                </div>
+              ) : null}
+              {notSetUp ? null : (
+                <>
+                  <SectionTitle>
+                    <Trans>Find an app</Trans>
+                  </SectionTitle>
+                  <div className="relative mb-3 max-w-[420px]">
+                    <Search
+                      aria-hidden="true"
+                      className="pointer-events-none absolute start-2.5 top-2.5 size-4 text-muted-foreground"
                     />
-                  ))}
-                  {granolaKey && keyOnlyGranola && wholeList && !searching ? (
-                    <GranolaKeyCard
-                      status={granolaKey}
-                      description={firstPartyDescription.granola}
+                    <Input
+                      type="search"
+                      className="h-9 ps-8"
+                      value={query}
+                      placeholder={t`Search apps`}
+                      aria-label={t`Search apps`}
+                      onChange={(event) => {
+                        setQuery(event.target.value);
+                        setVisible(CONNECTION_CATALOG_PAGE_SIZE);
+                      }}
                     />
-                  ) : null}
-                  {(wholeList && !searching ? data.sources : []).map((source) => (
-                    <SourceCard key={source.id} source={source} onRemove={setRemoving} />
-                  ))}
-                  {!searching && (wholeList || category === "finance") ? (
+                  </div>
+                  <fieldset
+                    aria-label={t`Category`}
+                    className="m-0 mb-1.5 flex min-w-0 flex-wrap gap-1.5 border-0 p-0"
+                  >
+                    {chips.map((id) => (
+                      <button
+                        key={id}
+                        type="button"
+                        aria-pressed={category === id}
+                        onClick={() => {
+                          setCategory(id);
+                          setVisible(CONNECTION_CATALOG_PAGE_SIZE);
+                        }}
+                        className={`rounded-full border px-3 py-1 text-xs ${
+                          category === id
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-card text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {labels[id]}
+                      </button>
+                    ))}
+                  </fieldset>
+                </>
+              )}
+              {/* While filtering, every kind of match shares this one grid; its parts drop their own. */}
+              <div
+                className={
+                  filtering
+                    ? "mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))] [&_[data-flat]]:contents [&_[data-testid=finance-section]]:contents"
+                    : undefined
+                }
+              >
+                {notSetUp ? null : (
+                  <>
+                    {results.length === 0 && otherMatches ? null : (
+                      <>
+                        {filtering ? null : (
+                          <SectionTitle>
+                            <Trans>Popular</Trans>
+                          </SectionTitle>
+                        )}
+                        {results.length === 0 && !otherMatches ? (
+                          <p className="py-2 text-muted-foreground" data-testid="no-apps">
+                            <Trans>No apps match.</Trans>
+                          </p>
+                        ) : (
+                          <div
+                            data-testid="app-grid"
+                            data-flat={filtering ? "" : undefined}
+                            className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
+                          >
+                            {results.slice(0, visible).map((item) => (
+                              <AppTile
+                                key={`${item.connectorId}:${item.slug}`}
+                                name={item.name}
+                                logo={item.logo}
+                                description={item.description}
+                                onConnect={() => setConnecting(item)}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {results.length > visible ? (
+                      <div className="col-span-full mt-4 flex justify-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setVisible((n) => n + CONNECTION_CATALOG_PAGE_SIZE)}
+                        >
+                          <Trans>Show more</Trans>
+                        </Button>
+                      </div>
+                    ) : null}
+                  </>
+                )}
+
+                {showFinance ? (
+                  <div
+                    ref={financeRef}
+                    data-flat={filtering ? "" : undefined}
+                    className="scroll-mt-4"
+                  >
+                    {filtering ? null : (
+                      <SectionTitle>
+                        <Trans>Finance</Trans>
+                      </SectionTitle>
+                    )}
                     <FinanceSection
-                      mode="connected"
+                      mode="available"
                       sources={data.financeSources}
                       status={financeStatus}
                       onChanged={() => void data.refresh()}
-                      extras={{
-                        ...Object.fromEntries(
-                          data.financeSources.flatMap((source) =>
-                            source.serverId
-                              ? [
-                                  [
-                                    source.provider,
-                                    <UsedBy key="used" bots={botsOn(source.serverId)} />,
-                                  ],
-                                ]
-                              : [],
-                          ),
-                        ),
-                        ...(cryptoServer
-                          ? { crypto: <UsedBy key="used" bots={botsOn(cryptoServer.id)} /> }
-                          : {}),
-                      }}
-                      cryptoManageTo={
-                        cryptoServer ? `/app/integrations/mcp/${cryptoServer.id}` : undefined
-                      }
                     />
-                  ) : null}
-                </div>
-              </>
-            ) : null}
-
-            {notSetUp ? (
-              <div
-                className="mt-6 rounded-xl border border-border bg-card p-5"
-                data-testid="catalog-not-set-up"
-              >
-                {data.setup?.canConfigure ? (
-                  <>
-                    <b className="mb-1 block">
-                      <Trans>
-                        Connect a Composio or Pipedream account to add apps like Slack, Notion and
-                        GitHub.
-                      </Trans>
-                    </b>
-                    <div className="mt-3">
-                      <Link
-                        to="/app/integrations/setup?next=/app/integrations"
-                        className="inline-flex h-8 items-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground"
-                      >
-                        <Trans>Set up app catalog</Trans>
-                      </Link>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <b className="mb-1 block">
-                      <Trans>App connections aren't set up on this server yet.</Trans>
-                    </b>
-                    <span className="text-muted-foreground">
-                      <Trans>Custom connections still work.</Trans>
-                    </span>
-                    <div className="mt-1.5 text-muted-foreground">
-                      <Trans>Ask the server owner to set up the app catalog.</Trans>
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : null}
-            {notSetUp && results.length > 0 ? (
-              // Native Google apps need no managed provider, so they stay connectable here.
-              <div
-                data-testid="app-grid"
-                className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
-              >
-                {results.map((item) => (
-                  <AppTile
-                    key={`${item.connectorId}:${item.slug}`}
-                    name={item.name}
-                    logo={item.logo}
-                    description={item.description}
-                    onConnect={() => setConnecting(item)}
-                  />
-                ))}
-              </div>
-            ) : null}
-            {notSetUp ? null : (
-              <>
-                <SectionTitle>
-                  <Trans>Find an app</Trans>
-                </SectionTitle>
-                <div className="relative mb-3 max-w-[420px]">
-                  <Search
-                    aria-hidden="true"
-                    className="pointer-events-none absolute start-2.5 top-2.5 size-4 text-muted-foreground"
-                  />
-                  <Input
-                    type="search"
-                    className="h-9 ps-8"
-                    value={query}
-                    placeholder={t`Search apps`}
-                    aria-label={t`Search apps`}
-                    onChange={(event) => {
-                      setQuery(event.target.value);
-                      setVisible(CONNECTION_CATALOG_PAGE_SIZE);
-                    }}
-                  />
-                </div>
-                <fieldset
-                  aria-label={t`Category`}
-                  className="m-0 mb-1.5 flex min-w-0 flex-wrap gap-1.5 border-0 p-0"
-                >
-                  {chips.map((id) => (
-                    <button
-                      key={id}
-                      type="button"
-                      aria-pressed={category === id}
-                      onClick={() => {
-                        setCategory(id);
-                        setVisible(CONNECTION_CATALOG_PAGE_SIZE);
-                      }}
-                      className={`rounded-full border px-3 py-1 text-xs ${
-                        category === id
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-card text-muted-foreground hover:bg-muted"
-                      }`}
-                    >
-                      {labels[id]}
-                    </button>
-                  ))}
-                </fieldset>
-              </>
-            )}
-            {/* While filtering, every kind of match shares this one grid; its parts drop their own. */}
-            <div
-              className={
-                filtering
-                  ? "mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))] [&_[data-flat]]:contents [&_[data-testid=finance-section]]:contents"
-                  : undefined
-              }
-            >
-              {notSetUp ? null : (
-                <>
-                  {results.length === 0 && otherMatches ? null : (
-                    <>
-                      {filtering ? null : (
-                        <SectionTitle>
-                          <Trans>Popular</Trans>
-                        </SectionTitle>
-                      )}
-                      {results.length === 0 && !otherMatches ? (
-                        <p className="py-2 text-muted-foreground" data-testid="no-apps">
-                          <Trans>No apps match.</Trans>
-                        </p>
-                      ) : (
-                        <div
-                          data-testid="app-grid"
-                          data-flat={filtering ? "" : undefined}
-                          className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
-                        >
-                          {results.slice(0, visible).map((item) => (
-                            <AppTile
-                              key={`${item.connectorId}:${item.slug}`}
-                              name={item.name}
-                              logo={item.logo}
-                              description={item.description}
-                              onConnect={() => setConnecting(item)}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                  {results.length > visible ? (
-                    <div className="col-span-full mt-4 flex justify-center">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setVisible((n) => n + CONNECTION_CATALOG_PAGE_SIZE)}
-                      >
-                        <Trans>Show more</Trans>
-                      </Button>
-                    </div>
-                  ) : null}
-                </>
-              )}
-
-              {showFinance ? (
-                <div
-                  ref={financeRef}
-                  data-flat={filtering ? "" : undefined}
-                  className="scroll-mt-4"
-                >
-                  {filtering ? null : (
-                    <SectionTitle>
-                      <Trans>Finance</Trans>
-                    </SectionTitle>
-                  )}
-                  <FinanceSection
-                    mode="available"
-                    sources={data.financeSources}
-                    status={financeStatus}
-                    onChanged={() => void data.refresh()}
-                  />
-                </div>
-              ) : null}
-
-              {(["social", "equity", "tools"] as const).map((section) => {
-                const entries = firstPartyMcp.filter((entry) => entry.section === section);
-                return entries.length > 0 ? (
-                  <div key={section} data-flat={filtering ? "" : undefined}>
-                    {filtering ? null : <SectionTitle>{firstPartySections[section]}</SectionTitle>}
-                    <div
-                      data-flat={filtering ? "" : undefined}
-                      className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
-                    >
-                      {entries.map((entry) => (
-                        <AppTile
-                          key={entry.id}
-                          name={entry.name}
-                          logo={entry.logo}
-                          description={firstPartyDescription[entry.id]}
-                          onConnect={() => connectFirstParty(entry)}
-                        />
-                      ))}
-                    </div>
                   </div>
-                ) : null;
-              })}
+                ) : null}
 
-              {category === "all" || category === "chat" ? (
-                <IMessageSection
-                  query={query}
-                  flat={filtering}
-                  onShown={setChatMatches}
-                  onOpenMessaging={onOpenMessaging}
-                />
-              ) : null}
-            </div>
+                {(["social", "equity", "tools"] as const).map((section) => {
+                  const entries = firstPartyMcp.filter((entry) => entry.section === section);
+                  return entries.length > 0 ? (
+                    <div key={section} data-flat={filtering ? "" : undefined}>
+                      {filtering ? null : (
+                        <SectionTitle>{firstPartySections[section]}</SectionTitle>
+                      )}
+                      <div
+                        data-flat={filtering ? "" : undefined}
+                        className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
+                      >
+                        {entries.map((entry) => (
+                          <AppTile
+                            key={entry.id}
+                            name={entry.name}
+                            logo={entry.logo}
+                            description={firstPartyDescription[entry.id]}
+                            onConnect={() => connectFirstParty(entry)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null;
+                })}
 
-            <SectionTitle>
-              <Trans>Anything else</Trans>
-            </SectionTitle>
-            <div className="flex flex-col items-stretch gap-3 rounded-xl border border-dashed border-border bg-card p-3.5 sm:flex-row sm:items-center">
-              <AppLogo name="+" />
-              <div className="min-w-0 flex-1">
-                <b className="block">
-                  <Trans>Add a custom connection</Trans>
-                </b>
-                <span className="text-muted-foreground">
-                  <Trans>Connect any other app by its address.</Trans>
-                </span>
+                {category === "all" || category === "chat" ? (
+                  <IMessageSection
+                    query={query}
+                    flat={filtering}
+                    onShown={setChatMatches}
+                    onOpenMessaging={onOpenMessaging}
+                  />
+                ) : null}
               </div>
-              <Button
-                variant="outline"
-                aria-label={t`Add custom connection`}
-                onClick={() => setCustom({ url: "" })}
-              >
-                <Trans>Add</Trans>
-              </Button>
-            </div>
-          </>
-        ) : null}
+
+              <SectionTitle>
+                <Trans>Anything else</Trans>
+              </SectionTitle>
+              <div className="flex flex-col items-stretch gap-3 rounded-xl border border-dashed border-border bg-card p-3.5 sm:flex-row sm:items-center">
+                <AppLogo name="+" />
+                <div className="min-w-0 flex-1">
+                  <b className="block">
+                    <Trans>Add a custom connection</Trans>
+                  </b>
+                  <span className="text-muted-foreground">
+                    <Trans>Connect any other app by its address.</Trans>
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  aria-label={t`Add custom connection`}
+                  onClick={() => setCustom({ url: "" })}
+                >
+                  <Trans>Add</Trans>
+                </Button>
+              </div>
+            </>
+          ) : null}
+        </div>
       </div>
 
       {connecting ? (

@@ -82,3 +82,13 @@ it("styles New folder like a folder row and marks the selected folder medium, no
   expect(selected?.className).not.toContain("font-semibold");
   expect(container.firstElementChild?.className).not.toContain("border-e");
 });
+
+it("marks a folder with subfolders as expanded and leaves the others without the attribute", () => {
+  act(() => root.render(<FolderTree nodes={nodes} selected={undefined} onSelect={vi.fn()} />));
+  expect(entries().map((entry) => entry.getAttribute("aria-expanded"))).toEqual([
+    "true",
+    "true",
+    null,
+    null,
+  ]);
+});

@@ -5,6 +5,7 @@ import type {
   AgentSkillDraft,
   BotAgentSkill,
 } from "@rakazo/contracts";
+import { buildSkillMd } from "@rakazo/core";
 import {
   Badge,
   Button,
@@ -51,24 +52,6 @@ export function SkillSourceBadge({
   );
 }
 
-const NEW_SKILL_TEMPLATE = `---
-name: my-skill
-description: What this skill does and when the agent should use it.
----
-
-Steps the agent should follow.
-`;
-
-/** A new skill needs front matter with a non-empty name and description, and must not be the template. */
-function isNewSkillReady(draft: string) {
-  const text = draft.trim();
-  return (
-    text !== NEW_SKILL_TEMPLATE.trim() &&
-    /^name:\s*\S/m.test(text) &&
-    /^description:\s*\S/m.test(text)
-  );
-}
-
 /** Display only: the instructions without the leading `---` front matter block. */
 function skillBody(content: string) {
   return content.replace(/^---\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/, "").trim();
@@ -99,6 +82,9 @@ export function BotSkillsSection({
   const [urlOpen, setUrlOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [draft, setDraft] = useState("");
+  // A new skill is written in fields; its SKILL.md front matter is built on save.
+  const [skillName, setSkillName] = useState("");
+  const [skillDescription, setSkillDescription] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -238,16 +224,23 @@ export function BotSkillsSection({
       approve ? t`Could not approve skill` : t`Could not discard skill`,
     );
 
+  const newSkillReady = Boolean(skillName.trim() && skillDescription.trim() && draft.trim());
   const save = () =>
-    draft.trim()
-      ? write(() =>
-          creating
-            ? rpc.agentSkills.create({ content: draft })
-            : open
-              ? rpc.agentSkills.update({ skillId: open.id, content: draft })
-              : Promise.resolve(),
-        )
-      : undefined;
+    creating
+      ? newSkillReady
+        ? write(() =>
+            rpc.agentSkills.create({
+              content: buildSkillMd({
+                name: skillName,
+                description: skillDescription,
+                body: draft,
+              }),
+            }),
+          )
+        : undefined
+      : draft.trim() && open
+        ? write(() => rpc.agentSkills.update({ skillId: open.id, content: draft }))
+        : undefined;
 
   const importUrl = () =>
     url.trim()
@@ -337,6 +330,8 @@ export function BotSkillsSection({
                   closeEditor();
                   setCreating(true);
                   setDraft("");
+                  setSkillName("");
+                  setSkillDescription("");
                   setError(null);
                 }}
               >
@@ -400,7 +395,7 @@ export function BotSkillsSection({
           </Button>
         </div>
       ) : null}
-      {loading ? <Skeleton className="mt-2 h-10 w-full" /> : null}
+      {loading ? <Skeleton className="h-9 w-full" /> : null}
       {!editorOpen && !urlOpen && drafts.length > 0 ? (
         <div className="mt-2" data-testid="bot-skills-drafts">
           <h4 className="flex items-center gap-1.5 px-2.5 text-[12.5px] text-muted-foreground">
@@ -485,15 +480,40 @@ export function BotSkillsSection({
               <SkillSourceBadge source={open.source} origin={open.origin} />
             </div>
           ) : null}
+          {creating ? (
+            <>
+              <Input
+                aria-label={t`Name`}
+                placeholder={t`Name`}
+                disabled={busy}
+                value={skillName}
+                maxLength={80}
+                autoFocus
+                onChange={(event) => setSkillName(event.target.value)}
+                className="mt-2"
+                dir="auto"
+              />
+              <Input
+                aria-label={t`What it does and when to use it`}
+                placeholder={t`What it does and when to use it`}
+                disabled={busy}
+                value={skillDescription}
+                maxLength={2000}
+                onChange={(event) => setSkillDescription(event.target.value)}
+                className="mt-2"
+                dir="auto"
+              />
+            </>
+          ) : null}
           <Textarea
-            aria-label="SKILL.md"
-            placeholder={creating ? NEW_SKILL_TEMPLATE : undefined}
+            aria-label={creating ? t`Instructions` : "SKILL.md"}
+            placeholder={creating ? t`Steps to follow` : undefined}
             disabled={busy}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            rows={Math.min(20, Math.max(8, draft.split("\n").length + 1))}
+            rows={creating ? 6 : Math.min(20, Math.max(8, draft.split("\n").length + 1))}
             readOnly={Boolean(open?.readOnly)}
-            className={fieldClass}
+            className={creating ? "mt-2 w-full" : fieldClass}
             dir="auto"
           />
           <div className="mt-2 flex items-center gap-2">
@@ -502,8 +522,7 @@ export function BotSkillsSection({
                 variant="ghost"
                 type="button"
                 disabled={
-                  busy ||
-                  (creating ? !isNewSkillReady(draft) : !draft.trim() || draft === open?.content)
+                  busy || (creating ? !newSkillReady : !draft.trim() || draft === open?.content)
                 }
                 onClick={() => void save()}
                 className="rounded-lg bg-muted px-3 py-1.5 text-[13px] text-foreground disabled:opacity-50"

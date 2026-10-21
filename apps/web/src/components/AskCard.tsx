@@ -6,7 +6,7 @@ import { commandVariableName } from "@rakazo/contracts";
 import { isApprovalAskBlock, isSecretAskBlock, selectedAskActionLabel } from "@rakazo/core";
 import { Button, Input } from "@rakazo/ui-web";
 import { Check, X } from "lucide-react";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { errorText } from "../lib/user-error";
 
 export type AskBlock = Extract<ThreadMessage["blocks"][number], { kind: "ask" }>;
@@ -84,12 +84,22 @@ export function AskCard({
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const questionId = useId();
+  const answeredHere = useRef(false);
   const submitting = pendingAction !== null;
   const approvalActions = isApprovalAskBlock(block) ? block.actions : undefined;
   const askActions = block.actions;
   const secretInput = isSecretAskBlock(block);
   const loginInput = secretInput && block.credential?.auth.type === "login";
   const secretLabel = loginInput ? t`Password` : secretFieldLabel(block.purpose);
+
+  // The answer lands in the thread a moment after the click, and the re-render can drop focus to
+  // the page. Put it back on the composer, but only for a card this reader just answered.
+  useEffect(() => {
+    if (block.status !== "answered" || !answeredHere.current) return;
+    answeredHere.current = false;
+    if (document.activeElement && document.activeElement !== document.body) return;
+    document.querySelector<HTMLElement>("[data-composer-input]")?.focus();
+  }, [block.status]);
 
   async function submitAnswer(value: string) {
     if (submitting) return;
@@ -105,6 +115,7 @@ export function AskCard({
     }
     try {
       await onAnswer(submitValue, submitUsername);
+      answeredHere.current = true;
       // The card's buttons vanish with the answer; keep the keyboard in the conversation.
       if (!secretInput) document.querySelector<HTMLElement>("[data-composer-input]")?.focus();
     } catch (err) {
@@ -152,9 +163,9 @@ export function AskCard({
           </pre>
         </details>
       ) : block.detail && !secretInput ? (
-        <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-muted px-3.5 py-3 font-mono text-[12.5px] leading-[1.7] text-muted-foreground">
+        <p className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words text-[13.5px] leading-[1.5] text-muted-foreground">
           {block.detail}
-        </pre>
+        </p>
       ) : null}
       {block.status === "answered" ? (
         (() => {

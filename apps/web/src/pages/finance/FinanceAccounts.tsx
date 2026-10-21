@@ -74,7 +74,7 @@ function AccountTable({ rows, owed }: { rows: AccountRow[]; owed?: boolean }) {
               <TableCell className="font-semibold">
                 <HereLink
                   to={financePath.account(account.id)}
-                  className="outline-none hover:underline focus-visible:underline"
+                  className="rk-tap outline-none hover:underline focus-visible:underline"
                 >
                   {accountParts(account.name, account.lastFour).name}
                 </HereLink>
@@ -84,7 +84,7 @@ function AccountTable({ rows, owed }: { rows: AccountRow[]; owed?: boolean }) {
                   </span>
                 ) : null}
                 {pct ? (
-                  <span className="ms-1.5 rounded-full border border-border px-1.5 text-[10px] font-normal text-muted-foreground">
+                  <span className="ms-1.5 rounded-full border border-border px-1.5 text-[11px] font-normal text-muted-foreground">
                     {t`${pct} yield`}
                   </span>
                 ) : null}
@@ -129,7 +129,7 @@ function CryptoGroup({
               <TableCell className="font-semibold">
                 <Link
                   to={financePath.crypto()}
-                  className="outline-none hover:underline focus-visible:underline"
+                  className="rk-tap outline-none hover:underline focus-visible:underline"
                 >
                   {walletName(wallet)}
                 </Link>
@@ -152,7 +152,7 @@ function CryptoGroup({
               <TableCell className="font-semibold">
                 <Link
                   to={financePath.crypto()}
-                  className="outline-none hover:underline focus-visible:underline"
+                  className="rk-tap outline-none hover:underline focus-visible:underline"
                 >
                   {exchangeName(exchange.provider)}
                 </Link>

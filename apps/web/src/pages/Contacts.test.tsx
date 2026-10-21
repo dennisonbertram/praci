@@ -48,11 +48,11 @@ const Where = () => {
   search = useLocation().search;
   return null;
 };
-const show = async (url = "/app/contacts") => {
+const show = async (url = "/app/contacts", onAskAgent?: () => void) => {
   await act(async () =>
     root.render(
       <MemoryRouter initialEntries={[url]}>
-        <ContactsPage />
+        <ContactsPage onAskAgent={onAskAgent} />
         <Where />
         <NotificationToaster onOpen={() => {}} />
       </MemoryRouter>,
@@ -315,4 +315,22 @@ it("lets the table fill the page and titles a long email", async () => {
   const email = [...container.querySelectorAll("td")].find((td) => td.title.includes("@"));
   expect(email?.title).toContain("@");
   expect(container.querySelector(".max-w-5xl")).toBeNull();
+});
+
+it("offers Ask Chief beside Add contact, and nothing when Chief is not available", async () => {
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "customer")]);
+  await show("/app/contacts", undefined);
+  expect(button("Ask")).toBeUndefined();
+  const ask = vi.fn();
+  await show("/app/contacts", ask);
+  await click(button("Ask"));
+  expect(ask).toHaveBeenCalledOnce();
+});
+
+it("keeps the header out of the scrolling list", async () => {
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "customer")]);
+  await show();
+  const scroller = container.querySelector(".rk-scroll");
+  expect(scroller?.querySelector("[data-page-header]")).toBeNull();
+  expect(scroller?.querySelector("table")).not.toBeNull();
 });

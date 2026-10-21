@@ -33,6 +33,15 @@ const peerExchange = [
 ];
 
 describe("user-visible messages", () => {
+  it("shows a hand-off once when asked to collapse it", () => {
+    const ids = (collapseHandoffs: boolean) =>
+      userVisibleMessages(peerExchange, { includePeerReceipts: true, collapseHandoffs }).map(
+        (item) => item.id,
+      );
+    expect(ids(false)).toContain("received");
+    expect(ids(true)).toEqual(["user", "sent", "reply", "answer"]);
+  });
+
   it("hides peer activity but keeps the bot's text reply to the user", () => {
     expect(userVisibleMessages(peerExchange).map((item) => item.id)).toEqual([
       "user",

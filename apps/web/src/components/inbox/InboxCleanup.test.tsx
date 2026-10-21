@@ -28,10 +28,12 @@ const rpcMock = vi.hoisted(() => ({
   forget: vi.fn(),
   actions: vi.fn(),
   undo: vi.fn(),
+  inboxList: vi.fn(),
 }));
 vi.mock("../../lib/rpc", () => ({
   rpc: {
     inbox: {
+      list: rpcMock.inboxList,
       cleanup: { list: rpcMock.list, archive: rpcMock.archive, forget: rpcMock.forget },
       unsubscribe: rpcMock.unsubscribe,
       actions: { list: rpcMock.actions, undo: rpcMock.undo },
@@ -67,6 +69,7 @@ const cleanups: Array<() => Promise<void>> = [];
 const onBack = vi.fn();
 const onRefreshed = vi.fn();
 const onAllowMailRules = vi.fn();
+const onOpenNewsletters = vi.fn();
 async function render() {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
@@ -79,6 +82,7 @@ async function render() {
         onBack={onBack}
         onRefreshed={onRefreshed}
         onAllowMailRules={onAllowMailRules}
+        onOpenNewsletters={onOpenNewsletters}
       />,
     ),
   );
@@ -108,6 +112,7 @@ const deals = sender("deals@shop.example.test", { inboxThreads: 6 });
 const friend = sender("friend@example.test", { preselected: false, inboxThreads: 2 });
 
 beforeEach(() => {
+  rpcMock.inboxList.mockResolvedValue({ pileCounts: { newsletters: 0 } });
   rpcMock.list.mockResolvedValue(output([news, deals, friend]));
   rpcMock.actions.mockResolvedValue({ actions: [] });
   rpcMock.archive.mockResolvedValue({ batchId: "batch-1", done: 4, failed: 0, remaining: 0 });
@@ -140,6 +145,17 @@ describe("InboxCleanup", () => {
     await render();
     expect(document.body.textContent).toContain("Nothing to clean up");
     expect(button(/^Archive/)).toBeUndefined();
+  });
+
+  it("links the empty state to Newsletters only when that pile holds mail", async () => {
+    rpcMock.list.mockResolvedValue(output([]));
+    rpcMock.inboxList.mockResolvedValue({ pileCounts: { newsletters: 0 } });
+    await render();
+    expect(button("Open Newsletters")).toBeUndefined();
+    rpcMock.inboxList.mockResolvedValue({ pileCounts: { newsletters: 8 } });
+    await render();
+    await act(async () => button("Open Newsletters")?.click());
+    expect(onOpenNewsletters).toHaveBeenCalledTimes(1);
   });
 
   it("offers Try again after a failed load", async () => {

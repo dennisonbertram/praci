@@ -23,7 +23,7 @@ import {
 } from "@rakazo/ui-web";
 import { PieChart, Plus, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
 import type { ContactPrefill as Prefill } from "../components/ContactDialog";
 import {
@@ -36,7 +36,7 @@ import { FolderDocuments } from "../components/data-room/FolderDocuments";
 import { CustomConnectionDialog } from "../components/integrations/CustomConnectionDialog";
 import { useIntegrations } from "../components/integrations/useIntegrations";
 import { PickFilter, SearchField, SortControl } from "../components/ListControls";
-import { PageHeader } from "../components/PageHeader";
+import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { hasConnectedCarta } from "../lib/carta-agent";
 import { percentFigure, shareCount, usdFigure } from "../lib/finance-format";
 import { useHideAmounts } from "../lib/hide-amounts-preference";
@@ -192,11 +192,31 @@ function Figure({ title, value, hint }: { title: string; value: string; hint?: s
   );
 }
 
+/** SAFEs have an amount and no shares, so the donut and the All tab leave them out. */
+function SafeNote({ holders }: { holders: Snapshot["holders"] }) {
+  useHideAmounts();
+  const safes = holders.filter(
+    (holder) => /safe/i.test(holder.security) && holder.shares == null && holder.amountUsd != null,
+  );
+  if (safes.length === 0) return null;
+  const total = usd(safes.reduce((sum, holder) => sum + (holder.amountUsd ?? 0), 0));
+  return (
+    <Link
+      to={{ search: "?kind=investor&security=SAFE" }}
+      className="mb-4 block pointer-coarse:flex pointer-coarse:min-h-11 pointer-coarse:items-center text-xs text-muted-foreground hover:text-foreground hover:underline"
+    >
+      <Trans>
+        SAFEs ({safes.length}, {total}) are not included until they convert
+      </Trans>
+    </Link>
+  );
+}
+
 function Summary({ snapshot }: { snapshot: Snapshot | null }) {
   useHideAmounts();
   const a = snapshot?.latest409a;
   return (
-    <div className="mb-4 grid grid-cols-2 gap-3 @2xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 @2xl:grid-cols-4 @4xl/bd:grid-cols-2 @4xl/bd:grid-rows-2">
       {snapshot ? (
         <>
           <Figure title={t`Fully diluted shares`} value={num(snapshot.fullyDilutedShares)} />
@@ -493,493 +513,511 @@ export function CapTablePage({
       isContactKind(filter) ? { name: "", email: null, organization: null, kind: filter } : "new",
     );
   return (
-    <div
-      ref={container}
-      className="@container/bd rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5"
-    >
-      <PageHeader
-        title={<Trans>Cap table</Trans>}
-        meta={
-          snapshot ? (
+    <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
+        <PageHeader
+          title={<Trans>Cap table</Trans>}
+          meta={
+            snapshot ? (
+              <>
+                {/* The update time never truncates; a long company name gives way first. */}
+                <span className="truncate" title={snapshot.companyName}>
+                  {snapshot.companyName}
+                </span>
+                <span className="whitespace-nowrap">
+                  ·{" "}
+                  {syncing ? (
+                    <Trans>Reading Carta…</Trans>
+                  ) : (
+                    <Trans>Updated {formatRelativeTime(snapshot.updatedAt)}</Trans>
+                  )}
+                </span>
+              </>
+            ) : null
+          }
+          actions={
             <>
-              {/* The update time never truncates; a long company name gives way first. */}
-              <span className="truncate" title={snapshot.companyName}>
-                {snapshot.companyName}
-              </span>
-              <span className="whitespace-nowrap">
-                ·{" "}
-                {syncing ? (
-                  <Trans>Reading Carta…</Trans>
-                ) : (
-                  <Trans>Updated {formatRelativeTime(snapshot.updatedAt)}</Trans>
-                )}
-              </span>
-            </>
-          ) : null
-        }
-        actions={
-          <>
-            {/* Without a model a refresh cannot start; the card below offers Add a model instead. */}
-            {cartaConnected && !(needsModel && neverRead) ? (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="pointer-coarse:size-10"
-                      aria-label={t`Refresh from Carta`}
-                      disabled={syncing && !capFailed}
-                      onClick={() => void refresh()}
+              {/* Without a model a refresh cannot start; the card below offers Add a model instead. */}
+              {cartaConnected && !(needsModel && neverRead) ? (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="pointer-coarse:size-10"
+                        aria-label={t`Refresh from Carta`}
+                        disabled={syncing && !capFailed}
+                        onClick={() => void refresh()}
+                      />
+                    }
+                  >
+                    <RefreshCw
+                      aria-hidden="true"
+                      className={syncing ? "animate-spin" : undefined}
                     />
-                  }
-                >
-                  <RefreshCw aria-hidden="true" className={syncing ? "animate-spin" : undefined} />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <Trans>Refresh from Carta. The Carta agent reads your cap table again.</Trans>
-                </TooltipContent>
-              </Tooltip>
-            ) : null}
-            {cartaConnected ? (
-              <Button onClick={addContact}>
-                <Plus aria-hidden="true" />
-                {isContactKind(filter) ? addKindLabel[filter] : <Trans>Add contact</Trans>}
-              </Button>
-            ) : null}
-            {onShowAgent ? <AskBotButton botName="Carta agent" onClick={onShowAgent} /> : null}
-          </>
-        }
-      />
-
-      {serversFailed ? (
-        <div role="alert" className="mb-5 flex flex-wrap items-center gap-3 text-sm">
-          <span className="text-destructive">
-            <Trans>Could not check whether Carta is connected.</Trans>
-          </span>
-          <Button variant="outline" size="sm" onClick={() => setServersSeq((n) => n + 1)}>
-            <Trans>Try again</Trans>
-          </Button>
-        </div>
-      ) : null}
-
-      {neverRead ? (
-        <Card className="mb-5 flex flex-col items-start gap-3 px-4 @md:flex-row @md:items-center">
-          <PieChart aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
-          <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-medium">
-              <Trans>Carta is connected</Trans>
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {needsModel ? (
-                <Trans>The Carta agent needs a model before it can read your cap table.</Trans>
-              ) : (
-                <Trans>The Carta agent has not read your cap table yet.</Trans>
-              )}
-            </p>
-          </div>
-          {/* A read cannot start without a model; Refresh in the header reads once one is added. */}
-          {needsModel && onOpenModelSettings ? (
-            <Button onClick={onOpenModelSettings}>
-              <Trans>Add a model</Trans>
-            </Button>
-          ) : (
-            <Button onClick={() => void refresh()}>
-              <Trans>Read cap table</Trans>
-            </Button>
-          )}
-        </Card>
-      ) : null}
-
-      {cartaConnected || serversFailed ? null : (
-        <Card className="mb-5 flex flex-col items-start gap-3 px-4 @md:flex-row @md:items-center">
-          <PieChart aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
-          <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-medium">
-              {cartaExpired ? (
-                <Trans>Sign in to Carta again to see who owns your company</Trans>
-              ) : (
-                <Trans>See who owns your company</Trans>
-              )}
-            </h2>
-            {cartaExpired ? (
-              <p className="text-sm text-muted-foreground">
-                <Trans>Your Carta sign-in ended. Sign in again to see holders here.</Trans>
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                <Trans>
-                  Carta is the service many startups use to record who owns shares, options and
-                  SAFEs. Connect it to see them here and to ask the Carta agent about them.
-                </Trans>
-              </p>
-            )}
-          </div>
-          <Button onClick={() => setConnecting(true)}>
-            {cartaExpired ? <Trans>Reconnect Carta</Trans> : <Trans>Connect Carta</Trans>}
-          </Button>
-        </Card>
-      )}
-
-      {capFailed && cartaConnected ? (
-        <div role="alert" className="mb-4 flex flex-wrap items-center gap-3 text-sm">
-          <span className="text-destructive">
-            <Trans>Could not load the cap table, so holdings are missing.</Trans>
-          </span>
-          <Button variant="outline" size="sm" onClick={() => void loadCap()}>
-            <Trans>Try again</Trans>
-          </Button>
-        </div>
-      ) : null}
-
-      {!serversChecked || (cartaConnected && cap === null && !capFailed) ? (
-        <div className="flex flex-col gap-2" aria-busy="true">
-          {[0, 1, 2].map((n) => (
-            <Skeleton key={n} className="h-9 w-full" />
-          ))}
-        </div>
-      ) : cartaConnected ? (
-        <>
-          {showHoldings && overview ? <Summary snapshot={snapshot} /> : null}
-          {snapshot && overview ? (
-            <OwnershipDonut
-              classes={snapshot.shareClasses}
-              fullyDilutedShares={snapshot.fullyDilutedShares}
-              holdings={snapshot.holders}
-              optionPoolAvailable={snapshot.optionPoolAvailable}
-            />
-          ) : null}
-          {reading ? (
-            <p className="mb-3 text-sm text-muted-foreground">
-              <Trans>Reading Carta…</Trans>
-            </p>
-          ) : null}
-
-          <Tabs value={filter} onValueChange={(next) => setFilter(next as Filter)} className="mb-4">
-            {/* Wraps onto a second row on a phone instead of hiding tabs past the edge. */}
-            <TabsList
-              className="max-w-full flex-wrap justify-start rounded-2xl group-data-horizontal/tabs:h-auto"
-              aria-label={t`Kind`}
-            >
-              {filters.map((value) => (
-                <TabsTrigger key={value} value={value} className="h-7 flex-none rounded-full px-3">
-                  {filterNames[value]}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-
-          {rows.length > 0 && !error ? (
-            // Search takes the first row on a phone; Security and Sort wrap beneath it.
-            <div className="mb-4 flex flex-wrap items-center gap-1.5">
-              <SearchField
-                className="w-full @md:w-72"
-                value={query}
-                onChange={(next) => setParam("q", next || undefined)}
-                placeholder={t`Search`}
-                label={t`Search`}
-                name="cap-table-search"
-              />
-              {securities.length > 1 || security ? (
-                <PickFilter
-                  label={t`Security`}
-                  value={security}
-                  options={securities.map((name) => [name, name])}
-                  onChange={(next) => setParam("security", next)}
-                />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <Trans>Refresh from Carta. The Carta agent reads your cap table again.</Trans>
+                  </TooltipContent>
+                </Tooltip>
               ) : null}
-              <div className="ms-auto flex items-center gap-0.5">
-                <SortControl
-                  fields={sortFields}
-                  field={sortField}
-                  fieldLabel={sortFields.find(([name]) => name === sortField)?.[1] ?? ""}
-                  direction={sortDirection}
-                  onField={(next) =>
-                    setParams(
-                      (current) => {
-                        const updated = new URLSearchParams(current);
-                        updated.set("sort", next);
-                        updated.delete("dir");
-                        return updated;
-                      },
-                      { replace: true },
-                    )
-                  }
-                  onDirection={(next) =>
-                    setParams(
-                      (current) => {
-                        const updated = new URLSearchParams(current);
-                        updated.set("sort", sortField);
-                        updated.set("dir", next);
-                        return updated;
-                      },
-                      { replace: true },
-                    )
-                  }
-                />
-              </div>
-            </div>
-          ) : null}
-
-          {refreshError ? (
-            <div role="alert" className="mb-3 flex flex-wrap items-center gap-3 text-sm">
-              <span className="text-destructive">{refreshError}</span>
-              {/* Trying again cannot work until a model is set up. */}
-              {needsModel && onOpenModelSettings ? (
-                <Button variant="outline" size="sm" onClick={onOpenModelSettings}>
-                  <Trans>Add a model</Trans>
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" onClick={() => void refresh()}>
-                  <Trans>Try again</Trans>
-                </Button>
-              )}
-            </div>
-          ) : null}
-
-          {error ? (
-            <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
-              <span className="text-destructive">{error}</span>
-              <Button variant="outline" size="sm" onClick={load}>
-                <Trans>Try again</Trans>
-              </Button>
-            </div>
-          ) : contacts === null || (reading && rows.length === 0) ? (
-            <div className="flex flex-col gap-2" aria-busy="true">
-              {[0, 1, 2].map((n) => (
-                <Skeleton key={n} className="h-9 w-full" />
-              ))}
-            </div>
-          ) : shown.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <p className="max-w-sm text-sm text-muted-foreground">
-                {narrowing ? t`No matches` : emptyText[filter]}
-              </p>
-              {narrowing ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setParams(
-                      (current) => {
-                        const updated = new URLSearchParams(current);
-                        updated.delete("q");
-                        updated.delete("security");
-                        return updated;
-                      },
-                      { replace: true },
-                    );
-                    container.current
-                      ?.querySelector<HTMLInputElement>("input[name=cap-table-search]")
-                      ?.focus();
-                  }}
-                >
-                  <Trans>Clear filters</Trans>
-                </Button>
-              ) : !isContactKind(filter) ? null : (
-                <Button variant="outline" size="sm" onClick={addContact}>
+              {cartaConnected ? (
+                <Button onClick={addContact}>
                   <Plus aria-hidden="true" />
-                  {addKindLabel[filter]}
+                  {isContactKind(filter) ? addKindLabel[filter] : <Trans>Add contact</Trans>}
                 </Button>
-              )}
-            </div>
-          ) : (
-            // Name takes what the other columns leave. Columns drop in priority order as the page
-            // narrows: Email first (it moves under the name), then Kind, then Shares.
-            <div className="max-w-5xl">
-              <Table compact className="table-fixed">
-                <TableHeader>
-                  <TableHeadRow>
-                    <TableHead className={STICKY}>
-                      <Trans>Name</Trans>
-                    </TableHead>
-                    <TableHead className={`${STICKY} hidden w-56 @3xl:table-cell`}>
-                      <Trans>Email</Trans>
-                    </TableHead>
-                    <TableHead className={`${STICKY} hidden w-28 @lg:table-cell`}>
-                      <Trans>Kind</Trans>
-                    </TableHead>
-                    {snapshot && amountColumn ? (
-                      <TableHead className={`${STICKY} w-24 text-end`}>
-                        <Trans>Amount</Trans>
-                      </TableHead>
-                    ) : null}
-                    {snapshot && shareColumns ? (
-                      <>
-                        <TableHead className={`${STICKY} hidden w-20 text-end @md:table-cell`}>
-                          <Trans>Shares</Trans>
-                        </TableHead>
-                        <TableHead className={`${STICKY} w-20 pe-0 text-end`}>
-                          <Trans>Ownership</Trans>
-                        </TableHead>
-                      </>
-                    ) : null}
-                  </TableHeadRow>
-                </TableHeader>
-                <TableBody>
-                  {shown.map(({ key, contact, holder }) => {
-                    const name = contact?.name ?? holder?.name ?? "";
-                    const organization = contact?.organization ?? holder?.organization ?? null;
-                    const kind = rowKind({ contact, holder });
-                    const security = holder
-                      ? holder.shares == null && holder.amountUsd != null && !amountColumn
-                        ? `${holder.security}, ${usd(holder.amountUsd)}`
-                        : holder.security
-                      : null;
-                    // "Options" under the kind "Options" says nothing new.
-                    const holding = security === names[kind] ? null : security;
-                    const empty = <span className="text-muted-foreground">{DASH}</span>;
-                    const email = contact?.email ? (
-                      contact.email
-                    ) : !contact && kind === "investor" ? (
-                      <>
-                        {/* Carta's email shows as is; saving it makes the holder a contact. */}
-                        {holder?.email ? <span className="truncate">{holder.email} </span> : null}
-                        <Button
-                          variant="link"
-                          size="xs"
-                          className="h-4 px-0 py-0 leading-4"
-                          onClick={() =>
-                            setEditing({
-                              name,
-                              email: holder?.email ?? null,
-                              organization,
-                              kind: "investor",
-                            })
-                          }
-                        >
-                          {holder?.email ? (
-                            <Trans>Save as contact</Trans>
-                          ) : (
-                            <Trans>Add email</Trans>
-                          )}
-                        </Button>
-                      </>
-                    ) : holder?.email ? (
-                      holder.email
-                    ) : null;
-                    return (
-                      <TableRow
-                        key={key}
-                        data-contact-id={contact?.id}
-                        className={`group-data-[compact]/table:h-11 [&>td]:py-0.5 ${contact && contact.id === savedId ? SAVED_ROW_CLASS : ""}`}
-                        onOpen={contact ? () => setEditing(contact) : undefined}
-                      >
-                        <TableCell>
-                          {contact ? (
-                            <button
-                              type="button"
-                              title={name}
-                              data-row-open
-                              className="block max-w-full truncate rounded-sm text-start font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-                            >
-                              {name}
-                            </button>
-                          ) : (
-                            <span className="block truncate font-medium" title={name}>
-                              {name}
-                            </span>
-                          )}
-                          {/* One muted line keeps every row one height. Without room for the Kind or Email
-                          columns, the kind, holding and email join it. */}
-                          <div className="flex min-w-0 gap-2 whitespace-nowrap text-xs text-muted-foreground empty:hidden">
-                            <span className="shrink-0 @lg:hidden">{names[kind]}</span>
-                            {holding ? (
-                              <span className="min-w-0 truncate" title={holding}>
-                                {holding}
-                              </span>
-                            ) : null}
-                            {organization ? (
-                              <span className="min-w-0 truncate" title={organization}>
-                                {organization}
-                              </span>
-                            ) : null}
-                            {email ? (
-                              <span
-                                data-testid="cap-table-row-email"
-                                className="min-w-0 truncate @3xl:hidden"
-                              >
-                                {email}
-                              </span>
-                            ) : null}
-                          </div>
-                        </TableCell>
-                        <TableCell
-                          data-testid="cap-table-email-cell"
-                          className="hidden truncate text-muted-foreground @3xl:table-cell"
-                          title={contact?.email ?? holder?.email ?? undefined}
-                        >
-                          {email ?? empty}
-                        </TableCell>
-                        <TableCell className="hidden @lg:table-cell">
-                          <div className="truncate">{names[kind]}</div>
-                        </TableCell>
-                        {snapshot && amountColumn ? (
-                          <TableCell className="text-end tabular-nums">
-                            {holder?.amountUsd != null ? usd(holder.amountUsd) : empty}
-                          </TableCell>
-                        ) : null}
-                        {snapshot && shareColumns ? (
-                          <>
-                            <TableCell className="hidden text-end tabular-nums @md:table-cell">
-                              {holder?.shares != null ? num(holder.shares) : empty}
-                            </TableCell>
-                            <TableCell className="pe-0 text-end tabular-nums">
-                              {holder?.percent != null ? (
-                                pct(holder.percent)
-                              ) : holder ? (
-                                empty
-                              ) : (
-                                <span className="hidden @md:inline">{empty}</span>
-                              )}
-                            </TableCell>
-                          </>
-                        ) : null}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-
-          <FolderDocuments folderPath={CAP_TABLE_FOLDER} />
-        </>
-      ) : null}
-
-      {connecting ? (
-        <ConnectCartaDialog
-          onClose={() => {
-            setConnecting(false);
-            setServersSeq((n) => n + 1);
-          }}
-          onFailed={(message) => {
-            setConnecting(false);
-            notify(message);
-          }}
-        />
-      ) : null}
-      {editing ? (
-        <ContactDialog
-          key={editing === "new" ? "new" : "id" in editing ? editing.id : "prefill"}
-          contact={editing === "new" || !("id" in editing) ? null : editing}
-          prefill={editing !== "new" && !("id" in editing) ? editing : undefined}
-          contacts={contacts ?? []}
-          onClose={() => setEditing(null)}
-          onSaved={(saved) => {
-            load();
-            setSavedId(saved.id);
-            notify(t`Saved ${saved.name}`);
-          }}
-          onDeleted={deleted}
-          onOpenContact={setEditing}
-          fromCapTable={
-            editing !== "new" &&
-            "id" in editing &&
-            rows.some((row) => row.holder && row.contact?.id === editing.id)
+              ) : null}
+              {onShowAgent ? <AskBotButton botName="Carta agent" onClick={onShowAgent} /> : null}
+            </>
           }
         />
-      ) : null}
+      </div>
+
+      <div ref={container} className={`rk-scroll flex-1 overflow-y-auto ${PAGE_GUTTER_X} pb-6`}>
+        {serversFailed ? (
+          <div role="alert" className="mb-5 flex flex-wrap items-center gap-3 text-sm">
+            <span className="text-destructive">
+              <Trans>Could not check whether Carta is connected.</Trans>
+            </span>
+            <Button variant="outline" size="sm" onClick={() => setServersSeq((n) => n + 1)}>
+              <Trans>Try again</Trans>
+            </Button>
+          </div>
+        ) : null}
+
+        {neverRead ? (
+          <Card className="mb-5 flex flex-col items-start gap-3 px-4 @md:flex-row @md:items-center">
+            <PieChart aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-medium">
+                <Trans>Carta is connected</Trans>
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {needsModel ? (
+                  <Trans>The Carta agent needs a model before it can read your cap table.</Trans>
+                ) : (
+                  <Trans>The Carta agent has not read your cap table yet.</Trans>
+                )}
+              </p>
+            </div>
+            {/* A read cannot start without a model; Refresh in the header reads once one is added. */}
+            {needsModel && onOpenModelSettings ? (
+              <Button onClick={onOpenModelSettings}>
+                <Trans>Add a model</Trans>
+              </Button>
+            ) : (
+              <Button onClick={() => void refresh()}>
+                <Trans>Read cap table</Trans>
+              </Button>
+            )}
+          </Card>
+        ) : null}
+
+        {cartaConnected || serversFailed ? null : (
+          <Card className="mb-5 flex flex-col items-start gap-3 px-4 @md:flex-row @md:items-center">
+            <PieChart aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-medium">
+                {cartaExpired ? (
+                  <Trans>Sign in to Carta again to see who owns your company</Trans>
+                ) : (
+                  <Trans>See who owns your company</Trans>
+                )}
+              </h2>
+              {cartaExpired ? (
+                <p className="text-sm text-muted-foreground">
+                  <Trans>Your Carta sign-in ended. Sign in again to see holders here.</Trans>
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  <Trans>
+                    Carta is the service many startups use to record who owns shares, options and
+                    SAFEs. Connect it to see them here and to ask the Carta agent about them.
+                  </Trans>
+                </p>
+              )}
+            </div>
+            <Button onClick={() => setConnecting(true)}>
+              {cartaExpired ? <Trans>Reconnect Carta</Trans> : <Trans>Connect Carta</Trans>}
+            </Button>
+          </Card>
+        )}
+
+        {capFailed && cartaConnected ? (
+          <div role="alert" className="mb-4 flex flex-wrap items-center gap-3 text-sm">
+            <span className="text-destructive">
+              <Trans>Could not load the cap table, so holdings are missing.</Trans>
+            </span>
+            <Button variant="outline" size="sm" onClick={() => void loadCap()}>
+              <Trans>Try again</Trans>
+            </Button>
+          </div>
+        ) : null}
+
+        {!serversChecked || (cartaConnected && cap === null && !capFailed) ? (
+          <div className="flex flex-col gap-2" aria-busy="true">
+            {[0, 1, 2].map((n) => (
+              <Skeleton key={n} className="h-9 w-full" />
+            ))}
+          </div>
+        ) : cartaConnected ? (
+          <>
+            {/* Wide enough, the figures sit beside the donut so the table gets the page's height. */}
+            {showHoldings && overview ? (
+              <div className="mb-4 grid gap-4 @4xl/bd:grid-cols-2">
+                <Summary snapshot={snapshot} />
+                {snapshot ? (
+                  <OwnershipDonut
+                    classes={snapshot.shareClasses}
+                    fullyDilutedShares={snapshot.fullyDilutedShares}
+                    holdings={snapshot.holders}
+                    optionPoolAvailable={snapshot.optionPoolAvailable}
+                  />
+                ) : null}
+              </div>
+            ) : null}
+            {snapshot && overview ? <SafeNote holders={snapshot.holders} /> : null}
+            {reading ? (
+              <p className="mb-3 text-sm text-muted-foreground">
+                <Trans>Reading Carta…</Trans>
+              </p>
+            ) : null}
+
+            <Tabs
+              value={filter}
+              onValueChange={(next) => setFilter(next as Filter)}
+              className="mb-4"
+            >
+              {/* Wraps onto a second row on a phone instead of hiding tabs past the edge. */}
+              <TabsList
+                className="max-w-full flex-wrap justify-start rounded-2xl group-data-horizontal/tabs:h-auto"
+                aria-label={t`Kind`}
+              >
+                {filters.map((value) => (
+                  <TabsTrigger
+                    key={value}
+                    value={value}
+                    className="h-7 flex-none rounded-full px-3"
+                  >
+                    {filterNames[value]}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+
+            {rows.length > 0 && !error ? (
+              // Search takes the first row on a phone; Security and Sort wrap beneath it.
+              <div className="mb-4 flex flex-wrap items-center gap-1.5">
+                <SearchField
+                  className="w-full @md:w-72"
+                  value={query}
+                  onChange={(next) => setParam("q", next || undefined)}
+                  placeholder={t`Search`}
+                  label={t`Search`}
+                  name="cap-table-search"
+                />
+                {securities.length > 1 || security ? (
+                  <PickFilter
+                    label={t`Security`}
+                    value={security}
+                    options={securities.map((name) => [name, name])}
+                    onChange={(next) => setParam("security", next)}
+                  />
+                ) : null}
+                <div className="ms-auto flex items-center gap-0.5">
+                  <SortControl
+                    fields={sortFields}
+                    field={sortField}
+                    fieldLabel={sortFields.find(([name]) => name === sortField)?.[1] ?? ""}
+                    direction={sortDirection}
+                    onField={(next) =>
+                      setParams(
+                        (current) => {
+                          const updated = new URLSearchParams(current);
+                          updated.set("sort", next);
+                          updated.delete("dir");
+                          return updated;
+                        },
+                        { replace: true },
+                      )
+                    }
+                    onDirection={(next) =>
+                      setParams(
+                        (current) => {
+                          const updated = new URLSearchParams(current);
+                          updated.set("sort", sortField);
+                          updated.set("dir", next);
+                          return updated;
+                        },
+                        { replace: true },
+                      )
+                    }
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            {refreshError ? (
+              <div role="alert" className="mb-3 flex flex-wrap items-center gap-3 text-sm">
+                <span className="text-destructive">{refreshError}</span>
+                {/* Trying again cannot work until a model is set up. */}
+                {needsModel && onOpenModelSettings ? (
+                  <Button variant="outline" size="sm" onClick={onOpenModelSettings}>
+                    <Trans>Add a model</Trans>
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={() => void refresh()}>
+                    <Trans>Try again</Trans>
+                  </Button>
+                )}
+              </div>
+            ) : null}
+
+            {error ? (
+              <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
+                <span className="text-destructive">{error}</span>
+                <Button variant="outline" size="sm" onClick={load}>
+                  <Trans>Try again</Trans>
+                </Button>
+              </div>
+            ) : contacts === null || (reading && rows.length === 0) ? (
+              <div className="flex flex-col gap-2" aria-busy="true">
+                {[0, 1, 2].map((n) => (
+                  <Skeleton key={n} className="h-9 w-full" />
+                ))}
+              </div>
+            ) : shown.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-16 text-center">
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  {narrowing ? t`No matches` : emptyText[filter]}
+                </p>
+                {narrowing ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setParams(
+                        (current) => {
+                          const updated = new URLSearchParams(current);
+                          updated.delete("q");
+                          updated.delete("security");
+                          return updated;
+                        },
+                        { replace: true },
+                      );
+                      container.current
+                        ?.querySelector<HTMLInputElement>("input[name=cap-table-search]")
+                        ?.focus();
+                    }}
+                  >
+                    <Trans>Clear filters</Trans>
+                  </Button>
+                ) : !isContactKind(filter) ? null : (
+                  <Button variant="outline" size="sm" onClick={addContact}>
+                    <Plus aria-hidden="true" />
+                    {addKindLabel[filter]}
+                  </Button>
+                )}
+              </div>
+            ) : (
+              // Name takes what the other columns leave. Columns drop in priority order as the page
+              // narrows: Email first (it moves under the name), then Kind, then Shares.
+              <div className="max-w-5xl">
+                <Table compact className="table-fixed">
+                  <TableHeader>
+                    <TableHeadRow>
+                      <TableHead className={`${STICKY} ps-2`}>
+                        <Trans>Name</Trans>
+                      </TableHead>
+                      <TableHead className={`${STICKY} hidden w-56 @3xl:table-cell`}>
+                        <Trans>Email</Trans>
+                      </TableHead>
+                      <TableHead className={`${STICKY} hidden w-28 @lg:table-cell`}>
+                        <Trans>Kind</Trans>
+                      </TableHead>
+                      {snapshot && amountColumn ? (
+                        <TableHead className={`${STICKY} w-24 text-end`}>
+                          <Trans>Amount</Trans>
+                        </TableHead>
+                      ) : null}
+                      {snapshot && shareColumns ? (
+                        <>
+                          <TableHead className={`${STICKY} hidden w-20 text-end @md:table-cell`}>
+                            <Trans>Shares</Trans>
+                          </TableHead>
+                          <TableHead className={`${STICKY} w-20 pe-0 text-end`}>
+                            <Trans>Ownership</Trans>
+                          </TableHead>
+                        </>
+                      ) : null}
+                    </TableHeadRow>
+                  </TableHeader>
+                  <TableBody>
+                    {shown.map(({ key, contact, holder }) => {
+                      const name = contact?.name ?? holder?.name ?? "";
+                      const organization = contact?.organization ?? holder?.organization ?? null;
+                      const kind = rowKind({ contact, holder });
+                      const security = holder
+                        ? holder.shares == null && holder.amountUsd != null && !amountColumn
+                          ? `${holder.security}, ${usd(holder.amountUsd)}`
+                          : holder.security
+                        : null;
+                      // "Options" under the kind "Options" says nothing new.
+                      const holding = security === names[kind] ? null : security;
+                      const empty = <span className="text-muted-foreground">{DASH}</span>;
+                      const email = contact?.email ? (
+                        contact.email
+                      ) : !contact && kind === "investor" ? (
+                        <>
+                          {/* Carta's email shows as is; saving it makes the holder a contact. */}
+                          {holder?.email ? <span className="truncate">{holder.email} </span> : null}
+                          <Button
+                            variant="link"
+                            size="xs"
+                            className="h-4 px-0 py-0 leading-4"
+                            onClick={() =>
+                              setEditing({
+                                name,
+                                email: holder?.email ?? null,
+                                organization,
+                                kind: "investor",
+                              })
+                            }
+                          >
+                            {holder?.email ? (
+                              <Trans>Save as contact</Trans>
+                            ) : (
+                              <Trans>Add email</Trans>
+                            )}
+                          </Button>
+                        </>
+                      ) : holder?.email ? (
+                        holder.email
+                      ) : null;
+                      return (
+                        <TableRow
+                          key={key}
+                          data-contact-id={contact?.id}
+                          className={`group-data-[compact]/table:h-11 [&>td]:py-0.5 [&>td:first-child]:ps-2 ${contact && contact.id === savedId ? SAVED_ROW_CLASS : ""}`}
+                          onOpen={contact ? () => setEditing(contact) : undefined}
+                        >
+                          <TableCell>
+                            {contact ? (
+                              <button
+                                type="button"
+                                title={name}
+                                data-row-open
+                                className="block max-w-full truncate rounded-sm text-start font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                              >
+                                {name}
+                              </button>
+                            ) : (
+                              <span className="block truncate font-medium" title={name}>
+                                {name}
+                              </span>
+                            )}
+                            {/* One muted line keeps every row one height. Without room for the Kind or Email
+                          columns, the kind, holding and email join it. */}
+                            <div className="flex min-w-0 gap-2 whitespace-nowrap text-xs text-muted-foreground empty:hidden">
+                              <span className="shrink-0 @lg:hidden">{names[kind]}</span>
+                              {holding ? (
+                                <span className="min-w-0 truncate" title={holding}>
+                                  {holding}
+                                </span>
+                              ) : null}
+                              {organization ? (
+                                <span className="min-w-0 truncate" title={organization}>
+                                  {organization}
+                                </span>
+                              ) : null}
+                              {email ? (
+                                <span
+                                  data-testid="cap-table-row-email"
+                                  className="min-w-0 truncate @3xl:hidden"
+                                >
+                                  {email}
+                                </span>
+                              ) : null}
+                            </div>
+                          </TableCell>
+                          <TableCell
+                            data-testid="cap-table-email-cell"
+                            className="hidden truncate text-muted-foreground @3xl:table-cell"
+                            title={contact?.email ?? holder?.email ?? undefined}
+                          >
+                            {email ?? empty}
+                          </TableCell>
+                          <TableCell className="hidden @lg:table-cell">
+                            <div className="truncate">{names[kind]}</div>
+                          </TableCell>
+                          {snapshot && amountColumn ? (
+                            <TableCell className="text-end tabular-nums">
+                              {holder?.amountUsd != null ? usd(holder.amountUsd) : empty}
+                            </TableCell>
+                          ) : null}
+                          {snapshot && shareColumns ? (
+                            <>
+                              <TableCell className="hidden text-end tabular-nums @md:table-cell">
+                                {holder?.shares != null ? num(holder.shares) : empty}
+                              </TableCell>
+                              <TableCell className="pe-0 text-end tabular-nums">
+                                {holder?.percent != null ? (
+                                  pct(holder.percent)
+                                ) : holder ? (
+                                  empty
+                                ) : (
+                                  <span className="hidden @md:inline">{empty}</span>
+                                )}
+                              </TableCell>
+                            </>
+                          ) : null}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            <FolderDocuments folderPath={CAP_TABLE_FOLDER} />
+          </>
+        ) : null}
+
+        {connecting ? (
+          <ConnectCartaDialog
+            onClose={() => {
+              setConnecting(false);
+              setServersSeq((n) => n + 1);
+            }}
+            onFailed={(message) => {
+              setConnecting(false);
+              notify(message);
+            }}
+          />
+        ) : null}
+        {editing ? (
+          <ContactDialog
+            key={editing === "new" ? "new" : "id" in editing ? editing.id : "prefill"}
+            contact={editing === "new" || !("id" in editing) ? null : editing}
+            prefill={editing !== "new" && !("id" in editing) ? editing : undefined}
+            contacts={contacts ?? []}
+            onClose={() => setEditing(null)}
+            onSaved={(saved) => {
+              load();
+              setSavedId(saved.id);
+              notify(t`Saved ${saved.name}`);
+            }}
+            onDeleted={deleted}
+            onOpenContact={setEditing}
+            fromCapTable={
+              editing !== "new" &&
+              "id" in editing &&
+              rows.some((row) => row.holder && row.contact?.id === editing.id)
+            }
+          />
+        ) : null}
+      </div>
     </div>
   );
 }

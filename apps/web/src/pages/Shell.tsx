@@ -27,8 +27,10 @@ import {
   ATTACHMENT_MAX_BYTES,
   ATTACHMENT_MAX_COUNT,
   DEFAULT_AVATAR_STYLE,
+  FIRST_BOT_SPAWN_KEY,
   isIntegrationAgentSpawnKey,
   LEGAL_AGENT_MODEL,
+  LEGAL_CONSENT_REQUIRED_MESSAGE,
   NOTIFICATION_KINDS,
   RunPhaseSchema,
 } from "@rakazo/contracts";
@@ -154,7 +156,7 @@ import { DevinConnectDialog } from "../components/integrations/DevinConnectDialo
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
 import { PageAgentsRow } from "../components/PageAgentsRow";
 import { canOfferHostComputer } from "../components/RunsOnPicker";
-import { OpeningSpace } from "../components/ShellSkeleton";
+import { OpeningSpace, ThreadSkeleton } from "../components/ShellSkeleton";
 import { RailTip, SidebarPageLink } from "../components/SidebarPageLink";
 import { SidebarPages } from "../components/SidebarPages";
 import { SidebarPagesGroup } from "../components/SidebarPagesGroup";
@@ -176,6 +178,7 @@ import { TeachRecordingChrome, TeachStopButton } from "../components/teach/Teach
 import { connectCardsOpen, FirstRunTour } from "../components/tour/FirstRunTour";
 import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
+import { artifactDisplayName } from "../lib/artifact-name";
 import type { ArtifactTarget } from "../lib/artifact-open";
 import { authClient } from "../lib/auth";
 import { takeInitialBootstrap } from "../lib/bootstrap";
@@ -357,7 +360,7 @@ export type { PendingAttachment };
 export { Composer, Transcript, UnreadDivider };
 
 /** Safety-net refresh of the sidebar list; events and tab focus keep it current in between. */
-export const BOTS_POLL_MS = 60_000;
+export const BOTS_POLL_MS = 90_000;
 const THREAD_SNAPSHOT_TIMEOUT_MS = 2_000;
 /** Bound Settings leave so a hung voice status refresh cannot block dismissal. */
 const VOICE_STATUS_REFRESH_TIMEOUT_MS = 10_000;
@@ -448,7 +451,7 @@ async function findDocumentsAndArtifacts(query: string) {
         result.items
           .filter((item) => matchesArtifactQuery(item, query))
           .slice(0, 5)
-          .map((item) => ({ id: item.id, label: item.name })),
+          .map((item) => ({ id: item.id, label: artifactDisplayName(item.name) })),
       )
       .catch((): SearchLink[] => []),
   ]);
@@ -536,6 +539,8 @@ export function ShellPage() {
   const [legalAgentOpen, setLegalAgentOpen] = useState(false);
   const [creatingLegalAgent, setCreatingLegalAgent] = useState(false);
   const [legalAgentError, setLegalAgentError] = useState("");
+  // The Legal page reports whether it still lacks consent; its Allow is the only one, so the agent waits for it.
+  const [legalConsentMissing, setLegalConsentMissing] = useState(false);
   const [devinAgentOpen, setDevinAgentOpen] = useState(false);
   const [creatingDevinAgent, setCreatingDevinAgent] = useState(false);
   const [devinAgentError, setDevinAgentError] = useState("");
@@ -544,9 +549,8 @@ export function ShellPage() {
   const [devinDialog, setDevinDialog] = useState<"connect" | "replace" | null>(null);
   /** Remounts the Devin page after a key is accepted, so it shows the new connection at once. */
   const [devinPageKey, setDevinPageKey] = useState(0);
-  // The Carta agent panel remembers being collapsed, and starts collapsed on a phone, where it
-  // would cover the page.
-  const [cartaAgentCollapsed, setCartaAgentCollapsed] = useState(() => !wideScreen());
+  // The Carta agent panel starts closed, like the other pages' agents, and remembers an explicit open.
+  const [cartaAgentCollapsed, setCartaAgentCollapsed] = useState(true);
   const [creatingCartaAgent, setCreatingCartaAgent] = useState(false);
   // Reported by the Cap Table page. Without Carta the agent has nothing to read, so its panel stays shut.
   const [cartaConnected, setCartaConnected] = useState(false);
@@ -789,7 +793,10 @@ export function ShellPage() {
     desktop.addEventListener("change", closeMobileSidebar);
     return () => desktop.removeEventListener("change", closeMobileSidebar);
   }, []);
-  const [activityMode, setActivityMode] = useState(readActivityMode);
+  // Phones open the drawer on the chat list; Activity there is one tap away.
+  const [activityMode, setActivityMode] = useState(
+    () => readActivityMode() && window.matchMedia(SIDEBAR_DOCKED_QUERY).matches,
+  );
   const toggleActivityMode = useCallback(() => {
     setActivityMode((on) => {
       const next = !on;
@@ -1061,6 +1068,16 @@ export function ShellPage() {
                 : capTableMode
                   ? findCartaAgent(bots, userId)
                   : routeBot.bot;
+  // A bot made with "New bot" opens with only its name until it has answered a message.
+  useEffect(() => {
+    // The snapshot can still be the previous thread's for a render after the bot opens.
+    if (!namingBotId || active?.id !== namingBotId || snapshot?.botId !== namingBotId) return;
+    const messages = snapshot.messages;
+    const firstUser = messages.findIndex((message) => message.role === "user");
+    if (firstUser >= 0 && messages.slice(firstUser + 1).some((m) => m.role === "bot")) {
+      setNamingBotId(null);
+    }
+  }, [namingBotId, active?.id, snapshot]);
   /** The open bot's colour. A group or a missing bot has no `active`, so its thread stays monochrome. */
   const threadAccent = botAccentHex(active?.color);
   const [botPins, setBotPins] = useBotPins(active?.id, pinsSeq);
@@ -2067,11 +2084,10 @@ export function ShellPage() {
         keywords: t`contracts, NDA, deadlines`,
         icon: <Scale {...icon} />,
       },
-      {
-        id: "devin",
-        label: t`Devin`,
-        icon: <CodeXml {...icon} />,
-      },
+      // Only once Devin is connected; before that its Integrations card is the way in.
+      ...(glance.devinConnected
+        ? [{ id: "devin", label: t`Devin`, icon: <CodeXml {...icon} /> }]
+        : []),
       {
         id: "cap-table",
         label: t`Cap table`,
@@ -2100,7 +2116,7 @@ export function ShellPage() {
       },
       { id: "settings", label: t`Settings`, icon: <Settings {...icon} /> },
     ];
-  }, [t, bootstrapMe?.ticketBoardEnabled]);
+  }, [t, bootstrapMe?.ticketBoardEnabled, glance.devinConnected]);
   // A page hidden in Page options stays out of search and the command palette too.
   const visiblePages = useMemo(
     () => appPages.filter((page) => !hiddenPages.includes(page.id)),
@@ -2399,7 +2415,11 @@ export function ShellPage() {
     rememberSeenRunErrorId(runId);
   }, []);
   const transcriptMessages = useMemo(
-    () => userVisibleMessages(activeSnapshot?.messages ?? [], { includePeerReceipts: true }),
+    () =>
+      userVisibleMessages(activeSnapshot?.messages ?? [], {
+        includePeerReceipts: true,
+        collapseHandoffs: true,
+      }),
     [activeSnapshot?.messages],
   );
   const transcriptArtifactTarget = useMemo<ArtifactTarget>(
@@ -2576,6 +2596,9 @@ export function ShellPage() {
   }, [active, groupId, inGroup, snapshot?.botId, snapshot?.groupId, snapshot?.threadId]);
 
   const openBot = useCallback((id: string) => navigate(`/app/${id}`), [navigate]);
+  // Contacts and Artifacts have no agent of their own: their Ask opens Chief, the first bot.
+  const chiefId = bots.find((bot) => bot.spawnKey === FIRST_BOT_SPAWN_KEY && !bot.archivedAt)?.id;
+  const askChief = chiefId ? () => openBot(chiefId) : undefined;
 
   async function startElioCall() {
     if (voiceCallStarting.current) return;
@@ -3139,6 +3162,12 @@ export function ShellPage() {
     if (!active && !creatingLegalAgent) void createLegalAgent();
   }
 
+  /** A row's Ask agent: opens the panel and sends the question. Before the agent exists it only creates it. */
+  function askLegalAgentAbout(question: string) {
+    askLegalAgent();
+    if (active) void sendMessage(question, [], newClientId());
+  }
+
   async function createCartaAgent() {
     setCreatingCartaAgent(true);
     setCartaAgentError("");
@@ -3631,6 +3660,15 @@ export function ShellPage() {
     }
   }
 
+  function retryFailedRun() {
+    const last = activeSnapshot?.messages.findLast((message) => message.role === "user");
+    const text = last?.blocks
+      .flatMap((block) => (block.kind === "text" ? [block.text] : []))
+      .join("\n");
+    dismissComposerError();
+    if (text?.trim()) void sendMessage(text, [], newClientId());
+  }
+
   const embeddedScreenUrl = embeddableScreenUrl(screenUrl);
   const hasControl = userHoldsComputerControl(computer, computerBot?.id);
   const hideScreenLoadError = computerErrorFromScreen && Boolean(embeddedScreenUrl);
@@ -3669,7 +3707,17 @@ export function ShellPage() {
     .toUpperCase();
 
   const pinsList = !inGroup && !pageMode && botPins?.list ? botPins : null;
-  const composerDisabled = Boolean(recordingSkill) || pageAgentNeedsModel;
+  const legalWaitsForConsent = legalMode && legalConsentMissing;
+  const composerDisabled = Boolean(recordingSkill) || pageAgentNeedsModel || legalWaitsForConsent;
+  // A "needs your permission" error from before the page's Allow no longer applies once it is given.
+  const staleConsentError =
+    !legalWaitsForConsent &&
+    (sendError === LEGAL_CONSENT_REQUIRED_MESSAGE ||
+      displayedRunError === LEGAL_CONSENT_REQUIRED_MESSAGE);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the error becomes stale.
+  useEffect(() => {
+    if (staleConsentError) dismissComposerError();
+  }, [staleConsentError]);
   const paneAcceptsFiles = !pageMode && Boolean(active || activeGroup);
   function onPaneFileDrag(event: DragEvent<HTMLElement>) {
     if (!paneAcceptsFiles || !isUnclaimedFileDrag(event)) return setPaneDraggingFiles(false);
@@ -3765,6 +3813,8 @@ export function ShellPage() {
                 members={activeGroup.members}
                 onAsk={(text) => void sendMessage(text, [], newClientId())}
               />
+            ) : !activeSnapshot ? (
+              <ThreadSkeleton />
             ) : (
               <Transcript
                 key={activeSnapshot?.threadId}
@@ -3877,6 +3927,9 @@ export function ShellPage() {
               activeName={inGroup ? (activeGroup?.name ?? activeSnapshot?.groupName) : active?.name}
               running={composerShowsStop(currentRuns)}
               disabled={composerDisabled}
+              disabledPlaceholder={
+                legalWaitsForConsent ? t`Allow access on the page to ask` : undefined
+              }
               pendingAttachments={activePendingAttachments}
               dataRoomItems={activeDataRoomItems}
               onRemoveDataRoomItem={removeDataRoomItem}
@@ -3887,6 +3940,7 @@ export function ShellPage() {
               runErrorId={displayedRunErrorId}
               onRunErrorPresented={handleRunErrorPresented}
               onDismissError={dismissComposerError}
+              onRetryRun={retryFailedRun}
               onOpenModelSettings={(provider) =>
                 // "" is a rejected key: open the provider the failed run used.
                 openSettings("models", provider || (activeSnapshot?.run?.modelProvider ?? ""))
@@ -4114,47 +4168,39 @@ export function ShellPage() {
                   >
                     +
                   </PopoverTrigger>
-                  {/* Unmount with the state change so the panel it opens never coexists with the menu. */}
-                  {createMenuOpen ? (
-                    <PopoverContent
-                      align="end"
-                      className="app-no-drag w-auto gap-0 overflow-hidden p-0 data-closed:animate-none"
-                    >
-                      <BotCreatePicker
-                        bots={bots}
-                        onCreateBot={() => {
-                          setCreateMenuOpen(false);
-                          setMobileSidebarOpen(false);
-                          void createBot();
-                        }}
-                        onOpenBot={(id) => {
-                          setCreateMenuOpen(false);
-                          setMobileSidebarOpen(false);
-                          navigate(`/app/${id}`);
-                        }}
-                        onCreateGroup={() => {
-                          setCreateMenuOpen(false);
-                          setMobileSidebarOpen(false);
-                          setPanel("create-group");
-                        }}
-                        onCreateSpace={() => {
-                          setCreateMenuOpen(false);
-                          setMobileSidebarOpen(false);
-                          setNewSpaceOpen(true);
-                        }}
-                        onShowGroupInfo={() => {
-                          setCreateMenuOpen(false);
-                          setMobileSidebarOpen(false);
-                          setPickerInfoTopic("group");
-                        }}
-                        onShowSpaceInfo={() => {
-                          setCreateMenuOpen(false);
-                          setMobileSidebarOpen(false);
-                          setPickerInfoTopic("space");
-                        }}
-                      />
-                    </PopoverContent>
-                  ) : null}
+                  {/* Closes with no animation, so the panel it opens never coexists with the menu. */}
+                  <PopoverContent
+                    align="end"
+                    className="app-no-drag w-auto gap-0 overflow-hidden p-0 data-closed:animate-none"
+                  >
+                    <BotCreatePicker
+                      onCreateBot={() => {
+                        setCreateMenuOpen(false);
+                        setMobileSidebarOpen(false);
+                        void createBot();
+                      }}
+                      onCreateGroup={() => {
+                        setCreateMenuOpen(false);
+                        setMobileSidebarOpen(false);
+                        setPanel("create-group");
+                      }}
+                      onCreateSpace={() => {
+                        setCreateMenuOpen(false);
+                        setMobileSidebarOpen(false);
+                        setNewSpaceOpen(true);
+                      }}
+                      onShowGroupInfo={() => {
+                        setCreateMenuOpen(false);
+                        setMobileSidebarOpen(false);
+                        setPickerInfoTopic("group");
+                      }}
+                      onShowSpaceInfo={() => {
+                        setCreateMenuOpen(false);
+                        setMobileSidebarOpen(false);
+                        setPickerInfoTopic("space");
+                      }}
+                    />
+                  </PopoverContent>
                 </Popover>
               </div>
             )
@@ -4244,7 +4290,7 @@ export function ShellPage() {
                   })}
                 />
               )}
-              {hiddenPages.includes("devin") ? null : (
+              {hiddenPages.includes("devin") || !glance.devinConnected ? null : (
                 <SidebarPageLink
                   testId="sidebar-devin"
                   current={devinMode}
@@ -4431,8 +4477,7 @@ export function ShellPage() {
                       ? nestedRows.filter(isPageAgent)
                       : [];
                   const foldPageAgents = pageAgentRows.length >= 2;
-                  const showPageAgents =
-                    pageAgentsOpen || pageAgentRows.some((row) => row.item.chat.id === active?.id);
+                  const showPageAgents = pageAgentsOpen;
                   const displayRows: ((typeof nestedRows)[number] | { pageAgentsHeader: true })[] =
                     foldPageAgents
                       ? [
@@ -5104,9 +5149,10 @@ export function ShellPage() {
             setFocusComposerBotId(id);
             openBot(id);
           }}
-          onClose={(me) => {
+          onClose={(me, byEscape) => {
             setTourRestart(false);
-            setMobileSidebarOpen(false);
+            // Escape ends only the tour; the drawer it opened closes on the next press.
+            if (!byEscape) setMobileSidebarOpen(false);
             setBootstrapMe((current) => me ?? (current && { ...current, tourSeen: true }));
           }}
         />
@@ -5124,88 +5170,86 @@ export function ShellPage() {
             </span>
             {rail ? null : <span className="text-[14.5px] text-foreground/90">{userName}</span>}
           </PopoverTrigger>
-          {menuOpen ? (
-            <PopoverContent
-              side="top"
-              align="start"
-              alignOffset={11}
-              role="menu"
-              className="w-[calc(316px-1.5rem)] max-w-[calc(100vw-3rem)] gap-0 p-1 data-closed:animate-none"
-            >
-              {bootstrapMe?.ticketBoardEnabled ? (
-                <Button
-                  role="menuitem"
-                  variant="ghost"
-                  className="w-full justify-start font-normal"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setMobileSidebarOpen(false);
-                    navigate("/app/board");
-                  }}
-                >
-                  <SquareKanban className="text-muted-foreground" strokeWidth={1.75} />
-                  <Trans>Task board</Trans>
-                </Button>
-              ) : null}
+          <PopoverContent
+            side="top"
+            align="start"
+            alignOffset={11}
+            role="menu"
+            className="w-[calc(316px-1.5rem)] max-w-[calc(100vw-3rem)] gap-0 p-1 data-closed:animate-none"
+          >
+            {bootstrapMe?.ticketBoardEnabled ? (
               <Button
                 role="menuitem"
                 variant="ghost"
                 className="w-full justify-start font-normal"
-                aria-label={t`Settings`}
-                onClick={() => {
-                  setMenuOpen(false);
-                  openSettings("general");
-                }}
-              >
-                <Settings className="text-muted-foreground" strokeWidth={1.75} />
-                <Trans>Settings</Trans>
-              </Button>
-              <Button
-                role="menuitem"
-                variant="ghost"
-                className="w-full justify-start font-normal"
-                data-testid="menu-integrations"
                 onClick={() => {
                   setMenuOpen(false);
                   setMobileSidebarOpen(false);
-                  navigate("/app/integrations");
+                  navigate("/app/board");
                 }}
               >
-                <LayoutGrid className="text-muted-foreground" strokeWidth={1.75} />
-                <Trans>Integrations</Trans>
+                <SquareKanban className="text-muted-foreground" strokeWidth={1.75} />
+                <Trans>Task board</Trans>
               </Button>
-              <HideAmountsMenuItem onDone={() => setMenuOpen(false)} />
-              <Button
-                role="menuitem"
-                variant="ghost"
-                className="w-full justify-start font-normal"
-                data-testid="take-tour"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setTourRestart(true);
-                }}
-              >
-                <Compass className="text-muted-foreground" strokeWidth={1.75} />
-                <Trans>Take the tour</Trans>
-              </Button>
-              <Separator className="my-1" />
-              <Button
-                role="menuitem"
-                variant="ghost"
-                className="w-full justify-start font-normal"
-                onClick={() =>
-                  void authClient.signOut().then(() => {
-                    clearAgentAppCache();
-                    clearSpaceSelection();
-                    navigate("/");
-                  })
-                }
-              >
-                <LogOut className="text-muted-foreground" strokeWidth={1.75} />
-                <Trans>Log out</Trans>
-              </Button>
-            </PopoverContent>
-          ) : null}
+            ) : null}
+            <Button
+              role="menuitem"
+              variant="ghost"
+              className="w-full justify-start font-normal"
+              aria-label={t`Settings`}
+              onClick={() => {
+                setMenuOpen(false);
+                openSettings("general");
+              }}
+            >
+              <Settings className="text-muted-foreground" strokeWidth={1.75} />
+              <Trans>Settings</Trans>
+            </Button>
+            <Button
+              role="menuitem"
+              variant="ghost"
+              className="w-full justify-start font-normal"
+              data-testid="menu-integrations"
+              onClick={() => {
+                setMenuOpen(false);
+                setMobileSidebarOpen(false);
+                navigate("/app/integrations");
+              }}
+            >
+              <LayoutGrid className="text-muted-foreground" strokeWidth={1.75} />
+              <Trans>Integrations</Trans>
+            </Button>
+            <HideAmountsMenuItem onDone={() => setMenuOpen(false)} />
+            <Button
+              role="menuitem"
+              variant="ghost"
+              className="w-full justify-start font-normal"
+              data-testid="take-tour"
+              onClick={() => {
+                setMenuOpen(false);
+                setTourRestart(true);
+              }}
+            >
+              <Compass className="text-muted-foreground" strokeWidth={1.75} />
+              <Trans>Take the tour</Trans>
+            </Button>
+            <Separator className="my-1" />
+            <Button
+              role="menuitem"
+              variant="ghost"
+              className="w-full justify-start font-normal"
+              onClick={() =>
+                void authClient.signOut().then(() => {
+                  clearAgentAppCache();
+                  clearSpaceSelection();
+                  navigate("/");
+                })
+              }
+            >
+              <LogOut className="text-muted-foreground" strokeWidth={1.75} />
+              <Trans>Log out</Trans>
+            </Button>
+          </PopoverContent>
         </Popover>
       </aside>
 
@@ -5214,8 +5258,8 @@ export function ShellPage() {
         <button
           type="button"
           data-testid="bots-sidebar-edge"
-          aria-label={botsSidebarCollapsed ? t`Show sidebar` : t`Hide sidebar`}
-          aria-pressed={!botsSidebarCollapsed}
+          aria-label={t`Resize sidebar`}
+          tabIndex={-1}
           className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 lg:block ${
             botsSidebarCollapsed ? "start-12" : "start-[308px]"
           }`}
@@ -5436,11 +5480,11 @@ export function ShellPage() {
             }
           />
         ) : contactsMode ? (
-          <ContactsPage spaceName={pageSpaceName} />
+          <ContactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
         ) : artifactsMode ? (
           <ErrorBoundary fallback={<SectionLoadFailed />}>
             <Suspense fallback={null}>
-              <ArtifactsPage spaceName={pageSpaceName} />
+              <ArtifactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
             </Suspense>
           </ErrorBoundary>
         ) : boardMode ? (
@@ -5463,6 +5507,8 @@ export function ShellPage() {
         ) : legalMode ? (
           <LegalPage
             onAskAgent={legalAgentOpen ? undefined : askLegalAgent}
+            onAskAbout={askLegalAgentAbout}
+            onConsentChange={setLegalConsentMissing}
             onOpenSettings={() => openSettings("models", LEGAL_AGENT_MODEL.provider)}
             settingsOpen={settingsOpen}
             spaces={spaces}
@@ -5686,6 +5732,34 @@ export function ShellPage() {
             ) : null}
             {panel === "computer" && active ? (
               <div>
+                <RoutineListHeader
+                  onCreate={() => {
+                    setRoutineDraft(emptyRoutineDraft());
+                    setRoutineWebhookSecret(null);
+                    setEditingRoutine(null);
+                    setRoutineError(null);
+                    setPanel("routine");
+                  }}
+                />
+                {activeRoutines.map((routine) => {
+                  const routineRunning =
+                    snapshot?.run?.routineId === routine.id && isActive(snapshot.run.status);
+                  return (
+                    <RoutineListRow
+                      key={routine.id}
+                      routine={routine}
+                      running={routineRunning}
+                      onOpen={() => {
+                        setRoutineDraft(draftFromRoutine(routine));
+                        setRoutineWebhookSecret(null);
+                        setEditingRoutine(routine);
+                        setRoutineError(null);
+                        setPanel("routine");
+                      }}
+                      onStop={() => void stopRun()}
+                    />
+                  );
+                })}
                 <div
                   data-testid="computer-preview"
                   className={`group relative rounded-[14px] bg-background ${
@@ -5751,36 +5825,10 @@ export function ShellPage() {
                   ) : null}
                 </div>
                 <p className="mt-2 truncate text-[13.5px] text-muted-foreground" dir="auto">
-                  {t`${active.name}'s computer screen`}
+                  {/s$/i.test(active.name.trim())
+                    ? t`${active.name}' computer`
+                    : t`${active.name}'s computer`}
                 </p>
-                <RoutineListHeader
-                  onCreate={() => {
-                    setRoutineDraft(emptyRoutineDraft());
-                    setRoutineWebhookSecret(null);
-                    setEditingRoutine(null);
-                    setRoutineError(null);
-                    setPanel("routine");
-                  }}
-                />
-                {activeRoutines.map((routine) => {
-                  const routineRunning =
-                    snapshot?.run?.routineId === routine.id && isActive(snapshot.run.status);
-                  return (
-                    <RoutineListRow
-                      key={routine.id}
-                      routine={routine}
-                      running={routineRunning}
-                      onOpen={() => {
-                        setRoutineDraft(draftFromRoutine(routine));
-                        setRoutineWebhookSecret(null);
-                        setEditingRoutine(routine);
-                        setRoutineError(null);
-                        setPanel("routine");
-                      }}
-                      onStop={() => void stopRun()}
-                    />
-                  );
-                })}
               </div>
             ) : null}
             {panel === "create-group" ? (

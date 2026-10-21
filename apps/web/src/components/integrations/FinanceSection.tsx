@@ -42,6 +42,30 @@ function useMounted() {
 /** Same hover as the other integration tiles; `relative` anchors the stretched name link. */
 const TILE = "relative transition-colors hover:bg-muted/40";
 
+/** A tile with only Connect to offer is one row below 640px, Connect beside the name, like the app tiles. */
+const PHONE_ROW =
+  "max-sm:flex-row max-sm:items-center max-sm:p-3 max-sm:[&>:first-child]:flex-1 max-sm:[&>:nth-child(2)]:mt-0 max-sm:[&>:nth-child(2)]:shrink-0";
+
+/** The tile's one main link, like "Open Inbox" on Gmail. It never wraps. */
+const OPEN_LINK =
+  "relative z-10 ms-auto inline-flex h-7 pointer-coarse:h-11 shrink-0 items-center whitespace-nowrap rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted";
+
+/** The tile's one overflow menu: the optional key and other secondary actions live here. */
+function TileMenu({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button variant="ghost" size="icon-xs" className="relative z-10" aria-label={label} />
+        }
+      >
+        <MoreHorizontal aria-hidden="true" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">{children}</DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 /** A tile's name; when the connection has an MCP server it links to that page, covering the tile. */
 function TileName({ name, to }: { name: string; to?: string }) {
   return to ? (
@@ -79,7 +103,10 @@ function CryptoTile({
   const [dialog, setDialog] = useState(false);
 
   return (
-    <IntegrationTile data-testid="finance-tile-crypto" className={TILE}>
+    <IntegrationTile
+      data-testid="finance-tile-crypto"
+      className={`${TILE} ${hasKey || hasServer ? "" : PHONE_ROW}`}
+    >
       <div className="flex min-w-0 items-center gap-3">
         <AppLogo name="Blockscout" logo="/logos/blockscout.svg" />
         <div className="min-w-0">
@@ -101,42 +128,25 @@ function CryptoTile({
               <StatusBadge status="connected" />
             ) : (
               // Nothing to connect: the first wallet added starts it. Not "Not connected".
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground max-sm:hidden">
                 <Trans>Ready</Trans>
               </span>
             )}
             {/* One main action like the other tiles; the optional key and agents sit in the menu. */}
-            <Link
-              to={financePath.crypto()}
-              className="relative z-10 ms-auto inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
-            >
+            <Link to={financePath.crypto()} className={OPEN_LINK}>
               {hasKey || hasServer ? <Trans>Open Finance</Trans> : <Trans>Add wallet</Trans>}
             </Link>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    className="relative z-10"
-                    aria-label={t`More Blockscout actions`}
-                  />
-                }
-              >
-                <MoreHorizontal aria-hidden="true" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {/* The key is optional: without one, balances still come from public RPC. */}
-                <DropdownMenuItem onClick={() => setDialog(true)}>
-                  {hasKey ? <Trans>Replace API key</Trans> : <Trans>Add API key</Trans>}
+            <TileMenu label={t`More Blockscout actions`}>
+              {/* The key is optional: without one, balances still come from public RPC. */}
+              <DropdownMenuItem onClick={() => setDialog(true)}>
+                {hasKey ? <Trans>Replace API key</Trans> : <Trans>Add API key</Trans>}
+              </DropdownMenuItem>
+              {manageTo ? (
+                <DropdownMenuItem onClick={() => navigate(manageTo)}>
+                  <Trans>Manage agents</Trans>
                 </DropdownMenuItem>
-                {manageTo ? (
-                  <DropdownMenuItem onClick={() => navigate(manageTo)}>
-                    <Trans>Manage agents</Trans>
-                  </DropdownMenuItem>
-                ) : null}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              ) : null}
+            </TileMenu>
           </>
         )}
       </div>
@@ -154,7 +164,10 @@ function AlchemyTile({ state, reload }: { state: AlchemyState | null; reload: ()
   const [dialog, setDialog] = useState(false);
 
   return (
-    <IntegrationTile data-testid="finance-tile-alchemy" className={TILE}>
+    <IntegrationTile
+      data-testid="finance-tile-alchemy"
+      className={`${TILE} ${state?.connected || state?.lastError ? "" : PHONE_ROW}`}
+    >
       <div className="flex min-w-0 items-center gap-3">
         <AppLogo name="Alchemy" logo="/logos/alchemy.svg" />
         <div className="min-w-0">
@@ -168,30 +181,26 @@ function AlchemyTile({ state, reload }: { state: AlchemyState | null; reload: ()
         {state?.connected ? (
           <>
             <StatusBadge status="connected" />
-            <Button size="sm" variant="ghost" className="ms-auto" onClick={() => setDialog(true)}>
-              <Trans>Replace API key</Trans>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                void rpc.finance.cryptoProviderRemove({ provider: "alchemy" }).then(reload, reload)
-              }
-            >
-              <Trans>Remove</Trans>
-            </Button>
-            <Link
-              to={financePath.crypto()}
-              className="inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
-            >
+            <Link to={financePath.crypto()} className={OPEN_LINK}>
               <Trans>Open</Trans>
             </Link>
+            <TileMenu label={t`More Alchemy actions`}>
+              <DropdownMenuItem onClick={() => setDialog(true)}>
+                <Trans>Replace API key</Trans>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  void rpc.finance
+                    .cryptoProviderRemove({ provider: "alchemy" })
+                    .then(reload, reload)
+                }
+              >
+                <Trans>Remove</Trans>
+              </DropdownMenuItem>
+            </TileMenu>
           </>
         ) : (
           <>
-            <span className="text-xs text-muted-foreground">
-              <Trans>Not connected</Trans>
-            </span>
             <Button
               size="sm"
               variant="outline"
@@ -233,7 +242,10 @@ function ExchangeTile({
 
   const connected = found?.connected === true;
   return (
-    <IntegrationTile data-testid={`finance-tile-${provider}`} className={TILE}>
+    <IntegrationTile
+      data-testid={`finance-tile-${provider}`}
+      className={`${TILE} ${connected ? "" : PHONE_ROW}`}
+    >
       <div className="flex min-w-0 items-center gap-3">
         <AppLogo name={exchange.name} logo={exchange.logo} />
         <div className="min-w-0">
@@ -247,21 +259,17 @@ function ExchangeTile({
         {connected ? (
           <>
             <StatusBadge status="connected" />
-            <Button size="sm" variant="ghost" className="ms-auto" onClick={() => setDialog(true)}>
-              <Trans>Replace key</Trans>
-            </Button>
-            <Link
-              to={financePath.crypto()}
-              className="inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
-            >
+            <Link to={financePath.crypto()} className={OPEN_LINK}>
               <Trans>Open Finance</Trans>
             </Link>
+            <TileMenu label={t`More ${exchange.name} actions`}>
+              <DropdownMenuItem onClick={() => setDialog(true)}>
+                <Trans>Replace key</Trans>
+              </DropdownMenuItem>
+            </TileMenu>
           </>
         ) : (
           <>
-            <span className="text-xs text-muted-foreground">
-              <Trans>Not connected</Trans>
-            </span>
             <Button
               size="sm"
               variant="outline"
@@ -382,6 +390,7 @@ export function FinanceSection({
   cryptoManageTo?: string;
 }) {
   const { t } = useLingui();
+  const navigate = useNavigate();
   const [busy, setBusy] = useState<FinanceProvider | null>(null);
   const [errors, setErrors] = useState<Partial<Record<FinanceProvider, string>>>({});
   const description = {
@@ -430,7 +439,7 @@ export function FinanceSection({
             <IntegrationTile
               key={provider}
               data-testid={`finance-tile-${provider}`}
-              className={TILE}
+              className={`${TILE} ${connected || reconnect || error ? "" : PHONE_ROW}`}
             >
               <div className="flex min-w-0 items-center gap-3">
                 <AppLogo name={name} logo={logo} />
@@ -454,18 +463,22 @@ export function FinanceSection({
                   <StatusBadge status="reconnect" />
                 ) : status === "error" ? (
                   <StatusBadge status="failed" />
-                ) : (
-                  <span className="text-xs text-muted-foreground">
-                    <Trans>Not connected</Trans>
-                  </span>
-                )}
+                ) : null}
                 {connected ? (
-                  <Link
-                    to="/app/finance"
-                    className="relative z-10 ms-auto inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
-                  >
-                    <Trans>Open Finance</Trans>
-                  </Link>
+                  <>
+                    <Link to="/app/finance" className={OPEN_LINK}>
+                      <Trans>Open Finance</Trans>
+                    </Link>
+                    {serverId ? (
+                      <TileMenu label={t`More ${name} actions`}>
+                        <DropdownMenuItem
+                          onClick={() => navigate(`/app/integrations/mcp/${serverId}`)}
+                        >
+                          <Trans>Manage agents</Trans>
+                        </DropdownMenuItem>
+                      </TileMenu>
+                    ) : null}
+                  </>
                 ) : (
                   <Button
                     size="sm"
