@@ -50,6 +50,9 @@ model User {
   mailSenderDecisions         MailSenderDecision[]
   mailActionLogs              MailActionLog[]
   inboxTodos                  InboxTodo[]
+  meetings                    Meeting[]
+  meetingSyncStates           MeetingSyncState[]
+  meetingTombstones           MeetingTombstone[]
   inboxSenderFeedback         InboxSenderFeedback[]
   composeSends                ComposeSend[]
   members                     Member[]
@@ -214,8 +217,8 @@ model Member {
 }
 
 model Space {
-  notifications Notification[]
-  notificationEndpoints NotificationEndpoint[]
+  notifications               Notification[]
+  notificationEndpoints       NotificationEndpoint[]
   aiDataConsents              AiDataConsent[]
   id                          String                       @id
   organizationId              String
@@ -253,6 +256,9 @@ model Space {
   mailSenderDecisions         MailSenderDecision[]
   mailActionLogs              MailActionLog[]
   inboxTodos                  InboxTodo[]
+  meetings                    Meeting[]
+  meetingSyncStates           MeetingSyncState[]
+  meetingTombstones           MeetingTombstone[]
   inboxSenderFeedback         InboxSenderFeedback[]
   composeSends                ComposeSend[]
   capabilities                CapabilityInstall[]
@@ -905,23 +911,23 @@ model TaughtSkill {
 /// The Pi runtime already understands this format; we persist and inject them.
 /// Distinct from TaughtSkill (demo/record playbooks).
 model AgentSkill {
-  id          String   @id @default(cuid())
-  spaceId     String
-  space       Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  userId      String
-  name        String
-  description String
-  content     String
+  id             String   @id @default(cuid())
+  spaceId        String
+  space          Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId         String
+  name           String
+  description    String
+  content        String
   /// user | builtin | plugin — only user skills are writable via API/tools.
-  source      String   @default("user")
+  source         String   @default("user")
   /// user | agent — who wrote it. Agent-written skills need the owner's approval.
-  origin      String   @default("user")
+  origin         String   @default("user")
   /// active | draft — a draft is in no catalog until the owner approves it.
-  status      String   @default("active")
+  status         String   @default("active")
   /// An agent's proposed full SKILL.md for an active skill, applied when the owner approves.
   pendingContent String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([spaceId, userId])
   // Case-insensitive unique index agent_skills_spaceId_userId_name_lower_key is created in SQL.
@@ -1000,6 +1006,8 @@ model Connection {
   mailSenderDecisions MailSenderDecision[]
   mailActionLogs      MailActionLog[]
   inboxTodos          InboxTodo[]
+  meetings            Meeting[]
+  meetingSyncState    MeetingSyncState?
   mailSyncState       MailSyncState?
   dataRoomSyncState   DataRoomSyncState?
   dataRoomItems       DataRoomItem[]
@@ -1482,6 +1490,8 @@ model McpServer {
   financeTreasuryYields FinanceTreasuryYield[]
   financeBills          FinanceBill[]
   financeSyncState      FinanceSyncState?
+  meetings              Meeting[]
+  meetingSyncState      MeetingSyncState?
 
   @@unique([spaceId, userId, slug])
   @@index([spaceId, userId])
@@ -1978,8 +1988,12 @@ model InboxTodo {
   space        Space              @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   userId       String
   user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  connectionId String
-  connection   Connection         @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  /// Null for a meeting to-do, which does not depend on a mail connection.
+  connectionId String?
+  connection   Connection?        @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+  /// Set for a to-do that came from a meeting. S6's explicit meeting delete removes these.
+  meetingId    String?
+  meeting      Meeting?           @relation(fields: [meetingId], references: [id], onDelete: SetNull)
   /// Set null when the cache prunes the message.
   messageId    String?
   message      CachedMailMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
@@ -1996,6 +2010,7 @@ model InboxTodo {
   /// One to-do per message; Postgres allows many NULLs.
   @@unique([userId, messageId])
   @@index([spaceId, userId, doneAt])
+  @@index([meetingId])
   @@map("inbox_todos")
 }
 
@@ -2048,40 +2063,39 @@ model ComposeSend {
 
 /// Sync throttle and in-flight claim for one mail connection.
 model MailSyncState {
-  connectionId   String     @id
-  connection     Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  connectionId    String     @id
+  connection      Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
   /// Last successful sync.
-  lastSyncedAt   DateTime?
+  lastSyncedAt    DateTime?
   /// Claim held by the process that is syncing; stale after 2 minutes.
-  syncStartedAt  DateTime?
+  syncStartedAt   DateTime?
   /// Set when the last sync failed outright (provider error, nothing stored). An incomplete sync,
   /// where some messages could not be hydrated, is not a failure. Cleared by any sync that stored mail.
-  lastErrorAt    DateTime?
+  lastErrorAt     DateTime?
   /// The last failure was the provider refusing the login, so the account needs reconnecting.
-  needsReconnect Boolean    @default(false)
+  needsReconnect  Boolean    @default(false)
   /// MailProviderError.kind of the last failure ("rate_limited", "auth", ...); "unknown" for a
   /// non-provider error. Cleared with lastErrorAt.
-  lastErrorKind String?
+  lastErrorKind   String?
   /// A rate-limited sync sets this; no sync for the connection starts before it. Cleared by a complete sync.
-  backoffUntil  DateTime?
+  backoffUntil    DateTime?
   /// Random id of the sync holding the claim; every write checks it.
-  claimToken     String?
+  claimToken      String?
   /// Provider change cursor (Gmail historyId) as of the last complete sync. Null until the first
   /// one; a sync that finds it expired lists the cache window again and replaces it.
-  changeCursor   String?
+  changeCursor    String?
   /// Set when a sync job is queued, cleared when that job finishes. Shows "syncing" before the claim
   /// exists; ignored after 2 minutes.
   syncRequestedAt DateTime?
   /// Older mail still to cache after the first sync: { inbox: "YYYY-MM-DD" | null, sent: ... }. Null: window complete.
-  backfill       Json?
+  backfill        Json?
   /// Lowercased mailbox address of the active Gmail watch; null: no watch.
-  watchAddress   String?
-  watchExpiresAt DateTime?
+  watchAddress    String?
+  watchExpiresAt  DateTime?
   /// historyId the watch started at. Informational: sync keeps its own cursor in changeCursor.
-  watchHistoryId String?
+  watchHistoryId  String?
 
   @@index([watchAddress])
-
   @@map("mail_sync_states")
 }
 
@@ -2573,26 +2587,26 @@ model DataRoomChange {
 /// One import of files into the Data room (Drive, Box or email). It finishes when every file is ready,
 /// failed, or was skipped; `notifiedAt` makes the finish notification happen once.
 model DataRoomImport {
-  id         String         @id @default(cuid())
-  spaceId    String
-  space      Space          @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  userId     String
+  id          String         @id @default(cuid())
+  spaceId     String
+  space       Space          @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId      String
   /// "drive", "box", "gmail" or "upload" (a zip unpacked after upload).
-  source     String
+  source      String
   /// Files the import set out to file, including the ones skipped below.
-  total      Int
+  total       Int
   /// Files already in the Data room; they count as done.
-  duplicates Int            @default(0)
+  duplicates  Int            @default(0)
   /// Files that never became an item (gone, unsupported, too large); they count as failed.
-  rejected   Int            @default(0)
-  createdAt  DateTime       @default(now())
-  finishedAt DateTime?
-  notifiedAt DateTime?
+  rejected    Int            @default(0)
+  createdAt   DateTime       @default(now())
+  finishedAt  DateTime?
+  notifiedAt  DateTime?
   /// A zip import's step for the upload card: "opening", "adding", "reading" or "done".
   stage       String?
   /// The zip entry being added, while stage is "adding".
   currentName String?
-  items      DataRoomItem[]
+  items       DataRoomItem[]
 
   @@index([spaceId, userId, createdAt])
   @@map("data_room_imports")
@@ -2601,12 +2615,12 @@ model DataRoomImport {
 /// Extracted document text, kept apart from the item so lists never load it. Lets indexing run
 /// again (new embedding model, consent granted) without reading the blob or calling vision again.
 model DataRoomItemText {
-  itemId  String       @id
-  item    DataRoomItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  spaceId String
-  space   Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  userId  String
-  text    String
+  itemId     String       @id
+  item       DataRoomItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  spaceId    String
+  space      Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId     String
+  text       String
   /// What the read depended on (vision model, consent); see `dataRoomVisionKey`. Null: saved before this was recorded.
   extractKey String?
 
@@ -2672,18 +2686,18 @@ model DataRoomSyncState {
 
 /// What the Legal agent concluded about one Data Room item. The document itself stays in the Data Room.
 model LegalContract {
-  id                String       @id @default(cuid())
+  id                String          @id @default(cuid())
   spaceId           String
   userId            String
   dataRoomItemId    String
-  item              DataRoomItem @relation(fields: [dataRoomItemId], references: [id], onDelete: Cascade)
+  item              DataRoomItem    @relation(fields: [dataRoomItemId], references: [id], onDelete: Cascade)
   title             String
   contractType      String
   counterparties    String[]
   /// "active" | "expired" | "terminated" | "draft" | "unknown"
   status            String
-  effectiveDate     DateTime?    @db.Date
-  expirationDate    DateTime?    @db.Date
+  effectiveDate     DateTime?       @db.Date
+  expirationDate    DateTime?       @db.Date
   autoRenews        Boolean?
   renewalNoticeDays Int?
   governingLaw      String?
@@ -2694,8 +2708,8 @@ model LegalContract {
   /// DataRoomItem.revision the analysis was made at; a higher revision means it needs review again.
   analyzedRevision  Int
   analyzedAt        DateTime
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
   deadlines         LegalDeadline[]
   nodes             LegalNode[]
 
@@ -2754,21 +2768,21 @@ model LegalNode {
 }
 
 model LegalEdge {
-  id             String    @id @default(cuid())
+  id             String        @id @default(cuid())
   spaceId        String
   userId         String
   fromId         String
-  from           LegalNode @relation("LegalEdgeFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  from           LegalNode     @relation("LegalEdgeFrom", fields: [fromId], references: [id], onDelete: Cascade)
   toId           String
-  to             LegalNode @relation("LegalEdgeTo", fields: [toId], references: [id], onDelete: Cascade)
+  to             LegalNode     @relation("LegalEdgeTo", fields: [toId], references: [id], onDelete: Cascade)
   /// A short verb: party_to, owes, grants, governed_by, owns, signed_by.
   relation       String
   /// The evidence item; deleting it removes the edge.
   dataRoomItemId String?
   dataRoomItem   DataRoomItem? @relation(fields: [dataRoomItemId], references: [id], onDelete: Cascade)
   sourceQuote    String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@unique([fromId, toId, relation])
   @@index([spaceId, userId])
@@ -2781,20 +2795,20 @@ model LegalEdge {
 /// account_exports_one_active_key in the migration SQL). The zip lives in the artifact store under
 /// `storageKey`, scoped to `spaceId`; the row and the blob are removed once `expiresAt` passes.
 model AccountExport {
-  id         String    @id @default(cuid())
+  id         String   @id @default(cuid())
   userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// The space whose blob scope holds the zip.
   spaceId    String
   /// "pending", "running", "ready" or "failed".
-  status     String    @default("pending")
+  status     String   @default("pending")
   /// 0 to 100.
-  progress   Int       @default(0)
+  progress   Int      @default(0)
   storageKey String?
   size       BigInt?
   expiresAt  DateTime
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([userId, createdAt])
   @@index([expiresAt])
@@ -2813,4 +2827,91 @@ model ModelOAuthState {
   @@index([createdAt])
   @@index([userId, spaceId, provider])
   @@map("model_oauth_states")
+}
+
+// Meetings. Private to the user who connected the source; every query filters on spaceId and userId.
+// The generated tsv column, its GIN index and the one-source CHECK live in the migration SQL.
+model Meeting {
+  id                String                   @id @default(cuid())
+  spaceId           String
+  space             Space                    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// At most one of connectionId and mcpServerId; the meeting outlives its source.
+  connectionId      String?
+  connection        Connection?              @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+  mcpServerId       String?
+  mcpServer         McpServer?               @relation(fields: [mcpServerId], references: [id], onDelete: SetNull)
+  provider          String
+  externalId        String
+  title             String
+  startedAt         DateTime
+  endedAt           DateTime?
+  /// { name?: string, email?: string }[]
+  attendees         Json                     @default("[]")
+  organizerEmail    String?
+  sourceUrl         String?
+  folders           String[]                 @default([])
+  summary           String                   @default("")
+  privateNotes      String                   @default("")
+  /// Speaker-prefixed lines.
+  transcript        String?
+  transcriptIndexed Boolean                  @default(false)
+  digest            Json?
+  digestStatus      String?
+  sourceUpdatedAt   DateTime
+  /// Only for providers that report deletions.
+  deletedAt         DateTime?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  /// GENERATED ALWAYS AS (to_tsvector('english', title || summary || transcript)) STORED; see the migration.
+  tsv               Unsupported("tsvector")? @default(dbgenerated("to_tsvector('english'::regconfig, title)"))
+  inboxTodos        InboxTodo[]
+
+  @@unique([spaceId, userId, provider, externalId])
+  @@index([spaceId, userId, startedAt])
+  @@index([tsv], type: Gin)
+  @@map("meetings")
+}
+
+/// One row per source; may be deleted with its source, meetings are not.
+model MeetingSyncState {
+  id                String      @id @default(cuid())
+  spaceId           String
+  space             Space       @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId      String?     @unique
+  connection        Connection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+  mcpServerId       String?     @unique
+  mcpServer         McpServer?  @relation(fields: [mcpServerId], references: [id], onDelete: SetNull)
+  provider          String
+  /// The provider's user id, stored on first sync so a different account is rejected.
+  externalAccountId String?
+  cursor            String?
+  syncedThrough     DateTime?
+  claimedAt         DateTime?
+  claimToken        String?
+  lastSyncedAt      DateTime?
+  /// Short reason, never a vendor payload.
+  error             String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@map("meeting_sync_states")
+}
+
+/// A meeting the user deleted; sync skips it so it does not come back.
+model MeetingTombstone {
+  id         String   @id @default(cuid())
+  spaceId    String
+  space      Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider   String
+  externalId String
+  createdAt  DateTime @default(now())
+
+  @@unique([spaceId, userId, provider, externalId])
+  @@map("meeting_tombstones")
 }
