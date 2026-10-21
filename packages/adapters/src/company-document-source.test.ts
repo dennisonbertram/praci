@@ -2,9 +2,12 @@ import type {
   AdapterContext,
   CompanyConnectionReader,
   CompanyImportSourceDescriptor,
+  ConnectorCall,
+  ConnectorProvider,
   ConnectorTool,
 } from "@rakazo/adapter-kit";
 import { describe, expect, it } from "vitest";
+import { createCompanyConnectionReader } from "./company-connection-reader.js";
 import { createCompanyDocumentReader } from "./company-document-source.js";
 
 const context: AdapterContext = {
@@ -43,8 +46,62 @@ const notionTools: ConnectorTool[] = [
   },
 ];
 
+function dispatchedReader(
+  provider: string,
+  tools: ConnectorTool[],
+  response: (name: string, args: Record<string, unknown>) => unknown,
+) {
+  const calls: Array<[string, Record<string, unknown>]> = [];
+  const prisma = {
+    spaceMember: { findUnique: async () => ({ userId: context.userId }) },
+    companySourceBlock: { findMany: async () => [] },
+    connection: {
+      findFirst: async () => ({
+        id: "connection",
+        connectorId: "composio",
+        provider,
+        providerRef: "synthetic-account",
+        displayName: "Synthetic",
+        allAgents: true,
+        privateByDefault: false,
+        status: "connected",
+      }),
+    },
+  };
+  const connectors = {
+    discoverTools: async () => tools,
+    async *execute(call: ConnectorCall) {
+      const denial = await call.beforeDispatch?.();
+      if (denial) {
+        yield { type: "error" as const, message: denial };
+        return;
+      }
+      calls.push([call.tool, call.args]);
+      yield {
+        type: "result" as const,
+        data: {
+          data: { successful: true, data: response(call.tool, call.args) },
+          logId: "synthetic-log",
+        },
+      };
+    },
+  } as unknown as ConnectorProvider;
+  const mcp = {
+    listServerTools: async () => [],
+    callServerTool: async () => ({ content: [] }),
+  };
+  return {
+    reader: createCompanyConnectionReader({
+      prisma: prisma as never,
+      connectors,
+      mcp: mcp as never,
+    }),
+    calls,
+  };
+}
+
 describe("Company document reader", () => {
-  it("reads Notion page metadata and nested blocks while restarting search cursors", async () => {
+  it("reads Notion metadata and nested blocks while restarting search cursors", async () => {
     const calls: Array<[string, Record<string, unknown>]> = [];
     const reader: CompanyConnectionReader = {
       listTools: async () => notionTools,
@@ -103,9 +160,20 @@ describe("Company document reader", () => {
     expect(first.done).toBe(false);
     const restart = await documents.discover(source, first.nextCursor, 10, context);
     expect(restart.done).toBe(true);
-    const page = await documents.read(source, first.units[0]!.cursor, context);
-    expect(page.document?.text).toContain("Nested text");
-    expect(page.document?.text).not.toContain("secret");
+    const imported = [];
+    let cursor: unknown = first.units[0]!.cursor;
+    while (true) {
+      const page = await documents.read(source, cursor, context);
+      if (page.document) imported.push(page.document);
+      if (page.done) break;
+      cursor = page.nextCursor;
+    }
+    expect(imported.map((document) => document.id)).toEqual([
+      "notion:11111111-1111-4111-8111-111111111111:metadata",
+      "notion:11111111-1111-4111-8111-111111111111:22222222-2222-4222-8222-222222222222",
+    ]);
+    expect(imported.map((document) => document.text).join("\n")).toContain("Nested text");
+    expect(imported.map((document) => document.text).join("\n")).not.toContain("secret");
     expect(
       calls.some(
         ([name, args]) => name === "NOTION_SEARCH_NOTION_PAGE" && args.start_cursor === "next",
@@ -131,6 +199,146 @@ describe("Company document reader", () => {
     await expect(documents.discover(source, {}, 100, context)).rejects.toThrow(
       "source_pagination_unavailable",
     );
+  });
+
+  it("decodes production connector envelopes through managed Notion and generic dispatch", async () => {
+    const pageId = "11111111-1111-4111-8111-111111111111";
+    const blockId = "22222222-2222-4222-8222-222222222222";
+    const nestedId = "33333333-3333-4333-8333-333333333333";
+    const genericTool: ConnectorTool = {
+      name: "ACME_LIST_RECORDS",
+      description: "Read records",
+      readOnly: true,
+      inputSchema: {
+        type: "object",
+        properties: {
+          status: { type: "string" },
+          cursor: { type: "string" },
+          limit: { type: "integer", maximum: 100 },
+        },
+      },
+      route: { connectorId: "composio", toolName: "ACME_LIST_RECORDS" },
+    };
+    const rowOne = {
+      id: "item-one",
+      title: "First record",
+      url: "https://crm.example.test/records/one",
+      salary: "private",
+    };
+    const rowTwo = {
+      id: "item-two",
+      title: "Second record",
+      url: "https://crm.example.test/records/two",
+      salary: "private",
+    };
+    let acrossPages = false;
+    const genericDispatch = dispatchedReader("acme_crm", [genericTool], (_name, args) => {
+      if (acrossPages && args.cursor) return { records: [rowTwo], has_more: false };
+      if (acrossPages) return { records: [rowOne], next_cursor: "next" };
+      return { records: [rowOne, rowTwo], has_more: false };
+    });
+    const genericSource: CompanyImportSourceDescriptor = {
+      id: "generic-source",
+      sourceKind: "composio",
+      connectionId: "generic-connection",
+      scope: {
+        reader: "generic",
+        tools: [{ name: genericTool.name, args: { status: "active" } }],
+      },
+    };
+    const generic = createCompanyDocumentReader(genericDispatch.reader);
+    const genericStart = {
+      kind: "generic",
+      toolName: genericTool.name,
+      pageToken: null,
+      rowIndex: 0,
+      seen: [],
+    };
+    const first = await generic.read(genericSource, genericStart, context);
+    const secondInSamePage = await generic.read(genericSource, first.nextCursor, context);
+    acrossPages = true;
+    const firstAcrossPages = await generic.read(genericSource, genericStart, context);
+    const secondAcrossPages = await generic.read(
+      genericSource,
+      firstAcrossPages.nextCursor,
+      context,
+    );
+    expect(first.document?.sourceUrl).toBe("https://crm.example.test/records/one");
+    expect(first.document?.text).not.toContain("private");
+    expect(secondInSamePage.document?.sourceUrl).toBe("https://crm.example.test/records/two");
+    expect(secondAcrossPages.document?.id).toBe(secondInSamePage.document?.id);
+    expect(secondAcrossPages.document?.sourceUrl).toBe(secondInSamePage.document?.sourceUrl);
+    expect(genericDispatch.calls).toHaveLength(4);
+
+    const failedDispatch = dispatchedReader("acme_crm", [genericTool], () => ({
+      successful: false,
+      status: 429,
+      error: "provider rate limit",
+    }));
+    await expect(
+      createCompanyDocumentReader(failedDispatch.reader).read(genericSource, genericStart, context),
+    ).rejects.toMatchObject({ code: "rate_limited", retryAfterMs: 60_000 });
+
+    const notionDispatch = dispatchedReader("notion", notionTools, (name, args) => {
+      if (name === "NOTION_SEARCH_NOTION_PAGE")
+        return { results: [{ id: pageId }], has_more: false };
+      if (name === "NOTION_RETRIEVE_PAGE")
+        return {
+          id: args.page_id,
+          properties: { Name: { type: "title", title: [{ plain_text: "Wrapped page" }] } },
+        };
+      if (args.block_id === pageId)
+        return {
+          results: [
+            {
+              id: blockId,
+              type: "paragraph",
+              paragraph: { rich_text: [{ plain_text: "Parent block" }] },
+              has_children: true,
+            },
+          ],
+          has_more: false,
+        };
+      return {
+        results: [
+          {
+            id: nestedId,
+            type: "paragraph",
+            paragraph: { rich_text: [{ plain_text: "Nested block" }] },
+            has_children: false,
+          },
+        ],
+        has_more: false,
+      };
+    });
+    const notion = createCompanyDocumentReader(notionDispatch.reader);
+    const notionSource: CompanyImportSourceDescriptor = {
+      id: "notion-source",
+      sourceKind: "notion",
+      connectionId: "notion-connection",
+      scope: { reader: "notion", allTime: true },
+    };
+    const discovery = await notion.discover(notionSource, null, 10, context);
+    const imported = [];
+    let cursor: unknown = discovery.units[0]!.cursor;
+    while (true) {
+      const page = await notion.read(notionSource, cursor, context);
+      if (page.document) imported.push(page.document);
+      if (page.done) break;
+      cursor = page.nextCursor;
+    }
+    expect(imported.map((item) => item.id)).toEqual([
+      `notion:${pageId}:metadata`,
+      `notion:${pageId}:${blockId}`,
+      `notion:${pageId}:${nestedId}`,
+    ]);
+    expect(imported.map((item) => item.text).join("\n")).toContain("Nested block");
+    expect(notionDispatch.calls.map(([name]) => name)).toEqual([
+      "NOTION_SEARCH_NOTION_PAGE",
+      "NOTION_RETRIEVE_PAGE",
+      "NOTION_FETCH_BLOCK_CONTENTS",
+      "NOTION_FETCH_BLOCK_CONTENTS",
+    ]);
   });
 
   it("executes only selected generic read tools and rejects writes or unsafe continuation", async () => {
@@ -305,7 +513,7 @@ describe("Company document reader", () => {
       records: Array.from({ length: 100 }, (_, index) => ({ index })),
       has_more: false,
     };
-    expect((await documents.read(source, cursor, context)).done).toBe(true);
+    expect((await documents.read(source, { ...cursor, rowIndex: 99 }, context)).done).toBe(true);
   });
 
   it("rejects repeated generic cursor tokens", async () => {
@@ -342,5 +550,54 @@ describe("Company document reader", () => {
         context,
       ),
     ).rejects.toThrow("source_cursor_stalled");
+  });
+
+  it("treats terminal pageInfo cursors as complete and rejects oversized item projections", async () => {
+    const tool: ConnectorTool = {
+      name: "ACME_LIST_RECORDS",
+      description: "list",
+      readOnly: true,
+      inputSchema: { type: "object", properties: { cursor: {} } },
+      route: { connectorId: "composio", toolName: "ACME_LIST_RECORDS" },
+    };
+    const source: CompanyImportSourceDescriptor = {
+      id: "source",
+      sourceKind: "composio",
+      connectionId: "connection",
+      scope: { reader: "generic", tools: [{ name: tool.name, args: {} }] },
+    };
+    let response: unknown = {
+      records: [{ id: "record-1", title: "Terminal" }],
+      pageInfo: { hasNextPage: false, endCursor: "terminal" },
+    };
+    const documents = createCompanyDocumentReader({
+      listTools: async () => [tool],
+      callTool: async () => response,
+    } as unknown as CompanyConnectionReader);
+    const terminal = await documents.read(
+      source,
+      {
+        kind: "generic",
+        toolName: tool.name,
+        pageToken: "terminal",
+        rowIndex: 0,
+        seen: ["terminal"],
+      },
+      context,
+    );
+    expect(terminal.done).toBe(true);
+    expect(terminal.document?.text).toContain("Terminal");
+
+    response = {
+      records: [{ id: "record-2", nested: Array.from({ length: 101 }, (_, index) => index) }],
+      has_more: false,
+    };
+    await expect(
+      documents.read(
+        source,
+        { kind: "generic", toolName: tool.name, pageToken: null, rowIndex: 0, seen: [] },
+        context,
+      ),
+    ).rejects.toThrow("source_projection_overflow");
   });
 });

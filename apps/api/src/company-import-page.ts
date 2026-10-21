@@ -6,7 +6,7 @@ import type {
   CompanySlackReader,
   CompanyTrackerReader,
 } from "@rakazo/adapters";
-import { companySourceScope } from "@rakazo/adapters";
+import { CompanyImportWorkerError, companySourceScope } from "@rakazo/adapters";
 import type {
   Actor,
   CompanyImportCatalog,
@@ -50,6 +50,23 @@ function sourceKind(provider: string): CompanyImportCatalog["sources"][number]["
 
 function planFor(itemCount: number | null, tokenCap: number): CompanyImportPlan {
   return companyImportEstimate(itemCount, tokenCap);
+}
+
+function mapSourceValidationError(error: unknown): never {
+  if (!(error instanceof CompanyImportWorkerError)) throw error;
+  if (error.code === "invalid_source_scope" || error.code === "source_tool_arguments_invalid")
+    throw new ORPCError("BAD_REQUEST", {
+      message: "Selected source tools or arguments are invalid",
+    });
+  if (
+    error.code === "source_tool_unavailable" ||
+    error.code === "source_capability_unavailable" ||
+    error.code === "source_pagination_unavailable"
+  )
+    throw new ORPCError("PRECONDITION_FAILED", {
+      message: "Selected source tools are unavailable",
+    });
+  throw error;
 }
 
 function availableConnection(connection: {
@@ -143,21 +160,26 @@ async function sourcePlan(
   }
   const plan = planFor(null, tokenCap);
   if (documents && (source.sourceKind === "notion" || source.sourceKind === "composio")) {
-    const tools = await documents.validate(
-      {
-        ...source,
-        id: `plan:${source.connectionId ?? source.sourceKind}`,
-        connectionId: source.connectionId ?? null,
-        scope: normalizedScope,
-      },
-      {
-        operationId: `company.import.plan:${source.connectionId ?? source.sourceKind}`,
-        traceId: `company.import.plan:${source.connectionId ?? source.sourceKind}`,
-        spaceId: actor.spaceId,
-        userId: actor.userId,
-        signal: new AbortController().signal,
-      },
-    );
+    let tools: Awaited<ReturnType<CompanyDocumentReader["validate"]>>;
+    try {
+      tools = await documents.validate(
+        {
+          ...source,
+          id: `plan:${source.connectionId ?? source.sourceKind}`,
+          connectionId: source.connectionId ?? null,
+          scope: normalizedScope,
+        },
+        {
+          operationId: `company.import.plan:${source.connectionId ?? source.sourceKind}`,
+          traceId: `company.import.plan:${source.connectionId ?? source.sourceKind}`,
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          signal: new AbortController().signal,
+        },
+      );
+    } catch (error) {
+      mapSourceValidationError(error);
+    }
     const names =
       source.sourceKind === "notion"
         ? tools.tools.map((tool) => tool.name)

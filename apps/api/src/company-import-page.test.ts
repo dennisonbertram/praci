@@ -4,6 +4,7 @@ import type {
   CompanySlackReader,
   CompanyTrackerReader,
 } from "@rakazo/adapters";
+import { CompanyImportWorkerError } from "@rakazo/adapters";
 import type { Actor, CompanyImportChannelsInput } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
@@ -530,6 +531,63 @@ describe("Company document imports", () => {
     validate.mockRejectedValueOnce(new Error("source_tool_arguments_invalid"));
     await expect(page.create(actor, input)).rejects.toThrow("source_tool_arguments_invalid");
     expect(createRun).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns safe client errors for write and incomplete generic selections", async () => {
+    const dispatch = vi.fn();
+    const createRun = vi.fn();
+    const validate = vi.fn(
+      async (source: { scope: { tools: Array<{ name: string; args: object }> } }) => {
+        const selection = source.scope.tools[0];
+        if (selection?.name === "ACME_CREATE_RECORD") {
+          const error = new CompanyImportWorkerError("source_tool_unavailable");
+          error.message = "provider secret details";
+          throw error;
+        }
+        if (selection?.name === "ACME_GET_RECORD")
+          throw new CompanyImportWorkerError("source_tool_arguments_invalid");
+        return [];
+      },
+    );
+    const prisma = {
+      spaceMember: { findUnique: async () => ({ id: "member-1" }) },
+      companySourceBlock: { findMany: async () => [] },
+      connection: {
+        findFirst: async () => ({
+          provider: "acme_crm",
+          status: "connected",
+          allAgents: true,
+          privateByDefault: false,
+        }),
+      },
+    } as unknown as PrismaClient;
+    const result = createCompanyImportPage({
+      prisma,
+      engine: { create: createRun } as unknown as CompanyImportEngine,
+      documents: { validate, callTool: dispatch } as unknown as CompanyDocumentReader,
+    });
+    const inputFor = (name: string) =>
+      ({
+        tokenCap: 10_000,
+        mode: "sample" as const,
+        sources: [
+          {
+            sourceKind: "composio" as const,
+            connectionId: "crm-1",
+            scope: { reader: "generic" as const, tools: [{ name, args: {} }] },
+          },
+        ],
+      }) as never;
+
+    await expect(result.create(actor, inputFor("ACME_CREATE_RECORD"))).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+    });
+    await expect(result.create(actor, inputFor("ACME_GET_RECORD"))).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+    expect(createRun).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(validate).toHaveBeenCalledTimes(2);
   });
 
   it("preserves reported tool rates when sample plans are re-estimated", async () => {

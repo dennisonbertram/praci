@@ -630,7 +630,12 @@ export class ComposioConnector implements ComposioProvider {
               inputSchema: rawTool.inputSchema,
             }
           : {}),
-        readOnly: rawTool?.readOnly,
+        readOnly:
+          tool.readOnly === false || rawTool?.readOnly === false
+            ? false
+            : rawTool?.readOnly === true
+              ? true
+              : undefined,
         ...(reportedCost ? { reportedCost } : {}),
       };
     });
@@ -641,10 +646,18 @@ export class ComposioConnector implements ComposioProvider {
     if (!this.apiKey || names.length === 0 || typeof fetch !== "function") return result;
     for (let offset = 0; offset < names.length; offset += 50) {
       const batch = names.slice(offset, offset + 50);
+      const controller = new AbortController();
+      const abort = () => controller.abort(context.signal.reason);
+      const timeout = setTimeout(() => controller.abort(), 2_500);
+      context.signal.addEventListener("abort", abort, { once: true });
+      if (context.signal.aborted) abort();
       try {
         const response = await fetch(
           `https://backend.composio.dev/api/v3.1/tools?tool_slugs=${encodeURIComponent(batch.join(","))}&include_pricing=true&limit=${batch.length}`,
-          { headers: { Authorization: `Bearer ${this.apiKey}`, "x-api-key": this.apiKey } },
+          {
+            headers: { Authorization: `Bearer ${this.apiKey}`, "x-api-key": this.apiKey },
+            signal: controller.signal,
+          },
         );
         if (!response.ok) continue;
         const body = (await response.json()) as unknown;
@@ -672,7 +685,7 @@ export class ComposioConnector implements ComposioProvider {
               : !slug
                   ?.toUpperCase()
                   .startsWith(`${provider.toUpperCase().replace(/[^A-Z0-9]+/g, "_")}_`));
-          if (!slug || wrongToolkit) continue;
+          if (!slug || !batch.includes(slug) || wrongToolkit) continue;
           const instant = asObject(row.instant);
           const price = asObject(instant?.price);
           if (typeof price?.description !== "string" || !price.description) continue;
@@ -683,6 +696,9 @@ export class ComposioConnector implements ComposioProvider {
         }
       } catch {
         // Pricing is optional display metadata and never affects read authorization.
+      } finally {
+        clearTimeout(timeout);
+        context.signal.removeEventListener("abort", abort);
       }
     }
     return result;

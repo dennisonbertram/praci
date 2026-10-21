@@ -15,6 +15,9 @@ const MAX_DOCUMENT_BYTES = 500_000;
 const MAX_VALUE_BYTES = 100_000;
 const MAX_QUEUE = 500;
 const MAX_VISITED = 2_000;
+const MAX_ARRAY_ITEMS = 100;
+const MAX_OBJECT_FIELDS = 200;
+const MAX_CURSOR_BYTES = 2_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CURSORS = ["start_cursor", "cursor", "page_token", "after"] as const;
 const SIZES = ["page_size", "limit", "per_page"] as const;
@@ -131,13 +134,65 @@ function safeUrl(value: unknown) {
   }
 }
 
+function providerFailure(value: Record<string, unknown>): never {
+  const error = asRecord(value.error);
+  const status =
+    value.status ??
+    value.statusCode ??
+    value.status_code ??
+    error?.status ??
+    error?.statusCode ??
+    error?.status_code;
+  const message = [value.message, value.error, error?.message, error?.code, value.code]
+    .filter((part) => typeof part === "string" || typeof part === "number")
+    .join(" ");
+  if (Number(status) === 429 || /\b429\b|rate.?limit|too many requests|quota/i.test(message))
+    throw new CompanyImportWorkerError("rate_limited", 60_000);
+  throw new CompanyImportWorkerError("source_request_failed");
+}
+
+function decodeToolResult(value: unknown) {
+  let current = value;
+  const seen = new Set<object>();
+  for (let depth = 0; depth < 8; depth++) {
+    const root = asRecord(current);
+    if (!root) return current;
+    if (seen.has(root)) fail("invalid_source_response");
+    seen.add(root);
+    const error = root.error;
+    const hasFailure =
+      root.success === false ||
+      root.successful === false ||
+      (typeof root.status === "number" && root.status >= 400) ||
+      (typeof root.statusCode === "number" && root.statusCode >= 400) ||
+      (typeof root.status_code === "number" && root.status_code >= 400) ||
+      (error !== undefined && error !== null && error !== false && error !== "");
+    if (hasFailure) providerFailure(root);
+    const wrapped =
+      Object.hasOwn(root, "data") &&
+      (root.success === true ||
+        root.successful === true ||
+        Object.hasOwn(root, "logId") ||
+        Object.hasOwn(root, "log_id"));
+    if (!wrapped) return current;
+    current = root.data;
+  }
+  fail("invalid_source_response");
+}
+
 function redact(value: unknown, key = "", depth = 0): unknown {
-  if (depth > 12 || SENSITIVE.test(key)) return undefined;
+  if (SENSITIVE.test(key)) return undefined;
+  if (depth > 12) fail("source_projection_overflow");
   if (typeof value === "string") return boundedUtf8(value, MAX_VALUE_BYTES);
-  if (Array.isArray(value)) return value.slice(0, 100).map((item) => redact(item, key, depth + 1));
+  if (Array.isArray(value)) {
+    if (value.length > MAX_ARRAY_ITEMS) fail("source_projection_overflow");
+    return value.map((item) => redact(item, key, depth + 1));
+  }
   if (!value || typeof value !== "object") return value;
   const output: Record<string, unknown> = {};
-  for (const [childKey, child] of Object.entries(value).slice(0, 200)) {
+  const entries = Object.entries(value).filter(([childKey]) => !SENSITIVE.test(childKey));
+  if (entries.length > MAX_OBJECT_FIELDS) fail("source_projection_overflow");
+  for (const [childKey, child] of entries) {
     const next = redact(child, childKey, depth + 1);
     if (next !== undefined) output[childKey] = next;
   }
@@ -175,35 +230,23 @@ function notionTitle(page: Record<string, unknown>) {
   return textValue(title?.title ?? page.title ?? properties?.title) || "Notion page";
 }
 
-function notionText(value: unknown, output: string[]) {
+function notionBlock(value: unknown) {
   const object = asRecord(value);
-  if (!object) return;
+  if (
+    !object ||
+    typeof object.id !== "string" ||
+    !UUID.test(object.id) ||
+    (object.has_children !== undefined && typeof object.has_children !== "boolean")
+  )
+    fail("invalid_source_response");
   const type = typeof object.type === "string" ? object.type : "";
   const payload = type ? object[type] : object;
-  const text = textValue(payload);
-  if (text) output.push(text);
-}
-
-function notionBlocks(
-  value: unknown,
-  output: string[],
-  queue: Array<{ id: string; cursor: string | null; seen: string[] }>,
-  visited: Set<string>,
-) {
-  const rows = asArray(value);
-  if (!rows) fail("invalid_source_response");
-  for (const row of rows) {
-    const block = asRecord(row);
-    if (!block || typeof block.id !== "string" || !UUID.test(block.id))
-      fail("invalid_source_response");
-    notionText(block, output);
-    if (block.has_children === true) {
-      if (visited.has(block.id)) fail("source_cycle");
-      if (queue.length >= MAX_QUEUE) fail("source_queue_overflow");
-      visited.add(block.id);
-      queue.push({ id: block.id, cursor: null, seen: [] });
-    }
-  }
+  return {
+    id: object.id,
+    type: type || "block",
+    text: boundedUtf8(textValue(redact(payload)), MAX_DOCUMENT_BYTES),
+    hasChildren: object.has_children === true,
+  };
 }
 
 function pageUrl(id: string, value: Record<string, unknown>) {
@@ -219,9 +262,10 @@ function continuation(value: unknown): { token?: string; more?: boolean } {
   for (const root of roots) {
     for (const key of ["next_cursor", "next_page_token", "nextCursor"]) {
       if (root[key] !== undefined && root[key] !== null) {
-        if (typeof root[key] !== "string" || !root[key] || root[key].length > 2_000)
+        if (typeof root[key] !== "string" || !root[key] || root[key].length > MAX_CURSOR_BYTES)
           fail("invalid_source_pagination");
-        if (root.has_more === false || root.hasNext === false) fail("invalid_source_pagination");
+        if (root.has_more === false || root.hasNext === false)
+          return { token: root[key], more: false };
         return { token: root[key], more: true };
       }
     }
@@ -233,11 +277,14 @@ function continuation(value: unknown): { token?: string; more?: boolean } {
       if (
         token !== undefined &&
         token !== null &&
-        (typeof token !== "string" || !token || token.length > 2_000)
+        (typeof token !== "string" || !token || token.length > MAX_CURSOR_BYTES)
       )
         fail("invalid_source_pagination");
       if (more === true && (typeof token !== "string" || !token)) fail("invalid_source_pagination");
-      return { more: more === true, ...(typeof token === "string" ? { token } : {}) };
+      if (more === false) return { more: false, ...(typeof token === "string" ? { token } : {}) };
+      if (more === true) return { more: true, token: token as string };
+      if (typeof token === "string") return { more: true, token };
+      return {};
     }
     if (root.has_more !== undefined || root.hasNext !== undefined) {
       if (
@@ -271,13 +318,30 @@ function responseRows(value: unknown) {
   return undefined;
 }
 
+function providerItemId(value: unknown) {
+  const root = asRecord(value);
+  if (!root) return undefined;
+  for (const key of ["id", "uuid", "record_id", "item_id", "page_id"]) {
+    const candidate = root[key];
+    if (
+      (typeof candidate === "string" &&
+        candidate.length > 0 &&
+        candidate.length <= MAX_CURSOR_BYTES) ||
+      (typeof candidate === "number" && Number.isFinite(candidate))
+    )
+      return String(candidate);
+  }
+  return undefined;
+}
+
 function genericDocument(
   tool: ConnectorTool,
-  args: Record<string, unknown>,
-  result: unknown,
-  cursor: string | null,
+  ownerArgs: Record<string, unknown>,
+  item: unknown,
+  pageToken: string | null,
+  itemIndex: number,
 ) {
-  const projected = redact(result);
+  const projected = redact(item);
   const root = asRecord(projected);
   const title = (root && (textValue(root.title) || textValue(root.name))) || tool.name;
   const content = JSON.stringify(projected) ?? "null";
@@ -285,8 +349,10 @@ function genericDocument(
   const url = root
     ? (safeUrl(root.url) ?? safeUrl(root.html_url) ?? safeUrl(root.web_url) ?? safeUrl(root.link))
     : undefined;
+  const itemId = providerItemId(root);
+  const identity = itemId ? ["provider-id", itemId] : ["page-item", pageToken, itemIndex];
   return {
-    id: `generic:${stableHash([tool.name, args, cursor])}`,
+    id: `generic:${stableHash([tool.name, ownerArgs, identity])}`,
     title,
     text,
     snippet: text.slice(0, 2_000),
@@ -397,11 +463,13 @@ export function createCompanyDocumentReader(
         const args: Record<string, unknown> = { filter_value: "page", page_size: bounded };
         if (token) args.start_cursor = token;
         const result = asRecord(
-          await reader.callTool(
-            source,
-            "NOTION_SEARCH_NOTION_PAGE",
-            args,
-            contextWithCompanyFlag(context),
+          decodeToolResult(
+            await reader.callTool(
+              source,
+              "NOTION_SEARCH_NOTION_PAGE",
+              args,
+              contextWithCompanyFlag(context),
+            ),
           ),
         );
         const rows = asArray(result?.results);
@@ -456,78 +524,170 @@ export function createCompanyDocumentReader(
         const state = asRecord(cursor);
         const pageId = state?.pageId;
         if (typeof pageId !== "string" || !UUID.test(pageId)) fail("invalid_source_cursor");
-        const metadata = asRecord(
+        if (!state?.phase) {
+          const metadata = asRecord(
+            decodeToolResult(
+              await reader.callTool(
+                source,
+                "NOTION_RETRIEVE_PAGE",
+                { page_id: pageId },
+                contextWithCompanyFlag(context),
+              ),
+            ),
+          );
+          if (
+            !metadata ||
+            typeof metadata.id !== "string" ||
+            !UUID.test(metadata.id) ||
+            metadata.id !== pageId
+          )
+            fail("invalid_source_response");
+          const properties = asRecord(metadata.properties) ?? {};
+          const entries = Object.entries(properties).filter(([key]) => !SENSITIVE.test(key));
+          if (entries.length > MAX_OBJECT_FIELDS) fail("source_projection_overflow");
+          const lines = [notionTitle(metadata)];
+          for (const [key, value] of entries) {
+            const property = asRecord(value);
+            const text = textValue(property?.[String(property?.type ?? "")] ?? value, key);
+            if (text) lines.push(`${key}: ${text}`);
+          }
+          const text = boundedUtf8(lines.join("\n"), MAX_DOCUMENT_BYTES);
+          return {
+            document: {
+              id: `notion:${pageId}:metadata`,
+              title: notionTitle(metadata),
+              text,
+              snippet: text.slice(0, 2_000),
+              sourceUrl: pageUrl(pageId, metadata),
+            },
+            nextCursor: {
+              kind: "notion",
+              phase: "blocks",
+              pageId,
+              queue: [{ id: pageId, pageToken: null, rowIndex: 0, seen: [] }],
+              visited: [pageId],
+            },
+            done: false,
+          };
+        }
+        if (state.phase !== "blocks") fail("invalid_source_cursor");
+        const rawVisited = state.visited;
+        const rawQueue = state.queue;
+        if (
+          !Array.isArray(rawVisited) ||
+          rawVisited.length === 0 ||
+          rawVisited.length > MAX_VISITED ||
+          rawVisited.some((id) => typeof id !== "string" || !UUID.test(id)) ||
+          !Array.isArray(rawQueue) ||
+          rawQueue.length === 0 ||
+          rawQueue.length > MAX_QUEUE
+        )
+          fail("invalid_source_cursor");
+        const visited = new Set(rawVisited as string[]);
+        if (visited.size !== rawVisited.length || !visited.has(pageId))
+          fail("invalid_source_cursor");
+        const queue = rawQueue.map((item) => {
+          const entry = asRecord(item);
+          const pageToken = entry?.pageToken;
+          const rowIndex = entry?.rowIndex;
+          const seen = entry?.seen;
+          if (
+            typeof entry?.id !== "string" ||
+            !UUID.test(entry.id) ||
+            (pageToken !== null &&
+              (typeof pageToken !== "string" || pageToken.length > MAX_CURSOR_BYTES)) ||
+            !Number.isInteger(rowIndex) ||
+            (rowIndex as number) < 0 ||
+            (rowIndex as number) > PAGE_SIZE ||
+            !Array.isArray(seen) ||
+            seen.length > MAX_VISITED ||
+            seen.some(
+              (token) => typeof token !== "string" || !token || token.length > MAX_CURSOR_BYTES,
+            )
+          )
+            fail("invalid_source_cursor");
+          return {
+            id: entry.id,
+            pageToken: pageToken as string | null,
+            rowIndex: rowIndex as number,
+            seen: seen as string[],
+          };
+        });
+        const entry = queue[0]!;
+        const args: Record<string, unknown> = { block_id: entry.id, page_size: PAGE_SIZE };
+        if (entry.pageToken) args.start_cursor = entry.pageToken;
+        const blocks = decodeToolResult(
           await reader.callTool(
             source,
-            "NOTION_RETRIEVE_PAGE",
-            { page_id: pageId },
+            "NOTION_FETCH_BLOCK_CONTENTS",
+            args,
             contextWithCompanyFlag(context),
           ),
         );
-        if (
-          !metadata ||
-          typeof metadata.id !== "string" ||
-          !UUID.test(metadata.id) ||
-          metadata.id !== pageId
-        )
-          fail("invalid_source_response");
-        const output: string[] = [notionTitle(metadata)];
-        const properties = asRecord(metadata.properties);
-        if (properties) {
-          for (const [key, value] of Object.entries(properties)) {
-            if (!SENSITIVE.test(key)) {
-              const text = textValue(
-                asRecord(value)?.[String(asRecord(value)?.type ?? "")] ?? value,
-              );
-              if (text) output.push(`${key}: ${text}`);
+        const rows = responseRows(blocks);
+        if (!rows) fail("invalid_source_response");
+        if (rows.length > PAGE_SIZE) fail("source_queue_overflow");
+        const page = continuation(blocks);
+        if (page.more && !page.token) fail("invalid_source_pagination");
+        if (page.more && rows.length === 0) fail("source_cursor_stalled");
+        if (rows.length === PAGE_SIZE && page.more === undefined)
+          fail("source_pagination_unavailable");
+        if (entry.rowIndex > rows.length) fail("source_cursor_stalled");
+        if (page.more && entry.seen.includes(page.token!)) fail("source_cursor_stalled");
+
+        let document: CompanyDocumentPage["document"];
+        if (entry.rowIndex < rows.length) {
+          const block = notionBlock(rows[entry.rowIndex]);
+          if (visited.has(block.id)) fail("source_cycle");
+          if (visited.size >= MAX_VISITED) fail("source_queue_overflow");
+          visited.add(block.id);
+          if (block.hasChildren) {
+            if (queue.length >= MAX_QUEUE) fail("source_queue_overflow");
+            queue.push({ id: block.id, pageToken: null, rowIndex: 0, seen: [] });
+          }
+          const text = boundedUtf8(`${block.type}\n${block.text}`, MAX_DOCUMENT_BYTES);
+          document = {
+            id: `notion:${pageId}:${block.id}`,
+            title: block.text ? `${block.type}: ${block.text.slice(0, 120)}` : block.type,
+            text,
+            snippet: text.slice(0, 2_000),
+            sourceUrl: `https://www.notion.so/${pageId.replaceAll("-", "")}`,
+          };
+          if (entry.rowIndex + 1 < rows.length) {
+            queue[0] = { ...entry, rowIndex: entry.rowIndex + 1 };
+          } else if (page.more) {
+            if (entry.seen.length >= MAX_VISITED) fail("source_queue_overflow");
+            queue[0] = {
+              id: entry.id,
+              pageToken: page.token!,
+              rowIndex: 0,
+              seen: [...entry.seen, page.token!],
+            };
+          } else {
+            queue.shift();
+          }
+        } else if (page.more) {
+          if (entry.seen.length >= MAX_VISITED) fail("source_queue_overflow");
+          queue[0] = {
+            id: entry.id,
+            pageToken: page.token!,
+            rowIndex: 0,
+            seen: [...entry.seen, page.token!],
+          };
+        } else {
+          queue.shift();
+        }
+        if (queue.length > MAX_QUEUE) fail("source_queue_overflow");
+        const nextCursor = queue.length
+          ? {
+              kind: "notion",
+              phase: "blocks",
+              pageId,
+              queue,
+              visited: [...visited],
             }
-          }
-        }
-        const queue: Array<{ id: string; cursor: string | null; seen: string[] }> = [];
-        const visited = new Set<string>([pageId]);
-        queue.push({ id: pageId, cursor: null, seen: [] });
-        while (queue.length) {
-          const next = queue.shift()!;
-          if (next.cursor && next.cursor.length > 2_000) fail("invalid_source_cursor");
-          const args: Record<string, unknown> = { block_id: next.id, page_size: PAGE_SIZE };
-          if (next.cursor) args.start_cursor = next.cursor;
-          const blocks = asRecord(
-            await reader.callTool(
-              source,
-              "NOTION_FETCH_BLOCK_CONTENTS",
-              args,
-              contextWithCompanyFlag(context),
-            ),
-          );
-          const rows = blocks?.results;
-          if (!Array.isArray(rows)) fail("invalid_source_response");
-          if (rows.length > PAGE_SIZE) fail("source_queue_overflow");
-          notionBlocks(rows, output, queue, visited);
-          const page = continuation(blocks);
-          if (page.more && !page.token) fail("invalid_source_pagination");
-          if (page.more && rows.length === 0) fail("source_cursor_stalled");
-          if (rows.length === PAGE_SIZE && page.more === undefined)
-            fail("source_pagination_unavailable");
-          if (page.token && next.seen.includes(page.token)) fail("source_cursor_stalled");
-          if (page.more && page.token) {
-            if (next.seen.length >= MAX_VISITED) fail("source_queue_overflow");
-            queue.push({
-              id: next.id,
-              cursor: page.token,
-              seen: [...next.seen, page.token],
-            });
-          }
-          if (visited.size > MAX_VISITED) fail("source_queue_overflow");
-        }
-        const text = boundedUtf8(output.join("\n"), MAX_DOCUMENT_BYTES);
-        const document = {
-          id: `notion:${pageId}`,
-          title: notionTitle(metadata),
-          text,
-          snippet: text.slice(0, 2_000),
-          sourceUrl: pageUrl(pageId, metadata),
-        };
-        return { document, nextCursor: null, done: true };
+          : null;
+        return { document, nextCursor, done: nextCursor === null };
       }
       const state = asRecord(cursor);
       const toolName = state?.toolName;
@@ -541,10 +701,17 @@ export function createCompanyDocumentReader(
       const schema = toolArgsSchema(tool);
       const cursorField = declared(schema, CURSORS);
       const sizeField = declared(schema, SIZES);
+      const rowIndex = state?.rowIndex === undefined ? 0 : state.rowIndex;
+      if (
+        !Number.isInteger(rowIndex) ||
+        (rowIndex as number) < 0 ||
+        (rowIndex as number) > PAGE_SIZE
+      )
+        fail("invalid_source_cursor");
       if (
         state?.pageToken !== undefined &&
         state.pageToken !== null &&
-        (typeof state.pageToken !== "string" || state.pageToken.length > 2_000)
+        (typeof state.pageToken !== "string" || state.pageToken.length > MAX_CURSOR_BYTES)
       )
         fail("invalid_source_cursor");
       const pageToken = typeof state?.pageToken === "string" ? state.pageToken : undefined;
@@ -559,35 +726,81 @@ export function createCompanyDocumentReader(
       if (cursorField && pageToken) args[cursorField] = pageToken;
       if (sizeField && args[sizeField] === undefined)
         args[sizeField] = boundedPageSize(schema[sizeField]);
-      const result = await reader.callTool(source, toolName, args, contextWithCompanyFlag(context));
+      const result = decodeToolResult(
+        await reader.callTool(source, toolName, args, contextWithCompanyFlag(context)),
+      );
       const rows = responseRows(result);
       const page = continuation(result);
       const pageSize = sizeField
         ? Number(args[sizeField] ?? boundedPageSize(schema[sizeField]))
         : PAGE_SIZE;
+      if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > PAGE_SIZE)
+        fail("source_pagination_unavailable");
       if (rows && rows.length > pageSize) fail("source_queue_overflow");
-      const full = rows !== undefined && rows.length >= pageSize;
       if (page.more && !cursorField) fail("source_pagination_unavailable");
       if (page.more && !page.token) fail("invalid_source_pagination");
       if (page.more && rows?.length === 0) fail("source_cursor_stalled");
-      if (page.token && seen.includes(page.token)) fail("source_cursor_stalled");
-      if (page.token && seen.length >= MAX_VISITED) fail("source_queue_overflow");
-      if (full && !page.more && page.more !== false && !page.token)
+      if (rows && rows.length === pageSize && page.more === undefined)
         fail("source_pagination_unavailable");
-      const nextCursor = page.more
-        ? {
+      if (!rows) {
+        if (page.more) fail("source_cursor_stalled");
+        const root = asRecord(result);
+        const hasPaginationMetadata =
+          Boolean(root?.pageInfo) ||
+          ["next_cursor", "next_page_token", "nextCursor", "has_more", "hasNext"].some((key) =>
+            Object.hasOwn(root ?? {}, key),
+          );
+        if (hasPaginationMetadata) return { nextCursor: null, done: true };
+        return {
+          document: genericDocument(tool, selected.args, result, pageToken ?? null, 0),
+          nextCursor: null,
+          done: true,
+        };
+      }
+      if ((rowIndex as number) > rows.length) fail("source_cursor_stalled");
+      if ((rowIndex as number) === rows.length) {
+        if (!page.more) return { nextCursor: null, done: true };
+        if (seen.includes(page.token!)) fail("source_cursor_stalled");
+        if (seen.length >= MAX_VISITED) fail("source_queue_overflow");
+        return {
+          nextCursor: {
             kind: "generic",
             toolName,
-            args: selected.args,
             pageToken: page.token,
+            rowIndex: 0,
             seen: [...seen, page.token!],
-          }
-        : null;
-      return {
-        document: genericDocument(tool, args, result, pageToken ?? null),
-        nextCursor,
-        done: !page.more,
-      };
+          },
+          done: false,
+        };
+      }
+      const document = genericDocument(
+        tool,
+        selected.args,
+        rows[rowIndex as number],
+        pageToken ?? null,
+        rowIndex as number,
+      );
+      let nextCursor: Record<string, unknown> | null = null;
+      if ((rowIndex as number) + 1 < rows.length) {
+        nextCursor = {
+          kind: "generic",
+          toolName,
+          pageToken: pageToken ?? null,
+          rowIndex: (rowIndex as number) + 1,
+          seen,
+        };
+      } else if (page.more) {
+        if (seen.includes(page.token!)) fail("source_cursor_stalled");
+        if (seen.length >= MAX_VISITED) fail("source_queue_overflow");
+        nextCursor = {
+          kind: "generic",
+          toolName,
+          pageToken: page.token,
+          rowIndex: 0,
+          seen: [...seen, page.token!],
+        };
+      }
+      return { document, nextCursor, done: nextCursor === null };
     },
   };
 }
