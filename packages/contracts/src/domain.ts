@@ -1408,6 +1408,10 @@ export const VoiceStatusSchema = z.object({
   transcribe: z.boolean(),
   provider: z.string().nullable(),
   voiceId: z.string(),
+  /** The provider selected only for transcription, or null when speech and transcription share a provider. */
+  transcriptionProvider: z.string().nullable(),
+  /** True once the selected transcription provider can be used for dictation. Always false until S3b. */
+  transcriptionReady: z.boolean(),
 });
 export type VoiceStatus = z.infer<typeof VoiceStatusSchema>;
 

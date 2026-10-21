@@ -4,6 +4,7 @@ import {
   createTranscriptionProvider,
   createVoiceProvider,
   isFishSpeechModelId,
+  isTranscriptionProviderId,
   isVoiceProviderId,
   listVoiceCatalog,
   MAX_SPEAK_CHARS,
@@ -53,7 +54,10 @@ export function catalogEntry(provider: string) {
   return voiceCatalogEntry(provider);
 }
 
-export function toVoiceStatus(cred: { provider: string; voiceId: string } | null): VoiceStatus {
+export function toVoiceStatus(
+  cred: { provider: string; voiceId: string } | null,
+  transcriptionProvider: string | null = null,
+): VoiceStatus {
   const entry = cred ? catalogEntry(cred.provider) : undefined;
   return {
     configured: Boolean(cred),
@@ -61,7 +65,89 @@ export function toVoiceStatus(cred: { provider: string; voiceId: string } | null
     transcribe: Boolean(entry?.transcribe && cred),
     provider: cred?.provider ?? null,
     voiceId: cred?.voiceId ?? "",
+    transcriptionProvider,
+    // ponytail: S3b turns this on when a selected provider can serve dictation.
+    transcriptionReady: false,
   };
+}
+
+export async function findTranscriptionSelection(deps: VoiceDeps, actor: Actor) {
+  return deps.prisma.transcriptionSelection.findUnique({ where: { userId: actor.userId } });
+}
+
+/** The selected transcription provider and its key, or null when nothing is selected. */
+async function loadTranscriptionSelection(deps: VoiceDeps, actor: Actor) {
+  const selection = await findTranscriptionSelection(deps, actor);
+  if (!selection) return null;
+  const secret = await deps.prisma.secret.findFirst({
+    where: { id: selection.secretId, userId: actor.userId, spaceId: null },
+  });
+  if (!secret) return null;
+  return {
+    provider: selection.provider,
+    apiKey: await deps.secrets.load(secret.ciphertext, secret.id),
+  };
+}
+
+export async function setTranscription(
+  deps: VoiceDeps,
+  actor: Actor,
+  input: { provider: string; apiKey: string; signal?: AbortSignal },
+): Promise<{ provider: string }> {
+  const provider = isTranscriptionProviderId(input.provider)
+    ? createTranscriptionProvider(input.provider)
+    : null;
+  if (!provider) {
+    throw new ORPCError("BAD_REQUEST", { message: "Unknown transcription provider." });
+  }
+  const verified = await provider.verify(input.apiKey, voiceContext(actor, input.signal));
+  if (!verified.ok) {
+    throw new ORPCError("BAD_REQUEST", { message: verified.message ?? "That key was rejected." });
+  }
+  const stored = await deps.secrets.put(input.apiKey, voiceContext(actor, input.signal));
+  await withSerializableRetry(() =>
+    deps.prisma.$transaction(
+      async (tx) => {
+        const existing = await tx.transcriptionSelection.findUnique({
+          where: { userId: actor.userId },
+        });
+        await tx.secret.create({
+          data: {
+            id: stored.id,
+            userId: actor.userId,
+            spaceId: null,
+            kind: "voice",
+            ciphertext: stored.ciphertext,
+          },
+        });
+        await tx.transcriptionSelection.upsert({
+          where: { userId: actor.userId },
+          create: { userId: actor.userId, provider: input.provider, secretId: stored.id },
+          update: { provider: input.provider, secretId: stored.id },
+        });
+        if (existing) await tx.secret.deleteMany({ where: { id: existing.secretId } });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    ),
+  );
+  return { provider: input.provider };
+}
+
+export async function clearTranscription(deps: VoiceDeps, actor: Actor): Promise<{ ok: true }> {
+  await withSerializableRetry(() =>
+    deps.prisma.$transaction(
+      async (tx) => {
+        const existing = await tx.transcriptionSelection.findUnique({
+          where: { userId: actor.userId },
+        });
+        if (!existing) return;
+        await tx.transcriptionSelection.delete({ where: { id: existing.id } });
+        await tx.secret.deleteMany({ where: { id: existing.secretId, userId: actor.userId } });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    ),
+  );
+  return { ok: true as const };
 }
 
 export function toVoiceCredential(row: {
@@ -377,9 +463,12 @@ export async function transcribeVoice(
     signal?: AbortSignal;
   },
 ) {
-  const loaded = await loadDefaultVoiceCredential(deps, actor);
-  if (!loaded) throw new NoVoiceConfigured("key");
-  const provider = createTranscriptionProvider(loaded.cred.provider);
+  const selected = await loadTranscriptionSelection(deps, actor);
+  const loaded = selected ? null : await loadDefaultVoiceCredential(deps, actor);
+  const target = selected ?? (loaded && { provider: loaded.cred.provider, apiKey: loaded.apiKey });
+  if (!target) throw new NoVoiceConfigured("key");
+  const { apiKey } = target;
+  const provider = createTranscriptionProvider(target.provider);
   if (!provider) {
     throw new ORPCError("BAD_REQUEST", {
       message: "This voice provider does not transcribe audio. Use on-device dictation instead.",
@@ -394,7 +483,7 @@ export async function transcribeVoice(
       mimeType: input.mimeType || "audio/webm",
       language: input.language,
       context: input.context,
-      apiKey: loaded.apiKey,
+      apiKey,
       signal: input.signal,
     },
     voiceContext(actor, input.signal),

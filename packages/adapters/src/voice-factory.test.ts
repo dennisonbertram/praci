@@ -13,7 +13,9 @@ import {
 import {
   createTranscriptionProvider,
   createVoiceProvider,
+  isTranscriptionProviderId,
   isVoiceProviderId,
+  listTranscriptionCatalog,
   listVoiceCatalog,
   VOICE_CATALOG,
 } from "./voice-factory.js";
@@ -785,5 +787,21 @@ describe("transcription adapter", () => {
     );
     const form = fetchMock.mock.calls[0]?.[1]?.body as FormData;
     expect([...form.keys()].sort()).toEqual(["file", "model"]);
+  });
+});
+
+describe("transcription catalog", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("lists transcribing voice providers, plus the transcription-only fixture when scripted", () => {
+    vi.stubEnv("AGENT_RUNTIME", "");
+    const ids = listTranscriptionCatalog().map((entry) => entry.id);
+    expect(ids).toEqual(["elevenlabs", "openai", "fish-audio"]);
+    expect(isTranscriptionProviderId("scripted-transcribe")).toBe(false);
+    expect(() => createTranscriptionProvider("scripted-transcribe")).toThrow();
+
+    vi.stubEnv("AGENT_RUNTIME", "scripted");
+    expect(listTranscriptionCatalog().map((entry) => entry.id)).toContain("scripted-transcribe");
+    expect(createTranscriptionProvider("scripted-transcribe")).not.toBeNull();
   });
 });

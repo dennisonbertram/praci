@@ -11,8 +11,8 @@ import {
   MAX_TRANSCRIBE_REQUEST_BYTES,
   mountVoiceHttpRoutes,
   synthesizeVoice,
-  transcribeVoice,
   toVoiceStatus,
+  transcribeVoice,
   updateVoiceSpeechModel,
 } from "./voice.js";
 
@@ -24,6 +24,8 @@ describe("toVoiceStatus", () => {
       transcribe: true,
       provider: "elevenlabs",
       voiceId: "",
+      transcriptionProvider: null,
+      transcriptionReady: false,
     });
   });
 
@@ -39,6 +41,8 @@ describe("toVoiceStatus", () => {
       transcribe: false,
       provider: null,
       voiceId: "",
+      transcriptionProvider: null,
+      transcriptionReady: false,
     });
   });
 });
@@ -508,6 +512,7 @@ describe("transcribeVoice", () => {
           }),
         },
         secret: { findFirst: vi.fn().mockResolvedValue({ id: "secret-1", ciphertext: "cipher" }) },
+        transcriptionSelection: { findUnique: vi.fn().mockResolvedValue(null) },
       },
       secrets: { load: vi.fn().mockReturnValue("the-key"), put: vi.fn() },
     }) as unknown as VoiceDeps;
