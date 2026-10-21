@@ -15,10 +15,12 @@ export function CompanyCalendar({
   onOpen,
   initialMonth = todayIso().slice(0, 7),
   initialView = "month",
+  refreshRevision = 0,
 }: {
   onOpen: (fact: CompanyFact) => void;
   initialMonth?: string;
   initialView?: "month" | "agenda";
+  refreshRevision?: number;
 }) {
   useHideAmounts();
   const [month, setMonth] = useState(initialMonth);
@@ -29,7 +31,7 @@ export function CompanyCalendar({
   const [error, setError] = useState("");
   const query = useFinanceQuery(
     () => rpc.company.calendar({ month, anniversaries }),
-    [month, anniversaries],
+    [month, anniversaries, refreshRevision],
   );
   useEffect(() => {
     const reload = () => query.reload();
@@ -60,6 +62,10 @@ export function CompanyCalendar({
       setError(errorText(cause));
     }
   }
+  const retry = () => {
+    setError("");
+    query.reload();
+  };
   const content = (item: CompanyCalendarItem) => (
     <>
       {maskCurrencyWhenHidden(item.title)}
@@ -156,7 +162,7 @@ export function CompanyCalendar({
       {(query.error || error) && (
         <p role="alert" className="text-destructive">
           {query.error || error}
-          <Button variant="link" onClick={query.reload}>
+          <Button variant="link" onClick={retry}>
             <Trans>Retry</Trans>
           </Button>
         </p>
