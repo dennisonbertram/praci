@@ -1,7 +1,7 @@
 // Generated from packages/ui-tokens/src/index.ts by pnpm ios:tokens. Do not edit.
 import SwiftUI
 
-public enum SemanticColor: String, CaseIterable {
+public enum SemanticColor: String, CaseIterable, Sendable {
     case background
     case foreground
     case card
