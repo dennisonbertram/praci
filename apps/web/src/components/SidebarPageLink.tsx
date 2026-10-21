@@ -57,6 +57,7 @@ export function SidebarPageLink({
         type="button"
         data-testid={testId}
         data-tour={testId}
+        data-roster-row={testId}
         aria-current={current ? "page" : undefined}
         aria-label={rail || badgeLabel ? name : undefined}
         onClick={onOpen}

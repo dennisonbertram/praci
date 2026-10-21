@@ -74,6 +74,11 @@ msgstr "{0, plural, one {# earlier message} other {# earlier messages}}"
 msgid "{0, plural, one {# email} other {# emails}}"
 msgstr "{0, plural, one {# email} other {# emails}}"
 
+#. placeholder {0}: glance.dataRoomWaiting
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# file failed} other {# files failed}}"
+msgstr "{0, plural, one {# file failed} other {# files failed}}"
+
 #. placeholder {0}: items.length
 #: src/components/FinanceCards.tsx
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
@@ -103,11 +108,6 @@ msgstr "{0, plural, one {# subscription} other {# subscriptions}}"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "{0, plural, one {# task done by your bots} other {# tasks done by your bots}}"
 msgstr "{0, plural, one {# task done by your bots} other {# tasks done by your bots}}"
-
-#. placeholder {0}: glance.dataRoomWaiting
-#: src/pages/Shell.tsx
-msgid "{0, plural, one {# waiting} other {# waiting}}"
-msgstr "{0, plural, one {# waiting} other {# waiting}}"
 
 #. placeholder {0}: rows.length
 #: src/pages/Inbox.tsx
@@ -237,10 +237,8 @@ msgstr "{0} files were not added. Attachments can be up to {MAX_COMPOSE_ATTACHME
 msgid "{0} handling"
 msgstr "{0} handling"
 
-#. placeholder {0}: months.toFixed(0)
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
-#: src/components/sidebar-glance.tsx
 msgid "{0} mo"
 msgstr "{0} mo"
 
@@ -264,11 +262,6 @@ msgstr "{0} of {1}"
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} rollup hours"
 msgstr "{0} rollup hours"
-
-#. placeholder {0}: runwayGlance(glance.financeRunwayMonths)
-#: src/pages/Shell.tsx
-msgid "{0} runway"
-msgstr "{0} runway"
 
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
@@ -1368,10 +1361,6 @@ msgstr "Ask"
 msgid "Ask {botName}"
 msgstr "Ask {botName}"
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Ask a question"
-msgstr "Ask a question"
-
 #: src/pages/Devin.tsx
 msgid "Ask a space owner to connect Devin."
 msgstr "Ask a space owner to connect Devin."
@@ -1424,6 +1413,10 @@ msgstr "Ask before purchases"
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Ask before sending external email"
 msgstr "Ask before sending external email"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Ask Chief"
+msgstr "Ask Chief"
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
@@ -5390,6 +5383,7 @@ msgstr "Loading voice providers…"
 #: src/App.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/ui.tsx
+#: src/components/RowsSkeleton.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
 #: src/pages/finance/FinanceTransaction.tsx
