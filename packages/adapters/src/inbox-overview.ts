@@ -156,10 +156,16 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
     (recent.length ? recent : needsReply).pop();
   }
   // Says outright whether the list is whole, so the model answers from it instead of doubting it.
+  const failed = result.accounts.filter((account) => account.sync === "failed");
   return {
     ...result,
-    needsReplyListed:
-      needsReply.length === waiting.length
+    // A failed account's mail may be missing, so the list is not whole and the reply must begin with that.
+    incomplete: failed.length
+      ? `Could not refresh ${failed.map((account) => account.account).join(", ")}. Begin your reply with "I could not read <account>" and say the answer may be incomplete; do not open with "Nothing needs your reply". Say the user can reconnect it in Settings.`
+      : undefined,
+    needsReplyListed: failed.length
+      ? `incomplete: ${failed.length} account(s) failed to refresh`
+      : needsReply.length === waiting.length
         ? `complete: all ${waiting.length} messages that need a reply are listed`
         : `${needsReply.length} of ${waiting.length} listed, highest priority first`,
   };

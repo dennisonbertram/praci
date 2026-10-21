@@ -1,7 +1,15 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import { Button } from "@rakazo/ui-web";
-import { Download, Mail, X } from "lucide-react";
+import {
+  BotAvatar,
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@rakazo/ui-web";
+import { Download, Mail, Send, X } from "lucide-react";
+import type { SendTarget } from "./SendToAgent";
 
 /** What can be done with the ticked files. It shows only while at least one row is ticked. */
 export function SelectionBar({
@@ -10,14 +18,19 @@ export function SelectionBar({
   onDownload,
   onSend,
   onClear,
+  agents,
+  onSendToAgent,
 }: {
   count: number;
   /** A download or a send is reading the files. */
   busy?: boolean;
   onDownload: () => void;
-  /** Without it (no connected mailbox is known) there is no Send. */
+  /** Without it (no connected mailbox is known) there is no Email. */
   onSend?: () => void;
   onClear: () => void;
+  /** The agents the files can go to; without any there is no Send to agent. */
+  agents?: SendTarget[];
+  onSendToAgent?: (agent: SendTarget) => void;
 }) {
   if (count === 0) return null;
   return (
@@ -36,8 +49,28 @@ export function SelectionBar({
       {onSend ? (
         <Button variant="outline" size="sm" disabled={busy} onClick={onSend}>
           <Mail aria-hidden="true" />
-          <Trans>Send</Trans>
+          <Trans>Email</Trans>
         </Button>
+      ) : null}
+      {agents?.length && onSendToAgent ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button variant="outline" size="sm" disabled={busy}>
+                <Send aria-hidden="true" />
+                <Trans>Send to agent</Trans>
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="end" className="max-h-72 min-w-40">
+            {agents.map((agent) => (
+              <DropdownMenuItem key={agent.id} onClick={() => onSendToAgent(agent)}>
+                <BotAvatar color={agent.color} identity={agent.id} size={16} status="idle" />
+                <span className="truncate">{agent.name}</span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       ) : null}
       <Button variant="ghost" size="icon-sm" aria-label={t`Clear selection`} onClick={onClear}>
         <X aria-hidden="true" />

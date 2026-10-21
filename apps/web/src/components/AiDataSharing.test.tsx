@@ -186,8 +186,8 @@ it("shows a model slug as its display name", async () => {
   );
   await render(<AiDataSharingSection />);
   expect([...container.querySelectorAll("li")].map((r) => r.textContent)).toEqual([
-    "Bots, mail, files and contractsGPT-6 Luna",
-    "Bots, mail, files and contractsMuse Spark 1.2",
+    "Allow GPT-6 LunaFor bots, mail, files and contracts",
+    "Allow Muse Spark 1.2For bots, mail, files and contracts",
   ]);
 });
 
@@ -212,10 +212,10 @@ it("tells two models from the same provider apart", async () => {
   );
   await render(<AiDataSharingSection />);
   const rows = [...container.querySelectorAll("li")];
-  // Labelled by purpose, with the model as secondary text and no vendor caption.
+  // Each row leads with its model name, so the two switches never share a title.
   expect(rows.map((r) => r.textContent)).toEqual([
-    "Bots, mail, files and contracts" + "Alpha",
-    "Bots, mail, files and contracts" + "Beta",
+    "Allow Alpha" + "For bots, mail, files and contracts",
+    "Allow Beta" + "For bots, mail, files and contracts",
   ]);
   expect(container.textContent).not.toContain("OpenRouter");
   expect(

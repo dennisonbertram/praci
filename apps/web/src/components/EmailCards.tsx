@@ -65,7 +65,7 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
   const onlyLater = groups.length === 1 && groups[0]?.urgency === "later";
 
   return (
-    <div data-testid="email-cards" className="flex w-80 max-w-full flex-col gap-3 py-1">
+    <div data-testid="email-cards" className="flex w-full min-w-0 flex-col gap-3 py-1">
       {groups.map((group) => (
         <section key={group.urgency} className="flex flex-col gap-1.5">
           {onlyLater ? null : (
@@ -103,24 +103,24 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
                 type="button"
                 data-testid="email-card"
                 onClick={() => setOpen(email)}
-                className="flex w-full flex-col gap-0.5 rounded-xl bg-card px-3 py-2.5 text-start text-sm ring-1 ring-foreground/10 hover:bg-muted"
+                className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5 rounded-xl bg-card px-3 py-2.5 text-start text-sm ring-1 ring-foreground/10 hover:bg-muted @2xl:grid-cols-[12rem_minmax(0,1fr)_auto]"
               >
-                <span className="flex items-baseline justify-between gap-3">
-                  <span dir="auto" className="truncate font-medium">
-                    {email.from}
-                  </span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    {attachments(email)}
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {archived[email.id] ? t`Archived` : formatMailTime(email.receivedAt, now)}
-                    </span>
+                <span dir="auto" className="truncate font-medium">
+                  {email.from}
+                </span>
+                <span className="col-start-2 row-start-1 flex shrink-0 items-baseline gap-2 @2xl:col-start-3">
+                  {attachments(email)}
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {archived[email.id] ? t`Archived` : formatMailTime(email.receivedAt, now)}
                   </span>
                 </span>
-                <span dir="auto" className="truncate">
-                  {maskCurrencyWhenHidden(email.subject)}
-                </span>
-                <span dir="auto" className="line-clamp-2 text-muted-foreground">
-                  {maskCurrencyWhenHidden(email.snippet)}
+                <span className="col-span-2 flex min-w-0 flex-col gap-0.5 @2xl:col-span-1 @2xl:col-start-2 @2xl:row-start-1">
+                  <span dir="auto" className="truncate">
+                    {maskCurrencyWhenHidden(email.subject)}
+                  </span>
+                  <span dir="auto" className="line-clamp-2 text-muted-foreground">
+                    {maskCurrencyWhenHidden(email.snippet)}
+                  </span>
                 </span>
               </button>
             ))

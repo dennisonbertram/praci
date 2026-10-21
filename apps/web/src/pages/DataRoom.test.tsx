@@ -1135,9 +1135,10 @@ it("does not ask for the list again while a request is still in flight", async (
   expect(names()).toEqual(["a.txt"]);
 });
 
+// Index 0 is the header's Select all.
 const tick = (n: number) =>
   act(async () => {
-    container.querySelectorAll<HTMLElement>('[role="checkbox"]')[n]?.click();
+    container.querySelectorAll<HTMLElement>('[role="checkbox"]')[n + 1]?.click();
   });
 const barButton = (label: string) =>
   Array.from(
@@ -1159,9 +1160,36 @@ it("downloads the ticked files and opens the mail composer with them attached", 
   await act(async () => barButton("Download")?.click());
   await settle();
   expect(bulk.save.mock.calls.map(([saved]) => saved.name)).toEqual(["b.txt", "a.txt"]);
-  await act(async () => barButton("Send")?.click());
+  await act(async () => barButton("Email")?.click());
   await settle();
   expect(bulk.composed).toHaveBeenLastCalledWith(["b.txt", "a.txt"]);
   await act(async () => barButton("Clear selection")?.click());
+  expect(container.querySelector('[data-testid="data-room-selection"]')).toBeNull();
+});
+
+it("sends every ticked file to the chosen agent in one go", async () => {
+  const onSendToAgent = vi.fn();
+  vi.stubGlobal("matchMedia", () => ({ matches: true }) as MediaQueryList);
+  await act(async () => {
+    root.render(
+      <MemoryRouter initialEntries={["/"]}>
+        <DataRoomPage
+          agents={[{ id: "bot_ada", name: "Ada", color: "#6366f1" }]}
+          onSendToAgent={onSendToAgent}
+        />
+      </MemoryRouter>,
+    );
+  });
+  await act(async () => container.querySelector<HTMLElement>('[aria-label="Select all"]')?.click());
+  await act(async () => barButton("Send to agent")?.click());
+  const ada = Array.from(document.querySelectorAll<HTMLElement>('[role="menuitem"]')).find(
+    (el) => el.textContent === "Ada",
+  );
+  await act(async () => ada?.click());
+  expect(onSendToAgent).toHaveBeenCalledTimes(1);
+  expect(onSendToAgent.mock.calls[0]?.[0].map((file: DataRoomApiItem) => file.name)).toEqual([
+    "b.txt",
+    "a.txt",
+  ]);
   expect(container.querySelector('[data-testid="data-room-selection"]')).toBeNull();
 });

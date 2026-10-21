@@ -46,6 +46,8 @@ export type RowInteraction = {
   /** Ticked rows (list view); without `onCheck` the list has no checkboxes. */
   checked?: ReadonlySet<string>;
   onCheck?: (item: DataRoomApiItem) => void;
+  /** The header box: tick (or untick) every row the list shows. */
+  onCheckAll?: (on: boolean) => void;
 };
 
 /** A file's row or tile, with the item menu on a right-click (or a long press on touch). */
@@ -178,14 +180,23 @@ function Columns() {
       <col />
       <col className={cn(MID_COLUMN, "w-36")} />
       <col className={cn(MID_COLUMN, "w-24")} />
-      <col className={cn(PARTIES_COLUMN, "w-36")} />
+      <col className={cn(PARTIES_COLUMN, "w-36 @min-[1100px]/list:w-auto")} />
       <col className={cn(MID_COLUMN, "w-20")} />
       <col className="w-7" />
     </colgroup>
   );
 }
 
-function ListHead({ sortField }: { sortField: SortField | undefined }) {
+function ListHead({
+  sortField,
+  rows,
+  o,
+}: {
+  sortField: SortField | undefined;
+  rows: Row[];
+  o: RowInteraction;
+}) {
+  const allChecked = rows.length > 0 && rows.every(({ item }) => o.checked?.has(item.id));
   return (
     <TableHeader
       data-testid="data-room-head"
@@ -193,7 +204,21 @@ function ListHead({ sortField }: { sortField: SortField | undefined }) {
     >
       <TableHeadRow>
         <TableHead>
-          <Trans>Name</Trans>
+          {o.onCheckAll ? (
+            <div className="flex items-center gap-2">
+              <span className="inline-flex size-3.5 shrink-0 items-center justify-center">
+                <Checkbox
+                  aria-label={t`Select all`}
+                  className="size-4.5 shrink-0"
+                  checked={allChecked}
+                  onCheckedChange={(on) => o.onCheckAll?.(on)}
+                />
+              </span>
+              <Trans>Name</Trans>
+            </div>
+          ) : (
+            <Trans>Name</Trans>
+          )}
         </TableHead>
         <TableHead className={MID_COL}>
           <Trans>Type</Trans>
@@ -470,7 +495,7 @@ export function ListView({
     <div className={LIST_PAD}>
       <Table>
         <Columns />
-        <ListHead sortField={sortField} />
+        <ListHead sortField={sortField} rows={rows} o={o} />
         {lead?.()}
         <TableBody aria-label={t`Items`} data-rows>
           {rows.map(({ item, snippets }, index) => (
@@ -644,9 +669,6 @@ export function GridView({
                 >
                   {item.error ?? t`Could not read this file`}
                 </span>
-                {item.folderId !== (o.openFolderId ?? null) ? (
-                  <span>{o.folderPath(item.folderId)}</span>
-                ) : null}
               </>
             ) : statusLabel(item.status) ? (
               <span>{statusLabel(item.status)}</span>

@@ -16,7 +16,7 @@ import { ConfirmDialog, Heading } from "./AppDetail";
 import { AppLogo } from "./AppLogo";
 import { CustomConnectionDialog } from "./CustomConnectionDialog";
 import { GranolaMeetingsCard } from "./GranolaMeetingsCard";
-import { IntegrationAgentSection, WritesSwitch } from "./IntegrationAgentSection";
+import { IntegrationAgentSection } from "./IntegrationAgentSection";
 import { AgentToggleList, StatusBadge } from "./parts";
 import type { IntegrationsData } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
@@ -275,24 +275,6 @@ export function McpDetail({
           </Button>
         </div>
 
-        {/* A bank can be allowed to make changes before its agent exists; confirming creates the agent. */}
-        {!hasAgent && bank ? (
-          <div className="mt-6 rounded-xl border border-border bg-card px-3.5 py-3">
-            <WritesSwitch
-              service={service}
-              checked={server.writesEnabled || writesPending}
-              disabled={busy || writesPending}
-              onChange={setWrites}
-              hint={
-                <Trans>
-                  Off: the agent only reads. On: it can also make changes, and asks you before each
-                  one.
-                </Trans>
-              }
-            />
-          </div>
-        ) : null}
-
         {granola ? (
           <div className="mt-6">
             <GranolaMeetingsCard
@@ -307,18 +289,18 @@ export function McpDetail({
           </div>
         ) : null}
 
-        {/* Once the key connection exists the agent link is drawn under its status, not here. */}
-        {hasAgent && server.agentBotId && !keyRoute ? (
+        {/* One element for a bank before and after its agent exists, so confirming "Allow changes" does not move or remount the switch. */}
+        {(hasAgent && server.agentBotId && !keyRoute) || (!hasAgent && bank) ? (
           <IntegrationAgentSection
             service={service}
             agentName={agent?.name ?? t`${service} agent`}
-            agentHref={`/app/${server.agentBotId}`}
+            agentHref={server.agentBotId ? `/app/${server.agentBotId}` : undefined}
             writesEnabled={server.writesEnabled || writesPending}
             shared={!server.agentExclusive}
-            disabled={busy}
+            disabled={busy || writesPending}
             onWrites={isDevinEndpoint(server.endpoint) || granola ? undefined : setWrites}
             usedBy={usedBy}
-            onShared={(shared) => void setShared(shared)}
+            onShared={hasAgent ? (shared) => void setShared(shared) : undefined}
           />
         ) : null}
 

@@ -53,7 +53,8 @@ export function IntegrationAgentSection({
 }: {
   service: string;
   agentName: string;
-  agentHref: string;
+  /** Omitted while the agent does not exist yet; the name is shown unlinked so the layout holds. */
+  agentHref?: string;
   writesEnabled: boolean;
   shared: boolean;
   disabled: boolean;
@@ -72,9 +73,13 @@ export function IntegrationAgentSection({
         <Trans>Agent</Trans>
       </Heading>
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-card px-3.5 py-3">
-        <Link to={agentHref} className="w-fit text-sm font-medium hover:underline">
-          {agentName}
-        </Link>
+        {agentHref ? (
+          <Link to={agentHref} className="w-fit text-sm font-medium hover:underline">
+            {agentName}
+          </Link>
+        ) : (
+          <span className="w-fit text-sm font-medium">{agentName}</span>
+        )}
         {onWrites ? (
           <WritesSwitch
             service={service}
