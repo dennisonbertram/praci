@@ -1216,6 +1216,14 @@ msgstr "Approve"
 msgid "Approve this server to let your bot use its tools."
 msgstr "Approve this server to let your bot use its tools."
 
+#: src/components/ConnectAppsButton.tsx
+#: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/McpDetail.tsx
+#: src/pages/Shell.tsx
+msgid "Apps"
+msgstr "Apps"
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Apps with their own server"
 msgstr "Apps with their own server"
@@ -2445,8 +2453,8 @@ msgid "Connect Alchemy"
 msgstr "Connect Alchemy"
 
 #: src/components/integrations/IntegrationsHome.tsx
-msgid "Connect any app that offers an MCP server URL."
-msgstr "Connect any app that offers an MCP server URL."
+msgid "Connect any other app by its address."
+msgstr "Connect any other app by its address."
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Connect API key"
@@ -4802,14 +4810,6 @@ msgstr "Instruction"
 msgid "Integration options"
 msgstr "Integration options"
 
-#: src/components/ConnectAppsButton.tsx
-#: src/components/integrations/AppDetail.tsx
-#: src/components/integrations/IntegrationsHome.tsx
-#: src/components/integrations/McpDetail.tsx
-#: src/pages/Shell.tsx
-msgid "Integrations"
-msgstr "Integrations"
-
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Interval"
@@ -5019,6 +5019,10 @@ msgstr "Legal runs on Muse Spark 1.2 and needs your own OpenRouter key. The spac
 msgid "Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
 msgstr "Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Let other agents use {service} directly"
+msgstr "Let other agents use {service} directly"
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Let Praci read documents"
 msgstr "Let Praci read documents"
@@ -5205,9 +5209,10 @@ msgstr "Mail"
 msgid "Mail data from this account that Praci cached is removed."
 msgstr "Mail data from this account that Praci cached is removed."
 
+#. placeholder {0}: accountCount > 1 ? "these accounts" : "this account"
 #: src/components/integrations/AppDetail.tsx
-msgid "Mail data Praci cached from these accounts is removed."
-msgstr "Mail data Praci cached from these accounts is removed."
+msgid "Mail data Praci cached from {0} is removed."
+msgstr "Mail data Praci cached from {0} is removed."
 
 #. placeholder {0}: status.sender
 #: src/pages/Inbox.tsx
@@ -6301,6 +6306,10 @@ msgid "Obligation"
 msgstr "Obligation"
 
 #: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Off: other agents reach {service} only through this agent."
+msgstr "Off: other agents reach {service} only through this agent."
+
+#: src/components/integrations/IntegrationAgentSection.tsx
 msgid "Off: the agent only reads. On: it can also make changes, and asks you before each one."
 msgstr "Off: the agent only reads. On: it can also make changes, and asks you before each one."
 
@@ -6453,8 +6462,8 @@ msgid "Open receipt"
 msgstr "Open receipt"
 
 #: src/pages/AccountSettingsOverlay.tsx
-msgid "Open server integrations"
-msgstr "Open server integrations"
+msgid "Open server apps"
+msgstr "Open server apps"
 
 #: src/pages/shell/composer.tsx
 msgid "Open Settings"
@@ -8047,8 +8056,8 @@ msgstr "Serenity endpoint is required."
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/LocalSettings.tsx
-msgid "Server integrations"
-msgstr "Server integrations"
+msgid "Server apps"
+msgstr "Server apps"
 
 #: src/components/integrations/IMessageSection.tsx
 msgid "Server password"
@@ -8103,10 +8112,6 @@ msgstr "Setup help"
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Shape"
 msgstr "Shape"
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Share with all agents"
-msgstr "Share with all agents"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Shared"

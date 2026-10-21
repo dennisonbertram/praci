@@ -34,7 +34,7 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
       className="mb-3.5 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
     >
       <ArrowLeft className="size-4" aria-hidden="true" />
-      <Trans>Integrations</Trans>
+      <Trans>Apps</Trans>
     </Link>
   );
   if (!server) {
