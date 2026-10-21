@@ -435,6 +435,34 @@ describe("BotSettings audience", () => {
     expect(container.textContent).not.toContain("Notion");
   });
 
+  it("offers the system model on a page agent", async () => {
+    await renderWith({ spawnKey: "legal-agent:user-1" });
+    const model = container.querySelector("select");
+    expect(model?.textContent).toContain("System model");
+  });
+
+  it("says the system model is used when the chosen provider is not connected", async () => {
+    vi.mocked(rpc.models.credentials).mockResolvedValueOnce([]);
+    vi.mocked(rpc.models.list).mockResolvedValueOnce([
+      {
+        provider: "openrouter",
+        providerName: "OpenRouter",
+        id: "meta/muse-wonder",
+        label: "Muse Wonder",
+        billing: "",
+      },
+    ]);
+    await renderWith({
+      spawnKey: "legal-agent:user-1",
+      modelProvider: "openrouter",
+      modelId: "meta/muse-wonder",
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("Using the system model: Muse Wonder isn't available");
+  });
+
   it("has no switch for a page or integration agent", async () => {
     await renderWith({ spawnKey: "finance-agent:user-1" });
     expect(button("bot-audience-external")).toBeNull();

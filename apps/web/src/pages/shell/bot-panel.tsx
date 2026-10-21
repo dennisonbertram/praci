@@ -278,6 +278,14 @@ export function BotSettings({
     ? modelOptionKey(selectedModel.provider, selectedModel.modelId)
     : "";
 
+  // A chosen model whose provider is not connected: runs use the system model instead.
+  const unavailableModel =
+    modelMetaReady &&
+    selectedModel &&
+    !connectedOptions.some((option) => option.key === selectedModelKey)
+      ? (catalogLabel(catalog, selectedModel.provider, selectedModel.modelId) ??
+        selectedModel.modelId)
+      : null;
   const effectiveProvider = selectedModel?.provider ?? me?.defaultProvider ?? null;
   const effectiveModelId = selectedModel?.modelId ?? me?.defaultModel ?? null;
   const effectiveEntry =
@@ -693,7 +701,7 @@ export function BotSettings({
                 }}
               >
                 <NativeSelectOption value="">
-                  {t`Space default`}
+                  {t`System model`}
                   {me?.defaultModel
                     ? ` (${catalogLabel(catalog, me.defaultProvider, me.defaultModel) ?? me.defaultModel})`
                     : ""}
@@ -701,7 +709,7 @@ export function BotSettings({
                 {selectedModelKey &&
                 !connectedOptions.some((option) => option.key === selectedModelKey) ? (
                   <NativeSelectOption value={selectedModelKey}>
-                    {selectedModel?.modelId ?? selectedModelKey}
+                    {unavailableModel ?? selectedModel?.modelId ?? selectedModelKey}
                   </NativeSelectOption>
                 ) : null}
                 {connectedOptions.map((option) => (
@@ -710,6 +718,11 @@ export function BotSettings({
                   </NativeSelectOption>
                 ))}
               </NativeSelect>
+              {unavailableModel ? (
+                <span className="mt-1.5 block text-[12.5px] font-normal text-muted-foreground">
+                  {t`Using the system model: ${unavailableModel} isn't available`}
+                </span>
+              ) : null}
             </label>
             {thinkingOptions.length ? (
               <label htmlFor={`${ids}-thinking`} className={advancedLabelClass}>

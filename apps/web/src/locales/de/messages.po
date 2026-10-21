@@ -8743,10 +8743,6 @@ msgstr "Der Space wurde gewechselt. Öffne Modelle erneut, um die Backups zu lad
 msgid "Space changed. Reopen Models to save its backup list."
 msgstr "Der Space wurde gewechselt. Öffne Modelle erneut, um die Backups zu speichern."
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Space default"
-msgstr "Space-Standard"
-
 #: src/pages/shell/dialogs.tsx
 msgid "Spaces"
 msgstr ""
@@ -9000,6 +8996,10 @@ msgstr ""
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
 msgstr "System"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "System model"
+msgstr ""
 
 #: src/components/data-room/format.ts
 #: src/components/data-room/ProcessingStrip.tsx
@@ -9971,6 +9971,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Verwendet die eigenen {hostCredentialSource}-Zugangsdaten dieses Servers für den Zugriff auf {selectedProviderName}."
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Using the system model: {unavailableModel} isn't available"
+msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Usual charge"

@@ -8743,10 +8743,6 @@ msgstr "공간이 변경되었습니다. 백업 목록을 불러오려면 모델
 msgid "Space changed. Reopen Models to save its backup list."
 msgstr "공간이 변경되었습니다. 백업 목록을 저장하려면 모델 설정을 다시 여세요."
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Space default"
-msgstr "스페이스 기본값"
-
 #: src/pages/shell/dialogs.tsx
 msgid "Spaces"
 msgstr ""
@@ -9000,6 +8996,10 @@ msgstr ""
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
 msgstr "시스템"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "System model"
+msgstr ""
 
 #: src/components/data-room/format.ts
 #: src/components/data-room/ProcessingStrip.tsx
@@ -9971,6 +9971,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "이 서버의 자체 {hostCredentialSource} 자격 증명으로 {selectedProviderName}에 액세스합니다."
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Using the system model: {unavailableModel} isn't available"
+msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Usual charge"

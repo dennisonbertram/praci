@@ -60,6 +60,8 @@ export async function ensureLegalRoutine(
   return routine;
 }
 
+const LEGACY_LEGAL_MODEL_ID = "meta/muse-spark-1.2";
+
 /**
  * The only way a Legal agent is created. The unique (spaceId, spawnKey) index makes it idempotent
  * across API processes. No intro run is queued, so an unused thread costs nothing. The agent gets no
@@ -85,16 +87,18 @@ export async function ensureLegalAgent(
     modelId: LEGAL_AGENT_MODEL.id,
     thinkingLevel: LEGAL_AGENT_MODEL.thinkingLevel,
   });
-  // An older Legal agent may lack these; fill only empty fields so a model the user chose is kept.
+  // The preferred model is set only when the agent is created. An empty model afterwards means the
+  // user chose the system model, so it is left alone. An older agent pinned to Muse Spark 1.2 never
+  // made that choice (the old rule forced it), so it moves to the current preference.
   const owner = { id: bot.id, spaceId: actor.spaceId, userId: actor.userId };
-  const noModel = !bot.modelProvider && !bot.modelId;
-  const noThinking = !bot.thinkingLevel;
-  if (noModel) {
+  const pinnedOld = bot.modelProvider === "openrouter" && bot.modelId === LEGACY_LEGAL_MODEL_ID;
+  if (pinnedOld) {
     await deps.prisma.bot.updateMany({
-      where: { ...owner, modelProvider: null, modelId: null },
-      data: { modelProvider: LEGAL_AGENT_MODEL.provider, modelId: LEGAL_AGENT_MODEL.id },
+      where: { ...owner, modelProvider: "openrouter", modelId: LEGACY_LEGAL_MODEL_ID },
+      data: { modelId: LEGAL_AGENT_MODEL.id },
     });
   }
+  const noThinking = !bot.thinkingLevel;
   if (noThinking) {
     await deps.prisma.bot.updateMany({
       where: { ...owner, thinkingLevel: null },
@@ -104,9 +108,7 @@ export async function ensureLegalAgent(
   await ensureLegalRoutine(deps, actor, bot.id);
   return {
     ...bot,
-    ...(noModel
-      ? { modelProvider: LEGAL_AGENT_MODEL.provider, modelId: LEGAL_AGENT_MODEL.id }
-      : {}),
+    ...(pinnedOld ? { modelId: LEGAL_AGENT_MODEL.id } : {}),
     ...(noThinking ? { thinkingLevel: LEGAL_AGENT_MODEL.thinkingLevel } : {}),
   };
 }
