@@ -52,7 +52,8 @@ function fakeDb(
     if (where.serverId !== undefined && state.serverId !== where.serverId) return false;
     if (where.version !== undefined && state.version !== where.version) return false;
     if (where.leaseToken !== undefined && state.leaseToken !== where.leaseToken) return false;
-    if (where.OR) {
+    if (where.rejectedAt === null && state.rejectedAt) return false;
+    if (where.AND) {
       const until = state.leaseUntil as Date | null;
       if (until && until.getTime() >= now) return false;
     }
@@ -225,7 +226,7 @@ describe("refreshDevinConnection", () => {
     const fake = fakeDb();
     const long = `- event_id=ev-9 source=devin created_at=1 body="${"x".repeat(700)}"\n`;
     await refresh(fake, fakeDevin({ messages: () => long }));
-    expect((fake.db.sessions.get("srv-1/devin-0001")?.question as string).length).toBe(500);
+    expect(String(fake.db.sessions.get("srv-1/devin-0001")?.question).length).toBe(500);
   });
 
   it("commits the first page when the second page fails, marks the listing incomplete and deletes nothing", async () => {
@@ -329,7 +330,7 @@ describe("refreshDevinConnection", () => {
       expect(await refresh(fake, limited, now)).toBe("failed");
       const state = fake.db.states.get("srv-1");
       expect(state?.lastError).toBe("rate_limited");
-      expect((state?.backoffUntil as Date).getTime() - now.getTime()).toBe(minutes * MIN);
+      expect(new Date(state?.backoffUntil as Date).getTime() - now.getTime()).toBe(minutes * MIN);
       // Inside the backoff window nothing is read.
       const calls = limited.calls.length;
       expect(await refresh(fake, limited, new Date(now.getTime() + MIN))).toBe("skipped");
@@ -346,7 +347,7 @@ describe("refreshDevinConnection", () => {
     await refresh(timeout, slow);
     const state = timeout.db.states.get("srv-1");
     expect(state?.lastError).toBe("unreachable");
-    expect((state?.backoffUntil as Date).getTime() - T0.getTime()).toBe(5 * MIN);
+    expect(new Date(state?.backoffUntil as Date).getTime() - T0.getTime()).toBe(5 * MIN);
   });
 
   it("a 401 or 429 on a later page fails the run like one on the first page", async () => {

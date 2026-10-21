@@ -103,7 +103,12 @@ export async function refreshDevinConnection(
     where: {
       serverId,
       version: state.version,
-      OR: [{ leaseUntil: null }, { leaseUntil: { lt: now } }],
+      // Rechecked here: another holder may have recorded a rejection or backoff since the read.
+      rejectedAt: null,
+      AND: [
+        { OR: [{ leaseUntil: null }, { leaseUntil: { lt: now } }] },
+        { OR: [{ backoffUntil: null }, { backoffUntil: { lte: now } }] },
+      ],
     },
     data: {
       leaseToken,
@@ -195,8 +200,7 @@ export async function refreshDevinConnection(
       let lastMessageId = before?.lastMessageId ?? null;
       let notifiedMessageId = before?.notifiedMessageId ?? null;
       const changed =
-        !before ||
-        before.kind !== "needs_you" ||
+        before?.kind !== "needs_you" ||
         before.devinUpdatedAt < updatedAt ||
         before.question === null;
       if (kind === "needs_you" && changed) {
