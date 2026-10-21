@@ -104,6 +104,15 @@ describe("demo Composio", () => {
     expect(await get(await begin())).toBe(200);
   });
 
+  it("offers no Composio Gmail tools, whose mailbox differs from the one the Inbox lists", async () => {
+    const t = await setup({});
+    const tools = await t.composio.discoverTools({
+      ...context("u1"),
+      connectedProviders: ["GMAIL"],
+    } as AdapterContext);
+    expect(tools.map((tool) => tool.name).filter((name) => name.startsWith("GMAIL_"))).toEqual([]);
+  });
+
   it("rate-limits the first Gmail of a chosen space", async () => {
     const composio = createE2eComposio(undefined, {
       accountState: async () => "rate_limited",

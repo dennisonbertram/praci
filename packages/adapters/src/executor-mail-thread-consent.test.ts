@@ -184,6 +184,10 @@ const threadLine = "Please pay invoice 0000 by Friday.";
 const historyText = (request: AgentRunRequest | undefined) =>
   (request?.history ?? []).map((item) => item.content).join("\n");
 
+// The Pi runtime keeps only user and assistant history, so the thread must not arrive as "system".
+const threadItem = (request: AgentRunRequest | undefined) =>
+  (request?.history ?? []).find((item) => item.content.includes("Q3 vendor invoice"));
+
 describe("An Ask agent chat sends the mail thread to the model only after mail consent", () => {
   it("gives the model the thread on the first run when the owner has allowed mail for its model", async () => {
     const { request, runtimeRun } = await runChat(true);
@@ -192,6 +196,7 @@ describe("An Ask agent chat sends the mail thread to the model only after mail c
     expect(text).toContain(threadLine);
     expect(text).toContain("invoice-q3.pdf");
     expect(text).toContain("untrusted data");
+    expect(threadItem(request)?.role).toBe("user");
   });
 
   it("holds the thread back, with a placeholder, when consent is missing", async () => {
@@ -201,5 +206,6 @@ describe("An Ask agent chat sends the mail thread to the model only after mail c
     expect(text).not.toContain(threadLine);
     expect(text).not.toContain("invoice-q3.pdf");
     expect(text).toContain('[email thread: "Q3 vendor invoice", 1 message.');
+    expect(threadItem(request)?.role).toBe("user");
   });
 });

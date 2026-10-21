@@ -53,6 +53,7 @@ export function SettingsOverlay({
   onUsageOpen,
   initialSection = "general",
   modelProvider,
+  notice,
   avatarStyle,
   onAvatarStyleChange,
   timezone,
@@ -80,6 +81,8 @@ export function SettingsOverlay({
   initialSection?: SettingsSection;
   /** Models opens on this provider with its own-key form open (the Legal page's "Add your OpenRouter key"). */
   modelProvider?: string;
+  /** Why Settings opened; shown at the top of the pane. */
+  notice?: string;
   avatarStyle: AvatarStyle;
   onAvatarStyleChange: (style: AvatarStyle) => Promise<void>;
   timezone?: string;
@@ -216,7 +219,7 @@ export function SettingsOverlay({
           <nav
             data-testid="settings-nav"
             aria-label={t`Settings`}
-            className="flex shrink-0 flex-row flex-nowrap gap-1 overflow-x-auto border-b border-border px-3 py-3 md:w-[200px] md:flex-col md:flex-nowrap md:overflow-y-auto md:border-b-0 md:border-e md:px-3 md:py-4"
+            className="flex shrink-0 flex-row flex-nowrap gap-1 overflow-x-auto border-b border-border px-3 py-3 [mask-image:linear-gradient(to_right,black_calc(100%-20px),transparent)] rtl:[mask-image:linear-gradient(to_left,black_calc(100%-20px),transparent)] md:[mask-image:none] md:w-[200px] md:flex-col md:flex-nowrap md:overflow-y-auto md:border-b-0 md:border-e md:px-3 md:py-4"
           >
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -318,6 +321,11 @@ export function SettingsOverlay({
                   onConfigChange={onMemoryConfigChange}
                   onBusyChange={setMemoryBusy}
                 />
+              ) : null}
+              {notice && section === "voice" ? (
+                <p role="status" className="mb-3 text-sm text-muted-foreground">
+                  {notice}
+                </p>
               ) : null}
               {section === "voice" ? (
                 <VoiceSettingsOverlay embedded onClose={requestClose} onBusyChange={setVoiceBusy} />

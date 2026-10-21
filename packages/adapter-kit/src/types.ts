@@ -673,7 +673,42 @@ export interface VoiceTranscribeRequest {
    * one language into lookalike words of another.
    */
   language?: string;
+  /** Neutral hints a provider may use to spell names and fit the app. Optional and capped. */
+  context?: TranscriptionContext;
   signal?: AbortSignal;
+}
+
+export interface TranscriptionContext {
+  appKind?: "email" | "ai" | "other";
+  /** Names and terms the speaker is likely to say. */
+  vocabulary?: string[];
+  /** Text before the cursor, for providers that adapt to it. */
+  beforeText?: string;
+}
+
+export interface TranscriptionCapabilities {
+  /** True when the provider uses `context`; others ignore it. */
+  usesContext: boolean;
+}
+
+export const MAX_TRANSCRIPTION_VOCABULARY = 100;
+export const MAX_TRANSCRIPTION_VOCABULARY_ITEM_CHARS = 64;
+export const MAX_TRANSCRIPTION_BEFORE_TEXT_CHARS = 1000;
+
+/** Trim a context to the caps. Vocabulary keeps the first items; beforeText keeps the end nearest the cursor. */
+export function capTranscriptionContext(context: TranscriptionContext): TranscriptionContext {
+  const out: TranscriptionContext = {};
+  if (context.appKind) out.appKind = context.appKind;
+  if (context.vocabulary) {
+    out.vocabulary = context.vocabulary
+      .map((word) => word.trim().slice(0, MAX_TRANSCRIPTION_VOCABULARY_ITEM_CHARS))
+      .filter(Boolean)
+      .slice(0, MAX_TRANSCRIPTION_VOCABULARY);
+  }
+  if (context.beforeText !== undefined) {
+    out.beforeText = context.beforeText.slice(-MAX_TRANSCRIPTION_BEFORE_TEXT_CHARS);
+  }
+  return out;
 }
 
 export interface BackgroundJobPayloads {

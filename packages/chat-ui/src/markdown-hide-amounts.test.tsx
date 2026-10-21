@@ -59,21 +59,16 @@ it("shows the amount when shown", async () => {
   expect(el.textContent).toContain("$73,781.83");
 });
 
-it("masks runway and run-out values in separate table cells", async () => {
+it("keeps runway, run-out dates and ownership percentages readable in a table", async () => {
   const rows = [
     "| Metric | Value |",
     "| --- | --- |",
     "| Runway | 9.2 months |",
     "| Runs out | July 2027 |",
-    "| Last 3 months | 12 |",
-    "",
-    "| Runway | Runs out |",
-    "| --- | --- |",
-    "| 9.2 months | Aug 4, 2027 |",
+    "| Alex | 40% |",
+    "| Cash | $11,111 |",
   ].join("\n");
   await show(true, <ChatMarkdown>{rows}</ChatMarkdown>);
-  for (const real of ["9.2", "July 2027", "Aug 4"]) expect(everything()).not.toContain(real);
-  expect(el.textContent).toContain("12");
-  await show(false, <ChatMarkdown>{rows}</ChatMarkdown>);
-  expect(everything()).toContain("9.2 months");
+  for (const kept of ["9.2 months", "July 2027", "40%"]) expect(el.textContent).toContain(kept);
+  expect(everything()).not.toContain("11,111");
 });

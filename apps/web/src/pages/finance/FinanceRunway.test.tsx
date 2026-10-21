@@ -106,16 +106,9 @@ it("hides the scope control when there is no crypto", async () => {
   expect(container.textContent).not.toContain("Other crypto");
 });
 
-it("says revenue is subtracted from burn, as the burn figure is calculated", async () => {
+it("does not end with a glossary of terms the page already shows", async () => {
   rpcMock.runway.mockResolvedValue(runway());
   await show();
-  expect(container.textContent).toContain("RevenueSubtracted from burn");
-  expect(container.textContent).not.toContain("RevenueExcluded");
-});
-
-it("says a raise is already in cash but not counted as burn, instead of 'Excluded'", async () => {
-  rpcMock.runway.mockResolvedValue(runway());
-  await show();
-  expect(container.textContent).toContain("FinancingIn cash, not counted as burn");
-  expect(container.textContent).not.toContain("Excluded");
+  expect(container.textContent).not.toContain("Subtracted from burn");
+  expect(container.textContent).not.toContain("not counted as burn");
 });

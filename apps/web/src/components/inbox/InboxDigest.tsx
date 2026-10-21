@@ -1,7 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { MailRow } from "@rakazo/contracts";
 import { rowSummary } from "@rakazo/core";
-import { Button, Skeleton, Tooltip, TooltipContent, TooltipTrigger } from "@rakazo/ui-web";
+import { Button, Skeleton } from "@rakazo/ui-web";
 import { Archive } from "lucide-react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { formatMailTime } from "../../lib/mail-time";
@@ -44,21 +44,10 @@ export function InboxDigest({
   return (
     <section className="mb-5 flex flex-col gap-3">
       <div className="flex justify-end">
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={t`Archive all`}
-                onClick={onArchiveAll}
-              />
-            }
-          >
-            <Archive aria-hidden="true" />
-          </TooltipTrigger>
-          <TooltipContent>{t`Archive all`}</TooltipContent>
-        </Tooltip>
+        <Button variant="ghost" size="sm" onClick={onArchiveAll}>
+          <Archive aria-hidden="true" />
+          {t`Archive all ${rows.length}`}
+        </Button>
       </div>
       {rows.map((row) => {
         const summary = rowSummary(row);

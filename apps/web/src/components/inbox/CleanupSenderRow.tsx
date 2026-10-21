@@ -1,3 +1,4 @@
+import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { CleanupSender } from "@rakazo/contracts";
 import { Button, Checkbox } from "@rakazo/ui-web";
@@ -101,14 +102,13 @@ export function CleanupSenderRow({
         ) : null}
       </div>
       <div className="text-end text-xs whitespace-nowrap text-muted-foreground tabular-nums">
-        <span>{sender.messageCount}</span>
-        <span aria-hidden="true"> · </span>
-        <span>{t`${readPercent}% read`}</span>
+        <span>{plural(sender.messageCount, { one: "# email", other: "# emails" })}</span>
+        <span>, {t`${readPercent}% read`}</span>
         {sender.lastReceivedAt ? (
-          <>
-            <span aria-hidden="true"> · </span>
+          <span>
+            , <Trans>last</Trans>{" "}
             <time dateTime={sender.lastReceivedAt}>{formatMailTime(sender.lastReceivedAt)}</time>
-          </>
+          </span>
         ) : null}
       </div>
     </label>

@@ -35,6 +35,21 @@ function formatCell(cell: Cell, hidden: boolean): string {
   return typeof cell === "string" ? maskCurrencyWhenHidden(text) : text;
 }
 
+/** CSV cells arrive as text. Big whole numbers and decimals read as numbers; IDs with a leading zero and short whole numbers such as years stay text. */
+function csvCell(cell: Cell): Cell {
+  if (typeof cell !== "string" || !/^-?([1-9]\d{4,14}|(0|[1-9]\d*)\.\d+)$/.test(cell)) return cell;
+  return Number(cell);
+}
+
+/** "monthly_burn" and "monthlyBurn" read as "Monthly burn". */
+function humanise(label: string): string {
+  const words = label
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 type State =
   | { status: "loading" }
   | { status: "error"; message: string }
@@ -46,7 +61,17 @@ type State =
  * letters and row numbers, and a button for the next page of rows. The server reads the file.
  * Give it a `key` of the source so a new file starts on its first sheet.
  */
-export function SheetPreview({ source, className }: { source: SheetSource; className?: string }) {
+export function SheetPreview({
+  source,
+  name,
+  className,
+}: {
+  source: SheetSource;
+  /** The file name. A .csv or .tsv opens as a plain table with its first row as the header. */
+  name?: string;
+  className?: string;
+}) {
+  const flat = /\.(csv|tsv)$/i.test(name ?? "");
   const hidden = useHideAmounts();
   const [sheet, setSheet] = useState<string | undefined>(undefined);
   const [state, setState] = useState<State>({ status: "loading" });
@@ -157,23 +182,42 @@ export function SheetPreview({ source, className }: { source: SheetSource; class
           >
             <TableHeader>
               <TableHeadRow>
-                <TableHead className="sticky start-0 top-0 z-20 h-7 w-12 border-b border-e border-border bg-muted p-0" />
-                {page.columns.map((letter) => (
-                  <TableHead
-                    key={letter}
-                    className="sticky top-0 z-10 h-7 border-b border-e border-border bg-muted px-2 py-0 text-center"
-                  >
-                    {letter}
-                  </TableHead>
-                ))}
+                {flat ? (
+                  page.header.map((label, index) => (
+                    <TableHead
+                      key={index}
+                      className="sticky top-0 z-10 h-8 border-b border-border bg-muted px-2 py-0 text-start"
+                    >
+                      {typeof label === "string" ? humanise(label) : formatCell(label, hidden)}
+                    </TableHead>
+                  ))
+                ) : (
+                  <>
+                    <TableHead className="sticky start-0 top-0 z-20 h-7 w-12 border-b border-e border-border bg-muted p-0" />
+                    {page.columns.map((letter) => (
+                      <TableHead
+                        key={letter}
+                        className="sticky top-0 z-10 h-7 border-b border-e border-border bg-muted px-2 py-0 text-center"
+                      >
+                        {letter}
+                      </TableHead>
+                    ))}
+                  </>
+                )}
               </TableHeadRow>
             </TableHeader>
             <TableBody>
-              {page.headerRow !== null ? (
+              {!flat && page.headerRow !== null ? (
                 <SheetRow row={page.headerRow} cells={page.header} hidden={hidden} head />
               ) : null}
               {rows.map((entry) => (
-                <SheetRow key={entry.row} row={entry.row} cells={entry.cells} hidden={hidden} />
+                <SheetRow
+                  key={entry.row}
+                  row={entry.row}
+                  cells={flat ? entry.cells.map(csvCell) : entry.cells}
+                  hidden={hidden}
+                  flat={flat}
+                />
               ))}
             </TableBody>
           </Table>
@@ -200,22 +244,26 @@ function SheetRow({
   cells,
   hidden,
   head = false,
+  flat = false,
 }: {
   row: number;
   cells: Cell[];
   hidden: boolean;
   head?: boolean;
+  flat?: boolean;
 }) {
   return (
     <TableRow className={head ? "font-medium" : undefined}>
-      <TableCell
-        className={cn(
-          "sticky start-0 z-10 w-12 border-b border-e border-border bg-muted px-2 py-1 text-end font-mono text-xs font-normal tabular-nums text-muted-foreground",
-          head && "top-7 z-20",
-        )}
-      >
-        {row}
-      </TableCell>
+      {flat ? null : (
+        <TableCell
+          className={cn(
+            "sticky start-0 z-10 w-12 border-b border-e border-border bg-muted px-2 py-1 text-end font-mono text-xs font-normal tabular-nums text-muted-foreground",
+            head && "top-7 z-20",
+          )}
+        >
+          {row}
+        </TableCell>
+      )}
       {cells.map((cell, index) => {
         const text = formatCell(cell, hidden);
         return (

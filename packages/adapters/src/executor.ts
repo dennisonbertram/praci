@@ -2248,10 +2248,14 @@ export function createRunExecutor(deps: ExecutorDeps) {
             }
           }
         }
-        if (mailThreadTexts.size > 0 && !(await inboxMailConsentBlock())) {
+        // The thread is stored as a system message, and runtimes keep only user and assistant
+        // history, so it is sent as a user turn: the placeholder or, with consent, the text.
+        if (mailThreadTexts.size > 0) {
+          const consented = !(await inboxMailConsentBlock());
           history = history.map((item) => {
             const text = item.id ? mailThreadTexts.get(item.id) : undefined;
-            return text === undefined ? item : { ...item, content: text };
+            if (text === undefined) return item;
+            return { ...item, role: "user" as const, content: consented ? text : item.content };
           });
         }
         // Connected Google Drive accounts of the bot owner, looked up once per run.

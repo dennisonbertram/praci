@@ -202,7 +202,7 @@ export function FullScreenPreview({
         <div className="min-h-0 flex-1">
           {canPreviewSpreadsheet(item.name, item.mimeType) ? (
             <div className="h-full overflow-hidden rounded-md border border-border">
-              <SheetPreview source={{ dataRoomItemId: item.id }} />
+              <SheetPreview source={{ dataRoomItemId: item.id }} name={item.name} />
             </div>
           ) : (
             <FileViewer item={item} file={file} fill />

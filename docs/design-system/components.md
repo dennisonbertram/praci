@@ -279,7 +279,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ContactsPage | [apps/web/src/pages/Contacts.tsx](../../apps/web/src/pages/Contacts.tsx) | [Contacts.stories.tsx](../../apps/web/src/pages/Contacts.stories.tsx) | web |
 | FileInputButton, DataRoomPage | [apps/web/src/pages/DataRoom.tsx](../../apps/web/src/pages/DataRoom.tsx) | [DataRoom.stories.tsx](../../apps/web/src/pages/DataRoom.stories.tsx) | web |
 | ExternalConversationSettings | [apps/web/src/pages/ExternalConversationSettings.tsx](../../apps/web/src/pages/ExternalConversationSettings.tsx) | [ExternalConversationSettings.stories.tsx](../../apps/web/src/pages/ExternalConversationSettings.stories.tsx) | web |
-| FinancePage, Dashboard, EmptyState, DashboardSkeleton, SourceChip, Overview, ShowAll, HoverRow, UpcomingRow, SubscriptionsTable | [apps/web/src/pages/Finance.tsx](../../apps/web/src/pages/Finance.tsx) | [Finance.stories.tsx](../../apps/web/src/pages/Finance.stories.tsx) | web |
+| FinancePage, Dashboard, EmptyState, DashboardSkeleton, Overview, ShowAll, HoverRow, UpcomingRow, SubscriptionsTable | [apps/web/src/pages/Finance.tsx](../../apps/web/src/pages/Finance.tsx) | [Finance.stories.tsx](../../apps/web/src/pages/Finance.stories.tsx) | web |
 | AccountTable, CryptoGroup, FinanceAccountsPage, FinanceAccountPage | [apps/web/src/pages/finance/FinanceAccounts.tsx](../../apps/web/src/pages/finance/FinanceAccounts.tsx) | [FinanceAccounts.stories.tsx](../../apps/web/src/pages/finance/FinanceAccounts.stories.tsx) | web |
 | FinanceBurnPage, FinanceMonthPage, Counted, FinanceRunwayPage | [apps/web/src/pages/finance/FinanceBurn.tsx](../../apps/web/src/pages/finance/FinanceBurn.tsx) | [FinanceBurn.stories.tsx](../../apps/web/src/pages/finance/FinanceBurn.stories.tsx) | web |
 | RemoveDialog, WalletRows, FinanceCryptoPage | [apps/web/src/pages/finance/FinanceCrypto.tsx](../../apps/web/src/pages/finance/FinanceCrypto.tsx) | [FinanceCrypto.stories.tsx](../../apps/web/src/pages/finance/FinanceCrypto.stories.tsx) | web |
@@ -340,7 +340,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
-| App, SessionApp, SignInRedirect, SessionUnavailable, AppFailed, GateFallback | [apps/web/src/App.tsx](../../apps/web/src/App.tsx) | [App.stories.tsx](../../apps/web/src/App.stories.tsx) | web |
+| App, SessionApp, LegacySetupRedirect, SignInRedirect, SessionUnavailable, AppFailed, GateFallback | [apps/web/src/App.tsx](../../apps/web/src/App.tsx) | [App.stories.tsx](../../apps/web/src/App.stories.tsx) | web |
 
 ## Mobile app (screens)
 

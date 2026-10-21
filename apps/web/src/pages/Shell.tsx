@@ -694,6 +694,8 @@ export function ShellPage() {
   useEffect(() => setSettingsOpen(false), [pathname]);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
   const [settingsModelProvider, setSettingsModelProvider] = useState<string | undefined>();
+  /** Why Settings opened, shown at the top of its pane (Call Elio without a voice provider). */
+  const [settingsNotice, setSettingsNotice] = useState<string | undefined>();
   const [messagingSettingsOpen, setMessagingSettingsOpen] = useState(false);
   const [messagingSurfaceEnabled, setMessagingSurfaceEnabled] = useState(false);
   const [messagingProviders, setMessagingProviders] = useState<string[]>([]);
@@ -2496,8 +2498,8 @@ export function ShellPage() {
   async function startElioCall() {
     if (voiceCallStarting.current) return;
     if (!voiceStatus?.ready) {
-      setSendError(t`Connect a voice provider to call Elio.`);
       openSettings("voice");
+      setSettingsNotice(t`Connect a voice provider to call Elio.`);
       return;
     }
     const originBotId = activeBotId.current;
@@ -3184,6 +3186,7 @@ export function ShellPage() {
   function openSettings(section: SettingsSection = "general", modelProvider?: string) {
     setSettingsSection(section);
     setSettingsModelProvider(modelProvider);
+    setSettingsNotice(undefined);
     setSettingsOpen(true);
   }
 
@@ -5670,6 +5673,10 @@ export function ShellPage() {
                     setRoutineError(t`Add a schedule, webhook, GitHub, or message trigger`);
                     return;
                   }
+                  if (!routineDraft.prompt.trim()) {
+                    setRoutineError(t`Write what this routine should do each time it runs.`);
+                    return;
+                  }
                   const saveRequest = ++routineSaveRequest.current;
                   routineSavePending.current = true;
                   setSavingRoutine(true);
@@ -5712,12 +5719,16 @@ export function ShellPage() {
                       saved = await rpc.routines.update({
                         routineId: targetRoutine.id,
                         name: routineDraft.name || t`Routine`,
-                        prompt: routineDraft.prompt || t`Check in.`,
+                        prompt: routineDraft.prompt.trim(),
                         crons,
                         active: armOneShot ? true : routineDraft.active,
                         webhookEnabled: routineDraft.webhookEnabled,
                         githubEnabled: routineDraft.githubEnabled,
                         messageProvider: routineDraft.messageProvider,
+                        ...(routineDraft.timezone &&
+                        routineDraft.timezone !== targetRoutine.timezone
+                          ? { timezone: routineDraft.timezone }
+                          : {}),
                         ...(routineModel.modelProvider !== targetRoutine.modelProvider ||
                         routineModel.modelId !== targetRoutine.modelId ||
                         routineModel.thinkingLevel !== targetRoutine.thinkingLevel
@@ -5729,9 +5740,9 @@ export function ShellPage() {
                       saved = await rpc.routines.create({
                         botId: targetBotId,
                         name: routineDraft.name || t`Routine`,
-                        prompt: routineDraft.prompt || t`Check in.`,
+                        prompt: routineDraft.prompt.trim(),
                         crons,
-                        timezone: accountTimezone(bootstrapMe),
+                        timezone: routineDraft.timezone || accountTimezone(bootstrapMe),
                         active: routineDraft.active,
                         notify: true,
                         webhookEnabled: routineDraft.webhookEnabled,
@@ -6227,6 +6238,7 @@ export function ShellPage() {
             onUsageOpen={refreshUsage}
             initialSection={settingsSection}
             modelProvider={settingsModelProvider}
+            notice={settingsNotice}
             avatarStyle={bootstrapMe?.avatarStyle ?? DEFAULT_AVATAR_STYLE}
             isDeploymentOwner={bootstrapMe?.isDeploymentOwner === true}
             billingEnabled={bootstrapMe?.billingEnabled === true}

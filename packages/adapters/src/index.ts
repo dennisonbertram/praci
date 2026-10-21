@@ -178,6 +178,7 @@ export * from "./scratchpad-context.js";
 export * from "./scratchpad-tools.js";
 export * from "./scripted-auto-review.js";
 export * from "./scripted-runtime.js";
+export * from "./scripted-transcription.js";
 export * from "./scripted-voice.js";
 export * from "./secret-changes.js";
 export * from "./secret-migration.js";
