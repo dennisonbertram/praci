@@ -34,7 +34,7 @@ it("shows how many conversations each choice touches and applies the one clicked
   await show({ onApply });
   expect(button("Archive 12")).toBeDefined();
   await act(async () => button("Unsubscribe 9")?.click());
-  await act(async () => button("Skip inbox 11")?.click());
+  await act(async () => button("Archive future mail 11")?.click());
   expect(onApply.mock.calls).toEqual([["unsubscribe"], ["skip_inbox"]]);
 });
 

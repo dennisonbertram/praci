@@ -74,6 +74,11 @@ msgstr ""
 msgid "{0, plural, one {# earlier message} other {# earlier messages}}"
 msgstr ""
 
+#. placeholder {0}: sender.messageCount
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "{0, plural, one {# email} other {# emails}}"
+msgstr ""
+
 #. placeholder {0}: items.length
 #: src/components/FinanceCards.tsx
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
@@ -1238,6 +1243,7 @@ msgstr ""
 msgid "Apps with their own server"
 msgstr ""
 
+#: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/InboxSenderGroup.tsx
@@ -1252,8 +1258,18 @@ msgstr "보관"
 msgid "Archive {0}"
 msgstr ""
 
+#. placeholder {0}: rows.length
 #: src/components/inbox/InboxDigest.tsx
-msgid "Archive all"
+msgid "Archive all {0}"
+msgstr ""
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Archive future mail"
+msgstr ""
+
+#. placeholder {0}: counts.skip_inbox
+#: src/components/inbox/CleanupActionBar.tsx
+msgid "Archive future mail {0}"
 msgstr ""
 
 #: src/pages/shell/transcript.tsx
@@ -4934,6 +4950,10 @@ msgstr ""
 msgid "Largest files"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "last"
+msgstr ""
+
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Last 90 days"
@@ -8328,15 +8348,6 @@ msgstr "건너뛰기"
 
 #: src/components/integrations/ConnectAppsStep.tsx
 msgid "Skip for now"
-msgstr ""
-
-#: src/components/inbox/CleanupHistory.tsx
-msgid "Skip inbox"
-msgstr ""
-
-#. placeholder {0}: counts.skip_inbox
-#: src/components/inbox/CleanupActionBar.tsx
-msgid "Skip inbox {0}"
 msgstr ""
 
 #: src/lib/localized-provider-hint.ts

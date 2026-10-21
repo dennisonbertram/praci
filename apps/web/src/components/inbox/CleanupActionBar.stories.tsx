@@ -21,3 +21,8 @@ export const SomeEmpty: Story = {
 
 /** An action is running. */
 export const Busy: Story = { args: { busy: true } };
+
+/** Nothing ticked: the bar stays so the list does not move when the first sender is ticked. */
+export const NothingTicked: Story = {
+  args: { counts: { archive: 0, unsubscribe: 0, skip_inbox: 0, spam: 0 } },
+};

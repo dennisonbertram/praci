@@ -457,6 +457,12 @@ it("drops the quoted 'On … wrote:' header from a reply's preview", async () =>
     withoutQuoteHeader("Thanks, signed. On Sat, Oct 17, 2026 at 3:10 PM Morgan wrote: > Alex"),
   ).toBe("Thanks, signed.");
   expect(withoutQuoteHeader("Plain note")).toBe("Plain note");
+  // A snippet cut inside the header has no "wrote:".
+  expect(
+    withoutQuoteHeader(
+      "Hi Morgan, Thursday works. Maya On Tue, Oct 20, 2026, 7:49 PM, Morgan Prete…",
+    ),
+  ).toBe("Hi Morgan, Thursday works. Maya");
 });
 
 it("follows the caller's archived state over an older loaded copy", async () => {

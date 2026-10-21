@@ -74,6 +74,11 @@ msgstr "{0, plural, one {# duplicate} other {# duplicates}}"
 msgid "{0, plural, one {# earlier message} other {# earlier messages}}"
 msgstr "{0, plural, one {# earlier message} other {# earlier messages}}"
 
+#. placeholder {0}: sender.messageCount
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "{0, plural, one {# email} other {# emails}}"
+msgstr "{0, plural, one {# email} other {# emails}}"
+
 #. placeholder {0}: items.length
 #: src/components/FinanceCards.tsx
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
@@ -1238,6 +1243,7 @@ msgstr "Apps"
 msgid "Apps with their own server"
 msgstr "Apps with their own server"
 
+#: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/InboxSenderGroup.tsx
@@ -1252,9 +1258,19 @@ msgstr "Archive"
 msgid "Archive {0}"
 msgstr "Archive {0}"
 
+#. placeholder {0}: rows.length
 #: src/components/inbox/InboxDigest.tsx
-msgid "Archive all"
-msgstr "Archive all"
+msgid "Archive all {0}"
+msgstr "Archive all {0}"
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Archive future mail"
+msgstr "Archive future mail"
+
+#. placeholder {0}: counts.skip_inbox
+#: src/components/inbox/CleanupActionBar.tsx
+msgid "Archive future mail {0}"
+msgstr "Archive future mail {0}"
 
 #: src/pages/shell/transcript.tsx
 msgid "archived"
@@ -4934,6 +4950,10 @@ msgstr "Language and time zone"
 msgid "Largest files"
 msgstr "Largest files"
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "last"
+msgstr "last"
+
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Last 90 days"
@@ -8329,15 +8349,6 @@ msgstr "Skip"
 #: src/components/integrations/ConnectAppsStep.tsx
 msgid "Skip for now"
 msgstr "Skip for now"
-
-#: src/components/inbox/CleanupHistory.tsx
-msgid "Skip inbox"
-msgstr "Skip inbox"
-
-#. placeholder {0}: counts.skip_inbox
-#: src/components/inbox/CleanupActionBar.tsx
-msgid "Skip inbox {0}"
-msgstr "Skip inbox {0}"
 
 #: src/lib/localized-provider-hint.ts
 msgid "Skip or deploy key"
