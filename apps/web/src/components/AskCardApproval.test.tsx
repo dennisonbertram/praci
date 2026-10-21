@@ -66,3 +66,25 @@ it("moves focus to the composer once the answer is sent", async () => {
   await act(async () => button(container, "Allow once").click());
   expect(document.activeElement).toBe(composer);
 });
+
+it("moves focus to the composer after a plain question is answered", async () => {
+  document.body.replaceChildren();
+  const composer = document.createElement("textarea");
+  composer.setAttribute("data-composer-input", "");
+  document.body.append(composer);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const question: AskBlock = {
+    kind: "ask",
+    text: "Which month?",
+    actions: [{ id: "june", label: "June" }],
+    status: "pending",
+  };
+  act(() =>
+    createRoot(container).render(
+      <AskCard block={question} canAnswer onAnswer={async () => undefined} />,
+    ),
+  );
+  await act(async () => button(container, "June").click());
+  expect(document.activeElement).toBe(composer);
+});

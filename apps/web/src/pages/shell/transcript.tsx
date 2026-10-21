@@ -542,13 +542,30 @@ export const Transcript = memo(function Transcript({
         following.current = false;
         autoScrolling.current = false;
         element.scrollTop += offset - 24;
+      }
+      // A question waiting for an answer matters more than where the unread messages begin.
+      const ask = answerableAskMessageId
+        ? element?.querySelector<HTMLElement>(
+            `[data-stored-message][data-message-id="${CSS.escape(answerableAskMessageId)}"]`,
+          )
+        : null;
+      if (element && ask) {
+        const view = element.getBoundingClientRect();
+        const box = ask.getBoundingClientRect();
+        if (box.bottom > view.bottom || box.top < view.top) {
+          following.current = false;
+          autoScrolling.current = false;
+          element.scrollTop += box.top - view.top - 24;
+        }
+      }
+      if (element) {
         setAtEnd(transcriptIsNearEnd(element));
         measureView();
       }
       setDividerSettled(true);
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [showDividerId, dividerSettled, scrollRef, measureView]);
+  }, [showDividerId, dividerSettled, scrollRef, measureView, answerableAskMessageId]);
 
   useEffect(() => {
     if (atEnd) setDismissedCount(0);

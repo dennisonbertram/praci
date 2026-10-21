@@ -106,7 +106,7 @@ export function AskCard({
     try {
       await onAnswer(submitValue, submitUsername);
       // The card's buttons vanish with the answer; keep the keyboard in the conversation.
-      if (approvalActions) document.querySelector<HTMLElement>("[data-composer-input]")?.focus();
+      if (!secretInput) document.querySelector<HTMLElement>("[data-composer-input]")?.focus();
     } catch (err) {
       // A secret answer's failure may echo the secret, so never show its message.
       setError(
