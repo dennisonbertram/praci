@@ -1,3 +1,4 @@
+import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { CashPoint } from "@rakazo/contracts";
 import { useEffect, useId, useRef, useState } from "react";
@@ -62,8 +63,8 @@ export function Chart({
   label: string;
   children: (width: number) => React.ReactNode;
 }) {
-  // A chart's shape alone shows trends and when cash runs out, so it is not drawn while hidden.
-  const hidden = useHideAmounts();
+  // Hidden amounts hide money only: the shape and the dates stay, the axis and figures go.
+  useHideAmounts();
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   useEffect(() => {
@@ -75,18 +76,7 @@ export function Chart({
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-    // Mounted while hidden there is nothing to measure yet; showing amounts measures again.
-  }, [hidden]);
-  if (hidden)
-    return (
-      <div
-        data-testid="chart-hidden"
-        className="grid w-full place-items-center rounded-md bg-muted text-[13px] text-muted-foreground"
-        style={{ height }}
-      >
-        {height >= 40 ? <Trans>Chart hidden while amounts are hidden</Trans> : null}
-      </div>
-    );
+  }, []);
   return (
     <div ref={ref} className="w-full" style={{ height }}>
       {width > 0 ? (
@@ -122,7 +112,7 @@ function Grid({
   bottom: number;
   scale: { step: number; top: number; floor?: number };
 }) {
-  useHideAmounts();
+  const hidden = useHideAmounts();
   const floor = scale.floor ?? 0;
   const lines: number[] = [];
   // With nothing to plot every step rounds to "$0"; one $0 line is drawn instead of a stack of them.
@@ -142,15 +132,17 @@ function Grid({
               className="stroke-border"
               strokeWidth={1}
             />
-            <text
-              x={left - 6}
-              y={y + 3}
-              textAnchor="end"
-              className="fill-muted-foreground"
-              fontSize={11}
-            >
-              {axisMoney(v)}
-            </text>
+            {hidden ? null : (
+              <text
+                x={left - 6}
+                y={y + 3}
+                textAnchor="end"
+                className="fill-muted-foreground"
+                fontSize={11}
+              >
+                {axisMoney(v)}
+              </text>
+            )}
           </g>
         );
       })}
@@ -218,7 +210,7 @@ export function LineChart({
         const solid = Math.min(solidUntil ?? values.length - 1, values.length - 1);
         const every = Math.max(
           1,
-          Math.ceil(46 / ((width - left - right) / (values.length - 1 || 1))),
+          Math.ceil(62 / ((width - left - right) / (values.length - 1 || 1))),
         );
         return (
           <>
@@ -576,8 +568,10 @@ export function BurnLines({
                 </g>
               );
             })}
-            {series.map((m, i) =>
-              m.financingCents > scale.top ? (
+            {series.map((m, i) => {
+              if (m.financingCents <= scale.top) return null;
+              const when = granularity === "day" ? dayMonth(m.start) : (names[i] ?? "");
+              return (
                 <text
                   key={m.start}
                   data-testid="financing-clipped"
@@ -588,10 +582,10 @@ export function BurnLines({
                   className="fill-foreground"
                   fontSize={11}
                 >
-                  {`↑ ${money(m.financingCents)}`}
+                  {`${t`Financing, ${when}`} ↑ ${money(m.financingCents)}`}
                 </text>
-              ) : null,
-            )}
+              );
+            })}
             {shown && active !== null ? (
               <g data-testid="burn-tooltip" pointerEvents="none">
                 <rect
@@ -651,7 +645,7 @@ export function MonthBars({
   height?: number;
   label: string;
 }) {
-  useHideAmounts();
+  const hidden = useHideAmounts();
   return (
     <Chart height={height} label={label}>
       {(width) => {
@@ -686,15 +680,17 @@ export function MonthBars({
                     rx={2}
                     className="fill-foreground"
                   />
-                  <text
-                    x={cx}
-                    y={y - 4}
-                    textAnchor="middle"
-                    className="fill-muted-foreground"
-                    fontSize={11}
-                  >
-                    {money(item.cents)}
-                  </text>
+                  {hidden ? null : (
+                    <text
+                      x={cx}
+                      y={y - 4}
+                      textAnchor="middle"
+                      className="fill-muted-foreground"
+                      fontSize={11}
+                    >
+                      {money(item.cents)}
+                    </text>
+                  )}
                   <text
                     x={cx}
                     y={height - 6}

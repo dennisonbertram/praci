@@ -1,5 +1,6 @@
 import { runContinueJob } from "@rakazo/adapter-kit";
 import { MessageBlock } from "@rakazo/contracts";
+import type { PrivateFragments } from "@rakazo/core";
 import { botMessageHopExhausted, nextBotMessageHop, renderGroupMembersContext } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import {
@@ -10,6 +11,7 @@ import {
   touchGroupUpdatedAt,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
+import { EXTERNAL_HAND_OFF_REFUSED, mayReachExternalBot } from "./bot-messages.js";
 import type { ExecutorDeps } from "./executor.js";
 
 export async function handoffToGroupBot(
@@ -22,7 +24,13 @@ export async function handoffToGroupBot(
     userId: string;
   },
   groupId: string,
-  input: { bot_id?: string; confirm_name?: string; message: string },
+  input: {
+    bot_id?: string;
+    confirm_name?: string;
+    message: string;
+    /** What the run read from private sources, for a handoff to an external bot. */
+    outbound?: () => Promise<PrivateFragments | undefined>;
+  },
 ) {
   const deliveryKey = `group-handoff:${run.id}`;
   const committed = await deps.prisma.$transaction(async (tx) => {
@@ -39,7 +47,7 @@ export async function handoffToGroupBot(
         include: {
           members: {
             where: { bot: { archivedAt: null } },
-            include: { bot: { select: { id: true, name: true } } },
+            include: { bot: { select: { id: true, name: true, audience: true } } },
             orderBy: { createdAt: "asc" },
           },
         },
@@ -91,6 +99,16 @@ export async function handoffToGroupBot(
     if (targetId === run.botId) return { error: "cannot hand off to yourself" } as const;
     if (!group.members.some((member) => member.bot.id === targetId)) {
       return { error: "handoff target is not a group member" } as const;
+    }
+
+    // An external member gets a handoff only if it repeats nothing this run read; there is no card
+    // for a handoff, so anything else is refused.
+    const targetMember = group.members.find((member) => member.bot.id === targetId);
+    if (
+      targetMember?.bot.audience === "external" &&
+      !(await mayReachExternalBot(input.message, input.outbound))
+    ) {
+      return { error: EXTERNAL_HAND_OFF_REFUSED } as const;
     }
 
     let sourceBlocks: MessageBlock[] = [];

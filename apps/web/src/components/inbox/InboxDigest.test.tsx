@@ -57,9 +57,17 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-it("shows one card per issue with the sender, subject, summary and date", async () => {
+it("shows one card per sender with the newest subject, summary, date and message count", async () => {
   await show({
-    rows: [row("a", { reason: "Three papers on sleep", unread: true }), row("b")],
+    rows: [
+      row("a", { reason: "Three papers on sleep", unread: true }),
+      row("b", {
+        from: "Other Digest",
+        fromAddress: "x@other.example.test",
+        receivedAt: "2026-10-17T10:00:00.000Z",
+      }),
+      row("c", { receivedAt: "2026-10-10T10:00:00.000Z" }),
+    ],
   });
   const cards = document.querySelectorAll("[data-row-id]");
   expect(cards).toHaveLength(2);
@@ -70,6 +78,7 @@ it("shows one card per issue with the sender, subject, summary and date", async 
   expect(cards[0]?.querySelector("time")?.getAttribute("datetime")).toBe(
     "2026-10-18T10:00:00.000Z",
   );
+  expect(first).toContain("2 messages");
   expect(cards[0]?.querySelector("[data-unread-dot]")).not.toBeNull();
   // Without a summary the snippet stands in.
   expect(cards[1]?.textContent).toContain("Snippet b");
@@ -103,7 +112,10 @@ it("shows placeholders while loading", async () => {
 });
 
 it("marks the focused card", async () => {
-  await show({ rows: [row("a"), row("b")], selectedId: "b" });
+  await show({
+    rows: [row("a"), row("b", { from: "Other", fromAddress: "x@other.example.test" })],
+    selectedId: "b",
+  });
   expect(document.querySelector('[data-row-id="b"]')?.getAttribute("aria-current")).toBe("true");
   expect(document.querySelector('[data-row-id="a"]')?.getAttribute("aria-current")).toBeNull();
 });

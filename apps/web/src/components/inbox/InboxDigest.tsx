@@ -1,14 +1,15 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { MailRow } from "@rakazo/contracts";
-import { rowSummary } from "@rakazo/core";
+import { groupBySender, rowSummary } from "@rakazo/core";
 import { Button, Skeleton } from "@rakazo/ui-web";
 import { Archive } from "lucide-react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { formatMailTime } from "../../lib/mail-time";
 
 /**
- * The Newsletters pile read as a digest: one card per issue, newest first, each with the sender,
- * subject, the one-line summary and an Open button. Archive all archives every card shown.
+ * The Newsletters pile read as a digest: one card per sender with how many messages they sent,
+ * newest sender first, showing the newest message's subject and summary and an Open button for it.
+ * Archive all archives every message in the digest.
  */
 export function InboxDigest({
   rows,
@@ -41,6 +42,7 @@ export function InboxDigest({
         <Trans>No mail</Trans>
       </p>
     );
+  const groups = groupBySender(rows);
   return (
     <section className="mb-5 flex flex-col gap-3">
       <div className="flex justify-end">
@@ -49,7 +51,8 @@ export function InboxDigest({
           {t`Archive all ${rows.length}`}
         </Button>
       </div>
-      {rows.map((row) => {
+      {groups.map((group) => {
+        const row = group.newest;
         const summary = rowSummary(row);
         return (
           <article
@@ -61,13 +64,18 @@ export function InboxDigest({
             <div className="flex min-w-0 items-center gap-2">
               <span
                 aria-hidden="true"
-                data-unread-dot={row.unread ? "" : undefined}
-                className={`size-2 shrink-0 rounded-full ${row.unread ? "bg-primary" : ""}`}
+                data-unread-dot={group.unreadCount > 0 ? "" : undefined}
+                className={`size-2 shrink-0 rounded-full ${group.unreadCount > 0 ? "bg-primary" : ""}`}
               />
               <span dir="auto" className="truncate text-[15px] font-semibold">
                 {row.from}
               </span>
-              {row.unread ? (
+              {group.count > 1 ? (
+                <span className="shrink-0 text-[13px] text-muted-foreground">
+                  {t`${group.count} messages`}
+                </span>
+              ) : null}
+              {group.unreadCount > 0 ? (
                 <span className="sr-only">
                   <Trans> (unread)</Trans>
                 </span>

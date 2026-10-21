@@ -1301,6 +1301,8 @@ export const appContract = {
         /** The space has a Devin connection; the Devin page shows in the sidebar only then. */
         devinConnected: z.boolean(),
         dataRoomWaiting: z.number().int(),
+        /** A ticket exists in the space; the Task board shows in menus only then. */
+        hasTickets: z.boolean(),
         /** Per agent with unseen notifications, the highest-priority kind. */
         botKinds: z.record(z.string(), NotificationKindSchema),
       }),
@@ -1511,6 +1513,10 @@ export const appContract = {
     /** Data Room consent for the Legal agent's own model; same shapes as dataRoom.consent. */
     consent: oc.output(DataRoomConsentStatusSchema),
     consentGrant: oc.input(DataRoomConsentGrantInputSchema).output(DataRoomConsentStatusSchema),
+  },
+  investors: {
+    /** Creates the Investors agent once (idempotent) and returns it. */
+    agent: oc.output(BotSchema),
   },
   carta: {
     agent: oc.output(BotSchema),
