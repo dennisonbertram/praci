@@ -197,6 +197,11 @@ msgstr "{0} (over 10 MB)"
 msgid "{0} (overdue)"
 msgstr "{0} (overdue)"
 
+#. placeholder {0}: selected.name
+#: src/pages/VoiceSettingsOverlay.tsx
+msgid "{0} API key"
+msgstr "{0} API key"
+
 #. placeholder {0}: bot.name
 #: src/components/integrations/parts.tsx
 msgid "{0} can use {appName}"
@@ -1194,7 +1199,6 @@ msgstr "API is back, but the update did not finish. Check the host logs."
 #: src/lib/localized-provider-hint.ts
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
-#: src/pages/VoiceSettingsOverlay.tsx
 msgid "API key"
 msgstr "API key"
 
@@ -1720,8 +1724,8 @@ msgid "Bots run on"
 msgstr "Bots run on"
 
 #: src/pages/Welcome.tsx
-msgid "Bots that run your inbox, cash,<0/>cap table and investor documents."
-msgstr "Bots that run your inbox, cash,<0/>cap table and investor documents."
+msgid "Bots that run your inbox, cash, cap table and investor documents."
+msgstr "Bots that run your inbox, cash, cap table and investor documents."
 
 #: src/pages/Paywall.tsx
 msgid "Bots with their own computer and browser"
@@ -2452,15 +2456,16 @@ msgstr "Confirm the URL is reachable from this browser session, then test again.
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/shell/message-cards.tsx
-#: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect"
 msgstr "Connect"
 
 #. placeholder {0}: exchange.name
 #. placeholder {0}: item.name
+#. placeholder {0}: selected.name
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect {0}"
 msgstr "Connect {0}"
 
@@ -4597,10 +4602,6 @@ msgstr "Hide sidebar"
 msgid "Hide transcript"
 msgstr "Hide transcript"
 
-#: src/components/HideAmountsToggle.tsx
-msgid "Hides money amounts in finance, chat and email."
-msgstr "Hides money amounts in finance, chat and email."
-
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "High"
@@ -5558,10 +5559,6 @@ msgstr "Models from server"
 msgid "Models list OK. {modelCount, plural, one {# model} other {# models}} available. Chat was not tested."
 msgstr "Models list OK. {modelCount, plural, one {# model} other {# models}} available. Chat was not tested."
 
-#: src/components/HideAmountsToggle.tsx
-msgid "Money amounts are hidden in finance, chat and email."
-msgstr "Money amounts are hidden in finance, chat and email."
-
 #: src/lib/billing.ts
 msgid "month"
 msgstr "month"
@@ -5781,7 +5778,6 @@ msgstr "Never changes your account"
 msgid "new"
 msgstr "new"
 
-#: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/transcript.tsx
 msgid "New"
 msgstr "New"
@@ -6830,10 +6826,6 @@ msgstr "Posted"
 msgid "Praci doesn't tag new files."
 msgstr "Praci doesn't tag new files."
 
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "Praci keeps itself up to date. If an update ever needs you, it shows here."
-msgstr "Praci keeps itself up to date. If an update ever needs you, it shows here."
-
 #: src/components/DataExport.tsx
 msgid "Preparing…"
 msgstr "Preparing…"
@@ -7481,6 +7473,10 @@ msgstr "Reset computer"
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Reset computer?"
 msgstr "Reset computer?"
+
+#: src/pages/Auth.tsx
+msgid "Reset link expired"
+msgstr "Reset link expired"
 
 #: src/pages/Auth.tsx
 msgid "Reset password"
@@ -8708,6 +8704,10 @@ msgstr "Take the tour"
 msgid "Task board"
 msgstr "Task board"
 
+#: src/pages/Shell.tsx
+msgid "tasks, tickets"
+msgstr "tasks, tickets"
+
 #: src/components/data-room/format.ts
 msgid "Tax document"
 msgstr "Tax document"
@@ -9031,10 +9031,6 @@ msgstr "This provider is not connected yet."
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "This removes the connection from every space."
 msgstr "This removes the connection from every space."
-
-#: src/pages/Auth.tsx
-msgid "This reset link is invalid or expired"
-msgstr "This reset link is invalid or expired"
 
 #: src/pages/shell/message-cards.tsx
 msgid "This server cannot be assigned without a bot."
@@ -9491,7 +9487,6 @@ msgstr "Updated {updated}"
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
-#: src/pages/SettingsOverlay.tsx
 msgid "Updates"
 msgstr "Updates"
 
@@ -9565,7 +9560,7 @@ msgstr "Urgent"
 msgid "URL"
 msgstr "URL"
 
-#: src/pages/SettingsOverlay.tsx
+#: src/pages/AccountSettingsOverlay.tsx
 msgid "Usage"
 msgstr "Usage"
 

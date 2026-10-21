@@ -53,3 +53,21 @@ export const SearchFindsPage: Story = {
     await userEvent.type(await screen.findByTestId("command-palette-search"), "fin");
   },
 };
+
+export const SearchFindsContacts: Story = {
+  name: "Search lists matching contacts",
+  args: {
+    searchLinks: async () => [
+      {
+        heading: "Contacts",
+        entries: [
+          { id: "/app/contacts?q=Ada%20Example", label: "Ada Example" },
+          { id: "/app/contacts?q=Ben%20Sample", label: "Ben Sample" },
+        ],
+      },
+    ],
+  },
+  play: async () => {
+    await userEvent.type(await screen.findByTestId("command-palette-search"), "halcyon");
+  },
+};

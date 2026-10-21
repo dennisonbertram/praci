@@ -197,6 +197,11 @@ msgstr ""
 msgid "{0} (overdue)"
 msgstr ""
 
+#. placeholder {0}: selected.name
+#: src/pages/VoiceSettingsOverlay.tsx
+msgid "{0} API key"
+msgstr ""
+
 #. placeholder {0}: bot.name
 #: src/components/integrations/parts.tsx
 msgid "{0} can use {appName}"
@@ -1194,7 +1199,6 @@ msgstr "La API volvió, pero la actualización no terminó. Revisa los logs del 
 #: src/lib/localized-provider-hint.ts
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
-#: src/pages/VoiceSettingsOverlay.tsx
 msgid "API key"
 msgstr "Clave de API"
 
@@ -1720,7 +1724,7 @@ msgid "Bots run on"
 msgstr ""
 
 #: src/pages/Welcome.tsx
-msgid "Bots that run your inbox, cash,<0/>cap table and investor documents."
+msgid "Bots that run your inbox, cash, cap table and investor documents."
 msgstr ""
 
 #: src/pages/Paywall.tsx
@@ -2452,15 +2456,16 @@ msgstr "Confirma que la URL es accesible desde esta sesión del navegador y vuel
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/shell/message-cards.tsx
-#: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect"
 msgstr "Conectar"
 
 #. placeholder {0}: exchange.name
 #. placeholder {0}: item.name
+#. placeholder {0}: selected.name
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect {0}"
 msgstr ""
 
@@ -4597,10 +4602,6 @@ msgstr ""
 msgid "Hide transcript"
 msgstr "Ocultar la transcripción"
 
-#: src/components/HideAmountsToggle.tsx
-msgid "Hides money amounts in finance, chat and email."
-msgstr ""
-
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "High"
@@ -5558,10 +5559,6 @@ msgstr "Modelos del servidor"
 msgid "Models list OK. {modelCount, plural, one {# model} other {# models}} available. Chat was not tested."
 msgstr "Lista de modelos correcta. {modelCount, plural, one {# modelo disponible} other {# modelos disponibles}}. No se probó el chat."
 
-#: src/components/HideAmountsToggle.tsx
-msgid "Money amounts are hidden in finance, chat and email."
-msgstr ""
-
 #: src/lib/billing.ts
 msgid "month"
 msgstr ""
@@ -5781,7 +5778,6 @@ msgstr ""
 msgid "new"
 msgstr ""
 
-#: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/transcript.tsx
 msgid "New"
 msgstr ""
@@ -6830,10 +6826,6 @@ msgstr ""
 msgid "Praci doesn't tag new files."
 msgstr ""
 
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "Praci keeps itself up to date. If an update ever needs you, it shows here."
-msgstr ""
-
 #: src/components/DataExport.tsx
 msgid "Preparing…"
 msgstr ""
@@ -7481,6 +7473,10 @@ msgstr "Restablecer computadora"
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Reset computer?"
 msgstr "¿Restablecer computadora?"
+
+#: src/pages/Auth.tsx
+msgid "Reset link expired"
+msgstr ""
 
 #: src/pages/Auth.tsx
 msgid "Reset password"
@@ -8708,6 +8704,10 @@ msgstr ""
 msgid "Task board"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "tasks, tickets"
+msgstr ""
+
 #: src/components/data-room/format.ts
 msgid "Tax document"
 msgstr ""
@@ -9031,10 +9031,6 @@ msgstr "Este proveedor aún no está conectado."
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "This removes the connection from every space."
 msgstr ""
-
-#: src/pages/Auth.tsx
-msgid "This reset link is invalid or expired"
-msgstr "Este enlace de restablecimiento no es válido o expiró"
 
 #: src/pages/shell/message-cards.tsx
 msgid "This server cannot be assigned without a bot."
@@ -9491,7 +9487,6 @@ msgstr ""
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
-#: src/pages/SettingsOverlay.tsx
 msgid "Updates"
 msgstr "Actualizaciones"
 
@@ -9565,7 +9560,7 @@ msgstr ""
 msgid "URL"
 msgstr ""
 
-#: src/pages/SettingsOverlay.tsx
+#: src/pages/AccountSettingsOverlay.tsx
 msgid "Usage"
 msgstr "Uso"
 

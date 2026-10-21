@@ -307,6 +307,7 @@ export function CommandPalette({
           onValueChange={setSearch}
           placeholder={t`Search`}
           data-testid="command-palette-search"
+          autoFocus
         />
         <CommandList className="max-h-[min(24rem,60vh)]" data-testid="command-palette-list">
           <CommandEmpty>

@@ -168,7 +168,7 @@ import { glanceBadge, runwayGlance, StatusMark } from "../components/sidebar-gla
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
-import { FirstRunTour } from "../components/tour/FirstRunTour";
+import { connectCardsOpen, FirstRunTour } from "../components/tour/FirstRunTour";
 import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
 import type { ArtifactTarget } from "../lib/artifact-open";
@@ -444,6 +444,26 @@ async function findDocumentsAndArtifacts(query: string) {
       .catch((): SearchLink[] => []),
   ]);
   return { documents, artifacts };
+}
+
+/** Contacts whose name, email or organization contain the text. */
+function findContacts(query: string): Promise<SearchLink[]> {
+  const needle = query.toLowerCase();
+  return rpc.contacts
+    .list({})
+    .then((list) =>
+      list
+        .filter((c) =>
+          [c.name, c.email, c.organization].some((v) => v?.toLowerCase().includes(needle)),
+        )
+        .slice(0, 5)
+        .map((c) => ({
+          id: c.name,
+          label: c.name,
+          detail: c.organization ?? c.email ?? undefined,
+        })),
+    )
+    .catch((): SearchLink[] => []);
 }
 
 export function ShellPage() {
@@ -817,8 +837,13 @@ export function ShellPage() {
       ),
     ),
   );
+  // It also waits for the Connect cards, so two prompts never compete; writing a message skips them.
   const tourOpen =
-    tourRestart || (bootstrapMe?.tourSeen === false && bots.length > 0 && !firstQuestionOpen);
+    tourRestart ||
+    (bootstrapMe?.tourSeen === false &&
+      bots.length > 0 &&
+      !firstQuestionOpen &&
+      !connectCardsOpen(snapshot?.messages ?? []));
   // On a phone the tour points into the sidebar drawer, so open it while the tour runs.
   useEffect(() => {
     if (tourOpen && !window.matchMedia("(min-width: 1024px)").matches) setMobileSidebarOpen(true);
@@ -2028,10 +2053,20 @@ export function ShellPage() {
       { id: "contacts", label: t`Contacts`, icon: <BookUser {...icon} /> },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
       { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
+      ...(bootstrapMe?.ticketBoardEnabled
+        ? [
+            {
+              id: "board",
+              label: t`Task board`,
+              keywords: t`tasks, tickets`,
+              icon: <SquareKanban {...icon} />,
+            },
+          ]
+        : []),
       { id: "integrations", label: t`Apps`, icon: <LayoutGrid {...icon} /> },
       { id: "settings", label: t`Settings`, icon: <Settings {...icon} /> },
     ];
-  }, [t]);
+  }, [t, bootstrapMe?.ticketBoardEnabled]);
   // A page hidden in Page options stays out of search and the command palette too.
   const visiblePages = useMemo(
     () => appPages.filter((page) => !hiddenPages.includes(page.id)),
@@ -2053,8 +2088,15 @@ export function ShellPage() {
 
   const searchPaletteLinks = useCallback(
     async (q: string) => {
-      const found = await findDocumentsAndArtifacts(q);
+      const [found, contacts] = await Promise.all([findDocumentsAndArtifacts(q), findContacts(q)]);
       return [
+        {
+          heading: t`Contacts`,
+          entries: contacts.map((c) => ({
+            id: `/app/contacts?q=${encodeURIComponent(c.id)}`,
+            label: c.label,
+          })),
+        },
         {
           heading: t`Documents`,
           entries: found.documents.map((doc) => ({
@@ -2097,24 +2139,25 @@ export function ShellPage() {
       return;
     }
     const abort = new AbortController();
+    // Loading from the first keystroke, so "No matches" cannot show during the debounce.
+    setSearchLoading(true);
     const timer = window.setTimeout(() => {
-      setSearchLoading(true);
-      void findDocumentsAndArtifacts(spaceQuery).then((found) => {
+      const docs = findDocumentsAndArtifacts(spaceQuery).then((found) => {
         if (abort.signal.aborted) return;
         setSearchDocuments(found.documents);
         setSearchArtifacts(found.artifacts);
       });
-      void rpc.search
+      const chats = rpc.search
         .query({ q: spaceQuery })
         .then((result) => {
           if (!abort.signal.aborted) setSearchHits(result.hits);
         })
         .catch(() => {
           if (!abort.signal.aborted) setSearchHits([]);
-        })
-        .finally(() => {
-          if (!abort.signal.aborted) setSearchLoading(false);
         });
+      void Promise.all([docs, chats]).finally(() => {
+        if (!abort.signal.aborted) setSearchLoading(false);
+      });
     }, 200);
     return () => {
       abort.abort();
@@ -3794,7 +3837,7 @@ export function ShellPage() {
                   return;
                 }
                 if (action === "settings-usage") {
-                  openSettings("usage");
+                  openSettings("general");
                 }
               }}
             />

@@ -186,3 +186,30 @@ it("shows a failed sign-in options load only in the opened delete panel, with Re
   expect(fetchAccountSecurity).toHaveBeenCalledTimes(2);
   expect(host.querySelector('[role="alert"]')).toBeNull();
 });
+
+it("scrolls only the pane that holds the delete form, never the dialog around it", async () => {
+  const dialogScroll = vi.fn();
+  const proto = Element.prototype as { scrollIntoView?: () => void };
+  const original = proto.scrollIntoView;
+  proto.scrollIntoView = dialogScroll;
+  const pane = document.createElement("div");
+  pane.style.overflowY = "auto";
+  pane.getBoundingClientRect = () => ({ bottom: 700 }) as DOMRect;
+  host.replaceWith(pane);
+  pane.append(host);
+  const proto2 = HTMLDivElement.prototype;
+  const rect = proto2.getBoundingClientRect;
+  proto2.getBoundingClientRect = function (this: HTMLElement) {
+    return this === pane ? ({ bottom: 700 } as DOMRect) : ({ bottom: 900 } as DOMRect);
+  };
+  try {
+    await render();
+    await click("Delete account");
+    expect(pane.scrollTop).toBe(200);
+    expect(dialogScroll).not.toHaveBeenCalled();
+  } finally {
+    proto2.getBoundingClientRect = rect;
+    proto.scrollIntoView = original;
+    pane.replaceWith(host);
+  }
+});
