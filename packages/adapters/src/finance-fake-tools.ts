@@ -132,8 +132,6 @@ export function fakeMercury(
       return { requestId: `fake-request-${sendMoneyRequests.length}`, status: "pendingApproval" };
     }
     if (name === "getAccounts") return options.accounts ?? mercuryAccountsResponse();
-    if (name === "getRecipient") return { id: args.recipientId, name: "Acme (Mock)" };
-    if (name === "getAccount") return { id: args.accountId, nickname: "Operating" };
     if (name === "getRecipients")
       return {
         recipients: options.recipients ?? DEFAULT_RECIPIENTS,
