@@ -1,7 +1,33 @@
-import { insertSignup, recentFromIp } from "../src/db.js";
+import {
+  insertSignup,
+  isUniqueViolation,
+  recentFromIp,
+  releaseThrottle,
+  rotateToken,
+} from "../src/db.js";
 import { sendConfirmation } from "../src/email.js";
 import { json, readPostBody } from "../src/http.js";
-import { RATE_LIMIT, cleanField, hashIp, normalizeEmail, parseJoinBody } from "../src/waitlist.js";
+import {
+  cleanField,
+  generateReferralCode,
+  generateToken,
+  hashIp,
+  hashToken,
+  normalizeEmail,
+  normalizeRef,
+  parseJoinBody,
+  RATE_LIMIT,
+} from "../src/waitlist.js";
+
+/** Retries once on a referral code collision. */
+async function withNewCode<T>(run: (code: string) => Promise<T>): Promise<T> {
+  try {
+    return await run(generateReferralCode());
+  } catch (error) {
+    if (!isUniqueViolation(error)) throw error;
+    return run(generateReferralCode());
+  }
+}
 
 async function join(request: Request) {
   if (request.method !== "POST") return json(405, { error: "Method not allowed" });
@@ -22,8 +48,26 @@ async function join(request: Request) {
     if ((await recentFromIp(ipHash)) >= RATE_LIMIT) {
       return json(429, { error: "Too many signups. Try again later." });
     }
-    await insertSignup(email, cleanField(body.name), cleanField(body.company), ipHash);
-    await sendConfirmation(email);
+    const token = generateToken();
+    const tokenHash = hashToken(token);
+
+    let code = await withNewCode((fresh) => rotateToken(email, tokenHash, fresh));
+    if (code === null) {
+      const refCode = normalizeRef(body.ref);
+      const name = cleanField(body.name);
+      const company = cleanField(body.company);
+      let inserted = false;
+      await withNewCode(async (fresh) => {
+        inserted = await insertSignup(email, name, company, ipHash, fresh, refCode, tokenHash);
+        code = fresh;
+      });
+      // An existing email that was mailed recently: same response, no new email.
+      if (!inserted) return json(200, { ok: true });
+    }
+    if (!(await sendConfirmation(email, token, code as string))) {
+      await releaseThrottle(email);
+      return json(503, { error: "Unavailable" });
+    }
     return json(200, { ok: true });
   } catch {
     return json(503, { error: "Unavailable" });
