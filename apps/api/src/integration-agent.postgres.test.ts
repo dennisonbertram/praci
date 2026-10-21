@@ -871,6 +871,8 @@ describePostgres("integration agents (PostgreSQL)", () => {
       );
       expect(created.agentBotId).toBeTruthy();
       expect(created).toMatchObject({ agentExclusive: true, writesEnabled: false });
+      const devinAgent = await prisma.bot.findUniqueOrThrow({ where: { id: created.agentBotId! } });
+      expect(devinAgent.instructions).not.toContain("Allow changes");
       const again = await client(a).integrationAgents.create({ serverId: created.id });
       expect(again.botId).toBe(created.agentBotId);
     });
