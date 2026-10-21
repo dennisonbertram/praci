@@ -2,7 +2,7 @@
 
 Plan: `docs/plans/wispr-flow.md`. Issue: #451. For a person with a Wispr Flow account.
 
-Flow is a separate app. Praci does not ship dictation, so these checks show how Praci behaves as a host for Flow. Nothing here is assumed to work. Leave a result as TBD until you run the row. A row not run stays "not run", never "pass".
+Flow is a separate app. Praci has no dictation in the composer (its own dictation runs only inside Call Elio), so these checks show how Praci behaves as a host for Flow. Nothing here is assumed to work. Leave a result as TBD until you run the row. A row not run stays "not run", never "pass".
 
 Do not put account names, emails, local paths or real transcripts in the results. Dictate invented sentences only.
 
@@ -21,7 +21,7 @@ Record once per session, then repeat the rows on each surface.
 
 Result values: pass, fail, partial, not run. Put anything unexpected, and any fallback you used, in Notes.
 
-Test sentences (invented):
+Test sentences (invented). Flow's handling of spoken commands is not documented, so first record what Flow actually inserted, then judge Praci on that text:
 
 - Short: "Please schedule a review for next week."
 - Paragraphs: dictate three sentences, say "new paragraph", then dictate three more.
@@ -43,7 +43,7 @@ Open a thread. Put the cursor in the message field, start Flow, dictate, stop Fl
 | 1.7 | iPhone composer | Tap the message field, hold the globe key, switch to the Flow keyboard, dictate the short sentence. | Text appears, Send enabled. | TBD | TBD | TBD | TBD |
 | 1.8 | iPhone composer | Dictate the paragraphs sentence with the Flow keyboard. | Line breaks kept, caret after the text, field grows, Send enabled. | TBD | TBD | TBD | TBD |
 | 1.9 | iPhone composer | Dictate the slash and mention sentences. | Record whether the skill and mention pickers open. | TBD | TBD | TBD | TBD |
-| 1.10 | iPhone composer | Switch away from the Flow keyboard and back. | Draft kept, keyboard returns to the normal one. | TBD | TBD | TBD | TBD |
+| 1.10 | iPhone composer | Switch away from the Flow keyboard and back. | Draft kept; record which keyboard is shown at the end. | TBD | TBD | TBD | TBD |
 
 ## 2. Call Elio and the microphone
 
@@ -82,7 +82,7 @@ Also record, for each iPhone row, whether iOS switches away from the Flow keyboa
 |---|---|---|---|---|---|---|
 | 4.1 | Write down your Flow hotkey here (a key combination, not an account detail): TBD. | n/a | TBD | TBD | TBD | TBD |
 | 4.2 | In the Electron app, press the Flow hotkey with the composer focused. | Flow starts. Praci does not also act on the key. | TBD | TBD | TBD | TBD |
-| 4.3 | Press each Praci desktop shortcut (global and in-window). | None of them is the Flow hotkey. List any collision. | TBD | TBD | TBD | TBD |
+| 4.3 | Press each Praci desktop shortcut (global and in-window). | None of them is any of Flow's documented default hotkeys (https://docs.wisprflow.ai/articles/2612050838-supported-unsupported-keyboard-hotkey-shortcuts) or your own. List any collision. | TBD | TBD | TBD | TBD |
 | 4.4 | Press the Flow hotkey on the web app in a browser. | Flow starts. Praci does not also act on the key. | TBD | TBD | TBD | TBD |
 
 ## 5. Secure-field requirements for a future Flow key field
@@ -91,9 +91,9 @@ Applies only once a Flow key field exists (slice S3a). Until then these rows sta
 
 | # | Requirement | How to check | Result | Notes |
 |---|---|---|---|---|
-| 5.1 | `secureTextEntry` is set on the phone field. | Characters are masked while typing. | not run | TBD |
-| 5.2 | `autoComplete="off"` | No password manager or autofill prompt appears. | not run | TBD |
-| 5.3 | `textContentType="none"` | iOS offers no password or one-time code suggestion. | not run | TBD |
+| 5.1 | `secureTextEntry` is set on the phone field. | Read the prop in the component source, and check characters are masked. | not run | TBD |
+| 5.2 | `autoComplete="off"` | Read the prop in the component source; separately record whether an autofill prompt appears. | not run | TBD |
+| 5.3 | `textContentType="none"` | Read the prop in the component source; separately record whether iOS offers a password or code suggestion. | not run | TBD |
 | 5.4 | Web field is a password-type input. | Masked; the value is not shown in the page. | not run | TBD |
 
 ## 6. Blocked until API access
