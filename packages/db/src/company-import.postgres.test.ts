@@ -122,9 +122,11 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
     tokenCap: number,
     count = 1,
     sourceKind: "data_room" | "slack" = "data_room",
+    mode: "full" | "sample" = "full",
   ) {
     const run = await createCompanyImportRun(prisma, actor, {
       tokenCap,
+      mode,
       sources: Array.from({ length: count }, (_, index) => ({
         sourceKind,
         scope: { index },
@@ -466,6 +468,9 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
     });
 
     expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("partial");
+    expect(
+      await prisma.companyImportSource.findUniqueOrThrow({ where: { id: failed.sourceId } }),
+    ).toMatchObject({ status: "failed", lastError: "synthetic_failure" });
     await expect(
       updateCompanyImportRun(prisma, actor, { runId, action: "resume" }),
     ).rejects.toMatchObject({ code: "invalid_state" });
@@ -475,6 +480,10 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
     expect(retried).toMatchObject({ status: "waiting", attempts: 0, lastError: null });
     const claim = await claimCompanyImportUnit(prisma, actor, { runId, unitId: failed.id });
     expect(claim).not.toBeNull();
+    await prisma.companyImportSource.update({
+      where: { id: failed.sourceId },
+      data: { lastError: "stale_worker_error" },
+    });
     await completeCompanyImportUnit(prisma, actor, {
       runId,
       sourceId: failed.sourceId,
@@ -487,6 +496,60 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
       facts: [],
     });
     expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("completed");
+    expect(
+      await prisma.companyImportSource.findUniqueOrThrow({ where: { id: failed.sourceId } }),
+    ).toMatchObject({ status: "completed", lastError: null });
+  });
+
+  it("cancels a preview-ready sample before discard and blocks continuation", async () => {
+    const { runId, claims } = await runWithSources(100, 1, "slack", "sample");
+    const claim = claims[0]!;
+    await completeCompanyImportUnit(prisma, actor, {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      nextCursor: null,
+      done: true,
+      itemsDiscovered: 1,
+      itemsRead: 1,
+      facts: [
+        {
+          kind: "entity",
+          input: {
+            entity: {
+              kind: "person",
+              displayName: "Preview cancellation person",
+              attrs: {},
+              confidence: 0.8,
+            },
+            evidence: {
+              stance: "supports",
+              sourceKind: "slack",
+              sourceItemId: "preview-cancellation-item",
+              quote: "Preview cancellation source quote.",
+              contentHash: "preview-cancellation-hash",
+              extractedAt: "2026-01-02T03:04:05.000Z",
+              extractorModel: null,
+              confidence: 0.8,
+            },
+          },
+        },
+      ],
+    });
+    expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("preview_ready");
+    expect(await prisma.companyEvidence.count({ where: { extractorRunId: runId } })).toBe(1);
+
+    await updateCompanyImportRun(prisma, actor, { runId, action: "cancel" });
+    expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("cancelled");
+    expect(await prisma.companyEvidence.count({ where: { extractorRunId: runId } })).toBe(1);
+    await expect(
+      updateCompanyImportRun(prisma, actor, { runId, action: "continue" }),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+
+    await updateCompanyImportRun(prisma, actor, { runId, action: "discard" });
+    expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("discarded");
+    expect(await prisma.companyEvidence.count({ where: { extractorRunId: runId } })).toBe(0);
   });
 
   it("allows a claimed unit to finish after the run is paused", async () => {

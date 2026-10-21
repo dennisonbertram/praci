@@ -85,7 +85,10 @@ async function finalizeCompanyImportRun(tx: Prisma.TransactionClient, scope: Sco
     });
     await tx.companyImportSource.update({
       where: { ...scope, id: source.id },
-      data: { status: sourceFailed > 0 ? "failed" : sourceDone > 0 ? "completed" : "failed" },
+      data: {
+        status: sourceFailed > 0 ? "failed" : sourceDone > 0 ? "completed" : "failed",
+        ...(sourceFailed === 0 ? { lastError: null } : {}),
+      },
     });
   }
   await tx.companyImportRun.updateMany({
@@ -395,9 +398,7 @@ export async function updateCompanyImportRun(
       } else {
         if (
           input.action === "cancel" &&
-          ["cancelled", "discarded", "completed", "preview_ready", "partial", "failed"].includes(
-            run.status,
-          )
+          ["cancelled", "discarded", "completed", "partial", "failed"].includes(run.status)
         ) {
           throw new CompanyImportError("invalid_state");
         }
