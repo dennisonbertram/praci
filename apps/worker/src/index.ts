@@ -52,6 +52,7 @@ import {
   reconcileCloudAgents,
   reconcileComputerUpdates,
   reconcileDataRoom,
+  reconcileMeetingSyncs,
   resolveDeploymentModel,
   resolvePiSessionRoot,
   resolveSandboxProvider,
@@ -315,6 +316,7 @@ async function main() {
     reconcileCloudAgents: () => reconcileCloudAgents({ prisma, jobs, cloudAgent }),
     reconcileComputerUpdates: () => reconcileComputerUpdates({ prisma, jobs }),
     reconcileDataRoom: () => reconcileDataRoom({ prisma, jobs }),
+    reconcileMeetings: () => reconcileMeetingSyncs({ prisma, jobs }),
   });
   reconciler.start();
 
