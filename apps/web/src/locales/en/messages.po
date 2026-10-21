@@ -874,7 +874,6 @@ msgstr "Address or ENS"
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -2444,6 +2443,7 @@ msgid "Connect API key"
 msgstr "Connect API key"
 
 #: src/components/ConnectAppsButton.tsx
+#: src/components/tour/FirstRunTour.tsx
 msgid "Connect apps"
 msgstr "Connect apps"
 
@@ -2472,8 +2472,8 @@ msgid "Connect MCP server “{name}”"
 msgstr "Connect MCP server “{name}”"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Connect the apps you already use."
-msgstr "Connect the apps you already use."
+msgid "Connect the apps you already use, so agents can work with your mail and files."
+msgstr "Connect the apps you already use, so agents can work with your mail and files."
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
@@ -2560,7 +2560,6 @@ msgid "Contacts are your address book. They do not change Carta."
 msgstr "Contacts are your address book. They do not change Carta."
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Context limit"
 msgstr "Context limit"
 
@@ -3453,7 +3452,6 @@ msgid "Decline"
 msgstr "Decline"
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Default"
 msgstr "Default"
@@ -3464,9 +3462,7 @@ msgstr "Default"
 msgid "Default ({0})"
 msgstr "Default ({0})"
 
-#. placeholder {0}: thinkingLevelLabel("medium")
 #. placeholder {0}: thinkingLevelLabel(defaultThinkingLevel)
-#: src/pages/Onboarding.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Default ({0})"
@@ -4092,7 +4088,6 @@ msgid "External conversation"
 msgstr "External conversation"
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Extra high"
 msgstr "Extra high"
 
@@ -4541,7 +4536,6 @@ msgstr "Hides money amounts, share counts and percentages on screen and in chat 
 
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "High"
 msgstr "High"
 
@@ -5157,7 +5151,6 @@ msgstr "Looks like spam"
 
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Low"
 msgstr "Low"
 
@@ -5293,7 +5286,6 @@ msgid "Marked unread"
 msgstr "Marked unread"
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Max"
 msgstr "Max"
 
@@ -5307,7 +5299,6 @@ msgid "Maximize"
 msgstr "Maximize"
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Maximum images per request"
 msgstr "Maximum images per request"
 
@@ -5316,7 +5307,6 @@ msgid "Maximum of 10 backup models."
 msgstr "Maximum of 10 backup models."
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Maximum output tokens"
 msgstr "Maximum output tokens"
 
@@ -5325,7 +5315,6 @@ msgid "MCP endpoint"
 msgstr "MCP endpoint"
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Medium"
 msgstr "Medium"
 
@@ -5430,7 +5419,6 @@ msgid "Microphone failed"
 msgstr "Microphone failed"
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Minimal"
 msgstr "Minimal"
 
@@ -7029,7 +7017,6 @@ msgid "Ready until {0}"
 msgstr "Ready until {0}"
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Reasoning effort"
 msgstr "Reasoning effort"
 
@@ -8067,8 +8054,8 @@ msgid "Settings"
 msgstr "Settings"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Settings, backups and Export my data are here, and so is Take the tour."
-msgstr "Settings, backups and Export my data are here, and so is Take the tour."
+msgid "Settings, Export my data and Take the tour are in your account menu."
+msgstr "Settings, Export my data and Take the tour are in your account menu."
 
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -8637,12 +8624,10 @@ msgid "Summarize what's new this week"
 msgstr "Summarize what's new this week"
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Supports images"
 msgstr "Supports images"
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Supports thinking"
 msgstr "Supports thinking"
 
@@ -8902,7 +8887,6 @@ msgid "These saved settings can't be read. Remove it and add it again."
 msgstr "These saved settings can't be read. Remove it and add it again."
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/transcript.tsx
