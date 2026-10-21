@@ -1,0 +1,259 @@
+{
+  "mode": "inspect",
+  "images": [
+    "PG-B-SignIn.png",
+    "PG-B-SignUp.png",
+    "PG-B-Account.png",
+    "PG-B-Settings.png",
+    "PG-B-Models.png",
+    "PG-B-Voice.png",
+    "PG-B-Integrations.png",
+    "PG-B-Server.png"
+  ],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 66,
+      "costUsd": 0.275696,
+      "result": {
+        "verdict": "Not ready to ship. The state coverage is unusually thorough, but the boards repeatedly ask a non-technical founder to understand servers, SSO and API keys with no help, hide recovery and destructive actions behind sub-44pt text, and replace standard iOS top navigation with floating edge buttons. Several detail pages also waste most of the 466x678 column while their only action sits far from the field it acts on.",
+        "findings": [
+          {
+            "level": "component",
+            "element": "'Use a custom server' text link (bottom of Sign in / Sign up)",
+            "problem": "A tiny, low-contrast text link well under 44pt is the only entry to a concept Sam does not understand ('server'). No explanation of what a custom server is, who gives them an address, or why they would ever tap it on first launch.",
+            "norm": "Apple HIG: minimum 44x44pt targets; plain-language, progressive disclosure for advanced options on first-run auth.",
+            "severity": "P1",
+            "screenshot": "PG-B-SignIn.png",
+            "fix": "Remove it from the launch hierarchy or make it a 44pt 'Advanced sign-in options' row with one sentence: 'Only use this if Praci or your company gave you an address.' Apply the same on Sign up."
+          },
+          {
+            "level": "component",
+            "element": "'Continue with Example SSO' button and 'Forgot password?' / 'Sign in instead' text links",
+            "problem": "'SSO' is developer/employer jargon for the persona, and recovery ('Forgot password?') plus the 'Sign in instead' link inside the email-in-use error are small text targets under 44pt despite being critical escape hatches.",
+            "norm": "44pt targets; auth screens name the provider in human terms and give password recovery equal, tappable prominence.",
+            "severity": "P1",
+            "screenshot": "PG-B-SignIn.png",
+            "fix": "Label it 'Continue with your company sign-in' with the provider name as subtitle, and give Forgot password? and Sign in instead full-height (44pt) text-button hit areas."
+          },
+          {
+            "level": "page",
+            "element": "'Could not load sign-in options' state: only 'Could not load sign-in options / Retry'",
+            "problem": "When sign-in options fail to load, the entire email/password form disappears. A first-time user on bad connectivity has no fallback path and no explanation of what failed; Retry is the only action.",
+            "norm": "Error states on auth must degrade gracefully: keep the manual email/password path available when SSO discovery fails.",
+            "severity": "P0",
+            "screenshot": "PG-B-SignIn.png",
+            "fix": "Show the email/password form under the error with SSO marked unavailable, e.g. 'Company sign-in could not load. You can still sign in with email.'"
+          },
+          {
+            "level": "group",
+            "element": "Sign-up 'Field errors' state: three red messages stacked below the field group ('Enter your name / Enter a valid email address / Use at least 8 characters')",
+            "problem": "Errors are detached from their fields and listed as a block; Name's errored field still shows only the placeholder 'Name'. Sam must map each sentence to a field while all three fields share the same dark-red fill, so the specific failing field is ambiguous at a glance.",
+            "norm": "Inline validation places the error directly under the field it names, with the field labelled, not placeholder-only.",
+            "severity": "P1",
+            "screenshot": "PG-B-SignUp.png",
+            "fix": "Put each message immediately under its own field, keep persistent floating labels (Name / Email / Password) above filled fields, and use border + icon per field instead of a shared red fill."
+          },
+          {
+            "level": "page",
+            "element": "'Confirm your email' hand-off (Open Mail / Resend confirmation / Use a different email)",
+            "problem": "There is no way back in if the link expires or the mail app differs, no 'I have confirmed, continue' recheck, and Resend has no cooldown/success state shown. The board also references a PG-B-ForgotPassword board that is not in this review set, so the reset path that reuses this screen cannot be verified at all.",
+            "norm": "Email-confirmation screens offer recheck/continue, resend feedback with cooldown, and the referenced reset flow must be reviewable end to end.",
+            "severity": "P1",
+            "screenshot": "PG-B-SignUp.png",
+            "fix": "Add 'I have opened the link' recheck, a 'Confirmation sent again' state with cooldown timer, and supply the missing PG-B-ForgotPassword board for review."
+          },
+          {
+            "level": "layout",
+            "element": "Floating circular back '<' and close 'x' buttons pinned to the left edge, vertically centred on content (Account, Settings, Models, Voice, Integrations, Server-integrations pages)",
+            "problem": "Navigation is not in a top bar: a small dark circle floats mid-left, overlapping the scroll column, changing vertical position between boards and easy to miss or to hit accidentally while scrolling. This recurs on nearly every pushed page and contradicts the iOS convention Sam knows from other apps.",
+            "norm": "iOS HIG: back/close in the top-leading navigation area, consistent position, 44pt, never floating over scrolling content.",
+            "severity": "P0",
+            "screenshot": "PG-B-Settings.png",
+            "fix": "Use a standard navigation bar with top-leading back/close at 44pt on every pushed page; reserve glass circles only for genuinely floating controls over content."
+          },
+          {
+            "level": "page",
+            "element": "After-delete state lands on 'Sign up' with tiny 'Have an account? Sign In' link, under a 'Your account was deleted' banner",
+            "problem": "A user who just deleted an account is dropped into account creation, and the sign-in path shrinks from the full-width secondary 'Sign in' button used everywhere else on Sign up to a sub-44pt inline link. The confirmation banner gives no reassurance about what was erased or billing/connections.",
+            "norm": "Post-destruction landing should confirm completion neutrally and keep the alternate auth action at the same prominence as the rest of the flow.",
+            "severity": "P1",
+            "screenshot": "PG-B-Account.png",
+            "fix": "Land on Sign in (launch mode per your own rule) with the deletion confirmation, retain the standard secondary button, and state what was deleted and that connections were revoked."
+          },
+          {
+            "level": "component",
+            "element": "Delete-account dialogs: dim-red 'Delete' action (password empty / wrong code states) and stacked 'Delete / Resend code / Cancel' rows",
+            "problem": "The destructive action reads as disabled grey-red text when empty yet becomes the only red item in a tall stack of three equal text rows (Delete, Resend code, Cancel), so enabled vs disabled vs destructive hierarchy is unclear on an irreversible action. Resend's cooldown is shown as dimmed text with a timer but no explanation.",
+            "norm": "Destructive confirmations use one clearly enabled destructive button, a distinct secondary, and disabled states that do not look tappable.",
+            "severity": "P1",
+            "screenshot": "PG-B-Account.png",
+            "fix": "Disable Delete as a visibly inert button until input is valid, move Resend code inline under the code field with 'New code sent' feedback, and keep only Cancel + Delete in the dialog footer."
+          },
+          {
+            "level": "page",
+            "element": "'Password changed' Account state: only a banner and the 'Change password' row remain",
+            "problem": "After success the whole account list (profile, email, Server, Hide amounts, Language, Sign out, Delete) vanishes, leaving a near-empty page. Sam loses context and cannot tell whether they are still in Account or whether other settings were affected.",
+            "norm": "Success is confirmed in place with a transient banner/toast over the unchanged page.",
+            "severity": "P2",
+            "screenshot": "PG-B-Account.png",
+            "fix": "Return to the full Account list with a temporary 'Password changed' banner at top that dismisses, exactly as the board's own Notes promise."
+          },
+          {
+            "level": "component",
+            "element": "'Server — Default' row in Account and Settings hub",
+            "problem": "'Default' tells a non-technical founder nothing, and the row gives no hint that switching signs them out and removes on-device conversations — that only appears much later inside the sheet's switch confirmation.",
+            "norm": "Settings values must be self-describing; consequential destinations preview their consequence at the row level.",
+            "severity": "P2",
+            "screenshot": "PG-B-Settings.png",
+            "fix": "Show the actual address or 'Praci (standard)' and add a subtitle 'Changing this signs you out on this phone.'"
+          },
+          {
+            "level": "page",
+            "element": "AI data sharing toggles: 'Model A — Messages and attachments go to Model A. Turn off and bots cannot reply' with plain green switches",
+            "problem": "Turning off the only reply path, or speech ('Turn off and voice stops working'), is a single unguarded toggle tap with no confirmation, no consequence dialog and provider names ('Model A', 'Speech A', 'Memory A') that carry no real-world identity for trust decisions. This is the app's core privacy surface presented as plumbing labels.",
+            "norm": "Privacy/consent controls name the actual recipient, state data types, and confirm changes that break core function.",
+            "severity": "P0",
+            "screenshot": "PG-B-Settings.png",
+            "fix": "Use real provider names with 'What is shared' detail, and confirm destructive toggles: 'Turn off Model A? Bots will no longer reply in any chat.' with Turn off / Keep on."
+          },
+          {
+            "level": "component",
+            "element": "Allowed without asking: red text 'Remove' per row and the 'Ask again for Search mail?' dialog",
+            "problem": "'Remove' is a small red text target under 44pt for revoking a standing permission, and the concept itself is named in system language. The confirm dialog is good, but the list footer is the only place explaining 'Read-only tools only. Sending or changing anything always asks first' — below the fold of attention and disconnected from each row.",
+            "norm": "Permission-revocation controls are full-height row actions; standing-consent lists explain scope per item (which bot, which data).",
+            "severity": "P1",
+            "screenshot": "PG-B-Settings.png",
+            "fix": "Make the whole row or a 44pt Remove button the target, rename the screen 'Bots that can read without asking', and put the read-only guarantee as a header line above the list."
+          },
+          {
+            "level": "component",
+            "element": "Archived bots 'Restore' pill buttons and orange warning-triangle icon for 'Close checklist'",
+            "problem": "Restore pills appear under 44pt tall, and an unexplained warning-triangle glyph implies one archived bot is an error/danger state. Dates ('Archived Oct 3') are the only metadata — no bot type or last activity to decide restoration.",
+            "norm": "List actions meet 44pt; iconography must not use alert symbology for neutral items.",
+            "severity": "P2",
+            "screenshot": "PG-B-Settings.png",
+            "fix": "Give Restore a 44pt hit area, use each bot's normal avatar, and add one line of context ('Planner agent · last used Sep 30')."
+          },
+          {
+            "level": "page",
+            "element": "Models page and 'Hosted provider' / 'Acme AI' detail pages: 3 short rows at top, primary button pinned at the very bottom over ~60% empty black space",
+            "problem": "On a 466x678 single column the detail pages (API key field at top, greyed 'Save key' at bottom) separate the action from its field by a full screen of void; Models itself asks Sam to choose between 'Model A/B/C' and 'Thinking: Medium' with no explanation of either, then offers a prominent white 'Add server' — the most developer-facing action — as the page's one prominent action.",
+            "norm": "One prominent action sits adjacent to its content; model choice for non-developers is explained by capability/cost, not code names; advanced hosting is demoted.",
+            "severity": "P0",
+            "screenshot": "PG-B-Models.png",
+            "fix": "Group field + Save key together, demote 'Add server' to a secondary 'Advanced' row, and label models by use ('Faster · Everyday tasks') with Thinking explained in plain words or removed for this persona."
+          },
+          {
+            "level": "group",
+            "element": "'Add server' and 'Connect' sheet: 'Server http://192.168.1.20:8000/v1', 'API key (optional)', 'Find models', 'Save server'",
+            "problem": "A raw LAN URL and optional API key with zero guidance on where any of this comes from. 'Find models' (dark, low contrast) must be discovered before Save enables, a dependency only inferable from the disabled grey button a screen away at the bottom.",
+            "norm": "Multi-step technical setup is wizardised with prerequisites stated up front and the dependency between steps made explicit in place.",
+            "severity": "P0",
+            "screenshot": "PG-B-Models.png",
+            "fix": "Gate this behind 'Advanced — set up your own model server', add 'You will need the address from whoever runs the server', and place Find models + Save server as one labelled sequence next to the fields."
+          },
+          {
+            "level": "group",
+            "element": "Acme AI sign-in sheet: code 'KFR-4827', 'Copy code' text link, 'Open Safari' pill in sheet header",
+            "problem": "Two competing prominent actions (Open Safari in the header, the code itself) plus a sub-44pt 'Copy code' link; the sheet does not say the code expires, what happens back in Praci, or why Safari at all. The failed state ('The code expired') appears only after returning empty-handed.",
+            "norm": "Device-code flows sequence actions 1-2-3 in one column with expiry and return behaviour stated before leaving the app.",
+            "severity": "P1",
+            "screenshot": "PG-B-Models.png",
+            "fix": "Number the steps in the sheet body ('1 Copy code, 2 Open Safari and paste it, 3 Come back here'), make Copy code a 44pt button, show expiry, and demote Open Safari to the single bottom primary action."
+          },
+          {
+            "level": "component",
+            "element": "Voice 'Speak with' rows: 'This device / Hosted voice' each showing both a checkmark and a '>' (and in one state checkmark + 'Reconnect')",
+            "problem": "Each row mixes selection state and navigation: tapping might select, open setup, or reconnect — three different outcomes behind one row. In 'Hosted selected, connection lost' the row is simultaneously checked and 'Not connected / Reconnect', a contradictory state with Hear sample disabled below it unexplained except tiny 'Reconnect first' text.",
+            "norm": "One row, one affordance: radio selection or disclosure, not both; broken selected states resolve to one clear recovery action.",
+            "severity": "P1",
+            "screenshot": "PG-B-Voice.png",
+            "fix": "Split into a radio group for choosing, with a separate 'Set up / Reconnect' 44pt button inside the hosted row when action is needed, and state 'Hosted voice is selected but not connected' above Hear sample."
+          },
+          {
+            "level": "page",
+            "element": "Hosted voice setup: 'API key — Paste your API key' with 'Speech model' picker and bottom 'Connect'",
+            "problem": "Again an unexplained API key with no source ('Get a key from…'), and the user must pick 'Speech A/B/C' before knowing if the key works. Error 'That key was not accepted' repeats on Models and Server integrations, so Sam sees the same dead-end in three places with no recovery link in any of them.",
+            "norm": "Credential forms say where to obtain the credential, validate before asking for secondary choices, and errors link to the fix.",
+            "severity": "P1",
+            "screenshot": "PG-B-Voice.png",
+            "fix": "Add 'Find this in your voice provider account — we will open it for you' with an open-provider action, move Speech model after a successful connection, and link errors to that help."
+          },
+          {
+            "level": "component",
+            "element": "Integrations list: 'Add' pills, 'Pending' spinner label, 'Show more' and 'Advanced' row",
+            "problem": "Add pills are under 44pt; 'Documents connector — Pending' gives no reason, duration or cancel; 'Advanced' is an unlabelled mystery row — which is where server integrations hide, so a founder will never find them. 'Connector' itself is jargon repeated instead of the service outcome (e.g. name of the mailbox/bank).",
+            "norm": "Connectable items show brand/service, status semantics and recovery; no essential feature lives under an unlabelled 'Advanced'.",
+            "severity": "P1",
+            "screenshot": "PG-B-Integrations.png",
+            "fix": "Make rows themselves the 44pt Add target, expand Pending inline ('Waiting for approval from… · Cancel'), rename items by service, and label the row 'Server integrations — for your own server' or remove it from this persona's path."
+          },
+          {
+            "level": "group",
+            "element": "Banking connector / Banking agent thread: 'Allow writes — Off: bots can read balances and transactions but cannot move money' and in-chat white 'Allow writes' button",
+            "problem": "The highest-stakes permission in the app (moving money) can be initiated from a chat bubble's prominent white 'Allow writes' button. The confirm semantics that exist for Mail writes are bypassed in feel here: a conversational upsell frame for a financial permission, with no amount limits, account scope or cooling-off shown anywhere in the flow.",
+            "norm": "Financial write permissions are granted only in settings, with scope, limits and a non-conversational confirmation; never as a chat CTA.",
+            "severity": "P0",
+            "screenshot": "PG-B-Integrations.png",
+            "fix": "In chat, link to ('Open Banking settings') instead of a primary Allow writes button; in settings add per-account scope and an explicit typed/scoped confirmation before writes enable."
+          },
+          {
+            "level": "page",
+            "element": "Server integrations: 'Connect through: Hosted by Praci / My own server' with 'Project ID / API key', 'Get credentials' dark button, 'Save' at bottom and 'Skip' text link",
+            "problem": "Three actions compete: Get credentials (opaque — leaves the app? generates them?), Save (the one white button, an entire empty screen below the fields), and a sub-44pt Skip. Segmented control flips field sets (Project ID/API key vs Server URL/Access token) with no explanation of either mode, and the error state outlines both credential fields red when only one may be wrong.",
+            "norm": "One prominent action per view (your own rule); segmented modes explain themselves; per-field errors.",
+            "severity": "P0",
+            "screenshot": "PG-B-Integrations.png",
+            "fix": "Keep only Save/Continue prominent next to the fields, turn Get credentials into an explained secondary link ('We will email/open…'), give Skip a 44pt area, add one-line mode descriptions, and mark only the failing field."
+          },
+          {
+            "level": "component",
+            "element": "Server sheet: address field 'https://app.example.com', 'Save' in sheet header, http state 'This address is not encrypted… anyone on the network can read what you send' with Save still white/enabled",
+            "problem": "The app warns that traffic is readable by anyone, then lets Sam proceed with one tap on an unchanged, still-prominent Save — the warning has no friction, no 'Use https instead' alternative and no confirmation. Save also lives in the sheet header, detached from the field and error text at the opposite end of the sheet.",
+            "norm": "Security warnings that permit an unsafe proceed require an explicit, separated acknowledgement; primary actions sit with their content, not in a header opposite the error.",
+            "severity": "P0",
+            "screenshot": "PG-B-Server.png",
+            "fix": "Block Save for http with 'Switch to the secure (https) address' or require a dedicated 'I understand, continue anyway' step; move Save/Retry directly under the field and keep 'Use default server' as the safe default action."
+          },
+          {
+            "level": "layout",
+            "element": "Global: auth and settings content top-loaded with 40–60% dead black space, while bottom-pinned buttons float over emptiness (Models, Hosted provider, Hosted voice, Server integrations, Change password)",
+            "problem": "The boards technically fit one screen but waste the narrow column: reading order jumps from top fields to a distant bottom button with nothing between, so state changes near the field (e.g. 'Key saved. 3 models available', 'Checking key') are far from the control that caused them on the small display.",
+            "norm": "On compact displays, group label-field-feedback-action within one visual region; pinned bars are for toolbars, not isolated single buttons over void.",
+            "severity": "P2",
+            "screenshot": "PG-B-Models.png",
+            "fix": "Anchor the primary button directly below its field group (or add a slim pinned bar with the field summary), and fill the middle with contextual help/examples rather than void."
+          },
+          {
+            "level": "layout",
+            "element": "Floating glass: centred alert dialogs (Delete, Remove, Allow writes, Switch server?) vs the flat opaque Server/Connect/Acme sheets",
+            "problem": "The rule 'glass only on floating controls' is applied inconsistently: small centre alerts are translucent glass while bottom sheets that also float over dimmed content are near-opaque flat cards, and the Settings/Server sheet in PG-B-Settings renders differently from the same sheet in PG-B-Server (Save grey pill in header, different corner treatment). The same component must look identical wherever invoked.",
+            "norm": "One material rule and one sheet/alert spec reused verbatim across entry points.",
+            "severity": "P2",
+            "screenshot": "PG-B-Server.png",
+            "fix": "Define alerts = glass centre dialogs, sheets = one opaque bottom-sheet spec, and reuse the identical Server sheet (header, Save state, radius) from Sign in, Settings and Account."
+          }
+        ],
+        "excellent": [
+          "PG-B-SignIn.png 'Session ended' banner ('Your session ended. Sign in again to continue. Unsent drafts are kept.') with the email pre-filled below it — a model re-auth state that reassures about data loss.",
+          "PG-B-SignIn.png 'Typing: Sign in stays above the keyboard' — the primary button is pinned visible above the keyboard and Forgot password? survives the keyboard state.",
+          "PG-B-SignUp.png 'Email already used' error ends with an actionable 'Sign in instead' path rather than a dead end, and the 'Creating account' state correctly dims every field and control.",
+          "PG-B-Account.png 'Delete, emailed code' dialog — 'Delete stays dimmed until a code is typed', Resend shows a 0:42 cooldown and a wrong code reads 'That code is not right.'; exemplary destructive-flow state coverage.",
+          "PG-B-Account.png Change password — 'At least 8 characters' hint present before typing, Save enables only when filled, and mismatch/wrong-current errors are distinguished instead of merged.",
+          "PG-B-Integrations.png Mail connector 'Allow writes' confirm dialog: 'Bots will be able to ask to send, archive and label mail. You still approve each one.' — plainly preserves the approve-before-writing promise, and the Banking 'writes off' state honestly says the agent cannot pay.",
+          "PG-B-Server.png 'Not a Praci server: Save dimmed' and 'Could not reach: Retry in place of Save' — the sheet validates identity before enabling commit and swaps the action instead of stacking buttons.",
+          "Across PG-B-Models.png, the rejected-key message 'That key was not accepted. The old key is still in use.' prevents the classic silent-loss of a working credential."
+        ]
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 211,
+      "costUsd": 0.178912,
+      "result": "{\"verdict\":\"A thoughtful, high-craft dark-mode design system with admirable edge-case coverage, held back by a few critical persona mismatches (exposing raw API keys and server URLs as primary flows to a non-developer founder, and burying bot permissions inside 'AI data sharing'), an incomplete 'Password changed' screen state, and sub-44pt text link targets.\",\"findings\":[{\"level\":\"page\",\"element\":\"Account list content in 'Password changed' state\",\"problem\":\"After saving a new password and returning to the Account screen ('Password changed', Row 5 right), the entire Account page content—profile card ('Sam Rivera'), 'Email', 'Server', 'Hide amounts', 'Language', 'Appearance', 'Sign out', and 'Delete account'—is missing, leaving only the 'Password changed' banner and the 'Change password' row.\",\"norm\":\"Post-action confirmation states must preserve the complete destination view hierarchy so the user returns to a functional screen.\",\"severity\":\"P0\",\"screenshot\":\"PG-B-Account.png\",\"fix\":\"Render the full Account screen below the 'Password changed' confirmation banner, matching the 'Account' state in Row 1 left.\"},{\"level\":\"page\",\"element\":\"'After delete' Sign up screen (Row 3 left)\",\"problem\":\"The 'Sign up' screen shown in the 'After delete' state contradicts the canonical 'Sign up' design in PG-B-SignUp.png: it is missing the password visibility eye toggle, the 'At least 8 characters' helper text, the Terms and Privacy Policy disclaimer, and replaces the secondary 'Sign in' pill button with plain text ('Have an account? Sign in') beneath 'Use a custom server'.\",\"norm\":\"Equivalent application states across flows should reuse the exact same component structure, validation hints, legal disclaimers, and button hierarchy.\",\"severity\":\"P1\",\"screenshot\":\"PG-B-Account.png\",\"fix\":\"Use the canonical PG-B-SignUp component in the 'After delete' state, adding only the 'Your account was deleted' banner above 'Continue with Example SSO'.\"},{\"level\":\"page\",\"element\":\"'AI data sharing' and 'Allowed without asking' IA, toggle labels, and 'Remove' action\",\"problem\":\"1) Sam Rivera's core task to 'check what bots may do' ('Allowed without asking') is buried inside 'AI data sharing', which sounds like third-party telemetry/privacy settings rather than bot tool permissions. 2) Inside 'AI data sharing' (Row 2 left), toggles are titled with placeholder/active model names ('Model A', 'Speech A') and an unexplained 'Memory A' instead of capability names, and turning off 'Model A' breaks the core app ('Turn off and bots cannot reply'). 3) In 'Allowed without asking' (Row 2 middle & right), reverting a tool to require approval is labeled 'Remove' in destructive red, contradicting the confirmation dialog title ('Ask again for Search mail?') and implying the tool or bot capability will be deleted.\",\"norm\":\"Navigation labels must match user mental models; settings toggles should describe capabilities rather than internal model identifiers; action labels must accurately reflect the state change ('Ask every time' vs. destructive 'Remove').\",\"severity\":\"P1\",\"screenshot\":\"PG-B-Settings.png\",\"fix\":\"Elevate 'Allowed without asking' (or 'Bot permissions') to a top-level row in Settings. Rename the AI data sharing rows to capability names ('Chat & attachments', 'Voice & speech', 'Cross-chat memory') and replace the destructive 'Remove' label with 'Ask every time' or 'Require approval' in the confirmation dialog.\"},{\"level\":\"page\",\"element\":\"'Connect a model' sheet (Row 6 right) and 'Add server' primary CTA (Row 1 left)\",\"problem\":\"The persona (Sam Rivera) is explicitly non-technical ('server' and 'API key' are unfamiliar words). Yet: 1) When no model is connected, tapping the primary 'Connect a model' CTA opens a sheet ('Connect sheet, empty key') that asks to 'Paste your model provider API key' without naming which provider the key belongs to or how to obtain one, while pushing account sign-in ('Sign in with Acme AI instead') to a secondary button. 2) Once a model is connected ('Models', Row 1 left), the single prominent white CTA pinned at the bottom of the screen is 'Add server' (for self-hosted endpoints like http://192.168.1.20:8000/v1), making an advanced developer action the loudest control on the page.\",\"norm\":\"Primary flows must match the target persona's technical literacy, and once a view's primary setup is complete, advanced/developer actions should not occupy the primary high-contrast CTA slot.\",\"severity\":\"P1\",\"screenshot\":\"PG-B-Models.png\",\"fix\":\"Lead the 'Connect a model' flow with one-tap OAuth/subscription sign-in ('Sign in with Acme AI') or clearly name the provider with a 'Get an API key' link. Demote 'Add server' from a persistent primary bottom pill to a standard list row under 'Providers' or an 'Advanced' section.\"},{\"level\":\"group\",\"element\":\"Grouped text inputs in keyboard-up and single-field error states\",\"problem\":\"1) In 'Typing: Create account stays above the keyboard' (Row 2 right), a single white focus border wraps all three fields ('Name', 'Email', 'Password') simultaneously with no text caret, making it impossible to see which field has active keyboard focus (also seen in PG-B-SignIn.png Row 3 right and PG-B-Account.png Row 6 left). 2) When the keyboard opens, 'Continue with Example SSO' and 'or' vanish rather than scrolling, causing the tapped input field to jump upward by ~80pt under the user's finger. 3) In 'Email already used' (Row 1 right), because the three fields share one container, the email error renders at the bottom beneath the 'Password' field (also seen in PG-B-Account.png Row 4 right where 'Current password is wrong' renders below 'Confirm new password').\",\"norm\":\"Focus indicators must highlight the specific active input field with an insertion caret; opening the keyboard should scroll the container smoothly rather than hiding above-the-fold siblings; field-specific error messages should sit directly adjacent to the invalid field.\",\"severity\":\"P1\",\"screenshot\":\"PG-B-SignUp.png\",\"fix\":\"Apply the white focus ring and text cursor to the individual active field row, keep the SSO button in the scroll view so scrolling handles keyboard avoidance without layout jumps, and either place inline error text directly below the invalid row or split fields when displaying individual errors.\"},{\"level\":\"component\",\"element\":\"'Hosted voice' row in 'Speak with' section (Row 1 left & middle) and 'Hosted voice setup' (Row 3 left)\",\"problem\":\"1) In 'Speak with', 'This device' behaves as a radio option (checkmark), whereas 'Hosted voice (Connected)' combines radio selection (checkmark) and navigation drill-down (chevron '✓ >') in a single row. When 'This device' is active (Row 1 left), tapping 'Hosted voice' is ambiguous—the user cannot tell whether tapping selects Hosted voice or navigates to the Hosted voice settings screen. 2) In 'Hosted voice setup, empty key' (Row 3 left), the screen asks to 'Paste your API key' without naming the voice provider or providing a way to get a key.\",\"norm\":\"Do not combine mutually exclusive radio selection and sub-page navigation on a single undifferentiated tap target; always identify the service provider when requesting credentials.\",\"severity\":\"P1\",\"screenshot\":\"PG-B-Voice.png\",\"fix\":\"Separate selection from configuration (either via a separate 'Hosted voice settings >' row below the picker when set up, or an accessory button), and state the provider name with a 'Get API key' link on the setup screen.\"},{\"level\":\"component\",\"element\":\"'Forgot password?' and 'Use a custom server' links (PG-B-SignIn.png), inline 'Terms'/'Privacy Policy'/'Sign in instead' links (PG-B-SignUp.png), and 'Show more'/'Skip' links (PG-B-Integrations.png)\",\"problem\":\"Multiple interactive text controls violate the brief's 44pt tap target rule: in PG-B-SignIn.png, 'Forgot password?' is squeezed into a ~28pt vertical gap between the 'Sign in' and 'Sign up' buttons; in PG-B-SignUp.png, 'Terms' and 'Privacy Policy' (split across two lines) sit in a ~30pt gap between 'Create account' and 'Sign in'; in PG-B-Integrations.png, 'Show more' sits in a ~30pt gap between cards and 'Skip' sits ~10pt below the bottom CTA.\",\"norm\":\"All interactive touch targets on iOS must have a minimum 44x44pt hit area without overlapping adjacent buttons.\",\"severity\":\"P1\",\"screenshot\":\"PG-B-SignIn.png\",\"fix\":\"Increase vertical spacing around text buttons so each has a dedicated 44pt minimum height, and convert multi-line inline links ('Sign in instead') into standalone 44pt rows or rely on the existing 'Sign in' button directly below.\"},{\"level\":\"page\",\"element\":\"'Server integrations' bottom actions ('Skip', 'Continue', and 'Retry' in Rows 3, 4, 5)\",\"problem\":\"1) Although 'Server integrations' is opened from 'Settings -> Integrations -> Advanced >' (with a '<' back button in the left rail), it displays an onboarding-style 'Skip' link at the bottom and turns the 'Save' button into 'Continue' after saving (Row 5 left), which has no clear destination inside a Settings drill-down. 2) In 'Credentials error with Retry' (Row 4 right), when credentials are rejected ('Could not verify these credentials. Check them and try again.'), the primary button changes from 'Save' to 'Retry', encouraging the user to resubmit the exact same invalid credentials without editing them.\",\"norm\":\"Settings sub-pages should use standard 'Save' / back navigation rather than wizard-only 'Skip'/'Continue' affordances, and validation errors requiring input changes should keep the 'Save' label rather than 'Retry'.\",\"severity\":\"P2\",\"screenshot\":\"PG-B-Integrations.png\",\"fix\":\"Remove the 'Skip' link when accessed from Settings, keep the button labeled 'Save' on credential validation errors, and return to the parent Integrations screen upon save or show a disabled 'Saved' state.\"},{\"level\":\"group\",\"element\":\"'Banking connector, writes off' copy (Row 3 left) and 'Thread, writes off' handoff (Row 3 middle)\",\"problem\":\"1) In 'Banking connector, writes off' (Row 3 left), the subtitle reads 'Off"
+    }
+  ]
+}
