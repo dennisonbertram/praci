@@ -70,7 +70,7 @@ function ranked<T>(items: readonly T[], score: (item: T) => number | null): T[] 
 const SELECTED_ROW = "data-selected:bg-accent data-selected:shadow-[inset_3px_0_0_var(--ring)]";
 
 /** An app page (Inbox, Finance, ...) or a group chat the palette can open. */
-export type PaletteEntry = { id: string; label: string; icon?: ReactNode };
+export type PaletteEntry = { id: string; label: string; keywords?: string; icon?: ReactNode };
 
 export function CommandPalette({
   open,
@@ -104,7 +104,8 @@ export function CommandPalette({
 
   const needle = search.trim().toLowerCase();
   const botScore = (bot: Bot) => paletteMatchScore(bot.name, needle, botSearchText(bot));
-  const entryScore = (entry: PaletteEntry) => paletteMatchScore(entry.label, needle);
+  const entryScore = (entry: PaletteEntry) =>
+    paletteMatchScore(entry.label, needle, entry.keywords);
   const shownPages = needle ? ranked(pages, entryScore) : pages;
   const shownGroups = needle ? ranked(groups, entryScore) : groups;
   const filteredBots = useMemo(() => {
@@ -135,7 +136,7 @@ export function CommandPalette({
         }))
         .sort((a, b) => a.score - b.score)
         .map((entry) => entry.section)
-    : (["bots", "groups", "pages"] as const);
+    : (["pages", "bots", "groups"] as const);
 
   useEffect(() => {
     if (!open) return;
