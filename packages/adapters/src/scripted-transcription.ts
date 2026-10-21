@@ -6,9 +6,10 @@ import type {
   VoiceTranscribeRequest,
   VoiceVerifyResult,
 } from "@rakazo/adapter-kit";
-import { SCRIPTED_TRANSCRIPT } from "./scripted-voice.js";
+/** Differs from the scripted voice transcript, so a test can tell which provider answered. */
+export const SCRIPTED_TRANSCRIPTION_TEXT = "hello from the transcription provider";
 
-/** Deterministic transcription for tests. An API key starting with "fail" makes it throw. */
+/** Deterministic transcription for tests. An API key starting with "fail" is rejected and makes it throw. */
 export class ScriptedTranscriptionProvider implements TranscriptionProvider {
   readonly requests: VoiceTranscribeRequest[] = [];
 
@@ -22,9 +23,9 @@ export class ScriptedTranscriptionProvider implements TranscriptionProvider {
   }
 
   async verify(apiKey: string, _context: AdapterContext): Promise<VoiceVerifyResult> {
-    return apiKey.trim().length < 8
-      ? { ok: false, message: "That key is too short." }
-      : { ok: true };
+    if (apiKey.trim().length < 8) return { ok: false, message: "That key is too short." };
+    if (apiKey.startsWith("fail")) return { ok: false, message: "That key was rejected." };
+    return { ok: true };
   }
 
   async transcribe(
@@ -33,6 +34,6 @@ export class ScriptedTranscriptionProvider implements TranscriptionProvider {
   ): Promise<{ text: string }> {
     this.requests.push(request);
     if (request.apiKey.startsWith("fail")) throw new Error("Scripted transcription failed.");
-    return { text: SCRIPTED_TRANSCRIPT };
+    return { text: SCRIPTED_TRANSCRIPTION_TEXT };
   }
 }

@@ -1,10 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { createRouterClient } from "@orpc/server";
-import { SCRIPTED_TRANSCRIPT, withSecretPersistence } from "@rakazo/adapters";
+import {
+  SCRIPTED_TRANSCRIPT,
+  SCRIPTED_TRANSCRIPTION_TEXT,
+  ScriptedTranscriptionProvider,
+  withSecretPersistence,
+} from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { RouterDeps } from "./router.js";
 import { createRouter } from "./router.js";
 import { clearTranscription, setTranscription, transcribeVoice } from "./voice.js";
@@ -113,11 +118,11 @@ describePostgres("transcription selection (PostgreSQL)", () => {
       ["scripted", true, "voice-1"],
     ]);
 
-    // Dictation uses the selection; a bad speech key would fail the voice provider path.
+    // Dictation uses the selection: its text differs from the voice provider's.
     const row = await prisma.transcriptionSelection.findUniqueOrThrow({ where: { userId: userA } });
     expect(row.provider).toBe("scripted-transcribe");
     await expect(transcribeVoice(deps(), actor(userA), audio)).resolves.toEqual({
-      text: SCRIPTED_TRANSCRIPT,
+      text: SCRIPTED_TRANSCRIPTION_TEXT,
     });
 
     // Connecting another voice provider, or picking a voice, leaves the selection alone.
@@ -138,32 +143,42 @@ describePostgres("transcription selection (PostgreSQL)", () => {
   it("uses the selection's own key and replaces and deletes the previous secret", async () => {
     const a = client(actor(userA));
     const base = await secretCount(userA);
-    await a.voice.setTranscription({ provider: "scripted-transcribe", apiKey: "fail-first-key" });
-    const first = await prisma.transcriptionSelection.findUniqueOrThrow({
-      where: { userId: userA },
-    });
-    expect(await secretCount(userA)).toBe(base + 1);
-    // The scripted provider throws for keys starting with "fail", proving the selection key is used.
-    await expect(transcribeVoice(deps(), actor(userA), audio)).rejects.toThrow(
-      "Scripted transcription failed.",
-    );
+    const sentKeys: string[] = [];
+    const original = ScriptedTranscriptionProvider.prototype.transcribe;
+    const spy = vi
+      .spyOn(ScriptedTranscriptionProvider.prototype, "transcribe")
+      .mockImplementation(function (this: ScriptedTranscriptionProvider, request, context) {
+        sentKeys.push(request.apiKey);
+        return original.call(this, request, context);
+      });
+    try {
+      await a.voice.setTranscription({ provider: "scripted-transcribe", apiKey: "first-key-123" });
+      const first = await prisma.transcriptionSelection.findUniqueOrThrow({
+        where: { userId: userA },
+      });
+      expect(await secretCount(userA)).toBe(base + 1);
+      await transcribeVoice(deps(), actor(userA), audio);
 
-    await a.voice.setTranscription({ provider: "scripted-transcribe", apiKey: "good-second-key" });
-    const second = await prisma.transcriptionSelection.findUniqueOrThrow({
-      where: { userId: userA },
-    });
-    expect(second.id).toBe(first.id);
-    expect(second.secretId).not.toBe(first.secretId);
-    expect(await prisma.secret.count({ where: { id: first.secretId } })).toBe(0);
-    expect(await secretCount(userA)).toBe(base + 1);
-    await expect(transcribeVoice(deps(), actor(userA), audio)).resolves.toEqual({
-      text: SCRIPTED_TRANSCRIPT,
-    });
+      await a.voice.setTranscription({ provider: "scripted-transcribe", apiKey: "second-key-123" });
+      const second = await prisma.transcriptionSelection.findUniqueOrThrow({
+        where: { userId: userA },
+      });
+      expect(second.id).toBe(first.id);
+      expect(second.secretId).not.toBe(first.secretId);
+      expect(await prisma.secret.count({ where: { id: first.secretId } })).toBe(0);
+      expect(await secretCount(userA)).toBe(base + 1);
+      await expect(transcribeVoice(deps(), actor(userA), audio)).resolves.toEqual({
+        text: SCRIPTED_TRANSCRIPTION_TEXT,
+      });
+      expect(sentKeys).toEqual(["first-key-123", "second-key-123"]);
 
-    await a.voice.clearTranscription();
-    expect(await prisma.secret.count({ where: { id: second.secretId } })).toBe(0);
-    expect(await secretCount(userA)).toBe(base);
-    await expect(a.voice.clearTranscription()).resolves.toEqual({ ok: true });
+      await a.voice.clearTranscription();
+      expect(await prisma.secret.count({ where: { id: second.secretId } })).toBe(0);
+      expect(await secretCount(userA)).toBe(base);
+      await expect(a.voice.clearTranscription()).resolves.toEqual({ ok: true });
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("rejects a bad key and an unknown provider without storing anything", async () => {
@@ -172,6 +187,9 @@ describePostgres("transcription selection (PostgreSQL)", () => {
     await expect(
       a.voice.setTranscription({ provider: "scripted-transcribe", apiKey: "   a    " }),
     ).rejects.toThrow("That key is too short.");
+    await expect(
+      a.voice.setTranscription({ provider: "scripted-transcribe", apiKey: "fail-bad-key-1" }),
+    ).rejects.toThrow("That key was rejected.");
     await expect(
       a.voice.setTranscription({ provider: "cartesia", apiKey: "long-enough-key" }),
     ).rejects.toThrow("Unknown transcription provider.");
