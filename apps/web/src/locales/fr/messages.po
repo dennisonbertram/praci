@@ -307,7 +307,12 @@ msgstr "{0} répondra toujours aux mentions directes."
 
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
-msgid "{0}'s computer screen"
+msgid "{0}' computer"
+msgstr ""
+
+#. placeholder {0}: active.name
+#: src/pages/Shell.tsx
+msgid "{0}'s computer"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -1414,7 +1419,7 @@ msgid "Ask before sending external email"
 msgstr "Demander avant d'envoyer un e-mail externe"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Ask Chief anything. Agents ask before they send, pay or change anything."
+msgid "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -1567,10 +1572,6 @@ msgstr "Studio d'avatars"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Avatars"
 msgstr "Avatars"
-
-#: src/pages/finance/FinanceSpend.tsx
-msgid "Average per month"
-msgstr ""
 
 #: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/computer/FilesApp.tsx
@@ -3587,6 +3588,10 @@ msgstr ""
 msgid "day"
 msgstr "jour"
 
+#: src/pages/RoutineSchedule.tsx
+msgid "Day of week"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Day-to-day work"
 msgstr "Travail quotidien"
@@ -4966,6 +4971,10 @@ msgstr "Clé API de l'instance"
 msgid "Instruction"
 msgstr "Instruction"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Instructions"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Integration options"
 msgstr "Options d'intégration"
@@ -5294,6 +5303,7 @@ msgid "Load web images automatically"
 msgstr "Charger automatiquement les images web"
 
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/integrations/McpDetail.tsx
 #: src/pages/Finance.tsx
 #: src/pages/Shell.tsx
 msgid "Loading"
@@ -5306,6 +5316,10 @@ msgstr "Chargement de l'activité…"
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Loading memory settings…"
 msgstr "Chargement des paramètres de mémoire…"
+
+#: src/components/ShellSkeleton.tsx
+msgid "Loading messages"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Loading model catalog…"
@@ -5779,6 +5793,10 @@ msgstr "Plus d'actions pour l'ordinateur"
 msgid "More filters"
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "More settings"
+msgstr ""
+
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 msgid "Move"
@@ -5851,6 +5869,7 @@ msgstr "Couper le micro"
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-credentials.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Name"
 msgstr "Nom"
@@ -6928,6 +6947,11 @@ msgstr ""
 msgid "Pending"
 msgstr ""
 
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Per month"
+msgstr ""
+
 #: src/components/finance/ui.tsx
 msgid "Period"
 msgstr ""
@@ -7728,6 +7752,7 @@ msgstr "Restauration de votre espace de travail"
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/ModelBackupsSettings.tsx
+#: src/pages/shell/composer-error.tsx
 msgid "Retry"
 msgstr "Réessayer"
 
@@ -8801,6 +8826,10 @@ msgstr ""
 msgid "Steps"
 msgstr "Étapes"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Steps to follow"
+msgstr ""
+
 #: src/components/ShellSkeleton.tsx
 msgid "Still opening…"
 msgstr ""
@@ -9158,6 +9187,10 @@ msgstr ""
 
 #: src/components/finance/StatementReviewCard.tsx
 msgid "The transactions read add up to the closing balance"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "The usual charge scaled to a month, or for usage-based vendors the average of recent full months. The vendor page shows the same figure."
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -9878,12 +9911,8 @@ msgstr ""
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Utilise les identifiants {hostCredentialSource} propres à ce serveur pour accéder à {selectedProviderName}."
 
-#: src/pages/Finance.tsx
-msgid "Usual charge scaled to a month; usage-based vendors use the last 3 months. A vendor page shows the average of actual spend over the months it names."
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Usual per month"
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Usual charge"
 msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
@@ -10089,6 +10118,10 @@ msgstr "Que voulez-vous que je fasse en premier ?"
 
 #: src/lib/finance-agent.ts
 msgid "What is our runway?"
+msgstr ""
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "What it does and when to use it"
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx

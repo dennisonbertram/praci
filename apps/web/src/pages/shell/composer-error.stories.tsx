@@ -1,11 +1,20 @@
-import { LEGAL_CONSENT_REQUIRED_MESSAGE, LEGAL_MODEL_REQUIRED_MESSAGE } from "@rakazo/contracts";
+import {
+  LEGAL_CONSENT_REQUIRED_MESSAGE,
+  LEGAL_MODEL_REQUIRED_MESSAGE,
+  MISSING_TOOL_FINAL_RESPONSE_ERROR,
+} from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ComposerError } from "./composer-error";
 
 const meta = {
   title: "Shell/Composer error",
   component: ComposerError,
-  args: { onDismiss: () => {}, onOpenModelSettings: () => {}, onNavigate: () => {} },
+  args: {
+    onDismiss: () => {},
+    onOpenModelSettings: () => {},
+    onNavigate: () => {},
+    onRetry: () => {},
+  },
   decorators: [
     (Story) => (
       <div className="max-w-xl">
@@ -36,3 +45,6 @@ export const ConsentRequired: Story = {
     message: LEGAL_CONSENT_REQUIRED_MESSAGE,
   },
 };
+
+/** The run ended without a reply: Retry sends the last message again. */
+export const NoReply: Story = { args: { message: MISSING_TOOL_FINAL_RESPONSE_ERROR } };

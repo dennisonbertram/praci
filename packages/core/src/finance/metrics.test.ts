@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   accountBalanceHistory,
+  averageMonthCents,
   balanceGrid,
   balanceHistory,
   breakdown,
@@ -715,6 +716,28 @@ describe("detectRecurring", () => {
     );
     const [r] = detectRecurring(usage, NOW);
     expect(r).toMatchObject({ key: "openrouter", variable: true, amountCents: 86667 });
+  });
+  it("averages a usage-based vendor the way the vendor page does: full months since first seen", () => {
+    const usage = [
+      ["2026-05-05", 100],
+      ["2026-06-05", 200],
+      ["2026-07-05", 300],
+      ["2026-08-05", 400],
+      ["2026-09-05", 500],
+    ].map(([d, c]) => txn(d as string, -(c as number), "OpenRouter"));
+    const [r] = detectRecurring(usage, NOW);
+    // May to September is 5 full months; April was before the first charge.
+    expect(r).toMatchObject({ monthlyCents: 30000, windowMonths: 5 });
+    expect(
+      averageMonthCents(
+        [
+          { month: "2026-04", cents: 0 },
+          { month: "2026-05", cents: 3000 },
+          { month: "2026-06", cents: 3000 },
+        ],
+        "2026-05-05T00:00:00Z",
+      ),
+    ).toEqual({ cents: 3000, months: 2 });
   });
   it("ignores refunds, transfers, revenue and failed charges", () => {
     const noise = [

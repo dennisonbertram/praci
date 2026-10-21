@@ -24,6 +24,8 @@ export type UserVisibleMessagesOptions = {
    * contexts like sidebar previews that should stay ask-only and never echo peer chatter.
    */
   includeDelegatedReplyText?: boolean;
+  /** Show a hand-off once: a received receipt is dropped when its "Messaged" row is already shown. */
+  collapseHandoffs?: boolean;
 };
 
 export function isPeerReceiptBlocks(blocks: readonly MessageBlock[]): boolean {
@@ -56,7 +58,15 @@ export function userVisibleMessages<T extends PresentableMessage>(
   const includePeerReceipts = options.includePeerReceipts === true;
   const backgroundRunIds = new Set(options.backgroundRunIds ?? []);
 
+  const openHandoffs = new Set<string>();
   return messages.filter((message) => {
+    if (options.collapseHandoffs) {
+      for (const block of message.blocks) {
+        if (block.kind === "bot_message_sent") openHandoffs.add(block.toBotId);
+        else if (block.kind === "bot_message_received" && openHandoffs.delete(block.fromBotId))
+          return false;
+      }
+    }
     if (message.runId && backgroundRunIds.has(message.runId)) {
       return message.blocks.some(isBackgroundInputBlock);
     }

@@ -169,6 +169,21 @@ export function RoutineSchedule({
     </NativeSelect>
   );
 
+  const weekdaySelect = (
+    <NativeSelect
+      size="sm"
+      value={value.weekday}
+      aria-label={t`Day of week`}
+      onChange={(event) => patch({ weekday: Number(event.target.value) })}
+    >
+      {[1, 2, 3, 4, 5, 6, 0].map((day) => (
+        <NativeSelectOption key={day} value={day}>
+          {new Date(2024, 0, 7 + day).toLocaleDateString(i18n.locale, { weekday: "long" })}
+        </NativeSelectOption>
+      ))}
+    </NativeSelect>
+  );
+
   return (
     <div className="mt-2 rounded-xl border border-border p-3">
       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -202,6 +217,7 @@ export function RoutineSchedule({
             </Trans>
           )
         ) : null}
+        {value.freq === "Every week" ? weekdaySelect : null}
         {TIMED.includes(value.freq) ? <Trans>at {timeSelect}</Trans> : null}
         {value.freq === "Advanced" ? (
           <Input

@@ -307,8 +307,13 @@ msgstr "{0} will still respond to direct mentions."
 
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
-msgid "{0}'s computer screen"
-msgstr "{0}'s computer screen"
+msgid "{0}' computer"
+msgstr "{0}' computer"
+
+#. placeholder {0}: active.name
+#: src/pages/Shell.tsx
+msgid "{0}'s computer"
+msgstr "{0}'s computer"
 
 #: src/components/finance/ui.tsx
 msgid "{accounts} + crypto"
@@ -1414,8 +1419,8 @@ msgid "Ask before sending external email"
 msgstr "Ask before sending external email"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Ask Chief anything. Agents ask before they send, pay or change anything."
-msgstr "Ask Chief anything. Agents ask before they send, pay or change anything."
+msgid "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
+msgstr "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Ask the server owner to configure this provider."
@@ -1567,10 +1572,6 @@ msgstr "Avatar Studio"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Avatars"
 msgstr "Avatars"
-
-#: src/pages/finance/FinanceSpend.tsx
-msgid "Average per month"
-msgstr "Average per month"
 
 #: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/computer/FilesApp.tsx
@@ -3587,6 +3588,10 @@ msgstr "Date"
 msgid "day"
 msgstr "day"
 
+#: src/pages/RoutineSchedule.tsx
+msgid "Day of week"
+msgstr "Day of week"
+
 #: src/pages/shell/message-cards.tsx
 msgid "Day-to-day work"
 msgstr "Day-to-day work"
@@ -4966,6 +4971,10 @@ msgstr "Instance API key"
 msgid "Instruction"
 msgstr "Instruction"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Instructions"
+msgstr "Instructions"
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Integration options"
 msgstr "Integration options"
@@ -5294,6 +5303,7 @@ msgid "Load web images automatically"
 msgstr "Load web images automatically"
 
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/integrations/McpDetail.tsx
 #: src/pages/Finance.tsx
 #: src/pages/Shell.tsx
 msgid "Loading"
@@ -5306,6 +5316,10 @@ msgstr "Loading activity…"
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Loading memory settings…"
 msgstr "Loading memory settings…"
+
+#: src/components/ShellSkeleton.tsx
+msgid "Loading messages"
+msgstr "Loading messages"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Loading model catalog…"
@@ -5779,6 +5793,10 @@ msgstr "More computer actions"
 msgid "More filters"
 msgstr "More filters"
 
+#: src/pages/shell/bot-panel.tsx
+msgid "More settings"
+msgstr "More settings"
+
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 msgid "Move"
@@ -5851,6 +5869,7 @@ msgstr "Mute"
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-credentials.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Name"
 msgstr "Name"
@@ -6928,6 +6947,11 @@ msgstr "pending"
 msgid "Pending"
 msgstr "Pending"
 
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Per month"
+msgstr "Per month"
+
 #: src/components/finance/ui.tsx
 msgid "Period"
 msgstr "Period"
@@ -7728,6 +7752,7 @@ msgstr "Restoring your workspace"
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/ModelBackupsSettings.tsx
+#: src/pages/shell/composer-error.tsx
 msgid "Retry"
 msgstr "Retry"
 
@@ -8801,6 +8826,10 @@ msgstr "Step 2 of 3"
 msgid "Steps"
 msgstr "Steps"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Steps to follow"
+msgstr "Steps to follow"
+
 #: src/components/ShellSkeleton.tsx
 msgid "Still opening…"
 msgstr "Still opening…"
@@ -9159,6 +9188,10 @@ msgstr "The text of your Data room documents is sent to the AI model that runs y
 #: src/components/finance/StatementReviewCard.tsx
 msgid "The transactions read add up to the closing balance"
 msgstr "The transactions read add up to the closing balance"
+
+#: src/pages/Finance.tsx
+msgid "The usual charge scaled to a month, or for usage-based vendors the average of recent full months. The vendor page shows the same figure."
+msgstr "The usual charge scaled to a month, or for usage-based vendors the average of recent full months. The vendor page shows the same figure."
 
 #: src/pages/shell/message-cards.tsx
 msgid "The web, notes and docs"
@@ -9878,13 +9911,9 @@ msgstr "Uses Carta figures and asks before sending."
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 
-#: src/pages/Finance.tsx
-msgid "Usual charge scaled to a month; usage-based vendors use the last 3 months. A vendor page shows the average of actual spend over the months it names."
-msgstr "Usual charge scaled to a month; usage-based vendors use the last 3 months. A vendor page shows the average of actual spend over the months it names."
-
-#: src/pages/Finance.tsx
-msgid "Usual per month"
-msgstr "Usual per month"
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Usual charge"
+msgstr "Usual charge"
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
@@ -10090,6 +10119,10 @@ msgstr "What do you want me on first?"
 #: src/lib/finance-agent.ts
 msgid "What is our runway?"
 msgstr "What is our runway?"
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "What it does and when to use it"
+msgstr "What it does and when to use it"
 
 #: src/components/PageAgentIntro.tsx
 msgid "What needs my reply today?"

@@ -88,3 +88,39 @@ it("moves focus to the composer after a plain question is answered", async () =>
   await act(async () => button(container, "June").click());
   expect(document.activeElement).toBe(composer);
 });
+
+it("puts focus back on the composer when the answered state arrives after it was lost", async () => {
+  document.body.replaceChildren();
+  const composer = document.createElement("textarea");
+  composer.setAttribute("data-composer-input", "");
+  document.body.append(composer);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const render = (block: AskBlock) =>
+    act(() => root.render(<AskCard block={block} canAnswer onAnswer={async () => undefined} />));
+  render(pending);
+  await act(async () => button(container, "Allow once").click());
+  composer.blur();
+  expect(document.activeElement).toBe(document.body);
+  render({ ...pending, status: "answered", answer: "allow" });
+  expect(document.activeElement).toBe(composer);
+});
+
+it("shows the approval detail in the body font", () => {
+  const container = document.createElement("div");
+  document.body.append(container);
+  act(() =>
+    createRoot(container).render(
+      <AskCard
+        block={{ ...pending, detail: "From Operating checking." }}
+        canAnswer
+        onAnswer={async () => undefined}
+      />,
+    ),
+  );
+  const detail = [...container.querySelectorAll("p, pre")].find(
+    (el) => el.textContent === "From Operating checking.",
+  );
+  expect(detail?.className).not.toContain("font-mono");
+});
