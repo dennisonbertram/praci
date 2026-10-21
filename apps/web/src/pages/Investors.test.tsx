@@ -702,6 +702,30 @@ it("adds a holder in the blank row and keeps one blank row at the bottom", async
   expect(sent[2]).toMatchObject({ name: "New Holder", security: "Common", shares: null });
 });
 
+it("saves a typed-in table whose saved numbers were formatted for another language", async () => {
+  const { i18n } = await import("@lingui/core");
+  i18n.loadAndActivate({ locale: "de", messages: {} });
+  try {
+    rpcMock.capTable.mockResolvedValue(
+      state({ ...typed, holders: [{ ...typed.holders[0], shares: 6000000, amountUsd: 1234.5 }] }),
+    );
+    rpcMock.capTableSave.mockImplementation(async ({ table }) =>
+      state({ ...typed, ...table, source: "native", updatedAt: "2026-10-15T10:05:00.000Z" }),
+    );
+    await show();
+    await enter(field("name", 0), "Renamed");
+    await blur(field("name", 0));
+    expect(field("shares", 0).getAttribute("aria-invalid")).not.toBe("true");
+    expect(rpcMock.capTableSave).toHaveBeenCalledTimes(1);
+    expect(rpcMock.capTableSave.mock.calls[0]?.[0].table.holders[0]).toMatchObject({
+      shares: 6000000,
+      amountUsd: 1234.5,
+    });
+  } finally {
+    i18n.loadAndActivate({ locale: "en", messages: {} });
+  }
+});
+
 it("outlines a negative number and does not save it", async () => {
   rpcMock.capTable.mockResolvedValue(state(typed));
   await show();

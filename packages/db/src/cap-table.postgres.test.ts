@@ -136,6 +136,18 @@ describePostgres("cap table snapshot (PostgreSQL)", () => {
       expect(await undoCapTableSource(prisma, owner)).toBe(false);
     });
 
+    it("the new source's own write keeps Undo, a typed-in save clears it", async () => {
+      await saveCapTableSnapshot(prisma, owner, {
+        ...typed,
+        holders: [{ name: "Typed Holder", security: "Common", shares: 1000 }],
+      });
+      await changeCapTableSource(prisma, owner, { source: "carta", companyName: "Typed Co" });
+      await saveCapTableSnapshot(prisma, owner, { ...typed, source: "carta" });
+      expect((await getCapTableSnapshot(prisma, owner))?.canUndo).toBe(true);
+      expect(await undoCapTableSource(prisma, owner)).toBe(true);
+      expect((await getCapTableSnapshot(prisma, owner))?.holders[0]?.name).toBe("Typed Holder");
+    });
+
     it("a late sheet write after a switch back is refused, and the next change clears Undo", async () => {
       await changeCapTableSource(prisma, owner, {
         source: "sheet",
@@ -146,7 +158,8 @@ describePostgres("cap table snapshot (PostgreSQL)", () => {
       await expect(
         saveCapTableSnapshot(prisma, owner, { ...typed, source: "sheet" }),
       ).rejects.toBeInstanceOf(CapTableSourceError);
-      await saveCapTableSnapshot(prisma, owner, typed);
+      const loaded = (await getCapTableSnapshot(prisma, owner))!;
+      await saveCapTableSnapshot(prisma, owner, typed, { loadedAt: loaded.updatedAt });
       expect((await getCapTableSnapshot(prisma, owner))?.canUndo).toBe(false);
     });
 

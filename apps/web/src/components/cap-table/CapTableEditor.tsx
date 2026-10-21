@@ -1,4 +1,3 @@
-import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { CapTableSnapshot, CapTableSnapshotInput } from "@rakazo/contracts";
@@ -48,21 +47,24 @@ const blank = (): Draft => ({
   organization: null,
 });
 
-const locale = () => i18n.locale || "en";
+// The fields are parsed in this one format, so saved numbers are shown in it whatever the UI language.
+const editFormat = "en-US";
 const draftsOf = (snapshot: CapTableSnapshot): Draft[] => [
   ...snapshot.holders.map((holder, i) => ({
     id: holder.id ?? `saved-${i}`,
     name: holder.name,
     security: holder.security,
-    shares: holder.shares == null ? "" : holder.shares.toLocaleString(locale()),
-    invested: holder.amountUsd == null ? "" : `$${holder.amountUsd.toLocaleString(locale())}`,
+    shares: holder.shares == null ? "" : holder.shares.toLocaleString(editFormat),
+    invested: holder.amountUsd == null ? "" : `$${holder.amountUsd.toLocaleString(editFormat)}`,
     email: holder.email,
     organization: holder.organization,
   })),
   blank(),
 ];
 const poolOf = (snapshot: CapTableSnapshot) =>
-  snapshot.optionPoolAvailable == null ? "" : snapshot.optionPoolAvailable.toLocaleString(locale());
+  snapshot.optionPoolAvailable == null
+    ? ""
+    : snapshot.optionPoolAvailable.toLocaleString(editFormat);
 
 /** Whole shares: digits and thousands separators. Null is blank; undefined is not a number. */
 const parseShares = (text: string): number | null | undefined => {

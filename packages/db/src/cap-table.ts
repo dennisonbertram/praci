@@ -55,7 +55,7 @@ export async function getCapTableSnapshot(
  * source, in one conditional update, so a late write cannot land. With `loadedAt` (a typed-in
  * table saved whole) it is also refused when the row changed since that copy was loaded. Only
  * Carta may create the first row; the other sources start through changeCapTableSource.
- * Any write clears the one-step Undo. Throws a ZodError for invalid input.
+ * A typed-in save (with `loadedAt`) clears the one-step Undo; a write by the new source keeps it. Throws a ZodError for invalid input.
  */
 export async function saveCapTableSnapshot(
   prisma: Db,
@@ -71,7 +71,9 @@ export async function saveCapTableSnapshot(
       source,
       ...(options.loadedAt ? { updatedAt: new Date(options.loadedAt) } : {}),
     },
-    data: { data, previous: Prisma.DbNull },
+    // A typed-in save is the founder's next change and clears Undo. A write by the new source
+    // (the Carta read a switch starts) keeps it, so the switch can still be undone.
+    data: options.loadedAt ? { data, previous: Prisma.DbNull } : { data },
   });
   if (written.count) return;
   const exists = await prisma.capTableSnapshot.findUnique({

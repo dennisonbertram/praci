@@ -4656,13 +4656,12 @@ describe("Carta server guards", () => {
       {
         mcpServer: { findMany: vi.fn().mockResolvedValue([cartaRow]) },
         capTableSnapshot: { findUnique: vi.fn().mockResolvedValue({ source: "native" }) },
-        bot: { findFirst: vi.fn().mockResolvedValue({ id: "bot-1" }) },
-        botMcpServer: { upsert: vi.fn() },
-        $transaction: vi.fn().mockResolvedValue(undefined),
       },
       "connected",
     );
-    await expect(client.investors.refresh()).rejects.toThrow();
+    await expect(client.investors.refresh()).rejects.toThrow(
+      "The cap table is not read from Carta",
+    );
   });
 
   it("answers a stale typed-in save as a conflict", async () => {
