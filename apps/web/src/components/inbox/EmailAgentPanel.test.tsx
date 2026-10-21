@@ -21,7 +21,9 @@ vi.mock("../../pages/shell/composer", () => ({ Composer: () => <div data-testid=
 const get = vi.fn();
 const navigate = vi.fn();
 vi.mock("../../lib/rpc", () => ({
-  rpc: { threads: { get: (input: unknown) => get(input), send: vi.fn(), stop: vi.fn() } },
+  rpc: {
+    threads: { get: (input: unknown) => get(input), send: vi.fn(), stop: vi.fn(), answer: vi.fn() },
+  },
 }));
 
 import { EmailAgentPanel, latestPendingDraft } from "./EmailAgentPanel";

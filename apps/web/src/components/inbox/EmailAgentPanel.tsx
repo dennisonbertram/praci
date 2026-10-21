@@ -1,6 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Bot, ThreadMessage, ThreadSnapshot } from "@rakazo/contracts";
-import { newClientId } from "@rakazo/core";
+import { latestAnswerableAskMessageId, newClientId } from "@rakazo/core";
 import { BotAvatar, Button } from "@rakazo/ui-web";
 import { PanelRightClose } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -53,13 +53,9 @@ export function EmailAgentPanel({
   const navigate = useNavigate();
   const [snapshot, setSnapshot] = useState<ThreadSnapshot | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
-  const [scrollRequest, setScrollRequest] = useState<{ messageId: string; nonce: number } | null>(
-    null,
-  );
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentHere = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const jumps = useRef(0);
   const load = useCallback(
     () => rpc.threads.get({ botId: bot.id }).then(setSnapshot, () => undefined),
     [bot.id],
@@ -76,8 +72,9 @@ export function EmailAgentPanel({
     return () => clearInterval(timer);
   }, [running, load]);
 
-  // Show the newest answer from its start, on opening and when a run ends, so its top is not
-  // pushed out of view by the tail-follow.
+  // Show the newest answer from its start, on opening and when a run ends. The Transcript follows
+  // the tail of a chat, which would hide the top of a long answer, so this moves the view once the
+  // answer has been laid out.
   const lastBotId = [...(snapshot?.messages ?? [])].reverse().find((m) => m.role === "bot")?.id;
   const shown = useRef<{ id?: string; running: boolean }>({ running: false });
   useEffect(() => {
@@ -85,11 +82,22 @@ export function EmailAgentPanel({
       shown.current.running = running;
       return;
     }
-    if (lastBotId && (shown.current.id !== lastBotId || shown.current.running)) {
-      jumps.current += 1;
-      setScrollRequest({ messageId: lastBotId, nonce: jumps.current });
-    }
+    const wanted = lastBotId && (shown.current.id !== lastBotId || shown.current.running);
     shown.current = { id: lastBotId, running: false };
+    if (!wanted) return;
+    // No cleanup: a later snapshot must not cancel the move, and the callback checks the refs. It
+    // runs twice because a slow layout can finish after the first.
+    for (const delay of [300, 1_200]) {
+      window.setTimeout(() => {
+        const scroller = scrollRef.current;
+        const row = scroller?.querySelector<HTMLElement>(
+          `[data-message-id="${CSS.escape(lastBotId)}"]`,
+        );
+        if (!scroller || !row) return;
+        const gap = row.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+        scroller.scrollTop += gap - 8;
+      }, delay);
+    }
   }, [snapshot, running, lastBotId]);
 
   const draft = latestPendingDraft(snapshot?.messages ?? []);
@@ -122,20 +130,30 @@ export function EmailAgentPanel({
           <Transcript
             scrollRef={scrollRef}
             sentHere={sentHere}
-            scrollRequest={scrollRequest}
-            onScrollRequestHandled={() => setScrollRequest(null)}
+            scrollRequest={null}
+            onScrollRequestHandled={noop}
             artifactTarget={artifactTarget}
             messages={snapshot.messages}
             // The lookups are the point of this panel, so they show whatever the chat setting says.
             showToolActivity
             olderCursor={snapshot.olderCursor}
             loadingOlder={false}
-            answerableAskMessageId={null}
+            answerableAskMessageId={latestAnswerableAskMessageId(snapshot)}
             running={running}
             workingBots={[]}
             onLoadOlder={asyncNoop}
             onOpenBot={noop}
-            onAnswer={asyncNoop}
+            onAnswer={async (message, text, username, mail) => {
+              await rpc.threads.answer({
+                botId: bot.id,
+                runId: message.runId ?? "",
+                messageId: message.id,
+                answer: text,
+                ...(username ? { username } : {}),
+                ...(mail ? { mail } : {}),
+              });
+              await load();
+            }}
             onReply={noop}
             onQuote={noop}
             onReact={asyncNoop}
@@ -155,7 +173,7 @@ export function EmailAgentPanel({
         <div className="min-h-0 flex-1" />
       )}
       {draft ? (
-        <div className="shrink-0 px-4 pb-2">
+        <div className="shrink-0 px-7 pb-2">
           <Button variant="outline" size="sm" onClick={() => onReplyWithDraft(draft)}>
             <Trans>Reply with draft</Trans>
           </Button>
