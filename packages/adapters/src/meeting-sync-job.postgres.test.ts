@@ -214,8 +214,20 @@ describePostgres("meetings.sync job (PostgreSQL)", () => {
     expect(s.cursor).not.toBeNull();
     expect(s.syncedThrough).toBeNull();
     expect(s.claimToken).toBeNull();
-    expect(enqueued.map((j) => j.name)).toEqual(["meetings.sync"]);
-    expect(enqueued[0]?.availableAt).toBeInstanceOf(Date);
+    // Each stored meeting without a digest is queued for one; the pass queues itself again.
+    expect(enqueued.map((j) => j.name).sort()).toEqual([
+      "meetings.digest",
+      "meetings.digest",
+      "meetings.sync",
+    ]);
+    expect(enqueued.find((j) => j.name === "meetings.sync")?.availableAt).toBeInstanceOf(Date);
+    const [firstStored] = await stored();
+    expect(enqueued.find((j) => j.name === "meetings.digest")?.payload).toMatchObject({
+      spaceId,
+      userId,
+      meetingId: expect.any(String),
+    });
+    expect(firstStored?.digestStatus).toBeNull();
 
     await runMeetingSyncJob(deps(1), payload);
     s = await state({ connectionId });
@@ -230,7 +242,8 @@ describePostgres("meetings.sync job (PostgreSQL)", () => {
     expect(s.lastSyncedAt).not.toBeNull();
     expect(source.listCalls[0]?.createdAfter).toBeInstanceOf(Date);
     expect(source.listCalls[0]?.updatedAfter).toBeUndefined();
-    expect(enqueued).toHaveLength(2);
+    expect(enqueued.filter((j) => j.name === "meetings.sync")).toHaveLength(2);
+    expect(enqueued.filter((j) => j.name === "meetings.digest")).toHaveLength(5);
   });
 
   it("the second sync is incremental, sees a late-summarized note and an old meeting edited later", async () => {

@@ -586,6 +586,7 @@ export async function createApp(
     messaging,
     cloudAgent,
     devinCallTool: createDevinCallTool(prisma, mcp),
+    notificationEvents,
     financeCallToolFor: financeCallToolOverride ?? createFinanceCallToolFor(prisma, mcp),
     artifacts,
     connectors: stack.connector,

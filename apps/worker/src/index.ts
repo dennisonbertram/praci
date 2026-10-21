@@ -269,6 +269,7 @@ async function main() {
     cloudAgent,
     financeCallToolFor: createFinanceCallToolFor(prisma, mcp),
     devinCallTool: createDevinCallTool(prisma, mcp),
+    notificationEvents,
     artifacts,
     connectors: stack.connector,
     boxAccessToken: boxAccessToken(mcpOAuth),

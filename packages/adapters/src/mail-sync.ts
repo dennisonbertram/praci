@@ -22,6 +22,7 @@ import {
   refreshSenderStats,
   storePriorContact,
 } from "./mail-sender-stats.js";
+import { queueMeetingDigests } from "./meeting-digest.js";
 
 /** Days of mail the cache keeps. The readers that show or triage mail still look at their own, shorter windows. */
 export const MAIL_CACHE_WINDOW_DAYS = 90;
@@ -57,6 +58,8 @@ export interface MailSyncDeps {
   mail: MailProvider;
   /** Queues triage after each successful sync. */
   jobs: JobPublisher;
+  /** Whether meeting digests can run for the user; without it a sync queues none. */
+  digestReady?: (scope: { spaceId: string; userId: string }) => Promise<boolean>;
   /** Clock for the cache window; defaults to the system clock. */
   now?: () => Date;
   /** Caps every provider call of a sync. Without it an incremental sync gets 90 seconds and a full window re-list 240, both shorter than the 5-minute stale claim. */
@@ -532,6 +535,18 @@ export async function syncMailbox(
         await deps.jobs.enqueue(inboxTriageJob(userId, spaceId)).catch((error) => {
           getLogger().warn("inbox triage enqueue failed", {
             connectionId: account.id,
+            reason: error instanceof Error ? error.name : "error",
+          });
+        });
+        // A connected account adds an identity, so stored meeting digests are matched again. Only
+        // when digests can run (a model and consent), so a skipped meeting is not queued every sync.
+        // A failed digest is never queued again; a meeting is queued while its digest is missing or
+        // was matched against another identity set.
+        await (async () => {
+          if (!(await deps.digestReady?.({ spaceId, userId }))) return;
+          await queueMeetingDigests(deps, { spaceId, userId });
+        })().catch((error) => {
+          getLogger().warn("meeting digest queue failed", {
             reason: error instanceof Error ? error.name : "error",
           });
         });
