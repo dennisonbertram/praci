@@ -66,7 +66,6 @@ import {
   changeText,
   dayRange,
   fullDay,
-  hiddenOr,
   lastDayOf,
   money,
   moneyExact,
@@ -358,9 +357,7 @@ function Overview({
   const heldStablecoins = data.crypto?.stablecoinCents ?? 0;
   const heldTotal = data.crypto?.totalCents ?? 0;
   const bankRunwayMonths = runwayText(data.bankRunway?.months);
-  const runOutMonth = data.runway.runOutDate
-    ? hiddenOr(monthFull(data.runway.runOutDate.slice(0, 7)))
-    : "";
+  const runOutMonth = data.runway.runOutDate ? monthFull(data.runway.runOutDate.slice(0, 7)) : "";
   // The same figure on both sides says nothing, and nothing spent so far (a statement account has
   // no lines for this period yet) is not a 100% drop, so the comparison is left out.
   const sameAsBefore = (p: { currentCents: number; previousCents: number | null }) =>
@@ -416,7 +413,7 @@ function Overview({
                           ? t`${sourceNames}, ${data.excludedNonUsdCount} non-USD not counted`
                           : undefined
                       }
-                      className="inline-flex min-w-0 items-center gap-1.5 rounded-full px-1.5 py-0.5 hover:text-foreground"
+                      className="rk-tap inline-flex min-w-0 items-center gap-1.5 rounded-full px-1.5 py-0.5 hover:text-foreground"
                     />
                   }
                 >
@@ -506,15 +503,18 @@ function Overview({
       ) : (
         <div className="flex flex-col gap-3">
           <div
-            // Two per row when narrow; an odd last card takes the whole row instead of sitting alone.
-            className={`grid grid-cols-2 gap-3 [&>:last-child:nth-child(odd)]:col-span-2 @3xl:[&>:last-child:nth-child(odd)]:col-span-1 ${
+            // Two per row when narrow, the odd last card taking the whole row. Five cards go 3 + 2
+            // (three-sixths wide, then the last two half each) before they fit one row of five.
+            className={`grid grid-cols-2 gap-3 ${
               kpiCount >= 5
-                ? "@3xl:grid-cols-3 @5xl:grid-cols-5"
-                : kpiCount === 4
-                  ? "@3xl:grid-cols-4"
-                  : kpiCount === 3
-                    ? "@3xl:grid-cols-3"
-                    : "@3xl:grid-cols-2"
+                ? "@max-2xl:[&>:last-child]:col-span-2 @2xl:grid-cols-6 @2xl:[&>*]:col-span-2 @2xl:[&>:nth-last-child(-n+2)]:col-span-3 @5xl:grid-cols-5 @5xl:[&>*]:col-span-1 @5xl:[&>:nth-last-child(-n+2)]:col-span-1"
+                : `[&>:last-child:nth-child(odd)]:col-span-2 @3xl:[&>:last-child:nth-child(odd)]:col-span-1 ${
+                    kpiCount === 4
+                      ? "@3xl:grid-cols-4"
+                      : kpiCount === 3
+                        ? "@3xl:grid-cols-3"
+                        : "@3xl:grid-cols-2"
+                  }`
             }`}
           >
             {hasCash ? (
@@ -600,7 +600,7 @@ function Overview({
               <PeriodTabs value={period} onChange={setPeriod} />
               <Link
                 to={financePath.spend(period)}
-                className="text-lg font-semibold tabular-nums hover:underline"
+                className="rk-tap text-lg font-semibold tabular-nums hover:underline"
               >
                 {money(totals.currentCents)}
               </Link>
@@ -623,7 +623,10 @@ function Overview({
 
           <Section
             title={
-              <Link to={financePath.burn()} className="inline-flex items-center hover:underline">
+              <Link
+                to={financePath.burn()}
+                className="rk-tap inline-flex items-center hover:underline"
+              >
                 <Trans>Burn</Trans>
                 <ChevronRight aria-hidden="true" className="size-3" />
               </Link>
@@ -637,6 +640,7 @@ function Overview({
               </div>
             ) : (
               <BurnLines
+                height={180}
                 series={bars}
                 granularity={barGranularity}
                 label={t`Cash out and cash in over time`}
@@ -930,7 +934,7 @@ function SubscriptionsTable({
   useHideAmounts();
   const rowProps = useRowNavigate();
   return (
-    <Table compact className="max-w-3xl">
+    <Table compact>
       <TableHeader>
         <TableHeadRow>
           <TableHead>
@@ -943,7 +947,7 @@ function SubscriptionsTable({
             <Trans>Usual per month</Trans>
           </TableHead>
           <TableHead className="text-end hidden @md:table-cell">
-            <Trans>Change, 3 months</Trans>
+            <Trans>3-mo change</Trans>
           </TableHead>
           <TableHead className="text-end hidden @md:table-cell">
             <Trans>Last charge</Trans>

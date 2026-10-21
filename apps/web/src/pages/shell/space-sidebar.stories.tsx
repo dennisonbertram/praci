@@ -52,6 +52,20 @@ const bots = [
     updatedAt: "2026-01-01T00:02:00.000Z",
   }),
 ];
+const pageAgentBots = [
+  makeBot({
+    id: "bot_page_inbox",
+    name: "Inbox agent",
+    spawnKey: "inbox-agent:user_demo",
+    updatedAt: "2026-01-01T00:03:00.000Z",
+  }),
+  makeBot({
+    id: "bot_page_finance",
+    name: "Finance agent",
+    spawnKey: "finance-agent:user_demo",
+    updatedAt: "2026-01-01T00:04:00.000Z",
+  }),
+];
 const operationsGroup: Group = {
   id: "group_operations",
   spaceId: "space_demo",
@@ -77,10 +91,14 @@ export function SidebarFixture({
   mode,
   devinMode = false,
   devinNeedsYou = 0,
+  pageAgents = false,
+  activePageAgent = false,
 }: {
   mode: Mode;
   devinMode?: boolean;
   devinNeedsYou?: number;
+  pageAgents?: boolean;
+  activePageAgent?: boolean;
 }) {
   const navigate = useNavigate();
   const sidebarRef = useRef<HTMLElement>(null);
@@ -108,6 +126,7 @@ export function SidebarFixture({
     id: string;
     position: { x: number; y: number };
   } | null>(null);
+  const fixtureBots = pageAgents ? [...bots, ...pageAgentBots] : bots;
   const [, setDeleteTarget] = useState<ReturnType<typeof makeBot> | null>(null);
   const [, setDeleteGroupTarget] = useState<typeof operationsGroup | null>(null);
   const spaceQuery = query.trim();
@@ -119,7 +138,7 @@ export function SidebarFixture({
         name: "Demo space",
         canRename: true,
         canDelete: true,
-        bots,
+        bots: fixtureBots,
         groups: [operationsGroup],
         botSections: sections,
       },
@@ -144,7 +163,8 @@ export function SidebarFixture({
     setMobileSidebarOpen,
     createMenuOpen,
     setCreateMenuOpen,
-    bots,
+    bots: fixtureBots,
+    initialBotsLoaded: true,
     createBot: async () => undefined,
     navigate,
     setPanel: () => undefined,
@@ -165,7 +185,6 @@ export function SidebarFixture({
       dataRoomWaiting: 0,
       botKinds: {},
     },
-    hideAmounts: false,
     legalMode: false,
     devinMode,
     capTableMode: false,
@@ -207,7 +226,7 @@ export function SidebarFixture({
     setSpaceMenu,
     inGroup: false,
     pageMode: false,
-    active: bots[0],
+    active: activePageAgent ? pageAgentBots[0] : fixtureBots[0],
     activeGroup: undefined,
     dismissedRunErrorIds: new Set<string>(),
     displayedRunError: null,

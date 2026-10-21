@@ -274,7 +274,7 @@ msgstr ""
 msgid "{0} rollup hours"
 msgstr ""
 
-#. placeholder {0}: runwayGlance(glance.financeRunwayMonths, hideAmounts)
+#. placeholder {0}: runwayGlance(glance.financeRunwayMonths)
 #: src/pages/Shell.tsx
 msgid "{0} runway"
 msgstr ""
@@ -612,6 +612,10 @@ msgstr ""
 msgid "3-mo avg, after revenue"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "3-mo change"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "A bit of everything"
 msgstr ""
@@ -838,6 +842,7 @@ msgid "Add email for {0}"
 msgstr ""
 
 #: src/components/data-room/DataRoomImportMenu.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/DataRoom.tsx
 msgid "Add files"
 msgstr ""
@@ -1572,6 +1577,10 @@ msgstr "Estudio de avatares"
 msgid "Avatars"
 msgstr "Avatares"
 
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Average per month"
+msgstr ""
+
 #: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/ImportFromDrive.tsx
@@ -2020,10 +2029,6 @@ msgstr "Cambiar contraseña"
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Change settings, export your data or retake this tour from here."
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Change, 3 months"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -3841,6 +3846,7 @@ msgstr "Desconectando…"
 #: src/components/data-room/ImportActivity.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
+#: src/pages/Legal.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/shell/composer.tsx
 #: src/pages/shell/message-cards.tsx
@@ -3904,7 +3910,7 @@ msgid "Documents"
 msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
-msgid "Documents over time"
+msgid "Documents by document date"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
@@ -5137,7 +5143,7 @@ msgid "Last scan failed: {0}"
 msgstr ""
 
 #: src/pages/Legal.tsx
-msgid "Last scan failed: OpenRouter did not accept your key."
+msgid "Last scan failed: The AI key was rejected."
 msgstr ""
 
 #: src/components/DesktopUpdates.tsx
@@ -5171,6 +5177,7 @@ msgid "Leave"
 msgstr "Salir"
 
 #: src/components/ContactDialog.tsx
+#: src/components/data-room/FilterBar.tsx
 #: src/pages/Legal.tsx
 #: src/pages/Shell.tsx
 msgid "Legal"
@@ -5721,10 +5728,6 @@ msgstr ""
 msgid "Monthly"
 msgstr "Mensual"
 
-#: src/pages/finance/FinanceSpend.tsx
-msgid "Monthly avg"
-msgstr ""
-
 #: src/components/FinanceCards.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -5895,6 +5898,7 @@ msgstr ""
 msgid "Needs takeover"
 msgstr "Necesita toma de control"
 
+#: src/components/PageAgentsRow.tsx
 #: src/lib/roster-status.ts
 #: src/pages/ActivityList.tsx
 #: src/pages/Devin.tsx
@@ -6329,6 +6333,10 @@ msgstr ""
 msgid "Not attached, over the {MAX_COMPOSE_ATTACHMENT_MB} MB limit: {leftOutNames}. Download it from the original to share it another way."
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
+msgid "Not checked"
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Not confirmed as saved. Check Drafts in your mail before trying again."
 msgstr ""
@@ -6443,7 +6451,7 @@ msgid "Nothing remembered yet"
 msgstr "Aún no hay recuerdos"
 
 #: src/components/inbox/InboxCleanup.tsx
-msgid "Nothing to clean up"
+msgid "Nothing to clean up. People you have written to or saved as contacts are left out."
 msgstr ""
 
 #: src/components/NotificationSettings.tsx
@@ -6473,6 +6481,10 @@ msgstr "Falló la conexión OAuth"
 
 #: src/components/legal/LegalGraph.tsx
 msgid "Obligation"
+msgstr ""
+
+#: src/components/cap-table/OwnershipDonut.tsx
+msgid "of class"
 msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
@@ -6611,6 +6623,7 @@ msgstr ""
 msgid "Open link"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/pages/shell/composer-error.tsx
 msgid "Open Models settings"
 msgstr ""
@@ -6666,6 +6679,10 @@ msgstr ""
 
 #: src/components/ShellSkeleton.tsx
 msgid "Opening Praci…"
+msgstr ""
+
+#: src/components/cap-table/OwnershipDonut.tsx
+msgid "Option pool ({poolFree} available)"
 msgstr ""
 
 #: src/pages/CapTable.tsx
@@ -6779,6 +6796,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Page"
+msgstr ""
+
+#: src/components/PageAgentsRow.tsx
+msgid "Page agents"
 msgstr ""
 
 #: src/pages/shell/bot-page-panel.tsx
@@ -7586,13 +7607,10 @@ msgid "Replace API key"
 msgstr "Reemplazar clave de API"
 
 #: src/components/integrations/FinanceSection.tsx
+#: src/pages/Legal.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Replace key"
 msgstr "Reemplazar clave"
-
-#: src/pages/Legal.tsx
-msgid "Replace OpenRouter key"
-msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Replace value"
@@ -9103,6 +9121,10 @@ msgstr ""
 msgid "The model could not sort your files."
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "The model provider did not accept your API key."
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "The model provider did not accept your API key. Check it in Settings > Models."
 msgstr ""
@@ -9130,6 +9152,10 @@ msgstr ""
 
 #: src/components/AiDataSharing.tsx
 msgid "The text is sent to the AI model that runs your bots."
+msgstr ""
+
+#: src/components/legal/ConsentPrompt.tsx
+msgid "The text of your Data room documents is sent to the AI model that runs your bots."
 msgstr ""
 
 #: src/components/finance/StatementReviewCard.tsx
@@ -9390,6 +9416,10 @@ msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
 msgid "Top parties"
+msgstr ""
+
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Total"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -9737,6 +9767,7 @@ msgstr "Actualizando…"
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Upload"

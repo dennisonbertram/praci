@@ -217,6 +217,7 @@ export function FilterBar({
   parties,
   sources,
   hasDates,
+  statsView = false,
   folders,
   folderId,
   onFolder,
@@ -248,6 +249,8 @@ export function FilterBar({
   parties: string[];
   sources: string[];
   hasDates: boolean;
+  /** Stats count by the filters only: search and sort order a list, so they are left out. */
+  statsView?: boolean;
 }) {
   const labels = sortLabels();
   const field = sort?.field ?? "relevance";
@@ -267,14 +270,16 @@ export function FilterBar({
     // Search and Sort share the first row; the filter pills wrap on a row of their own below, or,
     // given room, between the two. Sort never moves down among the pills.
     <div className={`flex flex-wrap items-start gap-1.5 pb-2.5 ${PAGE_GUTTER_X}`}>
-      <SearchField
-        className="order-1 w-full @min-[640px]/bd:me-1.5 @min-[640px]/bd:w-80"
-        value={query}
-        onChange={onQuery}
-        placeholder={t`Search names and text`}
-        label={t`Search documents`}
-        name="data-room-search"
-      />
+      {statsView ? null : (
+        <SearchField
+          className="order-1 w-full @min-[640px]/bd:me-1.5 @min-[640px]/bd:w-80"
+          value={query}
+          onChange={onQuery}
+          placeholder={t`Search names and text`}
+          label={t`Search documents`}
+          name="data-room-search"
+        />
+      )}
       {/* Where the folder tree is hidden, this picks the folder; it sits with Sort, not the pills. */}
       <div className="order-2 flex h-8 items-center gap-1 @min-[800px]/bd:hidden">
         <DropdownMenu>
@@ -358,6 +363,14 @@ export function FilterBar({
             onChange={(status) => onFilters({ ...filters, status })}
           />
         ) : null}
+        {filters.legalUnchecked ? (
+          <PickFilter
+            label={t`Legal`}
+            value="unchecked"
+            options={[["unchecked", t`Not checked`]]}
+            onChange={() => onFilters({ ...filters, legalUnchecked: undefined })}
+          />
+        ) : null}
         {sources.length > 1 || filters.source ? (
           <PickFilter
             label={t`Source`}
@@ -370,17 +383,19 @@ export function FilterBar({
           />
         ) : null}
       </div>
-      <div className="order-3 ms-auto flex h-8 shrink-0 items-center gap-0.5 @min-[960px]/bd:order-4">
-        {/* Relevance has no direction, so the arrow only shows for a field sort. */}
-        <SortControl
-          fields={fields.map((name) => [name, labels[name]])}
-          field={field}
-          fieldLabel={labels[field]}
-          direction={sort ? direction : undefined}
-          onField={(next) => onSort(next === "relevance" ? null : naturalSort(next as SortField))}
-          onDirection={(next) => sort && onSort({ ...sort, direction: next })}
-        />
-      </div>
+      {statsView ? null : (
+        <div className="order-3 ms-auto flex h-8 shrink-0 items-center gap-0.5 @min-[960px]/bd:order-4">
+          {/* Relevance has no direction, so the arrow only shows for a field sort. */}
+          <SortControl
+            fields={fields.map((name) => [name, labels[name]])}
+            field={field}
+            fieldLabel={labels[field]}
+            direction={sort ? direction : undefined}
+            onField={(next) => onSort(next === "relevance" ? null : naturalSort(next as SortField))}
+            onDirection={(next) => sort && onSort({ ...sort, direction: next })}
+          />
+        </div>
+      )}
     </div>
   );
 }

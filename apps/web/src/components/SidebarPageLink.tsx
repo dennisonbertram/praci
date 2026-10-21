@@ -60,11 +60,11 @@ export function SidebarPageLink({
         aria-current={current ? "page" : undefined}
         aria-label={rail || badgeLabel ? name : undefined}
         onClick={onOpen}
-        className={`mb-1 flex items-center rounded-xl text-start hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
-          rail ? "justify-center px-0 py-1.5" : "gap-3 px-2.5 py-2"
+        className={`mb-0.5 flex items-center rounded-xl text-start hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
+          rail ? "justify-center px-0 py-1.5" : "gap-3 px-2.5 py-1.5"
         } ${current ? "bg-sidebar-accent" : ""}`}
       >
-        <span className="relative grid h-[30px] w-[30px] place-items-center rounded-lg bg-accent text-foreground/80">
+        <span className="relative grid h-7 w-7 place-items-center rounded-lg bg-accent text-foreground/80">
           {icon}
           {rail && badge ? (
             <span

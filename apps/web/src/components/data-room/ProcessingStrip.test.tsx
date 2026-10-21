@@ -133,3 +133,27 @@ it("makes the failed count a button that lists those files, even when nothing is
   act(() => button?.click());
   expect(onShowFailed).toHaveBeenCalledTimes(1);
 });
+
+it("keeps a failed count on the one line, and draws no bar before any progress", () => {
+  act(() =>
+    root.render(
+      <ProcessingStrip
+        processing={{
+          reading: 1,
+          indexing: 0,
+          tagging: 0,
+          failed: 1,
+          current: "Board minutes.pdf",
+        }}
+        total={1}
+        onShowFailed={() => undefined}
+      />,
+    ),
+  );
+  const line = container.querySelector('[role="status"] > div');
+  expect(container.querySelectorAll('[role="status"] > *')).toHaveLength(1);
+  expect(line?.textContent).toContain("Processing 1 file");
+  expect(line?.textContent).toContain("1 couldn't be read");
+  expect(line?.className).toContain("whitespace-nowrap");
+  expect(container.querySelector('[role="progressbar"]')).toBeNull();
+});

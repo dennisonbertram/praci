@@ -216,7 +216,10 @@ const withHolders = (entry: string) => ({
 export const SortedByShares: Story = withHolders("/app/cap-table?sort=shares&dir=asc");
 
 /** Filtered to one security, with the Security pill showing it. */
-export const SecurityFilter: Story = withHolders("/app/cap-table?security=SAFE");
+export const SecurityFilter: Story = withHolders("/app/cap-table?kind=investor&security=SAFE");
+
+/** Investors: SAFEs have an Amount instead of empty Shares and Ownership. */
+export const InvestorsTab: Story = withHolders("/app/cap-table?kind=investor");
 
 /** A search that matches no one. */
 export const NoMatches: Story = withHolders("/app/cap-table?q=nobody");

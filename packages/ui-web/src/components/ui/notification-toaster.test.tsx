@@ -39,6 +39,22 @@ it("shows three toasts and collapses the rest into +N", async () => {
   );
 });
 
+it("shows one toast on a phone", async () => {
+  vi.stubGlobal("matchMedia", (q: string) => ({
+    matches: true,
+    media: q,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  try {
+    await mount();
+    await add(3);
+    expect(cards()).toHaveLength(1);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
 const viewport = () =>
   document.querySelector<HTMLElement>("[data-base-ui-toast-viewport], [role=status]");
 const advance = (ms: number) => act(async () => vi.advanceTimersByTime(ms));

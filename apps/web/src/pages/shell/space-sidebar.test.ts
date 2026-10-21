@@ -308,3 +308,62 @@ it("shows Devin's needs-you count and opens its page", async () => {
     vi.unstubAllGlobals();
   }
 });
+
+it("expands folded page agents and keeps the active page agent visible", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const renderFixture = (activePageAgent: boolean) =>
+    createElement(
+      MemoryRouter,
+      null,
+      createElement(SidebarFixture, {
+        mode: "expanded",
+        pageAgents: true,
+        activePageAgent,
+      }),
+    );
+  try {
+    await act(async () => root.render(renderFixture(false)));
+
+    const toggle = container.querySelector<HTMLButtonElement>(
+      '[data-testid="sidebar-page-agents"]',
+    );
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+    expect(container.textContent).not.toContain("Inbox agent");
+
+    await act(async () => toggle?.click());
+    expect(toggle?.getAttribute("aria-expanded")).toBe("true");
+    expect(container.textContent).toContain("Inbox agent");
+
+    await act(async () => toggle?.click());
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+
+    await act(async () => root.render(renderFixture(true)));
+    const activeToggle = container.querySelector<HTMLButtonElement>(
+      '[data-testid="sidebar-page-agents"]',
+    );
+    expect(activeToggle?.getAttribute("aria-expanded")).toBe("true");
+    expect(container.textContent).toContain("Inbox agent");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});

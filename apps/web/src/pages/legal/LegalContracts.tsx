@@ -57,7 +57,7 @@ function Title({ contract }: { contract: LegalContract }) {
     <>
       <Link
         to={`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`}
-        className="font-medium hover:underline"
+        className="rk-tap font-medium hover:underline"
       >
         {contract.title}
       </Link>

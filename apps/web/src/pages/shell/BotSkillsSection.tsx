@@ -435,7 +435,7 @@ export function BotSkillsSection({
               >
                 {skillBody(draft.content)}
               </pre>
-              <div className="mt-2 flex items-center gap-2">
+              <div className="sticky bottom-0 mt-2 flex items-center gap-2 bg-background py-1.5">
                 <Button
                   type="button"
                   disabled={busy}
