@@ -1,0 +1,39 @@
+{
+  "story_id": "STORY-GS-7",
+  "round": 3,
+  "result": "PASS",
+  "round2_status": [
+    {
+      "id": "F2-GS-7-01",
+      "status": "fixed",
+      "evidence": "After Disconnect the card says 'Rakazo keeps your meetings and to-dos.' (g-d-disconnect-after.png)."
+    },
+    {
+      "id": "F2-GS-7-02",
+      "status": "still-open",
+      "evidence": "Delete exists per meeting via a citation only (drawn); no way to remove all stored meetings. Plan Decisions: per-meeting delete only, everything else kept permanently. Medium, accepted by decision; revisit if bulk erase is requested."
+    },
+    {
+      "id": "F2-GS-7-03",
+      "status": "fixed",
+      "evidence": "Disconnected key card draws the sentence in both the Disconnect screen and the api-key frame (g-d-api-key-disconnected.png)."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F3-GS-7-01",
+      "severity": "low",
+      "category": "state",
+      "criterion": "Responsive",
+      "score": "warn",
+      "kind": "mockup",
+      "description": "At 390 px the citation 'Open' popover (the only place Delete is reached) is not visible in the mockup: it renders below the frame and is clipped, so the Delete entry point cannot be seen at phone width. The confirmation dialog is fine.",
+      "expected": "The journey step has a drawn, unambiguous surface.",
+      "actual": "At 390 px the citation 'Open' popover (the only place Delete is reached) is not visible in the mockup: it renders below the frame and is clipped, so the Delete entry point cannot be seen at phone width. The confirmation dialog is fine.",
+      "screenshot": "g-m-citation-open.png",
+      "suggested_fix": "Anchor the popover inside the frame at narrow widths (position it under the chip with max-width, or let the frame grow).",
+      "files_likely_involved": [],
+      "jf": "NEW"
+    }
+  ]
+}

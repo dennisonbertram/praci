@@ -1175,3 +1175,19 @@ it("shows stats for the open filters, and a click on a type filters the list", a
     expect.objectContaining({ folderId: "f1", docType: "legal" }),
   );
 });
+
+it("does not ask for the list again while a request is still in flight", async () => {
+  const slow = deferred<{ items: DataRoomApiItem[]; nextCursor: null }>();
+  rpcMock.list.mockReturnValue(slow.promise);
+  await renderPage();
+  expect(rpcMock.list).toHaveBeenCalledTimes(1);
+  // A poll tick from the processing strip.
+  await act(async () => {
+    window.dispatchEvent(new Event("rakazo:data-room-changed"));
+  });
+  expect(rpcMock.list).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    slow.resolve({ items: [item("a.txt")], nextCursor: null });
+  });
+  expect(names()).toEqual(["a.txt"]);
+});

@@ -350,6 +350,14 @@ export function FilterBar({
             })
           }
         />
+        {filters.status ? (
+          <PickFilter
+            label={t`Status`}
+            value={filters.status}
+            options={[["failed", t`Failed`]]}
+            onChange={(status) => onFilters({ ...filters, status })}
+          />
+        ) : null}
         {sources.length > 1 || filters.source ? (
           <PickFilter
             label={t`Source`}

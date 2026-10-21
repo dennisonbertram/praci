@@ -1959,23 +1959,34 @@ export function ShellPage() {
         icon: <PieChart {...icon} />,
       },
       { id: "contacts", label: t`Contacts`, icon: <BookUser {...icon} /> },
+      {
+        id: "legal",
+        label: t`Legal`,
+        keywords: t`contracts, NDA, deadlines`,
+        icon: <Scale {...icon} />,
+      },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
       { id: "integrations", label: t`Apps`, icon: <LayoutGrid {...icon} /> },
       { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
       { id: "settings", label: t`Settings`, icon: <Settings {...icon} /> },
     ];
   }, [t]);
+  // A page hidden in Page options stays out of search and the command palette too.
+  const visiblePages = useMemo(
+    () => appPages.filter((page) => !hiddenPages.includes(page.id)),
+    [appPages, hiddenPages],
+  );
   // Matched by name, so "Finance" finds the Finance page and not only the Finance agent.
   const searchPages = useMemo(() => {
     const needle = spaceQuery.toLocaleLowerCase();
     return needle
-      ? appPages.filter((page) =>
+      ? visiblePages.filter((page) =>
           `${page.label} ${"keywords" in page ? page.keywords : ""}`
             .toLocaleLowerCase()
             .includes(needle),
         )
       : [];
-  }, [appPages, spaceQuery]);
+  }, [visiblePages, spaceQuery]);
   const [searchDocuments, setSearchDocuments] = useState<SearchLink[]>([]);
   const [searchArtifacts, setSearchArtifacts] = useState<SearchLink[]>([]);
 
@@ -3949,7 +3960,8 @@ export function ShellPage() {
           className="rk-scroll rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5"
         >
           {/* While searching, matching pages are listed with the results instead. */}
-          {showSpaceSearch && !rail ? null : (
+          {(showSpaceSearch && !rail) || bootstrapMe === undefined ? null : (
+            // Waiting for the account (undefined) keeps pages the user hid from flashing in.
             // Inside the scroll area, so on a short screen the chats are never squeezed out.
             <div className="flex shrink-0 flex-col">
               <SidebarPagesGroup
@@ -4004,6 +4016,7 @@ export function ShellPage() {
                       unseen: unseen.finance ?? 0,
                       rail,
                       value: runwayGlance(glance.financeRunwayMonths, hideAmounts),
+                      valueLabel: t`${runwayGlance(glance.financeRunwayMonths, hideAmounts)} runway`,
                     })}
                   />
                 )}
@@ -4022,6 +4035,10 @@ export function ShellPage() {
                       unseen: unseen.legal ?? 0,
                       rail,
                       value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
+                      valueLabel: plural(glance.legalDueSoon, {
+                        one: "# due soon",
+                        other: "# due soon",
+                      }),
                     })}
                   />
                 )}
@@ -4068,6 +4085,10 @@ export function ShellPage() {
                       rail,
                       value:
                         glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
+                      valueLabel: plural(glance.dataRoomWaiting, {
+                        one: "# waiting",
+                        other: "# waiting",
+                      }),
                     })}
                   />
                 )}
@@ -4111,8 +4132,11 @@ export function ShellPage() {
               onSelectDocument={(id) =>
                 openSearchResult(`/app/data-room?item=${encodeURIComponent(id)}`)
               }
-              onSearchMail={() =>
-                openSearchResult(`/app/inbox?q=${encodeURIComponent(spaceQuery)}`)
+              // A page name is a navigation query, so the mail row would only be a second answer.
+              onSearchMail={
+                searchPages.length
+                  ? undefined
+                  : () => openSearchResult(`/app/inbox?q=${encodeURIComponent(spaceQuery)}`)
               }
             />
           ) : (
@@ -4174,11 +4198,7 @@ export function ShellPage() {
                     name: group.relabeled ? `${group.title} (${group.spaceName})` : group.title,
                   };
                   return (
-                    <div
-                      key={group.key}
-                      data-sidebar-group={group.key}
-                      data-sidebar-current={group.current ? "" : undefined}
-                    >
+                    <div key={group.key} data-sidebar-group={group.key}>
                       {rail ? (
                         <div
                           className={
@@ -4207,6 +4227,7 @@ export function ShellPage() {
                           onRename={(name) => void renameFolder(folder, name)}
                           onCancelRename={() => setEditingFolderId(null)}
                           onDelete={() => void deleteFolder(folder)}
+                          takenNames={botSections.map((section) => section.name)}
                         />
                       ) : null}
                       {!rail && !folder && (group.title || hasSpaceActions) ? (
@@ -4221,6 +4242,7 @@ export function ShellPage() {
                             <button
                               type="button"
                               aria-current={group.current ? "true" : undefined}
+                              data-sidebar-current={group.current ? "" : undefined}
                               title={group.relabeled ? group.spaceName : undefined}
                               className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-muted-foreground/60"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
                               onClick={() => {
@@ -6022,7 +6044,7 @@ export function ShellPage() {
             setMobileSidebarOpen(false);
             navigate(`/app/${id}`);
           }}
-          pages={appPages}
+          pages={visiblePages}
           groups={groups.map((group) => ({
             id: group.id,
             label: group.name,

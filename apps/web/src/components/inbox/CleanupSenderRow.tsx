@@ -33,6 +33,7 @@ export function CleanupSenderRow({
       className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 border-b border-foreground/10 px-1 py-2.5"
     >
       <Checkbox
+        className="relative after:absolute after:-inset-3.5"
         aria-label={t`Select ${sender.name}`}
         checked={checked}
         disabled={disabled}
@@ -40,10 +41,10 @@ export function CleanupSenderRow({
       />
       <div className="min-w-0">
         <div className="flex min-w-0 items-baseline gap-2">
-          <span dir="auto" className="truncate text-[15px] font-semibold">
+          <span dir="auto" className="max-w-[70%] shrink-0 truncate text-[15px] font-semibold">
             {sender.name}
           </span>
-          <span dir="auto" className="truncate text-sm text-muted-foreground">
+          <span dir="auto" className="min-w-0 truncate text-sm text-muted-foreground">
             {sender.address}
           </span>
         </div>

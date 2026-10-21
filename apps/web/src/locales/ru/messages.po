@@ -59,6 +59,11 @@ msgstr ""
 msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
 msgstr ""
 
+#. placeholder {0}: glance.legalDueSoon
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# due soon} other {# due soon}}"
+msgstr ""
+
 #. placeholder {0}: stats.duplicates
 #: src/components/data-room/DataRoomStats.tsx
 msgid "{0, plural, one {# duplicate} other {# duplicates}}"
@@ -92,6 +97,11 @@ msgstr ""
 #. placeholder {0}: usage.runs
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "{0, plural, one {# task done by your bots} other {# tasks done by your bots}}"
+msgstr ""
+
+#. placeholder {0}: glance.dataRoomWaiting
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# waiting} other {# waiting}}"
 msgstr ""
 
 #. placeholder {0}: rows.length
@@ -244,6 +254,11 @@ msgstr ""
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} rollup hours"
 msgstr "{0} ч. сводки"
+
+#. placeholder {0}: runwayGlance(glance.financeRunwayMonths, hideAmounts)
+#: src/pages/Shell.tsx
+msgid "{0} runway"
+msgstr ""
 
 #. placeholder {0}: statement.transactionCount
 #: src/components/finance/StatementReviewCard.tsx
@@ -562,6 +577,10 @@ msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
 msgid "A deposit address at an exchange."
+msgstr ""
+
+#: src/components/sidebar-folders/FolderHeader.tsx
+msgid "A folder with that name already exists"
 msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
@@ -2597,6 +2616,10 @@ msgstr ""
 msgid "Contracts"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "contracts, NDA, deadlines"
+msgstr ""
+
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
@@ -3588,6 +3611,7 @@ msgstr ""
 msgid "Desktop update"
 msgstr "Обновление настольного приложения"
 
+#: src/components/AskCard.tsx
 #: src/components/data-room/ProcessingStrip.tsx
 msgid "Details"
 msgstr ""
@@ -4112,6 +4136,7 @@ msgid "failed"
 msgstr "неуспешный"
 
 #: src/components/data-room/DataRoomStats.tsx
+#: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/format.ts
 #: src/components/data-room/ItemRows.tsx
 #: src/components/integrations/parts.tsx
@@ -7935,6 +7960,10 @@ msgstr "Выберите бота"
 msgid "Select a connected model"
 msgstr "Выберите подключённую модель"
 
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Select all"
+msgstr ""
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Select an item to see its relations."
 msgstr ""
@@ -8535,6 +8564,7 @@ msgid "Stats"
 msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
+#: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/ActivityList.tsx
@@ -8776,6 +8806,10 @@ msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
 msgid "The agent will be able to change your {service} data. It asks before each change."
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "The agent will be able to move money and change your {service} accounts. It asks before each change."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -9122,8 +9156,9 @@ msgstr "Сегодня"
 msgid "Token"
 msgstr ""
 
+#. placeholder {0}: formatBytes(attachment.size)
 #: src/components/inbox/MailAttachments.tsx
-msgid "Too large to preview"
+msgid "Too large to preview ({0})"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
@@ -9322,6 +9357,10 @@ msgstr ""
 #: src/pages/Inbox.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Undo"
+msgstr ""
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Undone"
 msgstr ""
 
 #: src/components/finance/ui.tsx

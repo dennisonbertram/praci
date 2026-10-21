@@ -1,0 +1,40 @@
+{
+  "story_id": "STORY-IF-8",
+  "result": "PASS",
+  "round1_status": [
+    {
+      "id": "F-IF-8-01",
+      "status": "fixed",
+      "evidence": "Empty state draws the To do card with the empty line above 'Connect mail' (inbox-empty.png)."
+    },
+    {
+      "id": "F-IF-8-02",
+      "status": "obsolete",
+      "evidence": "'Syncing' now separates the running case. Plan S5 says 'Digest failed', 'no identity match' and 'no commitments' look the same by choice."
+    },
+    {
+      "id": "F-IF-8-04",
+      "status": "fixed",
+      "evidence": "Empty card plus Connect-mail card fill the pane (inbox-empty.png)."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F2-IF-8-01",
+      "severity": "low",
+      "category": "happy-path",
+      "criterion": "Feedback",
+      "score": "warn",
+      "kind": "plan",
+      "description": "MCP-only users see an Inbox identical to 'no meeting source' (plan S5: MCP tile alone is not a meeting source). Nothing says the API key feeds the Inbox. Same decision as F2-GS-4-02.",
+      "expected": "Recorded decision.",
+      "actual": "Not drawn.",
+      "screenshot": "inbox-empty.png",
+      "suggested_fix": "See F2-GS-4-02.",
+      "files_likely_involved": [],
+      "jf": null,
+      "plan_section": "granola.md S5",
+      "story_id": "STORY-IF-8"
+    }
+  ]
+}

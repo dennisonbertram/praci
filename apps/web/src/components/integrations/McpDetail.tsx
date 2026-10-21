@@ -1,5 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { isCartaEndpoint } from "@rakazo/contracts";
+import { financeProviderForEndpoint, isCartaEndpoint } from "@rakazo/contracts";
 import { Button, Input } from "@rakazo/ui-web";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
@@ -123,6 +123,7 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
 
   const host = server.endpoint ? new URL(server.endpoint).host : (server.command ?? "");
   const carta = isCartaEndpoint(server.endpoint);
+  const bank = Boolean(financeProviderForEndpoint(server.endpoint));
   const service = carta ? "Carta" : server.name;
   const agent = data.bots.find((bot) => bot.id === server.agentBotId);
   const hasAgent = server.agentBotId !== null;
@@ -321,6 +322,11 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
           {carta ? (
             <Trans>
               The Carta agent will be able to change your Carta data. It asks before each change.
+            </Trans>
+          ) : bank ? (
+            <Trans>
+              The agent will be able to move money and change your {service} accounts. It asks
+              before each change.
             </Trans>
           ) : (
             <Trans>

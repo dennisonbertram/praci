@@ -1,0 +1,32 @@
+{
+  "story": "STORY-WF-7",
+  "round": 3,
+  "verdict": "PASS",
+  "round2_dispositions": [
+    {
+      "id": "F-WF-7-1",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "Cap state now draws the one-line message and the composer (step-call-cap.png)."
+    },
+    {
+      "id": "F-WF-7-2",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "Length/size rejection has no drawn message and the plan defines no text; the non-WAV message was dropped by decision (recorder makes WAV)."
+    },
+    {
+      "id": "F-WF-7-3",
+      "sev": "low",
+      "status": "fixed",
+      "evidence": "Plan and mockup agree on the cap line, no reset time."
+    },
+    {
+      "id": "F2-WF-7-1",
+      "sev": "low",
+      "status": "fixed",
+      "evidence": "Mute is a disabled button in the cap state (disabled=true, dimmer text) as S3a requires; confirmed in the DOM."
+    }
+  ],
+  "new_findings": []
+}
