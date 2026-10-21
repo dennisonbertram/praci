@@ -1988,9 +1988,9 @@ model InboxTodo {
   space        Space              @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   userId       String
   user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// Null for a meeting to-do, which does not depend on a mail connection.
+  /// Null for a meeting to-do, which does not depend on a mail connection. Mail to-dos go with their connection.
   connectionId String?
-  connection   Connection?        @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+  connection   Connection?        @relation(fields: [connectionId], references: [id], onDelete: Cascade)
   /// Set for a to-do that came from a meeting. S6's explicit meeting delete removes these.
   meetingId    String?
   meeting      Meeting?           @relation(fields: [meetingId], references: [id], onDelete: SetNull)
@@ -2865,7 +2865,7 @@ model Meeting {
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
   /// GENERATED ALWAYS AS (to_tsvector('english', title || summary || transcript)) STORED; see the migration.
-  tsv               Unsupported("tsvector")? @default(dbgenerated("to_tsvector('english'::regconfig, title)"))
+  tsv               Unsupported("tsvector")? @default(dbgenerated("to_tsvector('english'::regconfig, ((((title || ' '::text) || summary) || ' '::text) || COALESCE(transcript, ''::text)))"))
   inboxTodos        InboxTodo[]
 
   @@unique([spaceId, userId, provider, externalId])

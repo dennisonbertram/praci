@@ -90,5 +90,3 @@ ALTER TABLE "meeting_sync_states" ADD CONSTRAINT "meeting_sync_states_mcpServerI
 ALTER TABLE "meeting_tombstones" ADD CONSTRAINT "meeting_tombstones_spaceId_fkey" FOREIGN KEY ("spaceId") REFERENCES "spaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "meeting_tombstones" ADD CONSTRAINT "meeting_tombstones_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "inbox_todos" ADD CONSTRAINT "inbox_todos_meetingId_fkey" FOREIGN KEY ("meetingId") REFERENCES "meetings"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "inbox_todos" DROP CONSTRAINT "inbox_todos_connectionId_fkey";
-ALTER TABLE "inbox_todos" ADD CONSTRAINT "inbox_todos_connectionId_fkey" FOREIGN KEY ("connectionId") REFERENCES "connections"("id") ON DELETE SET NULL ON UPDATE CASCADE;
