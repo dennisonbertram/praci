@@ -114,6 +114,11 @@ msgstr ""
 msgid "{0, plural, one {Added # file} other {Added # files}}"
 msgstr ""
 
+#. placeholder {0}: chosen.length
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "{0, plural, one {Apply # change} other {Apply # changes}}"
+msgstr ""
+
 #. placeholder {0}: picks.size
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "{0, plural, one {Import # file} other {Import # files}}"
@@ -1183,7 +1188,6 @@ msgid "Appearance"
 msgstr "모양"
 
 #: src/components/compose/RichTextEditor.tsx
-#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr ""
@@ -2112,6 +2116,7 @@ msgid "Clear formatting"
 msgstr ""
 
 #: src/components/ListControls.tsx
+#: src/pages/DataRoom.tsx
 #: src/pages/Shell.tsx
 msgid "Clear search"
 msgstr ""
@@ -7813,10 +7818,6 @@ msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
-msgstr ""
-
-#: src/pages/DataRoom.tsx
-msgid "Search looks for these words in names and text."
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
