@@ -66,6 +66,7 @@ body,
   button:not([role="switch"], [role="checkbox"]),
   [role="tab"],
   select,
+  summary,
   input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="hidden"]) {
     min-height: 44px;
   }
