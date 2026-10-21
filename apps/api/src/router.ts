@@ -233,8 +233,10 @@ import {
   CannotDeleteLastSpaceError,
   CannotDeleteSpaceAsNonOwnerError,
   CannotRenameSpaceAsNonOwnerError,
+  CapTableSourceError,
   ComputerLimitError,
   ContactEmailTakenError,
+  changeCapTableSource,
   claimEmptySpaceDeletionForMember,
   createExternalConversationRepos,
   createGroupRepos,
@@ -294,6 +296,7 @@ import {
   SpaceLimitError,
   SpaceNotEmptyError,
   SpaceNotFoundError,
+  saveCapTableSnapshot,
   saveContact,
   savePushToken,
   selectSpaceModelPreference,
@@ -303,6 +306,7 @@ import {
   toTicketCommentDto,
   toTicketDto,
   touchGroupUpdatedAt,
+  undoCapTableSource,
   unseenBotKinds,
   unseenCounts,
   updateNotificationPreferences,
@@ -1023,6 +1027,13 @@ function mapSpaceLifecycleError(error: unknown): unknown {
   return error;
 }
 
+/** A cap table write from a stale copy or a source that no longer owns the table is a conflict. */
+function capTableConflict(error: unknown): never {
+  if (error instanceof CapTableSourceError)
+    throw new ORPCError("CONFLICT", { message: error.message });
+  throw error;
+}
+
 function sidebarPageError(error: unknown): never {
   if (error instanceof SidebarPageError) {
     throw new ORPCError(error.code === "owner_only" ? "FORBIDDEN" : "BAD_REQUEST", {
@@ -1308,6 +1319,10 @@ export function createRouter(deps: RouterDeps) {
     hasModel: async (actor) => !(await modelSetup(deps, actor)).needsModel,
     enqueueRun: (runId) => deps.jobs.enqueue(runContinueJob(runId)),
   };
+  const capTableState = async (actor: Actor) => ({
+    snapshot: await getCapTableSnapshot(deps.prisma, actorScope(actor)),
+    syncing: await isCartaSyncing(deps.prisma, actor),
+  });
   const beginMcpOAuth = (input: {
     serverId: string;
     spaceId: string;
@@ -7410,18 +7425,8 @@ export function createRouter(deps: RouterDeps) {
           throw mapSpaceLifecycleError(error);
         }),
       ),
-    },
-    carta: {
-      agent: authed.carta.agent.handler(({ context }) =>
-        ensureCartaAgent({ prisma: deps.prisma, repos }, context.actor).catch((error: unknown) => {
-          throw mapSpaceLifecycleError(error);
-        }),
-      ),
-      capTable: authed.carta.capTable.handler(async ({ context }) => ({
-        snapshot: await getCapTableSnapshot(deps.prisma, actorScope(context.actor)),
-        syncing: await isCartaSyncing(deps.prisma, context.actor),
-      })),
-      refresh: authed.carta.refresh.handler(async ({ context }) => {
+      capTable: authed.investors.capTable.handler(({ context }) => capTableState(context.actor)),
+      refresh: authed.investors.refresh.handler(async ({ context }) => {
         const cartaServers = (
           await deps.prisma.mcpServer.findMany({ where: actorScope(context.actor) })
         ).filter((server) => server.enabled && isCartaEndpoint(server.endpoint));
@@ -7437,8 +7442,42 @@ export function createRouter(deps: RouterDeps) {
         );
         if (result === "no_model")
           throw new ORPCError("BAD_REQUEST", { message: "Add a model before refreshing" });
+        if (result === "other_source")
+          throw new ORPCError("BAD_REQUEST", { message: "The cap table is not read from Carta" });
         return { ok: true as const };
       }),
+      capTableSave: authed.investors.capTableSave.handler(async ({ context, input }) => {
+        await saveCapTableSnapshot(
+          deps.prisma,
+          actorScope(context.actor),
+          { ...input.table, source: "native" },
+          { loadedAt: input.updatedAt },
+        ).catch(capTableConflict);
+        return capTableState(context.actor);
+      }),
+      changeSource: authed.investors.changeSource.handler(async ({ context, input }) => {
+        const space = await deps.prisma.space.findUnique({
+          where: { id: context.actor.spaceId },
+          select: { name: true },
+        });
+        if (!space) throw new ORPCError("NOT_FOUND");
+        await changeCapTableSource(deps.prisma, actorScope(context.actor), {
+          ...input,
+          companyName: space.name,
+        }).catch(capTableConflict);
+        return capTableState(context.actor);
+      }),
+      undoSource: authed.investors.undoSource.handler(async ({ context }) => {
+        await undoCapTableSource(deps.prisma, actorScope(context.actor));
+        return capTableState(context.actor);
+      }),
+    },
+    carta: {
+      agent: authed.carta.agent.handler(({ context }) =>
+        ensureCartaAgent({ prisma: deps.prisma, repos }, context.actor).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        }),
+      ),
     },
     sidebarPages: {
       list: authed.sidebarPages.list.handler(({ context }) =>

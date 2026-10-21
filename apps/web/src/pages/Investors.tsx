@@ -1,266 +1,124 @@
 import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { CapTableState, Contact, ContactKind } from "@rakazo/contracts";
+import type { CapTableSource, CapTableState, Contact, ContactKind } from "@rakazo/contracts";
 import { isCartaEndpoint } from "@rakazo/contracts";
+import { capTableMath, isSafeSecurity } from "@rakazo/core";
 import {
   Button,
   Card,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
   Skeleton,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableHeadRow,
-  TableRow,
   Tabs,
   TabsList,
   TabsTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
 } from "@rakazo/ui-web";
-import { ChevronDown, PieChart, Plus, RefreshCw } from "lucide-react";
-import type { ReactNode } from "react";
+import { ChevronDown, MoreHorizontal, Plus, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
 import type { ContactPrefill as Prefill } from "../components/ContactDialog";
-import {
-  ContactDialog,
-  contactAddLabels,
-  contactKindNames as kindNames,
-} from "../components/ContactDialog";
-import { donutSliceCount, OwnershipDonut } from "../components/cap-table/OwnershipDonut";
+import { ContactDialog, contactAddLabels } from "../components/ContactDialog";
+import type { SaveResult } from "../components/cap-table/CapTableEditor";
+import { CapTableEditor } from "../components/cap-table/CapTableEditor";
+import type { HoldingRow } from "../components/cap-table/HoldingsTable";
+import { HoldingsTable } from "../components/cap-table/HoldingsTable";
+import { OwnershipBar } from "../components/cap-table/OwnershipBar";
 import { FolderDocuments } from "../components/data-room/FolderDocuments";
 import { CustomConnectionDialog } from "../components/integrations/CustomConnectionDialog";
 import { useIntegrations } from "../components/integrations/useIntegrations";
-import { PickFilter, SearchField, SortControl } from "../components/ListControls";
+import { SearchField } from "../components/ListControls";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { hasConnectedCarta } from "../lib/carta-agent";
-import { percentFigure, shareCount, usdFigure } from "../lib/finance-format";
+import { shareCount, shortDay, usdFigure } from "../lib/finance-format";
 import { useHideAmounts } from "../lib/hide-amounts-preference";
 import { FIRST_PARTY_MCP } from "../lib/integrations";
-import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
 import { SAVED_ROW_CLASS, useContactNotices } from "../lib/use-contact-notices";
 import { errorText } from "../lib/user-error";
 
-/** The tabs: the Carta kinds and the contact kinds this page adds a button for. */
-type CapKind = "investor" | "auditor" | "other";
-type Filter = "all" | "shareholder" | "options" | CapKind;
 /** The Data room folder the cap table's documents are filed into. */
 const CAP_TABLE_FOLDER = ["Finance", "Cap Table"];
 
 type Snapshot = NonNullable<CapTableState["snapshot"]>;
-type Holder = Snapshot["holders"][number];
-/** Shareholders and Options come from Carta; Investors mixes both; Auditors and Other are contacts. */
-const FILTERS = [
-  "all",
-  "shareholder",
-  "investor",
-  "options",
-  "auditor",
-  "other",
-] as const satisfies readonly Filter[];
-const CARTA_FILTERS: readonly Filter[] = ["shareholder", "options"];
-const isContactKind = (filter: Filter): filter is CapKind =>
-  filter === "investor" || filter === "auditor" || filter === "other";
-/** The contact kinds this page lists on its own; a holder from Carta shows with any kind. */
-const CAP_TABLE_KINDS: readonly ContactKind[] = ["investor", "auditor", "other"];
-const parseFilter = (value: string | null): Filter =>
-  FILTERS.find((filter) => filter === value) ?? "all";
+
+/** The contact tabs: the people this page's relationships involve. */
+const CONTACT_TABS = ["investor", "auditor"] as const satisfies readonly ContactKind[];
+type ContactTab = (typeof CONTACT_TABS)[number];
+const parseTab = (value: string | null): ContactTab =>
+  CONTACT_TABS.find((tab) => tab === value) ?? "investor";
 
 /** How often the page asks again while the Carta agent is still reading. */
 const POLL_MS = 3000;
-/** How often an idle page checks for a run started elsewhere, such as in another tab. */
+/** How often an idle page checks for a change made elsewhere, such as in another tab. */
 const IDLE_POLL_MS = 30_000;
 const DASH = "—";
-/** The column headers stay in view while the rows scroll. */
-const STICKY = "sticky top-0 z-10 bg-background";
 
 const num = (value: number | null) => shareCount(value, i18n.locale || "en");
 const usd = (value: number | null, digits = 0) => usdFigure(value, digits, i18n.locale || "en");
-const pct = (value: number | null) => percentFigure(value);
 
-/** One investors-table row: a Carta holder, the contact it matches, or a contact with no holding. */
-type Row = { key: string; contact: Contact | null; holder: Holder | null };
-/** A contact's kind; a holder with no contact is an investor, a shareholder or an option grant. */
-type RowKind = ContactKind | "shareholder" | "options";
+const sourceNames = (): Record<CapTableSource, string> => ({
+  carta: t`Carta`,
+  sheet: t`Sheet`,
+  native: t`Typed in`,
+});
 
-/** What a Carta holding is, from its security alone. */
-const holdingKind = (holder: Holder | null): RowKind => {
-  const security = holder?.security.toLowerCase() ?? "";
-  if (security.includes("option")) return "options";
-  if (/safe|preferred|series|note|convertible|warrant/.test(security)) return "investor";
-  return "shareholder";
-};
-
-export function rowKind({ contact, holder }: Pick<Row, "contact" | "holder">): RowKind {
-  return contact ? contact.kind : holdingKind(holder);
-}
-
-/** Shareholders and Options sort Carta holdings by security, even when a contact matches the holder. */
-const matchesFilter = (row: Row, filter: Filter): boolean =>
-  filter === "all" ||
-  (CARTA_FILTERS.includes(filter)
-    ? !!row.holder && holdingKind(row.holder) === filter
-    : rowKind(row) === filter);
-
-type SortField = "name" | "kind" | "percent" | "shares" | "amountUsd";
-type Direction = "asc" | "desc";
-const SORT_FIELDS: readonly SortField[] = ["name", "kind", "percent", "shares", "amountUsd"];
-const parseSortField = (value: string | null): SortField | null =>
-  SORT_FIELDS.find((field) => field === value) ?? null;
-
-const rowName = ({ contact, holder }: Row) => contact?.name ?? holder?.name ?? "";
-const rowSecurity = ({ holder }: Row) => holder?.security;
-
-/** Name, company and email, either from the contact or from Carta. */
-const rowMatchesQuery = (row: Row, query: string): boolean =>
-  [
-    rowName(row),
-    row.contact?.organization ?? row.holder?.organization,
-    row.contact?.email ?? row.holder?.email,
-  ].some((text) => text?.toLowerCase().includes(query));
-
-/** A row's number for a sort field; a row with none (a contact with no holding) sorts last. */
-const rowNumber = (row: Row, field: "percent" | "shares" | "amountUsd"): number | null =>
-  row.holder?.[field] ?? null;
-
-function sortRows(
-  rows: Row[],
-  field: SortField,
-  direction: Direction,
-  kindName: (row: Row) => string,
-): Row[] {
-  const sign = direction === "asc" ? 1 : -1;
-  const text = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
-  return [...rows].sort((a, b) => {
-    if (field === "name") return sign * text(rowName(a), rowName(b));
-    if (field === "kind")
-      return sign * text(kindName(a), kindName(b)) || text(rowName(a), rowName(b));
-    const x = rowNumber(a, field);
-    const y = rowNumber(b, field);
-    if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1;
-    return sign * (x - y);
-  });
-}
-
-function joinRows(snapshot: Snapshot | null, contacts: Contact[]): Row[] {
-  const byEmail = new Map(contacts.filter((c) => c.email).map((c) => [c.email?.toLowerCase(), c]));
-  const used = new Set<string>();
-  const rows: Row[] = (snapshot?.holders ?? []).map((holder, i) => {
-    const contact = (holder.email && byEmail.get(holder.email.toLowerCase())) || null;
-    if (contact) used.add(contact.id);
-    return { key: `h${i}`, contact, holder };
-  });
-  // The unallocated pool is part of the fully diluted count but no one holds it, so without this
-  // row the Ownership column stops short of 100%. The percent is display-only.
-  // It goes right after the granted options, not after the SAFEs.
-  const pool = snapshot?.optionPoolAvailable;
-  if (snapshot && pool) {
-    const lastOptions = rows.findLastIndex((row) => rowKind(row) === "options");
-    rows.splice(lastOptions < 0 ? rows.length : lastOptions + 1, 0, {
-      key: "pool",
-      contact: null,
-      holder: {
-        name: t`Unallocated pool`,
-        email: null,
-        organization: null,
-        security: "Options",
-        shares: pool,
-        amountUsd: null,
-        percent: snapshot.fullyDilutedShares ? (pool * 100) / snapshot.fullyDilutedShares : null,
-      },
-    });
-  }
-  // Customers, vendors and the other newer kinds stay on the Contacts page unless Carta lists them.
-  for (const contact of contacts)
-    if (!used.has(contact.id) && CAP_TABLE_KINDS.includes(contact.kind))
-      rows.push({ key: contact.id, contact, holder: null });
-  return rows;
+/** The address-book entry for a holder: the same email, else the same name. */
+function contactFor(
+  contacts: Contact[],
+  holder: { name: string; email: string | null },
+): Contact | null {
+  const email = holder.email?.toLowerCase();
+  const name = holder.name.trim().toLowerCase();
+  return (
+    (email && contacts.find((c) => c.email?.toLowerCase() === email)) ||
+    contacts.find((c) => c.name.trim().toLowerCase() === name) ||
+    null
+  );
 }
 
 function Figure({ title, value, hint }: { title: string; value: string; hint?: string }) {
   return (
-    <Card size="sm" className="px-3.5 py-2">
+    <Card size="sm" className="px-3.5 py-2 @md/bd:py-3">
       <h2 className="text-xs font-semibold text-muted-foreground">{title}</h2>
       <div className="mt-1 text-[22px] font-semibold leading-tight tabular-nums">{value}</div>
-      {/* The hint gives way on a phone, so the holders list starts higher. */}
-      {hint ? (
-        <p className="mt-0.5 hidden text-xs text-muted-foreground @md/bd:block">{hint}</p>
-      ) : null}
+      {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
     </Card>
   );
 }
 
-/** SAFEs have an amount and no shares, so the donut and the All tab leave them out. */
-function SafeNote({ holders }: { holders: Snapshot["holders"] }) {
-  const safes = holders.filter(
-    (holder) => /safe/i.test(holder.security) && holder.shares == null && holder.amountUsd != null,
-  );
-  if (safes.length === 0) return null;
-  return (
-    <Link
-      to={{ search: "?kind=investor&security=SAFE" }}
-      className="block pointer-coarse:flex pointer-coarse:min-h-11 pointer-coarse:items-center text-xs text-muted-foreground hover:text-foreground hover:underline"
-    >
-      <Trans>SAFEs are not in the share counts</Trans>
-    </Link>
-  );
-}
-
-function Summary({ snapshot, beside }: { snapshot: Snapshot | null; beside: boolean }) {
+/** Fully diluted shares (with the 409A when known) and Equity raised, which never counts SAFE money. */
+function Summary({ snapshot }: { snapshot: Snapshot }) {
   useHideAmounts();
-  const a = snapshot?.latest409a;
+  const math = capTableMath(snapshot);
+  const a = snapshot.latest409a;
+  // Nothing known to add up shows a dash, not $0; SAFE money is never counted.
+  const raised = snapshot.holders.some((h) => h.amountUsd != null && !isSafeSecurity(h.security))
+    ? usd(math.raisedUsd)
+    : DASH;
   return (
-    <div
-      className={`grid grid-cols-2 gap-2 @md/bd:gap-3 @2xl:grid-cols-4 ${beside ? "@4xl/bd:grid-cols-2 @4xl/bd:grid-rows-2" : ""}`}
-    >
-      {snapshot ? (
-        <>
-          <Figure title={t`Fully diluted shares`} value={num(snapshot.fullyDilutedShares)} />
-          <Figure title={t`Option pool available`} value={num(snapshot.optionPoolAvailable)} />
-          <Figure
-            title={t`Common share price`}
-            value={a ? usd(a.pricePerShareUsd, 2) : DASH}
-            hint={t`From the latest 409A valuation`}
-          />
-          <Figure title={t`Amount raised`} value={usd(snapshot.amountRaisedUsd)} />
-        </>
-      ) : (
-        [0, 1, 2, 3].map((n) => <Skeleton key={n} className="h-[76px] w-full rounded-xl" />)
-      )}
+    <div className="grid grid-cols-2 gap-2 @md/bd:gap-3">
+      <Figure
+        title={t`Fully diluted`}
+        value={num(snapshot.fullyDilutedShares)}
+        hint={
+          a
+            ? t`409A ${usd(a.pricePerShareUsd, 2)} · ${shortDay(a.date, new Date(), i18n.locale || "en")}`
+            : undefined
+        }
+      />
+      <Figure title={t`Equity raised`} value={raised} />
     </div>
   );
 }
 
-/** On a phone the donut waits behind one row, so the holders list starts near the top. */
-function OwnershipSection({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div>
-      <Button
-        variant="outline"
-        className="w-full justify-between pointer-coarse:h-11 @md/bd:hidden"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-      >
-        <Trans>Ownership by share class</Trans>
-        <ChevronDown aria-hidden="true" className={open ? "rotate-180" : undefined} />
-      </Button>
-      <div className={open ? "mt-2 @md/bd:mt-0" : "hidden @md/bd:block"}>{children}</div>
-    </div>
-  );
-}
-
-const rowKindNames = (): Record<RowKind, string> => ({
-  ...kindNames(),
-  shareholder: t`Shareholder`,
-  options: t`Options`,
-});
 /** The Carta sign-in, opened from Cap Table so the founder stays on this page. */
 function ConnectCartaDialog({
   onClose,
@@ -288,7 +146,58 @@ function ConnectCartaDialog({
   );
 }
 
-/** The Investors page: the Carta snapshot joined with the user's contacts. Ask opens the Investors agent beside it; the Carta agent only syncs. */
+/** One contact in the Contacts section: name, organization and email, with Edit and Delete. */
+function ContactRow({
+  contact,
+  saved,
+  onEdit,
+  onDelete,
+}: {
+  contact: Contact;
+  saved: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <li
+      data-contact-id={contact.id}
+      className={`flex min-h-11 items-center gap-2 border-t border-border px-2 first:border-t-0 ${saved ? SAVED_ROW_CLASS : ""}`}
+    >
+      <button
+        type="button"
+        data-row-open
+        className="min-w-0 flex-1 rounded-sm py-1.5 text-start outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={onEdit}
+      >
+        <span className="block truncate text-sm font-medium" title={contact.name}>
+          {contact.name}
+        </span>
+        <span className="block truncate text-xs text-muted-foreground">
+          {[contact.organization, contact.email].filter(Boolean).join(" · ")}
+        </span>
+      </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button variant="ghost" size="icon-sm" aria-label={t`Actions for ${contact.name}`} />
+          }
+        >
+          <MoreHorizontal aria-hidden="true" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={onEdit}>
+            <Trans>Edit</Trans>
+          </DropdownMenuItem>
+          <DropdownMenuItem variant="destructive" onClick={onDelete}>
+            <Trans>Delete</Trans>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </li>
+  );
+}
+
+/** The Investors page: the cap table from its one source, the investor and auditor contacts, and the cap table documents. */
 export function InvestorsPage({
   onShowAgent,
   onCartaStatus,
@@ -318,17 +227,7 @@ export function InvestorsPage({
   const [cartaExpired, setCartaExpired] = useState(false);
   const [cap, setCap] = useState<CapTableState | null>(null);
   const [params, setParams] = useSearchParams();
-  const requestedFilter = parseFilter(params.get("kind"));
-  const setFilter = (next: Filter) =>
-    setParams(
-      (current) => {
-        const updated = new URLSearchParams(current);
-        if (next === "all") updated.delete("kind");
-        else updated.set("kind", next);
-        return updated;
-      },
-      { replace: true },
-    );
+  const tab = parseTab(params.get("kind"));
   const setParam = (key: string, value: string | undefined) =>
     setParams(
       (current) => {
@@ -341,8 +240,9 @@ export function InvestorsPage({
     );
   const query = params.get("q") ?? "";
   const [editing, setEditing] = useState<Contact | Prefill | "new" | null>(null);
-  const names = rowKindNames();
   const [connecting, setConnecting] = useState(false);
+  // Carta was chosen from Change source before it was signed in: switch once the sign-in ends.
+  const switchAfterConnect = useRef(false);
   const statusRef = useRef(onCartaStatus);
   statusRef.current = onCartaStatus;
 
@@ -366,7 +266,7 @@ export function InvestorsPage({
   const latestCap = useRef(0);
   const loadCap = useCallback(() => {
     const request = ++latestCap.current;
-    return rpc.carta
+    return rpc.investors
       .capTable()
       .then((state) => {
         if (request !== latestCap.current) return;
@@ -395,13 +295,14 @@ export function InvestorsPage({
                 server.enabled && "endpoint" in server && isCartaEndpoint(server.endpoint),
             ),
         );
-        if (connected) void loadCap();
+        void loadCap();
       })
       .catch(() => {
-        // Never assume Carta is connected: show the error instead of the holdings or Connect Carta.
+        // Never assume Carta is connected: show the error instead of the table or Connect Carta.
         setServersFailed(true);
         setServersChecked(true);
         setCartaConnected(false);
+        void loadCap();
       });
   }, [loadCap, serversSeq]);
 
@@ -422,8 +323,10 @@ export function InvestorsPage({
     }
     wasBusy.current = agentBusy;
   }, [agentBusy, load, loadCap]);
+  const typedIn = cap?.snapshot?.source === "native";
+  const watching = serversChecked && (cartaConnected || typedIn) && !capFailed;
   useEffect(() => {
-    if (!cartaConnected || capFailed) return;
+    if (!watching) return;
     const timer = setInterval(
       () => {
         if (syncing || document.visibilityState === "visible") void loadCap();
@@ -439,155 +342,213 @@ export function InvestorsPage({
       document.removeEventListener("visibilitychange", onFocus);
       latestCap.current++;
     };
-  }, [cartaConnected, syncing, capFailed, loadCap]);
+  }, [watching, syncing, loadCap]);
 
-  const [refreshError, setRefreshError] = useState("");
+  const [actionError, setActionError] = useState("");
   const refresh = () => {
-    setRefreshError("");
-    return rpc.carta
+    setActionError("");
+    return rpc.investors
       .refresh()
       .then(() => loadCap())
-      .catch((cause) => setRefreshError(errorText(cause, t`Could not refresh from Carta`)));
+      .catch((cause) => setActionError(errorText(cause, t`Could not refresh from Carta`)));
+  };
+  /** Runs a source change and shows the table it returns. */
+  const changeTable = (call: () => Promise<CapTableState>, failure: string) => {
+    setActionError("");
+    latestCap.current++;
+    return call()
+      .then((state) => {
+        setCap(state);
+        return true;
+      })
+      .catch((cause) => {
+        setActionError(errorText(cause, failure));
+        return false;
+      });
+  };
+  const typeItIn = () =>
+    changeTable(
+      () => rpc.investors.changeSource({ source: "native", sourceRef: null }),
+      t`Could not change the source`,
+    );
+  const switchToCarta = async () => {
+    const changed = await changeTable(
+      () => rpc.investors.changeSource({ source: "carta", sourceRef: null }),
+      t`Could not change the source`,
+    );
+    if (changed) await refresh();
+  };
+  const chooseCarta = () => {
+    if (cartaConnected) return void switchToCarta();
+    switchAfterConnect.current = true;
+    setConnecting(true);
+  };
+  const undo = () => changeTable(() => rpc.investors.undoSource(), t`Could not undo`);
+  const saveTable = async (
+    table: Parameters<typeof rpc.investors.capTableSave>[0]["table"],
+    loadedAt: string,
+  ): Promise<SaveResult> => {
+    // A slower read that started before this save must not put the older table back.
+    latestCap.current++;
+    try {
+      const state = await rpc.investors.capTableSave({ table, updatedAt: loadedAt });
+      setCap(state);
+      return { updatedAt: state.snapshot?.updatedAt ?? loadedAt };
+    } catch (cause) {
+      if ((cause as { code?: string } | null)?.code !== "CONFLICT") throw cause;
+      const state = await rpc.investors.capTable();
+      setCap(state);
+      if (!state.snapshot) throw cause;
+      return { conflict: state.snapshot };
+    }
   };
 
-  const snapshot = cartaConnected ? (cap?.snapshot ?? null) : null;
+  const raw = cap?.snapshot ?? null;
+  // A Carta table is hidden while Carta is not signed in; a typed-in or sheet table never depends on it.
+  const snapshot = raw && (raw.source !== "carta" || cartaConnected) ? raw : null;
   const reading = cartaConnected && syncing && !snapshot && !capFailed;
   // Connected, but nothing has been read and no read is running, e.g. no model was set up yet.
   const neverRead = cartaConnected && cap !== null && !snapshot && !syncing && !capFailed;
-  const rows = joinRows(snapshot, contacts ?? []);
-  const filters = FILTERS.filter((value) => snapshot || !CARTA_FILTERS.includes(value));
-  // A link to a tab that is not there (no cap table) shows All, and the URL says so too.
-  const filter = filters.includes(requestedFilter) ? requestedFilter : "all";
-  const filtersSettled = cap !== null || capFailed || !cartaConnected;
-  useEffect(() => {
-    if (filtersSettled && filter !== requestedFilter) setFilter("all");
-  });
+  const math = snapshot ? capTableMath(snapshot) : null;
+  const allContacts = contacts ?? [];
+  const holdingRows: HoldingRow[] =
+    snapshot && math
+      ? [
+          ...snapshot.holders.map((holder, i) => ({
+            key: `h${i}`,
+            name: holder.name,
+            security: holder.security,
+            shares: holder.shares,
+            amountUsd: holder.amountUsd,
+            percent: math.holders[i]?.percent ?? null,
+            contact: contactFor(allContacts, holder),
+          })),
+          ...(math.pool
+            ? [
+                {
+                  key: "pool",
+                  name: t`Unallocated pool`,
+                  security: t`Pool`,
+                  shares: math.pool.shares,
+                  amountUsd: null,
+                  percent: math.pool.percent,
+                  pool: true,
+                  contact: null,
+                },
+              ]
+            : []),
+        ]
+      : [];
+
   const needle = query.trim().toLowerCase();
-  // With a cap table, All lists who holds shares; contacts and SAFE investors with no shares sit
-  // under their own tabs and still turn up in a search.
-  const kindRows = rows.filter(
-    (row) =>
-      matchesFilter(row, filter) &&
-      (filter !== "all" || !snapshot || row.holder?.shares != null || !!needle),
-  );
-  // Security shows only with a choice to make: two or more securities among these rows.
-  const securities = [...new Set(kindRows.flatMap((row) => rowSecurity(row) ?? []))].sort((a, b) =>
-    a.localeCompare(b),
-  );
-  const security = securities.includes(params.get("security") ?? "")
-    ? (params.get("security") ?? undefined)
-    : undefined;
-  const hasShares = rows.some((row) => rowNumber(row, "shares") !== null);
-  const hasAmounts = rows.some((row) => rowNumber(row, "amountUsd") !== null);
-  const sortFields: [SortField, string][] = [
-    ["name", t`Name`],
-    ["kind", t`Kind`],
-    ...(snapshot ? [["percent", t`Ownership`] as [SortField, string]] : []),
-    ...(hasShares ? [["shares", t`Shares`] as [SortField, string]] : []),
-    ...(hasAmounts ? [["amountUsd", t`Amount`] as [SortField, string]] : []),
-  ];
-  const requestedSort = parseSortField(params.get("sort"));
-  const defaultSort: SortField = snapshot ? "percent" : "name";
-  const sortField = sortFields.some(([name]) => name === requestedSort)
-    ? (requestedSort as SortField)
-    : defaultSort;
-  const sortDirection: Direction =
-    params.get("dir") === "asc" || params.get("dir") === "desc"
-      ? (params.get("dir") as Direction)
-      : sortField === "name" || sortField === "kind"
-        ? "asc"
-        : "desc";
-  const narrowed = kindRows.filter(
-    (row) =>
-      (!security || rowSecurity(row) === security) && (!needle || rowMatchesQuery(row, needle)),
-  );
-  const shown = sortRows(narrowed, sortField, sortDirection, (row) => names[rowKind(row)]);
-  const narrowing = !!needle || !!security;
-  // SAFEs have an amount and no shares: give them an Amount column, and drop Shares and
-  // Ownership when no shown row has any, rather than showing two columns of dashes.
-  const amountColumn = shown.some(
-    (row) => row.holder?.shares == null && row.holder?.amountUsd != null,
-  );
-  const shareColumns = !amountColumn || shown.some((row) => row.holder?.shares != null);
-  const showHoldings = snapshot !== null || reading;
-  // Two slices (say Common and Option pool) repeat what the cards and table already say.
-  const showDonut =
-    !!snapshot && donutSliceCount(snapshot.shareClasses, snapshot.fullyDilutedShares) > 2;
-  // An Email column of dashes wastes a quarter of the row; the muted line keeps any address.
-  const emailColumn = shown.some((row) => row.contact?.email || row.holder?.email);
-  // The summary and donut are the overview: a tab or a search is a look at rows, which come first.
-  const overview = filter === "all" && !narrowing;
-  const filterNames: Record<Filter, string> = {
-    all: t`All`,
-    shareholder: t`Shareholders`,
-    investor: t`Investors`,
-    options: t`Options`,
-    auditor: t`Auditors`,
-    other: t`Other`,
-  };
-  const emptyText: Record<Filter, string> = {
-    all: t`Add your investors, auditors and counsel here. Contacts are your address book.`,
-    shareholder: t`No shareholders in Carta`,
+  const shown = allContacts
+    .filter(
+      (c) =>
+        c.kind === tab &&
+        (!needle ||
+          [c.name, c.organization, c.email].some((text) => text?.toLowerCase().includes(needle))),
+    )
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  const tabNames: Record<ContactTab, string> = { investor: t`Investors`, auditor: t`Auditors` };
+  const emptyText: Record<ContactTab, string> = {
     investor: t`No investors yet`,
-    options: t`No option grants in Carta`,
     auditor: t`No auditors yet`,
-    other: t`No other contacts yet`,
   };
   const addKindLabel = contactAddLabels();
-  const addContact = () =>
-    setEditing(
-      isContactKind(filter) ? { name: "", email: null, organization: null, kind: filter } : "new",
-    );
+  const addContact = () => setEditing({ name: "", email: null, organization: null, kind: tab });
+  const openContact = (id: string) => {
+    const found = allContacts.find((c) => c.id === id);
+    if (found) setEditing(found);
+  };
+  const addHolderAsContact = (name: string, email: string | null = null) =>
+    setEditing({ name, email, organization: null, kind: "investor" });
+  const deleteContact = (contact: Contact) =>
+    rpc.contacts
+      .delete({ id: contact.id })
+      .then(() => deleted(contact))
+      .catch((cause) => notify(errorText(cause, t`Could not delete ${contact.name}`)));
+
+  const source = snapshot?.source;
+  const names = sourceNames();
+  const sourceLabel =
+    snapshot && source
+      ? source === "carta" && syncing
+        ? t`Reading Carta…`
+        : t`${names[source]} · as of ${shortDay(snapshot.asOf, new Date(), i18n.locale || "en")}`
+      : null;
+  const canRefresh = source === "carta" && cartaConnected && !(needsModel && neverRead);
+  const otherSources = (["carta", "native"] as const).filter((name) => name !== source);
+
   return (
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
       <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
         <PageHeader
           title={<Trans>Investors</Trans>}
           meta={
-            snapshot ? (
+            snapshot && sourceLabel ? (
               <>
-                {/* The update time never truncates; a long company name gives way first. */}
+                {/* The source line never truncates; a long company name gives way first. */}
                 <span className="truncate" title={snapshot.companyName}>
                   {snapshot.companyName}
                 </span>
-                <span className="whitespace-nowrap">
-                  ·{" "}
-                  {syncing ? (
-                    <Trans>Reading Carta…</Trans>
-                  ) : (
-                    <Trans>Updated {formatRelativeTime(snapshot.updatedAt)}</Trans>
-                  )}
-                </span>
+                <span className="whitespace-nowrap">·</span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="-mx-1 h-8 whitespace-nowrap px-1 text-xs font-normal text-muted-foreground pointer-coarse:h-11"
+                      />
+                    }
+                  >
+                    {sourceLabel}
+                    <ChevronDown aria-hidden="true" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {canRefresh ? (
+                      <DropdownMenuItem disabled={syncing} onClick={() => void refresh()}>
+                        <RefreshCw aria-hidden="true" />
+                        <Trans>Refresh</Trans>
+                      </DropdownMenuItem>
+                    ) : null}
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <Trans>Change source</Trans>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        {otherSources.map((name) =>
+                          name === "carta" ? (
+                            <DropdownMenuItem key={name} onClick={chooseCarta}>
+                              <Trans>Carta</Trans>
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem key={name} onClick={() => void typeItIn()}>
+                              <Trans>Type it in</Trans>
+                            </DropdownMenuItem>
+                          ),
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                    {snapshot.canUndo ? (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => void undo()}>
+                          <Trans>Undo</Trans>
+                        </DropdownMenuItem>
+                      </>
+                    ) : null}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             ) : null
           }
           actions={
             <>
-              {/* Without a model a refresh cannot start; the card below offers Add a model instead. */}
-              {cartaConnected && !(needsModel && neverRead) ? (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="pointer-coarse:size-10"
-                        aria-label={t`Refresh from Carta`}
-                        disabled={syncing && !capFailed}
-                        onClick={() => void refresh()}
-                      />
-                    }
-                  >
-                    <RefreshCw
-                      aria-hidden="true"
-                      className={syncing ? "animate-spin" : undefined}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <Trans>Refresh from Carta. The Carta agent reads your cap table again.</Trans>
-                  </TooltipContent>
-                </Tooltip>
-              ) : null}
+              <Button variant="outline" size="sm" onClick={addContact}>
+                <Plus aria-hidden="true" />
+                <Trans>Add contact</Trans>
+              </Button>
               {onShowAgent ? (
                 <AskBotButton botName="Investors agent" onClick={onShowAgent} />
               ) : null}
@@ -608,65 +569,7 @@ export function InvestorsPage({
           </div>
         ) : null}
 
-        {neverRead ? (
-          <Card className="mb-5 flex flex-col items-start gap-3 px-4 @md:flex-row @md:items-center">
-            <PieChart aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
-            <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-medium">
-                <Trans>Carta is connected</Trans>
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {needsModel ? (
-                  <Trans>The Carta agent needs a model before it can read your cap table.</Trans>
-                ) : (
-                  <Trans>The Carta agent has not read your cap table yet.</Trans>
-                )}
-              </p>
-            </div>
-            {/* A read cannot start without a model; Refresh in the header reads once one is added. */}
-            {needsModel && onOpenModelSettings ? (
-              <Button onClick={onOpenModelSettings}>
-                <Trans>Add a model</Trans>
-              </Button>
-            ) : (
-              <Button onClick={() => void refresh()}>
-                <Trans>Read cap table</Trans>
-              </Button>
-            )}
-          </Card>
-        ) : null}
-
-        {cartaConnected || serversFailed ? null : (
-          <Card className="mb-5 flex flex-col items-start gap-3 px-4 @md:flex-row @md:items-center">
-            <PieChart aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
-            <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-medium">
-                {cartaExpired ? (
-                  <Trans>Sign in to Carta again to see who owns your company</Trans>
-                ) : (
-                  <Trans>See who owns your company</Trans>
-                )}
-              </h2>
-              {cartaExpired ? (
-                <p className="text-sm text-muted-foreground">
-                  <Trans>Your Carta sign-in ended. Sign in again to see holders here.</Trans>
-                </p>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  <Trans>
-                    Carta is the service many startups use to record who owns shares, options and
-                    SAFEs. Connect it to see them here.
-                  </Trans>
-                </p>
-              )}
-            </div>
-            <Button onClick={() => setConnecting(true)}>
-              {cartaExpired ? <Trans>Reconnect Carta</Trans> : <Trans>Connect Carta</Trans>}
-            </Button>
-          </Card>
-        )}
-
-        {capFailed && cartaConnected ? (
+        {capFailed ? (
           <div role="alert" className="mb-4 flex flex-wrap items-center gap-3 text-sm">
             <span className="text-destructive">
               <Trans>Could not load the cap table, so holdings are missing.</Trans>
@@ -677,379 +580,188 @@ export function InvestorsPage({
           </div>
         ) : null}
 
-        {!serversChecked || (cartaConnected && cap === null && !capFailed) ? (
-          // The shape of the loaded page (tabs, four cards, rows), so nothing shifts when it arrives.
-          <div className="flex flex-col gap-3" aria-busy="true">
-            <Skeleton className="h-9 w-72 max-w-full rounded-2xl" />
-            <div className="grid grid-cols-2 gap-2 @2xl:grid-cols-4">
-              {[0, 1, 2, 3].map((n) => (
-                <Skeleton key={n} className="h-[60px] w-full rounded-xl" />
-              ))}
-            </div>
-            {[0, 1, 2, 3].map((n) => (
-              <Skeleton key={n} className="h-11 w-full" />
+        {actionError ? (
+          <div role="alert" className="mb-3 flex flex-wrap items-center gap-3 text-sm">
+            <span className="text-destructive">{actionError}</span>
+            {/* Trying again cannot work until a model is set up. */}
+            {needsModel && onOpenModelSettings ? (
+              <Button variant="outline" size="sm" onClick={onOpenModelSettings}>
+                <Trans>Add a model</Trans>
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {!serversChecked || (cap === null && !capFailed) ? (
+          <div className="flex flex-col gap-2" aria-busy="true">
+            {[0, 1, 2].map((n) => (
+              <Skeleton key={n} className="h-9 w-full" />
             ))}
           </div>
-        ) : cartaConnected ? (
+        ) : (
           <>
-            {/* The tabs come first so they stay put when the summary comes and goes with the tab. */}
-            <Tabs
-              value={filter}
-              onValueChange={(next) => setFilter(next as Filter)}
-              className="mb-3"
-            >
-              {/* One row that scrolls sideways on a phone. */}
-              <TabsList
-                className="rk-scroll max-w-full justify-start overflow-x-auto rounded-2xl"
-                aria-label={t`Kind`}
-              >
-                {filters.map((value) => (
-                  <TabsTrigger
-                    key={value}
-                    value={value}
-                    className="h-7 flex-none rounded-full px-3"
-                  >
-                    {filterNames[value]}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-
-            {/* Wide enough, the figures sit beside the donut so the table gets the page's height. */}
-            {showHoldings && overview ? (
-              <div
-                className={`mb-3 grid gap-3 @md/bd:gap-4 ${showDonut ? "@4xl/bd:grid-cols-2" : ""}`}
-              >
-                <div className="flex flex-col gap-1">
-                  <Summary snapshot={snapshot} beside={showDonut} />
-                  {snapshot ? <SafeNote holders={snapshot.holders} /> : null}
+            {snapshot && math ? (
+              <div className="mb-5 flex flex-col gap-3">
+                <div className="max-w-3xl">
+                  <Summary snapshot={snapshot} />
                 </div>
-                {snapshot && showDonut ? (
-                  <OwnershipSection>
-                    <OwnershipDonut
-                      classes={snapshot.shareClasses}
-                      fullyDilutedShares={snapshot.fullyDilutedShares}
-                      holdings={snapshot.holders}
-                      optionPoolAvailable={snapshot.optionPoolAvailable}
+                <Card className="max-w-5xl gap-3 px-3.5 py-3">
+                  <h2 className="text-sm font-semibold">
+                    <Trans>Cap table</Trans>
+                  </h2>
+                  {snapshot.source === "native" ? (
+                    <CapTableEditor
+                      snapshot={snapshot}
+                      onSave={saveTable}
+                      contactIdFor={(name) =>
+                        contactFor(allContacts, { name, email: null })?.id ?? null
+                      }
+                      onAddContact={(name) => addHolderAsContact(name)}
+                      onOpenContact={openContact}
                     />
-                  </OwnershipSection>
-                ) : null}
+                  ) : (
+                    <div className="@container">
+                      <OwnershipBar
+                        className="mb-3"
+                        classes={math.classes}
+                        pool={math.pool?.percent ?? null}
+                      />
+                      <HoldingsTable
+                        rows={holdingRows}
+                        onAddContact={(row) =>
+                          addHolderAsContact(
+                            row.name,
+                            snapshot.holders.find((holder) => holder.name === row.name)?.email ??
+                              null,
+                          )
+                        }
+                        onOpenContact={openContact}
+                      />
+                    </div>
+                  )}
+                </Card>
               </div>
-            ) : null}
-            {reading ? (
-              <p className="mb-3 text-sm text-muted-foreground">
+            ) : reading ? (
+              <p className="mb-5 text-sm text-muted-foreground">
                 <Trans>Reading Carta…</Trans>
               </p>
-            ) : null}
+            ) : (
+              // No table yet: pick where it comes from. Neither choice is filled; the page cannot know which fits.
+              <div className="mb-5 flex flex-wrap items-center gap-2">
+                {neverRead ? (
+                  // Connected but unread: reading starts with a model; Type it in stays available.
+                  needsModel && onOpenModelSettings ? (
+                    <Button variant="outline" onClick={onOpenModelSettings}>
+                      <Trans>Add a model</Trans>
+                    </Button>
+                  ) : (
+                    <Button variant="outline" onClick={() => void refresh()}>
+                      <Trans>Read cap table</Trans>
+                    </Button>
+                  )
+                ) : serversFailed ? null : (
+                  <Button variant="outline" onClick={() => setConnecting(true)}>
+                    {cartaExpired ? <Trans>Reconnect Carta</Trans> : <Trans>Connect Carta</Trans>}
+                  </Button>
+                )}
+                <Button variant="outline" onClick={() => void typeItIn()}>
+                  <Trans>Type it in</Trans>
+                </Button>
+              </div>
+            )}
 
-            {rows.length > 0 && !error ? (
-              // Search takes the first row on a phone; Security and Sort wrap beneath it.
-              <div className="mb-2 flex flex-wrap items-center gap-1.5">
+            <section className="mb-5 max-w-5xl" aria-label={t`Contacts`}>
+              <Tabs
+                value={tab}
+                onValueChange={(next) =>
+                  setParam("kind", next === "investor" ? undefined : String(next))
+                }
+                className="mb-3"
+              >
+                <TabsList className="rounded-2xl" aria-label={t`Kind`}>
+                  {CONTACT_TABS.map((value) => (
+                    <TabsTrigger
+                      key={value}
+                      value={value}
+                      className="h-7 flex-none rounded-full px-3"
+                    >
+                      {tabNames[value]}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+              {allContacts.length > 0 && !error ? (
                 <SearchField
-                  className="w-full @md:w-72"
+                  className="mb-2 w-full @md/bd:w-72"
                   value={query}
                   onChange={(next) => setParam("q", next || undefined)}
                   placeholder={t`Search`}
                   label={t`Search`}
-                  name="cap-table-search"
+                  name="contact-search"
                 />
-                {securities.length > 1 || security ? (
-                  <PickFilter
-                    label={t`Security`}
-                    value={security}
-                    options={securities.map((name) => [name, name])}
-                    onChange={(next) => setParam("security", next)}
-                  />
-                ) : null}
-                <div className="ms-auto flex items-center gap-0.5">
-                  <SortControl
-                    fields={sortFields}
-                    field={sortField}
-                    fieldLabel={sortFields.find(([name]) => name === sortField)?.[1] ?? ""}
-                    direction={sortDirection}
-                    onField={(next) =>
-                      setParams(
-                        (current) => {
-                          const updated = new URLSearchParams(current);
-                          updated.set("sort", next);
-                          updated.delete("dir");
-                          return updated;
-                        },
-                        { replace: true },
-                      )
-                    }
-                    onDirection={(next) =>
-                      setParams(
-                        (current) => {
-                          const updated = new URLSearchParams(current);
-                          updated.set("sort", sortField);
-                          updated.set("dir", next);
-                          return updated;
-                        },
-                        { replace: true },
-                      )
-                    }
-                  />
-                </div>
-              </div>
-            ) : null}
-
-            {refreshError ? (
-              <div role="alert" className="mb-3 flex flex-wrap items-center gap-3 text-sm">
-                <span className="text-destructive">{refreshError}</span>
-                {/* Trying again cannot work until a model is set up. */}
-                {needsModel && onOpenModelSettings ? (
-                  <Button variant="outline" size="sm" onClick={onOpenModelSettings}>
-                    <Trans>Add a model</Trans>
-                  </Button>
-                ) : (
-                  <Button variant="outline" size="sm" onClick={() => void refresh()}>
+              ) : null}
+              {error ? (
+                <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
+                  <span className="text-destructive">{error}</span>
+                  <Button variant="outline" size="sm" onClick={load}>
                     <Trans>Try again</Trans>
                   </Button>
-                )}
-              </div>
-            ) : null}
-
-            {error ? (
-              <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
-                <span className="text-destructive">{error}</span>
-                <Button variant="outline" size="sm" onClick={load}>
-                  <Trans>Try again</Trans>
-                </Button>
-              </div>
-            ) : contacts === null || (reading && rows.length === 0) ? (
-              <div className="flex flex-col gap-2" aria-busy="true">
-                {[0, 1, 2].map((n) => (
-                  <Skeleton key={n} className="h-9 w-full" />
-                ))}
-              </div>
-            ) : shown.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-16 text-center">
-                <p className="max-w-sm text-sm text-muted-foreground">
-                  {narrowing ? t`No matches` : emptyText[filter]}
-                </p>
-                {narrowing ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setParams(
-                        (current) => {
-                          const updated = new URLSearchParams(current);
-                          updated.delete("q");
-                          updated.delete("security");
-                          return updated;
-                        },
-                        { replace: true },
-                      );
-                      container.current
-                        ?.querySelector<HTMLInputElement>("input[name=cap-table-search]")
-                        ?.focus();
-                    }}
-                  >
-                    <Trans>Clear filters</Trans>
-                  </Button>
-                ) : filter === "all" ? (
-                  <Button variant="outline" size="sm" render={<Link to="/app/contacts" />}>
-                    <Trans>Open Contacts</Trans>
-                  </Button>
-                ) : !isContactKind(filter) ? null : (
-                  <Button variant="outline" size="sm" onClick={addContact}>
-                    <Plus aria-hidden="true" />
-                    {addKindLabel[filter]}
-                  </Button>
-                )}
-              </div>
-            ) : (
-              // Name takes what the other columns leave. Columns drop in priority order as the page
-              // narrows: Email first (it moves under the name), then Kind, then Shares.
-              <div>
-                <Table compact className="table-fixed">
-                  <TableHeader>
-                    <TableHeadRow>
-                      <TableHead className={`${STICKY} ps-2`}>
-                        <Trans>Name</Trans>
-                      </TableHead>
-                      {emailColumn ? (
-                        <TableHead className={`${STICKY} hidden w-56 @3xl:table-cell`}>
-                          <Trans>Email</Trans>
-                        </TableHead>
-                      ) : null}
-                      <TableHead className={`${STICKY} hidden w-28 @lg:table-cell`}>
-                        <Trans>Kind</Trans>
-                      </TableHead>
-                      {snapshot && amountColumn ? (
-                        <TableHead className={`${STICKY} w-24 text-end`}>
-                          <Trans>Amount</Trans>
-                        </TableHead>
-                      ) : null}
-                      {snapshot && shareColumns ? (
-                        <>
-                          <TableHead className={`${STICKY} hidden w-20 text-end @md:table-cell`}>
-                            <Trans>Shares</Trans>
-                          </TableHead>
-                          <TableHead className={`${STICKY} w-20 pe-0 text-end`}>
-                            <Trans>Ownership</Trans>
-                          </TableHead>
-                        </>
-                      ) : null}
-                    </TableHeadRow>
-                  </TableHeader>
-                  <TableBody>
-                    {shown.map(({ key, contact, holder }) => {
-                      const name = contact?.name ?? holder?.name ?? "";
-                      const organization = contact?.organization ?? holder?.organization ?? null;
-                      const kind = rowKind({ contact, holder });
-                      const security = holder
-                        ? holder.shares == null && holder.amountUsd != null && !amountColumn
-                          ? `${holder.security}, ${usd(holder.amountUsd)}`
-                          : holder.security
-                        : null;
-                      // "Options" under the kind "Options" says nothing new.
-                      const holding = security === names[kind] ? null : security;
-                      const empty = <span className="text-muted-foreground">{DASH}</span>;
-                      // A holder with no contact opens the card that saves it as one; the pool is no one.
-                      const openRow: Contact | Prefill | null =
-                        contact ??
-                        (holder && key !== "pool"
-                          ? {
-                              name,
-                              email: holder.email,
-                              organization,
-                              kind: kind === "investor" ? "investor" : "other",
-                            }
-                          : null);
-                      const email = contact?.email ? (
-                        contact.email
-                      ) : !contact && kind === "investor" ? (
-                        <>
-                          {/* Carta's email shows as is; saving it makes the holder a contact. */}
-                          {holder?.email ? <span className="truncate">{holder.email} </span> : null}
-                          <Button
-                            variant="link"
-                            size="xs"
-                            className="h-4 px-0 py-0 leading-4"
-                            onClick={() =>
-                              setEditing({
-                                name,
-                                email: holder?.email ?? null,
-                                organization,
-                                kind: "investor",
-                              })
-                            }
-                          >
-                            {holder?.email ? (
-                              <Trans>Save as contact</Trans>
-                            ) : (
-                              <Trans>Add email</Trans>
-                            )}
-                          </Button>
-                        </>
-                      ) : holder?.email ? (
-                        holder.email
-                      ) : null;
-                      return (
-                        <TableRow
-                          key={key}
-                          data-contact-id={contact?.id}
-                          className={`group-data-[compact]/table:h-11 [&>td]:py-0.5 [&>td:first-child]:ps-2 ${contact && contact.id === savedId ? SAVED_ROW_CLASS : ""}`}
-                          onOpen={openRow ? () => setEditing(openRow) : undefined}
-                        >
-                          <TableCell>
-                            {openRow ? (
-                              <button
-                                type="button"
-                                title={name}
-                                data-row-open
-                                className="block max-w-full truncate rounded-sm text-start font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-                              >
-                                {name}
-                              </button>
-                            ) : (
-                              <span className="block truncate font-medium" title={name}>
-                                {name}
-                              </span>
-                            )}
-                            {/* One muted line keeps every row one height. Without room for the Kind or Email
-                          columns, the kind, holding and email join it. */}
-                            <div className="flex min-w-0 gap-2 whitespace-nowrap text-xs text-muted-foreground empty:hidden">
-                              <span className="shrink-0 @lg:hidden">{names[kind]}</span>
-                              {holding ? (
-                                <span className="min-w-0 truncate" title={holding}>
-                                  {holding}
-                                </span>
-                              ) : null}
-                              {organization ? (
-                                <span
-                                  className={`min-w-0 truncate ${holding ? "hidden @lg:inline" : ""}`}
-                                  title={organization}
-                                >
-                                  {organization}
-                                </span>
-                              ) : null}
-                              {email ? (
-                                <span
-                                  data-testid="cap-table-row-email"
-                                  className={`min-w-0 truncate ${emailColumn ? "@3xl:hidden" : ""} ${holding || organization ? "hidden @lg:inline" : ""}`}
-                                >
-                                  {email}
-                                </span>
-                              ) : null}
-                            </div>
-                          </TableCell>
-                          {emailColumn ? (
-                            <TableCell
-                              data-testid="cap-table-email-cell"
-                              className="hidden truncate text-muted-foreground @3xl:table-cell"
-                              title={contact?.email ?? holder?.email ?? undefined}
-                            >
-                              {email ?? empty}
-                            </TableCell>
-                          ) : null}
-                          <TableCell className="hidden @lg:table-cell">
-                            <div className="truncate">{names[kind]}</div>
-                          </TableCell>
-                          {snapshot && amountColumn ? (
-                            <TableCell className="text-end tabular-nums">
-                              {holder?.amountUsd != null ? usd(holder.amountUsd) : empty}
-                            </TableCell>
-                          ) : null}
-                          {snapshot && shareColumns ? (
-                            <>
-                              <TableCell className="hidden text-end tabular-nums @md:table-cell">
-                                {holder?.shares != null ? num(holder.shares) : empty}
-                              </TableCell>
-                              <TableCell className="pe-0 text-end tabular-nums">
-                                {holder?.percent != null ? (
-                                  pct(holder.percent)
-                                ) : holder ? (
-                                  empty
-                                ) : (
-                                  <span className="hidden @md:inline">{empty}</span>
-                                )}
-                              </TableCell>
-                            </>
-                          ) : null}
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+                </div>
+              ) : contacts === null ? (
+                <div className="flex flex-col gap-2" aria-busy="true">
+                  {[0, 1].map((n) => (
+                    <Skeleton key={n} className="h-9 w-full" />
+                  ))}
+                </div>
+              ) : shown.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 py-10 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    {needle ? t`No matches` : emptyText[tab]}
+                  </p>
+                  {needle ? (
+                    <Button variant="outline" size="sm" onClick={() => setParam("q", undefined)}>
+                      <Trans>Clear filters</Trans>
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" onClick={addContact}>
+                      <Plus aria-hidden="true" />
+                      {addKindLabel[tab]}
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <ul>
+                  {shown.map((contact) => (
+                    <ContactRow
+                      key={contact.id}
+                      contact={contact}
+                      saved={contact.id === savedId}
+                      onEdit={() => setEditing(contact)}
+                      onDelete={() => void deleteContact(contact)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </section>
 
             <FolderDocuments folderPath={CAP_TABLE_FOLDER} />
           </>
-        ) : null}
+        )}
 
         {connecting ? (
           <ConnectCartaDialog
             onClose={() => {
               setConnecting(false);
               setServersSeq((n) => n + 1);
+              if (!switchAfterConnect.current) return;
+              switchAfterConnect.current = false;
+              void rpc.mcp.servers.list().then((servers) => {
+                if (hasConnectedCarta(servers)) void switchToCarta();
+              });
             }}
             onFailed={(message) => {
               setConnecting(false);
+              switchAfterConnect.current = false;
               notify(message);
             }}
           />
@@ -1069,9 +781,10 @@ export function InvestorsPage({
             onDeleted={deleted}
             onOpenContact={setEditing}
             fromCapTable={
+              source === "carta" &&
               editing !== "new" &&
               "id" in editing &&
-              rows.some((row) => row.holder && row.contact?.id === editing.id)
+              holdingRows.some((row) => row.contact?.id === editing.id)
             }
           />
         ) : null}

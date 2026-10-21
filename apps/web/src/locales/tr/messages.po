@@ -171,6 +171,12 @@ msgstr ""
 msgid "{0, plural, one {Waiting for sign-in — the link expires in about # minute.} other {Waiting for sign-in — the link expires in about # minutes.}}"
 msgstr ""
 
+#. placeholder {0}: names[source]
+#. placeholder {1}: shortDay(snapshot.asOf, new Date(), i18n.locale || "en")
+#: src/pages/Investors.tsx
+msgid "{0} · as of {1}"
+msgstr ""
+
 #. placeholder {0}: first.name
 #. placeholder {1}: formatBytes(first.size)
 #: src/components/ComposeEmail.tsx
@@ -617,6 +623,12 @@ msgstr ""
 msgid "3-mo change"
 msgstr ""
 
+#. placeholder {0}: usd(a.pricePerShareUsd, 2)
+#. placeholder {1}: shortDay(a.date, new Date(), i18n.locale || "en")
+#: src/pages/Investors.tsx
+msgid "409A {0} · {1}"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "A bit of everything"
 msgstr ""
@@ -699,14 +711,18 @@ msgstr ""
 msgid "Action confirmations"
 msgstr "İşlem onayları"
 
+#: src/components/cap-table/HoldingsTable.tsx
 #: src/pages/shell/composer.tsx
 msgid "Actions"
 msgstr ""
 
 #. placeholder {0}: bot.name
+#. placeholder {0}: contact.name
 #. placeholder {0}: group.spaceName
-#. placeholder {0}: item.chat.name
+#: src/components/cap-table/CapTableEditor.tsx
+#: src/components/cap-table/HoldingsTable.tsx
 #: src/pages/BotContextMenu.tsx
+#: src/pages/Investors.tsx
 #: src/pages/Shell.tsx
 msgid "Actions for {0}"
 msgstr "{0} için işlemler"
@@ -799,6 +815,11 @@ msgstr ""
 msgid "Add API key"
 msgstr ""
 
+#: src/components/cap-table/CapTableEditor.tsx
+#: src/components/cap-table/HoldingsTable.tsx
+msgid "Add as contact"
+msgstr ""
+
 #: src/components/ContactDialog.tsx
 msgid "Add auditor"
 msgstr ""
@@ -813,6 +834,7 @@ msgstr "Yedek olarak kullanmak için bağlı modeller ekleyin."
 
 #: src/components/ContactDialog.tsx
 #: src/pages/Contacts.tsx
+#: src/pages/Investors.tsx
 msgid "Add contact"
 msgstr ""
 
@@ -824,14 +846,14 @@ msgstr ""
 msgid "Add custom connection"
 msgstr ""
 
-#: src/pages/Investors.tsx
-msgid "Add email"
-msgstr ""
-
 #: src/components/data-room/DataRoomImportMenu.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/DataRoom.tsx
 msgid "Add files"
+msgstr ""
+
+#: src/components/cap-table/CapTableEditor.tsx
+msgid "Add holder"
 msgstr ""
 
 #: src/components/ContactDialog.tsx
@@ -875,10 +897,6 @@ msgstr "Rutine ekle"
 #: src/components/integrations/FinanceSection.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Add wallet"
-msgstr ""
-
-#: src/pages/Investors.tsx
-msgid "Add your investors, auditors and counsel here. Contacts are your address book."
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -954,7 +972,6 @@ msgstr ""
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/Inbox.tsx
-#: src/pages/Investors.tsx
 msgid "All"
 msgstr ""
 
@@ -1135,12 +1152,7 @@ msgstr "Her zaman izinli"
 #: src/components/finance/ui.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
-#: src/pages/Investors.tsx
 msgid "Amount"
-msgstr ""
-
-#: src/pages/Investors.tsx
-msgid "Amount raised"
 msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
@@ -1568,7 +1580,6 @@ msgstr "Avatar Stüdyosu"
 msgid "Avatars"
 msgstr ""
 
-#: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/finance/AddAccountDialog.tsx
@@ -1911,6 +1922,10 @@ msgstr "iptal edildi"
 msgid "Cancelled"
 msgstr "İptal edildi"
 
+#: src/pages/Investors.tsx
+msgid "Cap table"
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Cap table, equity and investors"
 msgstr ""
@@ -1936,11 +1951,7 @@ msgid "Cardholder"
 msgstr ""
 
 #: src/pages/Investors.tsx
-msgid "Carta is connected"
-msgstr ""
-
-#: src/pages/Investors.tsx
-msgid "Carta is the service many startups use to record who owns shares, options and SAFEs. Connect it to see them here."
+msgid "Carta"
 msgstr ""
 
 #: src/components/FinanceCards.tsx
@@ -2010,6 +2021,14 @@ msgstr "Parolayı değiştir"
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Change settings, export your data or retake this tour from here."
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Change source"
+msgstr ""
+
+#: src/components/cap-table/CapTableEditor.tsx
+msgid "Changed elsewhere"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -2392,10 +2411,6 @@ msgstr "Komut değişkeni"
 msgid "Comment"
 msgstr ""
 
-#: src/pages/Investors.tsx
-msgid "Common share price"
-msgstr ""
-
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Compact"
 msgstr ""
@@ -2689,6 +2704,7 @@ msgid "Connects Devin for everyone in this space. Read-only."
 msgstr ""
 
 #: src/pages/Contacts.tsx
+#: src/pages/Investors.tsx
 #: src/pages/Shell.tsx
 msgid "Contacts"
 msgstr ""
@@ -2783,6 +2799,10 @@ msgstr "Parola değiştirilemedi"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Could not change the default model"
 msgstr "Varsayılan model değiştirilemedi"
+
+#: src/pages/Investors.tsx
+msgid "Could not change the source"
+msgstr ""
 
 #: src/lib/model-connection-preflight.ts
 msgid "Could not check stored credentials."
@@ -2895,6 +2915,11 @@ msgstr ""
 #: src/pages/Onboarding.tsx
 msgid "Could not create your bot"
 msgstr "Botun oluşturulamadı"
+
+#. placeholder {0}: contact.name
+#: src/pages/Investors.tsx
+msgid "Could not delete {0}"
+msgstr ""
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not delete bot"
@@ -3304,6 +3329,10 @@ msgstr "Bu yanıt gönderilemedi"
 msgid "Could not take control"
 msgstr "Kontrol alınamadı"
 
+#: src/pages/Investors.tsx
+msgid "Could not undo"
+msgstr ""
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Could not update"
 msgstr "Güncellenemedi"
@@ -3639,6 +3668,7 @@ msgstr "Varsayılan ({0})"
 #: src/components/integrations/StoredMeetingsList.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
+#: src/pages/Investors.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/BotSkillsSection.tsx
@@ -3684,6 +3714,10 @@ msgstr ""
 #: src/pages/GroupPanel.tsx
 msgid "Delete group"
 msgstr "Grubu sil"
+
+#: src/components/cap-table/CapTableEditor.tsx
+msgid "Delete holder"
+msgstr ""
 
 #: src/pages/shell/dialogs.tsx
 msgid "Delete memories too"
@@ -4051,6 +4085,7 @@ msgstr ""
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/finance/FinanceCrypto.tsx
+#: src/pages/Investors.tsx
 msgid "Edit"
 msgstr ""
 
@@ -4070,7 +4105,6 @@ msgstr ""
 #: src/components/data-room/SelectionBar.tsx
 #: src/pages/Auth.tsx
 #: src/pages/Contacts.tsx
-#: src/pages/Investors.tsx
 msgid "Email"
 msgstr "E-posta"
 
@@ -4184,6 +4218,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Equity"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Equity raised"
 msgstr ""
 
 #: src/lib/devin-format.ts
@@ -4533,10 +4571,6 @@ msgstr ""
 msgid "From Google Drive"
 msgstr ""
 
-#: src/pages/Investors.tsx
-msgid "From the latest 409A valuation"
-msgstr ""
-
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "From URL"
 msgstr ""
@@ -4549,8 +4583,10 @@ msgstr ""
 msgid "Fullscreen"
 msgstr "Tam ekran"
 
+#: src/components/cap-table/CapTableEditor.tsx
+#: src/components/cap-table/HoldingsTable.tsx
 #: src/pages/Investors.tsx
-msgid "Fully diluted shares"
+msgid "Fully diluted"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4783,6 +4819,15 @@ msgstr "Yüksek"
 
 #: src/components/inbox/CleanupHistory.tsx
 msgid "History"
+msgstr ""
+
+#: src/components/cap-table/CapTableEditor.tsx
+msgid "holder"
+msgstr ""
+
+#: src/components/cap-table/CapTableEditor.tsx
+#: src/components/cap-table/HoldingsTable.tsx
+msgid "Holder"
 msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx
@@ -5047,6 +5092,11 @@ msgstr "Aralık miktarı"
 #: src/pages/RoutineSchedule.tsx
 msgid "Interval unit"
 msgstr "Aralık birimi"
+
+#: src/components/cap-table/CapTableEditor.tsx
+#: src/components/cap-table/HoldingsTable.tsx
+msgid "Invested"
+msgstr ""
 
 #: src/components/ContactDialog.tsx
 msgid "Investor"
@@ -5915,7 +5965,6 @@ msgstr ""
 msgid "Mute"
 msgstr "Sesi kapat"
 
-#: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderDocuments.tsx
@@ -5927,7 +5976,6 @@ msgstr "Sesi kapat"
 #: src/pages/Auth.tsx
 #: src/pages/Contacts.tsx
 #: src/pages/GroupPanel.tsx
-#: src/pages/Investors.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-credentials.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -6288,14 +6336,6 @@ msgstr ""
 msgid "No open deadlines."
 msgstr ""
 
-#: src/pages/Investors.tsx
-msgid "No option grants in Carta"
-msgstr ""
-
-#: src/pages/Investors.tsx
-msgid "No other contacts yet"
-msgstr ""
-
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "No providers found."
 msgstr "Sağlayıcı bulunamadı."
@@ -6341,10 +6381,6 @@ msgstr ""
 
 #: src/components/EmailCards.tsx
 msgid "No rush"
-msgstr ""
-
-#: src/pages/Investors.tsx
-msgid "No shareholders in Carta"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -6463,6 +6499,10 @@ msgstr ""
 msgid "Not now"
 msgstr "Şimdi değil"
 
+#: src/components/cap-table/CapTableEditor.tsx
+msgid "Not saved"
+msgstr ""
+
 #: src/pages/Legal.tsx
 msgid "Not scanned yet"
 msgstr ""
@@ -6569,10 +6609,6 @@ msgstr "OAuth bağlantısı başarısız"
 msgid "Obligation"
 msgstr ""
 
-#: src/components/cap-table/OwnershipDonut.tsx
-msgid "of class"
-msgstr ""
-
 #: src/components/integrations/IntegrationAgentSection.tsx
 msgid "Off: other agents reach {service} only through this agent."
 msgstr ""
@@ -6644,8 +6680,9 @@ msgstr ""
 msgid "Open computer settings"
 msgstr ""
 
-#: src/pages/Investors.tsx
-msgid "Open Contacts"
+#: src/components/cap-table/CapTableEditor.tsx
+#: src/components/cap-table/HoldingsTable.tsx
+msgid "Open contact"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -6774,14 +6811,6 @@ msgstr ""
 msgid "Opening Praci…"
 msgstr ""
 
-#: src/components/cap-table/OwnershipDonut.tsx
-msgid "Option pool ({poolFree} available)"
-msgstr ""
-
-#: src/pages/Investors.tsx
-msgid "Option pool available"
-msgstr ""
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -6791,14 +6820,6 @@ msgstr "İsteğe bağlı"
 
 #: src/components/integrations/FinanceSection.tsx
 msgid "Optional faster balance reads"
-msgstr ""
-
-#: src/pages/Investors.tsx
-msgid "Options"
-msgstr ""
-
-#: src/components/cap-table/OwnershipDonut.tsx
-msgid "Options and pool"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -6830,13 +6851,12 @@ msgstr ""
 msgid "Original message unavailable"
 msgstr "Orijinal mesaj kullanılamıyor"
 
-#: src/components/cap-table/OwnershipDonut.tsx
+#: src/components/cap-table/OwnershipBar.tsx
 #: src/components/ContactDialog.tsx
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
 #: src/lib/devin-format.ts
 #: src/pages/finance/FinanceTransaction.tsx
-#: src/pages/Investors.tsx
 msgid "Other"
 msgstr ""
 
@@ -6847,10 +6867,6 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Other crypto"
-msgstr ""
-
-#: src/components/cap-table/OwnershipDonut.tsx
-msgid "Other holders"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -6874,15 +6890,6 @@ msgstr ""
 
 #: src/pages/Board.tsx
 msgid "Owner"
-msgstr ""
-
-#: src/components/cap-table/OwnershipDonut.tsx
-#: src/pages/Investors.tsx
-msgid "Ownership"
-msgstr ""
-
-#: src/pages/Investors.tsx
-msgid "Ownership by share class"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -7079,6 +7086,14 @@ msgstr "Çalınıyor…"
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Plugin"
 msgstr "Eklenti"
+
+#: src/pages/Investors.tsx
+msgid "Pool"
+msgstr ""
+
+#: src/components/cap-table/CapTableEditor.tsx
+msgid "Pool shares"
+msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Popular"
@@ -7499,18 +7514,11 @@ msgstr ""
 #: src/App.tsx
 #: src/components/ErrorBoundary.tsx
 #: src/pages/Finance.tsx
+#: src/pages/Investors.tsx
 #: src/pages/RoutineRunHistory.tsx
 #: src/pages/shell/bot-pins.tsx
 msgid "Refresh"
 msgstr "Yenile"
-
-#: src/pages/Investors.tsx
-msgid "Refresh from Carta"
-msgstr ""
-
-#: src/pages/Investors.tsx
-msgid "Refresh from Carta. The Carta agent reads your cap table again."
-msgstr ""
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Refresh view"
@@ -7856,6 +7864,7 @@ msgid "Restoring your workspace"
 msgstr ""
 
 #: src/components/AccountAccess.tsx
+#: src/components/cap-table/CapTableEditor.tsx
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/DataRoomStats.tsx
 #: src/pages/Auth.tsx
@@ -7996,10 +8005,6 @@ msgstr ""
 msgid "Safe"
 msgstr ""
 
-#: src/pages/Investors.tsx
-msgid "SAFEs are not in the share counts"
-msgstr ""
-
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Sales & CRM"
 msgstr ""
@@ -8032,10 +8037,6 @@ msgstr "Kaydet"
 msgid "Save {0} as a contact"
 msgstr ""
 
-#: src/pages/Investors.tsx
-msgid "Save as contact"
-msgstr ""
-
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Save backups"
 msgstr "Yedekleri kaydet"
@@ -8061,6 +8062,7 @@ msgid "Save the workspace and install current software."
 msgstr "Çalışma alanını kaydedin ve güncel yazılımı yükleyin."
 
 #: src/components/AskCard.tsx
+#: src/components/cap-table/CapTableEditor.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/ExternalConversationSettings.tsx
@@ -8258,17 +8260,14 @@ msgstr ""
 msgid "Searching your mail"
 msgstr ""
 
+#: src/components/cap-table/CapTableEditor.tsx
+#: src/components/cap-table/HoldingsTable.tsx
 #: src/pages/Inbox.tsx
-#: src/pages/Investors.tsx
 msgid "Security"
 msgstr ""
 
 #: src/pages/shell/composer.tsx
 msgid "See usage"
-msgstr ""
-
-#: src/pages/Investors.tsx
-msgid "See who owns your company"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
@@ -8457,16 +8456,8 @@ msgstr ""
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr ""
 
-#: src/pages/Investors.tsx
-msgid "Shareholder"
-msgstr ""
-
-#: src/pages/Investors.tsx
-msgid "Shareholders"
-msgstr ""
-
-#: src/components/cap-table/OwnershipDonut.tsx
-#: src/pages/Investors.tsx
+#: src/components/cap-table/CapTableEditor.tsx
+#: src/components/cap-table/HoldingsTable.tsx
 msgid "Shares"
 msgstr ""
 
@@ -8475,6 +8466,7 @@ msgid "Shares one computer with your other bots."
 msgstr ""
 
 #: src/pages/Artifacts.tsx
+#: src/pages/Investors.tsx
 msgid "Sheet"
 msgstr ""
 
@@ -8485,11 +8477,6 @@ msgstr ""
 #: src/components/computer/TerminalApp.tsx
 msgid "Shell"
 msgstr "Kabuk"
-
-#. placeholder {0}: s.name
-#: src/components/cap-table/OwnershipDonut.tsx
-msgid "Show {0} breakdown"
-msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Show all {total}"
@@ -8579,10 +8566,6 @@ msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Sign in to {appName} in the new window"
-msgstr ""
-
-#: src/pages/Investors.tsx
-msgid "Sign in to Carta again to see who owns your company"
 msgstr ""
 
 #: src/pages/Auth.tsx
@@ -9212,16 +9195,8 @@ msgstr ""
 msgid "The Carta agent can now read your cap table."
 msgstr ""
 
-#: src/pages/Investors.tsx
-msgid "The Carta agent has not read your cap table yet."
-msgstr ""
-
 #: src/components/integrations/McpDetail.tsx
 msgid "The Carta agent loses access to Carta."
-msgstr ""
-
-#: src/pages/Investors.tsx
-msgid "The Carta agent needs a model before it can read your cap table."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -9702,6 +9677,10 @@ msgstr ""
 msgid "Type here to find any page, chat or email."
 msgstr ""
 
+#: src/pages/Investors.tsx
+msgid "Type it in"
+msgstr ""
+
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Type without recording"
 msgstr ""
@@ -9710,11 +9689,16 @@ msgstr ""
 msgid "Type your answer"
 msgstr "Yanıtını yaz"
 
+#: src/pages/Investors.tsx
+msgid "Typed in"
+msgstr ""
+
 #: src/components/data-room/DataRoomStats.tsx
 msgid "Types"
 msgstr ""
 
-#: src/components/cap-table/OwnershipDonut.tsx
+#: src/components/cap-table/CapTableEditor.tsx
+#: src/components/cap-table/OwnershipBar.tsx
 #: src/pages/Investors.tsx
 msgid "Unallocated pool"
 msgstr ""
@@ -9751,6 +9735,7 @@ msgstr ""
 #: src/components/sidebar-folders/SidebarUndoNotice.tsx
 #: src/lib/use-contact-notices.ts
 #: src/pages/Inbox.tsx
+#: src/pages/Investors.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Undo"
 msgstr ""
@@ -9884,9 +9869,7 @@ msgid "Updated"
 msgstr ""
 
 #. placeholder {0}: formatRelativeTime(data.fetchedAt)
-#. placeholder {0}: formatRelativeTime(snapshot.updatedAt)
 #: src/pages/Devin.tsx
-#: src/pages/Investors.tsx
 msgid "Updated {0}"
 msgstr ""
 
@@ -10457,10 +10440,6 @@ msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Your browser blocked the sign-in window"
-msgstr ""
-
-#: src/pages/Investors.tsx
-msgid "Your Carta sign-in ended. Sign in again to see holders here."
 msgstr ""
 
 #. placeholder {0}: money(cryptoCents)

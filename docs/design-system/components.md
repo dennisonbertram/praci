@@ -3,7 +3,7 @@
 
 Rendered React components and native SwiftUI views, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 253 of 253
+- Web and shared component files with stories: 255 of 255
 - Web and shared components: 675
 - Mobile components: 138 in 95 files, mobile — native story pending
 - SwiftUI views: 3 in 2 files, native story pending
@@ -139,7 +139,9 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
-| Projection, OwnershipDonut | [apps/web/src/components/cap-table/OwnershipDonut.tsx](../../apps/web/src/components/cap-table/OwnershipDonut.tsx) | [OwnershipDonut.stories.tsx](../../apps/web/src/components/cap-table/OwnershipDonut.stories.tsx) | web |
+| CapTableEditor | [apps/web/src/components/cap-table/CapTableEditor.tsx](../../apps/web/src/components/cap-table/CapTableEditor.tsx) | [CapTableEditor.stories.tsx](../../apps/web/src/components/cap-table/CapTableEditor.stories.tsx) | web |
+| HoldingsTable | [apps/web/src/components/cap-table/HoldingsTable.tsx](../../apps/web/src/components/cap-table/HoldingsTable.tsx) | [HoldingsTable.stories.tsx](../../apps/web/src/components/cap-table/HoldingsTable.stories.tsx) | web |
+| OwnershipBar | [apps/web/src/components/cap-table/OwnershipBar.tsx](../../apps/web/src/components/cap-table/OwnershipBar.tsx) | [OwnershipBar.stories.tsx](../../apps/web/src/components/cap-table/OwnershipBar.stories.tsx) | web |
 
 ## Web components/compose
 
@@ -305,7 +307,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | InboxPage, InboxListPage | [apps/web/src/pages/Inbox.tsx](../../apps/web/src/pages/Inbox.tsx) | [Inbox.stories.tsx](../../apps/web/src/pages/Inbox.stories.tsx) | web |
 | IntegrationsPage | [apps/web/src/pages/Integrations.tsx](../../apps/web/src/pages/Integrations.tsx) | [Integrations.stories.tsx](../../apps/web/src/pages/Integrations.stories.tsx) | web |
 | IntegrationSetupPage | [apps/web/src/pages/IntegrationSetup.tsx](../../apps/web/src/pages/IntegrationSetup.tsx) | [IntegrationSetup.stories.tsx](../../apps/web/src/pages/IntegrationSetup.stories.tsx) | web |
-| Figure, SafeNote, Summary, OwnershipSection, ConnectCartaDialog, InvestorsPage | [apps/web/src/pages/Investors.tsx](../../apps/web/src/pages/Investors.tsx) | [Investors.stories.tsx](../../apps/web/src/pages/Investors.stories.tsx) | web |
+| Figure, Summary, ConnectCartaDialog, ContactRow, InvestorsPage | [apps/web/src/pages/Investors.tsx](../../apps/web/src/pages/Investors.tsx) | [Investors.stories.tsx](../../apps/web/src/pages/Investors.stories.tsx) | web |
 | KnowledgeSection, SpaceMemorySection, MemoryDocumentList | [apps/web/src/pages/KnowledgeSection.tsx](../../apps/web/src/pages/KnowledgeSection.tsx) | [KnowledgeSection.stories.tsx](../../apps/web/src/pages/KnowledgeSection.stories.tsx) | web |
 | LegalPage, Legal, GraphTab, LegalSkeleton | [apps/web/src/pages/Legal.tsx](../../apps/web/src/pages/Legal.tsx) | [Legal.stories.tsx](../../apps/web/src/pages/Legal.stories.tsx) | web |
 | NextDeadline, Title, Status, LegalContracts | [apps/web/src/pages/legal/LegalContracts.tsx](../../apps/web/src/pages/legal/LegalContracts.tsx) | [LegalContracts.stories.tsx](../../apps/web/src/pages/legal/LegalContracts.stories.tsx) | web |
