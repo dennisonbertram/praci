@@ -393,3 +393,17 @@ it("turns the pending switch back off and shows the error when allowing changes 
   expect((writesSwitch() as HTMLInputElement).checked).toBe(false);
   expect(container.querySelector('[role="alert"]')).not.toBeNull();
 });
+
+it("shows a skeleton, not an empty page, while the connections load", async () => {
+  const data = { ...mockIntegrations({ servers: [] }), loaded: false, refresh };
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/app/integrations/mcp/s1"]}>
+        <Routes>
+          <Route path="/app/integrations/mcp/:serverId" element={<McpDetail data={data} />} />
+        </Routes>
+      </MemoryRouter>,
+    ),
+  );
+  expect(container.querySelector('[data-testid="mcp-detail-loading"]')).not.toBeNull();
+});

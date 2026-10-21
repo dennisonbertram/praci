@@ -1,4 +1,4 @@
-import { Trans } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Button, Skeleton } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
 
@@ -56,10 +56,29 @@ export function ShellSkeleton() {
         </div>
       </aside>
       <main className="flex flex-1 flex-col">
-        <div className="h-14 shrink-0 border-b border-sidebar-border" />
+        <div className="flex h-14 shrink-0 items-center border-b border-sidebar-border px-6">
+          <Skeleton className="h-4 w-40" />
+        </div>
         <OpeningSpace />
         <div className="mx-6 mb-6 h-[54px] rounded-full border border-border bg-background" />
       </main>
+    </div>
+  );
+}
+
+/** Message placeholders for a chat whose thread is still loading. */
+export function ThreadSkeleton() {
+  const { t } = useLingui();
+  return (
+    <div
+      role="status"
+      aria-label={t`Loading messages`}
+      data-testid="thread-skeleton"
+      className="flex flex-1 flex-col justify-end gap-4 px-6 py-6 md:px-[max(1.75rem,calc((100%-900px)/2))]"
+    >
+      <Skeleton className="h-10 w-2/5 self-end rounded-[20px]" />
+      <Skeleton className="h-16 w-3/5 rounded-[20px]" />
+      <Skeleton className="h-10 w-1/3 self-end rounded-[20px]" />
     </div>
   );
 }
