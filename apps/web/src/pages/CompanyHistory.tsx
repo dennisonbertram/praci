@@ -23,6 +23,7 @@ export function CompanyHistory({
   useHideAmounts();
   const [zoom, setZoom] = useState(initialZoom);
   const pointers = useRef(new Map<number, number>());
+  const initialPointerX = useRef(new Map<number, number>());
   const pinch = useRef<number | null>(null);
   const dragged = useRef(false);
   const viewport = useRef<HTMLElement>(null);
@@ -110,18 +111,20 @@ export function CompanyHistory({
             if (pointers.current.size === 0) dragged.current = false;
             if (event.pointerType !== "touch") return;
             pointers.current.set(event.pointerId, event.clientX);
+            initialPointerX.current.set(event.pointerId, event.clientX);
             if (pointers.current.size === 2)
               for (const id of pointers.current.keys()) event.currentTarget.setPointerCapture(id);
           }}
           onPointerMove={(event) => {
             if (!pointers.current.has(event.pointerId)) return;
             const previous = pointers.current.get(event.pointerId)!;
+            const initial = initialPointerX.current.get(event.pointerId)!;
             pointers.current.set(event.pointerId, event.clientX);
             const values = [...pointers.current.values()];
             if (values.length === 1) {
               const delta = previous - event.clientX;
               event.currentTarget.scrollLeft += delta;
-              if (Math.abs(delta) > 3) dragged.current = true;
+              if (Math.abs(initial - event.clientX) > 3) dragged.current = true;
               return;
             }
             if (values.length !== 2) return;
@@ -134,10 +137,12 @@ export function CompanyHistory({
           }}
           onPointerUp={(event) => {
             pointers.current.delete(event.pointerId);
+            initialPointerX.current.delete(event.pointerId);
             pinch.current = null;
           }}
           onPointerCancel={(event) => {
             pointers.current.delete(event.pointerId);
+            initialPointerX.current.delete(event.pointerId);
             pinch.current = null;
           }}
           style={{ touchAction: "pan-y" }}

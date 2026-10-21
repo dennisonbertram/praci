@@ -79,14 +79,12 @@ test("Company shows owner facts, precision and provenance with masked money", as
     type: "touchStart",
     touchPoints: [{ x: startX, y: startY, id: 1 }],
   });
-  await touch.send("Input.dispatchTouchEvent", {
-    type: "touchMove",
-    touchPoints: [{ x: startX - 40, y: startY, id: 1 }],
-  });
-  await touch.send("Input.dispatchTouchEvent", {
-    type: "touchMove",
-    touchPoints: [{ x: startX - 80, y: startY, id: 1 }],
-  });
+  for (const offset of [2, 4, 6]) {
+    await touch.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: startX - offset, y: startY, id: 1 }],
+    });
+  }
   await touch.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await expect
     .poll(() => timeline.evaluate((element) => element.scrollLeft))
