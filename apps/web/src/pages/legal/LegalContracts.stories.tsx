@@ -47,3 +47,15 @@ export const Wide: StoryObj<typeof meta> = {
     ),
   ],
 };
+
+/** Every contract is active: no Status column. */
+export const AllActive: StoryObj<typeof meta> = {
+  args: { contracts: contracts.filter((contract) => contract.status === "active") },
+  decorators: [
+    (Story) => (
+      <div className="@container w-[1000px]">
+        <Story />
+      </div>
+    ),
+  ],
+};

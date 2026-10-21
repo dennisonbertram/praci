@@ -2,6 +2,7 @@ import { cartaAgentSpawnKey } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import {
   buildApprovalAskBlock,
+  buildConsentAskBlock,
   describeApprovalAction,
   isIntegrationAgentWrite,
   mailRequestIsValid,
@@ -396,5 +397,18 @@ describe("resolveMoneyNames", () => {
     const read = vi.fn();
     expect(await resolveMoneyNames("mcp__x__updateTransaction", args, read)).toBeUndefined();
     expect(read).not.toHaveBeenCalled();
+  });
+});
+
+describe("buildConsentAskBlock", () => {
+  it("names the model and router in words, never the raw model id", () => {
+    const block = buildConsentAskBlock("e1", {
+      name: "OpenRouter",
+      detail: "openai/gpt-6-luna, forwarded to its provider",
+    });
+    expect(block).toMatchObject({
+      text: "Allow your mail to be sent to GPT-6 Luna (via OpenRouter)?",
+    });
+    expect(JSON.stringify(block)).not.toMatch(/openai\/|forwarded to its provider/);
   });
 });

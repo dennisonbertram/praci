@@ -251,15 +251,15 @@ export function GeneralSettingsPanels({
             <section className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-4">
               <div className="min-w-0">
                 <h3 className="text-[15px] font-medium text-foreground">
-                  <Trans>Server apps</Trans>
+                  <Trans>Integration sign-in</Trans>
                 </h3>
                 <p className="mt-0.5 text-[13px] text-muted-foreground">
-                  <Trans>Choose how apps connect for everyone on this server.</Trans>
+                  <Trans>How Integrations connect for everyone on this server.</Trans>
                 </p>
               </div>
               <Button
                 variant="outline"
-                aria-label={t`Open server apps`}
+                aria-label={t`Open integration sign-in`}
                 render={
                   <Link
                     to={`/app/integrations/setup?next=${encodeURIComponent(window.location.pathname + window.location.search)}`}
