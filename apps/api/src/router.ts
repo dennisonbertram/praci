@@ -5167,7 +5167,7 @@ export function createRouter(deps: RouterDeps) {
         }),
         remove: authed.mcp.servers.remove.handler(async ({ context, input }) => {
           if (await requireOwnerForActiveDevinRow(deps.prisma, context.actor, input.id)) {
-            await devinDisconnect(devinDeps, context.actor);
+            await devinDisconnect(devinDeps, context.actor, input.id);
             return { ok: true as const };
           }
           const server = await deps.prisma.mcpServer.findFirst({

@@ -49,22 +49,48 @@ const activeState = (deps: Pick<DevinDeps, "prisma">, spaceId: string) =>
     include: { server: { select: { userId: true, agentBotId: true } } },
   });
 
+type DeletedServer = {
+  userId: string;
+  spaceId: string;
+  secretId: string | null;
+  agentBotId: string | null;
+};
+
 /**
- * Deletes a connection's server, its key and its agent. The row's own owner scopes the deletes,
- * because the acting owner may not be the one who connected.
+ * Deletes a server row (the cascade removes the connection state and cached sessions), its key
+ * and its agent's record, scoped by the row's own owner because the acting owner may not be the
+ * one who connected. The deleted row says which agent it had at that moment.
  */
-async function removeServer(deps: DevinDeps, serverId: string): Promise<void> {
-  const row = await deps.prisma.mcpServer.findUnique({ where: { id: serverId } });
-  if (!row) return;
+async function deleteServerRows(
+  tx: Prisma.TransactionClient,
+  serverId: string,
+): Promise<DeletedServer | null> {
+  const [row] = await tx.$queryRaw<DeletedServer[]>`
+    DELETE FROM mcp_servers WHERE id = ${serverId}
+    RETURNING "userId", "spaceId", "secretId", "agentBotId"`;
+  if (!row) return null;
   const scope = actorScope(row);
-  await deps.prisma.$transaction(async (tx) => {
-    await tx.mcpServer.deleteMany({ where: { id: row.id, ...scope } });
-    if (row.secretId) await tx.secret.deleteMany({ where: { id: row.secretId, ...scope } });
-  });
-  if (row.agentBotId) {
-    const owner: Actor = { ...scope, email: "", isDeploymentOwner: false };
-    await deps.archiveBot(owner, row.agentBotId).catch(() => undefined);
-  }
+  if (row.secretId) await tx.secret.deleteMany({ where: { id: row.secretId, ...scope } });
+  if (row.agentBotId)
+    await tx.bot.updateMany({
+      where: { id: row.agentBotId, ...scope, archivedAt: null },
+      data: { archivedAt: new Date(), pinned: false },
+    });
+  return row;
+}
+
+/** Cleans up what archiving the agent leaves behind (runs, computer); the archive itself is done. */
+async function finishAgentArchive(deps: DevinDeps, row: DeletedServer | null): Promise<void> {
+  if (!row?.agentBotId) return;
+  const owner: Actor = { ...actorScope(row), email: "", isDeploymentOwner: false };
+  await deps.archiveBot(owner, row.agentBotId).catch(() => undefined);
+}
+
+async function removeServer(deps: DevinDeps, serverId: string): Promise<void> {
+  await finishAgentArchive(
+    deps,
+    await deps.prisma.$transaction((tx) => deleteServerRows(tx, serverId)),
+  );
 }
 
 /**
@@ -185,7 +211,7 @@ export async function devinReplaceKey(
         where: { spaceId: actor.spaceId },
       });
       if (!current) throw new ORPCError("CONFLICT", { message: "Devin was disconnected" });
-      await tx.devinSession.deleteMany({ where: { serverId: current.serverId } });
+      // State first, then rows: the refresh takes its locks in that order.
       await tx.devinConnectionState.update({
         where: { serverId: current.serverId },
         data: {
@@ -202,6 +228,7 @@ export async function devinReplaceKey(
           lastError: null,
         },
       });
+      await tx.devinSession.deleteMany({ where: { serverId: current.serverId } });
       return current.serverId;
     });
   } catch (error) {
@@ -212,10 +239,23 @@ export async function devinReplaceKey(
   await deps.jobs.enqueue(refreshJob(row.id));
 }
 
-export async function devinDisconnect(deps: DevinDeps, actor: Actor): Promise<void> {
+/**
+ * Disconnects the space. With `serverId`, only if that server is still the active connection, so a
+ * stale request cannot remove the connection that replaced it.
+ */
+export async function devinDisconnect(
+  deps: DevinDeps,
+  actor: Actor,
+  serverId?: string,
+): Promise<void> {
   await requireSpaceOwner(deps.prisma, actor);
-  const state = await activeState(deps, actor.spaceId);
-  if (state) await removeServer(deps, state.serverId);
+  const removed = await deps.prisma.$transaction(async (tx) => {
+    await lockConnection(tx, actor.spaceId);
+    const state = await tx.devinConnectionState.findUnique({ where: { spaceId: actor.spaceId } });
+    if (!state || (serverId && state.serverId !== serverId)) return null;
+    return deleteServerRows(tx, state.serverId);
+  });
+  await finishAgentArchive(deps, removed);
 }
 
 /** The connector's agent, or null for every other member. */

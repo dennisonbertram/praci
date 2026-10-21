@@ -486,6 +486,15 @@ describePostgres("Devin shared connection (PostgreSQL)", () => {
     });
   });
 
+  it("a stale remove of a replaced server leaves the new connection alone", async () => {
+    const oldId = await connected();
+    await client(owner2).devin.replaceKey({ secret: "key-two" });
+    const current = (await state())!.serverId;
+    await expect(client(owner1).mcp.servers.remove({ id: oldId })).rejects.toBeTruthy();
+    expect((await state())!.serverId).toBe(current);
+    expect(await prisma.mcpServer.count({ where: { id: current } })).toBe(1);
+  });
+
   describe("agent", () => {
     it("creates the connector's agent once, however many calls race, and is null for others", async () => {
       await client(owner1).devin.connect({ secret: "key-one" });
