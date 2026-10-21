@@ -51,7 +51,7 @@ test("sidebar Working and Finished surface active and terminal runs", async ({
   await expect(activityToggle).toHaveAttribute("data-activity-mode", "off");
   await expect(aside.getByText("Working", { exact: true })).toHaveCount(0);
   await expect(aside.getByText("Finished", { exact: true })).toHaveCount(0);
-  await expect(aside.getByText("Loading activity…")).toHaveCount(0);
+  await expect(aside.getByRole("status", { name: "Loading…" })).toHaveCount(0);
   await expect(aside.locator("[data-sidebar-group]").getByText("Chief").first()).toBeVisible();
   await captureActivitySidebar(page, testInfo, "57-activity-mode-off");
 
@@ -73,7 +73,7 @@ test("sidebar Working and Finished surface active and terminal runs", async ({
   await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByText("Loading activity…")).toBeHidden({ timeout: 20_000 });
+  await expect(aside.getByRole("status", { name: "Loading…" })).toBeHidden({ timeout: 20_000 });
   await expect(aside.getByText("Working", { exact: true })).toBeVisible({ timeout: 20_000 });
   await expect(activityRow(page, "Chief")).toBeVisible();
   await expect(activityRow(page, "Chief")).toContainText(/keep working|Running|Queued|Starting/i);
@@ -85,7 +85,7 @@ test("sidebar Working and Finished surface active and terminal runs", async ({
   await page.reload();
   await expect(activityToggle).toHaveAttribute("aria-pressed", "true");
   await expect(activityToggle).toHaveAttribute("data-activity-mode", "on");
-  await expect(page.getByText("Loading activity…")).toBeHidden({ timeout: 20_000 });
+  await expect(aside.getByRole("status", { name: "Loading…" })).toBeHidden({ timeout: 20_000 });
   // Finished runs are folded away until asked for.
   await aside.getByRole("button", { name: /^Show \d+ finished runs?$/ }).click();
   await expect(aside.getByText("Finished", { exact: true })).toBeVisible({ timeout: 20_000 });
@@ -214,11 +214,11 @@ test("activity filters keep retry when a refresh fails", async ({ page }) => {
 
   phase = "hang";
   await retry.click();
-  await expect(aside.getByText("Loading activity…")).toBeVisible();
+  await expect(aside.getByRole("status", { name: "Loading…" })).toBeVisible();
   await expect(aside.getByText("No runs match these filters.")).toHaveCount(0);
   await expect.poll(() => releaseHang !== null).toBe(true);
   releaseHang?.();
-  await expect(aside.getByText("Loading activity…")).toBeHidden({ timeout: 20_000 });
+  await expect(aside.getByRole("status", { name: "Loading…" })).toBeHidden({ timeout: 20_000 });
   await expect(retry).toHaveCount(0);
   await expect(aside.getByText("No runs match these filters.")).toHaveCount(0);
   await expect(activitySearch).toHaveValue("Chief");

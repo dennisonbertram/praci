@@ -130,7 +130,7 @@ const legendHeight = (rows: number) => ROW * rows - 2;
 const HEAD = 28;
 const drillLegendHeight = (rows: number) => HEAD + legendHeight(rows);
 /** Narrower than this, the donut at rest sits above its legend instead of beside it. */
-const SIDE = 400;
+const SIDE = 520;
 /** The breakdown legend shows this many rows and scrolls past them, so the card is not sized for the longest one. */
 const MAX_DRILL_ROWS = 5;
 /** Width of the side-by-side layout. Narrower containers stack the donuts. */
@@ -344,7 +344,6 @@ export function OwnershipDonut({
 
   if (slices.length === 0) return null;
   const locale = i18n.locale || "en";
-  const total = slices.reduce((n, s) => n + s.shares, 0);
   const drillTotal = drill?.reduce((n, s) => n + s.shares, 0) ?? 0;
   const label = `${t`Ownership`}: ${slices
     .slice(0, 3)
@@ -468,17 +467,22 @@ export function OwnershipDonut({
               data-testid="donut-centre"
               style={{ opacity: isOpen ? 0 : 1, transition: tr("opacity") }}
             >
-              <span className="text-xl font-semibold leading-none tabular-nums">
-                {shareCount(tip ? tip.shares : total, locale)}
-              </span>
-              <span className="mt-1 line-clamp-2 text-xs leading-tight text-muted-foreground">
-                {tip ? tip.name : unissued > 0 ? t`Fully diluted shares` : t`Shares`}
-              </span>
+              {/* The total is in the summary; the centre names a slice while one is hovered. */}
+              {tip ? (
+                <>
+                  <span className="text-xl font-semibold leading-none tabular-nums">
+                    {shareCount(tip.shares, locale)}
+                  </span>
+                  <span className="mt-1 line-clamp-2 text-xs leading-tight text-muted-foreground">
+                    {tip.name}
+                  </span>
+                </>
+              ) : null}
             </div>
           </div>
 
           <ul
-            className="absolute grid gap-0.5 text-sm"
+            className="absolute grid grid-cols-1 gap-0.5 text-sm"
             style={{
               left: mainLegend.x,
               top: mainLegend.y,
@@ -585,7 +589,7 @@ export function OwnershipDonut({
                 </div>
               </div>
               <ul
-                className="rk-scroll absolute grid content-start gap-0.5 overflow-y-auto text-sm"
+                className="rk-scroll absolute grid grid-cols-1 content-start gap-0.5 overflow-y-auto text-sm"
                 style={{
                   maxHeight: drillLegendHeight(MAX_DRILL_ROWS),
                   left: drillLegend.x,

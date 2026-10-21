@@ -48,14 +48,14 @@ it("describes the top classes and lists every value in a hidden table", async ()
     "Ownership: Common 60.00%, Series A Preferred 30.00%, Options 10.00%",
   );
   expect(el.querySelectorAll("table.sr-only tbody tr")).toHaveLength(3);
-  expect(el.textContent).toContain("1,000");
+  expect(el.textContent).toContain("600");
   setHideAmounts(false);
 });
 
 it("links a legend row and its slice in both directions", async () => {
   const el = await mount(<OwnershipDonut classes={classes} fullyDilutedShares={1000} />);
   const centre = () => el.querySelector("[data-testid=donut-centre]")?.textContent ?? "";
-  expect(centre()).toBe("1,000Shares");
+  expect(centre()).toBe("");
   const slices = () => [...el.querySelectorAll("[data-testid=donut-slice]")];
   await act(async () => {
     slices()[1]?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
@@ -77,9 +77,7 @@ it("leaves a legend row with no breakdown out of the tab order", async () => {
 
 it("adds a slice for shares no class holds, so the legend matches the centre", async () => {
   const el = await mount(<OwnershipDonut classes={classes} fullyDilutedShares={1250} />);
-  expect(el.querySelector("[data-testid=donut-centre]")?.textContent).toBe(
-    "1,250Fully diluted shares",
-  );
+  expect(el.querySelector("[data-testid=donut-centre]")?.textContent).toBe("");
   const rows = [...el.querySelectorAll("table.sr-only tbody tr")].map((r) => r.textContent);
   expect(rows).toContain("Options and pool20.00%250");
   expect(el.querySelectorAll("[data-testid=donut-slice]")).toHaveLength(4);
@@ -110,7 +108,7 @@ it("names the class above its holders when it is opened", async () => {
 it("falls back to the listed total when the classes exceed fully diluted", async () => {
   const el = await mount(<OwnershipDonut classes={classes} fullyDilutedShares={500} />);
   expect(el.querySelectorAll("[data-testid=donut-slice]")).toHaveLength(3);
-  expect(el.querySelector("[data-testid=donut-centre]")?.textContent).toBe("1,000Shares");
+  expect(el.querySelector("[data-testid=donut-centre]")?.textContent).toBe("");
 });
 
 it("draws a tiny slice at the minimum angle and a single class as a full ring", () => {
