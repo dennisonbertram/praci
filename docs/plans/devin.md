@@ -112,7 +112,7 @@ DevinSession = {
 
 When `lastSucceededAt` is older than `DEVIN_CACHE_TTL_MS` (60 s) and no backoff or rejection applies, the handler calls the refresh operation itself and returns its result; if the lease is held, it returns the cache with `stale: false`. On a rejected or backed-off connection it returns the cache with `stale: true` and the status. Session URLs are not stored or returned: the client builds them with `devinSessionUrl(id)` (Design 5). Tiles and the sidebar count come from the same rows: "Needs you" = `needs_you` plus `error` rows (a failed session also needs a person), "Working" = `working` rows.
 
-**Parser.** `packages/adapters/src/devin-sessions.ts`, pure: `parseDevinSessionSearch(text)` → `{ sessions, skipped, nextCursor }`, `parseDevinMessages(text)` → `{ messages }`, `devinKindOf(status, statusDetail)`. Written in S1 against **redacted real responses** captured with an organization key; invented fixtures are not accepted for this parser.
+**Parser.** `packages/adapters/src/devin-sessions.ts`, pure: `parseDevinSessionSearch(text)` → `{ sessions, skipped, nextCursor }`, `parseDevinMessages(text)` → `{ messages }`, `devinKindOf(status, statusDetail)`. Written in S1 against synthetic fixtures that follow the documented format, each file marked synthetic; S6 replaces them with redacted real responses captured with an organization key and fixes the parser where they differ. The page does not ship to users before S6.
 
 **Tables.** Two additive models, one migration, no change to `McpServer`:
 
@@ -326,13 +326,13 @@ Each is one PR, about a day or less, mergeable on a base that contains its prere
 
 ### S1. Verify the Devin read contract
 
-Story: Trustworthy (a parser for the real API). Needs an organization service-user key on a dev stack; without one this slice, and everything after it, is blocked, and the plan says so.
+Story: Trustworthy (a parser for the real API). Decision (2026-10-21): no organization key is available yet, so S1 uses synthetic fixtures in the documented format, each marked synthetic in its file and in the PR; S6 captures real responses later. Everything after S1 builds on the synthetic fixtures.
 
-- Owns: `packages/adapters/src/__fixtures__/devin/` (redacted real `devin_session_search` pages including a second page via `after`, `get` and `get_messages` for one waiting and one finished session, an `isError` result, and the sanitized error text for a 401, a 403 and a 429 where they can be provoked); `packages/adapters/src/devin-sessions.ts` and `devin-sessions.test.ts`; `packages/adapters/src/devin-call-tool.ts` (`createDevinCallTool`, `devinFailureOf`) and `devin-call-tool.test.ts`; `packages/contracts/src/devin.ts` (`devinSessionUrl`, `isDevinSessionUrl`, `DevinSessionKind`, the Design 9 constants, `DEVIN_INTERACT_READ_ACTIONS`) and `devin.test.ts`; this document's Design 9 table, Assumptions and Open questions updated with what was observed; `packages/adapters/src/index.ts` and `packages/contracts/src/index.ts` exports; one case in `packages/adapters/src/mcp-connector.test.ts` (error text for a 401 from a fake HTTP server).
+- Owns: `packages/adapters/src/__fixtures__/devin/` (synthetic `devin_session_search` pages including a second page via `after`, `get` and `get_messages` for one waiting and one finished session, an `isError` result, and the sanitized error text for a 401, a 403 and a 429 where they can be provoked); `packages/adapters/src/devin-sessions.ts` and `devin-sessions.test.ts`; `packages/adapters/src/devin-call-tool.ts` (`createDevinCallTool`, `devinFailureOf`) and `devin-call-tool.test.ts`; `packages/contracts/src/devin.ts` (`devinSessionUrl`, `isDevinSessionUrl`, `DevinSessionKind`, the Design 9 constants, `DEVIN_INTERACT_READ_ACTIONS`) and `devin.test.ts`; this document's Design 9 table, Assumptions and Open questions updated with what was observed; `packages/adapters/src/index.ts` and `packages/contracts/src/index.ts` exports; one case in `packages/adapters/src/mcp-connector.test.ts` (error text for a 401 from a fake HTTP server).
 - Behaviour: the fixtures parse into the expected rows; a malformed line is skipped and counted; missing fields are null, never thrown; `nextCursor` is read from a full page and absent on the last; `parseDevinMessages` identifies the latest Devin message and its `event_id` in the order the real output uses; `devinKindOf` follows the observed vocabulary with `needs_you` precedence and the raw fallback; `isDevinSessionUrl` accepts the `url` the real `get` returned and rejects other hosts, paths, `http:` and credentials; the caller refuses `devin_session_create`, `devin_session_interact` with `action: "message"` and an unknown tool before `callServerTool`, allows `get` and `get_messages`, builds the context from the row's owner, and throws on `isError`; `devinFailureOf` classifies 401 and listing-403 as `rejected`, session-403 as `session_forbidden`, 429 as `rate_limited`, a timeout as `unreachable`, against the text the connector produces for a fake server.
 - TDD, written first: `devin-sessions.test.ts`, `devin-call-tool.test.ts`, `devin.test.ts`.
 - Regression test: `devin-call-tool.test.ts` "the Devin caller allows search, get and get_messages, refuses every other tool or action before the call, and throws on an isError result".
-- Verify: `pnpm --filter @rakazo/adapters test -- devin mcp-connector && pnpm --filter @rakazo/contracts test && pnpm check`. The PR states which fixtures are real and when they were captured.
+- Verify: `pnpm --filter @rakazo/adapters test -- devin mcp-connector && pnpm --filter @rakazo/contracts test && pnpm check`. The PR states that every fixture is synthetic.
 
 ### S2. Make the existing Devin integration read-only
 
@@ -397,7 +397,15 @@ Story: Faster. Prerequisite: S3a (refresh operation); S4b for the integrated che
 - Copy: the PR quotes "Devin needs input" and the body format.
 - Verify: `VERIFY_DATABASE=1 pnpm --filter @rakazo/db test -- notifications && pnpm --filter @rakazo/adapters test -- devin-refresh && VERIFY_DATABASE=1 pnpm --filter @rakazo/adapters test -- devin-refresh && VERIFY_DATABASE=1 pnpm --filter @rakazo/api test -- devin-journey && pnpm --filter @rakazo/web test -- notification-delivery && pnpm --filter @rakazo/mobile test -- notification-open open-notification && pnpm check`. The PR records a manual click of a toast and an OS banner on web and in Electron on the dev stack, and states that a phone push on a device and a real Devin account were not tried unless they were.
 
-Waves: S1 → (S2 ∥ S3a) → S3b → S4a → S4b → S5. S2 and S3a share no file. S5's database, web and mobile files could start after S3a, but its refresh and journey tests need S3b and S4b, so it is listed last.
+### S6. Capture real Devin responses and confirm the parser
+
+Story: Trustworthy. Prerequisite: S1; blocked until an organization service-user key is available on a dev stack. Must merge before the page is turned on for users.
+
+- Owns: `packages/adapters/src/__fixtures__/devin/` (synthetic files replaced by redacted real captures), `packages/adapters/src/devin-sessions.ts`, `devin-call-tool.ts` and their tests where the real format differs; `packages/contracts/src/devin.ts` (Design 9 constants, `isDevinSessionUrl`) if the vocabulary or URL differs; this document's Design 9 table, Assumptions and Open questions.
+- Behaviour: every S1 behaviour holds against the real captures; the Design 9 table records the observed `status`/`status_detail` values; the session URL shape is the one `get` returns.
+- Verify: S1's command. The PR states when the captures were taken and that they were redacted.
+
+Waves: S1 → (S2 ∥ S3a) → S3b → S4a → S4b → S5; S6 whenever a key is available, before launch. S2 and S3a share no file. S5's database, web and mobile files could start after S3a, but its refresh and journey tests need S3b and S4b, so it is listed last.
 
 ## Gap register coverage
 
