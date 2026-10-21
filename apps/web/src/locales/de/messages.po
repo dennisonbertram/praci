@@ -5783,6 +5783,7 @@ msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/pages/shell/command-palette.tsx
 msgid "Move"
 msgstr ""
 
@@ -6081,10 +6082,6 @@ msgstr "Noch keine Bot-Aktivität."
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "No bot uses {0} yet. Choose bots on its page."
-msgstr ""
-
-#: src/pages/shell/bot-picker.tsx
-msgid "No bots match"
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
@@ -6523,6 +6520,7 @@ msgstr ""
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/command-palette.tsx
 #: src/pages/shell/transcript.tsx
 msgid "Open"
 msgstr "Öffnen"
@@ -7700,6 +7698,10 @@ msgstr ""
 msgid "Resize panel"
 msgstr "Panelgröße ändern"
 
+#: src/pages/Shell.tsx
+msgid "Resize sidebar"
+msgstr ""
+
 #: src/components/integrations/IMessageSection.tsx
 msgid "Restart the Praci server to start using iMessage."
 msgstr ""
@@ -8016,7 +8018,6 @@ msgstr ""
 #: src/pages/Contacts.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Shell.tsx
-#: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/command-palette.tsx
 msgid "Search"
 msgstr "Suchen"
@@ -8374,6 +8375,10 @@ msgstr ""
 
 #: src/components/finance/ui.tsx
 msgid "Show finances for"
+msgstr ""
+
+#: src/components/SidebarPagesGroup.tsx
+msgid "Show in sidebar"
 msgstr ""
 
 #: src/components/inbox/TodoCard.tsx

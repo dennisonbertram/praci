@@ -25,6 +25,7 @@ async function mockDevin(page: Page, sessions = overview.sessions) {
           financeRunwayMonths: null,
           legalDueSoon: 0,
           devinNeedsYou: 3,
+          devinConnected: true,
           dataRoomWaiting: 0,
           botKinds: {},
         },

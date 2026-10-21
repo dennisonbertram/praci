@@ -277,6 +277,7 @@ export const PersonalFolders: Story = {
         financeRunwayMonths: null,
         legalDueSoon: 0,
         devinNeedsYou: 0,
+        devinConnected: true,
         dataRoomWaiting: 0,
         botKinds: { bot_relay: "needs_input" },
       },
