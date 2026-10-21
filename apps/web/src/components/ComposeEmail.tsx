@@ -162,6 +162,7 @@ export function ComposeEmail({
   accounts,
   connectionId,
   restore: restoreProp,
+  draft,
   onClose,
 }: {
   seed: ComposeSeed;
@@ -171,6 +172,8 @@ export function ComposeEmail({
   connectionId?: string;
   /** Opens again as it was left (after Undo or a failed send) instead of loading the seed. */
   restore?: ComposeRestore;
+  /** Text for a reply to start with, above the quoted original: a draft the email's agent wrote. */
+  draft?: string;
   onClose: () => void;
 }) {
   // Reply, reply all and forward continue the composer closed last time for the same message.
@@ -322,8 +325,9 @@ export function ComposeEmail({
     setNotice(null);
     rpc.inbox.compose
       .prefill({ messageId: seed.messageId, mode: seed.kind, ...clientLocale() })
-      .then((next) => {
+      .then((prefilled) => {
         if (!live) return;
+        const next = draft ? { ...prefilled, body: `${draft}${prefilled.body}` } : prefilled;
         replyToRef.current = next.replyToMessageId;
         if (next.account) setSentFrom(next.account);
         pendingContent.current = carried
@@ -362,7 +366,7 @@ export function ComposeEmail({
     return () => {
       live = false;
     };
-  }, [seed, restore, prefillAttempt]);
+  }, [seed, restore, prefillAttempt, draft]);
 
   // Fill the editor with the quoted original (or the restored message) once both it and the editor
   // exist. A reply starts above the quote; a forward starts at its empty To.

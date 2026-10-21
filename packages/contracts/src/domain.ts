@@ -73,6 +73,13 @@ export const RunPhaseSchema = z.object({
 });
 export type RunPhase = z.infer<typeof RunPhaseSchema>;
 
+/** Internal bots serve the owner; external bots talk to people outside the company. */
+export const BotAudienceSchema = z.enum(["internal", "external"]);
+export type BotAudience = z.infer<typeof BotAudienceSchema>;
+
+/** Only a bot the owner made can be external; page and integration agents hold private data by design. */
+export const botAudienceEditable = (spawnKey: string | null | undefined) => !spawnKey;
+
 export const BotSchema = z.object({
   id: Id,
   spaceId: Id,
@@ -109,6 +116,11 @@ export const BotSchema = z.object({
   teamChatAmbientEnabled: z.boolean(),
   teamChatRules: z.string(),
   disabledBuiltinTools: z.array(z.string()).default([]),
+  audience: BotAudienceSchema.default("internal"),
+  /** An external bot may message only these internal bots. */
+  externalMessageTargets: z.array(Id).default([]),
+  /** An external bot has the browser and computer tools only when this is on. */
+  externalComputerTools: z.boolean().default(false),
   webhookConfigured: z.boolean(),
   /** Present when created with an idempotency key (e.g. onboarding:first). */
   spawnKey: z.string().nullable(),
@@ -382,6 +394,9 @@ export const UpdateBotInput = z
     teamChatAmbientEnabled: z.boolean().optional(),
     teamChatRules: z.string().max(TEAM_CHAT_RULES_MAX_LENGTH).optional(),
     disabledBuiltinTools: DisabledBuiltinToolsSchema.optional(),
+    audience: BotAudienceSchema.optional(),
+    externalMessageTargets: z.array(Id).max(200).optional(),
+    externalComputerTools: z.boolean().optional(),
     runsOn: ComputerHostSchema.nullable().optional(),
   })
   .superRefine((value, ctx) => {

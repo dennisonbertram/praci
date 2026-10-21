@@ -27,9 +27,11 @@ import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
 import { DestinationEmulator } from "./destination-emulator.js";
 import {
   createRunExecutor,
+  EXTERNAL_BOT_PROMPT,
   MAIL_CONSENT_DECLINED,
   MAIL_CONSENT_OFF,
   MEETING_TAINT_FREE_TOOLS,
+  withExternalBotPrompt,
 } from "./executor.js";
 import { fakeMercury, fakeMercuryMcpFetch } from "./finance-fake-tools.js";
 import type * as InboxTriageModule from "./inbox-triage.js";
@@ -143,7 +145,10 @@ function fixture({
   shutdownSignal,
   builtin = false,
   disabledBuiltinTools = [],
+  audience = "internal",
+  externalComputerTools = false,
   existingSharedMemory,
+  ticketBoard = false,
   advanceRevisionAfterRead = false,
   spawnKey = null,
   mail,
@@ -198,7 +203,11 @@ function fixture({
   afterCall?: (index: number) => void;
   builtin?: boolean;
   disabledBuiltinTools?: string[];
+  audience?: "internal" | "external";
+  externalComputerTools?: boolean;
   existingSharedMemory?: string;
+  /** Turns the ticket board on, with one ticket RK-7 whose last comment is private. */
+  ticketBoard?: boolean;
   /** Simulates another writer landing between the save's read and its commit. */
   advanceRevisionAfterRead?: boolean;
   name?: string;
@@ -326,6 +335,9 @@ function fixture({
         title: bot.title,
         description: bot.description,
         disabledBuiltinTools,
+        audience,
+        externalMessageTargets: [],
+        externalComputerTools,
         computerId: "computer-1",
         computer: { id: "computer-1", scope: "dedicated" },
       })),
@@ -412,6 +424,21 @@ function fixture({
       })),
     },
     task: { findUniqueOrThrow: vi.fn(async () => ({ id: run.taskId, prompt })) },
+    board: { findUnique: vi.fn(async () => ({ id: "board-1", ticketPrefix: "RK" })) },
+    ticket: {
+      findMany: vi.fn(async () => [
+        {
+          id: "ticket-7",
+          number: 7,
+          title: "Renew vendor contract",
+          status: "open",
+          assigneeBotId: null,
+        },
+      ]),
+    },
+    ticketComment: {
+      findMany: vi.fn(async () => [{ ticketId: "ticket-7", body: "PRIVATE-TICKET-NOTE" }]),
+    },
     connection: {
       findMany: vi.fn(async ({ where }: { where?: Record<string, unknown> } = {}) =>
         connectionRows.filter((row) => matchesWhere(row, where)),
@@ -516,7 +543,7 @@ function fixture({
       read: async (request: { scope: string; path?: string }) => {
         const documents =
           request.scope === "user" &&
-          request.path === "MEMORY.md" &&
+          (request.path === "MEMORY.md" || request.path === undefined) &&
           sharedMemoryState.content !== undefined
             ? [
                 {
@@ -543,6 +570,7 @@ function fixture({
     autoReview: autoReviewProvider,
     shutdownSignal,
     mail,
+    ...(ticketBoard ? { ticketBoardEnabled: true } : {}),
     ...(messaging ? { messaging } : {}),
     ...(googleConnectors ? { connectors: {} } : {}),
   } as unknown as Parameters<typeof createRunExecutor>[0]);
@@ -598,6 +626,140 @@ describe("disabled builtins", () => {
     expect(f.commit).not.toHaveBeenCalled();
     expect(f.execute).not.toHaveBeenCalled();
     expect(f.effects).toEqual([]);
+  });
+});
+
+describe("external bots", () => {
+  const privateTool =
+    /^(mail_|inbox_|finance_|contacts_|cap_table_|legal_|drive_|calendar_|meetings_|search_data_room|read_data_room|add_to_data_room|search_history|read_history|recall_memory|save_memory|remember|spawn_bot|handoff_to_bot|connect_agent|message_agent|run_subagent|update_bot|schedule_)/;
+  const computerTool =
+    /^(shell|computer_|browser_|read_file|write_file|list_files|launch_app|open_path)/;
+  const mailStub = () => ({
+    listAccounts: vi.fn(async () => [{ id: "acct-1", address: "me@example.test" }]),
+  });
+
+  it("offers an internal bot its mail and computer tools (control)", async () => {
+    const f = fixture({ name: "web_search", builtin: true, mail: mailStub() });
+    await f.run();
+    expect(f.offeredTools).toContain("mail_search");
+    expect(f.offeredTools).toContain("shell");
+  });
+
+  it("offers no mail, finance, data room, memory, delegation or computer tool", async () => {
+    const f = fixture({
+      name: "web_search",
+      builtin: true,
+      audience: "external",
+      mail: mailStub(),
+    });
+    await f.run();
+    expect(f.offeredTools.filter((n) => privateTool.test(n) || computerTool.test(n))).toEqual([]);
+    expect(f.offeredTools).toEqual(expect.arrayContaining(["web_search", "message_bot"]));
+  });
+
+  it("refuses a direct call to a private tool the model was never offered", async () => {
+    for (const name of ["mail_search", "finance_overview", "cap_table_read", "shell"]) {
+      const f = fixture({ name, builtin: true, audience: "external", mail: mailStub() });
+      f.setCalls([{ args: {}, executionId: "call-1" }]);
+      await f.run();
+      expect(f.results).toEqual([{ error: `Tool ${name} is not available to this bot.` }]);
+      expect(f.execute).not.toHaveBeenCalled();
+    }
+  });
+
+  it("offers the computer and browser tools only when the owner turned them on", async () => {
+    const off = fixture({ name: "web_search", builtin: true, audience: "external" });
+    await off.run();
+    expect(off.offeredTools.filter((n) => computerTool.test(n))).toEqual([]);
+    const on = fixture({
+      name: "web_search",
+      builtin: true,
+      audience: "external",
+      externalComputerTools: true,
+    });
+    await on.run();
+    expect(on.offeredTools).toContain("shell");
+    expect(on.offeredTools.filter((n) => privateTool.test(n))).toEqual([]);
+  });
+
+  it("reaches a connector only through an explicit access row", async () => {
+    const row = (id: string, provider: string, extra: Record<string, unknown>) => ({
+      id,
+      userId: "user-1",
+      spaceId: "space-1",
+      connectorId: "composio",
+      provider,
+      providerRef: "ref",
+      displayName: provider,
+      status: "connected",
+      agentBotId: null,
+      writesEnabled: false,
+      privateByDefault: false,
+      allAgents: true,
+      botAccess: [],
+      ...extra,
+    });
+    const connectedIds = async (audience: "internal" | "external") => {
+      let seen: string[] = [];
+      const f = fixture({
+        name: "web_search",
+        builtin: true,
+        audience,
+        connectionRows: [
+          row("shared-slack", "slack", {}),
+          row("granted-github", "github", { allAgents: false, botAccess: [{ botId: "bot-1" }] }),
+        ],
+        connector: {
+          discoverTools: async (context: { connectedConnections: { id: string }[] }) => {
+            seen = context.connectedConnections.map((connection) => connection.id).sort();
+            return [];
+          },
+          resolveCall: async () => undefined,
+          execute: async function* () {},
+        },
+      });
+      await f.run();
+      return seen;
+    };
+    expect(await connectedIds("internal")).toEqual(["granted-github", "shared-slack"]);
+    expect(await connectedIds("external")).toEqual(["granted-github"]);
+  });
+
+  it("ends the final instruction string with the protective prompt, after every other section", async () => {
+    const fact = "PRIVATE-USER-MEMORY-FACT";
+    const run = async (audience: "internal" | "external") => {
+      const f = fixture({
+        name: "web_search",
+        builtin: true,
+        audience,
+        existingSharedMemory: fact,
+        ticketBoard: true,
+        prompt: "What is the status of RK-7?",
+        bot: { name: "Support", title: "", description: "Help the public" },
+      });
+      await f.run();
+      return f.request()!;
+    };
+    const external = await run("external");
+    expect(external.instructions.endsWith(EXTERNAL_BOT_PROMPT)).toBe(true);
+    expect(external.instructions).toContain("Help the public");
+    // No automatic private context: shared user memory, ticket title or comment, tool guidance.
+    const everything = JSON.stringify([external.instructions, external.history]);
+    expect(everything).not.toContain(fact);
+    expect(everything).not.toContain("PRIVATE-TICKET-NOTE");
+    expect(everything).not.toContain("Renew vendor contract");
+    expect(everything).not.toContain("Mercury");
+    // Control: an internal run does carry them, and has no protective prompt.
+    const internal = await run("internal");
+    expect(JSON.stringify([internal.instructions, internal.history])).toContain(fact);
+    expect(internal.instructions).toContain("PRIVATE-TICKET-NOTE");
+    expect(internal.instructions).not.toContain(EXTERNAL_BOT_PROMPT);
+  });
+
+  it("withExternalBotPrompt appends only for external", () => {
+    expect(withExternalBotPrompt("x", "external")).toBe(`x\n\n${EXTERNAL_BOT_PROMPT}`);
+    expect(withExternalBotPrompt("x", "internal")).toBe("x");
+    expect(withExternalBotPrompt("x")).toBe("x");
   });
 });
 

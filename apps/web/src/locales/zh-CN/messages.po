@@ -1489,6 +1489,10 @@ msgstr ""
 msgid "Attachments: {0}"
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Audience"
+msgstr ""
+
 #: src/components/ContactDialog.tsx
 msgid "Auditor"
 msgstr ""
@@ -1866,6 +1870,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Callback URL"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Can message"
 msgstr ""
 
 #: src/App.tsx
@@ -2275,6 +2283,10 @@ msgstr "关闭"
 msgid "Close {title}"
 msgstr ""
 
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Close agent"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 msgid "Close and remove"
 msgstr ""
@@ -2442,6 +2454,10 @@ msgstr ""
 #: src/pages/shell/transcript.tsx
 msgid "Computer"
 msgstr "电脑"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Computer and browser"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Computer and routines"
@@ -4286,6 +4302,11 @@ msgstr ""
 msgid "Export this week's list from the CRM and drop it in the shared folder"
 msgstr "从 CRM 导出本周名单并放到共享文件夹"
 
+#: src/components/BotAudienceTag.tsx
+#: src/pages/shell/bot-panel.tsx
+msgid "External"
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "External conversation"
@@ -5007,6 +5028,10 @@ msgstr ""
 #: src/components/integrations/McpDetail.tsx
 #: src/pages/Shell.tsx
 msgid "Integrations"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Internal"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -6587,6 +6612,8 @@ msgid "Open {0}"
 msgstr "打开 {0}"
 
 #. placeholder {0}: active.name
+#. placeholder {0}: bot.name
+#: src/components/inbox/EmailAgentPanel.tsx
 #: src/pages/Shell.tsx
 msgid "Open {0} full screen"
 msgstr ""
@@ -6645,6 +6672,7 @@ msgstr ""
 msgid "Open folder"
 msgstr ""
 
+#: src/components/inbox/EmailAgentPanel.tsx
 #: src/pages/Shell.tsx
 msgid "Open full screen"
 msgstr ""
@@ -7694,6 +7722,10 @@ msgstr ""
 
 #: src/pages/shell/composer.tsx
 msgid "Reply cancelled"
+msgstr ""
+
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Reply with draft"
 msgstr ""
 
 #. placeholder {0}: replyNameRef.current
@@ -8884,6 +8916,11 @@ msgstr "步骤"
 msgid "Steps to follow"
 msgstr ""
 
+#. placeholder {0}: grantedConnections.join(", ")
+#: src/pages/shell/bot-panel.tsx
+msgid "Still has access to: {0}"
+msgstr ""
+
 #: src/components/ShellSkeleton.tsx
 msgid "Still opening…"
 msgstr ""
@@ -9007,6 +9044,10 @@ msgstr "接管控制权"
 
 #: src/pages/Shell.tsx
 msgid "Take the tour"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Talks to people outside your company. Private tools are turned off."
 msgstr ""
 
 #: src/pages/Board.tsx

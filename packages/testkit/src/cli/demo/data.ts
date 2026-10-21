@@ -125,6 +125,24 @@ const MAIL: Mail[] = [
     text: "Maya, if section 9 works for you, can we sign on Thursday?\n\nMorgan",
     unread: true,
   },
+  // An investor reply with two asks, which the demo's email agent has already worked through.
+  {
+    thread: "stockholder-action",
+    agoMs: 52 * HOUR_MS,
+    from: ME,
+    to: "Sam Ortiz <sam@harborline.example.test>",
+    sent: true,
+    subject: "Notice of Stockholder Action",
+    text: "Hi Sam,\n\nAttached is the Notice of Stockholder Action for the recapitalization and the Seed Prime round. Please let me know if you have questions.\n\nMaya",
+  },
+  {
+    thread: "stockholder-action",
+    agoMs: 5 * HOUR_MS,
+    from: "Sam Ortiz <sam@harborline.example.test>",
+    subject: "Notice of Stockholder Action",
+    text: "Maya,\n\nThanks for the notice. Two things.\n\n1. For tax purposes I want to close out my position. Either the company buys back my shares and my warrant for a nominal $1, or I abandon them in writing and you acknowledge it. Whichever is easier for you.\n\n2. Can you confirm my share count after the recap, and whether existing investors were offered the Seed Prime round? I had 18,400 preferred on Carta.\n\nSam",
+    unread: true,
+  },
   {
     thread: "hosting-invoice",
     agoMs: 9 * HOUR_MS,
