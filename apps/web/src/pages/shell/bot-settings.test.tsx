@@ -180,6 +180,15 @@ describe("BotSettings save confirmation", () => {
   });
 });
 
+describe("BotSettings identity fields", () => {
+  it("asks for a name and a description, not a separate title", async () => {
+    await renderSettings(async () => undefined);
+    const labels = [...container.querySelectorAll("label")].map((label) => label.textContent);
+    expect(labels.some((text) => text?.startsWith("Description"))).toBe(true);
+    expect(labels.some((text) => text?.startsWith("Title"))).toBe(false);
+  });
+});
+
 describe("BotSettings disabled tools", () => {
   it("omits the disabled-tool list from an unrelated save", async () => {
     const onSave = vi.fn<(patch: SavePatch) => Promise<void>>(async () => undefined);
