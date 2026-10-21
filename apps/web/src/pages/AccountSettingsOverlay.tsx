@@ -168,14 +168,15 @@ export function GeneralSettingsPanels({
             setUiAppearance(next);
           }}
         />
-        <div className="mt-4 flex items-center justify-between gap-3">
+        {/* The sidebar is a drawer below 1024px, where density does nothing. */}
+        <div className="mt-4 hidden lg:block">
           <span id={sidebarDensityLabelId} className="text-[13px] text-foreground/75">
             <Trans>Sidebar density</Trans>
           </span>
           <fieldset
             aria-labelledby={sidebarDensityLabelId}
             data-testid="bots-sidebar-density-select"
-            className="grid min-w-0 grid-cols-2 gap-1 rounded-lg bg-muted p-1"
+            className="mt-2 grid min-w-0 grid-cols-2 gap-1 rounded-lg bg-muted p-1"
           >
             <Toggle
               data-testid="bots-sidebar-density-comfortable"

@@ -509,17 +509,27 @@ export function Kpi({
   sub,
   to,
   hover,
+  alert,
 }: {
   title: ReactNode;
   value: ReactNode;
   sub?: ReactNode;
   to?: string;
   hover?: ReactNode;
+  /** Colors the figure as bad news, e.g. overdue items. */
+  alert?: boolean;
 }) {
   const body = (
     <>
       <h2 className="text-xs font-semibold text-muted-foreground">{title}</h2>
-      <div className="mt-1 text-[22px] font-semibold leading-tight tabular-nums">{value}</div>
+      <div
+        className={cn(
+          "mt-1 text-[22px] font-semibold leading-tight tabular-nums",
+          alert && "text-destructive",
+        )}
+      >
+        {value}
+      </div>
       <div className="text-[11px] text-muted-foreground">{sub ?? " "}</div>
     </>
   );

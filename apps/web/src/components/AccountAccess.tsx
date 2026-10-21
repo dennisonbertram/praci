@@ -78,17 +78,15 @@ export function AccountAccess({
           <Trans>Link SSO</Trans>
         </Button>
       ) : null}
-      <div className="pt-1">
-        <Button
-          variant="destructive"
-          aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
-        >
-          <Trans>Delete account</Trans>
-        </Button>
-      </div>
+      {open ? null : (
+        <div className="pt-1">
+          <Button variant="destructive" onClick={() => setOpen(true)}>
+            <Trans>Delete account</Trans>
+          </Button>
+        </div>
+      )}
       {open ? (
-        <div className="space-y-3">
+        <div ref={(node) => node?.scrollIntoView?.({ block: "nearest" })} className="space-y-3">
           <p className="text-sm">
             <Trans>This permanently deletes your account and data.</Trans>
           </p>
@@ -203,6 +201,14 @@ export function AccountAccess({
             }
           >
             <Trans>Delete account</Trans>
+          </Button>
+          <Button
+            variant="ghost"
+            className="ms-2"
+            disabled={pending}
+            onClick={() => setOpen(false)}
+          >
+            <Trans>Cancel</Trans>
           </Button>
         </div>
       ) : null}

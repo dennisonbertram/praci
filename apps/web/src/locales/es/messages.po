@@ -1024,6 +1024,10 @@ msgstr ""
 msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Allow access first."
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Allow changes"
@@ -1688,6 +1692,10 @@ msgstr "Bots"
 msgid "Bots are working"
 msgstr "Los bots están trabajando"
 
+#: src/components/AiDataSharing.tsx
+msgid "Bots cannot use a model until you allow it."
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Bots lose access to its tools."
 msgstr ""
@@ -1711,6 +1719,10 @@ msgstr ""
 
 #: src/pages/Paywall.tsx
 msgid "Bots with their own computer and browser"
+msgstr ""
+
+#: src/components/AiDataSharing.tsx
+msgid "Bots, mail, files and contracts"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -1799,6 +1811,7 @@ msgstr ""
 msgid "Can't reach the server."
 msgstr "No se puede alcanzar el servidor."
 
+#: src/components/AccountAccess.tsx
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
@@ -2042,10 +2055,6 @@ msgstr ""
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Check for updates"
 msgstr "Buscar actualizaciones"
-
-#: src/pages/Shell.tsx
-msgid "Check in."
-msgstr "Regístrate."
 
 #: src/lib/model-connection-preflight.ts
 msgid "Check the API key or sign-in, then test again."
@@ -2496,10 +2505,6 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Connect API key"
 msgstr "Conectar clave de API"
-
-#: src/components/ConnectAppsButton.tsx
-msgid "Connect apps"
-msgstr ""
 
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 msgid "Connect Blockscout"
@@ -4653,6 +4658,10 @@ msgid "I read your bank and card accounts and answer questions about cash, spend
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx
+msgid "I read your Data room for contracts and deadlines and answer questions about them."
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
 msgid "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
 msgstr ""
 
@@ -4689,16 +4698,13 @@ msgstr ""
 msgid "Image upload area"
 msgstr "Área de carga de imagen"
 
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/NotificationSettings.tsx
 msgid "iMessage"
 msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
-msgid "iMessage (BlueBubbles)"
-msgstr ""
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "iMessage (Photon)"
+msgid "iMessage on your Mac"
 msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
@@ -4967,10 +4973,6 @@ msgstr ""
 
 #: src/pages/shell/transcript.tsx
 msgid "Last run failed."
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Last scan {lastScan}"
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -6159,6 +6161,10 @@ msgstr ""
 
 #: src/lib/ticket-priority.ts
 msgid "Normal"
+msgstr ""
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Not a real deadline: hide it"
 msgstr ""
 
 #: src/components/compose/RecipientField.tsx
@@ -8911,6 +8917,10 @@ msgstr "El proveedor está limitando la frecuencia de las solicitudes."
 msgid "The selected memory provider is not available in this build."
 msgstr "El proveedor de memoria seleccionado no está disponible en esta build."
 
+#: src/components/AiDataSharing.tsx
+msgid "The sender, subject and a preview of each message are sent to the AI model that runs your bots."
+msgstr ""
+
 #. placeholder {0}: shortDay(first.dueFor)
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "the statement through {0}"
@@ -9101,6 +9111,7 @@ msgid "Time of day"
 msgstr "Hora del día"
 
 #: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/RoutineEditor.tsx
 msgid "Time zone"
 msgstr ""
 
@@ -9805,6 +9816,10 @@ msgid "What bots remember by default"
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx
+msgid "What deadlines are coming up?"
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
 msgid "What did we spend last month?"
 msgstr ""
 
@@ -9868,6 +9883,14 @@ msgstr ""
 msgid "Which bots can use {appName}?"
 msgstr ""
 
+#: src/components/PageAgentIntro.tsx
+msgid "Which contracts have the highest value?"
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
+msgid "Which contracts renew in the next 90 days?"
+msgstr ""
+
 #: src/lib/data-room-agent.ts
 msgid "Which documents mention renewal?"
 msgstr ""
@@ -9911,6 +9934,10 @@ msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Write"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Write what this routine should do each time it runs."
 msgstr ""
 
 #: src/pages/shell/transcript.tsx
