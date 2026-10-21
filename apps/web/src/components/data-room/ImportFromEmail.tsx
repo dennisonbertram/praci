@@ -96,7 +96,7 @@ function MessageRow({
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{row.subject}</p>
           <p className="truncate text-xs text-muted-foreground">
-            {row.from} · {dateText(row.receivedAt)}
+            {row.from} · {dateText(row.receivedAt, true)}
           </p>
         </div>
       </div>
