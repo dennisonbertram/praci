@@ -5801,6 +5801,7 @@ msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/pages/shell/command-palette.tsx
 msgid "Move"
 msgstr ""
 
@@ -6101,10 +6102,6 @@ msgstr "Активности бота пока нет."
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "No bot uses {0} yet. Choose bots on its page."
 msgstr ""
-
-#: src/pages/shell/bot-picker.tsx
-msgid "No bots match"
-msgstr "Ни один бот не подходит"
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No chat apps linked yet."
@@ -6537,6 +6534,7 @@ msgstr ""
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/command-palette.tsx
 #: src/pages/shell/transcript.tsx
 msgid "Open"
 msgstr "Открыть"
@@ -8040,7 +8038,6 @@ msgstr ""
 #: src/pages/Contacts.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Shell.tsx
-#: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/command-palette.tsx
 msgid "Search"
 msgstr "Поиск"
@@ -8398,6 +8395,10 @@ msgstr ""
 
 #: src/components/finance/ui.tsx
 msgid "Show finances for"
+msgstr ""
+
+#: src/components/SidebarPagesGroup.tsx
+msgid "Show in sidebar"
 msgstr ""
 
 #: src/components/inbox/TodoCard.tsx

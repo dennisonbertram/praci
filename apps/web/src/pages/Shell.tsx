@@ -177,6 +177,7 @@ import { TeachRecordingChrome, TeachStopButton } from "../components/teach/Teach
 import { connectCardsOpen, FirstRunTour } from "../components/tour/FirstRunTour";
 import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
+import { artifactDisplayName } from "../lib/artifact-name";
 import type { ArtifactTarget } from "../lib/artifact-open";
 import { authClient } from "../lib/auth";
 import { takeInitialBootstrap } from "../lib/bootstrap";
@@ -449,7 +450,7 @@ async function findDocumentsAndArtifacts(query: string) {
         result.items
           .filter((item) => matchesArtifactQuery(item, query))
           .slice(0, 5)
-          .map((item) => ({ id: item.id, label: item.name })),
+          .map((item) => ({ id: item.id, label: artifactDisplayName(item.name) })),
       )
       .catch((): SearchLink[] => []),
   ]);
@@ -792,7 +793,10 @@ export function ShellPage() {
     desktop.addEventListener("change", closeMobileSidebar);
     return () => desktop.removeEventListener("change", closeMobileSidebar);
   }, []);
-  const [activityMode, setActivityMode] = useState(readActivityMode);
+  // Phones open the drawer on the chat list; Activity there is one tap away.
+  const [activityMode, setActivityMode] = useState(
+    () => readActivityMode() && window.matchMedia(SIDEBAR_DOCKED_QUERY).matches,
+  );
   const toggleActivityMode = useCallback(() => {
     setActivityMode((on) => {
       const next = !on;
@@ -2080,11 +2084,10 @@ export function ShellPage() {
         keywords: t`contracts, NDA, deadlines`,
         icon: <Scale {...icon} />,
       },
-      {
-        id: "devin",
-        label: t`Devin`,
-        icon: <CodeXml {...icon} />,
-      },
+      // Only once Devin is connected; before that its Integrations card is the way in.
+      ...(glance.devinConnected
+        ? [{ id: "devin", label: t`Devin`, icon: <CodeXml {...icon} /> }]
+        : []),
       {
         id: "cap-table",
         label: t`Cap table`,
@@ -2113,7 +2116,7 @@ export function ShellPage() {
       },
       { id: "settings", label: t`Settings`, icon: <Settings {...icon} /> },
     ];
-  }, [t, bootstrapMe?.ticketBoardEnabled]);
+  }, [t, bootstrapMe?.ticketBoardEnabled, glance.devinConnected]);
   // A page hidden in Page options stays out of search and the command palette too.
   const visiblePages = useMemo(
     () => appPages.filter((page) => !hiddenPages.includes(page.id)),
@@ -4162,23 +4165,16 @@ export function ShellPage() {
                   >
                     +
                   </PopoverTrigger>
-                  {/* Always rendered: the popover unmounts its content itself. Removing it by hand left its
-                      focus guards in the tab order, so Tab never got past this header. */}
+                  {/* Closes with no animation, so the panel it opens never coexists with the menu. */}
                   <PopoverContent
                     align="end"
                     className="app-no-drag w-auto gap-0 overflow-hidden p-0 data-closed:animate-none"
                   >
                     <BotCreatePicker
-                      bots={bots}
                       onCreateBot={() => {
                         setCreateMenuOpen(false);
                         setMobileSidebarOpen(false);
                         void createBot();
-                      }}
-                      onOpenBot={(id) => {
-                        setCreateMenuOpen(false);
-                        setMobileSidebarOpen(false);
-                        navigate(`/app/${id}`);
                       }}
                       onCreateGroup={() => {
                         setCreateMenuOpen(false);
@@ -4291,7 +4287,7 @@ export function ShellPage() {
                   })}
                 />
               )}
-              {hiddenPages.includes("devin") ? null : (
+              {hiddenPages.includes("devin") || !glance.devinConnected ? null : (
                 <SidebarPageLink
                   testId="sidebar-devin"
                   current={devinMode}
@@ -4478,8 +4474,7 @@ export function ShellPage() {
                       ? nestedRows.filter(isPageAgent)
                       : [];
                   const foldPageAgents = pageAgentRows.length >= 2;
-                  const showPageAgents =
-                    pageAgentsOpen || pageAgentRows.some((row) => row.item.chat.id === active?.id);
+                  const showPageAgents = pageAgentsOpen;
                   const displayRows: ((typeof nestedRows)[number] | { pageAgentsHeader: true })[] =
                     foldPageAgents
                       ? [
