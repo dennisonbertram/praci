@@ -23,8 +23,32 @@ vi.mock("../../components/SandboxedHtmlViewer", () => ({
   SandboxedHtmlViewer: () => <div data-testid="html-frame" />,
 }));
 vi.mock("../../components/ComposeEmail", () => ({
-  ComposeEmail: ({ seed }: { seed: { kind: string } }) => (
-    <div data-testid="compose">{seed.kind}</div>
+  ComposeEmail: ({ seed, draft }: { seed: { kind: string }; draft?: string }) => (
+    <div data-testid="compose">
+      {seed.kind}
+      {draft ? `:${draft}` : ""}
+    </div>
+  ),
+}));
+vi.mock("./EmailAgentPanel", () => ({
+  EmailAgentPanel: ({
+    bot,
+    onClose,
+    onReplyWithDraft,
+  }: {
+    bot: { name: string };
+    onClose: () => void;
+    onReplyWithDraft: (text: string) => void;
+  }) => (
+    <aside data-testid="agent-panel">
+      {bot.name}
+      <button type="button" onClick={onClose}>
+        panel close
+      </button>
+      <button type="button" onClick={() => onReplyWithDraft("Hi Sam")}>
+        panel draft
+      </button>
+    </aside>
   ),
 }));
 const get = vi.fn();
@@ -261,6 +285,56 @@ it("Ask agent runs the page's action, and shows why it failed", async () => {
   onAskAgent.mockRejectedValueOnce(new Error("Mail is unavailable"));
   await act(async () => (await menuItem("Ask agent"))?.click());
   expect(document.querySelector('[role="alert"]')?.textContent).toContain("Mail is unavailable");
+});
+
+it("Ask agent opens the email's agent in a panel, which closes again and can start a reply", async () => {
+  get.mockImplementation(async ({ messageId }) => message(messageId));
+  const onAskAgentPanel = vi.fn().mockResolvedValue({ id: "bot-1", name: "Thread agent" });
+  act(() =>
+    root.render(
+      <InboxMessageDialog messageId="m3" onAskAgentPanel={onAskAgentPanel} onClose={() => {}} />,
+    ),
+  );
+  await flush();
+  const click = (name: string) =>
+    act(async () =>
+      [...document.querySelectorAll("button")].find((b) => b.textContent === name)?.click(),
+    );
+  expect(document.querySelector('[data-testid="agent-panel"]')).toBeNull();
+  await act(async () => (await menuItem("Ask agent"))?.click());
+  expect(onAskAgentPanel).toHaveBeenCalledTimes(1);
+  expect(document.querySelector('[data-testid="agent-panel"]')?.textContent).toContain(
+    "Thread agent",
+  );
+  await click("panel draft");
+  expect(document.querySelector('[data-testid="compose"]')?.textContent).toBe("reply:Hi Sam");
+  await click("panel close");
+  expect(document.querySelector('[data-testid="agent-panel"]')).toBeNull();
+});
+
+it("drops a late Ask agent answer when the user has moved to another email", async () => {
+  get.mockImplementation(async ({ messageId }) => message(messageId));
+  let resolve: (bot: { id: string; name: string }) => void = () => {};
+  const onAskAgentPanel = vi.fn(
+    () => new Promise<{ id: string; name: string }>((r) => (resolve = r)),
+  );
+  const render = (messageId: string) =>
+    act(() =>
+      root.render(
+        <InboxMessageDialog
+          messageId={messageId}
+          onAskAgentPanel={onAskAgentPanel as never}
+          onClose={() => {}}
+        />,
+      ),
+    );
+  render("early");
+  await flush();
+  await act(async () => (await menuItem("Ask agent"))?.click());
+  render("later");
+  await flush();
+  await act(async () => resolve({ id: "bot-a", name: "Agent for early" }));
+  expect(document.querySelector('[data-testid="agent-panel"]')).toBeNull();
 });
 
 it("shows no Ask agent button when the page gives no action", async () => {

@@ -3,9 +3,9 @@ import {
   isCartaAgentSpawnKey,
   isDataRoomAgentSpawnKey,
   isFinanceAgentSpawnKey,
-  isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
   isLegalAgentSpawnKey,
+  isMailAgentSpawnKey,
   isVoiceAgentSpawnKey,
 } from "@rakazo/contracts";
 
@@ -59,7 +59,7 @@ export function botMayUseConnection(row: {
 /** Whether the bot works with Composio, Pipedream and other connector tools at all. */
 export function botUsesConnectorTools(spawnKey: string | null | undefined): boolean {
   return !(
-    isInboxAgentSpawnKey(spawnKey) ||
+    isMailAgentSpawnKey(spawnKey) ||
     isFinanceAgentSpawnKey(spawnKey) ||
     isLegalAgentSpawnKey(spawnKey) ||
     isDataRoomAgentSpawnKey(spawnKey) ||
@@ -82,8 +82,8 @@ export function botCanReachConnection(
   // A connected-app agent works on its own linked connection only; a Calendar or Drive agent
   // uses the built-in tools of that one native Google account.
   if (row.agentBotId === bot.id && bot.spawnKey === integrationAgentSpawnKey(row.id)) return true;
-  // The Inbox agent reads every Gmail account with the built-in mail tools, whatever the connector.
-  if (row.provider?.toLowerCase() === "gmail" && isInboxAgentSpawnKey(bot.spawnKey)) return true;
+  // The Inbox agent and an email's own agent read every Gmail account with the built-in mail tools, whatever the connector.
+  if (row.provider?.toLowerCase() === "gmail" && isMailAgentSpawnKey(bot.spawnKey)) return true;
   return row.connectorId === "google"
     ? botUsesNativeGoogle(bot.spawnKey)
     : botUsesConnectorTools(bot.spawnKey);

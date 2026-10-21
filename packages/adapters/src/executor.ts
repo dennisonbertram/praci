@@ -65,6 +65,7 @@ import {
   isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
   isLegalAgentSpawnKey,
+  isMailAgentSpawnKey,
   isVoiceAgentSpawnKey,
   LEGAL_AGENT_BUILTIN_TOOLS,
   LEGAL_AGENT_MODEL,
@@ -1631,10 +1632,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const onShutdown = () => runAbortController?.abort(deps.shutdownSignal?.reason);
         deps.shutdownSignal?.addEventListener("abort", onShutdown);
         detachShutdown = () => deps.shutdownSignal?.removeEventListener("abort", onShutdown);
-        // The Inbox agent reads mail only through the mail tools. Offering it the Composio tools
+        // The Inbox agent and an email's own agent read mail only through the mail tools. Offering it the Composio tools
         // as well sent it through their search and execute round trips first (about 28s of an
         // 89s run), so it gets none of them and skips the discovery calls.
-        const mailOnly = isInboxAgentSpawnKey(bot.spawnKey);
+        const mailOnly = isMailAgentSpawnKey(bot.spawnKey);
         // The Finance agent reads synced finance data through finance_* tools, with its Mercury and
         // Brex MCP tools for details. Composio and the other connectors only slow it down.
         // The Carta agent likewise uses only MCP tools (Carta) plus the built-in mail, drive and
@@ -2297,7 +2298,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const ownerAgentPeer =
           senderInScope &&
           peerMessage?.ownerOrigin === true &&
-          (isInboxAgentSpawnKey(bot.spawnKey) || appAgentIdentity);
+          (isMailAgentSpawnKey(bot.spawnKey) || appAgentIdentity);
         // The Finance agent answers an owner-originated bot (Chief asked about cash) with its own
         // read-only finance tools; Carta keeps its stricter rule.
         const financeAgentPeer =
@@ -2316,7 +2317,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }) && (await calendarAccounts().catch(() => [])).length > 0;
         const mailEnabled =
           mailToolsAllowed({
-            ownerAgentPeer: ownerAgentPeer && isInboxAgentSpawnKey(bot.spawnKey),
+            ownerAgentPeer: ownerAgentPeer && isMailAgentSpawnKey(bot.spawnKey),
             hasProvider: Boolean(deps.mail),
             groupId: thread.groupId,
             runUserId: run.userId,
