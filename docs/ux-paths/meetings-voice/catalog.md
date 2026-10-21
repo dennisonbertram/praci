@@ -115,11 +115,11 @@ Source: `docs/ux-paths/meetings-voice/topics/granola-setup-recovery.md`
 5. Behind the card, the existing Granola agent is attached, or one is created if none exists (private to Maya, writes off). The connected card shows the agent link (`IntegrationAgentSection`); the chat does not open. [planned: Granola S6]
 6. About a minute later she reopens the Granola detail → the status reads "Synced 41 meetings"; the 90-day backfill runs in batches and "Syncing" shows until the first sync has finished.
 7. She opens the Granola agent from the bot list and types "What did I promise Dana in the pricing review?" → [planned: Granola S4] the agent calls `meetings_search`, then `meetings_get`, and answers with "Pricing review, 12 Oct" cited by title and date.
-8. She asks a follow-up, "Who else was on that call?" → the agent answers from the stored attendees. If the answer is wrong she has no way to see the stored meeting; there is no meetings screen by design.
+8. She asks a follow-up, "Who else was on that call?" → the agent answers from the stored attendees. If the answer is wrong she can open the plain list of stored meetings from the "Synced 41 meetings" status (title and date, with Delete); there is no meetings screen beyond that, by design.
 9. Several minutes later she opens Inbox from the sidebar → the "To do" card on the Important pile shows "Send Dana the revised pricing" with "Pricing review, 12 Oct" (no "From:" prefix). [planned: Granola S5]
 10. She marks the to-do done → it moves to done. For a mail user this works as today. [exists for mail; planned: Granola S5 for meeting to-dos]
 #### Variations
-- Maya's model later has no AI data consent (for example after a model change): Connect recorded consent, so a first connect never leaves it off. The status line reads "AI data sharing off", linking to Settings, AI data sharing, instead of "Synced"; meeting tools are withheld until consent returns.
+- Maya's model later has no AI data consent (for example after a model change): Connect recorded consent, so a first connect never leaves it off. The status line reads "AI data sharing off", linking to Settings, AI data sharing, instead of "Synced"; meeting tools and the agent's live MCP tools are withheld until consent returns.
 - Maya uses mobile: Settings, Integrations has a field and status row with native controls. [planned: Granola S6]
 - Maya asks within the first minute: the agent calls `meetings_search`, sees nothing synced, falls back to MCP tools if the MCP tile is connected; if not, it says "no synced meetings". GAP: the wording the user sees is not defined.
 #### Edge Cases
@@ -271,7 +271,7 @@ Source: `docs/ux-paths/meetings-voice/topics/granola-setup-recovery.md`
 2. The card returns to an empty "Granola API key" field with "Connect". "Praci keeps your meetings and to-dos." shows above the field, and the agent link stays (once, on the key card). No confirmation dialog.
 3. He opens the Granola agent and asks "What did we agree with Dana?" → the agent still answers from stored meetings, as the card's sentence said.
 4. He opens Inbox and completes a meeting to-do → works with no connected source. [planned: Granola S5]
-5. He wants one meeting gone → on web he opens an answer, clicks the citation chip (the popover names the meeting by title and date) and chooses "Delete"; after the standard confirmation ("Removes this meeting and its to-dos from Praci. Your note in Granola is not changed.") the meeting, its digest and its to-dos are removed and not re-synced. Only the person who connected can delete, also after Disconnect; everything else is kept permanently. [planned: Granola S6]
+5. He wants one meeting gone → on web he clicks "Synced 200 meetings" on the card, which opens a plain list of stored meetings (title and date, each with Delete; no model call, so it works with consent off and after Disconnect), or opens an answer and clicks the citation chip (the popover names the meeting by title and date); he chooses "Delete"; after the standard confirmation ("Removes this meeting and its to-dos from Praci. Your note in Granola is not changed.") the meeting, its digest and its to-dos are removed and not re-synced. Only the person who connected can delete, also after Disconnect; everything else is kept permanently. [planned: Granola S6]
 6. He pastes a new key later → the same connection and agent are reused; his stored meetings are still there plus new ones.
 #### Variations
 - Ethan disconnects the key but keeps the MCP tile: the MCP agent still reads stored meetings and live data.
@@ -376,7 +376,7 @@ Source: `docs/ux-paths/meetings-voice/topics/inbox-followups.md`
 **Mockup screen**: none (not mocked)
 #### Steps
 1. Elena opens Inbox → meeting to-dos already stored stay visible and completable; no prompt is shown (the mail consent prompt is only for users with a mail account).
-2. New meetings produce no to-dos. She asks the Granola agent about her calls → the meeting tools are withheld, so it says it cannot read meetings, or answers from live MCP if that tile exists. On the Granola page the status line reads "AI data sharing off", linking to Settings, AI data sharing, instead of "Synced".
+2. New meetings produce no to-dos. She asks the Granola agent about her calls → both the meeting tools and the live Granola MCP tools are withheld (the consent gate covers both), so it says it cannot read meetings. On the Granola page the status line reads "AI data sharing off", linking to Settings, AI data sharing, instead of "Synced".
 3. She follows the link, allows the recipient → consent is saved. [exists]
 4. She returns to Inbox → granting consent queues digests for meetings whose digest status is empty, so earlier meetings can now produce to-dos. [planned: Granola S5]
 5. After a short wait the new to-dos appear.
@@ -395,10 +395,10 @@ Source: `docs/ux-paths/meetings-voice/topics/inbox-followups.md`
 **Preconditions**: Both meetings are synced and digested. Digest text: Monday "Send Dana the revised pricing"; Wednesday "Send the revised pricing to Dana by Friday".
 **Ideal path**: 1. A single to-do on the card.
 **Alternate paths**: none found.
-**Plan status**: dedupe per `(userId, normalized text)` among open and recently completed to-dos [planned: Granola S5].
+**Plan status**: dedupe per `(spaceId, userId, normalized text)` among open and recently completed to-dos [planned: Granola S5].
 **Mockup screen**: none (not mocked)
 #### Steps
-1. Samir opens Inbox → the card shows "Send Dana the revised pricing" (Pricing review, 12 Oct) once: to-dos are deduplicated per user and normalized text, even across meetings. The reworded "Send the revised pricing to Dana by Friday" (Pricing follow-up, 14 Oct, due Fri) differs in text, so it is a second row.
+1. Samir opens Inbox → the card shows "Send Dana the revised pricing" (Pricing review, 12 Oct) once: to-dos are deduplicated per space, user and normalized text, even across meetings. The reworded "Send the revised pricing to Dana by Friday" (Pricing follow-up, 14 Oct, due Fri) differs in text, so it is a second row.
 2. He ticks the first, then the second → two actions for a reworded promise.
 3. A re-digest of an updated note never regenerates to-dos when any to-do already exists for that meeting, so no third row appears.
 #### Variations
@@ -421,7 +421,7 @@ Source: `docs/ux-paths/meetings-voice/topics/inbox-followups.md`
 1. Hannah opens Inbox next morning → [planned: Granola S5] the item "Draft the severance memo" with "Layoff planning, 15 Oct" is still listed; the synced copy remains because a personal key cannot see `deleted_at` (granola.md, Sync).
 2. She expects deletion in Granola to carry over and is unsettled to see the title → ticking the item only marks it done (`doneAt` set); the `Meeting` row stays.
 3. She asks the Granola agent "what do you have on Layoff planning?" → the agent still answers from the stored meeting (granola.md, Retention). She now has data in Rakazo she believed deleted.
-4. She looks for a way to delete the stored meeting → on web she asks the Granola agent about it, clicks the citation chip (the popover names the meeting by title and date) and chooses "Delete"; after the standard confirmation the meeting, its digest and its to-dos are removed, and sync skips it afterwards (tombstone). Only the person who connected can do this. [planned: Granola S6]
+4. She looks for a way to delete the stored meeting → on web she clicks the "Synced {n} meetings" status on the Granola card to open the plain list of stored meetings and chooses "Delete" on the row (or asks the Granola agent, clicks the citation chip, whose popover names the meeting by title and date, and chooses "Delete"); after the standard confirmation the meeting, its digest and its to-dos are removed, and sync skips it afterwards (tombstone). Only the person who connected can do this. [planned: Granola S6]
 5. If she disconnects Granola instead, hoping that clears the data → Disconnect keeps all meetings and to-dos by design, and the card says "Praci keeps your meetings and to-dos."
 #### Variations
 - Detail text is plain text with no link, so there is no dead link to a missing meeting; the user sees only a title and date.
@@ -491,7 +491,7 @@ Source: `docs/ux-paths/meetings-voice/topics/meetings-cross-provider.md`
 1. Tomas types in the Carta agent thread: "Add the board's decision on the option pool to the update draft" → [exists] Carta agent starts a run.
 2. The Carta agent has no meeting tools, so it calls `message_bot` to the Granola agent → [planned: Granola S4] this run is a bot message from the owner's own agent, which is an allowed trigger.
 3. The Granola agent searches and replies with the decision and a citation → [planned: Granola S4] its tools exclude `message_bot`, so it cannot forward the content anywhere else.
-4. The Carta agent writes a line in the draft → [exists] Tomas sees text, possibly without the meeting title if the Carta agent drops it. GAP: no rule requires the citation to survive the hand-off (granola.md "Reading").
+4. The Granola agent's reply reaches the Carta agent as untrusted text, and the Carta run is marked as holding untrusted meeting content → [planned: Granola S4] from then on, every write, send or outbound-network call in that run shows a per-call approval card with no "Always allow". The Carta agent writes a line in the draft → [exists] Tomas sees text, possibly without the meeting title if the Carta agent drops it. GAP: no rule requires the citation to survive the hand-off (granola.md "Reading").
 5. Tomas hesitates, wonders where the number came from, and asks "Which meeting was that?" → the Carta agent re-asks the Granola agent; second round trip.
 #### Variations
 - Tomas has one Granola agent serving both Granola routes, so `message_bot` has one target.
@@ -582,7 +582,7 @@ Source: `docs/ux-paths/meetings-voice/topics/meetings-cross-provider.md`
 #### Steps
 1. Devon asks the Flow agent "Summarize my call with Aldous Lane yesterday" → [exists] the agent uses live MCP read tools.
 2. After the pin, tools that were callable by the read-verb heuristic are now only the exact list. A tool Devon relied on may vanish; the agent says it cannot do that. GAP: wispr-flow.md S5 "Behaviour" does not say the pin may remove tools or tell users.
-3. Devon notices "ask across all my meetings" does not work for Flow (no `Meeting` rows with `provider: "wisprflow"`); the Flow agent has `meetings_*` tools but they return "no synced meetings" and the skill falls back to MCP tools (granola.md S4 behaviour).
+3. Devon notices "ask across all my meetings" does not work for Flow (no `Meeting` rows with `provider: "wisprflow"`); the Flow `MeetingSource` was never registered, so the Flow agent is not a meeting-source agent: it has no `meetings_*` tools and only its live MCP tools (granola.md S4 predicate).
 4. He asks the Granola agent about the same call and gets nothing, since that call is not in Granola. He does not know whether it is a bug.
 5. He checks the tile: no sync status line like Granola's "Synced N meetings". Nothing says Flow sync is not available. GAP: no status surface for Flow sync; discovery lists none.
 #### Variations
@@ -612,7 +612,7 @@ Source: `docs/ux-paths/meetings-voice/topics/meetings-cross-provider.md`
 - The injected line asks the agent to "remember" a false fact. A user chat run has no write tool, so it is refused; S7 is deferred, so no routine writes memory either.
 - Injection asks to fetch a URL: `web_fetch` is removed, so nothing leaves.
 #### Edge Cases
-- Another agent asks via `message_bot` (MX-2); the Granola agent's text reply carries the injected wording into the Carta agent's prompt, which does have more tools. The allowlist protects only the Granola agent run, not the next agent in the chain. GAP: granola.md "Reading" protects "a run which can read meetings" but not agents that receive its output.
+- Another agent asks via `message_bot` (MX-2); the Granola agent's text reply carries the injected wording into the Carta agent's prompt, which does have more tools. The allowlist protects the Granola agent run; the receiving run is marked as holding untrusted meeting content, so every write, send or outbound-network tool call in it needs a per-call approval card with no "Always allow" (granola.md "Reading", Cross-agent taint). [planned: Granola S4]
 - The wrapper tags can be forged in the transcript text; the plan does not say they are stripped.
 
 ### STORY-MX-8: Mixed-source meeting-only user: first week
@@ -746,7 +746,7 @@ Source: `docs/ux-paths/meetings-voice/topics/wispr-flow-voice.md`
 **Topic**: Flow as transcription provider (Flow S1b, S1c, S3a, S3b, S4)
 **Persona**: Maya, founder of Fernhill Labs (example.com); Wispr approved her organization's API access and gave her a key and hostname
 **Goal**: Have Call Elio transcribe her speech through Flow, with names from her workspace passed as hints, while Elio's voice stays on her current provider.
-**Preconditions**: Voice provider (an OpenAI key, say) connected; S1, S1b, S1c, S3a, S3b have shipped (all except S1/S2 are blocked on API access today); no consent recorded yet for the Flow recipient; base URL connection setting in place.
+**Preconditions**: Voice provider (an OpenAI key, say) connected; S1, S1b, S1c, S3a, S3b have shipped (the Flow row is visible only after S3b; all except S1/S2 are blocked on API access today); no consent recorded yet for the Flow recipient; base URL connection setting in place.
 **Ideal path**: 5. Open Settings, Voice; tap the "Transcribe only" Flow row; paste the key; Connect; start the call.
 **Alternate paths**: none found (no other way to choose a provider; WebSocket is not built).
 **Plan status**: Settings, Voice overlay [exists]; transcription row, picker, key entry, verify, clear [planned: S1b; layout GAP, see discovery ambiguity 14 and 23]; consent text and re-prompt [planned: S1c; wording GAP: the plan gives only the idea, not the sentence]; call routing to record-and-upload and WAV [planned: S3b]; Flow provider [planned: S3a]; vocabulary [planned: S4].
@@ -755,14 +755,16 @@ Source: `docs/ux-paths/meetings-voice/topics/wispr-flow-voice.md`
 1. Maya clicks the settings entry, then Voice → the overlay lists providers; "Wispr Flow" is a "Transcribe only" row (it appears only when the deployment has the Flow base URL setting).
 2. She taps the Flow row and pastes her key → the existing provider pane; under Connect one sentence reads "Sends your recordings and workspace names to Wispr Flow."
 3. She presses Connect → the field and button are disabled and a spinner shows; the sentence stays visible.
-4. The key verifies → consent for Flow is recorded; the row's status word is "Transcribing"; the speech provider row still says OpenAI is connected for speaking, and "This device" keeps the single checkmark.
+4. The key verifies → the server now picks the transcriber for each request (Flow if selected and consented, else her voice provider if consented); consent for Flow is recorded; the row's status word is "Transcribing"; the speech provider row still says OpenAI is connected for speaking, and "This device" keeps the single checkmark.
 5. She clicks "Call Elio" → no consent prompt, because Connect was the consent act.
 6. The call starts; the call recorder switches to 16 kHz mono WAV and uploads each utterance, even though Web Speech is available in her browser (S3b routing).
 7. She says "ask Brightwell about the Halden invoice" → transcript shows both names spelled as in her workspace (bot name, contact, ticket title came from S4 vocabulary).
 8. She clicks Disconnect on the Flow row later → secret removed; transcription goes back to her voice provider; calls revert to the old routing.
 #### Variations
 - Mobile: native picker and secure entry in `(settings)/voice.tsx` (assumption from AGENTS.md; plan says "web and mobile" only).
-- She later switches off AI data sharing for Flow: the Flow row reads "AI data sharing off", linking to the setting, and calls transcribe through her voice provider with no prompt until consent returns.
+- She later switches off AI data sharing for Flow: the Flow row reads "AI data sharing off", linking to the setting, and the server transcribes through her voice provider (if that recipient has consent) with no prompt until consent returns; the client only uploads.
+- She picks ElevenLabs as her voice provider while Flow is connected: Flow stays the transcriber and only speech changes.
+- Before S3b lands the Flow row is hidden (S3a ships it behind the readiness check S3b turns on).
 - Flow cannot be selected before consent: Connect is the consent act.
 #### Edge Cases
 - Wrong key: `verify` rejects with "Could not connect this voice provider". Nothing is stored and no consent is recorded.
@@ -927,9 +929,9 @@ Source: `docs/ux-paths/meetings-voice/topics/mobile.md`
 **Topic**: Flow S1b transcription row on mobile
 **Persona**: Lena Fischer, head of design at Marlowe Studio (example.org). Her organization has Wispr Flow API access. She uses "This device" voice today.
 **Goal**: Have her calls transcribed by Flow while replies keep using her existing voice.
-**Preconditions**: Flow S1, S1b, S1c shipped. Wispr API access approved (blocked today, so S3a is not shipped; this story only covers the setting). "This device" is on in Settings, Voice.
+**Preconditions**: Flow S1, S1b, S1c shipped. Wispr API access approved (blocked today, so S3a and S3b are not shipped; the Flow row is visible only once S3b lands; this story covers the setting). "This device" is on in Settings, Voice.
 **Ideal path**: 3 steps: open Settings, Voice; pick Wispr Flow as the transcription provider; paste the key and confirm.
-**Alternate paths**: Web Settings, Voice has the same row [planned: Flow S1b]. Provider rows for ElevenLabs, OpenAI, Fish Audio also transcribe today ("Speak + transcribe") and could be the transcription provider with no new setting [exists].
+**Alternate paths**: Web Settings, Voice has the same row [planned: Flow S1b]. Provider rows for ElevenLabs, OpenAI, Fish Audio also transcribe today ("Speak + transcribe") and could be the transcription provider with no new setting when Flow is not connected [exists]; while Flow is connected they change speech only.
 **Plan status**: Open Settings, Voice [exists]. Transcription row, picker, key entry, verify, clear [planned: Flow S1b]; layout and states: GAP (wispr-flow.md S1b says only "reuses the provider-picker pattern already there"; the mobile screen has no picker, only a flat list, and picking "This device" hides the key area). Whether Flow appears for a user without access: GAP.
 **Mockup screen**: docs/wispr-flow/mockup.html#screen-mobile (Voice, Wispr Flow key, Connected)
 #### Steps
@@ -964,7 +966,7 @@ Source: `docs/ux-paths/meetings-voice/topics/mobile.md`
 3. The call connects → `startCall` runs with `transcribe` true; in `openMic` the recorder runs before native recognition for this provider.
 4. She speaks → `recordClip` records 16 kHz mono WAV, stops after 1.2 seconds of quiet or 30 seconds, and uploads [unverified on device].
 5. The reply plays → no consent prompt appears: consent for Flow was recorded at Connect.
-6. If she had switched off AI data sharing for Flow, the Flow row reads "AI data sharing off" and the call transcribes through her voice provider with no prompt; no audio reaches Flow without consent (the server rejects with the typed consent error).
+6. If she had switched off AI data sharing for Flow, the Flow row reads "AI data sharing off" and the server transcribes the uploaded clip through her voice provider with no prompt (the phone only uploads and does not choose); no audio reaches Flow without consent. If her voice provider has no consent either, the existing consent error or the "Calls need transcription" path applies.
 7. If the daily cap is reached, the caption shows "Daily voice limit reached. You can keep typing." once; the cap error does not count toward `MAX_TURN_FAILURES`, the call stays open for typing, and the phone stops uploading until the next call or the reset.
 #### Variations
 - Native recognition denied in iOS Settings and Flow not selected: the existing alert "Calls need transcription" (text: "Allow speech recognition in Settings, or connect ElevenLabs, OpenAI, or Fish Audio.") still omits Flow.
