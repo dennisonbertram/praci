@@ -163,8 +163,9 @@ it("adds the API key to an existing OAuth connection rather than duplicating it"
   const existing = { ...server, endpoint: ZERNIO_MCP_ENDPOINT, agentBotId: "gtm-1" };
   api.update.mockResolvedValue(existing);
   api.postingCapability.mockResolvedValue("ready");
-  await mount({ existingServer: existing, service: "Zernio" });
+  await mount({ existingServer: existing, service: "Zernio", oauthClient: true });
   await click("Use API key");
+  expect(document.body.textContent).not.toContain("Enter a Client ID to sign in.");
   await type("API key", "synthetic-zernio-key");
   await click("Connect");
   expect(api.create).not.toHaveBeenCalled();

@@ -149,7 +149,11 @@ test("Zernio offers OAuth reads or a separately configured API key", async ({ pa
     route.fulfill({ json: { json: "ready" } }),
   );
   await dialog.getByRole("button", { name: "Connect", exact: true }).click();
-  await expect(dialog.getByText("API key configured (not verified).")).toBeVisible();
+  await expect(
+    page
+      .getByRole("dialog", { name: "Zernio connected" })
+      .getByText("API key configured (not verified)."),
+  ).toBeVisible();
   await captureScreenshot(page, testInfo, "zernio-key-configured-synthetic");
 });
 

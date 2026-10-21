@@ -730,7 +730,7 @@ export function CustomConnectionDialog({
               </details>
             ) : null}
             {errorLine}
-            {needsClient && !clientId.trim() ? (
+            {!useApiKey && needsClient && !clientId.trim() ? (
               <p className="mt-3 text-xs text-muted-foreground">
                 <Trans>Enter a Client ID to sign in.</Trans>
               </p>
