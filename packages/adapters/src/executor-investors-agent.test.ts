@@ -105,9 +105,9 @@ async function runInvestors(trigger = "user") {
     computer: { updateMany: vi.fn(async () => ({ count: 1 })) },
     connection: { findMany: vi.fn(async () => []) },
     spaceModelPreference: {
-      findFirst: vi.fn<
-        (...args: unknown[]) => Promise<Record<string, unknown> | null>
-      >(async () => null),
+      findFirst: vi.fn<(...args: unknown[]) => Promise<Record<string, unknown> | null>>(
+        async () => null,
+      ),
     },
     secret: { findFirst: vi.fn(async () => null) },
     userModelCredential: { findFirst: vi.fn(async () => null) },
@@ -195,11 +195,7 @@ describe("Investors agent runs", () => {
     expect(names.length).toBeGreaterThan(0);
     expect(names.filter((name) => !fixed.has(name))).toEqual([]);
     expect(names).toEqual(
-      expect.arrayContaining([
-        "cap_table_read",
-        "contacts_list",
-        "search_data_room",
-      ]),
+      expect.arrayContaining(["cap_table_read", "contacts_list", "search_data_room"]),
     );
     for (const banned of ["mail_send", "mcp__carta__list", "COMPOSIO_SEARCH"]) {
       expect(names).not.toContain(banned);
@@ -210,8 +206,7 @@ describe("Investors agent runs", () => {
   it("offers cap_table_update only on the routine sheet read", async () => {
     const chat = await runInvestors("user");
     const routine = await runInvestors("routine");
-    const names = (r: typeof chat) =>
-      (r.request?.tools ?? []).map((tool) => tool.name);
+    const names = (r: typeof chat) => (r.request?.tools ?? []).map((tool) => tool.name);
     expect(names(chat)).toContain("cap_table_read");
     expect(names(chat)).not.toContain("cap_table_update");
     expect(names(routine)).toContain("cap_table_update");
