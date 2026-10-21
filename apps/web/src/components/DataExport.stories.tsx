@@ -42,3 +42,9 @@ export const Ready: Story = {
   render,
   beforeEach: () => mockRpc({ "account.exportLatest": job({}) }),
 };
+
+/** The last export failed; the button offers another try. */
+export const Failed: Story = {
+  render,
+  beforeEach: () => mockRpc({ "account.exportLatest": job({ status: "failed", progress: 30 }) }),
+};

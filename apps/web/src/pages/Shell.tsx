@@ -83,7 +83,6 @@ import {
   FileText,
   FolderOpen,
   FolderPlus,
-  Gauge,
   History,
   LayoutGrid,
   ListTodo,
@@ -4882,18 +4881,6 @@ export function ShellPage() {
               >
                 <Compass className="text-muted-foreground" strokeWidth={1.75} />
                 <Trans>Take the tour</Trans>
-              </Button>
-              <Button
-                variant="ghost"
-                className="w-full justify-start font-normal"
-                aria-label={t`Usage`}
-                onClick={() => {
-                  setMenuOpen(false);
-                  openSettings("usage");
-                }}
-              >
-                <Gauge className="text-muted-foreground" strokeWidth={1.75} />
-                <Trans>Usage</Trans>
               </Button>
               <Button
                 variant="ghost"

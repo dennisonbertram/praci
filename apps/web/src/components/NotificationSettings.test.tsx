@@ -134,7 +134,9 @@ it("says where it is blocked and disables Browser when the browser denied notifi
   setPermission("denied");
   api.preferences.mockResolvedValue(prefs());
   await render();
-  expect(container.textContent).toContain("Blocked in browser settings");
+  expect(container.textContent).toContain(
+    "Allow notifications for this site in your browser settings",
+  );
   expect((row("Browser") as HTMLButtonElement).disabled).toBe(true);
 });
 

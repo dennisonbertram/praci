@@ -784,7 +784,7 @@ msgstr "Add custom connection"
 msgid "Add email"
 msgstr "Add email"
 
-#: src/pages/ModelSettingsOverlay.tsx
+#: src/components/AutoFileEmailSetting.tsx
 msgid "Add email attachments to the Data room"
 msgstr "Add email attachments to the Data room"
 
@@ -1604,8 +1604,8 @@ msgid "Blocked"
 msgstr "Blocked"
 
 #: src/components/NotificationSettings.tsx
-msgid "Blocked in browser settings"
-msgstr "Blocked in browser settings"
+msgid "Blocked. Allow notifications for this site in your browser settings."
+msgstr "Blocked. Allow notifications for this site in your browser settings."
 
 #: src/components/compose/RichTextEditor.tsx
 msgid "Bold"
@@ -3111,7 +3111,7 @@ msgstr "Could not save the embedding model"
 msgid "Could not save the page."
 msgstr "Could not save the page."
 
-#: src/pages/ModelSettingsOverlay.tsx
+#: src/components/AutoFileEmailSetting.tsx
 msgid "Could not save the setting"
 msgstr "Could not save the setting"
 
@@ -4905,6 +4905,10 @@ msgstr "Label (optional)"
 msgid "Language"
 msgstr "Language"
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Language and time zone"
+msgstr "Language and time zone"
+
 #: src/components/data-room/DataRoomStats.tsx
 msgid "Largest files"
 msgstr "Largest files"
@@ -5576,6 +5580,7 @@ msgstr "Monthly spend · {0} – {1}"
 #: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/transcript.tsx
 msgid "More"
 msgstr "More"
@@ -6831,6 +6836,10 @@ msgstr "Praci doesn't tag new files."
 msgid "Praci keeps itself up to date. If an update ever needs you, it shows here."
 msgstr "Praci keeps itself up to date. If an update ever needs you, it shows here."
 
+#: src/components/DataExport.tsx
+msgid "Preparing…"
+msgstr "Preparing…"
+
 #. placeholder {0}: job.progress
 #: src/components/DataExport.tsx
 msgid "Preparing… {0}%"
@@ -6875,6 +6884,10 @@ msgstr "Primary"
 #: src/pages/Board.tsx
 msgid "Priority"
 msgstr "Priority"
+
+#: src/pages/SettingsOverlay.tsx
+msgid "Privacy and approvals"
+msgstr "Privacy and approvals"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Private"
@@ -7435,6 +7448,10 @@ msgstr "Replying to {0}"
 #: src/components/DataExport.tsx
 msgid "Request export"
 msgstr "Request export"
+
+#: src/components/DataExport.tsx
+msgid "Request new export"
+msgstr "Request new export"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Research & writing"
@@ -8861,6 +8878,10 @@ msgstr "The connection timed out."
 msgid "The Data room holds your files. Artifacts holds what agents make."
 msgstr "The Data room holds your files. Artifacts holds what agents make."
 
+#: src/components/DataExport.tsx
+msgid "The export failed. Try again."
+msgstr "The export failed. Try again."
+
 #: src/components/finance/StatementImport.tsx
 msgid "The file is too large"
 msgstr "The file is too large"
@@ -9564,7 +9585,6 @@ msgid "URL"
 msgstr "URL"
 
 #: src/pages/SettingsOverlay.tsx
-#: src/pages/Shell.tsx
 msgid "Usage"
 msgstr "Usage"
 

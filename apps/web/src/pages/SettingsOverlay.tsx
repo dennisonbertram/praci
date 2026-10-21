@@ -9,6 +9,7 @@ import {
   Gauge,
   Monitor,
   Settings,
+  ShieldCheck,
   Volume2,
   XIcon,
 } from "lucide-react";
@@ -19,6 +20,7 @@ import { useHasDesktopUpdates } from "../components/DesktopUpdates";
 import {
   ComputerSettingsPanel,
   GeneralSettingsPanels,
+  PrivacySettingsPanels,
   UpdatesSettingsPanel,
   UsageSettingsPanel,
 } from "./AccountSettingsOverlay";
@@ -29,6 +31,7 @@ import { VoiceSettingsOverlay } from "./VoiceSettingsOverlay";
 
 export type SettingsSection =
   | "general"
+  | "privacy"
   | "models"
   | "memory"
   | "voice"
@@ -147,6 +150,7 @@ export function SettingsOverlay({
 
   const navItems: NavItem[] = [
     { id: "general", label: t`General`, icon: Settings },
+    { id: "privacy", label: t`Privacy and approvals`, icon: ShieldCheck },
     { id: "models", label: t`Models`, icon: Cpu },
     { id: "memory", label: t`Memory`, icon: Brain },
     { id: "voice", label: t`Voice`, icon: Volume2 },
@@ -281,6 +285,7 @@ export function SettingsOverlay({
                   isDeploymentOwner={isDeploymentOwner}
                 />
               ) : null}
+              {section === "privacy" ? <PrivacySettingsPanels /> : null}
               {section === "usage" ? (
                 <UsageSettingsPanel usage={usage} panelRef={usageRef} />
               ) : null}
