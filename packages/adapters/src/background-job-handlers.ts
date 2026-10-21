@@ -48,6 +48,7 @@ import { runInboxTriage } from "./inbox-triage.js";
 import { runMailAttachmentFiling } from "./mail-attachment-filing.js";
 import { runMailSyncJob } from "./mail-sync-job.js";
 import { expireMailSearch } from "./mail-tools.js";
+import { runMeetingDigest } from "./meeting-digest.js";
 import { createMeetingSourceRegistry } from "./meeting-source-registry.js";
 import type { MeetingSourceRegistry } from "./meeting-sync-job.js";
 import { runMeetingSyncJob } from "./meeting-sync-job.js";
@@ -221,8 +222,15 @@ export function createBackgroundJobHandlers(deps: {
         },
         payload,
       ),
-    // The digest slice fills this in; until then a queued digest is a no-op.
-    "meetings.digest": async () => {},
+    "meetings.digest": (payload) =>
+      runMeetingDigest(
+        {
+          prisma: deps.prisma,
+          runtime: deps.runtime,
+          resolveModel: deps.executor.resolveModel,
+        },
+        payload,
+      ),
     "mail.attachments": async (payload) => {
       const { mail, artifacts } = deps;
       if (!mail || !artifacts) throw new Error("Mail attachment filing is not configured");

@@ -22,6 +22,7 @@ import {
   refreshSenderStats,
   storePriorContact,
 } from "./mail-sender-stats.js";
+import { queueMeetingDigests } from "./meeting-digest.js";
 
 /** Days of mail the cache keeps. The readers that show or triage mail still look at their own, shorter windows. */
 export const MAIL_CACHE_WINDOW_DAYS = 90;
@@ -532,6 +533,14 @@ export async function syncMailbox(
         await deps.jobs.enqueue(inboxTriageJob(userId, spaceId)).catch((error) => {
           getLogger().warn("inbox triage enqueue failed", {
             connectionId: account.id,
+            reason: error instanceof Error ? error.name : "error",
+          });
+        });
+        // A connected account adds an identity, so stored meeting digests are matched again.
+        // ponytail: runs on every successful sync; a meeting is queued again only while its digest is
+        // missing or was matched against another identity set.
+        await queueMeetingDigests(deps, { spaceId, userId }).catch((error) => {
+          getLogger().warn("meeting digest queue failed", {
             reason: error instanceof Error ? error.name : "error",
           });
         });
