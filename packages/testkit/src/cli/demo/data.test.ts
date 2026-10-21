@@ -478,9 +478,11 @@ describe("mock demo data", () => {
     const server = Object.values(demoFinanceMcp("http://localhost"))[0]!;
     const tools = server.tools.map((t) => t.name);
     expect(tools).toEqual(expect.arrayContaining(["getRecipient", "getAccount"]));
-    expect(await server.call("getRecipient", { recipientId: "recipient_mock_acme" })).toMatchObject({
-      name: "Acme (Mock)",
-    });
+    expect(await server.call("getRecipient", { recipientId: "recipient_mock_acme" })).toMatchObject(
+      {
+        name: "Acme (Mock)",
+      },
+    );
     expect(await server.call("getAccount", { accountId: "chk-1111" })).toMatchObject({
       name: "MOCK Checking ••1111",
     });
