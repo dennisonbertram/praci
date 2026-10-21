@@ -39,7 +39,7 @@ button{cursor:pointer}
 a{color:inherit;text-decoration:none}
 :focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 50%,transparent)}
 .ti:focus-visible{box-shadow:none}
-.ti:focus-visible::after{box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 50%,transparent);border-radius:12px}
+.ti:focus-visible::after{inset:-4px -10px;box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 50%,transparent);border-radius:12px}
 svg.i{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
 svg.i.s{width:11px;height:11px;vertical-align:-1px;margin-inline-start:3px}
 .tab{font-variant-numeric:tabular-nums}
@@ -70,14 +70,16 @@ aside.sb{width:316px;flex:none;background:var(--sidebar);border-right:1px solid 
 .lnk:hover{background:var(--sidebar-accent)}
 .lnk.cur{background:var(--sidebar-accent)}
 .lnk .tile{width:30px;height:30px;border-radius:8px;background:var(--accent);display:grid;place-items:center;color:color-mix(in srgb,var(--foreground) 80%,transparent)}
-.lnk .gv{margin-inline-start:auto;font-size:11.5px;color:var(--muted-fg);font-variant-numeric:tabular-nums}
+.lnk .gv{margin-inline-start:auto;font-weight:400;font-size:11.5px;color:var(--muted-fg);font-variant-numeric:tabular-nums}
 .sbdiv{border-top:1px solid var(--sidebar-border);margin:6px 0 8px}
 .user{margin-top:auto;display:flex;align-items:center;gap:10px;padding:14px 20px;font-size:14px}
 .user span{font-size:11px;color:var(--muted-fg)}
 .col{flex:1;min-width:0;display:flex;flex-direction:column}
 .topbar{display:none;height:56px;align-items:center;padding:0 12px;flex:none}
 .topbar .mb{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;color:color-mix(in srgb,var(--foreground) 75%,transparent);background:transparent;border:0}
+.topbar .mb{position:relative}
 .topbar .mb:hover{background:var(--accent)}
+.topbar .bg{position:absolute;top:0;right:0;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--primary);color:var(--primary-fg);font-size:10px;line-height:16px;font-weight:500;text-align:center}
 .bav{width:22px;height:22px;flex:none;display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.25))}
 .drawscrim{display:none}
 
@@ -147,7 +149,7 @@ aside.dock{display:none;width:384px;flex:none;border-left:1px solid var(--sideba
 .dh .who{display:flex;min-width:0;align-items:center;gap:8px;margin-inline:-6px;padding:4px 6px;border-radius:12px;font-size:14px;font-weight:500;background:transparent;border:0}
 .dh .who:hover{background:var(--accent)}
 .dh .who span.n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cl28{width:28px;height:28px;border-radius:10px;display:grid;place-items:center;color:var(--foreground);background:transparent;border:0}
+.cl28{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;color:var(--foreground);background:transparent;border:0}
 .cl28:hover{background:var(--muted)}
 .intro{display:flex;flex-direction:column;gap:12px;padding:8px 16px 16px;flex:none}
 .intro p{margin:0;font-size:14px;color:var(--muted-fg)}
@@ -218,11 +220,11 @@ aside.dock{display:none;width:384px;flex:none;border-left:1px solid var(--sideba
 
 /* toast (real notification-toaster markup) */
 .tview{isolation:isolate;position:absolute;right:16px;bottom:88px;width:min(28rem,calc(100% - 2rem));z-index:50}
-.toast{position:absolute;inset-inline:0;bottom:0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:0 10px 15px -3px rgba(0,0,0,.15),0 4px 6px -4px rgba(0,0,0,.15)}
+.toast{position:absolute;inset-inline:0;bottom:0;border:1px solid var(--border);border-radius:16px;background:var(--card);box-shadow:0 10px 15px -3px rgba(0,0,0,.15),0 4px 6px -4px rgba(0,0,0,.15)}
 .toast.behind{transform-origin:bottom;background:var(--muted);border-color:color-mix(in srgb,var(--foreground) 25%,transparent);box-shadow:none}
 .toast.b1{transform:translateY(-1rem) scale(.95);z-index:-1}
 .toast.b2{transform:translateY(-2rem) scale(.9);z-index:-2}
-.toast .bt{display:flex;width:100%;align-items:flex-start;gap:12px;border:0;background:transparent;text-align:left;padding:16px 40px 16px 16px;border-radius:12px}
+.toast .bt{display:flex;width:100%;align-items:flex-start;gap:12px;border:0;background:transparent;text-align:left;padding:16px 40px 16px 16px;border-radius:16px}
 .toast .bt:hover{background:color-mix(in srgb,var(--muted) 40%,transparent)}
 .toast .av{flex:none;width:32px;height:32px;border-radius:50%;background:var(--primary);color:var(--primary-fg);display:grid;place-items:center;font-size:12px}
 .toast .tt{display:flex;align-items:baseline;gap:8px}
@@ -283,9 +285,9 @@ const bd=(k,raw)=>`<span class="badge ${SB[k][0]}">${raw||SB[k][1]}</span>`;
 const rowsFor=(stale,v='')=>{
  const base=[
  {g:'Needs you'},
- {t:'Add CSV export for invoices',k:'n',q:'Should the export keep the legacy CSV column order?',pr:[],src:'Slack',u:stale?'14m ago':'2m ago'},
- {t:'Upgrade Prisma to 6.x',k:'n',q:'Two migrations conflict. Should I squash them or keep both and run the older one first?',pr:[['acme/api#212','open']],src:'Linear',u:'1h ago'},
- {t:'Migrate billing webhooks to the new queue',k:'e',q:'Tests failed on acme/api',pr:[],src:'Web',u:'Yesterday'},
+ {t:'Add CSV export for invoices',k:'n',q:'Should the export keep the legacy CSV column order?',pr:[],src:'Slack',u:stale?'Waiting 14m':'Waiting 2m'},
+ {t:'Upgrade Prisma to 6.x',k:'n',q:'Two migrations conflict. Should I squash them or keep both and run the older one first?',pr:[['acme/api#212','open']],src:'Linear',u:'Waiting 1h'},
+ {t:'Migrate billing webhooks to the new queue',k:'e',q:'Tests failed on acme/api',pr:[],src:'Web',u:'Waiting 1d'},
  {g:'Working'},
  {t:'Remove unused feature flags',k:'w',pr:[],src:'Web',u:stale?'9m ago':'1m ago'},
  {t:'Add pagination to the audit log API',k:'w',pr:[['acme/api#215','open']],src:'Linear',u:stale?'12m ago':'3m ago'},
@@ -294,7 +296,7 @@ const rowsFor=(stale,v='')=>{
  {t:'Bump Expo SDK and move push notification setup to the new API',k:'f',pr:[['acme/mobile#97','open']],src:'API',u:'Yesterday'},
  {t:'Rewrite onboarding copy',k:'s',pr:[],src:'Web',u:'2d ago'}];
  if(v==='zero')return base.filter((r,i)=>i>3);
- if(v==='unknown')return [{g:'Working'},{t:'Update API changelog',k:'x',raw:'pending_review',pr:[],src:'Linear',u:'20m ago'},{t:'Remove unused feature flags',k:'w',pr:[],src:'Web',u:'1m ago'},{g:'Earlier'},base[8]];
+ if(v==='unknown')return [{g:'Working'},{t:'Remove unused feature flags',k:'w',pr:[],src:'Web',u:'1m ago'},{g:'Earlier'},{t:'Update API changelog',k:'x',raw:'pending_review',pr:[],src:'Linear',u:'20m ago'},base[8]];
  if(v==='twopr')return [{g:'Working'},{t:'Split the billing module into two services',k:'w',pr:[['acme/api#220','open'],['acme/web#431','open']],src:'Linear',u:'6m ago'},{t:'Remove unused feature flags',k:'w',pr:[],src:'Web',u:'1m ago'},{g:'Earlier'},base[8]];
  if(v==='partial')return base.filter((r,i)=>i!==3);
  return base;
@@ -315,7 +317,7 @@ function table(stale,v){
 const skel=()=>`<div aria-busy="true"><div class="ph"><h1>Devin</h1><span class="sk" style="width:48px;height:16px"></span></div><div class="kpis"><div class="sk" style="height:88px;border-radius:12px"></div><div class="sk" style="height:88px;border-radius:12px"></div></div><div style="display:flex;flex-direction:column;gap:12px;margin-top:24px">${[0,1,2,3,4,5].map(()=>`<div class="sk" style="height:40px"></div>`).join('')}</div></div>`;
 const err=(m,b)=>`<div role="alert" class="errn"><span>${m}</span>${b?`<button class="btn sm">${b}</button>`:''}</div>`;
 const page=inner=>`<main class="pg">${inner}</main>`;
-const topbar=`<div class="topbar"><button class="mb" aria-label="Open navigation" data-drawer-open>${ic('menu').replace('class="i "','class="i" style="width:19px;height:19px"')}</button></div>`;
+const topbar=n=>`<div class="topbar"><button class="mb" aria-label="Open navigation${n?`, ${n} need you`:''}" data-drawer-open>${ic('menu').replace('class="i "','class="i" style="width:19px;height:19px"')}${n?`<span class="bg" aria-hidden="true">${n}</span>`:''}</button></div>`;
 
 const tool=(l,run)=>`<div class="r${run?' run':''}">${ic(run?'clk':'check')}<span>${l}</span></div>`;
 const tools=(sum,rows,open)=>`<details class="tools"${open?' open':''}><summary>${ic('arr')}${sum}</summary><div class="body">${rows}</div></details>`;
@@ -338,18 +340,18 @@ function dock(kind){
 }
 function frame({w,h='900px',cur='dev',dot=3,body,open=false,dockKind='',id='',extra='',drawer=false}){
  const st=[w?`--w:${w}`:'',`--h:${h}`].filter(Boolean).join(';');
- return `<div class="wrapx"><div class="fw"${id?` id="${id}"`:''} style="${st}"><div class="shell${open?' open':''}${drawer?' drawer':''}">${sidebar(cur,dot===true?3:dot)}<button class="drawscrim" aria-label="Close navigation" data-drawer-close></button><div class="col">${topbar}${body}</div>${dockKind?dock(dockKind):''}${extra}</div></div></div>`;
+ return `<div class="wrapx"><div class="fw"${id?` id="${id}"`:''} style="${st}"><div class="shell${open?' open':''}${drawer?' drawer':''}">${sidebar(cur,dot===true?3:dot)}<button class="drawscrim" aria-label="Close navigation" data-drawer-close></button><div class="col">${topbar(dot===true?3:dot)}${body}</div>${dockKind?dock(dockKind):''}${extra}</div></div></div>`;
 }
 const cap=(t,s)=>`<div class="cap">${t}${s?`<span>${s}</span>`:''}</div>`;
 const populated=page(header('')+tiles(3,2)+table(false));
 const variant=(v,note,t)=>page(header('')+tiles(v==='zero'?0:t[0],t[1])+(note?`<p class="note">${note}</p>`:'')+table(false,v));
-const stale=(owner)=>`<main class="pg stale">${header('Updated 4m ago',false)}${err('Devin rejected the key. Alerts are paused.',owner?'Reconnect':'')}${table(true)}</main>`;
+const stale=(owner,gone)=>`<main class="pg stale">${header('Updated 4m ago',false)}${err((gone?'The member who connected Devin left this space. Alerts are paused.':'Devin rejected the key. Alerts are paused.')+(owner?'':' Ask a space owner to reconnect.'),owner?'Reconnect':'')}${table(true)}</main>`;
 const notConn=page(header('',false)+`<div class="center"><p>Connect Devin to see its sessions here.</p><button class="btn p">Connect Devin</button></div>`);
 const member=page(header('',false)+`<div class="center"><p>Ask a space owner to connect Devin.</p></div>`);
 const inbox=page(`<div class="ph"><h1>Inbox</h1></div>`+[['Quarterly invoice from Acme Hosting','Invoice attached for review'],['Re: onboarding checklist','Thanks, I will send the signed copy'],['Calendar: design review','Tomorrow, 10:00'],['Sample newsletter','Five things this week']].map(r=>`<div style="padding:12px 0;border-top:1px solid var(--border)"><div style="font-weight:500">${r[0]}</div><div class="dim" style="font-size:13px">${r[1]}</div></div>`).join(''));
 
-const dlg=(state)=>`<div class="dlg" role="dialog" aria-label="Connect Devin"><button class="x" aria-label="Close">${ic('x')}</button>
- <div class="hd"><div class="tl"><span class="logo">D</span><h3>Connect Devin</h3></div><p class="ds">Connects Devin for everyone in this space. Read&#8209;only.</p></div>
+const dlg=(state,adopt)=>`<div class="dlg" role="dialog" aria-label="Connect Devin"><button class="x" aria-label="Close">${ic('x')}</button>
+ <div class="hd"><div class="tl"><span class="logo">D</span><h3>Connect Devin</h3></div><p class="ds">Connects Devin for everyone in this space. Read&#8209;only.</p>${adopt?'<p class="ds" style="color:var(--foreground)">Use the Devin connection you already added.</p><button type="button" class="btn p" style="align-self:flex-start">Use it</button>':''}</div>
  <form onsubmit="return false"><div class="f"><input type="password" autocomplete="off" aria-label="Organization service-user key" placeholder="Organization service-user key" ${state==='empty'?'':'value="cog_demo_key_0000"'}><a class="help" href="#" onclick="return false">Where to find your key${X}</a>${state==='refused'?'<p class="er" role="alert">The key was refused.</p>':''}</div>
  <div class="ft"><button type="button" class="btn">Cancel</button><button type="submit" class="btn p"${state==='empty'||state==='connecting'?' disabled':''}>${state==='connecting'?'Connecting…':'Connect'}</button></div></form></div>`;
 const toast=(stack,body)=>`<div class="tview" role="status">${stack?`<div class="toast behind b2" aria-hidden="true" style="height:122px"></div><div class="toast behind b1" aria-hidden="true" style="height:122px"></div>`:''}<div class="toast">${stack?'<span class="plus">+1</span>':''}<button class="bt"><span class="av" aria-hidden="true">D</span><span style="min-width:0;flex:1"><span class="tt"><b>Devin needs input</b><span>2m ago</span></span><span class="tb" style="display:block">${body||'Add CSV export for invoices: Should the export keep the legacy CSV column order?'}</span><span class="hint" style="display:block">Opens Devin</span></span></button><button class="cl" aria-label="Dismiss">${ic('x')}</button></div></div>`;
@@ -367,13 +369,16 @@ document.getElementById('root').innerHTML=
  cap('Load error')+frame({h:'300px',dot:false,body:page(header('',false)+err('Could not load Devin sessions.','Try again'))})+
  cap('Key rejected, stale data, space owner','Notice takes the place of the tiles; rows are muted; alerts are paused so the sidebar shows no count.')+frame({h:'760px',dot:false,body:stale(true)})+
  cap('Key rejected, stale data, member')+frame({h:'760px',dot:false,body:stale(false)})+
+ cap('Connector left the space, space owner')+frame({h:'760px',dot:false,body:stale(true,true)})+
+ cap('Connector left the space, member')+frame({h:'760px',dot:false,body:stale(false,true)})+
  cap('Needs you 0, other sessions present')+frame({h:'560px',dot:false,dockKind:'intro',body:variant('zero','',[0,2])})+
- cap('Unknown status','Devin\'s own status text in the neutral outline badge.')+frame({h:'460px',dot:0,dockKind:'intro',body:variant('unknown','',[0,2])})+
+ cap('Unknown status','Devin\'s own status text in the neutral outline badge.')+frame({h:'460px',dot:0,dockKind:'intro',body:variant('unknown','',[0,1])})+
  cap('Partial results')+frame({h:'760px',dot:2,dockKind:'intro',body:variant('partial','Some sessions could not be read.',[2,2])})+
  cap('A session with two pull requests')+frame({h:'460px',dot:0,dockKind:'intro',body:variant('twopr','',[0,2])})+
  cap('Not connected, a member who may connect')+frame({h:'360px',dot:false,body:notConn})+
  cap('Not connected, a member who may not connect')+frame({h:'360px',dot:false,body:member})+
  cap('Connect dialog over the page','Connect closes the dialog and opens /app/devin.')+frame({h:'560px',dot:false,body:notConn,extra:`<div class="dscrim">${dlg('empty')}</div>`})+
+ cap('Connect dialog, owner with a Devin connection already added','Pasting a key instead creates a new connection.')+frame({h:'600px',dot:false,body:notConn,extra:`<div class="dscrim">${dlg('empty',true)}</div>`})+
  cap('Connect dialog: connecting and refused')+`<div class="dlgrow">${dlg('connecting')}${dlg('refused')}</div>`+
  cap('Needs-input notification toast, over another page','Clicking opens that session in Devin (external) and marks the notification seen.')+frame({h:'600px',cur:'inbox',body:inbox,extra:toast(false)})+
  cap('Several notifications stacked')+frame({h:'600px',cur:'inbox',body:inbox,extra:toast(true)})+
