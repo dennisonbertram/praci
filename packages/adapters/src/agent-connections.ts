@@ -266,6 +266,8 @@ export async function messageConnectedAgent(
       name: true,
       archivedAt: true,
       audience: true,
+      spaceId: true,
+      userId: true,
       thread: { select: { id: true } },
     },
   });
@@ -273,7 +275,12 @@ export async function messageConnectedAgent(
     return { ok: false, error: "that agent is not available" };
   }
   // An external bot gets a message only if it repeats nothing this run read; no card route here.
-  if (target.audience === "external" && !(await mayReachExternalBot(message, options?.outbound))) {
+  // A bot in another Space is another account's agent: always treated as external.
+  const crossSpace = target.spaceId !== run.spaceId || target.userId !== run.userId;
+  if (
+    (crossSpace || target.audience === "external") &&
+    !(await mayReachExternalBot(message, options?.outbound))
+  ) {
     return { ok: false, error: EXTERNAL_HAND_OFF_REFUSED };
   }
   const targetThreadId = target.thread.id;

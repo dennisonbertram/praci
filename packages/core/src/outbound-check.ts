@@ -21,6 +21,7 @@ const NAME_KEY =
   /^(?:name|full_?name|display_?name|holder|holders|investor|investors|company|organi[sz]ation|contact|from|to|cc|bcc|sender|recipient|customer|vendor|merchant|counterparty|owner)$/i;
 const HEADER_NAME = /(?:^|[\n,;:["])\s*"?([^<>\n",;@]{2,60}?)"?\s*<[^<>\s@]+@[^<>\s]+>/g;
 const CAPITALIZED_SPAN = /\p{Lu}[\p{L}'\u2019-]+(?:\s+\p{Lu}[\p{L}'\u2019-]+)+/gu;
+const MAX_SPAN_WORDS = 12;
 const SHINGLE_WORDS = 8;
 /** Private text beyond this is not read: the check stays cheap and bounded. */
 const MAX_TEXT_CHARS = 200_000;
@@ -80,8 +81,26 @@ function addNameStrings(into: Set<string>, value: unknown, depth = 0): void {
   }
 }
 
+/** JSON inside a string field (an MCP envelope's `text`) is read too, within these bounds. */
+const MAX_NESTED_JSON_CHARS = 100_000;
+
 function collectNames(into: Set<string>, value: unknown, depth = 0): void {
-  if (depth > 8 || !value || typeof value !== "object") return;
+  if (depth > 8) return;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (
+      trimmed.length <= MAX_NESTED_JSON_CHARS &&
+      (trimmed.startsWith("{") || trimmed.startsWith("["))
+    ) {
+      try {
+        collectNames(into, JSON.parse(trimmed) as unknown, depth + 1);
+      } catch {
+        // Not JSON after all.
+      }
+    }
+    return;
+  }
+  if (!value || typeof value !== "object") return;
   if (Array.isArray(value)) {
     for (const item of value) collectNames(into, item, depth + 1);
     return;
@@ -136,8 +155,14 @@ export class PrivateFragments {
   addPrivateRelay(text: string): void {
     this.addPrivate(text);
     for (const match of text.slice(0, MAX_TEXT_CHARS).matchAll(CAPITALIZED_SPAN)) {
-      const name = normalizeName(match[0]);
-      if (name && this.privateSet.names.size < MAX_FRAGMENTS) this.privateSet.names.add(name);
+      // "Contact Priya Shah" also keeps "Priya Shah": every contiguous run of two or more words.
+      const spanWords = match[0].split(/\s+/).slice(0, MAX_SPAN_WORDS);
+      for (let from = 0; from < spanWords.length - 1; from += 1) {
+        for (let to = from + 2; to <= spanWords.length; to += 1) {
+          const name = normalizeName(spanWords.slice(from, to).join(" "));
+          if (name && this.privateSet.names.size < MAX_FRAGMENTS) this.privateSet.names.add(name);
+        }
+      }
     }
   }
 

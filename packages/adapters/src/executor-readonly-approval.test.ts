@@ -83,12 +83,18 @@ vi.mock("./run-notification.js", async (importOriginal) => ({
 }));
 
 /** Records what the executor hands messageBot; the real function has its own tests. */
-const sentBotMessages = vi.hoisted(() => ({ calls: [] as unknown[][] }));
+const sentBotMessages = vi.hoisted(() => ({ calls: [] as unknown[][], held: false }));
 vi.mock("./bot-messages.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./bot-messages.js")>()),
   messageBot: async (...args: unknown[]) => {
     sentBotMessages.calls.push(args);
-    return { ok: true, botId: "bot-fin", name: "Finance", note: "sent" };
+    return {
+      ok: true,
+      botId: "bot-fin",
+      name: "Finance",
+      note: "sent",
+      ...(sentBotMessages.held ? { held: true } : {}),
+    };
   },
 }));
 
@@ -3838,5 +3844,24 @@ describe("what a run read is checked before it reaches an external bot", () => {
     const fragments = (await options.outbound!())!;
     expect(fragments.matches("Our lead is priya shah.")).toContain("name");
     expect(fragments.matches("We open at 9am.")).toEqual([]);
+  });
+
+  it("sends no completion push when a message to an external bot was held during the run", async () => {
+    const run = async (held: boolean) => {
+      notices.sent.length = 0;
+      sentBotMessages.held = held;
+      try {
+        const f = fixture({ name: "message_bot", builtin: true });
+        f.setCalls([
+          { args: { bot_id: "bot-ext", message: "Priya <priya@x.example>" }, executionId: "c1" },
+        ]);
+        await f.run();
+      } finally {
+        sentBotMessages.held = false;
+      }
+      return notices.sent.map((notice) => notice.body);
+    };
+    expect(await run(false)).not.toEqual([]);
+    expect(await run(true)).toEqual([]);
   });
 });

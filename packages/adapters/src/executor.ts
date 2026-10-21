@@ -1600,6 +1600,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // person's own words, web pages). A message to an external bot that repeats a private
         // fragment is held for the owner instead of sent.
         const privateFragments = new PrivateFragments();
+        // Set when any message of this run to an external bot was held for the owner.
+        let heldForOwner = false;
         let chainFragmentsLoaded: Promise<void> | undefined;
         const loadChainFragments = () => {
           chainFragmentsLoaded ??= (async () => {
@@ -5896,6 +5898,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               },
             );
             if (!sent.ok) return finish({ error: sent.error });
+            if (sent.held) heldForOwner = true;
             return finish({
               ok: true,
               botId: sent.botId,
@@ -7028,7 +7031,6 @@ export function createRunExecutor(deps: ExecutorDeps) {
               .enqueue(runContinueJob(completed.continuationRunId))
               .catch((error) => getLogger().error("steering continuation enqueue", error));
           }
-          let outcomeHeld = false;
           if (botMessageOutcome) {
             // Prefer the final reply. If the turn only posted mid-turn progress, return that
             // text explicitly as status. Delivery uses a stable auto-outcome key; mark
@@ -7044,14 +7046,14 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 externalChain,
                 outbound: outboundFragments,
                 onHeld: () => {
-                  outcomeHeld = true;
+                  heldForOwner = true;
                 },
               },
             ).catch((error) => getLogger().error("bot message result return", error));
           }
           // The text was held for the owner's approval: no push may preview it. The held share has
           // its own notification, which names the recipient only.
-          const notifyBody = outcomeHeld ? "" : completionNotificationPreview(text);
+          const notifyBody = heldForOwner ? "" : completionNotificationPreview(text);
           if (
             runSendsFinishNotification(run.trigger) &&
             notifyBody &&

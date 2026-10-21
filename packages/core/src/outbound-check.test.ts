@@ -111,3 +111,30 @@ describe("a plain-text relay from another internal bot", () => {
     });
   });
 });
+
+describe("names that were hidden", () => {
+  it("reads JSON carried inside a string field, like an MCP envelope", () => {
+    const envelope = new PrivateFragments();
+    envelope.addPrivate(
+      JSON.stringify({
+        content: [{ type: "text", text: JSON.stringify({ investors: [{ name: "Priya Shah" }] }) }],
+      }),
+    );
+    expect(checkOutbound({ text: "Priya Shah is in", fragments: envelope })).toMatchObject({
+      allow: false,
+      kinds: ["name"],
+    });
+    expect(checkOutbound({ text: "We open at 9am.", fragments: envelope })).toEqual({
+      allow: true,
+    });
+  });
+
+  it("keeps the name inside a longer capitalized span of a relay", () => {
+    const relay = new PrivateFragments();
+    relay.addPrivateRelay("Contact Priya Shah for details about the round.");
+    expect(checkOutbound({ text: "Priya Shah", fragments: relay })).toMatchObject({ allow: false });
+    expect(checkOutbound({ text: "Contact Priya Shah", fragments: relay })).toMatchObject({
+      allow: false,
+    });
+  });
+});

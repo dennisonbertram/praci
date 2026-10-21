@@ -3,6 +3,7 @@ import { runContinueJob } from "@rakazo/adapter-kit";
 import type { BotMessageIntent, MessageBlock } from "@rakazo/contracts";
 import {
   BOT_SHARE_EFFECT_KIND,
+  BOT_SHARE_DECLINED_MESSAGE,
   BOT_SHARE_HELD_MESSAGE,
   isOwnerAgentSpawnKey,
 } from "@rakazo/contracts";
@@ -615,6 +616,19 @@ async function holdShare(
   // Already shared: nothing to hold or tell.
   if (existing?.status === "completed") {
     return { ...heldResult, held: undefined, note: `Already sent to ${target.name}.` };
+  }
+  // Once the owner has answered (or an approval is in flight) "needs approval" is stale: a retry
+  // sends nothing. A decline reaches the external bot through its own idempotent notice.
+  if (existing && existing.status !== "intended") {
+    return {
+      ...heldResult,
+      held: undefined,
+      delivered: existing.status === "denied" ? BOT_SHARE_DECLINED_MESSAGE : heldResult.delivered,
+      note:
+        existing.status === "denied"
+          ? `The owner declined to share this with ${target.name}.`
+          : `The owner approved this; it is being sent to ${target.name}.`,
+    };
   }
   if (created) {
     await deps.events.notify(run.threadId, created.seq).catch((error) => {

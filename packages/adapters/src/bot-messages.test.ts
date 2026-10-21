@@ -1215,4 +1215,22 @@ describe("messages to an external bot are checked against what the run read", ()
     expect(ok).toBe(true);
     expect(held).toBe(true);
   });
+
+  it("sends no pending notice for a hold the owner already answered", async () => {
+    for (const status of ["denied", "executing"]) {
+      const h = deps({ bots: [external] });
+      const found = { id: "effect-1", status };
+      h.tx.externalEffect.findUnique.mockResolvedValue(found);
+      (h.deps.prisma as unknown as { externalEffect: { findUnique: unknown } }).externalEffect = {
+        findUnique: vi.fn().mockResolvedValue(found),
+      };
+      const sent = await send(h, "Her address is priya@halcyon.example", {
+        outbound: async () => secretFragments(),
+      });
+      expect(sent).toMatchObject({ ok: true });
+      expect(sent).not.toHaveProperty("held", true);
+      expect(delivered(h), status).toEqual([]);
+      expect(h.tx.externalEffect.create).not.toHaveBeenCalled();
+    }
+  });
 });
