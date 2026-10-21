@@ -5,6 +5,7 @@ import { isFinanceAgentSpawnKey } from "./finance.js";
 import { Id } from "./ids.js";
 import { isInboxAgentSpawnKey } from "./inbox.js";
 import { isIntegrationAgentSpawnKey } from "./integration-agent.js";
+import { isInvestorsAgentSpawnKey } from "./investors.js";
 import { isLegalAgentSpawnKey } from "./legal.js";
 
 /**
@@ -71,7 +72,8 @@ export function autoGroupFolderName(item: {
     isFinanceAgentSpawnKey(key) ||
     isLegalAgentSpawnKey(key) ||
     isDataRoomAgentSpawnKey(key) ||
-    isCartaAgentSpawnKey(key)
+    isCartaAgentSpawnKey(key) ||
+    isInvestorsAgentSpawnKey(key)
   ) {
     return SIDEBAR_AUTO_FOLDERS.workspace;
   }

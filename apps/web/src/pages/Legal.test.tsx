@@ -40,7 +40,6 @@ import {
   emptyOverview,
   graph,
   id,
-  needsKeyOverview,
   overview,
 } from "./legal/fixtures";
 import { LegalContracts } from "./legal/LegalContracts";
@@ -62,7 +61,7 @@ const button = (name: string) =>
     (b) => b.textContent === name || b.getAttribute("aria-label") === name,
   );
 const tab = (name: string) =>
-  [...container.querySelectorAll('[role="tab"]')].find((b) => b.textContent === name);
+  [...container.querySelectorAll('[role="tab"]')].find((b) => b.textContent?.startsWith(name));
 
 beforeEach(() => {
   container = document.createElement("div");
@@ -114,17 +113,19 @@ it("shows the empty state, loading skeleton and load error", async () => {
   expect(container.querySelector("h1")?.textContent).toBe("Legal");
 });
 
-it("drops the Active tile when it repeats Contracts, and colors Overdue when above zero", async () => {
+it("puts the counts in the tab labels and colors Overdue when above zero", async () => {
   rpcMock.overview.mockResolvedValue({
     ...overview,
-    counts: { ...overview.counts, contracts: 2, activeContracts: 2 },
     deadlines: [{ ...deadlines[0]!, dueDate: "2000-01-01" }],
   });
   await render(<LegalPage />);
-  const titles = [...container.querySelectorAll("h2")].map((h) => h.textContent);
-  expect(titles).not.toContain("Active");
-  const overdue = [...container.querySelectorAll("h2")].find((h) => h.textContent === "Overdue");
-  expect(overdue?.nextElementSibling?.className).toContain("text-destructive");
+  expect(tab("Contracts")?.textContent).toContain(String(overview.counts.contracts));
+  expect(container.querySelectorAll("h2")).toHaveLength(0);
+  const overdue = [...container.querySelectorAll("span")].find((e) =>
+    e.textContent?.endsWith("overdue"),
+  );
+  expect(overdue?.textContent).toBe("1 overdue");
+  expect(overdue?.className).toContain("text-destructive");
 });
 
 it("asks for consent when it is not allowed, and grants the shown key", async () => {
@@ -172,6 +173,8 @@ it("scans now without opening the agent panel", async () => {
 
 it("marks overdue deadlines and closes one with Done", async () => {
   const onChanged = vi.fn();
+  const sidebarRefresh = vi.fn();
+  window.addEventListener("rakazo:notifications-changed", sidebarRefresh);
   rpcMock.updateDeadline.mockResolvedValue({});
   await render(<LegalDeadlines deadlines={deadlines} onChanged={onChanged} today="2026-10-16" />);
   const page = container.textContent ?? "";
@@ -187,6 +190,9 @@ it("marks overdue deadlines and closes one with Done", async () => {
   expect(rows).toHaveLength(2);
   expect(rows[0]?.textContent).toContain("Undo");
   expect(onChanged).toHaveBeenCalled();
+  // The sidebar Legal badge refreshes at once.
+  expect(sidebarRefresh).toHaveBeenCalled();
+  window.removeEventListener("rakazo:notifications-changed", sidebarRefresh);
 });
 
 it("keeps the deadline and shows the error when the update fails", async () => {
@@ -248,43 +254,21 @@ it("handles an empty graph and caps a very large one", async () => {
   );
 });
 
-it("says the user's own OpenRouter key is missing, not that OpenRouter is, and links to it", async () => {
-  const openSettings = vi.fn();
-  rpcMock.overview.mockResolvedValue(needsKeyOverview);
-  await render(<LegalPage onOpenSettings={openSettings} />);
-  const page = container.textContent ?? "";
-  expect(page).toContain("Legal needs an OpenRouter key to read your contracts.");
-  expect(page).not.toMatch(/Muse Spark|space|shared OpenRouter access/);
-  // One action, no dimmed Scan now, and the empty page points at the fix.
-  expect(button("Scan now")).toBeUndefined();
-  expect(page).toContain("Add your OpenRouter key above to start.");
-  await click(button("Add your OpenRouter key"));
-  expect(openSettings).toHaveBeenCalledTimes(1);
-});
-
-it("says when the Legal agent was set to another model", async () => {
+it("shows no key or model banner when Legal runs on the space default model", async () => {
   rpcMock.overview.mockResolvedValue({
     ...overview,
     model: { provider: "openrouter", id: "openai/gpt-6-luna", isPreferred: false },
-    modelBlocker: "model_changed",
   });
   await render(<LegalPage onOpenSettings={() => {}} />);
-  expect(container.textContent).toContain("Legal runs on its own model");
-  expect(container.textContent).not.toContain("Muse Spark");
-  expect(button("Add your OpenRouter key")).toBeUndefined();
+  expect(container.textContent).not.toMatch(/OpenRouter|Muse Spark|its own model/);
+  expect(button("Scan now")).toBeDefined();
 });
 
-it("shows no model warning when the agent runs on Muse Spark 1.2", async () => {
-  rpcMock.overview.mockResolvedValue(overview);
-  await render(<LegalPage />);
-  expect(container.textContent).not.toContain("OpenRouter key");
-});
-
-it("warns on first load when no model resolves, and shows no consent card without a recipient", async () => {
-  rpcMock.overview.mockResolvedValue({ ...overview, model: null, modelBlocker: "own_key" });
+it("shows no consent card without a recipient", async () => {
+  rpcMock.overview.mockResolvedValue({ ...overview, model: null });
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false, recipients: [] });
   await render(<LegalPage />);
-  expect(container.textContent).toContain("Legal needs an OpenRouter key");
+  expect(container.textContent).not.toContain("OpenRouter");
   expect(button("Allow")).toBeUndefined();
 });
 
@@ -316,31 +300,22 @@ it("hides the contract value while amounts are hidden", async () => {
   }
 });
 
-it("counts the Overdue tile from the viewer's date, like the row pills", async () => {
+it("counts overdue from the viewer's date, like the row pills", async () => {
   rpcMock.overview.mockResolvedValue({
     ...overview,
     counts: { ...overview.counts, overdueDeadlines: 0 },
     deadlines: [{ ...deadlines[0]!, dueDate: "2000-01-01" }],
   });
   await render(<LegalPage />);
-  const tile = [...container.querySelectorAll("div")].find(
-    (el) => el.textContent?.startsWith("Overdue") && el.children.length <= 3,
-  );
-  expect(tile?.textContent).toContain("1");
+  expect(tab("Deadlines")?.textContent).toContain("1 overdue");
 });
 
-it("says why Scan now is disabled, and shows no consent card while the model is wrong", async () => {
-  const openSettings = vi.fn();
-  rpcMock.overview.mockResolvedValue({
-    ...overview,
-    model: { provider: "openrouter", id: "other/model", isPreferred: false },
-    modelBlocker: "own_key",
-  });
+it("says why Scan now is disabled, and what a missing consent hides", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
-  await render(<LegalPage onOpenSettings={openSettings} />);
+  await render(<LegalPage />);
   expect(button("Scan now")).toBeUndefined();
-  expect(container.textContent).not.toContain("Needs your OpenRouter key.");
-  expect(button("Allow")).toBeUndefined();
+  expect(button("Allow")).toBeDefined();
 
   await act(async () => root.unmount());
   root = createRoot(container);
@@ -531,7 +506,7 @@ it("names the Legal agent on Ask, with no Hide amounts switch in the header", as
   expect(container.querySelector('[data-testid="hide-amounts-toggle"]')).toBeNull();
 });
 
-it("links the unchecked documents line to the Data room and the deadline tiles to Deadlines", async () => {
+it("links the unchecked documents line to the Data room and opens Deadlines on the overdue ones", async () => {
   // One deadline long past and one far ahead, so which one is overdue never depends on today.
   rpcMock.overview.mockResolvedValue({
     ...overview,
@@ -545,11 +520,16 @@ it("links the unchecked documents line to the Data room and the deadline tiles t
     "3 Data room documents not yet checked by Legal",
   );
   expect(tab("Deadlines")?.getAttribute("aria-selected")).toBe("false");
-  const overdue = [...container.querySelectorAll("a")].find((a) =>
-    a.textContent?.startsWith("Overdue"),
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/app/legal?view=deadlines&due=overdue"]}>
+        <LegalPage />
+      </MemoryRouter>,
+    ),
   );
-  expect(overdue?.getAttribute("href")).toBe("/app/legal?view=deadlines&due=overdue");
-  await click(overdue);
+  await flush();
   expect(tab("Deadlines")?.getAttribute("aria-selected")).toBe("true");
   // The tile said 1, so the list it opens shows that one, not every open deadline.
   expect(container.textContent).toContain("Return the security deposit paperwork");

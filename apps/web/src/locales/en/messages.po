@@ -468,6 +468,10 @@ msgstr "{name}, paid with {paidWith}"
 msgid "{newCount, plural, one {# new message} other {# new messages}}"
 msgstr "{newCount, plural, one {# new message} other {# new messages}}"
 
+#: src/pages/Legal.tsx
+msgid "{overdue} overdue"
+msgstr "{overdue} overdue"
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "{pct} yield"
 msgstr "{pct} yield"
@@ -717,7 +721,6 @@ msgid "Actions for space"
 msgstr "Actions for space"
 
 #: src/pages/BillingSettingsPanel.tsx
-#: src/pages/Legal.tsx
 #: src/pages/legal/LegalContracts.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Active"
@@ -882,14 +885,6 @@ msgstr "Add wallet"
 msgid "Add your investors, auditors and counsel here. Contacts are your address book."
 msgstr "Add your investors, auditors and counsel here. Contacts are your address book."
 
-#: src/pages/Legal.tsx
-msgid "Add your OpenRouter key"
-msgstr "Add your OpenRouter key"
-
-#: src/pages/Legal.tsx
-msgid "Add your OpenRouter key above to start. The Legal agent then reads your Data room for contracts and deadlines."
-msgstr "Add your OpenRouter key above to start. The Legal agent then reads your Data room for contracts and deadlines."
-
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemRows.tsx
@@ -921,6 +916,7 @@ msgstr "Address"
 msgid "Address or ENS"
 msgstr "Address or ENS"
 
+#: src/components/AiDataSharing.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1041,10 +1037,6 @@ msgstr "Allow {0} connector without asking"
 msgid "Allow {0} without asking"
 msgstr "Allow {0} without asking"
 
-#: src/components/AiDataSharing.tsx
-msgid "Allow {model}"
-msgstr "Allow {model}"
-
 #: src/pages/Legal.tsx
 msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
@@ -1052,6 +1044,10 @@ msgstr "Allow access above to start. The Legal agent then reads your Data room f
 #: src/pages/Shell.tsx
 msgid "Allow access on the page to ask"
 msgstr "Allow access on the page to ask"
+
+#: src/components/AiDataSharing.tsx
+msgid "Allow AI models"
+msgstr "Allow AI models"
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -1416,8 +1412,8 @@ msgid "Ask Chief"
 msgstr "Ask Chief"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
-msgstr "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
+msgid "Ask Chief anything."
+msgstr "Ask Chief anything."
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Ask the server owner to configure this provider."
@@ -1743,10 +1739,6 @@ msgstr "Bots"
 msgid "Bots are working"
 msgstr "Bots are working"
 
-#: src/components/AiDataSharing.tsx
-msgid "Bots cannot use a model until you allow it."
-msgstr "Bots cannot use a model until you allow it."
-
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Bots lose access to its tools."
 msgstr "Bots lose access to its tools."
@@ -1950,8 +1942,8 @@ msgid "Carta is connected"
 msgstr "Carta is connected"
 
 #: src/pages/Investors.tsx
-msgid "Carta is the service many startups use to record who owns shares, options and SAFEs. Connect it to see them here and to ask the Carta agent about them."
-msgstr "Carta is the service many startups use to record who owns shares, options and SAFEs. Connect it to see them here and to ask the Carta agent about them."
+msgid "Carta is the service many startups use to record who owns shares, options and SAFEs. Connect it to see them here."
+msgstr "Carta is the service many startups use to record who owns shares, options and SAFEs. Connect it to see them here."
 
 #: src/components/FinanceCards.tsx
 #: src/pages/Finance.tsx
@@ -2152,10 +2144,6 @@ msgstr "Choose files"
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Choose how apps connect for everyone on this server."
 msgstr "Choose how apps connect for everyone on this server."
-
-#: src/pages/Legal.tsx
-msgid "Choose Legal's own model again in the Legal agent's settings to start. It then reads your Data room for contracts and deadlines."
-msgstr "Choose Legal's own model again in the Legal agent's settings to start. It then reads your Data room for contracts and deadlines."
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Choose the account to connect, then come back here."
@@ -2359,10 +2347,6 @@ msgid "Collapse {title}"
 msgstr "Collapse {title}"
 
 #: src/pages/Shell.tsx
-msgid "Collapse Carta agent"
-msgstr "Collapse Carta agent"
-
-#: src/pages/Shell.tsx
 msgid "Collapse Data room agent"
 msgstr "Collapse Data room agent"
 
@@ -2377,6 +2361,10 @@ msgstr "Collapse Finance agent"
 #: src/pages/Shell.tsx
 msgid "Collapse Inbox agent"
 msgstr "Collapse Inbox agent"
+
+#: src/pages/Shell.tsx
+msgid "Collapse Investors agent"
+msgstr "Collapse Investors agent"
 
 #: src/pages/Shell.tsx
 msgid "Collapse Legal agent"
@@ -2610,8 +2598,8 @@ msgid "Connect Gmail to send files"
 msgstr "Connect Gmail to send files"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Connect Gmail, Calendar and other apps so agents can read your mail and files."
-msgstr "Connect Gmail, Calendar and other apps so agents can read your mail and files."
+msgid "Connect Gmail, Calendar and more in Integrations so bots can read your mail and files."
+msgstr "Connect Gmail, Calendar and more in Integrations so bots can read your mail and files."
 
 #: src/pages/Inbox.tsx
 msgid "Connect mail"
@@ -2897,6 +2885,10 @@ msgstr "Could not create the Finance agent"
 #: src/pages/Shell.tsx
 msgid "Could not create the Inbox agent"
 msgstr "Could not create the Inbox agent"
+
+#: src/pages/Shell.tsx
+msgid "Could not create the Investors agent"
+msgstr "Could not create the Investors agent"
 
 #: src/pages/Shell.tsx
 msgid "Could not create the Legal agent"
@@ -3929,6 +3921,10 @@ msgstr "Don't count crypto"
 msgid "Don’t have an account?"
 msgstr "Don’t have an account?"
 
+#: src/components/AskCard.tsx
+msgid "Don't share"
+msgstr "Don't share"
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -4003,11 +3999,6 @@ msgstr "Draft saved"
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Draft skill"
 msgstr "Draft skill"
-
-#: src/components/PageAgentIntro.tsx
-#: src/pages/Shell.tsx
-msgid "Draft this month's investor update"
-msgstr "Draft this month's investor update"
 
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Drafts"
@@ -4831,8 +4822,12 @@ msgid "HR document"
 msgstr "HR document"
 
 #: src/components/PageAgentIntro.tsx
-msgid "I keep your cap table and investor contacts, and draft investor updates for you to review."
-msgstr "I keep your cap table and investor contacts, and draft investor updates for you to review."
+msgid "I answer questions about your cap table, investors and finances, using your Data room and contacts."
+msgstr "I answer questions about your cap table, investors and finances, using your Data room and contacts."
+
+#: src/components/PageAgentIntro.tsx
+msgid "I keep your cap table and investor contacts up to date from Carta."
+msgstr "I keep your cap table and investor contacts up to date from Carta."
 
 #: src/components/PageAgentIntro.tsx
 msgid "I read your bank and card accounts and answer questions about cash, spending and runway."
@@ -5246,17 +5241,9 @@ msgstr "Legal"
 msgid "Legal document"
 msgstr "Legal document"
 
-#: src/pages/Legal.tsx
-msgid "Legal needs an OpenRouter key to read your contracts."
-msgstr "Legal needs an OpenRouter key to read your contracts."
-
 #: src/components/legal/LegalGraph.tsx
 msgid "Legal relationships"
 msgstr "Legal relationships"
-
-#: src/pages/Legal.tsx
-msgid "Legal runs on its own model: choose it again in the Legal agent's settings."
-msgstr "Legal runs on its own model: choose it again in the Legal agent's settings."
 
 #: src/components/integrations/IntegrationAgentSection.tsx
 msgid "Let other agents use {service} directly"
@@ -6471,6 +6458,10 @@ msgstr "Not sent"
 msgid "Not sent. {text}"
 msgstr "Not sent. {text}"
 
+#: src/components/AskCard.tsx
+msgid "Not shared"
+msgstr "Not shared"
+
 #: src/components/inbox/InboxRow.tsx
 #: src/pages/Inbox.tsx
 msgid "Not spam"
@@ -6637,10 +6628,6 @@ msgstr "Open computer settings"
 #: src/pages/Investors.tsx
 msgid "Open Contacts"
 msgstr "Open Contacts"
-
-#: src/pages/Legal.tsx
-msgid "Open deadlines"
-msgstr "Open deadlines"
 
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/Devin.tsx
@@ -6861,10 +6848,6 @@ msgstr "Other ways to connect"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
 msgstr "Out"
-
-#: src/pages/Legal.tsx
-msgid "Overdue"
-msgstr "Overdue"
 
 #: src/pages/Board.tsx
 msgid "Owner"
@@ -7120,8 +7103,8 @@ msgid "Preparing… {0}%"
 msgstr "Preparing… {0}%"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Press + to create an agent or a group chat."
-msgstr "Press + to create an agent or a group chat."
+msgid "Press + to create a bot or a group chat."
+msgstr "Press + to create a bot or a group chat."
 
 #: src/pages/Legal.tsx
 msgid "Press Scan now to read your Data room for contracts and deadlines."
@@ -8414,6 +8397,11 @@ msgstr "Setup help"
 msgid "Shape"
 msgstr "Shape"
 
+#: src/components/AskCard.tsx
+msgid "Share"
+msgstr "Share"
+
+#: src/components/AskCard.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Shared"
 msgstr "Shared"
@@ -9406,10 +9394,6 @@ msgid "This sheet is empty."
 msgstr "This sheet is empty."
 
 #: src/pages/ModelSettingsOverlay.tsx
-msgid "This space already uses {selectedProviderName}."
-msgstr "This space already uses {selectedProviderName}."
-
-#: src/pages/ModelSettingsOverlay.tsx
 msgid "This subscription sign-in is not available in Praci yet. Use a deployment credential or choose another provider."
 msgstr "This subscription sign-in is not available in Praci yet. Use a deployment credential or choose another provider."
 
@@ -9909,8 +9893,8 @@ msgid "Upload files"
 msgstr "Upload files"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Upload files for agents to use. Artifacts holds what agents make."
-msgstr "Upload files for agents to use. Artifacts holds what agents make."
+msgid "Upload files for bots to use. Artifacts holds what bots make."
+msgstr "Upload files for bots to use. Artifacts holds what bots make."
 
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Upload SKILL.md"
@@ -10279,11 +10263,13 @@ msgstr "Which contracts renew in the next 90 days?"
 msgid "Which documents mention renewal?"
 msgstr "Which documents mention renewal?"
 
+#: src/lib/investors-agent.ts
 #: src/pages/Shell.tsx
 msgid "Who are our investors?"
 msgstr "Who are our investors?"
 
 #: src/components/PageAgentIntro.tsx
+#: src/lib/investors-agent.ts
 msgid "Who owns what in the company?"
 msgstr "Who owns what in the company?"
 
@@ -10400,6 +10386,10 @@ msgstr "You have control"
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "You'll sign in to {0} in a new window."
 msgstr "You'll sign in to {0} in a new window."
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Your bots already use {selectedProviderName}."
+msgstr "Your bots already use {selectedProviderName}."
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Your browser blocked the sign-in window"

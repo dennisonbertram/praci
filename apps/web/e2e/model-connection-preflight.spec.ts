@@ -83,7 +83,7 @@ test("settings preflight distinguishes a stored API key from sign-in", async ({
   await page.getByPlaceholder("Search providers").fill("OpenRouter");
   await settings.getByRole("button").filter({ hasText: "OpenRouter" }).first().click();
   // OpenRouter is what this space already uses, so its key controls sit behind a disclosure.
-  await expect(settings.getByText("This space already uses OpenRouter.")).toBeVisible();
+  await expect(settings.getByText("Your bots already use OpenRouter.")).toBeVisible();
   await settings.getByText("Use your own key", { exact: true }).click();
   await expect(settings.getByRole("button", { name: "Test API key" })).toBeVisible();
   await expect(settings.getByRole("button", { name: "Test sign-in" })).toHaveCount(0);

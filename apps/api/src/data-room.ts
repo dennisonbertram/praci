@@ -45,6 +45,7 @@ import type {
   DataRoomConsentStatus,
 } from "@rakazo/contracts";
 import {
+  AI_DISCLOSURE_VERSION,
   DATA_ROOM_DISCLOSURE,
   DATA_ROOM_DISCLOSURE_VERSION,
   DataRoomApiName,
@@ -510,6 +511,25 @@ export function createDataRoomService(deps: DataRoomDeps) {
         },
         update: { version: status.version, grantedAt: new Date() },
       });
+      // One consent per model: Settings shows these models as allowed too.
+      for (const { key } of ai.recipients) {
+        await deps.prisma.aiDataConsent.upsert({
+          where: {
+            userId_spaceId_recipientKey: {
+              userId: actor.userId,
+              spaceId: actor.spaceId,
+              recipientKey: key,
+            },
+          },
+          create: {
+            userId: actor.userId,
+            spaceId: actor.spaceId,
+            recipientKey: key,
+            version: AI_DISCLOSURE_VERSION,
+          },
+          update: { version: AI_DISCLOSURE_VERSION, grantedAt: new Date() },
+        });
+      }
       const visionKey = dataRoomVisionKey({ ...ai, allowed: true });
       const queue = async (step: "ingest" | "classify" | "index", embeddingModel?: string) => {
         for (const id of await repo.requeueReady(actor, step, embeddingModel, visionKey)) {
