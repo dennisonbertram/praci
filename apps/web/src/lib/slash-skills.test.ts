@@ -52,3 +52,9 @@ it("names bundled skills in plain words and finds them by that name", () => {
   expect(slashSkillLabel(runway).title).toBe("Runway scenarios");
   expect(slashSkillOptions([runway, skill("other", "builtin")], "runway sc")).toEqual([runway]);
 });
+
+it("gives every bundled skill a plain title instead of its slug", () => {
+  for (const name of ["devin-sessions", "meeting-notes", "box-files", "finance-categorize"]) {
+    expect(slashSkillLabel(skill(name, "builtin")).title).not.toBe(name);
+  }
+});

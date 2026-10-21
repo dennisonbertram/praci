@@ -29,7 +29,7 @@ const matches = (contact: Contact, needle: string, kindName: string) =>
   );
 
 /** The people and companies the business works with, saved by the user or by their agents. */
-export function ContactsPage() {
+export function ContactsPage({ spaceName }: { spaceName?: string }) {
   const [contacts, setContacts] = useState<Contact[] | null>(null);
   const [error, setError] = useState("");
   const [params, setParams] = useSearchParams();
@@ -81,6 +81,13 @@ export function ContactsPage() {
     >
       <PageHeader
         title={<Trans>Contacts</Trans>}
+        meta={
+          spaceName ? (
+            <span className="truncate" title={spaceName}>
+              {spaceName}
+            </span>
+          ) : null
+        }
         actions={
           <Button onClick={() => setEditing("new")}>
             <Plus aria-hidden="true" />

@@ -36,6 +36,12 @@ type Story = StoryObj<typeof meta>;
 
 export const Populated: Story = { beforeEach: () => mockRpc({ "contacts.list": contacts }) };
 
+/** In a workspace among several, the header names it. */
+export const NamedWorkspace: Story = {
+  args: { spaceName: "Example Co" },
+  beforeEach: () => mockRpc({ "contacts.list": contacts }),
+};
+
 export const Empty: Story = { beforeEach: () => mockRpc({ "contacts.list": [] }) };
 
 export const Searched: Story = {

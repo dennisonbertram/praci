@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { LEGAL_MODEL_REQUIRED_MESSAGE } from "@rakazo/contracts";
+import { LEGAL_CONSENT_REQUIRED_MESSAGE, LEGAL_MODEL_REQUIRED_MESSAGE } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -82,22 +82,20 @@ it("shows any other error with only Dismiss", async () => {
 const pageButton = (label: string) =>
   [...container.querySelectorAll("button")].find((b) => b.textContent === label);
 
-it.each([
-  ["Legal", "/app/legal", "Allow it on the Legal page."],
-  ["Data room", "/app/data-room", "Allow it on the Data room page."],
-])("offers a button to the %s page when consent is missing", async (label, path, remedy) => {
+it("offers Allow, which opens the Legal page, when consent is missing", async () => {
   const navigate = vi.fn();
   await act(async () =>
     root.render(
       <ComposerError
-        message={`Data Room consent is required for OpenRouter before the Legal agent can run. ${remedy}`}
+        message={LEGAL_CONSENT_REQUIRED_MESSAGE}
         onDismiss={() => {}}
         onNavigate={navigate}
       />,
     ),
   );
-  await act(async () => pageButton(`Open ${label}`)?.click());
-  expect(navigate).toHaveBeenCalledWith(path);
+  expect(container.textContent).not.toContain("OpenRouter");
+  await act(async () => pageButton("Allow")?.click());
+  expect(navigate).toHaveBeenCalledWith("/app/legal");
 });
 
 it("has no page button for other errors", async () => {
@@ -106,6 +104,5 @@ it("has no page button for other errors", async () => {
       <ComposerError message="Network down" onDismiss={() => {}} onNavigate={() => {}} />,
     ),
   );
-  expect(pageButton("Open Legal")).toBeUndefined();
-  expect(pageButton("Open Data room")).toBeUndefined();
+  expect(pageButton("Allow")).toBeUndefined();
 });

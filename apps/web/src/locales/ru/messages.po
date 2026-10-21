@@ -114,6 +114,11 @@ msgstr ""
 msgid "{0, plural, one {Added # file} other {Added # files}}"
 msgstr ""
 
+#. placeholder {0}: chosen.length
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "{0, plural, one {Apply # change} other {Apply # changes}}"
+msgstr ""
+
 #. placeholder {0}: picks.size
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "{0, plural, one {Import # file} other {Import # files}}"
@@ -253,6 +258,11 @@ msgstr "{0} ч. сводки"
 #. placeholder {0}: runwayGlance(glance.financeRunwayMonths, hideAmounts)
 #: src/pages/Shell.tsx
 msgid "{0} runway"
+msgstr ""
+
+#. placeholder {0}: active.name
+#: src/pages/Shell.tsx
+msgid "{0} settings"
 msgstr ""
 
 #. placeholder {0}: statement.transactionCount
@@ -579,6 +589,7 @@ msgid "A deposit address at an exchange."
 msgstr ""
 
 #: src/components/sidebar-folders/FolderHeader.tsx
+#: src/pages/shell/dialogs.tsx
 msgid "A folder with that name already exists"
 msgstr ""
 
@@ -981,6 +992,7 @@ msgstr ""
 
 #: src/components/AiDataSharing.tsx
 #: src/components/AskCard.tsx
+#: src/pages/shell/composer-error.tsx
 msgid "Allow"
 msgstr ""
 
@@ -1005,6 +1017,10 @@ msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Allow access first."
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -1049,10 +1065,6 @@ msgstr ""
 msgid "Allowed"
 msgstr ""
 
-#: src/components/AskCard.tsx
-msgid "Allowed once"
-msgstr "Разрешено один раз"
-
 #: src/pages/Auth.tsx
 msgid "Already have an account?"
 msgstr "У вас уже есть аккаунт?"
@@ -1090,8 +1102,8 @@ msgid "Always act"
 msgstr "Всегда выполнять"
 
 #: src/components/AskCard.tsx
-msgid "Always allow this tool"
-msgstr "Всегда разрешать этот инструмент"
+msgid "Always allow this"
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Always allowed"
@@ -1142,6 +1154,10 @@ msgstr "Ответ: {0}"
 msgid "Answered: {answer}"
 msgstr "Ответ: {answer}"
 
+#: src/lib/slash-skills.ts
+msgid "Answers from your meeting notes and transcripts."
+msgstr ""
+
 #: src/pages/Paywall.tsx
 msgid "Any model, with your own key"
 msgstr ""
@@ -1188,7 +1204,6 @@ msgid "Appearance"
 msgstr "Внешний вид"
 
 #: src/components/compose/RichTextEditor.tsx
-#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr ""
@@ -1205,6 +1220,10 @@ msgstr "Утвердить"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Approve this server to let your bot use its tools."
+msgstr ""
+
+#: src/components/AskCard.tsx
+msgid "Approved"
 msgstr ""
 
 #: src/components/ConnectAppsButton.tsx
@@ -1294,6 +1313,10 @@ msgstr ""
 msgid "Ask {botName}"
 msgstr ""
 
+#: src/components/tour/FirstRunTour.tsx
+msgid "Ask a question"
+msgstr ""
+
 #: src/components/FinanceCards.tsx
 msgid "Ask about this"
 msgstr ""
@@ -1332,6 +1355,10 @@ msgstr "Спрашивайте перед покупкой"
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Ask before sending external email"
 msgstr "Спросите перед отправкой внешнего электронного письма"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Ask Chief anything. Agents ask before they send, pay or change anything."
+msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Ask the server owner to configure this provider."
@@ -1649,6 +1676,10 @@ msgstr ""
 msgid "Bots are working"
 msgstr "Боты работают"
 
+#: src/components/AiDataSharing.tsx
+msgid "Bots cannot use a model until you allow it."
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Bots lose access to its tools."
 msgstr ""
@@ -1674,9 +1705,17 @@ msgstr ""
 msgid "Bots with their own computer and browser"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
+msgid "Bots, mail, files and contracts"
+msgstr ""
+
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "Box"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Box files"
 msgstr ""
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
@@ -1909,6 +1948,10 @@ msgstr ""
 msgid "Change password"
 msgstr "Изменить пароль"
 
+#: src/components/tour/FirstRunTour.tsx
+msgid "Change settings, export your data or retake this tour from here."
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "Change, 3 months"
 msgstr ""
@@ -1960,10 +2003,6 @@ msgstr "Приложения чата, групповые каналы и под
 
 #: src/pages/shell/composer.tsx
 msgid "Chat settings"
-msgstr ""
-
-#: src/components/tour/FirstRunTour.tsx
-msgid "Chat with Chief here. Agents ask before they send, pay or change anything."
 msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
@@ -2118,6 +2157,7 @@ msgid "Clear formatting"
 msgstr ""
 
 #: src/components/ListControls.tsx
+#: src/pages/DataRoom.tsx
 #: src/pages/Shell.tsx
 msgid "Clear search"
 msgstr ""
@@ -2393,6 +2433,7 @@ msgstr "Убедитесь, что URL доступен из этого сеан
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
+#: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect"
 msgstr "Подключить"
@@ -2452,10 +2493,6 @@ msgstr ""
 msgid "Connect API key"
 msgstr "Подключить API-ключ"
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Connect apps"
-msgstr ""
-
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 msgid "Connect Blockscout"
 msgstr ""
@@ -2472,6 +2509,10 @@ msgstr "Подключить Executor"
 msgid "Connect Gmail to read, sort and answer your mail here."
 msgstr ""
 
+#: src/components/tour/FirstRunTour.tsx
+msgid "Connect Gmail, Calendar and other apps so agents can read your mail and files."
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Connect mail"
 msgstr ""
@@ -2479,10 +2520,6 @@ msgstr ""
 #: src/pages/shell/message-cards.tsx
 msgid "Connect MCP server “{name}”"
 msgstr "Подключите MCP-сервер «{name}»"
-
-#: src/components/tour/FirstRunTour.tsx
-msgid "Connect the apps you already use, so agents can work with your mail and files."
-msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
@@ -2591,10 +2628,6 @@ msgstr "Продолжить в фоне"
 #: src/pages/Auth.tsx
 msgid "Continue with {0}"
 msgstr "Продолжить с {0}"
-
-#: src/pages/Auth.tsx
-msgid "Continue with email"
-msgstr "Продолжить по электронной почте"
 
 #: src/components/finance/WalletDialog.tsx
 #: src/components/legal/LegalGraph.tsx
@@ -3341,10 +3374,6 @@ msgstr "Создайте пространство"
 msgid "Create your account"
 msgstr ""
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Create your own agent, group or space."
-msgstr ""
-
 #: src/components/AskCard.tsx
 msgid "Created"
 msgstr "Создано"
@@ -3600,6 +3629,10 @@ msgstr ""
 msgid "Developer"
 msgstr ""
 
+#: src/lib/slash-skills.ts
+msgid "Devin sessions"
+msgstr ""
+
 #: src/components/integrations/SignInStep.tsx
 msgid "Didn't open?"
 msgstr ""
@@ -3722,6 +3755,7 @@ msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/FolderDocuments.tsx
+#: src/pages/Shell.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Documents"
 msgstr ""
@@ -4203,10 +4237,6 @@ msgstr ""
 msgid "Finance"
 msgstr ""
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Finance shows cash, burn and runway from your bank."
-msgstr ""
-
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -4215,6 +4245,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Find an app"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Find and summarize files in Box. Changes ask first."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4611,6 +4645,10 @@ msgid "I read your bank and card accounts and answer questions about cash, spend
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx
+msgid "I read your Data room for contracts and deadlines and answer questions about them."
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
 msgid "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
 msgstr ""
 
@@ -4743,10 +4781,6 @@ msgstr ""
 msgid "Inbox & email"
 msgstr ""
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Inbox sorts your mail and drafts replies you approve."
-msgstr ""
-
 #: src/components/data-room/ProcessingStrip.tsx
 msgid "Indexing"
 msgstr ""
@@ -4857,6 +4891,10 @@ msgstr ""
 msgid "just now"
 msgstr "только что"
 
+#: src/components/tour/FirstRunTour.tsx
+msgid "Keep contracts here, and see who owns what in Cap table."
+msgstr ""
+
 #: src/pages/DataRoom.tsx
 msgid "Keep contracts, board decks and investor documents in one place."
 msgstr ""
@@ -4921,10 +4959,6 @@ msgid "Last run failed."
 msgstr ""
 
 #: src/pages/Legal.tsx
-msgid "Last scan {lastScan}"
-msgstr ""
-
-#: src/pages/Legal.tsx
 msgid "Last scan {lastScan}. Daily scan paused."
 msgstr ""
 
@@ -4979,10 +5013,6 @@ msgstr "Выйти"
 #: src/pages/Legal.tsx
 #: src/pages/Shell.tsx
 msgid "Legal"
-msgstr ""
-
-#: src/components/tour/FirstRunTour.tsx
-msgid "Legal and Cap table keep contracts and ownership in one place."
 msgstr ""
 
 #: src/components/data-room/format.ts
@@ -5337,6 +5367,10 @@ msgstr "Средний"
 msgid "Medium"
 msgstr "Средний"
 
+#: src/lib/slash-skills.ts
+msgid "Meeting notes"
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Meeting notes and transcripts"
 msgstr ""
@@ -5575,6 +5609,10 @@ msgstr ""
 msgid "More computer actions"
 msgstr "Больше действий с компьютером"
 
+#: src/pages/ActivityList.tsx
+msgid "More filters"
+msgstr ""
+
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 msgid "Move"
@@ -5667,10 +5705,6 @@ msgstr ""
 msgid "Needs a server restart"
 msgstr ""
 
-#: src/lib/roster-status.ts
-msgid "Needs an answer"
-msgstr ""
-
 #: src/components/MailApprovalCard.tsx
 msgid "Needs approval"
 msgstr ""
@@ -5705,6 +5739,10 @@ msgstr "Требуется передача управления"
 msgid "Needs you"
 msgstr "Требуется ваше участие"
 
+#: src/lib/roster-status.ts
+msgid "Needs your answer"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Net"
@@ -5723,6 +5761,7 @@ msgstr ""
 msgid "new"
 msgstr ""
 
+#: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/transcript.tsx
 msgid "New"
 msgstr ""
@@ -6107,6 +6146,10 @@ msgstr ""
 msgid "Normal"
 msgstr ""
 
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Not a real deadline: hide it"
+msgstr ""
+
 #: src/components/compose/RecipientField.tsx
 msgid "Not a valid email address"
 msgstr ""
@@ -6344,10 +6387,6 @@ msgstr ""
 msgid "Open computer settings"
 msgstr ""
 
-#: src/pages/shell/composer-error.tsx
-msgid "Open Data room"
-msgstr ""
-
 #: src/pages/Legal.tsx
 msgid "Open deadlines"
 msgstr ""
@@ -6394,10 +6433,6 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
-msgstr ""
-
-#: src/pages/shell/composer-error.tsx
-msgid "Open Legal"
 msgstr ""
 
 #: src/components/inbox/InboxCleanup.tsx
@@ -6458,8 +6493,8 @@ msgid "Opening an email"
 msgstr ""
 
 #: src/components/ShellSkeleton.tsx
-msgid "Opening your Space…"
-msgstr "Открытие вашего пространства…"
+msgid "Opening Praci…"
+msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Option pool available"
@@ -6799,6 +6834,10 @@ msgstr ""
 msgid "Preparing… {0}%"
 msgstr ""
 
+#: src/components/tour/FirstRunTour.tsx
+msgid "Press + to create an agent or a group chat."
+msgstr ""
+
 #: src/pages/Legal.tsx
 msgid "Press Scan now to read your Data room for contracts and deadlines."
 msgstr ""
@@ -6951,6 +6990,10 @@ msgstr ""
 #: src/pages/shell/bot-panel.tsx
 msgid "Read replies aloud"
 msgstr "Читать ответы вслух"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Read your mail sorted by what needs you, and send replies you approve."
+msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
 msgid "Read-only API key"
@@ -7398,6 +7441,10 @@ msgstr ""
 msgid "Replying to {0}"
 msgstr ""
 
+#: src/pages/Auth.tsx
+msgid "Request a new link"
+msgstr ""
+
 #: src/components/DataExport.tsx
 msgid "Request export"
 msgstr ""
@@ -7801,10 +7848,6 @@ msgstr ""
 msgid "Search by domain"
 msgstr "Поиск по домену"
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Search chats, files and mail."
-msgstr ""
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Search directory"
 msgstr ""
@@ -7815,10 +7858,6 @@ msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
-msgstr ""
-
-#: src/pages/DataRoom.tsx
-msgid "Search looks for these words in names and text."
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
@@ -7847,7 +7886,7 @@ msgid "Search older mail"
 msgstr ""
 
 #: src/pages/shell/command-palette.tsx
-msgid "Search pages, bots and groups"
+msgid "Search pages, bots, groups, documents and artifacts"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -7894,6 +7933,10 @@ msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "See who owns your company"
+msgstr ""
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "See your cash, burn and runway, pulled from your bank."
 msgstr ""
 
 #: src/components/inbox/InboxRow.tsx
@@ -8049,10 +8092,6 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Settings"
 msgstr "Настройки"
-
-#: src/components/tour/FirstRunTour.tsx
-msgid "Settings, Export my data and Take the tour are in your account menu."
-msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -8493,6 +8532,10 @@ msgstr ""
 msgid "Start {trialDays}-day free trial"
 msgstr ""
 
+#: src/lib/slash-skills.ts
+msgid "Start and follow Devin sessions. Each one asks first."
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Start recording"
 msgstr "Начать запись"
@@ -8817,10 +8860,6 @@ msgstr ""
 msgid "The connection timed out."
 msgstr "Время ожидания соединения истекло."
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "The Data room holds your files. Artifacts holds what agents make."
-msgstr ""
-
 #: src/components/DataExport.tsx
 msgid "The export failed. Try again."
 msgstr ""
@@ -8869,6 +8908,10 @@ msgstr "Поставщик ограничивает частоту запрос�
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "The selected memory provider is not available in this build."
 msgstr "Выбранный поставщик памяти недоступен в этой сборке."
+
+#: src/components/AiDataSharing.tsx
+msgid "The sender, subject and a preview of each message are sent to the AI model that runs your bots."
+msgstr ""
 
 #. placeholder {0}: shortDay(first.dueFor)
 #: src/components/finance/StatementReminderBanner.tsx
@@ -9098,10 +9141,6 @@ msgstr ""
 msgid "To pick up, press space. Use the arrow keys to move, space to drop, escape to cancel."
 msgstr ""
 
-#: src/pages/shell/bot-picker.tsx
-msgid "To:"
-msgstr "К:"
-
 #: src/components/EmailCards.tsx
 #: src/components/inbox/TodoCard.tsx
 #: src/pages/Artifacts.tsx
@@ -9266,6 +9305,10 @@ msgstr ""
 #: src/components/finance/WalletDialog.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Type"
+msgstr ""
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Type here to find any chat, file or email."
 msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx
@@ -9498,6 +9541,10 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed"
+msgstr ""
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Upload files for agents to use. Artifacts holds what agents make."
 msgstr ""
 
 #: src/pages/shell/BotSkillsSection.tsx
@@ -9760,6 +9807,10 @@ msgid "What bots remember by default"
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx
+msgid "What deadlines are coming up?"
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
 msgid "What did we spend last month?"
 msgstr ""
 
@@ -9778,6 +9829,10 @@ msgstr ""
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "What result will you demonstrate?"
 msgstr "Какой результат вы продемонстрируете?"
+
+#: src/pages/Shell.tsx
+msgid "What should I do first this week?"
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "What should this routine do each time it runs?"
@@ -9819,6 +9874,14 @@ msgstr ""
 msgid "Which bots can use {appName}?"
 msgstr ""
 
+#: src/components/PageAgentIntro.tsx
+msgid "Which contracts have the highest value?"
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
+msgid "Which contracts renew in the next 90 days?"
+msgstr ""
+
 #: src/lib/data-room-agent.ts
 msgid "Which documents mention renewal?"
 msgstr ""
@@ -9833,6 +9896,10 @@ msgstr ""
 
 #: src/components/EmailCards.tsx
 msgid "Within 3 days"
+msgstr ""
+
+#: src/components/AskCard.tsx
+msgid "Won't ask again for this kind of action."
 msgstr ""
 
 #: src/lib/ticket-status.ts

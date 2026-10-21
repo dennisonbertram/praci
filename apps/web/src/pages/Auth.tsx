@@ -169,7 +169,10 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
               </Button>
             </>
           ) : null}
-          <Link to="/sign-in" className="inline-block font-medium text-foreground pointer-coarse:py-3.5">
+          <Link
+            to="/sign-in"
+            className="inline-block font-medium text-foreground pointer-coarse:py-3.5"
+          >
             <Trans>Back to sign in</Trans>
           </Link>
         </div>
@@ -280,24 +283,26 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     </p>
                   ) : null}
                   {mode === "in" && reset?.passwordReset ? (
-                    <div className="mt-2 text-right text-sm">
-                      <Link to="/forgot-password" className="inline-block font-medium text-foreground pointer-coarse:py-3.5">
+                    <div className="mt-0.5 text-right text-sm">
+                      <Link
+                        to="/forgot-password"
+                        className="inline-block py-1.5 font-medium text-foreground pointer-coarse:py-3.5"
+                      >
                         <Trans>Forgot password?</Trans>
                       </Link>
                     </div>
                   ) : null}
                 </div>
               ) : null}
-              {error ? (
-                <p role="alert" className="mt-3 w-full text-sm text-destructive">
-                  {error}
-                </p>
-              ) : null}
+              {/* Always present with room for one line, so an error moves no field. */}
+              <p role="alert" className="mt-3 min-h-5 w-full text-sm text-destructive">
+                {error}
+              </p>
               <Button type="submit" size="lg" disabled={pending} className={submitClass}>
                 {pending ? (
                   <Trans>Working…</Trans>
                 ) : mode === "in" ? (
-                  <Trans>Continue with email</Trans>
+                  <Trans>Sign in</Trans>
                 ) : mode === "forgot" ? (
                   <Trans>Send reset link</Trans>
                 ) : (
@@ -320,19 +325,28 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                 {mode === "in" ? (
                   <>
                     <Trans>Don’t have an account?</Trans>{" "}
-                    <Link to="/sign-up" className="inline-block font-medium text-foreground pointer-coarse:py-3.5">
+                    <Link
+                      to="/sign-up"
+                      className="inline-block font-medium text-foreground pointer-coarse:py-3.5"
+                    >
                       <Trans>Sign up</Trans>
                     </Link>
                   </>
                 ) : mode === "up" ? (
                   <>
                     <Trans>Already have an account?</Trans>{" "}
-                    <Link to="/sign-in" className="inline-block font-medium text-foreground pointer-coarse:py-3.5">
+                    <Link
+                      to="/sign-in"
+                      className="inline-block font-medium text-foreground pointer-coarse:py-3.5"
+                    >
                       <Trans>Sign in</Trans>
                     </Link>
                   </>
                 ) : (
-                  <Link to="/sign-in" className="inline-block font-medium text-foreground pointer-coarse:py-3.5">
+                  <Link
+                    to="/sign-in"
+                    className="inline-block font-medium text-foreground pointer-coarse:py-3.5"
+                  >
                     <Trans>Back to sign in</Trans>
                   </Link>
                 )}
@@ -352,9 +366,7 @@ export function PasswordResetPage() {
   const [confirmation, setConfirmation] = useState("");
   const [pending, setPending] = useState(false);
   const [complete, setComplete] = useState(false);
-  const [error, setError] = useState<string | null>(
-    params.get("error") || !params.get("token") ? t`This reset link is invalid or expired` : null,
-  );
+  const [error, setError] = useState<string | null>(null);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -380,9 +392,19 @@ export function PasswordResetPage() {
     }
   }
 
+  const linkInvalid = Boolean(params.get("error")) || !params.get("token");
   return (
     <AuthFrame onSubmit={submit} title={<Trans>Choose a new password</Trans>}>
-      {complete ? (
+      {linkInvalid ? (
+        <>
+          <p role="alert" className="w-full text-center text-destructive">
+            <Trans>This reset link is invalid or expired</Trans>
+          </p>
+          <Link to="/forgot-password" className="mt-6 font-medium">
+            <Trans>Request a new link</Trans>
+          </Link>
+        </>
+      ) : complete ? (
         <div role="status" className="w-full text-center">
           <p className="text-lg">
             <Trans>Password updated</Trans>
@@ -411,12 +433,7 @@ export function PasswordResetPage() {
               {error}
             </p>
           ) : null}
-          <Button
-            type="submit"
-            size="lg"
-            disabled={pending || !params.get("token")}
-            className={submitClass}
-          >
+          <Button type="submit" size="lg" disabled={pending} className={submitClass}>
             {pending ? <Trans>Working…</Trans> : <Trans>Reset password</Trans>}
           </Button>
           <Link to="/sign-in" className="mt-6 font-medium">

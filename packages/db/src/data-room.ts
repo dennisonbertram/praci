@@ -258,6 +258,9 @@ export async function lockFolderTree(tx: Prisma.TransactionClient, actor: Actor)
 }
 
 /** Where `getItem`-style lookups, lists and search all start, so visibility is defined once. */
+/** How long a file may stay in Reading before it counts as failed. */
+const READING_STALE_MS = 15 * 60_000;
+
 export function createDataRoomRepos(prisma: PrismaClient) {
   async function requireFolder(
     actor: Actor,
@@ -321,8 +324,17 @@ export function createDataRoomRepos(prisma: PrismaClient) {
      * How many of the caller's items each pipeline step still has, from the status column in one
      * grouped query, plus the name of the item most recently touched by a working step.
      */
-    async processing(actor: Actor) {
+    async processing(actor: Actor, now = new Date()) {
       const where = { spaceId: actor.spaceId, userId: actor.userId };
+      // A file that has sat in Reading too long (a lost job) fails, so Try again is offered.
+      await prisma.dataRoomItem.updateMany({
+        where: {
+          ...where,
+          status: { in: ["pending", "extracting"] },
+          updatedAt: { lt: new Date(now.getTime() - READING_STALE_MS) },
+        },
+        data: { status: "failed", error: "Reading took too long." },
+      });
       const [groups, current] = await Promise.all([
         prisma.dataRoomItem.groupBy({
           by: ["status"],

@@ -1,0 +1,471 @@
+{
+  "mode": "inspect",
+  "images": [
+    "1440-docked-light.png",
+    "1440-docked-dark.png",
+    "375-overlay-light-clean.png",
+    "375-dialog-dark.png",
+    "1440-dialog-light.png",
+    "1440-toast-light.png",
+    "real-connectiondialog-help.png",
+    "real-toast-help.png"
+  ],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 68,
+      "costUsd": 0.1736,
+      "result": {
+        "verdict": "Not shippable: the docked agent looks plausible at a glance, but the Connect dialog diverges structurally from the real dialog, the toast has no visible action, the mobile dialog and table are clipped, icon-only controls are unlabelled, and the sidebar dot does not communicate the two pending questions.",
+        "findings": [
+          {
+            "level": "component",
+            "element": "Header collapse/panel icon, top-right of 'Devin agent' header",
+            "problem": "A tiny unlabeled square icon is the only apparent panel control. A first-time user cannot tell whether it closes, collapses, pops out, or opens settings; the target is far below usable size.",
+            "norm": "Icon-only controls need a recognisable glyph, tooltip/accessible name, and at least 40-44px hit area; chat panels conventionally use an explicit close/collapse chevron or X.",
+            "severity": "P1",
+            "screenshot": "1440-docked-light.png",
+            "fix": "Use a labelled chevron/X with tooltip 'Close agent', minimum 40px hit area, and keyboard focus state."
+          },
+          {
+            "level": "component",
+            "element": "Date stamp 'Oct 20, 9:41 AM' above first user bubble",
+            "problem": "Small mid-grey centred text has no year and reads as a floating label disconnected from either message; in dark mode it is especially low-contrast against black.",
+            "norm": "Timestamps should meet 4.5:1 contrast and use unambiguous relative or full date formatting consistently.",
+            "severity": "P2",
+            "screenshot": "1440-docked-dark.png",
+            "fix": "Raise timestamp contrast, add year or use 'Today, 9:41 AM', and align it as a transcript divider with rules or spacing."
+          },
+          {
+            "level": "component",
+            "element": "User message bubbles 'Anything merged today?' / 'What did Devin do on acme/api this week?'",
+            "problem": "Black text on saturated purple is an unusual, low-polish pairing and the second bubble is nearly panel-width, leaving almost no margin that distinguishes sender from agent content.",
+            "norm": "User/agent bubbles need clearly differentiated but contrast-checked fills, consistent max-width (typically 75-85%), and text/background contrast of at least 4.5:1 in both themes.",
+            "severity": "P2",
+            "screenshot": "1440-docked-light.png",
+            "fix": "Use white text on a contrast-checked purple or dark text on a light purple tint, cap bubble width, and verify both themes with a contrast checker."
+          },
+          {
+            "level": "component",
+            "element": "Tool-activity rows '> Done · 1 tool · 2s' and expanded 'Done · 3 tools · 5s'",
+            "problem": "Collapsed and expanded rows use different chevron direction and alignment; the collapsed row hides what was checked while the expanded row exposes internal jargon 'Session search' / 'Session get messages x2' to a founder-facing user.",
+            "norm": "Disclosure rows keep one chevron position/animation, and user-facing activity summaries describe outcomes, not internal tool/API names.",
+            "severity": "P1",
+            "screenshot": "1440-docked-light.png",
+            "fix": "Rename to plain outcomes e.g. 'Searched sessions', 'Read 2 session threads', keep a single right/left chevron convention, and align counts and durations."
+          },
+          {
+            "level": "component",
+            "element": "Green checkmarks in expanded tool list",
+            "problem": "Success is conveyed by colour alone with tiny check glyphs; there is no failed/running/pending state shown anywhere in the transcript, so a user cannot infer what an error or in-progress tool row would look like.",
+            "norm": "Status must not rely on colour alone and agent UIs must show running, failed, and retry states for tool calls.",
+            "severity": "P1",
+            "screenshot": "375-overlay-light-clean.png",
+            "fix": "Add labelled running/failed/retry tool-row states with icon plus text, and use a check size legible at panel width."
+          },
+          {
+            "level": "component",
+            "element": "Assistant bubble links 'acme/api#215', 'acme/api#212' and 'Open in Devin'",
+            "problem": "Pull-request links and external 'Open in Devin' links share identical underline styling, so the user cannot predict which stay in Rakazo and which leave to Devin; 'Open in Devin' is repeated verbatim twice with no session name attached in the link text itself.",
+            "norm": "External links need an external-link glyph and link text that names its destination out of context for accessibility.",
+            "severity": "P2",
+            "screenshot": "1440-docked-light.png",
+            "fix": "Add an external icon to 'Open in Devin', style PR references as chips/code, and use e.g. 'Open audit-log session in Devin'."
+          },
+          {
+            "level": "component",
+            "element": "Composer '+' button, microphone icon, and purple send arrow",
+            "problem": "With an empty field the send arrow still appears as a filled purple active button, implying the empty message can be sent; '+' and microphone have no labels or tooltips, and the mic offers voice input with no permission/recording state shown.",
+            "norm": "Send must be visibly disabled when empty; icon-only composer actions need tooltips and defined permission/recording states.",
+            "severity": "P1",
+            "screenshot": "1440-docked-light.png",
+            "fix": "Disable/grey send until text exists, label '+' and mic on hover/focus, and design mic permission, recording, and unavailable states."
+          },
+          {
+            "level": "group",
+            "element": "Whole transcript area between last assistant bubble and composer",
+            "problem": "Roughly half the docked panel is empty white/black space with no suggested prompts, session context, or explanation of what the agent can do, while the composer sits isolated at the bottom.",
+            "norm": "Empty/early chat states should orient first-time users with 2-3 tappable example prompts and scope ('answers from your Devin sessions').",
+            "severity": "P2",
+            "screenshot": "1440-docked-light.png",
+            "fix": "Add starter prompt chips tied to the page data ('What needs me?', 'What merged today?') and a one-line scope note under the header."
+          },
+          {
+            "level": "component",
+            "element": "Sidebar 'Devin' row black dot (right edge)",
+            "problem": "A single black dot with no count, label, or colour does not communicate that 2 sessions need input; it reads as an online/presence indicator and could be missed entirely.",
+            "norm": "Attention badges show a count and/or semantic colour, paired with text for screen readers; presence dots and unread badges must be visually distinct.",
+            "severity": "P1",
+            "screenshot": "1440-docked-light.png",
+            "fix": "Replace with an amber count badge '2' plus accessible text '2 sessions need you', matching the 'Needs you' card colour."
+          },
+          {
+            "level": "component",
+            "element": "Sidebar 'Devin' row white dot in dark mode",
+            "problem": "The dot flips from black in light mode to white in dark mode with no semantic colour, confirming it is just foreground-coloured decoration; it also sits on the selected white/dark row where it competes with the selection highlight.",
+            "norm": "Badge colour must be semantic and theme-stable (e.g. amber for needs-attention) and remain distinguishable on the selected nav row.",
+            "severity": "P2",
+            "screenshot": "1440-docked-dark.png",
+            "fix": "Use the same amber badge with dark text in both themes and offset it from the selection background."
+          },
+          {
+            "level": "group",
+            "element": "Dark-mode assistant bubbles and tool rows",
+            "problem": "Assistant bubbles, tool-activity text, 'Working'/'Suspended' pills, and the composer border all collapse into near-identical dark greys; hierarchy between message content, metadata, and controls is lost.",
+            "norm": "Dark UIs need stepped surface elevations and secondary-text contrast of at least 4.5:1; metadata, bubbles, and inputs must be distinguishable without relying on hairlines.",
+            "severity": "P1",
+            "screenshot": "1440-docked-dark.png",
+            "fix": "Raise tool/metadata text contrast, give assistant bubbles a distinct surface step from the panel, and strengthen the composer border and placeholder contrast."
+          },
+          {
+            "level": "layout",
+            "element": "375px overlay panel header and close affordance",
+            "problem": "At mobile width the panel becomes a full-screen overlay with only the same tiny unlabeled top-right icon; there is no visible back/close label and no trace of the underlying Devin page, so a first-time user has no obvious exit.",
+            "norm": "Full-screen mobile sheets/panels require an explicit, labelled close/back affordance of at least 44px and a visible title context.",
+            "severity": "P0",
+            "screenshot": "375-overlay-light-clean.png",
+            "fix": "Add a labelled 'Close' X at 44px top-right (and support swipe-down/back), and keep a breadcrumb or dimmed page edge signalling the overlay state."
+          },
+          {
+            "level": "component",
+            "element": "Composer '+' , microphone, and send targets on 375px overlay",
+            "problem": "The '+', mic, and send circles are approximately 32-36px, below minimum touch size, and closely spaced, inviting mis-taps between mic and send.",
+            "norm": "Touch targets must be at least 44x44px (WCAG 2.5.8 / Apple HIG) with adequate separation.",
+            "severity": "P1",
+            "screenshot": "375-overlay-light-clean.png",
+            "fix": "Enlarge all composer controls to 44px hit areas with spacing, even if glyphs stay small."
+          },
+          {
+            "level": "component",
+            "element": "User bubble 'What did Devin do on acme/api this week?' in 375 overlay",
+            "problem": "The bubble stretches almost edge-to-edge, collapsing the left margin that signals 'sent by me' on desktop and making user vs agent bubbles differ mainly by colour alone.",
+            "norm": "Message bubbles keep a consistent max-width and side gutter at all breakpoints; sender must not be encoded by colour alone.",
+            "severity": "P2",
+            "screenshot": "375-overlay-light-clean.png",
+            "fix": "Cap bubble width at ~85% with a fixed opposite-side gutter and retain alignment difference on mobile."
+          },
+          {
+            "level": "layout",
+            "element": "'Connect Devin' dialog top and primary action (375-dialog-dark)",
+            "problem": "The dialog is cropped at the top of the screenshot: its title and description are not visible at all, and the primary connect button is clipped off the right edge, showing only Cancel and a sliver of a white button.",
+            "norm": "Dialogs must fit fully within the viewport at supported widths with title, body, and both actions visible without horizontal clipping.",
+            "severity": "P0",
+            "screenshot": "375-dialog-dark.png",
+            "fix": "Constrain dialog to viewport width with 16px gutters, stack/wrap footer buttons, and test at 375px so title, field, help, Cancel, and Connect are all visible."
+          },
+          {
+            "level": "component",
+            "element": "'Where to find your key' text under API key field (dialog, dark)",
+            "problem": "The help text is plain mid-grey with no underline, colour, link arrow, or focusability cue, yet it is presumably the only path for a user who does not already know where the key lives; most first-time users will not find their key without it.",
+            "norm": "Interactive help must look interactive (link colour/underline, focus ring) and be reachable by keyboard/touch.",
+            "severity": "P1",
+            "screenshot": "375-dialog-dark.png",
+            "fix": "Style as a real link with underline/colour and an external indicator, opening Devin's key settings; verify it is tappable at 44px height."
+          },
+          {
+            "level": "layout",
+            "element": "Devin page table and stat cards behind/below the dialog (375-dialog-dark)",
+            "problem": "'Working' stat card and the table's Pull request/Source/Updated columns are clipped off the right edge with no scroll indicator or responsive reflow, and 'Answer in Devin' is cut at the bottom edge; users cannot know more columns exist.",
+            "norm": "Narrow layouts must reflow, stack, or provide an explicit horizontal-scroll affordance; content must not be silently clipped.",
+            "severity": "P0",
+            "screenshot": "375-dialog-dark.png",
+            "fix": "Collapse the table to session + status cards under ~600px, move secondary columns into a detail row, and keep both stat cards fully visible."
+          },
+          {
+            "level": "group",
+            "element": "'NEEDS-YOU NOTIFICATION TOAST' caption and 'Devin agent' bar between dialog and page (375-dialog-dark)",
+            "problem": "Prototype annotation text and a second 'Devin agent' header (with hamburger icon) are rendered in the page flow, creating two competing 'Devin agent/Devin' headings and developer copy leaking into the product surface.",
+            "norm": "Mockup annotations must live outside the product viewport; a view has one primary heading and one navigation affordance.",
+            "severity": "P2",
+            "screenshot": "375-dialog-dark.png",
+            "fix": "Remove in-canvas captions from the product frame and keep a single page header; put state notes in the spec, not the UI."
+          },
+          {
+            "level": "component",
+            "element": "Dialog description 'An org-scoped Devin service-user key (starts with cog_).'",
+            "problem": "Founder-facing copy leads with internal jargon ('org-scoped service-user key') and a key prefix, without saying what connecting enables, where the key is created, or whether a personal key will fail; a user pasting the wrong key type gets no guidance.",
+            "norm": "Credential dialogs state benefit, exact key type/location in plain language, and validation expectations before the field.",
+            "severity": "P1",
+            "screenshot": "1440-dialog-light.png",
+            "fix": "Rewrite e.g. 'Paste a Devin API key so Rakazo can show your sessions. Use an organization key from Devin Settings → API keys — it starts with cog_.' with inline error for wrong prefixes."
+          },
+          {
+            "level": "component",
+            "element": "Dialog structure vs real dialog: single 'API key' field vs real 'Key name' + 'Private key' fields",
+            "problem": "Compared with real-connectiondialog-help.png, the mockup deletes the 'Key name' field, adds an external 'API key' label where the real uses in-field placeholders, drops the 'D' icon tile beside the title, renames 'Connect Demo' to 'Connect Devin', and pre-fills masked dots where the real 'Private key' field is an empty placeholder.",
+            "norm": "Mockups must match the shipping component's fields, order, and labelling pattern, or explicitly flag an intended change; inventing/removing fields silently breaks implementation and mental models.",
+            "severity": "P0",
+            "screenshot": "1440-dialog-light.png",
+            "fix": "Restore Key name + Private key fields with the real labelling pattern, icon tile, and footer, or document and validate the field removal as a deliberate spec change."
+          },
+          {
+            "level": "component",
+            "element": "API key masked input '••••••••••••••' with no reveal or validation state",
+            "problem": "The masked field shows dots but offers no show/hide toggle, paste affordance, error, or success state; the black 'Connect' button appears enabled regardless, so a wrong/truncated paste fails opaquely.",
+            "norm": "Secret fields provide reveal toggle, paste support, inline validation, and disabled-until-valid primary action.",
+            "severity": "P1",
+            "screenshot": "1440-dialog-light.png",
+            "fix": "Add show/hide eye, validate cog_ prefix/length inline, disable Connect until valid, and show a connecting/error state on submit."
+          },
+          {
+            "level": "component",
+            "element": "Dialog footer 'Cancel' / 'Connect' and top-right X (light)",
+            "problem": "Cancel is a faint near-white pill that almost disappears on the white dialog, while Connect is solid black; the X is a small unlabelled target duplicating Cancel with no stated consequence (whether the typed key is discarded).",
+            "norm": "Secondary actions need visible borders/contrast, destructive/discard consequences are confirmed or stated, and duplicate close paths behave identically.",
+            "severity": "P2",
+            "screenshot": "1440-dialog-light.png",
+            "fix": "Give Cancel a defined border/surface, enlarge X hit area with tooltip, and confirm discard if a key has been entered."
+          },
+          {
+            "level": "component",
+            "element": "Toast 'Devin has a question' body and lack of action button",
+            "problem": "The toast has no button, chevron, or external-link glyph; its click behaviour (open session externally and mark seen) is only explained by the caption outside the toast, so in-product users see a passive notification they may only think to dismiss via the X.",
+            "norm": "Actionable toasts include a visible CTA or whole-card affordance (hover/chevron/'Answer') distinct from dismiss.",
+            "severity": "P0",
+            "screenshot": "1440-toast-light.png",
+            "fix": "Add an explicit 'Answer in Devin ↗' action inside the toast and a hover/press state on the card, separate from the close X."
+          },
+          {
+            "level": "component",
+            "element": "Toast close X and 'now' timestamp (top-right of toast)",
+            "problem": "The X is a tiny target immediately beside the 'now' label; tapping to dismiss risks hitting the card (which opens an external session and marks it seen), and 'now' is inconsistent with the real toast's '2m ago' relative-time style.",
+            "norm": "Dismiss targets need 40px+ hit area separated from the card's primary action; relative timestamps use one format across the product.",
+            "severity": "P1",
+            "screenshot": "1440-toast-light.png",
+            "fix": "Give X a 40px isolated hit area, and standardise on the real component's relative time ('2m ago', updating live)."
+          },
+          {
+            "level": "layout",
+            "element": "Toast overlapping session table (bottom-right)",
+            "problem": "The toast covers the Pull request column — 'acme/mobile#…' is truncated beneath it — and hides Source/Updated values for the rows behind it, with no reflow or offset; the blocked content includes the 'Working' section the user may be scanning when the toast arrives.",
+            "norm": "Toasts must not obscure the primary content they reference; they should offset content, auto-expire, or stack in a reserved region.",
+            "severity": "P1",
+            "screenshot": "1440-toast-light.png",
+            "fix": "Anchor the toast over a margin/gutter, add visible auto-dismiss timing, and ensure the referenced row remains visible or is highlighted when the toast appears."
+          },
+          {
+            "level": "component",
+            "element": "Toast content vs real toast: title, icon, and body composition",
+            "problem": "Versus real-toast-help.png ('Ledger agent needs you', black circular 'A' icon, body = question only, '2m ago', no close X), the mockup renames the title to 'Devin has a question', uses a purple rounded-square 'D', prefixes the body with the session title ('Add CSV export for invoices: …'), adds an X, and changes the timestamp to 'now' — four simultaneous unflagged deviations from the shipping toast.",
+            "norm": "A mockup reusing a shipping toast pattern must preserve its title grammar, icon treatment, anatomy, and dismiss model unless the change is the stated subject of the design.",
+            "severity": "P1",
+            "screenshot": "1440-toast-light.png",
+            "fix": "Adopt the real toast anatomy ('Devin agent needs you', consistent icon, question-only body, relative time) or spec each deviation with rationale."
+          },
+          {
+            "level": "component",
+            "element": "'Ask' button top-right of Devin page (toast state)",
+            "problem": "'Ask' with a speech-bubble icon appears only in this state; in the docked screenshots the panel is already open and no Ask affordance exists, so the entry point to the agent changes/disappears without explanation, and 'Ask' is vague versus the panel title 'Message Devin agent'.",
+            "norm": "A feature's entry point must be persistent and consistently labelled across open/closed states.",
+            "severity": "P2",
+            "screenshot": "1440-toast-light.png",
+            "fix": "Keep one persistent 'Ask Devin' entry that toggles to a close state when the panel is open, using identical wording."
+          },
+          {
+            "level": "group",
+            "element": "Real dialog 'Where to find your key' and field focus (reference)",
+            "problem": "In the real dialog the help line is equally plain grey text and the focused 'Key name' field shows a heavy double grey ring that reads as an error/disabled state rather than focus; the mockup inherits the link problem and, by removing the name field, also removes the context that the key is a named credential.",
+            "norm": "Focus rings use the product accent and single-weight outline; help links are styled as links in the source component too.",
+            "severity": "P2",
+            "screenshot": "real-connectiondialog-help.png",
+            "fix": "Fix the source component: accent single-ring focus, link-styled help text; then align the mockup to it."
+          },
+          {
+            "level": "group",
+            "element": "Real toast empty canvas (reference)",
+            "problem": "The real toast is shown floating on an otherwise blank page, so its real-world overlap, stacking with multiple 'needs you' items, and timeout behaviour are unevidenced; the mockup adds its own overlapping behaviour without resolving stacking for 2 simultaneous questions.",
+            "norm": "Notification systems define stacking/queueing (max visible, '+1 more') and expiry; a single-toast reference is insufficient spec.",
+            "severity": "P2",
+            "screenshot": "real-toast-help.png",
+            "fix": "Spec multi-toast stacking with a cap and 'View all' path to the Needs you list, and show placement over real content."
+          }
+        ],
+        "excellent": []
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 151,
+      "costUsd": 0.136956,
+      "result": {
+        "verdict": "The Devin page mockup fails basic layout integrity and diverges significantly from Rakazo's production component library (`real-*`). Most critically, the 'Connect Devin' modal is rendered in normal document flow instead of as a centered overlay—clipping off-screen on 375px viewports—and raw spec annotations leak directly into the rendered UI. Beyond layout breaks, the mockup introduces off-brand purple surfaces with low-contrast black text, alters the production dialog and toast anatomy (missing icon tiles, missing field structure, mismatched avatar shapes, added close buttons), and leaves ambiguous affordances across the chat panel, toast, and session table.",
+        "findings": [
+          {
+            "level": "layout",
+            "element": "Connect Devin dialog container on mobile (top of viewport)",
+            "problem": "The 'Connect Devin' dialog is clipped at the top by the sticky mockup toolbar (hiding the 'Connect Devin' title, subtitle, and '×' button) and overflows horizontally off the right edge of the 375px viewport, cutting the 'Connect' primary action button in half and clipping the right side of the API key input.",
+            "norm": "Modal dialogs must fit within the active viewport with at least 16px horizontal margin on mobile screens and keep all primary actions fully visible and operable.",
+            "severity": "P0",
+            "screenshot": "375-dialog-dark.png",
+            "fix": "Render the dialog as a fixed full-viewport overlay (`position: fixed; inset: 0`) centered in the viewport with `width: calc(100vw - 32px)` and `max-width: 400px` so the header, input, and 'Connect' button remain completely inside the 375px screen."
+          },
+          {
+            "level": "layout",
+            "element": "Connect Devin dialog backdrop and positioning vs. real ConnectionDialog",
+            "problem": "Unlike `real-connectiondialog-help.png`, where the dialog is centered vertically and horizontally over a blurred full-page backdrop overlay, `1440-dialog-light.png` renders the dialog inside a static gray banner stacked above the page in the normal document flow, pushing the entire application UI downward.",
+            "norm": "Modal dialogs must overlay the page context using a fixed backdrop (`backdrop-filter: blur(...)`) without shifting the underlying document flow.",
+            "severity": "P0",
+            "screenshot": "1440-dialog-light.png, real-connectiondialog-help.png",
+            "fix": "Match `real-connectiondialog-help.png` by mounting the dialog in a fixed portal overlay centered over the blurred page background instead of stacking it above the page header."
+          },
+          {
+            "level": "page",
+            "element": "Leaked design-spec annotation block ('NEEDS-YOU NOTIFICATION TOAST...') above app header",
+            "problem": "Raw specification copy ('NEEDS-YOU NOTIFICATION TOAST / Clicking opens that session in Devin (external) and marks the notification seen.') is rendered directly inside the live page DOM above the app header in `1440-dialog-light.png` and `375-dialog-dark.png`, and appears vertically sliced in half along the top dashed border above the Search input in `1440-toast-light.png`.",
+            "norm": "Internal spec notes and state switcher artifacts must never render inside the application viewport or overlap application chrome.",
+            "severity": "P0",
+            "screenshot": "1440-dialog-light.png, 375-dialog-dark.png, 1440-toast-light.png",
+            "fix": "Remove the spec annotation block from the page DOM and isolate any prototype state controls inside the external mockup toolbar above the dashed boundary."
+          },
+          {
+            "level": "component",
+            "element": "User message bubbles in 'Devin agent' chat transcript ('Anything merged today?', 'What did Devin do on acme/api this week?')",
+            "problem": "User chat bubbles pair black text (`#111111`) against a saturated medium-purple background (`#9353F5`) in both light and dark modes, yielding low luminance contrast (~3.9:1, failing WCAG AA 4.5:1 for 14px body text) and clashing with Rakazo's warm neutral monochrome palette.",
+            "norm": "Body text inside filled message bubbles must achieve at least 4.5:1 contrast (WCAG AA) and use theme-consistent surface/text tokens across light and dark modes.",
+            "severity": "P1",
+            "screenshot": "1440-docked-light.png, 1440-docked-dark.png, 375-overlay-light-clean.png",
+            "fix": "Either use white text (`#FFFFFF`) if keeping a dark/saturated brand fill, or switch user bubbles to Rakazo's neutral surface token (e.g., near-black fill with white text in light mode, elevated neutral fill with light text in dark mode)."
+          },
+          {
+            "level": "group",
+            "element": "Mobile top bar ('≡ [D] Devin agent') above 'Devin acme' page header",
+            "problem": "On mobile, the global navigation hamburger menu icon (`≡`) is placed inside a bar labeled with the chat bot's identity (`[D] Devin agent`) directly above the `Devin acme` page title. A first-time user cannot tell whether tapping this bar opens the left navigation drawer ('Pages') or opens the 'Devin agent' chat overlay.",
+            "norm": "Global app navigation controls (`≡`) and contextual assistant triggers ('Ask' / 'Devin agent') must have distinct, unambiguous containers and labels.",
+            "severity": "P1",
+            "screenshot": "375-dialog-dark.png",
+            "fix": "Place the hamburger menu (`≡`) on the same header row as the page title (`Devin acme`) on the left, and place the `Ask` chat trigger button on the right of that header row, matching the desktop header pattern in `1440-toast-light.png`."
+          },
+          {
+            "level": "group",
+            "element": "Connect Devin dialog header and form fields vs. real ConnectionDialog",
+            "problem": "The mockup dialog diverges from `real-connectiondialog-help.png` in four ways: (1) it omits the `36x36` rounded-square `D` icon tile to the left of the title; (2) it adds a subtitle (`An org-scoped Devin service-user key (starts with cog_).`) not present in the real component; (3) it replaces the real dialog's two unlabeled placeholder inputs (`Key name`, `Private key`) with a single input preceded by an external `API key` label; and (4) the input uses a gray background fill and taller box instead of the compact white pill-bordered input in `real-connectiondialog-help.png`.",
+            "norm": "Mockup dialogs must reuse the established `ConnectionDialog` component anatomy, icon header layout, and input field styling.",
+            "severity": "P1",
+            "screenshot": "1440-dialog-light.png, 375-dialog-dark.png, real-connectiondialog-help.png",
+            "fix": "Align with `real-connectiondialog-help.png`: restore the leading `D` icon badge beside `Connect Devin`, use the standard compact input styling with inline placeholder copy (e.g., `Service-user key (cog_...)`), and include `Key name` if multi-key naming is supported."
+          },
+          {
+            "level": "group",
+            "element": "Connect Devin dialog footer divider and buttons vs. real ConnectionDialog",
+            "problem": "In `real-connectiondialog-help.png`, the footer is separated by a full-bleed horizontal hairline, sits on a recessed warm-gray surface (`#FAFAF9`), and uses pill-shaped `Cancel` and `Connect` buttons. In `1440-dialog-light.png` and `375-dialog-dark.png`, the horizontal divider is inset with left/right padding, the footer background is unshaded white/dark-gray matching the body, and the buttons have sharper rectangular corners (`border-radius: 6px`).",
+            "norm": "Dialog footers and button radii must match the production design system component in `real-connectiondialog-help.png`.",
+            "severity": "P2",
+            "screenshot": "1440-dialog-light.png, 375-dialog-dark.png, real-connectiondialog-help.png",
+            "fix": "Make the footer top border full-bleed across the dialog width, apply the recessed footer surface token, and use the pill-rounded `Cancel` and `Connect` button variants from `real-connectiondialog-help.png`."
+          },
+          {
+            "level": "component",
+            "element": "'Where to find your key' helper text in Connect Devin dialog",
+            "problem": "Both the mockup (`1440-dialog-light.png`, `375-dialog-dark.png`) and `real-connectiondialog-help.png` style 'Where to find your key' as plain muted gray static text (`12px`) with no underline, icon, or chevron. A first-time user cannot tell if this is a clickable link/popover trigger or an incomplete static label.",
+            "norm": "Interactive help triggers must display clear link or disclosure affordances (e.g., underline, question-mark icon, or external link arrow).",
+            "severity": "P2",
+            "screenshot": "1440-dialog-light.png, 375-dialog-dark.png, real-connectiondialog-help.png",
+            "fix": "Add a subtle underline or trailing info/chevron/external-link icon to 'Where to find your key' so users immediately recognize it as clickable."
+          },
+          {
+            "level": "component",
+            "element": "API key password input in Connect Devin dialog",
+            "problem": "The dialog instructs the user to enter a key that 'starts with cog_', but masks the entire input as dots (`••••••••••••••••`) without a 'Show/Hide' visibility toggle or validation indicator, preventing the user from verifying they pasted the right key format.",
+            "norm": "Secret key inputs with prefix format requirements should provide a visibility toggle button or inline prefix/format validation feedback.",
+            "severity": "P2",
+            "screenshot": "1440-dialog-light.png, 375-dialog-dark.png",
+            "fix": "Add an eye icon button inside the right edge of the input field to toggle key visibility."
+          },
+          {
+            "level": "group",
+            "element": "'Devin has a question' notification toast vs. real Toast component",
+            "problem": "Compared to `real-toast-help.png`, the mockup toast in `1440-toast-light.png` and `1440-dialog-light.png` introduces multiple visual regressions: (1) the avatar is a smaller purple rounded square (`24x24`, `border-radius: 6px`) with low-contrast black text `D` instead of the `28x28` dark circle with white text in `real-toast-help.png`; (2) an extra `×` close button is crammed into the top-right corner above and to the right of `now`, creating a staggered vertical misalignment with the title row (`real-toast-help.png` has no `×` button); and (3) the title copy says `Devin has a question` instead of matching the `[Agent] needs you` pattern (`Devin agent needs you`) from `real-toast-help.png` and the page's own `Needs you` card.",
+            "norm": "Notification toasts must strictly follow the production toast component's avatar shape, header alignment, dismissal pattern, and naming convention.",
+            "severity": "P1",
+            "screenshot": "1440-toast-light.png, 1440-dialog-light.png, real-toast-help.png",
+            "fix": "Match `real-toast-help.png`: use the circular dark avatar with white letter `D`, remove the misaligned top-right `×` icon (or properly align it on the header baseline), and standardize the title to `Devin agent needs you`."
+          },
+          {
+            "level": "component",
+            "element": "'Devin has a question' notification toast timestamp and external-link affordance",
+            "problem": "The toast displays timestamp `now` for 'Add CSV export for invoices: Should the export keep the legacy CSV column order?', directly contradicting the underlying table row which shows the exact same session was updated `12m ago`. Additionally, clicking the toast opens an external Devin session tab, but the toast lacks any external-link indicator (`↗`).",
+            "norm": "Timestamps for the same event must be consistent across simultaneous views, and surfaces that open external tabs should indicate external navigation.",
+            "severity": "P2",
+            "screenshot": "1440-toast-light.png",
+            "fix": "Ensure the toast timestamp matches the session's actual event age (`12m ago` or a newly arrived session) and include an external-link indicator (`↗`) if clicking navigates away from Rakazo."
+          },
+          {
+            "level": "layout",
+            "element": "Bottom-right notification toast overlapping session table rows",
+            "problem": "In `1440-toast-light.png`, the floating toast obscures the `Pull request`, `Source`, and `Updated` columns of the bottom three table rows (`Bump Expo SDK...` and `Migrate billing webhooks...`), cutting `acme/mobile#97` off mid-text (`acme/mobile#`).",
+            "norm": "Floating toasts should not block reading or interacting with bottom table rows when the page cannot scroll further.",
+            "severity": "P3",
+            "screenshot": "1440-toast-light.png",
+            "fix": "Add sufficient bottom padding (`padding-bottom: 96px`) to the main scroll container so users can scroll the bottom table rows clear of any active toast."
+          },
+          {
+            "level": "component",
+            "element": "Close/collapse icon button in mobile 'Devin agent' full-screen overlay header",
+            "problem": "In `375-overlay-light-clean.png`, the full-screen mobile chat overlay uses a tiny (~16x16px visual glyph) desktop right-sidebar dock/collapse icon (`[>|`) in the top-right corner instead of a mobile close (`×`) or back button, with an undersized touch target.",
+            "norm": "Full-screen mobile overlays must use a recognizable close (`×`) or back affordance with at least a 44x44px touch target.",
+            "severity": "P1",
+            "screenshot": "375-overlay-light-clean.png",
+            "fix": "Replace the desktop sidebar-collapse icon with a standard `×` close button sized to a minimum `44x44px` hit area on mobile viewports."
+          },
+          {
+            "level": "component",
+            "element": "Expanded tool-activity row ('Done · 3 tools · 5s') in 'Devin agent' chat panel",
+            "problem": "The tool summary header states `3 tools`, while only 2 sub-rows are rendered below it (`Session search` and `Session get messages ×2`). Furthermore, `Session get messages` reads like an internal snake_case tool identifier (`session_get_messages`) with spaces substituted rather than human-readable copy, and the left vertical hierarchy line below the chevron is nearly invisible in both light and dark modes.",
+            "norm": "Tool-activity logs in founder-facing assistants should use natural language labels and visible hierarchy connectors.",
+            "severity": "P2",
+            "screenshot": "1440-docked-light.png, 1440-docked-dark.png, 375-overlay-light-clean.png",
+            "fix": "Rewrite the tool labels in natural language (e.g., `Searched sessions` and `Read messages from 2 sessions`), and increase the contrast of the left vertical tree line and aligned green checkmarks."
+          },
+          {
+            "level": "group",
+            "element": "Assistant message bubbles and inline links in 'Devin agent' chat panel",
+            "problem": "Assistant message bubbles are capped at ~82% of the narrow chat panel width, leaving ~50px of wasted empty space on the right while forcing bulleted responses to wrap across 8 lines. Inside those bubbles, `Open in Devin` lacks the external-link icon (`↗`) used on `Answer in Devin ↗` in the main table, uses `Open in Devin` instead of `Answer in Devin` for the blocked `Upgrade Prisma to 6.x` session, and underlines `acme/api#215` and `acme/api#212` as links whereas the main table renders PR identifiers as plain unlinked text.",
+            "norm": "Link affordances, external-link indicators (`↗`), and action terminology should be consistent between the main table and the docked assistant panel, and assistant messages in narrow side panels should utilize the available width.",
+            "severity": "P2",
+            "screenshot": "1440-docked-light.png, 1440-docked-dark.png, 375-overlay-light-clean.png",
+            "fix": "Allow assistant response bubbles to span full panel width (minus standard 16px horizontal padding), append `↗` to external `Open in Devin` / `Answer in Devin` links, and make PR references (`acme/api#212`) consistently clickable across both the table and chat transcript."
+          },
+          {
+            "level": "group",
+            "element": "Chat composer input bar ('Message Devin agent') at bottom of 'Devin agent' panel",
+            "problem": "When the composer input is empty (showing placeholder `Message Devin agent`), the upward-arrow submit button (`↑`) displays an active purple fill with a high-contrast dark arrow, appearing enabled and clickable when there is no text to send. Additionally, the composer exposes a `+` attachment button whose purpose is unclear in a Devin status assistant, and the microphone icon lacks visual hit-target parity with the circular `+` and `↑` buttons.",
+            "norm": "Submit buttons in chat composers must look visibly disabled/muted when the input is empty, and secondary icon actions must have clear hit targets and supported functionality.",
+            "severity": "P2",
+            "screenshot": "1440-docked-light.png, 1440-docked-dark.png, 375-overlay-light-clean.png",
+            "fix": "Style the `↑` send button in a muted disabled state when the input value is empty, remove the `+` attachment button if file uploads are not supported by the Devin query agent, and give the microphone button consistent spacing and hit-target sizing."
+          },
+          {
+            "level": "component",
+            "element": "Left sidebar 'Devin' navigation item dot indicator",
+            "problem": "The `Devin` sidebar link displays a solid black dot in light mode (`1440-docked-light.png`) and a solid white dot in dark mode (`1440-docked-dark.png`). Because the `Devin` row is also the active/selected page item, a monochrome dot looks like an 'active page' marker rather than an alert for the 2 sessions needing input, and fails to match the semantic amber/gold color used for `Needs you` (`2`) and `Needs input` on the page.",
+            "norm": "Attention indicators in navigation sidebars should use consistent semantic color coding (amber for 'Needs input') or an explicit numeric badge (`2`) so users understand why the indicator is present.",
+            "severity": "P2",
+            "screenshot": "1440-docked-light.png, 1440-docked-dark.png, 1440-dialog-light.png, 1440-toast-light.png",
+            "fix": "Color the sidebar dot with the semantic amber/gold token (`#D97706` / `#EAB308`) or replace it with a compact amber count pill (`2`) matching the `Needs you` card."
+          },
+          {
+            "level": "group",
+            "element": "'Needs you' and 'Working' summary cards above the session table",
+            "problem": "The `Needs you` card has a highlighted amber border while `Working` has a faint neutral border, making `Needs you` look like an active filter tab even though the table below displays all sessions (`Needs you`, `Working`, and `Earlier`). On 375px mobile (`375-dialog-dark.png`), the two-card row overflows horizontally, clipping the `Working` card off the right edge of the screen.",
+            "norm": "Summary KPI cards must not impersonate active filter states unless filtering is applied, and must fit within a 375px mobile viewport using a 2-column grid without horizontal overflow.",
+            "severity": "P1",
+            "screenshot": "1440-docked-light.png, 1440-docked-dark.png, 375-dialog-dark.png",
+            "fix": "Use a 2-column CSS grid (`grid-template-columns: repeat(2, minmax(0, 1fr))`) on mobile so both cards fit within 375px, and replace the full-card active-looking border on `Needs you` with a status dot next to the label so it doesn't read as an active tab filter."
+          },
+          {
+            "level": "component",
+            "element": "Question preview text under 'Upgrade Prisma to 6.x' in the 'Needs you' table section",
+            "problem": "In `1440-docked-light.png` and `1440-docked-dark.png`, the question under `Upgrade Prisma to 6.x` is truncated with an ellipsis (`Two migrations conflict. Should I squash them or keep both and run the older one...`), hiding the end of the question (`first?`) even though multi-line wrapping is allowed on session titles further down the table.",
+            "norm": "When surfacing blocking agent questions inline for quick triage, the full question sentence should remain readable without premature line clamping.",
+            "severity": "P3",
+            "screenshot": "1440-docked-light.png, 1440-docked-dark.png",
+            "fix": "Remove the 2-line clamp on `Needs you` question previews (or increase to 3 lines) so founders can read the complete question before clicking `Answer in Devin ↗`."
+          }
+        ],
+        "excellent": []
+      }
+    }
+  ]
+}

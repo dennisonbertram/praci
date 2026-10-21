@@ -421,7 +421,13 @@ export function CapTablePage({
   useEffect(() => {
     if (filtersSettled && filter !== requestedFilter) setFilter("all");
   });
-  const kindRows = rows.filter((row) => matchesFilter(row, filter));
+  const needle = query.trim().toLowerCase();
+  // With a cap table, All lists who holds shares; contacts with no holding sit under their own tabs
+  // and still turn up in a search.
+  const kindRows = rows.filter(
+    (row) =>
+      matchesFilter(row, filter) && (filter !== "all" || !snapshot || !!row.holder || !!needle),
+  );
   // Security shows only with a choice to make: two or more securities among these rows.
   const securities = [...new Set(kindRows.flatMap((row) => rowSecurity(row) ?? []))].sort((a, b) =>
     a.localeCompare(b),
@@ -449,7 +455,6 @@ export function CapTablePage({
       : sortField === "name" || sortField === "kind"
         ? "asc"
         : "desc";
-  const needle = query.trim().toLowerCase();
   const narrowed = kindRows.filter(
     (row) =>
       (!security || rowSecurity(row) === security) && (!needle || rowMatchesQuery(row, needle)),
@@ -620,7 +625,7 @@ export function CapTablePage({
         </div>
       ) : null}
 
-      {!serversChecked ? (
+      {!serversChecked || (cartaConnected && cap === null && !capFailed) ? (
         <div className="flex flex-col gap-2" aria-busy="true">
           {[0, 1, 2].map((n) => (
             <Skeleton key={n} className="h-9 w-full" />
@@ -945,7 +950,6 @@ export function CapTablePage({
       ) : null}
       {editing ? (
         <ContactDialog
-          fromCapTable
           key={editing === "new" ? "new" : "id" in editing ? editing.id : "prefill"}
           contact={editing === "new" || !("id" in editing) ? null : editing}
           prefill={editing !== "new" && !("id" in editing) ? editing : undefined}
@@ -958,6 +962,11 @@ export function CapTablePage({
           }}
           onDeleted={deleted}
           onOpenContact={setEditing}
+          fromCapTable={
+            editing !== "new" &&
+            "id" in editing &&
+            rows.some((row) => row.holder && row.contact?.id === editing.id)
+          }
         />
       ) : null}
     </div>

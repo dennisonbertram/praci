@@ -71,3 +71,8 @@ it("reports the chosen pile", async () => {
   });
   expect(onChange).toHaveBeenCalledWith("newsletters");
 });
+
+it("gives every tab a 44px height on touch screens", async () => {
+  await show();
+  for (const tab of tabs()) expect(tab.className).toContain("pointer-coarse:h-11");
+});
