@@ -50,3 +50,31 @@ export const Event: Story = {
 export const Roleless: Story = {
   args: { fact: { kind: "edge", record: { ...companyFixture.edges[0]!, role: null } } },
 };
+export const Shared: Story = {
+  args: {
+    fact: {
+      kind: "entity",
+      record: {
+        ...companyFixture.entities[0]!,
+        status: "confirmed",
+        visibility: "team",
+        readOnly: true,
+        evidence: [],
+        identities: [],
+      },
+    },
+  },
+};
+export const Promoted: Story = {
+  args: {
+    fact: {
+      kind: "entity",
+      record: { ...companyFixture.entities[0]!, status: "confirmed", visibility: "team" },
+    },
+  },
+};
+export const PersonPrivacy: Story = {
+  args: {
+    fact: { kind: "entity", record: { ...companyFixture.entities[1]!, status: "confirmed" } },
+  },
+};

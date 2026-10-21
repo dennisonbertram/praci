@@ -75,11 +75,23 @@ export function createCompanySourceWorker(deps: {
     const id = randomUUID();
     return { ...context.actor, signal: context.signal, operationId: id, traceId: id };
   };
-  const dataRoomWhere = (
+  const dataRoomWhere = async (
     source: CompanyImportSourceDescriptor,
     context: CompanyImportWorkerContext,
   ) => {
     const scope = CompanyDataRoomScopeSchema.parse(source.scope);
+    const blockedConnections = await deps.prisma.companySourceBlock.findMany({
+      where: {
+        spaceId: context.actor.spaceId,
+        ownerUserId: context.actor.userId,
+        sourceKind: "data_room",
+        connectionId: { not: null },
+      },
+      select: { connectionId: true },
+    });
+    const allowedConnectionIds = blockedConnections.flatMap((row) =>
+      row.connectionId ? [row.connectionId] : [],
+    );
     return {
       spaceId: context.actor.spaceId,
       userId: context.actor.userId,
@@ -111,6 +123,7 @@ export function createCompanySourceWorker(deps: {
                   status: "connected",
                   allAgents: true,
                   privateByDefault: false,
+                  ...(allowedConnectionIds.length ? { id: { notIn: allowedConnectionIds } } : {}),
                 },
               },
             ],
@@ -233,7 +246,7 @@ export function createCompanySourceWorker(deps: {
         const rows = await deps.prisma.dataRoomItem.findMany({
           where: {
             AND: [
-              dataRoomWhere(source, context),
+              await dataRoomWhere(source, context),
               ...(page.afterId ? [{ id: { gt: page.afterId } }] : []),
             ],
           },
@@ -295,7 +308,7 @@ export function createCompanySourceWorker(deps: {
       const { itemId } = itemCursor.parse(cursor);
       if (source.sourceKind === "data_room") {
         const item = await deps.prisma.dataRoomItem.findFirst({
-          where: { AND: [dataRoomWhere(source, context), { id: itemId }] },
+          where: { AND: [await dataRoomWhere(source, context), { id: itemId }] },
           select: {
             id: true,
             name: true,

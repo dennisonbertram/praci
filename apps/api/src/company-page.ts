@@ -5,10 +5,11 @@ import { companyForActor } from "@rakazo/db";
 
 export async function companyPage(prisma: PrismaClient, actor: Actor): Promise<CompanyPageData> {
   const store = companyForActor(prisma, actor);
-  const [entities, edges, events] = await Promise.all([
+  const [entities, edges, events, shared] = await Promise.all([
     store.list(),
     store.listEdges(),
     store.listEvents(),
+    store.teamFacts(),
   ]);
   const visible = entities.filter(companyFactIsVisible);
   const ids = new Set(visible.map((row) => row.id));
@@ -24,13 +25,13 @@ export async function companyPage(prisma: PrismaClient, actor: Actor): Promise<C
     select: { id: true, status: true },
   });
   return {
-    entities: visible.map((row) => ({
+    entities: [...visible, ...shared.entities].map((row) => ({
       ...row,
       edges: visibleEdges.filter((edge) => edge.fromId === row.id || edge.toId === row.id),
       events: visibleEvents.filter((event) => event.entityIds.includes(row.id)),
     })),
-    edges: visibleEdges,
-    events: visibleEvents,
+    edges: [...visibleEdges, ...shared.edges],
+    events: [...visibleEvents, ...shared.events],
     latestRun,
   };
 }
@@ -47,13 +48,23 @@ export async function companyFact(
   }
   if (input.kind === "edge") {
     const record = await store.edgeDetail(input.id);
-    if (!record || !companyFactIsVisible(record)) return null;
+    if (!record) {
+      const shared = await store.teamFacts();
+      const teamRecord = shared.edges.find((edge) => edge.id === input.id);
+      return teamRecord ? { kind: "edge", record: teamRecord } : null;
+    }
+    if (!companyFactIsVisible(record)) return null;
     const [from, to] = await Promise.all([store.detail(record.fromId), store.detail(record.toId)]);
     return from && companyFactIsVisible(from) && to && companyFactIsVisible(to)
       ? { kind: "edge", record }
       : null;
   }
   const record = await store.eventDetail(input.id);
+  if (!record) {
+    const shared = await store.teamFacts();
+    const teamRecord = shared.events.find((event) => event.id === input.id);
+    return teamRecord ? { kind: "event", record: teamRecord } : null;
+  }
   if (!record || !companyFactIsVisible(record)) return null;
   const entities = await Promise.all(record.entityIds.map((id) => store.detail(id)));
   return entities.every((entity) => entity && companyFactIsVisible(entity))

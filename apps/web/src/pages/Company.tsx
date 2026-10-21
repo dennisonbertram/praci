@@ -1,7 +1,12 @@
+import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { CompanyEntityRecord, CompanyFact } from "@rakazo/contracts";
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Skeleton,
   Table,
   TableBody,
@@ -13,15 +18,19 @@ import {
   TabsList,
   TabsTrigger,
 } from "@rakazo/ui-web";
+import { Ellipsis } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useFinanceQuery } from "../components/finance/ui";
+import { downloadArtifactBytes } from "../lib/artifact-open";
 import { companyDate, companyDateEnd } from "../lib/company-format";
 import { money } from "../lib/finance-format";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { todayIso } from "../lib/legal-format";
 import { rpc } from "../lib/rpc";
+import { errorText } from "../lib/user-error";
 import { CompanyFactDetail } from "./CompanyFactDetail";
+import { CompanyPrivacy } from "./CompanyPrivacy";
 
 export function CompanyPage() {
   useHideAmounts();
@@ -31,6 +40,25 @@ export function CompanyPage() {
   const [params, setParams] = useSearchParams();
   const view = params.get("view") ?? "overview";
   const [fact, setFact] = useState<CompanyFact | null>(null);
+  const [privacy, setPrivacy] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
+  async function exportMap() {
+    setExporting(true);
+    setExportError("");
+    try {
+      const data = await rpc.company.export();
+      downloadArtifactBytes(
+        "company-map.json",
+        "application/json",
+        new TextEncoder().encode(JSON.stringify(data, null, 2)),
+      );
+    } catch (cause) {
+      setExportError(errorText(cause));
+    } finally {
+      setExporting(false);
+    }
+  }
   const data = page.data;
   const running =
     data?.latestRun &&
@@ -95,7 +123,7 @@ export function CompanyPage() {
                 ))}
             </TableCell>
             <TableCell>{companyDate(roles(row.id)[0]?.startsOn)}</TableCell>
-            <TableCell>{row.evidence.length}</TableCell>
+            <TableCell>{row.readOnly ? "—" : row.evidence.length}</TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -116,8 +144,29 @@ export function CompanyPage() {
           <Link to="/app/company/import" className="text-sm underline underline-offset-4">
             <Trans>Import</Trans>
           </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={<Button variant="ghost" size="icon" aria-label={t`Company actions`} />}
+            >
+              <Ellipsis className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem disabled={exporting} onClick={() => void exportMap()}>
+                <Trans>Export JSON</Trans>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setPrivacy(true)}>
+                <Trans>Privacy</Trans>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
+      {exportError && (
+        <p role="alert" className="mb-4 text-sm text-destructive">
+          {exportError}
+        </p>
+      )}
+      {privacy && <CompanyPrivacy onClose={() => setPrivacy(false)} onChanged={page.reload} />}
       <Tabs value={view} onValueChange={(next) => setParams({ view: String(next) })}>
         <TabsList>
           <TabsTrigger value="overview">

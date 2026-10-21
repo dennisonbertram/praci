@@ -345,6 +345,7 @@ export const CompanyEvidenceRecordSchema = z.strictObject({
   confirmedAt: z.iso.datetime().nullable(),
 });
 export const CompanyEdgeRecordSchema = z.strictObject({
+  readOnly: z.boolean().optional(),
   id: identifier,
   fromId: identifier,
   toId: identifier,
@@ -361,6 +362,7 @@ export const CompanyEdgeRecordSchema = z.strictObject({
   evidence: z.array(CompanyEvidenceRecordSchema),
 });
 export const CompanyEventRecordSchema = z.strictObject({
+  readOnly: z.boolean().optional(),
   id: identifier,
   stream: CompanyStreamSchema,
   kind: CompanyEventKindSchema,
@@ -387,6 +389,7 @@ export const CompanyIdentityRecordSchema = z.strictObject({
   identityValue: identifier,
 });
 export const CompanyEntityRecordSchema = z.strictObject({
+  readOnly: z.boolean().optional(),
   id: identifier,
   kind: CompanyEntityKindSchema,
   displayName: shortText,

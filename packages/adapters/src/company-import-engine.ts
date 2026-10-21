@@ -315,6 +315,19 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
       include: { run: { select: { status: true, disclosureVersion: true } } },
     });
     if (!source) throw new CompanyImportWorkerError("not_found");
+    const sourceKey = JSON.stringify([source.sourceKind, source.connectionId, null]);
+    const blocked = await deps.prisma.companySourceBlock.findFirst({
+      where: {
+        spaceId: actor.spaceId,
+        ownerUserId: actor.userId,
+        OR: [
+          { sourceKey },
+          { sourceKind: source.sourceKind, connectionId: null, mcpServerId: null },
+        ],
+      },
+      select: { id: true },
+    });
+    if (blocked) throw new CompanyImportConsentRequired();
     if (source.connectionId) {
       const connection = await deps.prisma.connection.findFirst({
         where: {

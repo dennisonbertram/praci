@@ -13,6 +13,7 @@ export * from "./company.js";
 export * from "./company-extraction.js";
 export * from "./company-import.js";
 export * from "./company-page.js";
+export * from "./company-privacy.js";
 export * from "./contacts.js";
 export * from "./data-room.js";
 export * from "./data-room-api.js";

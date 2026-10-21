@@ -14,6 +14,7 @@ import {
   CompanyDataRoomScopeSchema,
   CompanyImportPlanSchema,
   CompanySourceKindSchema,
+  companyPrivacySourceKey,
 } from "@rakazo/contracts";
 import type { Prisma, PrismaClient } from "@rakazo/db";
 import { companyImportEstimate } from "./company-import-estimate.js";
@@ -55,6 +56,15 @@ async function dataRoomWhere(
   scope: Record<string, unknown>,
 ): Promise<Prisma.DataRoomItemWhereInput> {
   const parsed = CompanyDataRoomScopeSchema.parse(scope);
+  const blockedConnections = await prisma.companySourceBlock.findMany({
+    where: {
+      spaceId: actor.spaceId,
+      ownerUserId: actor.userId,
+      sourceKind: "data_room",
+      connectionId: { not: null },
+    },
+    select: { connectionId: true },
+  });
   if (parsed.folderIds) {
     const folders = await prisma.dataRoomFolder.findMany({
       where: {
@@ -80,6 +90,15 @@ async function dataRoomWhere(
           status: "connected",
           allAgents: true,
           privateByDefault: false,
+          ...(blockedConnections.length
+            ? {
+                id: {
+                  notIn: blockedConnections.flatMap((row) =>
+                    row.connectionId ? [row.connectionId] : [],
+                  ),
+                },
+              }
+            : {}),
         },
       },
     ],
@@ -107,10 +126,33 @@ async function sourcePlan(
 }
 
 export function createCompanyImportPage(deps: PageDeps) {
+  async function isBlocked(
+    actor: Actor,
+    sourceKind: string,
+    connectionId: string | null,
+  ): Promise<boolean> {
+    const locator = {
+      sourceKind: sourceKind as CompanyImportCatalog["sources"][number]["sourceKind"],
+      connectionId,
+      mcpServerId: null,
+    };
+    const blocks = await deps.prisma.companySourceBlock.findMany({
+      where: { spaceId: actor.spaceId, ownerUserId: actor.userId },
+      select: { sourceKind: true, connectionId: true, mcpServerId: true, sourceKey: true },
+    });
+    return blocks.some(
+      (block) =>
+        block.sourceKey === companyPrivacySourceKey(locator) ||
+        (block.sourceKind === sourceKind &&
+          block.connectionId === null &&
+          block.mcpServerId === null),
+    );
+  }
+
   async function catalog(actor: Actor): Promise<CompanyImportCatalog> {
     await assertMember(deps.prisma, actor);
     const dataRoomScope = await dataRoomWhere(deps.prisma, actor, {});
-    const [items, folders, connections, mcpServers] = await Promise.all([
+    const [items, folders, connections, mcpServers, blocks] = await Promise.all([
       deps.prisma.dataRoomItem.count({ where: dataRoomScope }),
       deps.prisma.dataRoomFolder.findMany({
         where: { spaceId: actor.spaceId, userId: actor.userId },
@@ -134,15 +176,31 @@ export function createCompanyImportPage(deps: PageDeps) {
         orderBy: [{ name: "asc" }, { id: "asc" }],
         select: { id: true, name: true },
       }),
+      deps.prisma.companySourceBlock.findMany({
+        where: { spaceId: actor.spaceId, ownerUserId: actor.userId },
+        select: { sourceKind: true, connectionId: true, mcpServerId: true, sourceKey: true },
+      }),
     ]);
+    const blocked = (kind: string, connectionId: string | null) => {
+      const locator = {
+        sourceKind: kind as CompanyImportCatalog["sources"][number]["sourceKind"],
+        connectionId,
+        mcpServerId: null,
+      };
+      return blocks.some(
+        (block) =>
+          block.sourceKey === companyPrivacySourceKey(locator) ||
+          (block.sourceKind === kind && block.connectionId === null && block.mcpServerId === null),
+      );
+    };
     const sources: CompanyImportCatalog["sources"] = [
       {
         key: "data-room",
         sourceKind: "data_room",
         connectionId: null,
         label: "Data Room",
-        available: true,
-        reason: null,
+        available: !blocked("data_room", null),
+        reason: blocked("data_room", null) ? "access_denied" : null,
         itemCount: items,
         defaultScope: {},
         connectPath: null,
@@ -154,13 +212,14 @@ export function createCompanyImportPage(deps: PageDeps) {
       const gmail = kind === "gmail";
       hasGmail ||= gmail;
       const access = availableConnection(connection);
+      const isSourceBlocked = blocked(kind, connection.id);
       sources.push({
         key: `${kind}:${connection.id}`,
         sourceKind: kind,
         connectionId: connection.id,
         label: connection.displayName,
-        available: gmail && access,
-        reason: !access ? "access_denied" : gmail ? null : "unsupported",
+        available: gmail && access && !isSourceBlocked,
+        reason: isSourceBlocked || !access ? "access_denied" : gmail ? null : "unsupported",
         itemCount: null,
         defaultScope: {},
         connectPath: gmail ? null : "/app/integrations",
@@ -180,16 +239,17 @@ export function createCompanyImportPage(deps: PageDeps) {
       });
     }
     if (!hasGmail) {
+      const sourceBlocked = blocked("gmail", null);
       sources.push({
         key: "gmail:connect",
         sourceKind: "gmail",
         connectionId: null,
         label: "Gmail",
         available: false,
-        reason: "not_connected",
+        reason: sourceBlocked ? "access_denied" : "not_connected",
         itemCount: null,
         defaultScope: {},
-        connectPath: GMAIL_CONNECT_PATH,
+        connectPath: sourceBlocked ? null : GMAIL_CONNECT_PATH,
       });
     }
     return { sources, folders };
@@ -207,6 +267,8 @@ export function createCompanyImportPage(deps: PageDeps) {
       const key = `${source.sourceKind}:${source.connectionId ?? ""}`;
       if (seen.has(key)) throw new ORPCError("BAD_REQUEST", { message: "Duplicate source" });
       seen.add(key);
+      if (await isBlocked(actor, source.sourceKind, source.connectionId ?? null))
+        throw new ORPCError("FORBIDDEN", { message: "Source access is denied" });
       if (source.sourceKind !== "data_room" && source.sourceKind !== "gmail") {
         throw new ORPCError("PRECONDITION_FAILED", { message: "Source is unsupported" });
       }

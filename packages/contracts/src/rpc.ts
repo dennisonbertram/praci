@@ -49,6 +49,12 @@ import {
 } from "./company-import.js";
 import { CompanyFactRefSchema, CompanyFactSchema, CompanyPageSchema } from "./company-page.js";
 import {
+  CompanyExportSchema,
+  CompanyPrivacySchema,
+  CompanySourceControlSchema,
+  CompanyVisibilityInputSchema,
+} from "./company-privacy.js";
+import {
   ContactLinkedSchema,
   ContactListInputSchema,
   ContactSaveInputSchema,
@@ -1484,6 +1490,12 @@ export const appContract = {
     },
   },
   company: {
+    privacy: oc.output(CompanyPrivacySchema),
+    sourceControl: oc.input(CompanySourceControlSchema).output(z.object({ ok: z.literal(true) })),
+    excludePerson: oc.input(z.object({ entityId: Id })).output(z.object({ ok: z.literal(true) })),
+    erase: oc.output(z.object({ ok: z.literal(true) })),
+    export: oc.output(CompanyExportSchema),
+    visibility: oc.input(CompanyVisibilityInputSchema).output(z.object({ ok: z.literal(true) })),
     page: oc.output(CompanyPageSchema),
     fact: oc.input(CompanyFactRefSchema).output(CompanyFactSchema.nullable()),
     confirm: oc.input(CompanyFactRefSchema).output(z.object({ ok: z.literal(true) })),
