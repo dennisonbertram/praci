@@ -188,6 +188,17 @@ export function FinanceCryptoPage() {
               {data.lastError}
             </p>
           ) : null}
+          {/* Wallets and exchanges are listed below; this is the figure the overview shows. */}
+          {(exchanges.data ?? []).length > 0 ? (
+            <div>
+              <div className="text-[22px] font-semibold leading-tight tabular-nums">
+                {money(data.summary.totalCents)}
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                <Trans>Total</Trans>
+              </div>
+            </div>
+          ) : null}
           <Section
             title={<Trans>Wallets</Trans>}
             action={

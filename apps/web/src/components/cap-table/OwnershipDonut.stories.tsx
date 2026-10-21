@@ -87,9 +87,7 @@ export const BreakdownOpen: Story = {
 
 export const BreakdownOptionsAndPool: Story = {
   play: async ({ canvasElement }) => {
-    canvasElement
-      .querySelector<HTMLElement>("button[aria-label^='Show Options and pool']")
-      ?.click();
+    canvasElement.querySelector<HTMLElement>("button[aria-label^='Show Option pool']")?.click();
   },
 };
 
@@ -105,6 +103,22 @@ export const Narrow: Story = {
 
 export const NarrowBreakdown: Story = {
   ...Narrow,
+  play: BreakdownOpen.play,
+};
+
+/** The page beside the agent panel: the donut sits beside its legend, so the card stays short. */
+export const BesideAgentPanel: Story = {
+  decorators: [
+    (Story) => (
+      <div className="@container w-[560px] text-foreground">
+        <Story />
+      </div>
+    ),
+  ],
+};
+
+export const BesideAgentPanelBreakdown: Story = {
+  ...BesideAgentPanel,
   play: BreakdownOpen.play,
 };
 

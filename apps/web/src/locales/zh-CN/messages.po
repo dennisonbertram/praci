@@ -274,7 +274,7 @@ msgstr ""
 msgid "{0} rollup hours"
 msgstr ""
 
-#. placeholder {0}: runwayGlance(glance.financeRunwayMonths, hideAmounts)
+#. placeholder {0}: runwayGlance(glance.financeRunwayMonths)
 #: src/pages/Shell.tsx
 msgid "{0} runway"
 msgstr ""
@@ -610,6 +610,10 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "3-mo avg, after revenue"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "3-mo change"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -1573,6 +1577,10 @@ msgstr "头像工作室"
 msgid "Avatars"
 msgstr "头像"
 
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Average per month"
+msgstr ""
+
 #: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/ImportFromDrive.tsx
@@ -2021,10 +2029,6 @@ msgstr "修改密码"
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Change settings, export your data or retake this tour from here."
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Change, 3 months"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -5724,10 +5728,6 @@ msgstr ""
 msgid "Monthly"
 msgstr "每月"
 
-#: src/pages/finance/FinanceSpend.tsx
-msgid "Monthly avg"
-msgstr ""
-
 #: src/components/FinanceCards.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -6483,6 +6483,10 @@ msgstr "OAuth 连接失败"
 msgid "Obligation"
 msgstr ""
 
+#: src/components/cap-table/OwnershipDonut.tsx
+msgid "of class"
+msgstr ""
+
 #: src/components/integrations/IntegrationAgentSection.tsx
 msgid "Off: other agents reach {service} only through this agent."
 msgstr ""
@@ -6675,6 +6679,10 @@ msgstr ""
 
 #: src/components/ShellSkeleton.tsx
 msgid "Opening Praci…"
+msgstr ""
+
+#: src/components/cap-table/OwnershipDonut.tsx
+msgid "Option pool ({poolFree} available)"
 msgstr ""
 
 #: src/pages/CapTable.tsx
@@ -9408,6 +9416,10 @@ msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
 msgid "Top parties"
+msgstr ""
+
+#: src/pages/finance/FinanceCrypto.tsx
+msgid "Total"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx

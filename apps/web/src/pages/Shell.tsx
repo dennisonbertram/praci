@@ -721,7 +721,6 @@ export function ShellPage() {
     pathname,
     snapshot ? { botId: snapshot.botId ?? null, threadId: snapshot.threadId } : null,
   );
-  const hideAmounts = useHideAmounts();
   const [missingPath, setMissingPath] = useState<string | null>(null);
   const missingPathRef = useRef<string | null>(null);
   const markMissing = useCallback((path: string) => {
@@ -4213,8 +4212,8 @@ export function ShellPage() {
                   {...glanceBadge({
                     unseen: unseen.finance ?? 0,
                     rail,
-                    value: runwayGlance(glance.financeRunwayMonths, hideAmounts),
-                    valueLabel: t`${runwayGlance(glance.financeRunwayMonths, hideAmounts)} runway`,
+                    value: runwayGlance(glance.financeRunwayMonths),
+                    valueLabel: t`${runwayGlance(glance.financeRunwayMonths)} runway`,
                   })}
                 />
               )}
