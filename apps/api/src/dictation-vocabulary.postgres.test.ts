@@ -110,6 +110,19 @@ describePostgres("dictationVocabulary (PostgreSQL)", () => {
     expect(list).not.toContain("Hidden Zebra plan");
   });
 
+  it("excludes a ticket on a different board", async () => {
+    const other = await prisma.board.findUniqueOrThrow({ where: { spaceId: spaceB } });
+    await prisma.ticket.create({
+      data: { boardId: other.id, spaceId: spaceA, number: 2, title: "Wrong board Narwhal" },
+    });
+    const list = await dictationVocabulary(
+      { prisma, ticketBoardEnabled: true },
+      actor(userA, spaceA),
+    );
+    expect(list).toContain("Fix Quokka sync");
+    expect(list).not.toContain("Wrong board Narwhal");
+  });
+
   it("skips tickets when the board is off", async () => {
     expect(await dictationVocabulary({ prisma }, actor(userA, spaceA))).toEqual([
       "Ada Assistant",

@@ -1,6 +1,10 @@
-import { capTranscriptionContext, MAX_TRANSCRIPTION_VOCABULARY } from "@rakazo/adapter-kit";
+import {
+  MAX_TRANSCRIPTION_VOCABULARY,
+  MAX_TRANSCRIPTION_VOCABULARY_ITEM_CHARS,
+} from "@rakazo/adapter-kit";
 import type { Actor } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
+import { ensureBoard } from "@rakazo/db";
 
 export interface DictationVocabularyDeps {
   prisma: PrismaClient;
@@ -31,10 +35,11 @@ export async function dictationVocabulary(
     orderBy: { updatedAt: "desc" },
     take,
   });
-  // A space has one board, so the space scope is the same one tickets.list applies.
-  const tickets = deps.ticketBoardEnabled
+  // The same board resolution and filter as tickets.list.
+  const board = deps.ticketBoardEnabled ? await ensureBoard(prisma, actor.spaceId) : null;
+  const tickets = board
     ? await prisma.ticket.findMany({
-        where: { spaceId: actor.spaceId },
+        where: { spaceId: actor.spaceId, boardId: board.id },
         select: { title: true },
         orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
         take,
@@ -50,12 +55,14 @@ export async function dictationVocabulary(
 export function dedupeVocabulary(names: string[]): string[] {
   const seen = new Set<string>();
   const unique: string[] = [];
+  // Truncate first, so names that differ only past the cap count as one.
   for (const raw of names) {
-    const name = raw.trim();
+    const name = raw.trim().slice(0, MAX_TRANSCRIPTION_VOCABULARY_ITEM_CHARS);
+    if (!name) continue;
     const key = name.toLowerCase();
-    if (!name || seen.has(key)) continue;
+    if (seen.has(key)) continue;
     seen.add(key);
     unique.push(name);
   }
-  return capTranscriptionContext({ vocabulary: unique }).vocabulary ?? [];
+  return unique.slice(0, MAX_TRANSCRIPTION_VOCABULARY);
 }
