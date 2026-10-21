@@ -14,7 +14,13 @@ import { NOTIFICATIONS_CHANGED_EVENT, surfaceOfPath, useSidebarGlance } from "./
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const quiet = { financeRunwayMonths: null, legalDueSoon: 0, dataRoomWaiting: 0, botKinds: {} };
+const quiet = {
+  financeRunwayMonths: null,
+  legalDueSoon: 0,
+  devinNeedsYou: 0,
+  dataRoomWaiting: 0,
+  botKinds: {},
+};
 let seen: ReturnType<typeof useSidebarGlance>;
 function Probe({
   pathname,
@@ -40,6 +46,7 @@ afterEach(() => act(() => root.render(null)));
 it("maps app paths to notification surfaces", () => {
   expect(surfaceOfPath("/app/data-room")).toBe("data-room");
   expect(surfaceOfPath("/app/finance/runway")).toBe("finance");
+  expect(surfaceOfPath("/app/devin")).toBe("devin");
   expect(surfaceOfPath("/app/inboxes")).toBeNull();
   expect(surfaceOfPath("/app")).toBeNull();
 });
