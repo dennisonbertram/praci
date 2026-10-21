@@ -31,6 +31,10 @@ function fakes(
     thread: { update: vi.fn(async () => ({ nextMessageSeq: 1, nextEventSeq: 1 })) },
     message: { create: messageCreate },
     event: { create: vi.fn(async () => ({ id: "evt-1" })) },
+    routine: {
+      findFirst: vi.fn(async () => ({ id: "routine-1", crons: [], active: true })),
+      create: vi.fn(),
+    },
   };
   const enqueueRun = vi.fn(async () => {});
   const sourceRef =
@@ -46,8 +50,10 @@ function fakes(
             : { source: options.source ?? "sheet", data: { sourceRef } },
         ),
       },
+      user: { findUnique: vi.fn(async () => ({ timezone: "UTC" })) },
       $transaction: async (fn: (t: typeof tx) => unknown) => fn(tx),
     },
+    jobs: { enqueue: vi.fn(async () => {}), cancel: vi.fn(async () => {}) },
     repos: { createBot },
     hasModel: vi.fn(async () => options.hasModel ?? true),
     enqueueRun,
