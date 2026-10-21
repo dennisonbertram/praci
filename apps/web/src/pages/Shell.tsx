@@ -2046,7 +2046,12 @@ export function ShellPage() {
             },
           ]
         : []),
-      { id: "integrations", label: t`Apps`, icon: <LayoutGrid {...icon} /> },
+      {
+        id: "integrations",
+        label: t`Integrations`,
+        keywords: t`apps, connections`,
+        icon: <LayoutGrid {...icon} />,
+      },
       { id: "settings", label: t`Settings`, icon: <Settings {...icon} /> },
     ];
   }, [t, bootstrapMe?.ticketBoardEnabled]);

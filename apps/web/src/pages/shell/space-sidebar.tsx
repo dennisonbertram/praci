@@ -27,6 +27,7 @@ import {
   Files,
   FolderOpen,
   History,
+  LayoutGrid,
   Lock,
   LogOut,
   Mail,
@@ -1667,6 +1668,20 @@ export function SpaceSidebar({
             >
               <Settings className="text-muted-foreground" strokeWidth={1.75} />
               <Trans>Settings</Trans>
+            </Button>
+            <Button
+              role="menuitem"
+              variant="ghost"
+              className="w-full justify-start font-normal"
+              data-testid="menu-integrations"
+              onClick={() => {
+                setMenuOpen(false);
+                setMobileSidebarOpen(false);
+                navigate("/app/integrations");
+              }}
+            >
+              <LayoutGrid className="text-muted-foreground" strokeWidth={1.75} />
+              <Trans>Integrations</Trans>
             </Button>
             <HideAmountsMenuItem onDone={() => setMenuOpen(false)} />
             <Button

@@ -1272,17 +1272,12 @@ msgstr ""
 msgid "Approved"
 msgstr ""
 
-#: src/components/ConnectAppsButton.tsx
-#: src/components/integrations/AppDetail.tsx
-#: src/components/integrations/GranolaPage.tsx
-#: src/components/integrations/IntegrationsHome.tsx
-#: src/components/integrations/McpDetail.tsx
-#: src/pages/Shell.tsx
-msgid "Apps"
-msgstr ""
-
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Apps with their own server"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "apps, connections"
 msgstr ""
 
 #: src/components/inbox/CleanupActionBar.tsx
@@ -4975,6 +4970,15 @@ msgstr "Instrucción"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Integration options"
+msgstr ""
+
+#: src/components/ConnectAppsButton.tsx
+#: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/GranolaPage.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/McpDetail.tsx
+#: src/pages/Shell.tsx
+msgid "Integrations"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx

@@ -309,6 +309,66 @@ it("shows Devin's needs-you count and opens its page", async () => {
   }
 });
 
+it("navigates to Integrations from the account menu", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => {
+      root.render(
+        createElement(
+          MemoryRouter,
+          null,
+          createElement(
+            "div",
+            null,
+            createElement(SidebarFixture, { mode: "expanded" }),
+            createElement(CurrentPath),
+          ),
+        ),
+      );
+    });
+
+    const menuTrigger = container.querySelector<HTMLButtonElement>(
+      '[data-testid="user-menu-trigger"]',
+    );
+    await act(async () => menuTrigger?.click());
+    const integrations = document.body.querySelector<HTMLButtonElement>(
+      '[data-testid="menu-integrations"]',
+    );
+    expect(integrations?.textContent).toContain("Integrations");
+
+    await act(async () => integrations?.click());
+    expect(container.querySelector('[data-testid="current-path"]')?.textContent).toBe(
+      "/app/integrations",
+    );
+    expect(document.body.querySelector('[data-testid="menu-integrations"]')).toBeNull();
+    expect(container.querySelector('[data-testid="bots-sidebar"]')?.className).toContain(
+      "-translate-x-full",
+    );
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
 it("expands folded page agents and keeps the active page agent visible", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("matchMedia", () => ({
