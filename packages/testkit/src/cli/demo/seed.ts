@@ -345,11 +345,11 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     });
     done.push("Finance agent pins (Cash, Runway) and a Month-end close checklist");
     // One earlier question and answer, so Hide amounts can be checked on runway months and a
-    // run-out date in a reply without a live (paid) model call.
+    // run-out month in a reply (the exact day moves with the calendar, so a stored answer names the month) without a live (paid) model call.
     if (overview.runway.months !== null && overview.runway.runOutDate) {
       const runOut = new Date(`${overview.runway.runOutDate}T00:00:00Z`).toLocaleDateString(
         "en-US",
-        { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" },
+        { month: "long", year: "numeric", timeZone: "UTC" },
       );
       const thread = await prisma.thread.upsert({
         where: { botId: agent.id },
