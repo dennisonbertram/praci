@@ -362,9 +362,9 @@ export type SpaceSidebarProps = {
   botSections: readonly { name: string }[];
   bootstrapMe: Me | null | undefined;
   setBootstrapMe: Dispatch<SetStateAction<Me | null | undefined>>;
-  tourRestart: boolean;
+  tourOpen: boolean;
+  onTourAsk: () => void;
   setTourRestart: Dispatch<SetStateAction<boolean>>;
-  firstQuestionOpen: boolean;
   hiddenPages: string[];
   addedPages: { key: string; label: string }[];
   toggleHiddenPage: (key: string) => Promise<void>;
@@ -477,9 +477,9 @@ export function SpaceSidebar({
   botSections,
   bootstrapMe,
   setBootstrapMe,
-  tourRestart,
+  tourOpen,
+  onTourAsk,
   setTourRestart,
-  firstQuestionOpen,
   hiddenPages,
   addedPages,
   toggleHiddenPage,
@@ -1529,15 +1529,11 @@ export function SpaceSidebar({
         />
       </div>
       <FirstRunTour
-        open={
-          tourRestart || (bootstrapMe?.tourSeen === false && bots.length > 0 && !firstQuestionOpen)
-        }
-        onConnectApps={() => {
-          setMobileSidebarOpen(false);
-          navigate("/app/integrations");
-        }}
+        open={tourOpen}
+        onAsk={onTourAsk}
         onClose={(me) => {
           setTourRestart(false);
+          setMobileSidebarOpen(false);
           setBootstrapMe((current) => me ?? (current && { ...current, tourSeen: true }));
         }}
       />
