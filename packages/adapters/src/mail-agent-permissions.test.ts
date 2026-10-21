@@ -32,7 +32,7 @@ describe("an email's own agent has the Inbox agent's mail permissions", () => {
   });
 });
 
-describe("an email's own agent has no Carta, Finance or Data room tools of its own", () => {
+describe("an email's own agent has no Carta or Finance tools of its own", () => {
   it("is refused the Finance and Carta built-ins", () => {
     expect(
       financeToolsAllowed({
@@ -71,8 +71,8 @@ describe("an email's own agent has no Carta, Finance or Data room tools of its o
     expect(assignmentAllowsTool(assignment, "mutate")).toBe(false);
   });
 
-  it("cannot be sent Data room files", () => {
-    expect(botCanReadDataRoom(threadBot)).toBe(false);
-    expect(botCanReadDataRoom({ spawnKey: null })).toBe(true);
+  it("can read the Data room, as the Inbox agent can", () => {
+    expect(botCanReadDataRoom(threadBot)).toBe(true);
+    expect(botCanReadDataRoom({ spawnKey: inbox })).toBe(true);
   });
 });

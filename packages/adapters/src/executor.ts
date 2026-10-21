@@ -64,7 +64,6 @@ import {
   isIntegrationAgentSpawnKey,
   isLegalAgentSpawnKey,
   isMailAgentSpawnKey,
-  isMailThreadAgentSpawnKey,
   isVoiceAgentSpawnKey,
   LEGAL_AGENT_BUILTIN_TOOLS,
   LEGAL_AGENT_MODEL,
@@ -2510,10 +2509,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }) && (await driveAccounts().catch(() => [])).length > 0;
         // Owner-only, like mail and Drive. Consent is checked by the add tool itself, so a
         // person who has not accepted the Data room still gets the tools and a clear "off" answer.
-        // An email's own agent has no Data room tools: it asks the Data room agent (message_bot).
         const dataRoomEnabled =
           Boolean(deps.artifacts) &&
-          !isMailThreadAgentSpawnKey(bot.spawnKey) &&
           (!voiceAgent || voiceWorkspaceReadAllowed) &&
           dataRoomToolsAllowed({
             hasProvider: true,

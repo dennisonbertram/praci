@@ -10,7 +10,7 @@ import { DEVIN_READ_TOOLS, DEVIN_WRITE_TOOLS, isDevinEndpoint } from "./devin.js
 import type { FinanceProvider } from "./finance.js";
 import { FINANCE_READ_TOOLS, financeProviderForEndpoint } from "./finance.js";
 import { GRANOLA_READ_TOOLS, granolaAgentSpawnKey, isGranolaEndpoint } from "./granola.js";
-import { isInboxAgentSpawnKey, isMailThreadAgentSpawnKey } from "./inbox.js";
+import { isInboxAgentSpawnKey } from "./inbox.js";
 import { isWisprFlowEndpoint, WISPR_FLOW_READ_NAME } from "./wispr-flow.js";
 
 /** The one place an integration agent's spawn key is built. The key encodes the MCP server id. */
@@ -29,7 +29,6 @@ export const botCanReadDataRoom = (bot: {
 }) =>
   !isIntegrationAgentSpawnKey(bot.spawnKey) &&
   !isCartaAgentSpawnKey(bot.spawnKey) &&
-  !isMailThreadAgentSpawnKey(bot.spawnKey) &&
   !bot.disabledBuiltinTools?.includes("read_data_room_item");
 
 /** An agent that owns one account (Inbox, Carta, integration or Calendar/Drive): other bots ask it. */
