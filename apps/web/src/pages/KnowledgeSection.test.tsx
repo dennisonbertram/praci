@@ -58,3 +58,32 @@ it("masks currency in memory previews while amounts are hidden", async () => {
     vi.unstubAllGlobals();
   }
 });
+
+it("drops file paths from memory previews", async () => {
+  const { memoryDocPreview } = await import("./KnowledgeSection");
+  expect(memoryDocPreview("- Q3 deck saved ([MOCK Q3 Deck](/app/artifacts/a1))")).toBe(
+    "Q3 deck saved (MOCK Q3 Deck)",
+  );
+  expect(memoryDocPreview("- Report at (/app/artifacts/a1/report.md)")).toBe("Report at");
+});
+
+it("shows one empty message, not an empty row beside real memories", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const render = async (docs: unknown[]) => {
+    memoryList.mockResolvedValueOnce(docs as never);
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    await act(async () => root.render(<KnowledgeSection botId="bot-fixture" />));
+    return { text: container.textContent ?? "", done: () => root.unmount() };
+  };
+  const mixed = await render([
+    { id: "m1", path: "MEMORY.md", scope: "bot", content: "" },
+    { id: "m2", path: "a.md", scope: "bot", content: "- Prefers short replies" },
+  ]);
+  expect(mixed.text).toContain("Prefers short replies");
+  expect(mixed.text).not.toContain("Nothing remembered yet");
+  const empty = await render([{ id: "m1", path: "MEMORY.md", scope: "bot", content: "" }]);
+  expect(empty.text.match(/Nothing remembered yet/g)).toHaveLength(1);
+  vi.unstubAllGlobals();
+});

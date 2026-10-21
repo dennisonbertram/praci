@@ -292,6 +292,7 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
   const paidWith = data ? paidWithLabel(data.paidWith) : "";
   // Months before the first charge are not months of zero spend.
   const charged = data ? data.monthly.filter((m) => m.month >= data.firstSeenAt.slice(0, 7)) : [];
+  const hasReceipts = data?.charges.some((charge) => charge.hasReceipt) ?? false;
   return (
     <DetailPage
       crumbs={[
@@ -368,9 +369,11 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
                   <TableHead className="text-end">
                     <Trans>Amount</Trans>
                   </TableHead>
-                  <TableHead className="text-end">
-                    <Trans>Receipt</Trans>
-                  </TableHead>
+                  {hasReceipts ? (
+                    <TableHead className="text-end">
+                      <Trans>Receipt</Trans>
+                    </TableHead>
+                  ) : null}
                   <TableHead />
                 </TableHeadRow>
               </TableHeader>
@@ -395,9 +398,11 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
                     <TableCell className="text-end tabular-nums">
                       {money(charge.amountCents)}
                     </TableCell>
-                    <TableCell className="text-end text-muted-foreground">
-                      {charge.hasReceipt ? <ReceiptIcon /> : "—"}
-                    </TableCell>
+                    {hasReceipts ? (
+                      <TableCell className="text-end text-muted-foreground">
+                        {charge.hasReceipt ? <ReceiptIcon /> : "—"}
+                      </TableCell>
+                    ) : null}
                     <Chevron />
                   </TableRow>
                 ))}

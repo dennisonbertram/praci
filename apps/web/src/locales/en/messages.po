@@ -495,6 +495,10 @@ msgid "{service} agent"
 msgstr "{service} agent"
 
 #: src/pages/Finance.tsx
+msgid "{soFar} · {spentRange}"
+msgstr "{soFar} · {spentRange}"
+
+#: src/pages/Finance.tsx
 msgid "{soFar} · spent {spentRange}"
 msgstr "{soFar} · spent {spentRange}"
 
@@ -1003,10 +1007,6 @@ msgstr "Allow {name}, {detail}"
 msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
 
-#: src/pages/Legal.tsx
-msgid "Allow access below first."
-msgstr "Allow access below first."
-
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Allow changes"
@@ -1112,10 +1112,6 @@ msgstr "Amount raised"
 #: src/components/data-room/DataRoomStats.tsx
 msgid "Amounts"
 msgstr "Amounts"
-
-#: src/components/HideAmountsToggle.tsx
-msgid "Amounts are hidden: money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show. A reply you write keeps the original amounts."
-msgstr "Amounts are hidden: money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show. A reply you write keeps the original amounts."
 
 #: src/lib/model-connection-preflight.ts
 msgid "An API key is stored for this provider, not a subscription sign-in."
@@ -1629,6 +1625,10 @@ msgstr "Bot screen"
 msgid "Bot screen preview"
 msgstr "Bot screen preview"
 
+#: src/pages/BotContextMenu.tsx
+msgid "Bot settings"
+msgstr "Bot settings"
+
 #: src/pages/IntegrationSetup.tsx
 msgid "Bot that gets the apps you connect here"
 msgstr "Bot that gets the apps you connect here"
@@ -1708,6 +1708,11 @@ msgstr "Browser"
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "Built-in"
+
+#. placeholder {0}: builtins.length
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Built-in skills ({0})"
+msgstr "Built-in skills ({0})"
 
 #: src/components/compose/RichTextEditor.tsx
 msgid "Bulleted list"
@@ -2428,6 +2433,10 @@ msgstr "Connect a model in Settings first."
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Connect a provider to add backups."
 msgstr "Connect a provider to add backups."
+
+#: src/pages/Shell.tsx
+msgid "Connect a voice provider to call Elio."
+msgstr "Connect a voice provider to call Elio."
 
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -3722,6 +3731,10 @@ msgstr "Documents"
 msgid "Documents over time"
 msgstr "Documents over time"
 
+#: src/pages/Finance.tsx
+msgid "Does a similar job to another subscription"
+msgstr "Does a similar job to another subscription"
+
 #: src/components/finance/CountCryptoButton.tsx
 msgid "Don't count crypto"
 msgstr "Don't count crypto"
@@ -4129,6 +4142,10 @@ msgstr "Failure handling"
 msgid "Fee"
 msgstr "Fee"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Fetching…"
+msgstr "Fetching…"
+
 #: src/pages/SpaceSearch.tsx
 msgid "File"
 msgstr "File"
@@ -4154,6 +4171,10 @@ msgstr "Filter"
 #: src/components/ListControls.tsx
 msgid "Filter by {label}"
 msgstr "Filter by {label}"
+
+#: src/pages/Artifacts.tsx
+msgid "Filter by bot"
+msgstr "Filter by bot"
 
 #: src/pages/Artifacts.tsx
 msgid "Filter by date"
@@ -4530,10 +4551,6 @@ msgstr "Hide transcript"
 msgid "Hides money amounts in finance, chat and email."
 msgstr "Hides money amounts in finance, chat and email."
 
-#: src/components/HideAmountsToggle.tsx
-msgid "Hides money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show. A reply you write keeps the original amounts."
-msgstr "Hides money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show. A reply you write keeps the original amounts."
-
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "High"
@@ -4907,12 +4924,12 @@ msgid "Last run failed."
 msgstr "Last run failed."
 
 #: src/pages/Legal.tsx
-msgid "Last scan {lastScan}. Daily scan paused."
-msgstr "Last scan {lastScan}. Daily scan paused."
+msgid "Last scan {lastScan}"
+msgstr "Last scan {lastScan}"
 
 #: src/pages/Legal.tsx
-msgid "Last scan {lastScan}. Daily scans wait until you allow access."
-msgstr "Last scan {lastScan}. Daily scans wait until you allow access."
+msgid "Last scan {lastScan}. Daily scan paused."
+msgstr "Last scan {lastScan}. Daily scan paused."
 
 #: src/pages/Legal.tsx
 msgid "Last scan {lastScan}. Scans daily."
@@ -5669,10 +5686,6 @@ msgstr "Needs attention"
 msgid "Needs input"
 msgstr "Needs input"
 
-#: src/pages/Legal.tsx
-msgid "Needs Muse Spark 1.2."
-msgstr "Needs Muse Spark 1.2."
-
 #: src/components/integrations/parts.tsx
 msgid "Needs reconnect"
 msgstr "Needs reconnect"
@@ -5694,10 +5707,6 @@ msgstr "Needs takeover"
 #: src/pages/Shell.tsx
 msgid "Needs you"
 msgstr "Needs you"
-
-#: src/pages/Legal.tsx
-msgid "Needs your OpenRouter key."
-msgstr "Needs your OpenRouter key."
 
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -8046,7 +8055,6 @@ msgid "Set up app catalog"
 msgstr "Set up app catalog"
 
 #: src/components/call/CallCard.tsx
-#: src/pages/BotContextMenu.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -8455,6 +8463,10 @@ msgstr "Spending minus revenue, 3-mo avg"
 msgid "Spent {spentRange}"
 msgstr "Spent {spentRange}"
 
+#: src/pages/Finance.tsx
+msgid "Spent so far this month"
+msgstr "Spent so far this month"
+
 #: src/components/FinanceCards.tsx
 msgid "Spent this month"
 msgstr "Spent this month"
@@ -8543,6 +8555,10 @@ msgstr "Step 2 of 3"
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Steps"
 msgstr "Steps"
+
+#: src/components/ShellSkeleton.tsx
+msgid "Still opening…"
+msgstr "Still opening…"
 
 #: src/pages/shell/transcript.tsx
 msgid "Still waiting on {service}"
@@ -9220,6 +9236,7 @@ msgstr "Try {name} again"
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
+#: src/components/ShellSkeleton.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
@@ -9525,7 +9542,7 @@ msgstr "URL"
 msgid "Usage"
 msgstr "Usage"
 
-#. placeholder {0}: entry.name
+#. placeholder {0}: label.title
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Use {0}"
 msgstr "Use {0}"

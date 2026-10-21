@@ -1,5 +1,5 @@
 import type { AdapterContext, MailAccount } from "@rakazo/adapter-kit";
-import { MAIL_GREP_BUDGET } from "@rakazo/core";
+import { applySenderMark, MAIL_GREP_BUDGET, senderMarkMap } from "@rakazo/core";
 import { mailSyncStatus, requestMailSync, waitForMailSync } from "./mail-sync-job.js";
 import type { MailToolDeps } from "./mail-tools.js";
 
@@ -51,7 +51,7 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
   const own = { spaceId: scope.spaceId, userId: scope.userId };
   const ids = accounts.map((account) => account.id);
   const now = (deps.now ?? (() => new Date()))();
-  const [cached, todos, openTodos, states, statuses] = await Promise.all([
+  const [cached, todos, openTodos, states, statuses, markRows] = await Promise.all([
     prisma.cachedMailMessage.findMany({
       where: {
         ...own,
@@ -76,7 +76,12 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
       select: { connectionId: true, lastSyncedAt: true },
     }),
     mailSyncStatus(prisma, scope, ids),
+    prisma.inboxSenderFeedback.findMany({
+      where: own,
+      select: { senderAddress: true, mark: true },
+    }),
   ]);
+  const marks = senderMarkMap(markRows);
 
   // Newest message of each thread, as on the Inbox page.
   const seen = new Set<string>();
@@ -86,7 +91,11 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
     seen.add(key);
     return true;
   });
-  const wantsReply = (m: (typeof threads)[number]) => m.needsReply === true && !m.alreadyHandled;
+  // As on the Inbox page: a sender the user marked as noise never needs a reply.
+  const wantsReply = (m: (typeof threads)[number]) =>
+    m.needsReply === true &&
+    !m.alreadyHandled &&
+    applySenderMark(m, marks.get(m.fromAddress.toLowerCase())).needsReply === true;
   const label = new Map(accounts.map((a) => [a.id, accountLabel(a)]));
   const where = (m: (typeof threads)[number]) =>
     `acct:${label.get(m.connectionId)} | id:${m.providerMessageId}`;

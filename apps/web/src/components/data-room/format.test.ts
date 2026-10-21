@@ -2,7 +2,7 @@ import { expect, it, vi } from "vitest";
 
 vi.mock("@lingui/core/macro", () => ({ t: (parts: TemplateStringsArray) => parts.join("") }));
 
-import { isNoiseImage, sizeText, statusLabel, typeLabel } from "./format";
+import { dateText, isNoiseImage, sizeText, statusLabel, typeLabel } from "./format";
 
 it("calls every working step Reading, never Filing, since filing waits for consent", () => {
   expect(["pending", "extracting", "classifying"].map(statusLabel)).toEqual([
@@ -42,4 +42,16 @@ it("treats small and logo-named images as noise but keeps documents and large ph
   expect(isNoiseImage(f("Logo.jpg", "image/jpeg", 80_000))).toBe(true);
   expect(isNoiseImage(f("receipt-photo.jpg", "image/jpeg", 800_000))).toBe(false);
   expect(isNoiseImage(f("logo-guidelines.pdf", "application/pdf", 900))).toBe(false);
+});
+
+it("shows when something happened as the viewer's day and a document date as written", () => {
+  const zone = process.env.TZ;
+  process.env.TZ = "America/Los_Angeles";
+  try {
+    expect(dateText("2026-03-04T02:00:00.000Z", true)).toContain("3,");
+    expect(dateText("2026-03-04T00:00:00.000Z")).toContain("4,");
+  } finally {
+    if (zone === undefined) delete process.env.TZ;
+    else process.env.TZ = zone;
+  }
 });

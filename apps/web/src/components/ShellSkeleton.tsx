@@ -1,11 +1,35 @@
 import { Trans } from "@lingui/react/macro";
-import { Skeleton } from "@rakazo/ui-web";
+import { Button, Skeleton } from "@rakazo/ui-web";
+import { useEffect, useState } from "react";
 
-/** The centered "Opening your Space…" line, shared by every wait between sign-in and the first chat. */
-export function OpeningSpace() {
+/** After this long the wait is no longer normal, so the line changes and offers a retry. */
+export const OPENING_SLOW_MS = 8000;
+
+/**
+ * The centered "Opening your Space…" line, shared by every wait between sign-in and the first chat.
+ * A slow wait says so and offers Try again, which loads the page afresh.
+ */
+export function OpeningSpace({
+  onRetry = () => window.location.reload(),
+}: {
+  onRetry?: () => void;
+}) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setSlow(true), OPENING_SLOW_MS);
+    return () => clearTimeout(timer);
+  }, []);
   return (
-    <div className="flex flex-1 items-center justify-center text-[14px] text-muted-foreground">
-      <Trans>Opening your Space…</Trans>
+    <div
+      role="status"
+      className="flex flex-1 flex-col items-center justify-center gap-3 text-[14px] text-muted-foreground"
+    >
+      {slow ? <Trans>Still opening…</Trans> : <Trans>Opening your Space…</Trans>}
+      {slow ? (
+        <Button variant="outline" size="sm" onClick={onRetry}>
+          <Trans>Try again</Trans>
+        </Button>
+      ) : null}
     </div>
   );
 }
@@ -32,7 +56,7 @@ export function ShellSkeleton() {
         </div>
       </aside>
       <main className="flex flex-1 flex-col">
-        <div className="h-[74px] border-b border-sidebar-border" />
+        <div className="h-14 shrink-0 border-b border-sidebar-border" />
         <OpeningSpace />
         <div className="mx-6 mb-6 h-[54px] rounded-full border border-border bg-background" />
       </main>

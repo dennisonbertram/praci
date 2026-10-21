@@ -495,6 +495,10 @@ msgid "{service} agent"
 msgstr ""
 
 #: src/pages/Finance.tsx
+msgid "{soFar} · {spentRange}"
+msgstr ""
+
+#: src/pages/Finance.tsx
 msgid "{soFar} · spent {spentRange}"
 msgstr ""
 
@@ -1003,10 +1007,6 @@ msgstr ""
 msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr ""
 
-#: src/pages/Legal.tsx
-msgid "Allow access below first."
-msgstr ""
-
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Allow changes"
@@ -1111,10 +1111,6 @@ msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
 msgid "Amounts"
-msgstr ""
-
-#: src/components/HideAmountsToggle.tsx
-msgid "Amounts are hidden: money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show. A reply you write keeps the original amounts."
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -1629,6 +1625,10 @@ msgstr "Bot 화면"
 msgid "Bot screen preview"
 msgstr "Bot 화면 미리보기"
 
+#: src/pages/BotContextMenu.tsx
+msgid "Bot settings"
+msgstr ""
+
 #: src/pages/IntegrationSetup.tsx
 msgid "Bot that gets the apps you connect here"
 msgstr ""
@@ -1708,6 +1708,11 @@ msgstr ""
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "기본 제공"
+
+#. placeholder {0}: builtins.length
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Built-in skills ({0})"
+msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
 msgid "Bulleted list"
@@ -2428,6 +2433,10 @@ msgstr ""
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Connect a provider to add backups."
 msgstr "백업을 추가하려면 제공업체를 연결하세요."
+
+#: src/pages/Shell.tsx
+msgid "Connect a voice provider to call Elio."
+msgstr ""
 
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -3722,6 +3731,10 @@ msgstr ""
 msgid "Documents over time"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Does a similar job to another subscription"
+msgstr ""
+
 #: src/components/finance/CountCryptoButton.tsx
 msgid "Don't count crypto"
 msgstr ""
@@ -4129,6 +4142,10 @@ msgstr "실패했을 때 처리"
 msgid "Fee"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Fetching…"
+msgstr ""
+
 #: src/pages/SpaceSearch.tsx
 msgid "File"
 msgstr ""
@@ -4153,6 +4170,10 @@ msgstr ""
 #: src/components/data-room/FilterBar.tsx
 #: src/components/ListControls.tsx
 msgid "Filter by {label}"
+msgstr ""
+
+#: src/pages/Artifacts.tsx
+msgid "Filter by bot"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -4530,10 +4551,6 @@ msgstr "대화 기록 숨기기"
 msgid "Hides money amounts in finance, chat and email."
 msgstr ""
 
-#: src/components/HideAmountsToggle.tsx
-msgid "Hides money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show. A reply you write keeps the original amounts."
-msgstr ""
-
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "High"
@@ -4907,11 +4924,11 @@ msgid "Last run failed."
 msgstr ""
 
 #: src/pages/Legal.tsx
-msgid "Last scan {lastScan}. Daily scan paused."
+msgid "Last scan {lastScan}"
 msgstr ""
 
 #: src/pages/Legal.tsx
-msgid "Last scan {lastScan}. Daily scans wait until you allow access."
+msgid "Last scan {lastScan}. Daily scan paused."
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -5669,10 +5686,6 @@ msgstr ""
 msgid "Needs input"
 msgstr "입력 필요"
 
-#: src/pages/Legal.tsx
-msgid "Needs Muse Spark 1.2."
-msgstr ""
-
 #: src/components/integrations/parts.tsx
 msgid "Needs reconnect"
 msgstr ""
@@ -5693,10 +5706,6 @@ msgstr "인수 필요"
 #: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
 msgid "Needs you"
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Needs your OpenRouter key."
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -8046,7 +8055,6 @@ msgid "Set up app catalog"
 msgstr ""
 
 #: src/components/call/CallCard.tsx
-#: src/pages/BotContextMenu.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -8455,6 +8463,10 @@ msgstr ""
 msgid "Spent {spentRange}"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Spent so far this month"
+msgstr ""
+
 #: src/components/FinanceCards.tsx
 msgid "Spent this month"
 msgstr ""
@@ -8543,6 +8555,10 @@ msgstr ""
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Steps"
 msgstr "실행 단계"
+
+#: src/components/ShellSkeleton.tsx
+msgid "Still opening…"
+msgstr ""
 
 #: src/pages/shell/transcript.tsx
 msgid "Still waiting on {service}"
@@ -9220,6 +9236,7 @@ msgstr ""
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
+#: src/components/ShellSkeleton.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
@@ -9525,7 +9542,7 @@ msgstr ""
 msgid "Usage"
 msgstr "사용량"
 
-#. placeholder {0}: entry.name
+#. placeholder {0}: label.title
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Use {0}"
 msgstr ""

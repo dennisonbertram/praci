@@ -439,8 +439,8 @@ export const RecurringChargeSchema = z.object({
   chargeCount: z.number().int(),
   lastChargeAt: IsoDate,
   nextExpectedAt: IsoDate,
-  /** Totals for the last 3 full calendar months, oldest first. */
-  trendCents: z.array(Cents).length(3),
+  /** Totals for the last 4 full calendar months, oldest first; the change runs first to last. */
+  trendCents: z.array(Cents).length(4),
   /** `spend` for subscriptions and vendors; `card_payment` for the Brex card payment. */
   classification: z.enum(["spend", "card_payment"]),
   paidWith: z.array(PaidWithEntrySchema),
@@ -477,7 +477,7 @@ export const SubscriptionSchema = z.object({
   key: z.string(),
   name: z.string(),
   monthlyCents: Cents,
-  trendCents: z.array(Cents).length(3),
+  trendCents: z.array(Cents).length(4),
   lastChargeAt: IsoDate,
   /** Set when another subscription shares this vendor's group in the static overlap map. */
   overlapGroup: z.string().nullable(),

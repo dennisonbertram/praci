@@ -581,9 +581,10 @@ export function BurnLines({
                 <text
                   key={m.start}
                   data-testid="financing-clipped"
-                  x={cx(i)}
+                  // A label centred on the last point would run past the right edge.
+                  x={cx(i) > width - 32 ? width - 2 : cx(i)}
                   y={top - 6}
-                  textAnchor="middle"
+                  textAnchor={cx(i) > width - 32 ? "end" : "middle"}
                   className="fill-foreground"
                   fontSize={10}
                 >
