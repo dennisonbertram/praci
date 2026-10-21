@@ -13,12 +13,18 @@ export function createMeetingSourceRegistry(
   return {
     granola: {
       connectorId: GRANOLA_API_CONNECTOR_ID,
-      create: ({ apiKey }) => {
+      create: ({ apiKey }, signal) => {
+        const base = options.fetch ?? fetch;
         if (!apiKey) throw new Error("Granola needs an API key");
         return createGranolaMeetingSource({
           apiKey,
           ...(options.granolaBaseUrl ? { baseUrl: options.granolaBaseUrl } : {}),
-          ...(options.fetch ? { fetch: options.fetch } : {}),
+          // Every request ends when the run's deadline passes.
+          fetch: (input, init) =>
+            base(input, {
+              ...init,
+              signal: init?.signal ? AbortSignal.any([signal, init.signal]) : signal,
+            }),
         });
       },
     },

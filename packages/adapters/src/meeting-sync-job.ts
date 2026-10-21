@@ -25,6 +25,8 @@ export const MEETINGS_SYNC_INTERVAL_MS = 5 * 60_000;
 const CHAIN_DELAY_MS = 1_000;
 const MIN_RATE_LIMIT_DELAY_MS = 60_000;
 const PAGES_PER_RUN = 2;
+/** Stored as `Rate limited until <ISO time>`; an agent refresh waits for that time. */
+const RATE_LIMITED = "Rate limited until ";
 
 /** What a registry entry needs to build a source for one connection or MCP server. */
 export interface MeetingSourceInput extends Scope {
@@ -40,7 +42,7 @@ export interface MeetingSourceInput extends Scope {
  */
 export type MeetingSourceRegistry = Record<
   string,
-  { connectorId?: string; create(input: MeetingSourceInput): MeetingSource }
+  { connectorId?: string; create(input: MeetingSourceInput, signal: AbortSignal): MeetingSource }
 >;
 
 export interface MeetingSyncJobDeps {
@@ -71,7 +73,7 @@ async function resolveInput(
   payload: SyncPayload,
   ref: MeetingSourceRef,
   entry: MeetingSourceRegistry[string],
-): Promise<MeetingSourceInput | null> {
+): Promise<{ input: MeetingSourceInput; secretId?: string } | null> {
   const { prisma } = deps;
   const scope = { spaceId: payload.spaceId, userId: payload.userId };
   if ("mcpServerId" in ref) {
@@ -79,7 +81,7 @@ async function resolveInput(
       where: { id: ref.mcpServerId, ...scope },
       select: { id: true },
     });
-    return server ? { ...scope, mcpServerId: server.id } : null;
+    return server ? { input: { ...scope, mcpServerId: server.id } } : null;
   }
   const connection = await prisma.connection.findFirst({
     where: { id: ref.connectionId, ...scope },
@@ -93,7 +95,7 @@ async function resolveInput(
   });
   if (!secret) return null;
   const apiKey = (await deps.secrets.load(secret.ciphertext, secret.id)).trim();
-  return { ...scope, connectionId: connection.id, apiKey };
+  return { input: { ...scope, connectionId: connection.id, apiKey }, secretId: secret.id };
 }
 
 /** Takes the source's sync claim, or returns null when another worker holds a live one. */
@@ -137,8 +139,9 @@ export async function runMeetingSyncJob(
   const ref = refOf(payload);
   const entry = deps.registry[payload.provider];
   if (!ref || !entry) return;
-  const input = await resolveInput(deps, payload, ref, entry);
-  if (!input) return;
+  const resolved = await resolveInput(deps, payload, ref, entry);
+  if (!resolved) return;
+  const { input, secretId } = resolved;
 
   const token = randomUUID();
   const state = await claim(prisma, scope, ref, payload.provider, token);
@@ -169,9 +172,10 @@ export async function runMeetingSyncJob(
         scope,
         ref,
         provider: payload.provider,
-        source: entry.create(input),
+        source: entry.create(input, signal),
         maxPages: deps.pagesPerRun ?? PAGES_PER_RUN,
         signal,
+        holdsClaim: async () => (await prisma.meetingSyncState.count({ where: mine })) === 1,
         save: async (patch) =>
           (
             await prisma.meetingSyncState.updateMany({
@@ -186,17 +190,28 @@ export async function runMeetingSyncJob(
     more = !result.done;
     await release({ lastSyncedAt: new Date(), error: null });
   } catch (error) {
+    if (signal.aborted) {
+      // The run's time is up. Whatever was in flight is dropped; the pass continues next run.
+      await release();
+      await deps.jobs.enqueue(meetingsSyncJob(payload, new Date(Date.now() + CHAIN_DELAY_MS)));
+      return;
+    }
     if (!(error instanceof MeetingSourceError)) {
       await release();
       throw error;
     }
     if (error.kind === "auth") {
       // The key stops working until someone reconnects; no retry until then.
-      if ("connectionId" in ref)
-        await prisma.connection.updateMany({
-          where: { id: ref.connectionId, ...scope, status: "connected" },
-          data: { status: "needs_reconnect" },
-        });
+      // Only while this worker still holds the claim and the key it used is still the connection's:
+      // a reconnect during the run replaced the key, and the rejection belongs to the old one.
+      if ("connectionId" in ref && secretId)
+        await prisma.$executeRaw`
+          UPDATE connections SET status = 'needs_reconnect'
+          WHERE id = ${ref.connectionId} AND "spaceId" = ${scope.spaceId} AND "userId" = ${scope.userId}
+            AND status = 'connected' AND "secretId" = ${secretId}
+            AND EXISTS (
+              SELECT 1 FROM meeting_sync_states
+              WHERE "connectionId" = ${ref.connectionId} AND "claimToken" = ${token})`;
       await release({ error: "Key rejected" });
       return;
     }
@@ -204,7 +219,9 @@ export async function runMeetingSyncJob(
       retryAt = new Date(Date.now() + Math.max(error.retryAfterMs ?? 0, MIN_RATE_LIMIT_DELAY_MS));
     // Only the short reason is stored, never a vendor payload. The scheduler retries later.
     getLogger().warn("meetings sync failed", { provider: payload.provider, kind: error.kind });
-    await release({ error: error.message.slice(0, 200) });
+    await release({
+      error: retryAt ? `${RATE_LIMITED}${retryAt.toISOString()}` : error.message.slice(0, 200),
+    });
   }
   if (more)
     await deps.jobs.enqueue(meetingsSyncJob(payload, new Date(Date.now() + CHAIN_DELAY_MS)));
@@ -233,17 +250,23 @@ export async function requestMeetingSync(
   const now = Date.now();
   if (state?.claimedAt && now - state.claimedAt.getTime() < CLAIM_STALE_MS)
     return { syncing: true };
+  const until = state?.error?.startsWith(RATE_LIMITED)
+    ? Date.parse(state.error.slice(RATE_LIMITED.length))
+    : Number.NaN;
+  if (until > now) return { syncing: false };
   if (state?.lastSyncedAt && !state.cursor && now - state.lastSyncedAt.getTime() < MIN_INTERVAL_MS)
     return { syncing: false };
-  await deps.jobs.enqueue(
-    meetingsSyncJob({
+  // keepExisting: a delayed retry already queued (a rate-limit backoff) is not replaced by this one.
+  await deps.jobs.enqueue({
+    ...meetingsSyncJob({
       ...scope,
       provider,
       ...("mcpServerId" in ref
         ? { mcpServerId: ref.mcpServerId }
         : { connectionId: ref.connectionId }),
     }),
-  );
+    keepExisting: true,
+  });
   return { syncing: true };
 }
 

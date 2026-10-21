@@ -45,10 +45,15 @@ class TestSource implements MeetingSource {
   failListAt: { call: number; error: Error } | undefined;
   failAll: Error | undefined;
   gate: Promise<void> | undefined;
-  constructor(readonly pageSize = 2) {}
+  beforeList: (() => Promise<void>) | undefined;
+  beforeGet: ((id: string) => Promise<void>) | undefined;
+  pageSize = 2;
+  /** A provider owes no order; this one lists by id, so an edited meeting keeps its place. */
+  sortById = false;
   async list(filter: { updatedAfter?: Date; createdAfter?: Date; cursor?: string }) {
     this.listCalls.push(filter);
     if (this.gate) await this.gate;
+    await this.beforeList?.();
     if (this.failAll) throw this.failAll;
     if (this.failListAt?.call === this.listCalls.length) {
       const { error } = this.failListAt;
@@ -61,7 +66,11 @@ class TestSource implements MeetingSource {
           (!filter.updatedAfter || new Date(m.updatedAt) > filter.updatedAfter) &&
           (!filter.createdAfter || new Date(m.startedAt) >= filter.createdAfter),
       )
-      .sort((a, b) => Date.parse(a.updatedAt) - Date.parse(b.updatedAt));
+      .sort((a, b) =>
+        this.sortById
+          ? a.externalId.localeCompare(b.externalId)
+          : Date.parse(a.updatedAt) - Date.parse(b.updatedAt),
+      );
     const start = Number(filter.cursor ?? 0);
     const next = start + this.pageSize;
     return {
@@ -73,6 +82,7 @@ class TestSource implements MeetingSource {
   }
   async get(externalId: string) {
     this.getCalls.push(externalId);
+    await this.beforeGet?.(externalId);
     const found = this.meetings.find((m) => m.externalId === externalId);
     if (!found) throw new MeetingSourceError("not_found", "No such meeting");
     return found;
@@ -197,6 +207,7 @@ describePostgres("meetings.sync job (PostgreSQL)", () => {
       meeting("old", 120),
     ];
     const { payload, connectionId } = await connect();
+    const startedBefore = Date.now();
     await runMeetingSyncJob(deps(1), payload);
     let s = await state({ connectionId });
     expect(await stored()).toHaveLength(2);
@@ -214,7 +225,8 @@ describePostgres("meetings.sync job (PostgreSQL)", () => {
     s = await state({ connectionId });
     expect((await stored()).map((m) => m.externalId)).toEqual(["m1", "m2", "m3", "m4", "m5"]);
     expect(s.cursor).toBeNull();
-    expect(s.syncedThrough?.toISOString()).toBe(source.meetings[4]?.updatedAt);
+    expect(s.syncedThrough?.getTime()).toBeGreaterThanOrEqual(startedBefore);
+    expect(s.syncedThrough?.getTime()).toBeLessThanOrEqual(Date.now());
     expect(s.lastSyncedAt).not.toBeNull();
     expect(source.listCalls[0]?.createdAfter).toBeInstanceOf(Date);
     expect(source.listCalls[0]?.updatedAfter).toBeUndefined();
@@ -255,7 +267,11 @@ describePostgres("meetings.sync job (PostgreSQL)", () => {
     await runMeetingSyncJob(deps(), payload);
     const checkpoint = (await state({ connectionId })).syncedThrough as Date;
 
-    source.meetings.push(meeting("n1", 3, 3), meeting("n2", 2, 2), meeting("n3", 1, 1));
+    const soon = (id: string, seconds: number) => ({
+      ...meeting(id, 0, 0),
+      updatedAt: new Date(Date.now() + seconds * 1000).toISOString(),
+    });
+    source.meetings.push(soon("n1", 1), soon("n2", 2), soon("n3", 3));
     await age(connectionId);
     // Page 1 is read and saved, then the source fails on page 2.
     source.failListAt = {
@@ -268,14 +284,13 @@ describePostgres("meetings.sync job (PostgreSQL)", () => {
     expect(s.syncedThrough?.getTime()).toBe(checkpoint.getTime());
     expect(s.error).toBe("Granola is unavailable");
     expect(s.claimToken).toBeNull();
-    // The overlap re-lists "a", so page 1 is a and n1.
-    expect((await stored()).map((m) => m.externalId)).toEqual(["a", "n1"]);
+    expect((await stored()).map((m) => m.externalId)).toEqual(["a", "n1", "n2"]);
 
     await runMeetingSyncJob(deps(), payload); // cursor present: no throttle
     s = await state({ connectionId });
     expect(s.cursor).toBeNull();
     expect(s.error).toBeNull();
-    expect(s.syncedThrough?.toISOString()).toBe(source.meetings[3]?.updatedAt);
+    expect(s.syncedThrough?.getTime()).toBeGreaterThan(checkpoint.getTime());
     expect(source.listCalls.at(-1)?.cursor).toBe("2");
     expect(await stored()).toHaveLength(4);
   });
@@ -327,7 +342,7 @@ describePostgres("meetings.sync job (PostgreSQL)", () => {
     source.failAll = new MeetingSourceError("rate_limit", "Granola rate limit", 5_000);
     const { payload, connectionId } = await connect();
     await runMeetingSyncJob(deps(), payload);
-    expect((await state({ connectionId })).error).toBe("Granola rate limit");
+    expect((await state({ connectionId })).error).toMatch(/^Rate limited until /);
     expect(enqueued).toHaveLength(1);
     expect((enqueued[0]?.availableAt?.getTime() ?? 0) - Date.now()).toBeGreaterThan(30_000);
   });
@@ -401,6 +416,125 @@ describePostgres("meetings.sync job (PostgreSQL)", () => {
     await runMeetingSyncJob(deps(), payload);
     expect(source.getCalls).toEqual([]);
     expect((await stored()).map((m) => m.externalId)).toEqual(["b"]);
+  });
+
+  it("an edit made mid-pass is read by the next pass even if a later page has newer meetings", async () => {
+    source.sortById = true;
+    source.meetings = [meeting("a", 3), meeting("x", 2), meeting("y", 1)];
+    const { payload, connectionId } = await connect();
+    await runMeetingSyncJob(deps(1), payload); // page 1 (a, x) of a two-page pass
+    expect((await state({ connectionId })).cursor).not.toBeNull();
+    // "a" is edited after it was read, and a newer meeting sorts onto the last page.
+    source.meetings[0] = { ...meeting("a", 3, 0), summary: "Edited mid-pass" };
+    source.meetings.push({
+      ...meeting("z", 0, 0),
+      updatedAt: new Date(Date.now() + 5_000).toISOString(),
+    });
+    await runMeetingSyncJob(deps(1), payload);
+    expect((await state({ connectionId })).cursor).toBeNull();
+    expect((await stored()).map((m) => m.externalId)).toEqual(["a", "x", "y", "z"]);
+    await age(connectionId);
+    await runMeetingSyncJob(deps(), payload);
+    expect((await stored()).find((m) => m.externalId === "a")?.summary).toBe("Edited mid-pass");
+  });
+
+  it("a failed first page keeps the backfill window for the retry", async () => {
+    source.meetings = [meeting("a", 3)];
+    source.failAll = new MeetingSourceError("unavailable", "Granola is unavailable");
+    const { payload, connectionId } = await connect();
+    await runMeetingSyncJob(deps(), payload);
+    const saved = JSON.parse((await state({ connectionId })).cursor as string);
+    expect(saved.createdAfter).toBe(source.listCalls[0]?.createdAfter?.toISOString());
+    expect(saved.startedAt).toEqual(expect.any(String));
+    source.failAll = undefined;
+    await new Promise((r) => setTimeout(r, 20));
+    await runMeetingSyncJob(deps(), payload);
+    expect(source.listCalls[1]?.createdAfter).toEqual(source.listCalls[0]?.createdAfter);
+    expect(await stored()).toHaveLength(1);
+  });
+
+  it("a rejection from a replaced key does not mark the reconnected connection", async () => {
+    source.failAll = new MeetingSourceError("auth", "Granola rejected the API key");
+    const { payload, connectionId } = await connect();
+    source.beforeList = async () => {
+      const fresh = await prisma.secret.create({
+        data: { ...scope, kind: "api-key", ciphertext: "grn_new" },
+      });
+      await prisma.connection.update({ where: { id: connectionId }, data: { secretId: fresh.id } });
+    };
+    await runMeetingSyncJob(deps(), payload);
+    expect(
+      (await prisma.connection.findUniqueOrThrow({ where: { id: connectionId } })).status,
+    ).toBe("connected");
+  });
+
+  it("a worker that lost its claim cannot mark the connection needs_reconnect", async () => {
+    source.failAll = new MeetingSourceError("auth", "Granola rejected the API key");
+    const { payload, connectionId } = await connect();
+    source.beforeList = async () => {
+      await prisma.meetingSyncState.update({
+        where: { connectionId },
+        data: { claimToken: "someone-else" },
+      });
+    };
+    await runMeetingSyncJob(deps(), payload);
+    expect(
+      (await prisma.connection.findUniqueOrThrow({ where: { id: connectionId } })).status,
+    ).toBe("connected");
+  });
+
+  it("an in-flight read past the deadline is aborted and nothing is written after it", async () => {
+    source.meetings = [meeting("a", 2), meeting("b", 1)];
+    const controller = new AbortController();
+    let given: AbortSignal | undefined;
+    const reg: MeetingSourceRegistry = {
+      granola: {
+        create: (_input, signal) => {
+          given = signal;
+          return source;
+        },
+      },
+    };
+    source.beforeGet = (id) =>
+      new Promise<void>((_, reject) => {
+        if (id !== "a") return;
+        given?.addEventListener("abort", () =>
+          reject(new MeetingSourceError("unavailable", "aborted")),
+        );
+        setTimeout(() => controller.abort(), 20);
+      });
+    const { payload, connectionId } = await connect();
+    await runMeetingSyncJob({ ...deps(), registry: reg }, payload, controller.signal);
+    expect(given).toBe(controller.signal);
+    expect(await stored()).toHaveLength(0);
+    expect(source.getCalls).toEqual(["a"]);
+    const s = await state({ connectionId });
+    expect(s.claimToken).toBeNull();
+    expect(s.error).toBeNull();
+    expect(enqueued.map((j) => j.name)).toEqual(["meetings.sync"]);
+  });
+
+  it("an agent refresh keeps a queued retry and waits out a rate-limit backoff", async () => {
+    const { connectionId } = await connect();
+    await age(connectionId);
+    enqueued = [];
+    await requestMeetingSync({ prisma, jobs }, scope, { connectionId }, "granola");
+    expect(enqueued[0]?.keepExisting).toBe(true);
+    await prisma.meetingSyncState.upsert({
+      where: { connectionId },
+      create: { ...scope, connectionId, provider: "granola" },
+      update: {},
+    });
+    await prisma.meetingSyncState.update({
+      where: { connectionId },
+      data: { error: `Rate limited until ${new Date(Date.now() + 60_000).toISOString()}` },
+    });
+    await age(connectionId);
+    enqueued = [];
+    expect(await requestMeetingSync({ prisma, jobs }, scope, { connectionId }, "granola")).toEqual({
+      syncing: false,
+    });
+    expect(enqueued).toHaveLength(0);
   });
 
   it("syncs a Granola emulator through the real registry", async () => {

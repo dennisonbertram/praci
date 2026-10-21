@@ -13,12 +13,12 @@ type Scope = { spaceId: string; userId: string };
 
 /**
  * Where an unfinished pass resumes. `list` has no ordering guarantee, so the checkpoint can move
- * only when a pass has read every page; until then the pass keeps its own filter and the largest
- * `updatedAt` seen so far.
+ * only when a pass has read every page, and then it moves to the pass's start: a meeting edited
+ * after the pass began is listed again by the next pass, whatever the pass has read since. The
+ * filter and start time are saved before the first provider call, so a retry keeps them.
  */
 interface PassCursor {
   next?: string;
-  max: string | null;
   createdAfter?: string;
   updatedAfter?: string;
   startedAt: string;
@@ -44,6 +44,8 @@ export interface MeetingSyncDeps {
    * caller no longer holds the claim, which ends the run.
    */
   save(patch: { cursor: string | null; syncedThrough?: Date }): Promise<boolean>;
+  /** Whether the caller still holds the claim; checked before each write. */
+  holdsClaim(): Promise<boolean>;
 }
 
 export interface MeetingSyncResult {
@@ -78,7 +80,6 @@ export async function runMeetingSyncPass(
   let pass = parseCursor(state.cursor);
   if (!pass) {
     pass = {
-      max: null,
       startedAt: now.toISOString(),
       ...(state.syncedThrough
         ? {
@@ -91,8 +92,9 @@ export async function runMeetingSyncPass(
           }),
     };
   }
-  let max = pass.max ? Date.parse(pass.max) : Number.NEGATIVE_INFINITY;
   let fetched = 0;
+  if (!state.cursor && !(await deps.save({ cursor: JSON.stringify(pass) })))
+    return { done: false, lostClaim: true, fetched };
 
   for (let page = 0; page < deps.maxPages; page++) {
     deps.signal?.throwIfAborted();
@@ -103,7 +105,6 @@ export async function runMeetingSyncPass(
     });
     for (const item of listed.items) {
       deps.signal?.throwIfAborted();
-      max = Math.max(max, Date.parse(item.updatedAt));
       if (await alreadyHave(prisma, scope, deps.provider, item)) continue;
       let meeting: Awaited<ReturnType<MeetingSource["get"]>>;
       try {
@@ -113,19 +114,16 @@ export async function runMeetingSyncPass(
         if (error instanceof MeetingSourceError && error.kind === "not_found") continue;
         throw error;
       }
+      deps.signal?.throwIfAborted();
+      if (!(await deps.holdsClaim())) return { done: false, lostClaim: true, fetched };
       await upsertMeeting(prisma, scope, deps.ref, deps.provider, meeting);
       fetched++;
     }
-    const maxIso = Number.isFinite(max) ? new Date(max).toISOString() : null;
     if (!listed.nextCursor) {
-      // Nothing seen: keep the old checkpoint, or start from this pass's start on a first sync.
-      const through = Number.isFinite(max)
-        ? new Date(Math.max(max, state.syncedThrough?.getTime() ?? max))
-        : (state.syncedThrough ?? new Date(pass.startedAt));
-      const kept = await deps.save({ cursor: null, syncedThrough: through });
+      const kept = await deps.save({ cursor: null, syncedThrough: new Date(pass.startedAt) });
       return { done: kept, lostClaim: !kept, fetched };
     }
-    pass = { ...pass, next: listed.nextCursor, max: maxIso };
+    pass = { ...pass, next: listed.nextCursor };
     if (!(await deps.save({ cursor: JSON.stringify(pass) })))
       return { done: false, lostClaim: true, fetched };
   }
