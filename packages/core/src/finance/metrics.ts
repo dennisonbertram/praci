@@ -672,7 +672,10 @@ export function detectRecurring(
   accounts: FinanceAccount[] = [],
 ): RecurringCharge[] {
   const today = dayOf(now.toISOString());
-  const trendMonths = lastMonths(now, 4).slice(0, 3);
+  // The change figure runs from 3 months before the last full month to that month, the same
+  // window the vendor page uses; the usage-based average takes the last 3 full months.
+  const changeMonths = lastMonths(now, 5).slice(0, 4);
+  const trendMonths = changeMonths.slice(1);
   const byVendor = new Map<string, FinanceTransaction[]>();
   for (const t of txns) {
     if (!counts(t) || t.amountCents >= 0) continue;
@@ -756,7 +759,7 @@ export function detectRecurring(
       chargeCount: chain.length,
       lastChargeAt: lastTxn.purchasedAt ?? lastTxn.postedAt,
       nextExpectedAt: `${nextAfter(last.day, cadence)}T00:00:00.000Z`,
-      trendCents: trendMonths.map((m) => monthTotal(chain, m)),
+      trendCents: changeMonths.map((m) => monthTotal(chain, m)),
       classification: last.txns.every((t) => t.classification === "card_payment")
         ? "card_payment"
         : "spend",
