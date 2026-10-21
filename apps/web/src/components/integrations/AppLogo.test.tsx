@@ -21,20 +21,22 @@ it("shows the catalog logo", async () => {
   );
 });
 
-it("falls back to a letter tile when there is no logo", async () => {
+it("falls back to a glyph tile when there is no logo", async () => {
   const { container } = await render(null);
   expect(container.querySelector("img")).toBeNull();
-  expect(container.textContent).toBe("G");
+  expect(container.querySelector("svg")).not.toBeNull();
+  expect(container.textContent).toBe("");
 });
 
-it("falls back to a letter tile when the image fails to load", async () => {
+it("falls back to a glyph tile when the image fails to load", async () => {
   const { container } = await render("https://logos.example.test/broken.svg");
   const img = container.querySelector("img");
   await act(async () => {
     img?.dispatchEvent(new Event("error"));
   });
   expect(container.querySelector("img")).toBeNull();
-  expect(container.textContent).toBe("G");
+  expect(container.querySelector("svg")).not.toBeNull();
+  expect(container.textContent).toBe("");
   expect(container.querySelector("[data-fallback]")).not.toBeNull();
 });
 
@@ -49,13 +51,6 @@ it("serves bundled Simple Icons marks locally, as a glyph that inverts in dark m
 it("never requests the Simple Icons CDN, even for marks that are not bundled", async () => {
   const { container } = await render("https://cdn.simpleicons.org/someunknownapp");
   expect(container.querySelector("img")).toBeNull();
-  expect(container.textContent).toBe("G");
-});
-
-it("uses two initials so apps from one vendor get different fallback tiles", async () => {
-  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  const container = document.createElement("div");
-  const root = createRoot(container);
-  await act(async () => root.render(<AppLogo name="Google Sheets" logo={null} />));
-  expect(container.textContent).toBe("GS");
+  expect(container.querySelector("svg")).not.toBeNull();
+  expect(container.textContent).toBe("");
 });

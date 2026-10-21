@@ -13,6 +13,11 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
+vi.mock("@lingui/core/macro", () => ({
+  plural: (n: number, forms: { one: string; other: string }) =>
+    (n === 1 ? forms.one : forms.other).replace("#", String(n)),
+}));
+
 import { CleanupSenderRow } from "./CleanupSenderRow";
 
 const sender: CleanupSender = {
@@ -51,8 +56,7 @@ it("shows the name, address, message count, read rate and last date", async () =
   const content = document.body.textContent ?? "";
   expect(content).toContain("Northwind Weekly");
   expect(content).toContain("news@lists.example.test");
-  expect(content).toContain("20");
-  expect(content).toContain("5% read");
+  expect(content).toContain("20 emails, 5% read, last ");
   expect(document.querySelector("time")?.getAttribute("datetime")).toBe(sender.lastReceivedAt);
 });
 
@@ -64,6 +68,15 @@ it("ticks through the checkbox", async () => {
   expect(box?.getAttribute("aria-label")).toBe("Select Northwind Weekly");
   await act(async () => box?.click());
   expect(onToggle).toHaveBeenCalledTimes(1);
+});
+
+it("ticks when the sender name is tapped, so the whole row is the target", async () => {
+  const onToggle = vi.fn();
+  await show({ onToggle });
+  const name = [...document.querySelectorAll("span")].find((e) => e.textContent === sender.name);
+  await act(async () => name?.click());
+  expect(onToggle).toHaveBeenCalledTimes(1);
+  expect(document.querySelector("[data-sender]")?.tagName).toBe("LABEL");
 });
 
 it("flags a spam-like sender", async () => {

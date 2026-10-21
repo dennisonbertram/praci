@@ -1195,6 +1195,6 @@ describe("native markdown hide amounts", () => {
     );
     expect(html).not.toContain("73,781");
     expect(html).toContain("$•••");
-    expect(html).toContain("•••%");
+    expect(html).toContain("40%");
   });
 });

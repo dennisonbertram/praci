@@ -26,16 +26,16 @@ function useWide() {
 
 /** Portaled to the body: the sidebar is transformed, which would otherwise move fixed children. */
 function Ring({ rect }: { rect: DOMRect }) {
+  // Kept inside the window, so a target at the edge does not lose its ring there.
+  const left = Math.max(2, rect.left - 3);
+  const top = Math.max(2, rect.top - 3);
+  const right = Math.min(window.innerWidth - 2, rect.right + 3);
+  const bottom = Math.min(window.innerHeight - 2, rect.bottom + 3);
   return createPortal(
     <div
       aria-hidden="true"
       className="pointer-events-none fixed z-40 rounded-xl ring-2 ring-primary"
-      style={{
-        left: rect.left - 3,
-        top: rect.top - 3,
-        width: rect.width + 6,
-        height: rect.height + 6,
-      }}
+      style={{ left, top, width: right - left, height: bottom - top }}
     />,
     document.body,
   );
@@ -98,11 +98,14 @@ export function TourPopover({
   // On a phone the card is not a popover, so Escape needs its own handler.
   useEffect(() => {
     if (wide) return;
+    // Capture phase: the tour ends first, so the sidebar drawer behind it stays open for one more press.
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onFinish("skip");
+      if (event.key !== "Escape") return;
+      event.stopPropagation();
+      onFinish("skip");
     };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
   }, [wide, onFinish]);
   if (!step) return null;
 
@@ -175,8 +178,8 @@ export function TourPopover({
       >
         <PopoverContent
           anchor={element}
-          side={step.anchor.includes("user-menu") ? "top" : "bottom"}
-          align="start"
+          side="right"
+          align={step.anchor.includes("user-menu") ? "end" : "start"}
           sideOffset={10}
           data-testid="tour-popover"
           className="w-72"

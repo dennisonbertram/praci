@@ -26,26 +26,16 @@ export function CleanupActionBar({
     <div className="sticky top-0 z-20 mb-2 flex flex-wrap items-center gap-2 bg-background py-2">
       <Button size="sm" disabled={off("archive")} onClick={() => onApply("archive")}>
         {busy ? <Spinner aria-hidden="true" /> : <Archive aria-hidden="true" />}
-        {t`Archive ${counts.archive}`}
+        {counts.archive > 0 ? t`Archive ${counts.archive}` : t`Archive`}
       </Button>
       {counts.unsubscribe > 0 ? (
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={busy}
-          onClick={() => onApply("unsubscribe")}
-        >
+        <Button variant="outline" size="sm" disabled={busy} onClick={() => onApply("unsubscribe")}>
           {t`Unsubscribe ${counts.unsubscribe}`}
         </Button>
       ) : null}
       {counts.skip_inbox > 0 ? (
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={busy}
-          onClick={() => onApply("skip_inbox")}
-        >
-          {t`Skip inbox ${counts.skip_inbox}`}
+        <Button variant="outline" size="sm" disabled={busy} onClick={() => onApply("skip_inbox")}>
+          {t`Archive future mail ${counts.skip_inbox}`}
         </Button>
       ) : null}
       <DropdownMenu>

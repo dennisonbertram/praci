@@ -1,4 +1,4 @@
-import { maskPinFigures } from "@rakazo/chat-ui/mask-currency";
+import { maskCurrencyText } from "@rakazo/chat-ui/mask-currency";
 import type { BotPins } from "@rakazo/contracts";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
@@ -42,7 +42,7 @@ export function PinsStrip({
   const styles = useThemedStyles(createStyles);
   const [running, setRunning] = useState(false);
   const hidden = useHideAmounts();
-  const shown = (text: string) => (hidden ? maskPinFigures(text) : text);
+  const shown = (text: string) => (hidden ? maskCurrencyText(text) : text);
 
   async function refresh() {
     setRunning(true);

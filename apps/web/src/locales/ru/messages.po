@@ -49,6 +49,10 @@ msgstr ""
 msgid ", {0} already imported"
 msgstr ""
 
+#: src/pages/devin/DevinSessions.tsx
+msgid "(opens in Devin)"
+msgstr ""
+
 #. placeholder {0}: processing.failed
 #: src/components/data-room/ProcessingStrip.tsx
 msgid "{0, plural, one {# couldn't be read} other {# couldn't be read}}"
@@ -72,6 +76,11 @@ msgstr ""
 #. placeholder {0}: message.thread.length
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "{0, plural, one {# earlier message} other {# earlier messages}}"
+msgstr ""
+
+#. placeholder {0}: sender.messageCount
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "{0, plural, one {# email} other {# emails}}"
 msgstr ""
 
 #. placeholder {0}: items.length
@@ -112,6 +121,11 @@ msgstr ""
 #. placeholder {0}: state.count
 #: src/components/data-room/DropZone.tsx
 msgid "{0, plural, one {Added # file} other {Added # files}}"
+msgstr ""
+
+#. placeholder {0}: chosen.length
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "{0, plural, one {Apply # change} other {Apply # changes}}"
 msgstr ""
 
 #. placeholder {0}: picks.size
@@ -187,6 +201,11 @@ msgstr ""
 msgid "{0} (overdue)"
 msgstr ""
 
+#. placeholder {0}: selected.name
+#: src/pages/VoiceSettingsOverlay.tsx
+msgid "{0} API key"
+msgstr ""
+
 #. placeholder {0}: bot.name
 #: src/components/integrations/parts.tsx
 msgid "{0} can use {appName}"
@@ -253,6 +272,11 @@ msgstr "{0} ч. сводки"
 #. placeholder {0}: runwayGlance(glance.financeRunwayMonths, hideAmounts)
 #: src/pages/Shell.tsx
 msgid "{0} runway"
+msgstr ""
+
+#. placeholder {0}: active.name
+#: src/pages/Shell.tsx
+msgid "{0} settings"
 msgstr ""
 
 #. placeholder {0}: statement.transactionCount
@@ -422,10 +446,6 @@ msgstr "{minutes} мин назад"
 msgid "{monthlyTotal}/mo"
 msgstr ""
 
-#: src/pages/Finance.tsx
-msgid "{name} accounts"
-msgstr ""
-
 #: src/components/integrations/AppDetail.tsx
 msgid "{name} agent"
 msgstr ""
@@ -510,6 +530,23 @@ msgstr ""
 msgid "{sourceName} spend"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "{sourceNames} · synced {updated}"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "{sourceNames} · syncing…"
+msgstr ""
+
+#. placeholder {0}: data.excludedNonUsdCount
+#: src/pages/Finance.tsx
+msgid "{sourceNames}, {0} non-USD not counted"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "{stablecoins} stablecoins in runway"
+msgstr ""
+
 #: src/components/ToolActivityDisclosure.tsx
 msgid "{stepCount, plural, one {Done · # tool} other {Done · # tools}}"
 msgstr ""
@@ -536,10 +573,6 @@ msgstr "{workingBotName} работает"
 
 #: src/pages/Finance.tsx
 msgid "{year} so far"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "{yieldAmount} last month"
 msgstr ""
 
 #. placeholder {0}: mention.name
@@ -579,6 +612,7 @@ msgid "A deposit address at an exchange."
 msgstr ""
 
 #: src/components/sidebar-folders/FolderHeader.tsx
+#: src/pages/shell/dialogs.tsx
 msgid "A folder with that name already exists"
 msgstr ""
 
@@ -691,6 +725,7 @@ msgstr "Активность"
 
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/ModelBackupsSettings.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Add"
@@ -901,10 +936,6 @@ msgstr "Расширенные..."
 msgid "Advisor"
 msgstr ""
 
-#: src/pages/Finance.tsx
-msgid "after fees"
-msgstr ""
-
 #: src/components/integrations/IntegrationAgentSection.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Agent"
@@ -981,6 +1012,7 @@ msgstr ""
 
 #: src/components/AiDataSharing.tsx
 #: src/components/AskCard.tsx
+#: src/pages/shell/composer-error.tsx
 msgid "Allow"
 msgstr ""
 
@@ -1005,6 +1037,10 @@ msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Allow access first."
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -1049,10 +1085,6 @@ msgstr ""
 msgid "Allowed"
 msgstr ""
 
-#: src/components/AskCard.tsx
-msgid "Allowed once"
-msgstr "Разрешено один раз"
-
 #: src/pages/Auth.tsx
 msgid "Already have an account?"
 msgstr "У вас уже есть аккаунт?"
@@ -1090,8 +1122,8 @@ msgid "Always act"
 msgstr "Всегда выполнять"
 
 #: src/components/AskCard.tsx
-msgid "Always allow this tool"
-msgstr "Всегда разрешать этот инструмент"
+msgid "Always allow this"
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Always allowed"
@@ -1142,6 +1174,10 @@ msgstr "Ответ: {0}"
 msgid "Answered: {answer}"
 msgstr "Ответ: {answer}"
 
+#: src/lib/slash-skills.ts
+msgid "Answers from your meeting notes and transcripts."
+msgstr ""
+
 #: src/pages/Paywall.tsx
 msgid "Any model, with your own key"
 msgstr ""
@@ -1152,6 +1188,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Anything else"
+msgstr ""
+
+#: src/lib/devin-format.ts
+msgid "API"
 msgstr ""
 
 #: src/components/SoftwareUpdateSection.tsx
@@ -1167,7 +1207,6 @@ msgstr "API вернулся, но обновление не завершило�
 #: src/lib/localized-provider-hint.ts
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
-#: src/pages/VoiceSettingsOverlay.tsx
 msgid "API key"
 msgstr "API-ключ"
 
@@ -1188,7 +1227,6 @@ msgid "Appearance"
 msgstr "Внешний вид"
 
 #: src/components/compose/RichTextEditor.tsx
-#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr ""
@@ -1207,6 +1245,10 @@ msgstr "Утвердить"
 msgid "Approve this server to let your bot use its tools."
 msgstr ""
 
+#: src/components/AskCard.tsx
+msgid "Approved"
+msgstr ""
+
 #: src/components/ConnectAppsButton.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -1219,6 +1261,7 @@ msgstr ""
 msgid "Apps with their own server"
 msgstr ""
 
+#: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/InboxSenderGroup.tsx
@@ -1233,8 +1276,18 @@ msgstr "Архивировать"
 msgid "Archive {0}"
 msgstr ""
 
+#. placeholder {0}: rows.length
 #: src/components/inbox/InboxDigest.tsx
-msgid "Archive all"
+msgid "Archive all {0}"
+msgstr ""
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Archive future mail"
+msgstr ""
+
+#. placeholder {0}: counts.skip_inbox
+#: src/components/inbox/CleanupActionBar.tsx
+msgid "Archive future mail {0}"
 msgstr ""
 
 #: src/pages/shell/transcript.tsx
@@ -1296,6 +1349,14 @@ msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Ask a question"
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "Ask a space owner to connect Devin."
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "Ask a space owner to reconnect."
 msgstr ""
 
 #: src/components/FinanceCards.tsx
@@ -1470,6 +1531,10 @@ msgstr "Автоматические отправители появятся п�
 
 #: src/components/inbox/CleanupHistory.tsx
 msgid "Automatic"
+msgstr ""
+
+#: src/lib/devin-format.ts
+msgid "Automation"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -1657,6 +1722,10 @@ msgstr ""
 msgid "Bots are working"
 msgstr "Боты работают"
 
+#: src/components/AiDataSharing.tsx
+msgid "Bots cannot use a model until you allow it."
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Bots lose access to its tools."
 msgstr ""
@@ -1675,16 +1744,24 @@ msgid "Bots run on"
 msgstr ""
 
 #: src/pages/Welcome.tsx
-msgid "Bots that run your inbox, cash,<0/>cap table and investor documents."
+msgid "Bots that run your inbox, cash, cap table and investor documents."
 msgstr ""
 
 #: src/pages/Paywall.tsx
 msgid "Bots with their own computer and browser"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
+msgid "Bots, mail, files and contracts"
+msgstr ""
+
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "Box"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Box files"
 msgstr ""
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
@@ -1764,6 +1841,7 @@ msgstr ""
 msgid "Can't reach the server."
 msgstr "Не удаётся связаться с сервером."
 
+#: src/components/AccountAccess.tsx
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
@@ -1828,7 +1906,6 @@ msgid "Cap table, equity and investors"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
-#: src/pages/finance/FinanceBurn.tsx
 msgid "Card balance owed"
 msgstr ""
 
@@ -2008,10 +2085,6 @@ msgstr ""
 msgid "Check for updates"
 msgstr "Проверьте наличие обновлений"
 
-#: src/pages/Shell.tsx
-msgid "Check in."
-msgstr "Проверить."
-
 #: src/lib/model-connection-preflight.ts
 msgid "Check the API key or sign-in, then test again."
 msgstr "Проверьте API-ключ или вход и повторите тест."
@@ -2126,6 +2199,7 @@ msgid "Clear formatting"
 msgstr ""
 
 #: src/components/ListControls.tsx
+#: src/pages/DataRoom.tsx
 #: src/pages/Shell.tsx
 msgid "Clear search"
 msgstr ""
@@ -2133,6 +2207,10 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 msgid "Clearing…"
 msgstr "Очистка…"
+
+#: src/lib/devin-format.ts
+msgid "CLI"
+msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -2229,6 +2307,10 @@ msgstr "Облако"
 #: src/components/AskCard.tsx
 msgid "Code"
 msgstr "Код"
+
+#: src/lib/devin-format.ts
+msgid "Code scan"
+msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Coding sessions and repo docs"
@@ -2402,15 +2484,16 @@ msgstr "Убедитесь, что URL доступен из этого сеан
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/shell/message-cards.tsx
-#: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect"
 msgstr "Подключить"
 
 #. placeholder {0}: exchange.name
 #. placeholder {0}: item.name
+#. placeholder {0}: selected.name
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect {0}"
 msgstr ""
 
@@ -2461,16 +2544,20 @@ msgstr ""
 msgid "Connect API key"
 msgstr "Подключить API-ключ"
 
-#: src/components/ConnectAppsButton.tsx
-msgid "Connect apps"
-msgstr ""
-
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 msgid "Connect Blockscout"
 msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Connect Carta"
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "Connect Devin"
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "Connect Devin to see its sessions here."
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -2600,10 +2687,6 @@ msgstr "Продолжить в фоне"
 #: src/pages/Auth.tsx
 msgid "Continue with {0}"
 msgstr "Продолжить с {0}"
-
-#: src/pages/Auth.tsx
-msgid "Continue with email"
-msgstr "Продолжить по электронной почте"
 
 #: src/components/finance/WalletDialog.tsx
 #: src/components/legal/LegalGraph.tsx
@@ -2882,6 +2965,10 @@ msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Could not load credentials."
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "Could not load Devin sessions."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -3584,6 +3671,10 @@ msgstr "Развертывание по умолчанию"
 msgid "Description"
 msgstr "Описание"
 
+#: src/lib/devin-format.ts
+msgid "Desktop"
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 msgid "Desktop app"
 msgstr "Настольное приложение"
@@ -3603,6 +3694,19 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Developer"
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "Devin"
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "Devin rejected the key. Alerts are paused."
+msgstr ""
+
+#: src/lib/slash-skills.ts
+#: src/pages/devin/DevinSessions.tsx
+msgid "Devin sessions"
 msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
@@ -3712,6 +3816,10 @@ msgstr "Отображаемое имя"
 msgid "Dividends"
 msgstr ""
 
+#: src/pages/Artifacts.tsx
+msgid "Doc"
+msgstr ""
+
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Docker is configured but computers are not responding. Confirm the sandbox supervisor is running, then recreate the stack after changing .env."
 msgstr ""
@@ -3727,16 +3835,13 @@ msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/FolderDocuments.tsx
+#: src/pages/Shell.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Documents"
 msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
 msgid "Documents over time"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Does a similar job to another subscription"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
@@ -3878,6 +3983,7 @@ msgstr ""
 msgid "Each bot keeps its own"
 msgstr ""
 
+#: src/pages/devin/DevinSessions.tsx
 #: src/pages/Inbox.tsx
 msgid "Earlier"
 msgstr ""
@@ -4016,6 +4122,7 @@ msgstr ""
 msgid "equity, ownership, shares, options, Carta"
 msgstr ""
 
+#: src/lib/devin-format.ts
 #: src/lib/roster-status.ts
 #: src/pages/Shell.tsx
 msgid "Error"
@@ -4210,12 +4317,15 @@ msgstr ""
 
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
-#: src/pages/finance/FinanceBurn.tsx
 msgid "Financing"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Find an app"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Find and summarize files in Box. Changes ask first."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4254,6 +4364,7 @@ msgstr "Завершите вход по подписке и повторите 
 msgid "finished"
 msgstr "завершено"
 
+#: src/lib/devin-format.ts
 #: src/pages/ActivityList.tsx
 msgid "Finished"
 msgstr ""
@@ -4527,7 +4638,6 @@ msgstr "Привет, вот как я буду звучать, когда бу�
 msgid "Hidden folders"
 msgstr ""
 
-#: src/components/data-room/Preview.tsx
 #: src/components/inbox/MailAttachments.tsx
 msgid "Hidden while amounts are hidden"
 msgstr ""
@@ -4547,10 +4657,6 @@ msgstr ""
 #: src/components/call/VoiceChatCard.tsx
 msgid "Hide transcript"
 msgstr "Скрыть расшифровку"
-
-#: src/components/HideAmountsToggle.tsx
-msgid "Hides money amounts in finance, chat and email."
-msgstr ""
 
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4612,6 +4718,10 @@ msgid "I read your bank and card accounts and answer questions about cash, spend
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx
+msgid "I read your Data room for contracts and deadlines and answer questions about them."
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
 msgid "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
 msgstr ""
 
@@ -4648,16 +4758,13 @@ msgstr ""
 msgid "Image upload area"
 msgstr "Область загрузки изображения"
 
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/NotificationSettings.tsx
 msgid "iMessage"
 msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
-msgid "iMessage (BlueBubbles)"
-msgstr ""
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "iMessage (Photon)"
+msgid "iMessage on your Mac"
 msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
@@ -4712,10 +4819,6 @@ msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "In"
-msgstr ""
-
-#: src/pages/finance/FinanceBurn.tsx
-msgid "In cash, not counted as burn"
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
@@ -4837,6 +4940,10 @@ msgstr ""
 msgid "Its conversation, files, and routines will be permanently deleted. Bots it created stay in your list."
 msgstr "Его диалог, файлы и задачи будут безвозвратно удалены. Созданные им боты останутся в вашем списке."
 
+#: src/lib/devin-format.ts
+msgid "Jira"
+msgstr ""
+
 #: src/pages/shell/transcript.tsx
 msgid "Jump to latest"
 msgstr "Перейти к последнему"
@@ -4903,6 +5010,10 @@ msgstr ""
 msgid "Largest files"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "last"
+msgstr ""
+
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Last 90 days"
@@ -4916,16 +5027,16 @@ msgstr ""
 msgid "Last month vs 3 mo ago"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Last month, after fees"
+msgstr ""
+
 #: src/pages/shell/transcript.tsx
 msgid "Last run failed: {failedNote}"
 msgstr ""
 
 #: src/pages/shell/transcript.tsx
 msgid "Last run failed."
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Last scan {lastScan}"
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -5028,6 +5139,10 @@ msgstr ""
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Light"
 msgstr "Светлая"
+
+#: src/lib/devin-format.ts
+msgid "Linear"
+msgstr ""
 
 #: src/pages/SpaceSearch.tsx
 msgid "Link"
@@ -5337,6 +5452,10 @@ msgstr "Средний"
 msgid "Medium"
 msgstr "Средний"
 
+#: src/lib/slash-skills.ts
+msgid "Meeting notes"
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Meeting notes and transcripts"
 msgstr ""
@@ -5504,10 +5623,6 @@ msgstr "Модели с сервера"
 msgid "Models list OK. {modelCount, plural, one {# model} other {# models}} available. Chat was not tested."
 msgstr "Список моделей в порядке. {modelCount, plural, one {Доступна # модель} few {Доступны # модели} many {Доступно # моделей} other {Доступно # модели}}. Чат не проверялся."
 
-#: src/components/HideAmountsToggle.tsx
-msgid "Money amounts are hidden in finance, chat and email."
-msgstr ""
-
 #: src/lib/billing.ts
 msgid "month"
 msgstr ""
@@ -5574,6 +5689,10 @@ msgstr ""
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "More computer actions"
 msgstr "Больше действий с компьютером"
+
+#: src/pages/ActivityList.tsx
+msgid "More filters"
+msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
@@ -5667,10 +5786,6 @@ msgstr ""
 msgid "Needs a server restart"
 msgstr ""
 
-#: src/lib/roster-status.ts
-msgid "Needs an answer"
-msgstr ""
-
 #: src/components/MailApprovalCard.tsx
 msgid "Needs approval"
 msgstr ""
@@ -5679,6 +5794,7 @@ msgstr ""
 msgid "Needs attention"
 msgstr ""
 
+#: src/lib/devin-format.ts
 #: src/pages/ActivityList.tsx
 msgid "Needs input"
 msgstr "Требуется ввод данных"
@@ -5701,9 +5817,15 @@ msgstr "Требуется передача управления"
 
 #: src/lib/roster-status.ts
 #: src/pages/ActivityList.tsx
+#: src/pages/Devin.tsx
+#: src/pages/devin/DevinSessions.tsx
 #: src/pages/Shell.tsx
 msgid "Needs you"
 msgstr "Требуется ваше участие"
+
+#: src/lib/roster-status.ts
+msgid "Needs your answer"
+msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -5723,7 +5845,6 @@ msgstr ""
 msgid "new"
 msgstr ""
 
-#: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/transcript.tsx
 msgid "New"
 msgstr ""
@@ -5896,6 +6017,10 @@ msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "No Devin sessions yet."
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -6108,6 +6233,10 @@ msgstr ""
 msgid "Normal"
 msgstr ""
 
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Not a real deadline: hide it"
+msgstr ""
+
 #: src/components/compose/RecipientField.tsx
 msgid "Not a valid email address"
 msgstr ""
@@ -6132,10 +6261,6 @@ msgstr ""
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Not connected"
 msgstr "Не подключена"
-
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Not counted"
-msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Not counted in cash"
@@ -6345,12 +6470,12 @@ msgstr ""
 msgid "Open computer settings"
 msgstr ""
 
-#: src/pages/shell/composer-error.tsx
-msgid "Open Data room"
-msgstr ""
-
 #: src/pages/Legal.tsx
 msgid "Open deadlines"
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "Open Devin"
 msgstr ""
 
 #: src/components/legal/LegalGraph.tsx
@@ -6395,10 +6520,6 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
-msgstr ""
-
-#: src/pages/shell/composer-error.tsx
-msgid "Open Legal"
 msgstr ""
 
 #: src/components/inbox/InboxCleanup.tsx
@@ -6514,6 +6635,7 @@ msgstr "Исходное сообщение недоступно"
 #: src/components/ContactDialog.tsx
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
+#: src/lib/devin-format.ts
 #: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Other"
@@ -6555,10 +6677,6 @@ msgstr ""
 msgid "Overdue"
 msgstr ""
 
-#: src/pages/Finance.tsx
-msgid "overlaps"
-msgstr ""
-
 #: src/pages/Board.tsx
 msgid "Owner"
 msgstr ""
@@ -6568,6 +6686,7 @@ msgstr ""
 msgid "Ownership"
 msgstr ""
 
+#: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Page"
@@ -6701,10 +6820,6 @@ msgstr ""
 msgid "Pending"
 msgstr ""
 
-#: src/pages/Finance.tsx
-msgid "Per month"
-msgstr ""
-
 #: src/components/finance/ui.tsx
 msgid "Period"
 msgstr ""
@@ -6785,10 +6900,6 @@ msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
-msgstr ""
-
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "Praci keeps itself up to date. If an update ever needs you, it shows here."
 msgstr ""
 
 #: src/components/DataExport.tsx
@@ -6896,6 +7007,7 @@ msgid "Providers"
 msgstr "Провайдеры"
 
 #: src/components/CloudAgentCard.tsx
+#: src/pages/devin/DevinSessions.tsx
 msgid "Pull request"
 msgstr "Запрос на слияние"
 
@@ -7058,12 +7170,12 @@ msgstr ""
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
+#: src/pages/Devin.tsx
 #: src/pages/Finance.tsx
 msgid "Reconnect"
 msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
-#: src/pages/Finance.tsx
 msgid "Reconnect {name}"
 msgstr ""
 
@@ -7407,6 +7519,10 @@ msgstr ""
 msgid "Replying to {0}"
 msgstr ""
 
+#: src/pages/Auth.tsx
+msgid "Request a new link"
+msgstr ""
+
 #: src/components/DataExport.tsx
 msgid "Request export"
 msgstr ""
@@ -7435,6 +7551,10 @@ msgstr "Сбросить компьютер"
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Reset computer?"
 msgstr "Сбросить компьютер?"
+
+#: src/pages/Auth.tsx
+msgid "Reset link expired"
+msgstr ""
 
 #: src/pages/Auth.tsx
 msgid "Reset password"
@@ -7518,7 +7638,6 @@ msgstr ""
 
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
-#: src/pages/finance/FinanceBurn.tsx
 msgid "Revenue"
 msgstr ""
 
@@ -7787,6 +7906,10 @@ msgstr ""
 msgid "Search all items"
 msgstr ""
 
+#: src/lib/slash-skills.ts
+msgid "Search and follow Devin sessions. Read-only."
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Search and read files and folders"
 msgstr ""
@@ -7822,10 +7945,6 @@ msgstr ""
 msgid "Search Drive"
 msgstr ""
 
-#: src/pages/DataRoom.tsx
-msgid "Search looks for these words in names and text."
-msgstr ""
-
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Inbox.tsx
 msgid "Search mail"
@@ -7852,7 +7971,7 @@ msgid "Search older mail"
 msgstr ""
 
 #: src/pages/shell/command-palette.tsx
-msgid "Search pages, bots and groups"
+msgid "Search pages, bots, groups, documents and artifacts"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -8031,6 +8150,10 @@ msgstr ""
 msgid "Server URL"
 msgstr "URL-адрес сервера"
 
+#: src/pages/devin/DevinSessions.tsx
+msgid "Session"
+msgstr ""
+
 #: src/components/integrations/IMessageSection.tsx
 msgid "Set by server"
 msgstr ""
@@ -8091,6 +8214,10 @@ msgstr ""
 #: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Shares"
+msgstr ""
+
+#: src/pages/Artifacts.tsx
+msgid "Sheet"
 msgstr ""
 
 #: src/components/SheetPreview.tsx
@@ -8256,6 +8383,11 @@ msgstr ""
 msgid "Signed out. Reconnect to keep reading this account's mail."
 msgstr ""
 
+#. placeholder {0}: other.name
+#: src/pages/Finance.tsx
+msgid "Similar to {0}"
+msgstr ""
+
 #. placeholder {0}: shortDay(card.from)
 #: src/components/FinanceCards.tsx
 msgid "since {0}"
@@ -8299,15 +8431,6 @@ msgstr "Пропустить"
 msgid "Skip for now"
 msgstr ""
 
-#: src/components/inbox/CleanupHistory.tsx
-msgid "Skip inbox"
-msgstr ""
-
-#. placeholder {0}: counts.skip_inbox
-#: src/components/inbox/CleanupActionBar.tsx
-msgid "Skip inbox {0}"
-msgstr ""
-
 #: src/lib/localized-provider-hint.ts
 msgid "Skip or deploy key"
 msgstr "Пропустить или добавить ключ"
@@ -8334,6 +8457,10 @@ msgstr ""
 msgid "Skipping"
 msgstr ""
 
+#: src/lib/devin-format.ts
+msgid "Slack"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Slack message"
 msgstr "Сообщение Slack"
@@ -8358,6 +8485,10 @@ msgstr ""
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Software update"
 msgstr "Обновление программного обеспечения"
+
+#: src/pages/Devin.tsx
+msgid "Some sessions could not be read."
+msgstr ""
 
 #: src/App.tsx
 #: src/lib/user-error.ts
@@ -8386,6 +8517,7 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/Preview.tsx
+#: src/pages/devin/DevinSessions.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Source"
 msgstr ""
@@ -8449,10 +8581,6 @@ msgstr ""
 msgid "Spend, changes, and new or upcoming charges."
 msgstr ""
 
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Spending minus revenue, 3-mo avg"
-msgstr ""
-
 #: src/pages/Finance.tsx
 msgid "Spent {spentRange}"
 msgstr ""
@@ -8480,10 +8608,6 @@ msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Stablecoins count as cash in this runway; other crypto does not."
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Stablecoins in runway"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
@@ -8532,6 +8656,7 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Board.tsx
+#: src/pages/devin/DevinSessions.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 #: src/pages/legal/LegalContracts.tsx
@@ -8621,10 +8746,6 @@ msgstr ""
 msgid "Subscriptions / mo"
 msgstr ""
 
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Subtracted from burn"
-msgstr ""
-
 #: src/lib/slash-skills.ts
 msgid "Suggests categories for uncategorized transactions."
 msgstr ""
@@ -8641,6 +8762,10 @@ msgstr ""
 msgid "Supports thinking"
 msgstr "Поддерживает рассуждения"
 
+#: src/lib/devin-format.ts
+msgid "Suspended"
+msgstr ""
+
 #: src/components/inbox/InboxRow.tsx
 msgid "Suspicious"
 msgstr ""
@@ -8648,10 +8773,6 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Switching…"
 msgstr "Переключение…"
-
-#: src/pages/Finance.tsx
-msgid "Syncing…"
-msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
@@ -8677,6 +8798,10 @@ msgstr ""
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
 msgid "Task board"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "tasks, tickets"
 msgstr ""
 
 #: src/components/data-room/format.ts
@@ -8705,6 +8830,10 @@ msgstr "Командные диалоги"
 
 #: src/lib/sidebar-page-copy.ts
 msgid "Team health"
+msgstr ""
+
+#: src/lib/devin-format.ts
+msgid "Teams"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -8847,6 +8976,10 @@ msgstr ""
 msgid "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
 msgstr ""
 
+#: src/pages/Devin.tsx
+msgid "The member who connected Devin left this space. Alerts are paused."
+msgstr ""
+
 #: src/lib/run-phase.ts
 msgid "the model"
 msgstr ""
@@ -8870,6 +9003,10 @@ msgstr "Поставщик ограничивает частоту запрос�
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "The selected memory provider is not available in this build."
 msgstr "Выбранный поставщик памяти недоступен в этой сборке."
+
+#: src/components/AiDataSharing.tsx
+msgid "The sender, subject and a preview of each message are sent to the AI model that runs your bots."
+msgstr ""
 
 #. placeholder {0}: shortDay(first.dueFor)
 #: src/components/finance/StatementReminderBanner.tsx
@@ -8999,10 +9136,6 @@ msgstr "Этот поставщик еще не подключен."
 msgid "This removes the connection from every space."
 msgstr ""
 
-#: src/pages/Auth.tsx
-msgid "This reset link is invalid or expired"
-msgstr "Эта ссылка для сброса недействительна или срок ее действия истек."
-
 #: src/pages/shell/message-cards.tsx
 msgid "This server cannot be assigned without a bot."
 msgstr "Этот сервер невозможно назначить без бота."
@@ -9061,6 +9194,7 @@ msgid "Time of day"
 msgstr "Время суток"
 
 #: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/RoutineEditor.tsx
 msgid "Time zone"
 msgstr ""
 
@@ -9191,7 +9325,6 @@ msgid "Trash"
 msgstr ""
 
 #: src/pages/Finance.tsx
-#: src/pages/finance/FinanceBurn.tsx
 msgid "Treasury yield"
 msgstr ""
 
@@ -9328,6 +9461,7 @@ msgstr ""
 
 #: src/components/finance/ui.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/lib/devin-format.ts
 #: src/pages/legal/LegalContracts.tsx
 msgid "Unknown"
 msgstr ""
@@ -9400,6 +9534,10 @@ msgstr ""
 msgid "Untitled folder"
 msgstr ""
 
+#: src/pages/devin/DevinSessions.tsx
+msgid "Untitled session"
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Up to date"
@@ -9441,15 +9579,17 @@ msgid "Update progress"
 msgstr "Ход обновления"
 
 #: src/components/SoftwareUpdateSection.tsx
+#: src/pages/devin/DevinSessions.tsx
 msgid "Updated"
 msgstr "Обновлено"
 
+#. placeholder {0}: formatRelativeTime(data.fetchedAt)
 #. placeholder {0}: formatRelativeTime(snapshot.updatedAt)
 #: src/pages/CapTable.tsx
+#: src/pages/Devin.tsx
 msgid "Updated {0}"
 msgstr ""
 
-#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/shell/bot-credentials.tsx
 #: src/pages/shell/bot-pins.tsx
@@ -9459,7 +9599,6 @@ msgstr ""
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
-#: src/pages/SettingsOverlay.tsx
 msgid "Updates"
 msgstr "Обновления"
 
@@ -9533,7 +9672,7 @@ msgstr ""
 msgid "URL"
 msgstr ""
 
-#: src/pages/SettingsOverlay.tsx
+#: src/pages/AccountSettingsOverlay.tsx
 msgid "Usage"
 msgstr "Использование"
 
@@ -9592,7 +9731,11 @@ msgid "Uses this server's own {hostCredentialSource} credentials to access {sele
 msgstr "Использует собственные учётные данные {hostCredentialSource} этого сервера для доступа к {selectedProviderName}."
 
 #: src/pages/Finance.tsx
-msgid "Usual charge scaled to a month. A vendor page shows the average of actual spend."
+msgid "Usual charge scaled to a month; usage-based vendors use the last 3 months. A vendor page shows the average of actual spend over the months it names."
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Usual per month"
 msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
@@ -9669,6 +9812,18 @@ msgstr ""
 msgid "Wait a moment and test again."
 msgstr "Подождите немного и повторите тест."
 
+#: src/lib/devin-format.ts
+msgid "Waiting {days}d"
+msgstr ""
+
+#: src/lib/devin-format.ts
+msgid "Waiting {hours}h"
+msgstr ""
+
+#: src/lib/devin-format.ts
+msgid "Waiting {minutes}m"
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/SignInStep.tsx
 msgid "Waiting for sign-in"
@@ -9719,6 +9874,10 @@ msgstr ""
 msgid "Wallets"
 msgstr ""
 
+#: src/lib/devin-format.ts
+msgid "Web"
+msgstr ""
+
 #: src/pages/Paywall.tsx
 msgid "Web, desktop and mobile apps"
 msgstr ""
@@ -9762,6 +9921,10 @@ msgstr "Что делать с его памятью?"
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "What bots remember by default"
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
+msgid "What deadlines are coming up?"
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx
@@ -9828,6 +9991,14 @@ msgstr ""
 msgid "Which bots can use {appName}?"
 msgstr ""
 
+#: src/components/PageAgentIntro.tsx
+msgid "Which contracts have the highest value?"
+msgstr ""
+
+#: src/components/PageAgentIntro.tsx
+msgid "Which contracts renew in the next 90 days?"
+msgstr ""
+
 #: src/lib/data-room-agent.ts
 msgid "Which documents mention renewal?"
 msgstr ""
@@ -9844,6 +10015,10 @@ msgstr ""
 msgid "Within 3 days"
 msgstr ""
 
+#: src/components/AskCard.tsx
+msgid "Won't ask again for this kind of action."
+msgstr ""
+
 #: src/lib/ticket-status.ts
 msgid "Won't do"
 msgstr ""
@@ -9852,7 +10027,10 @@ msgstr ""
 msgid "Work this bot repeats for you, like a cash check every Monday."
 msgstr ""
 
+#: src/lib/devin-format.ts
 #: src/pages/ActivityList.tsx
+#: src/pages/Devin.tsx
+#: src/pages/devin/DevinSessions.tsx
 msgid "Working"
 msgstr ""
 
@@ -9867,6 +10045,10 @@ msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Write"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Write what this routine should do each time it runs."
 msgstr ""
 
 #: src/pages/shell/transcript.tsx

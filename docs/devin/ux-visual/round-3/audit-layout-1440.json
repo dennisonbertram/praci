@@ -1,0 +1,583 @@
+{
+ "viewport": {
+  "width": 1440,
+  "height": 900,
+  "pageScrollY": 12754,
+  "pageScrollX": 0
+ },
+ "offscreenPrimary": [
+  {
+   "el": "button.btn.p \"Connect\"",
+   "top": 10551,
+   "bottom": 10583
+  },
+  {
+   "el": "button.btn.p \"Connecting\u2026\"",
+   "top": 11067,
+   "bottom": 11099
+  },
+  {
+   "el": "button.btn.p \"Connect\"",
+   "top": 11076,
+   "bottom": 11108
+  }
+ ],
+ "scrollers": [
+  {
+   "el": "main.pg \"DevinAskNeeds you3Working2Sess\"",
+   "clientH": 598,
+   "scrollH": 751
+  },
+  {
+   "el": "main.pg \"DevinAskNeeds you3Working2Sess\"",
+   "clientH": 598,
+   "scrollH": 850
+  },
+  {
+   "el": "main.pg \"DevinAskNeeds you3Working2Sess\"",
+   "clientH": 598,
+   "scrollH": 850
+  },
+  {
+   "el": "main.pg \"DevinAskNeeds you3Working2Sess\"",
+   "clientH": 418,
+   "scrollH": 850
+  },
+  {
+   "el": "main.pg \"DevinAskNeeds you3Working2Sess\"",
+   "clientH": 542,
+   "scrollH": 979
+  }
+ ],
+ "deadSpace": [
+  {
+   "el": "div.dscrim \"DConnect DevinConnects Devin f\"",
+   "w": 1440,
+   "h": 558,
+   "fillPct": 4,
+   "pctOfViewport": 62
+  },
+  {
+   "el": "div.col \"DevinConnect Devin to see its \"",
+   "w": 1124,
+   "h": 558,
+   "fillPct": 2,
+   "pctOfViewport": 48
+  },
+  {
+   "el": "main.pg \"DevinConnect Devin to see its \"",
+   "w": 1124,
+   "h": 558,
+   "fillPct": 2,
+   "pctOfViewport": 48
+  },
+  {
+   "el": "div.col \"DevinAskNo Devin sessions yet.\"",
+   "w": 1124,
+   "h": 358,
+   "fillPct": 2,
+   "pctOfViewport": 31
+  },
+  {
+   "el": "main.pg \"DevinAskNo Devin sessions yet.\"",
+   "w": 1124,
+   "h": 358,
+   "fillPct": 2,
+   "pctOfViewport": 31
+  },
+  {
+   "el": "div.col \"DevinConnect Devin to see its \"",
+   "w": 1124,
+   "h": 358,
+   "fillPct": 3,
+   "pctOfViewport": 31
+  },
+  {
+   "el": "main.pg \"DevinConnect Devin to see its \"",
+   "w": 1124,
+   "h": 358,
+   "fillPct": 3,
+   "pctOfViewport": 31
+  },
+  {
+   "el": "div.col \"DevinAsk a space owner to conn\"",
+   "w": 1124,
+   "h": 358,
+   "fillPct": 2,
+   "pctOfViewport": 31
+  },
+  {
+   "el": "main.pg \"DevinAsk a space owner to conn\"",
+   "w": 1124,
+   "h": 358,
+   "fillPct": 2,
+   "pctOfViewport": 31
+  },
+  {
+   "el": "div.col \"DevinCould not load Devin sess\"",
+   "w": 1124,
+   "h": 298,
+   "fillPct": 2,
+   "pctOfViewport": 26
+  }
+ ],
+ "spacing": {
+  "observed": [
+   1,
+   2,
+   4,
+   6,
+   8,
+   9,
+   10,
+   12,
+   14,
+   16,
+   18,
+   20,
+   24,
+   28,
+   36,
+   40,
+   48,
+   68
+  ],
+  "offScale": [
+   6,
+   9,
+   10,
+   14,
+   18
+  ],
+  "nearDupes": [
+   [
+    4,
+    6
+   ],
+   [
+    6,
+    8
+   ],
+   [
+    8,
+    9
+   ],
+   [
+    9,
+    10
+   ],
+   [
+    10,
+    12
+   ],
+   [
+    12,
+    14
+   ],
+   [
+    14,
+    16
+   ],
+   [
+    16,
+    18
+   ],
+   [
+    18,
+    20
+   ]
+  ]
+ },
+ "type": {
+  "distinctFontSizes": [
+   "11px",
+   "12px",
+   "14px",
+   "18px",
+   "22px",
+   "13px",
+   "16px"
+  ],
+  "sizes": {
+   "11px/400": 43,
+   "12px/400": 59,
+   "14px/400": 320,
+   "11px/600": 21,
+   "14px/500": 451,
+   "12px/500": 147,
+   "18px/600": 21,
+   "12px/600": 20,
+   "22px/600": 20,
+   "13px/500": 40,
+   "16px/400": 15,
+   "13px/400": 15,
+   "16px/700": 2,
+   "16px/500": 3
+  }
+ },
+ "alignment": {
+  "nearMissEdges": [
+   [
+    541,
+    544
+   ],
+   [
+    760,
+    762
+   ],
+   [
+    1080,
+    1082
+   ]
+  ]
+ },
+ "smallTargets": [
+  {
+   "el": "a.ti \"Add CSV export for invoices (o\"",
+   "w": 197,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Upgrade Prisma to 6.x (opens i\"",
+   "w": 159,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Remove unused feature flags (o\"",
+   "w": 206,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Fix flaky invoice export test \"",
+   "w": 195,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Rewrite onboarding copy (opens\"",
+   "w": 177,
+   "h": 18
+  },
+  {
+   "el": "a \"acme/web#418\"",
+   "w": 121,
+   "h": 21
+  },
+  {
+   "el": "a \"acme/api#215\"",
+   "w": 113,
+   "h": 21
+  },
+  {
+   "el": "a \"acme/api#212\"",
+   "w": 113,
+   "h": 21
+  },
+  {
+   "el": "a.ti \"Add CSV export for invoices (o\"",
+   "w": 197,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Upgrade Prisma to 6.x (opens i\"",
+   "w": 159,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Migrate billing webhooks to th\"",
+   "w": 295,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Remove unused feature flags (o\"",
+   "w": 206,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Add pagination to the audit lo\"",
+   "w": 241,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Fix flaky invoice export test \"",
+   "w": 195,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Rewrite onboarding copy (opens\"",
+   "w": 177,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Add CSV export for invoices (o\"",
+   "w": 197,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Upgrade Prisma to 6.x (opens i\"",
+   "w": 159,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Remove unused feature flags (o\"",
+   "w": 206,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Fix flaky invoice export test \"",
+   "w": 195,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Rewrite onboarding copy (opens\"",
+   "w": 177,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Add CSV export for invoices (o\"",
+   "w": 197,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Upgrade Prisma to 6.x (opens i\"",
+   "w": 159,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Remove unused feature flags (o\"",
+   "w": 206,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Fix flaky invoice export test \"",
+   "w": 195,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Rewrite onboarding copy (opens\"",
+   "w": 177,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Add CSV export for invoices (o\"",
+   "w": 197,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Upgrade Prisma to 6.x (opens i\"",
+   "w": 159,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Remove unused feature flags (o\"",
+   "w": 206,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Fix flaky invoice export test \"",
+   "w": 195,
+   "h": 18
+  },
+  {
+   "el": "a.ti \"Rewrite onboarding copy (opens\"",
+   "w": 177,
+   "h": 18
+  }
+ ],
+ "lowContrast": [
+  {
+   "el": "span \"DU\"",
+   "ratio": 4.42
+  },
+  {
+   "el": "div.v.tab \"3\"",
+   "ratio": 3.64
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  },
+  {
+   "el": "span \"DU\"",
+   "ratio": 4.42
+  },
+  {
+   "el": "div.v.tab \"3\"",
+   "ratio": 3.64
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  },
+  {
+   "el": "span \"DU\"",
+   "ratio": 4.42
+  },
+  {
+   "el": "div.v.tab \"3\"",
+   "ratio": 3.64
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  },
+  {
+   "el": "span \"DU\"",
+   "ratio": 4.42
+  },
+  {
+   "el": "div.v.tab \"3\"",
+   "ratio": 3.64
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  },
+  {
+   "el": "span \"DU\"",
+   "ratio": 4.42
+  },
+  {
+   "el": "div.v.tab \"3\"",
+   "ratio": 3.64
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.w \"Needs input\"",
+   "ratio": 3.48
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  },
+  {
+   "el": "span.badge.s \"Finished\"",
+   "ratio": 4.17
+  }
+ ],
+ "overlaps": [
+  {
+   "a": "a.ti \"Add pagination to the audit lo\"",
+   "b": "a.lnk \"Inbox\"",
+   "w": 12,
+   "h": 35
+  },
+  {
+   "a": "a.ti \"Fix flaky invoice export test \"",
+   "b": "a.lnk \"Legal\"",
+   "w": 6,
+   "h": 11
+  },
+  {
+   "a": "a.ti \"Bump Expo SDK and move push no\"",
+   "b": "a.lnk \"Cap table\"",
+   "w": 38,
+   "h": 39
+  },
+  {
+   "a": "a.lnk \"Cap table\"",
+   "b": "a.ti \"Add CSV export for invoices (o\"",
+   "w": 197,
+   "h": 6
+  },
+  {
+   "a": "a.lnk \"Data room\"",
+   "b": "a.ti \"Add CSV export for invoices (o\"",
+   "w": 197,
+   "h": 8
+  },
+  {
+   "a": "a.lnk \"Artifacts\"",
+   "b": "a.ti \"Upgrade Prisma to 6.x (opens i\"",
+   "w": 159,
+   "h": 14
+  },
+  {
+   "a": "a.lnk \"Integrations\"",
+   "b": "a.ti \"Migrate billing webhooks to th\"",
+   "w": 291,
+   "h": 9
+  },
+  {
+   "a": "button.drawscrim \"Close navigation\"",
+   "b": "button.btn.askbtn \"Ask\"",
+   "w": 58,
+   "h": 32
+  },
+  {
+   "a": "a.lnk \"Integrations\"",
+   "b": "button.ibtn \"History\"",
+   "w": 34,
+   "h": 24
+  },
+  {
+   "a": "a.lnk \"Artifacts\"",
+   "b": "button.ibtn \"History\"",
+   "w": 34,
+   "h": 15
+  },
+  {
+   "a": "a.lnk \"Integrations\"",
+   "b": "a.lnk \"Inbox\"",
+   "w": 299,
+   "h": 6
+  },
+  {
+   "a": "a.lnk \"Integrations\"",
+   "b": "button.ibtn \"History\"",
+   "w": 34,
+   "h": 24
+  }
+ ],
+ "fixedOverlays": []
+}

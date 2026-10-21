@@ -307,12 +307,12 @@ export function IMessageSection({
   const tiles = [
     {
       id: "photon" as const,
-      name: t`iMessage (Photon)`,
+      name: t`iMessage`,
       sub: t`Chat with your agents over iMessage`,
     },
     {
       id: "bluebubbles" as const,
-      name: t`iMessage (BlueBubbles)`,
+      name: t`iMessage on your Mac`,
       sub: t`Chat with your agents over iMessage from your Mac`,
     },
   ].filter((tile) => tile.name.toLowerCase().includes(query.trim().toLowerCase()));

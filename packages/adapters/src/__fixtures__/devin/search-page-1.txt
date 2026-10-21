@@ -1,0 +1,5 @@
+# SYNTHETIC FIXTURE: invented data in the documented format, not a capture from Devin. Replaced by real captures in issue #516.
+- id=devin-0001 title="Fix login redirect loop" status=running status_detail=waiting_for_user created_at=1760000000 updated_at=1760003600 tags=auth,web user_id=user_a1 origin=webapp prs=https://github.com/acme/web/pull/212[open] acus_consumed=1.5
+- id=devin-0002 title="Add \"export CSV\" to the reports page" status=running status_detail=working created_at=1759990000 updated_at=1760002000 origin=slack acus_consumed=0.4
+- id=devin-0003 title="Upgrade the API client" status=failed created_at=1759900000 updated_at=1759950000 origin=api playbook_id=playbook-1
+next_cursor: cursor-page-2

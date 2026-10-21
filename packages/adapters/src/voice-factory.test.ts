@@ -11,8 +11,11 @@ import {
   ScriptedVoiceProvider,
 } from "./scripted-voice.js";
 import {
+  createTranscriptionProvider,
   createVoiceProvider,
+  isTranscriptionProviderId,
   isVoiceProviderId,
+  listTranscriptionCatalog,
   listVoiceCatalog,
   VOICE_CATALOG,
 } from "./voice-factory.js";
@@ -750,5 +753,55 @@ describe("ScriptedVoiceProvider", () => {
         ctx,
       ),
     ).resolves.toEqual({ text: SCRIPTED_TRANSCRIPT });
+  });
+});
+
+describe("transcription adapter", () => {
+  it("flags the catalog for speech", () => {
+    for (const entry of VOICE_CATALOG) {
+      expect(entry.speech).toBe(true);
+    }
+  });
+
+  it("adapts providers that transcribe and refuses those that do not", () => {
+    for (const id of ["elevenlabs", "openai", "fish-audio"]) {
+      expect(createTranscriptionProvider(id)?.describe().capabilities).toEqual({
+        usesContext: false,
+      });
+    }
+    expect(createTranscriptionProvider("cartesia")).toBeNull();
+    expect(() => createTranscriptionProvider("nope")).toThrow("Unknown voice provider");
+  });
+
+  it("drops context the voice provider cannot use", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ text: "hi" })));
+    vi.stubGlobal("fetch", fetchMock);
+    await createTranscriptionProvider("openai")!.transcribe(
+      {
+        audio: new Uint8Array([1]),
+        mimeType: "audio/webm",
+        apiKey: "sk-test",
+        context: { vocabulary: ["Ada"], beforeText: "Dear" },
+      },
+      ctx,
+    );
+    const form = fetchMock.mock.calls[0]?.[1]?.body as FormData;
+    expect([...form.keys()].sort()).toEqual(["file", "model"]);
+  });
+});
+
+describe("transcription catalog", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("lists transcribing voice providers, plus the transcription-only fixture when scripted", () => {
+    vi.stubEnv("AGENT_RUNTIME", "");
+    const ids = listTranscriptionCatalog().map((entry) => entry.id);
+    expect(ids).toEqual(["elevenlabs", "openai", "fish-audio"]);
+    expect(isTranscriptionProviderId("scripted-transcribe")).toBe(false);
+    expect(() => createTranscriptionProvider("scripted-transcribe")).toThrow();
+
+    vi.stubEnv("AGENT_RUNTIME", "scripted");
+    expect(listTranscriptionCatalog().map((entry) => entry.id)).toContain("scripted-transcribe");
+    expect(createTranscriptionProvider("scripted-transcribe")).not.toBeNull();
   });
 });

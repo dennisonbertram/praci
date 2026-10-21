@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import {
   CARTA_MCP_ENDPOINT,
   CARTA_READ_TOOLS,
@@ -1151,6 +1152,61 @@ describe("MCP connector session cache", () => {
   });
 });
 
+describe("MCP connector HTTP failures", () => {
+  it("puts the HTTP status in the error text when a server refuses the connect or the call", async () => {
+    // Synthetic fixture of the texts Devin's classifier reads (see devin-call-tool.test.ts).
+    const expected = JSON.parse(
+      readFileSync(new URL("./__fixtures__/devin/errors.json", import.meta.url), "utf8"),
+    ) as Record<string, string>;
+    for (const status of [401, 403, 429]) {
+      for (const refuses of ["initialize", "tools/call"]) {
+        vi.stubGlobal(
+          "fetch",
+          vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+            const request = input instanceof Request ? input : new Request(input, init);
+            const message = JSON.parse(await request.text()) as { id?: number; method?: string };
+            if (message.method === refuses)
+              return new Response(JSON.stringify({ error: "refused" }), {
+                status,
+                headers: { "content-type": "application/json" },
+              });
+            if (message.method === "initialize")
+              return Response.json({
+                jsonrpc: "2.0",
+                id: message.id,
+                result: {
+                  protocolVersion: "2025-11-25",
+                  capabilities: { tools: {} },
+                  serverInfo: { name: "test", version: "1" },
+                },
+              });
+            return new Response(null, { status: 202 });
+          }),
+        );
+        // A stored key makes the connect redact and rewrap its error, which must keep the status.
+        const prisma = {
+          secret: { findFirst: vi.fn().mockResolvedValue({ id: "secret-1", ciphertext: "x" }) },
+        };
+        const connector = new McpConnector(
+          prisma as never,
+          { load: vi.fn().mockReturnValue(JSON.stringify({ secret: "devin-key" })) } as never,
+          { network: TEST_NETWORK },
+        );
+        const error = await connector
+          .callServerTool(
+            { ...SERVER, secretId: "secret-1" } as never,
+            { spaceId: "w1", userId: "u1", signal: new AbortController().signal } as never,
+            "devin_session_search",
+            {},
+          )
+          .catch((caught: Error) => caught);
+        expect((error as Error).message, `${status} on ${refuses}`).toBe(expected[String(status)]);
+        await connector.close();
+      }
+    }
+  });
+});
+
 describe("MCP connector private endpoints", () => {
   const privateAssignment = {
     ...ASSIGNMENT,
@@ -2124,7 +2180,7 @@ describe("MCP connector Devin agent", () => {
     const tools = await connector.discoverTools(context);
     const byName = Object.fromEntries(tools.map((t) => [t.route?.toolName, t.readOnly]));
     for (const name of DEVIN_READ_TOOLS) expect(byName[name]).toBe(true);
-    for (const name of DEVIN_WRITE_TOOLS) expect(byName[name]).toBe(false);
+    for (const name of DEVIN_WRITE_TOOLS) expect(byName).not.toHaveProperty(name);
     expect(byName).not.toHaveProperty("devin_added_later");
     await connector.close();
   });
@@ -2137,6 +2193,18 @@ describe("MCP connector Devin agent", () => {
     expect(await call("devin_added_later", false)).toMatchObject([{ type: "error" }]);
     expect(await call("devin_session_search", true)).toMatchObject([{ type: "result" }]);
     expect(state.calls).toEqual(["devin_session_search"]);
+    await connector.close();
+  });
+
+  it("no Devin write tool is offered or executable for the Devin agent, even with writes on and allowAllTools", async () => {
+    const { connector, context, state, call } = await setup(true);
+    const names = (await connector.discoverTools(context)).map((t) => t.route?.toolName);
+    expect(names).toEqual([...DEVIN_READ_TOOLS]);
+    for (const name of ["devin_session_interact", "devin_session_create", "devin_playbook_manage"])
+      expect(names).not.toContain(name);
+    for (const name of DEVIN_WRITE_TOOLS)
+      expect(await call(name, false)).toMatchObject([{ type: "error" }]);
+    expect(state.calls).toEqual([]);
     await connector.close();
   });
 

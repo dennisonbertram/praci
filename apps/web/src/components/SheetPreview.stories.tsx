@@ -150,3 +150,25 @@ export const Failed: Story = {
     });
   },
 };
+
+/** A CSV opens as a plain table: first row as the header with readable names, grouped numbers. */
+export const Csv: Story = {
+  args: { name: "monthly_burn.csv" },
+  beforeEach: () => {
+    mockRpc({
+      "files.spreadsheetPreview": () => ({
+        status: "ready",
+        sheets: [{ name: "monthly_burn", dimension: "A1:C3" }],
+        sheet: "monthly_burn",
+        columns: ["A", "B", "C"],
+        headerRow: 1,
+        header: ["vendor_name", "monthly_cost", "start_date"],
+        rows: [
+          { row: 2, cells: ["Acme Cloud", "1234567", "2026-01-05"] },
+          { row: 3, cells: ["Globex", "20160.5", "2026-02-11"] },
+        ],
+        truncated: false,
+      }),
+    });
+  },
+};

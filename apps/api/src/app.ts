@@ -32,6 +32,7 @@ import {
   createBlueBubblesPollState,
   createCloudAgentConnection,
   createConnectorStack,
+  createDevinCallTool,
   createFinanceCallToolFor,
   createGmailPushVerifier,
   createJobReconciler,
@@ -74,6 +75,7 @@ import {
   piSessionsRoot,
   reconcileCloudAgents,
   reconcileComputerUpdates,
+  reconcileMeetingSyncs,
   removeAccountExportBlobs,
   removePiUserSessions,
   resolveEnsName,
@@ -583,6 +585,8 @@ export async function createApp(
     deploymentModelConfigured: env.deploymentModelConfigured,
     messaging,
     cloudAgent,
+    devinCallTool: createDevinCallTool(prisma, mcp),
+    notificationEvents,
     financeCallToolFor: financeCallToolOverride ?? createFinanceCallToolFor(prisma, mcp),
     artifacts,
     connectors: stack.connector,
@@ -608,6 +612,7 @@ export async function createApp(
         notificationEvents,
         reconcileCloudAgents: () => reconcileCloudAgents({ prisma, jobs, cloudAgent }),
         reconcileComputerUpdates: () => reconcileComputerUpdates({ prisma, jobs }),
+        reconcileMeetings: () => reconcileMeetingSyncs({ prisma, jobs }),
       })
     : undefined;
   reconciler?.start();
@@ -825,7 +830,7 @@ export async function createApp(
   mountInboxAttachment(app, { prisma, mail }, loggedActor);
   mountDataRoomRoutes(app, { prisma, artifacts, jobs }, loggedActor);
   mountAccountExportDownload(app, { prisma, artifacts }, loggedActor);
-  mountVoiceHttpRoutes(app, { prisma, secrets }, (c) => loggedActor(c.req.raw));
+  mountVoiceHttpRoutes(app, { prisma, secrets, ticketBoardEnabled }, (c) => loggedActor(c.req.raw));
   mountWebhookHttpRoutes(app, { prisma, secrets, events, jobs });
   // Gmail push is off unless the deployment sets a Pub/Sub topic and service account.
   if (gmailPush) {

@@ -105,7 +105,7 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
 
   if (loading && !hasAnyRuns && !filtersOn) {
     return (
-      <div className="px-2.5 py-2 text-[13px] text-muted-foreground/80" role="status">
+      <div className="min-h-20 px-2.5 py-2 text-[13px] text-muted-foreground/80" role="status">
         <Trans>Loading activity…</Trans>
       </div>
     );
@@ -131,26 +131,29 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
   }
 
   return (
-    <div className="mb-2 border-b border-border pb-2" data-testid="activity-list">
+    <div
+      className="mb-2 max-h-[40vh] overflow-y-auto border-b border-border pb-2"
+      data-testid="activity-list"
+    >
+      <div className="flex items-center justify-between px-2.5 pb-1">
+        <h2 className="text-[13px] font-medium text-foreground">
+          <Trans>Activity</Trans>
+        </h2>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 rounded-full px-2 text-[12px] text-muted-foreground"
+          data-testid="activity-show-filters"
+          aria-expanded={showFilters}
+          onClick={() => setShowFilters((open) => !open)}
+        >
+          <Trans>Filter</Trans>
+        </Button>
+      </div>
       {showFilters || filtersOn ? (
         <ActivityFilters filters={filters} onChange={setFilters} />
-      ) : (
-        <div className="flex items-center justify-between px-2.5 pb-1">
-          <h2 className="text-[13px] font-medium text-foreground">
-            <Trans>Activity</Trans>
-          </h2>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 rounded-full px-2 text-[12px] text-muted-foreground"
-            data-testid="activity-show-filters"
-            onClick={() => setShowFilters(true)}
-          >
-            <Trans>Filter</Trans>
-          </Button>
-        </div>
-      )}
+      ) : null}
 
       {error ? (
         <div className="px-2.5 pb-2" role="alert">
@@ -287,23 +290,6 @@ function ActivityFilters({
   return (
     <div className="mb-2 flex flex-col gap-2 px-2.5 pt-1">
       <div>
-        <Label htmlFor={searchId} className="sr-only">
-          <Trans>Search activity</Trans>
-        </Label>
-        <Input
-          id={searchId}
-          data-testid="activity-search"
-          value={filters.query}
-          onChange={(event) => onChange({ ...filters, query: event.target.value })}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") onChange(clearActivityFilterField(filters, "query"));
-          }}
-          placeholder={t`Search runs`}
-          autoComplete="off"
-          className="rounded-xl bg-card text-[13px] dark:bg-input"
-        />
-      </div>
-      <div>
         <Label htmlFor={statusId} className="text-[12.5px] text-muted-foreground/80">
           <Trans>Status</Trans>
         </Label>
@@ -327,42 +313,66 @@ function ActivityFilters({
           ))}
         </NativeSelect>
       </div>
-      <div>
-        <Label htmlFor={fromId} className="text-[12.5px] text-muted-foreground/80">
-          <Trans>From</Trans>
-        </Label>
-        <Input
-          id={fromId}
-          data-testid="activity-date-from"
-          type="date"
-          value={filters.dateRange.from}
-          onChange={(event) =>
-            onChange({
-              ...filters,
-              dateRange: { ...filters.dateRange, from: event.target.value },
-            })
-          }
-          className="mt-1 rounded-xl bg-card text-[13px] dark:bg-input"
-        />
-      </div>
-      <div>
-        <Label htmlFor={toId} className="text-[12.5px] text-muted-foreground/80">
-          <Trans>To</Trans>
-        </Label>
-        <Input
-          id={toId}
-          data-testid="activity-date-to"
-          type="date"
-          value={filters.dateRange.to}
-          onChange={(event) =>
-            onChange({
-              ...filters,
-              dateRange: { ...filters.dateRange, to: event.target.value },
-            })
-          }
-          className="mt-1 rounded-xl bg-card text-[13px] dark:bg-input"
-        />
-      </div>
+      <details className="group">
+        <summary className="cursor-pointer text-[12.5px] text-muted-foreground/80">
+          <Trans>More filters</Trans>
+        </summary>
+        <div className="mt-2 flex flex-col gap-2">
+          <div>
+            <Label htmlFor={searchId} className="sr-only">
+              <Trans>Search activity</Trans>
+            </Label>
+            <Input
+              id={searchId}
+              data-testid="activity-search"
+              value={filters.query}
+              onChange={(event) => onChange({ ...filters, query: event.target.value })}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") onChange(clearActivityFilterField(filters, "query"));
+              }}
+              placeholder={t`Search runs`}
+              autoComplete="off"
+              className="rounded-xl bg-card text-[13px] dark:bg-input"
+            />
+          </div>
+          <div>
+            <Label htmlFor={fromId} className="text-[12.5px] text-muted-foreground/80">
+              <Trans>From</Trans>
+            </Label>
+            <Input
+              id={fromId}
+              data-testid="activity-date-from"
+              type="date"
+              value={filters.dateRange.from}
+              onChange={(event) =>
+                onChange({
+                  ...filters,
+                  dateRange: { ...filters.dateRange, from: event.target.value },
+                })
+              }
+              className="mt-1 rounded-xl bg-card text-[13px] dark:bg-input"
+            />
+          </div>
+          <div>
+            <Label htmlFor={toId} className="text-[12.5px] text-muted-foreground/80">
+              <Trans>To</Trans>
+            </Label>
+            <Input
+              id={toId}
+              data-testid="activity-date-to"
+              type="date"
+              value={filters.dateRange.to}
+              onChange={(event) =>
+                onChange({
+                  ...filters,
+                  dateRange: { ...filters.dateRange, to: event.target.value },
+                })
+              }
+              className="mt-1 rounded-xl bg-card text-[13px] dark:bg-input"
+            />
+          </div>
+        </div>
+      </details>
       {filtersOn ? (
         <div className="flex flex-wrap items-center gap-1.5">
           {filters.query.trim() ? (

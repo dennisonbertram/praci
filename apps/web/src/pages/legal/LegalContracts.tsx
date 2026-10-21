@@ -127,13 +127,13 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
           <Trans>Contracts</Trans>
         </caption>
         <colgroup>
-          <col className="w-[24%]" />
+          <col className="w-[20%]" />
+          <col className="w-[14%]" />
+          <col className="w-[8%]" />
+          <col className="w-[20%]" />
           <col className="w-[17%]" />
           <col className="w-[9%]" />
-          <col className="w-[18%]" />
-          <col className="w-[13%]" />
-          <col className="w-[9%]" />
-          <col className="w-[10%]" />
+          <col className="w-[12%]" />
         </colgroup>
         <TableHeader>
           <TableHeadRow>
@@ -155,7 +155,7 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
             <TableHead className="text-end pe-3">
               <Trans>Value</Trans>
             </TableHead>
-            <TableHead>
+            <TableHead className="ps-6">
               <Trans>Next deadline</Trans>
             </TableHead>
           </TableHeadRow>
@@ -170,10 +170,12 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
               <TableCell>
                 <Status status={contract.status} />
               </TableCell>
-              <TableCell className="tabular-nums">{term(contract)}</TableCell>
-              <TableCell>{renewal(contract)}</TableCell>
+              <TableCell className="whitespace-nowrap tabular-nums">{term(contract)}</TableCell>
+              <TableCell className="whitespace-nowrap">{renewal(contract)}</TableCell>
               <TableCell className="text-end tabular-nums">{value(contract)}</TableCell>
-              <TableCell className="tabular-nums">{nextDeadline(contract)}</TableCell>
+              <TableCell className="ps-6 whitespace-nowrap tabular-nums">
+                {nextDeadline(contract)}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>

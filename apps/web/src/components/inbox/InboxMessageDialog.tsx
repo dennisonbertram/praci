@@ -541,7 +541,10 @@ function SentMark() {
 /** Other messages of the conversation, one line each; a click shows that message's text. */
 /** A reply's preview without the "On <date>, <name> wrote:" line that starts its quote. */
 export function withoutQuoteHeader(snippet: string): string {
-  return snippet.replace(/\s*On [^\n]{4,160}? wrote:[\s\S]*$/, "").trim() || snippet;
+  // Gmail cuts a snippet to about 200 characters, often inside the header, so "wrote:" may be missing.
+  const header =
+    /\s*On (?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun),|[A-Z][a-z]{2} \d{1,2},)[^\n]{0,160}?(?:wrote:[\s\S]*|$)/;
+  return snippet.replace(header, "").trim() || snippet;
 }
 
 function ThreadMessages({

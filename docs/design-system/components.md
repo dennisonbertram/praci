@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 240 of 240
-- Web and shared components: 652
+- Web and shared component files with stories: 242 of 242
+- Web and shared components: 660
 - Mobile components: 139 in 96 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -278,8 +278,10 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Figure, Summary, ConnectCartaDialog, CapTablePage | [apps/web/src/pages/CapTable.tsx](../../apps/web/src/pages/CapTable.tsx) | [CapTable.stories.tsx](../../apps/web/src/pages/CapTable.stories.tsx) | web |
 | ContactsPage | [apps/web/src/pages/Contacts.tsx](../../apps/web/src/pages/Contacts.tsx) | [Contacts.stories.tsx](../../apps/web/src/pages/Contacts.stories.tsx) | web |
 | FileInputButton, DataRoomPage | [apps/web/src/pages/DataRoom.tsx](../../apps/web/src/pages/DataRoom.tsx) | [DataRoom.stories.tsx](../../apps/web/src/pages/DataRoom.stories.tsx) | web |
+| DevinPage, Devin, DevinSkeleton | [apps/web/src/pages/Devin.tsx](../../apps/web/src/pages/Devin.tsx) | [Devin.stories.tsx](../../apps/web/src/pages/Devin.stories.tsx) | web |
+| Badge, Title, Question, PullRequests, DevinSessions | [apps/web/src/pages/devin/DevinSessions.tsx](../../apps/web/src/pages/devin/DevinSessions.tsx) | [DevinSessions.stories.tsx](../../apps/web/src/pages/devin/DevinSessions.stories.tsx) | web |
 | ExternalConversationSettings | [apps/web/src/pages/ExternalConversationSettings.tsx](../../apps/web/src/pages/ExternalConversationSettings.tsx) | [ExternalConversationSettings.stories.tsx](../../apps/web/src/pages/ExternalConversationSettings.stories.tsx) | web |
-| FinancePage, Dashboard, EmptyState, DashboardSkeleton, SourceChip, Overview, ShowAll, HoverRow, UpcomingRow, SubscriptionsTable | [apps/web/src/pages/Finance.tsx](../../apps/web/src/pages/Finance.tsx) | [Finance.stories.tsx](../../apps/web/src/pages/Finance.stories.tsx) | web |
+| FinancePage, Dashboard, EmptyState, DashboardSkeleton, Overview, ShowAll, HoverRow, UpcomingRow, SubscriptionsTable | [apps/web/src/pages/Finance.tsx](../../apps/web/src/pages/Finance.tsx) | [Finance.stories.tsx](../../apps/web/src/pages/Finance.stories.tsx) | web |
 | AccountTable, CryptoGroup, FinanceAccountsPage, FinanceAccountPage | [apps/web/src/pages/finance/FinanceAccounts.tsx](../../apps/web/src/pages/finance/FinanceAccounts.tsx) | [FinanceAccounts.stories.tsx](../../apps/web/src/pages/finance/FinanceAccounts.stories.tsx) | web |
 | FinanceBurnPage, FinanceMonthPage, Counted, FinanceRunwayPage | [apps/web/src/pages/finance/FinanceBurn.tsx](../../apps/web/src/pages/finance/FinanceBurn.tsx) | [FinanceBurn.stories.tsx](../../apps/web/src/pages/finance/FinanceBurn.stories.tsx) | web |
 | RemoveDialog, WalletRows, FinanceCryptoPage | [apps/web/src/pages/finance/FinanceCrypto.tsx](../../apps/web/src/pages/finance/FinanceCrypto.tsx) | [FinanceCrypto.stories.tsx](../../apps/web/src/pages/finance/FinanceCrypto.stories.tsx) | web |
@@ -340,7 +342,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
-| App, SessionApp, SignInRedirect, SessionUnavailable, AppFailed, GateFallback | [apps/web/src/App.tsx](../../apps/web/src/App.tsx) | [App.stories.tsx](../../apps/web/src/App.stories.tsx) | web |
+| App, SessionApp, LegacySetupRedirect, SignInRedirect, SessionUnavailable, AppFailed, GateFallback | [apps/web/src/App.tsx](../../apps/web/src/App.tsx) | [App.stories.tsx](../../apps/web/src/App.stories.tsx) | web |
 
 ## Mobile app (screens)
 

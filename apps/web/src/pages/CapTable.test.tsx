@@ -263,8 +263,45 @@ it("shows the summary, ownership legend and joined investors", async () => {
   expect(text).toContain("SAFE, $250,000");
   // amount raised is null; the SAFE holder has no shares or percent
   expect(text).toContain("—");
-  // Bo is a contact with no holding and is still listed
-  expect(text).toContain("Bo");
+  // Bo is a contact with no holding: not under All, but under their own tab and in a search.
+  expect(container.querySelector("table:not(.sr-only)")?.textContent).not.toContain("Bo");
+  await click(button("Auditors"));
+  expect(container.querySelector("table:not(.sr-only)")?.textContent).toContain("Bo");
+});
+
+it("shows a skeleton, not the contacts-only layout, until the cap table has loaded", async () => {
+  let resolve: (value: unknown) => void = () => {};
+  rpcMock.capTable.mockReturnValue(new Promise((r) => (resolve = r)));
+  await show();
+  expect(container.querySelector("[role=tablist]")).toBeNull();
+  expect(container.querySelector("[aria-busy=true]")).not.toBeNull();
+  await act(async () => resolve({ snapshot, syncing: false }));
+  expect(container.querySelector("[role=tablist]")).not.toBeNull();
+  expect(container.querySelector("[aria-busy=true]")).toBeNull();
+});
+
+it("says contacts do not change Carta only for a contact that is on the cap table", async () => {
+  rpcMock.list.mockResolvedValue([
+    contact("c1", "Ada", "investor"),
+    contact("c2", "Bo", "auditor"),
+  ]);
+  rpcMock.capTable.mockResolvedValue({
+    snapshot: { ...snapshot, holders: [{ ...snapshot.holders[0], email: "ada@example.test" }] },
+    syncing: false,
+  });
+  await show();
+  const open = (name: string) =>
+    click(
+      [...container.querySelectorAll<HTMLElement>("tbody button")].find(
+        (b) => b.textContent === name,
+      ),
+    );
+  await open("Ada");
+  expect(document.body.textContent).toContain("do not change Carta");
+  await click(button("Cancel"));
+  await click(button("Auditors"));
+  await open("Bo");
+  expect(document.body.textContent).not.toContain("do not change Carta");
 });
 
 it("lists the unallocated option pool as a row so the Ownership column adds up", async () => {
@@ -609,6 +646,7 @@ it("lists only investors on the Investors tab and offers Add email only to inves
   ].filter((b) => b.textContent === "Add email");
   expect(adds).toHaveLength(1);
   // A contact with no holding shows the table's dash in Ownership, hidden on phones where cards stay blank.
+  await click(button("Auditors"));
   const rows = [...container.querySelectorAll("table:not(.sr-only) tbody tr")];
   const bo = rows.find((row) => row.textContent?.includes("Bo"));
   const cell = bo?.querySelectorAll("td")[4];
@@ -793,18 +831,13 @@ it("lists only investors, auditors and other contacts, plus holders joined from 
     snapshot: { ...snapshot, holders: [joined] },
     syncing: false,
   });
-  await show();
+  await show("/app/cap-table?kind=investor");
   const rows = container.querySelector("table:not(.sr-only) tbody")?.textContent ?? "";
   expect(rows).toContain("Ada");
-  expect(rows).toContain("Carol");
   expect(rows).not.toContain("Bo");
   expect(rows).not.toContain("Cy");
-});
-
-it("shows the Carta hint in the contact dialog only here", async () => {
-  await show();
-  await click(button("Add contact"));
-  expect(document.body.textContent).toContain("They do not change Carta");
+  await click(button("All"));
+  expect(container.querySelector("table:not(.sr-only) tbody")?.textContent).toContain("Carol");
 });
 
 it("keeps an option grant on Options when a contact with the holder's email is Other", async () => {
@@ -1109,12 +1142,16 @@ it("opens a contact from its row, and leaves a Carta-only row inert", async () =
     syncing: false,
   });
   await show();
-  const rows = [...container.querySelectorAll("table:not(.sr-only) tbody tr")];
-  const carta = rows.find((row) => row.textContent?.includes("Carta Only")) as HTMLElement;
-  const bo = rows.find((row) => row.textContent?.includes("Bo")) as HTMLElement;
+  const carta = [...container.querySelectorAll("table:not(.sr-only) tbody tr")].find((row) =>
+    row.textContent?.includes("Carta Only"),
+  ) as HTMLElement;
   expect(carta.className).not.toContain("cursor-pointer");
   await click(carta.querySelector("td") as HTMLElement);
   expect(document.getElementById("contact-name")).toBeNull();
+  await click(button("Auditors"));
+  const bo = [...container.querySelectorAll("table:not(.sr-only) tbody tr")].find((row) =>
+    row.textContent?.includes("Bo"),
+  ) as HTMLElement;
   expect(bo.className).toContain("cursor-pointer");
   await click(bo.querySelector("td:nth-child(3)") as HTMLElement);
   expect((document.getElementById("contact-name") as HTMLInputElement).value).toBe("Bo");

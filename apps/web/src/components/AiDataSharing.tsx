@@ -2,7 +2,7 @@ import { i18n } from "@lingui/core";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { AiConsentStatus, AiRecipient } from "@rakazo/contracts";
 import { AI_DATA_DISCLOSURES } from "@rakazo/contracts";
-import { Button, Card, cn, Switch } from "@rakazo/ui-web";
+import { Button, Card, cn, Skeleton, Switch } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { aiConsentStatus, allowRecipient, revokeRecipient } from "../lib/ai-consent";
@@ -15,6 +15,7 @@ export function ConsentCard({
   heading,
   onAllow,
   onDismiss,
+  sends,
   className,
 }: {
   /** Prefix for the heading's id, unique on the page. */
@@ -25,6 +26,8 @@ export function ConsentCard({
   onAllow: () => Promise<unknown>;
   /** Not now: when given, a second button hides the card for this visit. */
   onDismiss?: () => void;
+  /** What is sent, when the area sends something narrower than "the text". */
+  sends?: ReactNode;
   className?: string;
 }) {
   const [pending, setPending] = useState(false);
@@ -48,7 +51,7 @@ export function ConsentCard({
           {heading}
         </h2>
         <p className="text-xs text-muted-foreground">
-          <Trans>The text is sent to the AI model that runs your bots.</Trans>
+          {sends ?? <Trans>The text is sent to the AI model that runs your bots.</Trans>}
         </p>
       </div>
       <div className="flex gap-2">
@@ -86,6 +89,12 @@ export function InboxConsentPrompt({
       id="inbox-consent"
       className="mb-5"
       heading={<Trans>Let Praci sort your mail</Trans>}
+      sends={
+        <Trans>
+          The sender, subject and a preview of each message are sent to the AI model that runs your
+          bots.
+        </Trans>
+      }
       onAllow={() => allowRecipient(recipient.key).then(onAllowed)}
       onDismiss={onDismiss}
     />
@@ -98,7 +107,8 @@ const modelLabel = (detail: string) => detail.split(",")[0]?.split("/").pop()?.t
 /** One switch per AI model that receives data; hidden when there is none or it cannot load. */
 export function AiDataSharingSection() {
   const { t } = useLingui();
-  const [recipients, setRecipients] = useState<AiRecipient[]>([]);
+  // null until the first read, so the section holds its place instead of appearing late.
+  const [recipients, setRecipients] = useState<AiRecipient[] | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const show = (status: AiConsentStatus) =>
@@ -107,12 +117,13 @@ export function AiDataSharingSection() {
     let live = true;
     aiConsentStatus()
       .then((status) => live && show(status))
-      .catch(() => {});
+      .catch(() => live && setRecipients([]));
     return () => {
       live = false;
     };
   }, []);
 
+  if (recipients === null) return <Skeleton aria-busy="true" className="h-[132px] rounded-xl" />;
   if (recipients.length === 0) return null;
   const set = (recipient: AiRecipient, allowed: boolean) => {
     setPending(true);
@@ -132,6 +143,9 @@ export function AiDataSharingSection() {
         <Trans>AI data sharing</Trans>
       </h3>
       <p className="mt-1 text-[13px] text-muted-foreground">{i18n._(AI_DATA_DISCLOSURES.model)}</p>
+      <p className="mt-1 text-[13px] text-muted-foreground">
+        <Trans>Bots cannot use a model until you allow it.</Trans>
+      </p>
       {error ? (
         <p role="alert" className="mt-2 text-sm text-destructive">
           {error}
@@ -139,8 +153,7 @@ export function AiDataSharingSection() {
       ) : null}
       <ul className="mt-3 flex flex-col gap-3">
         {recipients.map((recipient) => {
-          const { name } = recipient;
-          const model = modelLabel(recipient.detail) || name;
+          const model = modelLabel(recipient.detail) || recipient.name;
           return (
             <li key={recipient.key} className="flex items-center gap-3">
               <Switch
@@ -150,10 +163,10 @@ export function AiDataSharingSection() {
                 onCheckedChange={(allowed) => set(recipient, allowed)}
               />
               <span className="flex min-w-0 flex-col">
-                <span className="text-[14px] text-foreground/75">{model}</span>
-                {model !== name ? (
-                  <span className="text-[12.5px] text-muted-foreground">{name}</span>
-                ) : null}
+                <span className="text-[14px] text-foreground/75">
+                  <Trans>Bots, mail, files and contracts</Trans>
+                </span>
+                <span className="text-[12.5px] text-muted-foreground">{model}</span>
               </span>
             </li>
           );

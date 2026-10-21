@@ -236,10 +236,15 @@ export function ModelSettingsOverlay({
   }
 
   useEffect(() => {
+    // A superseded first load resolves with nothing; only the live one ends loading.
+    let live = true;
     void refresh()
       .catch((err: unknown) => setError(errorText(err, t`Could not load model settings`)))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (live) setLoading(false);
+      });
     return () => {
+      live = false;
       refreshRevisionRef.current += 1;
       modelProbe.invalidate();
     };
@@ -1560,11 +1565,7 @@ export function ModelSettingsOverlay({
                 </>
               )}
             </>
-          ) : loading ? (
-            <p className="text-muted-foreground">
-              <Trans>Loading model catalog…</Trans>
-            </p>
-          ) : (
+          ) : loading ? null : (
             <p className="text-muted-foreground">
               <Trans>No model catalog is available.</Trans>
             </p>

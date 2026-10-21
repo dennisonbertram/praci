@@ -1,0 +1,83 @@
+[
+  {
+    "id": "F-STORY-033-01",
+    "story_id": "STORY-033",
+    "severity": "high",
+    "category": "layout",
+    "criterion": "Responsive behavior",
+    "score": "fail",
+    "description": "The mockup is a fixed 1440x900 shell. At 1280 the panel is cut by 160px, at 1100 the panel is nearly off-screen, at 900 the table is cut after the first columns and the sidebar stays, and at 390 only the sidebar is visible while the page itself overflows to 456px. Measured: wrapper scrollWidth 1440 at every width, main column 740px always. The real shell collapses the sidebar to a drawer and overlays the panel (width 384) under 1280.",
+    "expected": "Frames for 1280/1100/900/390 matching the real shell.",
+    "actual": "One fixed frame.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-033/screenshots/extra-3-mockup-900.png",
+    "suggested_fix": "Add narrow frames (overlay panel, drawer sidebar, list layout).",
+    "files_likely_involved": [
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-033-02",
+    "story_id": "STORY-033",
+    "severity": "high",
+    "category": "layout",
+    "criterion": "Responsive behavior",
+    "score": "fail",
+    "description": "No narrow layout for the six-column table. The real Legal page shows what is needed: at 900 and 390 the table becomes stacked label/value blocks with the badge top right. The Devin row has two lines (title + question) and a PR link that must wrap without cutting off.",
+    "expected": "Stacked list item per session with question wrapped.",
+    "actual": "Not drawn.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-033/screenshots/extra-4-sb-legal-page--default-390.png",
+    "suggested_fix": "Reuse the Legal stacked pattern; draw the Needs-you row there.",
+    "files_likely_involved": [
+      "apps/web/src/pages/devin/",
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-033-03",
+    "story_id": "STORY-033",
+    "severity": "medium",
+    "category": "layout",
+    "criterion": "Z-index/layering",
+    "score": "warn",
+    "description": "At 1100 the real overlay panel (observed in the resizable side panel story) covers the right 384px, so ACUs and Updated would sit under it when Ask is clicked (derived, not rendered with Devin content). Saved width is ignored under 1280.",
+    "expected": "Page stays readable or panel offers close.",
+    "actual": "Overlay hides columns.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-033/screenshots/step-2.png",
+    "suggested_fix": "Accept; ensure close control is obvious.",
+    "files_likely_involved": [
+      "apps/web/src/components/shell/ResizableSidePanel.tsx"
+    ]
+  },
+  {
+    "id": "F-STORY-033-04",
+    "story_id": "STORY-033",
+    "severity": "low",
+    "category": "layout",
+    "criterion": "Overflow",
+    "score": "warn",
+    "description": "Mockup connect-dialog section is fixed 440px and pushes the page 66px wider than a 390px viewport (scrollWidth 456). Mockup artifact only.",
+    "expected": "Dialog max-width 100%.",
+    "actual": "456 vs 390.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-033/screenshots/extra-3-mockup-390.png",
+    "suggested_fix": "Fix mockup frame.",
+    "files_likely_involved": [
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-033-05",
+    "story_id": "STORY-033",
+    "severity": "medium",
+    "category": "flow",
+    "criterion": "Dead ends",
+    "score": "warn",
+    "description": "Not observed: mobile has no Devin screen and push taps carrying only /app/devin do nothing (catalog + code claim). No web surface to walk.",
+    "expected": "Decision on mobile.",
+    "actual": "Not represented.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-033/screenshots/step-7.png",
+    "suggested_fix": "Push payload carries bot id; decide web-only.",
+    "files_likely_involved": [
+      "apps/mobile/"
+    ]
+  }
+]

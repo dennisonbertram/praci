@@ -28,7 +28,9 @@ export function isCleanupListed(sender: {
   priorContact: boolean | null;
   keep: boolean;
 }): boolean {
-  return sender.keep || (sender.messageCount >= CLEANUP_MIN_MESSAGES && sender.priorContact !== true);
+  return (
+    sender.keep || (sender.messageCount >= CLEANUP_MIN_MESSAGES && sender.priorContact !== true)
+  );
 }
 
 /** Newsletter or non-updates bulk (receipts and alerts are updates), rarely read, never written to, not marked important, not spam-like, not already skipped. */

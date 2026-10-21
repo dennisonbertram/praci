@@ -9,6 +9,7 @@ import {
   attentionFromDto,
   deliverNotification,
   NOTIFICATION_SETTINGS_CHANGED,
+  openNotificationLink,
   resultShownInOpenChat,
 } from "../lib/notification-delivery";
 import { followNotifications } from "../lib/notification-stream";
@@ -50,6 +51,10 @@ async function avatarFor(n: NotificationDto, userId: string | undefined) {
 /** Mounted once at the app root; the single path from server notifications to toasts and OS alerts. */
 export function AppToaster() {
   const navigate = useNavigate();
+  // The effect below runs once; the ref keeps its link opener on the router's current navigate.
+  const navigateRef = useRef(navigate);
+  navigateRef.current = navigate;
+  const openLink = useRef(openNotificationLink((href) => navigateRef.current(href))).current;
   const userId = authClient.useSession().data?.user.id;
   const userIdRef = useRef(userId);
   userIdRef.current = userId;
@@ -90,6 +95,7 @@ export function AppToaster() {
                   onSeen: () => void markOpened(n),
                 },
                 {
+                  open: openLink,
                   onShown: async (id) => {
                     await rpc.notifications.markShown({ id });
                     announceChange();
@@ -111,7 +117,7 @@ export function AppToaster() {
   }, []);
   return (
     <NotificationToaster
-      onOpen={navigate}
+      onOpen={openLink}
       formatTime={formatRelativeTime}
       dismissLabel={i18n._({ id: "Dismiss", message: "Dismiss" })}
     />
