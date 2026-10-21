@@ -2,7 +2,7 @@
 
 What a native SwiftUI client for Praci needs, gathered from the current code (API, contracts, Expo app) and Apple's iOS 27.1 and iPhone Duo documentation. The design reference is [docs/design-system/ios](../design-system/ios/README.md).
 
-Status: research only. Nothing here is built. The phased build plan is in [plan.md](plan.md). Items marked *(inference)* were read from code but not run.
+Status: the phase 0 app/package foundation and phase 1 OpenAPI bridge are implemented. The remaining native work is tracked in [plan.md](plan.md). Items marked *(inference)* were read from code but not run.
 
 ## 1. Recommendation
 
@@ -29,9 +29,8 @@ Cost of going native: losing over-the-air JS updates (`eas update`), a second cl
 ## 3. Contracts and Swift models
 
 - The contract is `appContract` in `packages/contracts/src/rpc.ts`, built with `@orpc/contract` and zod 4 schemas in sibling files (`domain.ts`, `events.ts`, `inbox.ts`, `finance.ts`, `legal.ts`, `carta.ts`, `data-room-api.ts`, `notification.ts`, `attachments.ts`, and others).
-- There is no OpenAPI or JSON Schema export today.
-- Proposed codegen: a small Node script walks `appContract`, runs `z.toJSONSchema()` on each procedure's input and output schema, and emits an OpenAPI 3.1 document describing `POST /rpc/<path>` with the `{json}` wrapper. Feed it to Apple's `swift-openapi-generator` as a SwiftPM build plugin. Add one contract test that decodes recorded real responses.
-- Write by hand: the `{json}` envelope, the SSE reader, the `ProductEvent` payload decoding (payload is keyed by `type`), and the `MessageBlock` union (discriminated on `kind`) with a tolerant decoder that keeps unknown kinds.
+- `packages/contracts/src/openapi.ts` exports `appContract` to OpenAPI 3.1, and its generated document lives at `apps/ios/Packages/RakazoAPI/Sources/RakazoAPI/openapi.json`. The SwiftPM build plugin consumes that single file.
+- `RakazoAPI` contains the `{json}` envelope, JSON value, tolerant `ProductEvent` and `MessageBlock` decoders, and generated health models. SSE connection and authentication work remain later phases.
 - Awkward mappings: discriminated unions, "exactly one of `botId` or `groupId`" targets, ISO date strings, nullable vs optional, money as integer cents (finance) or decimal strings of minor units (legal), legal dates as `YYYY-MM-DD`.
 
 ## 4. Authentication and connection
@@ -116,7 +115,7 @@ The server sends only through Expo's push service and stores Expo push tokens (`
 
 ## 11. App structure
 
-- SwiftPM packages: `RakazoAPI` (RPC client, SSE, auth, generated models), `RakazoCore` (ported reducer, outbox, consent map, mentions, unread logic), `RakazoUI` (design system from the boards), feature modules, then the app target and later extension targets sharing an App Group and Keychain access group.
+- SwiftPM packages: `RakazoAPI` (generated RPC models and tolerant wire decoders), `RakazoCore` (future ported reducer, outbox, consent map, mentions, unread logic), `RakazoUI` (semantic design tokens), then feature modules and later extension targets sharing an App Group and Keychain access group.
 - Swift 6 language mode, `@Observable` view models on the main actor, networking in actors.
 - Navigation: `NavigationSplitView` for sidebar, list and detail (it adapts to the Duo inner display), `NavigationStack` inside. Use `ArrangementView` only on leaf screens such as the Team Computer (screen plus controls); Apple forbids nesting it with navigation containers.
 - Toolbars: system `toolbar` with `ToolbarItemGroup`; every item needs an icon and a title so it can appear in the Duo's vertical bar. `.buttonStyle(.glass)` and `.glassProminent`, `GlassEffectContainer` for grouped custom controls, standard sheet detents.
