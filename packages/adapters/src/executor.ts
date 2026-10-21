@@ -3101,6 +3101,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
           if (voiceAgent && !offeredToolNames.has(name)) {
             return { error: `Tool ${name} is not available to Elio.` };
           }
+          // The Investors agent has a fixed list; a name outside it never reaches a connector.
+          if (investorsAgent && !offeredToolNames.has(name)) {
+            return { error: `Tool ${name} is not available to this bot.` };
+          }
           context.signal.throwIfAborted();
           if (handedOff) {
             return {

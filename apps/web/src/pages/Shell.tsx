@@ -3189,6 +3189,12 @@ export function ShellPage() {
     }
   }
 
+  function askInvestorsAgent() {
+    setCartaAgentCollapsedPref(false);
+    // The agent may have been archived since the page opened.
+    if (!active && !creatingInvestorsAgent) void createInvestorsAgent();
+  }
+
   async function createInvestorsAgent() {
     setCreatingInvestorsAgent(true);
     setInvestorsAgentError("");
@@ -5517,9 +5523,7 @@ export function ShellPage() {
             />
           ) : investorsMode ? (
             <InvestorsPage
-              onShowAgent={
-                investorsPanel.open ? undefined : () => setCartaAgentCollapsedPref(false)
-              }
+              onShowAgent={investorsPanel.open ? undefined : askInvestorsAgent}
               onCartaStatus={setCartaConnected}
               onOpenModelSettings={() => openSettings("models")}
               needsModel={bootstrapMe?.needsModel === true}
