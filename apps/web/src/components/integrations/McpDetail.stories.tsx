@@ -1,4 +1,5 @@
 import type { McpServer } from "@rakazo/contracts";
+import { ZERNIO_MCP_ENDPOINT } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { userEvent, within } from "storybook/test";
@@ -39,6 +40,26 @@ export const ZernioReadOnly: Story = {
       servers: [
         mockServer("srv_1", "Zernio", {
           endpoint: "https://mcp.zernio.com/mcp",
+          agentBotId: "gtm_demo",
+          agentExclusive: true,
+          writesEnabled: false,
+        }),
+      ],
+      bots: [makeBot({ id: "gtm_demo", name: "GTM agent", spawnKey: "gtm-agent:user_demo" })],
+    }),
+  },
+};
+
+export const ZernioNeedsReconnect: Story = {
+  parameters: { entry: "/app/integrations/mcp/srv_1" },
+  args: {
+    data: mockIntegrations({
+      servers: [
+        mockServer("srv_1", "Zernio", {
+          endpoint: ZERNIO_MCP_ENDPOINT,
+          hasSecret: false,
+          oauthStatus: "none",
+          oauthAttempted: false,
           agentBotId: "gtm_demo",
           agentExclusive: true,
           writesEnabled: false,
