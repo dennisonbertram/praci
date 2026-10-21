@@ -6,7 +6,7 @@ import type {
   DevinSessionsOutput,
   McpServer,
 } from "@rakazo/contracts";
-import { isCryptoEndpoint, isDevinEndpoint } from "@rakazo/contracts";
+import { isCryptoEndpoint, isDevinEndpoint, isGranolaEndpoint } from "@rakazo/contracts";
 import { CONNECTION_CATALOG_PAGE_SIZE } from "@rakazo/core";
 import {
   AlertDialog,
@@ -51,11 +51,14 @@ import {
   FinanceSection,
   useFinanceStatus,
 } from "./FinanceSection";
+import { GranolaStatusLine, granolaLine } from "./GranolaMeetingsCard";
 import { IMessageSection } from "./IMessageSection";
 import { AgentStack, CardHead, IntegrationTile, SectionTitle, StatusBadge } from "./parts";
 import type { IntegrationsData } from "./useIntegrations";
 import { agentsFor } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
+
+const GRANOLA_PATH = "/app/integrations/granola";
 
 function hostOf(value: string | null) {
   if (!value) return "";
@@ -152,6 +155,10 @@ function McpCard({
       : devin
         ? { to: "/app/devin", label: t`Open Devin` }
         : undefined;
+  const granola = isGranolaEndpoint(server.endpoint);
+  // One line for Granola: the key route's status when it has one, else the sign-in badge.
+  const keyStatus = data.meetings;
+  const keyLine = granola && keyStatus ? granolaLine(keyStatus) : null;
   return (
     <Card>
       <CardHead
@@ -163,14 +170,18 @@ function McpCard({
           server.command ||
           undefined
         }
-        to={`/app/integrations/mcp/${server.id}`}
+        to={granola ? GRANOLA_PATH : `/app/integrations/mcp/${server.id}`}
       />
       <div className="mt-auto flex min-h-7 items-center gap-2">
-        <StatusBadge status={status} />
+        {keyLine && keyStatus ? (
+          <GranolaStatusLine status={keyStatus} />
+        ) : (
+          <StatusBadge status={status} />
+        )}
         {page && status === "connected" ? (
           <OpenPageLink to={page.to}>{page.label}</OpenPageLink>
         ) : null}
-        {status === "reconnect" && (!devin || devin.manage) ? (
+        {status === "reconnect" && !keyLine && (!devin || devin.manage) ? (
           <Button
             size="sm"
             className="relative z-10 ms-auto"
@@ -190,6 +201,24 @@ function McpCard({
       {reconnect.needsClient ? (
         <CustomConnectionDialog data={data} existingServer={server} onClose={reconnect.dismiss} />
       ) : null}
+    </Card>
+  );
+}
+
+/** Granola with only the API key connected: there is no sign-in server to build a card from. */
+function GranolaKeyCard({
+  status,
+  description,
+}: {
+  status: NonNullable<IntegrationsData["meetings"]>;
+  description?: string;
+}) {
+  return (
+    <Card>
+      <CardHead name="Granola" sub={description} to={GRANOLA_PATH} />
+      <div className="mt-auto flex min-h-7 items-center gap-2">
+        <GranolaStatusLine status={status} />
+      </div>
     </Card>
   );
 }
@@ -412,6 +441,10 @@ export function IntegrationsHome({
     (category === "all" || category === "finance") &&
     financeNames.some((name) => name.includes(query.trim().toLowerCase())) &&
     connectedKeys.size < FINANCE_TILE_COUNT;
+  const granolaKey =
+    data.meetings && data.meetings.status !== "disconnected" ? data.meetings : null;
+  const hasGranolaServer = data.servers.some((server) => isGranolaEndpoint(server.endpoint));
+  const keyOnlyGranola = Boolean(granolaKey) && !hasGranolaServer;
   const firstPartyMcp = FIRST_PARTY_MCP.filter(
     (entry) =>
       (category === "all" || category === entry.category) &&
@@ -419,7 +452,9 @@ export function IntegrationsHome({
       !data.servers.some(
         (server) => "endpoint" in server && isSameMcpEndpoint(server.endpoint, entry.endpoint),
       ) &&
-      !data.sources.some((source) => isSameMcpEndpoint(source.source, entry.endpoint)),
+      !data.sources.some((source) => isSameMcpEndpoint(source.source, entry.endpoint)) &&
+      // A connected API key is already Granola's tile under Connected.
+      !(entry.id === "granola" && keyOnlyGranola),
   );
   const [chatMatches, setChatMatches] = useState(0);
   const financeServerIds = data.financeSources.flatMap((source) =>
@@ -459,7 +494,7 @@ export function IntegrationsHome({
   const wholeList = category === "all";
   const hasConnected = chipOnly
     ? connectedApps.length > 0 || (category === "finance" && connectedKeys.size > 0)
-    : apps.length + servers.length + data.sources.length + connectedKeys.size > 0;
+    : apps.length + servers.length + data.sources.length + connectedKeys.size > 0 || keyOnlyGranola;
   // Native Google items fill the catalog without a managed provider, so ask the setup state. Only
   // the deployment owner is told which providers are configured; a member (whose list is empty)
   // can tell from the catalog itself, and a failed call falls back to whether it has anything.
@@ -482,6 +517,11 @@ export function IntegrationsHome({
 
   function connectFirstParty(entry: (typeof FIRST_PARTY_MCP)[number]) {
     if (entry.id === "devin") return setDevinDialog("connect");
+    // Granola has its own page: sign-in and the API key are both connected there.
+    if (entry.id === "granola") {
+      void navigate(GRANOLA_PATH);
+      return;
+    }
     setCustom({
       url: entry.endpoint,
       service: entry.name,
@@ -586,6 +626,12 @@ export function IntegrationsHome({
                       onReconnectDevin={() => setDevinDialog("replace")}
                     />
                   ))}
+                  {granolaKey && keyOnlyGranola && wholeList && !searching ? (
+                    <GranolaKeyCard
+                      status={granolaKey}
+                      description={firstPartyDescription.granola}
+                    />
+                  ) : null}
                   {(wholeList && !searching ? data.sources : []).map((source) => (
                     <SourceCard key={source.id} source={source} onRemove={setRemoving} />
                   ))}

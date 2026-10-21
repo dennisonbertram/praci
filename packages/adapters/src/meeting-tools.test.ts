@@ -185,7 +185,10 @@ describe("meeting tools", () => {
       agentBotId: "bot-1",
     });
     const prismaWith = (rows: unknown[]) =>
-      ({ mcpServer: { findMany: async () => rows } }) as never;
+      ({
+        mcpServer: { findMany: async () => rows },
+        connection: { findFirst: async () => null },
+      }) as never;
     expect(
       await isMeetingSourceAgent(bot, {
         prisma: prismaWith([server("https://mcp.granola.ai/mcp")]),

@@ -1,4 +1,5 @@
 import {
+  GRANOLA_API_CONNECTOR_ID,
   isGranolaEndpoint,
   isIntegrationAgentForServer,
   isIntegrationAgentSpawnKey,
@@ -201,7 +202,7 @@ type AgentBot = {
 };
 export type MeetingAgentCheck = (
   bot: AgentBot,
-  deps: { prisma: Pick<PrismaClient, "mcpServer"> },
+  deps: { prisma: Pick<PrismaClient, "mcpServer" | "connection"> },
 ) => Promise<boolean>;
 
 /** The agent of an MCP server whose endpoint is Granola's. */
@@ -217,11 +218,30 @@ const granolaMcpAgent: MeetingAgentCheck = async (bot, deps) => {
 };
 
 /**
+ * The agent of a Granola API-key connection, found by the connection that names it. The row may be
+ * disconnected: the agent still answers from stored meetings.
+ */
+const granolaApiAgent: MeetingAgentCheck = async (bot, deps) => {
+  if (!isIntegrationAgentSpawnKey(bot.spawnKey)) return false;
+  const row = await deps.prisma.connection.findFirst({
+    where: {
+      spaceId: bot.spaceId,
+      userId: bot.userId,
+      connectorId: GRANOLA_API_CONNECTOR_ID,
+      agentBotId: bot.id,
+      status: { not: "revoked" },
+    },
+    select: { id: true },
+  });
+  return Boolean(row) && bot.archivedAt === null;
+};
+
+/**
  * The provider registry: each source that stores meetings declares which agent reads them. Wispr
  * Flow is absent until its MeetingSource is registered; the Granola API-key connection adds its
  * check here.
  */
-const meetingAgentChecks: MeetingAgentCheck[] = [granolaMcpAgent];
+const meetingAgentChecks: MeetingAgentCheck[] = [granolaMcpAgent, granolaApiAgent];
 export function registerMeetingSourceAgentCheck(check: MeetingAgentCheck) {
   meetingAgentChecks.push(check);
 }
@@ -229,7 +249,7 @@ export function registerMeetingSourceAgentCheck(check: MeetingAgentCheck) {
 /** The one place that says whether a bot is a meeting-source agent. */
 export async function isMeetingSourceAgent(
   bot: AgentBot,
-  deps: { prisma: Pick<PrismaClient, "mcpServer"> },
+  deps: { prisma: Pick<PrismaClient, "mcpServer" | "connection"> },
 ): Promise<boolean> {
   for (const check of meetingAgentChecks) if (await check(bot, deps)) return true;
   return false;
@@ -242,7 +262,7 @@ export async function isMeetingSourceAgent(
  * on the thread, so archiving or removing the source agent does not lift it.
  */
 export async function markMeetingTaintOnDelivery(
-  tx: Pick<PrismaClient, "thread" | "bot" | "mcpServer">,
+  tx: Pick<PrismaClient, "thread" | "bot" | "mcpServer" | "connection">,
   delivery: {
     spaceId: string;
     userId: string;

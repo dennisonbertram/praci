@@ -741,3 +741,75 @@ it("lists a connected app with its card when its name is searched", async () => 
   expect(container.querySelector('a[href*="notion"]')).not.toBeNull();
   expect(container.querySelector('[data-testid="no-apps"]')).toBeNull();
 });
+
+const granolaServer = {
+  id: "srv_granola",
+  name: "Granola",
+  transport: "http",
+  endpoint: "https://mcp.granola.ai/mcp",
+  oauthStatus: "connected",
+  oauthAttempted: false,
+  enabled: true,
+} as unknown as IntegrationsData["servers"][number];
+const keyRoute = (patch: Partial<NonNullable<IntegrationsData["meetings"]>> = {}) => ({
+  connectionId: "conn_1",
+  status: "connected" as const,
+  syncedThrough: "2026-10-20T10:00:00Z",
+  lastSyncedAt: null,
+  syncedCount: 4,
+  consentOff: false,
+  agentBotId: null,
+  ...patch,
+});
+
+it("shows one Granola status line: reconnect first, then AI data sharing off, then the key status", async () => {
+  await show({
+    ...data(true, true),
+    servers: [granolaServer],
+    meetings: keyRoute({ status: "needs_reconnect", consentOff: true }),
+  });
+  const text = container.textContent ?? "";
+  expect(text).toContain("Reconnect needed");
+  expect(text).not.toContain("AI data sharing off");
+  expect(text).not.toContain("Synced");
+  expect(container.querySelector('a[href="/app/integrations/granola"]')).not.toBeNull();
+});
+
+it("shows AI data sharing off, then Synced, then the sign-in badge on the Granola tile", async () => {
+  await show({
+    ...data(true, true),
+    servers: [granolaServer],
+    meetings: keyRoute({ consentOff: true }),
+  });
+  expect(container.textContent).toContain("AI data sharing off");
+  expect(container.textContent).not.toContain("Synced 4 meetings");
+  act(() => root.unmount());
+  container.remove();
+  await show({ ...data(true, true), servers: [granolaServer], meetings: keyRoute() });
+  expect(container.textContent).toContain("Synced 4 meetings");
+  act(() => root.unmount());
+  container.remove();
+  await show({
+    ...data(true, true),
+    servers: [granolaServer],
+    meetings: keyRoute({ status: "disconnected" }),
+  });
+  expect(container.textContent).not.toContain("Synced");
+  expect(container.textContent).toContain("Connected");
+});
+
+it("shows a Granola tile when only the key is connected, and opens the page from the Connect tile", async () => {
+  await show({ ...data(true, true), meetings: keyRoute() });
+  expect(container.textContent).toContain("Synced 4 meetings");
+  expect(container.querySelector('a[href="/app/integrations/granola"]')).not.toBeNull();
+  expect(container.querySelector('button[aria-label="Connect Granola"]')).toBeNull();
+  act(() => root.unmount());
+  container.remove();
+  await show(data(true, true));
+  await act(async () =>
+    (container.querySelector('button[aria-label="Connect Granola"]') as HTMLElement).click(),
+  );
+  expect(container.querySelector('[data-testid="where"]')?.textContent).toBe(
+    "/app/integrations/granola",
+  );
+});
