@@ -1270,6 +1270,7 @@ export function createRouter(deps: RouterDeps) {
         : () => Promise.reject(new Error("MCP is not available"))),
     provisionAgent: async (actor, serverId) => (await provisionExclusiveAgent(actor, serverId)).bot,
     archiveBot: archiveActorBot,
+    notificationEvents: deps.notificationEvents,
   };
   const onboardingDeps = { prisma: deps.prisma, events: deps.events, connectors: deps.connectors };
   const mcpOAuth = deps.mcpOAuth ?? new McpOAuthBroker(deps.prisma, deps.secrets);

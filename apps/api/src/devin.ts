@@ -10,7 +10,7 @@ import {
   DEVIN_SESSION_KINDS,
   isDevinEndpoint,
 } from "@rakazo/contracts";
-import type { Prisma, PrismaClient } from "@rakazo/db";
+import type { NotificationEvents, Prisma, PrismaClient } from "@rakazo/db";
 import { isSpaceOwnerRole, requireSpaceOwner } from "./space-owner.js";
 
 export interface DevinDeps {
@@ -20,6 +20,8 @@ export interface DevinDeps {
   mcp: Pick<McpConnector, "listServerTools">;
   /** The one reader of Devin for the page; fakes stand in for it in tests. */
   callTool: DevinCallTool;
+  /** Live signal for the alert a page-triggered refresh sends. */
+  notificationEvents?: NotificationEvents;
   /** The integration agent of a server in the actor's scope, made exclusive and read-only. */
   provisionAgent: (actor: Actor, serverId: string) => Promise<Bot>;
   archiveBot: (actor: Actor, botId: string) => Promise<void>;
@@ -307,7 +309,7 @@ export async function devinSessions(deps: DevinDeps, actor: Actor): Promise<Devi
     (!state.lastSucceededAt || now - state.lastSucceededAt.getTime() > CACHE_TTL_MS)
   ) {
     await refreshDevinConnection(
-      { prisma: deps.prisma, callTool: deps.callTool },
+      { prisma: deps.prisma, callTool: deps.callTool, notificationEvents: deps.notificationEvents },
       state.serverId,
     ).catch(() => undefined);
     state = (await activeState(deps, actor.spaceId)) ?? state;
