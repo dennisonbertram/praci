@@ -463,6 +463,10 @@ msgstr ""
 msgid "{newCount, plural, one {# new message} other {# new messages}}"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "{overdue} overdue"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "{pct} yield"
 msgstr ""
@@ -712,7 +716,6 @@ msgid "Actions for space"
 msgstr "Действия для пространства"
 
 #: src/pages/BillingSettingsPanel.tsx
-#: src/pages/Legal.tsx
 #: src/pages/legal/LegalContracts.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Active"
@@ -875,14 +878,6 @@ msgstr ""
 
 #: src/pages/Investors.tsx
 msgid "Add your investors, auditors and counsel here. Contacts are your address book."
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Add your OpenRouter key"
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Add your OpenRouter key above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -2146,10 +2141,6 @@ msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Choose how apps connect for everyone on this server."
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Choose Legal's own model again in the Legal agent's settings to start. It then reads your Data room for contracts and deadlines."
 msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
@@ -5244,16 +5235,8 @@ msgstr ""
 msgid "Legal document"
 msgstr ""
 
-#: src/pages/Legal.tsx
-msgid "Legal needs an OpenRouter key to read your contracts."
-msgstr ""
-
 #: src/components/legal/LegalGraph.tsx
 msgid "Legal relationships"
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Legal runs on its own model: choose it again in the Legal agent's settings."
 msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
@@ -6640,10 +6623,6 @@ msgstr ""
 msgid "Open Contacts"
 msgstr ""
 
-#: src/pages/Legal.tsx
-msgid "Open deadlines"
-msgstr ""
-
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/Devin.tsx
 msgid "Open Devin"
@@ -6862,10 +6841,6 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Overdue"
 msgstr ""
 
 #: src/pages/Board.tsx

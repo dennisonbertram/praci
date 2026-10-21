@@ -29,7 +29,6 @@ import {
   FIRST_BOT_SPAWN_KEY,
   isIntegrationAgentSpawnKey,
   isMailThreadAgentSpawnKey,
-  LEGAL_AGENT_MODEL,
   LEGAL_CONSENT_REQUIRED_MESSAGE,
   NOTIFICATION_KINDS,
   RunPhaseSchema,
@@ -5505,7 +5504,7 @@ export function ShellPage() {
               onAskAgent={legalAgentOpen ? undefined : askLegalAgent}
               onAskAbout={askLegalAgentAbout}
               onConsentChange={setLegalConsentMissing}
-              onOpenSettings={() => openSettings("models", LEGAL_AGENT_MODEL.provider)}
+              onOpenSettings={() => openSettings("models")}
               settingsOpen={settingsOpen}
               spaces={spaces}
               spaceId={bootstrapMe?.spaceId}

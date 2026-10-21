@@ -9,6 +9,7 @@ import { fullDay } from "../../lib/finance-format";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { daysBetween, todayIso } from "../../lib/legal-format";
 import { rpc } from "../../lib/rpc";
+import { NOTIFICATIONS_CHANGED_EVENT } from "../../lib/use-sidebar-glance";
 import { errorText } from "../../lib/user-error";
 
 /** How long the Undo stays after Done or Dismiss. */
@@ -59,6 +60,8 @@ export function LegalDeadlines({
       clearTimeout(undoTimer.current);
       undoTimer.current = setTimeout(() => setUndo(null), UNDO_MS);
       onChanged();
+      // The sidebar Legal badge counts open deadlines, so it refreshes now, not on the next page change.
+      window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
     } catch (cause) {
       setError(errorText(cause));
     } finally {
@@ -77,6 +80,7 @@ export function LegalDeadlines({
       });
       setUndo(null);
       onChanged();
+      window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
     } catch (cause) {
       setError(errorText(cause));
     }
