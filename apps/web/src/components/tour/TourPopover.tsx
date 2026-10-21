@@ -68,13 +68,11 @@ function useRect(element: Element | null) {
 export function TourPopover({
   steps,
   onFinish,
-  doneLabel,
-  onDone,
+  lastAction,
 }: {
   steps: readonly TourStep[];
-  /** Label of the last step's button, and what it does after the tour is recorded. Default: Done. */
-  doneLabel?: string;
-  onDone?: () => void;
+  /** A secondary button on the last step, next to Done: ends the tour, then runs. */
+  lastAction?: { label: string; run: () => void };
   /** `byEscape` is set when the Escape key ended the tour, so the caller can leave the drawer open. */
   onFinish: (result: "done" | "skip" | "empty", byEscape?: boolean) => void;
 }) {
@@ -132,16 +130,20 @@ export function TourPopover({
             <Trans>Back</Trans>
           </Button>
         ) : null}
-        <Button
-          size="sm"
-          autoFocus
-          onClick={() => {
-            if (!last) return setIndex(index + 1);
-            onFinish("done");
-            onDone?.();
-          }}
-        >
-          {last ? (doneLabel ?? <Trans>Done</Trans>) : <Trans>Next</Trans>}
+        {last && lastAction ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              onFinish("done");
+              lastAction.run();
+            }}
+          >
+            {lastAction.label}
+          </Button>
+        ) : null}
+        <Button size="sm" autoFocus onClick={() => (last ? onFinish("done") : setIndex(index + 1))}>
+          {last ? <Trans>Done</Trans> : <Trans>Next</Trans>}
         </Button>
       </div>
     </>

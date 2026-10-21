@@ -55,23 +55,10 @@ const messy: AutoSortPlan = {
   ],
 };
 
-const files = [
-  "Scan 0001.pdf",
-  "Screenshot 2026-03-14 at 9.10.50 AM.png",
-  "Screenshot 2026-03-14 at 9.11.02 AM.png",
-  "Northwind dental plan.pdf",
-  "Lease renewal 2026.pdf",
-  "Board deck Q1.pdf",
-  "Invoice 1042.pdf",
-  "Offer letter - Sample Hire.pdf",
-].map((name, n) => ({ id: `i${n + 1}`, name }));
-
 const meta = {
   title: "DataRoom/AutoSortDialog",
   decorators: [withPageBehind()],
-  render: () => (
-    <AutoSortDialog files={files} onClose={() => undefined} onApplied={() => undefined} />
-  ),
+  render: () => <AutoSortDialog onClose={() => undefined} onApplied={() => undefined} />,
 } satisfies Meta;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -81,20 +68,6 @@ export const Preview: Story = { beforeEach: () => mockRpc({ "dataRoom.autoSort.p
 /** Waiting for the plan. */
 export const Loading: Story = {
   beforeEach: () => mockRpc({ "dataRoom.autoSort.plan": () => new Promise(() => undefined) }),
-};
-/** The plan is back: each file's outcome appears in turn before the review replaces the list. */
-export const Revealing: Story = {
-  render: () => (
-    <AutoSortDialog
-      files={Array.from({ length: 30 }, (_, n) => ({
-        id: `r${n}`,
-        name: files[n % files.length]?.name ?? "",
-      })).map((f, n) => ({ ...f, id: n < files.length ? f.id : `x${n}` }))}
-      onClose={() => undefined}
-      onApplied={() => undefined}
-    />
-  ),
-  beforeEach: () => mockRpc({ "dataRoom.autoSort.plan": messy }),
 };
 export const AlreadyTidy: Story = {
   beforeEach: () => mockRpc({ "dataRoom.autoSort.plan": { mode: "basic", operations: [] } }),
@@ -108,12 +81,7 @@ export const Failed: Story = {
 /** The provider refused the key: the reason, a way to fix it, and no Apply. */
 export const KeyRejected: Story = {
   render: () => (
-    <AutoSortDialog
-      files={files}
-      onClose={() => undefined}
-      onApplied={() => undefined}
-      onOpenModels={fn()}
-    />
+    <AutoSortDialog onClose={() => undefined} onApplied={() => undefined} onOpenModels={fn()} />
   ),
   beforeEach: () =>
     mockRpc({

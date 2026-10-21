@@ -134,6 +134,7 @@ import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/Err
 import { AgentAvatar } from "../components/integrations/AgentAvatar";
 import { DevinConnectDialog } from "../components/integrations/DevinConnectDialog";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
+import { RowsSkeleton } from "../components/RowsSkeleton";
 import { canOfferHostComputer } from "../components/RunsOnPicker";
 import { OpeningSpace, ThreadSkeleton } from "../components/ShellSkeleton";
 import { MAIN_CONTENT_ID, SkipToContent } from "../components/SkipToContent";
@@ -143,7 +144,6 @@ import { SidebarUndoNotice } from "../components/sidebar-folders/SidebarUndoNoti
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
-import { connectCardsOpen } from "../components/tour/FirstRunTour";
 import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import { useAgentApp } from "../lib/agent-app";
 import { artifactDisplayName } from "../lib/artifact-name";
@@ -817,13 +817,8 @@ export function ShellPage() {
       ),
     ),
   );
-  // It also waits for the Connect cards, so two prompts never compete; writing a message skips them.
   const tourOpen =
-    tourRestart ||
-    (bootstrapMe?.tourSeen === false &&
-      bots.length > 0 &&
-      !firstQuestionOpen &&
-      !connectCardsOpen(snapshot?.messages ?? []));
+    tourRestart || (bootstrapMe?.tourSeen === false && bots.length > 0 && !firstQuestionOpen);
   // On a phone the tour points into the sidebar drawer, so open it while the tour runs.
   useEffect(() => {
     if (tourOpen && !window.matchMedia("(min-width: 1024px)").matches) setMobileSidebarOpen(true);
@@ -4107,13 +4102,13 @@ export function ShellPage() {
         userName={userName}
         initials={initials}
         openSettings={openSettings}
+        chiefId={chiefId}
         tourOpen={tourOpen}
         onTourAsk={() => {
-          const id = active?.id ?? bots[0]?.id;
-          if (!id) return;
+          if (!chiefId) return;
           tourQuestion.current = true;
-          setFocusComposerBotId(id);
-          openBot(id);
+          setFocusComposerBotId(chiefId);
+          openBot(chiefId);
         }}
         setTourRestart={setTourRestart}
         setBootstrapMe={setBootstrapMe}
@@ -4326,7 +4321,7 @@ export function ShellPage() {
         </div>
         {integrationsMode ? (
           <ErrorBoundary fallback={<SectionLoadFailed />}>
-            <Suspense fallback={null}>
+            <Suspense fallback={<RowsSkeleton className="p-6" />}>
               <IntegrationsPage
                 activeBotId={activeBotId.current}
                 onOpenMessaging={() => setMessagingSettingsOpen(true)}
@@ -4339,7 +4334,7 @@ export function ShellPage() {
             onAskAgent={dataRoomAgentOpen ? undefined : askDataRoomAgent}
             onOpenModelSettings={() => openSettings("models")}
             agents={sendToAgentTargets}
-            onSendToAgent={(item, agent) => void sendFilesToAgent([item], agent)}
+            onSendToAgent={(items, agent) => void sendFilesToAgent(items, agent)}
             spaceName={
               spaces.length > 1
                 ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
@@ -4350,13 +4345,13 @@ export function ShellPage() {
           <ContactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
         ) : artifactsMode ? (
           <ErrorBoundary fallback={<SectionLoadFailed />}>
-            <Suspense fallback={null}>
+            <Suspense fallback={<RowsSkeleton className="p-6" />}>
               <ArtifactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
             </Suspense>
           </ErrorBoundary>
         ) : boardMode ? (
           <ErrorBoundary fallback={<SectionLoadFailed />}>
-            <Suspense fallback={null}>
+            <Suspense fallback={<RowsSkeleton className="p-6" />}>
               <BoardPage embedded />
             </Suspense>
           </ErrorBoundary>

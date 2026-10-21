@@ -2724,6 +2724,55 @@ describe("claimSteering", () => {
     });
   });
 
+  it("leaves externally marked messages unclaimed when asked to", async () => {
+    const make = () => {
+      const tx = {
+        $queryRaw: vi.fn(),
+        run: { findFirst: vi.fn().mockResolvedValue({ id: "run-1", trigger: "user" }) },
+        steeringMessage: { findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn() },
+      };
+      const prisma = {
+        $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+      } as unknown as PrismaClient;
+      return { tx, prisma };
+    };
+    const input = {
+      threadId: "thread-1",
+      botId: "bot-1",
+      runId: "run-1",
+      leaseOwner: "worker-1",
+      leaseFence: 1,
+      seenIds: [],
+    };
+    const excluded = make();
+    await claimSteering(excluded.prisma, { ...input, excludeExternalOrigin: true });
+    expect(excluded.tx.steeringMessage.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          message: expect.objectContaining({
+            AND: [
+              {
+                NOT: {
+                  blocks: {
+                    array_contains: [{ kind: "bot_message_received", externalOrigin: true }],
+                  },
+                },
+              },
+            ],
+          }),
+        }),
+      }),
+    );
+    const open = make();
+    await claimSteering(open.prisma, input);
+    const where = (
+      open.tx.steeringMessage.findMany.mock.calls[0] as unknown as [
+        { where: { message: Record<string, unknown> } },
+      ]
+    )[0].where;
+    expect(where.message).not.toHaveProperty("AND");
+  });
+
   it("does not claim steering into a tool-free creation intro", async () => {
     const tx = {
       $queryRaw: vi.fn(),

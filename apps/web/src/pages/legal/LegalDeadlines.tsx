@@ -16,6 +16,9 @@ const UNDO_MS = 8_000;
 /** Deadlines closer than this get a "due in N days" line. */
 const SOON_DAYS = 30;
 
+const rowHeight = (event: React.MouseEvent<HTMLElement>) =>
+  event.currentTarget.closest("li")?.getBoundingClientRect().height ?? 0;
+
 /** Open deadlines, soonest first. Done and Dismiss close one; `onChanged` reloads the page's numbers. */
 export function LegalDeadlines({
   deadlines,
@@ -37,19 +40,22 @@ export function LegalDeadlines({
   const [closing, setClosing] = useState<string | null>(null);
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState("");
-  const [undo, setUndo] = useState<{ deadline: LegalDeadline; status: LegalDeadlineStatus } | null>(
-    null,
-  );
+  const [undo, setUndo] = useState<{
+    deadline: LegalDeadline;
+    status: LegalDeadlineStatus;
+    /** The closed row's height, so the Undo line holds its place and the list does not move. */
+    height: number;
+  } | null>(null);
   useHideAmounts();
   const undoTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(undoTimer.current), []);
-  const close = async (deadline: LegalDeadline, status: LegalDeadlineStatus) => {
+  const close = async (deadline: LegalDeadline, status: LegalDeadlineStatus, height: number) => {
     setClosing(deadline.id);
     setError("");
     try {
       await rpc.legal.updateDeadline({ id: deadline.id, status });
       setGone((ids) => new Set(ids).add(deadline.id));
-      setUndo({ deadline, status });
+      setUndo({ deadline, status, height });
       clearTimeout(undoTimer.current);
       undoTimer.current = setTimeout(() => setUndo(null), UNDO_MS);
       onChanged();
@@ -95,9 +101,9 @@ export function LegalDeadlines({
       ) : null}
     </p>
   ) : null;
-  // Only while there is something to undo: an empty slot left a 40 px gap under the tabs.
-  const undoBar = undo ? (
-    <div role="status" className="mb-2 flex h-8 items-center gap-2 text-sm">
+  // The closed row's slot holds the Undo line, so the rows below do not move.
+  const undoLine = undo ? (
+    <>
       {undo.status === "done" ? (
         <Trans>Marked {maskCurrencyWhenHidden(undo.deadline.title)} done.</Trans>
       ) : (
@@ -106,13 +112,17 @@ export function LegalDeadlines({
       <Button size="sm" variant="ghost" onClick={() => void reopen()}>
         <Trans>Undo</Trans>
       </Button>
-    </div>
+    </>
   ) : null;
   if (open.length === 0) {
     return (
       <div>
         {filterBar}
-        {undoBar}
+        {undoLine ? (
+          <div role="status" className="mb-2 flex h-8 items-center gap-2 text-sm">
+            {undoLine}
+          </div>
+        ) : null}
         <p className="py-8 text-center text-sm text-muted-foreground">
           {onlyOverdue ? <Trans>Nothing is overdue.</Trans> : <Trans>No open deadlines.</Trans>}
         </p>
@@ -122,14 +132,26 @@ export function LegalDeadlines({
   return (
     <div>
       {filterBar}
-      {undoBar}
       {error ? (
         <p role="alert" className="mb-2 text-sm text-destructive">
           {error}
         </p>
       ) : null}
       <ul className="flex flex-col">
-        {open.map((deadline) => {
+        {deadlines.map((deadline) => {
+          if (undo?.deadline.id === deadline.id && gone.has(deadline.id)) {
+            return (
+              <li
+                key={deadline.id}
+                role="status"
+                style={{ minHeight: undo.height }}
+                className="flex items-center gap-2 border-t border-border py-2.5 text-sm"
+              >
+                {undoLine}
+              </li>
+            );
+          }
+          if (!open.includes(deadline)) return null;
           const days = daysBetween(today, deadline.dueDate);
           const overdue = days < 0;
           const late = -days;
@@ -140,22 +162,25 @@ export function LegalDeadlines({
             >
               <div className="min-w-0 flex-1 basis-64">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                  <span className="font-medium">{maskCurrencyWhenHidden(deadline.title)}</span>
-                  {deadline.contractTitle ? (
-                    <span className="text-xs text-muted-foreground">
-                      {"· "}
-                      {deadline.dataRoomItemId ? (
-                        <Link
-                          to={`${DATA_ROOM_PATH}?item=${deadline.dataRoomItemId}`}
-                          className="hover:underline"
-                        >
-                          {maskCurrencyWhenHidden(deadline.contractTitle)}
-                        </Link>
-                      ) : (
-                        maskCurrencyWhenHidden(deadline.contractTitle)
-                      )}
-                    </span>
-                  ) : null}
+                  {/* The contract is part of the title, so no two rows open with the same words. */}
+                  <span className="font-medium">
+                    {maskCurrencyWhenHidden(deadline.title)}
+                    {deadline.contractTitle ? (
+                      <>
+                        {": "}
+                        {deadline.dataRoomItemId ? (
+                          <Link
+                            to={`${DATA_ROOM_PATH}?item=${deadline.dataRoomItemId}`}
+                            className="hover:underline"
+                          >
+                            {maskCurrencyWhenHidden(deadline.contractTitle)}
+                          </Link>
+                        ) : (
+                          maskCurrencyWhenHidden(deadline.contractTitle)
+                        )}
+                      </>
+                    ) : null}
+                  </span>
                   {overdue ? (
                     <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-medium text-destructive">
                       {plural(late, { one: "Overdue by # day", other: "Overdue by # days" })}
@@ -205,7 +230,7 @@ export function LegalDeadlines({
                   variant="outline"
                   disabled={closing === deadline.id}
                   aria-label={t`Mark ${maskCurrencyWhenHidden(deadline.title)} done`}
-                  onClick={() => void close(deadline, "done")}
+                  onClick={(event) => void close(deadline, "done", rowHeight(event))}
                 >
                   <Trans>Done</Trans>
                 </Button>
@@ -215,7 +240,7 @@ export function LegalDeadlines({
                   disabled={closing === deadline.id}
                   title={t`Not a real deadline: hide it`}
                   aria-label={t`Dismiss ${maskCurrencyWhenHidden(deadline.title)}`}
-                  onClick={() => void close(deadline, "dismissed")}
+                  onClick={(event) => void close(deadline, "dismissed", rowHeight(event))}
                 >
                   <Trans>Dismiss</Trans>
                 </Button>

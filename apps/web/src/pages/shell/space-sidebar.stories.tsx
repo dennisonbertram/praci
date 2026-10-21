@@ -211,6 +211,7 @@ export function SidebarFixture({
     botSections: sections,
     bootstrapMe: null,
     setBootstrapMe: () => undefined,
+    chiefId: fixtureBots[0]?.id,
     tourOpen: false,
     onTourAsk: () => undefined,
     setTourRestart: () => undefined,

@@ -48,7 +48,7 @@ import type {
   RefObject,
   SetStateAction,
 } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { NavigateFunction } from "react-router-dom";
 import { ConnectAppsButton } from "../../components/ConnectAppsButton";
 import { HideAmountsMenuItem } from "../../components/HideAmountsToggle";
@@ -67,7 +67,7 @@ import {
   SortableList,
   SortableRow,
 } from "../../components/sidebar-folders/SidebarDnd";
-import { glanceBadge, runwayGlance, StatusMark } from "../../components/sidebar-glance";
+import { glanceBadge, StatusMark } from "../../components/sidebar-glance";
 import { FirstRunTour } from "../../components/tour/FirstRunTour";
 import type { AgentApp } from "../../lib/agent-app";
 import { clearAgentAppCache } from "../../lib/agent-app";
@@ -88,7 +88,8 @@ import type { ContextMenuPosition } from "../BotContextMenu";
 import type { SettingsSection } from "../SettingsOverlay";
 import type { SearchLink } from "../SpaceSearch";
 import { SpaceSearchResults } from "../SpaceSearch";
-import { BotCreatePicker } from "./bot-picker";
+import { BotCreatePicker, pickerInitialFocus } from "./bot-picker";
+import { moveRosterFocus, rosterRowId, syncRosterTabStops } from "./roster-tab-stops";
 import { SidebarHeaderRow } from "./sidebar-header-row";
 
 type SidebarChat = {
@@ -371,6 +372,7 @@ export type SpaceSidebarProps = {
   botSections: readonly { name: string }[];
   bootstrapMe: Me | null | undefined;
   setBootstrapMe: Dispatch<SetStateAction<Me | null | undefined>>;
+  chiefId: string | undefined;
   tourOpen: boolean;
   onTourAsk: () => void;
   setTourRestart: Dispatch<SetStateAction<boolean>>;
@@ -487,6 +489,7 @@ export function SpaceSidebar({
   botSections,
   bootstrapMe,
   setBootstrapMe,
+  chiefId,
   tourOpen,
   onTourAsk,
   setTourRestart,
@@ -538,10 +541,19 @@ export function SpaceSidebar({
   openSettings,
 }: SpaceSidebarProps) {
   const { t } = useLingui();
+  const rosterStopId = useRef<string | null>(null);
+  useEffect(() => syncRosterTabStops(sidebarRef.current, rosterStopId.current));
   const [pageAgentsOpen, setPageAgentsOpen] = useState(false);
   return (
     <aside
       ref={sidebarRef}
+      onKeyDown={(event) => moveRosterFocus(sidebarRef.current, event)}
+      onFocus={(event) => {
+        const id = rosterRowId(event.target as HTMLElement);
+        if (!id) return;
+        rosterStopId.current = id;
+        syncRosterTabStops(sidebarRef.current, id);
+      }}
       data-testid="bots-sidebar"
       data-bots-sidebar-density={botsSidebarDensity}
       data-collapsed={botsSidebarCollapsed ? "true" : "false"}
@@ -658,6 +670,7 @@ export function SpaceSidebar({
                 </PopoverTrigger>
                 <PopoverContent
                   align="end"
+                  initialFocus={pickerInitialFocus}
                   className="app-no-drag w-auto gap-0 overflow-hidden p-0 data-closed:animate-none"
                 >
                   <BotCreatePicker
@@ -707,7 +720,7 @@ export function SpaceSidebar({
               { key: "inbox", label: t`Inbox` },
               { key: "finance", label: t`Finance` },
               { key: "legal", label: t`Legal` },
-              { key: "devin", label: t`Devin` },
+              ...(glance.devinConnected ? [{ key: "devin", label: t`Devin` }] : []),
               { key: "cap-table", label: t`Cap table` },
               { key: "contacts", label: t`Contacts` },
               { key: "data-room", label: t`Data room` },
@@ -747,12 +760,7 @@ export function SpaceSidebar({
                   setMobileSidebarOpen(false);
                   navigate("/app/finance");
                 }}
-                {...glanceBadge({
-                  unseen: unseen.finance ?? 0,
-                  rail,
-                  value: runwayGlance(glance.financeRunwayMonths),
-                  valueLabel: t`${runwayGlance(glance.financeRunwayMonths)} runway`,
-                })}
+                {...glanceBadge({ unseen: unseen.finance ?? 0, rail })}
               />
             )}
             {hiddenPages.includes("legal") ? null : (
@@ -843,8 +851,8 @@ export function SpaceSidebar({
                   rail,
                   value: glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
                   valueLabel: plural(glance.dataRoomWaiting, {
-                    one: "# waiting",
-                    other: "# waiting",
+                    one: "# file failed",
+                    other: "# files failed",
                   }),
                 })}
               />
@@ -1017,6 +1025,7 @@ export function SpaceSidebar({
                     ) : null}
                     {!rail && !folder && (group.title || hasSpaceActions) ? (
                       <div
+                        data-roster-item={group.key}
                         className={
                           group.title && hasSpaceActions
                             ? "grid pt-3 pb-0.5"
@@ -1027,6 +1036,7 @@ export function SpaceSidebar({
                           <button
                             type="button"
                             aria-current={group.current ? "true" : undefined}
+                            data-roster-row={group.key}
                             data-sidebar-current={group.current ? "" : undefined}
                             title={group.relabeled ? group.spaceName : undefined}
                             className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-foreground/70"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
@@ -1096,6 +1106,7 @@ export function SpaceSidebar({
                                 ? "col-start-1 row-start-1 justify-self-end self-center"
                                 : undefined
                             }
+                            data-roster-actions=""
                             aria-label={t`Actions for ${group.spaceName}`}
                             onClick={(event) => {
                               const rect = event.currentTarget.getBoundingClientRect();
@@ -1190,7 +1201,8 @@ export function SpaceSidebar({
                                 <div
                                   ref={row.setNodeRef}
                                   data-drops-before={row.dropsBefore ? "" : undefined}
-                                  data-tour={selected ? "sidebar-chat" : undefined}
+                                  data-roster-item={item.chat.id}
+                                  data-tour={item.chat.id === chiefId ? "sidebar-chat" : undefined}
                                   className={`group/row relative mb-1 data-drops-before:border-t-2 data-drops-before:border-ring ${
                                     !rail && (folder || group.kind === "pinned") ? "ms-3" : ""
                                   }`}
@@ -1234,6 +1246,7 @@ export function SpaceSidebar({
                                           : undefined
                                       }
                                       {...row.handleProps}
+                                      data-roster-row={item.chat.id}
                                       data-roster-bot-id={
                                         item.kind === "bot" ? item.chat.id : undefined
                                       }
@@ -1476,6 +1489,7 @@ export function SpaceSidebar({
                                       variant="ghost"
                                       size="icon"
                                       data-testid="roster-row-actions"
+                                      data-roster-actions=""
                                       aria-label={t`Actions for ${item.chat.name}`}
                                       aria-haspopup="menu"
                                       onClick={(event) => {

@@ -295,8 +295,16 @@ it("shows Devin's needs-you count and opens its page", async () => {
     });
 
     expect(container.querySelector('[data-testid="sidebar-devin"]')).toBeNull();
+    const pageOptions = () =>
+      container.querySelector<HTMLButtonElement>('[aria-label="Page options"]');
+    await act(async () => pageOptions()?.click());
+    expect(document.body.textContent).not.toContain("Devin");
+    await act(async () => pageOptions()?.click());
 
     await act(async () => root.render(renderSidebar(true)));
+    await act(async () => pageOptions()?.click());
+    expect(document.body.textContent).toContain("Devin");
+    await act(async () => pageOptions()?.click());
     const link = container.querySelector<HTMLButtonElement>('[data-testid="sidebar-devin"]');
     expect(link?.getAttribute("aria-current")).toBe("page");
     expect(link?.getAttribute("aria-label")).toBe("Devin, 2 need you");
@@ -429,6 +437,55 @@ it("expands folded page agents only when asked, even with an active page agent",
     await act(async () => activeToggle?.click());
     expect(activeToggle?.getAttribute("aria-expanded")).toBe("true");
     expect(container.textContent).toContain("Inbox agent");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("keeps one roster row tabbable and moves focus down with ArrowDown", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const rows = () => [...container.querySelectorAll<HTMLButtonElement>("[data-roster-row]")];
+  const tabStops = () => rows().filter((row) => row.tabIndex === 0);
+  try {
+    await act(async () => {
+      root.render(
+        createElement(MemoryRouter, null, createElement(SidebarFixture, { mode: "expanded" })),
+      );
+    });
+
+    expect(tabStops()).toHaveLength(1);
+    const [current] = tabStops();
+    if (!current) throw new Error("Expected one tabbable roster row");
+    const next = rows()[rows().indexOf(current) + 1];
+    expect(next).toBeDefined();
+
+    await act(async () => {
+      current.focus();
+      current.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    });
+
+    expect(document.activeElement).toBe(next);
+    expect(tabStops()).toEqual([next]);
   } finally {
     await act(async () => root.unmount());
     container.remove();
