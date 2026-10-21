@@ -1,0 +1,29 @@
+{
+  "story_id": "STORY-IF-5",
+  "round": 4,
+  "result": "PASS",
+  "round3_status": [
+    {
+      "id": "F3-IF-5-01",
+      "status": "fixed",
+      "evidence": "The plan (Digest and Inbox follow-ups, Empty and in-progress states) now says that after \"Not now\" the Inbox behaves as today and stored meeting to-dos stay visible and completable."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F4-IF-5-01",
+      "severity": "low",
+      "category": "clarity",
+      "criterion": "Consistency",
+      "score": "warn",
+      "kind": "mockup",
+      "description": "The consent card heading reads \"Let Praci sort your mail\". Every other string in the two mockups and plans says Rakazo.",
+      "expected": "One product name across the mockups.",
+      "actual": "\"Praci\" appears once (docs/granola/mockup.html, screen-inbox).",
+      "screenshot": "g-d-inbox-consent.png",
+      "suggested_fix": "Use the name the app ships today for this existing card, or Rakazo.",
+      "jf": "NEW",
+      "files_likely_involved": []
+    }
+  ]
+}

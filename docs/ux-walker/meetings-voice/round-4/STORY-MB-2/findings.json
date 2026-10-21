@@ -1,0 +1,40 @@
+{
+  "story": "STORY-MB-2",
+  "round": 4,
+  "verdict": "PASS",
+  "round3_dispositions": [
+    {
+      "id": "F-MB-2-1",
+      "sev": "medium",
+      "status": "still-open",
+      "evidence": "The line still gives no cause and the phone has no route to live questions. The plan decides the one line (D3, M-11) and keeps the sign-in web-only; downgraded earlier, not a high finding."
+    },
+    {
+      "id": "F-MB-2-4",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "The pasted key is a row of dots, so truncation cannot be seen, and there is no clear control. Unchanged, native secure fields behave this way."
+    },
+    {
+      "id": "F3-MB-2-1",
+      "sev": "medium",
+      "status": "fixed",
+      "evidence": "The empty key field has the placeholder \"API key\" in Empty, Typing, Disconnected and Reconnect needed (step-reconnect.png). One state is missing it, see F4-MB-2-1."
+    }
+  ],
+  "new_findings": [
+    {
+      "id": "F4-MB-2-1",
+      "kind": "mockup",
+      "severity": "low",
+      "category": "visual",
+      "criterion": "Consistency",
+      "score": "warn",
+      "description": "In \"Reconnect, key rejected\" the key row is empty and shows no placeholder, only the caption \"Granola API key \u00b7 Business plan\" over blank space. Every other empty state shows \"API key\".",
+      "expected": "The empty key field shows the \"API key\" placeholder in every state (TX-17).",
+      "actual": "Blank 59 pt row with only the caption (step-reconnectbad.png).",
+      "screenshot": "screenshots/step-reconnectbad.png",
+      "suggested_fix": "Add placeholder=\"API key\" to the reconnectbad input."
+    }
+  ]
+}

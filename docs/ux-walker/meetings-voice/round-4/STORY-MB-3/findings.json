@@ -1,0 +1,26 @@
+{
+  "story": "STORY-MB-3",
+  "round": 4,
+  "verdict": "PASS",
+  "round3_dispositions": [
+    {
+      "id": "F3-MB-3-1",
+      "sev": "low",
+      "status": "obsolete",
+      "evidence": "Undo for a tick is rejected as decided (RX-14); a tick is reversible through the agent."
+    },
+    {
+      "id": "F-MB-3-6",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "No stated rule for when a date shows or turns amber. Unchanged, low."
+    },
+    {
+      "id": "F2-MB-3-2",
+      "sev": "low",
+      "status": "still-open",
+      "evidence": "The consent-off state is still not drawn on the Inbox frame (only the Integrations row has it). Plan: stored to-dos stay visible (TX-6). Low."
+    }
+  ],
+  "new_findings": []
+}

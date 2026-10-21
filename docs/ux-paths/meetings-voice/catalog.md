@@ -9,6 +9,8 @@ Story IDs keep their topic prefix and are not renumbered: GS (granola-setup-reco
 
 All people, companies and meetings in the stories are invented.
 
+**Stories and drafts:** the stories in this file are current. The files in `docs/ux-paths/meetings-voice/topics/` are the original drafts and are not updated.
+
 **History:** the story steps were refreshed after round 3 and match the current plans. The sections after the stories record what round 1 found. These are the mobile comparison table, Redundancy Candidates, Gaps and the JF findings, and they are kept as history. Where they contradict the plans, for example "two Granola agents", "no delete" or "API access required", the plans and the fix lists win. The fix lists are `fix-list.md`, `fix-list-round-2.md` and `fix-list-round-3.md`.
 
 ## Summary by type
@@ -161,10 +163,10 @@ Source: `docs/ux-paths/meetings-voice/topics/granola-setup-recovery.md`
 **Mockup screen**: docs/granola/mockup.html#screen-integrations (Both connected: compact sign-in row above the key card)
 #### Steps
 1. Priya opens Integrations, Granola → the MCP sign-in is connected, so it shows as one compact row (its own status and Disconnect, and "Reconnect" if the sign-in expired) with her agent link; the key card is below it. [planned: Granola S6]
-2. She pastes the key and presses "Connect" → connection `granola-api` is created and attaches to her existing Granola agent; no second agent is created. [planned: Granola S6]
+2. She pastes the key and presses "Connect" → connection `granola-api` is created and attaches to her existing Granola agent; no second agent is created. The agent link moves from the compact sign-in row to the key card's status and is drawn once. [planned: Granola S6]
 3. She opens the bot list → the same single Granola agent is listed, with its thread history intact.
 4. Priya asks "What did we decide about the Q4 route changes?" → the agent now also reads synced meetings and answers from stored data with citations.
-5. She sees both rows connected, each labelled with its route ("via MCP", "Granola API key"); each Disconnect affects only its own route. There is nothing to choose between.
+5. She sees both rows connected, each labelled with its route ("Sign-in", "API key"); each Disconnect affects only its own route. There is nothing to choose between.
 6. Priya has nothing to delete; removing the key or the MCP server keeps the agent.
 #### Variations
 - One agent serves both routes by decision; there is no two-agent outcome.
@@ -236,7 +238,7 @@ Source: `docs/ux-paths/meetings-voice/topics/granola-setup-recovery.md`
 **Ideal path**: 2. Open the Granola page, press "Create agent".
 **Alternate paths**: Disconnect and reconnect the key (recreates the agent but also re-validates the key).
 **Plan status**: removing an agent keeps sync [planned: Granola S3/S6]; "Create agent" repair [exists for MCP at McpDetail.tsx:221; planned for the key connection]; idempotent creation [planned: Granola S6].
-**Mockup screen**: none (not mocked: "Create agent" on the key card is not drawn)
+**Mockup screen**: docs/granola/mockup.html#screen-api-key (Agent removed: "Create agent" in place of the agent link)
 #### Steps
 1. Leila deletes the "Granola agent" from the bot list, believing it only held old chats → bot is removed. [exists] Sync continues. [planned: Granola S3]
 2. A week later she asks a teammate bot about a meeting via `message_bot` → no meeting-source agent exists, so nothing answers. GAP: granola.md Agent provisioning says "meetings reach no one until one exists" and defines no message to the user or caller.
@@ -266,10 +268,10 @@ Source: `docs/ux-paths/meetings-voice/topics/granola-setup-recovery.md`
 **Merged from**: STORY-IF-3 (see the merge notes in the topic section)
 #### Steps
 1. Ethan opens Integrations, Granola and presses "Disconnect" → [planned: Granola S6] the secret is deleted and sync stops. No confirmation about data. GAP: granola.md S6 says "no confirm about data" and does not say whether any confirmation appears at all.
-2. The card returns to an empty "Granola API key" field with "Connect". "Rakazo keeps your meetings and to-dos." shows above the field, and the agent link stays. No confirmation dialog.
+2. The card returns to an empty "Granola API key" field with "Connect". "Praci keeps your meetings and to-dos." shows above the field, and the agent link stays (once, on the key card). No confirmation dialog.
 3. He opens the Granola agent and asks "What did we agree with Dana?" → the agent still answers from stored meetings, as the card's sentence said.
 4. He opens Inbox and completes a meeting to-do → works with no connected source. [planned: Granola S5]
-5. He wants one meeting gone → on web he opens an answer, clicks the citation chip and chooses "Delete"; after the standard confirmation ("Removes this meeting and its to-dos from Rakazo. Your note in Granola is not changed.") the meeting, its digest and its to-dos are removed and not re-synced. Only the person who connected can delete, also after Disconnect; everything else is kept permanently. [planned: Granola S6]
+5. He wants one meeting gone → on web he opens an answer, clicks the citation chip (the popover names the meeting by title and date) and chooses "Delete"; after the standard confirmation ("Removes this meeting and its to-dos from Praci. Your note in Granola is not changed.") the meeting, its digest and its to-dos are removed and not re-synced. Only the person who connected can delete, also after Disconnect; everything else is kept permanently. [planned: Granola S6]
 6. He pastes a new key later → the same connection and agent are reused; his stored meetings are still there plus new ones.
 #### Variations
 - Ethan disconnects the key but keeps the MCP tile: the MCP agent still reads stored meetings and live data.
@@ -277,7 +279,7 @@ Source: `docs/ux-paths/meetings-voice/topics/granola-setup-recovery.md`
 #### Edge Cases
 - Another user in the same space connected Granola: their meetings stay private and unaffected.
 - The to-do text can name attendees who never agreed to AI processing. Disconnect does not purge it.
-- Ethan is told by the card's sentence "Rakazo keeps your meetings and to-dos."; Delete is the only way to remove a meeting.
+- Ethan is told by the card's sentence "Praci keeps your meetings and to-dos."; Delete is the only way to remove a meeting.
 
 ### STORY-GS-8: Meeting-only user, no mail, first answer and first to-do (MERGED into IF-1)
 **Merged into**: STORY-IF-1. Same path as IF-1 (meeting-only user opens Inbox, no mail account). Unique points to walk together with IF-1: connecting before AI consent gives no to-dos with no reason; a Granola identity email that matches no attendee gives no to-dos.
@@ -348,7 +350,7 @@ Source: `docs/ux-paths/meetings-voice/topics/inbox-followups.md`
 **Ideal path**: 2. Open Inbox; see the follow-ups. In reality the path ends with no items.
 **Alternate paths**: Ask the Granola agent "what did I promise?" [planned: S4]. This works because "the digest is still stored and the agent can still answer from it" (granola.md, Identity).
 **Plan status**: Identity matching [planned: Granola S5]; any UI that says why nothing appeared: GAP.
-**Mockup screen**: none (not mocked)
+**Mockup screen**: docs/granola/mockup.html#screen-inbox (Empty: "No follow-ups from meetings yet"; the reason is not drawn)
 #### Steps
 1. Jonas opens Inbox after the call → the "To do" card shows "No follow-ups from meetings yet" above "Connect mail" (a source is connected, consent is on, the first sync has finished). [planned: Granola S5]
 2. He waits 10 minutes, reloads, and checks again → the same line. "No identity match", "no commitments" and "digest failed" look the same, by choice.
@@ -414,13 +416,13 @@ Source: `docs/ux-paths/meetings-voice/topics/inbox-followups.md`
 **Ideal path**: 2. See that the item is tied to a meeting she deleted in Granola, and delete it in Rakazo.
 **Alternate paths**: Tick the item (marks done, does not delete it). Ask the agent to forget the meeting: no such tool (the meeting tools are read-only, granola.md, Reading).
 **Plan status**: Granola deletions are not mirrored [planned: Granola Sync]; per-meeting Delete by the connecting user in the web citation popover [planned: Granola S6, `meetings.delete`].
-**Mockup screen**: none (not mocked)
+**Mockup screen**: docs/granola/mockup.html#screen-citation (Open, Delete) and docs/granola/mockup.html#screen-inbox (With to-dos)
 #### Steps
 1. Hannah opens Inbox next morning → [planned: Granola S5] the item "Draft the severance memo" with "Layoff planning, 15 Oct" is still listed; the synced copy remains because a personal key cannot see `deleted_at` (granola.md, Sync).
 2. She expects deletion in Granola to carry over and is unsettled to see the title → ticking the item only marks it done (`doneAt` set); the `Meeting` row stays.
 3. She asks the Granola agent "what do you have on Layoff planning?" → the agent still answers from the stored meeting (granola.md, Retention). She now has data in Rakazo she believed deleted.
-4. She looks for a way to delete the stored meeting → on web she asks the Granola agent about it, clicks the citation chip and chooses "Delete"; after the standard confirmation the meeting, its digest and its to-dos are removed, and sync skips it afterwards (tombstone). Only the person who connected can do this. [planned: Granola S6]
-5. If she disconnects Granola instead, hoping that clears the data → Disconnect keeps all meetings and to-dos by design, and the card says "Rakazo keeps your meetings and to-dos."
+4. She looks for a way to delete the stored meeting → on web she asks the Granola agent about it, clicks the citation chip (the popover names the meeting by title and date) and chooses "Delete"; after the standard confirmation the meeting, its digest and its to-dos are removed, and sync skips it afterwards (tombstone). Only the person who connected can do this. [planned: Granola S6]
+5. If she disconnects Granola instead, hoping that clears the data → Disconnect keeps all meetings and to-dos by design, and the card says "Praci keeps your meetings and to-dos."
 #### Variations
 - Detail text is plain text with no link, so there is no dead link to a missing meeting; the user sees only a title and date.
 - If a to-do was completed already, the user never sees the meeting again in the Inbox, but the transcript remains stored.
@@ -630,7 +632,7 @@ Source: `docs/ux-paths/meetings-voice/topics/meetings-cross-provider.md`
 4. She opens Inbox → the "To do" card shows above "Connect mail". [planned: Granola S5]
 5. She sees "Send Dana the revised pricing / Pricing review, 12 Oct". She cannot tell which tool the meeting came from, by decision (provider is not shown on a to-do).
 6. She completes it → [planned: Granola S5] works with no connection.
-7. Later she disconnects Granola; to-dos and meetings stay, and the card says "Rakazo keeps your meetings and to-dos." [planned: Granola S6]
+7. Later she disconnects Granola; to-dos and meetings stay, and the card says "Praci keeps your meetings and to-dos." [planned: Granola S6]
 #### Variations
 - Sara connects Flow first: no stored meetings, the Granola card is on a tile she has not opened.
 - AI data sharing is switched off later: no new digests, tools withheld, and the Granola status line reads "AI data sharing off" linking to the setting.
@@ -833,7 +835,7 @@ Source: `docs/ux-paths/meetings-voice/topics/mobile.md`
 **Plan status**: Settings, Integrations [exists]; dedicated Granola group with a secure key field and Connect, visible without searching [planned: Granola S6].
 **Mockup screen**: docs/granola/mockup.html#screen-mobile (Key card state: Empty, Connected). The mobile card shows only the key group
 #### Steps
-1. Maya opens the app, Settings, Integrations → a dedicated "Granola" group is visible without searching. While disconnected, its first row reads "Rakazo keeps your meetings and to-dos.", then a secure "Granola API key" row with a muted "Business plan". [planned: Granola S6]
+1. Maya opens the app, Settings, Integrations → a dedicated "Granola" group is visible without searching. While disconnected, its first row reads "Praci keeps your meetings and to-dos.", then a secure "Granola API key" row with a muted "Business plan". [planned: Granola S6]
 2. She pastes the key into the secure field → there is no key link on the phone, because there is no detail page.
 3. She taps Connect (native action button, loading state) → the key is checked; the group footer, "Sends your meeting notes and transcripts to your AI model.", is the consent act.
 4. The status row reads "Syncing" (activity indicator), then "Synced 42 meetings"; the group then shows the status and Disconnect, not the key field.
