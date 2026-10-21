@@ -1060,10 +1060,6 @@ msgstr "Allow writing"
 msgid "Allowed"
 msgstr "Allowed"
 
-#: src/components/AskCard.tsx
-msgid "Allowed once"
-msgstr "Allowed once"
-
 #: src/pages/Auth.tsx
 msgid "Already have an account?"
 msgstr "Already have an account?"
@@ -1101,8 +1097,8 @@ msgid "Always act"
 msgstr "Always act"
 
 #: src/components/AskCard.tsx
-msgid "Always allow this tool"
-msgstr "Always allow this tool"
+msgid "Always allow this"
+msgstr "Always allow this"
 
 #: src/components/AskCard.tsx
 msgid "Always allowed"
@@ -1220,6 +1216,10 @@ msgstr "Approve"
 #: src/pages/shell/message-cards.tsx
 msgid "Approve this server to let your bot use its tools."
 msgstr "Approve this server to let your bot use its tools."
+
+#: src/components/AskCard.tsx
+msgid "Approved"
+msgstr "Approved"
 
 #: src/components/ConnectAppsButton.tsx
 #: src/components/integrations/AppDetail.tsx
@@ -5694,10 +5694,6 @@ msgstr "Needs a monthly burn"
 msgid "Needs a server restart"
 msgstr "Needs a server restart"
 
-#: src/lib/roster-status.ts
-msgid "Needs an answer"
-msgstr "Needs an answer"
-
 #: src/components/MailApprovalCard.tsx
 msgid "Needs approval"
 msgstr "Needs approval"
@@ -5731,6 +5727,10 @@ msgstr "Needs takeover"
 #: src/pages/Shell.tsx
 msgid "Needs you"
 msgstr "Needs you"
+
+#: src/lib/roster-status.ts
+msgid "Needs your answer"
+msgstr "Needs your answer"
 
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -9866,6 +9866,10 @@ msgstr "Who owns what in the company?"
 #: src/components/EmailCards.tsx
 msgid "Within 3 days"
 msgstr "Within 3 days"
+
+#: src/components/AskCard.tsx
+msgid "Won't ask again for this kind of action."
+msgstr "Won't ask again for this kind of action."
 
 #: src/lib/ticket-status.ts
 msgid "Won't do"

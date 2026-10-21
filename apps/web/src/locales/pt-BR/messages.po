@@ -1060,10 +1060,6 @@ msgstr ""
 msgid "Allowed"
 msgstr ""
 
-#: src/components/AskCard.tsx
-msgid "Allowed once"
-msgstr "Permitido uma vez"
-
 #: src/pages/Auth.tsx
 msgid "Already have an account?"
 msgstr "Você já tem cadastro?"
@@ -1101,8 +1097,8 @@ msgid "Always act"
 msgstr ""
 
 #: src/components/AskCard.tsx
-msgid "Always allow this tool"
-msgstr "Permitir sempre esta ferramenta"
+msgid "Always allow this"
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Always allowed"
@@ -1219,6 +1215,10 @@ msgstr "Aprovar"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Approve this server to let your bot use its tools."
+msgstr ""
+
+#: src/components/AskCard.tsx
+msgid "Approved"
 msgstr ""
 
 #: src/components/ConnectAppsButton.tsx
@@ -5694,10 +5694,6 @@ msgstr ""
 msgid "Needs a server restart"
 msgstr ""
 
-#: src/lib/roster-status.ts
-msgid "Needs an answer"
-msgstr ""
-
 #: src/components/MailApprovalCard.tsx
 msgid "Needs approval"
 msgstr ""
@@ -5730,6 +5726,10 @@ msgstr "Requer assumir o controle"
 #: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
 msgid "Needs you"
+msgstr ""
+
+#: src/lib/roster-status.ts
+msgid "Needs your answer"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -9865,6 +9865,10 @@ msgstr ""
 
 #: src/components/EmailCards.tsx
 msgid "Within 3 days"
+msgstr ""
+
+#: src/components/AskCard.tsx
+msgid "Won't ask again for this kind of action."
 msgstr ""
 
 #: src/lib/ticket-status.ts

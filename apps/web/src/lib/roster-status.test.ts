@@ -24,9 +24,12 @@ describe("rosterWorkStatusLabel", () => {
     expect(rosterWorkStatusLabel("running")).toBe("Working…");
   });
 
+  it("flags a question waiting for the owner", () => {
+    expect(rosterWorkStatusLabel("waiting_input")).toBe("Needs your answer");
+  });
+
   it("leaves other statuses to the message preview", () => {
     expect(rosterWorkStatusLabel("idle")).toBeNull();
-    expect(rosterWorkStatusLabel("waiting_input")).toBeNull();
     expect(rosterWorkStatusLabel("waiting_takeover")).toBeNull();
     expect(rosterWorkStatusLabel("completed")).toBeNull();
     expect(rosterWorkStatusLabel("failed")).toBeNull();
@@ -40,7 +43,7 @@ describe("compactRosterStatusLabel", () => {
     expect(compactRosterStatusLabel("queued")).toBe("Waiting in line…");
     expect(compactRosterStatusLabel("leased")).toBe("Starting…");
     expect(compactRosterStatusLabel("running")).toBe("Working…");
-    expect(compactRosterStatusLabel("waiting_input")).toBe("Needs an answer");
+    expect(compactRosterStatusLabel("waiting_input")).toBe("Needs your answer");
     expect(compactRosterStatusLabel("waiting_takeover")).toBe("Needs you");
     expect(compactRosterStatusLabel("failed")).toBe("Error");
   });
