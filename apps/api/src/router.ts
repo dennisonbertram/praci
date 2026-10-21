@@ -45,6 +45,7 @@ import type {
 } from "@rakazo/adapters";
 import {
   acquireComputerExecutionLease,
+  addScratchpadItemFromTool,
   answerBotShare,
   applyCodexLiveCatalog,
   applyPendingSenderRules,
@@ -90,7 +91,6 @@ import {
   isComputerScreenUnavailable,
   isMailConnection,
   isSandboxGoneError,
-  isScratchpadStatus,
   kickModelCredentialRefresh,
   latestAccountExport,
   listAvailablePiCatalog,
@@ -98,7 +98,6 @@ import {
   listPiCatalog,
   listScratchpadItems,
   McpOAuthBroker,
-  mapScratchpadItem,
   modelCredentialAuthKindsForSpace,
   modelCredentialDto,
   normalizeSecretDestination,
@@ -118,6 +117,7 @@ import {
   queueComputerUpdate,
   refreshBotPins,
   releaseComputerExecutionLease,
+  removeScratchpadItemFromUser,
   renderPageChartSvg,
   replaceComputer,
   requestAccountExport,
@@ -143,6 +143,7 @@ import {
   toComputerRef,
   touchRunningComputer,
   UNAVAILABLE_MODEL_FOR_AUTH_MESSAGE,
+  updateScratchpadItemFromUser,
   updateTicket,
   validateConnectedModelChoice,
   validateModelAuthAvailability,
@@ -4465,6 +4466,7 @@ export function createRouter(deps: RouterDeps) {
           { prisma: deps.prisma },
           {
             spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
             botId: input.botId,
             status: input.status,
             includeDone: input.includeDone ?? false,
@@ -4473,17 +4475,25 @@ export function createRouter(deps: RouterDeps) {
       }),
       create: authed.scratchpad.create.handler(async ({ context, input }) => {
         await repos.getBot(context.actor, input.botId);
-        const row = await deps.prisma.scratchpadItem.create({
-          data: {
+        const result = await addScratchpadItemFromTool(
+          { prisma: deps.prisma },
+          {
             spaceId: context.actor.spaceId,
-            botId: input.botId,
             userId: context.actor.userId,
-            title: input.title.trim(),
+            botId: input.botId,
+            title: input.title,
             status: input.status,
-            notes: input.notes.trim(),
+            notes: input.notes,
+            category: input.category,
+            channel: input.channel,
+            target: input.target,
+            scheduledFor: input.scheduledFor,
           },
-        });
-        return mapScratchpadItem(row);
+        );
+        if ("error" in result) {
+          throw new ORPCError("BAD_REQUEST", { message: result.error });
+        }
+        return result.item;
       }),
       update: authed.scratchpad.update.handler(async ({ context, input }) => {
         const existing = await deps.prisma.scratchpadItem.findFirst({
@@ -4494,18 +4504,31 @@ export function createRouter(deps: RouterDeps) {
           },
         });
         if (!existing) throw new IsolationError();
-        if (input.status !== undefined && !isScratchpadStatus(input.status)) {
-          throw new ORPCError("BAD_REQUEST", { message: "Invalid scratchpad status." });
-        }
-        const row = await deps.prisma.scratchpadItem.update({
-          where: { id: existing.id },
-          data: {
-            ...(input.title !== undefined ? { title: input.title.trim() } : {}),
-            ...(input.status !== undefined ? { status: input.status } : {}),
-            ...(input.notes !== undefined ? { notes: input.notes.trim() } : {}),
+        await repos.getBot(context.actor, existing.botId);
+        const result = await updateScratchpadItemFromUser(
+          { prisma: deps.prisma },
+          {
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+            botId: existing.botId,
+            itemId: input.itemId,
+            title: input.title,
+            status: input.status,
+            notes: input.notes,
+            target: input.target,
+            scheduledFor: input.scheduledFor,
+            proof: input.proof,
+            updatedAt: input.updatedAt,
+            reapprove: input.reapprove,
           },
-        });
-        return mapScratchpadItem(row);
+        );
+        if ("conflict" in result) {
+          throw new ORPCError("CONFLICT", { message: "Changed, review again" });
+        }
+        if ("error" in result) {
+          throw new ORPCError("BAD_REQUEST", { message: result.error });
+        }
+        return result.item;
       }),
       remove: authed.scratchpad.remove.handler(async ({ context, input }) => {
         const existing = await deps.prisma.scratchpadItem.findFirst({
@@ -4516,7 +4539,17 @@ export function createRouter(deps: RouterDeps) {
           },
         });
         if (!existing) throw new IsolationError();
-        await deps.prisma.scratchpadItem.delete({ where: { id: existing.id } });
+        await repos.getBot(context.actor, existing.botId);
+        const result = await removeScratchpadItemFromUser(
+          { prisma: deps.prisma },
+          {
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+            botId: existing.botId,
+            itemId: existing.id,
+          },
+        );
+        if ("error" in result) throw new ORPCError("BAD_REQUEST", { message: result.error });
         return { ok: true as const };
       }),
     },

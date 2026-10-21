@@ -524,6 +524,33 @@ export const CreateRoutineInput = z
 export const ScratchpadItemStatusSchema = z.enum(["open", "parked", "done"]);
 export type ScratchpadItemStatus = z.infer<typeof ScratchpadItemStatusSchema>;
 
+export const ScratchpadCategorySchema = z.enum([
+  "goal",
+  "research",
+  "draft",
+  "public_post",
+  "create_account",
+  "outbound_email",
+]);
+export type ScratchpadCategory = z.infer<typeof ScratchpadCategorySchema>;
+
+export const ScratchpadChannelSchema = z.enum([
+  "x",
+  "linkedin",
+  "threads",
+  "bluesky",
+  "reddit",
+  "hn",
+  "producthunt",
+  "directory",
+  "email",
+]);
+export type ScratchpadChannel = z.infer<typeof ScratchpadChannelSchema>;
+
+export const ScratchpadDateTimeSchema = z.iso
+  .datetime({ offset: true })
+  .refine((value) => Number.isFinite(Date.parse(value)), "Invalid ISO datetime");
+
 export const ScratchpadItemSchema = z.object({
   id: Id,
   botId: Id,
@@ -532,14 +559,25 @@ export const ScratchpadItemSchema = z.object({
   notes: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  category: ScratchpadCategorySchema.nullish(),
+  channel: ScratchpadChannelSchema.nullish(),
+  target: z.string().max(200).nullish(),
+  scheduledFor: ScratchpadDateTimeSchema.nullish(),
+  proof: z.string().max(2_000).nullish(),
+  approvedAt: ScratchpadDateTimeSchema.nullish(),
+  approvedBy: z.enum(["user", "policy"]).nullish(),
 });
 export type ScratchpadItem = z.infer<typeof ScratchpadItemSchema>;
 
 export const CreateScratchpadItemInput = z.object({
   botId: Id,
   title: z.string().min(1).max(200),
-  status: ScratchpadItemStatusSchema.default("open"),
+  status: ScratchpadItemStatusSchema.optional(),
   notes: z.string().max(4_000).default(""),
+  category: ScratchpadCategorySchema.optional(),
+  channel: ScratchpadChannelSchema.optional(),
+  target: z.string().max(200).optional(),
+  scheduledFor: ScratchpadDateTimeSchema.optional(),
 });
 
 export const TaughtSkillStatusSchema = z.enum(["recording", "drafting", "draft", "saved"]);

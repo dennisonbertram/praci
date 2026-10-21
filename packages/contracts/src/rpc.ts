@@ -837,12 +837,19 @@ export const appContract = {
     create: oc.input(CreateScratchpadItemInput).output(ScratchpadItemSchema),
     update: oc
       .input(
-        z.object({
-          itemId: Id,
-          title: z.string().min(1).max(200).optional(),
-          status: ScratchpadItemStatusSchema.optional(),
-          notes: z.string().max(4_000).optional(),
-        }),
+        z
+          .object({
+            itemId: Id,
+            title: z.string().min(1).max(200).optional(),
+            status: ScratchpadItemStatusSchema.optional(),
+            notes: z.string().max(4_000).optional(),
+            target: z.string().max(200).optional(),
+            scheduledFor: z.iso.datetime({ offset: true }).optional(),
+            proof: z.string().max(2_000).optional(),
+            updatedAt: z.iso.datetime({ offset: true }).optional(),
+            reapprove: z.boolean().optional(),
+          })
+          .strict(),
       )
       .output(ScratchpadItemSchema),
     remove: oc.input(z.object({ itemId: Id })).output(z.object({ ok: z.literal(true) })),

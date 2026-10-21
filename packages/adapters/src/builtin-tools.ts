@@ -5,6 +5,8 @@ import {
   ContactKindSchema,
   EmailUrgency,
   MAX_EMAIL_CARDS,
+  ScratchpadCategorySchema,
+  ScratchpadChannelSchema,
   SecretAskPurpose,
   SecretHttpRequest,
   TICKET_PRIORITIES,
@@ -1686,16 +1688,21 @@ export const builtinAgentTools: ConnectorTool[] = [
         status: {
           type: "string",
           enum: ["open", "parked", "done"],
-          description: "Defaults to open.",
+          description: "Defaults to open for ordinary items and parked for gated plan items.",
         },
         notes: { type: "string", description: "Optional notes." },
+        category: { type: "string", enum: ScratchpadCategorySchema.options },
+        channel: { type: "string", enum: ScratchpadChannelSchema.options },
+        target: { type: "string", maxLength: 200 },
+        scheduledFor: { type: "string", description: "Absolute ISO datetime with timezone." },
       },
       required: ["title"],
+      additionalProperties: false,
     },
   },
   {
     name: "scratchpad_update",
-    description: "Update a scratchpad item's title, status, or notes.",
+    description: "Update a scratchpad item's title, status, notes, target, schedule, or proof.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1703,8 +1710,12 @@ export const builtinAgentTools: ConnectorTool[] = [
         title: { type: "string" },
         status: { type: "string", enum: ["open", "parked", "done"] },
         notes: { type: "string" },
+        target: { type: "string", maxLength: 200 },
+        scheduledFor: { type: "string", description: "Absolute ISO datetime with timezone." },
+        proof: { type: "string", maxLength: 2_000 },
       },
       required: ["itemId"],
+      additionalProperties: false,
     },
   },
   {
@@ -1714,8 +1725,10 @@ export const builtinAgentTools: ConnectorTool[] = [
       type: "object",
       properties: {
         itemId: { type: "string" },
+        proof: { type: "string", maxLength: 2_000 },
       },
       required: ["itemId"],
+      additionalProperties: false,
     },
   },
   {

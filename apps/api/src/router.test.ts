@@ -4728,3 +4728,158 @@ describe("Investors agent", () => {
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 });
+
+describe("GTM scratchpad RPC", () => {
+  const actor = {
+    spaceId: "space-1",
+    userId: "user-1",
+    email: "user@rakazo.test",
+    isDeploymentOwner: false,
+  } satisfies Actor;
+  const bot = {
+    id: "bot-1",
+    spaceId: actor.spaceId,
+    userId: actor.userId,
+    name: "GTM",
+    title: "",
+    description: "",
+    instructions: "",
+    color: "#000",
+    notifyOnFinish: true,
+    pinned: false,
+    position: 0,
+    sectionId: null,
+    archivedAt: null,
+    parentBotId: null,
+    memoryScope: null,
+    createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+    thread: null,
+    computer: null,
+  };
+
+  function scratchpadClient(scratchpadItem: Record<string, unknown>) {
+    const deps = {
+      prisma: {
+        bot: { findFirst: vi.fn(async () => bot) },
+        scratchpadItem,
+      } as unknown as PrismaClient,
+      env: { defaultProvider: "fake", defaultModel: "fake-model" },
+      dataDir: "/tmp/rakazo-router-test",
+    } as unknown as RouterDeps;
+    return createRouterClient(createRouter(deps), { context: { actor } });
+  }
+
+  it("creates gated items through the shared store in parked status", async () => {
+    const createdAt = new Date("2026-08-25T12:00:00.000Z");
+    const create = vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+      id: "item-1",
+      ...data,
+      createdAt,
+      updatedAt: createdAt,
+      approvedAt: null,
+      approvedBy: null,
+      proof: null,
+      scheduledFor: null,
+      target: null,
+      channel: "x",
+    }));
+    const client = scratchpadClient({ create });
+    const item = await client.scratchpad.create({
+      botId: "bot-1",
+      title: "Post",
+      category: "public_post",
+      channel: "x",
+    });
+    expect(create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        spaceId: actor.spaceId,
+        userId: actor.userId,
+        botId: "bot-1",
+        category: "public_post",
+        channel: "x",
+        status: "parked",
+      }),
+    });
+    expect(item.status).toBe("parked");
+  });
+
+  it("returns CONFLICT for stale approval and rejects an approval without rendered updatedAt", async () => {
+    const existing = {
+      id: "item-1",
+      ...scopeForTest(),
+      title: "Post",
+      status: "parked",
+      notes: "Exact post",
+      category: "public_post",
+      channel: "x",
+      target: "account-1",
+      scheduledFor: null,
+      proof: null,
+      approvedAt: null,
+      approvedBy: null,
+      createdAt: new Date("2026-08-25T11:00:00.000Z"),
+      updatedAt: new Date("2026-08-25T12:00:00.000Z"),
+    };
+    const updateMany = vi.fn(async () => ({ count: 0 }));
+    const findFirst = vi.fn(async () => existing);
+    const client = scratchpadClient({ findFirst, updateMany });
+    await expect(
+      client.scratchpad.update({
+        itemId: existing.id,
+        status: "open",
+        updatedAt: "2026-08-25T11:59:00.000Z",
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT", message: "Changed, review again" });
+    await expect(
+      client.scratchpad.update({
+        itemId: existing.id,
+        status: "open",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("returns CONFLICT when a previously rendered approval version is already open", async () => {
+    const current = {
+      id: "item-1",
+      ...scopeForTest(),
+      title: "Post",
+      status: "open",
+      notes: "Exact post",
+      category: "public_post",
+      channel: "x",
+      target: "account-1",
+      scheduledFor: null,
+      proof: null,
+      approvedAt: new Date("2026-08-25T12:00:01.000Z"),
+      approvedBy: "user",
+      createdAt: new Date("2026-08-25T11:00:00.000Z"),
+      updatedAt: new Date("2026-08-25T12:00:01.000Z"),
+    };
+    const findFirst = vi.fn(async () => current);
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    const client = scratchpadClient({ findFirst, updateMany });
+    await expect(
+      client.scratchpad.update({
+        itemId: current.id,
+        status: "open",
+        updatedAt: "2026-08-25T12:00:00.000Z",
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT", message: "Changed, review again" });
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects category mutation from raw panel RPC arguments", async () => {
+    const client = scratchpadClient({});
+    await expect(
+      client.scratchpad.update({
+        itemId: "item-1",
+        category: "draft",
+      } as never),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});
+
+function scopeForTest() {
+  return { spaceId: "space-1", userId: "user-1", botId: "bot-1" };
+}

@@ -73476,7 +73476,6 @@
                         "maxLength": 200
                       },
                       "status": {
-                        "default": "open",
                         "type": "string",
                         "enum": [
                           "open",
@@ -73488,12 +73487,48 @@
                         "default": "",
                         "type": "string",
                         "maxLength": 4000
+                      },
+                      "category": {
+                        "type": "string",
+                        "enum": [
+                          "goal",
+                          "research",
+                          "draft",
+                          "public_post",
+                          "create_account",
+                          "outbound_email"
+                        ]
+                      },
+                      "channel": {
+                        "type": "string",
+                        "enum": [
+                          "x",
+                          "linkedin",
+                          "threads",
+                          "bluesky",
+                          "reddit",
+                          "hn",
+                          "producthunt",
+                          "directory",
+                          "email"
+                        ]
+                      },
+                      "target": {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      "scheduledFor": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                       }
                     },
                     "required": [
                       "botId",
                       "title"
-                    ]
+                    ],
+                    "description": "Some server-side Zod refinements cannot be represented in JSON Schema and remain enforced by the server.",
+                    "x-rakazo-zod-refinements": "Enforced by the server; not expressible in JSON Schema."
                   }
                 },
                 "required": [
@@ -73543,6 +73578,101 @@
                         },
                         "updatedAt": {
                           "type": "string"
+                        },
+                        "category": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "goal",
+                                "research",
+                                "draft",
+                                "public_post",
+                                "create_account",
+                                "outbound_email"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "channel": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "x",
+                                "linkedin",
+                                "threads",
+                                "bluesky",
+                                "reddit",
+                                "hn",
+                                "producthunt",
+                                "directory",
+                                "email"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "target": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "scheduledFor": {
+                          "anyOf": [
+                            {
+                              "$ref": "#/components/schemas/RpcScratchpadCreateOutputSchema1"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "proof": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 2000
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "approvedAt": {
+                          "anyOf": [
+                            {
+                              "$ref": "#/components/schemas/RpcScratchpadCreateOutputSchema1"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "approvedBy": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "user",
+                                "policy"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [
@@ -73554,7 +73684,9 @@
                         "createdAt",
                         "updatedAt"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": false,
+                      "description": "Some server-side Zod refinements cannot be represented in JSON Schema and remain enforced by the server.",
+                      "x-rakazo-zod-refinements": "Enforced by the server; not expressible in JSON Schema."
                     }
                   }
                 }
@@ -73743,6 +73875,101 @@
                           },
                           "updatedAt": {
                             "type": "string"
+                          },
+                          "category": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "goal",
+                                  "research",
+                                  "draft",
+                                  "public_post",
+                                  "create_account",
+                                  "outbound_email"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "channel": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "x",
+                                  "linkedin",
+                                  "threads",
+                                  "bluesky",
+                                  "reddit",
+                                  "hn",
+                                  "producthunt",
+                                  "directory",
+                                  "email"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "target": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "scheduledFor": {
+                            "anyOf": [
+                              {
+                                "$ref": "#/components/schemas/RpcScratchpadListOutputSchema1"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "proof": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 2000
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "approvedAt": {
+                            "anyOf": [
+                              {
+                                "$ref": "#/components/schemas/RpcScratchpadListOutputSchema1"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "approvedBy": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "user",
+                                  "policy"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         },
                         "required": [
@@ -73755,7 +73982,9 @@
                           "updatedAt"
                         ],
                         "additionalProperties": false
-                      }
+                      },
+                      "description": "Some server-side Zod refinements cannot be represented in JSON Schema and remain enforced by the server.",
+                      "x-rakazo-zod-refinements": "Enforced by the server; not expressible in JSON Schema."
                     }
                   }
                 }
@@ -74053,11 +74282,33 @@
                       "notes": {
                         "type": "string",
                         "maxLength": 4000
+                      },
+                      "target": {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      "scheduledFor": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "proof": {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "reapprove": {
+                        "type": "boolean"
                       }
                     },
                     "required": [
                       "itemId"
-                    ]
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -74107,6 +74358,101 @@
                         },
                         "updatedAt": {
                           "type": "string"
+                        },
+                        "category": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "goal",
+                                "research",
+                                "draft",
+                                "public_post",
+                                "create_account",
+                                "outbound_email"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "channel": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "x",
+                                "linkedin",
+                                "threads",
+                                "bluesky",
+                                "reddit",
+                                "hn",
+                                "producthunt",
+                                "directory",
+                                "email"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "target": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "scheduledFor": {
+                          "anyOf": [
+                            {
+                              "$ref": "#/components/schemas/RpcScratchpadUpdateOutputSchema1"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "proof": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 2000
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "approvedAt": {
+                          "anyOf": [
+                            {
+                              "$ref": "#/components/schemas/RpcScratchpadUpdateOutputSchema1"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "approvedBy": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "user",
+                                "policy"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [
@@ -74118,7 +74464,9 @@
                         "createdAt",
                         "updatedAt"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": false,
+                      "description": "Some server-side Zod refinements cannot be represented in JSON Schema and remain enforced by the server.",
+                      "x-rakazo-zod-refinements": "Enforced by the server; not expressible in JSON Schema."
                     }
                   }
                 }
@@ -97165,6 +97513,21 @@
       "RpcVoiceAgentOutputSchema0": {
         "type": "string",
         "minLength": 1
+      },
+      "RpcScratchpadCreateOutputSchema1": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      },
+      "RpcScratchpadListOutputSchema1": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      },
+      "RpcScratchpadUpdateOutputSchema1": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
       }
     },
     "responses": {

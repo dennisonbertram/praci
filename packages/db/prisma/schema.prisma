@@ -888,17 +888,24 @@ model Routine {
 }
 
 model ScratchpadItem {
-  id        String   @id @default(cuid())
-  spaceId   String
-  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  botId     String
-  bot       Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
-  userId    String
-  title     String
-  status    String   @default("open")
-  notes     String   @default("")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(cuid())
+  spaceId     String
+  space       Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  botId       String
+  bot         Bot       @relation(fields: [botId], references: [id], onDelete: Cascade)
+  userId      String
+  title       String
+  status      String    @default("open")
+  notes       String    @default("")
+  category    String?
+  channel     String?
+  target      String?
+  scheduledFor DateTime?
+  proof       String?
+  approvedAt  DateTime?
+  approvedBy  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([spaceId, botId, status])
   @@index([spaceId, botId, updatedAt])
