@@ -26,6 +26,7 @@ model User {
   mailSearches                MailSearch[]
   contacts                    Contact[]
   capTableSnapshots           CapTableSnapshot[]
+  investorUpdates             InvestorUpdate[]
   sidebarPages                SidebarPage[]
   notifications               Notification[]
   notificationEndpoints       NotificationEndpoint[]
@@ -268,6 +269,7 @@ model Space {
   botPins                     BotPins[]
   contacts                    Contact[]
   capTableSnapshots           CapTableSnapshot[]
+  investorUpdates             InvestorUpdate[]
   sidebarPages                SidebarPage[]
   agentHomes                  AgentHome[]
   browserProfiles             BrowserProfile[]
@@ -888,17 +890,24 @@ model Routine {
 }
 
 model ScratchpadItem {
-  id        String   @id @default(cuid())
-  spaceId   String
-  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  botId     String
-  bot       Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
-  userId    String
-  title     String
-  status    String   @default("open")
-  notes     String   @default("")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(cuid())
+  spaceId     String
+  space       Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  botId       String
+  bot         Bot       @relation(fields: [botId], references: [id], onDelete: Cascade)
+  userId      String
+  title       String
+  status      String    @default("open")
+  notes       String    @default("")
+  category    String?
+  channel     String?
+  target      String?
+  scheduledFor DateTime?
+  proof       String?
+  approvedAt  DateTime?
+  approvedBy  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([spaceId, botId, status])
   @@index([spaceId, botId, updatedAt])
@@ -2463,6 +2472,35 @@ model Contact {
   @@map("contacts")
 }
 
+/// An update to investors or the board. Draft, then sending, then sent. A sent update is read-only.
+model InvestorUpdate {
+  id                   String   @id @default(cuid())
+  spaceId              String
+  space                Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// "investors" | "board"
+  audience             String
+  subject              String
+  /// YYYY-MM or YYYY-Qn
+  period               String
+  /// Markdown.
+  body                 String   @default("")
+  /// "draft" | "sending" | "sent" | "posted". Partly sent is derived from the deliveries.
+  status               String   @default("draft")
+  recipientContactIds  String[]
+  fromConnectionId     String?
+  /// { [contactId]: [{ n, at, delivered? }] }. The outcome of attempt n is the ComposeSend row whose clientId is `<id>:<contactId>:<n>`.
+  deliveries           Json     @default("{}")
+  sentAt               DateTime?
+  createdAt            DateTime @default(now())
+  /// Moves on every recorded delivery, so a sending update with no movement for 10 minutes reads Partly sent.
+  updatedAt            DateTime @updatedAt
+
+  @@index([spaceId, userId, createdAt])
+  @@map("investor_updates")
+}
+
 /// The Carta agent's latest read of the company's cap table. One row per user, replaced on each sync.
 model CapTableSnapshot {
   id        String   @id @default(cuid())
@@ -2472,6 +2510,10 @@ model CapTableSnapshot {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// CapTableSnapshotInput from @rakazo/contracts.
   data      Json
+  /// The only writer allowed to replace the table: carta, sheet or native. Old rows read as carta.
+  source    String   @default("carta")
+  /// One version back ({ source, sourceRef, data }), written by a source switch and cleared by Undo or the next change.
+  previous  Json?
   updatedAt DateTime @updatedAt
 
   @@unique([spaceId, userId])

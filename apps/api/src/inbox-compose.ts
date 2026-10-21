@@ -97,7 +97,7 @@ async function ownMessage(
   return row;
 }
 
-const accountOut = (account: MailAccount) => ({
+export const accountOut = (account: MailAccount) => ({
   connectionId: account.id,
   label: account.label,
   ...(account.address ? { address: account.address } : {}),

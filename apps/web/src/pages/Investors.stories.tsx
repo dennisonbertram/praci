@@ -1,4 +1,4 @@
-import type { Contact } from "@rakazo/contracts";
+import type { Contact, InvestorUpdate } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { InvestorsPage } from "./Investors";
@@ -20,12 +20,34 @@ const contacts = [
   contact("c2", "Bo Sample", "auditor", "Sample & Co"),
   contact("c3", "Cy Placeholder", "investor", null),
 ];
+const noUpdates = {
+  "investors.updates.list": [],
+  "investors.reminder": { cadence: "monthly" },
+};
+const update = (over: Partial<InvestorUpdate>): InvestorUpdate => ({
+  id: "u1",
+  audience: "investors",
+  subject: "Example Co · 2026-09 update",
+  period: "2026-09",
+  body: "September went well.",
+  status: "draft",
+  recipientContactIds: ["c1", "c3"],
+  fromConnectionId: null,
+  deliveries: [],
+  sentAt: null,
+  createdAt: "2026-10-01T09:00:00.000Z",
+  updatedAt: "2026-10-01T09:00:00.000Z",
+  ...over,
+});
 const cartaServer = { id: "srv_c", enabled: true, endpoint: "https://mcp.app.carta.com/mcp" };
 
 const snapshot = {
   companyName: "Example Co",
   asOf: "2026-10-01",
-  fullyDilutedShares: 10_000_000,
+  fullyDilutedShares: 8_500_000,
+  source: "carta" as const,
+  sourceRef: null,
+  canUndo: false,
   amountRaisedUsd: null,
   optionPoolAvailable: 500_000,
   latest409a: { pricePerShareUsd: 1.25, date: "2026-09-01" },
@@ -92,13 +114,45 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  beforeEach: () => mockRpc({ "contacts.list": contacts, "mcp.servers.list": [cartaServer] }),
+  beforeEach: () =>
+    mockRpc({ "contacts.list": contacts, "mcp.servers.list": [cartaServer], ...noUpdates }),
+};
+
+/** A draft waiting in Action items, a Sending row, a Partly sent row with Retry, and a sent update. */
+export const WithUpdates: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [cartaServer],
+      "investors.reminder": { cadence: "quarterly" },
+      "investors.updates.list": [
+        update({ id: "u1" }),
+        update({ id: "u2", subject: "Example Co · 2026-08 update", status: "sending" }),
+        update({
+          id: "u3",
+          subject: "Example Co · 2026-07 update",
+          status: "partly_sent",
+          sentAt: "2026-08-02T09:00:00.000Z",
+          deliveries: [
+            { contactId: "c1", name: "Ada Example", state: "sent" },
+            { contactId: "c3", name: "Cy Placeholder", state: "failed" },
+          ],
+        }),
+        update({
+          id: "u4",
+          subject: "Example Co · 2026-06 update",
+          status: "sent",
+          sentAt: "2026-07-02T09:00:00.000Z",
+        }),
+      ],
+    }),
 };
 
 export const CartaNotConnected: Story = {
   beforeEach: () => mockRpc({ "contacts.list": contacts, "mcp.servers.list": [] }),
 };
 
+/** No table yet: pick where it comes from. */
 export const Empty: Story = {
   beforeEach: () => mockRpc({ "contacts.list": [], "mcp.servers.list": [cartaServer] }),
 };
@@ -121,7 +175,7 @@ export const WithSnapshot: Story = {
     mockRpc({
       "contacts.list": contacts,
       "mcp.servers.list": [cartaServer],
-      "carta.capTable": { snapshot, syncing: false },
+      "investors.capTable": { snapshot, syncing: false },
     }),
 };
 
@@ -130,7 +184,7 @@ export const ReadingCarta: Story = {
     mockRpc({
       "contacts.list": [],
       "mcp.servers.list": [cartaServer],
-      "carta.capTable": { snapshot: null, syncing: true },
+      "investors.capTable": { snapshot: null, syncing: true },
     }),
 };
 
@@ -166,7 +220,7 @@ export const ConnectedNeverRead: Story = {
     mockRpc({
       "contacts.list": contacts,
       "mcp.servers.list": [cartaServer],
-      "carta.capTable": { snapshot: null, syncing: false },
+      "investors.capTable": { snapshot: null, syncing: false },
     }),
 };
 
@@ -177,7 +231,7 @@ export const ConnectedNoModel: Story = {
     mockRpc({
       "contacts.list": contacts,
       "mcp.servers.list": [cartaServer],
-      "carta.capTable": { snapshot: null, syncing: false },
+      "investors.capTable": { snapshot: null, syncing: false },
     }),
 };
 
@@ -187,45 +241,92 @@ export const Refreshing: Story = {
     mockRpc({
       "contacts.list": contacts,
       "mcp.servers.list": [cartaServer],
-      "carta.capTable": { snapshot, syncing: true },
+      "investors.capTable": { snapshot, syncing: true },
     }),
 };
 
-/** Shareholders tab: Carta's common holders only. */
-export const ShareholdersTab: Story = {
-  parameters: { initialEntries: ["/app/investors?kind=shareholder"] },
+/** A typed-in table: rows are edited in place and saved on blur. */
+export const TypedIn: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [],
+      "investors.capTable": {
+        snapshot: {
+          ...snapshot,
+          source: "native" as const,
+          asOf: "2026-10-20",
+          fullyDilutedShares: 8_500_000,
+          holders: snapshot.holders.filter((h) => h.security !== "SAFE"),
+        },
+        syncing: false,
+      },
+      "investors.capTableSave": () => new Promise(() => {}),
+    }),
+};
+
+const sheetRef = { driveFileId: "sheet-file", name: "Cap table" };
+
+/** A sheet read over an earlier table: the source line says Reading sheet. */
+export const ReadingSheet: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [],
+      "investors.capTable": {
+        snapshot: { ...snapshot, source: "sheet" as const, sourceRef: sheetRef },
+        syncing: false,
+        reading: true,
+        lastReadFailed: false,
+      },
+    }),
+};
+
+/** The last read failed: the old table stays and the source line turns to the warning color. */
+export const SheetReadFailed: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [],
+      "investors.capTable": {
+        snapshot: { ...snapshot, source: "sheet" as const, sourceRef: sheetRef },
+        syncing: false,
+        reading: false,
+        lastReadFailed: true,
+      },
+    }),
+};
+
+/** The first read of a newly chosen sheet failed, so there is no table to show. */
+export const FirstSheetReadFailed: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [],
+      "investors.capTable": {
+        snapshot: {
+          ...snapshot,
+          source: "sheet" as const,
+          sourceRef: sheetRef,
+          holders: [],
+          fullyDilutedShares: 0,
+        },
+        syncing: false,
+        reading: false,
+        lastReadFailed: true,
+      },
+    }),
+};
+
+/** Right after a source switch the source menu offers Undo. */
+export const SwitchedSource: Story = {
   beforeEach: () =>
     mockRpc({
       "contacts.list": contacts,
       "mcp.servers.list": [cartaServer],
-      "carta.capTable": { snapshot, syncing: false },
+      "investors.capTable": { snapshot: { ...snapshot, canUndo: true }, syncing: false },
     }),
 };
-
-const withHolders = (entry: string) => ({
-  parameters: { initialEntries: [entry] },
-  beforeEach: () =>
-    mockRpc({
-      "contacts.list": contacts,
-      "mcp.servers.list": [cartaServer],
-      "carta.capTable": { snapshot, syncing: false },
-    }),
-});
-
-/** Sorted by shares, smallest first; the contact with no holding stays last. */
-export const SortedByShares: Story = withHolders("/app/investors?sort=shares&dir=asc");
-
-/** Filtered to one security, with the Security pill showing it. */
-export const SecurityFilter: Story = withHolders("/app/investors?kind=investor&security=SAFE");
-
-/** Investors: SAFEs have an Amount instead of empty Shares and Ownership. */
-export const InvestorsTab: Story = withHolders("/app/investors?kind=investor");
-
-/** A search that matches no one. */
-export const NoMatches: Story = withHolders("/app/investors?q=nobody");
-
-/** Search finds a holder by company. */
-export const SearchByCompany: Story = withHolders("/app/investors?q=newcomer");
 
 /** The cap table read failed: the error sits where the figures would be. */
 export const CapTableLoadFailed: Story = {
@@ -233,7 +334,7 @@ export const CapTableLoadFailed: Story = {
     mockRpc({
       "contacts.list": contacts,
       "mcp.servers.list": [cartaServer],
-      "carta.capTable": () => {
+      "investors.capTable": () => {
         throw new Error("Could not load");
       },
     }),
@@ -301,7 +402,8 @@ const holder = (
 /** A full table: ten holders and four SAFEs, so the page scrolls under its fixed header. */
 const fullSnapshot = {
   ...snapshot,
-  amountRaisedUsd: 350_000,
+  fullyDilutedShares: 9_350_000,
+  amountRaisedUsd: null,
   optionPoolAvailable: 600_000,
   shareClasses: [
     { name: "Common", shares: 8_400_000, percent: 84 },
@@ -325,7 +427,7 @@ const fullSnapshot = {
   ],
 };
 
-/** The SAFE note sits under the donut; the header stays while the table scrolls. */
+/** A long table with SAFE holders shown as plain rows outside the percent column. */
 export const FullTableWithSafes: Story = {
   beforeEach: () =>
     mockRpc({
@@ -334,7 +436,7 @@ export const FullTableWithSafes: Story = {
         contact("c10", "Angel One", "investor", null),
       ],
       "mcp.servers.list": [cartaServer],
-      "carta.capTable": { snapshot: fullSnapshot, syncing: false },
+      "investors.capTable": { snapshot: fullSnapshot, syncing: false },
     }),
 };
 

@@ -26,7 +26,7 @@ function historyMessages() {
   ];
 }
 
-async function runInvestors(trigger = "user") {
+async function runInvestors(trigger = "user", spawnKey: string | null = "investors-agent:user-1") {
   const scripted = false;
   const run = {
     id: "run-1",
@@ -63,7 +63,7 @@ async function runInvestors(trigger = "user") {
         id: run.botId,
         name: "Investors agent",
         userId: "user-1",
-        spawnKey: "investors-agent:user-1",
+        spawnKey,
         title: "Assistant",
         description: "Test assistant",
         modelProvider: null,
@@ -96,7 +96,12 @@ async function runInvestors(trigger = "user") {
       ),
       findUnique: vi.fn(async () => null),
     },
-    task: { findUniqueOrThrow: vi.fn(async () => ({ id: run.taskId, prompt: "Look again" })) },
+    task: {
+      findUniqueOrThrow: vi.fn(async () => ({
+        id: run.taskId,
+        prompt: "Look again",
+      })),
+    },
     computer: { updateMany: vi.fn(async () => ({ count: 1 })) },
     connection: { findMany: vi.fn(async () => []) },
     spaceModelPreference: {
@@ -127,7 +132,13 @@ async function runInvestors(trigger = "user") {
     externalEffect: { findMany: vi.fn(async () => []) },
     artifact: {
       findMany: vi.fn(async () => [
-        { id: "art-1", storageKey: "shot.png", size: 4, mimeType: "image/png", name: "shot.png" },
+        {
+          id: "art-1",
+          storageKey: "shot.png",
+          size: 4,
+          mimeType: "image/png",
+          name: "shot.png",
+        },
       ]),
     },
   };
@@ -151,7 +162,10 @@ async function runInvestors(trigger = "user") {
   const executor = createRunExecutor({
     prisma,
     deploymentModelKey: "fake-deployment-key",
-    runtime: { describe: () => ({ capabilities: { scripted } }), run: runtimeRun },
+    runtime: {
+      describe: () => ({ capabilities: { scripted } }),
+      run: runtimeRun,
+    },
     sandbox: {
       describe: () => ({ capabilities: { graphical: false } }),
       writeFile: vi.fn(async () => undefined),
@@ -174,7 +188,7 @@ async function runInvestors(trigger = "user") {
 }
 
 describe("Investors agent runs", () => {
-  it("is offered only its fixed tools: no mail_send, cap_table_update, MCP or Composio tool", async () => {
+  it("is offered only its fixed tools: no mail_send, MCP or Composio tool", async () => {
     const { request, discoverTools } = await runInvestors();
     const names = (request?.tools ?? []).map((tool) => tool.name);
     const fixed = new Set<string>(INVESTORS_AGENT_BUILTIN_TOOLS);
@@ -183,9 +197,31 @@ describe("Investors agent runs", () => {
     expect(names).toEqual(
       expect.arrayContaining(["cap_table_read", "contacts_list", "search_data_room"]),
     );
-    for (const banned of ["mail_send", "cap_table_update", "mcp__carta__list", "COMPOSIO_SEARCH"]) {
+    for (const banned of ["mail_send", "mcp__carta__list", "COMPOSIO_SEARCH"]) {
       expect(names).not.toContain(banned);
     }
     expect(discoverTools).not.toHaveBeenCalled();
+  });
+
+  it("offers cap_table_update only on the routine sheet read", async () => {
+    const chat = await runInvestors("user");
+    const routine = await runInvestors("routine");
+    const names = (r: typeof chat) => (r.request?.tools ?? []).map((tool) => tool.name);
+    expect(names(chat)).toContain("cap_table_read");
+    expect(names(chat)).not.toContain("cap_table_update");
+    expect(names(routine)).toContain("cap_table_update");
+  });
+
+  it("offers investor_update_draft to the Investors agent and to no other bot", async () => {
+    const investors = await runInvestors();
+    expect((investors.request?.tools ?? []).map((tool) => tool.name)).toContain(
+      "investor_update_draft",
+    );
+    for (const spawnKey of ["carta-agent:user-1", "legal-agent:user-1", null]) {
+      const other = await runInvestors("user", spawnKey);
+      expect((other.request?.tools ?? []).map((tool) => tool.name)).not.toContain(
+        "investor_update_draft",
+      );
+    }
   });
 });

@@ -44,12 +44,12 @@ describe("contact tools", () => {
     expect(capTableToolsAllowed({ ...base, trigger: "bot_message" })).toBe(false);
   });
 
-  it("the Investors agent passes the cap table gate but its fixed list has no cap_table_update", () => {
+  it("the Investors agent passes the cap table gate and its fixed list has cap_table_update", () => {
     const investors = { ...base, botSpawnKey: investorsAgentSpawnKey("u") };
     expect(capTableToolsAllowed(investors)).toBe(true);
     expect(capTableToolsAllowed({ ...investors, trigger: "bot_message" })).toBe(false);
     expect(INVESTORS_AGENT_BUILTIN_TOOLS).toContain("cap_table_read");
-    expect(INVESTORS_AGENT_BUILTIN_TOOLS).not.toContain("cap_table_update");
+    expect(INVESTORS_AGENT_BUILTIN_TOOLS).toContain("cap_table_update");
     expect(INVESTORS_AGENT_BUILTIN_TOOLS).toEqual(
       expect.arrayContaining(["contacts_list", "contacts_add", "contacts_save"]),
     );
@@ -145,7 +145,12 @@ describe("contact tools", () => {
     };
     const findUnique = vi
       .fn()
-      .mockResolvedValueOnce({ data: saved, updatedAt: new Date("2026-02-01T00:00:00Z") })
+      .mockResolvedValueOnce({
+        data: saved,
+        source: "carta",
+        previous: null,
+        updatedAt: new Date("2026-02-01T00:00:00Z"),
+      })
       .mockResolvedValueOnce(null);
     const prisma = { capTableSnapshot: { findUnique } } as never;
     const read = await contactToolFromTool("cap_table_read", { prisma, scope }, {});
@@ -159,15 +164,15 @@ describe("contact tools", () => {
   });
 
   it("cap_table_update validates, then saves for the run's owner", async () => {
-    const upsert = vi.fn(async () => ({}));
-    const prisma = { capTableSnapshot: { upsert } } as never;
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    const prisma = { capTableSnapshot: { updateMany } } as never;
     const bad = await contactToolFromTool(
       "cap_table_update",
       { prisma, scope },
       { companyName: "X" },
     );
     expect(bad).toEqual({ error: expect.stringContaining("asOf") });
-    expect(upsert).not.toHaveBeenCalled();
+    expect(updateMany).not.toHaveBeenCalled();
     const ok = await contactToolFromTool(
       "cap_table_update",
       { prisma, scope },
@@ -180,9 +185,58 @@ describe("contact tools", () => {
       },
     );
     expect(ok).toEqual({ ok: true });
-    expect(upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { spaceId_userId: scope } }),
+    // Written as Carta, whatever the model passes for the source.
+    expect(updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ ...scope, source: "carta" }) }),
     );
+  });
+
+  it("cap_table_update writes as the sheet for the Investors agent and refuses a table of another source", async () => {
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    const prisma = { capTableSnapshot: { updateMany } } as never;
+    const args = {
+      companyName: "Example Co",
+      asOf: "2026-01-31",
+      fullyDilutedShares: 1000,
+      source: "carta",
+      sourceRef: { driveFileId: "file-1", name: "Cap table" },
+      shareClasses: [],
+      holders: [{ name: "Ada Fund", security: "Common", shares: 1000 }],
+    };
+    expect(
+      await contactToolFromTool("cap_table_update", { prisma, scope, writer: "sheet" }, args),
+    ).toEqual({ ok: true });
+    expect(updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ ...scope, source: "sheet" }) }),
+    );
+    const empty = await contactToolFromTool(
+      "cap_table_update",
+      { prisma, scope, writer: "sheet" },
+      { ...args, holders: [] },
+    );
+    expect(empty).toEqual({ error: expect.stringContaining("nothing was changed") });
+  });
+
+  it("cap_table_update says so when another source owns the table", async () => {
+    const prisma = {
+      capTableSnapshot: {
+        updateMany: vi.fn(async () => ({ count: 0 })),
+        findUnique: vi.fn(async () => ({ id: "row" })),
+      },
+    } as never;
+    const refused = await contactToolFromTool(
+      "cap_table_update",
+      { prisma, scope },
+      {
+        companyName: "Example Co",
+        asOf: "2026-01-31",
+        fullyDilutedShares: 1000,
+        source: "native",
+        shareClasses: [],
+        holders: [],
+      },
+    );
+    expect(refused).toEqual({ error: expect.stringContaining("not read from Carta") });
   });
 
   it("contacts_save updates a matching contact and never creates one", async () => {

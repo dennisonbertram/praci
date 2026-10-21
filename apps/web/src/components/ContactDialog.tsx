@@ -31,6 +31,7 @@ export type ContactPrefill = {
 export const contactKindNames = (): Record<ContactKind, string> => ({
   investor: t`Investor`,
   auditor: t`Auditor`,
+  board: t`Board`,
   customer: t`Customer`,
   vendor: t`Vendor`,
   partner: t`Partner`,
@@ -41,6 +42,7 @@ export const contactKindNames = (): Record<ContactKind, string> => ({
 export const contactAddLabels = (): Record<ContactKind, string> => ({
   investor: t`Add investor`,
   auditor: t`Add auditor`,
+  board: t`Add board member`,
   customer: t`Add contact`,
   vendor: t`Add contact`,
   partner: t`Add contact`,

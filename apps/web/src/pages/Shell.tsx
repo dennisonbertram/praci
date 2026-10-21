@@ -295,6 +295,7 @@ import { FinancePage } from "./Finance";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
 import { InboxPage } from "./Inbox";
 import { InvestorsPage } from "./Investors";
+import { UpdateEditor } from "./investors/UpdateEditor";
 import { LegalPage } from "./Legal";
 import { NotFoundPage } from "./NotFound";
 import { ResizableSidePanel } from "./ResizableSidePanel";
@@ -1108,6 +1109,7 @@ export function ShellPage() {
   // The route exists only while bootstrap enables the board (see App).
   const boardMode = useMatch("/app/board") != null;
   const investorsMode = useMatch("/app/investors/*") != null;
+  const investorUpdateMatch = useMatch("/app/investors/updates/:id");
   const contactsMode = useMatch("/app/contacts") != null;
   // Inbox, Finance, Legal, Data room, Cap Table and Integrations are pages of their own: no bot
   // route. Inbox, Finance, Legal and Cap Table keep their agent in a side panel.
@@ -5592,6 +5594,11 @@ export function ShellPage() {
               onAskAgent={devinAgentOpen ? undefined : askDevinAgent}
               onConnect={() => setDevinDialog("connect")}
               onReconnect={() => setDevinDialog("replace")}
+            />
+          ) : investorsMode && investorUpdateMatch?.params.id ? (
+            <UpdateEditor
+              key={investorUpdateMatch.params.id}
+              updateId={investorUpdateMatch.params.id}
             />
           ) : investorsMode ? (
             <InvestorsPage
