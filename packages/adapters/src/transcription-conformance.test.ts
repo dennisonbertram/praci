@@ -162,7 +162,12 @@ describe("context caps", () => {
       request({
         context: {
           appKind: "ai",
-          vocabulary: ["  Ada  ", "", "z".repeat(200), ...Array.from({ length: 500 }, (_, i) => `w${i}`)],
+          vocabulary: [
+            "  Ada  ",
+            "",
+            "z".repeat(200),
+            ...Array.from({ length: 500 }, (_, i) => `w${i}`),
+          ],
           beforeText: `start${"y".repeat(5000)}`,
         },
       }),
