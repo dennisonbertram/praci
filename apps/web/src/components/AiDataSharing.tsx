@@ -144,7 +144,8 @@ export function AiDataSharingSection() {
       }
       return status ?? aiConsentStatus();
     });
-  const allAllowed = recipients?.every((recipient) => recipient.allowed) ?? false;
+  // On while any model is allowed (for example the one a Legal Allow granted); Advanced shows which.
+  const anyAllowed = recipients?.some((recipient) => recipient.allowed) ?? false;
   return (
     <section className="rounded-xl border border-border px-4 py-4">
       <h3 className="text-[15px] font-medium text-foreground">
@@ -163,7 +164,7 @@ export function AiDataSharingSection() {
         <div className="mt-3 flex items-center gap-3 pointer-coarse:min-h-11">
           <Switch
             aria-label={t`Allow AI models`}
-            checked={allAllowed}
+            checked={anyAllowed}
             disabled={pending}
             onCheckedChange={setAll}
           />

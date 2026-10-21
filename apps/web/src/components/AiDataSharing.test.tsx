@@ -154,12 +154,12 @@ const switchStates = () =>
     s.getAttribute("aria-checked"),
   ]);
 
-it("shows one switch for every model, off until all are allowed, with the models under Advanced", async () => {
+it("shows one switch for every model, on while any is allowed, with the models under Advanced", async () => {
   consent.aiConsentStatus.mockResolvedValue(statusOf());
   await render(<AiDataSharingSection />);
 
   expect(switchStates()).toEqual([
-    ["Allow AI models", "false"],
+    ["Allow AI models", "true"],
     ["Model", "true"],
     ["TypeSafe", "false"],
   ]);
@@ -168,15 +168,24 @@ it("shows one switch for every model, off until all are allowed, with the models
   expect(container.textContent).not.toContain("ElevenLabs");
 });
 
-it("shows the one switch on when every model is allowed, as after Allow on the Legal card", async () => {
+it("shows the one switch on when only the model a Legal Allow granted is allowed, and off when none is", async () => {
   consent.aiConsentStatus.mockResolvedValue(
     statusOf([
       { ...modelA, allowed: true },
-      { ...modelB, allowed: true },
+      { ...modelB, allowed: false },
     ]),
   );
   await render(<AiDataSharingSection />);
   expect(switchStates()[0]).toEqual(["Allow AI models", "true"]);
+
+  consent.aiConsentStatus.mockResolvedValue(
+    statusOf([
+      { ...modelA, allowed: false },
+      { ...modelB, allowed: false },
+    ]),
+  );
+  await render(<AiDataSharingSection key="none" />);
+  expect(switchStates()[0]).toEqual(["Allow AI models", "false"]);
 });
 
 it("holds its place with a skeleton until the status loads", async () => {
@@ -209,12 +218,7 @@ it("allows every model with the one switch and revokes every model when it is tu
       { ...modelA, allowed },
       { ...modelB, allowed },
     ]);
-  consent.aiConsentStatus.mockResolvedValue(
-    statusOf([
-      { ...modelA, allowed: true },
-      { ...modelB, allowed: false },
-    ]),
-  );
+  consent.aiConsentStatus.mockResolvedValue(list(false));
   consent.allowRecipient.mockResolvedValue(list(true));
   consent.revokeRecipient.mockResolvedValue(list(false));
   await render(<AiDataSharingSection />);

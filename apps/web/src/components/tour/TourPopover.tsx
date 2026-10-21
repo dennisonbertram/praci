@@ -185,7 +185,8 @@ export function TourPopover({
         <PopoverContent
           anchor={element}
           side={below ? "bottom" : "top"}
-          align="start"
+          // An icon at the sidebar's edge keeps its card over the sidebar, not the page.
+          align={rect && rect.width < 100 ? "end" : "start"}
           sideOffset={10}
           data-testid="tour-popover"
           className="w-72"
