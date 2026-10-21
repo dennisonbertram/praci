@@ -27,6 +27,7 @@ export {
   normalizeSecretDestination,
   storeBotSecret,
 } from "./bot-secrets.js";
+export * from "./bot-share.js";
 export * from "./box-api-emulator.js";
 export * from "./box-emulator.js";
 export * from "./box-files.js";

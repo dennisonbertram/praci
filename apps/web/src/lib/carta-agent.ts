@@ -1,5 +1,5 @@
 import type { McpServer } from "@rakazo/contracts";
-import { cartaAgentSpawnKey, isCartaEndpoint } from "@rakazo/contracts";
+import { cartaAgentSpawnKey, isCartaAgentSpawnKey, isCartaEndpoint } from "@rakazo/contracts";
 import { useEffect, useRef, useState } from "react";
 import { mcpStatus } from "./integrations";
 import { rpc } from "./rpc";
@@ -13,6 +13,21 @@ export function findCartaAgent<T extends { spawnKey: string | null }>(
   if (!userId) return undefined;
   const key = cartaAgentSpawnKey(userId);
   return bots.find((bot) => bot.spawnKey === key);
+}
+
+const CARTA_RECENT_MS = 14 * 24 * 60 * 60 * 1000;
+
+/**
+ * Whether the sidebar lists a bot. The Carta agent only syncs now, so it is listed while it has a
+ * conversation from the last two weeks (or is the chat being viewed); it stays in Bots otherwise.
+ */
+export function listedInSidebar(
+  bot: { id: string; spawnKey: string | null; preview: string; updatedAt: string },
+  openBotId: string | null | undefined,
+  now = Date.now(),
+): boolean {
+  if (!isCartaAgentSpawnKey(bot.spawnKey) || bot.id === openBotId) return true;
+  return bot.preview !== "" && now - Date.parse(bot.updatedAt) < CARTA_RECENT_MS;
 }
 
 /** Whether an enabled Carta server is signed in. */

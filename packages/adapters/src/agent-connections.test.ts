@@ -1,3 +1,4 @@
+import { PrivateFragments } from "@rakazo/core";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -5,6 +6,7 @@ import {
   messageConnectedAgent,
   respondAgentConnection,
 } from "./agent-connections.js";
+import { EXTERNAL_HAND_OFF_REFUSED } from "./bot-messages.js";
 
 const requesterIdentity = {
   id: "mi-1",
@@ -27,11 +29,26 @@ const targetIdentity = {
   outboundSinceInbound: 0,
 };
 
+/** Other-Space recipients are checked like external bots; these tests read nothing private. */
+const sendAgent = (
+  deps: Parameters<typeof messageConnectedAgent>[0],
+  run: Parameters<typeof messageConnectedAgent>[1],
+  sender: Parameters<typeof messageConnectedAgent>[2],
+  input: Parameters<typeof messageConnectedAgent>[3],
+  options: Parameters<typeof messageConnectedAgent>[4] = {
+    outbound: async () => new PrivateFragments(),
+  },
+) => messageConnectedAgent(deps, run, sender, input, options);
+
 function createDeps(
   overrides: {
     connection?: Record<string, unknown> | null;
     pendingConnection?: Record<string, unknown> | null;
     sourceHop?: number;
+    /** The target bot's audience. */
+    targetAudience?: string;
+    /** The target bot belongs to the sender's own space and user. */
+    targetSameSpace?: boolean;
     /** Simulates a revoke landing between the pre-check and the transaction. */
     connectionRevokedInsideTx?: boolean;
     /** Simulates a revoke landing after the in-transaction approval read. */
@@ -121,9 +138,10 @@ function createDeps(
           ? {
               id: "bot-2",
               name: "Helper",
-              spaceId: "ws-2",
-              userId: "user-2",
+              spaceId: overrides.targetSameSpace ? "ws-1" : "ws-2",
+              userId: overrides.targetSameSpace ? "user-1" : "user-2",
               archivedAt: null,
+              audience: overrides.targetAudience ?? "internal",
               thread: { id: "thread-2" },
             }
           : { id: "bot-1", name: "Assistant", spaceId: "ws-1", userId: "user-1" },
@@ -322,7 +340,7 @@ describe("messageConnectedAgent", () => {
     const deps = createDeps({
       connection: { id: "ac-1", requesterBotId: "bot-1", targetBotId: "bot-2", status: "approved" },
     });
-    const result = await messageConnectedAgent(deps, run, sender, {
+    const result = await sendAgent(deps, run, sender, {
       address: "+15552222222",
       message: "results are in",
       deliveryKey: "exec-9",
@@ -360,12 +378,12 @@ describe("messageConnectedAgent", () => {
     const deps = createDeps({
       connection: { id: "ac-1", requesterBotId: "bot-1", targetBotId: "bot-2", status: "approved" },
     });
-    const first = await messageConnectedAgent(deps, run, sender, {
+    const first = await sendAgent(deps, run, sender, {
       address: "+15552222222",
       message: "one",
       deliveryKey: "run-1:message_agent:0",
     });
-    const second = await messageConnectedAgent(deps, run, sender, {
+    const second = await sendAgent(deps, run, sender, {
       address: "+15552222222",
       message: "two",
       deliveryKey: "run-1:message_agent:1",
@@ -384,7 +402,7 @@ describe("messageConnectedAgent", () => {
 
   it("refuses without an approved connection", async () => {
     const deps = createDeps();
-    const result = await messageConnectedAgent(deps, run, sender, {
+    const result = await sendAgent(deps, run, sender, {
       address: "+15552222222",
       message: "hello?",
     });
@@ -399,12 +417,10 @@ describe("messageConnectedAgent", () => {
       connection: { id: "ac-1", requesterBotId: "bot-1", targetBotId: "bot-2", status: "approved" },
       sourceHop: 6,
     });
-    const result = await messageConnectedAgent(
-      deps,
-      { ...run, sourceMessageId: "msg-src" },
-      sender,
-      { address: "+15552222222", message: "again" },
-    );
+    const result = await sendAgent(deps, { ...run, sourceMessageId: "msg-src" }, sender, {
+      address: "+15552222222",
+      message: "again",
+    });
     expect(result).toEqual(
       expect.objectContaining({ ok: false, error: expect.stringMatching(/limit/i) }),
     );
@@ -448,7 +464,7 @@ describe("agent connection status races", () => {
       connection: { id: "ac-1", requesterBotId: "bot-1", targetBotId: "bot-2", status: "approved" },
       connectionRevokedInsideTx: true,
     });
-    const result = await messageConnectedAgent(deps, run, sender, {
+    const result = await sendAgent(deps, run, sender, {
       address: "+15552222222",
       message: "still there?",
     });
@@ -465,11 +481,11 @@ describe("agent connection status races", () => {
 
 describe("agent connection enumeration and sender gating", () => {
   it("gives one generic answer for unregistered and unconnected addresses", async () => {
-    const unregistered = await messageConnectedAgent(createDeps(), run, sender, {
+    const unregistered = await sendAgent(createDeps(), run, sender, {
       address: "+15550000000",
       message: "hi",
     });
-    const unconnected = await messageConnectedAgent(createDeps(), run, sender, {
+    const unconnected = await sendAgent(createDeps(), run, sender, {
       address: "+15552222222",
       message: "hi",
     });
@@ -503,7 +519,7 @@ describe("agent connection enumeration and sender gating", () => {
     const deps = createDeps({
       connection: { id: "ac-1", requesterBotId: "bot-3", targetBotId: "bot-2", status: "approved" },
     });
-    const result = await messageConnectedAgent(
+    const result = await sendAgent(
       deps,
       { ...run, botId: "bot-3" },
       { id: "bot-3", name: "Rogue" },
@@ -521,7 +537,7 @@ describe("messageConnectedAgent revocation locking", () => {
       connection: { id: "ac-1", requesterBotId: "bot-1", targetBotId: "bot-2", status: "approved" },
       connectionRevokedAfterReadInsideTx: true,
     });
-    const result = await messageConnectedAgent(deps, run, sender, {
+    const result = await sendAgent(deps, run, sender, {
       address: "+15552222222",
       message: "still there?",
     });
@@ -535,5 +551,73 @@ describe("messageConnectedAgent revocation locking", () => {
     expect(deps.txCalls.taskCreate).toHaveLength(0);
     expect(deps.txCalls.runCreate).toHaveLength(0);
     expect(deps.enqueue).not.toHaveBeenCalled();
+  });
+});
+
+describe("messageConnectedAgent to an external bot", () => {
+  const connection = {
+    id: "ac-1",
+    requesterBotId: "bot-1",
+    targetBotId: "bot-2",
+    status: "approved",
+  };
+  const send = (
+    deps: ReturnType<typeof createDeps>,
+    message: string,
+    outbound?: () => Promise<PrivateFragments | undefined>,
+  ) =>
+    sendAgent(
+      deps,
+      run,
+      sender,
+      { address: "+15552222222", message, deliveryKey: "k" },
+      { outbound },
+    );
+  const fragments = () => {
+    const f = new PrivateFragments();
+    f.addPrivate('{"from":"Priya Shah <priya@halcyon.example>"}');
+    return f;
+  };
+
+  it("refuses a message that repeats what the run read, and one sent with unknown reads", async () => {
+    const deps = createDeps({ connection, targetAudience: "external" });
+    expect(await send(deps, "It is priya@halcyon.example", async () => fragments())).toEqual({
+      ok: false,
+      error: EXTERNAL_HAND_OFF_REFUSED,
+    });
+    expect(await send(deps, "hello", async () => undefined)).toMatchObject({ ok: false });
+    expect(await send(deps, "hello")).toMatchObject({ ok: false });
+    expect(deps.txCalls.messageCreate).toHaveLength(0);
+  });
+
+  it("delivers a clean message, and never checks an internal target", async () => {
+    const clean = createDeps({ connection, targetAudience: "external", targetSameSpace: true });
+    expect(await send(clean, "We open at 9am.", async () => fragments())).toMatchObject({
+      ok: true,
+    });
+    const internal = createDeps({ connection, targetSameSpace: true });
+    expect(await send(internal, "priya@halcyon.example")).toMatchObject({ ok: true });
+  });
+});
+
+describe("messageConnectedAgent to another Space", () => {
+  it("treats every cross-Space recipient as external, whatever its stored audience", async () => {
+    const connection = {
+      id: "ac-1",
+      requesterBotId: "bot-1",
+      targetBotId: "bot-2",
+      status: "approved",
+    };
+    const secret = new PrivateFragments();
+    secret.addPrivate('{"from":"Priya Shah <priya@halcyon.example>"}');
+    const input = { address: "+15552222222", message: "It is priya@halcyon.example" };
+    for (const outbound of [async () => secret, async () => undefined, undefined]) {
+      const deps = createDeps({ connection }); // the target's stored audience is internal
+      expect(await messageConnectedAgent(deps, run, sender, input, { outbound })).toEqual({
+        ok: false,
+        error: EXTERNAL_HAND_OFF_REFUSED,
+      });
+      expect(deps.txCalls.messageCreate).toHaveLength(0);
+    }
   });
 });

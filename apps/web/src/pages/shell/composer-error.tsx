@@ -1,8 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import {
-  LEGAL_AGENT_MODEL,
   LEGAL_CONSENT_REQUIRED_MESSAGE,
-  LEGAL_MODEL_REQUIRED_MESSAGE,
   MISSING_TOOL_FINAL_RESPONSE_ERROR,
 } from "@rakazo/contracts";
 import { Button } from "@rakazo/ui-web";
@@ -15,7 +13,6 @@ import { runErrorText } from "../../lib/user-error";
  * field; `""` opens the space's default provider's key field (a rejected key).
  */
 function modelSettingsFor(message: string): { provider: string } | null {
-  if (message === LEGAL_MODEL_REQUIRED_MESSAGE) return { provider: LEGAL_AGENT_MODEL.provider };
   return message === runErrorText("401") ? { provider: "" } : null;
 }
 

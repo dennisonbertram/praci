@@ -14,8 +14,8 @@ test("Investors opens from the sidebar and the old Cap table address redirects",
   await expect(main.getByRole("heading", { name: "Investors", level: 1 })).toBeVisible();
   await expect(main.getByText("See who owns your company", { exact: false })).toBeVisible();
   await expect(main.getByRole("button", { name: "Connect Carta" })).toBeVisible();
-  // Without Carta there is no agent, so no empty panel opens beside the page.
-  await expect(page.getByTestId("carta-agent-panel")).toBeHidden();
+  // The panel opens only on Ask.
+  await expect(page.getByTestId("investors-agent-panel")).toBeHidden();
 
   await captureScreenshot(page, testInfo, "investors");
 

@@ -4,6 +4,7 @@ import {
   isDataRoomAgentSpawnKey,
   isFinanceAgentSpawnKey,
   isIntegrationAgentSpawnKey,
+  isInvestorsAgentSpawnKey,
   isLegalAgentSpawnKey,
   isMailAgentSpawnKey,
   isVoiceAgentSpawnKey,
@@ -62,6 +63,7 @@ export function botUsesConnectorTools(spawnKey: string | null | undefined): bool
     isMailAgentSpawnKey(spawnKey) ||
     isFinanceAgentSpawnKey(spawnKey) ||
     isLegalAgentSpawnKey(spawnKey) ||
+    isInvestorsAgentSpawnKey(spawnKey) ||
     isDataRoomAgentSpawnKey(spawnKey) ||
     isVoiceAgentSpawnKey(spawnKey) ||
     isCartaAgentSpawnKey(spawnKey) ||
