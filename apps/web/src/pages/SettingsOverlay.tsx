@@ -216,7 +216,7 @@ export function SettingsOverlay({
           <nav
             data-testid="settings-nav"
             aria-label={t`Settings`}
-            className="flex shrink-0 flex-row flex-wrap gap-1 border-b border-border px-3 py-3 md:w-[200px] md:flex-col md:flex-nowrap md:overflow-y-auto md:border-b-0 md:border-e md:px-3 md:py-4"
+            className="flex shrink-0 flex-row flex-nowrap gap-1 overflow-x-auto border-b border-border px-3 py-3 md:w-[200px] md:flex-col md:flex-nowrap md:overflow-y-auto md:border-b-0 md:border-e md:px-3 md:py-4"
           >
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -229,7 +229,7 @@ export function SettingsOverlay({
                   aria-current={active ? "page" : undefined}
                   disabled={panelBusy}
                   onClick={() => setSection(item.id)}
-                  className={`flex shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[13.5px] transition-colors disabled:pointer-events-none disabled:opacity-50 ${
+                  className={`flex shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 pointer-coarse:min-h-11 text-start text-[13.5px] transition-colors disabled:pointer-events-none disabled:opacity-50 ${
                     active
                       ? "bg-muted text-foreground"
                       : "text-muted-foreground hover:bg-accent hover:text-foreground"

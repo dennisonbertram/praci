@@ -1,0 +1,80 @@
+{
+  "mode": "judge",
+  "images": [],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 31,
+      "costUsd": 0.063348,
+      "result": {
+        "scores": {
+          "A": {
+            "criteria": 3,
+            "simplicity": 5,
+            "consistency": 4,
+            "usability": 3,
+            "visual": 2,
+            "effort": 5
+          },
+          "B": {
+            "criteria": 3,
+            "simplicity": 2,
+            "consistency": 2,
+            "usability": 3,
+            "visual": 4,
+            "effort": 2
+          },
+          "C": {
+            "criteria": 5,
+            "simplicity": 4,
+            "consistency": 5,
+            "usability": 4,
+            "visual": 4,
+            "effort": 4
+          }
+        },
+        "winner": "C",
+        "graft": null,
+        "defense": "C is the only option meeting all criteria on both 393x852 and the short 466x678 display: AGENTS matches 'New agent' and 'No agents yet', recent/unread agents and the group are immediate or one in-place tap away, and PAGES remains visible by default. Against A: its 7 agents plus group create 8 rows that push PAGES below the fold on Duo and impose scanning/scroll cost for rarely used agents. Against B: a new RECENT noun splits the taxonomy, misclassifies Agents as a Page alongside Inbox/Finance/Legal, hides the roster behind a new route, and adds alphabetical search frames for only 7 agents. C uses the native Things/Mail Show More pattern with only functional 'Show 3 more' copy and no new screen."
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 75,
+      "costUsd": 0.059422,
+      "result": {
+        "scores": {
+          "A": {
+            "criteria": 5,
+            "simplicity": 5,
+            "consistency": 5,
+            "usability": 4,
+            "visual": 5,
+            "effort": 5
+          },
+          "B": {
+            "criteria": 2,
+            "simplicity": 2,
+            "consistency": 2,
+            "usability": 3,
+            "visual": 3,
+            "effort": 2
+          },
+          "C": {
+            "criteria": 4,
+            "simplicity": 3,
+            "consistency": 4,
+            "usability": 4,
+            "visual": 4,
+            "effort": 4
+          }
+        },
+        "winner": "A",
+        "graft": "From C, adopt unread-first priority within the recency sort (and reserve C's inline 'Show more' disclosure only as a compact-height fallback on the 466x678 Duo outer display if PAGES is pushed fully below the fold).",
+        "defense": "Option A is the clearest, most native solution. Renaming PERSONNEL to AGENTS unifies the section header with the existing 'No agents yet' empty state and 'New agent' menu/sheet without introducing any new copy or controls. Because the full roster is only 7 rows (6 agents including Finance and Legal, plus 1 group; with all 6 individual agents also listed in the group member picker), showing all 7 rows directly on Home makes every agent immediately visible and tappable—crucial because the deliverables are static mockups where collapsed rows remain invisible. Option C is a solid runner-up, but collapsing a 7-item list after 4 rows to render a 'Show 3 more' row (5 rows total vs. 7) saves only 2 rows of vertical height while adding new copy, an extra tap, and an expanded/collapsed state to maintain. Option B fails multiple criteria: renaming the section to RECENT breaks noun consistency with 'No agents yet' and 'New agent', tucking an 'Agents' directory inside PAGES violates the core IA separating agents from pages, and building a dedicated searchable screen for 7 items is unnecessary scope and navigation overhead."
+      }
+    }
+  ]
+}

@@ -1,0 +1,439 @@
+{
+  "mode": "inspect",
+  "images": [
+    "PH-Home.png",
+    "PH-Pages.png",
+    "PH-Thread.png",
+    "PH-GroupThread.png",
+    "PH-Inbox.png",
+    "PH-Computer.png",
+    "PH-Spaces.png"
+  ],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 76,
+      "costUsd": 0.21454,
+      "result": {
+        "verdict": "Not ready: approval safety, space-switching state, Inbox density, and Computer control clarity still create wrong-action risk for a busy one-handed founder. Strong state coverage and confirmations are undermined by silent draft changes, overloaded glass toolbars, sub-44pt controls, and screens that either overflow or waste most of the viewport.",
+        "findings": [
+          {
+            "level": "component",
+            "element": "Draft card 'Send' button, changed to include 'Cc Jordan Lee'",
+            "problem": "In 'Draft replaced', Jordan Lee appears as Cc without a visual diff, explanation, or reconfirmation, while the white Send button remains immediately actionable. A founder can externally disclose the thread by approving a draft materially different from the one previously reviewed.",
+            "norm": "High-impact external sends must highlight material recipient/body changes and require explicit re-review before approval; dangerous actions must not silently inherit prior intent.",
+            "severity": "P0",
+            "screenshot": "PH-Thread.png",
+            "fix": "Diff-highlight added recipients and changed text, replace Send with 'Review changes' first, and only enable a clearly labelled 'Send to Ana Ruiz + Jordan Lee' after the diff is viewed."
+          },
+          {
+            "level": "component",
+            "element": "'Empty recipient' draft card 'To Add a recipient' and grey 'Send'",
+            "problem": "Send still occupies the prominent approval position with no visible reason it is unavailable, while the actual fix, 'Add a recipient' in small yellow text, is easy to miss and unlikely to be a 44pt target.",
+            "norm": "Disabled actions must communicate why they are disabled; the corrective action must meet 44pt and be more discoverable than the blocked action.",
+            "severity": "P1",
+            "screenshot": "PH-Thread.png",
+            "fix": "Remove or fully disable Send with explanatory copy such as 'Add a recipient to send', and make 'Add a recipient' a full-width 44pt secondary button inside the draft card."
+          },
+          {
+            "level": "page",
+            "element": "Right board 'Switching to Northwind' title, '+ New', bell and search controls",
+            "problem": "The title already says Northwind while ACTIVITY, PERSONNEL and PAGES are still skeletons, yet '+ New', notifications and search remain enabled. The founder can create or open something before knowing which space's data has loaded.",
+            "norm": "During a workspace switch, identity must not claim the destination is ready before its data is; creation and global actions must be disabled or explicitly scoped until loading completes.",
+            "severity": "P0",
+            "screenshot": "PH-Spaces.png",
+            "fix": "Keep 'Switching to Northwind…' with a progress label, disable + New/search/bell until content resolves, and announce completion before changing the title to the active state."
+          },
+          {
+            "level": "component",
+            "element": "'Team / Private' segmented control with 'Team computer' browser",
+            "problem": "Team and Private are presented as a simple toggle while an agent is driving a bank/vendor page, with no explanation of who can see or control each mode. Switching could expose sensitive browser content or change control ownership unexpectedly.",
+            "norm": "Privacy and sharing mode changes on a shared remote desktop require plain-language audience disclosure and confirmation when sensitive content may become visible.",
+            "severity": "P0",
+            "screenshot": "PH-Computer.png",
+            "fix": "Label modes as 'Team — others can watch' and 'Only me', explain the current audience next to the browser, and confirm before switching from Private to Team."
+          },
+          {
+            "level": "component",
+            "element": "Bottom 'Release control' button in 'Reconnecting' state",
+            "problem": "The centre card says 'Your keys are paused until it is back', but the large white Release control button still looks fully active. The founder cannot tell whether tapping it will work, queue, or be ignored during reconnection.",
+            "norm": "Controls unavailable during a system interruption must be visibly disabled with state-consistent copy, or replaced by the recovery action.",
+            "severity": "P1",
+            "screenshot": "PH-Computer.png",
+            "fix": "Disable Release control during reconnection and label it 'Reconnecting…', or move the only action into the status card as 'End control session' if ending is still possible."
+          },
+          {
+            "level": "group",
+            "element": "Header in 'In control' and 'Agent waiting': single 'Team' pill and expand icon, no X",
+            "problem": "The close X and Team/Private control disappear exactly when the user is driving or being asked to sign in. There is no visible exit from the most sensitive states except Release control or I'm done.",
+            "norm": "Modal and remote-control sessions must preserve a consistent, discoverable exit in every state, especially during credential entry.",
+            "severity": "P1",
+            "screenshot": "PH-Computer.png",
+            "fix": "Keep the X/close affordance in all Computer states and confirm whether closing leaves the agent running, pauses it, or releases control."
+          },
+          {
+            "level": "component",
+            "element": "Keyboard accessory row 'Esc Tab Ctrl ← ↓ ↑ →' in 'In control'",
+            "problem": "Eight narrow grey keys are squeezed into one floating row, each visibly far below 44pt wide and difficult to hit one-handed while also interacting with a miniature desktop browser.",
+            "norm": "Touch targets must be at least 44x44pt; remote-desktop modifier and navigation keys need larger targets or a reduced, prioritised key set.",
+            "severity": "P1",
+            "screenshot": "PH-Computer.png",
+            "fix": "Use two rows or horizontally grouped 44pt keys, prioritise Esc/Tab/Ctrl/arrows, and add labels or a 'More keys' expansion instead of shrinking all keys."
+          },
+          {
+            "level": "page",
+            "element": "Desktop browser viewport showing 'Vendor payments report'",
+            "problem": "A desktop web page is compressed into the phone width with unreadable skeleton content and a fade obscuring its lower portion. The expand icon is the only hint of relief, but Watching mode gives no 'tap to zoom/pan' guidance.",
+            "norm": "Remote content on mobile must be legible at default zoom or clearly communicate zoom, pan, and fullscreen behaviour before the user takes control.",
+            "severity": "P1",
+            "screenshot": "PH-Computer.png",
+            "fix": "Default to a readable zoomed region following the agent cursor, label the expand button 'Full screen', and add a one-time hint such as 'Pinch to zoom • Drag to pan'."
+          },
+          {
+            "level": "component",
+            "element": "'Agent waiting' actions 'I'm done' and 'Skip'",
+            "problem": "The instruction says 'Sign in to the bank portal, then tap I'm done', but Skip has no consequence copy. A founder may tap Skip to dismiss the banner without knowing the agent remains blocked or will proceed without sign-in.",
+            "norm": "Every bypass for a blocking step must state its consequence in plain language.",
+            "severity": "P1",
+            "screenshot": "PH-Computer.png",
+            "fix": "Rename Skip to 'Ask agent to continue without sign-in' or 'Do this later', and state what the agent will do next in the banner."
+          },
+          {
+            "level": "group",
+            "element": "Top toolbar: search/filter/compose/more glass pill plus separate 'Ask' pill",
+            "problem": "Four unlabelled icons compete in one glass pill, with compose inverted to a white circle without a label, followed by another Ask action. A first-time founder cannot distinguish filter, compose and cleanup/more, and several targets appear compressed below comfortable one-handed use.",
+            "norm": "Icon-only toolbars must use universally recognisable icons, labels for ambiguous actions, 44pt targets, and only one primary action per toolbar.",
+            "severity": "P1",
+            "screenshot": "PH-Inbox.png",
+            "fix": "Keep Search and a labelled 'Ask' or compose action visible; move filter and cleanup into a labelled More menu, and give each remaining control a 44pt hit area."
+          },
+          {
+            "level": "group",
+            "element": "'To do' card above 'Needs reply 3' list",
+            "problem": "'Confirm Thursday kickoff / Ana Ruiz Re: Pilot timeline' in To do duplicates Ana Ruiz's 'Re: Pilot timeline' immediately below under Needs reply 3. It is unclear whether completing one completes the other or whether these are two separate obligations.",
+            "norm": "The same task must have one canonical representation and completion state across a screen; duplicated tasks destroy trust in triage counts.",
+            "severity": "P1",
+            "screenshot": "PH-Inbox.png",
+            "fix": "Either remove Ana's item from Needs reply once promoted to To do, or mark the row 'In To do above' and keep checkbox and row completion synchronised."
+          },
+          {
+            "level": "component",
+            "element": "Inbox message rows, e.g. 'Ana Ruiz Re: Pilot timeline — Can we move the kickoff to Thu…'",
+            "problem": "Sender, subject and snippet collapse into one truncated line over dense metadata and pills. On the move, the founder cannot reliably distinguish subject from preview or Draft ready from Needs attention without close reading.",
+            "norm": "Mail triage rows need a clear sender > subject > snippet hierarchy, readable truncation, and status that does not compete with the subject.",
+            "severity": "P2",
+            "screenshot": "PH-Inbox.png",
+            "fix": "Put sender and time on line one, subject on its own line, snippet on a second line, and move Draft ready/Needs attention to a consistent trailing or sub-caption position."
+          },
+          {
+            "level": "group",
+            "element": "Section sequence 'Needs reply 3', 'Northwind Support Oct 18', then 'Today'",
+            "problem": "An Oct 18 item appears before the Today header, while other items are grouped first by need and then by date without explanation. Chronology and priority models are mixed in the same list.",
+            "norm": "List grouping must follow one explicit model at a time, or label priority sections as pinned above the chronological list.",
+            "severity": "P2",
+            "screenshot": "PH-Inbox.png",
+            "fix": "Label the first block 'Pinned • Needs reply' and start date groups only after it ends, or sort entirely by date and use badges for reply need."
+          },
+          {
+            "level": "component",
+            "element": "'Consent declined' banner 'Inbox agent is off / Allow' above readable mail rows",
+            "problem": "After consent is declined, mail rows remain fully listed beneath 'It can't read or sort your mail'. The UI does not distinguish mail the user can read locally from mail the agent has processed, weakening the privacy meaning of the refusal.",
+            "norm": "Consent states must make the boundary between user access and agent access explicit, especially for email content.",
+            "severity": "P1",
+            "screenshot": "PH-Inbox.png",
+            "fix": "Add copy such as 'You can still read mail here. Praci agents cannot open, sort or draft from it.' and remove agent-derived pills such as Draft ready while consent is off."
+          },
+          {
+            "level": "page",
+            "element": "Connected Home scroll: 'PAGES / Finance / Legal / Cap table' at bottom edge",
+            "problem": "The primary landing screen is cut off mid-list with Cap table partially visible and no visible end, tab bar or scroll cue. What needs the founder is buried below Activity, a duplicate Inbox row, and four Personnel rows.",
+            "norm": "A mobile home surface should fit its primary triage model on one 393x852 screen or use clear progressive disclosure; urgent approvals must dominate the first viewport.",
+            "severity": "P1",
+            "screenshot": "PH-Home.png",
+            "fix": "Compress Personnel to agents needing attention plus 'All agents', keep Activity/Inbox/Pages within the first screen, and move the full directory behind See all."
+          },
+          {
+            "level": "group",
+            "element": "Prominent white '+ New' versus 'Finance agent / Needs you / Approve $1,200 payment'",
+            "problem": "The brightest action on Home is creating something new, while the time-sensitive $1,200 approval is a muted row with a small amber pill. This contradicts the brief that Home answers 'what needs me' in the fewest taps.",
+            "norm": "Visual prominence must follow task urgency; one prominent action per view should be the blocking approval, not a generic creation action.",
+            "severity": "P1",
+            "screenshot": "PH-Home.png",
+            "fix": "Make the Needs you approval card the dominant first-viewport element with a direct 'Review $1,200' action, and demote + New to a standard toolbar button."
+          },
+          {
+            "level": "page",
+            "element": "No-model board: 'Connect a model' card with Finance '6 mo runway', Legal '2 deadlines' still populated",
+            "problem": "With no model connected, Pages still present specific runway and deadline intelligence and Inbox still claims '3 need reply', while Personnel collapses to Chief alone and + New disappears without explanation. The state model is internally inconsistent.",
+            "norm": "Empty/no-model states must distinguish unavailable agent intelligence from locally cached data and keep global creation behaviour predictable.",
+            "severity": "P1",
+            "screenshot": "PH-Home.png",
+            "fix": "Label populated data 'Last synced' if cached, otherwise skeleton or disable agent-derived rows; explain why + New is hidden or restore it consistently."
+          },
+          {
+            "level": "component",
+            "element": "Finance chart 'Monthly burn, 12 months' bars with only 'Oct [AMOUNT]' tooltip",
+            "problem": "There is no y-axis, amount scale, average, or explanation for the white October bar. A non-technical founder can see bars rose but cannot judge burn, runway risk, or whether October is partial.",
+            "norm": "Financial charts for non-experts need labelled values, units, current/partial-period treatment, and a plain-language takeaway.",
+            "severity": "P1",
+            "screenshot": "PH-Pages.png",
+            "fix": "Add amount labels or a readable axis, mark Oct as 'month to date' if partial, and add one sentence such as 'Burn rose 18% vs Sep; runway assumes this rate'."
+          },
+          {
+            "level": "component",
+            "element": "Finance header glass pill with eye and '…' icons",
+            "problem": "The eye icon's purpose is unexplained beside Finance amounts: it may hide balances, change visibility, or preview sharing. On a finance screen that ambiguity has privacy consequences.",
+            "norm": "Privacy-affecting icon-only controls require labels or confirmation and a visible current state.",
+            "severity": "P2",
+            "screenshot": "PH-Pages.png",
+            "fix": "Label it 'Hide amounts'/'Show amounts' with the active state, or use a labelled toggle in the Finance menu."
+          },
+          {
+            "level": "component",
+            "element": "Header identity 'AM' avatar versus Settings 'SR Sam Rivera'",
+            "problem": "Home and Spaces show an 'AM' avatar while Settings identifies the signed-in person as Sam Rivera with initials SR. The founder cannot tell whether AM is a person, space, agent, or account switcher.",
+            "norm": "Account identity, initials and avatar meaning must be consistent across home, settings and workspace switching.",
+            "severity": "P2",
+            "screenshot": "PH-Home.png",
+            "fix": "Use SR for Sam Rivera everywhere, or label AM explicitly as the space/account it represents and show its full name on tap."
+          },
+          {
+            "level": "group",
+            "element": "Thread header pills: '< Inbox agent' and document/list/'…' pill",
+            "problem": "The second glass pill contains three abstract icons; even the board's separate 'Accessible names' panel must translate List into 'Open the to-do list'. Visually, a first-time founder cannot predict these destinations.",
+            "norm": "Non-standard navigation icons in a chat header need text labels or a single labelled menu; accessibility names do not fix visual discoverability.",
+            "severity": "P2",
+            "screenshot": "PH-Thread.png",
+            "fix": "Replace the pill with one labelled 'Drafts / Tasks' control or a single More menu with text rows for Agent page, To-do list and Chat menu."
+          },
+          {
+            "level": "component",
+            "element": "Composer in Group thread: white round square 'Stop' button beside empty 'Message Funding room'",
+            "problem": "A stop-generation control is shown even though the visible conversation has finished agent replies and the composer is empty. Users may read it as Send, record, or an active call control.",
+            "norm": "Send, Stop and Dictate states must be mutually exclusive and only appear when that action is actually available.",
+            "severity": "P2",
+            "screenshot": "PH-GroupThread.png",
+            "fix": "Show Stop only while agents are generating, with a 'Finance and Legal are working…' status; otherwise show Mic or a disabled Send state consistent with PH-Thread."
+          },
+          {
+            "level": "group",
+            "element": "Group agent attribution: 'Finance agent'/'Legal agent' captions, left icons and final typing bubble",
+            "problem": "Captions are detached above bubbles, icons sit outside the bubble column, and the final Legal typing indicator repeats a purple icon with no name adjacent. In a multi-agent room, scanning who said what is harder than in a normal group chat.",
+            "norm": "Multi-party chat needs consistent avatar, name and bubble grouping per speaker, including typing states.",
+            "severity": "P2",
+            "screenshot": "PH-GroupThread.png",
+            "fix": "Use one repeated pattern: avatar aligned to bubble top, name directly attached, and typing bubble labelled 'Legal agent is typing'."
+          },
+          {
+            "level": "component",
+            "element": "'Vendor payments' expand sheet table",
+            "problem": "The table gives Vendor/Status/Amount but no due date, total due, approval state or row action. 'Due $1,200' cannot be connected to the $1,200 approval elsewhere, forcing the founder to leave the sheet and hunt.",
+            "norm": "Financial detail sheets must expose the decision fields and connect directly to the related approval.",
+            "severity": "P2",
+            "screenshot": "PH-Thread.png",
+            "fix": "Add Due date and Needs approval status, a Due total header, and make actionable rows open the corresponding approval draft."
+          },
+          {
+            "level": "component",
+            "element": "Small text actions 'See all', 'Not now', 'Skip' and 'Undo'",
+            "problem": "Several consequential or recovery actions are rendered as small text well below the visual size of primary buttons, with no evidence of 44pt hit areas. These are precisely the actions a one-handed founder needs while distracted.",
+            "norm": "All tappable text actions require a minimum 44pt hit area, including dismiss, skip and undo actions.",
+            "severity": "P2",
+            "screenshot": "PH-Home.png",
+            "fix": "Expand hit areas to 44pt, keep visible labels unchanged if desired, and verify See all, Not now, Skip and Undo in accessibility inspection."
+          },
+          {
+            "level": "layout",
+            "element": "Overall dark-mode secondary text: Personnel previews, timestamps, Finance sublabels and Inbox snippets",
+            "problem": "Large amounts of decision-critical context are set in low-contrast grey on near-black, especially timestamps and previews at small sizes. In daylight or motion, status may be visible while the actual content is not.",
+            "norm": "Body and secondary text in dark mode still need WCAG AA contrast and a minimum readable size for primary task content.",
+            "severity": "P2",
+            "screenshot": "PH-Inbox.png",
+            "fix": "Raise secondary text to at least AA contrast, increase row preview size, and reserve the dimmest grey for truly non-essential metadata."
+          }
+        ],
+        "excellent": [
+          "PH-Thread.png: 'Clear this chat?' and 'Delete this chat?' confirmations clearly distinguish reversible clearing from permanent deletion, with Cancel preserved and destructive actions in red.",
+          "PH-GroupThread.png: 'Delete Funding room?' states 'Its messages are removed for everyone. This cannot be undone.' — the multi-party consequence is explicit before the destructive action.",
+          "PH-Inbox.png: 'Archived, Undo' and 'Archive failed, row stays' with 'Couldn't archive / Try again' cover both success recovery and failure without silently losing the row.",
+          "PH-Inbox.png: Consent flow 'Let the Inbox agent read your mail? It sorts mail and drafts replies. You approve anything it sends.' explains scope and the approval boundary in founder language.",
+          "PH-Computer.png: Status pills 'Finance agent is driving', 'You are driving' and 'Finance agent is waiting for you' use text plus colour, making control ownership legible at a glance.",
+          "PH-Pages.png: Finance's single floating 'Ask Finance agent' is the one prominent page action and is thumb-reachable; Settings keeps a clean grouped list with consistent chevrons.",
+          "PH-Spaces.png: The space menu uses a checkmark on Personal and keeps the underlying Home context visible, so the current space is not ambiguous while choosing."
+        ]
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 191,
+      "costUsd": 0.142208,
+      "result": {
+        "verdict": "Praci demonstrates a disciplined, calm dark-mode visual system with thoughtful state coverage and strong adherence to the single-prominent-action principle across most views. However, several critical issues keep it short of excellence: unreplaced template placeholders in Finance and Inbox, a direct logic contradiction in Inbox consent states, trapped navigation states in Team Computer where the close button disappears during Reconnecting/In Control, modal alerts that collide with undimmed background text, and multi-icon top glass pills and keyboard strips that violate the 44pt tap target rule for a one-handed founder on the move.",
+        "findings": [
+          {
+            "level": "page",
+            "element": "Finance page stat cards, chart tooltip, sync subtitle, and account rows ('Synced [TIME]', '[N] mo', '[AMOUNT]', 'Oct [AMOUNT]')",
+            "problem": "The entire Finance page is populated with raw bracketed template strings ('[TIME]', '[N] mo', '[AMOUNT]') instead of realistic financial figures, whereas every other board uses concrete values ('$1,200', '6 mo runway', '9:41 AM'). This makes it impossible to validate typography scaling, number formatting, or truncation in the two-column stat cards and account list, and leaves the privacy toggle ('eye' icon in the top-right pill) ambiguous as to whether balances are currently visible or masked.",
+            "norm": "Production-grade mockups must use realistic domain data (including realistic large currency strings like '$1,420,500') to stress-test layout density and clarify toggle states.",
+            "severity": "P0",
+            "screenshot": "PH-Pages.png",
+            "fix": "Replace all bracketed placeholders with realistic startup metrics (e.g., 'Synced 9:41 AM', '6 mo', '$840,000', 'Oct $140k', '$792,000', '$48,000') aligned with the '6 mo runway' preview shown on PH-Home.png."
+          },
+          {
+            "level": "page",
+            "element": "'Consent needed' (frame 9) vs. 'Consent declined' (frame 10) email list and 'Needs reply 3' section",
+            "problem": "In 'Consent needed', the inbox is completely blocked until the user answers whether the Inbox agent may read their mail. If the user taps 'Not now' ('Consent declined'), the banner states 'Inbox agent is off. It can't read or sort your mail.'—yet the mail list directly below it is actively sorted into AI-triaged buckets ('Needs reply 3' with Ana Ruiz, Jordan Lee, and Northwind Support separated from 'Today' and 'Earlier').",
+            "norm": "System state and visible UI must be logically consistent; if AI mail reading/sorting is declined, the inbox can only display chronological raw mail (or remain gated if agent access is required), not AI-triaged 'Needs reply' groupings.",
+            "severity": "P0",
+            "screenshot": "PH-Inbox.png",
+            "fix": "In 'Consent declined', render a purely chronological email list ('Today', 'Earlier') without the AI-generated 'Needs reply 3' section or agent triage badges."
+          },
+          {
+            "level": "group",
+            "element": "Top-left navigation control in 'In control' (frame 2), 'Agent waiting' (frame 3), and 'Reconnecting' (frame 6) vs. 'Watching' (frame 1)",
+            "problem": "In 'Watching', the close button ('×') is fused inside the 'Team | Private' segmented switcher pill. When the state transitions to 'In control', 'Agent waiting', or 'Reconnecting', the '×' close button and 'Private' segment vanish completely, leaving only a static 'Team' indicator pill. If the remote computer gets stuck in 'Reconnecting' (frame 6) or is waiting on a bank login (frame 3), the user has no close or back button to exit the screen.",
+            "norm": "Users must always have an unobstructed escape hatch (Close/Back) regardless of connection or control state, and modal dismissal controls must never be fused inside a segmented switcher.",
+            "severity": "P0",
+            "screenshot": "PH-Computer.png",
+            "fix": "Separate the '×' close button into its own dedicated 44x44pt circular glass button on the far left on every frame, and place the 'Team | Private' switcher (or 'Team' badge) as a separate element beside it."
+          },
+          {
+            "level": "component",
+            "element": "Compose icon (white circle inside the 4-icon top-right glass pill)",
+            "problem": "Across 8 of the 11 Inbox frames, the Compose pencil icon inside the 4-icon toolbar pill ('Search', 'Filter', 'Compose', 'More') is rendered inside a solid high-contrast white circle. Inside a multi-icon pill, a solid white circular highlight reads visually as an active toggle or selected view state rather than a 'New Message' action, and it competes directly with the 'one prominent action per view' rule (evidenced by the white circle suddenly disappearing when 'Turn on', 'Reconnect', or 'Allow' banners appear in frames 6, 7, and 10).",
+            "norm": "Toolbar action icons inside a shared control group should share uniform icon styling; primary creation actions should either be a distinct floating button or use standard icon weight without mimicking a selected segmented-control state.",
+            "severity": "P1",
+            "screenshot": "PH-Inbox.png",
+            "fix": "Remove the solid white circular fill from the Compose icon in the top pill so all four utility icons share consistent styling, or move Compose to a dedicated bottom-right floating action button matching 'Ask Finance agent' on PH-Pages.png."
+          },
+          {
+            "level": "group",
+            "element": "Top-right 4-icon glass pill ('Search', 'Filter', 'Compose', 'More')",
+            "problem": "Four distinct interactive icons are packed into a single top-right pill roughly 148pt wide, alongside both a '<' button and an 'Ask' pill in the same row. This compresses each icon's horizontal hit target to ~36pt—violating the brief's 44pt target rule—at the very top of an 852pt screen, which is the hardest zone for a one-handed founder on the move to reach accurately.",
+            "norm": "iOS Human Interface Guidelines and the brief mandate a minimum 44x44pt tap target for all interactive controls.",
+            "severity": "P1",
+            "screenshot": "PH-Inbox.png",
+            "fix": "Reduce the top bar to at most three icons with 44pt targets by moving Search into a standard pull-down/inline search field under the 'Inbox' title or folding less-frequent actions into the '...' menu."
+          },
+          {
+            "level": "group",
+            "element": "Top-left '< Inbox agent' pill and top-right 3-icon pill ('Agent page', 'List', 'More')",
+            "problem": "According to the 'Accessible names' spec table at the bottom of PH-Thread.png, the top-left pill contains two separate actions ('Back' and 'Open the agent page' via the agent title/icon), or the right pill contains three tightly packed icons ('Agent page', 'List', 'More') in ~110pt of width (~36pt per icon). Additionally, visually merging '<' and 'Inbox agent' into a single undivided pill makes the entire pill look like a single Back button, hiding the 'Open agent page' affordance and risking accidental back-navigation.",
+            "norm": "Distinct navigation actions must look distinct and each maintain at least a 44x44pt hit area.",
+            "severity": "P1",
+            "screenshot": "PH-Thread.png",
+            "fix": "Place the '<' Back button in its own 44pt circle (matching PH-Pages.png and PH-Inbox.png), make the agent avatar + name a separate tappable header title that opens the Agent Page, and leave only 'List' and 'More (...)' in the right pill at full 44pt widths."
+          },
+          {
+            "level": "group",
+            "element": "Floating special-key bar ('Keyboard', 'Esc', 'Tab', 'Ctrl', 'Left', 'Down', 'Up', 'Right') in 'In control' and 'Agent waiting'",
+            "problem": "Eight individual key buttons are squeezed into a single horizontal floating pill across a 393pt-wide screen, resulting in ~35pt-wide targets per key. For a founder operating with one thumb on the move, tapping 'Esc' vs. 'Tab' or individual arrow keys at ~35pt width will cause frequent mis-taps.",
+            "norm": "Touch controls must maintain a minimum 44x44pt tap target or use a horizontally scrollable strip / expandable D-pad to preserve thumb accuracy.",
+            "severity": "P1",
+            "screenshot": "PH-Computer.png",
+            "fix": "Make the key bar horizontally scrollable with 44pt minimum key widths, or group the four arrow keys into a single compact directional rocker/popover so the remaining keys each receive >=44pt targets."
+          },
+          {
+            "level": "group",
+            "element": "'Clear this chat?' and 'Delete this chat?' confirmation alerts (frames 5 and 6 in PH-Thread.png; frames 3 and 4 in PH-GroupThread.png)",
+            "problem": "When the confirmation alert appears, there is no dark backdrop scrim or blur over the underlying chat canvas. Because the alert card has a similar dark fill to the message bubbles behind it, the underlying message bubble collides visually with the edges of the modal ('...works, 10am.' pokes out beneath the bottom-right border in PH-Thread.png, and 'W...' / 'm...' poke out from the left edge in PH-GroupThread.png).",
+            "norm": "Modal confirmation dialogs require a full-screen dimming scrim (e.g., 40–60% black opacity) behind the alert to isolate focus, establish elevation, and prevent text collisions with underlying content.",
+            "severity": "P1",
+            "screenshot": "PH-Thread.png",
+            "fix": "Add a full-bleed semi-transparent black scrim (e.g., Color.black.opacity(0.55)) behind all confirmation alerts covering the entire screen below the modal."
+          },
+          {
+            "level": "page",
+            "element": "'Archive, with Undo' state (frame 7 in PH-Thread.png and frame 5 in PH-GroupThread.png)",
+            "problem": "After selecting 'Archive chat' from the menu, the user remains inside the archived chat thread while a toast banner ('Inbox agent chat archived / Find it in Archived. [Undo]') covers the top navigation bar, leaving the composer, active typing indicator, and 'Send'/'Stop' buttons interactive below.",
+            "norm": "Archiving a conversation removes it from the active workspace and should immediately pop the navigation stack back to the parent screen (PH-Home), displaying the 'Archived / Undo' toast at the bottom of the parent screen.",
+            "severity": "P1",
+            "screenshot": "PH-Thread.png",
+            "fix": "Navigate back to PH-Home upon archiving a thread and display the 'Archived / Undo' toast at the bottom of PH-Home (matching the bottom toast placement used in PH-Inbox.png frame 3)."
+          },
+          {
+            "level": "component",
+            "element": "'Connect a model' card in 'No model' state (right frame)",
+            "problem": "In the 'No model' state, a high-contrast 'Connect a model' button sits inside a large empty dark rectangle with no title, explanation, or context. For the target persona ('a busy non-technical founder'), 'Connect a model' is AI-engineering jargon, and the empty container beside/below the button looks like missing copy.",
+            "norm": "Empty or disconnected states must clearly explain in plain user language what is disconnected, why it matters, and what connecting it enables.",
+            "severity": "P1",
+            "screenshot": "PH-Home.png",
+            "fix": "Add a concise plain-language heading and subtitle above the button inside the card (e.g., 'Connect an AI model — Agents need a model to read mail, watch accounts, and draft work.') matching the banner pattern used in PH-Inbox.png frames 6, 7, and 10."
+          },
+          {
+            "level": "group",
+            "element": "'PERSONNEL' list in 'Connected' and 'No model' states",
+            "problem": "In 'Connected', the 'PERSONNEL' section lists Chief, Carta agent, Mercury agent, and Inbox agent, but omits Finance agent and Legal agent (which only appear in 'ACTIVITY' because they happen to have recent tasks). If Finance or Legal has no active task in the top 3 Activity rows, the founder has no direct thread entry point for them under Personnel. Furthermore, in 'No model', Carta, Mercury, and Inbox agents disappear from Personnel entirely, leaving only 'Chief'.",
+            "norm": "A directory of agents ('PERSONNEL') should consistently list all configured agents in the space so the user can always access their chat history, regardless of whether an agent currently has an active task or a connected model.",
+            "severity": "P2",
+            "screenshot": "PH-Home.png",
+            "fix": "Include all active space agents (or a 'See all agents' link) under PERSONNEL consistently across both 'Connected' and 'No model' states."
+          },
+          {
+            "level": "component",
+            "element": "Failed attachment chip ('chart.png ×') and error prompt in 'Finance agent, four files (limit)' (frame 11)",
+            "problem": "When 'chart.png' fails to upload, the error copy says 'chart.png did not upload. Remove it to send.' This forces a busy mobile user to tap a small ~28pt-tall chip's '×' target, delete the attachment, re-open the '+' menu, and browse Photos/Files again, rather than offering a one-tap retry. The small chip height also falls below the 44pt tap target guideline.",
+            "norm": "Upload failure states on mobile should allow an inline one-tap 'Retry' alongside removal, with touch targets of at least 44pt.",
+            "severity": "P2",
+            "screenshot": "PH-Thread.png",
+            "fix": "Increase attachment chip touch targets or add a 'Retry' action next to the error message ('chart.png did not upload. Retry or remove to send.')."
+          },
+          {
+            "level": "group",
+            "element": "'Chat menu' destructive actions ('Archive chat', 'Clear chat', 'Delete chat') in frame 4",
+            "problem": "For a permanent 1-on-1 system agent ('Inbox agent'), offering three separate removal actions—'Archive chat', 'Clear chat' ('Removes every message... Inbox agent and its settings stay'), and 'Delete chat' ('Deletes this chat with Inbox agent and all its messages')—creates unnecessary cognitive load, as 'Clear chat' and 'Delete chat' have virtually identical outcomes for a built-in agent.",
+            "norm": "Avoid near-duplicate destructive actions; differentiate clearly between clearing history on a persistent agent vs. deleting a custom group/agent.",
+            "severity": "P2",
+            "screenshot": "PH-Thread.png",
+            "fix": "For built-in 1-on-1 agents, consolidate 'Clear chat' and 'Delete chat' into a single 'Clear chat history' action, reserving 'Delete group' for user-created group threads (as in PH-GroupThread.png)."
+          },
+          {
+            "level": "component",
+            "element": "Bottom split button ('I'm done' | 'Skip') in 'Agent waiting' (frame 3)",
+            "problem": "In 'Agent waiting', the primary action 'I'm done' and secondary action 'Skip' are placed inside a single outer pill container, making them look like a two-state segmented toggle switch rather than two distinct action buttons.",
+            "norm": "Primary and secondary actions at the bottom of a screen should be visually separated by a clear gap rather than nested inside a shared pill border.",
+            "severity": "P2",
+            "screenshot": "PH-Computer.png",
+            "fix": "Separate 'I'm done' (solid white pill) and 'Skip' (secondary dark glass pill) with an 8–12pt gap between them instead of wrapping both inside a single outer pill."
+          },
+          {
+            "level": "component",
+            "element": "User avatar initials ('AM' in PH-Home.png and PH-Spaces.png vs. 'SR / Sam Rivera' in PH-Pages.png Settings) and placeholder email ('me@example.test' in PH-Inbox.png frame 6)",
+            "problem": "The user profile avatar displays 'AM' on Home and Spaces, switches to 'SR' ('Sam Rivera') in Settings (PH-Pages.png), and uses a developer test string 'me@example.test' in the 'Mail changes off' banner (PH-Inbox.png frame 6). Additionally, in PH-Pages.png Settings, 'Sam Rivera' and 'Account' sit in the same card where 'Sam Rivera' lacks a chevron while 'Account' has a second user icon and chevron, making it unclear which row edits profile details.",
+            "norm": "Mockup suites should maintain a single consistent persona and email address across all screens, and profile/account settings should not duplicate user rows in the same card.",
+            "severity": "P2",
+            "screenshot": "PH-Pages.png",
+            "fix": "Standardize on 'SR' ('Sam Rivera', 'sam@northwind.com') across PH-Home.png, PH-Spaces.png, PH-Pages.png, and PH-Inbox.png, and merge the 'Sam Rivera' header and 'Account' row into a single tappable profile row with a subtitle ('sam@northwind.com') and chevron."
+          },
+          {
+            "level": "group",
+            "element": "'Plus menu' (frame 2) and 'Chat menu' (frame 4) open states vs. 'Send' button on draft card",
+            "problem": "When the 'Photos / Files' popover or 'Chat menu' popover is open, the 'Send' button on the underlying email draft card remains a full-brightness solid white pill, creating two competing focal points and allowing the 'Photos / Files' popover to awkwardly overlap half of the 'Edit' button ('it' peeking out). Additionally, having top bars, composer, and popovers open simultaneously results in 4 glass groups on screen, exceeding the 'at most three glass groups per screen' rule.",
+            "norm": "Opening a menu or popover should dim underlying content actions so focus remains unambiguously on the open menu.",
+            "severity": "P2",
+            "screenshot": "PH-Thread.png",
+            "fix": "Apply a subtle dimming overlay over the thread canvas (or dim the 'Send' button) whenever a popover menu is active."
+          },
+          {
+            "level": "component",
+            "element": "'Accessible names' specification table ('Pill with dot: Needs approval, go to draft')",
+            "problem": "The accessibility specification table at the bottom-left of PH-Thread.png defines 'Pill with dot' as 'Needs approval, go to draft', but no such floating 'Needs approval' jump-pill exists in any of the 12 frames on the board (only the static 'Needs approval' status badge inside the already-visible draft card, which has no dot).",
+            "norm": "Component documentation and accessibility tables must match the visible UI elements on the board.",
+            "severity": "P3",
+            "screenshot": "PH-Thread.png",
+            "fix": "Either add a frame showing the scrolled-up state with the floating '• Needs approval' jump pill, or remove the orphaned row from the specification table."
+          }
+        ],
+        "excellent": [
+          "Discipline around 'one prominent action per view': automatically downgrading secondary buttons (such as 'Send' in PH-Thread.png frames 9–10 or 'Take control' in PH-Computer.png frame 4) when a state isn't ready makes the primary next step effortless to spot at a glance.",
+          "PH-Thread.png email draft lifecycle: the progression across 'Needs approval', 'Replaced by a newer draft', 'Empty recipient' (with inline 'Add a recipient' prompt and disabled Send), and 'Agent editing the draft' ('Updating' badge) is exceptionally clear and well-thought-out for human-in-the-loop AI approval.",
+          "PH-Computer.png state matrix: covering edge cases like idle timeout ('Control ended'), concurrent teammate lock ('Jordan has control right now'), and step-in authentication ('Sign in to the bank portal, then tap I'm done') demonstrates mature product thinking for shared agentic browsers.",
+          "PH-Home.png Activity card hierarchy: combining agent identity, plain-English action summary ('Approve $1,200 payment'), semantic status badges ('Needs you', '• Working', '• Done'), and relative timestamps gives a busy founder immediate situational awareness above the fold.",
+          "Restrained dark-mode palette and typography: high contrast, generous card corner radii, and clean typographic hierarchy avoid decorative AI clutter and keep the interface feeling native and trustworthy."
+        ]
+      }
+    }
+  ]
+}

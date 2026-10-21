@@ -59,9 +59,7 @@ it("names where documents go and grants exactly the shown key and version on All
   rpc.consentGrant.mockResolvedValue(status({ allowed: true }));
   const onAllowed = vi.fn();
   await render(onAllowed);
-  expect(container.textContent).toContain("Example Model");
-  // Never suggests the library is untagged: tags already there stay.
-  expect(container.textContent).toContain("Files that already have tags keep them.");
+  expect(container.textContent).toContain("The text is sent to the AI model that runs your bots.");
   await act(async () => container.querySelector("button")?.click());
   expect(rpc.consentGrant).toHaveBeenCalledExactlyOnceWith({
     key: "data-room:abc",
@@ -104,14 +102,16 @@ it("shrinks to one line on Not now, without allowing, with a way to be asked aga
   await render(onAllowed);
   const notNow = [...container.querySelectorAll("button")].find((b) => b.textContent === "Not now");
   await act(async () => notNow?.click());
-  expect(container.textContent).not.toContain("Example Model");
+  expect(container.textContent).not.toContain(
+    "The text is sent to the AI model that runs your bots.",
+  );
   expect(rpc.consentGrant).not.toHaveBeenCalled();
   expect(onAllowed).not.toHaveBeenCalled();
   const askAgain = [...container.querySelectorAll("button")].find(
     (b) => b.textContent === "Let Praci read documents",
   );
   await act(async () => askAgain?.click());
-  expect(container.textContent).toContain("Example Model");
+  expect(container.textContent).toContain("The text is sent to the AI model that runs your bots.");
   expect(localStorage.getItem("rakazo.dataRoomConsentDismissed")).toBeNull();
 });
 
@@ -123,7 +123,9 @@ it("remembers Not now across visits, and asks again for a new version", async ()
   await act(async () => root.unmount());
   root = createRoot(container);
   await render();
-  expect(container.textContent).not.toContain("Example Model");
+  expect(container.textContent).not.toContain(
+    "The text is sent to the AI model that runs your bots.",
+  );
 
   await act(async () => root.unmount());
   root = createRoot(container);

@@ -1,0 +1,285 @@
+{
+  "mode": "inspect",
+  "images": [
+    "1280-all-tab-scrolled.png",
+    "1440-all-tab-scrolled.png",
+    "1920-all-tab.png",
+    "768-all-tab.png",
+    "375-all-tab.png",
+    "1440-auditors-tab.png",
+    "375-auditors-tab.png",
+    "1440-deleted-undo.png"
+  ],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 60,
+      "costUsd": 0.146204,
+      "result": {
+        "verdict": "Ruthless verdict: The data model is readable at 1440px, but responsive prioritization is backwards. At 1280px and 375px the table sacrifices the primary identifier and core share counts to preserve an often-empty Email column and meaningless dashes; at 1920px it stretches without a content cap. Mixed holder/contact rows, N/A sorting, wrapping tabs, dead empty-state controls, and an oversized toast undermine an otherwise clean, well-aligned table.",
+        "findings": [
+          {
+            "level": "component",
+            "element": "Shares column (entire column absent) vs Email column header 'Email'",
+            "problem": "At 1280px with the agent panel open, Shares disappears completely while Email — showing only '—' for the first five holder rows — retains roughly 35% width. Core cap-table quantities are unavailable at a common laptop width.",
+            "norm": "Data tables must prioritize decision-critical columns over low-value/empty columns when space contracts; hide or collapse the emptiest column first.",
+            "severity": "P0",
+            "screenshot": "1280-all-tab-scrolled.png",
+            "fix": "Drop/truncate Email before Shares. Set Name min-width, Email flexible with a max-width, and restore Shares right-aligned at 1280px; optionally move Email into a Name subtitle or overflow menu below ~1100px of table width."
+          },
+          {
+            "level": "component",
+            "element": "Name cells 'Maya Chen (Moc...', 'River Cofounder ...', 'Early employees...'",
+            "problem": "The primary row identifier truncates while the adjacent Email cell contains only an em dash and Kind retains full width. Users cannot distinguish who the top holders are without hovering or resizing.",
+            "norm": "The primary identifier column gets truncation last and must have a protected minimum width; truncation priority follows task importance.",
+            "severity": "P1",
+            "screenshot": "1280-all-tab-scrolled.png",
+            "fix": "Give Name a 180-220px minimum and higher flex priority than Email, shrink Email/Kind first, and add full-name tooltips on truncated names."
+          },
+          {
+            "level": "component",
+            "element": "Email cells 'priya@quill-capital.example...' and 'ada.walkb@quill.example.te...'",
+            "problem": "Email truncates at the domain/TLD while Name in the same rows also truncates, so neither identifier nor contact address is fully readable; Kind and Ownership are fully preserved by contrast.",
+            "norm": "When two identifying fields compete, fully resolve one rather than truncating both; secondary fields truncate first.",
+            "severity": "P1",
+            "screenshot": "1280-all-tab-scrolled.png",
+            "fix": "Allocate width to finish Name first, then let Email truncate, with copy-on-click and a tooltip showing the full address."
+          },
+          {
+            "level": "layout",
+            "element": "Full table grid from 'Name' header to 'Ownership' values",
+            "problem": "Columns stretch edge-to-edge with a vast empty gap between Email (often '—' or a short address) and Kind. Eye travel between related values is enormous and the table reads as three disconnected islands.",
+            "norm": "Content and data tables need a max reading width or capped flexible columns; whitespace should group, not separate, row data (Gestalt proximity).",
+            "severity": "P1",
+            "screenshot": "1920-all-tab.png",
+            "fix": "Cap the table/content column at ~1100-1200px or cap Email at ~320px and Name at ~340px, distributing surplus as right padding instead of inter-column gaps."
+          },
+          {
+            "level": "component",
+            "element": "Card rows for 'Priya Placeholder', 'Ada Example (WalkB)', 'Eve Example (WalkB)' — no Shares value present",
+            "problem": "In stacked-card mode every row drops the Shares figure entirely; holders show only a percentage (e.g. '40.00%') with no 'Ownership' label and no share count, so mobile users lose half the cap-table data available on desktop.",
+            "norm": "Responsive table-to-card transformations must preserve all critical data, labelled, not silently delete columns.",
+            "severity": "P0",
+            "screenshot": "375-all-tab.png",
+            "fix": "Add a labelled 'Shares · 4,000,000' line (or 'Ownership 40.00% · 4,000,000 shares') to holder cards and label the right-aligned percentage."
+          },
+          {
+            "level": "component",
+            "element": "Orphan '—' glyph floated right on contact cards 'Priya Placeholder', 'Lee Notarealperson', 'Dana Fakename', 'Eve Example (WalkB)'",
+            "problem": "Contacts get a lone dash floating mid-card on the right with no label or paired value, while holders in the same position show a meaningful percentage. It reads as a broken/missing control and creates a false visual equivalence between '%' and '—'.",
+            "norm": "Non-applicable values in card layouts should be omitted or explicitly labelled ('No shares'), never rendered as an unlabelled placeholder in a data position.",
+            "severity": "P1",
+            "screenshot": "375-all-tab.png",
+            "fix": "Remove the dash from contact cards or replace the right slot with a labelled chip such as 'Contact only'; keep the % slot exclusively for ownership."
+          },
+          {
+            "level": "group",
+            "element": "'—' in Shares and '—' in Ownership for every Investor/Other row (e.g. 'Ada Example (WalkB)', 'Dana Fakename')",
+            "problem": "Each contact row carries two identical dashes, doubling placeholder noise and implying two separately missing values when the real meaning is a single state: this record is a contact, not a holding. Holder rows mirror this with a meaningless Email '—' that could mean 'no email on file' (actionable) or 'not applicable' (not actionable) — the dash conflates both.",
+            "norm": "Use one explicit N/A treatment per concept and distinguish 'missing but collectable' from 'not applicable'; repeated placeholders add noise without information.",
+            "severity": "P2",
+            "screenshot": "1440-all-tab-scrolled.png",
+            "fix": "Merge Shares/Ownership N/A into a single muted 'Contact — no holding' label spanning both columns, and render missing holder emails as a subtle 'Add email' affordance instead of a dash."
+          },
+          {
+            "level": "group",
+            "element": "'Sort: Ownership' control above a list where all Investor/Other rows show '—' for Ownership",
+            "problem": "Sorting 'All' by Ownership silently dumps every contact into an undifferentiated block at the bottom, presenting 'not applicable' as 'lowest ownership'. A first-time user cannot tell whether these people own 0% or are simply not holders.",
+            "norm": "Sort controls must handle N/A values transparently; N/A must never be visually conflated with zero/lowest.",
+            "severity": "P1",
+            "screenshot": "1440-all-tab-scrolled.png",
+            "fix": "Separate sorted holders from a labelled 'Contacts (no ownership)' section, or annotate the sort as 'Ownership — contacts last' and show a 'No holding' label instead of dashes."
+          },
+          {
+            "level": "group",
+            "element": "Two-line contact Names ('Priya Placeholder / Quill Capital (Mock)') beside one-line holder Names ('Maya Chen (Mock)'), with Kind sublines 'Common' / 'SAFE, $250,000'",
+            "problem": "Row heights and information architecture differ by record type: contacts carry organization in the Name cell while holders carry security class under Kind, so the same column means different things row-to-row and baselines drift down the list.",
+            "norm": "In a unified list, each column must carry one consistent semantic; secondary metadata belongs in the same slot for every row type.",
+            "severity": "P2",
+            "screenshot": "1440-all-tab-scrolled.png",
+            "fix": "Standardize: line 1 = person/org name, line 2 = organization for all rows (holders included), and move security detail (Common / SAFE amount) into a consistent chip or the Kind subline for every row."
+          },
+          {
+            "level": "component",
+            "element": "Tab strip 'All / Shareholders / Investors / Options / Auditors / Other' wrapping with 'Auditors' and 'Other' on a second row",
+            "problem": "At 375px the tab pill container wraps into a two-row blob; the selected 'Auditors' pill sits on row two, breaking the single-axis tab metaphor and making the control look like a tag cloud. No scroll affordance or fade indicates an alternative.",
+            "norm": "Tab strips stay on one line — horizontally scrollable with an edge fade, or collapsed into a select — and never wrap (Material/Apple tab conventions).",
+            "severity": "P1",
+            "screenshot": "375-auditors-tab.png",
+            "fix": "Make the strip single-row with overflow-x scroll and a right-edge fade, or replace with a dropdown below 480px."
+          },
+          {
+            "level": "page",
+            "element": "Empty state 'No auditors yet' + '+ Add auditor' with active 'Search' field and 'Sort: Ownership' dropdown above it",
+            "problem": "Search and Ownership-sort remain fully enabled over a list that contains nothing, implying there is something to search/sort; the empty state itself is a single grey line with no icon, no explanation of what an auditor is or why to add one, and sits far below the KPI cards and chart after a long scroll.",
+            "norm": "Empty states disable or hide inapplicable list controls and must explain the feature's value plus the primary action (NN/g empty-state guidance).",
+            "severity": "P1",
+            "screenshot": "1440-auditors-tab.png",
+            "fix": "Hide/disable Search and Sort when the tab is empty, and add a short line such as 'Auditors you add can review your cap table' above the existing '+ Add auditor' CTA."
+          },
+          {
+            "level": "group",
+            "element": "Toolbar: 'Security' filter present on All tab but absent beside 'Search' on the Auditors tab",
+            "problem": "The filter set changes between tabs at the same width, so the toolbar layout and the Sort control's position shift as users switch tabs — controls appear and vanish without explanation.",
+            "norm": "Toolbar composition and control positions must remain stable across sibling views; filter availability changes should be shown as disabled, not removed.",
+            "severity": "P2",
+            "screenshot": "1440-auditors-tab.png",
+            "fix": "Keep 'Security' visible but disabled on tabs where it does not apply (or explain its removal), keeping Search and Sort in fixed positions."
+          },
+          {
+            "level": "component",
+            "element": "Toast 'Deleted Bartholomew-Maximilian Featherstonehaugh-Cholmondeley 🚀 (Visual)' with 'Undo' / 'Dismiss'",
+            "problem": "The deleted name wraps to three lines, inflating the toast into a tall block that covers the 'Faye Capital (WalkB)' row area at the bottom of the center column; 'Undo' and 'Dismiss' are equal-weight text actions so the recovery action does not stand out, and the name includes an irrelevant rocket emoji that undermines the seriousness of a destructive-action confirmation.",
+            "norm": "Toasts/snackbars are compact (1-2 lines, truncated middle), anchored consistently to the viewport, and give the recovery action highest emphasis (Material snackbar guidance).",
+            "severity": "P1",
+            "screenshot": "1440-deleted-undo.png",
+            "fix": "Truncate the name with an ellipsis ('Deleted Bartholomew-Maximilian Feath…'), remove the emoji, bold/color 'Undo' as the primary action, and anchor the toast bottom-center of the viewport with a max-width so it never covers row content."
+          },
+          {
+            "level": "component",
+            "element": "First card at top of the list, clipped to 'Shareholder · Common / 40.00%'",
+            "problem": "The list scrolls under no sticky header: the first visible card is cut mid-row with its name off-screen, and no column/card header or tab/search context is visible, so a scrolled mobile user loses orientation entirely.",
+            "norm": "Long lists on mobile keep a sticky header (title/column context) so partially scrolled content remains interpretable.",
+            "severity": "P2",
+            "screenshot": "375-all-tab.png",
+            "fix": "Add a sticky mini-header (e.g. 'Holders & contacts · sorted by Ownership') or sticky column labels that persist while cards scroll."
+          },
+          {
+            "level": "component",
+            "element": "Name link 'Faye Capital (Wa...' rendered underlined while all other row names are not",
+            "problem": "A single row shows a visited/active underline affordance that no other name has, implying Faye Capital is a different kind of element or in a special state with no legend or explanation.",
+            "norm": "Identical elements must share identical affordance styling; link state styling must be applied consistently or not at all.",
+            "severity": "P3",
+            "screenshot": "1280-all-tab-scrolled.png",
+            "fix": "Either make all holder/contact names links with consistent hover/visited styling or remove the underline so rows read as uniform list items."
+          },
+          {
+            "level": "group",
+            "element": "Table 'Search' field directly beneath the global sidebar 'Search' and beside 'Security' / 'Sort: Ownership'",
+            "problem": "Two identically labelled 'Search' inputs are visible on the same screen (sidebar top-left and table toolbar) with no scoping hint such as 'Search holders…', so a first-time user cannot predict which dataset each searches.",
+            "norm": "Co-visible search fields must be labelled by scope; duplicate generic labels violate clarity and recognition-over-recall.",
+            "severity": "P2",
+            "screenshot": "1440-deleted-undo.png",
+            "fix": "Rename the table field placeholder to 'Search holders & contacts…' and keep the global one as-is."
+          }
+        ],
+        "excellent": [
+          "Numeric discipline is excellent: Shares and Ownership are consistently right-aligned with tabular figures in 1920-all-tab.png and 1440-all-tab-scrolled.png, making the 40.00% / 30.00% / 15.00% descending Ownership order scannable at a glance.",
+          "Selected-tab state is unambiguous: the filled 'All' and 'Auditors' pills in 1440-auditors-tab.png and 375-auditors-tab.png read instantly against the muted unselected tabs.",
+          "The 375px card transformation in 375-all-tab.png preserves the essential reading order — bold Name first, Kind/organization subline, email last, ownership held in the same right position as the desktop table — rather than forcing horizontal table scrolling.",
+          "Empty state keeps the exact primary action: '+ Add auditor' in 1440-auditors-tab.png matches the header-level add action, giving the user one consistent next step instead of a dead end.",
+          "Providing 'Undo' directly in the deletion toast in 1440-deleted-undo.png is the correct recovery pattern for a destructive contact deletion — the failure mode was anticipated, even if the toast's execution needs work.",
+          "Kind sublines add real value without extra columns: 'SAFE, $250,000' / 'SAFE, $50,000' under Investor in 1440-all-tab-scrolled.png conveys deal size inline where a separate column would have worsened the width problem."
+        ]
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 81,
+      "costUsd": 0.080182,
+      "result": {
+        "verdict": "The holders-and-contacts surface has strong visual fundamentals—crisp dark-mode contrast, right-aligned tabular numerals, and a thoughtful desktop-to-mobile card transition—but suffers from severe layout and information-architecture flaws. Merging incompatible Carta cap-table rows with address-book contacts creates walls of meaningless em-dashes, while rigid column allocations starve the primary Name column (truncating nearly every row at 1280px and even truncating long names at 1920px amidst hundreds of pixels of empty space). Responsive wrapping of the tab strip and sort controls, irrelevant controls on empty states, and an un-truncated, undifferentiated Undo toast require immediate correction.",
+        "findings": [
+          {
+            "level": "group",
+            "element": "Table column widths (Name vs. Email columns)",
+            "problem": "At 1280px with the Carta agent panel open, the primary 'Name' column is squeezed to ~115px while the secondary 'Email' column is allocated ~35% of the table width. As a result, 9 of the 11 visible rows truncate their primary Name/Organization identifier ('Maya Chen (Moc...', 'River Cofounder ...', 'Early employees...', 'Lee Notarealper...'), even while the top 5 rows have no email at all (just an em-dash '—' followed by vast empty space). Even at 1920px, where there is over 300px of dead space between Email and Kind, the last row ('Zed Longname-Hyphenated-Verylongsur... / Extremely Long Organization Name Incorporated ...') still truncates inside a narrow Name column.",
+            "norm": "Primary human/entity identifiers (Name) must have higher width and truncation priority than secondary metadata (Email). Columns should use content-aware or flexible minmax sizing rather than rigid percentages that starve the primary column while leaving secondary columns mostly empty.",
+            "severity": "P1",
+            "screenshot": "1280-all-tab-scrolled.png, 1920-all-tab.png",
+            "fix": "Increase the Name column allocation to at least 30–35% (or `minmax(200px, 1.5fr)`) and reduce Email to `minmax(160px, 1fr)` with ellipsis truncation on Email first. At wide viewports (1920px), allow Name to expand into available space before adding dead whitespace between Email and Kind."
+          },
+          {
+            "level": "group",
+            "element": "Mixed holder and contact rows / non-applicable cell dashes ('—')",
+            "problem": "Merging Carta equity holders/option pools (which have Shares and Ownership but no Email) with address-book contacts (which have Email and Organization but no Shares or Ownership) fills the top half of the Email column and the bottom half of the Shares and Ownership columns with walls of '—' dashes. Worse, on mobile (375px), where table columns and headers do not exist, every contact card still renders a floating '—' on the right edge with no label or context.",
+            "norm": "Data tables should share a cohesive schema across rows, and mobile card views must omit non-applicable fields rather than rendering unlabeled placeholder dashes ('—') divorced from column headers.",
+            "severity": "P1",
+            "screenshot": "1440-all-tab-scrolled.png, 375-all-tab.png",
+            "fix": "On mobile (375px), completely hide the trailing '—' on rows that do not have an ownership percentage. On desktop, for SAFE investors ('Priya Placeholder', 'Lee Notarealperson'), surface their investment amount ('$250,000 SAFE') cleanly in the equity columns or separate non-equity contacts ('Auditors', 'Other') from cap-table security holders."
+          },
+          {
+            "level": "component",
+            "element": "Mobile shareholder row cards (missing Shares count)",
+            "problem": "At 375px, transforming table rows into stacked cards drops the 'Shares' data point entirely for equity holders and option pools (e.g., 'River Cofounder (Mock)' shows 'Shareholder · Common' and '30.00%', omitting '3,000,000 shares'). At 1280px, the 'Shares' column is also hidden entirely when the agent panel is open.",
+            "norm": "Responsive reduction must preserve core domain metrics on a cap table; share count and ownership percentage are paired primary metrics.",
+            "severity": "P1",
+            "screenshot": "375-all-tab.png, 1280-all-tab-scrolled.png",
+            "fix": "Include the share count as secondary text beneath the ownership percentage on the right side of each mobile card and 1280px compact row (e.g., '30.00%' on line 1, '3,000,000' in muted text on line 2)."
+          },
+          {
+            "level": "group",
+            "element": "Auditors empty state controls (Search bar and 'Sort: Ownership')",
+            "problem": "When the 'Auditors' tab is empty ('No auditors yet'), the Search input and 'Sort: Ownership' dropdown remain rendered and active above the empty state. Furthermore, sorting 'Auditors' by 'Ownership' is nonsensical because auditors are external contacts with no equity ownership.",
+            "norm": "Empty states for a zero-item collection should hide or disable search/sort toolbars (unless filtering caused the empty state), and sort options must match the attributes of the active tab's entity type.",
+            "severity": "P2",
+            "screenshot": "1440-auditors-tab.png, 375-auditors-tab.png",
+            "fix": "Hide the Search and Sort toolbar row when a category tab has zero records in total. When non-equity tabs ('Auditors', 'Other') have records, default the sort control to 'Sort: Name' and hide 'Sort: Ownership'."
+          },
+          {
+            "level": "component",
+            "element": "Category tab strip at 375px",
+            "problem": "At 375px ('375-auditors-tab.png'), the 6-item segmented pill tab bar wraps onto two stacked lines ('All | Shareholders | Investors | Options' on row 1, 'Auditors | Other' on row 2) inside a bulky rounded container, consuming excessive vertical space on a small mobile viewport.",
+            "norm": "Tab strips on mobile viewports should remain on a single horizontal axis using horizontal overflow scrolling (with hidden scrollbars and edge fade) rather than wrapping into multi-row grids.",
+            "severity": "P2",
+            "screenshot": "375-auditors-tab.png",
+            "fix": "Set `white-space: nowrap` and `overflow-x: auto` on the tab container at mobile breakpoints so all six tabs stay on a single horizontally scrollable row."
+          },
+          {
+            "level": "group",
+            "element": "Filter and Sort toolbar wrapping at 1280px and 375px",
+            "problem": "At 1280px ('1280-all-tab-scrolled.png'), 'Sort: Ownership' and its direction arrow wrap onto a second line below 'Search' and 'Security', despite ample horizontal whitespace remaining on the first row. The same awkward two-row wrap occurs at 375px ('375-auditors-tab.png').",
+            "norm": "Table utility toolbars (search, filter, sort) should fit on a single compact row on desktop viewports to minimize vertical chrome above the table header.",
+            "severity": "P2",
+            "screenshot": "1280-all-tab-scrolled.png, 375-auditors-tab.png",
+            "fix": "Reduce the `max-width` or `flex-basis` of the Search input at 1280px (e.g., from ~280px to ~200px) so Search, Security filter, and Sort stay on a single line. On mobile (375px), place Search and a compact Sort icon/pill on the same row."
+          },
+          {
+            "level": "component",
+            "element": "Deleted contact Undo toast ('1440-deleted-undo.png')",
+            "problem": "The toast notification ('Deleted Bartholomew-Maximilian Featherstonehaugh-Cholmondeley 🚀 (Visual)') allows an arbitrarily long contact name to wrap across three lines instead of truncating, creating a tall banner that obscures bottom table rows. Additionally, 'Undo' and 'Dismiss' are styled identically as plain white text links right next to each other, increasing the risk of accidentally clicking 'Dismiss' instead of 'Undo'.",
+            "norm": "Toast notifications should constrain message length (single-line or max two-line truncation on dynamic entity names) and visually differentiate the primary recovery action ('Undo') from the dismissal control.",
+            "severity": "P2",
+            "screenshot": "1440-deleted-undo.png",
+            "fix": "Truncate the deleted entity name inside the toast with an ellipsis after ~30 characters, style 'Undo' as a high-emphasis pill button or accent-colored action, and replace 'Dismiss' with a subtle '×' icon button."
+          },
+          {
+            "level": "layout",
+            "element": "Scroll clipping at top viewport edge and sticky header absence",
+            "problem": "Across scrolled views, content clips harshly at the top edge without a sticky header or scroll mask: in '375-all-tab.png', the first row ('Maya Chen (Mock)' / '40.00%') is sliced horizontally in half directly beneath the mobile menu bar; in '1440-auditors-tab.png', the page header ('Cap table', 'Import', '+ Add files', '+ Add auditor') is cut in half at the top edge of the screen.",
+            "norm": "Scroll containers must align cleanly beneath fixed/sticky app bars, and table headers/toolbars should stick cleanly or clip beneath a defined header boundary.",
+            "severity": "P2",
+            "screenshot": "375-all-tab.png, 1440-auditors-tab.png",
+            "fix": "Ensure the top app bar has an opaque background with proper `z-index` and scroll padding, and make the table's tab/filter header sticky when scrolling through long holder lists."
+          },
+          {
+            "level": "layout",
+            "element": "Wide-screen table column distribution (1920px)",
+            "problem": "At 1920px ('1920-all-tab.png'), the table stretches across ~1,250px, creating a massive >300px horizontal void between the 'Email' and 'Kind' columns. Tracking across a single row from 'Maya Chen (Mock)' to 'Shareholder' and '4,000,000' requires scanning across vast empty dark space.",
+            "norm": "Data tables with few columns should constrain their maximum width or distribute column spacing proportionally so horizontal eye tracking across a row remains effortless.",
+            "severity": "P3",
+            "screenshot": "1920-all-tab.png",
+            "fix": "Constrain the center cap-table container to a sensible `max-width` (e.g., `1040px` centered) or give the Name column more breathing room while tightening the gap between Email and Kind."
+          },
+          {
+            "level": "component",
+            "element": "Inconsistent row hover/link and border styling",
+            "problem": "In '1280-all-tab-scrolled.png', the primary name 'Faye Capital (Wa...' is underlined like a browser hyperlink while no other names are underlined. In '375-all-tab.png', the 'Lee Notarealperson' row has visible left and right vertical border lines forming a box, unlike adjacent rows.",
+            "norm": "Interactive row states (hover/focus) should apply a consistent full-row background highlight rather than default text underlines or partial cell borders.",
+            "severity": "P3",
+            "screenshot": "1280-all-tab-scrolled.png, 375-all-tab.png",
+            "fix": "Remove `text-decoration: underline` on contact name links in favor of a subtle full-row background surface highlight on hover, and standardize mobile card dividers to bottom-only borders."
+          }
+        ],
+        "excellent": [
+          "Right-aligned tabular numerals (`tabular-nums`) for Shares and Ownership percentages create crisp vertical scan lines across desktop and tablet viewports ('1440-all-tab-scrolled.png', '768-all-tab.png').",
+          "Two-line typographic hierarchy inside cells (bright primary text for Name and Kind paired with muted secondary text for Organization and Security class/SAFE amount) packs rich context cleanly without adding extra columns.",
+          "The contextual 'Carta agent' right-hand panel offers domain-specific, one-click starter prompts ('Who are our investors?', 'Draft this month's investor update') directly adjacent to the cap table.",
+          "At 768px ('768-all-tab.png'), collapsing the sidebars allows the full 5-column table to fit comfortably with zero truncation on any name or email address."
+        ]
+      }
+    }
+  ]
+}

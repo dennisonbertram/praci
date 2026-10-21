@@ -1,89 +1,134 @@
-# Redundancy critique: planned native iOS app
+# Redundancy critique, round 3: planned native iOS app
 
-Scope: the 105 stories in `docs/ios-native/ux/catalog.md` judged against the 40 boards in `docs/design-system/ios/boards/` (each cited board was viewed as a rendered screenshot; a few strings were also checked in the board HTML). The boards are static, so "walking" means judging each step against the board that defines it. Where a step has no board, that is stated. Everything here is a finding about planned design, not shipped behavior. Boards are cited as `Board` = `docs/design-system/ios/boards/Board.dc.html`.
+Scope: the 19 round 2 items (RED-R2-1 to RED-R2-19) re-checked against the current boards in `docs/design-system/ios/boards/`, plus a new hunt for duplicate paths, duplicate information, overlapping features, hierarchy problems and cross-board drift, mainly between the boards added in the gap-fix pass and the older ones. Boards are static mockups, so each journey step is judged against the board that draws it. All findings are about planned design, not shipped behavior. Boards are cited by file stem.
 
-Evidence grades: **Seen** = visible in a viewed screenshot. **Spec** = stated in board text or the catalog. **Estimate** = measured by eye from a 466 x 678 screenshot, so approximate.
+Evidence: **Seen** means I viewed the round 3 screenshot of that board (PH-Home, PG-A-Home, PG-A-HomeNoModel, Split, PH-Inbox, PH-Thread, PG-A-ThreadStates, PG-A-Compose, PG-A-Cleanup, PG-B-Account, PG-B-Settings, PG-B-Consent, PG-B-Spaces, PH-Spaces, PG-B-SignUp, PH-Computer). **Carried** means I did not re-view the board this round and the item is unchanged from round 2 (PG-B-Finance, PG-A-AgentPage, PG-A-Artifact(s), Desk, Desk-Computer, PG-B-NewBot, PG-B-NewGroup, PG-B-NewSpace, PG-B-BotSettings, DS-01 to DS-07, Sheet, Inner, Inner-Message, Main, PG-A-InboxMessage, PG-A-Activity, PH-GroupThread).
 
-Verdict calibration (per the simplification heuristics): the flows themselves are mostly acceptable. The structural problems are (a) the same object drawn differently on different boards, and (b) several concepts with two names or two homes. These are cheap to fix now and expensive after Swift code copies them.
+Verdict: the Home screens now share one structure, mail rows agree across boards, the discard prompt is the same in both Compose states, and Cleanup counts are consistent. What remains is mostly naming and placement drift: the signed-in person has two identities, Server is reachable from three places, "bot" survives in visible text, and one sample group has two names. Journey verdicts: Home acceptable, Mail acceptable (setup still has three gates), Computer acceptable, Settings and Account acceptable, Sign-up minimal.
 
-## Duplicate Paths
+## Round 2 items: status
 
-Catalog candidates P1 to P14 were checked against the boards. Only the ones where the boards add evidence, or contradict the catalog, are listed. The rest (P4, P5, P7 to P9, P11 to P14) stand as the catalog states them and need a decision, not new evidence.
-
-| # | Goal | Routes drawn on boards | Verdict | Recommended canonical |
-| --- | --- | --- | --- | --- |
-| D1 | Open the Inbox agent | `Sheet` and `Split`: prominent chat button on the Inbox list. `PG-A-InboxMessage`: prominent chat button on a message. `PG-A-Home`: Activity row "Inbox agent / Reply to Ana is ready to send". Personnel list: **no Inbox agent row on `PG-A-Home`, `Main`, or the `Split` sidebar** (Seen). | Catalog P1 lists "Home Personnel row" as the always-available route. No board draws it. The agent appears in Personnel only on `PG-B-GroupSettings`/`PG-B-NewGroup` member lists. | Decide whether the Inbox agent is a Personnel row (then draw it, and the Inbox row is only the mail view) or reached only from Inbox (then say so in the catalog). Do not leave both claimed. |
-| D2 | See what needs me | `PG-A-Home`: bell icon with a dot in the side capsule, **and** an "Activity / See all" section header. `PG-A-Home` aria-label: "Activity, 2 need you". | Two routes to the same destination on one screen. This one is a defensible accelerator if the bell opens the full list and "See all" does the same. | Keep both only if they go to the same screen. State that in P9. Otherwise drop "See all". |
-| D3 | Open Finance, Legal, Cap table, Data room pages | Inner display (`Split` sidebar): rows Finance, Legal, Cap table, Data room, Artifacts. Outer display (`PG-A-Home`, `Main`): **no row**; side capsule has only Activity, Search, Artifacts. Finance agent thread has a document icon that opens the agent page "Runway summary" (`PG-A-AgentPage`), not `PG-B-Finance`. | On the outer display no drawn route reaches `PG-B-Finance`, `PG-B-Legal`, `PG-B-CapTable` or `PG-B-DataRoom` (Seen). The README says every page keeps the same features on every display. | Draw the outer-display route. Cheapest consistent option: the domain agent row opens its page first and chat second, matching the sidebar. |
-| D4 | Reach Integrations | `PG-B-Settings` row "Integrations [N]"; `Split` sidebar footer "Connect apps"; `PG-B-Integrations` "Advanced" row. | Two labels ("Integrations", "Connect apps") for one destination (see Hierarchy & IA). Not two implementations, just two entry names. | One label, "Integrations". Keep the sidebar footer as a shortcut. |
-| D5 | Fix a missing model | Catalog P3: Home banner (no board), send error, Settings > Models, Legal "Add your OpenRouter key". `PG-B-Models` is the only board. | Confirmed: the banner and the error have no board; only the destination exists. | Keep the catalog direction: one "Connect a model" action that opens `PG-B-Models` and returns. |
-| D6 | Create a bot vs create a group | `PG-B-NewBot` is a **sheet** (X to close, check to confirm, grabber). `PG-B-NewGroup` is a **pushed page** (back chevron, check to confirm) (Seen). Both are launched from the same Home New menu per the catalog. | Same "create a named thing" pattern with two presentations. Not a duplicate path but a drift between the two siblings. `PG-B-NewSpace` is a sheet. | Pick one. Sheets for all three creation forms matches `PG-B-NewSpace`. |
-
-Not found: a second way to do the same thing that is purely accidental, apart from D1 and D3 where the catalog and boards disagree.
-
-## Duplicate Information
-
-| # | Fact | Where it is drawn (Seen unless noted) | Risk | Recommendation |
-| --- | --- | --- | --- | --- |
-| I1 | Runway and cash | `PG-B-Finance` (tiles Runway, Cash, plus "Monthly burn" chart); `PG-A-AgentPage` (tiles Cash, Burn, Runway plus a line chart); `PG-A-Artifact` (tiles Cash, Runway plus text); `Desk` (tiles Runway, Cash plus "Monthly spend" chart); `Split` sidebar Finance row "[N] mo"; `PG-A-Routine` prompt. | Five renderers with three label sets. The same chart is titled "Monthly burn" (`PG-B-Finance`) and "Monthly spend" (`Desk`). Tile order differs: Runway/Cash vs Cash/Burn/Runway vs Cash/Runway. Catalog I3 notes this; the boards show it is already inconsistent. | One tile component with one label set and one order. Cross-link: the artifact and agent page should open `PG-B-Finance`. |
-| I2 | "Runway summary" as page and artifact | `PG-A-AgentPage` is headed "Runway summary" (agent page). `PG-A-Artifacts` lists "Runway summary, Finance agent, Markdown, v5". `PG-A-Artifact` is the same title, "v5 of 5", "Updated today by Finance agent". `PG-A-Routine` says "Update the Runway summary page." | The boards never say whether the agent page and the artifact are one object. Two screens with the same name and overlapping content (Cash and Runway tiles on both, different chart). Catalog F2. | Decide: the agent page is the latest artifact, or they are different things. If the same, remove one screen. If different, rename one. |
-| I3 | Two deadlines | `Split` sidebar: Legal badge "2". Legal agent row: "2 deadlines this week". `PG-B-Legal` banner: "2 deadlines this week". (`DS-05` bot row also shows an unread badge "2" next to Legal agent.) | One fact in three places, two of them on the same screen in `Split`. | In the sidebar keep the badge on the page row only; let the agent row show the agent's last message, not the same count. |
-| I4 | Agent name on the thread | `PG-A-Thread` shows "Inbox agent" in the title pill, "Inbox agent is working" above the composer, and "Message Inbox agent" in the composer: three times on one screen. `Inner` repeats the same three. | Low cost but the take-away test applies. The working line is useful; the placeholder name adds nothing. | Placeholder "Message" is enough when the title already names the agent. Low priority. |
-| I5 | Artifact title twice | `PG-A-Artifact`: pill "Runway summary" **and** card heading "Runway summary". | Same text twice, one under the other. | Drop the card heading or the pill. |
-| I6 | Inbox counts | `PG-A-Home` Inbox row: "3 need reply" and "42". `Sheet`: "Needs reply 3" and "Other mail today 24". | "42" has no label, so it is read as total or unread depending on the reader. Catalog I9 covers the section names only. | Label or drop the 42. |
-| I7 | Mail unread dots | `Sheet`: unread rows show a dot before the sender **and** a second dot before the preview line (Seen: "Acme Payroll", "Example Weekly"). `Inner` and `Split`: one dot only. `DS-05` spec: one 8 px dot. | One state drawn twice on the outer display. | Keep the single sender dot. |
-| I8 | Title and Description of a bot | `PG-B-BotSettings`: Title "Sorts and answers mail", Description "Triage mail, draft replies". `PG-B-NewBot`: Title placeholder "Describe what this bot does", Description placeholder "What this bot is for". | Two fields for the same sentence. The placeholders are near synonyms, so users will type one thing twice or leave one empty. | Keep one field on the phone, or keep both only if the app shows them in different places. If it does not, say where each is shown. |
-| I9 | Product avatar initials | `PG-A-Home` and `Main` show the account button "AB". `PG-B-Settings` shows the profile "SR / Sam Rivera / Account". | Probably sample-data drift, but it is a Seen contradiction on the same account. | Make the sample data match. |
-
-## Overlapping Features
-
-| # | Overlap | Evidence | Verdict |
-| --- | --- | --- | --- |
-| F1 | Domain page vs domain agent | Sidebar lists "Finance" page and "Finance agent" row; "Legal" page and "Legal agent"; "Cap table" and "Carta agent" (`Split`). `PG-B-Finance` Accounts rows are labeled by agent: "Operating, Mercury agent" and "Cards, Brex agent". `Main` lists Mercury agent and Brex agent in Personnel. | Convoluted for the three domains. One capability has up to three entries (page, domain agent, per-vendor agent). Mercury and Brex agents exist both in Personnel and inside the Finance page. The catalog already flags this as I8. Recommend: Personnel holds agents only; pages open from inside the agent (or the reverse), not both at the top level. |
-| F2 | Page vs List vs Artifact vs Data room file | `PG-A-AgentPage` (page), `PG-A-AgentList` (checklist "Close checklist"), `PG-A-Artifact`, `PG-B-DataRoom`. | Four durable-output surfaces. A bot's output can be a page, a checklist, an artifact, or a file. The Thread side capsule shows page and list icons together, so the user must choose before knowing which exists. Catalog F2 stands. |
-| F3 | Approval card vocabulary | `PG-A-Thread` mail card: "Send reply", "Needs approval", buttons Deny and Allow. `Inner` and `DS-06` mail card: "Re: Pilot timeline", Save and Send. `DS-06` tool approval: Allow once, Always allow, Deny. | Three button sets for one family of card. See Cross-board Consistency C1 for the mail card itself. |
-| F4 | Search | `PG-A-Home` search icon (global, no destination board); `Sheet` search icon in Inbox; `Split` search field in the sidebar **and** "Search mail" in the Inbox header on one screen; `PG-A-Artifacts` search; `PG-B-DataRoom` field "Search all items"; `PG-B-Integrations` field "Search apps". | Six search controls, one of which (global) has no destination board. `Split` shows two search fields side by side with no stated difference. Recommend a stated scope rule: global in the sidebar, local in each list, same control. |
-| F5 | Voice | `PG-B-Voice` "Use this device voice", "Hosted voice", Sounds. `PG-B-BotSettings` "Read replies aloud" and "Device voice: Default". | A global setting and a per-bot setting with the same names for the same device voice. The boards do not say which wins (catalog F5). |
-| F6 | Inbox triage controls | `Split` Inbox toolbar: eye ("Hide amounts"), star ("Important only"), filter, compose; `Sheet`: search, filter, compose; row chips "Needs attention", "Newsletter", "Junk"; section "Needs reply". | Filter, Important-only, section grouping and chips all classify mail. "Hide amounts" on a mail list is unexplained (see C5). |
-
-## Hierarchy & IA
-
-| # | Finding | Evidence |
+| Round 2 id | Status | Evidence |
 | --- | --- | --- |
-| H1 | **Product name: Rakazo everywhere on the boards, Praci in the epic.** | Strings "Sign in to Rakazo" and "Rakazo" (`PG-B-SignIn`), "Enter your Rakazo server address." (`PG-B-Server`), plus Rakazo in `DS-01`, `DS-02`, `DS-03`, `DS-04`, `DS-07`. Zero occurrences of "Praci" in any board (grep). Catalog conflict #1. |
-| H2 | **Agent vs bot.** Visible UI uses both for one object. | "Inbox agent", "Finance agent" (rows, pills, thread). "New bot", "Name this bot", "Archived bots", "Could not save bot", "3 of 4 bots can post in this group" (`PG-B-NewBot`, `PG-B-Settings`, `PG-B-BotSettings`, `PG-B-GroupSettings`). Chief is just "Chief". The settings page for an agent is titled "Chat settings" (`PG-B-BotSettings`). Pick one word; "agent" matches the rows users see most. |
-| H3 | **Personnel.** The section header "Personnel" holds Chief and agents (`PG-A-Home`, `Main`, `Split`). Nothing else on the boards calls them personnel, and the catalog uses it as a topic name. | Acceptable as a section label if it stays only there. Do not let it leak into settings or copy. |
-| H4 | **Integrations has three names.** | "Integrations" (`PG-B-Settings`, `PG-B-Integrations` title), "Connect apps" (`Split` sidebar footer), "Server integrations" (nested page, Composio or Direct MCP), and rows named "Mail connector", "Banking connector". "Apps", "integrations" and "connectors" all appear. Also, generic connector rows ("Banking connector") sit next to vendor-named agents ("Mercury agent", "Brex agent") on `Main`. |
-| H5 | **Sheet vs title treatment.** Large title on list pages (`Settings`, `Finance`, `Inbox`, `Legal`), glass pill on agent-owned pages (`Thread`, `AgentPage`, `Routine`, `AgentList`) and no title on `Image`/`Computer`. | Deliberate per `README` (glass only for navigation). Acceptable. The one wrinkle is `PG-A-Artifact`, which uses a plain-text pill with no avatar while the other agent-owned pages use an avatar pill. |
-| H6 | **Settings burial is fine, but the account entry is thin.** Settings lists profile, Models, Voice, Integrations, AI data sharing, Archived bots, Change password; the profile row is labeled "Account" with no detail board (catalog gap 5). `Archived bots` and `Change password` sit in an unlabeled group with equal weight to Models. | Rare items (Archived bots, Change password) at the same level as frequent ones (Models). Low impact; group them under the profile detail once that board exists. |
-| H7 | **Frequent destinations reached only through chat or the sidebar.** The Inbox, the most frequent surface per the catalog, is one tap from Home (good). Finance, Legal, Cap table and Data room are sidebar-only (inner display) with no outer route drawn (see D3). | Hierarchy matches importance on the inner display, not the outer. |
-| H8 | **Group name.** The group thread is "Funding room" (`PG-A-GroupThread`) while group settings and new group show "Operations" with different members; the thread member avatars are Finance, Legal and a letter tile "C". | Probably sample data, but a reviewer cannot tell whether settings opens the same group. |
+| RED-R2-1 Split sidebar differs | Partly resolved | Split now goes Activity, Inbox, Personnel, Pages, as the phone Homes do. Agent list still differs and Team computer is missing (RED-R3-1). |
+| RED-R2-2 Activity rows leave Personnel | Open | PH-Home and PG-A-Home: Finance agent and Legal agent are absent from Personnel while they are in Activity (RED-R3-2). |
+| RED-R2-3 four words for waiting on me | Open | "Needs you", "Needs approval", "Draft ready", "Needs attention" all still drawn (RED-R3-3). |
+| RED-R2-4 Reply menu twice | Open | PG-A-Compose still has "Reply, title menu open" (RED-R3-4). |
+| RED-R2-5 confirmations on undoable actions | Partly resolved | Both Compose discard prompts are now Save draft / Discard / Keep editing. Cleanup confirm now appears only when Unsubscribe is included, and says Archive can be undone. Still open: Undo in the Done frame and Undo in History (RED-R3-5). |
+| RED-R2-6 Cleanup counts | Mostly resolved | Menu counts agree ("3 senders", "101 emails", "3 unsubscribed"). "Skip inbox for future mail" still has no explanation (RED-R3-5). |
+| RED-R2-7 three mail setup gates | Open | PH-Inbox: Connect Gmail, "Let the Inbox agent read your mail?", "Changes to mail are off" banner, and "Sending is off" in Compose (RED-R3-6). "Always allow" is now "Allowed without asking" with a read-only note, which is clearer. |
+| RED-R2-8 mail list differs by board | Mostly resolved | Split now says "Today", puts chips on the third line and shows unread dots only on Today rows, like PH-Inbox. Remaining: Split has no To do card and no Earlier section (RED-R3-12). |
+| RED-R2-9 bell, See all, search | Open | Bell and See all still both open Activity; no search result frame (RED-R3-7). |
+| RED-R2-10 bot versus agent | Open | "Archived bots", "bots cannot reply", "account, bots, conversations" (RED-R3-8). |
+| RED-R2-11 three identities | Open | Homes show "AM"; Settings and Account show "SR Sam Rivera"; Split footer shows "AM Alex Morgan" (RED-R3-9). |
+| RED-R2-12 "page" means three things | Open, softened | The thread header icon is now named "Open the agent page" (PH-Thread names list). Home still has a Pages list (RED-R3-10). |
+| RED-R2-13 chat menu destructive items | Open | PH-Thread: Archive chat, Clear chat, Delete chat; the Archive toast says "Inbox agent chat archived" while Settings lists "Archived bots" with Inbox agent in it (RED-R3-11). |
+| RED-R2-14 Space settings has one field | Partly resolved | New space now has one route (the Home New menu); the title menu has Personal, Northwind, Side project, Space settings only. Space settings still holds only Name plus Delete (RED-R3-13). |
+| RED-R2-15 creation forms | Carried | Not re-viewed (RED-R3-16). |
+| RED-R2-16 Finance tiles and Runway summary | Carried | Not re-viewed (RED-R3-16). |
+| RED-R2-17 Computer title and Team chip | Open | PH-Computer "In control" and "Agent waiting": chip "Team" above title "Team computer" (RED-R3-14). |
+| RED-R2-18 model connect routes | Resolved with note | Home banner, thread "Not sent: No model connected. Connect" and Settings Models are shortcuts to one sheet. The sheet copy is wrong for Local server (RED-R3-15). |
+| RED-R2-19 glass and tinted rules | Open | Several frames still have two prominent actions (RED-R3-17). |
 
-## Cross-board Consistency
+## Open issues
 
-| # | Component | What differs | Evidence |
-| --- | --- | --- | --- |
-| C1 | **Mail approval card** | Title: "Send reply" vs "Re: Pilot timeline". Buttons: Deny / Allow vs Save / Send. Body text differs: the `Inner` draft adds "I'll send an invite shortly." The `DS-06` spec says Save and Send for mail, and Allow once / Always allow / Deny for tools, so `PG-A-Thread` uses the tool-style labels on a mail card. Allow also looks like permission to run, not to send mail. | `PG-A-Thread` vs `Inner` vs `DS-06` approval card text. Catalog conflicts 9 and 10. Top fix. |
-| C2 | **Inbox agent identity** | Home and thread: blue visor-shape avatar (`PG-A-Home`, `PG-A-Thread`, `Inner`). `PG-B-GroupSettings` and `PG-B-NewGroup`: Inbox agent is the **orange triangle** and Finance agent is the **indigo rounded square**. In `PG-A-Home`, Finance agent is the orange triangle. `PG-B-BotSettings` shows Inbox agent with **teal** selected, which is Chief's color on Home. README says each bot carries its own shape and color as the only identity color. | Three boards give the Inbox agent three identities. |
-| C3 | **Home screen** | `PG-A-Home` has an Activity section and Personnel (Chief, Finance, Carta, Legal, Mercury). `Main` has no Activity section and Personnel adds Brex agent. `Split` sidebar has Chief, Finance, Carta, Legal only, plus page rows. | Which is Home? Activity vs no Activity is not a size difference, it is a content difference (the README says the same features on every display). |
-| C4 | **Mail row** | `Sheet` (outer): three lines (sender, subject, preview), two unread dots. `Inner`: two lines (sender and time; subject then preview). `Split`: two lines plus a trailing chip. `DS-05` outer spec: two lines. The `Sheet` row (about 79 px, Estimate) is taller than the others. | `Sheet` vs `DS-05` vs `Inner`. |
-| C5 | **Eye icon** | `Split` Inbox toolbar carries "Hide amounts" (eye) and "Important only" (star) next to the Inbox. `PG-B-Finance` and `Desk` carry the eye as "Hide amounts". `Sheet` (outer Inbox) has neither. | Same control on a list that shows no amounts, missing on the outer version of the same screen. |
-| C6 | **Metric tiles** | `PG-B-Finance`: two tiles, Runway value larger than Cash value in the same row. `PG-A-AgentPage`: three small tiles with the label above the value, equal weight. `PG-A-Artifact`: two tiles inside a card. `Desk`: two equal tiles. | Same component, four sizes and weights. |
-| C7 | **Status indicators** | `PG-A-Home` Activity: small colored dot plus word ("Working", "Approve", "Done"). `PG-B-Legal`: dot plus colored word ("Signed", "Awaiting", "Expired"). `PG-B-Integrations`: gray dot plus "Added". `Split`: filled pill chips ("Needs attention", "Newsletter", "Junk"). | Four visual treatments for status. Dot-plus-word could be one component. The pill chips are a different language. |
-| C8 | **Row heights and spacing** (Estimate from 466 x 678 screenshots) | List rows: Settings about 47 px, Models about 45, Cap table holders about 45, Finance accounts about 56, Data room about 57, Artifacts about 61, Personnel about 54, Legal contracts about 77. Section header gaps vary (Models header sits tight to its card; Finance "Accounts" has a larger gap). | `DS-05` defines row metrics, but plain settings-style rows and two-line rows do not share a stated height. Measure in the design tool before building. |
-| C9 | **Creation and close controls** | `PG-B-NewBot`, `NewSpace`, `Server` use X plus check (sheets). `PG-B-NewGroup`, `BotSettings`, `GroupSettings` use a back chevron plus check (pushed pages). Settings, `Image`, `Computer` use X as a root close. | Defensible by modal vs push; the one wrinkle is NewGroup (D6). |
-| C10 | **Prominent bottom-left action** | Consistent: round light button for chat on Inbox message, Finance, Legal, Cap table, Data room, Routine, AgentPage; check on forms; plus on Home and Data room toolbar; play on Voice; lock on Computer. | Pass for position. The glyph meaning varies (chat, save, create, play, lock) but each is the single prominent action. No finding. |
-| C11 | **Glass count** | README: at most three glass groups. `PG-A-Thread` draws back, a two-icon capsule, the title pill, the more button and the composer (five glass objects). `PG-A-Computer` draws close, capsule, unlock, segmented control, status pill and key bar (six). `Home` draws account, a capsule and New (three). | Depends on whether title pills and composers count as "groups". If they do, Thread and Computer exceed the rule. Clarify the rule in README or trim the boards. |
-| C12 | **Prominent actions per view** | `PG-A-Thread` typing state: Allow on the approval card plus Send in the composer. README: one tinted prominent action per view. `DS-06` itself says one prominent per card. | Two prominent actions on one view whenever a card awaits approval and the user is typing. |
+### RED-R3-1 (Medium) Server is reachable from three places, and the inner Home lacks Team computer
+Boards: `PG-B-Settings`, `PG-B-Account`, `PG-B-SignUp`, `Split`, `PG-A-Home`.
+Problem (Seen): Server has a row in Settings ("Server, Default") and another in Account ("Server, Default"); the sign-in and sign-up screens add "Use a custom server". The Account notes say the row matches Settings, so two screens edit one value. Separately, Split's Pages lists Finance, Legal, Cap table, Data room, Artifacts but no Team computer, and its Personnel lists Finance agent and Legal agent but no Inbox agent or Mercury agent, while the phone Homes list Chief, Carta, Mercury, Inbox agent. A person who unfolds the Duo sees different agents and loses the computer entry.
+Fix: keep Server only in Settings (and the pre-sign-in link). Use one agent list and one Pages list, including Team computer, on every Home layout.
+
+### RED-R3-2 (Medium) An agent row leaves Personnel while it works
+Boards: `PH-Home`, `PG-A-Home`.
+Problem (Seen): Finance agent and Legal agent appear in Activity and are absent from Personnel in the same frame, and the "Pinned, group, unread" frame lists Finance agent in Personnel again. Someone looking for the Finance agent in Personnel will not find it while it works.
+Fix: keep Personnel as the full list and let Activity show a copy of rows that need attention or are running, or state in the catalog that the row moves and draw it deliberately.
+
+### RED-R3-3 (Medium) Four words for the same waiting state
+Boards: `PG-A-Home`, `PH-Thread`, `PH-Inbox`, `PG-A-ThreadStates`.
+Problem (Seen): Home Activity says "Needs you"; the thread approval card says "Needs approval"; the mail row for the same agent draft says "Draft ready"; another mail row says "Needs attention". The Finance payment in Activity ("Needs you") and a mail draft ("Needs approval" on the card, "Draft ready" on the row) are the same kind of event with three words.
+Fix: use "Needs approval" for anything that blocks on the person's tap (Activity and the thread card) and keep "Draft ready" only as the mail row chip. Define or remove "Needs attention".
+
+### RED-R3-4 (Medium) The Reply, Reply all, Forward choice is made twice
+Boards: `PG-A-InboxMessage` (carried), `PG-A-Compose`.
+Problem (Seen on Compose): the Compose title is a menu with Reply, Reply all, Forward. The message view already has the same menu on its reply button (carried). Changing type inside Compose also changes To, Subject and quoted text.
+Fix: keep the choice on the message view only. Show a plain title in Compose.
+
+### RED-R3-5 (Low) Cleanup keeps two Undo buttons and an unexplained menu item
+Boards: `PG-A-Cleanup`.
+Problem (Seen): the Done frame shows Undo and the History list shows Undo for the same run. "Skip inbox for future mail" is a separate bulk item with no line saying it applies to future mail only, and it sits in a menu that also holds nothing else.
+Fix: keep Undo on Done for the immediate case and drop it from History rows after the person leaves, or keep only History. Move Skip inbox into the row detail or add one line of description.
+
+### RED-R3-6 (Medium) Three prompts before the Inbox is fully usable
+Boards: `PH-Inbox`, `PG-A-Compose`, `PG-B-Settings`.
+Problem (Seen): "No mail account, Connect Gmail", then "Let the Inbox agent read your mail? Allow / Not now", then a "Changes to mail are off, Turn on" banner, repeated in Compose as "Sending is off for me@example.test, Turn on". After declining, a fourth banner "Inbox agent is off, Allow". That is connect, read consent, change consent and a decline recovery, with three different wordings.
+Fix: ask one question after Connect Gmail that covers read and change ("reads your mail, asks before sending"). Show the Changes off banner once on Inbox only; Compose just disables Send with a short reason.
+
+### RED-R3-7 (Low) Bell, See all and search have no distinct destination
+Boards: `PH-Home`, `PG-A-Home`, `PG-A-Activity` (carried), `PH-Inbox`, `Split`.
+Problem (Seen): the bell with a dot and "See all" both open Activity. Search appears on Home, in the Inbox toolbar and as "Search mail" on Split, but no board draws a search result.
+Fix: keep one of bell or See all. Add one search result frame and label Inbox search by scope.
+
+### RED-R3-8 (Low) "Bot" still appears in visible text
+Boards: `PG-B-Settings`, `PG-B-Account`, `PG-B-Consent`.
+Problem (Seen): Settings row "Archived bots" and its page; the AI data sharing line "Turn off and bots cannot reply"; the Account delete text "account, bots, conversations"; the Memory line "bots do not keep summaries". Everywhere else the word is "agent".
+Fix: say "agent" in all visible text and rename the Archived page.
+
+### RED-R3-9 (Medium) Two identities for the signed-in person
+Boards: `PH-Home`, `PG-A-Home`, `Split`, `PG-B-Settings`, `PG-B-Account`, `PG-A-Compose`.
+Problem (Seen): the Home avatar is "AM" on every Home and Split shows "AM Alex Morgan"; Settings and Account show "SR Sam Rivera" with sam@example.com; Compose sends from me@example.test. Split opens Settings from a gear; the phone Homes use the avatar.
+Fix: use one sample person and one sample mailbox on every board, and make the avatar the Settings entry on Split too.
+
+### RED-R3-10 (Medium) "Page" names a list on Home and an icon in the thread
+Boards: `PH-Home`, `PG-A-Home`, `PH-Thread`, `Split`.
+Problem (Seen): Home has a "PAGES" list (Finance, Legal, Cap table, Data room, Team computer, with Artifacts as a separate section on PG-A-Home and inside Pages on Split). The thread header has an icon that opens an agent page. Finance the page and Finance agent's page are different screens with the same word, and Artifacts is placed differently on two layouts.
+Fix: pick one noun for the Home list ("Apps") or call the thread icon "Summary". Put Artifacts in its own section on every layout.
+
+### RED-R3-11 (Low) The chat menu has three removal items, and Archive is ambiguous
+Boards: `PH-Thread`, `PG-A-Thread`, `PH-GroupThread` (carried), `PG-B-Settings`.
+Problem (Seen): Archive chat, Clear chat and Delete chat. The Archive toast says "Inbox agent chat archived. Find it in Archived", but Settings lists "Archived bots" holding Inbox agent. A person cannot tell whether the chat or the agent was archived. Clear and Delete both remove messages.
+Fix: remove Clear chat, or explain it; name the archive target the same in the toast and in Settings.
+
+### RED-R3-12 (Low) Split Inbox lacks the To do card and the Earlier section
+Boards: `Split`, `PH-Inbox`.
+Problem (Seen): PH-Inbox has a To do card and an Earlier section; Split Inbox has neither, though the same data exists. Split's Needs reply rows now match the phone rows.
+Fix: add the To do card and Earlier section to Split, or say in the catalog that the inner display omits them on purpose.
+
+### RED-R3-13 (Low) Space settings is a page for one field, and Home puts Inbox in two places
+Boards: `PG-B-Spaces`, `PH-Spaces`, `PG-A-Home`.
+Problem (Seen): Space settings holds only Name and, for non-primary spaces, Delete space, with a Save button. Separately, the Inbox row sits below Activity on the main Home but at the top when there is no Activity (Pinned, Could not load, Empty space frames), so the row changes place.
+Fix: rename or delete from the switcher row and add Space settings only when it holds another setting. Always place Inbox directly above Personnel.
+
+### RED-R3-14 (Medium) The computer page says Team twice and gives two routes into control
+Boards: `PH-Computer`, `PG-A-ThreadStates`, `PG-A-Computer` (not re-viewed).
+Problem (Seen): in "In control" and "Agent waiting" a "Team" chip sits above the title "Team computer", then the status pill ("You are driving", "Finance agent is waiting for you") and, for waiting, a banner repeat the state. In the thread, the inline "Computer block" has its own "Take control" button, so control can start from the thread or the computer page.
+Fix: drop the chip or the title word; fold the banner into the pill. Have the inline thread block open the computer page instead of taking control.
+
+### RED-R3-15 (Low) Model sheet copy is wrong for Local server and Subscription
+Boards: `PG-A-HomeNoModel`, `PG-A-ThreadStates`, `PG-B-Consent`.
+Problem (Seen): the sheet's sentence "Connecting sends your messages and attachments to Model A to run your agents" stays unchanged when Local server is selected (data goes to a machine on the network) and when Subscription is chosen. The same disclosure also appears as the Model A toggle in AI data sharing, the "Model A sharing is off" banner on Home and the same banner above the thread composer.
+Fix: vary the sentence by provider, and keep the sharing-off banner in one place (Home) with the thread showing only the composer disabled.
+
+### RED-R3-16 (Low) Carried: creation forms, Finance numbers, group sample name
+Boards: `PG-B-NewBot`, `PG-B-NewGroup`, `PG-B-NewSpace`, `PG-B-BotSettings`, `PG-B-Finance`, `PG-A-AgentPage`, `PG-A-Artifact`, `Desk`, `PG-A-Home`.
+Problem (carried, not re-viewed): New agent and New space are sheets while New group is a page; Title and Description overlap on an agent; Finance tiles use different label sets across boards; "Runway summary" is both an agent page and an artifact. New and Seen: `PG-A-Home` names a group "Launch team" while the group thread boards use "Funding room".
+Fix: make New group a sheet; keep one of Title and Description; use one tile component; use one group sample name.
+
+### RED-R3-17 (Medium) Two tinted or prominent actions in several frames
+Boards: `PG-A-HomeNoModel`, `PH-Inbox`, `PH-Computer`, `PG-A-Cleanup`.
+Problem (Seen): "After connecting" shows "Message Chief" and the New button both prominent. Inbox "Mail changes off" shows a prominent "Turn on" and the lit compose button. Computer frames show a glass segmented control, glass full-screen button, key row and bottom pill together with a prominent Take control. Cleanup shows Archive (prominent) and Unsubscribe as large equal pills. README allows one tinted action and three glass groups per view.
+Fix: draw one prominent action per frame (hide New while the connected banner shows; demote the compose highlight while a banner is open; make Unsubscribe secondary). Add to the README what counts as a glass group.
+
+### RED-R3-18 (Low) Cleanup entry differs by display
+Boards: `PG-A-Cleanup`, `PH-Inbox`, `Split`.
+Problem (Seen): PG-A-Cleanup's first frame shows Cleanup as its own button in the side strip; the PH-Inbox note and `Split` say Cleanup is inside the "..." menu. Same feature, two entry points by layout.
+Fix: use the More menu on every layout, or promote it everywhere.
+
+### RED-R3-19 (Low) Preferences hide under Account
+Boards: `PG-B-Account`, `PG-B-Settings`.
+Problem (Seen): Account holds Hide amounts, Language and Appearance next to Change password, Server and Sign out. Settings holds Models, Voice, Integrations, AI data sharing, Server, Archived bots. A person looking for Appearance opens Settings and does not find it.
+Fix: move Hide amounts, Language and Appearance to Settings; keep Account for identity, password and sign out.
 
 ## Counts
 
-Duplicate Paths: 6 findings (D1 to D6, plus the catalog items they extend)
-Duplicate Information: 9 findings
-Overlapping Features: 6 findings
-Hierarchy & IA: 8 findings
-Cross-board Consistency: 12 rows (11 findings; C10 is a pass)
+Round 2 items re-checked: 19. Resolved: 1 (R2-18, with a copy note). Mostly or partly resolved: 6 (R2-1, R2-5, R2-6, R2-8, R2-12, R2-14). Open: 10 (R2-2, R2-3, R2-4, R2-7, R2-9, R2-10, R2-11, R2-13, R2-17, R2-19). Carried: 2 (R2-15, R2-16). Open issues this round: 19 (RED-R3-1 to RED-R3-19) (9 Medium, 10 Low).
 
-## Unverified
-
-Row heights, radii and spacing are visual estimates, not measurements from the HTML. Rules boards (`PG-A-Rules`, `PG-B-Rules`) and tall DS boards were skimmed at low resolution and only the cited sections were read. No board for Compose, consent, global search, Account detail, offline or the connect-a-model banner exists, so those steps were not judged.
+Medium issues: RED-R3-1, 2, 3, 4, 6, 9, 10, 14, 17. Low issues: RED-R3-5, 7, 8, 11, 12, 13, 15, 16, 18, 19.

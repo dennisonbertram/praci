@@ -1,0 +1,80 @@
+{
+  "mode": "judge",
+  "images": [],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 25,
+      "costUsd": 0.060788,
+      "result": {
+        "scores": {
+          "A": {
+            "criteria": 4,
+            "simplicity": 5,
+            "consistency": 2,
+            "usability": 3,
+            "visual": 3,
+            "effort": 5
+          },
+          "B": {
+            "criteria": 5,
+            "simplicity": 4,
+            "consistency": 5,
+            "usability": 5,
+            "visual": 4,
+            "effort": 2
+          },
+          "C": {
+            "criteria": 4,
+            "simplicity": 3,
+            "consistency": 3,
+            "usability": 4,
+            "visual": 4,
+            "effort": 3
+          }
+        },
+        "winner": "B",
+        "graft": "From C: adopt its shortened/truncated copy for long names and failed-restore messages so B's toast reliably stays within 2 lines at 375px.",
+        "defense": "B is the only option that eliminates the collision rather than repositioning around the toaster's magic 88px offset: Undo lives inside the front-most persistent toast, so elementFromPoint returns Undo at 375/768/1440 regardless of future offset, width, or stacking changes, while also surviving navigation. It unifies all transient feedback in the existing Base UI/shadcn toaster, with Undo as primary, close-X as Dismiss, 44px coarse targets and 2-line clamp. Against A: it passes today only with ~12px clearance below the toast band, keeps two competing notice systems, depends on mt-auto placement in the scroll container, and loses Undo on navigation. Against C: the centered Snackbar is a familiar convention and visually clean, but it is still a second transient system separated by only ~8px (bottom-4 + 64px = 80px vs toasts at 88px) and requires building/maintaining a new component; if the toaster offset or height changes it breaks the same way. B's M effort and shared-toaster regression risk are real, mitigated by gating all changes behind action-bearing toasts and verifying non-action agent toasts are pixel/behavior unchanged."
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 25,
+      "costUsd": 0.020386,
+      "result": {
+        "scores": {
+          "A": {
+            "criteria": 4,
+            "simplicity": 3,
+            "consistency": 2,
+            "usability": 3,
+            "visual": 3,
+            "effort": 5
+          },
+          "B": {
+            "criteria": 5,
+            "simplicity": 5,
+            "consistency": 5,
+            "usability": 5,
+            "visual": 5,
+            "effort": 4
+          },
+          "C": {
+            "criteria": 4,
+            "simplicity": 2,
+            "consistency": 3,
+            "usability": 4,
+            "visual": 4,
+            "effort": 3
+          }
+        },
+        "winner": "B",
+        "graft": "Shorten the failed-restore copy (from C) so error states also fit cleanly within the 2-line clamp at 375px.",
+        "defense": "B solves the root cause of the collision: having two uncoordinated notification systems competing for the bottom of the viewport. By folding Undo into the existing Base UI toaster as a persistent action toast sorted to the front of the stack, layout collisions become impossible by construction rather than avoided by fragile pixel math, and Undo gains navigation persistence. Against A: A leaves the bespoke page-column notice in place and relies on the toaster's magic 88px offset, leaving only ~12px of breathing room at 375px and breaking whenever toast positioning changes. Against C: C introduces a second global transient primitive (Snackbar) into the design system and still relies on hardcoded vertical bands (bottom-4 + 64px max height vs. 88px toast offset) plus manual table spacers, whereas B achieves the same primary Undo + icon-X Dismiss ergonomics within the single existing toaster."
+      }
+    }
+  ]
+}

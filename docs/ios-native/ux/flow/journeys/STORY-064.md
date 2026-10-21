@@ -1,66 +1,67 @@
-# STORY-064 flow critique: a full triage session on the inner display
+# STORY-064 flow critique (round 3): a full triage session on the inner display
 
-Target: planned native SwiftUI iPhone app (epic #427, phases #418 and #419). Judged against `Inner.dc.html`, `Split.dc.html` and the "Inbox" and "Inbox message" rule cards in `PG-A-Rules.dc.html` (screenshots `Inner.png`, `Split.png`, `PG-A-Rules.png`). The boards are static; no step was clicked.
+Previous round: round 2 verdict acceptable (open message, reply composer, Archive result, Inbox zero and Cleanup had no inner-display board).
+
+Target: planned native SwiftUI iPhone app (epic #427, phases #418 and #419). Persona: Kenji Watanabe, iPhone Duo opened as a book. Re-traced on the current boards: `Inner-Message.dc.html` (now six frames: Message selected, Reply inner flat, Reply half-folded, After Archive, Inbox zero, Cleanup), `Inner.dc.html`, `Split.dc.html` (frames Inbox, Inbox More menu, Finance, Ask Finance agent opened), `PG-A-InboxMessage.dc.html`, `PG-A-Compose.dc.html`, `PG-A-Cleanup.dc.html`, `PH-Inbox.dc.html`, `PG-A-Home.dc.html`. All screenshots opened. Boards are static.
+
+Round 2 issues now resolved on the boards: R2-1 (Reply inner flat and half-folded frames), R2-2 (After Archive with "Archived, Undo", next row selected, Inbox zero), R2-3 (Cleanup in the inner detail pane, More menu with Cleanup in `Split.dc.html`), R2-4 (Junk chip is neutral), R2-5 (the boards show PAGES, not folders).
 
 ## 1. Friction scorecard
 
 | Measure | Result |
 |---|---|
-| Steps as designed | 24 |
-| Story's Ideal path | 24 (the story says the steps are the full session, so the ideal equals the design) |
-| Steps that need no screen decision from the user | 3 (step 4 "read", step 23 "pull to refresh", step 24 "list is empty") |
-| Steps not needed to reach Inbox zero | 14-16 (Filter and Important only), 18 (open the agent, then abandon it for manual Compose) |
-| Needless decisions | Step 15 hides "Read mail" and step 16 turns on "Important only"; both are view settings that do not move the list toward empty. Step 18 asks the agent, then step 19 writes the mail by hand: two routes for one goal. |
-| Re-entry of known data | Steps 19-20: the payroll provider recipient, subject and body are typed by hand although the open message (Acme Payroll) already carries the sender and context. Step 5 reply is prefilled, so the app already does this once. |
-| Dead ends / undefined outcomes | Last row archived leaves the detail pane with no drawn state; selection after Archive is not defined (step 7); "Inbox zero" in the two-pane layout is not drawn (step 24); a message and the agent thread both claim the detail pane (steps 9, 18). |
-| Steps with no board | 5-6 (reply composer), 19-21 (compose), 7 and 13 (Archive control in the strip: `Split.png` shows only Hide amounts, Star, Filter, Compose, and `Inner.png` shows only a document and a checklist icon), 2 (folders list), 4 (message body in the detail pane), 24 (Inbox zero), 16 (what "Important only" does; it is not in the `Split.png` strip at all, which shows an eye, star, filter and compose icon). |
+| Steps as written | 24 |
+| Ideal on current boards | 19 |
+| Extra steps | 5, all chosen by the story: 14-16 (Filter and hide read mail move nothing toward empty), 18 (agent opened on the payroll mail, then abandoned), 23 (refresh with nothing new). |
+| Needless decisions | Step 18 vs 19: agent or blank Compose for a reply. Reply is prefilled and drawn (`Inner-Message.png`, Reply inner flat). |
+| Re-entry of known data | Steps 19-20 retype recipient and subject. Reply already holds both. |
+| Dead ends | None on the boards. Last-row archive ends at Inbox zero (`Inner-Message.png`). Cleanup on the inner display has no way back except tapping a list row (low, R3-4). |
+| Steps with no board | 14 Filter popover (button drawn, popover not), 19 Compose while a message is open (strip has no Compose in that state), 22 swipe-to-archive on the inner display (phone only in `PH-Inbox.png`; Cleanup covers the same goal), 6 result after Send (pane state after "sent"). |
+| Steps with a board | 1-4 (`Split.png`, `Inner-Message.png`), 5-6 (Reply frames), 7 and 13 (After Archive), 8-12 (`Inner.png`), 16 and 22 (More menu, Cleanup frame), 17, 24 (Inbox zero). |
 
-Honest note: the session is long because it has 6 messages and 4 kinds of action. The count of 24 is mostly one tap per selection plus one per action, which is the minimum for a list-and-detail layout.
+Taps are one per row plus one per action, the minimum for list and detail.
 
 ## 2. Take-away pass per screen
 
-**Inbox list (`Split.png`, `Inner.png` left third).**
-- Two counts for one set: the "Needs reply 3" header and the list's "Inbox 42" row in the sidebar. These count different things (42 total, 3 needing a reply), so keep both, but the section count "Other mail today 24" adds nothing a user acts on; it could go.
-- The per-row chips "Needs attention", "Newsletter", "Junk" on `Split.png` repeat what the section and sender already tell the user for Example Weekly and Deals Daily. Keep "Needs attention" (it is the only signal on Acme Payroll), drop "Newsletter" and "Junk" chips on rows the user will swipe away.
-- The search field "Search mail" sits beside the title while the sidebar also has "Search". Two search fields on one screen; the story never uses either.
-- The unread dot plus bold sender both mark unread (the rule card says "filled dot plus semibold"). One signal is enough.
-- Prominent action: the single filled circle at the bottom right ("Ask Inbox agent" chat bubble) is the only light-filled button, so there is exactly one. It is the right choice for this story only if the agent is the main route; for triage the main action is Archive, which is not drawn.
-
-**Inbox beside agent thread (`Inner.png`).**
-- Exactly one prominent action: "Send" on the approval card (light fill), with "Save" as secondary. That is correct.
-- The "Inbox agent" pill top left repeats the composer placeholder "Message Inbox agent". Remove the placeholder text or the pill, not both roles; the pill names the pane, the placeholder is the input hint, so this is a minor repeat only.
-- "Needs approval" and "I have not sent it" both say the draft is unsent. State it once; the badge is enough.
-- The strip (document, checklist icons) has no label tying it to Archive, Reply or Compose. Not a removal issue but a missing control.
-
-**Message pane, reply composer, compose.** No board; nothing to take away. Treated as findings above.
+- Message selected (`Inner-Message.png`): strip is Archive and Reply, More, agent circle. Nothing to remove. Missing the "Draft ready / Review draft" banner that the same message has on the outer display (R3-1).
+- Reply inner flat and half-folded: close, To, Subject, body, one prominent send arrow. Nothing to remove; From and Cc/Bcc are hidden. Pass.
+- After Archive: next message open, snackbar "Archived, Undo". The Needs reply count and the selected row each appear once. Pass.
+- Inbox zero: check, title, "Synced 9:41 AM" once. Filter and Compose return in the strip. Pass.
+- Cleanup (inner): the floating "Cleanup" pill above "Archive 101 emails" repeats the page title and the More menu item that opened it (R3-3). Remove.
+- Split Inbox: one search field, no repeated facts. "Other mail today 24" in `Inner.png` vs "Today" in `Inner-Message.png` and `Split.png` names the same section two ways (R3-5).
+- Prominent action count: agent circle (Message selected, Inbox zero, After Archive), send arrow (Reply), "Archive 101 emails" (Cleanup), Send (`Inner.png`). Exactly one each.
 
 ## 3. Simpler version
 
-Goal and control stay the same: nothing is sent or archived without a tap.
+1. Open Inbox; first Needs reply message is open with its "Review draft" banner when a draft exists.
+2. Review draft, Send (or Reply, type, Send). Next row opens.
+3. Jordan Lee: agent circle, one line, Send on the card.
+4. Northwind Support: Archive; Undo snackbar; next row opens.
+5. Acme Payroll: Reply, type, Send.
+6. More, Cleanup, Archive 101 emails.
+7. Inbox zero.
 
-1. Home: tap the Inbox row (step 2 folds into step 1; no change in count, but it should open the list with the first Needs reply row already selected, which removes step 3).
-2. Message opens automatically; read it (step 4 stays as a view, not a step).
-3. Reply: tap "Reply", type, tap Send. Send returns to the next message in the list (define selection after Archive or Send as "next row down").
-4. Archive: tap "Archive" in the strip; the next row opens.
-5. Delegate: on Jordan Lee, tap "Ask Inbox agent"; the thread already has the message as context, so the user sends one line and taps Send on the card.
-6. Payroll message: tap "Ask Inbox agent" and say "email the payroll provider about this"; the card holds the prefilled draft. This replaces steps 18-21 (abandon, Compose, three typed fields, Send) with one prompt, one Send. Manual Compose stays one tap in the strip for new mail.
-7. Newsletters: swipe or multi-select Archive (step 22 stays).
-8. Remove the Filter and Important only detour (steps 14-16) from this story; they are view settings, not triage.
-9. Drop step 23 (pull to refresh); the empty list is reached by archiving.
-10. "Inbox zero" appears in the detail pane as the same empty state as the list.
-
-Result: about 19 steps instead of 24 (removed: 3, 14, 15, 16, 19-21 replaced by 2 agent steps, 23). Needed new boards: Archive/Reply control, reply composer, Inbox zero in two panes.
+About 19 steps, no blank Compose, no Filter detour.
 
 ## 4. Beauty check against the iOS rules
 
-- Glass only on floating navigation: `Inner.png` and `Split.png` show the strip, the "Inbox agent" pill, the composer and the "Ask Inbox agent" circle as floating glass, with list rows and the approval card as solid content. This follows the rule. Pass.
-- At most three glass groups: `Inner.png` has the agent pill, the strip, the composer plus its "more" circle: three. At the limit. `Split.png` has the sidebar panel, the strip and the bottom-right circle: three. Note that the sidebar panel in `Split.png` is large; if it counts as glass it is a content-sized glass surface, which stretches the "floating navigation" rule.
-- One tinted prominent action: `Inner.png` has one (Send); `Split.png` has one (the light chat circle). Pass.
-- Concentric corners: the approval card and its buttons in `Inner.png` use nested radii that look concentric; the selected row fill in the left pane has a smaller radius than the card, which is acceptable because they are not nested. I could not measure radii from the screenshot, so this is a visual judgment only.
-- Consistency: the unread treatment differs between `Inner.png` (dot, bold sender) and the rule card text, which is consistent; the row chips only appear in `Split.png`. Type and spacing look consistent between the two boards. The fold zone (x 435 to 455) is empty in `Inner.png`: pass.
+- Glass only on floating controls: rows, message body, reply form, Cleanup list are solid. Pass.
+- At most three glass groups: Message selected has strip group, More, agent circle (three). After Archive adds the snackbar capsule as a fourth floating glass element (R3-2).
+- Exactly one prominent action: pass in every frame.
+- Concentric corners: Reply half-folded card and its send arrow nest correctly; judged visually.
+- Bot avatars and accent: Inbox agent blue pill, Finance orange wedge, shipped shapes. "Needs approval" and "1 needs you" use the status yellow only. Pass.
+- Fold zone x 435 to 455 empty in all inner frames. Pass.
 
 ## 5. Verdict: acceptable
 
-Actual equals ideal on step count (24 and 24), so the journey is not convoluted. It is acceptable rather than minimal because of one needless detour (Filter and Important only, steps 14-16), a manual compose that re-types data the agent could draft (steps 18-21), and a large amount of unboarded surface (reply composer, compose, Archive control, Inbox zero) that the journey depends on. These are missing designs more than redundant ones.
+The journey is drawn end to end on the inner display. What remains are missing small states and one inconsistency, not design drift. Not minimal because the story's own 5 extra steps and the missing draft banner keep the fastest path (Review draft, Send) off the inner display.
 
-Top proposal: replace steps 18-21 (open agent, abandon, Compose, three typed fields) with one agent prompt that returns a prefilled approval card, and draw the Archive and Reply controls and the two-pane Inbox zero state.
+## ISSUES
+
+- STORY-064-R3-1 (medium): Opening Ana Ruiz's message (row chip "Draft ready") shows no draft on the inner display. Steps 3-6. `Inner-Message.dc.html` "Message selected" (outer `PG-A-InboxMessage.dc.html` "Message" draws "Draft ready, Reply to Ana Ruiz, Review draft"). Fix: add the same banner above the body in the inner detail pane, "Review draft" as the only light pill; the agent circle stays dark in that frame so there is still one prominent action.
+- STORY-064-R3-2 (low): After Archive adds a fourth floating glass element (snackbar capsule) beside the strip group, More and the agent circle. Step 7. `Inner-Message.dc.html` "After Archive". Fix: draw the "Archived, Undo" bar as a solid card at the bottom of the detail pane, or keep glass and drop the strip group while it shows.
+- STORY-064-R3-3 (low): A "Cleanup" pill floats above "Archive 101 emails" in the inner Cleanup frame; it duplicates the title and the menu item. Step 22. `Inner-Message.dc.html` "Cleanup". Fix: remove the pill.
+- STORY-064-R3-4 (low): Inner Cleanup has no back, History or Unsubscribe; the outer display has all three. Step 22. `Inner-Message.dc.html` "Cleanup" vs `PG-A-Cleanup.dc.html`. Fix: add a close control in the pane's top left (like Reply's X), Unsubscribe beside "Archive 101 emails" once a newsletter sender is ticked, and History in More.
+- STORY-064-R3-5 (low): The Inbox list names its second section "Other mail today 24" in `Inner.dc.html` and "Today" in `Inner-Message.dc.html`, `Split.dc.html`, `PH-Inbox.dc.html`. Fix: use "Today" everywhere (the count is not acted on); also `Inner.dc.html` marks Needs reply rows with unread dots but no "Draft ready" chip, unlike the other boards.
+- STORY-064-R3-6 (low): No inner board for the Filter popover (step 14) or for Compose while a message is open; the message-selected strip has no Compose or Filter (step 19). `Inner-Message.dc.html`, `Split.dc.html`. Fix: draw the Filter popover under the button on `Split.dc.html`; for new mail while reading, put Compose in More on the message-selected strip.
+- STORY-064-R3-7 (low, story text): Steps 14-16, 18-21 in the catalog still route the payroll reply through the agent and blank Compose. Fix: replace with "Tap Reply; recipient and subject are prefilled; type; Send", keep Compose for new mail.

@@ -37,6 +37,8 @@ type ContactToolDeps = {
   prisma: Pick<PrismaClient, "contact" | "capTableSnapshot">;
   /** From the run (the bot owner), never from model input. */
   scope: { spaceId: string; userId: string };
+  /** The agent running the tool, from the run, never from model input. */
+  botId?: string;
 };
 
 export async function contactToolFromTool(
@@ -58,10 +60,19 @@ export async function contactToolFromTool(
       const { id: _id, ...rest } = args;
       const input = ContactSaveInputSchema.safeParse(rest);
       if (!input.success) return { error: input.error.issues.map((i) => i.message).join("; ") };
-      const { contact, created } = await addContactIfNew(deps.prisma, deps.scope, input.data);
+      const { contact, created } = await addContactIfNew(
+        deps.prisma,
+        deps.scope,
+        input.data,
+        deps.botId,
+      );
       return created
         ? { contact }
-        : { contact, alreadySaved: true, note: "Already saved; nothing was changed." };
+        : {
+            contact,
+            alreadySaved: true,
+            note: `Already saved as ${contact.kind}; nothing was changed. Use contacts_save to change the kind.`,
+          };
     }
     if (name === "cap_table_read") {
       // What the Cap Table page shows, so the agent can answer from it without Carta.
