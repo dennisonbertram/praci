@@ -80,6 +80,29 @@ func parsesStrictModernAndLegacyCapabilities() async throws {
 }
 
 @Test
+func refreshCapabilitiesBypassesCachedAvailability() async throws {
+  let transport = TestTransport(responses: [
+    try jsonResponse([
+      "passwordAuth": false,
+      "passwordReset": false,
+      "resetUrl": NSNull(),
+      "sso": ["name": "Example", "availability": "checking"],
+    ]),
+    try jsonResponse([
+      "passwordAuth": false,
+      "passwordReset": false,
+      "resetUrl": NSNull(),
+      "sso": ["name": "Example", "availability": "available"],
+    ]),
+  ])
+  let client = AuthClient(
+    endpoint: ServerEndpoint.defaultURL, storage: TestStorage(), transport: transport)
+  #expect(try await client.capabilities().sso?.availability == .checking)
+  #expect(try await client.capabilities(refresh: true).sso?.availability == .available)
+  #expect((await transport.calls).count == 2)
+}
+
+@Test
 func malformedModernCapabilitiesDoNotDowngradeToLegacy() async throws {
   let transport = TestTransport(responses: [
     try jsonResponse([
@@ -89,6 +112,36 @@ func malformedModernCapabilitiesDoNotDowngradeToLegacy() async throws {
   let client = AuthClient(
     endpoint: ServerEndpoint.defaultURL, storage: TestStorage(), transport: transport)
   await #expect(throws: AuthClientError.invalidCapabilities) { try await client.capabilities() }
+}
+
+@Test
+func rejectsIntegerAndNullCapabilityBooleans() async throws {
+  let malformedCapabilities: [[String: Any]] = [
+    [
+      "passwordAuth": 1,
+      "passwordReset": false,
+      "resetUrl": NSNull(),
+      "sso": NSNull(),
+    ],
+    [
+      "passwordAuth": true,
+      "passwordReset": false,
+      "resetUrl": NSNull(),
+      "sso": NSNull(),
+      "billing": NSNull(),
+    ],
+    ["passwordReset": 1, "resetUrl": NSNull()],
+  ]
+  for capabilities in malformedCapabilities {
+    let client = AuthClient(
+      endpoint: ServerEndpoint.defaultURL,
+      storage: TestStorage(),
+      transport: TestTransport(responses: [try jsonResponse(capabilities)])
+    )
+    await #expect(throws: AuthClientError.invalidCapabilities) {
+      try await client.capabilities()
+    }
+  }
 }
 
 @Test
@@ -142,6 +195,24 @@ func extractsJSONAndCookieSessionTokensAndRequiresExplicitSignupNull() async thr
       .signUp, email: "ada@example.test", password: "password", name: "Ada")
       == .verificationRequired)
   #expect(signupStorage.session == nil)
+}
+
+@Test
+func malformedCookieHeaderIsTreatedAsMissingSession() async throws {
+  let storage = TestStorage()
+  let transport = TestTransport(responses: [
+    try jsonResponse([
+      "passwordAuth": true, "passwordReset": false, "resetUrl": NSNull(), "sso": NSNull(),
+    ]),
+    HTTPResponse(statusCode: 200, headers: ["set-cookie": ";"], body: Data("{}".utf8)),
+  ])
+  let client = AuthClient(
+    endpoint: ServerEndpoint.defaultURL, storage: storage, transport: transport)
+  await #expect(throws: AuthClientError.missingSession) {
+    try await client.authenticate(
+      .signIn, email: "ada@example.test", password: "password", name: "")
+  }
+  #expect(storage.session == nil)
 }
 
 @Test
@@ -261,7 +332,7 @@ func storageFailureHidesNewTokenAndTransientRestorePreservesStoredToken() async 
       .signIn, email: "ada@example.test", password: "password", name: "")
   }
   #expect(!(await client.snapshot()).isSignedIn)
-  #expect((await client.snapshot()).sessionEnded)
+  #expect(!(await client.snapshot()).sessionEnded)
 
   let endpoint = ServerEndpoint.defaultURL
   let stored = StoredSession(endpoint: endpoint, token: "still-valid")
@@ -295,6 +366,32 @@ func restore401InvalidatesAndServerSwitchDoesNotSendOldBearer() async throws {
   #expect(calls[0].headers["origin"] == "rakazo://")
   #expect(calls[0].headers["authorization"] == nil)
   #expect((await switchClient.snapshot()).endpoint.absoluteString == "https://new.example.test")
+  #expect(switchStorage.session == nil)
+  #expect(!(await switchClient.snapshot()).sessionEnded)
+}
+
+@Test
+func changeServerRejectsIntegerHealthBoolean() async throws {
+  let client = AuthClient(
+    endpoint: ServerEndpoint.defaultURL,
+    storage: TestStorage(),
+    transport: TestTransport(responses: [try jsonResponse(["json": ["ok": 1]])])
+  )
+  await #expect(throws: AuthClientError.serverNotPraci) {
+    try await client.changeServer(to: URL(string: "https://new.example.test")!)
+  }
+  #expect((await client.snapshot()).endpoint == ServerEndpoint.defaultURL)
+}
+
+@Test
+func signOutClearsStoredSessionBeforeRestore() async throws {
+  let endpoint = ServerEndpoint.defaultURL
+  let storage = TestStorage(session: StoredSession(endpoint: endpoint, token: "stored-token"))
+  let client = AuthClient(
+    endpoint: endpoint, storage: storage, transport: TestTransport(responses: []))
+  try await client.signOut()
+  #expect(storage.session == nil)
+  #expect(!(await client.snapshot()).sessionEnded)
 }
 
 @Test
@@ -348,6 +445,25 @@ func ssoUsesProxyStateAndOnlyCommitsVerifiedCallback() async throws {
     string: "rakazo://sign-in?cookie=better-auth.session_token%3Dsso-token%3B%20Path%3D%2F")!
   try await client.completeSSO(callback: callback, challenge: challenge)
   #expect(storage.session?.token == "sso-token")
+}
+
+@Test
+func beginSSORejectsCapabilitiesFromAnOlderGeneration() async throws {
+  let transport = TestTransport(responses: [nil])
+  let client = AuthClient(
+    endpoint: ServerEndpoint.defaultURL, storage: TestStorage(), transport: transport)
+  let beginSSO = Task { try await client.beginSSO() }
+  await transport.waitForPending()
+  try await client.signOut()
+  let response = try jsonResponse([
+    "passwordAuth": false,
+    "passwordReset": false,
+    "resetUrl": NSNull(),
+    "sso": ["name": "Example", "availability": "available"],
+  ])
+  await transport.release(response)
+  await #expect(throws: AuthClientError.staleRequest) { try await beginSSO.value }
+  #expect((await transport.calls).count == 1)
 }
 
 @Test
@@ -426,6 +542,43 @@ func changingServerInvalidatesAnOutstandingSSOChallenge() async throws {
     )
   }
   #expect(storage.session == nil)
+}
+
+@Test
+func passwordResetAcceptsTrustedLocalHTTPButRejectsPublicHTTP() async throws {
+  let localResetURL = "http://192.168.1.20:3100/reset"
+  let localTransport = TestTransport(responses: [
+    try jsonResponse([
+      "passwordAuth": true,
+      "passwordReset": true,
+      "resetUrl": localResetURL,
+      "sso": NSNull(),
+    ]),
+    HTTPResponse(statusCode: 200),
+  ])
+  let localClient = AuthClient(
+    endpoint: ServerEndpoint.defaultURL, storage: TestStorage(), transport: localTransport)
+  try await localClient.requestPasswordReset(email: "ada@example.test")
+  let localCalls = await localTransport.calls
+  let requestBody = try #require(localCalls.last?.body)
+  let requestObject = try #require(
+    JSONSerialization.jsonObject(with: requestBody) as? [String: Any])
+  #expect(requestObject["redirectTo"] as? String == localResetURL)
+
+  let publicTransport = TestTransport(responses: [
+    try jsonResponse([
+      "passwordAuth": true,
+      "passwordReset": true,
+      "resetUrl": "http://public.example/reset",
+      "sso": NSNull(),
+    ])
+  ])
+  let publicClient = AuthClient(
+    endpoint: ServerEndpoint.defaultURL, storage: TestStorage(), transport: publicTransport)
+  await #expect(throws: AuthClientError.passwordResetUnavailable) {
+    try await publicClient.requestPasswordReset(email: "ada@example.test")
+  }
+  #expect((await publicTransport.calls).count == 1)
 }
 
 private final class TestStorage: SessionStorage, @unchecked Sendable {

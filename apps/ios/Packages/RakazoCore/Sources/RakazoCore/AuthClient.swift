@@ -1,4 +1,5 @@
 import Foundation
+import CoreFoundation
 
 public struct StoredSession: Codable, Sendable, Equatable {
   public let endpoint: URL
@@ -148,7 +149,6 @@ public enum AuthClientError: LocalizedError, Sendable, Equatable {
 
 public actor AuthClient {
   private static let authResponseLimit = 64 * 1024
-  private static let rpcResponseLimit = 16 * 1024 * 1024
   private static let originHeader = "rakazo://"
 
   private let storage: any SessionStorage
@@ -186,7 +186,7 @@ public actor AuthClient {
     do {
       stored = try storage.load()
     } catch {
-      invalidateInMemory()
+      invalidateInMemory(sessionEnded: false)
       throw AuthClientError.storageFailure
     }
     guard generation == operationGeneration, endpoint == currentEndpoint else {
@@ -240,10 +240,10 @@ public actor AuthClient {
     }
   }
 
-  public func capabilities() async throws -> AuthCapabilities {
+  public func capabilities(refresh: Bool = false) async throws -> AuthCapabilities {
     let currentEndpoint = try validatedEndpoint()
     let operationGeneration = generation
-    if let cachedCapabilities {
+    if !refresh, let cachedCapabilities {
       return cachedCapabilities
     }
     let response: HTTPResponse
@@ -395,12 +395,11 @@ public actor AuthClient {
       throw AuthClientError.serverNotPraci
     }
 
-    let hadSession = token != nil
     token = nil
     activeSSOAttempt = nil
     generation &+= 1
-    sessionEnded = hadSession
-    if hadSession, !wipeStoredSession(endpoint: oldEndpoint) {
+    sessionEnded = false
+    if !wipeStoredSession(endpoint: oldEndpoint) {
       throw AuthClientError.storageFailure
     }
     self.endpoint = newEndpoint
@@ -414,8 +413,8 @@ public actor AuthClient {
     token = nil
     activeSSOAttempt = nil
     generation &+= 1
-    sessionEnded = true
-    let localClearSucceeded = oldToken == nil || wipeStoredSession(endpoint: oldEndpoint)
+    sessionEnded = false
+    let localClearSucceeded = wipeStoredSession(endpoint: oldEndpoint)
     if let oldToken {
       _ = try? await send(
         path: "/api/auth/sign-out",
@@ -434,14 +433,16 @@ public actor AuthClient {
 
   public func beginSSO() async throws -> SSOChallenge {
     let currentEndpoint = try validatedEndpoint()
+    let operationGeneration = generation
     let capabilities = try await capabilities()
-    guard endpoint == currentEndpoint else { throw AuthClientError.staleRequest }
+    guard endpoint == currentEndpoint, generation == operationGeneration else {
+      throw AuthClientError.staleRequest
+    }
     guard let provider = capabilities.sso, provider.availability == .available else {
       throw AuthClientError.ssoUnavailable
     }
     guard activeSSOAttempt == nil else { throw AuthClientError.ssoAlreadyInProgress }
     let attemptID = UUID()
-    let operationGeneration = generation
     activeSSOAttempt = attemptID
     do {
       let response = try await sendJSON(
@@ -650,10 +651,6 @@ public actor AuthClient {
     return url
   }
 
-  private func sendHealthIsValid(_ response: HTTPResponse) -> Bool {
-    response.statusCode >= 200 && response.statusCode < 300 && healthIsPraci(response.body)
-  }
-
   private func adopt(token: String, endpoint: URL, operationGeneration: UInt64) throws {
     guard self.endpoint == endpoint, generation == operationGeneration else {
       throw AuthClientError.staleRequest
@@ -666,7 +663,7 @@ public actor AuthClient {
     } catch {
       self.token = nil
       generation &+= 1
-      sessionEnded = true
+      sessionEnded = false
       _ = wipeStoredSession(endpoint: endpoint)
       throw AuthClientError.storageFailure
     }
@@ -681,11 +678,11 @@ public actor AuthClient {
     }
   }
 
-  private func invalidateInMemory() {
+  private func invalidateInMemory(sessionEnded: Bool = true) {
     token = nil
     activeSSOAttempt = nil
     generation &+= 1
-    sessionEnded = true
+    self.sessionEnded = sessionEnded
   }
 
   private func wipeStoredSession(endpoint: URL) -> Bool {
@@ -710,19 +707,22 @@ public actor AuthClient {
 private func parseCapabilities(_ object: [String: Any]) throws -> AuthCapabilities {
   let modern = object["passwordAuth"] != nil || object["sso"] != nil
   if modern {
-    guard object["passwordAuth"] is Bool,
-      object["passwordReset"] is Bool,
+    guard let passwordAuth = strictJSONBoolean(object["passwordAuth"]),
+      let passwordReset = strictJSONBoolean(object["passwordReset"]),
       object["sso"] != nil,
       object["resetUrl"] != nil
     else { throw AuthClientError.invalidCapabilities }
-    let passwordAuth = object["passwordAuth"] as! Bool
-    let passwordReset = object["passwordReset"] as! Bool
     let resetURL = try parseOptionalURL(object["resetUrl"])
     let sso = try parseSSO(object["sso"] as Any)
-    if object["billing"] != nil, !(object["billing"] is Bool) && !(object["billing"] is NSNull) {
-      throw AuthClientError.invalidCapabilities
+    let billing: Bool?
+    if object.keys.contains("billing") {
+      guard let value = strictJSONBoolean(object["billing"]) else {
+        throw AuthClientError.invalidCapabilities
+      }
+      billing = value
+    } else {
+      billing = nil
     }
-    let billing = object["billing"] as? Bool
     return AuthCapabilities(
       passwordAuth: passwordAuth,
       passwordReset: passwordReset,
@@ -734,19 +734,25 @@ private func parseCapabilities(_ object: [String: Any]) throws -> AuthCapabiliti
 
   let allowed = Set(["passwordReset", "resetUrl", "billing"])
   guard Set(object.keys).isSubset(of: allowed),
-    object["passwordReset"] is Bool,
+    let passwordReset = strictJSONBoolean(object["passwordReset"]),
     object["resetUrl"] != nil
   else { throw AuthClientError.invalidCapabilities }
   let resetURL = try parseOptionalURL(object["resetUrl"])
-  guard object["billing"] == nil || object["billing"] is Bool else {
-    throw AuthClientError.invalidCapabilities
+  let billing: Bool?
+  if object.keys.contains("billing") {
+    guard let value = strictJSONBoolean(object["billing"]) else {
+      throw AuthClientError.invalidCapabilities
+    }
+    billing = value
+  } else {
+    billing = nil
   }
   return AuthCapabilities(
     passwordAuth: true,
-    passwordReset: object["passwordReset"] as! Bool,
+    passwordReset: passwordReset,
     resetURL: resetURL,
     sso: nil,
-    billing: object["billing"] as? Bool
+    billing: billing
   )
 }
 
@@ -774,6 +780,13 @@ private func jsonObject(_ data: Data) -> [String: Any]? {
   (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
 }
 
+private func strictJSONBoolean(_ value: Any?) -> Bool? {
+  guard let number = value as? NSNumber, CFGetTypeID(number) == CFBooleanGetTypeID() else {
+    return nil
+  }
+  return number.boolValue
+}
+
 private func hasSessionUser(_ data: Data) -> Bool {
   guard let object = jsonObject(data),
     let user = object["user"] as? [String: Any],
@@ -786,7 +799,7 @@ private func healthIsPraci(_ data: Data) -> Bool {
   guard let object = jsonObject(data),
     let json = object["json"] as? [String: Any]
   else { return false }
-  return json["ok"] as? Bool == true
+  return strictJSONBoolean(json["ok"]) == true
 }
 
 private func tokenFromAuthResponse(response: HTTPResponse, body: [String: Any]?) -> String? {
@@ -803,9 +816,11 @@ private func tokenFromAuthResponse(response: HTTPResponse, body: [String: Any]?)
 private func cookieValue(_ header: String?, name: String) -> String? {
   guard let header else { return nil }
   let prefix = "\(name)="
-  for segment in header.split(separator: ",", omittingEmptySubsequences: true) {
-    let pair = segment.split(separator: ";", maxSplits: 1, omittingEmptySubsequences: true)[0]
-      .trimmingCharacters(in: .whitespacesAndNewlines)
+  for segment in header.split(separator: ",", omittingEmptySubsequences: false) {
+    guard let first = segment.split(separator: ";", maxSplits: 1, omittingEmptySubsequences: false)
+      .first
+    else { continue }
+    let pair = first.trimmingCharacters(in: .whitespacesAndNewlines)
     guard pair.hasPrefix(prefix) else { continue }
     let encoded = String(pair.dropFirst(prefix.count))
     guard let decoded = encoded.removingPercentEncoding else { return nil }
@@ -829,8 +844,7 @@ private func isValidCallback(_ callback: URL) -> Bool {
 }
 
 private func isTrustedResetURL(_ url: URL) -> Bool {
-  guard url.scheme?.lowercased() == "https",
-    url.user == nil,
+  guard url.user == nil,
     url.password == nil,
     let host = url.host, !host.isEmpty,
     (try? ServerEndpoint.normalize(url.absoluteString)) != nil

@@ -2,7 +2,14 @@
 
 What a native SwiftUI client for Praci needs, gathered from the current code (API, contracts, Expo app) and Apple's iOS 27.1 and iPhone Duo documentation. The design reference is [docs/design-system/ios](../design-system/ios/README.md).
 
-Status: the phase 0 app/package foundation and phase 1 OpenAPI bridge are implemented. The remaining native work is tracked in [plan.md](plan.md). Items marked *(inference)* were read from code but not run.
+Status: code for phases 0–2 is present. The contract exporter retains all API
+contracts, while this increment compiles only the `rpc_health` Swift client
+operation. Portable authentication and the SwiftUI sign-in/server flows are
+implemented, but platform Keychain, SwiftUI, `ASWebAuthenticationSession`, and
+simulator acceptance remain unverified. Issues #415–#426 remain held; later
+native work is tracked in [plan.md](plan.md). Portable package tests passed
+with `swift test --package-path apps/ios/Packages/RakazoCore` and
+`swift test --package-path apps/ios/Packages/RakazoAPI`.
 
 ## 1. Recommendation
 
@@ -30,7 +37,11 @@ Cost of going native: losing over-the-air JS updates (`eas update`), a second cl
 
 - The contract is `appContract` in `packages/contracts/src/rpc.ts`, built with `@orpc/contract` and zod 4 schemas in sibling files (`domain.ts`, `events.ts`, `inbox.ts`, `finance.ts`, `legal.ts`, `carta.ts`, `data-room-api.ts`, `notification.ts`, `attachments.ts`, and others).
 - `packages/contracts/src/openapi.ts` exports `appContract` to OpenAPI 3.1, and its generated document lives at `apps/ios/Packages/RakazoAPI/Sources/RakazoAPI/openapi.json`. The SwiftPM build plugin consumes that single file.
-- `RakazoAPI` contains the `{json}` envelope, JSON value, tolerant `ProductEvent` and `MessageBlock` decoders, and generated health models. SSE connection and authentication work remain later phases.
+- `RakazoAPI` contains the `{json}` envelope, JSON value, tolerant `ProductEvent`
+  and `MessageBlock` decoders, and the generated health client and models. The
+  Swift generator filters to `rpc_health`; the full contract document remains
+  exported. Portable authentication is implemented, while SSE connection work
+  remains later.
 - Awkward mappings: discriminated unions, "exactly one of `botId` or `groupId`" targets, ISO date strings, nullable vs optional, money as integer cents (finance) or decimal strings of minor units (legal), legal dates as `YYYY-MM-DD`.
 
 ## 4. Authentication and connection

@@ -3,3 +3,6 @@ generate:
   - client
 accessModifier: public
 namingStrategy: idiomatic
+filter:
+  operations:
+    - rpc_health

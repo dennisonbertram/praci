@@ -23,6 +23,7 @@ final class AuthenticationModel {
   @ObservationIgnored private let client: AuthClient
   @ObservationIgnored private let browser = SSOBrowser()
   @ObservationIgnored private var started = false
+  @ObservationIgnored private var lastHandledSessionGeneration: UInt64?
   private static let endpointKey = "serverOrigin"
 
   init() {
@@ -171,7 +172,7 @@ final class AuthenticationModel {
   private func loadCapabilities() async {
     capabilities = nil
     do {
-      capabilities = try await client.capabilities()
+      capabilities = try await client.capabilities(refresh: true)
     } catch {
       show(error)
     }
@@ -181,7 +182,8 @@ final class AuthenticationModel {
     let snapshot = await client.snapshot()
     endpoint = snapshot.endpoint
     isSignedIn = snapshot.isSignedIn
-    if snapshot.sessionEnded {
+    if snapshot.sessionEnded, lastHandledSessionGeneration != snapshot.generation {
+      lastHandledSessionGeneration = snapshot.generation
       page = .signIn
       password = ""
       notice = "Your session ended. Sign in again."
