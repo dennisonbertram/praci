@@ -92,6 +92,8 @@ export async function messageBot(
     forceUnread?: boolean;
     ownerAgentsOnly?: boolean;
     ownerOrigin?: boolean;
+    /** The sending run's own mark (from its history window), which the stored chain may not carry. */
+    externalChain?: { name?: string };
   },
 ) {
   const message = String(input.message ?? "").trim();
@@ -205,7 +207,24 @@ export async function messageBot(
       note: `Already sent to ${target.name} in this turn; it was not sent again.`,
     }) as const;
 
-  const wakePrompt = buildBotMessageWakePrompt({ from: sender, text: message, intent });
+  // The mark is only ever added along a chain: it comes from the sender's stored audience or the
+  // incoming chain, never from the call or the message text.
+  const externalOrigin =
+    externalSender ||
+    sourceContext?.externalOrigin === true ||
+    options?.externalChain !== undefined;
+  const externalOriginName = externalOrigin
+    ? externalSender
+      ? sender.name
+      : (sourceContext?.externalOriginName ?? options?.externalChain?.name)
+    : undefined;
+  const wakePrompt = buildBotMessageWakePrompt({
+    from: sender,
+    text: message,
+    intent,
+    externalOrigin,
+    externalName: externalOriginName,
+  });
   const outboundBlock: MessageBlock = {
     kind: "bot_message_sent",
     toBotId: target.id,
@@ -295,6 +314,12 @@ export async function messageBot(
           intent,
           returnToMessageId: outbound.id,
           ...(ownerAgentsOnly ? { backgroundOrigin: true } : {}),
+          ...(externalOrigin
+            ? {
+                externalOrigin: true,
+                ...(externalOriginName ? { externalOriginName } : {}),
+              }
+            : {}),
           // Answering the chain's caller keeps the chain's own origin.
           ...((options?.ownerOrigin ?? (returnsToSender && sourceContext?.ownerOrigin === true))
             ? { ownerOrigin: true }
@@ -415,7 +440,7 @@ export async function returnBotMessageOutcome(
   sender: { id: string; name: string },
   text: string,
   intent: "result" | "status" = "result",
-  options?: { forceUnread?: boolean },
+  options?: { forceUnread?: boolean; externalChain?: { name?: string } },
 ) {
   const source = await loadBotMessageContext(deps.prisma, run.sourceMessageId);
   if (!source) {
@@ -460,6 +485,7 @@ export async function returnBotMessageOutcome(
     {
       allowTerminalSource: true,
       forceUnread: options?.forceUnread,
+      externalChain: options?.externalChain,
     },
   );
   if (outcome.ok) await markBotOutcomeReturned(deps.prisma, run.id);
