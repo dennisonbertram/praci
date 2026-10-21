@@ -2447,6 +2447,10 @@ msgstr ""
 msgid "Connect a provider to add backups."
 msgstr "Conecta un proveedor para agregar modelos de respaldo."
 
+#: src/pages/Shell.tsx
+msgid "Connect a voice provider to call Elio."
+msgstr ""
+
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Connect Alchemy"

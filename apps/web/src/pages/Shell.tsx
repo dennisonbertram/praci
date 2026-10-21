@@ -2447,6 +2447,7 @@ export function ShellPage() {
   async function startElioCall() {
     if (voiceCallStarting.current) return;
     if (!voiceStatus?.ready) {
+      setSendError(t`Connect a voice provider to call Elio.`);
       openSettings("voice");
       return;
     }
