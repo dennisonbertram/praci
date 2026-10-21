@@ -211,4 +211,81 @@ describePostgres("company page (PostgreSQL)", () => {
       (await companyPage(prisma, otherSpaceOwner)).entities.map((record) => record.id),
     ).toEqual([otherSpaceFact]);
   });
+
+  it("nests shared relationships into shared entity rows", async () => {
+    const sharedOwner = companyForActor(prisma, otherOwner);
+    const evidence = (sourceItemId: string) => ({
+      stance: "supports" as const,
+      sourceKind: "slack" as const,
+      sourceItemId,
+      quote: "Synthetic shared fact.",
+      contentHash: `${sourceItemId}-hash`,
+      extractedAt: "2026-01-02T03:04:05.000Z",
+      extractorModel: null,
+      confidence: 0.9,
+    });
+    const first = entityId(
+      await sharedOwner.importEntity({
+        entity: {
+          kind: "person",
+          displayName: "Shared page person one",
+          attrs: { workEmails: ["shared-page-one@example.test"] },
+          confidence: 0.9,
+        },
+        evidence: evidence("shared-page-person-one"),
+      }),
+    );
+    const second = entityId(
+      await sharedOwner.importEntity({
+        entity: {
+          kind: "person",
+          displayName: "Shared page person two",
+          attrs: { workEmails: ["shared-page-two@example.test"] },
+          confidence: 0.9,
+        },
+        evidence: evidence("shared-page-person-two"),
+      }),
+    );
+    for (const id of [first, second]) {
+      await sharedOwner.confirm(id);
+      await sharedOwner.visibility({ kind: "entity", id, visibility: "team" });
+    }
+    const edge = await sharedOwner.importEdge({
+      edge: {
+        fromId: first,
+        toId: second,
+        relation: "works_at",
+        startsOn: null,
+        endsOn: null,
+        role: "Shared page role",
+        confidence: 0.9,
+      },
+      evidence: evidence("shared-page-edge"),
+    });
+    if ("deferred" in edge || "suppressed" in edge) throw new Error("Expected shared edge");
+    await sharedOwner.confirmEdge(edge.id);
+    await sharedOwner.visibility({ kind: "edge", id: edge.id, visibility: "team" });
+    const event = await sharedOwner.importEvent({
+      event: {
+        stream: "people",
+        kind: "hire",
+        title: "Shared page event",
+        occursOn: null,
+        endsOn: null,
+        entityIds: [first],
+        amountCents: null,
+        currency: null,
+        confidence: 0.9,
+      },
+      evidence: evidence("shared-page-event"),
+    });
+    if ("deferred" in event || "suppressed" in event) throw new Error("Expected shared event");
+    await sharedOwner.confirmEvent(event.id);
+    await sharedOwner.visibility({ kind: "event", id: event.id, visibility: "team" });
+
+    const page = await companyPage(prisma, owner);
+    const sharedFirst = page.entities.find((row) => row.id === first);
+    expect(sharedFirst?.edges.map((row) => row.id)).toContain(edge.id);
+    expect(sharedFirst?.events.map((row) => row.id)).toContain(event.id);
+  });
 });

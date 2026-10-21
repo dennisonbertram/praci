@@ -19,6 +19,8 @@ export async function companyPage(prisma: PrismaClient, actor: Actor): Promise<C
   const visibleEvents = events.filter(
     (row) => companyFactIsVisible(row) && row.entityIds.every((id) => ids.has(id)),
   );
+  const pageEdges = [...visibleEdges, ...shared.edges];
+  const pageEvents = [...visibleEvents, ...shared.events];
   const latestRun = await prisma.companyImportRun.findFirst({
     where: { spaceId: actor.spaceId, ownerUserId: actor.userId },
     orderBy: { createdAt: "desc" },
@@ -27,11 +29,11 @@ export async function companyPage(prisma: PrismaClient, actor: Actor): Promise<C
   return {
     entities: [...visible, ...shared.entities].map((row) => ({
       ...row,
-      edges: visibleEdges.filter((edge) => edge.fromId === row.id || edge.toId === row.id),
-      events: visibleEvents.filter((event) => event.entityIds.includes(row.id)),
+      edges: pageEdges.filter((edge) => edge.fromId === row.id || edge.toId === row.id),
+      events: pageEvents.filter((event) => event.entityIds.includes(row.id)),
     })),
-    edges: [...visibleEdges, ...shared.edges],
-    events: [...visibleEvents, ...shared.events],
+    edges: pageEdges,
+    events: pageEvents,
     latestRun,
   };
 }
