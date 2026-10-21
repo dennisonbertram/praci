@@ -22,27 +22,37 @@ import {
   CompanyEntityImportInputSchema,
   CompanyEventImportInputSchema,
   CompanyImportEventSchema,
+  CompanySourceKindSchema,
   companyImporterSpawnKey,
 } from "@rakazo/contracts";
-import type { PrismaClient } from "@rakazo/db";
+import type { NotificationEvents, PrismaClient } from "@rakazo/db";
 import {
   awaitCompanyImportConsent,
   CompanyImportError,
   claimCompanyImportUnit,
+  companyImportSourceKey,
   completeCompanyImportUnit,
   createCompanyImportRun,
+  createCompanyRefreshRun,
+  createNotification,
   failCompanyImportUnit,
   followRealtimeTopic,
   getCompanyImportProgress,
   getCompanyImportRunForScheduling,
   grantCompanyImportConsent,
   listCompanyImportUnitsForScheduling,
+  listCompanyRefreshSources,
+  listDueCompanyRefreshSources,
+  markCompanyRefreshRecoveryRequired,
+  persistCompanyImportBaseline,
+  persistCompanyImportProposedCheckpoint,
   reconcileCompanyImportRunIds,
   releaseCompanyImportCall,
   reserveCompanyImportCall,
   settleCompanyImportCall,
   startCompanyImportRun,
   updateCompanyImportRun,
+  upsertCompanyRefreshSource,
 } from "@rakazo/db";
 import { aiRecipient } from "./ai-consent.js";
 import { validateCompanyExtraction } from "./company-extraction-safety.js";
@@ -75,6 +85,7 @@ export interface CompanyImportEngineDeps {
   realtime: RealtimeFanout;
   resolveModel?: (scope: Pick<Actor, "spaceId" | "userId">) => Promise<AgentRunModel>;
   worker?: CompanyImportWorker;
+  notificationEvents?: NotificationEvents;
 }
 
 function workerActor(payload: { spaceId: string; userId: string }): Actor {
@@ -310,6 +321,86 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
       .publish(RUN_TOPIC(actor.spaceId, actor.userId), JSON.stringify(event))
       .catch(() => undefined);
     return progress;
+  }
+
+  async function notify(
+    actor: Actor,
+    runId: string,
+    state: string,
+    title: string,
+    importance: "info" | "attention",
+  ) {
+    const result = await createNotification(deps.prisma, {
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      surface: "company_import",
+      title,
+      importance,
+      dedupeKey: `company-import:${runId}:${state}`,
+      skipRateLimits: true,
+    });
+    if (result.status === "created") {
+      await deps.notificationEvents?.notify(
+        { spaceId: actor.spaceId, userId: actor.userId },
+        {
+          id: result.notification.id,
+          surface: result.notification.surface,
+          importance: result.notification.importance,
+        },
+      );
+    }
+  }
+
+  async function notifyRunCompletion(actor: Actor, runId: string) {
+    const run = await deps.prisma.companyImportRun.findFirst({
+      where: { id: runId, spaceId: actor.spaceId, ownerUserId: actor.userId },
+      select: { status: true },
+    });
+    if (
+      !run ||
+      !["completed", "preview_ready", "partial", "failed", "cancelled"].includes(run.status)
+    )
+      return;
+    await notify(actor, runId, `completion:${run.status}`, "Company import complete", "info");
+    const manualOnly = await deps.prisma.companyRefreshSource.findFirst({
+      where: {
+        spaceId: actor.spaceId,
+        ownerUserId: actor.userId,
+        capability: "manual_only",
+        importSources: { some: { runId } },
+      },
+      select: { id: true },
+    });
+    if (manualOnly)
+      await notify(
+        actor,
+        runId,
+        "refresh_unavailable",
+        "Automatic refresh unavailable",
+        "attention",
+      );
+  }
+
+  async function notifyRefreshUnavailable(actor: Actor, sourceId: string) {
+    const result = await createNotification(deps.prisma, {
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      surface: "company_import",
+      title: "Automatic refresh unavailable",
+      importance: "attention",
+      dedupeKey: `company-refresh:${sourceId}:unavailable`,
+      skipRateLimits: true,
+    });
+    if (result.status === "created") {
+      await deps.notificationEvents?.notify(
+        { spaceId: actor.spaceId, userId: actor.userId },
+        {
+          id: result.notification.id,
+          surface: result.notification.surface,
+          importance: result.notification.importance,
+        },
+      );
+    }
   }
 
   async function* follow(actor: Actor, runId: string, signal?: AbortSignal) {
@@ -661,7 +752,7 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
       const context = workerContext(actor, claimInput, AbortSignal.timeout(120_000));
       const sourceDescriptor = {
         id: source.id,
-        sourceKind: source.sourceKind,
+        sourceKind: CompanySourceKindSchema.parse(source.sourceKind),
         connectionId: source.connectionId,
         mcpServerId: source.mcpServerId,
         scope: source.scope as Record<string, unknown>,
@@ -672,11 +763,56 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
       });
       const sample = run?.mode === "sample";
       if (claim.unitKey.startsWith("discover:")) {
+        let baselineCheckpoint: unknown =
+          (source as typeof source & { baseCheckpoint?: unknown }).baseCheckpoint ?? null;
+        let proposedCheckpoint: unknown =
+          (source as typeof source & { proposedCheckpoint?: unknown }).proposedCheckpoint ?? null;
+        const refreshSourceId =
+          (source as typeof source & { refreshSourceId?: string | null }).refreshSourceId ?? null;
+        const sourceSampled = (source as typeof source & { sampled?: boolean }).sampled ?? false;
+        if (!sample && worker.beginRefresh && refreshSourceId) {
+          if (run?.mode === "refresh") {
+            const refreshBegin = await worker.beginRefresh(
+              { source: sourceDescriptor, mode: "refresh", checkpoint: baselineCheckpoint },
+              context,
+            );
+            if (refreshBegin.runCutoff !== undefined && proposedCheckpoint === null) {
+              proposedCheckpoint = await persistCompanyImportProposedCheckpoint(
+                deps.prisma,
+                actor,
+                { ...claimInput, checkpoint: refreshBegin.runCutoff },
+              );
+            }
+          } else if (baselineCheckpoint === null && !sourceSampled) {
+            const refreshBegin = await worker.beginRefresh(
+              { source: sourceDescriptor, mode: "full", checkpoint: null },
+              context,
+            );
+            if (
+              refreshBegin.baselineCheckpoint !== undefined &&
+              refreshBegin.baselineCheckpoint !== null
+            ) {
+              baselineCheckpoint = await persistCompanyImportBaseline(deps.prisma, actor, {
+                ...claimInput,
+                checkpoint: refreshBegin.baselineCheckpoint,
+              });
+              proposedCheckpoint = baselineCheckpoint;
+            }
+          }
+        }
+        const refreshInput =
+          run?.mode === "refresh" && baselineCheckpoint !== null
+            ? {
+                checkpoint: baselineCheckpoint,
+                ...(proposedCheckpoint !== null ? { runCutoff: proposedCheckpoint } : {}),
+              }
+            : undefined;
         const page = await worker.discover(
           {
             source: sourceDescriptor,
             cursor: source.cursor,
             maxUnits: sample ? MAX_SAMPLE_DISCOVERY_UNITS : MAX_DISCOVERY_UNITS,
+            ...(refreshInput ? { refresh: refreshInput } : {}),
           },
           context,
         );
@@ -685,6 +821,9 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
           ...claimInput,
           nextCursor: page.nextCursor,
           nextSourceCursor: page.nextCursor,
+          ...(page.proposedCheckpoint === undefined
+            ? {}
+            : { proposedCheckpoint: page.proposedCheckpoint }),
           done: sample || page.done,
           itemsDiscovered: page.units.length,
           itemsRead: 0,
@@ -736,15 +875,46 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
         });
       }
       await publish(actor, payload.runId);
+      await notifyRunCompletion(actor, payload.runId);
       await enqueueRun(actor, payload.runId);
     } catch (error) {
       if (error instanceof CompanyImportConsentRequired) {
         await awaitCompanyImportConsent(deps.prisma, actor, claimInput);
+        await notify(
+          actor,
+          payload.runId,
+          "awaiting_consent",
+          "Company import needs consent",
+          "attention",
+        );
         await publish(actor, payload.runId);
         return;
       }
       if (error instanceof CompanyImportError && error.code === "budget_reached") {
+        await notify(
+          actor,
+          payload.runId,
+          "budget_reached",
+          "Company import paused at its budget",
+          "attention",
+        );
         await publish(actor, payload.runId);
+        return;
+      }
+      if (error instanceof CompanyImportWorkerError && error.code === "gmail_history_expired") {
+        await markCompanyRefreshRecoveryRequired(deps.prisma, actor, {
+          ...claimInput,
+          reason: "gmail_history_expired",
+        });
+        await notify(
+          actor,
+          payload.runId,
+          "recovery_required",
+          "Company refresh needs recovery",
+          "attention",
+        );
+        await publish(actor, payload.runId);
+        await notifyRunCompletion(actor, payload.runId);
         return;
       }
       const code = error instanceof CompanyImportWorkerError ? error.code : "worker_failed";
@@ -756,6 +926,7 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
           : {}),
       });
       await publish(actor, payload.runId);
+      await notifyRunCompletion(actor, payload.runId);
       await enqueueRun(actor, payload.runId, 1_000);
     }
   }
@@ -813,13 +984,42 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
 
   return {
     create: async (actor: Actor, input: CompanyImportCreateInput) => {
+      const sources = input.sources.map((source) => ({
+        ...source,
+        scope: companySourceScope(source.sourceKind, source.scope),
+      }));
       const run = await createCompanyImportRun(deps.prisma, actor, {
         ...input,
-        sources: input.sources.map((source) => ({
-          ...source,
-          scope: companySourceScope(source.sourceKind, source.scope),
-        })),
+        sources,
       });
+      const rows = await deps.prisma.companyImportSource.findMany({
+        where: { runId: run.id, spaceId: actor.spaceId, ownerUserId: actor.userId },
+        select: { id: true, sourceKey: true },
+      });
+      for (const source of sources) {
+        const sourceKey = companyImportSourceKey(source);
+        const row = rows.find((candidate) => candidate.sourceKey === sourceKey);
+        if (!row) continue;
+        const descriptor = {
+          id: row.id,
+          sourceKind: source.sourceKind,
+          connectionId: source.connectionId ?? null,
+          mcpServerId: source.mcpServerId ?? null,
+          scope: source.scope,
+        };
+        const capability = worker.refreshCapability?.(descriptor) ?? {
+          kind: "pending" as const,
+          reason: "provider_capability_pending",
+        };
+        await upsertCompanyRefreshSource(deps.prisma, actor, {
+          runId: run.id,
+          sourceId: row.id,
+          source: source,
+          tokenCap: input.tokenCap,
+          capability: capability.kind,
+          reason: capability.kind === "supported" ? null : capability.reason,
+        });
+      }
       return publish(actor, run.id);
     },
     progress: (actor: Actor, runId: string) => getCompanyImportProgress(deps.prisma, actor, runId),
@@ -893,6 +1093,50 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
     },
     unitJob: runUnit,
     recoveryJob: reconcile,
+    refreshStatus: async (actor: Actor) =>
+      (await listCompanyRefreshSources(deps.prisma, actor)).map((source) => ({
+        id: source.id,
+        sourceKind: CompanySourceKindSchema.parse(source.sourceKind),
+        capability: source.capability as "supported" | "pending" | "manual_only",
+        status: source.status,
+        reason: source.reason,
+        lastSuccessAt: source.lastSuccessAt?.toISOString() ?? null,
+        nextRunAt: source.nextRunAt?.toISOString() ?? null,
+        runId: source.activeRunId,
+      })),
+    refresh: async (actor: Actor, sourceKey: string) => {
+      const source = (await listCompanyRefreshSources(deps.prisma, actor)).find(
+        (candidate) => candidate.id === sourceKey,
+      );
+      if (!source) throw new CompanyImportError("not_found");
+      if (source.capability !== "supported") {
+        await notifyRefreshUnavailable(actor, source.id);
+        throw new CompanyImportError("invalid_state");
+      }
+      const run = await createCompanyRefreshRun(deps.prisma, actor, sourceKey, true);
+      if (!run) throw new CompanyImportError("invalid_state");
+      await enqueueRun(actor, run.id);
+      return publish(actor, run.id);
+    },
+    refreshTick: async () => {
+      const sources = await listDueCompanyRefreshSources(deps.prisma);
+      const failures: unknown[] = [];
+      for (const source of sources) {
+        const actor = workerActor({ spaceId: source.spaceId, userId: source.ownerUserId });
+        try {
+          const run = await createCompanyRefreshRun(deps.prisma, actor, source.id, false);
+          if (run) await enqueueRun(actor, run.id);
+        } catch (error) {
+          if (
+            error instanceof CompanyImportError &&
+            ["invalid_state", "not_found"].includes(error.code)
+          )
+            continue;
+          failures.push(error);
+        }
+      }
+      if (failures.length) throw failures[0];
+    },
   };
 }
 

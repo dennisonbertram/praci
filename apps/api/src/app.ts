@@ -603,6 +603,7 @@ export async function createApp(
     jobs,
     realtime,
     resolveModel: executor.resolveModel,
+    notificationEvents,
     worker: createCompanySourceWorker({
       prisma,
       mail,

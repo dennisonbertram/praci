@@ -7611,6 +7611,12 @@ export function createRouter(deps: RouterDeps) {
             input.tokenCap,
           ) ?? deps.companyImport.action(context.actor, input.runId, input.action, input.tokenCap),
       ),
+      refreshStatus: authed.companyImport.refreshStatus.handler(({ context }) =>
+        deps.companyImport.refreshStatus(context.actor),
+      ),
+      refresh: authed.companyImport.refresh.handler(({ context, input }) =>
+        deps.companyImport.refresh(context.actor, input.sourceId),
+      ),
       subscribe: authed.companyImport.subscribe.handler(async function* ({ context, input }) {
         const stream = deps.companyImport.follow(context.actor, input.runId, context.signal);
         const iterator = withHeartbeat(stream, {

@@ -49,6 +49,8 @@ import {
   CompanyImportSampleSchema,
   CompanyImportSessionInputSchema,
   CompanyImportSessionSchema,
+  CompanyRefreshStartInputSchema,
+  CompanyRefreshStatusSchema,
 } from "./company-import.js";
 import { CompanyFactRefSchema, CompanyFactSchema, CompanyPageSchema } from "./company-page.js";
 import {
@@ -1529,6 +1531,8 @@ export const appContract = {
       .output(CompanyImportModelConsentStatusSchema),
     start: oc.input(CompanyImportRunIdInputSchema).output(CompanyImportProgressSchema),
     action: oc.input(CompanyImportActionInputSchema).output(CompanyImportProgressSchema),
+    refreshStatus: oc.output(z.array(CompanyRefreshStatusSchema)),
+    refresh: oc.input(CompanyRefreshStartInputSchema).output(CompanyImportProgressSchema),
     subscribe: oc
       .input(CompanyImportRunIdInputSchema)
       .output(eventIterator(CompanyImportEventSchema)),

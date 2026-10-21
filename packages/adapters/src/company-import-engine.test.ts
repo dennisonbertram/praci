@@ -9,17 +9,40 @@ import type {
 import type { Actor, CompanyImportProgress } from "@rakazo/contracts";
 import { AI_DISCLOSURE_VERSION, COMPANY_IMPORT_CURSOR_MAX_BYTES } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
+import { CompanyImportError } from "@rakazo/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const db = vi.hoisted(() => ({
   awaitCompanyImportConsent: vi.fn(async () => undefined),
   claimCompanyImportUnit: vi.fn(),
   completeCompanyImportUnit: vi.fn(async () => undefined),
+  createCompanyRefreshRun: vi.fn(async (_prisma: unknown, _actor: Actor, sourceId: string) => ({
+    id: `run-${sourceId}`,
+  })),
   failCompanyImportUnit: vi.fn(async () => undefined),
   followRealtimeTopic: vi.fn(),
   getCompanyImportProgress: vi.fn(),
   getCompanyImportRunForScheduling: vi.fn(),
   listCompanyImportUnitsForScheduling: vi.fn(),
+  listCompanyRefreshSources: vi.fn(
+    async (): Promise<
+      Array<{
+        id: string;
+        sourceKey: string;
+        sourceKind: string;
+        capability: string;
+        status: string;
+        reason: string | null;
+        lastSuccessAt: Date | null;
+        nextRunAt: Date | null;
+        activeRunId: string | null;
+        timezone: string;
+      }>
+    > => [],
+  ),
+  listDueCompanyRefreshSources: vi.fn(
+    async (): Promise<Array<{ id: string; spaceId: string; ownerUserId: string }>> => [],
+  ),
   reconcileCompanyImportRunIds: vi.fn(),
   grantCompanyImportConsent: vi.fn(async () => ({ allowed: true, resumed: false })),
   releaseCompanyImportCall: vi.fn(async () => true),
@@ -29,17 +52,31 @@ const db = vi.hoisted(() => ({
     reservedOutput: 5,
   })),
   settleCompanyImportCall: vi.fn(async () => true),
+  createNotification: vi.fn(
+    async (_prisma: unknown, input: { surface: string; importance: string }) => ({
+      status: "created",
+      notification: { id: "notification-1", surface: input.surface, importance: input.importance },
+    }),
+  ),
 }));
 
 vi.mock("@rakazo/db", () => ({
   awaitCompanyImportConsent: db.awaitCompanyImportConsent,
-  CompanyImportError: class CompanyImportError extends Error {},
+  CompanyImportError: class CompanyImportError extends Error {
+    constructor(readonly code: string) {
+      super(code);
+    }
+  },
   claimCompanyImportUnit: db.claimCompanyImportUnit,
   completeCompanyImportUnit: db.completeCompanyImportUnit,
+  createNotification: db.createNotification,
+  createCompanyRefreshRun: db.createCompanyRefreshRun,
   failCompanyImportUnit: db.failCompanyImportUnit,
   followRealtimeTopic: db.followRealtimeTopic,
   grantCompanyImportConsent: db.grantCompanyImportConsent,
   getCompanyImportProgress: db.getCompanyImportProgress,
+  listCompanyRefreshSources: db.listCompanyRefreshSources,
+  listDueCompanyRefreshSources: db.listDueCompanyRefreshSources,
   getCompanyImportRunForScheduling: db.getCompanyImportRunForScheduling,
   listCompanyImportUnitsForScheduling: db.listCompanyImportUnitsForScheduling,
   reconcileCompanyImportRunIds: db.reconcileCompanyImportRunIds,
@@ -126,6 +163,8 @@ function createHarness(options?: {
   ownedItemIds?: string[];
   runStatus?: string;
   runMode?: "sample" | "full";
+  terminalStatus?: string;
+  manualOnly?: boolean;
   readPage?: CompanyImportReadPage;
 }) {
   let consentGranted = true;
@@ -178,7 +217,13 @@ function createHarness(options?: {
       })),
     },
     companyImportRun: {
-      findFirst: vi.fn(async () => ({ mode: options?.runMode ?? "full" })),
+      findFirst: vi.fn(async () => ({
+        mode: options?.runMode ?? "full",
+        status: options?.terminalStatus ?? "running",
+      })),
+    },
+    companyRefreshSource: {
+      findFirst: vi.fn(async () => (options?.manualOnly ? { id: "refresh-source" } : null)),
     },
     dataRoomItem: {
       count: vi.fn(async (input: { where: { id: { in: string[] } } }) => {
@@ -251,6 +296,85 @@ describe("company import engine", () => {
     );
     expect(jobs.enqueue).toHaveBeenCalledTimes(2);
     expect(realtime.publish).toHaveBeenCalledTimes(1);
+  });
+
+  it("notifies import completion and manual-only refresh attention with durable run-state keys", async () => {
+    const { engine } = createHarness({ terminalStatus: "completed", manualOnly: true });
+    await engine.unitJob({
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      runId: "run-1",
+      unitId: "unit-1",
+    });
+    expect(db.createNotification).toHaveBeenCalledTimes(2);
+    expect(db.createNotification).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      expect.objectContaining({
+        title: "Company import complete",
+        importance: "info",
+        dedupeKey: "company-import:run-1:completion:completed",
+      }),
+    );
+    expect(db.createNotification).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
+      expect.objectContaining({
+        title: "Automatic refresh unavailable",
+        importance: "attention",
+        dedupeKey: "company-import:run-1:refresh_unavailable",
+      }),
+    );
+  });
+
+  it("notifies when an owner requests refresh for a manual-only source", async () => {
+    db.listCompanyRefreshSources.mockResolvedValue([
+      {
+        id: "refresh-source-1",
+        sourceKey: "source-key",
+        sourceKind: "mcp",
+        capability: "manual_only",
+        status: "unavailable",
+        reason: "generic_tool_manual_only",
+        lastSuccessAt: null,
+        nextRunAt: null,
+        activeRunId: null,
+        timezone: "UTC",
+      },
+    ]);
+    const { engine, jobs } = createHarness();
+    await expect(engine.refresh(actor, "refresh-source-1")).rejects.toMatchObject({
+      code: "invalid_state",
+    });
+    expect(db.createNotification).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        title: "Automatic refresh unavailable",
+        importance: "attention",
+        dedupeKey: "company-refresh:refresh-source-1:unavailable",
+      }),
+    );
+    expect(jobs.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("continues scheduled refresh dispatch when one source is unavailable", async () => {
+    db.listDueCompanyRefreshSources.mockResolvedValue([
+      { id: "blocked-source", spaceId: actor.spaceId, ownerUserId: actor.userId },
+      { id: "available-source", spaceId: actor.spaceId, ownerUserId: actor.userId },
+    ]);
+    db.createCompanyRefreshRun.mockImplementation(async (_prisma, _actor, sourceId) => {
+      if (sourceId === "blocked-source") throw new CompanyImportError("invalid_state");
+      return { id: "available-run" };
+    });
+    const { engine, jobs } = createHarness();
+    await expect(engine.refreshTick()).resolves.toBeUndefined();
+    expect(db.createCompanyRefreshRun).toHaveBeenCalledTimes(2);
+    expect(jobs.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "company.import.run",
+        payload: { spaceId: actor.spaceId, userId: actor.userId, runId: "available-run" },
+      }),
+    );
   });
 
   it("pauses nonempty sample reads and unwraps their saved cursor on continue", async () => {

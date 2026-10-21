@@ -386,6 +386,10 @@ export function createBackgroundJobHandlers(deps: {
       if (!deps.companyImport) throw new Error("Company import engine is not configured");
       await deps.companyImport.recoveryJob();
     },
+    "company.refresh.tick": async () => {
+      if (!deps.companyImport) throw new Error("Company import engine is not configured");
+      await deps.companyImport.refreshTick();
+    },
     "history.compact": async (payload) => {
       // Retrieval policies use stored context without paid message-count compaction.
       // Skip legacy backlog work after a policy change.

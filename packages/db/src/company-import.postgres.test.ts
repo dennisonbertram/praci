@@ -1,23 +1,30 @@
 import type { AgentUsage } from "@rakazo/adapter-kit";
 import type { Actor } from "@rakazo/contracts";
-import { COMPANY_IMPORT_CURSOR_MAX_BYTES } from "@rakazo/contracts";
+import { AI_DISCLOSURE_VERSION, COMPANY_IMPORT_CURSOR_MAX_BYTES } from "@rakazo/contracts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "./client.js";
 import { createDb } from "./client.js";
 import { companyForActor } from "./company.js";
 import {
+  awaitCompanyImportConsent,
   CompanyImportError,
   claimCompanyImportUnit,
+  companyImportSourceKey,
   completeCompanyImportUnit,
   createCompanyImportRun,
+  createCompanyRefreshRun,
   failCompanyImportUnit,
   getCompanyImportProgress,
+  grantCompanyImportConsent,
+  persistCompanyImportProposedCheckpoint,
   releaseCompanyImportCall,
   reserveCompanyImportCall,
   settleCompanyImportCall,
   startCompanyImportRun,
   updateCompanyImportRun,
+  upsertCompanyRefreshSource,
 } from "./company-import.js";
+import { createNotification } from "./notifications.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =
@@ -280,6 +287,266 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
         ],
       }),
     ).rejects.toMatchObject({ code: "invalid_state" });
+  });
+
+  it("serializes refresh dispatch and commits only the completed source checkpoint", async () => {
+    const created = await createCompanyImportRun(prisma, actor, {
+      tokenCap: 150,
+      sources: [{ sourceKind: "slack", connectionId: slackConnectionId, scope: { allTime: true } }],
+    });
+    const importSource = await prisma.companyImportSource.findFirstOrThrow({
+      where: { runId: created.id, spaceId, ownerUserId: userId },
+    });
+    const refreshSource = await upsertCompanyRefreshSource(prisma, actor, {
+      runId: created.id,
+      sourceId: importSource.id,
+      source: {
+        sourceKind: "slack",
+        connectionId: slackConnectionId,
+        scope: { allTime: true },
+      },
+      tokenCap: 150,
+      capability: "supported",
+    });
+    const oldCheckpoint = { kind: "gmail_history", cursor: "old" };
+    await prisma.companyRefreshSource.update({
+      where: { id: refreshSource.id },
+      data: {
+        committedCheckpoint: oldCheckpoint,
+        status: "ready",
+        timezone: "UTC",
+      },
+    });
+    await prisma.user.update({
+      where: { id: userId },
+      data: { timezone: "America/Los_Angeles" },
+    });
+
+    const company = companyForActor(prisma, actor);
+    const rejected = await company.importEntity({
+      entity: {
+        kind: "person",
+        displayName: "Refresh Rejected Person",
+        attrs: {},
+        confidence: 0.9,
+      },
+      evidence: {
+        stance: "supports",
+        sourceKind: "slack",
+        connectionId: slackConnectionId,
+        sourceItemId: "refresh-rejected-item",
+        quote: "The owner rejected this synthetic fact.",
+        contentHash: "refresh-rejected-old",
+        extractedAt: "2026-01-02T03:04:05.000Z",
+        extractorModel: null,
+        confidence: 0.9,
+      },
+    });
+    if ("suppressed" in rejected || "deferred" in rejected)
+      throw new Error("Expected the baseline fact to persist");
+    await company.reject(rejected.id, "Owner rejection should survive refresh");
+
+    const [first, duplicate] = await Promise.all([
+      createCompanyRefreshRun(prisma, actor, refreshSource.id),
+      createCompanyRefreshRun(prisma, actor, refreshSource.id),
+    ]);
+    if (!first || !duplicate) throw new Error("Expected a refresh run");
+    expect(first.id).toBe(duplicate.id);
+    await expect(
+      createCompanyRefreshRun(prisma, otherActor, refreshSource.id),
+    ).rejects.toMatchObject({
+      code: "not_found",
+    });
+    const [runs, unit] = await Promise.all([
+      prisma.companyImportRun.count({
+        where: { spaceId, ownerUserId: userId, mode: "refresh", status: "running" },
+      }),
+      prisma.companyImportUnit.findFirstOrThrow({
+        where: { runId: first.id, spaceId, ownerUserId: userId },
+      }),
+    ]);
+    expect(runs).toBe(1);
+    let claim = await claimCompanyImportUnit(prisma, actor, {
+      runId: first.id,
+      unitId: unit.id,
+    });
+    expect(claim).not.toBeNull();
+    const claimInput = {
+      runId: first.id,
+      sourceId: claim!.sourceId,
+      unitId: unit.id,
+      claimToken: claim!.claimToken,
+    };
+    expect(await awaitCompanyImportConsent(prisma, actor, claimInput)).toBe(true);
+    expect(
+      await prisma.companyRefreshSource.findUniqueOrThrow({
+        where: { id: refreshSource.id },
+        select: { status: true, activeRunId: true },
+      }),
+    ).toMatchObject({ status: "awaiting_consent", activeRunId: first.id });
+    const recipientKey = `company-refresh-consent-${suffix}`;
+    expect(
+      await grantCompanyImportConsent(prisma, actor, {
+        runId: first.id,
+        sourceId: claimInput.sourceId,
+        recipientKey,
+        version: AI_DISCLOSURE_VERSION,
+        requiredKeys: [recipientKey],
+      }),
+    ).toMatchObject({ allowed: true, resumed: true });
+    expect(
+      await prisma.companyRefreshSource.findUniqueOrThrow({
+        where: { id: refreshSource.id },
+        select: { status: true, activeRunId: true },
+      }),
+    ).toMatchObject({ status: "running", activeRunId: first.id });
+    claim = await claimCompanyImportUnit(prisma, actor, {
+      runId: first.id,
+      unitId: unit.id,
+    });
+    expect(claim).not.toBeNull();
+    const nextCheckpoint = { kind: "gmail_history", cursor: "new" };
+    await persistCompanyImportProposedCheckpoint(prisma, actor, {
+      runId: first.id,
+      sourceId: claim!.sourceId,
+      unitId: unit.id,
+      claimToken: claim!.claimToken,
+      checkpoint: nextCheckpoint,
+    });
+    await expect(
+      persistCompanyImportProposedCheckpoint(prisma, actor, {
+        runId: first.id,
+        sourceId: claim!.sourceId,
+        unitId: unit.id,
+        claimToken: claim!.claimToken,
+        checkpoint: { kind: "gmail_history", cursor: "replacement" },
+      }),
+    ).resolves.toMatchObject(nextCheckpoint);
+    expect(
+      await prisma.companyRefreshSource.findUniqueOrThrow({
+        where: { id: refreshSource.id },
+        select: { committedCheckpoint: true },
+      }),
+    ).toMatchObject({ committedCheckpoint: oldCheckpoint });
+    await completeCompanyImportUnit(prisma, actor, {
+      runId: first.id,
+      sourceId: claim!.sourceId,
+      unitId: unit.id,
+      claimToken: claim!.claimToken,
+      nextCursor: null,
+      done: true,
+      proposedCheckpoint: { kind: "gmail_history", cursor: "completion-replacement" },
+      itemsDiscovered: 0,
+      itemsRead: 0,
+      facts: [
+        {
+          kind: "entity",
+          input: {
+            entity: {
+              kind: "person",
+              displayName: "Refresh Rejected Person",
+              attrs: {},
+              confidence: 0.9,
+            },
+            evidence: {
+              stance: "supports",
+              sourceKind: "slack",
+              connectionId: slackConnectionId,
+              sourceItemId: "refresh-rejected-item",
+              quote: "The owner rejected this synthetic fact.",
+              contentHash: "refresh-rejected-new",
+              extractedAt: "2026-01-02T03:04:05.000Z",
+              extractorModel: null,
+              confidence: 0.9,
+            },
+          },
+        },
+      ],
+    });
+    const committed = await prisma.companyRefreshSource.findUniqueOrThrow({
+      where: { id: refreshSource.id },
+    });
+    expect(committed.committedCheckpoint).toMatchObject(nextCheckpoint);
+    expect(committed.status).toBe("ready");
+    expect(committed.timezone).toBe("America/Los_Angeles");
+    expect(committed.nextRunAt).not.toBeNull();
+    expect(await company.detail(rejected.id, { includeRejected: true })).toMatchObject({
+      status: "rejected",
+      displayName: "Refresh Rejected Person",
+    });
+
+    const failedRun = await createCompanyRefreshRun(prisma, actor, refreshSource.id, true);
+    if (!failedRun) throw new Error("Expected a refresh run");
+    const failedUnit = await prisma.companyImportUnit.findFirstOrThrow({
+      where: { runId: failedRun.id, spaceId, ownerUserId: userId },
+    });
+    const failedClaim = await claimCompanyImportUnit(prisma, actor, {
+      runId: failedRun.id,
+      unitId: failedUnit.id,
+    });
+    expect(failedClaim).not.toBeNull();
+    const failedCheckpoint = { kind: "gmail_history", cursor: "uncommitted" };
+    await persistCompanyImportProposedCheckpoint(prisma, actor, {
+      runId: failedRun.id,
+      sourceId: failedClaim!.sourceId,
+      unitId: failedUnit.id,
+      claimToken: failedClaim!.claimToken,
+      checkpoint: failedCheckpoint,
+    });
+    await prisma.companyImportUnit.update({
+      where: { id: failedUnit.id },
+      data: { attempts: 3 },
+    });
+    await failCompanyImportUnit(prisma, actor, {
+      runId: failedRun.id,
+      sourceId: failedClaim!.sourceId,
+      unitId: failedUnit.id,
+      claimToken: failedClaim!.claimToken,
+      errorCode: "synthetic_refresh_failure",
+    });
+    const afterFailure = await prisma.companyRefreshSource.findUniqueOrThrow({
+      where: { id: refreshSource.id },
+    });
+    expect(afterFailure.committedCheckpoint).toMatchObject(nextCheckpoint);
+    expect(afterFailure.status).toBe("failed");
+  });
+
+  it("canonicalizes source scope before building its durable refresh key", () => {
+    expect(
+      companyImportSourceKey({
+        sourceKind: "mcp",
+        mcpServerId: "server",
+        scope: { reader: "generic", filters: { status: "open", owner: "team" } },
+      }),
+    ).toBe(
+      companyImportSourceKey({
+        sourceKind: "mcp",
+        mcpServerId: "server",
+        scope: { filters: { owner: "team", status: "open" }, reader: "generic" },
+      }),
+    );
+  });
+
+  it("deduplicates Company attention notifications without losing their importance", async () => {
+    const now = new Date();
+    const input = {
+      spaceId,
+      userId,
+      surface: "company_import",
+      title: "Company import needs consent",
+      importance: "attention" as const,
+      dedupeKey: `company-import:${suffix}:awaiting_consent`,
+      skipRateLimits: true,
+      now,
+    };
+    const first = await createNotification(prisma, input);
+    const duplicate = await createNotification(prisma, input);
+    expect(first.status).toBe("created");
+    expect(first.status === "created" && first.notification.importance).toBe("attention");
+    expect(duplicate.status).toBe("deduped");
+    expect(duplicate.status === "deduped" && duplicate.notification.id).toBe(
+      first.status === "created" ? first.notification.id : "",
+    );
   });
 
   it("keeps MCP import locators distinct and disconnects only the selected server", async () => {

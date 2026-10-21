@@ -324,6 +324,7 @@ model Space {
   companyImportUnits          CompanyImportUnit[]
   companyImportCalls          CompanyImportCall[]
   companySourceBlocks         CompanySourceBlock[]
+  companyRefreshSources       CompanyRefreshSource[]
 
   @@unique([id, organizationId])
   @@index([organizationId, createdAt])
@@ -360,6 +361,7 @@ model SpaceMember {
   companyImportUnits CompanyImportUnit[] @relation("CompanyImportUnitOwner")
   companyImportCalls CompanyImportCall[] @relation("CompanyImportCallOwner")
   companySourceBlocks CompanySourceBlock[]
+  companyRefreshSources CompanyRefreshSource[] @relation("CompanyRefreshSourceOwner")
 
   @@unique([spaceId, userId])
   @@index([organizationId, userId])
@@ -3655,6 +3657,11 @@ model CompanyImportSource {
   scope               Json               @default("{}")
   plan                Json               @default("{}")
   cursor              Json?
+  baseCheckpoint     Json?
+  proposedCheckpoint Json?
+  refreshSourceId    String?
+  refreshSource      CompanyRefreshSource? @relation(fields: [refreshSourceId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  sampled            Boolean            @default(false)
   status              String             @default("waiting")
   concurrency         Int                @default(1)
   tokensReserved      BigInt             @default(0)
@@ -3672,6 +3679,37 @@ model CompanyImportSource {
   @@index([spaceId, ownerUserId, runId, status])
   @@index([mcpServerId])
   @@map("company_import_sources")
+}
+
+model CompanyRefreshSource {
+  id                  String        @id @default(cuid())
+  spaceId             String
+  space               Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ownerUserId         String
+  owner               SpaceMember   @relation("CompanyRefreshSourceOwner", fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  sourceKey           String
+  sourceKind          String
+  connectionId        String?
+  mcpServerId         String?
+  scope               Json          @default("{}")
+  tokenCap            BigInt
+  capability          String        @default("pending")
+  status              String        @default("needs_baseline")
+  reason              String?
+  committedCheckpoint Json?
+  lastSuccessAt       DateTime?
+  nextRunAt           DateTime?
+  timezone            String        @default("UTC")
+  activeRunId         String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  importSources       CompanyImportSource[]
+
+  @@unique([id, spaceId, ownerUserId])
+  @@unique([spaceId, ownerUserId, sourceKey])
+  @@index([spaceId, ownerUserId, nextRunAt])
+  @@index([activeRunId])
+  @@map("company_refresh_sources")
 }
 
 model CompanyImportUnit {

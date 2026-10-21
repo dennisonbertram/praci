@@ -2605,6 +2605,7 @@ async function eraseEntity(db: CompanyDb, scope: Scope, entityId: string): Promi
 
 async function eraseMap(db: CompanyDb, scope: Scope): Promise<void> {
   await db.companyImportRun.deleteMany({ where: scope });
+  await db.companyRefreshSource.deleteMany({ where: scope });
   await db.companySourceBlock.deleteMany({ where: scope });
   await db.companyMerge.deleteMany({ where: scope });
   await db.companyCandidate.deleteMany({ where: scope });
@@ -2694,6 +2695,20 @@ async function sourceControl(
     await db.companySourceBlock.deleteMany({
       where: { ...scope, sourceKey: companyPrivacySourceKey(locator) },
     });
+    await db.companyRefreshSource.updateMany({
+      where: {
+        ...scope,
+        sourceKind: locator.sourceKind,
+        connectionId: locator.connectionId,
+        mcpServerId: locator.mcpServerId,
+      },
+      data: {
+        status: "needs_baseline",
+        reason: "source_reconnected_requires_import",
+        nextRunAt: null,
+        activeRunId: null,
+      },
+    });
     return;
   }
   const linkedDataRoomItems =
@@ -2763,6 +2778,20 @@ async function sourceControl(
       mcpServerId: locator.mcpServerId,
     },
     update: {},
+  });
+  await db.companyRefreshSource.updateMany({
+    where: {
+      ...scope,
+      sourceKind: locator.sourceKind,
+      connectionId: locator.connectionId,
+      mcpServerId: locator.mcpServerId,
+    },
+    data: {
+      status: "unavailable",
+      reason: "source_disconnected",
+      nextRunAt: null,
+      activeRunId: null,
+    },
   });
   await db.companyCandidate.deleteMany({ where: sourceWhere });
   if (linkedDataRoomIds.length > 0) {
@@ -3404,7 +3433,11 @@ function writerFor(db: CompanyDb, actor: Actor) {
         const runIds = [...new Set(importSources.map((source) => source.runId))];
         if (runIds.length) {
           await tx.companyImportRun.updateMany({
-            where: { ...scope, id: { in: runIds }, status: { in: ["running", "paused"] } },
+            where: {
+              ...scope,
+              id: { in: runIds },
+              status: { in: ["draft", "awaiting_consent", "running", "paused", "budget_reached"] },
+            },
             data: { status: "cancelled", completedAt: new Date() },
           });
           await tx.companyImportUnit.updateMany({
@@ -3412,6 +3445,15 @@ function writerFor(db: CompanyDb, actor: Actor) {
             data: { status: "cancelled", claimToken: null, claimExpiresAt: null },
           });
         }
+        await tx.companyRefreshSource.updateMany({
+          where: { ...scope, connectionId },
+          data: {
+            status: "unavailable",
+            reason: "source_disconnected",
+            nextRunAt: null,
+            activeRunId: null,
+          },
+        });
         await tx.companyCandidate.deleteMany({ where: { ...scope, connectionId } });
         await tx.companyEvidence.deleteMany({
           where: { ...scope, connectionId, NOT: { sourceKind: "manual" } },
@@ -3468,6 +3510,15 @@ function writerFor(db: CompanyDb, actor: Actor) {
             data: { status: "cancelled", claimToken: null, claimExpiresAt: null },
           });
         }
+        await tx.companyRefreshSource.updateMany({
+          where: { ...scope, mcpServerId },
+          data: {
+            status: "unavailable",
+            reason: "source_disconnected",
+            nextRunAt: null,
+            activeRunId: null,
+          },
+        });
         await tx.companyCandidate.deleteMany({ where: { ...scope, mcpServerId } });
         await tx.companyEvidence.deleteMany({
           where: { ...scope, mcpServerId, NOT: { sourceKind: "manual" } },
