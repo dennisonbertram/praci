@@ -58,7 +58,7 @@ const button = (label: string) =>
 it("shows every section and applies the filter of what is clicked", () => {
   render(manyDocuments);
   for (const title of [
-    "Documents over time",
+    "Documents by document date",
     "Types",
     "Sources",
     "Top parties",

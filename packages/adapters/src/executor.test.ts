@@ -1268,7 +1268,8 @@ describe("directoryDescription", () => {
     });
     expect(line).toContain("Answers questions about your bank accounts.");
     expect(line).toContain("Message it with message_bot");
-    expect(line).toContain("quote them in your reply");
+    expect(line).toContain("Do not write a reply to the user until its answer arrives");
+    expect(line).toContain("quote the figures in your reply yourself");
     expect(line).toContain("[Open Finance](/app/finance)");
     expect(line).not.toContain("instead of messaging it");
   });
@@ -1279,6 +1280,7 @@ describe("directoryDescription", () => {
       spawnKey: "integration-agent:server-1",
     });
     expect(integration).toContain("Message it with message_bot");
+    expect(integration).toContain("give the user the answer yourself");
     expect(integration).not.toContain("instead of messaging it");
   });
 

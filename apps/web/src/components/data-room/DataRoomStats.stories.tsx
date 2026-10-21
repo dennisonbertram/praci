@@ -46,3 +46,18 @@ export const Loading: Story = { args: { stats: null } };
 export const Failed: Story = {
   args: { stats: null, error: "Could not load stats", onRetry: fn() },
 };
+/** Two months of documents: the bars stay narrow instead of filling the width. */
+export const FewMonths: Story = {
+  args: {
+    stats: {
+      ...manyDocuments,
+      dates: {
+        unit: "month",
+        buckets: [
+          { key: "2026-03", count: 1 },
+          { key: "2026-04", count: 1 },
+        ],
+      },
+    },
+  },
+};

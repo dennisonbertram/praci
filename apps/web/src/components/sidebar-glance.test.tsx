@@ -44,10 +44,9 @@ it("keeps a value out of the rail, where any badge becomes a dot", () => {
   expect(glanceBadge({ unseen: 1, rail: true }).badge).not.toBeNull();
 });
 
-it("writes runway as months and hides it with Hide money or without a figure", () => {
-  expect(runwayGlance(24.4, false)).toBe("24 mo");
-  expect(runwayGlance(24.4, true)).toBeUndefined();
-  expect(runwayGlance(null, false)).toBeUndefined();
+it("writes runway as months, still shown while amounts are hidden, and nothing without a figure", () => {
+  expect(runwayGlance(24.4)).toBe("24 mo");
+  expect(runwayGlance(null)).toBeUndefined();
 });
 
 it.each([
