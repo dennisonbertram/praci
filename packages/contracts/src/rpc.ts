@@ -33,6 +33,7 @@ import {
   CompanyEntityEditInputSchema,
   CompanyEventEditInputSchema,
 } from "./company.js";
+import { CompanyCalendarInputSchema, CompanyCalendarSchema } from "./company-calendar.js";
 import {
   CompanyImportActionInputSchema,
   CompanyImportCatalogSchema,
@@ -1501,6 +1502,7 @@ export const appContract = {
     export: oc.output(CompanyExportSchema),
     visibility: oc.input(CompanyVisibilityInputSchema).output(z.object({ ok: z.literal(true) })),
     page: oc.output(CompanyPageSchema),
+    calendar: oc.input(CompanyCalendarInputSchema).output(CompanyCalendarSchema),
     fact: oc.input(CompanyFactRefSchema).output(CompanyFactSchema.nullable()),
     confirm: oc.input(CompanyFactRefSchema).output(z.object({ ok: z.literal(true) })),
     reject: oc.input(CompanyFactRefSchema).output(z.object({ ok: z.literal(true) })),

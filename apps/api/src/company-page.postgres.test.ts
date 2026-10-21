@@ -4,6 +4,7 @@ import { companyForActor, createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createNorthwindCompanyFixture } from "../../../packages/testkit/src/fixtures/company/corpus.js";
 import { northwindGroundTruth } from "../../../packages/testkit/src/fixtures/company/ground-truth.js";
+import { companyCalendar } from "./company-calendar.js";
 import { companyFact, companyPage } from "./company-page.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -137,9 +138,45 @@ describePostgres("company page (PostgreSQL)", () => {
 
   afterAll(async () => {
     if (!prisma) return;
+    await prisma.legalDeadline.deleteMany({
+      where: { spaceId: { in: [spaceId, otherSpaceId] }, userId: { in: [userId, otherUserId] } },
+    });
     await prisma.organization.deleteMany({ where: { id: organizationId } });
     await prisma.user.deleteMany({ where: { id: { in: [userId, otherUserId] } } });
     await close();
+  });
+
+  it("reads open Legal renewal and notice dates through with owner and space isolation", async () => {
+    const ids = [
+      `notice-${suffix}`,
+      `renewal-${suffix}`,
+      `other-owner-${suffix}`,
+      `other-space-${suffix}`,
+    ];
+    await prisma.legalDeadline.createMany({
+      data: ids.map((id, index) => ({
+        id,
+        spaceId: index === 3 ? otherSpaceId : spaceId,
+        userId: index === 2 ? otherUserId : userId,
+        title: id,
+        dueDate: new Date("2026-10-01T00:00:00Z"),
+        kind: index === 1 ? "renewal" : "notice",
+      })),
+    });
+    const input = { month: "2026-10", anniversaries: false };
+    const before = await companyCalendar(prisma, owner, input);
+    expect(before.map((item) => item.legalDeadlineId)).toEqual(ids.slice(0, 2));
+    expect(before.every((item) => item.date === "2026-10-01")).toBe(true);
+    await prisma.legalDeadline.update({ where: { id: ids[0]! }, data: { status: "done" } });
+    expect(
+      (await companyCalendar(prisma, owner, input)).map((item) => item.legalDeadlineId),
+    ).toEqual([ids[1]]);
+    expect(
+      (await companyCalendar(prisma, otherOwner, input)).map((item) => item.legalDeadlineId),
+    ).toEqual([ids[2]]);
+    expect(
+      (await companyCalendar(prisma, otherSpaceOwner, input)).map((item) => item.legalDeadlineId),
+    ).toEqual([ids[3]]);
   });
 
   it("isolates owners and spaces, filters hidden facts, and preserves review after replay", async () => {

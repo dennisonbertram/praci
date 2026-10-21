@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { companyCalendarItems } from "@rakazo/core";
 import { companyFixture } from "../src/pages/company-fixtures";
 import { captureScreenshot, completeOnboarding, signup } from "./helpers";
 
@@ -8,17 +9,46 @@ test("Company shows owner facts, precision and provenance with masked money", as
   await page.setViewportSize({ width: 1500, height: 1000 });
   const data = structuredClone(companyFixture);
   let editRequests = 0;
+  let legalDone = false;
   data.edges[0]!.role = null;
   data.events[0]!.occursOn = { date: "2024-01-01", precision: "year" };
+  data.events.push({
+    ...data.events[0]!,
+    id: "board",
+    title: "Board meeting",
+    stream: "company",
+    kind: "other",
+    occursOn: { date: "2024-07-15", precision: "day" },
+  });
   await page.clock.setFixedTime(new Date("2024-07-01T12:00:00Z"));
   data.entities[0]!.attrs.description = "Raised $50,000 for warehouse robots.";
   await page.route("**/rpc/company/**", async (route) => {
     const method = new URL(route.request().url()).pathname.split("/").at(-1);
     if (method?.startsWith("edit")) editRequests++;
     if (method === "confirm") data.entities[0]!.status = "confirmed";
+    const calendar = [
+      ...companyCalendarItems(data, "2024-07"),
+      ...(!legalDone
+        ? [
+            {
+              id: "legal:notice",
+              title: "Renewal notice",
+              date: "2024-07-01",
+              stream: "legal",
+              status: "open",
+              anniversary: false,
+              fact: null,
+              legalDeadlineId: "notice",
+            },
+          ]
+        : []),
+    ];
     await route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify({ json: method === "page" ? data : { ok: true }, meta: [] }),
+      body: JSON.stringify({
+        json: method === "page" ? data : method === "calendar" ? calendar : { ok: true },
+        meta: [],
+      }),
     });
   });
   await signup(page, `company-${Date.now()}@rakazo.test`, "password12", "Company User");
@@ -119,6 +149,22 @@ test("Company shows owner facts, precision and provenance with masked money", as
   await touch.send("Emulation.setTouchEmulationEnabled", { enabled: false });
   await touch.detach();
   await page.setViewportSize({ width: 1500, height: 1000 });
+  await page.getByRole("tab", { name: "Calendar", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Renewal notice" })).toBeVisible();
+  const calendarRegion = page.getByRole("region", { name: "Calendar", exact: true });
+  await expect(calendarRegion.getByRole("button", { name: /Board meeting/ })).toBeVisible();
+  await expect(calendarRegion.getByText("Not confirmed", { exact: true })).toBeVisible();
+  await expect(calendarRegion.getByText(data.events[0]!.title)).toHaveCount(0);
+  await expect(calendarRegion.getByRole("checkbox", { name: "Anniversaries" })).not.toBeChecked();
+  await captureScreenshot(page, testInfo, "company-calendar");
+  await calendarRegion.getByRole("button", { name: "Agenda", exact: true }).click();
+  await expect(calendarRegion.getByText("2024-07-01", { exact: true })).toBeVisible();
+  await calendarRegion.getByRole("button", { name: "Legal", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Renewal notice" })).toHaveCount(0);
+  await calendarRegion.getByRole("button", { name: "Legal", exact: true }).click();
+  legalDone = true;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.getByRole("link", { name: "Renewal notice" })).toHaveCount(0);
   await page.getByRole("tab", { name: "People", exact: true }).click();
   await expect(page.getByRole("cell", { name: "2024", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Alex Reed", exact: true }).click();

@@ -11,6 +11,7 @@ export * from "./carta.js";
 export * from "./cloudflare-ai-gateway.js";
 export * from "./company.js";
 export * from "./company-agent.js";
+export * from "./company-calendar.js";
 export * from "./company-extraction.js";
 export * from "./company-import.js";
 export * from "./company-page.js";

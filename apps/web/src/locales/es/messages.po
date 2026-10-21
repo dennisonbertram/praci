@@ -1067,6 +1067,10 @@ msgstr "Avanzado..."
 msgid "Advisor"
 msgstr ""
 
+#: src/pages/CompanyCalendar.tsx
+msgid "Agenda"
+msgstr ""
+
 #: src/components/integrations/IntegrationAgentSection.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Agent"
@@ -1299,6 +1303,14 @@ msgstr "Hay una clave de API guardada para este proveedor, no un inicio de sesi√
 
 #: src/components/ContactDeleteConfirm.tsx
 msgid "and"
+msgstr ""
+
+#: src/pages/CompanyCalendar.tsx
+msgid "Anniversaries"
+msgstr ""
+
+#: src/pages/CompanyCalendar.tsx
+msgid "Anniversary"
 msgstr ""
 
 #: src/components/AskCard.tsx
@@ -2033,6 +2045,11 @@ msgstr ""
 msgid "Cadence"
 msgstr ""
 
+#: src/pages/Company.tsx
+#: src/pages/CompanyCalendar.tsx
+msgid "Calendar"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "Call Elio"
 msgstr ""
@@ -2683,6 +2700,7 @@ msgstr ""
 
 #: src/components/legal/LegalGraph.tsx
 #: src/pages/Company.tsx
+#: src/pages/CompanyCalendar.tsx
 #: src/pages/CompanyHistory.tsx
 #: src/pages/CompanyImport.tsx
 msgid "Company"
@@ -4082,6 +4100,7 @@ msgstr ""
 msgid "Customer support"
 msgstr "Atenci√≥n al cliente"
 
+#: src/pages/CompanyCalendar.tsx
 #: src/pages/CompanyHistory.tsx
 msgid "Customers"
 msgstr ""
@@ -4992,6 +5011,10 @@ msgstr "Extra alto"
 msgid "Extra high"
 msgstr "Extra alto"
 
+#: src/pages/CompanyCalendar.tsx
+msgid "Fact unavailable"
+msgstr ""
+
 #: src/pages/CompanyImport.tsx
 msgid "Facts"
 msgstr ""
@@ -5276,6 +5299,7 @@ msgstr ""
 msgid "Funded"
 msgstr ""
 
+#: src/pages/CompanyCalendar.tsx
 #: src/pages/CompanyHistory.tsx
 msgid "Funding"
 msgstr ""
@@ -6084,6 +6108,7 @@ msgstr "Salir"
 
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/FilterBar.tsx
+#: src/pages/CompanyCalendar.tsx
 #: src/pages/CompanyHistory.tsx
 #: src/pages/Legal.tsx
 #: src/pages/Shell.tsx
@@ -6705,6 +6730,7 @@ msgid "month"
 msgstr ""
 
 #: src/components/finance/ui.tsx
+#: src/pages/CompanyCalendar.tsx
 #: src/pages/CompanyHistory.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -7163,6 +7189,10 @@ msgstr ""
 msgid "No dated facts"
 msgstr ""
 
+#: src/pages/CompanyCalendar.tsx
+msgid "No dates"
+msgstr ""
+
 #: src/pages/Devin.tsx
 msgid "No Devin sessions yet."
 msgstr ""
@@ -7409,6 +7439,7 @@ msgid "Not checked"
 msgstr ""
 
 #: src/pages/Company.tsx
+#: src/pages/CompanyCalendar.tsx
 #: src/pages/CompanyFactDetail.tsx
 #: src/pages/CompanyHistory.tsx
 msgid "Not confirmed"
@@ -8059,6 +8090,7 @@ msgid "Pending"
 msgstr ""
 
 #: src/pages/Company.tsx
+#: src/pages/CompanyCalendar.tsx
 #: src/pages/CompanyHistory.tsx
 msgid "People"
 msgstr ""
@@ -8316,6 +8348,7 @@ msgstr ""
 msgid "Processing"
 msgstr ""
 
+#: src/pages/CompanyCalendar.tsx
 #: src/pages/CompanyHistory.tsx
 msgid "Product"
 msgstr ""
@@ -9076,6 +9109,7 @@ msgstr ""
 #: src/components/data-room/DataRoomStats.tsx
 #: src/pages/Auth.tsx
 #: src/pages/Company.tsx
+#: src/pages/CompanyCalendar.tsx
 #: src/pages/CompanyImport.tsx
 #: src/pages/CompanyImportScope.tsx
 #: src/pages/CompanyPrivacy.tsx
@@ -10362,6 +10396,10 @@ msgstr "Transmitir respuestas"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Streamable HTTP"
+msgstr ""
+
+#: src/pages/CompanyCalendar.tsx
+msgid "Streams"
 msgstr ""
 
 #: src/components/data-room/ItemRows.tsx
