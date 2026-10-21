@@ -316,7 +316,7 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
     >
       {data ? (
         <>
-          <div className="grid grid-cols-2 gap-3 @3xl:grid-cols-4">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-3">
             <Kpi
               title={t`Per month`}
               value={money(data.monthlyAvgCents)}

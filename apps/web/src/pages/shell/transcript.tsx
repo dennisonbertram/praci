@@ -732,6 +732,8 @@ export const Transcript = memo(function Transcript({
           if (!messageHasVisibleBlocks(message.blocks, showToolActivity)) return null;
           const peerReceipt = isPeerReceiptBlocks(message.blocks);
           const messageReactions = reactionView.reactions.get(message.id);
+          // Email cards run the full width of the transcript, like the "New" divider.
+          const fullWidth = message.blocks.some((block) => block.kind === "emails");
           return (
             <Fragment key={message.id}>
               {separatorIds.has(message.id) ? (
@@ -765,9 +767,11 @@ export const Transcript = memo(function Transcript({
                             // A narrow transcript (the Inbox agent panel) cannot spare 8rem beside each bubble.
                             message.role === "user"
                               ? "max-w-[max(min(84%,calc(100%_-_8rem)),min(84%,20rem))] @max-sm:max-w-[84%] [@media(hover:none)]:max-w-[84%]"
-                              : message.blocks.some((block) => block.kind === "ask" && block.mail)
-                                ? "max-w-[calc(100%_-_5rem)] @max-sm:max-w-full [@media(hover:none)]:max-w-full"
-                                : "max-w-[max(min(88%,calc(100%_-_8rem)),min(88%,20rem))] @max-sm:max-w-[92%] [@media(hover:none)]:max-w-[88%]"
+                              : fullWidth
+                                ? "w-full max-w-full"
+                                : message.blocks.some((block) => block.kind === "ask" && block.mail)
+                                  ? "max-w-[calc(100%_-_5rem)] @max-sm:max-w-full [@media(hover:none)]:max-w-full"
+                                  : "max-w-[max(min(88%,calc(100%_-_8rem)),min(88%,20rem))] @max-sm:max-w-[92%] [@media(hover:none)]:max-w-[88%]"
                           }`
                     }
                   >
@@ -808,6 +812,7 @@ export const Transcript = memo(function Transcript({
                         message={message}
                         hasReactions={Boolean(messageReactions)}
                         side={message.role === "user" ? "start" : "end"}
+                        below={fullWidth}
                         onReply={onReply}
                         onReact={onReact}
                         remember={remember}
@@ -831,6 +836,8 @@ export const Transcript = memo(function Transcript({
                           message.role === "user"
                             ? "@max-sm:[@media(hover:hover)]:end-0 @max-sm:[@media(hover:hover)]:pe-0"
                             : "@max-sm:[@media(hover:hover)]:start-0 @max-sm:[@media(hover:hover)]:ps-0",
+                          fullWidth &&
+                            "[@media(hover:hover)]:start-0 [@media(hover:hover)]:top-full [@media(hover:hover)]:bottom-auto [@media(hover:hover)]:ps-0 [@media(hover:hover)]:pt-1",
                           // Touch has no hover margin: drop the revealed time in-flow under the bubble.
                           "[@media(hover:none)]:hidden [@media(hover:none)]:group-hover/message:static [@media(hover:none)]:group-focus-within/message:static [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:static",
                           "[@media(hover:none)]:group-hover/message:block [@media(hover:none)]:group-focus-within/message:block [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:block",
@@ -1049,9 +1056,11 @@ function MessageHoverActions({
   onReply,
   onReact,
   remember,
+  below,
 }: {
   message: ThreadMessage;
   side: "start" | "end";
+  below?: boolean;
   hasReactions?: boolean;
   onReply: (message: ThreadMessage) => void;
   onReact: (message: ThreadMessage, reaction: MessageReaction) => Promise<void>;
@@ -1081,6 +1090,7 @@ function MessageHoverActions({
     <MessageHoverMetadata
       pinned={moreOpen || reactionsOpen}
       side={side}
+      below={below}
       hasReactions={hasReactions}
     >
       <div data-testid="message-hover-actions" className="flex items-center gap-0.5">

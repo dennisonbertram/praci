@@ -74,6 +74,11 @@ msgstr "{0, plural, one {# earlier message} other {# earlier messages}}"
 msgid "{0, plural, one {# email} other {# emails}}"
 msgstr "{0, plural, one {# email} other {# emails}}"
 
+#. placeholder {0}: glance.dataRoomWaiting
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# file failed} other {# files failed}}"
+msgstr "{0, plural, one {# file failed} other {# files failed}}"
+
 #. placeholder {0}: items.length
 #: src/components/FinanceCards.tsx
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
@@ -103,11 +108,6 @@ msgstr "{0, plural, one {# subscription} other {# subscriptions}}"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "{0, plural, one {# task done by your bots} other {# tasks done by your bots}}"
 msgstr "{0, plural, one {# task done by your bots} other {# tasks done by your bots}}"
-
-#. placeholder {0}: glance.dataRoomWaiting
-#: src/pages/Shell.tsx
-msgid "{0, plural, one {# waiting} other {# waiting}}"
-msgstr "{0, plural, one {# waiting} other {# waiting}}"
 
 #. placeholder {0}: rows.length
 #: src/pages/Inbox.tsx
@@ -232,10 +232,8 @@ msgstr "{0} files were not added. Attachments can be up to {MAX_COMPOSE_ATTACHME
 msgid "{0} handling"
 msgstr "{0} handling"
 
-#. placeholder {0}: months.toFixed(0)
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
-#: src/components/sidebar-glance.tsx
 msgid "{0} mo"
 msgstr "{0} mo"
 
@@ -259,11 +257,6 @@ msgstr "{0} of {1}"
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} rollup hours"
 msgstr "{0} rollup hours"
-
-#. placeholder {0}: runwayGlance(glance.financeRunwayMonths)
-#: src/pages/Shell.tsx
-msgid "{0} runway"
-msgstr "{0} runway"
 
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
@@ -806,7 +799,6 @@ msgid "Add connected models to use them as backups."
 msgstr "Add connected models to use them as backups."
 
 #: src/components/ContactDialog.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
 msgid "Add contact"
 msgstr "Add contact"
@@ -1362,10 +1354,6 @@ msgstr "Ask"
 msgid "Ask {botName}"
 msgstr "Ask {botName}"
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Ask a question"
-msgstr "Ask a question"
-
 #: src/pages/Devin.tsx
 msgid "Ask a space owner to connect Devin."
 msgstr "Ask a space owner to connect Devin."
@@ -1418,6 +1406,10 @@ msgstr "Ask before purchases"
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Ask before sending external email"
 msgstr "Ask before sending external email"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Ask Chief"
+msgstr "Ask Chief"
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
@@ -4568,7 +4560,6 @@ msgstr "Full screen"
 msgid "Fullscreen"
 msgstr "Fullscreen"
 
-#: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Fully diluted shares"
 msgstr "Fully diluted shares"
@@ -5388,6 +5379,7 @@ msgstr "Loading voice providers…"
 #: src/App.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/ui.tsx
+#: src/components/RowsSkeleton.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
 #: src/pages/finance/FinanceTransaction.tsx
@@ -6567,7 +6559,6 @@ msgid "Off: other agents reach {service} only through this agent."
 msgstr "Off: other agents reach {service} only through this agent."
 
 #: src/components/integrations/IntegrationAgentSection.tsx
-#: src/components/integrations/McpDetail.tsx
 msgid "Off: the agent only reads. On: it can also make changes, and asks you before each one."
 msgstr "Off: the agent only reads. On: it can also make changes, and asks you before each one."
 
@@ -6644,6 +6635,10 @@ msgstr "Open chat"
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
 msgstr "Open computer settings"
+
+#: src/pages/CapTable.tsx
+msgid "Open Contacts"
+msgstr "Open Contacts"
 
 #: src/pages/Legal.tsx
 msgid "Open deadlines"
@@ -6875,6 +6870,10 @@ msgstr "Owner"
 #: src/pages/CapTable.tsx
 msgid "Ownership"
 msgstr "Ownership"
+
+#: src/pages/CapTable.tsx
+msgid "Ownership by share class"
+msgstr "Ownership by share class"
 
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
@@ -7963,10 +7962,9 @@ msgstr "Runway scenarios"
 msgid "Safe"
 msgstr "Safe"
 
-#. placeholder {0}: safes.length
 #: src/pages/CapTable.tsx
-msgid "SAFEs ({0}, {total}) are not included until they convert"
-msgstr "SAFEs ({0}, {total}) are not included until they convert"
+msgid "SAFEs are not in the share counts"
+msgstr "SAFEs are not in the share counts"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Sales & CRM"

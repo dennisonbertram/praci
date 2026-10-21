@@ -122,6 +122,34 @@ export const BesideAgentPanelBreakdown: Story = {
   play: BreakdownOpen.play,
 };
 
+/** Every legend row ends inside the card: a long class name truncates, the share count never clips. */
+const fitsCard = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const card = canvasElement
+    .querySelector<HTMLElement>("[data-testid=ownership-stage]")
+    ?.closest("[data-slot=card]");
+  const right = card?.getBoundingClientRect().right ?? 0;
+  for (const row of canvasElement.querySelectorAll(
+    "[data-testid=ownership-stage] > ul:first-of-type li > *",
+  )) {
+    if (row.getBoundingClientRect().right > right)
+      throw new Error("Legend row is wider than the card");
+  }
+};
+
+const inCard = (width: number) => [
+  (Story: () => React.ReactNode) => (
+    <div className="@container text-foreground" style={{ width }}>
+      <Story />
+    </div>
+  ),
+];
+
+/** The card beside the page's other column with the agent panel closed (526 px). */
+export const Card526: Story = { decorators: inCard(526), play: fitsCard };
+
+export const Card440: Story = { decorators: inCard(440), play: fitsCard };
+
 export const ReducedMotion: Story = {
   parameters: { reducedMotion: true },
   decorators: [

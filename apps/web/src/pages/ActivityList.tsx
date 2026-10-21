@@ -5,6 +5,7 @@ import { isAgedStuckWork } from "@rakazo/core";
 import { Button, Input, Label, NativeSelect, NativeSelectOption } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { RowsSkeleton } from "../components/RowsSkeleton";
 import type { ActivityListFilters } from "../lib/activity-list-filters";
 import {
   activityFiltersActive,
@@ -104,11 +105,7 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
   const hasVisibleRuns = filteredActive.length > 0 || filteredRecent.length > 0;
 
   if (loading && !hasAnyRuns && !filtersOn) {
-    return (
-      <div className="min-h-20 px-2.5 py-2 text-[13px] text-muted-foreground/80" role="status">
-        <Trans>Loading activity…</Trans>
-      </div>
-    );
+    return <RowsSkeleton rows={3} className="px-2.5 py-2" />;
   }
 
   if (!hasAnyRuns && !filtersOn) {
