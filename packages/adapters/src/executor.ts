@@ -1502,6 +1502,18 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const hidePrivateVoiceHistory = voiceAgent && !voiceWorkspaceReadAllowed;
         // The sender is a bot of this space and user. Not enough alone: a foreign bot or channel
         // may have started the chain, so the message must also carry the owner's own origin.
+        // A meeting-source agent reads untrusted meeting text, so it gets a fixed list of built-ins.
+        const meetingAgent = await isMeetingSourceAgent(bot, { prisma: deps.prisma });
+        // Its own thread holds meeting text from now on (compaction, notifications), so it is marked.
+        if (
+          meetingAgent &&
+          (thread as { meetingTaintedAt?: Date | null }).meetingTaintedAt == null
+        ) {
+          await deps.prisma.thread.updateMany({
+            where: { id: thread.id, meetingTaintedAt: null },
+            data: { meetingTaintedAt: new Date() },
+          });
+        }
         const senderBot =
           run.trigger === "bot_message" && peerMessage?.fromBotId
             ? await deps.prisma.bot.findFirst({
@@ -1546,9 +1558,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
         }
         // The durable mark on the thread (set when meeting text is delivered into it, never cleared)
         // is the main signal; the trigger's sender and loaded replies are extra.
+        // The meeting-source agent itself is held by its fixed tool list, not by cards.
         const meetingTaint =
-          meetingSenderIds.size > 0 ||
-          (thread as { meetingTaintedAt?: Date | null }).meetingTaintedAt != null;
+          !meetingAgent &&
+          (meetingSenderIds.size > 0 ||
+            (thread as { meetingTaintedAt?: Date | null }).meetingTaintedAt != null);
         // The wake prompt carries the reply body (already escaped); mark that body as meeting text too.
         const task =
           senderBot && meetingSenderIds.has(senderBot.id)
@@ -1647,8 +1661,6 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const legalOnly = isLegalAgentSpawnKey(bot.spawnKey);
         // The Data room agent gets a fixed list of built-ins and no connector tools.
         const dataRoomAgent = isDataRoomAgentSpawnKey(bot.spawnKey);
-        // A meeting-source agent reads untrusted meeting text, so it gets a fixed list of built-ins.
-        const meetingAgent = await isMeetingSourceAgent(bot, { prisma: deps.prisma });
         // Connections limited to chosen agents stay out of this run unless the bot was granted access.
         const deniedIds = deniedConnectionIds(storedConnections);
         const ordinaryAllowedConnections = storedConnections.filter(
@@ -3243,7 +3255,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
           // writes, sends or reaches the network asks, on a card that cannot become a saved rule.
           // Read at each call, so a run that is marked mid-way (a reply arrives) asks from then on.
           const meetingTaintedCall =
-            !MEETING_TAINT_FREE_TOOLS.has(name) && (meetingTaint || (await threadMarkedNow()));
+            !meetingAgent &&
+            !MEETING_TAINT_FREE_TOOLS.has(name) &&
+            (meetingTaint || (await threadMarkedNow()));
           const requiresMandatoryApproval =
             requiresUnattendedApproval ||
             meetingTaintedCall ||
@@ -6136,6 +6150,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             getLogger().warn("Backup models could not be loaded", { runId, error });
           }
         }
+        let meetingMarkedMidRun = false;
         const fallbackModelKeys = new Set(
           fallbackModels
             .filter(
@@ -6229,7 +6244,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               resolveFallbackModel: fallbackModelKeys.size
                 ? async (provider, modelId) => {
                     const key = JSON.stringify([provider, modelId]);
-                    if (!fallbackModelKeys.has(key))
+                    if (meetingMarkedMidRun || !fallbackModelKeys.has(key))
                       throw new Error("Backup model is not selected");
                     return resolveConnectedModel(
                       { userId: run.userId, spaceId: run.spaceId },
@@ -6240,12 +6255,23 @@ export function createRunExecutor(deps: ExecutorDeps) {
                     );
                   }
                 : undefined,
+              beforeModelRequest: async () => {
+                // A mark that arrives mid-run: from then on consent for this model is required and
+                // no backup model is used. Unmarked runs cost one row read per model request.
+                if (meetingAgent || meetingTaint) return;
+                if (!meetingMarkedMidRun && !(await threadMarkedNow())) return;
+                meetingMarkedMidRun = true;
+                if (!(await meetingConsentOk())) throw new Error(MEETING_CONSENT_REQUIRED_MESSAGE);
+              },
               onModelRetry: (reason) => {
                 modelRetrying = true;
                 void phases.write({ kind: "retrying", name: reason });
               },
               onModelChange: async (provider, modelId) => {
-                if (!fallbackModelKeys.has(JSON.stringify([provider, modelId]))) {
+                if (
+                  meetingMarkedMidRun ||
+                  !fallbackModelKeys.has(JSON.stringify([provider, modelId]))
+                ) {
                   throw new Error("Backup model is not selected");
                 }
                 const updated = await deps.prisma.run.updateMany({
@@ -7102,6 +7128,19 @@ async function runNotice(
   };
 }
 
+async function threadHoldsMeetingText(deps: ExecutorDeps, threadId: string): Promise<boolean> {
+  try {
+    const row = await deps.prisma.thread.findUnique({
+      where: { id: threadId },
+      select: { meetingTaintedAt: true },
+    });
+    return row?.meetingTaintedAt != null;
+  } catch {
+    // Unknown is treated as marked.
+    return true;
+  }
+}
+
 async function notifyRun(
   deps: ExecutorDeps,
   run: {
@@ -7119,6 +7158,9 @@ async function notifyRun(
   try {
     const notice = await runNotice(deps.prisma, run);
     if (!notice.enabled) return;
+    // A thread that holds meeting text sends the push without message text: the title only.
+    if (await threadHoldsMeetingText(deps, run.threadId))
+      message = { ...message, body: message.title };
     await notifyThreadEvent(
       deps.prisma,
       deps.notificationEvents,

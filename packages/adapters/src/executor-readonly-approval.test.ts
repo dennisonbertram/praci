@@ -68,6 +68,15 @@ vi.mock("./inbox-triage.js", async (importOriginal) => ({
       : { ready: {}, blocked: null },
 }));
 
+const notices = vi.hoisted(() => ({ sent: [] as { title: string; body: string }[] }));
+vi.mock("./run-notification.js", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  notifyThreadEvent: async (_p: unknown, _e: unknown, _r: unknown, message: never) => {
+    notices.sent.push(message);
+    return "created";
+  },
+}));
+
 const reviewMock = vi.fn();
 const autoReviewProvider: AutoReviewProvider = {
   describe: () => ({
@@ -295,6 +304,10 @@ function fixture({
   const prisma = {
     user: { findUnique: vi.fn(async () => ({ timezone: null })) },
     run: {
+      findFirst: vi.fn(async () => ({
+        bot: { notifyOnFinish: true },
+        thread: { groupId: null },
+      })),
       findUnique: vi.fn(async () => run),
       findUniqueOrThrow: vi.fn(async () => run),
       updateMany: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
@@ -360,6 +373,10 @@ function fixture({
         meetingTaintedAt: mark.at,
       })),
       findUnique: vi.fn(async () => ({ meetingTaintedAt: mark.at })),
+      updateMany: vi.fn(async () => {
+        mark.at ??= new Date();
+        return { count: 1 };
+      }),
     },
     message: {
       findMany: vi.fn(async () =>
@@ -532,6 +549,7 @@ function fixture({
   return {
     offeredTools,
     request: () => lastRequest,
+    threadMarked: () => mark.at !== null,
     markThread: () => {
       mark.at = new Date();
     },
@@ -3283,5 +3301,64 @@ describe("meeting taint and consent are not escaped", () => {
       await f.run();
       expect(f.offeredTools).toEqual(expect.arrayContaining(["meetings_list"]));
     });
+  });
+
+  it("marks a meeting-source agent's own thread when its run starts", async () => {
+    const f = fixture({
+      spawnKey: integrationAgentSpawnKey("server-1"),
+      mcpServers: [{ id: "server-1", endpoint: granola, agentBotId: "bot-1" }],
+    });
+    expect(f.threadMarked()).toBe(false);
+    await f.run();
+    expect(f.threadMarked()).toBe(true);
+  });
+
+  describe("a mark that arrives while the run is going", () => {
+    afterEach(() => {
+      triage.chatNeedsConsent = false;
+    });
+    it("stops at the next model request when this model has no consent", async () => {
+      const f = fixture({ builtin: true });
+      await f.run();
+      const request = f.request()!;
+      await expect(request.beforeModelRequest!()).resolves.toBeUndefined();
+      f.markThread();
+      triage.chatNeedsConsent = true;
+      await expect(request.beforeModelRequest!()).rejects.toThrow(
+        "AI data sharing is off for this model.",
+      );
+    });
+    it("lets it continue with consent, but no backup model from then on", async () => {
+      const f = fixture({ builtin: true });
+      await f.run();
+      const request = f.request()!;
+      // Before the mark the backup is allowed to resolve (this fixture has no connected provider).
+      await expect(request.resolveFallbackModel!("openrouter", "backup/model")).rejects.toThrow(
+        "Connect that model provider first",
+      );
+      f.markThread();
+      await expect(request.beforeModelRequest!()).resolves.toBeUndefined();
+      await expect(request.resolveFallbackModel!("openrouter", "backup/model")).rejects.toThrow(
+        "Backup model is not selected",
+      );
+    });
+  });
+
+  it("sends a push without message text from a marked thread", async () => {
+    notices.sent.length = 0;
+    const marked = fixture({
+      name: "save_shared_memory",
+      builtin: true,
+      threadMarkedAtStart: true,
+    });
+    marked.setCalls([{ args: { path: "MEMORY.md", content: "SECRET-TEXT" }, executionId: "c" }]);
+    await marked.run();
+    expect(notices.sent).toHaveLength(1);
+    expect(notices.sent[0]!.body).toBe(notices.sent[0]!.title);
+    notices.sent.length = 0;
+    const open = fixture({ name: "shell", builtin: true, trigger: "webhook" });
+    open.setCalls([{ args: { command: "echo SECRET-TEXT" }, executionId: "c" }]);
+    await open.run();
+    expect(notices.sent[0]!.body).not.toBe(notices.sent[0]!.title);
   });
 });
