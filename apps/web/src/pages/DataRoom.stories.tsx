@@ -8,6 +8,7 @@ const load = (list: typeof items) =>
   mockRpc({
     "dataRoom.folders": folders,
     "dataRoom.imports": [],
+    "dataRoom.processing": { reading: 0, indexing: 0, tagging: 0, failed: 0, current: null },
     "dataRoom.items.list": { items: list, nextCursor: null },
     "dataRoom.item": (input: unknown) =>
       items.find((item) => item.id === (input as { id: string }).id) ?? items[0],

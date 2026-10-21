@@ -1,0 +1,19 @@
+[
+  {
+    "id": "F-024-01",
+    "story_id": "STORY-024",
+    "severity": "medium",
+    "category": "error-handling",
+    "criterion": "Feedback: reply states what changed",
+    "score": "warn",
+    "description": "Asking Chief to save the seeded Quinn Auditwell (same email) 'as our advisor' did not return the expected 'already saved' reply. Chief changed the seeded contact's kind from Auditor to Advisor and replied 'Updated Quinn Auditwell's existing contact from auditor to advisor'. A seeded contact is now changed for other walkers and the auditor lookup.",
+    "expected": "Reply says Quinn is already saved as an auditor and the kind was not changed (or asks first), as it did for my own contact Ada (step-6-own-contact.png: 'already saved as a legal contact... Should I change her kind to investor?').",
+    "actual": "The model went straight to the save tool; the duplicate path behaved differently between two similar requests. No question was asked for Quinn.",
+    "screenshot": "docs/ux-walker/contacts/stories/STORY-024/screenshots/step-5.png",
+    "suggested_fix": "Make contacts_add on a duplicate return alreadySaved with the existing kind, and require approval for any kind change (see F-025-01).",
+    "files_likely_involved": [
+      "apps/api/src/agents/contacts-tools.ts",
+      "apps/api/src/agents/action-approval.ts"
+    ]
+  }
+]

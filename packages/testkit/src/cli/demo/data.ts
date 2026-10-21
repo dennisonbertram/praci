@@ -1317,7 +1317,7 @@ export const DEMO_CONTACTS = [
     name: "Fictional Law Group",
     email: "counsel@fictional-law.example.test",
     organization: "Fictional Law Group (Mock)",
-    kind: "other" as const,
+    kind: "legal" as const,
     notes: `${MOCK_NOTE}: outside counsel.`,
   },
   {

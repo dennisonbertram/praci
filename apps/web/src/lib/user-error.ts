@@ -2,8 +2,8 @@ import { t } from "@lingui/core/macro";
 import type { CredentialField } from "@rakazo/core";
 import {
   authErrorMessage,
-  isInternalRunError,
   KEY_REJECTED_PATTERN,
+  plainRunError,
   userErrorMessage,
 } from "@rakazo/core";
 
@@ -16,11 +16,10 @@ export { KEY_REJECTED_PATTERN };
 
 /** A run's stored error as the user reads it: a rejected API key says where to fix it. */
 export function runErrorText(error: string): string {
-  return KEY_REJECTED_PATTERN.test(error)
-    ? t`The model provider did not accept your API key. Check it in Settings > Models.`
-    : isInternalRunError(error)
-      ? t`Something went wrong. Try again.`
-      : error;
+  return plainRunError(error, {
+    keyRejected: t`The model provider did not accept your API key. Check it in Settings > Models.`,
+    generic: t`Something went wrong. Try again.`,
+  });
 }
 
 export function credentialIssueText(field: CredentialField): string {

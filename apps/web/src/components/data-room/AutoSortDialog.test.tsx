@@ -80,8 +80,8 @@ const render = async (onApplied = vi.fn(), onClose = vi.fn(), files: AutoSortFil
 };
 const boxes = () => Array.from(document.querySelectorAll<HTMLElement>('[role="checkbox"]'));
 const button = (name: string) =>
-  Array.from(document.querySelectorAll("button")).find(
-    (b) => b.textContent === name,
+  Array.from(document.querySelectorAll("button")).find((b) =>
+    b.textContent?.startsWith(name),
   ) as HTMLElement;
 
 it("groups the changes as Merge, Move and Rename, each before and after, all ticked", async () => {
@@ -206,4 +206,21 @@ it("lists at most 300 files and counts the rest", async () => {
   await render(vi.fn(), vi.fn(), many);
   expect(items()).toHaveLength(301);
   expect(items().at(-1)).toBe("+5 more");
+});
+
+it("leaves files already in a folder unticked and groups moves by destination", async () => {
+  autoSort.plan.mockResolvedValue({
+    mode: "ai",
+    operations: [
+      { ...plan.operations[1] },
+      { ...plan.operations[1], key: "move:i3", itemId: "i3", name: "in.pdf", fromFolderId: "f9" },
+    ],
+  });
+  act(() => root.render(<AutoSortDialog onClose={() => undefined} onApplied={() => undefined} />));
+  await flush();
+  await flush();
+  const boxes = Array.from(document.querySelectorAll('[role="checkbox"]'));
+  expect(boxes.map((b) => b.getAttribute("aria-checked"))).toEqual(["true", "false"]);
+  expect(document.querySelectorAll("h4")).toHaveLength(1);
+  expect(button("Apply").textContent).toBe("Apply 1 change");
 });
