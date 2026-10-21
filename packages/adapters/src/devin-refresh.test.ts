@@ -87,11 +87,10 @@ function fakeDb(
       ),
     },
     spaceMember: { findFirst: vi.fn(async () => (db.member ? { id: "m" } : null)) },
-    mcpServer: {
-      count: vi.fn(async ({ where }: { where: { revision: number } }) =>
-        where.revision === db.revision ? 1 : 0,
-      ),
-    },
+    // The commit's `SELECT 1 FROM mcp_servers ... revision = ${revision} FOR SHARE`.
+    $queryRaw: vi.fn(async (_strings: unknown, _id: string, revision: number) =>
+      revision === db.revision ? [{}] : [],
+    ),
     devinSession: {
       findMany: vi.fn(async () => [...sessions.values()]),
       upsert: vi.fn(
@@ -350,12 +349,37 @@ describe("refreshDevinConnection", () => {
     expect((state?.backoffUntil as Date).getTime() - T0.getTime()).toBe(5 * MIN);
   });
 
+  it("a 401 or 429 on a later page fails the run like one on the first page", async () => {
+    for (const [status, lastError] of [
+      ["401", "rejected"],
+      ["429", "rate_limited"],
+    ] as const) {
+      const fake = fakeDb();
+      const devin = fakeDevin({
+        search: (args) => {
+          if (args.after) throw new Error(errors[status]);
+          return fixture("search-page-1.txt");
+        },
+      });
+      expect(await refresh(fake, devin)).toBe("failed");
+      expect(fake.db.states.get("srv-1")).toMatchObject({ lastError, lastSucceededAt: null });
+      expect(fake.db.sessions.size).toBe(0);
+    }
+  });
+
   it("a connector who left the space is marked connector_gone and nothing is listed", async () => {
     const fake = fakeDb({ member: false });
     const devin = fakeDevin();
     expect(await refresh(fake, devin)).toBe("connector_gone");
     expect(fake.db.states.get("srv-1")?.lastError).toBe("connector_gone");
     expect(devin.calls).toHaveLength(0);
+  });
+
+  it("recording connector_gone drops a lease held by an in-flight refresh", async () => {
+    const fake = fakeDb({ member: false });
+    Object.assign(fake.db.states.get("srv-1")!, { leaseToken: "inflight", leaseUntil: T0 });
+    await refresh(fake, fakeDevin());
+    expect(fake.db.states.get("srv-1")?.leaseToken).toBeNull();
   });
 
   it("treats an isError result as a failure, not an empty list", async () => {

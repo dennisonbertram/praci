@@ -22,7 +22,7 @@ const MIN = 60_000;
 export type DevinRefreshDeps = {
   prisma: Pick<
     PrismaClient,
-    "devinConnectionState" | "devinSession" | "spaceMember" | "mcpServer" | "$transaction"
+    "devinConnectionState" | "devinSession" | "spaceMember" | "$transaction"
   >;
   callTool: DevinCallTool;
   now?: () => Date;
@@ -92,7 +92,8 @@ export async function refreshDevinConnection(
   if (!member) {
     await prisma.devinConnectionState.updateMany({
       where: { serverId },
-      data: { lastError: "connector_gone" },
+      // Dropping the lease also stops an in-flight refresh from committing over this.
+      data: { lastError: "connector_gone", leaseToken: null, leaseUntil: null },
     });
     return "connector_gone";
   }
@@ -121,7 +122,11 @@ export async function refreshDevinConnection(
     prisma.$transaction(
       async (tx) => {
         const release = { leaseToken: null, leaseUntil: null };
-        if ((await tx.mcpServer.count({ where: { id: serverId, revision } })) === 0) {
+        // FOR SHARE holds the server row until commit, so a concurrent edit waits and cannot
+        // change the revision between this check and the writes.
+        const current = await tx.$queryRaw<unknown[]>`
+          SELECT 1 FROM mcp_servers WHERE id = ${serverId} AND revision = ${revision} FOR SHARE`;
+        if (current.length === 0) {
           await tx.devinConnectionState.updateMany({ where: fence, data: release });
           return false;
         }
@@ -160,8 +165,9 @@ export async function refreshDevinConnection(
         skipped += parsed.skipped;
         cursor = parsed.nextCursor;
       } catch (error) {
-        // A later page failing keeps what was read; only the first page failing fails the run.
-        if (page === 0) throw error;
+        // A later page failing keeps what was read, unless the key or the rate limit is the
+        // cause: those fail the run like a first-page failure.
+        if (page === 0 || devinFailureOf(error, { phase }) !== "unreachable") throw error;
         break;
       }
       if (!cursor) {
