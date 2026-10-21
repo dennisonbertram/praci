@@ -269,6 +269,7 @@ body[data-page="portal"] aside.left{display:none}
     <div class="row"><span class="icon"><svg viewBox="0 0 16 16"><path d="M3 3.5h10v9H3zM5.5 6.5h5M5.5 9h3"/></svg></span>Legal</div>
     <div class="row r-inv"><span class="icon"><svg viewBox="0 0 16 16"><path d="M5.5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM1.5 13c0-2.2 1.8-3.5 4-3.5s4 1.3 4 3.5M10.5 3.2a2 2 0 0 1 0 3.6M12 9.6c1.5.4 2.5 1.6 2.5 3.4"/></svg></span>Investors<span class="dot" aria-label="1 unseen notification"></span></div>
     <div class="row r-fund"><span class="icon"><svg viewBox="0 0 16 16"><path d="M2.5 12.5l3.5-4 3 2.5 4.5-6M11 5h2.5v2.5"/></svg></span>Fundraising</div>
+    <div class="row"><span class="icon"><svg viewBox="0 0 16 16"><path d="M5.5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM1.5 13c0-2.2 1.8-3.5 4-3.5s4 1.3 4 3.5"/></svg></span>Contacts</div>
     <div class="row"><span class="icon"><svg viewBox="0 0 16 16"><path d="M2.5 5.5h11v7.5h-11zM5.5 5.5V3.5h5v2"/></svg></span>Data room</div>
     <div class="label">Bots</div>
     <div class="row"><span class="av" style="background:var(--bot)">I</span>Investors agent</div>
@@ -396,13 +397,13 @@ body[data-page="portal"] aside.left{display:none}
     </div>
 
     <div class="card">
-      <div class="cardhead"><h2>Documents</h2><div class="r"><button class="btn s">Add</button></div></div>
+      <div class="cardhead"><h2>Documents</h2></div>
       <table>
-        <thead><tr><th>Name</th><th class="hm">Date</th><th>Shared with</th><th class="mn"></th></tr></thead>
+        <thead><tr><th>Name</th><th class="hm">Type</th><th class="hm">Added</th></tr></thead>
         <tbody>
-          <tr><td class="v">409A valuation report</td><td class="hm">Jun 2026</td><td class="mute">—</td><td class="mn"><button class="ib" aria-label="Row actions">…</button></td></tr>
-          <tr><td class="v">Seed SPA, signed</td><td class="hm">Feb 2026</td><td>Elena Ruiz, Tom Okafor</td><td class="mn"><button class="ib" aria-label="Row actions">…</button></td></tr>
-          <tr><td class="v">Audit request, Northwind Fund II</td><td class="hm">Oct 14</td><td class="mute">—</td><td class="mn"><button class="ib" aria-label="Row actions">…</button></td></tr>
+          <tr><td class="v">409A valuation report</td><td class="hm">Valuation</td><td class="hm">Jun 2026</td></tr>
+          <tr><td class="v">Seed SPA, signed</td><td class="hm">Contract</td><td class="hm">Feb 2026</td></tr>
+          <tr><td class="v">Audit request, Northwind Fund II</td><td class="hm">Request</td><td class="hm">Oct 14</td></tr>
         </tbody>
       </table>
     </div>
@@ -421,7 +422,7 @@ body[data-page="portal"] aside.left{display:none}
       <div class="f"><label for="ak">Kind</label><select id="ak" class="in"><option selected>Investor</option><option>Board</option><option>Auditor</option><option>Other</option></select></div></div>
       <div class="btns end"><button class="btn">Cancel</button><button class="btn p">Add contact</button></div></div></div>
 
-    <div class="scrim" data-show="inv-share"><div class="dlg" role="dialog" aria-label="Share document"><h2>Share · Seed SPA, signed</h2>
+    <div class="scrim" data-show="inv-share"><div class="dlg" role="dialog" aria-label="Share document"><h2>Share with investors · Seed SPA, signed</h2>
       <div class="rc"><span>Elena Ruiz</span><span class="st"><button class="btn s">Unshare</button></span></div>
       <div class="rc"><span>Tom Okafor</span><span class="st"><button class="btn s">Unshare</button></span></div>
       <label class="rc"><input type="checkbox"><span>Sam Lind</span></label>
@@ -462,9 +463,9 @@ body[data-page="portal"] aside.left{display:none}
         </div>
       </div>
       <div class="f"><label for="bd">Body</label>
-<div id="bd" class="in body" contenteditable="true" role="textbox" aria-multiline="true"><div class="bh">TL;DR</div><div>Third pilot converted to paid. Runway 13 months.</div><div class="bh">Numbers</div><div>Cash $1.13M · burn $89k/mo · runway 13 mo · MRR $21.1k (+15%)</div><div>Customers: <mark>TBD</mark></div><div class="bh">Highlights</div><div class="bl">Second gripper batch shipped on time.</div><div class="bl">Controls hire started Oct 6.</div><div class="bh">Lowlights</div><div class="bl">One pilot paused for budget until January.</div><div class="bh">Asks</div><div class="bl">Intros to cold-chain operators.</div></div></div>
+<div id="bd" class="in body" contenteditable="true" role="textbox" aria-multiline="true"><div class="bh">TL;DR</div><div>Third pilot converted to paid. Runway 13 months.</div><div class="bh">Numbers</div><div>Cash $1.13M · burn $89k/mo · runway 13 mo · revenue $21.1k last month</div><div>Customers: <mark>TBD</mark></div><div class="bh">Highlights</div><div class="bl">Second gripper batch shipped on time.</div><div class="bl">Controls hire started Oct 6.</div><div class="bh">Lowlights</div><div class="bl">One pilot paused for budget until January.</div><div class="bh">Asks</div><div class="bl">Intros to cold-chain operators.</div></div></div>
       <div class="edfoot">
-        <span class="sub" data-hide="ed-sending ed-failed ed-tbd ed-unknown ed-nogmail">Saved</span><span class="sub" data-show="ed-nogmail">Notifies 4 investors</span>
+        <span class="sub" data-hide="ed-sending ed-failed ed-tbd ed-unknown">Saved</span>
         <span data-show="ed-tbd" style="margin-right:auto">1 TBD left. Send anyway?</span>
         <span class="sub" data-show="ed-failed">3 of 4 sent</span>
         <button class="ib" data-show="ed-unknown" aria-label="Close"><svg><use href="#i-x"/></svg></button>
@@ -525,19 +526,19 @@ body[data-page="portal"] aside.left{display:none}
       <div class="card">
         <div class="cardhead"><h2>Pipeline</h2><div class="r"><span class="sub" data-show="merc">8 prospects</span><span class="sub" data-show="nomerc" data-hide="ravisafe">7 prospects</span><span class="sub" data-show="ravisafe">6 prospects</span></div></div>
         <div class="stage" data-hide="ravisafe"><h3>Committed <span class="count" data-show="merc">2</span><span class="count" data-hide="merc">1</span></h3>
-          <div class="item pl"><div class="tx"><div class="t">Ravi Mehta</div><div class="d"><span data-hide="ravwait">Met Oct 9 · wire details</span><span data-show="ravwait">Waiting for Mercury · <span class="nw">Oct 20</span></span></div></div><div class="act"><span class="amt">$50,000</span><span class="slot"><button class="btn s p" data-hide="noround fund-closed ravwait">Send SAFE</button><button class="btn s" data-show="noround fund-closed">Send SAFE</button></span><button class="ib" aria-label="Row actions">…</button></div></div>
+          <div class="item pl"><div class="tx"><div class="t">Ravi Mehta</div><div class="d"><span data-hide="ravwait">Wire details</span><span data-show="ravwait">Waiting for Mercury · <span class="nw">Oct 20</span></span></div></div><div class="act"><span class="amt">$50,000</span><span class="slot"><button class="btn s p" data-hide="noround fund-closed ravwait">Send SAFE</button><button class="btn s" data-show="noround fund-closed">Send SAFE</button></span><button class="ib" aria-label="Row actions">…</button></div></div>
           <div class="item pl" data-show="merc"><div class="tx"><div class="t">Dana Whitfield</div><div class="d">Waiting for Mercury · <span class="nw">Oct 18</span></div></div><div class="act"><span class="amt">$100,000</span><span class="slot"></span><span class="rel"><button class="ib" aria-label="Row actions">…</button>
               <span class="pop rt" role="menu" data-show="fund-waitmenu"><button role="menuitem">Open Mercury</button><button role="menuitem">Not sent</button><button role="menuitem">Passed</button><hr><button role="menuitem">Edit prospect</button></span></span></div></div>
         </div>
         <div class="stage"><h3>Diligence <span class="count">1</span></h3>
-          <div class="item pl"><div class="tx"><div class="t">Clearwater Fund</div><div class="d">Data room shared Oct 15 · call Thu</div></div><div class="act"><span class="amt">$250,000</span><span class="slot"></span><button class="ib" aria-label="Row actions">…</button></div></div>
+          <div class="item pl"><div class="tx"><div class="t">Clearwater Fund</div><div class="d">Call Thu</div></div><div class="act"><span class="amt">$250,000</span><span class="slot"></span><button class="ib" aria-label="Row actions">…</button></div></div>
         </div>
         <div class="stage"><h3>Meeting <span class="count">1</span></h3>
           <div class="item pl"><div class="tx"><div class="t">Oakline Partners</div><div class="d">Meeting Oct 24</div></div><div class="act"><span class="amt">$200,000</span><span class="slot"></span><span class="rel"><button class="ib" aria-label="Row actions">…</button>
               <span class="pop rt" role="menu" data-show="fund-stage"><span class="sub">Move to</span><button role="menuitem">Target</button><button role="menuitem">Intro</button><button role="menuitem">Diligence</button><button role="menuitem">Committed</button><button role="menuitem">Passed</button><hr><button role="menuitem">Edit prospect</button></span></span></div></div>
         </div>
         <div class="stage"><h3>Intro <span class="count">2</span></h3>
-          <div class="item pl"><div class="tx"><div class="t">Summit Seed</div><div class="d">Intro via Elena · Oct 17</div></div><div class="act"><span class="amt none">—</span><span class="slot"></span><button class="ib" aria-label="Row actions">…</button></div></div>
+          <div class="item pl"><div class="tx"><div class="t">Summit Seed</div><div class="d">Intro via Elena</div></div><div class="act"><span class="amt none">—</span><span class="slot"></span><button class="ib" aria-label="Row actions">…</button></div></div>
           <div class="item pl"><div class="tx"><div class="t">Mira Santos</div><div class="d">Intro requested</div></div><div class="act"><span class="amt none">—</span><span class="slot"></span><button class="ib" aria-label="Row actions">…</button></div></div>
         </div>
         <div class="stage"><h3>Target <span class="count">1</span></h3>
@@ -545,7 +546,7 @@ body[data-page="portal"] aside.left{display:none}
         </div>
         <div class="stage"><button class="tg" aria-expanded="false" data-hide="fund-stage">Passed 1 ›</button>
           <button class="tg" aria-expanded="true" data-show="fund-stage">Passed 1 ⌄</button>
-          <div class="item pl" data-show="fund-stage"><div class="tx"><div class="t">Hollis Fund</div><div class="d">Passed Oct 5</div></div><div class="act"><span class="amt">$150,000</span><span class="slot"></span><button class="ib" aria-label="Row actions">…</button></div></div>
+          <div class="item pl" data-show="fund-stage"><div class="tx"><div class="t">Hollis Fund</div><div class="d">—</div></div><div class="act"><span class="amt">$150,000</span><span class="slot"></span><button class="ib" aria-label="Row actions">…</button></div></div>
         </div>
       </div>
 

@@ -99,6 +99,15 @@ often without a lawyer or CFO:
     2026-10-21), since it reads cap table, financial and investor data
     (`messaging-policy.ts`, slice 2).
 
+16. **Keep one-step Undo after a cap table source switch** (founder, 2026-10-21): the
+    snapshot keeps the previous table in one column and Undo restores it once.
+17. **Keep Post to portal** (founder, 2026-10-21): the no-Gmail path stays.
+18. **Action items and counting** (founder, 2026-10-21): a drafted update stays an action
+    item until sent or deleted; a Mercury SAFE not attached to a prospect in a round counts in
+    no round bar; a signed SAFE's flip to investor is never reversed automatically.
+19. **One audit in two threads shows as two rows** (founder, 2026-10-21); the founder
+    dismisses one.
+
 Standing constraints: no hosted vendor required (Carta, Google, Mercury, Gmail are
 optional adapters); every row scoped to space and user; email goes out only on the
 founder's click; minimal copy; a story per component; mobile parity or an explicit
@@ -117,8 +126,8 @@ degrade; no real figures in the repo.
   and Sent SAFEs, at their amount. Every SAFE counts exactly once (the SAFE counting rule below).
   SAFE money that is signed is **Signed**; paid is **Funded**.
 - **SAFE counting rule** (the one place it is written; every other section refers
-  here). Mercury is the only record of a Mercury SAFE: Rakazo creates no `Safe` row
-  for one and never edits one (status, dates, terms and amount come from Mercury on
+  here). Mercury is the only record of a Mercury SAFE: Rakazo creates no native SAFE
+  for one (a synced `Safe` row is a read-only cache of Mercury's record) and never edits one (status, dates, terms and amount come from Mercury on
   sync; the Mark actions exist on native SAFEs only). Status of a Mercury SAFE: Canceled
   when `canceledAt` is set; else Funded when `paidAt`; else Signed when both signature
   dates are set; else Expired when `expiresAt` has passed; else Sent (a Mercury SAFE
@@ -130,14 +139,16 @@ degrade; no real figures in the repo.
   without case, equals a prospect's email attaches to that contact (`Safe.contactId`);
   emails are unique per owner, so at most one contact matches. The prospect leaves the
   pipeline, its check size stops counting, and the SAFE counts by its Mercury status.
-  A Mercury SAFE with no matching contact counts normally by its status and offers
-  **Assign to contact** (a picker of prospects and investors); assigning attaches it and
-  removes that prospect's check size from Pending. Attaching clears the contact's
+  A Mercury SAFE with no matching contact is listed with its status and offers
+  **Assign to contact** (a picker of prospects and investors) but is in no round bar:
+  a SAFE counts in a round only through the `roundId` of the contact it is attached to,
+  so a SAFE attached to an existing investor with no round, or not attached, counts in no
+  round. Assigning attaches it and removes that prospect's check size from Pending. Attaching clears the contact's
   `mercurySentAt`. An attached Mercury row's menu is Open and **Unassign**, which
   detaches the SAFE (to fix a wrong match: Unassign, then Assign to contact): the
-  contact returns to its previous kind and stage (the stage was kept), its check size
-  counts again if it is still a Committed prospect, and a contact that flipped to
-  investor on Signed flips back unless another active SAFE remains. **Disconnecting
+  contact keeps its kind and stage, and its check size counts again if it is still a
+  Committed prospect. A contact that flipped to investor on Signed stays an investor;
+  the founder edits the kind if that was wrong. **Disconnecting
   Mercury changes nothing about these rows**: they stay as last synced, labelled "from
   Mercury", read-only (Open, Assign to contact, Unassign), with no native conversion and no
   Delete; reconnecting refreshes the same rows by their owner-scoped `externalId`, so each
@@ -148,17 +159,19 @@ degrade; no real figures in the repo.
   so a Waiting prospect never leaves Committed and its check size always counts, and it
   never gets the native Send SAFE while waiting. Native SAFEs (no Mercury) are unchanged:
   a Draft or Sent native SAFE counts at its amount and the prospect has left the
-  pipeline. The one way to count the same money twice is an email mismatch: the
-  prospect's check size counts and so does the unmatched Mercury SAFE. Both rows say so
+  pipeline (a prospect whose only SAFE is canceled or deleted before it was signed returns
+  to the pipeline; once Signed the contact is an investor and stays out). The one way to count the same money twice is an email mismatch: the
+  prospect's check size counts, while the unmatched Mercury SAFE is in no round bar, so the
+  round bar cannot double count. Both rows say so
   (the prospect reads "Waiting for Mercury", the SAFE offers "Assign to contact"),
   assigning fixes it, and Unassign undoes a wrong choice. Rakazo does not guess a match
   by name or amount. A SAFE with no contact (an existing investor's, say) simply counts
-  by its status and keeps Assign to contact in its menu.
+  in its list row and keeps Assign to contact in its menu.
 - **Update status**: exactly Draft, Sending, Sent, Partly sent (some recipient
   failed or has an Unknown outcome) and Posted (on the portal, each investor contact
   with an email, not revoked, told by a portal notice that carries a fresh link). One word per state on
   every surface.
-- **Portal access**: a contact of kind investor who has a live link token or session,
+- **Portal access** (investor contacts only; board and auditor contacts have none): a contact of kind investor who has a live link token or session,
   or has been sent an update or portal notice, and is not blocked (revoked). Used for
   the unticked-investors line and the portal list; Post to portal does not require it,
   since the notice itself mints access.
@@ -298,9 +311,12 @@ There are no Carta evals in `packages/testkit`.
 All new rows carry `spaceId` and `userId` (cascade on both), and every query filters
 on both. Money is integer cents (`BigInt`); shares are integers.
 
-- **`CapTableSnapshot`** gains `previous Json?` and `previousUpdatedAt` (one version
-  back, for Undo after a source switch). `data` gains `source: "carta" | "sheet" |
-  "native"` (old rows read as `carta`) and `sourceRef: { driveFileId, name } | null`.
+- **`CapTableSnapshot`** gains a `source` column (`carta` | `sheet` | `native`, default
+  `carta`, so old rows read as Carta); every write names the source it expects and is
+  refused when the row's source differs (one conditional update, so a late write from
+  another source cannot land). `data` gains `sourceRef: { driveFileId, name } | null`. A `previous Json?` column holds
+  one version back (`{ source, sourceRef, data }`), written by Change source and cleared by
+  Undo or by the next change, so the table before a switch can be restored once.
   Native rows use a security from Common, Preferred, Option, Other and any name
   copied from the previous table (for example Seed Preferred); **no SAFE security**: a
   typed-in SAFE is a `Safe` row, shown on Investors from there. The option pool has one
@@ -308,7 +324,7 @@ on both. Money is integer cents (`BigInt`); shares are integers.
   pool" row is drawn from it and is never also a holder row (the typed-in
   editor edits that field).
 - **`Contact`** gains `stage` (target, intro, meeting, diligence, committed, passed;
-  null for non-prospects), `checkSizeCents`, `nextStep`, `lastContactAt`, and the
+  null for non-prospects), `checkSizeCents`, `nextStep`, and the
   portal fields `portalLinkSentAt`, `portalLastSeenAt`, `portalBlockedAt`; the
   `ContactSchema` and `ContactSaveInputSchema` in `packages/contracts/src/contacts.ts`
   carry them (the schema already has `addedBy` and `notes`). `ContactKindSchema` keeps
@@ -328,7 +344,8 @@ on both. Money is integer cents (`BigInt`); shares are integers.
   `mfn`, `proRata`, `governingState?`, `investmentDate?`, `expiresAt?`, `canceledAt?`,
   `sentAt?` (native only), `signedByOwnerAt?`, `signedByInvestorAt?`, `paidAt?`,
   `documentUrl?`, `financeTransactionId?` (a transaction links to at most one SAFE, and
-  belongs to the same owner). A native SAFE is always the one supported YC form: a
+  belongs to the same owner). A Mercury row is a read-only cache of Mercury's record, not a
+  Rakazo SAFE. A native SAFE is always the one supported YC form: a
   post-money valuation cap, no discount, no MFN (`valuationType` post-money cap;
   `discountPercent` null; `mfn` false); `proRata` records the separate YC side letter.
   The other fields hold imported Mercury terms as Mercury sent them. A Mercury row's
@@ -355,7 +372,7 @@ on both. Money is integer cents (`BigInt`); shares are integers.
   which is the `clientId` of its `ComposeSend` row, and the send outcome and Gmail message
   id are read from that row, not copied into a second record; "unknown" is the
   `ComposeSend` state of an attempt with no recorded result; a failed portal notice is
-  recorded the same way), `reviewedAt?`, `sentAt?`. A sent or posted update
+  recorded the same way), `sentAt?`. A sent or posted update
   is read-only.
 - **`InvestorShare`**: which Data room documents a contact sees. `contactId` and
   `dataRoomItemId`; unique per pair; cascade from contact and item. "Share" on a
@@ -369,15 +386,18 @@ on both. Money is integer cents (`BigInt`); shares are integers.
   session token, unique), `expiresAt` (30 days after creation, fixed). The
   cookie holds the random session token, never a contact id. Revoke, block and an
   email change delete all of the contact's link tokens and sessions.
-- **`AuditRequest`**: `contactId?`, `fund`, `fundKey` (normalized fund name), `asOf`
-  (date), `asOfMatched` (false when the statement had to use current holdings),
-  `dueDate?`, `status` (`open` | `drafted` | `done` | `dismissed`), `dataRoomItemId?`,
-  `mailThreadId?`, `connectionId?`, `draftRef?` (Gmail draft id), `senderKnown`
-  (sender is an Auditor contact), `notes`, `draftedAt?`, `doneAt?`, `lastMailAt`.
-  Unique on (spaceId, userId, fundKey, asOf).
+- **`AuditRequest`**: created by the intake job the moment the mail arrives, so it is
+  visible even if drafting never starts. `fund` (the subject line until the agent
+  corrects it), `asOf?` (date), `asOfMatched` (false when the statement had to use
+  current holdings), `dueDate?`, `status` (`open` | `drafted` | `done` | `dismissed`),
+  `dataRoomItemId?`, `mailThreadId?` (unique per space and user when set), `connectionId?`,
+  `draftRef?` (Gmail draft id), `senderKnown` (sender is an Auditor contact), `notes`,
+  `draftStartedAt?`, `draftedAt?`, `doneAt?`, `lastMailAt`. Rows the agent adds for a
+  request that did not arrive by mail have no thread; `audit_request_upsert` returns the
+  existing open row with the same normalized fund name and `asOf` instead of adding one.
 
 Removed from the first draft: the board routine, the audit-season routine, the SAFE security in the
-editor. Not added: vesting, priced rounds, OCF, consents, minutes, e-signature.
+editor, per-row edit versions, `lastContactAt`, `reviewedAt`. Not added: vesting, priced rounds, OCF, consents, minutes, e-signature.
 
 ### Agent: a new Investors agent; Carta and Mercury agents stay connectors
 
@@ -392,16 +412,26 @@ already shows the shape (`ensureLegalAgent`, fixed tool list in
 panel in Shell.
 
 Tools (`INVESTORS_AGENT_BUILTIN_TOOLS` in `packages/contracts/src/investors.ts`):
-`cap_table_read` (now also returns SAFEs), `contacts_*`, `fundraising_read` (new,
-read-only: the open round, prospects with stage and check size, SAFEs with derived
-status and deposit match), `investor_update_draft` (new), `audit_request_upsert`
-(new), `finance_overview`, `finance_breakdown`, `search_data_room`,
+`cap_table_read` (now also returns SAFEs), `cap_table_update` (from slice 4), `contacts_*`,
+`fundraising_read` (new, read-only: the open round, prospects with stage and check size,
+SAFEs with derived status and deposit match), `investor_update_draft` (new, one tool:
+`history` lists recent sent updates with their bodies, `get` and `save` read and edit one
+existing draft by id and refuse a sent or posted update, `create` adds a draft),
+`audit_request_upsert` (new), `finance_overview`, `finance_breakdown`, `search_data_room`,
 `read_data_room_item`, `read_spreadsheet`, `mail_search`, `mail_grep`, `mail_get`,
-`mail_draft`, `drive_search`, `drive_read`, `message_bot`, `notify_user`. It never
+`mail_draft`, `drive_search`, `drive_read`, `message_bot`, `notify_user`. The list grows
+slice by slice: each slice adds a tool to `INVESTORS_AGENT_BUILTIN_TOOLS` only when it can
+execute it (slice 2 ships the list without the three new tools and without
+`cap_table_update`). Each new tool is registered in four places by the slice that introduces
+it: its definition in `builtinAgentTools` (`packages/adapters/src/builtin-tools.ts`), its
+name in `BUILTIN_TOOL_NAMES` (`packages/contracts/src/builtin-tools.ts`), an `investorsEnabled`
+gate option and name set in the executor's `selectBuiltinToolsForRun` filter plus its
+dispatch branch next to the contact tools (`packages/adapters/src/executor.ts`), and the
+spawn key's fixed list. It never
 gets `mail_send` (updates go out from the page on the founder's click; audit replies
 are Gmail drafts the founder sends), no Mercury tools (SAFE and deposit questions are
 answered from the synced rows through `fundraising_read`), and `cap_table_update`
-only on a sheet-read run. It cannot change a pipeline stage; it says so and points
+only writes while the snapshot's source is `sheet` (the database refuses any other write). It cannot change a pipeline stage; it says so and points
 to the row.
 
 `contacts_add` already does what this plan needs (main, `addContactIfNew`): on an
@@ -416,10 +446,9 @@ or the portal, tell the user to ask the Investors agent. It stays in Bots with i
 history and is listed with the integration agents, but the sidebar shows it only
 while it has recent history; the Investors page never links to it. The two skills move to the Investors agent as `investor-update` (writes the row
 through `investor_update_draft`; no Gmail draft any more) and `audit-response`.
-Gates to widen: `capTableToolsAllowed` (`contact-tools.ts`) so the Investors key gets
-`cap_table_read`, with `cap_table_update` only on a sheet-read run (the executor's
-`CAP_TABLE_TOOL_NAMES` set is gated as a whole today, so slice 2 splits the two
-tools), `financeToolsAllowed`, `defaultNotificationSurface` (surface `investors`).
+Gates to widen: `capTableToolsAllowed` (`contact-tools.ts`) so the Investors key passes the
+cap table gate (the executor gates `CAP_TABLE_TOOL_NAMES` as a whole; the fixed list is what
+keeps `cap_table_update` away from the agent until slice 4), `financeToolsAllowed`, `defaultNotificationSurface` (surface `investors`).
 The new spawn key is also added to `bots.create`'s reserved prefixes (`router.ts`),
 `botUsesConnectorTools` (`connection-access.ts`, so it gets no Composio tools),
 `autoGroupFolderName` (`sidebar-folders.ts`, Workspace folder), `pageAgentKind`
@@ -427,8 +456,11 @@ and `PageAgentIntro`, and `agent-colors.ts`. Ask on Investors and on Fundraising
 this one agent through the Shell `agentPanel` descriptor that Legal and Data room use
 (not `cartaPanelState`, which is for Carta's connected state); one collapsed-panel
 preference serves both pages. The agent is created when either page first opens
-(`investors.agent`, idempotent), not on the first Ask as Legal and Data room do,
-because the monthly routine and audit intake need it to exist without a click.
+(`investors.agent`, idempotent; Investors from slice 2, Fundraising from slice 8), not on the
+first Ask as Legal and Data room do, because the monthly routine needs it to exist without a
+click. Audit intake does not need it: the intake job files the request row on arrival, and
+the agent drafts only when it exists; otherwise the row stays New with a Draft reply button
+that creates the agent.
 
 One routine, seeded by `ensureInvestorsAgent` under an advisory lock (the
 `ensureLegalRoutine` pattern): **"Investor update draft"**, monthly on the 1st at
@@ -454,60 +486,57 @@ mobile both notifications open the agent chat.
 
 ### Cap table sources
 
-One snapshot per space and user (today's scope). The source is chosen once and
-shown as one line in the header, "<Source> · as of <date>", with a menu: Refresh
-(Carta or sheet only, dispatched by `investors.refresh`), Change source, and Undo
-only right after a switch (a typed-in table offers Change source, plus Undo after a
-switch). The line always names the data shown: `source` changes only when the first
-read of the new source succeeds, so a failed read, including a failed switch, keeps
-the previous source and its label on the line (in the warning color) and the menu
-shows "Last read failed · Try again" as its first item. Carta's own states ("Reading
-Carta…", "Reconnect Carta", needs a model) use the same line. Rules:
+One snapshot per space and user (today's scope). The source is chosen once and shown
+as one line in the header, "<Source> · as of <date>", with a menu: Refresh (Carta or
+sheet only, dispatched by `investors.refresh`), Change source, and Undo only right after a
+switch. Carta's own states
+("Reading Carta…", "Reconnect Carta", needs a model) use the same line. Rules:
 
-- **One writer per source.** Carta sync writes only while `source` is `carta`; a
-  sheet read writes only while `source` is `sheet`; the table editor writes only
-  while `source` is `native`. Choosing a source stops the others:
-  `onMcpServerConnected` starts a Carta read only when there is no snapshot or the
+- **One writer per source, enforced by the database.** `source` is a column on the
+  snapshot row. Every write names the source it expects (`expectedSource`) and is refused
+  by one conditional update when the row's source differs. Carta sync and the Carta agent
+  write as `carta`, the sheet-read run as `sheet`, the table editor as `native`. So a Carta
+  read already running when the founder switches, or a Carta-agent turn later, cannot
+  overwrite a Sheet or typed-in table, and a late sheet result after a switch back is
+  refused. `onMcpServerConnected` starts a Carta read only when there is no snapshot or the
   source is already Carta.
-- **Switching keeps one version back.** Change source copies `data` to `previous`
-  before the new read or the first edit, and the header offers Undo until the next
-  change. No confirm dialog. Switching to Typed in starts from a copy of the table
-  shown, so the founder edits it instead of retyping it. A read carries the version it
-  started from; a result that arrives after Undo or another change is discarded.
-- **Typed-in table** (`source: native`): always editable in place, autosave on blur
-  per row, a long holder name wraps in its field instead of clipping, one blank row at the bottom (a row left blank is ignored), security
-  defaults to Common (Common, Preferred, Option, Other, plus names copied from the
-  previous table, which the legend keeps), company name defaults to the space name, as-of is the
-  last edit. Every holder row has a menu with Delete holder (Add as contact when no
-  contact has that name; the pool row has none). A non-numeric or negative Shares or Invested
-  value is outlined and not saved; two holders may share a name. The pool is one row, "Unallocated pool",
-  counted in fully diluted. A holder is linked to the contact with the same name,
-  and Add as contact asks for an email and creates one (kind investor). Concurrent
-  edits: saves are per row. Each holder has a stable id and a `rev`; a save carries
-  `{ rowId, expectedRev, values }` and the server applies it to the newest table in
-  one transaction, so another tab's other rows are never overwritten. A row whose
-  `rev` changed is refused: that row reloads with the other tab's values and shows
-  "Changed elsewhere" next to it; nothing else moves. A network error or a validation
-  failure shows "Not saved" with a Retry button in the card header; the typed rows
-  stay as typed, and Retry re-sends only the rows that were not saved. Leaving the
-  page while "Not saved" asks the browser's leave confirmation.
-- **Google Sheet** (`source: sheet`): picked with `DrivePicker`
-  (exported from `components/data-room/ImportFromDrive.tsx`); the API queues one Investors agent run (trigger `routine`, the
-  `startCartaSync` pattern with its advisory lock) whose prompt names the file id and
-  tells the agent to read it with `drive_read` and call `cap_table_update` with the
-  exact figures, source sheet. A read that is truncated (`drive_read` returns
-  `truncated: true`) or that the agent cannot parse completely **fails**: the run does not
-  save a snapshot (`cap_table_update` on a sheet-read run is refused when the run's read of
-  that file reported `truncated`), says why in its chat, and the page shows its existing
-  failed-read state with the previous snapshot unchanged. The page shows only reading,
-  read, or failed. With no
-  snapshot yet, a failed first read shows no source line, one
-  sentence, "The sheet could not be read.", with Try again and Type it in under it.
-  The page shows "Reading sheet…" while the run is active (also for the very first
-  read) and, when the latest sheet-read run ended without a newer snapshot (computed
-  from the run's `createdAt` and the snapshot's `updatedAt`), keeps the old snapshot
-  and its source label in the warning color with "Last read failed · Try again" in
-  the menu. Drive exports the first tab only.
+- **Change source takes effect at once and keeps the data.** The RPC copies the row's
+  `source`, `sourceRef` and `data` into `previous`, then sets the new `source` (and
+  `sourceRef` for a sheet), creating a row with an empty table when there is none. The table
+  shown stays the old data until the new source writes. Typed in therefore starts from a copy
+  of the table shown, which the founder edits instead of retyping. **Undo** (`investors.undoSource`)
+  restores `previous` once (source, sourceRef and data) and clears it; because it changes
+  `source` back, a result still arriving from the source that was undone is refused. Undo is
+  offered only until the next change. No confirm dialog.
+- **Typed-in table** (`source: native`): always editable in place, saved on blur as the
+  whole table with the `updatedAt` it was loaded from; a save from a stale copy is refused,
+  and the table then reloads and shows "Changed elsewhere". A network error or a
+  validation failure shows "Not saved" with a Retry button in the card header and the
+  typed rows stay as typed. A long holder name wraps in its field, one blank row sits at the
+  bottom (a row left blank is ignored), security defaults to Common (Common, Preferred,
+  Option, Other, plus names copied from the previous table, which the legend keeps),
+  company name defaults to the space name, as-of is the last edit. Every holder row has a
+  menu with Delete holder (Add as contact when no contact has that name; the pool row has
+  none). A non-numeric or negative Shares or Invested value is outlined and not saved; two
+  holders may share a name. The pool is one row, "Unallocated pool", counted in fully
+  diluted. A holder is linked to the contact with the same name, and Add as contact asks
+  for an email and creates one (kind investor).
+- **Google Sheet** (`source: sheet`): picked with the Drive picker in its single-file
+  mode (one Google Sheet, returned without importing it; see slice 4). The API sets the
+  source, then queues one Investors agent run (trigger `routine`, the `startCartaSync`
+  pattern with its advisory lock) whose prompt names the file id and tells the agent to
+  read it with `drive_read` and call `cap_table_update` with the exact figures. The guarantee
+  is narrower than "never partial": the agent is told to stop without saving when
+  `drive_read` reports `truncated: true` or when any row cannot be read, and the writer
+  refuses an update unless the snapshot's source is `sheet`, the update names that file id,
+  and it has at least one holder. Rakazo cannot detect a row the agent silently omits from a
+  complete read; the page shows the figures as read, with the source line naming the sheet.
+  The page shows "Reading sheet…" while the run is active (also for the very first read)
+  and, when the latest sheet-read run ended without a newer snapshot (computed from the
+  run's `createdAt` and the snapshot's `updatedAt`), keeps the old table, adds "Last read
+  failed · Try again" to the menu and shows the line in the warning color. With no
+  snapshot yet, a failed first read shows no source line, one sentence, "The sheet could not
+  be read.", with Try again and Type it in under it. Drive exports the first tab only.
 - **Carta** (`source: carta`): unchanged sync through the Carta agent.
 
 Fully diluted math is pure (`packages/core/src/cap-table.ts`) and has one rule used
@@ -562,16 +591,19 @@ label of the data shown, in the warning color. Sections, in order:
    order, then newest (New, Draft ready, with the due date, "Sender not in Auditors"
    and, once a draft exists and the holdings could not be dated, "Holdings as of
    today, not <date>") and the routine's update draft until it is opened
-   (`reviewedAt`; an opened, unsent draft leaves this block and stays in Updates).
+   (the draft stays here until it is sent or deleted).
    One button per row; the chip carries the state. The audit button is **Open draft**
    when a draft exists (opens the Gmail draft in a new tab) and **Open** when New
    (opens the filed request, or the mail thread in Inbox when nothing was filed, for
    example a DocuSign notice); the update row's **Open** opens the editor. Audit rows
    have a menu: Mark done, Dismiss. A row closes only when the founder chooses
-   Mark done or Dismiss; sending the reply does not close it. **Show done** is a text button in the block header (list-wide,
+   Mark done or Dismiss; sending the reply does not close it. **Show done** is a text button in the Updates header (list-wide,
    so not in a row menu); it lists done and dismissed rows and becomes Hide done.
-   With no open items the block is absent and Show done is not offered. SAFE items
-   live on Fundraising.
+   With no open items the block is absent; **Show done** stays available in the Updates
+   header while any done or dismissed request exists, so history is reachable after the
+   last request closes. A request whose mail thread has a newer message than its draft
+   shows the chip "New mail". An audit row that has no draft shows **Draft reply** (it
+   creates the agent when needed). SAFE items live on Fundraising.
 2. **Cap table**: two figures (Fully diluted; **Equity raised**: equity only, no SAFE
    money, equal to the sum of the Invested column of the holdings; built on the
    existing `Summary`/`Figure` parts), the ownership
@@ -589,8 +621,7 @@ label of the data shown, in the warning color. Sections, in order:
    shares · invested" (a SAFE row shows its amount); in the editor each typed-in row
    is stacked as label and value pairs (Security, Shares, Invested), every value full
    width so no digit or class name is clipped, and the pool row has only its shares.
-3. **Updates**: every update, drafts included (an unopened routine draft is here and
-   in Action items; an opened one only here), with one status word per row: Draft,
+3. **Updates**: every update, drafts included (a routine draft is here and in Action items until it is sent or deleted), with one status word per row: Draft,
    Sending, Sent, Partly sent or Posted. A Sending row appears the moment Send is
    pressed, with Open and a disabled menu (no Delete while it runs), and flips to its
    final word by itself. A Partly sent row names the problem recipient
@@ -601,7 +632,7 @@ label of the data shown, in the warning color. Sections, in order:
    partly sent or posted update is read-only (Open shows it without a footer button);
    its row menu offers Duplicate (new draft) and Delete (confirm; removes the portal
    copy); a draft's menu has Delete only. A sent update appears at the top of the list
-   as Sent and leaves Action items. Toasts go through `enqueueNotificationToast` (the app toaster main's contact Undo already uses). After Send a toast reads "Sent to <n>"; after Post to portal it reads "Posted · <n> notified" and a Posted row heads the list. A Posted row whose notice failed for some contacts reads "<n> not notified" in its sub-line with Retry (those contacts only). Retry on a Partly sent row asks "May already be delivered. Send again?" first when any recipient to retry is Unknown, and retries failed recipients directly otherwise. Mark delivered (row menu and editor footer) records every Unknown recipient as Sent; when no Failed recipient remains the update becomes Sent, otherwise it stays Partly sent.
+   as Sent and leaves Action items. Toasts go through `enqueueNotificationToast` (the app toaster main's contact Undo already uses). After Send a toast reads "Sent to <n>"; after Post to portal it reads "Posted · <n> notified" and a Posted row heads the list. Retry on a Partly sent row asks "May already be delivered. Send again?" first when any recipient to retry is Unknown, and retries failed recipients directly otherwise. Mark delivered (row menu and editor footer) records every Unknown recipient as Sent; when no Failed recipient remains the update becomes Sent, otherwise it stays Partly sent.
 4. **Contacts**: tabs Investors, Board, Auditors. This is the portal view of the
    people an investor relationship involves, not the address book: prospects appear
    only on Fundraising until their kind changes, and every other kind (customer,
@@ -612,17 +643,16 @@ label of the data shown, in the warning color. Sections, in order:
    Portal column: "—", "Invited <date>" (the
    date of the latest send, resend or portal notice, so it moves on every one), "Opened <date>"
    (`portalLastSeenAt`), "Revoked", or after Unblock "Unblocked · send a link" until a
-   link goes out. Row menu: Resend link (any investor contact with an
-   email, and a board or auditor contact that has shared documents; with no email
-   provider it opens
+   link goes out. The Portal column and menu items apply to the Investors tab only;
+   board and auditor contacts have no portal access. Row menu: Resend link (an investor
+   contact with an email; with no email provider it opens
    the copy-link dialog), Copy link (mints a link and shows it once; the only route for a
    contact with no email) and Revoke (any
    contact with portal access), Unblock when revoked, and Edit and Delete for every
    contact. Revoke needs no confirm (Unblock reverses the block, not the links: a new
    link must be sent); changing a contact's email ends their tokens and sessions and
-   shows "—"; changing a contact's kind to one this section does not list (on the
-   Contacts page, say) does the same and also removes its document shares, so no access
-   is left that this section cannot show. Add contact is the shared contact dialog: Name,
+   shows "—"; changing a contact's kind away from investor does the same and also removes its
+   document shares, so no access is left that this section cannot show. Add contact is the shared contact dialog: Name,
    Email (optional), Organization (optional), Notes, Kind (defaults to the active tab); an
    email that already belongs to a contact is reported under Email with main's "Open
    <name>" button instead of adding one (a prospect opens on Fundraising). The dialog's
@@ -631,16 +661,20 @@ label of the data shown, in the warning color. Sections, in order:
    contact that has nothing beyond name, email, organization, kind and notes. Main's Undo
    re-creates the contact from those five fields, so it cannot bring back portal links,
    document shares, a stage, a check size or SAFE and audit links; a contact that has
-   any of those asks to confirm first, then removes its shares and tokens. Sent updates
+   any of those asks to confirm first, naming what will be removed, and then deletes with no
+   Undo. The check is one `contacts.linked` RPC (`packages/db/src/contacts.ts`) used by the
+   shared `ContactDialog`, so deleting from the Contacts page asks the same question; each
+   slice that adds a kind of link (6 portal and shares, 7 audit items, 8 stage, 9 SAFEs)
+   extends it. Sent updates
    keep their delivery records, and audit and SAFE rows keep their text with no contact
    link. The Board tab has Message the board,
    shown once a board contact exists. A contact has one kind. Tabs are buttons; the
    active one uses the sidebar accent fill.
 5. **Documents**: the existing `FolderDocuments` for `["Finance", "Cap Table"]`
-   (folder name kept so existing files stay), which is read-only today (Name, Type,
-   Added, newest 10, nothing shown when empty); slice 6 extends it with a "Shared with"
-   column and a row menu for Share. The
-   Share dialog lists the investor, board and auditor contacts: those who already have the file show Unshare, the others a
+   (folder name kept so existing files stay), unchanged and read-only (Name, Type, Added,
+   newest 10, nothing shown when empty). Sharing is not here: slice 6 adds **Share with
+   investors** to the Data room's own document actions (`ItemMenu.tsx`, `ItemDialogs.tsx`),
+   which reach every document, not only ten. The Share dialog lists the investor contacts: those who already have the file show Unshare, the others a
    checkbox, and "Email them a link" is ticked (every newly ticked contact gets a
    new link, so one who already has a link is told about the document). Its button
    is Share; there is no second confirm for sensitive files, since the dialog names
@@ -664,29 +698,26 @@ button: with Gmail, **Send** (emails each recipient their own message with their
 link and marks the row sent); without Gmail, **Post to portal** (the update ends as
 Posted and shows on the portal to every investor contact with portal access; each
 investor contact with an email who is not revoked or blocked, including one never sent a link, gets a short
-portal notice with a freshly minted link through the `TransactionalEmailProvider`, then
-the toast "Posted · <n> notified"; the footer, where Saved would be, reads "Notifies 1
-investor" or "Notifies <n> investors" before the click, the same n as the toast, and the line is absent when n is 0 (Post to portal then posts without opening the copy-link dialog, even with no email provider); with no email provider configured
-and n above 0 it opens the copy-link dialog instead, listing one link per such contact with a Copy
-button each; a contact with no
-email gets a link only through Copy link in the contact menu) with Connect Gmail as the
+portal notice with a freshly minted link through the `TransactionalEmailProvider` on a best-effort
+basis, then the toast "Posted · <n> notified"; with no email provider configured nobody is
+notified and the founder uses Resend link or Copy link on a contact; there is no notice retry) with Connect Gmail as the
 secondary action. The To list is hidden without Gmail. With Gmail, when an unticked
 investor contact has portal access (see Glossary), one line under the list reads "Unticked investors
 still see this on the portal."; nothing else explains it. A board update without Gmail
 has no Post to portal (board updates never reach the portal): its one button is
 "Connect Gmail to send". Connecting Gmail later does not email a Posted update; to email
 it, Duplicate it and Send, then Delete the original so the portal lists it once. Send is idempotent per update
-and runs as a background job: the status flips to sending in a transaction, then the
-job sends one recipient at a time under the attempt key `<updateId>:<contactId>:<n>`,
+and runs in the API process, detached from the request (no background job): the status
+flips to sending in a transaction, then the send loop sends one recipient at a time under the attempt key `<updateId>:<contactId>:<n>`,
 recording the attempt before the message goes out and the result after. Send again on a
 Failed or Unknown recipient, confirmed by the founder, starts attempt n+1 with a new
 `ComposeSend` row; the earlier attempt keeps its Unknown or Failed outcome, and no
 attempt is ever started automatically. A recipient
 row shows Sent, Sending or Failed with a Retry button (its slot is reserved so rows
 do not shift), the header chip reads Sending, the button reads "Sending" and is
-disabled, and a second click does nothing. If the process restarts, the job retry
-resumes an update left in sending: recipients with a recorded result are skipped,
-recipients never attempted are sent, and a recipient attempted with no recorded
+disabled, and a second click does nothing. If the process restarts, nothing resumes by itself: an update left in sending with no
+activity for 10 minutes is shown as Partly sent, recipients with a recorded result keep it,
+recipients never attempted show Failed with Retry, and a recipient attempted with no recorded
 result is shown as "Unknown — check Sent mail" with Retry, which asks once "May already
 be delivered. Send again?" (buttons Send again and Mark delivered, and a close icon that leaves the update as it was); it is never resent automatically,
 since a duplicate email is worse than a click. Send again stays the filled button on purpose: both defaults carry a risk (a duplicate email, or an investor who never got the update), and Send again is the action that completes delivery. A recipient counts as resolved when it is Sent, Failed or Unknown. When every recipient has resolved with a Failed or Unknown one among them, the chip
@@ -732,7 +763,7 @@ round. Sections:
    Start a round; the dialog asks for name (no default), target and post-money cap. Add prospect and Send SAFE work with no round (Send SAFE then opens with the
    terms expanded). Edit round is the same dialog with a Save button.
 3. **Pipeline**: prospects grouped under stage headings (no chip per row). Each row
-   has the name, a sub-line with last contact (typed) and next step, a right-aligned
+   has the name, a sub-line with the next step, a right-aligned
    check-size column ("—" when unknown), and the row menu inline at every width. Add
    prospect is the contact dialog with kind prospect, an optional email and a Stage
    field; stage moves ("Move to" a stage, any direction) and Edit prospect are in the
@@ -855,9 +886,11 @@ The only external principal in the system, kept narrow.
   before it inserts the session, so a session can never be created after Revoke or an
   email change deleted its token, and Unblock cannot revive one. The email-change deletion
   lives in the shared contact write (`writeContact` in `packages/db/src/contacts.ts`), so
-  every path that changes an email (the RPC, and `contacts_save`, which main no longer forces to ask, so an agent can now change an email unattended) invalidates
-  access (`addContactIfNew` never changes an existing contact; a kind change to a kind
-  the Investors page does not list also ends access, see Contacts); Unblock clears the block and
+  every path that changes an email (the `contacts.save` RPC; the agent's `contacts_save`
+  cannot change an email, because it looks the contact up by the submitted email and writes
+  that same address, but it can change the kind) invalidates
+  access (`addContactIfNew` never changes an existing contact; a kind change away from
+  investor also ends access and removes the shares, see Contacts); Unblock clears the block and
   restores nothing (old links and cookies stay dead; Resend mints a new link).
   Deleting the contact cascades the shares, tokens and sessions. Changing a contact's
   email deletes their tokens and sessions (a different person may own the address).
@@ -869,8 +902,7 @@ The only external principal in the system, kept narrow.
   the only unauthenticated portal route is the Open POST, which needs a valid token; there
   is nothing to enumerate and no per-address or per-IP limiter to build.
 - **Issuing.** Links are issued by an investor update send, a Post to portal notice, a document share,
-  Resend on a contact with an email (any investor contact, and any other kind that has shared
-  documents), or Copy link (so a contact added after the last
+  Resend on an investor contact with an email, or Copy link (so a contact added after the last
   update can be sent a link and see earlier updates). The share dialog pre-ticks
   "Email them a link". With no `TransactionalEmailProvider`, the founder sees the new
   link once, in the copy-link dialog, to paste. The update email subject is the
@@ -930,35 +962,50 @@ Intake runs on arrival, from the mail sync, not from a routine:
    threadId, fromSelf, isSpam), keeps received, non-spam ones whose subject or
    snippet matches audit, confirmation, 409A or DocuSign and that also have a document
    attachment, come from an Auditor contact, or come from a DocuSign sender (vendor
-   receipts and newsletters do not start a model run), at most 10 runs per user per
-   day, and queues one
-   `auditIntakeJob(scope, messageId)` per match (`packages/adapter-kit/src/background-jobs.ts`,
-   with an `audit.intake` entry in its `payloadSchemas`, replace key `audit.intake:<connectionId>:<messageId>`, handler in
-   `background-job-handlers.ts`). It does not depend on the Data room auto-file
-   setting, so a DocuSign notice with no attachment is still picked up.
+   receipts and newsletters do not start anything), and queues one
+   `auditIntakeJob(scope, messageId)` per match. The job follows the `mail.attachments`
+   precedent exactly: the payload type in `BackgroundJobPayloads`
+   (`packages/adapter-kit/src/types.ts`), its `payloadSchemas` entry and `auditIntakeJob`
+   helper (`packages/adapter-kit/src/background-jobs.ts`, replace key
+   `audit.intake:<connectionId>:<messageId>`), and a handler in
+   `createBackgroundJobHandlers` (`packages/adapters/src/background-job-handlers.ts`)
+   that needs only `prisma`, `jobs`, `mail` and `artifacts`, which the API
+   (`apps/api/src/app.ts`) and the worker (`apps/worker/src/index.ts`) already pass, so
+   neither composition changes. It does not depend on the Data room auto-file setting,
+   so a DocuSign notice with no attachment is still picked up.
 2. **Job.** `runAuditIntake` files the message's document attachments with
    `fileMailAttachment` (sha256 dedup, so a file the auto-filing job already stored
-   returns the existing item), looks up whether the sender is an Auditor contact,
-   skips the message when an `AuditRequest` already has this `threadId` (a reminder:
-   it updates `lastMailAt` only; a later message never reopens a done row), then queues one Investors agent run (trigger
-   `routine`, the `startCartaSync` pattern) whose prompt carries the message id,
-   thread id, the filed item ids and `senderKnown`. The agent never calls
-   `add_to_data_room` for these.
+   returns the existing item) and looks up whether the sender is an Auditor contact.
+   A message in a thread that already has a row only updates that row's `lastMailAt` (the
+   row then shows "New mail"; a done or dismissed row is never reopened). Otherwise it
+   creates the `AuditRequest` row (`open`, `fund` = the subject, `asOf` empty), so the
+   request is visible on Investors even if nothing else works. It then starts one Investors
+   agent drafting run (trigger `routine`, the `startCartaSync` pattern; the run-starting
+   helper lives in `audit-intake.ts` so the job and the `investors.audits.draft` RPC both
+   use it) whose prompt carries the row id, message id, thread id, the filed item ids and
+   `senderKnown`, but only when the Investors agent exists and fewer than 10 drafting runs
+   have started for this user today (counted from `draftStartedAt` under an advisory lock).
+   Request eleven, a missing agent, or a run that fails leaves the row New with
+   **Draft reply** on it; that button calls `investors.audits.draft`, which ensures the agent
+   and starts the run. The agent never calls `add_to_data_room` for these.
 3. **Draft.** The `audit-response` skill reads the message and the filed item,
-   extracts fund, as-of date, due date and asks; calls `audit_request_upsert`, which
-   dedupes on (fundKey, asOf) and otherwise creates the row; builds the holdings
+   extracts fund, as-of date, due date and asks; calls `audit_request_upsert` with the row
+   id (it corrects `fund`, `asOf` and `dueDate` on that row; with no id it returns the existing
+   open row with the same normalized fund and `asOf`, or adds one for a request that did not
+   arrive by mail); builds the holdings
    statement for that fund from `cap_table_read` (shares or SAFE amount, security,
    date; `asOfMatched: false` when it had to use current holdings, which the row
    shows as "Holdings as of today, not <date>"), finds the requested documents with
    `search_data_room`, drafts the reply with `mail_draft` in the thread with a "still
    needed from you" list, and moves the row to `drafted` with the draft id. Then one
    notification, "Audit request from <fund>". DocuSign: unchanged from the Carta plan
-   (body only, numbers to compare, no "sign it" verdict without figures).
+   (body only, numbers to compare, no "sign it" verdict without figures). Two mails about
+   the same audit in different threads give two rows; the founder dismisses one.
 4. **Close.** The founder closes a request: Mark done and Dismiss are in the row menu.
    Nothing closes or reopens a row automatically: a sent reply, including a short holding
    reply or a thank-you, is not evidence that the audit is answered, and a request-cycle
    identity that could tell them apart is not worth building for this plan. Dismissed rows
-   are hidden and keep their dedupe keys, so a reminder does not resurrect them; "Show done"
+   are hidden and keep their thread key, so a reminder does not resurrect them; "Show done"
    lists history. Requests that arrive outside Gmail: ask the agent (`@audit-response` with
    the details) which calls the same upsert. No Add form.
 
@@ -969,36 +1016,65 @@ portals is a follow-up.
 
 ## Slices
 
-Each slice is one PR, mergeable on a base containing its prerequisites, and the slices
-merge in number order: each branches from the merge of the one before it, even where
-its prerequisites list fewer. Several files are **edited by many slices, not appended
-to**, so they are shared and serialized: `schema.prisma` (one migration folder per slice),
-`rpc.ts` and `router.ts` (existing namespaces grow: `investors.*`, `fundraising.*`),
-`Investors.tsx` and `Investors.test.tsx` (rewritten in slices 1, 3, 4, 5, 6, 7, 9),
-`Fundraising.tsx` and its test (8, 9, 10), `App.tsx` (1, 6, 8), `Shell.tsx` (1, 2, 8),
-`contact-tools.ts` and `packages/db/src/contacts.ts` (2, 4, 6, 9), `carta-agent.ts` (2, 3, 5,
-7), `executor.ts` (2, 5, 7), `builtin-skills.ts` (5, 7), `investor-tools.ts` (5, 7, 8),
-`mail-sync.ts` and `background-job-handlers.ts` (5, 7), `approval-ask.ts` (2),
-`packages/contracts/src/investors.ts` (2, 5), `ContactDialog.tsx` and
-`packages/contracts/src/contacts.ts` (5, 8), `use-sidebar-glance.ts` (1, 2) and the
-demo seed `packages/testkit/src/cli/demo/seed.ts` (2, 3). Main changes fast in
-`Shell.tsx`, `executor.ts` and the contact files (281 commits landed while this plan
-was written): each slice starts by rebasing and re-reading the lines it edits. After
-copy changes, run `pnpm --filter @rakazo/web intl:extract` so the locale catalogs stay
-in step. The lead owns every edit to these files and
-lands them in the slice's PR; a delegated agent gets only the slice's new modules (a new
-file with its test) and never edits a shared file. Commands run from the repository root unless
-noted; Postgres tests need `VERIFY_DATABASE=1 DATABASE_URL=...`; after adding
-components run `pnpm design-system`, and `node .storybook/smoke.mjs storybook-static
-<filter>` in `apps/web` after `build-storybook`.
+Each slice is one PR. A slice's tests and hand test must pass on a base that contains
+only its listed prerequisites, so none of them may refer to a later slice. The slices are
+merged in number order; the prerequisite list is the true dependency and number order is
+only the merge order. Files that more than one slice edits are **shared**: each slice
+owns the lines it introduces, and the lead merges the shared files in slice order, each
+slice re-reading the lines it edits on top of the earlier ones. A delegated agent gets
+only a slice's new modules (a new file with its test) and never edits a shared file. The
+shared files, with the slices that edit them:
 
-Every slice is also tested by hand before merge: from the slice's worktree run
-`DEMO_SLOT=<n> pnpm demo:up` (a free slot), use the slice's behavior through the
-web UI or real HTTP as a founder (and, for slice 6, as an investor in a second
-browser profile), look at the result, and stop it with `DEMO_SLOT=<n> pnpm demo:down`.
-The PR says what was exercised and what the demo stack cannot provide (it has a mock
-Carta, but no real Carta, Google Drive, Gmail sending or Mercury account; those paths
-are covered by the manual checks below).
+- `schema.prisma` (each slice adds its own models and fields, one migration folder per
+  slice; nothing is added early), `rpc.ts`, `router.ts` and `router.test.ts` (each slice
+  adds its own namespace members: `investors.*` in 2 to 7, `fundraising.*` in 8 to 10).
+- `Investors.tsx`, its test and stories (1, 3, 4, 5, 6, 7, 9); `Fundraising.tsx`, its test
+  and stories (8, 9, 10); `App.tsx` (1, 6, 8); `Shell.tsx` (1, 2, 8); `app.ts` (6, 10).
+- `contact-tools.ts` (2, 9); `packages/db/src/contacts.ts` (6, 8, 9);
+  `packages/contracts/src/contacts.ts`, `ContactDialog.tsx` and `use-contact-notices.ts`
+  (5, 6, 8; slices 7 and 9 extend `contacts.linked` in `contacts.ts`).
+- `executor.ts` (2, 5, 7, 8), `packages/adapters/src/builtin-tools.ts` and
+  `packages/contracts/src/builtin-tools.ts` (5, 7, 8: each registers its own tool),
+  `builtin-skills.ts` and `investor-tools.ts` (5, 7), `fundraising-tools.ts` (8, 9),
+  `carta-agent.ts` (2, 3, 5, 7), `investors-agent.ts` (2, 5),
+  `packages/contracts/src/investors.ts` (2, 5, 7, 8: the tool list grows with each tool).
+- `investor-send.ts` and `UpdateEditor.tsx` (5, 6); `packages/contracts/src/fundraising.ts`
+  (8, 9, 10); `packages/db/src/fundraising.ts` (8, 10); `packages/db/src/safes.ts` (9, 10).
+- `notify-user.ts` (1, 2); `packages/testkit/src/cli/demo/seed.ts` (2, 3).
+
+Background jobs and agent tools have exactly one owning slice. Only slice 7 adds a
+background job (`audit.intake`: `types.ts`, `background-jobs.ts`, `background-job-handlers.ts`,
+`mail-sync.ts`); update sending needs none (see the Update editor). Each new agent tool is
+registered by its slice in `builtin-tools.ts` (adapters), `BUILTIN_TOOL_NAMES` (contracts),
+the executor gate and dispatch, and `INVESTORS_AGENT_BUILTIN_TOOLS`: `investor_update_draft`
+in 5, `audit_request_upsert` in 7, `fundraising_read` in 8, and `cap_table_update` is
+added to the Investors list in 4.
+
+Main changes fast in `Shell.tsx`, `executor.ts` and the contact files: each slice starts by
+rebasing and re-reading the lines it edits. After copy changes, run
+`pnpm --filter @rakazo/web intl:extract`. After adding components run `pnpm design-system`.
+
+**Verification commands** (all run from the repository root). Unit and component tests:
+`pnpm vitest run <files>`. A `*.postgres.test.ts` file skips itself unless
+`VERIFY_DATABASE=1` and `DATABASE_URL` are set, so a green `vitest run` proves nothing for
+it: run `pnpm test:integration` (starts Postgres in Docker and runs every
+`*.postgres.test.ts`, including new ones). End-to-end specs: `pnpm test:e2e --spec=e2e/<name>.spec.ts`
+(the harness starts Postgres, the API and the web app and runs headless Chromium; plain
+`pnpm --filter @rakazo/web e2e` starts only Vite and fails on signup). Never run the desktop
+Electron suite locally. Stories: `pnpm design-system:check`, and in `apps/web`
+`build-storybook` then `node .storybook/smoke.mjs storybook-static <filter>`.
+
+**Hand test starting state.** Every slice is also tested by hand before merge: from the
+slice's worktree run `DEMO_SLOT=<n> pnpm demo:up` (a free slot), use the slice's behavior
+through the web UI or real HTTP as a founder, look at the result, and stop it with
+`DEMO_SLOT=<n> pnpm demo:down`. What the demo seeds (`packages/testkit/src/cli/demo/seed.ts`):
+a company, the Chief bot, **two connected Gmail emulator accounts** (sends are emulated and
+never leave the stack; an address at the demo bounce domain fails on purpose), Mercury and
+Brex **already connected** with canned read tools that include no SAFE tool, a Carta server
+with a mock cap table (none when the stack starts without a model), Finance data, Data room
+documents and demo contacts. It has **no Google Drive**. A check that needs "not connected"
+begins by disconnecting that integration in Integrations. The PR says what was exercised
+and what the demo cannot provide.
 
 ### 1. Rename Cap Table to Investors
 
@@ -1011,10 +1087,12 @@ are covered by the manual checks below).
   and in `appPages`, with keywords "cap table, equity, ownership, Carta"),
   `apps/web/src/lib/use-sidebar-glance.ts` (`surfaceOfPath` lists `investors`), the links
   to `/app/cap-table` in `components/integrations/IntegrationsHome.tsx` and
-  `McpDetail.tsx` (label "Open Cap table" becomes "Open Investors") and in
+  `McpDetail.tsx` (label "Open Cap table" becomes "Open Investors") and their tests
+  (`IntegrationsHome.test.tsx` lines asserting the old link and label, `McpDetail.test.tsx`),
   `apps/api/src/onboarding.ts`, `apps/web/e2e/shell-layout.spec.ts` (route list),
-  `packages/adapters/src/notify-user.ts` (surface
-  `investors`), migration `<ts>_investors_hidden_page`
+  `apps/web/e2e/carta-agent.spec.ts` (the "Open Cap table" assertion),
+  `packages/adapters/src/notify-user.ts` (Carta's surface becomes `investors`), migration
+  `<ts>_investors_hidden_page`
   (`UPDATE "user" SET "hiddenPages" = array_replace("hiddenPages", 'cap-table', 'investors')`),
   `apps/web/e2e/investors.spec.ts` (renamed), one note atop
   `docs/ux-paths/captable/catalog.md`.
@@ -1026,35 +1104,42 @@ are covered by the manual checks below).
   nothing extra (the label change is self-explaining).
 - **Tests first.** `packages/db/src/investors-hidden-page-migration.postgres.test.ts`
   (runs the SQL in a scratch schema like `carta-migration.postgres.test.ts`),
-  `apps/web/src/pages/Investors.test.tsx` (existing cases plus the redirect and kind
-  mapping), `packages/adapters/src/notify-user.test.ts`.
-- **Regression test.** `apps/web/e2e/investors.spec.ts` (screenshot `investors`).
-- **Verify.** `pnpm vitest run packages/db/src/investors-hidden-page-migration.postgres.test.ts apps/web/src/pages/Investors.test.tsx packages/adapters/src/notify-user.test.ts`;
-  `pnpm --filter @rakazo/web e2e e2e/investors.spec.ts`.
+  `Investors.test.tsx` (the existing cases under the new name; it mounts the page directly,
+  so it does not test the route), `IntegrationsHome.test.tsx`, `McpDetail.test.tsx`,
+  `notify-user.test.ts`. The redirect and kind mapping are asserted in
+  `apps/web/src/App.test.tsx` (mounts the real routes) and in the e2e spec.
+- **Regression test.** `apps/web/e2e/investors.spec.ts` (screenshot `investors`; includes the
+  redirect).
+- **Verify.** `pnpm vitest run apps/web/src/App.test.tsx apps/web/src/pages/Investors.test.tsx apps/web/src/components/integrations/IntegrationsHome.test.tsx apps/web/src/components/integrations/McpDetail.test.tsx packages/adapters/src/notify-user.test.ts`;
+  `pnpm test:integration` (the migration test);
+  `pnpm test:e2e --spec=e2e/investors.spec.ts`.
+- **Hand test.** Demo as seeded: sidebar row, redirect, hide and reload, Carta table shows.
 - **Mobile.** No screen before or after.
 
 ### 2. Investors agent
 
-- **Goal.** The agent behind Ask on both pages, created idempotently on first visit. Its
-  routine and the two moved skills arrive with the tools they need (slices 5 and 7).
+- **Goal.** The agent behind Ask on the Investors page, created idempotently on first
+  visit. Its routine, the moved skills and the three new tools arrive with the slices that
+  need them (5, 7, 8); Fundraising's Ask and first-open creation arrive in 8.
 - **Owned files.** `packages/contracts/src/investors.ts` (`investorsAgentSpawnKey`,
-  `isInvestorsAgentSpawnKey`, `INVESTORS_AGENT_BUILTIN_TOOLS`,
-  `INVESTOR_UPDATE_ROUTINE_NAME`), `apps/api/src/investors-agent.ts`
-  (`ensureInvestorsAgent`, instructions), `rpc.ts` and
+  `isInvestorsAgentSpawnKey`, `INVESTORS_AGENT_BUILTIN_TOOLS` with only tools that exist
+  today and without `cap_table_update`, `INVESTOR_UPDATE_ROUTINE_NAME`),
+  `apps/api/src/investors-agent.ts` (`ensureInvestorsAgent`, instructions), `rpc.ts` and
   `router.ts` (`investors.agent`), `bots.create` reserved
   prefix, `connection-access.ts` (`botUsesConnectorTools`), `sidebar-folders.ts`
-  (`autoGroupFolderName`), `contact-tools.ts` (`capTableToolsAllowed` widened;
-  `contacts_*` need no change) and `finance-tools.ts` (gate widened), `executor.ts`
-  (fixed tool list for the spawn key, like `legalOnly`; `cap_table_read` and
-  `cap_table_update` gated separately), `approval-ask.ts`
-  (`isCartaMailSend` true for the Investors key, defensive), `carta-agent.ts` (the
-  hand-off line only; the update and audit duties are dropped in slices 5 and 7), `Shell.tsx` (an
-  `agentPanel` for `/app/investors`, like Legal and Data room; one collapsed
-  preference; the Carta agent is no longer the page's panel; needs-model state as
-  today), `lib/investors-agent.ts` (`findInvestorsAgent`), `PageAgentIntro.tsx`
-  (`pageAgentKind` and starter questions), `agent-colors.ts` (`investors`), the demo
-  seed (`carta/agent` stays; `investors/agent` added); the sidebar lists the Carta agent only while it has
-  recent history. Also `messaging-policy.ts` (block the Investors agent over Photon, decision 15) and its test.
+  (`autoGroupFolderName`), `contact-tools.ts` (`capTableToolsAllowed` widened to the
+  Investors key; `contacts_*` need no change) and `finance-tools.ts` (gate widened),
+  `executor.ts` (fixed tool list for the spawn key, like `legalOnly`), `notify-user.ts`
+  (the Investors spawn key maps to surface `investors`; otherwise it defaults to `thread`),
+  `approval-ask.ts` (`isCartaMailSend` true for the Investors key, defensive),
+  `carta-agent.ts` (the hand-off line only; the update and audit duties are dropped in
+  slices 5 and 7), `Shell.tsx` (an `agentPanel` for `/app/investors`, like Legal and Data
+  room; one collapsed preference; the Carta agent is no longer the page's panel;
+  needs-model state as today), `lib/investors-agent.ts` (`findInvestorsAgent`),
+  `PageAgentIntro.tsx` (`pageAgentKind` and starter questions), `agent-colors.ts`
+  (`investors`), the demo seed (`carta/agent` stays; `investors/agent` added); the sidebar
+  lists the Carta agent only while it has recent history. Also `messaging-policy.ts` (block
+  the Investors agent over Photon, decision 15) and its test.
 - **Prerequisites.** 1.
 - **Behavior.** Opening Investors creates "Investors agent" once; Ask opens it (also in
   the empty view); on an owner-started run it reads the Data room, Finance and contacts;
@@ -1063,29 +1148,38 @@ are covered by the manual checks below).
   Reminder menu or skill ships here.
 - **Tests first.** `apps/api/src/investors-agent.test.ts` (idempotent), an executor test
   that runs an Investors-agent turn and asserts the offered tool list contains the fixed
-  tools and none of `mail_send`, any MCP server tool or any Composio tool (the gate
-  helpers alone do not prove what the executor offers), `contact-tools.test.ts`,
-  `finance-tools.test.ts`, `Investors.test.tsx` (Ask shows the panel without Carta).
+  tools and none of `mail_send`, `cap_table_update`, any MCP server tool or any Composio
+  tool, `contact-tools.test.ts`, `finance-tools.test.ts`, `notify-user.test.ts`,
+  `Investors.test.tsx` (Ask shows the panel without Carta).
 - **Regression test.** `apps/web/e2e/investors-agent.spec.ts` (Ask opens the chat
   with no Carta server; screenshot `investors-agent`).
-- **Verify.** `pnpm vitest run apps/api/src/investors-agent.test.ts packages/adapters/src/executor.test.ts packages/adapters/src/contact-tools.test.ts packages/adapters/src/finance-tools.test.ts apps/web/src/pages/Investors.test.tsx`.
+- **Verify.** `pnpm vitest run apps/api/src/investors-agent.test.ts packages/adapters/src/executor.test.ts packages/adapters/src/contact-tools.test.ts packages/adapters/src/finance-tools.test.ts packages/adapters/src/notify-user.test.ts apps/web/src/pages/Investors.test.tsx`;
+  `pnpm test:e2e --spec=e2e/investors-agent.spec.ts`.
+- **Hand test.** Demo as seeded: reload and see one "Investors agent" in Bots, Ask, ask
+  "who owns what" and read the answer from the mock cap table (needs a model; without one
+  say so). To see Ask with no Carta, disconnect Carta in Integrations first.
 - **Mobile.** Ships: the chat works as for the Legal agent.
 
-### 3. Cap table sources: typed-in table, source line, undo, math
+### 3. Cap table sources: typed-in table, source line, math
 
-- **Goal.** A founder without Carta types holders in; one source line; switching
-  keeps one version back.
-- **Owned files.** `packages/contracts/src/carta.ts` (`source`, `sourceRef`,
-  security names, holder ids and per-row `rev`), `packages/core/src/cap-table.ts` (pure math),
-  `schema.prisma` (`previous`, `previousUpdatedAt`), `packages/db/src/cap-table.ts`
-  (per-row save with `rev` check in one transaction, `switchSource`, `undoSource`), `apps/api/src/carta-agent.ts`
-  (`onMcpServerConnected` respects the source), `rpc.ts` and `router.ts`
-  (`investors.capTable` replaces `carta.capTable`; `investors.capTableSaveRow`,
-  `investors.changeSource`, `investors.undoSource`, `investors.refresh` dispatching
-  to Carta), `Investors.tsx` (source line and menu, `CapTableEditor` component with
-  story: row menu with Delete holder, labeled phone inputs, "Not saved" with Retry, "Changed elsewhere" on a row; two
-  figures, 409A meta line), empty view (header with Ask; three equal
-  buttons Connect Carta, Use a Google Sheet, Type it in), phone row layout. The page's
+- **Goal.** A founder without Carta types holders in; one source line; the source is a
+  database-enforced writer rule.
+- **Owned files.** `packages/contracts/src/carta.ts` (`sourceRef`, security names, holder
+  ids), `packages/core/src/cap-table.ts` (pure math), `schema.prisma` (`source` and
+  `previous` columns on `CapTableSnapshot`), `packages/db/src/cap-table.ts` (conditional write by
+  `expectedSource`, whole-table save with `updatedAt` check, `changeSource`, `undoSource`),
+  `saveCapTableSnapshot` takes the expected source from the update's own `source` field
+  (default `carta`, so the Carta agent's `cap_table_update` calls are unchanged and
+  `contact-tools.ts` needs no edit here), `apps/api/src/carta-agent.ts`
+  (`onMcpServerConnected` respects the source; Carta sync writes as `carta`), `rpc.ts` and
+  `router.ts` (`investors.capTable` replaces `carta.capTable`, `carta.refresh` becomes
+  `investors.refresh` dispatching to Carta; `investors.capTableSave`,
+  `investors.changeSource`, `investors.undoSource`) with `router.test.ts` migrated from the `carta.*` names,
+  `CapTable.stories.tsx` → `Investors.stories.tsx`, `Investors.tsx` (source line and menu,
+  `CapTableEditor` component with story: row menu with Delete holder, labeled phone inputs,
+  "Not saved" with Retry, "Changed elsewhere"; two figures, 409A meta line), empty view
+  (header with Ask; two equal buttons Connect Carta and Type it in; slice 4 adds Use a
+  Google Sheet), phone row layout. The page's
   existing parts are reused, not rewritten: `Summary`/`Figure`, `joinRows` (kept for the
   holder-to-contact link; its contact-only rows, the `CAP_TABLE_KINDS` loop, leave the
   holdings table and move to a Contacts section added in this slice, so no contact
@@ -1095,50 +1189,63 @@ are covered by the manual checks below).
   `ContactPrefill`, `useContactNotices`, `SearchField`, `PickFilter`, sort. The pool row
   keeps main's label "Unallocated pool" (the mockup used "Option pool (unallocated)" and
   is updated). The `OwnershipDonut` is replaced by the approved bar (delete the component
-  with its story and test when nothing else uses it) unless the founder chooses to keep
-  the donut. `packages/testkit/src/cli/demo/seed.ts` keeps seeding the mock cap table.
+  with its story and test when nothing else uses it). `packages/testkit/src/cli/demo/seed.ts`
+  keeps seeding the mock cap table.
 - **Prerequisites.** 1.
-- **Behavior.** As in "Cap table sources": in-place editing with autosave and
-  defaults, pool row, linking by contact name and Add as contact, a failed save keeping the typed rows with "Not saved" and Retry, a stale row
-  reloading alone with "Changed elsewhere", typed-in starting from a copy
-  of the shown table, a late read result discarded after Undo, Undo only after a
-  switch, Carta sync stops writing when another source is chosen, percent and bar
-  from `packages/core`, Raised excludes SAFE money.
+- **Behavior.** As in "Cap table sources": in-place editing with autosave and defaults,
+  pool row, linking by contact name and Add as contact, a failed save keeping the typed rows
+  with "Not saved" and Retry, a stale table reloading with "Changed elsewhere", Change
+  source at once with the data kept, Undo only after a switch, Carta sync stopping when another source is chosen,
+  percent and bar from `packages/core`, Raised excludes SAFE money.
 - **Tests first.** `packages/core/src/cap-table.test.ts` (pool in the denominator and stored once, a snapshot
   SAFE holder outside the 100%, null shares or invested kept as "—", percent column "—" when
   the rows do not add up to the source's `fullyDilutedShares`, rounding sums to 100,
-  zero-money table), `packages/db/src/cap-table.postgres.test.ts`
-  (source round-trip, old rows read as carta, previous kept once, a stale row save
-  refused while a save of another row from the same stale copy succeeds and no
-  other row changes), `apps/api/src/carta-agent.test.ts` (no sync when source is native),
-  `Investors.test.tsx` (edit, autosave, the Not saved and Retry state keeps the typed
-  rows and Retry re-sends only unsaved rows, a refused row shows Changed elsewhere, Delete holder, Undo; holdings sum to 100.0 and SAFEs sit outside it; Drafts in
-  no cap-table total).
+  zero-money table), `packages/db/src/cap-table.postgres.test.ts` (extend the existing file:
+  old rows read as carta; a write that expects another source than the row's is refused,
+  including a Carta write after a switch to native and a late sheet write after a switch
+  back; a stale whole-table save refused; switching typed-in to Carta then Undo returns the
+  typed rows once, and a second Undo does nothing), `apps/api/src/carta-agent.test.ts` (no sync when
+  source is native), `Investors.test.tsx` (edit, autosave, Not saved and Retry keeps the
+  typed rows, Changed elsewhere, Delete holder; holdings sum to 100.0 and SAFEs sit outside it).
 - **Regression test.** `apps/web/e2e/investors.spec.ts` gains a typed-in case
   (screenshot `investors-native`).
-- **Verify.** `pnpm vitest run packages/core/src/cap-table.test.ts packages/db/src/cap-table.postgres.test.ts apps/api/src/carta-agent.test.ts apps/web/src/pages/Investors.test.tsx`.
-- **Mobile.** Degrades: no screen; the agent answers "who owns what".
+- **Verify.** `pnpm vitest run packages/core/src/cap-table.test.ts apps/api/src/carta-agent.test.ts apps/api/src/router.test.ts apps/web/src/pages/Investors.test.tsx`;
+  `pnpm test:integration` (cap-table.postgres.test.ts);
+  `pnpm test:e2e --spec=e2e/investors.spec.ts`.
+- **Hand test.** Demo as seeded (Carta table shown): Change source, Type it in, edit a
+  holder and blur, reload and see it saved; enter a negative number and see it outlined and
+  not saved; edit the same table in a second tab and see "Changed elsewhere"; Undo
+  returns the typed table; check the phone width.
+- **Mobile.** Degrades: no screen.
 
 ### 4. Google Sheet as cap table source
 
 - **Goal.** A sheet the founder keeps becomes the cap table.
-- **Owned files.** `apps/api/src/investors-sheet-sync.ts` (`startSheetRead`,
-  `sheetReadState`), `rpc.ts` and `router.ts` (`investors.useSheet`;
+- **Owned files.** `apps/web/src/components/data-room/ImportFromDrive.tsx` (+ its story and
+  test: a single-file mode on `DrivePicker` that lets the founder pick one Google Sheet and
+  returns `{ id, name }` without calling `dataRoom.importDrive`; the existing import
+  behavior is unchanged and tested), `apps/api/src/investors-sheet-sync.ts`
+  (`startSheetRead`, `sheetReadState`), `rpc.ts` and `router.ts` (`investors.useSheet`;
   `investors.refresh` dispatches to it; `investors.capTable` returns `reading` and
-  `lastReadFailed`), `contact-tools.ts` (`cap_table_update` allowed for the Investors
-  key only on a sheet-read run), `Investors.tsx` (`DrivePicker` from
-  `ImportFromDrive.tsx`, "Reading sheet…", "Last read failed", Connect Google Drive when
-  no connection).
+  `lastReadFailed`), `packages/contracts/src/investors.ts` (`cap_table_update` added to
+  `INVESTORS_AGENT_BUILTIN_TOOLS`), `packages/db/src/cap-table.ts` (the sheet write checks
+  the file id and a non-empty holder list), `Investors.tsx` (Use a Google Sheet button,
+  "Reading sheet…", "Last read failed", Connect Google Drive when no connection).
 - **Prerequisites.** 2, 3.
 - **Behavior.** As in "Cap table sources"; one read at a time; a failed read leaves
-  the old table and shows the failure in the header line.
-- **Tests first.** `apps/api/src/investors-sheet-sync.test.ts` (one run at a time,
-  prompt names the file id, failed state from run vs snapshot times), `contact-tools.test.ts`
-  (sheet gate; `cap_table_update` is refused after a `truncated` read and the previous
-  snapshot and source are unchanged), `Investors.test.tsx` (reading and failed
-  states).
+  the old table and shows the failure in the header line. The completeness guarantee is the
+  narrowed one stated there.
+- **Tests first.** `apps/api/src/investors-sheet-sync.test.ts` (one run at a time, prompt
+  names the file id, failed state from run vs snapshot times), `cap-table.postgres.test.ts`
+  (a sheet write for another file id or with no holders is refused, and a write while the
+  source is not `sheet` is refused), `ImportFromDrive.test.tsx` (single-file mode returns
+  the sheet and imports nothing; import mode unchanged), `Investors.test.tsx` (reading and
+  failed states).
 - **Regression test.** The web test; the e2e harness has no Drive.
-- **Verify.** `pnpm vitest run apps/api/src/investors-sheet-sync.test.ts packages/adapters/src/contact-tools.test.ts apps/web/src/pages/Investors.test.tsx`.
+- **Verify.** `pnpm vitest run apps/api/src/investors-sheet-sync.test.ts apps/web/src/components/data-room/ImportFromDrive.test.tsx apps/web/src/pages/Investors.test.tsx`; `pnpm test:integration`.
+- **Hand test.** The demo has no Google Drive: choose Use a Google Sheet and confirm Connect
+  Google Drive appears and the table is unchanged. The picker, the read and the truncated
+  case need the manual check with a real Drive.
 - **Mobile.** Degrades: no picker.
 
 ### 5. Updates and board
@@ -1148,94 +1255,117 @@ are covered by the manual checks below).
 - **Owned files.** `schema.prisma` (`InvestorUpdate`; `Contact` kind board), `packages/contracts/src/contacts.ts` (the
   board kind), `ContactDialog.tsx` (`contactKindNames`, `contactAddLabels` get Board; the
   Investors Contacts section gets its Board tab), `packages/db/src/investor-updates.ts`,
-  `packages/contracts/src/investors.ts` (schemas), `rpc.ts` and `router.ts`
-  (`investors.updates.list|get|save|send|post|retry|duplicate|delete`),
-  `apps/api/src/investor-send.ts` (the send job: per-recipient send through the Inbox
-  composer's send primitive under an idempotency key, deliveries, resume of an update
-  left in sending), `packages/adapter-kit/src/background-jobs.ts` (`investorSendJob`),
-  `background-job-handlers.ts` (`investor.send`), `packages/adapters/src/investor-tools.ts` (`investor_update_draft`)
-  and `executor.ts` wiring, `builtin-skills.ts` (`investor-update`, moved from the Carta agent: reads past
-  updates from rows, falls back to Gmail Sent; takes an audience; the Gmail-draft step is
-  removed), `apps/api/src/investors-agent.ts` (`ensureInvestorsRoutine`: the monthly routine),
-  `rpc.ts`/`router.ts` (`investors.reminder`), `carta-agent.ts` (drop the update duty),
-  `apps/web/src/pages/investors/UpdateEditor.tsx` (+ story, test), `Investors.tsx`
-  (Updates section listing every draft with one status word, Mark delivered, Retry on a Partly sent
-  row and a row menu (Duplicate, Delete), Action item for the unreviewed draft, Board tab with Message the board, the
-  "Sent to <n>" toast, the Reminder menu).
-- **Prerequisites.** 2, 3 (the shared `Investors.tsx` chain).
+  `packages/contracts/src/investors.ts` (schemas; `investor_update_draft` added to the
+  tool list), `rpc.ts` and `router.ts`
+  (`investors.updates.list|get|save|send|retry|markDelivered|duplicate|delete`,
+  `investors.reminder`), `apps/api/src/investor-send.ts` (the send loop, started by
+  `updates.send` in the API process: per-recipient send through the Inbox composer's
+  `inboxComposeSend` under an idempotency key, deliveries, stale-sending display; no
+  background job, so nothing is added to `types.ts`, `background-jobs.ts` or the worker),
+  `packages/adapters/src/investor-tools.ts` (`investor_update_draft`: `history`, `get`,
+  `save`, `create`), its registration in `packages/adapters/src/builtin-tools.ts`,
+  `packages/contracts/src/builtin-tools.ts` and `executor.ts` (gate option, name set,
+  dispatch), `builtin-skills.ts` (`investor-update`, moved from the Carta agent: reads past
+  updates through `history`, falls back to Gmail Sent; takes an audience; the Gmail-draft step
+  is removed), `apps/api/src/investors-agent.ts` (`ensureInvestorsRoutine`: the monthly
+  routine), `carta-agent.ts` (drop the update duty),
+  `apps/web/src/pages/investors/UpdateEditor.tsx` (+ story, test), the nested route for
+  `/app/investors/updates/:id` (registered inside the Investors route in `App.tsx`),
+  `apps/web/src/components/investors/ActionItems.tsx` (+ story; the Action items block, here
+  with the unreviewed update draft; slice 7 adds audit rows), `Investors.tsx` (Updates section
+  listing every draft with one status word, Mark delivered, Retry on a Partly sent row and a
+  row menu (Duplicate, Delete), Board tab with Message the board, the "Sent to <n>" toast,
+  the Reminder menu).
+- **Prerequisites.** 2, 3.
 - **Behavior.** As in "Update editor", for the Gmail path: Send, Retry, Mark delivered,
-  the routine draft and the Reminder menu. The per-recipient link, **Post to portal**,
-  Posted rows, portal notices and the unticked-investor line arrive in slice 6 with the
-  portal; until then, without Gmail the one button is "Connect Gmail to send" for both audiences.
-- **Tests first.** `packages/db/src/investor-updates.postgres.test.ts` (scope,
-  reviewedAt, deliveries), `apps/api/src/investors-agent.test.ts` (one routine, reminder rewrite incl. quarterly crons),
+  the routine draft and the Reminder menu. Post to portal, the per-recipient link, Posted
+  rows, portal notices and revoked recipients arrive in slice 6 with the portal; until then,
+  without Gmail the one button is "Connect Gmail to send" for both audiences. The agent can
+  read past updates and open and edit an existing draft (never a sent one), which is how the
+  phone workflow works.
+- **Tests first.** `packages/db/src/investor-updates.postgres.test.ts` (scope, deliveries),
+  `apps/api/src/investors-agent.test.ts` (one routine, reminder rewrite incl. quarterly crons),
   `builtin-skills.test.ts`, `apps/api/src/investor-send.test.ts` (one message per
-  recipient, a failed recipient recorded and retried, second Send is a no-op, an
-  update left in sending is resumed once: finished recipients skipped, never-attempted
-  sent, attempted with no result shown as Unknown and not resent),
-  `packages/adapters/src/investor-tools.test.ts`, `UpdateEditor.test.tsx` (TBD
-  prompt once, a sent update read-only, audience fixes recipients,
-  recipient without email or revoked greyed and unticked, failed recipient Retry,
-  Unknown outcome with the once-only resend question that starts a new attempt with its own `ComposeSend` row and keeps the Unknown one, To list hidden without Gmail,
-  board without Gmail offers only Connect Gmail to send, an Unknown recipient makes the update Partly sent, the row reads "<name>: delivery unknown", Retry on its Updates row asks the resend question, Mark delivered records it Sent and clears Partly sent when nothing failed,
-  Partly sent chip and Done footer, a Sending row in Updates, an opened unsent routine draft stays in Updates
-  and leaves Action items).
+  recipient, a failed recipient recorded and retried, second Send is a no-op, an update
+  stuck in sending past 10 minutes reads Partly sent, an attempt with no result shows as
+  Unknown and is not resent), `packages/adapters/src/investor-tools.test.ts` (history, get,
+  save a draft, refusing a sent update), `executor.test.ts` (the tool is offered to the
+  Investors agent and to no other bot), `UpdateEditor.test.tsx` (TBD
+  prompt once, a sent update read-only, audience fixes recipients, recipient without email
+  greyed and unticked, failed recipient Retry, Unknown outcome with the once-only resend
+  question that starts a new attempt with its own `ComposeSend` row and keeps the Unknown one,
+  To list hidden without Gmail, board without Gmail offers only Connect Gmail to send, an
+  Unknown recipient makes the update Partly sent, Retry on its Updates row asks the resend
+  question, Mark delivered records it Sent and clears Partly sent when nothing failed, Partly
+  sent chip and Done footer, a Sending row in Updates, a draft stays in Action items until
+  sent or deleted).
 - **Regression test.** `apps/web/e2e/investors-updates.spec.ts` (mock
   `**/rpc/investors/**` like `legal.spec.ts`; screenshot `investors-update`).
-- **Verify.** `pnpm vitest run packages/db/src/investor-updates.postgres.test.ts apps/api/src/investor-send.test.ts packages/adapters/src/investor-tools.test.ts apps/web/src/pages/investors/UpdateEditor.test.tsx`.
+- **Verify.** `pnpm vitest run apps/api/src/investor-send.test.ts apps/api/src/investors-agent.test.ts packages/adapters/src/investor-tools.test.ts packages/adapters/src/builtin-skills.test.ts packages/adapters/src/executor.test.ts apps/web/src/pages/investors/UpdateEditor.test.tsx`;
+  `pnpm test:integration` (investor-updates.postgres.test.ts);
+  `pnpm test:e2e --spec=e2e/investors-updates.spec.ts`.
+- **Hand test.** Demo as seeded (two Gmail emulator accounts connected, so the From picker
+  shows and Send works against the emulator): add a board contact, New update, Draft with
+  agent, edit, Send to two investors and see "Sent to 2"; send to an address at the demo bounce
+  domain and see Failed with Retry; Message the board; change the Reminder and see the
+  routine schedule change. To see "Connect Gmail to send", disconnect both Gmail accounts in
+  Integrations first. Real Gmail sending, Unknown outcomes after a restart and the
+  `history` of real sent mail need the manual check.
 - **Mobile.** Degrades: the draft notification opens the agent chat, where the
-  founder reads and adjusts the draft row; sending is web and desktop.
+  founder reads and adjusts the draft through `investor_update_draft` (`get`, `save`);
+  sending is web and desktop.
 
 ### 6. Investor portal
 
 - **Goal.** Decisions 2, 5 and 6: per-contact link, landing page, sessions, blocked
   state, document shares and investor-audience updates as the only content; Post to
-  portal and its notices, which need the portal to exist.
+  portal and its notices, which need the portal to exist; the shared linked-contact delete
+  confirmation (decision 13).
 - **Owned files.** `schema.prisma` (`InvestorShare` for documents, `InvestorPortalToken`,
-  `PortalSession`; `Contact` portal columns), `components/data-room/FolderDocuments.tsx`
-  (a "Shared with" column and a Share row menu; today it is a read-only list),
+  `PortalSession`; `Contact` portal columns), `components/data-room/ItemMenu.tsx` and
+  `ItemDialogs.tsx` (+ stories, tests: "Share with investors" on any document and the Share
+  dialog with Unshare; `FolderDocuments.tsx` is not changed),
   `packages/db/src/investor-portal.ts` (mint a token per send, resolve by hash,
   create and resolve sessions in locked contact transactions, revoke and block, document
   share queries, the update visibility query), `packages/db/src/contacts.ts` (`writeContact`
   deletes the contact's tokens and sessions when the email changes, and also the shares
-  when the kind changes to one the Investors page does not list, under the same lock;
-  `writeContact` is private, reached through `saveContact`, and `addContactIfNew` only
-  creates),
+  and tokens when the kind changes away from investor, under the same lock; `writeContact`
+  is private, reached through `saveContact`, and `addContactIfNew` only creates; also the
+  new `contacts.linked` function), `packages/contracts/src/contacts.ts` (portal output
+  fields as read-only; deletion-impact output), `rpc.ts`/`router.ts` (`contacts.linked`),
+  `ContactDialog.tsx` and `use-contact-notices.ts` (ask before deleting a contact with
+  linked data, no Undo for it; applies on the Contacts page too),
   `apps/api/src/request-body-limit.ts` (`/api/portal/*`), `apps/api/src/app.ts` (portal
-  no-store middleware),
+  no-store middleware; one mount line),
   `apps/api/src/investor-portal.ts` (`mountInvestorPortal`: open page, open, me, updates,
-  documents, document content, sign-out), `app.ts` (one mount line),
-  `apps/api/src/investor-send.ts` (a new token and link per recipient on every send), `rpc.ts` and
-  `router.ts` (`investors.share`, `investors.unshare`, `investors.portalResend`,
-  `investors.portalRevoke`, `investors.portalUnblock`),
+  documents, document content, sign-out),
+  `apps/api/src/investor-send.ts` (a new token and link per recipient on every send; the
+  portal notices of Post to portal), `rpc.ts` and
+  `router.ts` (`investors.updates.post`, `investors.share`, `investors.unshare`,
+  `investors.portalResend`, `investors.portalRevoke`, `investors.portalUnblock`),
   `apps/web/src/pages/portal/PortalOpen.tsx`, `PortalHome.tsx`, `PortalDead.tsx`
   (+ stories, tests; `PortalOpen` reads the fragment, posts and clears it),
-  `UpdateEditor.tsx` (Post to portal, "Notifies <n> investors" footer, the unticked-investor
-  line), `investor-send.ts` (portal notices),
+  `UpdateEditor.tsx` (Post to portal, revoked recipients greyed, the unticked-investor line),
   `App.tsx` (`/portal/*`), `Investors.tsx` (Portal column, contact row menu with
-  Resend, Revoke, Unblock, Edit, Delete, the copy-link dialog, document Share dialog
-  with Unshare).
+  Resend, Revoke, Unblock, Edit, Delete, the copy-link dialog).
 - **Prerequisites.** 5.
 - **Behavior.** As in "Portal security" and "Portal", plus Post to portal as in "Update
-  editor" (Posted rows, one notice per investor contact with an email who is not revoked,
-  the toast "Posted · <n> notified", "<n> not notified" with Retry).
+  editor" (Posted rows, one best-effort notice per investor contact with an email who is not
+  revoked, the toast "Posted · <n> notified"). Portal principals are investor contacts only.
 - **Tests first.** `packages/db/src/investor-portal.postgres.test.ts` (contact A
   never lists B's document shares or another space's updates; a board update is never
   listed; a contact added after an update lists it; a draft is not listed; blocked
   contact refused everywhere; expired token refused; a second send mints a second
   working token and the first still works until expiry; revoke deletes every token
   and session and sets `portalBlockedAt`; revoke ends a live session; unblock does
-  not revive an old cookie; an email change ends sessions; only hashes are stored;
+  not revive an old cookie; an email change through the `contacts.save` RPC ends sessions,
+  and a kind change away from investor (also through `contacts_save`) ends tokens, sessions
+  and shares; only hashes are stored;
   the cookie value is not a contact id; no user or membership rows; same space, different
   owner: contact A never sees owner B's shares or updates; an exchange racing Revoke, and
   one racing an email change, never leaves a live session, including after a later
-  Unblock; the email change through `contacts_save` and the RPC both delete tokens and
-  sessions), the Post to portal cases moved from slice 5 (one notice per investor contact
-  with an email who is not revoked, including one never sent a link, the toast, the footer
-  count equal to the toast count and absent at 0 without opening the copy-link dialog, a
-  failed notice shows "<n> not notified" with Retry, the unticked-investor line, Post to
-  portal instead of Send without Gmail),
-  `apps/api/src/investor-portal.test.ts` (GET open does not set a cookie and its
+  Unblock; Post to portal notices go to investor contacts with an email, not revoked, and to
+  nobody else; `contacts.linked` names tokens and shares), `apps/api/src/investor-portal.test.ts` (GET open does not set a cookie and its
   request line and logs carry no token because it is in the fragment; POST sets the
   cookie with the flags; every `/api/portal/*` response is `private, no-store`; an oversized
   body is refused; a POST with a foreign `Origin` is refused; 401 without cookie; content
@@ -1243,78 +1373,123 @@ are covered by the manual checks below).
   artifact storage (assert the storage mock is not called)), `PortalHome.test.tsx`,
   `PortalOpen.test.tsx` (fragment read and cleared, dead link page with only its
   sentence, no company name on the landing page), `PortalHome.test.tsx` also covers
-  the empty state and the earlier-updates rows.
+  the empty state and the earlier-updates rows, `UpdateEditor.test.tsx` (Post to portal
+  instead of Send without Gmail, revoked recipient greyed and unticked, the unticked-investor
+  line), `ItemDialogs.test.tsx` (Share and Unshare), `ContactDialog.test.tsx` (delete asks first
+  with linked data, plain contact keeps Undo). The portal footer and toast text are asserted in
+  these component tests, and the absence of the token from request lines in the API test and the
+  e2e spec; proxy logs are not testable here and rest on the fragment design.
 - **Regression test.** `apps/web/e2e/investor-portal.spec.ts` (founder sends an
   update, the Gmail emulator at `/__e2e/gmail` holds the sent message and its link (the
   transactional notices of Post to portal are read from `/__e2e/emails`), the landing
   page then home shows that update only; revoke makes the link dead; screenshots
   `investor-portal`, `investor-portal-open`).
-- **Verify.** `pnpm vitest run packages/db/src/investor-portal.postgres.test.ts apps/api/src/investor-portal.test.ts apps/web/src/pages/portal/PortalHome.test.tsx apps/web/src/pages/portal/PortalOpen.test.tsx`;
-  `pnpm --filter @rakazo/web e2e e2e/investor-portal.spec.ts`.
+- **Verify.** `pnpm vitest run apps/api/src/investor-portal.test.ts apps/web/src/pages/portal/PortalHome.test.tsx apps/web/src/pages/portal/PortalOpen.test.tsx apps/web/src/pages/investors/UpdateEditor.test.tsx apps/web/src/components/data-room/ItemDialogs.test.tsx apps/web/src/components/ContactDialog.test.tsx`;
+  `pnpm test:integration` (investor-portal.postgres.test.ts);
+  `pnpm test:e2e --spec=e2e/investor-portal.spec.ts`.
+- **Hand test.** Demo as seeded (Gmail emulator connected): as the founder, send an update
+  to an investor contact, read the emulator message, open its link in a second browser profile
+  (landing page with only an Open button, then home with only that update), Share a Data room
+  document from its menu and download it in the portal, Revoke and see the second profile
+  refuse at once, delete a contact that has portal access and see the confirmation. To see
+  Post to portal, disconnect Gmail first.
 - **Mobile.** Investors open the portal in any browser; nothing in the mobile app.
 
 ### 7. Audit requests on arrival
 
-- **Goal.** Decision 4 end to end: intake from mail sync, filed once, drafted, closed
-  by the founder (Mark done or Dismiss).
+- **Goal.** Decision 4 end to end: intake from mail sync, filed once, visible at once,
+  drafted, closed by the founder (Mark done or Dismiss).
 - **Owned files.** `schema.prisma` (`AuditRequest`), `packages/db/src/audit-requests.ts`,
-  `packages/adapters/src/audit-intake.ts` (`enqueueAuditIntake`, `runAuditIntake`), `packages/adapter-kit/src/background-jobs.ts`
-  (`auditIntakeJob`), `background-job-handlers.ts` (`audit.intake`), `mail-sync.ts`
-  (one call next to the filing enqueue), `investor-tools.ts`
-  (`audit_request_upsert`) and `executor.ts` wiring, `builtin-skills.ts`
-  (`audit-response`, moved from the Carta agent), `carta-agent.ts` (drop the audit duty), `rpc.ts` and `router.ts` (`investors.audits.list|update`),
-  `Investors.tsx` (`ActionItems` component with story: New, Draft ready, as-of
-  warning once drafted, sender flag, menu with Mark done and Dismiss, the Show done
-  header button).
-- **Prerequisites.** 2 (and the Data room, already merged).
-- **Behavior.** As in "Audits".
-- **Tests first.** `packages/db/src/audit-requests.postgres.test.ts` (unique fund +
-  as-of, dismissed stays dismissed), `packages/adapters/src/audit-intake.test.ts`
-  (match rules, reminder on a known thread touches only `lastMailAt`, filed ids
-  passed, a sent reply or a later received message in the thread changes no status, the
-  auto-file setting off still intakes), `investor-tools.test.ts` (upsert dedupe, state only moves forward),
-  `builtin-skills.test.ts`, `Investors.test.tsx` (ordering: due date first, then
-  newest).
+  `packages/adapters/src/audit-intake.ts` (`enqueueAuditIntake`, `runAuditIntake`, the
+  drafting-run starter), `packages/adapter-kit/src/types.ts` (`"audit.intake"` in
+  `BackgroundJobPayloads`), `packages/adapter-kit/src/background-jobs.ts` (payload schema
+  and `auditIntakeJob`), `packages/adapters/src/background-job-handlers.ts` (`audit.intake`;
+  no new deps, so `apps/api/src/app.ts` and `apps/worker/src/index.ts` do not change),
+  `mail-sync.ts` (one call next to the filing enqueue), `investor-tools.ts`
+  (`audit_request_upsert`) with its registration in `builtin-tools.ts` (adapters),
+  `BUILTIN_TOOL_NAMES` (contracts), `executor.ts` (gate, dispatch) and the Investors tool
+  list in `packages/contracts/src/investors.ts`, `builtin-skills.ts` (`audit-response`, moved
+  from the Carta agent), `carta-agent.ts` (drop the audit duty), `packages/db/src/contacts.ts`
+  (`contacts.linked` also counts audit rows, shared with 6, 8, 9), `rpc.ts`/`router.ts`
+  (`investors.audits.list|update|draft`), `ActionItems.tsx` (audit rows: New, Draft ready,
+  New mail, as-of warning, sender flag, Draft reply, menu with Mark done and Dismiss, the
+  Show done button), `Investors.tsx` (Show done in the Updates header).
+- **Prerequisites.** 2, 5 (the tool and skill files and `ActionItems.tsx` that slice 5
+  introduces; the Data room is already merged).
+- **Behavior.** As in "Audits": intake matches audit, confirmation, 409A or DocuSign mail
+  with a document attachment, an Auditor sender or a DocuSign sender, independent of the Data
+  room auto-file setting; the row exists on arrival; a message in a known thread only updates
+  `lastMailAt`; drafting starts only when the agent exists and fewer than 10 drafts have
+  started today, otherwise the row waits with Draft reply; the agent drafts in the thread with
+  `mail_draft` and moves the row to `drafted`; one notification "Audit request from <fund>";
+  nothing closes a row but Mark done or Dismiss; history stays reachable after the last row
+  closes.
+- **Tests first.** `packages/db/src/audit-requests.postgres.test.ts` (unique thread,
+  dismissed stays dismissed, the daily draft count under concurrent intakes never passes 10),
+  `packages/adapters/src/audit-intake.test.ts` (match rules, a known thread touches only
+  `lastMailAt`, filed ids passed, the row is created even when no agent exists, request eleven
+  creates a row and starts no run, auto-file setting off still intakes),
+  `investor-tools.test.ts` (upsert by id and by fund + as-of, state only moves forward),
+  `builtin-skills.test.ts`, `executor.test.ts` (the tool is offered to the Investors agent
+  only), `Investors.test.tsx` (ordering: due date first, then newest; Show done reachable with
+  no open row).
 - **Regression test.** `apps/web/e2e/investors.spec.ts` gains an action-items case
   with mocked `investors.audits.list` (screenshot `investors-audits`).
-- **Verify.** `pnpm vitest run packages/db/src/audit-requests.postgres.test.ts packages/adapters/src/audit-intake.test.ts packages/adapters/src/investor-tools.test.ts packages/adapters/src/builtin-skills.test.ts apps/web/src/pages/Investors.test.tsx`.
+- **Verify.** `pnpm vitest run packages/adapters/src/audit-intake.test.ts packages/adapters/src/investor-tools.test.ts packages/adapters/src/builtin-skills.test.ts packages/adapters/src/executor.test.ts apps/web/src/pages/Investors.test.tsx`;
+  `pnpm test:integration` (audit-requests.postgres.test.ts);
+  `pnpm test:e2e --spec=e2e/investors.spec.ts`.
+- **Hand test.** Demo as seeded: the Gmail emulator is connected, so a message can be
+  delivered to a demo mailbox through the emulator's own inbound path; if that path cannot
+  inject an audit-shaped message, ask the agent (`@audit-response` with invented details), which
+  calls the same upsert. Confirm the row appears, Draft reply works, Mark done, Show done, and
+  that a second request with the same fund and date through the agent does not duplicate.
+  Attachment filing and real Gmail drafts need the manual check with a real mailbox.
 - **Mobile.** Degrades: the notification opens the agent chat; the action list is
   web and desktop.
 
 ### 8. Fundraising page: round and pipeline
 
-- **Goal.** The second page with the round and the prospect pipeline.
+- **Goal.** The second page with the whole round lifecycle and the prospect pipeline.
 - **Owned files.** `schema.prisma` (`FundraiseRound`; `Contact.stage`,
-  `checkSizeCents`, `nextStep`, `lastContactAt`, `roundId`), `packages/contracts/src/contacts.ts`
+  `checkSizeCents`, `nextStep`, `roundId`), `packages/contracts/src/contacts.ts`
   (the prospect kind and the stage fields), `ContactDialog.tsx` (Prospect in
   `contactKindNames` and `contactAddLabels`; Stage, check size and next step shown only
   for kind prospect, since the dialog is shared with the Contacts page),
-  `packages/db/src/fundraising.ts`,
-  `packages/contracts/src/fundraising.ts`, `rpc.ts` and `router.ts`
-  (`fundraising.overview`, `fundraising.round.save|close`,
-  `fundraising.prospects.save`), `packages/adapters/src/investor-tools.ts`
-  (`fundraising_read`), `apps/web/src/pages/Fundraising.tsx` (+ stories, tests;
-  `Pipeline` component; the contact dialog reused with kind prospect and Stage),
-  `App.tsx` (`/app/fundraising`), `Shell.tsx` (`fundraisingMode`,
-  `sidebar-fundraising`, hidden key `fundraising`, Ask opens the Investors agent,
-  palette keywords "safe, round, raise").
-- **Prerequisites.** 1, 2, 5 (shared `Investors.tsx` and contact files; the board kind).
+  `packages/db/src/contacts.ts` (pipeline field mapping; `contacts.linked` counts a stage),
+  `packages/db/src/fundraising.ts`, `packages/contracts/src/fundraising.ts`, `rpc.ts` and
+  `router.ts` (`fundraising.overview`, `fundraising.round.save|close|reopen`,
+  `fundraising.prospects.save`), `packages/adapters/src/fundraising-tools.ts`
+  (`fundraising_read`) with its registration in `builtin-tools.ts` (adapters),
+  `BUILTIN_TOOL_NAMES` (contracts), `executor.ts` (gate, dispatch) and the Investors tool
+  list, `apps/web/src/pages/Fundraising.tsx` (+ stories, tests; `Pipeline` component; Edit
+  round and Reopen dialogs; an empty SAFEs section until slice 9; the contact dialog reused
+  with kind prospect and Stage), `App.tsx` (`/app/fundraising`), `Shell.tsx` (`fundraisingMode`,
+  `sidebar-fundraising`, hidden key `fundraising`, Ask opens the Investors agent, the page
+  calls `investors.agent` on first open, palette keywords "safe, round, raise").
+- **Prerequisites.** 1, 2.
 - **Behavior.** Sidebar row after Investors; the page always shows the pipeline and SAFEs; with no
   round the round card offers Start a round, and Add prospect works; round bar as specified (Funded and Signed zero until slice 9; Pending counts Committed prospects of the open round); pipeline
-  grouped by stage without row chips; Send SAFE on Committed rows is present but
-  opens nothing until slice 9 (hidden until then); Close round rules; the agent
-  answers round and pipeline questions from `fundraising_read`.
+  grouped by stage without row chips; Send SAFE on Committed rows is hidden until slice 9; the
+  full round lifecycle (Start, Edit, Close, Reopen); a Committed prospect from a closed round
+  counts nowhere until its Committed stage is saved again; the agent answers round and pipeline
+  questions from `fundraising_read`.
 - **Tests first.** `packages/db/src/fundraising.postgres.test.ts` (one open round,
-  scoping; a Committed prospect from a closed round counts in no later round's Pending until
-  its Committed stage is saved again), `investor-tools.test.ts` (`fundraising_read` shape),
-  `Fundraising.test.tsx` (grouping, Passed collapsed, empty state, Close round only in
-  the round menu, amount column, Pipeline
-  and SAFEs shown with no round and after Close, Reopen, Add prospect with no round,
-  an existing email opens that contact). The close-with-signed-unpaid-SAFE confirm and
-  "close keeps SAFEs" tests live in slice 9, where the `Safe` table exists.
+  scoping, Reopen refused while another round is open; a Committed prospect from a closed
+  round counts in no later round's Pending until its Committed stage is saved again),
+  `investor-tools.test.ts` is not used; `fundraising-tools.test.ts` (`fundraising_read` shape),
+  `executor.test.ts` (offered to the Investors agent only), `Fundraising.test.tsx` (grouping, Passed collapsed, empty state,
+  Close round only in the round menu, Edit round, Reopen, amount column, Pipeline and SAFEs
+  shown with no round and after Close, Add prospect with no round, an existing email opens
+  that contact). The close-with-signed-unpaid-SAFE confirm and "close keeps SAFEs" tests live
+  in slice 9, where the `Safe` table exists.
 - **Regression test.** `apps/web/e2e/fundraising.spec.ts` (screenshot `fundraising`).
-- **Verify.** `pnpm vitest run packages/db/src/fundraising.postgres.test.ts packages/adapters/src/investor-tools.test.ts apps/web/src/pages/Fundraising.test.tsx`;
-  `pnpm --filter @rakazo/web e2e e2e/fundraising.spec.ts`.
+- **Verify.** `pnpm vitest run packages/adapters/src/fundraising-tools.test.ts packages/adapters/src/executor.test.ts apps/web/src/pages/Fundraising.test.tsx`;
+  `pnpm test:integration` (fundraising.postgres.test.ts);
+  `pnpm test:e2e --spec=e2e/fundraising.spec.ts`.
+- **Hand test.** Demo as seeded: Fundraising from the sidebar; Add prospect with no round,
+  Start a round, move a prospect to Committed and see Pending; Close, see the commitment count
+  nowhere, Reopen; Add a prospect with a demo contact's email and see that contact open; Ask the
+  agent about the pipeline.
 - **Mobile.** Degrades: no screen; the agent answers from `fundraising_read`.
 
 ### 9. SAFEs: native rows, Send SAFE, cover summary, Attention strip
@@ -1323,20 +1498,21 @@ are covered by the manual checks below).
 - **Owned files.** `schema.prisma` (`Safe`), `packages/db/src/safes.ts`,
   `packages/core/src/safes.ts` (status, `needsAttention`, post-money math),
   `packages/contracts/src/fundraising.ts` (SAFE schemas), `rpc.ts` and `router.ts`
-  (`fundraising.safes.list|save|mark|delete`), `investor-tools.ts` (`fundraising_read` returns SAFEs), `Fundraising.tsx` (SAFEs section,
-  Attention strip with Mark funded and Mark signed, `SafeDialog`, `SafeCoverSummary`
-  with Mark sent, Send SAFE wiring, Mark sent/signed/funded date dialog with Undo,
-  Cancel SAFE, Edit round dialog, Reopen), `Investors.tsx` (unconverted SAFE rows),
-  `contact-tools.ts` (`cap_table_read` returns SAFEs), `packages/db/src/contacts.ts`
-  (kind flips to investor on Signed, only for a prospect).
+  (`fundraising.safes.list|save|mark|delete`), `fundraising-tools.ts` (`fundraising_read`
+  returns SAFEs), `Fundraising.tsx` (SAFEs section, Attention strip with Mark funded and Mark
+  signed, `SafeDialog`, `SafeCoverSummary` with Mark sent, Send SAFE wiring, Mark
+  sent/signed/funded date dialog with Undo, Cancel SAFE, the close-round confirm),
+  `Investors.tsx` (unconverted SAFE rows), `contact-tools.ts` (`cap_table_read` returns SAFEs),
+  `packages/db/src/contacts.ts` (kind flips to investor on Signed, only for a prospect, and is
+  not reversed; `contacts.linked` counts SAFEs).
 - **Prerequisites.** 3, 8.
 - **Behavior.** As in "Fundraising" and "Cap table sources": one Send SAFE button
   (native dialog in this slice; the Mercury hand-off comes with slice 10), the row
   leaves the pipeline once a SAFE exists, Draft SAFEs do not count on Investors,
   Signed flips a prospect contact to investor (board and auditor keep their kind), the round bar sums Funded and Signed from
   rows and Pending from Committed-stage prospects without a SAFE plus Sent SAFEs and
-  native-dialog Drafts, and a
-  prospect whose only SAFE is canceled or deleted returns to the pipeline.
+  native-dialog Drafts, and a prospect whose only SAFE is canceled or deleted before it was
+  signed returns to the pipeline.
 - **Tests first.** `packages/core/src/safes.test.ts` (status from timestamps,
   needsAttention, at-cap percent and sum with invented figures, a Mercury discount-only SAFE shows none),
   `packages/db/src/safes.postgres.test.ts` (scope, kind flip for a prospect and none for a board contact, round totals),
@@ -1344,11 +1520,18 @@ are covered by the manual checks below).
   round's SAFEs; dialog: cap only (no discount or MFN field), prefill from round; the
   button reads Send SAFE; Send SAFE hides after a SAFE exists and returns after the
   SAFE is deleted; the round bar total is unchanged when Send SAFE turns a committed
-  prospect into a Draft), `Investors.test.tsx` (SAFE rows, Drafts
-  hidden).
+  prospect into a Draft), `Investors.test.tsx` (SAFE rows, Drafts hidden),
+  `fundraising-tools.test.ts` (SAFEs in `fundraising_read`).
 - **Regression test.** `apps/web/e2e/fundraising.spec.ts` adds a SAFE (screenshot
   `fundraising-safe`).
-- **Verify.** `pnpm vitest run packages/core/src/safes.test.ts packages/db/src/safes.postgres.test.ts apps/web/src/pages/Fundraising.test.tsx apps/web/src/pages/Investors.test.tsx`.
+- **Verify.** `pnpm vitest run packages/core/src/safes.test.ts packages/adapters/src/fundraising-tools.test.ts apps/web/src/pages/Fundraising.test.tsx apps/web/src/pages/Investors.test.tsx`;
+  `pnpm test:integration` (safes.postgres.test.ts);
+  `pnpm test:e2e --spec=e2e/fundraising.spec.ts`.
+- **Hand test.** Demo as seeded. Mercury is connected in the demo, which makes Send SAFE take the
+  Mercury path of slice 10; this slice's Send SAFE is the native dialog, so disconnect Mercury in
+  Integrations first. Then Send SAFE on a Committed prospect, cover summary, Print, Mark sent, Mark
+  signed (the contact becomes an investor), Mark funded with a date and Undo, Cancel and Delete,
+  Close round with a signed unpaid SAFE.
 - **Mobile.** Degrades: no screen.
 
 ### 10. Mercury SAFE sync, Waiting for Mercury and deposit matching
@@ -1356,38 +1539,57 @@ are covered by the manual checks below).
 - **Goal.** Decision 3 with Mercury: SAFEs created in Mercury show up with their real
   status and, where possible, the deposit.
 - **Owned files.** `packages/contracts/src/finance.ts` (`SAFE_READ_TOOLS`), the API
-  composition root (`safeCallToolFor`, the allowlisted caller),
-  `packages/adapters/src/safe-sync.ts` (`syncSafesForUser`, zod mapper, throttle
-  and claim on a `SafeSyncState` row or `FinanceSyncState` column, decided at build
-  time), `apps/api/src/fundraising.ts` (sync on `fundraising.overview`,
-  `fundraising.refresh`; no server-removal hook: removing Mercury changes no row),
-  `packages/db/src/safes.ts` (upsert by source+externalId, attach by email,
-  assign, deposit match against `FinanceTransaction`), `Contact.mercurySentAt`,
-  `Fundraising.tsx` (Mercury header states, Send SAFE opens Mercury and marks the
-  prospect Waiting for Mercury, Not sent, Assign to contact, deposit line with the Finance link, Mercury
-  document in Open).
+  composition root `apps/api/src/app.ts` (`safeCallToolFor`, the allowlisted caller, beside
+  `financeCallToolFor`), `schema.prisma` (`Contact.mercurySentAt`, `SafeSyncState`,
+  `Safe.financeTransactionId`), `packages/adapters/src/safe-sync.ts` (`syncSafesForUser`, zod
+  mapper, throttle and claim on its own `SafeSyncState` row),
+  `apps/api/src/fundraising.ts` (sync on `fundraising.overview`; no server-removal hook: removing
+  Mercury changes no row), `packages/contracts/src/fundraising.ts` and `rpc.ts`/`router.ts`
+  (`fundraising.refresh`, `fundraising.safes.assign|unassign`,
+  `fundraising.prospects.markWaiting|notSent`), `packages/db/src/fundraising.ts` (Waiting for
+  Mercury and Not sent), `packages/db/src/safes.ts` (upsert by source+externalId, attach by email,
+  assign, unassign, deposit match against `FinanceTransaction`), `Fundraising.tsx` (Mercury header
+  states, Send SAFE opens Mercury and marks the prospect Waiting for Mercury, Not sent, Assign to
+  contact, Unassign, deposit line with the Finance link, Mercury document in Open),
+  `packages/testkit/src/cli/demo/data.ts` (a canned `getSafeRequests` answer with invented rows
+  in the Mercury tools and handlers, so the demo can exercise sync).
 - **Prerequisites.** 9 (and a Mercury server from Finance).
-- **Behavior.** As in "Mercury SAFEs" and "Send SAFE".
+- **Behavior.** As in "Mercury SAFEs" and "Send SAFE" and the Glossary counting rule.
 - **Tests first.** `packages/adapters/src/safe-sync.test.ts` (synthetic
   `getSafeRequests` fixtures shaped like the documented response, run through
   `safeCallToolFor` so the allowlist is exercised (a write tool or a finance-only tool is
   refused); a malformed row is counted, not written; status from the documented fields; two
   deposits of equal amount match nothing, a non-USD or already-linked transaction is never
-  matched), `packages/db/src/safes.postgres.test.ts`
-  (email match attaches the SAFE to the prospect and removes its check size from Pending; an unmatched SAFE counts by status and Assign attaches it; the same Mercury id under two users of one space and under two spaces yields separate rows; the match ignores case and surrounding whitespace; Not sent restores the normal prospect row; a Mercury SAFE canceled after attach counts zero, the prospect returns to the pipeline, and the contact stays an investor only if another active SAFE exists; deposit match; removing the Mercury server changes no row, no total and keeps Waiting for Mercury; remove then re-add Mercury refreshes the same rows and counts each SAFE once; an Expired Mercury SAFE counts zero and does not block Send SAFE; attaching clears `mercurySentAt` and Send SAFE works again when every SAFE on the contact is Canceled; a wrong assign fixed by Unassign then Assign to contact counts once; Unassign restores the prospect (kind, stage, check size in Pending); a Signed SAFE that flipped the contact to investor reverts on Unassign when no other active SAFE exists ),
-  `packages/contracts/src/finance.test.ts` (the list has no write tool and the finance list has no SAFE tool),
-  `Fundraising.test.tsx` (Connect and Sync failed states, with Reconnect in the failed menu; Send SAFE with
-  Mercury shows Waiting for Mercury and no new SAFE row, the Waiting row's menu is exactly Open Mercury, Not sent, Passed and Edit prospect, Send SAFE with no email asks for it, Assign to contact appears only on a Mercury row with no contact and its picker lists prospects and investors, Unassign only on an attached Mercury row (menu Open and Unassign); a Funded row's menu has no Mark action).
+  matched), `packages/db/src/safes.postgres.test.ts` (email match attaches the SAFE to the
+  prospect and removes its check size from Pending; an unmatched SAFE is listed, in no round bar,
+  and Assign attaches it; the same Mercury id under two users of one space and under two spaces
+  yields separate rows; the match ignores case and surrounding whitespace; Not sent restores the
+  normal prospect row; a Mercury SAFE canceled after attach counts zero and the prospect returns
+  to the pipeline if it was never Signed; deposit match; removing the Mercury server changes no
+  row, no total and keeps Waiting for Mercury; remove then re-add Mercury refreshes the same rows
+  and counts each SAFE once; an Expired Mercury SAFE counts zero and does not block Send SAFE;
+  attaching clears `mercurySentAt`; a wrong assign fixed by Unassign then Assign to contact counts
+  once; Unassign restores the prospect's check size in Pending and leaves its kind),
+  `packages/contracts/src/finance.test.ts` (the list has no write tool and the finance list has no
+  SAFE tool), `Fundraising.test.tsx` (Connect and Sync failed states, with Reconnect in the failed
+  menu; Send SAFE with Mercury shows Waiting for Mercury and no new SAFE row, the Waiting row's menu
+  is exactly Open Mercury, Not sent, Passed and Edit prospect, Send SAFE with no email asks for it,
+  Assign to contact appears only on a Mercury row with no contact and its picker lists prospects
+  and investors, Unassign only on an attached Mercury row; a Funded row's menu has no Mark action).
 - **Regression test.** The adapter test; live Mercury is manual.
-- **Verify.** `pnpm vitest run packages/adapters/src/safe-sync.test.ts packages/db/src/safes.postgres.test.ts packages/contracts/src/finance.test.ts apps/web/src/pages/Fundraising.test.tsx`.
+- **Verify.** `pnpm vitest run packages/adapters/src/safe-sync.test.ts packages/contracts/src/finance.test.ts packages/testkit/src/cli/demo/data.test.ts apps/web/src/pages/Fundraising.test.tsx`;
+  `pnpm test:integration` (safes.postgres.test.ts).
+- **Hand test.** Demo as seeded: Mercury is already connected, so Fundraising shows the synced
+  state, and with the canned SAFE rows added in this slice the SAFEs list shows them (invented data
+  only). Send SAFE opens the Mercury hand-off and marks Waiting for Mercury; Not sent reverses it;
+  Assign to contact and Unassign on a row. To see Connect Mercury, disconnect Mercury in
+  Integrations first. Real Mercury needs the manual check.
 - **Mobile.** Degrades: no screen.
 
 Manual checks before calling the epic done: connect a real Carta, Google Drive,
 Gmail and Mercury account on a development stack and walk slices 4, 5, 6, 7 and 10
 once each; record what `getSafeRequests` returned (shape only, no figures) in this
-file. The demo stack does seed a mock Carta, a mock cap table and demo contacts (see
-"What exists today"), so slices 1 to 3 can be walked there with the Carta source; it has
-no Drive, Gmail sending or Mercury.
+file.
 
 ## Dependencies
 
@@ -1422,6 +1624,15 @@ check).
   a link" form, it needs an atomic shared-store throttle per address, a per-IP limit at the
   proxy (the checked-in production Caddyfile has none), indistinguishable answers and timing
   for known, unknown, blocked and throttled addresses, and origin checks.
+- **Documented-only fields.** Not verified against a live account: Mercury's `getSafeRequests`
+  field list (`valuationType`, `valuationCap`, `investmentAmount`, `investmentDate`, the
+  timestamps, `documentUrl`, `investor`), which comes from Mercury's public reference
+  (research.md section 3; the tool names are in `contracts/integration-agent.ts`) and which the
+  mapper validates; and the Finance fields the update draft quotes (cash, burn, runway and
+  last month's revenue come from `finance_overview`, not MRR). Carta holdings and a sheet read
+  are whatever `cap_table_update` receives (`CapTableSnapshotInputSchema`), so the mockup shows
+  only those fields plus figures Rakazo computes (percent, Equity raised, the at-cap group).
+  The mockup does not draw the docked agent panel; Ask opens the existing one.
 - **Mercury SAFE webhooks** and whether `paidAt` always means a matched deposit:
   unverified; sync polls.
 - **Carta "as of" holdings** for audit answers: still TBD from the Carta plan; the
@@ -1509,3 +1720,30 @@ Founder decisions from the rebase (2026-10-21), now decisions 12 to 15 above. Ta
 defaults without a question: Board and Prospect appear in the shared Contacts UI; a kind
 change to one the Investors page does not list ends portal access; the narrow header keeps
 `PageHeader`.
+
+### Decomposition review
+
+Step 6 of the feature-request process: an Astra review of the epic decomposition (14
+findings and a shared-file ownership table), each checked against the source before any
+change. Line numbers are the lines opened in this worktree.
+
+| Id | Finding | Verdict | Change made, or reason |
+|---|---|---|---|
+| 1 | New agent tools have no registration owner | Accepted | `builtin-tools.ts:156` (`builtinAgentTools`), `packages/contracts/src/builtin-tools.ts:68` (`BUILTIN_TOOL_NAMES`) and `executor.ts:7322`/`:4659` (gate and dispatch) are the real registration points. Slices 5, 7 and 8 now each register their tool in all four places and extend the Investors tool list as the tool becomes executable. The second half (a "this run read this file untruncated" check through the executor) is dropped by narrowing the guarantee (finding 9). |
+| 2 | Job types and worker integration missing | Partly | Slice 7's `audit.intake` job now lists `types.ts:719` (`BackgroundJobPayloads`) and follows the `mail.attachments` precedent (`background-jobs.ts:43`, `background-job-handlers.ts:240`); its handler needs only deps both the API and the worker already pass, so neither composition changes. Slice 5's `investor.send` job is cut: `inboxComposeSend` is API-owned (`inbox-compose.ts:414`), so the send loop runs in the API process, detached, with state in Postgres; a stale `sending` update shows as Partly sent with Retry. |
+| 3 | `DrivePicker` is an import dialog | Accepted | `ImportFromDrive.tsx:35-45` returns a message and a changed flag and `:122` calls `dataRoom.importDrive`. Slice 4 owns the file and adds a single-sheet mode that returns `{ id, name }` without importing, with the import path tested unchanged. |
+| 4 | Source-switch rules contradict; stale writes unprotected | Accepted | `contact-tools.ts:81` and `cap-table.ts:24` write unconditionally. `source` is now a column and every write names its expected source (one conditional update), so a late Carta or sheet write is refused whoever calls it. The switch takes effect at once and keeps the data (with one-step Undo from `previous`, see finding 14), which removes the "switch only after first read" contradiction; Undo changes `source` back, so a late result from the undone source is refused. Tests added for a Carta write after a switch, a late sheet result after switching back, and a failed first read. |
+| 5 | No agent contract for history or editing a draft | Accepted | `investor_update_draft` is one tool with `history`, `get`, `save` and `create`; it refuses a sent or posted update. No new tool family. |
+| 6 | Linked-contact deletion has no owner | Accepted | `ContactDialog.tsx:263` deletes at once and `use-contact-notices.ts:59` restores five fields. Slice 6 adds `contacts.linked` and the confirmation in the shared dialog (so the Contacts page asks too, no Undo for a linked delete); slices 7, 8 and 9 extend the check. |
+| 7 | Share UI reaches only ten documents | Accepted | `FolderDocuments.tsx:19` (`LIMIT = 10`) and its only consumer is `CapTable.tsx`. Share moves to the Data room's `ItemMenu.tsx` and `ItemDialogs.tsx`, which cover every document; `FolderDocuments` is unchanged. |
+| 8 | Prerequisites hide missing dependencies | Accepted | Prerequisites are recomputed and the merge rule is stated once (tests pass on the listed prerequisites only; number order is merge order). Slice 2 is Investors-only (Fundraising's Ask and first-open creation move to 8); the Sheet button moves to 4; `updates.post` and revoked-recipient tests move to 6; `ActionItems` is created in 5 and slice 7 depends on 5; the full round lifecycle (Edit, Close, Reopen) is in 8; slice 10 owns the RPCs for Refresh, Assign, Unassign, Waiting and Not sent. Slice 8 uses its own `fundraising-tools.ts`, so it no longer depends on 5. |
+| 9 | Guarantees without checkable contracts or tests at the wrong layer | Accepted | (a) The "never partial" read is narrowed: Rakazo enforces source, file id and a non-empty table; the agent is told to stop on `truncated` (`drive-tools.ts:328-337` returns only that flag). (b) `contact-tools.ts:96-100` finds the contact by the submitted email and writes the same email, so `contacts_save` cannot change an email: email-change tests use the `contacts.save` RPC and the plan no longer says an agent can change an email. (c) The redirect is asserted in `App.test.tsx` and the e2e spec, not in `Investors.test.tsx` (`CapTable.test.tsx:1014` mounts the page alone). (d) Footer and toast text moved to component tests; token-free request lines to the API and e2e tests; proxy logs stated as untestable. |
+| 10 | Audit arrival, dedupe and history gaps | Accepted | The intake job now creates the row on arrival (`mailThreadId` unique), so a failed or missing drafting run leaves a visible New row with Draft reply, which also creates the agent. The ten-per-day cap counts `draftStartedAt` under an advisory lock and request eleven waits with Draft reply. A new message in a known thread sets "New mail" instead of being silently dropped. Show done stays reachable while any done row exists. Cross-thread duplicates are accepted as a limit (the founder dismisses one). |
+| 11 | SAFE restoration and round counting underspecified | Accepted | Automatic reversal of the investor flip is cut (the founder edits the kind). Unassigned or round-less Mercury SAFEs are listed but in no round bar; a SAFE counts in a round only through its contact's `roundId`. "Creates no `Safe` row" now reads "creates no native SAFE; a synced row is a read-only cache". |
+| 12 | Verification commands incomplete | Accepted | `carta-migration.postgres.test.ts:6` skips without `VERIFY_DATABASE`, and `*.postgres.test.ts` files are all run by `pnpm test:integration` (`harness.ts` discovers them); `playwright.config.ts:29` starts only Vite. Every slice now uses `pnpm test:integration` for Postgres suites and `pnpm test:e2e --spec=e2e/<name>.spec.ts` for e2e. Slice 1 adds `IntegrationsHome.test.tsx:189`, `McpDetail.test.tsx:140` and `carta-agent.spec.ts:38`; slice 3 migrates `router.test.ts` and `CapTable.stories.tsx`, which reference `carta.capTable` and `carta.refresh`. |
+| 13 | Hand tests assume the wrong demo state | Accepted | `seed.ts:160-174` connects two Gmail accounts (sending is emulated) and `:207-217` connects Mercury and Brex; `data.ts:1125-1135` has no SAFE tool; no Drive is seeded. Each slice's hand test now starts from that state and says to disconnect an integration where it needs the empty state. Slice 10 adds canned invented `getSafeRequests` rows to the demo. Slice 9's hand test disconnects Mercury first. |
+| 14 | Scope beyond the six stories | Partly | Cut: per-row `rev`, stale-row recovery and navigation blocking (whole-table save with an `updatedAt` check instead). The review also proposed cutting source-switch history and Undo; the founder kept one-step Undo (decision 16, `previous` column, slice 3); portal notice retries, the multi-contact copy-link fallback and the "Notifies <n>" footer; board and auditor portal access (investor contacts only, decision 2); `Contact.lastContactAt`; `InvestorUpdate.reviewedAt` (the draft stays an action item until sent or deleted); automatic investor-flip reversal. Kept: Post to portal itself (founder confirmed, decision 17), Mercury deposit matching (decision 3 says "deposits"), `portalLastSeenAt` and "Opened" dates (decision 5 accepts them). |
+| Shared files | Overlapping ownership | Accepted | The Slices intro lists every file edited by more than one slice and which slices, merged in slice order by the lead, and the children say the same. Files that no longer overlap: the job files (7 only), `ImportFromDrive.tsx` (4), `ItemMenu.tsx`/`ItemDialogs.tsx` (6), `fundraising-tools.ts` split from `investor-tools.ts`. `notify-user.ts` and `use-sidebar-glance.ts` stay with slice 1 for the rename and slice 2 adds the Investors spawn key (`notify-user.ts:16-18` defaults to `thread`). |
+
+Founder answers to this review are decisions 16 to 19: one-step Undo kept, Post to portal kept,
+the draft stays an action item until sent or deleted, a Mercury SAFE not attached to a prospect in a round counts in no round bar, a signed SAFE's investor flip is never reversed automatically, and one audit in two threads shows as two rows.
