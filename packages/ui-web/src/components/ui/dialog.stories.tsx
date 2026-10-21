@@ -3,6 +3,7 @@ import { withPageBehind } from "../../stories/decorators";
 import { Button } from "./button";
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
@@ -21,7 +22,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Also shows: DialogTrigger, DialogPortal, DialogClose, DialogOverlay, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription",
+          "Also shows: DialogBody, DialogTrigger, DialogPortal, DialogClose, DialogOverlay, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription",
       },
     },
   },
@@ -88,6 +89,28 @@ export const LongContent: Story = {
             )}
           </DialogDescription>
         </DialogHeader>
+        <DialogFooter>
+          <Button>Done</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  ),
+};
+
+export const TallBody: Story = {
+  render: () => (
+    <Dialog defaultOpen>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Long form</DialogTitle>
+        </DialogHeader>
+        <DialogBody className="flex flex-col gap-3">
+          {Array.from({ length: 30 }, (_, i) => (
+            <p key={i} className="text-sm">
+              Invented line {i + 1}
+            </p>
+          ))}
+        </DialogBody>
         <DialogFooter>
           <Button>Done</Button>
         </DialogFooter>

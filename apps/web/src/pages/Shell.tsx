@@ -780,6 +780,7 @@ export function ShellPage() {
   const [initialBotsLoaded, setInitialBotsLoaded] = useState(false);
   const [bootstrapMe, setBootstrapMe] = useState<Me | null>();
   const [tourRestart, setTourRestart] = useState(false);
+  const tourQuestion = useRef(false);
   // The tour waits for the first-run focus question, so its popovers never cover the choices.
   const firstQuestionOpen = Boolean(
     snapshot?.messages.some((message) =>
@@ -791,6 +792,12 @@ export function ShellPage() {
       ),
     ),
   );
+  const tourOpen =
+    tourRestart || (bootstrapMe?.tourSeen === false && bots.length > 0 && !firstQuestionOpen);
+  // On a phone the tour points into the sidebar drawer, so open it while the tour runs.
+  useEffect(() => {
+    if (tourOpen && !window.matchMedia("(min-width: 1024px)").matches) setMobileSidebarOpen(true);
+  }, [tourOpen]);
   const activeSpaceId = bootstrapMe?.spaceId;
   const agentAppFor = useAgentApp(
     userId,
@@ -3522,9 +3529,20 @@ export function ShellPage() {
   }
   useEffect(() => {
     if (!focusComposerBotId || active?.id !== focusComposerBotId) return;
-    document.querySelector<HTMLTextAreaElement>("textarea[name='chat-message']")?.focus();
+    const input = document.querySelector<HTMLTextAreaElement>("textarea[name='chat-message']");
+    input?.focus();
+    // The tour's last step leaves a sample question to send or edit; an existing draft stays.
+    if (input && tourQuestion.current && !input.value) {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(
+        input,
+        t`What should I do first this week?`,
+      );
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.select();
+    }
+    tourQuestion.current = false;
     setFocusComposerBotId(null);
-  }, [active?.id, focusComposerBotId]);
+  }, [active?.id, focusComposerBotId, t]);
   const threadView = (
     <>
       {cartaAgentPage ? (
@@ -4845,16 +4863,17 @@ export function ShellPage() {
           />
         </div>
         <FirstRunTour
-          open={
-            tourRestart ||
-            (bootstrapMe?.tourSeen === false && bots.length > 0 && !firstQuestionOpen)
-          }
-          onConnectApps={() => {
-            setMobileSidebarOpen(false);
-            navigate("/app/integrations");
+          open={tourOpen}
+          onAsk={() => {
+            const id = active?.id ?? bots[0]?.id;
+            if (!id) return;
+            tourQuestion.current = true;
+            setFocusComposerBotId(id);
+            openBot(id);
           }}
           onClose={(me) => {
             setTourRestart(false);
+            setMobileSidebarOpen(false);
             setBootstrapMe((current) => me ?? (current && { ...current, tourSeen: true }));
           }}
         />

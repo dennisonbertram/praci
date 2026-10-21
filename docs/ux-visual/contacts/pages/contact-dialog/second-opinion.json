@@ -1,0 +1,267 @@
+{
+  "mode": "inspect",
+  "images": [
+    "1440-from-captable-new.png",
+    "1440-invalid-email-save.png",
+    "1440-duplicate-email.png",
+    "1440-long-text.png",
+    "1440-edit-agent-saved.png",
+    "375-from-captable-new.png",
+    "375-long-notes-overflow.png",
+    "375-duplicate-email.png"
+  ],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 41,
+      "costUsd": 0.130976,
+      "result": {
+        "verdict": "Not shippable: the baseline form is clean and legible, but long Notes make Save/Cancel unreachable on desktop and phone (P0), email validation mixes an unstyled browser bubble with a separate inline pattern, and a known-duplicate email still leaves Save fully enabled. Title, required-field, and button-state semantics are also inconsistent across breakpoints/contexts.",
+        "findings": [
+          {
+            "level": "page",
+            "element": "Notes textarea / dialog container",
+            "problem": "With long notes the dialog grows past the viewport: the title/header is cropped at the top and the hint, Cancel and Save are pushed off-screen entirely. The user is trapped in an oversized textarea with no visible way to save, cancel or close.",
+            "norm": "Modals must be capped at max-height (e.g. 90dvh) with an internally scrolling body and a pinned, always-visible header/footer; primary actions must never leave the viewport (WCAG 2.1 reflow / dialog conventions).",
+            "severity": "P0",
+            "screenshot": "1440-long-text.png",
+            "fix": "Set max-height on the dialog, make only the field area overflow-y:auto, cap Notes at a fixed height (e.g. 5-7 rows) with its own scrollbar, and pin the footer."
+          },
+          {
+            "level": "page",
+            "element": "Notes textarea / dialog container",
+            "problem": "Same failure at 375px: the textarea fills the whole screen, the header is off-screen, the hint is cut mid-sentence ('They do not change') and Save/Cancel are unreachable. No scroll affordance is visible.",
+            "norm": "Mobile sheets/dialogs must fit 100dvh, keep dismiss/save controls reachable, and scroll content internally — especially while the keyboard/textarea is active.",
+            "severity": "P0",
+            "screenshot": "375-long-notes-overflow.png",
+            "fix": "Use a full-height sheet pattern with pinned header and footer, fixed-height scrollable Notes, and safe-area padding; never let the textarea auto-grow the dialog."
+          },
+          {
+            "level": "component",
+            "element": "Email field validation ('not-an-email')",
+            "problem": "Validation is the browser-native bubble ('Please include an @...') with default OS styling, an orange icon and wording that clashes with the dark design system. It overlaps and completely hides the Organization label/field below it, and the Email field itself gets no error border or persistent message — once the bubble dismisses, no trace of the error remains.",
+            "norm": "Forms must use custom, persistent, inline validation styled by the design system, placed below the field without obscuring other fields (WCAG 3.3.1 Error Identification; NN/g inline-validation guidance).",
+            "severity": "P1",
+            "screenshot": "1440-invalid-email-save.png",
+            "fix": "Add novalidate, validate in-app, show a persistent red message + error border + aria-invalid/aria-describedby under Email, and move focus to the field on failed Save."
+          },
+          {
+            "level": "group",
+            "element": "Duplicate-email error + Save button",
+            "problem": "The inline error 'Another contact already has this email.' appears, yet the Email field keeps its neutral border and Save stays fully enabled and high-emphasis white — inviting an identical failing resubmit. Error is conveyed by small red text alone, with no icon or field state.",
+            "norm": "Known-invalid state must be reflected on the field itself, not by color alone (WCAG 1.4.1/3.3.1), and the primary action must not present as ready when submission is guaranteed to fail.",
+            "severity": "P1",
+            "screenshot": "1440-duplicate-email.png",
+            "fix": "Add error border/icon and aria-describedby to Email; either disable Save until the email changes or clearly explain on submit; keep the 'Open…' recovery action."
+          },
+          {
+            "level": "group",
+            "element": "Duplicate-email error + Save button (mobile)",
+            "problem": "Same contradiction at 375px: duplicate error is shown but Save is the brightest, full-width primary button, visually signalling 'ready to save' for a contact that cannot be saved.",
+            "norm": "Action state must match form validity consistently across breakpoints; emphasis hierarchy must not mislead.",
+            "severity": "P1",
+            "screenshot": "375-duplicate-email.png",
+            "fix": "Mirror the desktop fix: error styling on the field and a disabled/annotated Save until the email is edited."
+          },
+          {
+            "level": "page",
+            "element": "Dialog title 'Add investor' vs 'Add contact'",
+            "problem": "The identical dialog opened from the same Cap table context is titled 'Add investor' at 1440px but 'Add contact' at 375px, while edit mode uses 'Edit contact'. 'Add investor' also misleads: Kind is a changeable dropdown, so a user adding a Customer/Legal contact is told they are adding an investor — consequential in a cap-table product where 'investor' implies a Carta record.",
+            "norm": "An object-creation dialog has one stable name matching the object being created; titles must not pre-commit to a mutable field value or a different system entity.",
+            "severity": "P1",
+            "screenshot": "1440-from-captable-new.png",
+            "fix": "Standardise on 'Add contact' / 'Edit contact' everywhere (preselect Kind=Investor from cap-table tabs instead of renaming the dialog)."
+          },
+          {
+            "level": "group",
+            "element": "Name / Email / Organization labels and Save button state",
+            "problem": "No field is marked required or optional anywhere, yet Save renders muted/grey in the empty form and bright white once text exists — users must guess that it is disabled, why, and which fields unblock it. The Edit form compounds this: Email is empty on an existing contact, implying email is optional, while the new form's validation treats it as critical.",
+            "norm": "Required fields must be indicated (asterisk/'required' or marking optionals), and disabled buttons must have a discoverable reason (NN/g form-design; WCAG 3.3.2 Labels or Instructions).",
+            "severity": "P2",
+            "screenshot": "375-from-captable-new.png",
+            "fix": "Mark required fields, label the rest 'Optional', align the email-required rule between add/edit, and keep Save enabled with on-submit inline errors (or add helper text explaining what is missing)."
+          },
+          {
+            "level": "component",
+            "element": "Hint 'Contacts are your address book. They do not change Carta.'",
+            "problem": "The key reassurance copy is vague and negative: 'do not change Carta' does not say what Carta surface is unaffected (cap table? shareholder records?), and it sits in small low-contrast grey text directly under Notes, where it reads as a Notes helper rather than a dialog-level disclaimer. On mobile it wraps and is the element that gets truncated when space runs out.",
+            "norm": "Helper text must be plain-language, specific about consequence, and meet 4.5:1 contrast (WCAG 1.4.3); scope disclaimers belong near the title/primary action.",
+            "severity": "P2",
+            "screenshot": "1440-from-captable-new.png",
+            "fix": "Rewrite e.g. 'Saved only to your address book — this won't edit your Carta cap table or notify anyone', raise contrast, and place it under the title."
+          },
+          {
+            "level": "component",
+            "element": "Close '×' button (top-right)",
+            "problem": "The only dismiss affordance besides Cancel is a small, unlabelled '×' glyph with a visibly tiny hit area, especially at 375px where it sits close to the dialog edge; no tooltip or accessible name is evident. Combined with the long-notes state where the header is off-screen, dismissal paths disappear entirely.",
+            "norm": "Icon buttons need a minimum 24px (WCAG 2.5.8) / 44px touch target and an accessible name (WCAG 4.1.2).",
+            "severity": "P2",
+            "screenshot": "375-from-captable-new.png",
+            "fix": "Enlarge the hit area to ≥40px, add aria-label='Close', and keep the header pinned during scroll."
+          },
+          {
+            "level": "component",
+            "element": "Organization single-line input with long value",
+            "problem": "A long organization name is hard-truncated mid-word ('Extremely Long Organization Name Incorporated Int') with no visible ellipsis, tooltip or way to view/edit the tail of the text in a field the user must verify before saving.",
+            "norm": "Truncated user-entered data must remain fully inspectable (ellipsis + tooltip/focus-reveal); users must be able to review values they are about to commit.",
+            "severity": "P2",
+            "screenshot": "1440-long-text.png",
+            "fix": "Show ellipsis, reveal full value on focus/hover, or allow horizontal scroll with the caret position preserved; consider character guidance for org names."
+          },
+          {
+            "level": "component",
+            "element": "Kind select",
+            "problem": "Kind is a short ~1/3-width pill select while every other field is full-width, breaking the form's right edge rhythm and making the chevron a small target; the selected value ('Investor') also silently drives the misleading 'Add investor' title. On mobile it stays narrow despite full-width inputs around it.",
+            "norm": "Single-column forms keep a consistent field width/grid; controls that reclassify the object being created need predictable width and target size (44px touch).",
+            "severity": "P3",
+            "screenshot": "1440-from-captable-new.png",
+            "fix": "Make Kind full-width (or a deliberate 50% grid with Organization), keep a ≥40px hit area, and decouple it from the dialog title."
+          },
+          {
+            "level": "group",
+            "element": "Footer actions: Delete / Cancel / Save (edit mode)",
+            "problem": "Destructive 'Delete' (low-contrast red text on a dark-red fill) sits in the same footer row and visual tier as Cancel/Save with no visual warning weight, icon or separation beyond left-alignment; a first-time user gets no signal of irreversibility from the button itself. Its red-on-dark pairing is also the lowest-contrast text in the dialog.",
+            "norm": "Destructive actions must be unmistakably styled, adequately contrasted (WCAG 1.4.3) and separated from commit actions; irreversible actions require friction/confirmation at the point of use.",
+            "severity": "P2",
+            "screenshot": "1440-edit-agent-saved.png",
+            "fix": "Raise Delete contrast, add a trash icon/'Delete contact' label, and route it through an explicit confirmation that names the contact."
+          },
+          {
+            "level": "component",
+            "element": "Provenance line 'Added by Chief'",
+            "problem": "Provenance is rendered as faint grey helper text in exactly the slot/style the cap-table dialog uses for the 'does not change Carta' hint, so it reads as field help. 'Chief' is unexplained (agent name? person? role?) with no timestamp or source icon, giving the user no way to judge trust in an agent-created record.",
+            "norm": "Audit/provenance metadata must be labelled as such and distinguishable from instructional helper text; named sources must be identifiable.",
+            "severity": "P3",
+            "screenshot": "1440-edit-agent-saved.png",
+            "fix": "Use a distinct metadata row, e.g. an agent avatar/icon + 'Added by Chief (agent) · date', styled differently from form hints."
+          },
+          {
+            "level": "layout",
+            "element": "Footer action order/placement across breakpoints",
+            "problem": "Desktop right-aligns 'Cancel | Save' in a darker footer strip, while mobile stacks full-width Save above Cancel with no footer strip — order, emphasis and container all change for the same task, and on mobile the muted empty-state Save still occupies the primary slot with no explanation.",
+            "norm": "Responsive adaptations may stack actions but should preserve a learnable order/emphasis pattern per platform and keep state semantics identical.",
+            "severity": "P3",
+            "screenshot": "375-from-captable-new.png",
+            "fix": "Keep one documented pattern (stacked primary-first on mobile is fine) but apply identical disabled/valid styling logic and helper text at both sizes."
+          }
+        ],
+        "excellent": [
+          "Visible, persistent text labels above every field (Name, Email, Organization, Kind, Notes) rather than placeholder-as-label — clear for first-time users in 1440-from-captable-new.png.",
+          "Autofocus on Name with a strong, clearly visible blue focus ring in 1440-from-captable-new.png and 1440-edit-agent-saved.png — keyboard entry can start immediately and focus is never ambiguous.",
+          "Duplicate-email handling in 1440-duplicate-email.png and 375-duplicate-email.png: a persistent inline error plus a concrete recovery path ('Open Dana Fakename' / 'Open Lee Notarealperson') that takes the user to the existing record instead of dead-ending — exactly the right pattern, undermined only by Save staying enabled.",
+          "Destructive Delete is spatially separated to the footer's left, away from Cancel/Save, in 1440-edit-agent-saved.png — reducing accidental destructive clicks.",
+          "Mobile ergonomics in 375-from-captable-new.png: dialog uses near-full width with comfortable margins and large full-width stacked Save/Cancel targets, far better for thumbs than shrinking the desktop footer.",
+          "Context is preserved behind a blurred scrim in the 1440 cap-table shots — the user can tell where they are and that the underlying cap table is untouched, which reinforces the address-book hint.",
+          "Surfacing 'Added by Chief' provenance at all in 1440-edit-agent-saved.png — disclosing that an agent created the record is the right trust instinct, even if its styling needs work."
+        ]
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 76,
+      "costUsd": 0.07785,
+      "result": {
+        "verdict": "ContactDialog has a clean dark-mode aesthetic and thoughtful recovery UX for duplicate emails, but fails critically on viewport containment when notes are long, mixes native browser validation popovers with custom inline errors, hides required-field status, and misplaces dialog-level metadata where it reads as a field caption.",
+        "findings": [
+          {
+            "level": "layout",
+            "element": "ContactDialog container and Notes textarea",
+            "problem": "When multi-line text is entered or pasted into Notes, the textarea and modal grow without bound, pushing the modal header (title and close button), top form fields (Name, Email), and the entire modal footer (Save/Cancel buttons) completely outside both the top and bottom edges of the viewport.",
+            "norm": "Modals must always fit within the viewport (e.g., max-height: calc(100dvh - 32px)) with a fixed header and sticky action footer, and multi-line textareas inside modals must have a sensible max-height with internal scrolling.",
+            "severity": "P0",
+            "screenshot": "1440-long-text.png, 375-long-notes-overflow.png",
+            "fix": "Set `max-height: min(680px, calc(100dvh - 32px))` on the modal dialog with `display: flex; flex-direction: column`, make the form body `overflow-y: auto`, keep the header and footer pinned, and cap the Notes textarea at `max-height: 160px` (`overflow-y: auto`)."
+          },
+          {
+            "level": "component",
+            "element": "Email input validation popover",
+            "problem": "Submitting an invalid email triggers the browser-native HTML5 validation bubble (`Please include an '@' in the email address...`), which visually occludes the Organization label and input field below it and clashes with the custom inline red error pattern used for duplicate emails.",
+            "norm": "Forms should disable native browser validation bubbles (`novalidate`) and use a single consistent inline error pattern positioned in the layout flow so adjacent inputs are never covered.",
+            "severity": "P1",
+            "screenshot": "1440-invalid-email-save.png",
+            "fix": "Add `noValidate` to the `<form>` and render format errors using the same inline red error text component below the Email input as seen in `1440-duplicate-email.png`."
+          },
+          {
+            "level": "group",
+            "element": "Save button and Email input in duplicate-email error state",
+            "problem": "When a blocking duplicate-email error (`Another contact already has this email.`) is active, the Save button remains bright white/enabled (unlike the empty-Name state where Save is disabled), and the Email input border remains neutral gray instead of indicating an invalid state.",
+            "norm": "Inputs in an error state must display a semantic error border (`aria-invalid=\"true\"`), and primary submit buttons should behave consistently across known blocking client-side validation states.",
+            "severity": "P1",
+            "screenshot": "1440-duplicate-email.png, 375-duplicate-email.png",
+            "fix": "Apply a destructive/red border token to the Email input when an error is present, set `aria-invalid=\"true\"` and `aria-describedby` pointing to the error message, and disable `Save` until the duplicate email is changed."
+          },
+          {
+            "level": "group",
+            "element": "Form field labels (Name, Email, Organization, Kind, Notes)",
+            "problem": "In the initial empty state, the Save button is disabled because Name is required, while Email, Organization, and Notes are optional (as seen in `1440-edit-agent-saved.png` where Email is blank). However, no label marks Name as required or the remaining fields as optional, leaving first-time users guessing why Save is disabled.",
+            "norm": "Forms with disabled submit buttons must clearly indicate which fields are required vs. optional before interaction.",
+            "severity": "P1",
+            "screenshot": "1440-from-captable-new.png, 375-from-captable-new.png, 1440-edit-agent-saved.png",
+            "fix": "Mark `Name` as required (or append `(optional)` in muted text to `Email`, `Organization`, and `Notes`) and ensure `Save` is clickable to trigger explicit inline required-field feedback if clicked early."
+          },
+          {
+            "level": "page",
+            "element": "Modal header title ('Add investor' vs 'Add contact') and Cap table disclaimer",
+            "problem": "When opened from the desktop Cap table (`1440-from-captable-new.png`), the modal title says 'Add investor', which directly contradicts both the bottom disclaimer ('Contacts are your address book. They do not change Carta.') and the ability to switch Kind to Customer/Legal/Other. Furthermore, the exact same Cap table flow on mobile (`375-from-captable-new.png`) titles the modal 'Add contact'.",
+            "norm": "Modal titles must accurately reflect the object being created and remain consistent across desktop and mobile viewports.",
+            "severity": "P2",
+            "screenshot": "1440-from-captable-new.png, 375-from-captable-new.png",
+            "fix": "Use 'Add contact' consistently across both viewports (with `Kind` pre-filled to `Investor` when launched from the Cap table), and move the Cap table scope explanation into a subtitle directly under the modal header so users read it before filling out the form."
+          },
+          {
+            "level": "group",
+            "element": "Provenance text ('Added by Chief') and Cap table hint ('Contacts are your address book...')",
+            "problem": "Both the Cap table disclaimer and the agent provenance note ('Added by Chief') are positioned 6px below the Notes textarea with no divider, visually binding them as helper text for the Notes field rather than dialog-level metadata.",
+            "norm": "Law of Proximity: dialog-level metadata and disclaimers must be visually grouped with the dialog header or footer, not attached to the bottom of the last input control.",
+            "severity": "P2",
+            "screenshot": "1440-from-captable-new.png, 1440-edit-agent-saved.png, 375-from-captable-new.png",
+            "fix": "Move 'Added by Chief' into a subtle header subtitle or badge under 'Edit contact', and place the Cap table disclaimer either under the modal header or inside the footer above the divider."
+          },
+          {
+            "level": "group",
+            "element": "Email error block and 'Open <name>' recovery button spacing",
+            "problem": "When the duplicate email error and 'Open Dana Fakename' / 'Open Lee Notarealperson' button appear, the bottom margin before the 'Organization' label is tighter (~8px) than the internal spacing of the error block, making the 'Open' button visually crowd the Organization label below it.",
+            "norm": "Inline error and recovery actions must stay visually grouped with their parent field and maintain a clear vertical gap (at least 16–20px) before the next field's label.",
+            "severity": "P2",
+            "screenshot": "1440-duplicate-email.png, 375-duplicate-email.png",
+            "fix": "Reduce the gap between the red error message and the 'Open <name>' button to 6px, add a trailing arrow icon (`Open Dana Fakename →`) to clarify that it switches context, and increase bottom margin below the button to 16px."
+          },
+          {
+            "level": "component",
+            "element": "Organization text input right padding",
+            "problem": "Long single-line text in the Organization input ('Extremely Long Organization Name Incorporated Int') runs right up against the right border of the input field without visible right inner padding or text-overflow feedback.",
+            "norm": "Text inputs must maintain symmetric horizontal padding (`padding-inline: 12px`) so text never collides with the input border.",
+            "severity": "P2",
+            "screenshot": "1440-long-text.png",
+            "fix": "Ensure horizontal input padding (`padding-right: 12px`) is preserved and `box-sizing: border-box` is applied so long values clip cleanly inside the padding box."
+          },
+          {
+            "level": "component",
+            "element": "Notes textarea resize grip and Kind dropdown width",
+            "problem": "The Notes textarea displays the browser-default diagonal resize handle colliding with its rounded bottom-right border—even on mobile touchscreens (`375-from-captable-new.png`)—and the Kind select is shrink-wrapped (~96px wide) while every other field in the single-column stack is full-width.",
+            "norm": "Single-column modal forms should maintain consistent control widths (or intentional grid columns) and hide native desktop resize grips on rounded/auto-sizing textareas, especially on touch viewports.",
+            "severity": "P3",
+            "screenshot": "1440-from-captable-new.png, 375-from-captable-new.png",
+            "fix": "Set `resize: none` (or `resize: vertical` on desktop only with custom styling) on the Notes textarea, and make the `Kind` dropdown full-width on mobile (and either full-width or paired in a 2-column row with Organization on desktop)."
+          },
+          {
+            "level": "group",
+            "element": "Mobile footer stacked Save / Cancel buttons and header close '×' button",
+            "problem": "On 375px mobile viewports, the full-width Save and Cancel buttons are separated by only ~6px, increasing mis-tap risk, and the top-right '×' icon has a small visual target without a 44×44px hit area.",
+            "norm": "Mobile touch targets should be at least 44×44px with at least 8–12px of separation between primary and cancel actions.",
+            "severity": "P3",
+            "screenshot": "375-from-captable-new.png, 375-duplicate-email.png",
+            "fix": "Increase the vertical gap between stacked mobile Save and Cancel buttons to 10–12px and ensure the top-right close button has a `44x44px` tap area."
+          }
+        ],
+        "excellent": [
+          "Actionable duplicate-email recovery (`1440-duplicate-email.png`, `375-duplicate-email.png`): Providing a direct 'Open Dana Fakename' / 'Open Lee Notarealperson' button right beneath the duplicate email error turns a dead-end validation error into a one-click recovery flow.",
+          "Edit mode footer hierarchy (`1440-edit-agent-saved.png`): Separating the destructive 'Delete' action on the far left in a muted crimson pill while keeping 'Cancel' and 'Save' grouped on the right prevents accidental deletion and follows industry-standard dialog ergonomics.",
+          "Context-aware defaults (`1440-from-captable-new.png`, `1440-edit-agent-saved.png`): Pre-selecting `Kind: Investor` and auto-focusing the `Name` input when opened from the Cap table, as well as surfacing agent attribution ('Added by Chief') when editing an AI-created contact, shows strong product awareness."
+        ]
+      }
+    }
+  ]
+}

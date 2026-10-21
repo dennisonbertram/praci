@@ -1,5 +1,5 @@
 import type { AgentRunRequest } from "@rakazo/adapter-kit";
-import { LEGAL_MODEL_REQUIRED_MESSAGE } from "@rakazo/contracts";
+import { LEGAL_CONSENT_REQUIRED_MESSAGE, LEGAL_MODEL_REQUIRED_MESSAGE } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
 import { createRunExecutor } from "./executor.js";
@@ -171,7 +171,7 @@ describe("Legal agent runs need Data Room consent for the model they use", () =>
     expect(finalizeRun).toHaveBeenCalledWith(
       expect.objectContaining({
         outcome: "failed",
-        error: expect.stringContaining("Data Room consent is required for OpenRouter"),
+        error: LEGAL_CONSENT_REQUIRED_MESSAGE,
       }),
     );
   });
