@@ -20,8 +20,9 @@ const financeRpc = vi.hoisted(() => ({
   exchanges: vi.fn(),
 }));
 const messagingRpc = vi.hoisted(() => ({ get: vi.fn() }));
+const devinRpc = vi.hoisted(() => ({ sessions: vi.fn(), connect: vi.fn(), replaceKey: vi.fn() }));
 vi.mock("../../lib/rpc", () => ({
-  rpc: { finance: financeRpc, messagingSetup: messagingRpc },
+  rpc: { finance: financeRpc, messagingSetup: messagingRpc, devin: devinRpc },
 }));
 
 import { IntegrationsHome } from "./IntegrationsHome";
@@ -102,6 +103,10 @@ beforeEach(() => {
   });
   financeRpc.exchanges.mockResolvedValue([]);
   messagingRpc.get.mockRejectedValue(new Error("not owner"));
+  devinRpc.sessions.mockReset();
+  devinRpc.sessions.mockRejectedValue(new Error("not mocked"));
+  devinRpc.connect.mockReset();
+  devinRpc.replaceKey.mockReset();
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -192,16 +197,78 @@ it("offers Carta and opens its sign-in dialog", async () => {
   expect(document.body.textContent).toContain("Sign in with Carta");
 });
 
-it("offers Devin and opens the API key form", async () => {
+it("offers Devin and opens its own connect dialog, not the custom connection form", async () => {
   await show(data(true, false));
   const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Devin"]');
   expect(connect).not.toBeNull();
   await act(async () => connect?.click());
   expect(document.body.textContent).toContain(
-    "An org-scoped Devin service-user key (starts with cog_).",
+    "Connects Devin for everyone in this space. Read-only.",
   );
-  expect(document.querySelector('[aria-label="API key"]')).not.toBeNull();
-  expect(document.body.textContent).not.toContain("Sign in with Devin");
+  expect(document.querySelector('[aria-label="Organization service-user key"]')).not.toBeNull();
+  expect(document.querySelector('[aria-label="API key"]')).toBeNull();
+  expect(document.querySelector('input[aria-label="Server URL"]')).toBeNull();
+  expect(document.body.textContent).not.toContain("starts with cog_");
+});
+
+const devinServer = {
+  id: "s3",
+  name: "Devin",
+  endpoint: "https://mcp.devin.ai/mcp",
+} as unknown as IntegrationsData["servers"][number];
+const devinSessions = (status: string, manage = true, isConnector = manage) => ({
+  connection: { status, manage, canConnect: false, isConnector, agentBotId: null },
+  fetchedAt: null,
+  stale: false,
+  partial: false,
+  sessions: [],
+});
+
+it("shows a connected Devin with a way to its page", async () => {
+  devinRpc.sessions.mockResolvedValue(devinSessions("ok"));
+  await show({ ...data(true, true), servers: [devinServer] });
+  expect(container.querySelector('a[href="/app/devin"]')?.textContent).toBe("Open Devin");
+  expect(container.textContent).not.toContain("Needs reconnect");
+});
+
+it("marks a rejected Devin key as needing reconnect and lets an owner replace it", async () => {
+  devinRpc.sessions.mockResolvedValue(devinSessions("rejected"));
+  await show({ ...data(true, true), servers: [devinServer] });
+  expect(container.textContent).toContain("Needs reconnect");
+  expect(container.querySelector('a[href="/app/devin"]')).toBeNull();
+  const reconnect = [...container.querySelectorAll<HTMLButtonElement>("button")].find(
+    (button) => button.textContent === "Reconnect",
+  );
+  await act(async () => reconnect?.click());
+  devinRpc.replaceKey.mockResolvedValue({ ok: true });
+  const field = document.querySelector<HTMLInputElement>(
+    '[aria-label="Organization service-user key"]',
+  );
+  expect(field).not.toBeNull();
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(field, "k");
+    field?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () =>
+    document.querySelector<HTMLButtonElement>('button[type="submit"]')?.click(),
+  );
+  expect(devinRpc.replaceKey).toHaveBeenCalledWith({ secret: "k" });
+  expect(devinRpc.connect).not.toHaveBeenCalled();
+});
+
+it("treats a private Devin server as a plain one when another member connected the space", async () => {
+  devinRpc.sessions.mockResolvedValue(devinSessions("rejected", true, false));
+  await show({ ...data(true, true), servers: [devinServer] });
+  expect(container.textContent).not.toContain("Needs reconnect");
+  expect(container.querySelector('a[href="/app/devin"]')).toBeNull();
+});
+
+it("gives a demoted connector no Reconnect button when the Devin key is rejected", async () => {
+  devinRpc.sessions.mockResolvedValue(devinSessions("rejected", false, true));
+  await show({ ...data(true, true), servers: [devinServer] });
+  expect(container.textContent).toContain("Needs reconnect");
+  const buttons = [...container.querySelectorAll("button")].map((button) => button.textContent);
+  expect(buttons).not.toContain("Reconnect");
 });
 
 it("offers Box and asks for the Box app's client ID, secret and callback URL", async () => {
