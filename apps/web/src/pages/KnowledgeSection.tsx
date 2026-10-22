@@ -161,8 +161,9 @@ function MemoryDocumentList({
   const remembered = docs.filter((doc) => memoryDocPreview(doc.content) !== null);
   const hasDocs = remembered.length > 0;
   useEffect(() => {
-    onHasDocs?.(hasDocs);
-  }, [hasDocs, onHasDocs]);
+    // A failed load keeps the section visible so its error shows.
+    onHasDocs?.(hasDocs || error !== null);
+  }, [hasDocs, error, onHasDocs]);
   const needle = filter.trim().toLowerCase();
   const visible = needle
     ? remembered.filter(

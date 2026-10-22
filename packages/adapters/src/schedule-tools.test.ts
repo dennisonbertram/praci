@@ -1,17 +1,17 @@
 import { ONCE_ROUTINE_CRON } from "@rakazo/core";
 import { describe, expect, it, vi } from "vitest";
 import {
-  keepForcedSkill,
-  scheduleApproval,
   cancelScheduleFromTool,
   compactScheduleInput,
   createScheduleFromTool,
   filterBuiltinToolsForRun,
   filterBuiltinToolsForThread,
   isOneShotRoutineCron,
+  keepForcedSkill,
   listSchedulesFromTool,
   resolveScheduleTiming,
   SCHEDULE_TOOL_NAMES,
+  scheduleApproval,
 } from "./schedule-tools.js";
 
 describe("resolveScheduleTiming", () => {
@@ -499,5 +499,27 @@ describe("routine from a forced skill", () => {
     );
     expect(card?.summary).toBe("Every Monday at 9:00 AM, posts here");
     expect(card?.detail).toContain("prompt: Draft the note");
+  });
+
+  it("names the group an updated routine posts in", async () => {
+    const prisma = {
+      routine: {
+        findFirst: vi.fn(async () => ({
+          name: "Note",
+          timezone: "UTC",
+          crons: ["0 9 * * 1"],
+          threadId: "t-group",
+        })),
+      },
+      thread: { findUnique: vi.fn(async () => ({ group: { name: "Investors" } })) },
+    };
+    const card = await scheduleApproval(
+      { prisma: prisma as never },
+      { spaceId: "s", botId: "b", userId: "u" },
+      "schedule_update",
+      { id: "r1", prompt: "Draft a different note" },
+      null,
+    );
+    expect(card?.summary).toBe("Changing “Note”: Every Monday at 9:00 AM, posts in “Investors”");
   });
 });

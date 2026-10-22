@@ -617,9 +617,19 @@ export async function scheduleApproval(
   const lines: string[] = [`time zone: ${timezone}`];
   if (resolved?.ok) lines.push(`next run: ${formatLocal(resolved.nextRunAt, timezone)}`);
   if (isScheduleValueProvided(args.prompt)) lines.push(`prompt: ${String(args.prompt).trim()}`);
+  // An update keeps the routine's own thread, which may be a group rather than this chat.
+  const group = existing?.threadId
+    ? (
+        await deps.prisma.thread.findUnique({
+          where: { id: existing.threadId },
+          select: { group: { select: { name: true } } },
+        })
+      )?.group
+    : null;
+  const where = group ? `posts in “${group.name}”` : "posts here";
   // The card leads with when it runs and where it posts; the prompt sits under Details.
   return {
-    summary: create ? `${when}, posts here` : `Changing “${name}”: ${when}, posts here`,
+    summary: create ? `${when}, ${where}` : `Changing “${name}”: ${when}, ${where}`,
     detail: lines.join("\n"),
   };
 }
