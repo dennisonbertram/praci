@@ -5682,6 +5682,10 @@ msgstr "Largest files"
 msgid "last"
 msgstr "last"
 
+#: src/components/inbox/InboxDigest.tsx
+msgid "Last 7 days"
+msgstr "Last 7 days"
+
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Last 90 days"
@@ -7954,6 +7958,10 @@ msgstr "Quick status check from everyone, please"
 #: src/pages/shell/transcript.tsx
 msgid "Quote"
 msgstr "Quote"
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Rarely read, and you never wrote to them"
+msgstr "Rarely read, and you never wrote to them"
 
 #: src/pages/shell/transcript.tsx
 msgid "React"
@@ -11391,6 +11399,10 @@ msgstr "You have an unsent reply to this email."
 #: src/pages/Shell.tsx
 msgid "You have control"
 msgstr "You have control"
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "You read most of these"
+msgstr "You read most of these"
 
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx

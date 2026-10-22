@@ -212,6 +212,19 @@ export const WithSummary: Story = {
   },
 };
 
+/** A search result marks the matched words and shows the snippet around the match. */
+export const SearchMatch: Story = {
+  args: {
+    query: "pilot",
+    row: row("search", {
+      from: "Sample Sender",
+      subject: "Re: Q3 numbers",
+      snippet:
+        "Thanks for sending these over, the sample figures look right. For the pilot customers we can share them next week.",
+    }),
+  },
+};
+
 /** The checkbox takes the place of the unread dot once the row is checked. */
 export const Picked: Story = {
   args: { row: rows[0] as MailRow, picked: true, anyPicked: true, onPick: noop },

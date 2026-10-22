@@ -126,3 +126,13 @@ it("says when the Gmail filter could not be added, and stays quiet otherwise", a
     expect(document.body.textContent).not.toContain("Gmail filter");
   }
 });
+
+it("says why a sender is listed", async () => {
+  await show();
+  expect(document.body.textContent).toContain("Rarely read, and you never wrote to them");
+  await show({ sender: { ...sender, preselected: false, readCount: 15 } });
+  expect(document.body.textContent).toContain("You read most of these");
+  await show({ sender: { ...sender, preselected: false, readCount: 4 } });
+  expect(document.body.textContent).not.toContain("You read");
+  expect(document.body.textContent).not.toContain("Rarely read");
+});
