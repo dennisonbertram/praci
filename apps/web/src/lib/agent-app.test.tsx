@@ -112,3 +112,23 @@ it("finds a toast's bot in the spaces already loaded, without another bots.list"
   expect(found?.app?.name).toBe("Brex");
   expect(rpc.bots.list).toHaveBeenCalledTimes(calls);
 });
+
+it("finds a bot in its own space while another space is still loading", async () => {
+  vi.mocked(rpc.bots.list).mockImplementation(((_: unknown, ctx: Ctx) =>
+    ctx.context.spaceId === "slow"
+      ? new Promise(() => undefined)
+      : Promise.resolve([{ id: "b1", spawnKey: null, color: "#000" }])) as never);
+  await act(async () => root.render(<Probe spaces={["s1", "slow"]} />));
+  await settle();
+  expect((await lookupBotApp("u1", "b1"))?.bot.id).toBe("b1");
+});
+
+it("looks up again on a miss so a new bot gets its avatar", async () => {
+  vi.mocked(rpc.bots.list).mockResolvedValueOnce([]);
+  await act(async () => root.render(<Probe spaces={["s1"]} />));
+  await settle();
+  vi.mocked(rpc.bots.list).mockResolvedValue([
+    { id: "b2", spawnKey: null, color: "#000" },
+  ] as never);
+  expect((await lookupBotApp("u1", "b2"))?.bot.id).toBe("b2");
+});

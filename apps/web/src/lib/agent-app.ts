@@ -47,20 +47,35 @@ export function agentApp(
 type SpaceData = AgentAppData & { bots: Awaited<ReturnType<typeof rpc.bots.list>> };
 
 /**
- * The bot and its app, found in the spaces already loaded for this user (the sidebar loads them),
- * so a toast needs no list request of its own. Only when nothing was loaded yet does it load the
- * selected space.
+ * The bot and its app for a toast. Spaces that already loaded are searched without waiting; only on
+ * a miss (a new bot) are the user's spaces looked up afresh, and the first one holding the bot wins,
+ * so a slow unrelated space never delays it.
  */
 export async function lookupBotApp(userId: string, botId: string) {
   const prefix = `${userId}:`;
-  const loaded = [...cache].filter(([key]) => key.startsWith(prefix)).map(([, space]) => space);
-  if (loaded.length === 0) loaded.push(loadSpace(userId, selectedSpaceId() ?? ""));
-  for (const result of await Promise.allSettled(loaded)) {
-    if (result.status !== "fulfilled") continue;
-    const bot = result.value.bots.find((b) => b.id === botId);
-    if (bot) return { bot, app: agentApp(bot, result.value) };
+  const find = (space: SpaceData) => {
+    const bot = space.bots.find((b) => b.id === botId);
+    return bot && { bot, app: agentApp(bot, space) };
+  };
+  for (const [key, space] of settled) {
+    const hit = key.startsWith(prefix) && find(space);
+    if (hit) return hit;
   }
-  return undefined;
+  const keys = [...cache.keys()].filter((key) => key.startsWith(prefix));
+  const spaceIds = keys.length
+    ? keys.map((key) => key.slice(prefix.length))
+    : [selectedSpaceId() ?? ""];
+  for (const key of keys) {
+    cache.delete(key);
+    settled.delete(key);
+  }
+  return Promise.any(
+    spaceIds.map(async (spaceId) => {
+      const hit = find(await loadSpace(userId, spaceId));
+      if (!hit) throw new Error("bot not in space");
+      return hit;
+    }),
+  ).catch(() => undefined);
 }
 
 /** Fired after the integrations or their agents change, so cached logos are looked up again. */
@@ -68,9 +83,12 @@ export const INTEGRATIONS_CHANGED_EVENT = "rakazo:integrations-changed";
 
 // One lookup per user and space. A failed lookup is dropped so the next render tries again.
 const cache = new Map<string, Promise<SpaceData>>();
+// The same lookups once they finished, so a toast can read them without awaiting a slow space.
+const settled = new Map<string, SpaceData>();
 
 export function clearAgentAppCache() {
   cache.clear();
+  settled.clear();
 }
 
 if (typeof window !== "undefined") {
@@ -94,6 +112,12 @@ function loadSpace(userId: string, spaceId: string): Promise<SpaceData> {
       return { connections, servers, catalog, bots };
     })();
     cache.set(key, found);
+    found.then(
+      (space) => {
+        if (cache.get(key) === found) settled.set(key, space);
+      },
+      () => undefined,
+    );
     found.catch(() => {
       if (cache.get(key) === found) cache.delete(key);
     });
