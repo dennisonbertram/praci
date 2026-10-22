@@ -741,7 +741,7 @@ it("names the Legal agent on Ask, with no Hide amounts switch in the header", as
   expect(container.querySelector('[data-testid="hide-amounts-toggle"]')).toBeNull();
 });
 
-it("links the unchecked documents line to the Data room and opens Deadlines on the overdue ones", async () => {
+it("runs the check from the unchecked documents line and opens Deadlines on the overdue ones", async () => {
   // One deadline long past and one far ahead, so which one is overdue never depends on today.
   rpcMock.overview.mockResolvedValue({
     ...overview,
@@ -752,9 +752,11 @@ it("links the unchecked documents line to the Data room and opens Deadlines on t
   });
   await render(<LegalPage />);
   expect(container.textContent).toContain("3 Data room documents not yet checked by Legal");
-  expect(container.querySelector('a[href="/app/data-room?legal=unchecked"]')?.textContent).toBe(
-    "Review",
-  );
+  // The line offers the action, not a link to a list with no way to run it.
+  expect(container.querySelector('a[href="/app/data-room?legal=unchecked"]')).toBeNull();
+  rpcMock.scanNow.mockResolvedValue({ runId: id(1), botId: id(2) });
+  await click(button("Check now"));
+  expect(rpcMock.scanNow).toHaveBeenCalledTimes(1);
   expect(tab("Deadlines")?.getAttribute("aria-selected")).toBe("false");
   await act(async () => root.unmount());
   root = createRoot(container);
@@ -1012,6 +1014,8 @@ it("opens the contract from a click anywhere on its row, and shows the Renewal n
   const renewalCell = [...(row?.querySelectorAll("td") ?? [])].find((td) =>
     td.textContent?.startsWith("Auto-renews"),
   );
+  // The notice is never cut off: the column is wide enough to keep it on one line.
+  expect(renewalCell?.className).toContain("whitespace-nowrap");
   expect(renewalCell?.className).not.toContain("truncate");
   await click(row?.querySelectorAll("td")[3]);
   expect(container.querySelector('[data-testid="where"]')?.textContent).toBe(
@@ -1104,8 +1108,38 @@ it("shows Reading n of N while a scan runs, from the falling unchecked count", a
     rpcMock.overview.mockResolvedValue(running(1));
     await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
     expect(container.textContent).toContain("Reading 2 of 3");
+    // Every document is read, but the run goes on writing: the line says so instead of freezing.
+    rpcMock.overview.mockResolvedValue(running(0));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    expect(container.textContent).toContain("Saving results");
+    expect(container.textContent).not.toContain("Reading 3 of 3");
   } finally {
     vi.useRealTimers();
+  }
+});
+
+it("reopens a done deadline from Show done", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  rpcMock.doneDeadlines.mockResolvedValue([{ ...deadlines[0]!, status: "done" as const }]);
+  rpcMock.updateDeadline.mockResolvedValue({});
+  await render(<LegalPage />);
+  await click(tab("Deadlines"));
+  await click(button("Show done"));
+  rpcMock.doneDeadlines.mockResolvedValue([]);
+  await click(button("Reopen"));
+  expect(rpcMock.updateDeadline).toHaveBeenCalledWith({ id: deadlines[0]?.id, status: "open" });
+  expect(container.textContent).toContain("No deadlines marked done.");
+});
+
+it("shows a phone contract card without repeated labels, and no value while amounts are hidden", async () => {
+  setHideAmounts(true);
+  try {
+    await render(<LegalContracts contracts={contracts} />);
+    const card = container.querySelector('ul[aria-label="Contracts"] li');
+    expect(card?.textContent).not.toMatch(/Parties|Term|Renewal|Value|Next deadline/);
+    expect(card?.textContent).not.toContain("•••");
+  } finally {
+    setHideAmounts(false);
   }
 });
 
