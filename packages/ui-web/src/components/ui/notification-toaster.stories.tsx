@@ -240,3 +240,25 @@ export const BesideSidePanel: Story = {
     </>
   ),
 };
+
+/** With an agent panel docked, the toast sits in the main column, left of the panel, so neither is covered. */
+export const BesidePanel: Story = {
+  args: { onOpen: () => {} },
+  decorators: [
+    (Story) => (
+      <div className="flex h-96 bg-background">
+        <div className="flex-1 p-4 text-sm">Page content stays uncovered.</div>
+        <aside data-toast-panel="" className="w-96 border-l border-border" />
+        {Story()}
+      </div>
+    ),
+  ],
+  render: render([
+    {
+      id: "approval",
+      title: "Vendor security questionnaire needs approval",
+      body: "Send the completed questionnaire to security@halcyon-logistics.example.test",
+      withBot: true,
+    },
+  ]),
+};

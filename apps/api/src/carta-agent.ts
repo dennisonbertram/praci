@@ -106,6 +106,9 @@ export async function assignToExistingCartaAgent(
   await assignCartaServers(prisma, actor, bot?.id ?? null);
 }
 
+const CARTA_DESCRIPTION = "Reads Carta to keep your cap table and contacts current.";
+const OLD_CARTA_DESCRIPTION = "Keeps your cap table and investor contacts.";
+
 /** The only way a Carta agent is created; idempotent through the unique (spaceId, spawnKey) index. */
 export async function ensureCartaAgent(
   deps: {
@@ -118,12 +121,17 @@ export async function ensureCartaAgent(
     spawnKey: cartaAgentSpawnKey(actor.userId),
     name: "Carta agent",
     title: "",
-    description: "Keeps your cap table and investor contacts.",
+    description: CARTA_DESCRIPTION,
     instructions: CARTA_AGENT_INSTRUCTIONS,
     notifyOnFinish: true,
     color: pageAgentColor("carta"),
   });
   await assignCartaServers(deps.prisma, actor, bot.id);
+  // An agent created earlier keeps its stored description; refresh it only while it is still the old default.
+  await deps.prisma.bot.updateMany({
+    where: { id: bot.id, ...actorScope(actor), description: OLD_CARTA_DESCRIPTION },
+    data: { description: CARTA_DESCRIPTION },
+  });
   return bot;
 }
 

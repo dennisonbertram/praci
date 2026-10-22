@@ -17,6 +17,9 @@ type AuthMode = "in" | "up" | "forgot";
 const fieldClass = "mt-2 h-12 rounded-xl px-4 text-base md:text-base";
 export const submitClass = "mt-3 h-12 w-full rounded-xl text-base";
 
+// The submit button is disabled while a request runs, which drops focus; an error puts it back on the email field.
+const focusEmail = () => document.getElementById("email")?.focus();
+
 export function AuthPage({ mode }: { mode: AuthMode }) {
   const { t } = useLingui();
   const navigate = useNavigate();
@@ -119,6 +122,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           : await authClient.signIn.email({ email: trimmedEmail, password });
       if (result.error) {
         setError(authErrorText(result.error, t`Could not continue`));
+        focusEmail();
         return;
       }
       if (mode === "up" && signupRequiresEmailVerification(result.data)) {
@@ -129,6 +133,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
       navigate(mode === "up" ? "/onboarding" : signInNext(searchParams.get("next")));
     } catch {
       setError(t`Could not reach the server`);
+      focusEmail();
     } finally {
       setPending(false);
     }
@@ -242,7 +247,6 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                       setName(e.target.value);
                       setNameError(null);
                     }}
-                    placeholder={t`Your name`}
                     aria-invalid={nameError ? true : undefined}
                     aria-describedby={nameError ? "name-error" : undefined}
                     className={fieldClass}
@@ -267,7 +271,6 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     setEmail(e.target.value);
                     setEmailError(null);
                   }}
-                  placeholder={t`Your email address`}
                   type="email"
                   required
                   aria-invalid={error || emailError ? true : undefined}
@@ -296,7 +299,6 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                         setTooShort(false);
                         setPasswordError(null);
                       }}
-                      placeholder={t`Password`}
                       type={showPassword ? "text" : "password"}
                       required
                       aria-invalid={error || tooShort || passwordError ? true : undefined}
@@ -532,7 +534,10 @@ export function AuthFrame({
           <span className="h-5 w-[9px] rounded-full bg-primary" />
           <span className="h-5 w-[9px] rounded-full bg-primary" />
         </div>
-        <h1 aria-live="polite" className="mb-9 mt-7 text-4xl font-medium tracking-tight">
+        <h1
+          aria-live="polite"
+          className="mb-9 mt-7 text-center text-4xl font-medium tracking-tight"
+        >
           {title}
         </h1>
         {children}

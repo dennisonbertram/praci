@@ -96,8 +96,8 @@ it("renders a native table in the Cap table style, with the header hidden on a p
   const head = container.querySelector('[data-testid="data-room-head"]');
   expect(head?.className).toContain("hidden");
   expect(head?.querySelector("th")?.className).toContain("text-xs");
-  expect(head?.textContent).toBe("NameTypeAddedParties");
-  expect(container.querySelectorAll("colgroup > col")).toHaveLength(5);
+  expect(head?.textContent).toBe("NameTypeAddedPartiesStatus");
+  expect(container.querySelectorAll("colgroup > col")).toHaveLength(6);
 });
 
 it("cuts parties to one line with the full value in the title, and shows a dash when empty", () => {
@@ -289,8 +289,8 @@ it("sizes the columns with table-column <col>s, not table-cell", () => {
   act(() => root.render(<ListView rows={[{ item: item("a", null), snippets: [] }]} o={o()} />));
   const cols = Array.from(container.querySelectorAll("col")).map((c) => c.className);
   expect(cols.some((c) => c.includes("table-cell"))).toBe(false);
-  // No row has a status, so that column is left out entirely.
-  expect(cols.filter((c) => c.includes("table-column"))).toHaveLength(3);
+  // Type, Added, Parties and Status.
+  expect(cols.filter((c) => c.includes("table-column"))).toHaveLength(4);
 });
 
 it("opens the file when its search snippet is clicked", () => {
@@ -335,9 +335,8 @@ it("puts a sub-folder's menu in the same column as a file's at every list width"
       <ListView
         rows={[{ item: item("a", null), snippets: [] }]}
         o={o()}
-        lead={(showStatus) => (
+        lead={() => (
           <SubfolderList
-            showStatus={showStatus}
             folders={[invoices]}
             contents={() => "2 items"}
             onOpen={vi.fn()}
@@ -699,18 +698,34 @@ it("shows a file icon, not a spinner, on a file whose text is already stored, in
   expect(container.querySelector("[role=presentation]")).toBeNull();
 });
 
-it("leaves the Status column out when no row has a status", () => {
+it("keeps the Status column when no row has a status, so the columns never move", () => {
   act(() => root.render(<ListView rows={asRows(item("a", null), item("b", null))} o={o()} />));
-  expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).not.toContain(
-    "Status",
-  );
-  expect(container.querySelector('[data-testid="data-room-status"]')).toBeNull();
-  act(() =>
-    root.render(
-      <ListView rows={asRows(item("a", null), { ...item("b", null), status: "failed" })} o={o()} />,
-    ),
-  );
   expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).toContain(
     "Status",
   );
+});
+
+it("closes the side preview on Escape from the shown row only", () => {
+  const onClosePreview = vi.fn();
+  const rows = [item("a", null), item("b", null)].map((i) => ({ item: i, snippets: [] }));
+  act(() => root.render(<ListView rows={rows} o={{ ...o(), shownId: "a", onClosePreview }} />));
+  const press = (id: string) =>
+    act(() => {
+      container
+        .querySelector(`[data-item-id="${id}"]`)
+        ?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+  press("b");
+  expect(onClosePreview).not.toHaveBeenCalled();
+  press("a");
+  expect(onClosePreview).toHaveBeenCalledTimes(1);
+});
+
+it("shows no dash in the Type and Parties cells of a failed file", () => {
+  act(() =>
+    root.render(<ListView rows={asRows({ ...item("a", null), status: "failed" })} o={o()} />),
+  );
+  const row = container.querySelector("[data-row]");
+  expect(row?.children[1]?.textContent).toBe("");
+  expect(row?.children[3]?.textContent).toBe("");
 });
