@@ -1028,7 +1028,6 @@ msgstr "Address"
 msgid "Address or ENS"
 msgstr "Address or ENS"
 
-#: src/components/AiDataSharing.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
@@ -7715,6 +7714,10 @@ msgstr "pending"
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
 msgstr "Pending"
+
+#: src/components/AiDataSharing.tsx
+msgid "Per model and documents"
+msgstr "Per model and documents"
 
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx

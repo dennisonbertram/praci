@@ -26,9 +26,13 @@ describePostgres("notifications.glance (PostgreSQL)", () => {
   let prisma: PrismaClient;
   let close: () => Promise<void>;
   const glance = (actor: Actor) =>
-    createRouterClient(createRouter({ prisma } as unknown as RouterDeps), {
-      context: { actor },
-    }).notifications.glance();
+    createRouterClient(
+      createRouter({
+        prisma,
+        env: { webOrigin: "http://localhost", mailWritesDisabled: false },
+      } as unknown as RouterDeps),
+      { context: { actor } },
+    ).notifications.glance();
   const day = (offset: number) => new Date(Date.now() + offset * 86_400_000);
 
   beforeAll(async () => {
@@ -65,6 +69,7 @@ describePostgres("notifications.glance (PostgreSQL)", () => {
       legalDueSoon: 0,
       devinNeedsYou: 0,
       devinConnected: false,
+      gtmNeedsYou: 0,
       dataRoomWaiting: 0,
       hasTickets: false,
       botKinds: {},
