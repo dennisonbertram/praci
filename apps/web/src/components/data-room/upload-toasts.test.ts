@@ -177,7 +177,7 @@ it("says uploaded, or where the identical file already is and its name when it d
   ]);
   hoisted.upload
     .mockResolvedValueOnce({
-      item: { id: "i1", name: "new.txt", folderId: null },
+      item: { id: "i1", name: "new.txt", folderId: "f-leases" },
       duplicate: false,
     })
     .mockResolvedValueOnce({
@@ -191,7 +191,7 @@ it("says uploaded, or where the identical file already is and its name when it d
   uploadFilesToDataRoom([file("new.txt"), file("lease copy.pdf"), file("same.txt")]);
   await flush();
   expect(getUploadToasts().map((toast) => toast.state)).toEqual([
-    { kind: "uploaded", itemId: "i1" },
+    { kind: "uploaded", itemId: "i1", folder: "Legal / Leases" },
     {
       kind: "uploaded",
       itemId: "i0",

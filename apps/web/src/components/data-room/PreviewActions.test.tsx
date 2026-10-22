@@ -40,6 +40,13 @@ it("hides the browser PDF toolbar so only the app's Open and Download show", () 
   expect(frame?.getAttribute("src")).toBe("blob:file#toolbar=0");
 });
 
+it("gives a PDF Open and Download below sm, where the frame would be blank", () => {
+  const view = render(item("agreement.pdf", "application/pdf"));
+  expect(view.querySelector("iframe")?.className).toContain("max-sm:hidden");
+  const labels = Array.from(view.querySelectorAll("button")).map((b) => b.textContent);
+  expect(labels).toEqual(["Open", "Download"]);
+});
+
 it("leaves an image URL unchanged", () => {
   const image = render(item("receipt.png", "image/png")).querySelector("img");
   expect(image?.getAttribute("src")).toBe("blob:file");

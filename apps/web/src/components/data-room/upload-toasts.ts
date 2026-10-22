@@ -49,7 +49,13 @@ export type UploadToast = {
      * `existing` is set when an identical file was already there and nothing new was stored: its
      * name when it differs from the upload's, and the folder path it is in, if any.
      */
-    | { kind: "uploaded"; itemId: string; existing?: { name?: string; folder?: string } }
+    | {
+        kind: "uploaded";
+        itemId: string;
+        /** The folder path the new file went into; unset at the top level. */
+        folder?: string;
+        existing?: { name?: string; folder?: string };
+      }
     /** `toTop` uploads the same file to the top level instead (the folder was deleted). */
     | { kind: "error"; reason: UploadFailure; toTop?: () => void }
     | { kind: "deleted" }
@@ -235,18 +241,18 @@ async function uploadOne(file: File, folderId: string | undefined) {
       return await followImport(id, uploaded.importId, current);
     }
     const { item, duplicate } = uploaded;
-    // Where the file already is: without it "Already there" leaves the user to go looking.
-    const folder =
-      duplicate && item.folderId
-        ? await rpc.dataRoom
-            .folders()
-            .then((all) => folderNodes(all).find((node) => node.folder.id === item.folderId)?.path)
-            .catch(() => undefined)
-        : undefined;
+    // Where the file is: without it the user goes looking (and "Already there" says nothing useful).
+    const folder = item.folderId
+      ? await rpc.dataRoom
+          .folders()
+          .then((all) => folderNodes(all).find((node) => node.folder.id === item.folderId)?.path)
+          .catch(() => undefined)
+      : undefined;
     if (!current()) return;
     update(id, {
       kind: "uploaded",
       itemId: item.id,
+      ...(!duplicate && folder ? { folder } : {}),
       ...(duplicate
         ? {
             existing: {
