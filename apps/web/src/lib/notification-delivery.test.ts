@@ -261,6 +261,8 @@ describe("syncApprovalToasts", () => {
     syncApprovalToasts([approval], options);
     expect(toasts.enqueueApprovalToast).toHaveBeenCalledTimes(1);
     expect(toasts.enqueueApprovalToast.mock.calls[0]?.[1]).toEqual({ botId: "mercury" });
+    // A payment Chief asked for is held by the Mercury agent: the toast opens that chat.
+    expect(toasts.enqueueApprovalToast.mock.calls[0]?.[0]).toMatchObject({ href: "/app/mercury" });
     expect(toasts.retainApprovalToasts).toHaveBeenCalledWith(new Set(["n9"]));
   });
   it("shows nothing for a seen approval and drops toasts the server no longer lists", () => {

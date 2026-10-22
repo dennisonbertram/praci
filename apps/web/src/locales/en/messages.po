@@ -1356,6 +1356,10 @@ msgstr "Approve this server to let your bot use its tools."
 msgid "Approved"
 msgstr "Approved"
 
+#: src/components/AskCard.tsx
+msgid "Approved here. Waiting for {waitsFor}"
+msgstr "Approved here. Waiting for {waitsFor}"
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Apps with their own server"
 msgstr "Apps with their own server"

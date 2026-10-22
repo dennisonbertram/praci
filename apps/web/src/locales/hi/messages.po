@@ -1356,6 +1356,10 @@ msgstr ""
 msgid "Approved"
 msgstr ""
 
+#: src/components/AskCard.tsx
+msgid "Approved here. Waiting for {waitsFor}"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Apps with their own server"
 msgstr ""

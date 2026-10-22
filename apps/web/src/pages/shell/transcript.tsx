@@ -1800,6 +1800,7 @@ const MessageView = memo(function MessageView({
             <div key={i} className={gap}>
               <AskCard
                 block={block}
+                requestedAt={message.createdAt}
                 // A held message is answered without a waiting run, so it stays answerable.
                 canAnswer={canAnswer || block.share === true}
                 onAnswer={(text, username) => onAnswer(message, text, username)}

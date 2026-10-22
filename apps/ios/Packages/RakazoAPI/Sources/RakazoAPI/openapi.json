@@ -7393,6 +7393,9 @@
                                                 "detailFolded": {
                                                   "type": "boolean"
                                                 },
+                                                "waitsFor": {
+                                                  "type": "string"
+                                                },
                                                 "mail": {
                                                   "type": "object",
                                                   "properties": {
@@ -25093,6 +25096,9 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "spaceId": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -25226,6 +25232,12 @@
                       },
                       "version": {
                         "type": "string"
+                      },
+                      "spaceId": {
+                        "type": "string"
+                      },
+                      "documentsOnly": {
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -25286,6 +25298,9 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "spaceId": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -32431,6 +32446,9 @@
                                         },
                                         "detailFolded": {
                                           "type": "boolean"
+                                        },
+                                        "waitsFor": {
+                                          "type": "string"
                                         },
                                         "mail": {
                                           "type": "object",
@@ -48808,6 +48826,9 @@
                                         },
                                         "detailFolded": {
                                           "type": "boolean"
+                                        },
+                                        "waitsFor": {
+                                          "type": "string"
                                         },
                                         "mail": {
                                           "type": "object",
@@ -66187,6 +66208,9 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "spaceId": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -66320,6 +66344,12 @@
                       },
                       "version": {
                         "type": "string"
+                      },
+                      "spaceId": {
+                        "type": "string"
+                      },
+                      "documentsOnly": {
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -66380,6 +66410,9 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "spaceId": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -94007,6 +94040,9 @@
                                         "detailFolded": {
                                           "type": "boolean"
                                         },
+                                        "waitsFor": {
+                                          "type": "string"
+                                        },
                                         "mail": {
                                           "type": "object",
                                           "properties": {
@@ -96157,6 +96193,9 @@
                                         },
                                         "detailFolded": {
                                           "type": "boolean"
+                                        },
+                                        "waitsFor": {
+                                          "type": "string"
                                         },
                                         "mail": {
                                           "type": "object",
