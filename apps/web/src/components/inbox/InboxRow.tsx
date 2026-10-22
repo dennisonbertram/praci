@@ -20,6 +20,7 @@ import {
   Ellipsis,
   Mail,
   MailOpen,
+  Paperclip,
   ShieldAlert,
   ShieldCheck,
   Star,
@@ -354,6 +355,13 @@ export function InboxRow({
             dateTime={row.receivedAt}
             className={`col-start-3 row-start-1 text-end text-[13px] text-muted-foreground @md:col-start-5 whitespace-nowrap tabular-nums ${marks.length + actions.length ? "@max-md:group-focus-within/row:opacity-0 @max-md:group-hover/row:opacity-0 pointer-coarse:opacity-100" : ""}`}
           >
+            {row.hasAttachment ? (
+              <Paperclip
+                role="img"
+                aria-label={t`Has attachment`}
+                className="me-1 inline size-3 align-text-bottom"
+              />
+            ) : null}
             {formatMailTime(row.receivedAt)}
           </time>
         </button>
