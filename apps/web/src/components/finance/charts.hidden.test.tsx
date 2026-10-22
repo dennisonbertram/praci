@@ -187,7 +187,7 @@ const withWidth = async (run: (el: HTMLElement) => Promise<void>) => {
   }
 };
 
-it("draws Out as a line with a gradient area, a dashed last segment for today, and a hover tooltip", async () => {
+it("draws Out as a line with a gradient area, no line to the running day, and a hover tooltip", async () => {
   await withWidth(async (el) => {
     const root = createRoot(el);
     const spend = [0, 2_000, 700_000, 5_000, 9_000];
@@ -207,9 +207,7 @@ it("draws Out as a line with a gradient area, a dashed last segment for today, a
     const gradientId = (area?.getAttribute("fill") ?? "").slice(5, -1);
     expect(document.getElementById(gradientId)?.querySelectorAll("stop")).toHaveLength(2);
     expect(el.querySelector("[data-testid=burn-out-line]")?.getAttribute("d")).toContain("C");
-    expect(
-      el.querySelector("[data-testid=burn-out-partial]")?.getAttribute("stroke-dasharray"),
-    ).toBe("4 4");
+    expect(el.querySelector("[data-testid=burn-out-partial]")).toBeNull();
     expect(el.querySelector("[data-testid=burn-out-end]")).not.toBeNull();
     expect(el.textContent).not.toContain("So far");
     // The curve never dips below the zero line (the largest y is the baseline).
@@ -300,7 +298,7 @@ it("labels weeks, months, quarters and years, and names the bucket in the toolti
   });
 });
 
-it("dashes only the last segment, and keeps few buckets at the left edge", async () => {
+it("stops the line before the running bucket, and keeps few buckets at the left edge", async () => {
   await withWidth(async (el) => {
     const root = createRoot(el);
     const segments = (id: string) =>
@@ -317,19 +315,20 @@ it("dashes only the last segment, and keeps few buckets at the left edge", async
       bucket("2026-10-12", "2026-10-18", 20_000, true),
     ]);
     expect(segments("burn-out-line")).toBe(1);
-    expect(segments("burn-out-partial")).toBe(1);
+    expect(el.querySelector("[data-testid=burn-out-partial]")).toBeNull();
+    expect(el.querySelector("[data-testid=burn-out-end]")).not.toBeNull();
     // Three buckets of a 600px chart do not spread over the full width.
     const x = (i: number) => Number(el.querySelectorAll("g[role=link] text")[i]?.getAttribute("x"));
     expect(x(0)).toBeLessThan(100);
     expect(x(2)).toBeLessThan(300);
 
-    // Two buckets: the one segment is the last, so it is the dashed one.
+    // Two buckets: the finished one is a lone point, so no line is drawn.
     await render([
       bucket("2026-10-05", "2026-10-11", 10_000),
       bucket("2026-10-12", "2026-10-18", 20_000, true),
     ]);
-    expect(segments("burn-out-line")).toBe(0);
-    expect(segments("burn-out-partial")).toBe(1);
+    expect(el.querySelector("[data-testid=burn-out-line]")).toBeNull();
+    expect(el.querySelector("[data-testid=burn-out-end]")).not.toBeNull();
     act(() => root.unmount());
   });
 });
