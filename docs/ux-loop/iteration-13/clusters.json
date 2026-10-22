@@ -1,0 +1,1004 @@
+[
+ {
+  "id": "C1",
+  "title": "A bot that delegates a payment shows 'could not finish' and 'Last run failed' while the approval is live in the other agent; Chief answers with a placeholder relay",
+  "severity": "P1",
+  "effort": "L",
+  "root_cause": "The originating bot's run ends with tool work and no final text after it messages the Mercury agent. threadRunError suppresses the failure banner only when this thread has a waiting_input run (user-error.ts:~190), but the approval lives in the Mercury agent's thread, so the originating thread sees a failed run. The stale 'Last run failed' line then stays after the approval is denied. The same relay path posts an interim 'I've asked the Inbox agent...' message and a second bubble with the answer, or only the placeholder (Chief).",
+  "finding_ids": [
+   "R1-01",
+   "R1-02",
+   "J2-01",
+   "J1-03"
+  ],
+  "found_by": {
+   "R1-01": [
+    "R1",
+    "J2-01 (same symptom, seen by J2)"
+   ],
+   "R1-02": [
+    "R1",
+    "J1-03 (Chief shows only the delegation sentence on the scripted model)"
+   ]
+  },
+  "verification": "Observed by R1 and J2 on separate users (P1 in both). Cause partly traced: packages/core/src/user-error.ts threadRunError checks snapshot.activeRuns of the same thread only; run end without final text at packages/adapters/src/pi-runtime.ts:626 is per J2, not re-read. Relay replacement in executor.ts suspected, not traced. J1-03 is on the scripted demo model and unverified with a real model.",
+  "files": [
+   "packages/core/src/user-error.ts (threadRunError: treat a run that handed work to another agent whose approval is pending as waiting; clear the banner once the delegate answers or denies)",
+   "packages/adapters/src/executor.ts and packages/adapters/src/pi-runtime.ts:~626 (mark the originating run as waiting on the delegate; expire the delegate's approval if the run really fails and say nothing was sent; replace the interim relay message with the final one)",
+   "packages/adapters/src/executor-approval-replay.test.ts (regressions below)",
+   "apps/web chat composer error/Retry (hide Retry while the delegate is pending)"
+  ],
+  "reach": "Anyone who lets a bot move money through the Mercury agent; Chief users on any delegated question.",
+  "acceptance_criteria": [
+   "Ask a bot to pay $300: while the Mercury approval card is live, the bot's composer says 'Waiting for approval', no red 'could not finish', no Retry; the same after reload.",
+   "Deny the card: the bot's thread shows the answer and no 'Last run failed' line.",
+   "If the originating run truly fails after an approval exists, that approval reads 'No longer active' and the error says nothing was sent.",
+   "A delegated request produces one outcome message in the requester's thread (the interim relay line is replaced by the final answer; the sidebar preview shows the final text).",
+   "Regression test in executor-approval-replay.test.ts and one in user-error tests for the cross-thread waiting case."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [],
+  "conflicts_with": [
+   "C20 only if both edit apps/web roster-status/composer labels"
+  ],
+  "reopens": "Pass-12 C1 (criteria 3, 4, 5 not met; 1-2 unverified)",
+  "rank": 1
+ },
+ {
+  "id": "C2",
+  "title": "Open in composer after a failed send still needs a connection id, so the way forward is missing",
+  "severity": "P2",
+  "effort": "S",
+  "root_cause": "MailApprovalCard.tsx:~479 renders 'Open in composer' only when onOpenComposer and mail.connectionId are both set, and EmailAgentPanel.tsx passes neither. A failed send in the email agent panel therefore has no recovery button. Not reproduced live (needs a failing send).",
+  "finding_ids": [
+   "R1-03"
+  ],
+  "found_by": {
+   "R1-03": [
+    "R1"
+   ]
+  },
+  "verification": "Suspected: gating condition read in code at MailApprovalCard.tsx:479-481; EmailAgentPanel.tsx has no reference to onOpenComposer. Severity P2 here (was P1 in pass 12) because the effect was not seen on screen.",
+  "files": [
+   "apps/web/src/components/MailApprovalCard.tsx (show the button for every failed send; fall back to the thread's account when connectionId is missing)",
+   "apps/web/src/components/inbox/EmailAgentPanel.tsx (pass onOpenComposer)",
+   "apps/web/src/components/MailApprovalCard.test.tsx"
+  ],
+  "reach": "Anyone whose agent-drafted reply fails to send.",
+  "acceptance_criteria": [
+   "A failed send in the email agent panel shows 'Open in composer'; clicking it opens the composer with the draft and the right account.",
+   "Unit test: failed outcome without connectionId still renders the button."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [],
+  "conflicts_with": [],
+  "reopens": "Pass-12 C2",
+  "rank": 2
+ },
+ {
+  "id": "C4",
+  "title": "First-run tour opens while the second connect card is unanswered; on a phone the first stop focuses Search and raises the keyboard",
+  "severity": "P2",
+  "effort": "S",
+  "root_cause": "Shell.tsx:~2745 connectCardsWaiting holds the tour only until one app is connected, so connecting Gmail starts nine popovers while the Google Calendar card is still open (J1-01). Separately, on first phone sign-in the drawer opens with focus in Search (tour step 1 targets Search), which on a real phone raises the keyboard and the callout covers the Inbox and Finance rows (J3-02, keyboard part suspected).",
+  "finding_ids": [
+   "J1-01",
+   "J3-02"
+  ],
+  "found_by": {
+   "J1-01": [
+    "J1"
+   ],
+   "J3-02": [
+    "J3"
+   ]
+  },
+  "verification": "J1-01 observed, cause read in code (Shell.tsx:2744-2755: tourOpen requires !connectCardsWaiting, defined by connectCardsOpen). J3-02 ring and overlap observed; keyboard effect suspected. Severity P2 (reported P2 by both).",
+  "files": [
+   "apps/web/src/pages/Shell.tsx (tourOpen / connectCardsWaiting: hold until every connect card is connected or dismissed, or until the first question is sent)",
+   "apps/web/src/components/tour/FirstRunTour.tsx and the drawer-open effect (do not focus Search on touch when the tour starts)",
+   "apps/web/src/components/tour/*.test.tsx"
+  ],
+  "reach": "Every new user who connects an app from Chief's cards; every first sign-in on a phone.",
+  "acceptance_criteria": [
+   "After connecting Gmail with the Calendar card still open, no tour popover appears; it starts once all connect cards are done or dismissed.",
+   "At 375 px with touch emulation, the first tour step leaves document.activeElement outside any text input."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [],
+  "conflicts_with": [
+   "C11 (same tour files; do C4 first or in one branch)"
+  ],
+  "reopens": null,
+  "rank": 3
+ },
+ {
+  "id": "C5",
+  "title": "Routines panel still shows an empty 'Chief's computer' heading and blank area; header icon is a monitor",
+  "severity": "P2",
+  "effort": "S",
+  "root_cause": "Shell.tsx:3872-3878 noComputerScreen is true only for computer states running, stopped or none. The demo computer is in another state, so the heading at ~6180 and an empty box render. The header button keeps the Monitor icon (~5788) and reads 'Computer and routines'.",
+  "finding_ids": [
+   "R1-04",
+   "R2-13-01",
+   "V1-05"
+  ],
+  "found_by": {
+   "R1-04": [
+    "R1",
+    "R2-13-01",
+    "V1-05 (also in pass 12 as C17)"
+   ]
+  },
+  "verification": "Verified in code: the noComputerScreen condition lists three states only. Seen on screen by R1, R2 and V1 (three walkers). Which state the demo computer is in was not read.",
+  "files": [
+   "apps/web/src/pages/Shell.tsx (noComputerScreen: true whenever there is no embedded screen, no error, not open; Routines button icon: clock/repeat, label 'Routines')",
+   "apps/web/src/pages/Shell.test.tsx"
+  ],
+  "reach": "Every user who opens Routines on a bot whose computer is not running.",
+  "acceptance_criteria": [
+   "Routines panel in any computer state without a screen shows no 'computer' heading and no blank block; at 1440 the panel has no dead band over 100 px.",
+   "Header button shows a clock or repeat icon, not a monitor, when it opens Routines only.",
+   "Unit test covering a computer in a non-listed state."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [],
+  "conflicts_with": [
+   "C20 if it edits Shell.tsx header labels"
+  ],
+  "reopens": "Pass-12 C17",
+  "rank": 4
+ },
+ {
+  "id": "C6",
+  "title": "Settings > Models: 'In use' on OpenRouter beside 'OpenAI: GPT-6 Luna', a flash of the advanced layout, two names for one idea",
+  "severity": "P2",
+  "effort": "M",
+  "root_cause": "The model label comes from the catalog entry for the default provider and model (ModelSettingsOverlay.tsx:375-379, label 'OpenAI: GPT-6 Luna'), while 'In use' comes from defaultProvider (openrouter) at :305-316. They describe one route with two names. Also the embedded view paints the full advanced layout while `me` loads (:1650 simple is false) and 'Use my own model' opens a panel with a second disclosure 'Use your own key'. On a phone the 'Your bots use ...' line shows above and below the list (:1276-1281, min-[1040px]:hidden only hides one).",
+  "finding_ids": [
+   "R1-05",
+   "R2-13-02",
+   "V1-02",
+   "V1-03"
+  ],
+  "found_by": {
+   "R1-05": [
+    "R1",
+    "R2-13-02",
+    "V1-03a"
+   ],
+   "V1-02": [
+    "V1"
+   ],
+   "V1-03": [
+    "V1 (b: Use my own model then Use your own key)"
+   ]
+  },
+  "verification": "Seen by R1, R2, V1 (three walkers; reported on the demo where the system model goes through OpenRouter). Code lines read. The flash is observed once at 0.2-0.6 s polling.",
+  "files": [
+   "apps/web/src/pages/ModelSettingsOverlay.tsx (derive 'In use' and the label from one value, e.g. 'GPT-6 Luna via OpenRouter'; show 'In use' only for a connected provider, 'Included' for the system model; render nothing or one skeleton line while `me` loads; open the key form directly after 'Use my own model'; one copy of the 'Your bots use' line on a phone)",
+   "apps/web/src/pages/ModelSettingsOverlay.test.tsx"
+  ],
+  "reach": "Anyone who opens Settings > Models.",
+  "acceptance_criteria": [
+   "With the system model, no provider row says 'In use' unless it is connected, and the text names the model once.",
+   "Opening Models shows no intermediate advanced layout; at 375 px the 'Your bots use' line appears once.",
+   "'Use my own model' opens the key form in one step."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [],
+  "conflicts_with": [],
+  "reopens": "Pass-12 C14",
+  "rank": 5
+ },
+ {
+  "id": "C7",
+  "title": "Finance: Breakdown card stretches to the height of the Upcoming + Subscriptions column, and recurring vendors appear in two cards",
+  "severity": "P2",
+  "effort": "S",
+  "root_cause": "Finance.tsx:682 uses `grid gap-3 @3xl:grid-cols-2` without items-start, so Breakdown stretches to the right column: 290-480 px of empty card at 1440 and 330 px at 1920. Upcoming rows tagged 'recurring' repeat the vendors listed under Subscriptions.",
+  "finding_ids": [
+   "V2-01",
+   "FLOW-04"
+  ],
+  "found_by": {
+   "V2-01": [
+    "V2",
+    "R3-13-02",
+    "FLOW-04 (first half)"
+   ],
+   "FLOW-04": [
+    "FLOW (second half: recurring duplicated)"
+   ]
+  },
+  "verification": "Observed by V2, R3 and FLOW (three walkers). Grid class read at Finance.tsx:682; the exact child that stretches was not traced further.",
+  "files": [
+   "apps/web/src/pages/Finance.tsx (self-start / items-start on the Breakdown card, or move Subscriptions under both columns)",
+   "apps/web/src/pages/Finance.tsx upcoming row (drop the 'recurring' chip where Subscriptions lists the same vendor)"
+  ],
+  "reach": "All Finance users on a desktop.",
+  "acceptance_criteria": [
+   "At 1440 and 1920 the Breakdown card height is within 40 px of its last row.",
+   "A recurring vendor is listed once as a charge (Upcoming) and once as a subscription only if the two cards show different information."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [],
+  "conflicts_with": [
+   "C12 (same file)"
+  ],
+  "reopens": "Pass-12 C23 (residual)",
+  "rank": 6
+ },
+ {
+  "id": "C8",
+  "title": "Slow actions give no immediate feedback: routine Test run, Legal Done, Inbox send",
+  "severity": "P2",
+  "effort": "M",
+  "root_cause": "J2-02: after Test run the button stays 'Test run' and Run history says 'No runs yet' for about 20 s, so a second click is easy (the `running` prop at RoutineEditor.tsx:334,430 does not turn true on click). J2-03: Legal Done greys out and nothing else changes for about 10 s before the row leaves (possibly load on the shared stack). J1-05: after the Undo window the send pill reads 'Sending...' about 6 s with no way to cancel (emulator).",
+  "finding_ids": [
+   "J2-02",
+   "J2-03",
+   "J1-05"
+  ],
+  "found_by": {
+   "J2-02": [
+    "J2"
+   ],
+   "J2-03": [
+    "J2"
+   ],
+   "J1-05": [
+    "J1"
+   ]
+  },
+  "verification": "Observed once each, on a shared, loaded stack. J2-02 cause read in code (running prop not set on click); J2-03 and J1-05 not traced and may partly be load. Severity P2 for Test run (double run), P3 for the other two.",
+  "files": [
+   "apps/web/src/pages/RoutineEditor.tsx and its parent (set running true on click until the run row reports done)",
+   "apps/web/src/pages/legal/LegalDeadlines.tsx (remove row optimistically with Undo, or show a spinner on the button)",
+   "apps/web inbox send pill (show Sent when the provider accepts)"
+  ],
+  "reach": "Routine authors; Legal users.",
+  "acceptance_criteria": [
+   "After clicking Test run the button reads 'Running...' and is disabled within 300 ms and Run history shows a Running row.",
+   "Done removes the row (or shows a spinner) within 300 ms."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [],
+  "conflicts_with": [],
+  "reopens": null,
+  "rank": 7
+ },
+ {
+  "id": "C9",
+  "title": "Approval toast is clipped on a phone and covers page content beside a docked agent panel",
+  "severity": "P2",
+  "effort": "S",
+  "root_cause": "J3-01: the toast wrapper is 118 px tall while its button content is 156 px, so the last body line is cut at the card edge (stale height measurement, suspected). R3-13-04: the persistent toast covers the Breakdown rows beside the open Finance agent panel. Toast position (persistent, bottom-right) is decided, so only the clipping and the offset against a docked panel are in scope.",
+  "finding_ids": [
+   "J3-01",
+   "R3-13-04"
+  ],
+  "found_by": {
+   "J3-01": [
+    "J3"
+   ],
+   "R3-13-04": [
+    "R3 (pass-12 C9 residual)"
+   ]
+  },
+  "verification": "J3-01 observed with DOM sizes (343x118 vs 341x156); cause suspected in packages/ui-web/src/components/ui/notification-toaster.tsx (~220-316), not traced. R3-13-04 seen once.",
+  "files": [
+   "packages/ui-web/src/components/ui/notification-toaster.tsx (ResizeObserver on the toast button so the front height follows its content)",
+   "apps/web/src/pages/Shell.tsx toast host offset when a right panel is docked"
+  ],
+  "reach": "Anyone with an approval toast on a phone.",
+  "acceptance_criteria": [
+   "At 375 px every line of a 4-line approval toast is visible (wrapper height >= content height).",
+   "With a docked right panel at 1440 the toast does not overlap the panel or the page content columns."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [],
+  "conflicts_with": [
+   "C11 none"
+  ],
+  "reopens": "Pass-12 C9 (residual)",
+  "rank": 8
+ },
+ {
+  "id": "C10",
+  "title": "Data room: clicking a folder with the preview pane open can leave the list unfiltered",
+  "severity": "P2",
+  "effort": "S",
+  "root_cause": "With the preview open, clicking the Contracts folder changed breadcrumb and URL but the list kept showing all items, even after 3 s; reload fixed it. Two later folder clicks worked. Cause not found; suspected stale query while the preview is open.",
+  "finding_ids": [
+   "V3-01"
+  ],
+  "found_by": {
+   "V3-01": [
+    "V3"
+   ]
+  },
+  "verification": "Observed once, not reproduced. Severity P2 (wrong list shown, no data loss) pending a repro; implementer should write the failing test first.",
+  "files": [
+   "apps/web/src/pages/DataRoom.tsx (refetch or derive the list from the folder param regardless of preview state)",
+   "apps/web/src/pages/DataRoom.test.tsx"
+  ],
+  "reach": "Data room users who preview a file and then change folder.",
+  "acceptance_criteria": [
+   "Open a file preview, click a different folder: the list shows only that folder's items within 1 s, 10 of 10 tries.",
+   "Regression test for folder change with the preview open."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [],
+  "conflicts_with": [
+   "C13 (same page)"
+  ],
+  "reopens": null,
+  "rank": 9
+ },
+ {
+  "id": "C3",
+  "title": "Investors: 'Equity raised' counts a SAFE that is only Sent, 'New update' can be clicked several times, empty cards look like stuck loaders, first visit can show a dash",
+  "severity": "P2",
+  "effort": "M",
+  "root_cause": "Three small causes on one page. (1) packages/core/src/safes.ts countedSafes counts sent, signed and funded SAFEs, so Equity raised $300,000 includes Harbor Angels $50,000 (Sent) while Fundraising lists it as Sent and only Quill $250,000 as Funded. (2) startUpdate in Investors.tsx has no in-flight guard, so three clicks created three drafts (J2). (3) UpdateRowPlaceholder renders two grey ghost rows with no words when the list is empty. (4) R1 saw a dash for Equity raised on the first visit once (not reproduced).",
+  "finding_ids": [
+   "J2-note-raised",
+   "J2-note-newupdate",
+   "J2-note-ghost",
+   "R1-09"
+  ],
+  "found_by": {
+   "J2-note-raised": [
+    "J2 notes for the Investors owner"
+   ],
+   "J2-note-newupdate": [
+    "J2 notes"
+   ],
+   "J2-note-ghost": [
+    "J2 notes",
+    "V3 notes (UpdateRowPlaceholder)"
+   ],
+   "R1-09": [
+    "R1"
+   ]
+  },
+  "verification": "Observed on screen (J2, V3, R1). Code: safes.ts countedSafes comment says sent, signed or funded count by design; startUpdate at Investors.tsx:~683 has no pending state; UpdateRowPlaceholder used at Investors.tsx:412-413. R1-09 not reproduced. Another session owns the Investors/Fundraising pages; coordinate before editing.",
+  "files": [
+   "packages/core/src/safes.ts and apps/web/src/pages/Investors.tsx Summary (label or definition of 'Equity raised')",
+   "apps/web/src/pages/Investors.tsx (disable New update while the save runs; replace UpdateRowPlaceholder with one line when empty; retry the SAFE request once before showing a dash)",
+   "apps/web/src/pages/Investors.test.tsx"
+  ],
+  "reach": "Founders quoting raised capital to a board; anyone who double-clicks New update.",
+  "acceptance_criteria": [
+   "The headline figure matches the owner's chosen definition and Fundraising's statuses (no Sent SAFE counted as raised, or the label says 'committed').",
+   "Three quick clicks on New update create exactly one draft.",
+   "An empty Updates card shows a short sentence, not grey bars.",
+   "First visit never shows a dash for a successful SAFE list."
+  ],
+  "needs_product_decision": true,
+  "decision_question": "Should 'Equity raised' count only Funded SAFEs (Sent and Signed shown separately as 'committed'), or keep counting Sent, Signed and Funded under a clearer label?",
+  "depends_on": [],
+  "conflicts_with": [
+   "Another session owns Investors.tsx; avoid editing at the same time"
+  ],
+  "reopens": "Pass-12 C3 (SAFE list is one; this is a remaining definition question)",
+  "rank": 10
+ },
+ {
+  "id": "C11",
+  "title": "First-run tour card sits far from the item it explains",
+  "severity": "P3",
+  "effort": "M",
+  "root_cause": "TourPopover.tsx:171-186 pins the card to the foot of the sidebar column on desktop so Next stays put; for Search, +, Inbox, Finance and Legal the ring is 500-700 px away (card also covers chat text at stops 3-9 and the approval Send/Discard at stop 9). On phone the card sits next to the target. Deliberate trade-off, repeated by five walkers.",
+  "finding_ids": [
+   "FLOW-01",
+   "V1-08",
+   "J1-02",
+   "R1-08",
+   "R2-13-03"
+  ],
+  "found_by": {
+   "FLOW-01": [
+    "FLOW",
+    "V1-08",
+    "J1-02"
+   ],
+   "R1-08": [
+    "R1",
+    "R2-13-03 (overlap with content)"
+   ]
+  },
+  "verification": "Observed by five walkers; the placement is deliberate per code comment. Pass-12 C20 made it docked bottom-left (verified in R2); this is the residual. Tour length (nine stops) is decided and not touched.",
+  "files": [
+   "apps/web/src/components/tour/TourPopover.tsx",
+   "apps/web/src/components/tour/FirstRunTour.tsx"
+  ],
+  "reach": "Every new user on a desktop.",
+  "acceptance_criteria": [
+   "Each card names its target in its first words, or a connector line links the card to the ring.",
+   "At no stop does the card hide a chat message, the Data room names or an approval card's Send/Discard."
+  ],
+  "needs_product_decision": true,
+  "decision_question": "Keep the fixed spot where Next never moves and add the target name or a connector, or place the card beside the ring on desktop (Next then moves)?",
+  "depends_on": [
+   "C4"
+  ],
+  "conflicts_with": [
+   "C4 (same tour files)"
+  ],
+  "reopens": "Pass-12 C20 (residual)",
+  "rank": 11
+ },
+ {
+  "id": "C12",
+  "title": "Finance charts and figures: flat balance chart, floating Financing marker, cents in Yield, burn versus spent labels, tiny links",
+  "severity": "P3",
+  "effort": "M",
+  "root_cause": "Separate small defects in finance components: a constant balance draws on the x axis with 140 px of empty chart (charts.tsx ~40); the $250k Financing marker floats above the $150k gridline (charts.tsx ~379); the Yield table prints cents while all else is whole dollars; 'Monthly burn $67,621 (3-mo avg)' sits beside '$20,484 Spent so far this month'; 'Show all N' and 'Burn' links are 16 px high.",
+  "finding_ids": [
+   "V2-02",
+   "V2-03",
+   "V2-10",
+   "J1-06",
+   "V2-09"
+  ],
+  "found_by": {
+   "V2-02": [
+    "V2"
+   ],
+   "V2-03": [
+    "V2",
+    "R3 (Financing marker beside the top gridline)"
+   ],
+   "V2-10": [
+    "V2"
+   ],
+   "J1-06": [
+    "J1"
+   ],
+   "V2-09": [
+    "V2"
+   ]
+  },
+  "verification": "All observed once on desktop; V2-09 measured at fine pointer (the 44 px touch rule is decided, this is the 24 px desktop minimum). V2-02 could be P2; kept P3 because only an unchanging balance triggers it.",
+  "files": [
+   "apps/web/src/components/finance/charts.tsx",
+   "apps/web/src/pages/finance/FinanceAccounts.tsx (whole-dollar formatter)",
+   "apps/web/src/pages/Finance.tsx and apps/web/src/components/finance/ui.tsx (labels; py-1 on links)"
+  ],
+  "reach": "Finance users.",
+  "acceptance_criteria": [
+   "A flat balance line sits mid-chart or collapses to one line of text.",
+   "The Financing marker lies on the plotted axis.",
+   "Yield amounts use the shared whole-dollar format.",
+   "Second figure reads 'Out so far this month'; 'burn' names only the average.",
+   "Show all and Burn links are at least 24 px high."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [
+   "C7"
+  ],
+  "conflicts_with": [
+   "C7 (same files)"
+  ],
+  "reopens": null,
+  "rank": 12
+ },
+ {
+  "id": "C13",
+  "title": "Data room and Contacts tables: Status column appears and disappears, bare dashes, wide empty bands at 1920, small details",
+  "severity": "P3",
+  "effort": "M",
+  "root_cause": "Table layout details. Entering a folder drops the Status column so Type and Added shift by 80 px (ItemRows.tsx showStatus); failed rows show a bare dash in Type and Parties; at 1920 Name takes about 700 px with Type far right and Status empty except one row (R1 saw 350-430 px bands in Contacts and Data room, R3 found Contacts filling the page, so the report conflicts); phone first-row top is 166 px (target under 160); Stats bars have almost no labels.",
+  "finding_ids": [
+   "R2-13-04",
+   "R2-13-05",
+   "V3-03",
+   "R1-07",
+   "R1-06",
+   "V3-04"
+  ],
+  "found_by": {
+   "V3-03": [
+    "V3",
+    "R1-07 (conflicts with R3 on Contacts)"
+   ],
+   "R2-13-04": [
+    "R2"
+   ],
+   "R2-13-05": [
+    "R2"
+   ],
+   "R1-06": [
+    "R1"
+   ],
+   "V3-04": [
+    "V3"
+   ]
+  },
+  "verification": "Each observed once. R1-07 versus R3 C23 PASS conflict on Contacts at 1920; the implementer measures first.",
+  "files": [
+   "apps/web/src/components/data-room/ItemRows.tsx",
+   "apps/web/src/pages/DataRoom.tsx (header padding, Name width, stats labels)",
+   "apps/web/src/pages/Contacts.tsx"
+  ],
+  "reach": "Data room and Contacts users.",
+  "acceptance_criteria": [
+   "Status column stays in every folder view or is absent everywhere; header columns do not move on folder entry.",
+   "Failed rows show no bare dash.",
+   "At 1920 the gap between Name text and Type is under 250 px.",
+   "At 375 the first file row top is under 160 px.",
+   "Stats bars show a value on hover."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [],
+  "conflicts_with": [
+   "C10 (DataRoom.tsx)"
+  ],
+  "reopens": "Pass-12 C10, C18, C23 (residuals)",
+  "rank": 13
+ },
+ {
+  "id": "C14",
+  "title": "Legal polish: Scan result shifts the tabs, empty Status column, 11 px graph labels, long phone cards, plain empty state",
+  "severity": "P3",
+  "effort": "M",
+  "root_cause": "Scan now result line appears above the tabs and moves them down 32 px (Legal.tsx); Status column reserves 75 px while 10 of 11 rows are empty (Legal.test.tsx:898 hides it only if all rows are active); Graph text is 11 px; on a phone each contract is a 185 px card of five rows including empty ones; fresh Legal is plain text while Inbox and Finance use a titled empty state.",
+  "finding_ids": [
+   "R2-13-06",
+   "V2-04",
+   "V2-07",
+   "V2-08",
+   "FLOW-07"
+  ],
+  "found_by": {
+   "R2-13-06": [
+    "R2"
+   ],
+   "V2-04": [
+    "V2"
+   ],
+   "V2-07": [
+    "V2"
+   ],
+   "V2-08": [
+    "V2"
+   ],
+   "FLOW-07": [
+    "FLOW"
+   ]
+  },
+  "verification": "All observed once.",
+  "files": [
+   "apps/web/src/pages/Legal.tsx",
+   "apps/web/src/pages/legal/* (contracts table, mobile list, graph)",
+   "shared empty-state component used by Inbox and Finance"
+  ],
+  "reach": "Legal users.",
+  "acceptance_criteria": [
+   "Tabs keep their y position before, during and after Scan now.",
+   "Status column shows only when two or more rows have a non-default status.",
+   "Graph node labels are 12 px or more.",
+   "Phone cards omit empty rows.",
+   "Legal with no contracts shows a titled empty state like Inbox."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [],
+  "conflicts_with": [],
+  "reopens": "Pass-12 C19 (residual)",
+  "rank": 14
+ },
+ {
+  "id": "C15",
+  "title": "Inbox polish: unread count changes on expand, row focus ring, dialog jump and sizes, hover actions, compose draft copy",
+  "severity": "P3",
+  "effort": "M",
+  "root_cause": "Needs reply header counts unread among visible rows (4) and then 7 after Show more while the sidebar says 13; focused rows get the browser default outline, not the 3 px ring; opening the agent panel moves the thread dialog 190 px left; a 3-row CSV opens a 750 px dialog; hover actions are 2 for unsorted and 4 for sorted rows; closing a compose with only attachments says 'Your text is saved as a draft'.",
+  "finding_ids": [
+   "J1-04",
+   "V2-11",
+   "V2-12",
+   "V2-13",
+   "J2-04"
+  ],
+  "found_by": {
+   "J1-04": [
+    "J1"
+   ],
+   "V2-11": [
+    "V2"
+   ],
+   "V2-12": [
+    "V2"
+   ],
+   "V2-13": [
+    "V2"
+   ],
+   "J2-04": [
+    "J2"
+   ]
+  },
+  "verification": "All observed once. Focus ring part is in C19, not here.",
+  "files": [
+   "apps/web/src/pages/Inbox.tsx (group header count)",
+   "apps/web/src/components/inbox/InboxMessageDialog.tsx and attachment preview dialog",
+   "apps/web/src/components/inbox/InboxRow.tsx",
+   "Inbox compose close dialog"
+  ],
+  "reach": "Inbox users.",
+  "acceptance_criteria": [
+   "Group header count is stable when expanded.",
+   "Thread dialog keeps x when the agent panel opens.",
+   "Attachment preview height fits content with a minimum.",
+   "Compose close with empty body does not mention saving text."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [],
+  "conflicts_with": [
+   "C19 (InboxRow.tsx)"
+  ],
+  "reopens": null,
+  "rank": 15
+ },
+ {
+  "id": "C16",
+  "title": "Integrations cards: letter tiles, 'Ready', two Gmail descriptions, an intro sentence, a Mercury agent name before the agent exists",
+  "severity": "P3",
+  "effort": "S",
+  "root_cause": "Carta, Treg, Devin, Granola, Wispr Flow and both iMessage entries use letter tiles (iMessage tiles are identical); Connected cards differ in menu and 'Used by'; Blockscout 'Ready' says nothing; Gmail has two descriptions ('Read, search and draft email' versus 'Search, read, draft, and send email.'); a one-sentence intro repeats the Connect buttons; the Mercury Agent card shows an unlinked title before the agent exists; logo tiles blank for 1-3 s on dev.",
+  "finding_ids": [
+   "R1-10",
+   "V1-12",
+   "V1-13",
+   "V1-14",
+   "J2-05",
+   "V1-21"
+  ],
+  "found_by": {
+   "R1-10": [
+    "R1",
+    "R3-13-03",
+    "V1-11"
+   ],
+   "V1-12": [
+    "V1"
+   ],
+   "V1-13": [
+    "V1"
+   ],
+   "V1-14": [
+    "V1"
+   ],
+   "J2-05": [
+    "J2"
+   ],
+   "V1-21": [
+    "V1 (dev server, repeat of pass 12)"
+   ]
+  },
+  "verification": "Observed; logo timing is dev-only suspected.",
+  "files": [
+   "apps/web/src/components/integrations/IntegrationsHome.tsx (:627 intro, tile fallback, card slots)",
+   "apps/web/src/components/integrations/FinanceSection.tsx:118-126",
+   "apps/web/src/components/integrations/IntegrationAgentSection.tsx:73-79",
+   "packages/core/src/app-directory.ts (one description string)"
+  ],
+  "reach": "Everyone who opens Integrations.",
+  "acceptance_criteria": [
+   "No Connected card uses a letter tile where a logo exists; the two iMessage entries differ.",
+   "Gmail has one description in both places.",
+   "No intro sentence; no 'Ready' label.",
+   "Agent card before creation reads 'Created when you allow changes'."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [],
+  "conflicts_with": [],
+  "reopens": "Pass-12 C24 (residual)",
+  "rank": 16
+ },
+ {
+  "id": "C17",
+  "title": "Bot panel, Settings and first-run cards: same choice built two ways, unlabeled switches, scroll jump, widths",
+  "severity": "P3",
+  "effort": "M",
+  "root_cause": "Audience is a segmented pair, Workspace two stacked buttons (bot-panel.tsx:85-105); 'More settings' has no chevron; Advanced scrolls the panel 300 px; 'Export' reads as a label and the header has no divider when scrolled; switch plus label is laid out two ways; 'GPT-6 Luna' and 'Documents' switches have no sub-label (AiDataSharing.tsx); in the Chief first-run thread the divider, question card and connect cards are 900, 640 and 407 px wide.",
+  "finding_ids": [
+   "V1-04",
+   "V1-06",
+   "V1-07",
+   "V1-15",
+   "V1-18",
+   "V1-19",
+   "V1-23"
+  ],
+  "found_by": {
+   "V1-06": [
+    "V1 (reported P2; P3 here)"
+   ],
+   "V1-04": [
+    "V1 (reported P2; P3 here)"
+   ],
+   "V1-07": [
+    "V1"
+   ],
+   "V1-15": [
+    "V1"
+   ],
+   "V1-18": [
+    "V1"
+   ],
+   "V1-19": [
+    "V1"
+   ],
+   "V1-23": [
+    "V1"
+   ]
+  },
+  "verification": "All observed once by V1, several are repeats of pass-12 findings that were rated P3 there.",
+  "files": [
+   "apps/web/src/pages/shell/bot-panel.tsx",
+   "apps/web/src/components/AiDataSharing.tsx",
+   "chat card components (max width)"
+  ],
+  "reach": "Bot and Settings users.",
+  "acceptance_criteria": [
+   "Workspace uses the same segmented control as Audience.",
+   "Opening Advanced does not scroll Name out of view unless needed.",
+   "Every AI switch has a one-line sub-label.",
+   "Cards in the Chief thread share one max width."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [],
+  "conflicts_with": [
+   "C11 none"
+  ],
+  "reopens": "Pass-12 C26 (residual)",
+  "rank": 17
+ },
+ {
+  "id": "C18",
+  "title": "Auth pages: pink hover on the primary button, centered heading missing on phone, redundant placeholders",
+  "severity": "P3",
+  "effort": "S",
+  "root_cause": "Primary buttons use hover:bg-primary/80, which turns cream into a pinkish grey that reads as disabled (button.tsx; also after a failed submit); Reset password heading is left-aligned at 375 px (Auth.tsx:535 lacks text-center); placeholders repeat the visible labels (Auth.tsx:245,270,299).",
+  "finding_ids": [
+   "V1-09",
+   "V1-17",
+   "V1-24"
+  ],
+  "found_by": {
+   "V1-09": [
+    "V1 (repeat of pass-12 V1-12)"
+   ],
+   "V1-17": [
+    "V1"
+   ],
+   "V1-24": [
+    "V1"
+   ]
+  },
+  "verification": "Observed; hover colour is global, so confirm no other screen depends on it.",
+  "files": [
+   "packages/ui-web/src/components/ui/button.tsx",
+   "apps/web/src/pages/Auth.tsx"
+  ],
+  "reach": "Every sign-in; hover affects all primary buttons.",
+  "acceptance_criteria": [
+   "Hover on a primary button keeps full opacity and does not look disabled.",
+   "Reset heading is centered at 375 px.",
+   "Name and email fields have no placeholder that repeats the label."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [],
+  "conflicts_with": [],
+  "reopens": "Pass-12 C26 (hover)",
+  "rank": 18
+ },
+ {
+  "id": "C19",
+  "title": "Keyboard focus and small targets: focus lost after sign-in error, four Tab stops per message, weak row focus ring, double ring on Contacts, Escape ignored in Data room preview, 16-18 px controls",
+  "severity": "P3",
+  "effort": "M",
+  "root_cause": "After a failed sign-in activeElement is BODY (Auth.tsx); every chat message adds four Tab stops (React, Reply, Remember, More); a focused Inbox row shows a 1 px browser outline (InboxRow.tsx); closing Edit contact leaves two nested rings; Escape does not close the desktop Data room preview pane; Select all (18 px), 'Show all N' and 'Burn' are under 24 px at a fine pointer.",
+  "finding_ids": [
+   "V1-16",
+   "V1-20",
+   "V2-06",
+   "V3-06",
+   "V3-02",
+   "V3-05"
+  ],
+  "found_by": {
+   "V1-16": [
+    "V1"
+   ],
+   "V1-20": [
+    "V1"
+   ],
+   "V2-06": [
+    "V2"
+   ],
+   "V3-06": [
+    "V3"
+   ],
+   "V3-02": [
+    "V3"
+   ],
+   "V3-05": [
+    "V3"
+   ]
+  },
+  "verification": "All observed. Touch-target criteria could not be measured by R1, R2, V2 and V3 (no coarse-pointer emulation); only J3 and V1 measured with emulation and found no 44 px failures, so none is filed.",
+  "files": [
+   "apps/web/src/pages/Auth.tsx",
+   "apps/web/src/pages/Shell.tsx roster rows and message toolbar",
+   "apps/web/src/components/inbox/InboxRow.tsx",
+   "apps/web/src/pages/Contacts.tsx",
+   "apps/web/src/components/data-room/ preview pane and select-all"
+  ],
+  "reach": "Keyboard users.",
+  "acceptance_criteria": [
+   "After a failed sign-in focus is on the email field.",
+   "Tab from the composer area reaches the next message group in one press per message.",
+   "A focused Inbox row shows the standard ring.",
+   "Escape closes the Data room preview.",
+   "Select all checkbox has a 24 px hit area."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [],
+  "conflicts_with": [
+   "C15 (InboxRow.tsx), C13 (Data room)"
+  ],
+  "reopens": "Pass-12 C12 (residual)",
+  "rank": 19
+ },
+ {
+  "id": "C20",
+  "title": "Same idea, two labels: waiting state, 'Needs reply' versus 'Needs attention', two cap-table bots, account names quoted by agents",
+  "severity": "P3",
+  "effort": "S",
+  "root_cause": "roster-status.ts:14 needsAnswerLabel is used for every waiting_input row, while Activity says 'Needs approval' only when needsApproval is set and the composer says 'Waiting for approval'; Inbox group 'Needs reply' and row chip 'Needs attention' are two words for 'you must act'; Cmd+K lists 'Carta agent' and 'Investors agent' with near-identical descriptions; an agent reply names 'Mercury checking' while Finance lists 'MOCK Checking'.",
+  "finding_ids": [
+   "R3-13-01",
+   "FLOW-05",
+   "FLOW-06",
+   "V2-14"
+  ],
+  "found_by": {
+   "R3-13-01": [
+    "R3"
+   ],
+   "FLOW-05": [
+    "FLOW"
+   ],
+   "FLOW-06": [
+    "FLOW"
+   ],
+   "V2-14": [
+    "V2 (likely model paraphrase)"
+   ]
+  },
+  "verification": "R3-13-01 verified by reading roster-status.ts:14 and the sidebar/composer difference. Others observed once. The Carta-only agent decision stays.",
+  "files": [
+   "apps/web/src/lib/roster-status.ts",
+   "apps/web/src/components/ (Activity list, composer status text)",
+   "apps/web/src/components/inbox/InboxRow.tsx and apps/web/src/pages/Inbox.tsx",
+   "palette bot descriptions",
+   "Finance tool output names"
+  ],
+  "reach": "Anyone using Activity, Inbox or Cmd+K.",
+  "acceptance_criteria": [
+   "A pending consent or approval reads the same in the sidebar row, Activity and the composer.",
+   "One word for 'you must act' in Inbox.",
+   "Carta and Investors agents have role sentences that differ by data source."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [],
+  "conflicts_with": [
+   "C1 only if both edit composer status text"
+  ],
+  "reopens": "Pass-12 C21 (residual)",
+  "rank": 20
+ },
+ {
+  "id": "C21",
+  "title": "Long text on a phone: cut email subject, email broken at the hyphen, truncated emails without title",
+  "severity": "P3",
+  "effort": "S",
+  "root_cause": "InboxMessageDialog clamps the subject at two lines with no way to read the rest; Settings > Account breaks 'mock-founder@...' at the hyphen; Contacts truncates long emails at 375 px with no title attribute.",
+  "finding_ids": [
+   "J3-03",
+   "J3-04",
+   "V3-07"
+  ],
+  "found_by": {
+   "J3-03": [
+    "J3"
+   ],
+   "J3-04": [
+    "J3"
+   ],
+   "V3-07": [
+    "V3"
+   ]
+  },
+  "verification": "Observed once each.",
+  "files": [
+   "apps/web/src/components/inbox/InboxMessageDialog.tsx",
+   "Settings account block",
+   "apps/web/src/pages/Contacts.tsx"
+  ],
+  "reach": "Phone users.",
+  "acceptance_criteria": [
+   "Subject shows up to three lines or expands on tap.",
+   "The email sits on its own line without a hyphen break.",
+   "Truncated emails carry the full value in title."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [],
+  "conflicts_with": [],
+  "reopens": null,
+  "rank": 21
+ },
+ {
+  "id": "C22",
+  "title": "Menu and toggle consistency: three menu row heights, solid white Activity icon, identical Artifact timestamps",
+  "severity": "P3",
+  "effort": "S",
+  "root_cause": "Pages menu rows are 28 px, account menu 32-34 px, Create menu 36-43 px; the open Activity toggle becomes the brightest element in the sidebar; Artifact cards show an identical '6m ago' on all ten.",
+  "finding_ids": [
+   "V1-10",
+   "V3-08",
+   "V3-09"
+  ],
+  "found_by": {
+   "V1-10": [
+    "V1"
+   ],
+   "V3-08": [
+    "V3"
+   ],
+   "V3-09": [
+    "V3"
+   ]
+  },
+  "verification": "Observed once each.",
+  "files": [
+   "apps/web/src/pages/Shell.tsx menus (DropdownMenuItem)",
+   "apps/web sidebar Activity toggle",
+   "Artifacts grid card"
+  ],
+  "reach": "Everyone, minor.",
+  "acceptance_criteria": [
+   "All three menus use one row height.",
+   "Activity open uses the muted selected style.",
+   "Artifact cards carry no identical filler."
+  ],
+  "needs_product_decision": false,
+  "decision_question": null,
+  "depends_on": [],
+  "conflicts_with": [],
+  "reopens": null,
+  "rank": 22
+ }
+]
