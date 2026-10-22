@@ -63,8 +63,8 @@ export const Empty: Story = {
     }),
 };
 
-/** A plain-text answer to a draft request offers Reply with draft. */
-export const DraftAnswered: Story = {
+/** A reply proposed as a mail card waiting for approval offers Reply with draft. */
+export const DraftProposed: Story = {
   beforeEach: () =>
     mockRpc({
       "threads.get": {
@@ -72,25 +72,25 @@ export const DraftAnswered: Story = {
         cursor: 2,
         messages: [
           message(1, "user", "Draft a reply"),
-          message(2, "bot", "Hi Sam, thanks for sending this over. I will sign it today."),
-        ],
-        olderCursor: null,
-        botId: bot.id,
-        run: null,
-      },
-    }),
-};
-
-/** A refusal after a draft request is shown as an answer only: no Reply with draft. */
-export const DraftRefused: Story = {
-  beforeEach: () =>
-    mockRpc({
-      "threads.get": {
-        threadId: "thread_email_agent",
-        cursor: 2,
-        messages: [
-          message(1, "user", "Draft a reply"),
-          message(2, "bot", "I can't create the reply because mail_send is not available to me."),
+          {
+            ...message(2, "bot", ""),
+            blocks: [
+              {
+                kind: "ask",
+                text: "Send this reply?",
+                status: "pending",
+                mail: {
+                  tool: "mail_send",
+                  to: [],
+                  cc: [],
+                  bcc: [],
+                  subject: "Re: Notice",
+                  body: "Hi Sam, thanks for sending this over. I will sign it today.",
+                  reply: true,
+                },
+              },
+            ],
+          },
         ],
         olderCursor: null,
         botId: bot.id,

@@ -108,7 +108,7 @@ export const Composer = memo(function Composer({
   sendError: string | null;
   runError: string | null;
   onRetryRun?: () => void;
-  /** Sends the message that failed to leave again; offered with a send error. */
+  /** Sends a failed message again when the composer holds no draft to resend (such as a chip); offered with a send error. */
   onRetrySend?: () => void;
   runErrorId: string | null;
   onRunErrorPresented: (runId: string) => void;
@@ -640,7 +640,12 @@ export const Composer = memo(function Composer({
           ref={runErrorRef}
           message={(sendError ?? runError) as string}
           onRetry={!sendError ? onRetryRun : undefined}
-          onRetrySend={sendError ? onRetrySend : undefined}
+          onRetrySend={
+            // A restored draft goes out again through the composer, so a success clears it.
+            sendError && onRetrySend
+              ? () => (retryNonce.current ? void send() : onRetrySend())
+              : undefined
+          }
           onOpenModelSettings={!sendError ? onOpenModelSettings : undefined}
           onNavigate={!sendError ? onNavigate : undefined}
           onDismiss={() => {

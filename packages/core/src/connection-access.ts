@@ -62,7 +62,8 @@ export function botMayUseConnection(row: {
 
 /**
  * The access rows a run reads for its bot. An email's own agent has exactly the Inbox agent's
- * permissions, so it also reads the Inbox agent's rows; a new thread agent has none of its own.
+ * permissions, so it reads the Inbox agent's rows ALONE. Its own rows are ignored: combining the
+ * two could grant it an account that the Inbox agent is denied.
  */
 export function connectionAccessFilter(bot: {
   id: string;
@@ -70,7 +71,7 @@ export function connectionAccessFilter(bot: {
   spawnKey: string | null;
 }) {
   return isMailThreadAgentSpawnKey(bot.spawnKey)
-    ? { OR: [{ botId: bot.id }, { bot: { spawnKey: inboxAgentSpawnKey(bot.userId) } }] }
+    ? { bot: { spawnKey: inboxAgentSpawnKey(bot.userId) } }
     : { botId: bot.id };
 }
 

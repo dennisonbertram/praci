@@ -35,20 +35,6 @@ export function latestPendingDraft(messages: readonly ThreadMessage[]): string |
 }
 
 const DRAFT_REQUEST = "Draft a reply";
-// A leading "Draft reply:" label, with optional markdown emphasis around it, such as **Draft reply:**.
-const DRAFT_LABEL = /^[*_]*draft( reply)?[*_]*:[*_]*\s*/i;
-// A refusal or an error, not a reply: the model could not do what was asked.
-const NOT_A_DRAFT =
-  /^(i (can'?t|cannot|can not|am unable|'?m unable|'?m not able|am not able)|unable to|sorry|could not|couldn'?t|failed|error|something went wrong)\b|\(\/app\/|\/app\/integrations/i;
-/** Plain text for the Reply composer: no markdown links, emphasis, code marks or headings. */
-const plainText = (text: string) =>
-  text
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/(\*\*|__|\*|`)/g, "")
-    .replace(/^#{1,6}\s+/gm, "")
-    .trim();
-const asksForDraft = (text: string) =>
-  /\b(draft|write)\b.*\breply\b/i.test(text) && !/\b(don'?t|do not|no)\b.*\breply\b/i.test(text);
 
 /**
  * A message the owner wrote. Agent-to-agent deliveries also carry role "user", and the seeded email
@@ -59,33 +45,6 @@ const isOwnerMessage = (message: ThreadMessage) =>
   !message.blocks.some((b) =>
     ["bot_message_received", "channel_message", "handoff"].includes(b.kind),
   );
-
-/**
- * The text of the agent's first plain-text answer after the owner's latest request, when that
- * request asks to draft or write a reply. It is for a model that writes the draft as text instead
- * of proposing a mail_send card. Later agent messages do not move it; questions and other
- * requests have none.
- */
-export function latestTextDraft(messages: readonly ThreadMessage[]): string | undefined {
-  const at = messages.findLastIndex(isOwnerMessage);
-  if (at < 0 || !asksForDraft(textOf(messages[at] as ThreadMessage))) return undefined;
-  for (const message of messages.slice(at + 1)) {
-    const answer = message.role === "bot" ? textOf(message) : "";
-    // A question is the agent asking for more, not a draft.
-    if (answer && !answer.endsWith("?")) {
-      const body = plainText(answer).replace(DRAFT_LABEL, "").trim();
-      // The first answer decides: a refusal is not skipped in favour of a later message.
-      return body && !NOT_A_DRAFT.test(answer.trim()) ? body : undefined;
-    }
-  }
-  return undefined;
-}
-
-const textOf = (message: ThreadMessage) =>
-  message.blocks
-    .flatMap((block) => (block.kind === "text" ? [block.text] : []))
-    .join("\n\n")
-    .trim();
 
 /**
  * An email's own agent, docked inside the message dialog. It is the Shell's page-agent panel (header,
@@ -164,8 +123,7 @@ export function EmailAgentPanel({
     }
   }, [snapshot, running, lastBotId]);
 
-  const draft =
-    latestPendingDraft(snapshot?.messages ?? []) ?? latestTextDraft(snapshot?.messages ?? []);
+  const draft = latestPendingDraft(snapshot?.messages ?? []);
   const lastSend = useRef<{ text: string; nonce: string } | null>(null);
   const send = async (text: string, clientNonce?: string) => {
     const attempt = { text, nonce: clientNonce || newClientId() };
