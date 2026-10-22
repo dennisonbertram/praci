@@ -4186,7 +4186,7 @@ msgstr "Supprimer « {0} » ?"
 
 #: src/pages/Artifacts.tsx
 msgid "Delete \"{deleteTitle}\"?"
-msgstr ""
+msgstr "Supprimer « {deleteTitle} » ?"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: group.name

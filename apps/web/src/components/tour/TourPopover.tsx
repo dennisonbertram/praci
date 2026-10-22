@@ -222,7 +222,7 @@ export function TourPopover({
         </Button>
       ) : lastAction ? (
         // Holds the button's room at earlier stops, so the card and the drawer rows above it keep their height.
-        <div aria-hidden="true" className="h-7" />
+        <div aria-hidden="true" className="h-7 pointer-coarse:h-11" />
       ) : null}
       {/* Skip tour is absent on the last stop, so the counter then starts at the card edge. */}
       <div className="flex items-center gap-2">
