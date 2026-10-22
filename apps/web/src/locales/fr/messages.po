@@ -419,6 +419,10 @@ msgstr ""
 msgid "{count} months"
 msgstr ""
 
+#: src/components/data-room/SelectionBar.tsx
+msgid "{count} of {total} selected"
+msgstr ""
+
 #: src/pages/Fundraising.tsx
 msgid "{count} SAFEs are signed and unpaid."
 msgstr ""
@@ -7133,6 +7137,10 @@ msgstr ""
 msgid "Not supported here"
 msgstr ""
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Not tagged"
+msgstr ""
+
 #: src/components/data-room/Preview.tsx
 msgid "Not tagged yet."
 msgstr ""
@@ -9101,6 +9109,10 @@ msgstr "Sélectionnez un modèle connecté"
 #: src/components/data-room/ItemRows.tsx
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Select all"
+msgstr ""
+
+#: src/components/data-room/SelectionBar.tsx
+msgid "Select all {total}"
 msgstr ""
 
 #: src/components/legal/LegalGraph.tsx

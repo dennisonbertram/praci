@@ -254,9 +254,13 @@ export function DataRoomPage({
   }, [facetFilters, facetsVersion]);
   // Stats are a third way to see the same folder and filters, read only while they are shown.
   const [showStats, setShowStats] = useState(false);
+  // Ticked files by id, kept across searches and filters; only a folder change or Clear drops them.
+  const [checked, setChecked] = useState<ReadonlyMap<string, DataRoomApiItem>>(new Map());
+  // The bar says "50 of 69" once a selection leaves rows unloaded; a search has no known total.
+  const needTotal = checked.size > 0 && !!list.nextCursor && !searching;
   const [stats, setStats] = useState<{ key: string; value?: DataRoomApiStats; error?: string }>();
   useEffect(() => {
-    if (!showStats) return;
+    if (!showStats && !needTotal) return;
     let live = true;
     const key = facetFilters;
     rpc.dataRoom
@@ -267,7 +271,7 @@ export function DataRoomPage({
       live = false;
     };
     // facetsVersion changes to ask for a fresh read.
-  }, [showStats, facetFilters, facetsVersion]);
+  }, [showStats, needTotal, facetFilters, facetsVersion]);
   const listReload = list.reload;
   const reload = useCallback(() => {
     listReload();
@@ -380,8 +384,6 @@ export function DataRoomPage({
     item ? (list.rows.find((row) => row.item.id === item.id)?.item ?? item) : null;
   const shown = previewOpen ? fresh(pinned) : null;
 
-  // Ticked files by id, kept across searches and filters; only a folder change or Clear drops them.
-  const [checked, setChecked] = useState<ReadonlyMap<string, DataRoomApiItem>>(new Map());
   const checkedIds = new Set(checked.keys());
   const interaction: RowInteraction = {
     shownId: shown?.id,
@@ -440,6 +442,7 @@ export function DataRoomPage({
     [filters.folderId],
   );
   const checkedItems = [...checked.values()];
+  const selectTotal = needTotal && stats?.key === facetFilters ? stats.value?.documents : undefined;
 
   /** Saves each ticked file in turn; one that cannot be read is named, the rest still download. */
   async function downloadChecked() {
@@ -787,12 +790,135 @@ export function DataRoomPage({
                 />
               </div>
             ) : (
-              <div
-                data-testid="data-room-list"
-                className="@container/list rk-scroll min-w-0 flex-1 overflow-y-auto"
-              >
+              <div className="relative flex min-h-0 min-w-0 flex-1">
+                <div
+                  data-testid="data-room-list"
+                  className={`@container/list rk-scroll min-w-0 flex-1 overflow-y-auto ${checkedItems.length ? "pb-14" : ""}`}
+                >
+                  <PathBar
+                    nodes={nodes}
+                    folderId={filters.folderId}
+                    onSelect={(folderId) => setFilters({ ...filters, folderId })}
+                  />
+                  <ImportActivity
+                    imports={importActivity.imports}
+                    onOpenItem={openImported}
+                    onDismiss={importActivity.dismiss}
+                    hideRunning={processing.active}
+                  />
+                  {/* A file that could not be read is flagged on its row and by the sidebar badge. */}
+                  {processing.processing && (processing.active || processing.finished) ? (
+                    <ProcessingStrip
+                      importing={processing.active ? importProgress(importActivity.imports) : null}
+                      processing={processing.processing}
+                      total={processing.total}
+                      finished={!processing.active}
+                    />
+                  ) : null}
+                  {searching && openFolderPath ? (
+                    // A search inside a folder says so, with a way to look everywhere.
+                    <div className="flex flex-wrap items-center gap-x-2 border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
+                      <span className="min-w-0 truncate">
+                        <Trans>Searching in {openFolderPath}</Trans>
+                      </span>
+                      <Button
+                        variant="link"
+                        size="xs"
+                        className="h-auto p-0"
+                        onClick={() => setFilters({ ...filters, folderId: undefined })}
+                      >
+                        <Trans>Search all items</Trans>
+                      </Button>
+                    </div>
+                  ) : null}
+                  {list.error ? (
+                    <div className="flex items-center gap-3 p-4 text-sm text-destructive">
+                      {list.error}
+                      <Button variant="outline" size="sm" onClick={list.reload}>
+                        <Trans>Retry</Trans>
+                      </Button>
+                    </div>
+                  ) : null}
+                  {list.loading && rows.length === 0 ? (
+                    <div className="flex flex-col gap-2 p-3">
+                      {[0, 1, 2, 3].map((n) => (
+                        <Skeleton key={n} className="h-8 w-full" />
+                      ))}
+                    </div>
+                  ) : rows.length === 0 && !list.error && !subfolders.length ? (
+                    <div className="flex flex-col items-center gap-3 p-6 text-center text-sm text-muted-foreground">
+                      {/* An open folder with nothing in it is empty, not a search that found nothing. */}
+                      {!searching && !filtered ? (
+                        <>
+                          <p>
+                            <Trans>This folder is empty. Drop files here or add them.</Trans>
+                          </p>
+                          <FileInputButton variant="outline" size="sm">
+                            <Plus aria-hidden="true" />
+                            <Trans>Add files</Trans>
+                          </FileInputButton>
+                        </>
+                      ) : (
+                        <p>
+                          <Trans>No results</Trans>
+                        </p>
+                      )}
+                      {searching ? (
+                        <Button variant="outline" size="sm" onClick={() => setQueryInput("")}>
+                          <Trans>Clear search</Trans>
+                        </Button>
+                      ) : null}
+                      {filtered ? (
+                        <Button variant="outline" size="sm" onClick={clearFilters}>
+                          <Trans>Clear filters</Trans>
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : view === "grid" && !searching ? (
+                    <>
+                      {subfolderList()}
+                      <GridView rows={rows} o={interaction} sortField={sort?.field} />
+                    </>
+                  ) : (
+                    <ListView
+                      rows={rows}
+                      o={interaction}
+                      lead={subfolderList}
+                      sortField={sort?.field}
+                    />
+                  )}
+                  {list.nextCursor ? (
+                    <div className="grid place-items-center p-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={list.loadingMore || list.loading}
+                        onClick={() => void list.loadMore()}
+                      >
+                        <Trans>Load more</Trans>
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
                 <SelectionBar
                   count={checkedItems.length}
+                  total={selectTotal}
+                  onSelectAll={() =>
+                    void list
+                      .loadAll()
+                      .then(
+                        (all) =>
+                          all &&
+                          setChecked(
+                            (current) =>
+                              new Map([
+                                ...current,
+                                ...all.map(({ item }) => [item.id, item] as const),
+                              ]),
+                          ),
+                      )
+                      .catch((cause) => showNoticeToast(errorText(cause)))
+                  }
                   busy={bulkBusy}
                   onDownload={() => void downloadChecked()}
                   onSend={() => void sendChecked()}
@@ -803,110 +929,6 @@ export function DataRoomPage({
                   }}
                   onClear={() => setChecked(new Map())}
                 />
-                <PathBar
-                  nodes={nodes}
-                  folderId={filters.folderId}
-                  onSelect={(folderId) => setFilters({ ...filters, folderId })}
-                />
-                <ImportActivity
-                  imports={importActivity.imports}
-                  onOpenItem={openImported}
-                  onDismiss={importActivity.dismiss}
-                  hideRunning={processing.active}
-                />
-                {/* A file that could not be read is flagged on its row and by the sidebar badge. */}
-                {processing.processing && (processing.active || processing.finished) ? (
-                  <ProcessingStrip
-                    importing={processing.active ? importProgress(importActivity.imports) : null}
-                    processing={processing.processing}
-                    total={processing.total}
-                    finished={!processing.active}
-                  />
-                ) : null}
-                {searching && openFolderPath ? (
-                  // A search inside a folder says so, with a way to look everywhere.
-                  <div className="flex flex-wrap items-center gap-x-2 border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
-                    <span className="min-w-0 truncate">
-                      <Trans>Searching in {openFolderPath}</Trans>
-                    </span>
-                    <Button
-                      variant="link"
-                      size="xs"
-                      className="h-auto p-0"
-                      onClick={() => setFilters({ ...filters, folderId: undefined })}
-                    >
-                      <Trans>Search all items</Trans>
-                    </Button>
-                  </div>
-                ) : null}
-                {list.error ? (
-                  <div className="flex items-center gap-3 p-4 text-sm text-destructive">
-                    {list.error}
-                    <Button variant="outline" size="sm" onClick={list.reload}>
-                      <Trans>Retry</Trans>
-                    </Button>
-                  </div>
-                ) : null}
-                {list.loading && rows.length === 0 ? (
-                  <div className="flex flex-col gap-2 p-3">
-                    {[0, 1, 2, 3].map((n) => (
-                      <Skeleton key={n} className="h-8 w-full" />
-                    ))}
-                  </div>
-                ) : rows.length === 0 && !list.error && !subfolders.length ? (
-                  <div className="flex flex-col items-center gap-3 p-6 text-center text-sm text-muted-foreground">
-                    {/* An open folder with nothing in it is empty, not a search that found nothing. */}
-                    {!searching && !filtered ? (
-                      <>
-                        <p>
-                          <Trans>This folder is empty. Drop files here or add them.</Trans>
-                        </p>
-                        <FileInputButton variant="outline" size="sm">
-                          <Plus aria-hidden="true" />
-                          <Trans>Add files</Trans>
-                        </FileInputButton>
-                      </>
-                    ) : (
-                      <p>
-                        <Trans>No results</Trans>
-                      </p>
-                    )}
-                    {searching ? (
-                      <Button variant="outline" size="sm" onClick={() => setQueryInput("")}>
-                        <Trans>Clear search</Trans>
-                      </Button>
-                    ) : null}
-                    {filtered ? (
-                      <Button variant="outline" size="sm" onClick={clearFilters}>
-                        <Trans>Clear filters</Trans>
-                      </Button>
-                    ) : null}
-                  </div>
-                ) : view === "grid" && !searching ? (
-                  <>
-                    {subfolderList()}
-                    <GridView rows={rows} o={interaction} sortField={sort?.field} />
-                  </>
-                ) : (
-                  <ListView
-                    rows={rows}
-                    o={interaction}
-                    lead={subfolderList}
-                    sortField={sort?.field}
-                  />
-                )}
-                {list.nextCursor ? (
-                  <div className="grid place-items-center p-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={list.loadingMore || list.loading}
-                      onClick={() => void list.loadMore()}
-                    >
-                      <Trans>Load more</Trans>
-                    </Button>
-                  </div>
-                ) : null}
               </div>
             )}
             {shown && !narrow && !showStats ? (

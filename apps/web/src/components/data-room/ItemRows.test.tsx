@@ -74,11 +74,11 @@ it("names each row's folder in All items, and not inside that folder", () => {
   }));
   act(() => root.render(<ListView rows={rows} o={o()} />));
   expect(names()).toEqual([
-    "lease.pdfLegal— · Added Mar 4, 2026",
-    "loose.pdf— · Added Mar 4, 2026",
+    "lease.pdfLegalNot tagged · Added Mar 4, 2026",
+    "loose.pdfNot tagged · Added Mar 4, 2026",
   ]);
   act(() => root.render(<ListView rows={rows.slice(0, 1)} o={o("f-legal")} />));
-  expect(names()).toEqual(["lease.pdf— · Added Mar 4, 2026"]);
+  expect(names()).toEqual(["lease.pdfNot tagged · Added Mar 4, 2026"]);
 });
 
 it("renders a native table in the Cap table style, with the header hidden on a phone", () => {
@@ -258,7 +258,7 @@ it("puts the type and date under the name for a phone, and says when a file is n
     (line) => line.textContent,
   );
   expect(lines[0]).toMatch(/^Presentation · Dec 21, 2025$/);
-  expect(lines[1]).toBe("—");
+  expect(lines[1]).toBe("Not tagged");
 });
 
 it("highlights the shown row and bolds only its name cell's text via the name style", () => {
@@ -281,7 +281,8 @@ it("gives a tile's type and date a line each, and marks an untagged tile", () =>
       (s) => s.textContent,
     );
   expect(lines(tiles[0] as Element)).toEqual(["Presentation", "Dec 21, 2025"]);
-  expect(tiles[1]?.textContent).toContain("—");
+  expect(tiles[1]?.textContent).toContain("Not tagged");
+  expect(tiles[1]?.textContent).not.toContain("—");
 });
 
 it("sizes the columns with table-column <col>s, not table-cell", () => {
@@ -319,11 +320,11 @@ it("makes only the first row a Tab stop, with menus out of the Tab order", () =>
   expect(menus.map((m) => m.tabIndex)).toEqual([-1, -1, -1]);
 });
 
-it("shows the added date under the name of an untagged file on a phone", () => {
+it("says why a finished file has no type, with no dash, under the name on a phone", () => {
   const rows = [{ item: item("loose", null), snippets: [] }];
   act(() => root.render(<ListView rows={rows} o={o()} />));
   expect(container.querySelector('[data-testid="data-room-subline"]')?.textContent).toBe(
-    "— · Added Mar 4, 2026",
+    "Not tagged · Added Mar 4, 2026",
   );
 });
 
