@@ -277,6 +277,25 @@ it("archives with the button or e, and marks read or unread, when the page allow
   expect(onRead).toHaveBeenLastCalledWith(false);
 });
 
+it("offers Mark reply done only when the page passes it", async () => {
+  get.mockImplementation(async ({ messageId }) => message(messageId));
+  const onReplyDone = vi.fn();
+  act(() =>
+    root.render(
+      <InboxMessageDialog
+        messageId="m2"
+        unread={false}
+        onRead={() => {}}
+        onReplyDone={onReplyDone}
+        onClose={() => {}}
+      />,
+    ),
+  );
+  await flush();
+  await act(async () => (await menuItem("Mark reply done"))?.click());
+  expect(onReplyDone).toHaveBeenCalledTimes(1);
+});
+
 it("Ask agent runs the page's action, and shows why it failed", async () => {
   get.mockImplementation(async ({ messageId }) => message(messageId));
   const onAskAgent = vi.fn().mockResolvedValue(undefined);
@@ -313,10 +332,10 @@ it("Ask agent opens the email's agent in a panel, which closes again and can sta
   expect(document.querySelector('[data-testid="agent-panel"]')?.textContent).toContain(
     "Thread agent",
   );
-  // The email column keeps its width: the dialog grows by exactly the panel width only where there is
-  // room, and otherwise the panel overlays it (no width formula that shrinks the column).
+  // The email column keeps its width: from 1280px the panel sits beside it (1152px dialog), and
+  // below that the panel overlays it (no width formula that shrinks the column).
   const popup = document.querySelector('[data-slot="dialog-content"]')?.className ?? "";
-  expect(popup).toContain("min-[1634px]:w-[1152px]");
+  expect(popup).toContain("xl:w-[1152px]");
   expect(popup).not.toContain("calc(50vw");
   expect(document.querySelector('[data-testid="agent-panel"]')?.parentElement?.className).toContain(
     "absolute",

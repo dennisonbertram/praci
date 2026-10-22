@@ -145,8 +145,9 @@ export function trendText(values: readonly number[]): string | null {
   const first = values[0];
   const last = values.at(-1);
   if (values.length < 2 || first === undefined || last === undefined || first === 0) return null;
-  const text = changeText(((last - first) / Math.abs(first)) * 100);
-  return text === "0%" ? null : text;
+  const pct = ((last - first) / Math.abs(first)) * 100;
+  // Flat is decided on the number, not the text: while amounts are hidden the text is masked.
+  return Math.round(Math.abs(pct)) === 0 ? null : changeText(pct);
 }
 
 /** A part's share of a whole, as a whole percent (masked while amounts are hidden, since it follows from them); a small but real part reads "<1%", not "0%". */

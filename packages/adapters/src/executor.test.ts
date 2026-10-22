@@ -1365,6 +1365,17 @@ describe("directoryDescription", () => {
     expect(directory.split("Each integration agent owns one account").length - 1).toBe(1);
   });
 
+  it("reports a missing payee as a missing recipient, not a settings problem", () => {
+    const finance = directoryDescription({
+      description: "Reads Finance.",
+      spawnKey: "finance-agent:u1",
+    });
+    expect(finance).not.toContain("or the recipient is unknown");
+    expect(finance).toContain("has no matching recipient");
+    expect(finance).toContain("Post exactly one message per payment request");
+    expect(finance).toContain("ask the Mercury or Brex agent directly");
+  });
+
   it("leaves other bots' descriptions alone", () => {
     expect(directoryDescription({ description: "Drafts contracts.", spawnKey: null })).toBe(
       "Drafts contracts.",

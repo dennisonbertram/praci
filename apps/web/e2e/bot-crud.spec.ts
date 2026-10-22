@@ -90,7 +90,7 @@ test("bot creation, editing, and deletion persist", async ({ page }, testInfo) =
   await expect(studio.getByRole("button", { name: "Color #EAB308" })).toHaveClass(/ring-2/);
   await studio.getByRole("button", { name: "Done", exact: true }).click();
   const modelSelect = settings.locator("label:has-text('Model') select");
-  const teamComputer = settings.getByRole("button", { name: "Team" });
+  const teamComputer = settings.getByRole("button", { name: "Shared with your other bots" });
   const openWork = settings.getByTestId("bot-scratchpad");
   await expect(teamComputer).toBeHidden();
   await expect(modelSelect).toBeHidden();

@@ -278,6 +278,40 @@ it("shows an inline red message for an empty name, not the browser's native bubb
   expect(alert?.className).toContain("text-destructive");
 });
 
+it("marks each invalid sign-up field with its own message and leaves valid fields alone", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...capabilities, passwordAuth: true });
+  await render("up");
+  const form = host.querySelector("form")!;
+  const submit = () =>
+    act(async () => {
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+  const field = (name: string) => host.querySelector<HTMLInputElement>(`input[name="${name}"]`)!;
+  const message = (name: string) =>
+    document.getElementById(field(name).getAttribute("aria-describedby") ?? "")?.textContent;
+
+  await submit();
+  expect(["name", "email", "password"].map((n) => field(n).getAttribute("aria-invalid"))).toEqual([
+    "true",
+    "true",
+    "true",
+  ]);
+  expect(message("name")).toBe("Enter your name");
+  expect(message("email")).toBe("Enter a valid email");
+
+  await act(async () => {
+    setValue(field("name"), "Maya");
+    setValue(field("email"), "maya@bad");
+    setValue(field("password"), "abc");
+  });
+  expect(field("name").getAttribute("aria-invalid")).toBeNull();
+  await submit();
+  expect(field("name").getAttribute("aria-invalid")).toBeNull();
+  expect(message("email")).toBe("Enter a valid email");
+  expect(field("password").getAttribute("aria-invalid")).toBe("true");
+  expect(message("password")).toBe("At least 8 characters.");
+});
+
 it("keeps native required and minLength validation on the password-reset form", async () => {
   await act(async () =>
     root.render(

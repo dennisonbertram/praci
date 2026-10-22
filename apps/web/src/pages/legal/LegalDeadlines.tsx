@@ -52,17 +52,20 @@ export function LegalDeadlines({
     status: LegalDeadlineStatus;
     /** The closed row's height, so the Undo line holds its place and the list does not move. */
     height: number;
+    /** Where the row stood, for when the refetched list no longer holds it. */
+    index: number;
   } | null>(null);
   useHideAmounts();
   const undoTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(undoTimer.current), []);
   const close = async (deadline: LegalDeadline, status: LegalDeadlineStatus, height: number) => {
+    const index = deadlines.indexOf(deadline);
     setClosing(deadline.id);
     setError("");
     try {
       await rpc.legal.updateDeadline({ id: deadline.id, status });
       setGone((ids) => new Set(ids).add(deadline.id));
-      setUndo({ deadline, status, height });
+      setUndo({ deadline, status, height, index });
       clearTimeout(undoTimer.current);
       undoTimer.current = setTimeout(() => setUndo(null), UNDO_MS);
       onChanged();
@@ -124,6 +127,11 @@ export function LegalDeadlines({
       </Button>
     </>
   ) : null;
+  // The page reloads after Done and the server lists open deadlines only, so the closed row is put back at its place for the Undo line.
+  const rows =
+    undo && !deadlines.some((deadline) => deadline.id === undo.deadline.id)
+      ? deadlines.toSpliced(undo.index, 0, undo.deadline)
+      : deadlines;
   if (open.length === 0) {
     return (
       <div>
@@ -148,7 +156,7 @@ export function LegalDeadlines({
         </p>
       ) : null}
       <ul className="flex flex-col">
-        {deadlines.map((deadline) => {
+        {rows.map((deadline) => {
           if (undo?.deadline.id === deadline.id && gone.has(deadline.id)) {
             return (
               <li

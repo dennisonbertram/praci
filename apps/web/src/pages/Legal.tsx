@@ -30,6 +30,7 @@ const VIEWS = ["contracts", "deadlines", "graph"] as const;
 type View = (typeof VIEWS)[number];
 const LEGAL_PATH = "/app/legal";
 
+const deadlineKey = (d: LegalDeadline) => [d.title, d.dueDate, d.notes].join("|");
 const deadlineQuestion = (deadline: LegalDeadline) => {
   const { title, contractTitle } = deadline;
   const due = fullDay(deadline.dueDate);
@@ -117,6 +118,12 @@ function Legal({
   const [dismissedRun, setDismissedRun] = useState<string | null>(null);
   // The run Scan now queued, until the overview shows it finished.
   const [waitingFor, setWaitingFor] = useState<string | null>(null);
+  // What the page showed when Scan now was pressed, and the one-line result once the scan ends.
+  const beforeScan = useRef<{
+    contracts: Map<string, string>;
+    deadlines: Map<string, string>;
+  } | null>(null);
+  const [scanResult, setScanResult] = useState("");
   const status = granted ?? consent.data;
   const data = overview.data;
   const lastRun = data?.agent.lastScanRun ?? null;
@@ -137,8 +144,27 @@ function Legal({
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the read changes.
   useEffect(() => setGranted(null), [consent.data]);
   useEffect(() => {
-    if (finishedWaiting) setWaitingFor(null);
-  }, [finishedWaiting]);
+    if (!finishedWaiting) return;
+    setWaitingFor(null);
+    const before = beforeScan.current;
+    beforeScan.current = null;
+    if (!before || !data || lastRun?.status === "failed") return;
+    if (lastRun?.status === "cancelled") {
+      setScanResult(t`Scan cancelled.`);
+      return;
+    }
+    const contractsChanged = data.contracts.filter(
+      (c) => before.contracts.get(c.id) !== c.analyzedAt,
+    ).length;
+    const deadlinesAdded = data.deadlines.filter(
+      (d) => before.deadlines.get(d.id) !== deadlineKey(d),
+    ).length;
+    setScanResult(
+      contractsChanged + deadlinesAdded === 0
+        ? t`Scan finished: nothing changed.`
+        : t`Scan finished: ${plural(contractsChanged, { one: "# contract", other: "# contracts" })} and ${plural(deadlinesAdded, { one: "# deadline", other: "# deadlines" })} added or updated.`,
+    );
+  }, [finishedWaiting, data, lastRun?.status]);
   // A key added in Settings, or a model changed in another tab, shows up when the user comes back.
   useEffect(() => {
     const refresh = () => {
@@ -177,6 +203,11 @@ function Legal({
 
   const scan = async () => {
     setScanError("");
+    setScanResult("");
+    beforeScan.current = data && {
+      contracts: new Map(data.contracts.map((c) => [c.id, c.analyzedAt])),
+      deadlines: new Map(data.deadlines.map((d) => [d.id, deadlineKey(d)])),
+    };
     try {
       const { runId } = await rpc.legal.scanNow();
       // The page shows the scan's progress and result; the agent panel stays as the founder left it.
@@ -267,6 +298,11 @@ function Legal({
       {scanError ? (
         <p role="alert" className="mb-3 text-sm text-destructive">
           {scanError}
+        </p>
+      ) : null}
+      {scanResult ? (
+        <p role="status" className="mb-3 text-sm text-muted-foreground">
+          {scanResult}
         </p>
       ) : null}
       {!noDocuments && status && !status.allowed && status.recipients.length > 0 ? (

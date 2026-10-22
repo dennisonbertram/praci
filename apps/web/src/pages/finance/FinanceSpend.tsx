@@ -298,6 +298,8 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
   // Months before the first charge are not months of zero spend.
   const charged = data ? data.monthly.filter((m) => m.month >= data.firstSeenAt.slice(0, 7)) : [];
   const hasReceipts = data?.charges.some((charge) => charge.hasReceipt) ?? false;
+  // The chart and the change use full months, so the month under way is said apart, not dropped.
+  const running = data?.currentMonth && data.currentMonth.cents > 0 ? data.currentMonth : null;
   return (
     <DetailPage
       crumbs={[
@@ -362,6 +364,11 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
               }))}
               label={t`Monthly spend`}
             />
+            {running ? (
+              <div className="text-[11px] text-muted-foreground tabular-nums">
+                {t`${monthShort(running.month)} so far: ${money(running.cents)}`}
+              </div>
+            ) : null}
           </Section>
           <Section
             title={charged[0] ? t`Charges since ${shortDay(`${charged[0].month}-01`)}` : t`Charges`}
