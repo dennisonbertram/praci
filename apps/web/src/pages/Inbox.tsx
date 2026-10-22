@@ -331,10 +331,14 @@ function InboxListPage({
   // Needs reply shows its first few rows so today's mail stays on the first screen.
   const [allReplies, setAllReplies] = useState(false);
   // Classifications as the list showed them when triage began, so rows move once, when it ends.
-  const heldTriage = useRef<Map<
-    string,
-    Pick<MailRow, "needsReply" | "priority" | "reason" | "category">
-  > | null>(null);
+  // Kept per list, so another account's view never reads it; a row the user marked since is not held.
+  const heldTriage = useRef<{
+    key: string;
+    rows: Map<
+      string,
+      Pick<MailRow, "needsReply" | "priority" | "reason" | "category" | "feedback">
+    >;
+  } | null>(null);
 
   // A message sent from any composer: reload, since the send synced the account.
   useEffect(() => {
@@ -621,22 +625,40 @@ function InboxListPage({
         heldTriage.current = null;
         return list;
       }
-      heldTriage.current ??= new Map(
-        list.map((row) => [
-          row.id,
-          {
-            needsReply: row.needsReply,
-            priority: row.priority,
-            reason: row.reason,
-            category: row.category,
-          },
-        ]),
-      );
-      const held = heldTriage.current;
-      const none = { needsReply: null, priority: null, reason: null, category: null };
-      return list.map((row) => ({ ...row, ...(held.get(row.id) ?? none) }));
+      if (heldTriage.current?.key !== listKey) {
+        heldTriage.current = {
+          key: listKey,
+          rows: new Map(
+            list.map((row) => [
+              row.id,
+              {
+                needsReply: row.needsReply,
+                priority: row.priority,
+                reason: row.reason,
+                category: row.category,
+                feedback: row.feedback,
+              },
+            ]),
+          ),
+        };
+      }
+      const held = heldTriage.current.rows;
+      const none = {
+        needsReply: null,
+        priority: null,
+        reason: null,
+        category: null,
+        feedback: null,
+      };
+      return list.map((row) => {
+        const before = held.get(row.id);
+        // A mark or undo changes the row's classification now, so it is not held back.
+        if (before && before.feedback !== row.feedback) return row;
+        const { feedback: _, ...classes } = before ?? none;
+        return { ...row, ...classes };
+      });
     },
-    [shown?.triagePending, stalled, filtered],
+    [shown?.triagePending, stalled, filtered, listKey],
   );
   const groups = useMemo(
     () =>

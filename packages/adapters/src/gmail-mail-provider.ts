@@ -947,6 +947,15 @@ function parseDraft(data: unknown): MailDraftRef {
   return { draftId: id, threadId: typeof threadId === "string" ? threadId : "" };
 }
 
+/** Some part is a named file; falls back to the multipart/mixed type when the parts are not listed. */
+export function hasAttachmentPart(payload: unknown): boolean {
+  const part = asRecord(payload);
+  if (!part) return false;
+  if (typeof part.filename === "string" && part.filename) return true;
+  if (Array.isArray(part.parts)) return part.parts.some(hasAttachmentPart);
+  return part.mimeType === "multipart/mixed";
+}
+
 function parseSummary(data: unknown): MailMessageSummary | undefined {
   const message = asRecord(data);
   if (!message) return undefined;
@@ -982,7 +991,7 @@ function parseSummary(data: unknown): MailMessageSummary | undefined {
     labelIds,
     signals: {
       ...parseMailSignals(allHeaders, labelIds),
-      ...(asRecord(message.payload)?.mimeType === "multipart/mixed" ? { attachment: true } : {}),
+      ...(hasAttachmentPart(message.payload) ? { attachment: true } : {}),
     },
   };
 }
