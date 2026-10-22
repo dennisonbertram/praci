@@ -53,3 +53,10 @@ it.each([
   const { container } = render(consent({ status: "answered", answer }));
   expect(container.querySelector(".font-medium")?.textContent).toBe(label);
 });
+
+it("keeps the long disclosure folded, so the card is one sentence and two buttons", () => {
+  const { container } = render(consent());
+  const details = container.querySelector("details");
+  expect(details?.open).toBe(false);
+  expect(details?.textContent).toContain("Messages are sent to run your bots.");
+});

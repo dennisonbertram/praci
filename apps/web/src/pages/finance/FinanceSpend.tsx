@@ -365,7 +365,7 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
               label={t`Monthly spend`}
             />
             {running ? (
-              <div className="text-[11px] text-muted-foreground tabular-nums">
+              <div className="text-xs text-muted-foreground tabular-nums">
                 {t`${monthShort(running.month)} so far: ${money(running.cents)}`}
               </div>
             ) : null}

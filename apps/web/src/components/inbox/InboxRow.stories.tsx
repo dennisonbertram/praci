@@ -182,6 +182,49 @@ export const NarrowLabels: StoryObj = {
   ),
 };
 
+/** Mail that wants an answer says Needs reply; other urgent mail says why: Urgent, Important or Action. */
+export const UrgentReasons: StoryObj = {
+  render: () => (
+    <div className="@container w-[760px]">
+      {(
+        [
+          { needsReply: true, priority: "normal", category: "reply" },
+          { needsReply: false, priority: "critical", category: "billing" },
+          { needsReply: false, priority: "important", category: "personal" },
+          { needsReply: false, priority: "normal", category: "action" },
+        ] as const
+      ).map((extra) => (
+        <InboxRow
+          key={`${extra.priority}_${extra.category}`}
+          row={row(`reason_${extra.priority}_${extra.category}`, {
+            ...extra,
+            from: "Sample Sender",
+            subject: `${extra.priority} ${extra.category}`,
+          })}
+          onOpen={noop}
+          onMark={undefined}
+        />
+      ))}
+    </div>
+  ),
+};
+
+/** A Needs reply row whose mail has an open to-do says so; the To do card leaves it out. */
+export const WithTodo: StoryObj = {
+  render: () => (
+    <InboxGroup
+      title="Needs reply"
+      hideAttention
+      rows={rows.slice(0, 2)}
+      todoIds={new Set([rows[0]?.id ?? ""])}
+      onOpen={noop}
+      onMark={noop}
+      onArchive={noop}
+      onRead={noop}
+    />
+  ),
+};
+
 export const Group: StoryObj = {
   render: () => (
     <InboxGroup

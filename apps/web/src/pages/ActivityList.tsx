@@ -164,7 +164,7 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
 
   return (
     <div
-      className="mb-2 flex max-h-[40vh] shrink-0 snap-start flex-col border-b border-border pb-2"
+      className="mb-2 flex max-h-40 shrink-0 snap-start flex-col border-b border-border pb-2"
       data-testid="activity-list"
     >
       <div className="flex items-center justify-between px-2.5 pb-1">

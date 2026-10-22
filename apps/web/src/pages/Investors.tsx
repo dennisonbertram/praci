@@ -1055,7 +1055,7 @@ export function InvestorsPage({
                     {sourceLabel}
                     <ChevronDown aria-hidden="true" />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
+                  <DropdownMenuContent align="start" className="w-max min-w-40">
                     {canRefresh ? (
                       <DropdownMenuItem
                         disabled={syncing || sheetReading}

@@ -173,22 +173,22 @@ export function TourPopover({
   const ring = rect && rect.width > 0 && rect.right > 0 && rect.left < window.innerWidth;
   if (card) {
     const column = wide && sidebar ? sidebar.getBoundingClientRect() : null;
-    // Beside the sidebar at the foot of the page (above the composer when there is one), the same
-    // spot at every stop: it never covers the page title or the first lines of the chat, and Next stays put.
-    const composerTop = document
-      .querySelector('[data-testid="composer-bar"]')
+    // One fixed spot at every stop, so Next stays put and no row below the target is hidden.
+    // Desktop: inside the sidebar column, just above its footer links (the chat stays clear).
+    // Phone: the top of the drawer, which leaves the footer rows (Integrations, Account) visible.
+    // Only a target under that spot (the first stops) moves the card to the bottom.
+    const footerTop = document
+      .querySelector('[data-tour="sidebar-integrations"]')
       ?.getBoundingClientRect().top;
-    const targetAbove = ring && rect.top + rect.height / 2 < window.innerHeight / 2;
-    const place =
-      column && ring
-        ? { bottom: composerTop ? window.innerHeight - composerTop + 8 : 16 }
-        : // A phone: right beside the target, below a high one and above a low one.
-          ring
-          ? targetAbove
-            ? { top: Math.min(rect.bottom + 8, window.innerHeight - CARD_HEIGHT - 8) }
-            : { bottom: Math.max(window.innerHeight - rect.top + 8, 8) }
-          : { bottom: 16 };
-    const span = column ? { left: column.right + 8, width: 288 } : undefined;
+    const floor = column && footerTop ? footerTop - 8 : window.innerHeight - 16;
+    const place = column
+      ? { bottom: window.innerHeight - floor }
+      : ring && rect.top < 16 + CARD_HEIGHT && rect.bottom > 16
+        ? { bottom: 16 }
+        : { top: 16 };
+    const span = column
+      ? { left: column.left + 14, width: Math.min(288, column.width - 28) }
+      : undefined;
     return (
       <>
         {ring ? <Ring rect={rect} /> : null}

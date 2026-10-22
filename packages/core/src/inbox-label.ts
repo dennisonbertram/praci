@@ -7,6 +7,8 @@ export type InboxLabelRow = {
   priority: string | null;
   category: string | null;
   feedback: string | null;
+  /** The newest message is the user's own reply, so nothing waits on them. */
+  fromSelf?: boolean;
 };
 
 /**
@@ -22,6 +24,7 @@ export function inboxLabel(row: InboxLabelRow): InboxLabel | null {
   if (category === "suspicious") return null;
   if (
     row.feedback !== "noise" &&
+    !row.fromSelf &&
     (row.needsReply === true ||
       row.priority === "critical" ||
       row.priority === "important" ||

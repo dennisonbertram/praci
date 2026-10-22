@@ -19,6 +19,7 @@ const quiet = {
   legalDueSoon: 0,
   devinNeedsYou: 0,
   devinConnected: false,
+  gtmNeedsYou: 0,
   dataRoomWaiting: 0,
   hasTickets: false,
   botKinds: {},

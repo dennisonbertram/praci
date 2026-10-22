@@ -454,7 +454,9 @@ import {
   financeStatementUpload,
 } from "./finance-statements.js";
 import { fundraisingOverview, fundraisingRefresh } from "./fundraising.js";
-import { ensureGtmAgent, ensureGtmBot, gtmPostingCapability } from "./gtm-agent.js";
+import type { GtmQueueReader } from "./gtm.js";
+import { gtmNeedsYouCount, gtmOverview, gtmPostingCapability, gtmQueue } from "./gtm.js";
+import { ensureGtmAgent, ensureGtmBot } from "./gtm-agent.js";
 import {
   inboxFeedbackSet,
   inboxGet,
@@ -1016,6 +1018,10 @@ export interface RouterDeps {
   safeCallToolFor?: SafeSyncDeps["callToolFor"];
   /** Reruns a pin's saved read-only tool call on refresh; unset where MCP is off. */
   mcp?: Pick<McpConnector, "callServerTool" | "listServerTools">;
+  /** Replaces the app-owned Zernio queue reader for offline tests and the local demo. */
+  gtmQueueReader?: GtmQueueReader;
+  /** Replaces only the GTM overview's read-only account caller in offline acceptance. */
+  gtmMcp?: Pick<McpConnector, "callServerTool">;
   /** Replaces the read-only Devin caller built from `mcp`; tests pass a fake. */
   devinCallTool?: DevinCallTool;
   /** Meeting providers for the Granola key check; the demo and tests point Granola at the emulator. */
@@ -7612,6 +7618,30 @@ export function createRouter(deps: RouterDeps) {
           throw mapSpaceLifecycleError(error);
         }),
       ),
+      overview: authed.gtm.overview.handler(({ context }) =>
+        gtmOverview(
+          {
+            prisma: deps.prisma,
+            secrets: deps.secrets,
+            mcp: deps.gtmMcp ?? deps.mcp,
+            queueReader: deps.gtmQueueReader,
+          },
+          context.actor,
+          context.signal,
+        ),
+      ),
+      queue: authed.gtm.queue.handler(({ context, input }) =>
+        gtmQueue(
+          {
+            prisma: deps.prisma,
+            secrets: deps.secrets,
+            queueReader: deps.gtmQueueReader,
+          },
+          context.actor,
+          input,
+          context.signal,
+        ),
+      ),
       postingCapability: authed.gtm.postingCapability.handler(({ context }) =>
         gtmPostingCapability({ prisma: deps.prisma, secrets: deps.secrets }, context.actor),
       ),
@@ -8541,6 +8571,7 @@ export function createRouter(deps: RouterDeps) {
           legalDueSoon,
           devinNeedsYou,
           isDevinConnected,
+          gtmNeedsYou,
           dataRoomWaiting,
           hasTicket,
           botKinds,
@@ -8549,6 +8580,7 @@ export function createRouter(deps: RouterDeps) {
           legalDueSoonCount(legalDeps, context.actor, 7),
           devinNeedsYouCount(devinDeps, context.actor),
           devinConnected(devinDeps, context.actor),
+          gtmNeedsYouCount(deps.prisma, context.actor),
           // Failed items are the only ones the user can act on (retry or remove).
           deps.prisma.dataRoomItem.count({
             where: {
@@ -8570,6 +8602,7 @@ export function createRouter(deps: RouterDeps) {
           legalDueSoon,
           devinNeedsYou,
           devinConnected: isDevinConnected,
+          gtmNeedsYou,
           dataRoomWaiting,
           hasTickets: Boolean(hasTicket),
           botKinds,
