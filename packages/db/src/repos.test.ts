@@ -257,7 +257,7 @@ describe("createRepos.listBots", () => {
     );
   });
 
-  it("previews a delegate's answer, not the question that started the hand-off", async () => {
+  it("previews the last visible message, never a delegate's collapsed receipt", async () => {
     const prisma = {
       bot: {
         findMany: vi.fn(async () => [
@@ -291,7 +291,65 @@ describe("createRepos.listBots", () => {
     };
 
     await expect(createRepos(prisma as unknown as PrismaClient).listBots(actor)).resolves.toEqual([
-      expect.objectContaining({ preview: "Burn is $10 a month." }),
+      expect.objectContaining({ preview: "Ask Finance for burn." }),
+    ]);
+  });
+
+  it("reads past a bare hand-off step and says Waiting for approval while the delegate waits", async () => {
+    const handOff = {
+      runId: "run-user",
+      blocks: [{ kind: "steps", steps: [{ label: "Message bot", count: 1 }] }],
+    };
+    const prisma = {
+      bot: {
+        findMany: vi.fn(async () => [
+          {
+            ...baseBot,
+            thread: {
+              ...baseBot.thread,
+              messages: [
+                handOff,
+                { runId: "run-user", blocks: [{ kind: "text", text: "Pay Acme $300." }] },
+              ],
+            },
+          },
+        ]),
+      },
+      run: {
+        findMany: vi.fn(async () => []),
+      },
+    };
+    const repos = createRepos(prisma as unknown as PrismaClient);
+    await expect(repos.listBots(actor)).resolves.toEqual([
+      expect.objectContaining({ preview: "Pay Acme $300." }),
+    ]);
+
+    prisma.run.findMany.mockImplementation(async (args: { where: Record<string, unknown> }) =>
+      args.where.status === "waiting_input"
+        ? [
+            {
+              id: "run-mercury",
+              taskId: "t1",
+              threadId: "thread-m",
+              botId: "bot-m",
+              sourceMessage: {
+                blocks: [
+                  {
+                    kind: "bot_message_received",
+                    fromBotId: baseBot.id,
+                    returnToMessageId: "m-sent",
+                  },
+                ],
+              },
+            },
+          ]
+        : [],
+    );
+    (prisma as unknown as { message: unknown }).message = {
+      findMany: vi.fn(async () => [{ id: "m-sent" }]),
+    };
+    await expect(repos.listBots(actor)).resolves.toEqual([
+      expect.objectContaining({ preview: "Waiting for approval" }),
     ]);
   });
 

@@ -39,7 +39,7 @@ function formatAnsweredState(
     const choice = resolveAskChoice(answer, actions);
     return choice ? t`Answered: ${choice.label}` : t`Answered`;
   }
-  if (answer === "superseded") return t`No longer active`;
+  if (answer === "superseded") return t`Replaced by a newer request`;
   if (answer === "expired") return t`Expired`;
   if (outcome === "created") return t`Created`;
   if (outcome === "cancelled") return t`Cancelled`;
@@ -261,7 +261,7 @@ export function AskCard({
         })()
       ) : !canAnswer ? (
         <div className="mt-3.5 text-[13.5px] font-medium text-muted-foreground">
-          <Trans>No longer active</Trans>
+          <Trans>Replaced by a newer request</Trans>
         </div>
       ) : askActions?.length ? (
         <div className="mt-3.5 space-y-1.5">

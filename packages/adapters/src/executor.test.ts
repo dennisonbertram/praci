@@ -1372,6 +1372,11 @@ describe("directoryDescription", () => {
     });
     expect(finance).not.toContain("or the recipient is unknown");
     expect(finance).toContain("has no matching recipient");
+    expect(finance).toContain(
+      "end with [Open Integrations](/app/integrations) so the user can reach the bank",
+    );
+    expect(finance).toContain("asks again in a new message for the same payment");
+    expect(finance).toContain("never mention a missing request link");
     expect(finance).toContain("Post exactly one message per payment request");
     expect(finance).toContain("ask the Mercury or Brex agent directly");
   });

@@ -6883,10 +6883,6 @@ msgstr ""
 msgid "No investors yet"
 msgstr ""
 
-#: src/components/AskCard.tsx
-msgid "No longer active"
-msgstr "이미 종료된 요청입니다"
-
 #: src/pages/Inbox.tsx
 msgid "No mail"
 msgstr ""
@@ -8530,6 +8526,10 @@ msgstr "키 교체"
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Replace value"
+msgstr ""
+
+#: src/components/AskCard.tsx
+msgid "Replaced by a newer request"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -11176,6 +11176,10 @@ msgstr ""
 
 #: src/lib/devin-format.ts
 msgid "Waiting {minutes}m"
+msgstr ""
+
+#: src/lib/roster-status.ts
+msgid "Waiting for approval"
 msgstr ""
 
 #: src/components/fundraising/Pipeline.tsx

@@ -254,6 +254,7 @@ import {
   rosterHeldFor,
   rosterStatusChanged,
   rosterWorkStatusLabel,
+  waitingForApprovalLabel,
 } from "../lib/roster-status";
 import { formatRosterTime } from "../lib/roster-time";
 import type { MissingBotSeen } from "../lib/route-bot";
@@ -4169,7 +4170,13 @@ export function ShellPage() {
               onRemoveDataRoomItem={removeDataRoomItem}
               attachmentNotice={attachmentNotice}
               onDismissAttachmentNotice={() => setAttachmentNotice(null)}
-              placeholder={waitingOnApproval ? needsAnswerLabel() : undefined}
+              placeholder={
+                activeSnapshot?.delegatePending?.length
+                  ? waitingForApprovalLabel()
+                  : waitingOnApproval
+                    ? needsAnswerLabel()
+                    : undefined
+              }
               sendError={sendError}
               runError={displayedRunError}
               runErrorId={displayedRunErrorId}

@@ -8569,7 +8569,7 @@ async function loadBotDirectory(
 
 /** Integrations cannot fix a missing AI consent, so those failures link to the switch instead. */
 const CONSENT_LINK_GUIDANCE =
-  " If the reason is that AI data sharing, permission or consent is not allowed, or the AI model recipient is unknown, end with [Open Settings](/app?settings=privacy) instead and never with an Integrations link. If the reason is that a payee has no matching recipient, say exactly that, name the payee, say the recipient must be added at the bank first, and do not link Settings or Integrations.";
+  " If the reason is that AI data sharing, permission or consent is not allowed, or the AI model recipient is unknown, end with [Open Settings](/app?settings=privacy) instead and never with an Integrations link. If the reason is that a payee has no matching recipient, say exactly that, name the payee, say the recipient must be added at the bank first, and end with [Open Integrations](/app/integrations) so the user can reach the bank. When the user approves a payment, report the outcome in one plain line (submitted, or failed with the reason) instead of repeating that it waits for approval, and never mention a missing request link or other tool internals. A denial covers only the request that was denied: when the user asks again in a new message for the same payment, message the agent again as a new request.";
 
 /**
  * A teammate's description in the bot directory. Integration, Carta and Finance agents are messaged

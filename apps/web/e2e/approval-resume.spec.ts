@@ -58,7 +58,7 @@ test("approval input resumes durable work", async ({ page }, testInfo) => {
   await expect(prompt).toHaveCount(3, { timeout: 30_000 });
   // A bot waiting on an answer shows Send, not Stop, so stop the run the way Stop does.
   await rpc(page, "threads/stop", { botId: activeBotId(page) });
-  await expect(page.getByText("No longer active", { exact: true })).toBeVisible();
+  await expect(page.getByText("Replaced by a newer request", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Send it" })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "25-stopped-approval-prompt");
 });

@@ -89,3 +89,8 @@ describe("rosterStatusChanged", () => {
     expect(rosterStatusChanged({ type: "thread.message.created" })).toBe(false);
   });
 });
+
+it("names a delegate wait", async () => {
+  const { waitingForApprovalLabel } = await import("./roster-status");
+  expect(waitingForApprovalLabel()).toBe("Waiting for approval");
+});
