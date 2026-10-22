@@ -974,7 +974,10 @@ export function ShellPage() {
   const toggleActivityMode = useCallback(() => setActivityMode((on) => !on), []);
   // Activity sits above the chats: show it from its top, not from the row the list had settled on.
   useEffect(() => {
-    if (activityMode) sidebarScrollRef.current?.scrollTo({ top: 0 });
+    if (!activityMode) return;
+    // The list scrolls on a tall desktop; the pane around it scrolls on a phone and a short screen.
+    sidebarScrollRef.current?.scrollTo({ top: 0 });
+    sidebarPaneRef.current?.scrollTo({ top: 0 });
   }, [activityMode]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: close on every navigation
   useEffect(() => setActivityMode(false), [pathname]);
@@ -2788,13 +2791,15 @@ export function ShellPage() {
     active?.id === chiefId &&
     snapshot?.botId === chiefId &&
     connectCardsOpen(snapshot?.messages ?? []);
+  // Not before the account loads: the sidebar pages render only then, and the tour lists its stops once.
   const tourOpen =
-    tourRestart ||
-    (bootstrapMe?.tourSeen === false &&
-      !tourEnded &&
-      bots.length > 0 &&
-      !firstQuestionOpen &&
-      !connectCardsWaiting);
+    bootstrapMe !== undefined &&
+    (tourRestart ||
+      (bootstrapMe?.tourSeen === false &&
+        !tourEnded &&
+        bots.length > 0 &&
+        !firstQuestionOpen &&
+        !connectCardsWaiting));
   // On a phone the tour points into the sidebar drawer, so open it while the tour runs. On a
   // docked sidebar the tour card is as wide as the sidebar, so a collapsed rail is expanded
   // (for this session only; the saved preference is unchanged).
