@@ -6569,6 +6569,10 @@ msgstr "Needs a server restart"
 msgid "Needs approval"
 msgstr "Needs approval"
 
+#: src/components/inbox/InboxRow.tsx
+msgid "Needs attention"
+msgstr "Needs attention"
+
 #: src/lib/devin-format.ts
 msgid "Needs input"
 msgstr "Needs input"

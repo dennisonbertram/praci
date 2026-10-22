@@ -379,7 +379,7 @@ it("rises above a composer it would cover", async () => {
   expect(viewport()?.style.getPropertyValue("--toast-lift")).toBe("176px");
 });
 
-it("stays inside an open side panel, narrower than the panel, so it never covers the page beside it", async () => {
+it("sits left of an open side panel, narrowed to the main column when it is narrow", async () => {
   await mount();
   const panel = document.createElement("aside");
   panel.setAttribute("data-toast-panel", "");
@@ -387,13 +387,30 @@ it("stays inside an open side panel, narrower than the panel, so it never covers
     ({ top: 0, bottom: 768, left: 640, right: 1024, height: 768, width: 384 }) as DOMRect;
   document.body.append(panel);
   await add(1);
-  // 384 panel width - 2 * 16 gutter
-  expect(viewport()?.style.getPropertyValue("--toast-max-width")).toBe("352px");
+  // innerWidth 1024 - 640; the column is 640 - 2 * 16 gutter wide
+  expect(viewport()?.style.getPropertyValue("--toast-shift")).toBe("384px");
+  expect(viewport()?.style.getPropertyValue("--toast-max-width")).toBe("608px");
+  expect(viewport()?.className).toContain("var(--toast-shift,0px)");
   expect(viewport()?.className).toContain("var(--toast-max-width,100vw)");
   expect(viewport()?.className).toContain(
     "max-sm:bottom-[max(calc(env(safe-area-inset-bottom)+1rem)",
   );
   panel.remove();
+});
+
+it("narrows to the main column instead of covering the panel when little room is left", async () => {
+  await mount();
+  const panel = document.createElement("aside");
+  panel.setAttribute("data-toast-panel", "");
+  window.innerWidth = 768;
+  panel.getBoundingClientRect = () =>
+    ({ top: 0, bottom: 768, left: 384, right: 768, height: 768, width: 384 }) as DOMRect;
+  document.body.append(panel);
+  await add(1);
+  expect(viewport()?.style.getPropertyValue("--toast-shift")).toBe("384px");
+  expect(viewport()?.style.getPropertyValue("--toast-max-width")).toBe("352px");
+  panel.remove();
+  window.innerWidth = 1024;
 });
 
 it("keeps the front card's height following its content, so a wrapped body is never cut", async () => {

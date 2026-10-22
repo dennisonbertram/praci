@@ -155,14 +155,15 @@ function liftAbove(viewport: HTMLElement): number {
 }
 
 /**
- * The toasts stay inside an open side panel (`data-toast-panel`) instead of covering the page
- * beside it: this is the widest a toast may be there. Null on a phone or with no panel open.
+ * Keeps the toasts out of an open side panel (`data-toast-panel`): they sit in the main column left
+ * of it, and are narrowed when the column is narrower than a toast. Null on a phone or with no panel.
  */
-function panelToastWidth(): number | null {
+function besidePanel(): { shift: number; maxWidth: number } | null {
   const panel = document.querySelector<HTMLElement>("[data-toast-panel]");
   if (!panel || isPhone()) return null;
-  const { left, width } = panel.getBoundingClientRect();
-  return left < window.innerWidth ? Math.max(0, width - 2 * TOAST_GUTTER_PX) : null;
+  const { left } = panel.getBoundingClientRect();
+  if (left >= window.innerWidth) return null;
+  return { shift: window.innerWidth - left, maxWidth: Math.max(0, left - 2 * TOAST_GUTTER_PX) };
 }
 
 function ToastList({
@@ -184,9 +185,14 @@ function ToastList({
     const place = () => {
       const lift = liftAbove(viewport);
       viewport.style.setProperty("--toast-lift", `${lift}px`);
-      const inPanel = panelToastWidth();
-      if (inPanel === null) viewport.style.removeProperty("--toast-max-width");
-      else viewport.style.setProperty("--toast-max-width", `${inPanel}px`);
+      const beside = besidePanel();
+      if (beside === null) {
+        viewport.style.removeProperty("--toast-shift");
+        viewport.style.removeProperty("--toast-max-width");
+      } else {
+        viewport.style.setProperty("--toast-shift", `${beside.shift}px`);
+        viewport.style.setProperty("--toast-max-width", `${beside.maxWidth}px`);
+      }
     };
     place();
     // The composer grows with its text and the window resizes; a short poll covers both.
@@ -196,6 +202,7 @@ function ToastList({
       clearInterval(timer);
       window.removeEventListener("resize", place);
       viewport.style.removeProperty("--toast-lift");
+      viewport.style.removeProperty("--toast-shift");
       viewport.style.removeProperty("--toast-max-width");
     };
   }, [shownCount, viewportRef]);
@@ -364,7 +371,7 @@ export function NotificationToaster({
           // `data-toast-avoid` element it would cover, and is hidden while a dialog, menu or the
           // navigation drawer is open, since it would cover their content.
           className={cn(
-            "group/viewport pointer-events-none fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[max(6rem,var(--toast-lift,0px))] z-[110] w-[min(28rem,calc(100vw-2rem),var(--toast-max-width,100vw))] max-sm:right-auto max-sm:bottom-[max(calc(env(safe-area-inset-bottom)+1rem),var(--toast-lift,0px))] max-sm:left-1/2 max-sm:-translate-x-1/2",
+            "group/viewport pointer-events-none fixed right-[max(calc(1rem+var(--toast-shift,0px)),env(safe-area-inset-right))] bottom-[max(6rem,var(--toast-lift,0px))] z-[110] w-[min(28rem,calc(100vw-2rem),var(--toast-max-width,100vw))] max-sm:right-auto max-sm:bottom-[max(calc(env(safe-area-inset-bottom)+1rem),var(--toast-lift,0px))] max-sm:left-1/2 max-sm:-translate-x-1/2",
             COVERED_BY_OVERLAY,
           )}
         >

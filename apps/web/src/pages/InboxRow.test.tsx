@@ -83,6 +83,13 @@ it("shows one label naming why the row needs attention", async () => {
   expect(badge(container)?.textContent).toBe("Needs reply");
 });
 
+it("keeps the attention label on important mail that needs no reply", async () => {
+  const container = await render(
+    mail({ needsReply: false, priority: "important", category: "action" }),
+  );
+  expect(badge(container)?.textContent).toBe("Needs attention");
+});
+
 it.each([
   ["newsletter", "Newsletter"],
   ["spam", "Spam"],

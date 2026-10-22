@@ -241,7 +241,7 @@ export const BesideSidePanel: Story = {
   ),
 };
 
-/** With an agent panel docked, the toast stays inside the panel's column so the page beside it stays readable. */
+/** With an agent panel docked, the toast sits in the main column, left of the panel, so neither is covered. */
 export const BesidePanel: Story = {
   args: { onOpen: () => {} },
   decorators: [
