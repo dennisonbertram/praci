@@ -375,6 +375,29 @@ describePostgres("safes (PostgreSQL)", () => {
       await expect(markWaiting(prisma, mine, q.id)).resolves.toBeTruthy();
     });
 
+    it("turns a prospect into an investor once its Mercury SAFE is signed, and keeps it so after a cancel", async () => {
+      const p = await person("signs@example.test");
+      const signedAt = new Date("2026-10-05T00:00:00Z");
+      await sync(
+        mercury("m-signs", {
+          investorEmail: "signs@example.test",
+          signedByOwnerAt: signedAt,
+          signedByInvestorAt: signedAt,
+        }),
+      );
+      expect((await contactRow(p.id)).kind).toBe("investor");
+      await sync(
+        mercury("m-signs", {
+          investorEmail: "signs@example.test",
+          signedByOwnerAt: signedAt,
+          signedByInvestorAt: signedAt,
+          canceledAt: new Date("2026-10-06T00:00:00Z"),
+        }),
+      );
+      expect((await contactRow(p.id)).kind).toBe("investor");
+      expect(await pipeline()).not.toContain(p.id);
+    });
+
     it("refuses Send SAFE while an active SAFE is attached", async () => {
       const p = await person("active@example.test");
       await sync(mercury("m-active", { investorEmail: "active@example.test" }));

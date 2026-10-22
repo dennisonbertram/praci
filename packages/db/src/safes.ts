@@ -287,6 +287,19 @@ export async function writeMercurySafes(
           data: { mercurySentAt: null },
         });
     }
+    // A prospect whose Mercury SAFE is signed or paid is an investor, and stays one.
+    const attached = await tx.safe.findMany({
+      where: { ...scope, source: "mercury", contactId: { not: null } },
+    });
+    const signedContacts = attached.flatMap((row) => {
+      const status = toSafe(row).status;
+      return row.contactId && (status === "signed" || status === "funded") ? [row.contactId] : [];
+    });
+    if (signedContacts.length)
+      await tx.contact.updateMany({
+        where: { ...scope, id: { in: signedContacts }, kind: "prospect" },
+        data: { kind: "investor" },
+      });
     const paid = await tx.safe.findMany({
       where: { ...scope, source: "mercury", paidAt: { not: null }, financeTransactionId: null },
     });
@@ -343,14 +356,21 @@ export async function assignSafe(
     const full = await tx.contact.findFirstOrThrow({ where: { id: contactId, ...scope } });
     if (full.kind !== "prospect" && full.kind !== "investor")
       throw new SafeStateError("Choose a prospect or an investor.");
-    await tx.safe.updateMany({
+    const { count } = await tx.safe.updateMany({
       where: { id, ...scope, contactId: null },
       data: { contactId, roundId: full.roundId },
     });
+    if (count === 0) throw new SafeStateError("This SAFE already has a contact.");
     await tx.contact.updateMany({
       where: { id: contactId, ...scope },
       data: { mercurySentAt: null },
     });
+    const signed = toSafe(await tx.safe.findFirstOrThrow({ where: { id, ...scope } })).status;
+    if (signed === "signed" || signed === "funded")
+      await tx.contact.updateMany({
+        where: { id: contactId, ...scope, kind: "prospect" },
+        data: { kind: "investor" },
+      });
   });
   return toSafe(await db.safe.findFirstOrThrow({ where: { id, ...scope } }));
 }

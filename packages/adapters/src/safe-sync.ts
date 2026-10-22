@@ -42,11 +42,15 @@ export function createSafeCallToolFor(
   };
 }
 
-const iso = z.iso.datetime({ offset: true, local: true }).transform((value) => new Date(value));
-const day = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}/)
-  .transform((value) => new Date(value));
+const validDate = (date: Date) => !Number.isNaN(date.getTime());
+const iso = z.iso
+  .datetime({ offset: true, local: true })
+  .transform((value) => new Date(value))
+  .refine(validDate);
+const day = z.iso
+  .date()
+  .transform((value) => new Date(value))
+  .refine(validDate);
 const cents = (dollars: number) => Math.round(dollars * 100);
 
 /** Mercury's documented SAFE request (GET /safes); fields we do not use are left out. */

@@ -64,6 +64,8 @@ describe("mapSafeRequest", () => {
     expect(mapSafeRequest({ id: "x" })).toBeNull();
     expect(mapSafeRequest(request("n", { investmentAmount: "lots" }))).toBeNull();
     expect(mapSafeRequest(null)).toBeNull();
+    expect(mapSafeRequest(request("d", { investmentDate: "2026-99-99" }))).toBeNull();
+    expect(mapSafeRequest(request("e", { paidAt: "2026-13-40T00:00:00Z" }))).toBeNull();
   });
 
   it("gives the status the documented fields imply", () => {

@@ -43,17 +43,19 @@ async function syncQuietly(
   actor: Actor,
   force: boolean,
   signal?: AbortSignal,
+  waitMs?: number,
 ) {
   if (!deps.safeCallToolFor) return;
   // The outcome is recorded on the sync state row; a database error must not hide the page.
-  await syncSafesForUser(
+  const sync = syncSafesForUser(
     { prisma: deps.prisma, callToolFor: deps.safeCallToolFor },
     actorScope(actor),
-    {
-      force,
-      signal: AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(PAGE_SYNC_MS)]),
-    },
+    { force, signal },
   ).catch(() => undefined);
+  // The page stops waiting after a while; the sync keeps running and records its own result.
+  await (waitMs
+    ? Promise.race([sync, new Promise((resolve) => setTimeout(resolve, waitMs).unref?.())])
+    : sync);
 }
 
 /** The Fundraising page data, after a throttled Mercury SAFE sync. */
@@ -61,7 +63,7 @@ export async function fundraisingOverview(
   deps: FundraisingDeps,
   actor: Actor,
 ): Promise<FundraisingOverview> {
-  await syncQuietly(deps, actor, false);
+  await syncQuietly(deps, actor, false, undefined, PAGE_SYNC_MS);
   const overview = await getFundraisingOverview(deps.prisma, actorScope(actor));
   return { ...overview, mercury: await mercuryState(deps, actor) };
 }
