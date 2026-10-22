@@ -59,13 +59,13 @@ import {
   CompanySourceControlSchema,
   CompanyVisibilityInputSchema,
 } from "./company-privacy.js";
+import { CompanyReviewResolveSchema, CompanyReviewSchema } from "./company-review.js";
 import {
   ContactLinkedSchema,
   ContactListInputSchema,
   ContactSaveInputSchema,
   ContactSchema,
 } from "./contacts.js";
-import { CompanyReviewResolveSchema, CompanyReviewSchema } from "./company-review.js";
 import {
   DataRoomApiBoxListInputSchema,
   DataRoomApiBoxListOutputSchema,

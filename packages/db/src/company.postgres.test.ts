@@ -204,10 +204,25 @@ describePostgres("company foundation (PostgreSQL)", () => {
         }),
       ).rejects.toThrow();
     }
-    await prisma.spaceMember.delete({
-      where: { spaceId_userId: { spaceId, userId: otherUserId } },
-    });
-    await expect(companyForActor(prisma, otherActor).list()).rejects.toBeInstanceOf(IsolationError);
+    try {
+      await prisma.spaceMember.delete({
+        where: { spaceId_userId: { spaceId, userId: otherUserId } },
+      });
+      await expect(companyForActor(prisma, otherActor).list()).rejects.toBeInstanceOf(
+        IsolationError,
+      );
+    } finally {
+      await prisma.spaceMember.create({
+        data: {
+          id: `company-sm-b-${suffix}`,
+          spaceId,
+          organizationId,
+          userId: otherUserId,
+          role: "member",
+          createdAt: new Date(),
+        },
+      });
+    }
   });
 
   it("makes replay idempotent, including concurrent writes, while re-extraction adds evidence", async () => {

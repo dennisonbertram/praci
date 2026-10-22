@@ -12,6 +12,7 @@ describe("RECURRING_JOBS", () => {
       "messaging.retention",
       "account.export.cleanup",
       "company.import.recover",
+      "company.refresh.tick",
       "mail.watch.renew",
       "devin.refresh",
     ]);

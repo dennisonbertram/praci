@@ -19,6 +19,7 @@ import {
 } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
+import { isApprovalPausedResult } from "./approval-effect.js";
 import { resolveDataRoomAi } from "./data-room-models.js";
 import {
   appendToolCompletionAudit,
@@ -135,6 +136,7 @@ async function runIdentityExecutor({
   groupId = null,
   botUserId = "user-1",
   channelRun = false,
+  meetingTaintedAt = null,
   calls = [],
   callBatches,
   autoReview,
@@ -153,6 +155,7 @@ async function runIdentityExecutor({
   groupId?: string | null;
   botUserId?: string;
   channelRun?: boolean;
+  meetingTaintedAt?: Date | null;
   calls?: Array<{ name: string; args: Record<string, unknown> }>;
   callBatches?: Array<Array<{ name: string; args: Record<string, unknown> }>>;
   autoReview?: { review: ReturnType<typeof vi.fn> };
@@ -330,6 +333,7 @@ async function runIdentityExecutor({
       updateMany: vi.fn(async () => ({ count: 1 })),
     },
     thread: {
+      findUnique: vi.fn(async () => ({ meetingTaintedAt })),
       findUniqueOrThrow: vi.fn(async () => ({
         id: run.threadId,
         groupId,
@@ -677,6 +681,32 @@ function setCompanySearchStore() {
 }
 
 describe("Company identity executor boundaries", () => {
+  it("requires approval for Company reads after untrusted meeting content", async () => {
+    const { toolResults, pauseRunForInput } = await runIdentityExecutor({
+      spawnKey: null,
+      meetingTaintedAt: new Date("2026-01-01T00:00:00.000Z"),
+      calls: [{ name: "company_search", args: {} }],
+    });
+    expect(isApprovalPausedResult(toolResults[0]?.result)).toBe(true);
+    expect(pauseRunForInput).toHaveBeenCalled();
+  });
+
+  it("keeps Company read tools classified as reads", () => {
+    for (const name of COMPANY_READ_TOOLS) {
+      expect(READ_ONLY_AGENT_TOOLS.has(name)).toBe(true);
+    }
+  });
+
+  it("rejects importer attention notifications without a budget or consent issue", async () => {
+    const { toolResults } = await runIdentityExecutor({
+      spawnKey: companyImporterSpawnKey("user-1"),
+      calls: [{ name: "notify_user", args: { importance: "attention", title: "Import" } }],
+    });
+    expect(toolResults[0]?.result).toEqual({
+      error: "Importer attention notifications are reserved for budget or consent issues.",
+    });
+  });
+
   it("rejects forged importer source, connector, write, and confirmation tools before provider calls", async () => {
     const { request, toolResults, mailSend, connectorCall, webFetch } = await runIdentityExecutor({
       spawnKey: companyImporterSpawnKey("user-1"),
