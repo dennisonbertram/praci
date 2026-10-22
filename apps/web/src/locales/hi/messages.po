@@ -1481,6 +1481,7 @@ msgid "Ask before sending external email"
 msgstr "बाहरी ईमेल भेजने से पहले पूछें"
 
 #: src/components/tour/FirstRunTour.tsx
+#: src/pages/Shell.tsx
 msgid "Ask Chief"
 msgstr ""
 
@@ -3947,9 +3948,8 @@ msgid "Delete \"{0}\"?"
 msgstr ""
 
 #. placeholder {0}: bot.name
-#. placeholder {0}: displayName(artifact.name)
 #. placeholder {0}: group.name
-#: src/pages/Artifacts.tsx
+#. placeholder {0}: item.text
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-pins.tsx
 msgid "Delete {0}"
@@ -3963,6 +3963,10 @@ msgstr "{0} डिलीट करें"
 #: src/pages/shell/dialogs.tsx
 msgid "Delete {0}?"
 msgstr "{0} डिलीट करें?"
+
+#: src/pages/Artifacts.tsx
+msgid "Delete {title}"
+msgstr "{title} डिलीट करें"
 
 #: src/components/AccountAccess.tsx
 msgid "Delete account"
@@ -4192,7 +4196,7 @@ msgstr ""
 msgid "Dismiss error"
 msgstr ""
 
-#. placeholder {0}: maskCurrencyWhenHidden(undo.deadline.title)
+#. placeholder {0}: fullTitle(undo.deadline)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Dismissed {0}."
 msgstr ""
@@ -6039,7 +6043,7 @@ msgstr ""
 msgid "Marked {0} as spam"
 msgstr ""
 
-#. placeholder {0}: maskCurrencyWhenHidden(undo.deadline.title)
+#. placeholder {0}: fullTitle(undo.deadline)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Marked {0} done."
 msgstr ""
@@ -7393,6 +7397,7 @@ msgstr "मूल संदेश उपलब्ध नहीं है"
 
 #: src/components/cap-table/OwnershipBar.tsx
 #: src/components/ContactDialog.tsx
+#: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
 #: src/lib/devin-format.ts
@@ -7807,6 +7812,10 @@ msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
 msgid "Project secret"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Projected"
 msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
@@ -9329,6 +9338,10 @@ msgstr ""
 msgid "Sign-in failed"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Sign-in needed."
+msgstr ""
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/useMcpReconnect.ts
@@ -9765,6 +9778,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Switching…"
 msgstr "बदला जा रहा है…"
+
+#: src/pages/Finance.tsx
+msgid "Sync failed."
+msgstr ""
 
 #: src/components/inbox/TodoCard.tsx
 #: src/components/integrations/GranolaMeetingsCard.tsx
@@ -10436,6 +10453,7 @@ msgstr ""
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/WalletDialog.tsx
+#: src/pages/Artifacts.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Type"
 msgstr ""

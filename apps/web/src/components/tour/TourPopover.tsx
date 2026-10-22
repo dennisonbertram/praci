@@ -149,12 +149,15 @@ export function TourPopover({
     </>
   );
 
-  // Over the sidebar, never the page: the page to its right holds the greeting, composer and cards.
-  const below = !rect || rect.top + rect.height / 2 < window.innerHeight / 2;
   const ring = rect && rect.width > 0 && rect.right > 0 && rect.left < window.innerWidth;
   if (!wide) {
-    // Keep the card off the ring: on top when the target is in the lower half of the screen.
-    const top = ring && rect.top + rect.height / 2 > window.innerHeight / 2;
+    // Next to the ring: below a target in the upper half, above one in the lower half.
+    const below = !ring || rect.top + rect.height / 2 < window.innerHeight / 2;
+    const place = !ring
+      ? { bottom: 16 }
+      : below
+        ? { top: rect.bottom + 10 }
+        : { bottom: window.innerHeight - rect.top + 10 };
     return (
       <>
         {ring ? <Ring rect={rect} /> : null}
@@ -163,7 +166,8 @@ export function TourPopover({
             role="dialog"
             aria-label={t`Tour`}
             data-testid="tour-card"
-            className={`fixed inset-x-4 z-50 flex flex-col gap-2.5 rounded-lg bg-popover p-3 text-popover-foreground shadow-md ring-1 ring-foreground/10 ${top ? "top-4" : "bottom-4"}`}
+            style={place}
+            className="fixed inset-x-4 z-50 flex flex-col gap-2.5 rounded-lg bg-popover p-3 text-popover-foreground shadow-md ring-1 ring-foreground/10"
           >
             {body}
           </div>,
@@ -172,6 +176,18 @@ export function TourPopover({
       </>
     );
   }
+  // Beside the sidebar, at one x, so the card never covers a row other than its own target.
+  const sidebar = element?.closest("aside");
+  const anchor =
+    element && sidebar
+      ? {
+          getBoundingClientRect: () => {
+            const row = element.getBoundingClientRect();
+            const edge = sidebar.getBoundingClientRect().right;
+            return new DOMRect(edge, row.top, 0, row.height);
+          },
+        }
+      : element;
   return (
     <>
       {ring ? <Ring rect={rect} /> : null}
@@ -183,10 +199,9 @@ export function TourPopover({
         }}
       >
         <PopoverContent
-          anchor={element}
-          side={below ? "bottom" : "top"}
-          // An icon at the sidebar's edge keeps its card over the sidebar, not the page.
-          align={rect && rect.width < 100 ? "end" : "start"}
+          anchor={anchor}
+          side={sidebar ? "right" : "bottom"}
+          align={sidebar ? "center" : "start"}
           sideOffset={10}
           data-testid="tour-popover"
           className="w-72"
