@@ -4167,6 +4167,10 @@ msgstr "Téléchargement en cours…"
 msgid "Draft"
 msgstr ""
 
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Draft a reply"
+msgstr ""
+
 #: src/components/MailOutbox.tsx
 msgid "Draft discarded"
 msgstr ""

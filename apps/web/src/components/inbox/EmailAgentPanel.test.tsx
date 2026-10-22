@@ -20,13 +20,19 @@ vi.mock("../../pages/shell/transcript", () => ({
 vi.mock("../../pages/shell/composer", () => ({ Composer: () => <div data-testid="composer" /> }));
 const get = vi.fn();
 const navigate = vi.fn();
+const send = vi.fn();
 vi.mock("../../lib/rpc", () => ({
   rpc: {
-    threads: { get: (input: unknown) => get(input), send: vi.fn(), stop: vi.fn(), answer: vi.fn() },
+    threads: {
+      get: (input: unknown) => get(input),
+      send: (input: unknown) => send(input),
+      stop: vi.fn(),
+      answer: vi.fn(),
+    },
   },
 }));
 
-import { EmailAgentPanel, latestPendingDraft } from "./EmailAgentPanel";
+import { EmailAgentPanel, latestPendingDraft, latestTextDraft } from "./EmailAgentPanel";
 
 const bot = { id: "bot-1", name: "Thread agent", color: "#6366f1", status: "idle" } as Bot;
 const card = (body: string, extra: Record<string, unknown> = {}) =>
@@ -154,4 +160,55 @@ it("does not poll when no run is active", async () => {
     await vi.advanceTimersByTimeAsync(10_000);
   });
   expect(get).toHaveBeenCalledTimes(1);
+});
+
+const turn = (seq: number, role: "user" | "bot", text: string) =>
+  ({ ...message(seq, [{ kind: "text", text }]), role }) as ThreadMessage;
+
+it("takes a plain-text answer as the draft only after a request to draft a reply", () => {
+  expect(latestTextDraft([turn(1, "user", "Draft a reply"), turn(2, "bot", "Hi Sam")])).toBe(
+    "Hi Sam",
+  );
+  expect(latestTextDraft([turn(1, "user", "Can you write a reply?"), turn(2, "bot", "Hi")])).toBe(
+    "Hi",
+  );
+  expect(latestTextDraft([turn(1, "user", "What is this about?"), turn(2, "bot", "Rent")])).toBe(
+    undefined,
+  );
+  expect(latestTextDraft([turn(1, "user", "Draft a reply")])).toBeUndefined();
+});
+
+it("shows Reply with draft under a plain-text draft answer, not under another answer", async () => {
+  get.mockResolvedValue(snapshot([turn(1, "user", "Draft a reply"), turn(2, "bot", "Hi Sam")]));
+  const onReplyWithDraft = vi.fn();
+  act(() =>
+    root.render(
+      <EmailAgentPanel bot={bot} onClose={() => {}} onReplyWithDraft={onReplyWithDraft} />,
+    ),
+  );
+  await flush();
+  act(() => button("Reply with draft")?.click());
+  expect(onReplyWithDraft).toHaveBeenCalledWith("Hi Sam");
+
+  get.mockResolvedValue(snapshot([turn(1, "user", "Summarize"), turn(2, "bot", "Rent is due")]));
+  act(() =>
+    root.render(
+      <EmailAgentPanel bot={{ ...bot, id: "b2" }} onClose={() => {}} onReplyWithDraft={() => {}} />,
+    ),
+  );
+  await flush();
+  expect(button("Reply with draft")).toBeUndefined();
+});
+
+it("offers a Draft a reply chip in the empty panel that sends the request", async () => {
+  get.mockResolvedValue(snapshot([]));
+  send.mockResolvedValue({});
+  act(() =>
+    root.render(<EmailAgentPanel bot={bot} onClose={() => {}} onReplyWithDraft={() => {}} />),
+  );
+  await flush();
+  await act(async () => button("Draft a reply")?.click());
+  expect(send).toHaveBeenCalledWith(
+    expect.objectContaining({ botId: "bot-1", text: "Draft a reply" }),
+  );
 });

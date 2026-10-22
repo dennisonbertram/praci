@@ -34,6 +34,28 @@ export function latestPendingDraft(messages: readonly ThreadMessage[]): string |
   return undefined;
 }
 
+const DRAFT_REQUEST = "Draft a reply";
+const asksForDraft = (text: string) => /\b(draft|write)\b.*\breply\b/i.test(text);
+
+/**
+ * The text of the newest agent answer when it replies to a request to draft or write a reply, for
+ * a model that answers in plain text instead of proposing a mail_send card. Other answers have none.
+ */
+export function latestTextDraft(messages: readonly ThreadMessage[]): string | undefined {
+  const last = messages.at(-1);
+  if (last?.role !== "bot") return undefined;
+  const asked = messages.at(-2);
+  const request = asked?.role === "user" ? textOf(asked) : "";
+  const answer = textOf(last);
+  return asksForDraft(request) && answer ? answer : undefined;
+}
+
+const textOf = (message: ThreadMessage) =>
+  message.blocks
+    .flatMap((block) => (block.kind === "text" ? [block.text] : []))
+    .join("\n\n")
+    .trim();
+
 /**
  * An email's own agent, docked inside the message dialog. It is the Shell's page-agent panel (header,
  * Transcript, Composer) for the thread agent that Ask agent finds or creates. The thread is read by
@@ -101,7 +123,19 @@ export function EmailAgentPanel({
     }
   }, [snapshot, running, lastBotId]);
 
-  const draft = latestPendingDraft(snapshot?.messages ?? []);
+  const draft =
+    latestPendingDraft(snapshot?.messages ?? []) ?? latestTextDraft(snapshot?.messages ?? []);
+  const send = async (text: string, clientNonce?: string) => {
+    try {
+      sentHere.current = true;
+      await rpc.threads.send({ botId: bot.id, clientNonce: clientNonce || newClientId(), text });
+      await load();
+      return true;
+    } catch (cause) {
+      setSendError(cause instanceof Error ? cause.message : String(cause));
+      return false;
+    }
+  };
   const artifactTarget = { botId: bot.id };
   return (
     <aside
@@ -173,7 +207,14 @@ export function EmailAgentPanel({
       ) : (
         <div className="min-h-0 flex-1" />
       )}
-      {draft ? (
+      {snapshot && snapshot.messages.length === 0 ? (
+        <div className="shrink-0 px-7 pb-2">
+          <Button variant="outline" size="sm" onClick={() => void send(DRAFT_REQUEST)}>
+            <Trans>Draft a reply</Trans>
+          </Button>
+        </div>
+      ) : null}
+      {draft && !running ? (
         <div className="shrink-0 px-7 pb-2">
           <Button variant="outline" size="sm" onClick={() => onReplyWithDraft(draft)}>
             <Trans>Reply with draft</Trans>
@@ -196,21 +237,7 @@ export function EmailAgentPanel({
         fileInputRef={fileInputRef}
         onAttachmentPick={() => false}
         onRemoveAttachment={noop}
-        onSend={async (text, _mentions, clientNonce) => {
-          try {
-            sentHere.current = true;
-            await rpc.threads.send({
-              botId: bot.id,
-              clientNonce: clientNonce || newClientId(),
-              text,
-            });
-            await load();
-            return true;
-          } catch (cause) {
-            setSendError(cause instanceof Error ? cause.message : String(cause));
-            return false;
-          }
-        }}
+        onSend={(text, _mentions, clientNonce) => send(text, clientNonce)}
         onStop={async () => {
           await rpc.threads.stop({ botId: bot.id });
           await load();
