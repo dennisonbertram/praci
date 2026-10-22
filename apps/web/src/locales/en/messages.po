@@ -3786,6 +3786,10 @@ msgstr "Create a key with only Query Funds"
 msgid "Create a read-only key"
 msgstr "Create a read-only key"
 
+#: src/pages/RoutineEditor.tsx
+msgid "Create a routine"
+msgstr "Create a routine"
+
 #: src/pages/Auth.tsx
 msgid "Create account"
 msgstr "Create account"
@@ -3827,10 +3831,6 @@ msgstr "Create Inbox agent"
 #: src/pages/Shell.tsx
 msgid "Create Legal agent"
 msgstr "Create Legal agent"
-
-#: src/pages/RoutineEditor.tsx
-msgid "Create Routine"
-msgstr "Create Routine"
 
 #: src/components/AskCard.tsx
 #: src/pages/shell/dialogs.tsx
@@ -10422,6 +10422,10 @@ msgstr "Too large to preview ({0})"
 msgid "Too large to search inside"
 msgstr "Too large to search inside"
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Tool name"
+msgstr "Tool name"
+
 #: src/lib/run-phase.ts
 msgid "tools"
 msgstr "tools"
@@ -11122,10 +11126,6 @@ msgstr "Wallets"
 #: src/lib/devin-format.ts
 msgid "Web"
 msgstr "Web"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Web search"
-msgstr "Web search"
 
 #: src/pages/Paywall.tsx
 msgid "Web, desktop and mobile apps"
