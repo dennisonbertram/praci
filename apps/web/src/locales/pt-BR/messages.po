@@ -1028,7 +1028,6 @@ msgstr ""
 msgid "Address or ENS"
 msgstr ""
 
-#: src/components/AiDataSharing.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
@@ -1285,6 +1284,10 @@ msgstr ""
 
 #: src/pages/Paywall.tsx
 msgid "Any model, with your own key"
+msgstr ""
+
+#: src/pages/Artifacts.tsx
+msgid "Any time"
 msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
@@ -1694,6 +1697,7 @@ msgstr ""
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/PageHeader.tsx
 #: src/components/tour/TourPopover.tsx
 #: src/pages/Board.tsx
 #: src/pages/IntegrationSetup.tsx
@@ -5603,6 +5607,10 @@ msgstr ""
 msgid "Investors"
 msgstr ""
 
+#: src/pages/Contacts.tsx
+msgid "Investors, advisors and customers you add or your bots find appear here."
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Investors, equity and cap table"
 msgstr ""
@@ -7477,6 +7485,10 @@ msgstr "Opcional"
 msgid "Optional faster balance reads"
 msgstr ""
 
+#: src/pages/RoutineEditor.tsx
+msgid "Optional: add details for this skill"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Or connect an API key"
 msgstr "Ou conecte uma chave de API"
@@ -7701,6 +7713,10 @@ msgstr ""
 #: src/components/fundraising/RoundCard.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
+msgstr ""
+
+#: src/components/AiDataSharing.tsx
+msgid "Per model and documents"
 msgstr ""
 
 #: src/pages/Finance.tsx

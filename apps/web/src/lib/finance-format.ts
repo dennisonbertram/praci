@@ -34,8 +34,8 @@ export function axisMoney(cents: number): string {
   if (getHideAmounts()) return `$${MASK}`;
   const d = Math.round(Math.abs(cents) / 100);
   const sign = cents < 0 && d > 0 ? "−" : "";
-  if (d >= 999_500) return `${sign}$${+(d / 1_000_000).toFixed(1)}M`;
-  return d >= 1000 ? `${sign}$${+(d / 1000).toFixed(1)}k` : `${sign}$${d}`;
+  if (d >= 999_500) return `${sign}$${+(d / 1_000_000).toFixed(2)}M`;
+  return d >= 1000 ? `${sign}$${+(d / 1000).toFixed(2)}k` : `${sign}$${d}`;
 }
 
 const dayDate = (day: string) => new Date(`${day.slice(0, 10)}T00:00:00Z`);
