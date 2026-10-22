@@ -5807,12 +5807,11 @@ msgstr "Legal relationships"
 msgid "Let other agents use {service} directly"
 msgstr "Let other agents use {service} directly"
 
-#: src/components/data-room/ConsentPrompt.tsx
+#: src/components/AiDataSharing.tsx
 msgid "Let Praci read documents"
 msgstr "Let Praci read documents"
 
-#: src/components/data-room/ConsentPrompt.tsx
-#: src/components/legal/ConsentPrompt.tsx
+#: src/components/AiDataSharing.tsx
 msgid "Let Praci read your documents"
 msgstr "Let Praci read your documents"
 
@@ -7793,6 +7792,10 @@ msgstr "Posting readiness unavailable."
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci can now read your documents."
 msgstr "Praci can now read your documents."
+
+#: src/components/legal/ConsentPrompt.tsx
+msgid "Praci doesn't read your documents."
+msgstr "Praci doesn't read your documents."
 
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."

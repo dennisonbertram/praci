@@ -187,6 +187,20 @@ it("asks for consent when it is not allowed, and grants the shown key", async ()
   expect(rpcMock.scanNow).toHaveBeenCalledTimes(1);
 });
 
+it("offers Not now like the Data room, which leaves one line with a way back", async () => {
+  localStorage.clear();
+  rpcMock.overview.mockResolvedValue(overview);
+  rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
+  await render(<LegalPage />);
+  await click(button("Not now"));
+  expect(rpcMock.consentGrant).not.toHaveBeenCalled();
+  expect(container.textContent).toContain("Praci doesn't read your documents.");
+  expect(button("Allow")).toBeUndefined();
+  await click(button("Let Praci read documents"));
+  expect(button("Allow")).toBeDefined();
+  localStorage.clear();
+});
+
 it("does not repeat the card's sentence on an empty page waiting for consent", async () => {
   rpcMock.overview.mockResolvedValue(emptyWithFiles);
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });

@@ -308,6 +308,9 @@ function InboxListPage({
   const sortEnding = useRef(false);
   // "Not now" on the sorting prompt hides it for this visit only.
   const [consentDismissed, setConsentDismissed] = useState(false);
+  const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+  const [filterTipOpen, setFilterTipOpen] = useState(false);
+  const filterClosedAt = useRef(0);
   const [justAllowed, setJustAllowed] = useState(false);
 
   // A message sent from any composer: reload, since the send synced the account.
@@ -562,6 +565,15 @@ function InboxListPage({
     // The to-dos reload when triage finishes; sorting ends when they arrive, so the page changes once.
     else if (!shown?.triagePending && !sortEnding.current) setSorting(false);
   }, [firstSort, shown?.triagePending]);
+  // Allow starts the sort clock: the sync that queues triage can take a while, and the list says
+  // so meanwhile. If triage never starts, the page goes back to normal after a minute.
+  useEffect(() => {
+    if (!sorting || shown?.triagePending) return;
+    const timer = setTimeout(() => {
+      if (!sortEnding.current) setSorting(false);
+    }, 60_000);
+    return () => clearTimeout(timer);
+  }, [sorting, shown?.triagePending]);
   const narrowed = triage && Boolean(category);
   // A search or narrowed list is one date-ordered list under a result count, not Needs reply / Today / Earlier.
   const resultsView = filtered || narrowed;
@@ -971,6 +983,7 @@ function InboxListPage({
         onAllowed={() => {
           restartSortWatch();
           setJustAllowed(true);
+          setSorting(true);
           setAttempt((n) => n + 1);
           setReload((n) => n + 1);
         }}
@@ -978,9 +991,21 @@ function InboxListPage({
         shownElsewhere={failed && !failedEmpty ? failed : undefined}
       />
     ) : null;
-  const todoCard = todos ? (
+  // "Reply to Morgan ..." with no date repeats its row under Needs reply: the row stays, the card drops it.
+  // ponytail: matches English reply wording only; a "needs reply" flag on the to-do would be exact.
+  const needsReplyIds = new Set(groups.needsReply.map((row) => row.id));
+  const cardTodos = todos?.filter(
+    (todo) =>
+      todo.doneAt !== null ||
+      todo.dueOn ||
+      !todo.messageId ||
+      !needsReplyIds.has(todo.messageId) ||
+      !/^(reply|respond|answer)\b/i.test(todo.text),
+  );
+  const todoCard = cardTodos ? (
     <TodoCard
-      todos={todos}
+      todos={cardTodos}
+      compact={phone}
       meetings={meetings ?? undefined}
       onOpen={openMessage}
       onChange={(next) => {
@@ -1103,7 +1128,8 @@ function InboxListPage({
       requestAnimationFrame(() =>
         [...document.querySelectorAll<HTMLElement>("[data-row-id]")]
           .find((el) => el.dataset.rowId === selectedId)
-          ?.focus(),
+          // Not scrolled to: after a reply the row has moved to another group, and the list stays put.
+          ?.focus({ preventScroll: true }),
       );
     }
   }, [openId, selectedId]);
@@ -1288,8 +1314,23 @@ function InboxListPage({
                   </Tooltip>
                 ) : null}
                 {tools ? (
-                  <DropdownMenu>
-                    <Tooltip>
+                  <DropdownMenu
+                    onOpenChange={(open) => {
+                      setFilterMenuOpen(open);
+                      if (!open) {
+                        // Closing returns focus to the button, which must not reopen its tooltip.
+                        setFilterTipOpen(false);
+                        filterClosedAt.current = Date.now();
+                      }
+                    }}
+                  >
+                    <Tooltip
+                      open={filterTipOpen && !filterMenuOpen}
+                      onOpenChange={(open) => {
+                        if (!open || Date.now() - filterClosedAt.current > 400)
+                          setFilterTipOpen(open);
+                      }}
+                    >
                       <TooltipTrigger
                         render={
                           <DropdownMenuTrigger

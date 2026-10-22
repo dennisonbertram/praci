@@ -5807,12 +5807,11 @@ msgstr ""
 msgid "Let other agents use {service} directly"
 msgstr ""
 
-#: src/components/data-room/ConsentPrompt.tsx
+#: src/components/AiDataSharing.tsx
 msgid "Let Praci read documents"
 msgstr ""
 
-#: src/components/data-room/ConsentPrompt.tsx
-#: src/components/legal/ConsentPrompt.tsx
+#: src/components/AiDataSharing.tsx
 msgid "Let Praci read your documents"
 msgstr ""
 
@@ -7792,6 +7791,10 @@ msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci can now read your documents."
+msgstr ""
+
+#: src/components/legal/ConsentPrompt.tsx
+msgid "Praci doesn't read your documents."
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
