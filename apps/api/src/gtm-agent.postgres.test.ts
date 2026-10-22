@@ -220,9 +220,10 @@ describePostgres("GTM agent (PostgreSQL)", () => {
   });
 
   it("reserves the GTM spawn-key prefix for the built-in agent", async () => {
-    const client = createRouterClient(createRouter({ prisma } as unknown as RouterDeps), {
-      context: { actor: actor(userA) } as never,
-    });
+    const client = createRouterClient(
+      createRouter({ prisma, env: { mailWritesDisabled: true } } as unknown as RouterDeps),
+      { context: { actor: actor(userA) } as never },
+    );
 
     await expect(
       client.bots.create({

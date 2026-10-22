@@ -76,9 +76,10 @@ describePostgres("integration agents (PostgreSQL)", () => {
   let bServer: { id: string };
 
   const client = (who: Actor) =>
-    createRouterClient(createRouter({ prisma } as unknown as RouterDeps), {
-      context: { actor: who } as never,
-    });
+    createRouterClient(
+      createRouter({ prisma, env: { mailWritesDisabled: true } } as unknown as RouterDeps),
+      { context: { actor: who } as never },
+    );
   const mkServer = (userId: string, slug: string, endpoint: string, space = spaceId) =>
     prisma.mcpServer.create({
       data: {
@@ -361,9 +362,10 @@ describePostgres("integration agents (PostgreSQL)", () => {
             )) as never);
       },
     });
-    const racer = createRouterClient(createRouter({ prisma: racing } as unknown as RouterDeps), {
-      context: { actor: a } as never,
-    });
+    const racer = createRouterClient(
+      createRouter({ prisma: racing, env: { mailWritesDisabled: true } } as unknown as RouterDeps),
+      { context: { actor: a } as never },
+    );
     await expect(racer.mcp.servers.setWrites({ id: s.id, enabled: true })).rejects.toMatchObject({
       code: "CONFLICT",
     });
@@ -395,9 +397,14 @@ describePostgres("integration agents (PostgreSQL)", () => {
         });
       },
     });
-    return createRouterClient(createRouter({ prisma: racing, ...extra } as unknown as RouterDeps), {
-      context: { actor: a } as never,
-    });
+    return createRouterClient(
+      createRouter({
+        prisma: racing,
+        env: { mailWritesDisabled: true },
+        ...extra,
+      } as unknown as RouterDeps),
+      { context: { actor: a } as never },
+    );
   };
 
   it("setExclusive cannot change a server released after its check", async () => {
@@ -582,9 +589,10 @@ describePostgres("integration agents (PostgreSQL)", () => {
           target.$transaction(((tx: PrismaClient) => fn(hook(tx))) as never);
       },
     });
-    const racer = createRouterClient(createRouter({ prisma: racing } as unknown as RouterDeps), {
-      context: { actor: a } as never,
-    });
+    const racer = createRouterClient(
+      createRouter({ prisma: racing, env: { mailWritesDisabled: true } } as unknown as RouterDeps),
+      { context: { actor: a } as never },
+    );
     await racer.mcp.assignments.replace({ botId: other.id, assignments: [] });
     expect(fired).toBe(true);
     expect(await prisma.botMcpServer.count({ where: { botId: other.id, serverId: s.id } })).toBe(1);
