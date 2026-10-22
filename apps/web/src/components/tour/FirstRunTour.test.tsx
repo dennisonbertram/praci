@@ -124,7 +124,7 @@ it("tells the shell about Skip tour, so Ask Chief stays one tap away, but not ab
   expect(onSkip).toHaveBeenCalledTimes(1);
 });
 
-it("on a phone the card sits right beside its target, below a high one and above a low one", async () => {
+it("on a phone the card stays at the top of the drawer, and moves down only for a target under it", async () => {
   window.matchMedia = ((query: string) => ({
     matches: false,
     media: query,
@@ -138,20 +138,22 @@ it("on a phone the card sits right beside its target, below a high one and above
     el.getBoundingClientRect = () => rect(top);
   };
   at("sidebar-inbox", 100);
+  at("sidebar-integrations", 650);
   at("user-menu", 700);
   await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
   const card = () => document.querySelector("[data-testid='tour-card']") as HTMLElement;
-  // Upper-half target (bottom at 140): the card starts 8px under it.
-  expect(card().style.top).toBe("148px");
-  expect(card().style.bottom).toBe("");
-  await click("Next");
-  await click("Next");
-  // Lower-half target (top at 700): the card ends 8px above it.
-  expect(card().style.bottom).toBe(`${window.innerHeight - 700 + 8}px`);
+  // A target under the top spot: the card goes to the bottom instead.
+  expect(card().style.bottom).toBe("16px");
   expect(card().style.top).toBe("");
+  // Every later stop keeps the card at the top, so Next stays put and the footer rows stay visible.
+  for (let i = 0; i < 2; i++) {
+    await click("Next");
+    expect(card().style.top).toBe("16px");
+    expect(card().style.bottom).toBe("");
+  }
 });
 
-it("on desktop the card sits beside the sidebar at the foot of the page, the same at every stop", async () => {
+it("on desktop the card sits inside the sidebar above its footer, so the chat stays clear", async () => {
   const aside = document.createElement("aside");
   aside.getBoundingClientRect = () =>
     ({
@@ -168,11 +170,14 @@ it("on desktop the card sits beside the sidebar at the foot of the page, the sam
   target.getBoundingClientRect = () =>
     ({ top: 100, bottom: 140, left: 10, right: 300, width: 290, height: 40 }) as DOMRect;
   await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
+  const footer = document.querySelector('[data-tour="sidebar-integrations"]') as HTMLElement;
+  footer.getBoundingClientRect = () => ({ top: 700, bottom: 740 }) as DOMRect;
+  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
   const card = document.querySelector("[data-testid='tour-card']") as HTMLElement;
-  // Not level with the target: that would cover the page title or the chat's first lines.
+  // Inside the column (x < 316), so no chat text is under it.
   expect(card.style.top).toBe("");
-  expect(card.style.bottom).toBe("16px");
-  expect(card.style.left).toBe("324px");
+  expect(card.style.bottom).toBe(`${window.innerHeight - 692}px`);
+  expect(card.style.left).toBe("14px");
   expect(card.style.width).toBe("288px");
 });
 
@@ -182,7 +187,7 @@ it("does not tell anyone to connect Gmail, which may already be connected", asyn
   el.dataset.tour = "sidebar-integrations";
   document.body.append(el);
   await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
-  expect(document.body.textContent).toContain("add more in Integrations");
+  expect(document.body.textContent).toContain("add more");
   expect(document.body.textContent).not.toContain("Gmail");
 });
 

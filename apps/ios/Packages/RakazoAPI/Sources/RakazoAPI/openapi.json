@@ -51626,6 +51626,375 @@
         ]
       }
     },
+    "/rpc/gtm/overview": {
+      "post": {
+        "operationId": "rpc_gtm_overview",
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": false,
+            "description": "Native clients send rakazo://; include the application origin for origin checks.",
+            "schema": {
+              "type": "string",
+              "example": "rakazo://"
+            }
+          },
+          {
+            "name": "x-rakazo-space-id",
+            "in": "header",
+            "required": false,
+            "description": "Optional selected space identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "json": {
+                    "description": "This procedure has no input."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful RPC response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "json"
+                  ],
+                  "properties": {
+                    "json": {
+                      "$schema": "https://json-schema.org/draft/2020-12/schema",
+                      "type": "object",
+                      "properties": {
+                        "goal": {
+                          "anyOf": [
+                            {
+                              "$ref": "#/components/schemas/RpcGtmOverviewOutputSchema0"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "groups": {
+                          "type": "object",
+                          "properties": {
+                            "needs_you": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/RpcGtmOverviewOutputSchema0"
+                              }
+                            },
+                            "in_progress": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/RpcGtmOverviewOutputSchema0"
+                              }
+                            },
+                            "drafts": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/RpcGtmOverviewOutputSchema0"
+                              }
+                            },
+                            "done": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/RpcGtmOverviewOutputSchema0"
+                              }
+                            }
+                          },
+                          "required": [
+                            "needs_you",
+                            "in_progress",
+                            "drafts",
+                            "done"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "counts": {
+                          "type": "object",
+                          "properties": {
+                            "needs_you": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "in_progress": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "drafts": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "done": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "needs_you",
+                            "in_progress",
+                            "drafts",
+                            "done"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "channels": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "channel": {
+                                "$ref": "#/components/schemas/RpcGtmOverviewOutputSchema2"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "connected",
+                                  "not_connected",
+                                  "unavailable",
+                                  "ready",
+                                  "draft_only"
+                                ]
+                              },
+                              "accounts": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    "platform": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 100
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 300
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "platform",
+                                    "label"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "channel",
+                              "status",
+                              "accounts"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "gmailAccounts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "connectionId": {
+                                "$ref": "#/components/schemas/RpcGtmOverviewOutputSchema1"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "address": {
+                                "type": "string"
+                              },
+                              "senderRules": {
+                                "type": "string",
+                                "enum": [
+                                  "ready",
+                                  "needs_permission",
+                                  "unsupported"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "connectionId",
+                              "label"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "zernioLinked": {
+                          "type": "boolean"
+                        },
+                        "postingCapability": {
+                          "type": "string",
+                          "enum": [
+                            "not_connected",
+                            "api_key_required",
+                            "ready"
+                          ]
+                        },
+                        "nextRunAt": {
+                          "anyOf": [
+                            {
+                              "$ref": "#/components/schemas/RpcGtmOverviewOutputSchema3"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "directoryPolicy": {
+                          "type": "object",
+                          "properties": {
+                            "founderApprovals": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "autoOpenings": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "approvalsBeforeAuto": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "dailyCap": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "founderApprovals",
+                            "autoOpenings",
+                            "approvalsBeforeAuto",
+                            "dailyCap"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "goal",
+                        "groups",
+                        "counts",
+                        "channels",
+                        "gmailAccounts",
+                        "zernioLinked",
+                        "postingCapability",
+                        "nextRunAt",
+                        "directoryPolicy"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Some server-side Zod refinements cannot be represented in JSON Schema and remain enforced by the server.",
+                      "x-rakazo-zod-refinements": "Enforced by the server; not expressible in JSON Schema."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "402": {
+            "$ref": "#/components/responses/Http402"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "406": {
+            "$ref": "#/components/responses/Http406"
+          },
+          "408": {
+            "$ref": "#/components/responses/Http408"
+          },
+          "409": {
+            "$ref": "#/components/responses/Http409"
+          },
+          "410": {
+            "$ref": "#/components/responses/Http410"
+          },
+          "412": {
+            "$ref": "#/components/responses/Http412"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "422": {
+            "$ref": "#/components/responses/Http422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Http428"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "499": {
+            "$ref": "#/components/responses/Http499"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "501": {
+            "$ref": "#/components/responses/Http501"
+          },
+          "502": {
+            "$ref": "#/components/responses/Http502"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "504": {
+            "$ref": "#/components/responses/Http504"
+          },
+          "default": {
+            "$ref": "#/components/responses/OtherORPCError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
     "/rpc/gtm/postingCapability": {
       "post": {
         "operationId": "rpc_gtm_postingCapability",
@@ -51684,6 +52053,180 @@
                         "api_key_required",
                         "ready"
                       ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "402": {
+            "$ref": "#/components/responses/Http402"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "406": {
+            "$ref": "#/components/responses/Http406"
+          },
+          "408": {
+            "$ref": "#/components/responses/Http408"
+          },
+          "409": {
+            "$ref": "#/components/responses/Http409"
+          },
+          "410": {
+            "$ref": "#/components/responses/Http410"
+          },
+          "412": {
+            "$ref": "#/components/responses/Http412"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "422": {
+            "$ref": "#/components/responses/Http422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Http428"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "499": {
+            "$ref": "#/components/responses/Http499"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "501": {
+            "$ref": "#/components/responses/Http501"
+          },
+          "502": {
+            "$ref": "#/components/responses/Http502"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "504": {
+            "$ref": "#/components/responses/Http504"
+          },
+          "default": {
+            "$ref": "#/components/responses/OtherORPCError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/rpc/gtm/queue": {
+      "post": {
+        "operationId": "rpc_gtm_queue",
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": false,
+            "description": "Native clients send rakazo://; include the application origin for origin checks.",
+            "schema": {
+              "type": "string",
+              "example": "rakazo://"
+            }
+          },
+          {
+            "name": "x-rakazo-space-id",
+            "in": "header",
+            "required": false,
+            "description": "Optional selected space identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "json": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "type": "object",
+                    "properties": {
+                      "from": {
+                        "$ref": "#/components/schemas/RpcGtmQueueInputSchema0"
+                      },
+                      "to": {
+                        "$ref": "#/components/schemas/RpcGtmQueueInputSchema0"
+                      }
+                    },
+                    "required": [
+                      "from",
+                      "to"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Some server-side Zod refinements cannot be represented in JSON Schema and remain enforced by the server.",
+                    "x-rakazo-zod-refinements": "Enforced by the server; not expressible in JSON Schema."
+                  }
+                },
+                "required": [
+                  "json"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful RPC response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "json"
+                  ],
+                  "properties": {
+                    "json": {
+                      "$schema": "https://json-schema.org/draft/2020-12/schema",
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "$ref": "#/components/schemas/RpcGtmQueueOutputSchema0"
+                        },
+                        "complete": {
+                          "$ref": "#/components/schemas/RpcGtmQueueOutputSchema1"
+                        },
+                        "posts": {
+                          "$ref": "#/components/schemas/RpcGtmQueueOutputSchema2"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "complete",
+                        "posts"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Some server-side Zod refinements cannot be represented in JSON Schema and remain enforced by the server.",
+                      "x-rakazo-zod-refinements": "Enforced by the server; not expressible in JSON Schema."
                     }
                   }
                 }
@@ -80124,6 +80667,11 @@
                         "devinConnected": {
                           "type": "boolean"
                         },
+                        "gtmNeedsYou": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
                         "dataRoomWaiting": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -80154,6 +80702,7 @@
                         "legalDueSoon",
                         "devinNeedsYou",
                         "devinConnected",
+                        "gtmNeedsYou",
                         "dataRoomWaiting",
                         "hasTickets",
                         "botKinds"
@@ -107276,6 +107825,247 @@
       "RpcGtmAgentOutputSchema0": {
         "type": "string",
         "minLength": 1
+      },
+      "RpcGtmOverviewOutputSchema0": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/RpcGtmOverviewOutputSchema1"
+          },
+          "botId": {
+            "$ref": "#/components/schemas/RpcGtmOverviewOutputSchema1"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "parked",
+              "done"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "goal",
+                  "research",
+                  "draft",
+                  "public_post",
+                  "create_account",
+                  "outbound_email"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "channel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RpcGtmOverviewOutputSchema2"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scheduledFor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RpcGtmOverviewOutputSchema3"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "proof": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "approvedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RpcGtmOverviewOutputSchema3"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "approvedBy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "policy"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "botId",
+          "title",
+          "status",
+          "notes",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "RpcGtmOverviewOutputSchema1": {
+        "type": "string",
+        "minLength": 1
+      },
+      "RpcGtmOverviewOutputSchema2": {
+        "type": "string",
+        "enum": [
+          "x",
+          "linkedin",
+          "threads",
+          "bluesky",
+          "reddit",
+          "hn",
+          "producthunt",
+          "directory",
+          "email"
+        ]
+      },
+      "RpcGtmOverviewOutputSchema3": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      },
+      "RpcGtmQueueOutputSchema0": {
+        "type": "string",
+        "enum": [
+          "not_connected",
+          "api_key_required",
+          "ready",
+          "unavailable"
+        ]
+      },
+      "RpcGtmQueueOutputSchema1": {
+        "type": "boolean"
+      },
+      "RpcGtmQueueOutputSchema2": {
+        "maxItems": 1000,
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/RpcGtmQueueOutputSchema3"
+        }
+      },
+      "RpcGtmQueueOutputSchema3": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 20000
+          },
+          "status": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "scheduledFor": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "platforms": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RpcGtmQueueOutputSchema4"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "content",
+          "status",
+          "scheduledFor",
+          "platforms"
+        ],
+        "additionalProperties": false
+      },
+      "RpcGtmQueueOutputSchema4": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "accountId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "status": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "platformPostUrl": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "platform",
+          "accountId",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "RpcGtmQueueInputSchema0": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
       },
       "HealthResponse": {
         "type": "object",

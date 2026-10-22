@@ -108,7 +108,7 @@ export function FinanceBurnPage() {
               onOpen={(point) => navigate(financePath.month(point.start.slice(0, 7)))}
             />
             {series.at(-1)?.partial ? (
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 <Trans>* Month to date</Trans>
               </div>
             ) : null}
@@ -118,7 +118,7 @@ export function FinanceBurnPage() {
               title={<Trans>Where it went</Trans>}
               action={
                 first && last ? (
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {monthShort(first)}–{monthShort(last)}
                   </span>
                 ) : null

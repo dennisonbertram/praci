@@ -414,7 +414,7 @@ export function CompanyMenu({ children, className }: { children?: ReactNode; cla
       )}
     >
       <SpaceName />
-      <span className="flex min-w-0 shrink items-center gap-0.5 text-[11px] text-muted-foreground">
+      <span className="flex min-w-0 shrink items-center gap-0.5 text-xs text-muted-foreground">
         {children}
       </span>
       <ShowAmountsButton />
@@ -584,7 +584,7 @@ export function Kpi({
       >
         {value}
       </div>
-      <div className="text-[11px] text-muted-foreground">{sub ?? " "}</div>
+      <div className="text-xs text-muted-foreground">{sub ?? " "}</div>
     </>
   );
   const cls = "block px-3.5";
@@ -734,7 +734,7 @@ function TransactionRow({ row }: { row: FinanceTransaction }) {
           {row.counterparty}
         </Link>
         {row.memo ? (
-          <div className="line-clamp-1 text-[11px] text-muted-foreground">
+          <div className="line-clamp-1 text-xs text-muted-foreground">
             {maskCurrencyWhenHidden(row.memo)}
           </div>
         ) : null}
@@ -777,7 +777,7 @@ function VendorGroupRows({ group }: { group: VendorGroup }) {
           >
             {name}
           </button>
-          <div className="text-[11px] text-muted-foreground">
+          <div className="text-xs text-muted-foreground">
             {plural(count, { one: "# transaction", other: "# transactions" })}
           </div>
         </TableCell>
@@ -953,7 +953,7 @@ function Legend({ className, children }: { className: string; children: ReactNod
 /** The key for a BurnLines chart: Out, Revenue and Financing. */
 export function BurnLegend() {
   return (
-    <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-[11px] text-muted-foreground">
+    <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-xs text-muted-foreground">
       <Legend className="bg-foreground">
         <Trans>Out</Trans>
       </Legend>

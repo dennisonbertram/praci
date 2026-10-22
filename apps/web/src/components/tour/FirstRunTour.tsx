@@ -73,7 +73,7 @@ export function FirstRunTour({
         id: "apps",
         name: t`Integrations`,
         anchor: '[data-tour="sidebar-integrations"]',
-        text: t`See what bots can reach, and add more in Integrations.`,
+        text: t`See what bots can reach and add more.`,
       },
       {
         id: "account",

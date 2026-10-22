@@ -237,9 +237,16 @@ export function InboxCleanup({
       className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-20 pt-2 md:px-7 md:pt-5"
     >
       <PageHeader
+        onBack={onBack}
         title={
           <span className="flex items-center gap-2">
-            <Button variant="ghost" size="icon-sm" aria-label={t`Back`} onClick={onBack}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="max-lg:hidden"
+              aria-label={t`Back`}
+              onClick={onBack}
+            >
               <ArrowLeft aria-hidden="true" />
             </Button>
             <Trans>Cleanup</Trans>

@@ -1032,7 +1032,6 @@ msgstr "Address"
 msgid "Address or ENS"
 msgstr "Address or ENS"
 
-#: src/components/AiDataSharing.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
@@ -1290,6 +1289,10 @@ msgstr "Answers questions about what Devin is working on."
 #: src/pages/Paywall.tsx
 msgid "Any model, with your own key"
 msgstr "Any model, with your own key"
+
+#: src/pages/Artifacts.tsx
+msgid "Any time"
+msgstr "Any time"
 
 #: src/components/integrations/IMessageSection.tsx
 msgid "Anyone who can reach this address can talk to your Mac's server. Use a private network or a tunnel."
@@ -1698,6 +1701,7 @@ msgstr "Awaiting deposit · {0}"
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/PageHeader.tsx
 #: src/components/tour/TourPopover.tsx
 #: src/pages/Board.tsx
 #: src/pages/IntegrationSetup.tsx
@@ -2412,6 +2416,7 @@ msgstr "Client secret (optional)"
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 #: src/pages/shell/BotSkillsSection.tsx
+#: src/pages/shell/command-palette.tsx
 #: src/pages/WindowChrome.tsx
 msgid "Close"
 msgstr "Close"
@@ -5607,6 +5612,10 @@ msgstr "Investor email"
 msgid "Investors"
 msgstr "Investors"
 
+#: src/pages/Contacts.tsx
+msgid "Investors, advisors and customers you add or your bots find appear here."
+msgstr "Investors, advisors and customers you add or your bots find appear here."
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Investors, equity and cap table"
 msgstr "Investors, equity and cap table"
@@ -7481,6 +7490,10 @@ msgstr "Optional"
 msgid "Optional faster balance reads"
 msgstr "Optional faster balance reads"
 
+#: src/pages/RoutineEditor.tsx
+msgid "Optional: add details for this skill"
+msgstr "Optional: add details for this skill"
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Or connect an API key"
 msgstr "Or connect an API key"
@@ -7706,6 +7719,10 @@ msgstr "pending"
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
 msgstr "Pending"
+
+#: src/components/AiDataSharing.tsx
+msgid "Per model and documents"
+msgstr "Per model and documents"
 
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -9114,8 +9131,8 @@ msgid "See usage"
 msgstr "See usage"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "See what bots can reach, and add more in Integrations."
-msgstr "See what bots can reach, and add more in Integrations."
+msgid "See what bots can reach and add more."
+msgstr "See what bots can reach and add more."
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "See your cash, burn and runway, pulled from your bank."
@@ -9186,6 +9203,10 @@ msgstr "Send again"
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Send an unsubscribe email to {0}?"
 msgstr "Send an unsubscribe email to {0}?"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Send and receive iMessages"
+msgstr "Send and receive iMessages"
 
 #: src/components/AskCard.tsx
 msgid "Send answer"
@@ -9664,13 +9685,13 @@ msgstr "Skipping"
 msgid "Slack"
 msgstr "Slack"
 
+#: src/pages/shell/message-cards.tsx
+msgid "Slack and your calendar"
+msgstr "Slack and your calendar"
+
 #: src/pages/RoutineEditor.tsx
 msgid "Slack message"
 msgstr "Slack message"
-
-#: src/pages/shell/message-cards.tsx
-msgid "Slack, calendar and email"
-msgstr "Slack, calendar and email"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Slack, Notion, GitHub and more, with one Composio API key"
@@ -10457,10 +10478,6 @@ msgstr "This zip is password-protected"
 #: src/components/data-room/DropZone.tsx
 msgid "This zip is too large to unpack"
 msgstr "This zip is too large to unpack"
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "Through a Photon project"
-msgstr "Through a Photon project"
 
 #: src/components/integrations/IMessageSection.tsx
 msgid "Through BlueBubbles on your Mac"
