@@ -233,6 +233,7 @@ Cost = input tokens x input price + output tokens x output price, with prices TB
 ### PII, retention, deletion, export
 
 - Stored: names, work emails, roles, dates, organisation names, short quotes. Not stored: full message bodies or document text (documents stay in the Data room; mail and chat bodies are not kept), compensation, health, performance, personal contacts.
+- **Source email deletion**: deleting an email in Gmail retains its imported Company evidence and history. Removal requires an explicit Company disconnect, exclude-person or erase action, with the existing locked-edit and rejection retention rules below. This is the approved v1 retention policy, not deletion synchronization.
 - **Disconnect** a source: deletes its evidence rows and any fact left with none, in one transaction. Rejections and locked owner edits stay.
 - **Exclude a person**: stops collection about them and deletes their person entity, edges and events that name only them (the Team health opt-out pattern).
 - **Erase company map**: deletes every map row for the owner in the space, including rejections.
