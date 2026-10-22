@@ -2,9 +2,9 @@ import { rpc } from "./rpc";
 
 export const aiConsentStatus = () => rpc.aiConsent.status({});
 
-/** Allows one recipient under the scope and disclosure version the server reports right now. */
-export async function allowRecipient(key: string) {
-  const { scope, version } = await aiConsentStatus();
+/** Allows one recipient. With `shown`, it binds the grant to the scope and version the user reviewed; the server refuses it if they changed. */
+export async function allowRecipient(key: string, shown?: { scope: string; version: string }) {
+  const { scope, version } = shown ?? (await aiConsentStatus());
   return rpc.aiConsent.allow({ scope, version, keys: [key] });
 }
 
@@ -12,8 +12,11 @@ export const revokeRecipient = (key: string) => rpc.aiConsent.revoke({ key });
 
 export const documentConsent = () => rpc.dataRoom.consent();
 
-/** Allows the Data room's models for documents, under the key and version the server reports right now. */
-export async function allowDocuments() {
-  const { key, version } = await documentConsent();
-  return rpc.dataRoom.consentGrant({ key, version });
-}
+/** Allows only the document consent that was shown (key, version, Space); the server refuses it if any changed. */
+export const allowDocuments = (shown: { key: string; version: string; spaceId?: string }) =>
+  rpc.dataRoom.consentGrant({
+    key: shown.key,
+    version: shown.version,
+    spaceId: shown.spaceId,
+    documentsOnly: true,
+  });

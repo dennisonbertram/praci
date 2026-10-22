@@ -121,10 +121,25 @@ export function AiDataSharingSection() {
   const [recipients, setRecipients] = useState<AiRecipient[] | null>(null);
   // Files and contracts need their own consent; null until it loads or when it cannot.
   const [documents, setDocuments] = useState<DataRoomConsentStatus | null>(null);
+  // The scope and version shown, so a grant is refused if they changed since.
+  const [shown, setShown] = useState<{ scope: string; version: string } | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
-  const show = (status: AiConsentStatus) =>
+  const show = (status: AiConsentStatus) => {
+    setShown({ scope: status.scope, version: status.version });
     setRecipients(status.recipients.filter((recipient) => recipient.use === "model"));
+  };
+  const load = () => {
+    aiConsentStatus()
+      .then(show)
+      .catch(() => setRecipients([]));
+    documentConsent()
+      .then(setDocuments)
+      .catch((cause) => {
+        setDocuments(null);
+        setError(errorText(cause));
+      });
+  };
   useEffect(() => {
     let live = true;
     aiConsentStatus()
@@ -132,7 +147,7 @@ export function AiDataSharingSection() {
       .catch(() => live && setRecipients([]));
     documentConsent()
       .then((status) => live && setDocuments(status))
-      .catch(() => undefined);
+      .catch((cause) => live && setError(errorText(cause)));
     return () => {
       live = false;
     };
@@ -151,15 +166,21 @@ export function AiDataSharingSection() {
       .then((status) => status && afterChange(status))
       // Revoking a model also takes back the document grant, so read it again.
       .then(() => documentConsent().then(setDocuments, () => undefined))
-      .catch((cause) => setError(errorText(cause)))
+      .catch((cause) => {
+        setError(errorText(cause));
+        // What was shown is out of date: show the current state and ask again.
+        load();
+      })
       .finally(() => setPending(false));
   };
   const setOne = (recipient: AiRecipient, allowed: boolean) =>
-    run(() => (allowed ? allowRecipient(recipient.key) : revokeRecipient(recipient.key)));
+    run(() =>
+      allowed ? allowRecipient(recipient.key, shown ?? undefined) : revokeRecipient(recipient.key),
+    );
   const documentsNeeded = (documents?.recipients.length ?? 0) > 0;
   const setDocumentsAllowed = (allowed: boolean) =>
     run(async () => {
-      if (allowed) await allowDocuments();
+      if (allowed && documents) await allowDocuments(documents);
       else if (documents) await revokeRecipient(documents.key);
       return aiConsentStatus();
     });
@@ -167,16 +188,20 @@ export function AiDataSharingSection() {
     run(async () => {
       let status: AiConsentStatus | undefined;
       for (const recipient of recipients ?? []) {
-        status = await (allowed ? allowRecipient(recipient.key) : revokeRecipient(recipient.key));
+        status = await (allowed
+          ? allowRecipient(recipient.key, shown ?? undefined)
+          : revokeRecipient(recipient.key));
       }
       // The switch says it covers files and contracts, so it turns their consent on and off too.
-      if (allowed && documentsNeeded && !documents?.allowed) await allowDocuments();
+      if (allowed && documents && documentsNeeded && !documents.allowed)
+        await allowDocuments(documents);
       if (!allowed && documents && documentsNeeded) await revokeRecipient(documents.key);
       return status ?? aiConsentStatus();
     });
   // On only when every model and the documents are allowed, so it matches what works; a partial
   // grant (for example the one a Mail Allow made) reads off and Advanced opens to show what is allowed.
   const allAllowed =
+    documents !== null &&
     (recipients?.every((recipient) => recipient.allowed) ?? false) &&
     (!documentsNeeded || documents?.allowed === true);
   const partlyAllowed =
@@ -201,7 +226,7 @@ export function AiDataSharingSection() {
           <Switch
             aria-label={t`Allow AI models`}
             checked={allAllowed}
-            disabled={pending}
+            disabled={pending || documents === null}
             onCheckedChange={setAll}
           />
           <span className="flex min-w-0 flex-col">
