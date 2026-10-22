@@ -7,7 +7,7 @@ import { FileText, RotateCw, Trash2, Upload, X } from "lucide-react";
 import type { KeyboardEvent, PointerEvent, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { canPreviewImage } from "../../lib/data-room";
+import { canPreviewImage, DATA_ROOM_CHANGED } from "../../lib/data-room";
 import { MASK } from "../../lib/finance-format";
 import {
   getHideAmounts,
@@ -16,6 +16,7 @@ import {
 } from "../../lib/hide-amounts-preference";
 import { rpc } from "../../lib/rpc";
 import { canPreviewSpreadsheet } from "../../lib/spreadsheet";
+import { DocumentsConsentCard } from "../AiDataSharing";
 import { SheetPreview } from "../SheetPreview";
 import { sourceLabel } from "./FilterBar";
 import {
@@ -158,8 +159,8 @@ function useShareCount(item: DataRoomApiItem) {
   return canShare && shared?.id === item.id ? shared.count : null;
 }
 
-/** Uploads another file into the same folder; the unreadable one stays until it is deleted. */
-function ReplaceFile({ folderId }: { folderId: string | null }) {
+/** Uploads another file into the same folder, then deletes the unreadable one it replaces. */
+function ReplaceFile({ item }: { item: DataRoomApiItem }) {
   const input = useRef<HTMLInputElement>(null);
   return (
     <>
@@ -168,7 +169,18 @@ function ReplaceFile({ folderId }: { folderId: string | null }) {
         type="file"
         hidden
         onChange={(event) => {
-          uploadFilesToDataRoom(Array.from(event.target.files ?? []), folderId ?? undefined);
+          uploadFilesToDataRoom(
+            Array.from(event.target.files ?? []),
+            item.folderId ?? undefined,
+            (id) => {
+              // An identical re-upload resolves to this same item; deleting it would lose the file.
+              if (id === item.id) return;
+              void rpc.dataRoom
+                .itemDelete({ id: item.id })
+                .then(() => window.dispatchEvent(new Event(DATA_ROOM_CHANGED)))
+                .catch(() => undefined);
+            },
+          );
           event.target.value = "";
         }}
       />
@@ -200,21 +212,24 @@ function UntaggedNote({ item }: { item: DataRoomApiItem }) {
     return <p className={note}>{t`Won't be searchable. Praci can't read this kind of file.`}</p>;
   if (consent && !consent.allowed && consent.recipients.length > 0)
     return (
-      <div className="flex flex-col items-start gap-1.5">
-        <p className={note}>{t`Not tagged. Praci isn't allowed to read your documents yet.`}</p>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() =>
-            rpc.dataRoom
-              .consentGrant({ key: consent.key, version: consent.version })
-              .then(setConsent)
-              .catch(() => undefined)
-          }
-        >
-          <Trans>Allow</Trans>
-        </Button>
-      </div>
+      <DocumentsConsentCard
+        id={`preview-consent-${item.id}`}
+        consent={consent}
+        declinedText={<Trans>Not tagged. Praci can't read your documents.</Trans>}
+        onAllow={() =>
+          rpc.dataRoom
+            .consentGrant({ key: consent.key, version: consent.version, spaceId: consent.spaceId })
+            .then(setConsent)
+            .catch((cause) => {
+              // The providers or Space changed since this was read: show the current ask.
+              void rpc.dataRoom
+                .consent()
+                .then(setConsent)
+                .catch(() => undefined);
+              throw cause;
+            })
+        }
+      />
     );
   return (
     <p className={note}>
@@ -333,7 +348,7 @@ export function Preview({
           {item.error ? <p className="text-muted-foreground">{item.error}</p> : null}
           {isUnreadable(item.error) ? (
             // A second read fails the same way, so the way forward is a different file.
-            <ReplaceFile folderId={item.folderId} />
+            <ReplaceFile item={item} />
           ) : (
             <Button size="sm" onClick={() => onAction("retry", item)}>
               <RotateCw aria-hidden="true" />

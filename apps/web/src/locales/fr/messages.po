@@ -1176,7 +1176,6 @@ msgstr ""
 
 #: src/components/AiDataSharing.tsx
 #: src/components/AskCard.tsx
-#: src/components/data-room/Preview.tsx
 #: src/pages/shell/composer-error.tsx
 msgid "Allow"
 msgstr ""
@@ -7498,7 +7497,7 @@ msgid "Not tagged yet."
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
-msgid "Not tagged. Praci isn't allowed to read your documents yet."
+msgid "Not tagged. Praci can't read your documents."
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
