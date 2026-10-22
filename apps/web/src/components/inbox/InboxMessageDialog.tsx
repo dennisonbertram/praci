@@ -240,6 +240,7 @@ function InboxMessage({
               html: "",
               text: failedDraft.body,
             },
+            replyToId: messageId,
             forwarded: [],
             files: [],
             saved: false,

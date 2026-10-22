@@ -30,12 +30,12 @@ vi.mock("../../components/ComposeEmail", () => ({
   }: {
     seed: { kind: string };
     draft?: string;
-    restore?: { fields: object };
+    restore?: { fields: object; replyToId?: string };
   }) => (
     <div data-testid="compose">
       {seed.kind}
       {draft ? `:${draft}` : ""}
-      {restore ? `|${JSON.stringify(restore.fields)}` : ""}
+      {restore ? `|${JSON.stringify(restore.fields)}|reply-to:${restore.replyToId}` : ""}
     </div>
   ),
 }));
@@ -390,6 +390,7 @@ it("reopens a failed send with its own recipients and subject", async () => {
   expect(text).toContain('"bcc":["bcc@example.com"]');
   expect(text).toContain('"subject":"Edited subject"');
   expect(text).toContain('"connectionId":"c9"');
+  expect(text).toContain("reply-to:m3");
 });
 
 it("drops a late Ask agent answer when the user has moved to another email", async () => {
