@@ -84,9 +84,12 @@ test("settings shell is two-pane and deep-links Models Memory Voice Usage", asyn
   await expect(memory.getByRole("button", { name: "Recall only" })).toBeVisible();
   await captureScreenshot(page, testInfo, "settings-shell-memory-serenity");
 
-  await settings.getByTestId("settings-nav-voice").click();
+  // Voice is part of Models, behind "Use my own model" on a system model.
+  await settings.getByTestId("settings-nav-models").click();
+  const ownModel = settings.getByRole("button", { name: "Use my own model" });
+  if (await ownModel.count()) await ownModel.click();
+  await settings.getByRole("button", { name: "Voice", exact: true }).click();
   await expect(settings).toHaveAttribute("data-settings-section", "voice");
-  await expect(settings.getByRole("heading", { name: "Voice", exact: true })).toBeVisible();
   await expect(settings.getByTestId("voice-settings")).toBeVisible();
   await captureScreenshot(page, testInfo, "settings-shell-voice");
 

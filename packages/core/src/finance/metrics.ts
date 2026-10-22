@@ -396,15 +396,18 @@ export function runway(cashCents: number, burnCents: number, now: Date): Runway 
   };
 }
 
+/** Long enough that a founder with a multi-year runway still sees the line reach zero. */
+const PROJECTION_MONTHS = 60;
+
 /**
  * Total cash for the current month (today's balance) and each month after, `burnCents` lower each
- * month, until it reaches zero (that month is clamped to 0) or 24 months; [] when not burning.
+ * month, until it reaches zero (that month is clamped to 0) or 60 months; [] when not burning.
  */
 export function projectCash(cashCents: number, burnCents: number, now: Date): BalancePoint[] {
   if (burnCents <= 0) return [];
   const first = monthOf(dayOf(now.toISOString()));
   const points: BalancePoint[] = [];
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < PROJECTION_MONTHS; i++) {
     const balanceCents = Math.max(cashCents - i * burnCents, 0);
     points.push({ month: addMonths(first, i), balanceCents });
     if (balanceCents === 0) break;

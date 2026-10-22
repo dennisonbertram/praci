@@ -1117,7 +1117,7 @@ function MessageHoverActions({
   }
 
   const iconButtonClass =
-    "grid h-7 w-7 place-items-center text-muted-foreground transition-colors hover:text-foreground";
+    "grid h-7 w-7 place-items-center rounded-lg text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring";
   const canRemember =
     Boolean(remember) && message.role === "bot" && canReactToThreadMessage(message);
   const remembered = remember?.ids.has(message.id) ?? false;
