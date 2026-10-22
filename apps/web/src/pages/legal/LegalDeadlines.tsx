@@ -114,6 +114,15 @@ export function LegalDeadlines({
       setError(errorText(cause));
     }
   };
+  const keep = async (deadline: LegalDeadline) => {
+    setError("");
+    try {
+      await rpc.legal.updateDeadline({ id: deadline.id, keep: true });
+      onChanged();
+    } catch (cause) {
+      setError(errorText(cause));
+    }
+  };
   const allOpen = deadlines.filter((deadline) => !gone.has(deadline.id));
   const open = onlyOverdue
     ? allOpen.filter((deadline) => daysBetween(today, deadline.dueDate) < 0)
@@ -240,6 +249,19 @@ export function LegalDeadlines({
                   <blockquote className="mt-1 border-s-2 border-border ps-2 text-xs text-muted-foreground">
                     {maskCurrencyWhenHidden(deadline.sourceQuote)}
                   </blockquote>
+                ) : null}
+                {deadline.removalProposed ? (
+                  <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                    <Trans>The last scan thinks this no longer applies.</Trans>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={t`Keep ${name}`}
+                      onClick={() => void keep(deadline)}
+                    >
+                      <Trans>Keep</Trans>
+                    </Button>
+                  </p>
                 ) : null}
                 {rowNote(deadline.notes) ? (
                   <p className="mt-1 text-xs text-muted-foreground">

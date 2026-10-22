@@ -28,6 +28,7 @@ import {
   DATA_ROOM_METADATA_ORDINAL,
   DEFAULT_AVATAR_STYLE,
   FIRST_BOT_SPAWN_KEY,
+  isGtmAgentSpawnKey,
   isIntegrationAgentSpawnKey,
   isMailThreadAgentSpawnKey,
   LEGAL_CONSENT_REQUIRED_MESSAGE,
@@ -265,6 +266,7 @@ import { threadReadInput } from "../lib/thread-read";
 import { getToolActivityEnabled, subscribeToolActivity } from "../lib/tool-activity-preference";
 import { transcriptCanSnapAfterFrame, transcriptIsNearEnd } from "../lib/transcript-scroll";
 import { speaker } from "../lib/tts";
+import { useNotificationsOff } from "../lib/use-notifications-off";
 import { useRememberedMessages } from "../lib/use-remembered-messages";
 import { useRunResumedAt } from "../lib/use-run-resumed-at";
 import { useSidebarGlance } from "../lib/use-sidebar-glance";
@@ -968,6 +970,7 @@ export function ShellPage() {
   );
   const [keepComputerRecovery, setKeepComputerRecovery] = useState(false);
   const recoveryHoldTimer = useRef<number | undefined>(undefined);
+  const notificationsOff = useNotificationsOff(panel === "settings");
   const showComputerRecoveryHint =
     computersAreUnavailable(bootstrapMe?.sandboxProvider) || keepComputerRecovery;
   const releaseComputerRecovery = useCallback(() => {
@@ -4236,7 +4239,12 @@ export function ShellPage() {
             </div>
           ) : null}
           {pendingDelegateAgents(activeSnapshot?.delegatePendingAgents).map((agent) => (
-            <div key={agent.id} className="px-6 pb-2">
+            // Same side padding as the composer, and the toasts rise above it.
+            <div
+              key={agent.id}
+              data-toast-avoid=""
+              className="px-3 pb-2 md:px-[max(1.75rem,calc((100%-900px)/2))]"
+            >
               <Button
                 variant="outline"
                 className="w-full pointer-coarse:h-11"
@@ -4966,9 +4974,11 @@ export function ShellPage() {
         ) : panel && (active || activeGroup) ? (
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
             {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
-              <div className="sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between border-b border-border bg-background px-5 pt-[17px] pb-2">
+              <div
+                className={`sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between border-b border-border bg-background px-5 ${TOP_BAR_HEIGHT}`}
+              >
                 <span
-                  className="min-w-0 truncate text-[13.5px] text-muted-foreground"
+                  className="min-w-0 truncate text-[16px] font-medium text-foreground"
                   title={panel === "settings" && active ? t`${active.name} settings` : undefined}
                 >
                   {panel === "settings" ? (
@@ -5176,6 +5186,8 @@ export function ShellPage() {
                 key={active.id}
                 bot={active}
                 focusName={namingBotId === active.id}
+                notificationsOff={notificationsOff}
+                onOpenNotificationSettings={() => openSettings("general")}
                 memoryProviderConfigured={memoryProviderConfig != null}
                 hostComputer={
                   canOfferHostComputer(bootstrapMe)
@@ -5487,6 +5499,7 @@ export function ShellPage() {
                     setPanelState("computer");
                     setRestoredPanelKey(destKey);
                     setBotMenu(null);
+                    closeMobileSidebar();
                   }
                 : undefined
             }
@@ -5507,9 +5520,11 @@ export function ShellPage() {
               setPanelState(contextBot ? "settings" : "group-settings");
               setRestoredPanelKey(destKey);
               setBotMenu(null);
+              closeMobileSidebar();
             }}
             onDuplicate={() => {
               setBotMenu(null);
+              closeMobileSidebar();
               const request = contextBot
                 ? rpc.bots.duplicate({ botId: contextBot.id })
                 : rpc.groups.duplicate({ groupId: contextGroup!.id });

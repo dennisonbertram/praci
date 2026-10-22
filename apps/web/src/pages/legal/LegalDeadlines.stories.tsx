@@ -36,3 +36,8 @@ function ReloadingDeadlines(args: ComponentProps<typeof LegalDeadlines>) {
 
 /** The page reloads after Done and the list no longer holds the row: its place shows the Undo line. */
 export const DoneWithReload: Story = { render: (args) => <ReloadingDeadlines {...args} /> };
+
+/** A scan found a deadline that may no longer apply: it stays open with Keep; Dismiss confirms. */
+export const RemovalProposed: Story = {
+  args: { deadlines: deadlines.map((d, i) => ({ ...d, removalProposed: i === 1 })) },
+};

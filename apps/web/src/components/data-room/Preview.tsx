@@ -1,13 +1,14 @@
 import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { DataRoomApiItem } from "@rakazo/contracts";
+import type { DataRoomApiItem, DataRoomConsentStatus } from "@rakazo/contracts";
 import { Badge, Button, DialogTitle } from "@rakazo/ui-web";
-import { FileText, RotateCw, Trash2, X } from "lucide-react";
+import { FileText, RotateCw, Trash2, Upload, X } from "lucide-react";
 import type { KeyboardEvent, PointerEvent, ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { canPreviewImage } from "../../lib/data-room";
+import { allowDocuments } from "../../lib/ai-consent";
+import { canPreviewImage, DATA_ROOM_CHANGED } from "../../lib/data-room";
 import { MASK } from "../../lib/finance-format";
 import {
   getHideAmounts,
@@ -16,13 +17,15 @@ import {
 } from "../../lib/hide-amounts-preference";
 import { rpc } from "../../lib/rpc";
 import { canPreviewSpreadsheet } from "../../lib/spreadsheet";
+import { DocumentsConsentCard } from "../AiDataSharing";
 import { SheetPreview } from "../SheetPreview";
 import { sourceLabel } from "./FilterBar";
 import {
+  canRetryItem,
   dateText,
   isSettled,
-  isStuck,
   isUnreadable,
+  isUnsearchableType,
   SHARES_CHANGED,
   sizeText,
   typeLabel,
@@ -37,6 +40,7 @@ import {
   useFileUrl,
 } from "./PreviewActions";
 import type { SendTarget } from "./SendToAgent";
+import { uploadFilesToDataRoom } from "./upload-toasts";
 
 function amountText(item: DataRoomApiItem) {
   const { amountCents, currency } = item.facets;
@@ -156,6 +160,84 @@ function useShareCount(item: DataRoomApiItem) {
   return canShare && shared?.id === item.id ? shared.count : null;
 }
 
+/** Uploads another file into the same folder, then deletes the unreadable one it replaces. */
+function ReplaceFile({ item }: { item: DataRoomApiItem }) {
+  const input = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <input
+        ref={input}
+        type="file"
+        hidden
+        onChange={(event) => {
+          uploadFilesToDataRoom(
+            Array.from(event.target.files ?? []),
+            item.folderId ?? undefined,
+            (id) => {
+              // An identical re-upload resolves to this same item; deleting it would lose the file.
+              if (id === item.id) return;
+              void rpc.dataRoom
+                .itemDelete({ id: item.id })
+                .then(() => window.dispatchEvent(new Event(DATA_ROOM_CHANGED)))
+                .catch(() => undefined);
+            },
+          );
+          event.target.value = "";
+        }}
+      />
+      <Button size="sm" variant="outline" onClick={() => input.current?.click()}>
+        <Upload aria-hidden="true" />
+        <Trans>Replace file</Trans>
+      </Button>
+    </>
+  );
+}
+
+/** Why a finished file has no type: Praci cannot read that kind of file, or may not read documents yet. */
+function UntaggedNote({ item }: { item: DataRoomApiItem }) {
+  const [consent, setConsent] = useState<DataRoomConsentStatus | null>(null);
+  const unsearchable = isUnsearchableType(item.mimeType);
+  useEffect(() => {
+    if (unsearchable) return;
+    let live = true;
+    rpc.dataRoom
+      .consent()
+      .then((next) => live && setConsent(next))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [unsearchable]);
+  const note = "text-xs text-muted-foreground";
+  if (unsearchable)
+    return <p className={note}>{t`Won't be searchable. Praci can't read this kind of file.`}</p>;
+  if (consent && !consent.allowed && consent.recipients.length > 0)
+    return (
+      <DocumentsConsentCard
+        id={`preview-consent-${item.id}`}
+        consent={consent}
+        declinedText={<Trans>Not tagged. Praci can't read your documents.</Trans>}
+        onAllow={() =>
+          allowDocuments(consent)
+            .then(setConsent)
+            .catch((cause) => {
+              // The providers or Space changed since this was read: show the current ask.
+              void rpc.dataRoom
+                .consent()
+                .then(setConsent)
+                .catch(() => undefined);
+              throw cause;
+            })
+        }
+      />
+    );
+  return (
+    <p className={note}>
+      <Trans>Not tagged yet.</Trans>
+    </p>
+  );
+}
+
 /** The summary, facets and source of one item, with Download and the item menu. */
 export function Preview({
   item,
@@ -230,6 +312,7 @@ export function Preview({
         )}
         <PreviewActions
           item={item}
+          file={file}
           hidden={hidden}
           onError={setError}
           onFullScreen={canFullScreen ? () => setFullScreen(true) : undefined}
@@ -237,7 +320,7 @@ export function Preview({
         <ItemMenu
           item={item}
           onAction={onAction}
-          canRetry={item.status === "failed" || isStuck(item)}
+          canRetry={canRetryItem(item)}
           agents={agents}
           onSendToAgent={onSendToAgent}
         />
@@ -263,7 +346,10 @@ export function Preview({
             <Trans>Couldn't read this file</Trans>
           </p>
           {item.error ? <p className="text-muted-foreground">{item.error}</p> : null}
-          {isUnreadable(item.error) ? null : (
+          {isUnreadable(item.error) ? (
+            // A second read fails the same way, so the way forward is a different file.
+            <ReplaceFile item={item} />
+          ) : (
             <Button size="sm" onClick={() => onAction("retry", item)}>
               <RotateCw aria-hidden="true" />
               <Trans>Try again</Trans>
@@ -282,9 +368,7 @@ export function Preview({
       ) : isSettled(item.status, !!item.previewText) && item.error ? (
         <p className="text-xs text-muted-foreground">{t`Couldn't classify`}</p>
       ) : isSettled(item.status, !!item.previewText) && !facets.docType ? (
-        <p className="text-xs text-muted-foreground">
-          <Trans>Not tagged yet.</Trans>
-        </p>
+        <UntaggedNote item={item} />
       ) : null}
       <dl className="grid grid-cols-[72px_1fr] items-baseline gap-x-2 gap-y-1.5 text-sm">
         {facets.docType ? <Field label={t`Type`}>{typeLabel(facets.docType)}</Field> : null}

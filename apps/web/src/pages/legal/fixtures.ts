@@ -56,6 +56,7 @@ export const deadlines: LegalDeadline[] = [
     status: "open",
     sourceQuote: "Tenant shall submit the closing statement within thirty (30) days.",
     notes: null,
+    removalProposed: false,
   },
   {
     id: id(12),
@@ -68,6 +69,7 @@ export const deadlines: LegalDeadline[] = [
     status: "open",
     sourceQuote: null,
     notes: null,
+    removalProposed: false,
   },
 ];
 

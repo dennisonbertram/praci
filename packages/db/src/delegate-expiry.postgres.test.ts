@@ -207,6 +207,14 @@ describePostgres("delegated approvals when the requester fails (PostgreSQL)", ()
     await d.answer("deny");
   });
 
+  it("clears the requester's waiting list once the owner answers the approval", async () => {
+    const d = await delegation();
+    await d.pause();
+    expect(await d.answer("deny")).toBe(true);
+    expect(await pendingNow()).not.toContain(d.sent.id);
+    expect((await pendingEvents()).at(-1)).not.toContain(d.sent.id);
+  });
+
   it("expires only the delegates of the failed run, and says which action was not done", async () => {
     const failing = await delegation();
     const other = await delegation();

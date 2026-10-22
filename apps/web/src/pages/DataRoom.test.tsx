@@ -1336,3 +1336,28 @@ it("shows all files again when the sidebar row is followed after the failed filt
   });
   expect(rpcMock.list.mock.calls.at(-1)?.[0]).not.toHaveProperty("status", "failed");
 });
+
+it("shows the files list, not Stats, when the failed-files badge is followed from Stats", async () => {
+  rpcMock.stats.mockResolvedValue({
+    documents: 2,
+    bytes: 20,
+    duplicates: 0,
+    status: { ready: 2, processing: 0, failed: 0, notSearchable: 0 },
+    types: [],
+    sources: [],
+    dates: { unit: "month", buckets: [] },
+    parties: [],
+    largest: [],
+    amounts: [],
+  });
+  await renderPage();
+  await act(async () => {
+    container.querySelector<HTMLButtonElement>('button[aria-label="Stats"]')?.click();
+  });
+  expect(container.querySelector('[data-testid="data-room-stats"]')).not.toBeNull();
+  await act(async () => {
+    container.querySelector<HTMLElement>('[data-testid="go-failed"]')?.click();
+  });
+  expect(container.querySelector('[data-testid="data-room-stats"]')).toBeNull();
+  expect(rpcMock.list.mock.calls.at(-1)?.[0]).toMatchObject({ status: "failed" });
+});

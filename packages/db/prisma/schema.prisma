@@ -3045,6 +3045,8 @@ model LegalDeadline {
   status         String         @default("open")
   /// Opened by legal_upsert_contract from the contract's dates; re-derived (not hand-made) when they change.
   derived        Boolean        @default(false)
+  /// Set when a scan finds the deadline no longer applies; only the founder dismisses it (or keeps it, which clears this).
+  removalProposedAt DateTime?
   sourceQuote    String?
   notes          String?
   createdAt      DateTime       @default(now())

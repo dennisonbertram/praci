@@ -84,6 +84,8 @@ export interface LegalDeadlineInput {
   status?: string;
   /** True for deadlines opened from a contract's dates. */
   derived?: boolean;
+  /** null clears a scan's removal proposal. */
+  removalProposedAt?: Date | null;
   sourceQuote?: string | null;
   notes?: string | null;
 }
@@ -252,6 +254,9 @@ export function createLegalRepos(prisma: PrismaClient) {
         ...(input.dataRoomItemId !== undefined ? { dataRoomItemId: input.dataRoomItemId } : {}),
         ...(input.status ? { status: input.status } : {}),
         ...(input.derived !== undefined ? { derived: input.derived } : {}),
+        ...(input.removalProposedAt !== undefined
+          ? { removalProposedAt: input.removalProposedAt }
+          : {}),
         ...(input.sourceQuote !== undefined ? { sourceQuote: input.sourceQuote } : {}),
         ...(input.notes !== undefined ? { notes: input.notes } : {}),
       };
@@ -284,11 +289,20 @@ export function createLegalRepos(prisma: PrismaClient) {
     async updateDeadline(
       actor: Actor,
       id: string,
-      patch: { status?: string; notes?: string | null },
+      patch: {
+        status?: string;
+        notes?: string | null;
+        /** true: keep it, clearing a scan's removal proposal. */
+        keep?: boolean;
+        /** true: a scan proposes removing it; the deadline stays open until the founder dismisses it. */
+        proposeRemoval?: boolean;
+      },
     ): Promise<LegalDeadlineRecord> {
       const { count } = await prisma.legalDeadline.updateMany({
         where: { id, ...scope(actor) },
         data: {
+          ...(patch.keep ? { removalProposedAt: null } : {}),
+          ...(patch.proposeRemoval ? { removalProposedAt: new Date() } : {}),
           ...(patch.status ? { status: patch.status } : {}),
           ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
         },

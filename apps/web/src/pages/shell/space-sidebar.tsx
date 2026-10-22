@@ -98,6 +98,7 @@ import type { ContextMenuPosition } from "../BotContextMenu";
 import type { SettingsSection } from "../SettingsOverlay";
 import { BotCreatePicker, pickerInitialFocus } from "./bot-picker";
 import { moveRosterFocus, rosterRowId, syncRosterTabStops } from "./roster-tab-stops";
+import { moreBarHeight, rowsBelow } from "./rows-below";
 import { SidebarHeaderRow } from "./sidebar-header-row";
 import { endOnWholeRow } from "./whole-rows";
 
@@ -572,6 +573,31 @@ export function SpaceSidebar({
       mutate.disconnect();
     };
   }, [mobileSidebarOpen]);
+  // "+N more" over the foot of the list while rows remain below the fold.
+  const [hiddenRows, setHiddenRows] = useState(0);
+  useEffect(() => {
+    const scrollers = [sidebarPaneRef.current, sidebarScrollRef.current];
+    let frame = 0;
+    const measure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => setHiddenRows(rowsBelow(scrollers)));
+    };
+    measure();
+    for (const el of scrollers) el?.addEventListener("scroll", measure, { passive: true });
+    const resize = new ResizeObserver(measure);
+    const mutate = new MutationObserver(measure);
+    for (const el of scrollers) {
+      if (!el) continue;
+      resize.observe(el);
+      mutate.observe(el, { childList: true, subtree: true });
+    }
+    return () => {
+      cancelAnimationFrame(frame);
+      for (const el of scrollers) el?.removeEventListener("scroll", measure);
+      resize.disconnect();
+      mutate.disconnect();
+    };
+  }, [mobileSidebarOpen]);
   // While Activity is open it lists these bots' work, so their chat rows are not repeated below.
   const [activityBotIds, setActivityBotIds] = useState<ReadonlySet<string>>(new Set());
   const [pageAgentsOpen, setPageAgentsOpen] = useState(false);
@@ -752,7 +778,7 @@ export function SpaceSidebar({
           // Waiting for the account (undefined) keeps pages the user hid from flashing in.
           // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
           <div
-            className={`flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:max-h-[50vh] lg:overflow-y-auto short:lg:max-h-none short:lg:overflow-visible ${activityMode && !rail ? "max-lg:hidden" : ""}`}
+            className={`flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:max-h-[50vh] lg:overflow-y-auto short:lg:max-h-none short:lg:overflow-visible ${activityMode && !rail ? "hidden" : ""}`}
           >
             <SidebarPagesGroup
               title={t`Pages`}
@@ -1377,6 +1403,7 @@ export function SpaceSidebar({
                                     }
                                     {...row.handleProps}
                                     data-roster-row={item.chat.id}
+                                    data-roster-chat=""
                                     data-roster-bot-id={
                                       item.kind === "bot" ? item.chat.id : undefined
                                     }
@@ -1541,7 +1568,9 @@ export function SpaceSidebar({
                                               </span>
                                             ) : null}
                                           </div>
-                                          <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0 pointer-coarse:me-9">
+                                          <div
+                                            className={`flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0 pointer-coarse:me-9 ${botMenu?.id === item.chat.id ? "pointer-fine:opacity-0" : ""}`}
+                                          >
                                             {compact &&
                                             item.kind === "bot" &&
                                             glance.botKinds[item.chat.id] ? (
@@ -1744,6 +1773,24 @@ export function SpaceSidebar({
           ) : null}
         </div>
       </div>
+      {hiddenRows > 0 && !rail ? (
+        <div className="relative h-0 shrink-0">
+          <button
+            type="button"
+            data-testid="sidebar-more-rows"
+            className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center bg-sidebar text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+            style={{ height: moreBarHeight() }}
+            onClick={() => {
+              const pane = sidebarPaneRef.current;
+              const list = sidebarScrollRef.current;
+              const scroller = pane && pane.scrollHeight > pane.clientHeight + 1 ? pane : list;
+              scroller?.scrollBy({ top: scroller.clientHeight * 0.8, behavior: "smooth" });
+            }}
+          >
+            <Trans>+{hiddenRows} more</Trans>
+          </button>
+        </div>
+      ) : null}
       {/* The top border shows that the list above scrolls under this row. */}
       <div className="border-t border-sidebar-border px-2.5 pt-1">
         <ConnectAppsButton
