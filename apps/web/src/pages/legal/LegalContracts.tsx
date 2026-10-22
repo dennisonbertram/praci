@@ -198,7 +198,7 @@ export function LegalContracts({
               <TableCell title={contract.counterparties.join(", ")}>
                 {contract.counterparties.join(", ") || dash}
               </TableCell>
-              <TableCell className="tabular-nums" title={term(contract)}>
+              <TableCell className="whitespace-nowrap tabular-nums" title={term(contract)}>
                 {term(contract)}
               </TableCell>
               <TableCell title={renewal(contract)}>{renewal(contract)}</TableCell>

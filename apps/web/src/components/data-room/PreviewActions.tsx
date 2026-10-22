@@ -138,6 +138,10 @@ export function FileViewer({
   );
 }
 
+/** FileViewer draws the phone Open and Download buttons for this item. */
+const isPdfWithPhoneButtons = (item: DataRoomApiItem, file: FileUrl) =>
+  item.mimeType === "application/pdf" && isShowable(item) && !file.failed;
+
 /** Phone browsers draw a PDF in a frame as an empty box, so below sm the file gets Open and Download instead. */
 function PdfPhoneFallback({
   item,
@@ -183,11 +187,13 @@ function PdfPhoneFallback({
 function IconAction({
   label,
   disabled,
+  className,
   onClick,
   children,
 }: {
   label: string;
   disabled?: boolean;
+  className?: string;
   onClick: () => void;
   children: ReactNode;
 }) {
@@ -201,6 +207,7 @@ function IconAction({
             size="icon-sm"
             aria-label={label}
             disabled={disabled}
+            className={className}
             onClick={onClick}
           />
         }
@@ -219,11 +226,14 @@ function IconAction({
  */
 export function PreviewActions({
   item,
+  file,
   hidden,
   onError,
   onFullScreen,
 }: {
   item: DataRoomApiItem;
+  /** The loaded file: on a phone a PDF that shows has its own Open and Download, so these icons step aside. */
+  file: FileUrl;
   /** Amounts are hidden, so the file's contents must not be shown. */
   hidden: boolean;
   onError: (message: string) => void;
@@ -233,17 +243,24 @@ export function PreviewActions({
     onError("");
     action(item).catch((cause) => onError(errorText(cause)));
   };
+  const phoneButtons =
+    item.status !== "failed" && isPdfWithPhoneButtons(item, file) ? "max-sm:hidden" : "";
   const openable = item.status !== "failed" && canOpenInBrowser(item) && !hidden;
   return (
     <>
       <IconAction
         label={t`Open in new tab`}
         disabled={!openable}
+        className={phoneButtons}
         onClick={() => run(openDataRoomItem)}
       >
         <ExternalLink aria-hidden="true" />
       </IconAction>
-      <IconAction label={t`Download`} onClick={() => run(saveDataRoomItem)}>
+      <IconAction
+        label={t`Download`}
+        className={phoneButtons}
+        onClick={() => run(saveDataRoomItem)}
+      >
         <Download aria-hidden="true" />
       </IconAction>
       {onFullScreen ? (
@@ -280,7 +297,7 @@ export function FullScreenPreview({
       >
         <div className="flex items-center gap-1 pe-9">
           <DialogTitle className="min-w-0 flex-1 truncate">{item.name}</DialogTitle>
-          <PreviewActions item={item} hidden={hidden} onError={setError} />
+          <PreviewActions item={item} file={file} hidden={hidden} onError={setError} />
         </div>
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         <div className="min-h-0 flex-1">

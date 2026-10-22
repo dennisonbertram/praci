@@ -315,6 +315,8 @@ it("notes non-USD transactions only when some are left out", async () => {
   const sync = [...container.querySelectorAll("a")].find((a) => a.textContent?.includes("non-USD"));
   expect(sync?.getAttribute("aria-label")).toBeNull();
   expect(sync?.textContent).toMatch(/3 non-USD transactions not counted$/);
+  // A phone must see the omission too, so no part of the note is hidden below the sm breakpoint.
+  expect(sync?.innerHTML).not.toMatch(/max-sm:hidden"[^>]*>\s*·\s*\d+ non-USD/);
   // The Cash tile's account count is a different unit, so it carries no "not counted" note.
   const cash = [...container.querySelectorAll("h2")].find((h) => h.textContent === "Cash");
   expect(cash?.closest("a")?.textContent).not.toContain("not counted");
@@ -465,7 +467,7 @@ it("hides Cash and Runway when only Brex is connected, and still shows spend", a
   expect(container.querySelector('a[href="/app/finance/runway"]')).toBeNull();
   expect(container.textContent).not.toContain("Runway");
   expect(container.textContent).not.toContain("Cash");
-  expect(container.textContent).toContain("Out so far this month, not over · Oct 1");
+  expect(container.textContent).toContain("Spent so far this month · Oct 1");
   expect(container.textContent).toContain("Monthly burn");
   expect(container.textContent).toContain("Add Mercury");
 });

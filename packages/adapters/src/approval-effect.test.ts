@@ -6,6 +6,7 @@ import {
   approvalReplayResourceError,
   approvalRoutesMatch,
   approvedCatalogReplay,
+  approvedPaymentResult,
   approvedReplayArgs,
   boundDirectApprovalDetails,
   boundDirectApprovalRequest,
@@ -581,5 +582,25 @@ describe("catalog wrapper names", () => {
         { connectorId: "mcp", resourceId: "server-1", toolName: "send_message" },
       ),
     ).toBe(true);
+  });
+});
+
+describe("payment outcome wording for the model", () => {
+  it.each([
+    ["accepted", { status: "sent" }],
+    ["pending", { status: "pendingApproval" }],
+    ["approval required text", "Approval is required in Mercury before payment can be sent"],
+    ["unknown", { foo: 1 }],
+  ])("never claims success in the note: %s", (_name, result) => {
+    const out = approvedPaymentResult(result, "Mercury") as { note: string };
+    expect(out.note).toContain("approval in Praci is recorded");
+    expect(out.note).toContain("exactly as returned");
+    expect(out.note).not.toMatch(/it was sent|was sent and|No further approval/);
+    expect(out.note).toContain("do not say the payment was sent unless");
+  });
+
+  it("speaks to the person in the second person after a denial", () => {
+    expect(DENIED_ACTION_MESSAGE).toContain("you denied");
+    expect(DENIED_ACTION_MESSAGE).not.toMatch(/the user denied/i);
   });
 });

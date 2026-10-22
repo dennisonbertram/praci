@@ -31,7 +31,8 @@ it("speaks plainly, marks the chosen memory default, and tucks provider setup un
       ),
     );
     const text = container.textContent ?? "";
-    expect(text).toContain("What your bots remember between chats");
+    // The section title already says it; the first card starts where every Settings section does.
+    expect(text).not.toContain("What your bots remember between chats");
     expect(text).not.toMatch(/semantic|MEMORY\.md|Isolated/);
 
     const pressed = [...container.querySelectorAll("[aria-pressed='true']")].map(

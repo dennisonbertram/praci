@@ -667,6 +667,8 @@ export async function answerRunInput(
 
   if (!committed) return false;
   await notifyRealtime(realtime, committed.threadId, committed.seq);
+  // The answered run no longer waits, so the requesting bot's "Open <agent>" bar must go.
+  await announceDelegatePending(prisma, realtime, input.runId).catch(() => undefined);
   return true;
 }
 

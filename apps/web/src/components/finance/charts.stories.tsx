@@ -192,6 +192,18 @@ export const BurnQuarters: Story = {
   ),
 };
 
+/** A raise inside the scale is named beside its ring, as in the month view. */
+export const BurnQuartersFinancing: Story = {
+  render: () => (
+    <BurnLines
+      granularity="quarter"
+      label="Cash out by quarter"
+      onOpen={() => undefined}
+      series={buckets(4, 3).map((p, i) => ({ ...p, financingCents: i === 2 ? 150_000 : 0 }))}
+    />
+  ),
+};
+
 export const BurnYears: Story = {
   render: () => (
     <BurnLines

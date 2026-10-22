@@ -515,3 +515,36 @@ describe("BotSettings audience", () => {
     expect(button("bot-audience-external")).toBeNull();
   });
 });
+
+describe("notification delivery", () => {
+  it("says Off in Settings, linking to Settings, when the account delivers nowhere", async () => {
+    const open = vi.fn();
+    await act(async () => {
+      root.render(
+        <BotSettings
+          bot={bot()}
+          notificationsOff
+          onOpenNotificationSettings={open}
+          memoryProviderConfigured={false}
+          onSkillsChange={() => undefined}
+          onSave={onSave}
+          onExport={async () => undefined}
+          onClear={() => undefined}
+        />,
+      );
+    });
+    expect(container.textContent).not.toContain("Get notified when this bot finishes");
+    const link = [...container.querySelectorAll("button")].find(
+      (b) => b.textContent === "Off in Settings",
+    );
+    await act(async () => link?.click());
+    expect(open).toHaveBeenCalledOnce();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("keeps the usual description when delivery is on", async () => {
+    await render();
+    expect(container.textContent).toContain("Get notified when this bot finishes");
+    expect(container.textContent).not.toContain("Off in Settings");
+  });
+});

@@ -110,8 +110,10 @@ export function NewFolderDialog({
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    const name = DataRoomApiName.safeParse(String(data.get("folderName") ?? "").trim());
-    if (!name.success) return setError(t`Enter a folder name without slashes`);
+    const typed = String(data.get("folderName") ?? "").trim();
+    const name = DataRoomApiName.safeParse(typed);
+    if (!name.success)
+      return setError(typed ? t`Enter a folder name without slashes` : t`Enter a folder name`);
     setBusy(true);
     setError("");
     rpc.dataRoom
@@ -272,8 +274,10 @@ export function ItemDialog({
         ? rpc.dataRoom.folderMove({ id: item.id, parentId: folderId })
         : rpc.dataRoom.itemMove({ id: item.id, folderId });
     if (target === NEW_FOLDER) {
-      const name = DataRoomApiName.safeParse(String(data.get("folderName") ?? "").trim());
-      if (!name.success) return setError(t`Enter a folder name without slashes`);
+      const typed = String(data.get("folderName") ?? "").trim();
+      const name = DataRoomApiName.safeParse(typed);
+      if (!name.success)
+        return setError(typed ? t`Enter a folder name without slashes` : t`Enter a folder name`);
       const parentId = String(data.get("parent") ?? "") || null;
       void run(async () =>
         moveTo((await rpc.dataRoom.folderCreate({ name: name.data, parentId })).id),

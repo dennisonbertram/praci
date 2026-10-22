@@ -114,6 +114,12 @@ export const NotificationsOff: Story = {
   args: { bot: { ...scoutBot, notifyOnFinish: false } },
 };
 
+/** Browser notifications are off in Settings, so the row links there instead of promising delivery. */
+export const NotificationsOffInSettings: Story = {
+  beforeEach: setup,
+  args: { notificationsOff: true, onOpenNotificationSettings: () => undefined },
+};
+
 export const LongProfileText: Story = {
   beforeEach: setup,
   args: {

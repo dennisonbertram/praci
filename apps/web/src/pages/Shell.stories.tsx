@@ -483,7 +483,7 @@ const activityBots = [
   ),
 ];
 
-/** Activity open on a full-height screen: every page stays listed and the chats keep their rows. A payment approval reads "Needs your answer" in the row, as in Activity. */
+/** Activity open: it replaces the Pages block, so the chats keep their rows. A payment approval reads "Needs your answer" in the row, as in Activity. */
 export const SidebarActivityOpen: Story = {
   decorators: [
     (Story) => (
