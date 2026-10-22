@@ -54,6 +54,7 @@ vi.mock("../components/ComposeEmail", () => ({
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
+    investors: { shares: async () => [] },
     inbox: { list: rpcMock.inboxList },
     connections: { list: rpcMock.connections, catalog: async () => [] },
     mcp: { servers: { list: async () => [] } },

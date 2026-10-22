@@ -3,6 +3,7 @@ import { NotificationToaster } from "@rakazo/ui-web";
 import { useEffect, useRef } from "react";
 import { useMatch, useNavigate } from "react-router-dom";
 import { lookupAgentApp } from "../lib/agent-app";
+import { hasApprovalToasts } from "../lib/approval-toasts";
 import { authClient } from "../lib/auth";
 import { i18n } from "../lib/i18n";
 import {
@@ -11,6 +12,7 @@ import {
   NOTIFICATION_SETTINGS_CHANGED,
   openNotificationLink,
   resultShownInOpenChat,
+  syncApprovalToasts,
 } from "../lib/notification-delivery";
 import { followNotifications } from "../lib/notification-stream";
 import { formatRelativeTime } from "../lib/relative-time";
@@ -34,6 +36,18 @@ const markOpened = (n: NotificationDto) =>
       n.threadId ? { surface: n.surface, threadId: n.threadId } : { surface: n.surface, id: n.id },
     )
     .then(announceChange, () => undefined);
+
+const APPROVAL_POLL_MS = 2000;
+
+/** Lets the toasts follow the approvals still waiting for an answer, however long ago they were sent. */
+async function followUnansweredApprovals(openBotId: () => string | undefined) {
+  const { notifications } = await rpc.notifications.pendingApprovals();
+  syncApprovalToasts(notifications, {
+    complete: true,
+    onSeen: (n) => () => void markOpened(n),
+    skip: (n) => Boolean(n.botId) && n.botId === openBotId(),
+  });
+}
 
 /** The sending bot's avatar; a failed lookup just means a toast without one. */
 async function avatarFor(n: NotificationDto, userId: string | undefined) {
@@ -110,8 +124,21 @@ export function AppToaster() {
       },
       controller.signal,
     );
+    // A reload loses the in-memory toasts and an answer in another tab never reaches this one, so
+    // the toasts are rebuilt from the server on load, on every change, and every 2 s while shown.
+    const syncApprovals = () => {
+      if (document.visibilityState !== "visible") return;
+      void followUnansweredApprovals(() => openBotIdRef.current).catch(() => undefined);
+    };
+    syncApprovals();
+    window.addEventListener("rakazo:notifications-changed", syncApprovals);
+    const poll = setInterval(() => {
+      if (hasApprovalToasts()) syncApprovals();
+    }, APPROVAL_POLL_MS);
     return () => {
       controller.abort();
+      clearInterval(poll);
+      window.removeEventListener("rakazo:notifications-changed", syncApprovals);
       window.removeEventListener(NOTIFICATION_SETTINGS_CHANGED, reload);
     };
   }, []);

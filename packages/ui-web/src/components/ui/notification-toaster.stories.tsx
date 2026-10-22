@@ -156,7 +156,7 @@ export const ApprovalsGrouped: Story = {
   render: render([{ id: "approvals:group", title: "3 need approval", withBot: true }]),
 };
 
-/** The toast sits clear of a page header's buttons and the composer. */
+/** The toast sits clear of a page header's buttons and rises above a composer (`data-toast-avoid`) that is taller than its usual spot. */
 export const OverPage: Story = {
   args: { onOpen: () => {} },
   parameters: { layout: "fullscreen" },
@@ -179,13 +179,34 @@ export const OverPage: Story = {
       </header>
       <div
         data-testid="composer"
-        className="absolute right-4 bottom-4 left-4 h-14 rounded-xl border border-border bg-card sm:left-auto sm:w-96"
+        data-toast-avoid=""
+        className="absolute right-4 bottom-4 left-4 h-32 rounded-xl border border-border bg-card sm:left-auto sm:w-96"
       />
       <Demo
         items={[
           { id: "help", title: "Ledger agent needs you", body: "Send $300.00?", withBot: true },
         ]}
       />
+    </>
+  ),
+};
+
+/** An open dialog hides the toast, so it never covers the dialog's content. */
+export const BehindDialog: Story = {
+  args: { onOpen: () => {} },
+  parameters: { layout: "fullscreen" },
+  decorators: [(Story) => <div className="relative h-screen bg-background">{Story()}</div>],
+  render: () => (
+    <>
+      <div
+        role="dialog"
+        data-open=""
+        aria-label="Example dialog"
+        className="absolute right-4 bottom-4 w-96 rounded-xl border border-border bg-card p-6"
+      >
+        Dialog content stays readable while a notice waits.
+      </div>
+      <Demo items={[{ id: "help", title: "Ledger agent needs you", body: "Send $300.00?" }]} />
     </>
   ),
 };

@@ -1,6 +1,11 @@
 import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { ModelCatalogEntry, ModelCredential, Routine } from "@rakazo/contracts";
+import type {
+  AgentSkillCatalogEntry,
+  ModelCatalogEntry,
+  ModelCredential,
+  Routine,
+} from "@rakazo/contracts";
 import type { CronFreq, CronPreset } from "@rakazo/core";
 import {
   cronFromPreset,
@@ -46,6 +51,7 @@ import {
   thinkingLevelLabel,
 } from "../lib/model-catalog";
 import { rpc } from "../lib/rpc";
+import { isHiddenBuiltinSkill, slashSkillLabel } from "../lib/slash-skills";
 import { RoutineRunHistory } from "./RoutineRunHistory";
 import { RoutineSchedule } from "./RoutineSchedule";
 
@@ -213,6 +219,7 @@ export function RoutineEditor({
   webhook,
   githubPath,
   messageProviders,
+  skills = [],
   saving,
   running,
   error,
@@ -230,6 +237,8 @@ export function RoutineEditor({
   webhook: { path: string; secret: string | null; configured: boolean };
   githubPath: string;
   messageProviders: string[];
+  /** The bot's skills; choosing one adds an @mention, which loads it when the routine runs. */
+  skills?: AgentSkillCatalogEntry[];
   saving: boolean;
   running: boolean;
   error: string | null;
@@ -269,6 +278,7 @@ export function RoutineEditor({
     []
   ).filter((level) => level !== "off");
   const defaultThinkingLevel = selectedCredential?.thinkingLevel ?? "medium";
+  const pickableSkills = skills.filter((skill) => !isHiddenBuiltinSkill(skill));
   const zone = draft.timezone || timezone;
   const zones = Intl.supportedValuesOf("timeZone");
   const slackAvailable = messageProviders.includes("slack");
@@ -418,6 +428,27 @@ export function RoutineEditor({
           className="mt-2"
         />
       </label>
+
+      {pickableSkills.length > 0 ? (
+        <NativeSelect
+          aria-label={t`Add a skill`}
+          className="mt-2 w-full"
+          value=""
+          onChange={(event) => {
+            const name = event.target.value;
+            if (!name) return;
+            const prompt = draft.prompt.trimEnd();
+            onChange({ ...draft, prompt: prompt ? `${prompt} @${name}` : `@${name}` });
+          }}
+        >
+          <NativeSelectOption value="">{t`Add a skill`}</NativeSelectOption>
+          {pickableSkills.map((skill) => (
+            <NativeSelectOption key={skill.id} value={skill.name}>
+              {slashSkillLabel(skill).title}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+      ) : null}
 
       <div className="mt-5 text-sm text-muted-foreground">
         <div className="flex items-baseline gap-2">

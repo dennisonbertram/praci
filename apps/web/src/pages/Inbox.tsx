@@ -293,6 +293,10 @@ function InboxListPage({
   const autoRetried = useRef(false);
   // Triage still pending after the last poll: say so and offer a retry instead of spinning.
   const [stalled, setStalled] = useState(false);
+  // After 15 s of the first sort the unsorted rows show, dimmed, so the page is never only grey bars.
+  const [slowSort, setSlowSort] = useState(false);
+  // A sync has returned a last-sync time, so the loading line never says "First sync" on an old mailbox.
+  const [everSynced, setEverSynced] = useState(false);
   const appliedKey = useRef<string | null>(null);
   const archiving = useRef(new Map<string, Promise<boolean>>());
   const [composing, setComposing] = useState(false);
@@ -479,7 +483,11 @@ function InboxListPage({
         restartSortWatch();
         setAttempt((n) => n + 1);
         setReload((n) => n + 1);
-      } else setStalled(true);
+      } else if (!stalled) {
+        setStalled(true);
+        // Polling stopped: read the list once more so a missed finish cannot leave the sort spinning.
+        setReload((n) => n + 1);
+      }
       return;
     }
     const timer = setTimeout(() => {
@@ -498,12 +506,14 @@ function InboxListPage({
     // The server queues the sync and answers at once; ask again until it is done, then list.
     const sync = async () => {
       let result = await rpc.inbox.refresh({});
+      if (result?.syncedAt && live) setEverSynced(true);
       for (let i = 0; i < SYNC_POLL_MAX && live && result?.syncing; i++) {
         await new Promise<void>((resolve) => {
           wake = resolve;
           timer = setTimeout(resolve, Math.min(SYNC_POLL_MS * 2 ** i, SYNC_POLL_MAX_MS));
         });
         if (live) result = await rpc.inbox.refresh({});
+        if (result?.syncedAt && live) setEverSynced(true);
       }
     };
     sync()
@@ -661,7 +671,13 @@ function InboxListPage({
   const meetingTodos = Boolean(meetings?.source) || (todos ?? []).some((todo) => todo.meetingId);
   const showTodos = (triage || meetingTodos) && !sorting && pile === "important";
   // The first sort shows no rows at all: they would regroup and the To do card would push them down.
-  const sortingRows = (sorting || firstSort) && !stalled;
+  const sortingNow = sorting || firstSort;
+  useEffect(() => {
+    if (!sortingNow) return setSlowSort(false);
+    const timer = setTimeout(() => setSlowSort(true), 15_000);
+    return () => clearTimeout(timer);
+  }, [sortingNow]);
+  const sortingRows = sortingNow && !stalled && !slowSort;
   const loading =
     !shown ||
     sortingRows ||
@@ -1525,7 +1541,7 @@ function InboxListPage({
             ) : null}
             {synced || sortingRows ? null : (
               <p role="status" className="text-sm text-muted-foreground">
-                {slowSync ? (
+                {slowSync && !everSynced && !data?.syncedAt ? (
                   <Trans>First sync can take a minute</Trans>
                 ) : (
                   <Trans>Reading your mail…</Trans>
@@ -1582,6 +1598,14 @@ function InboxListPage({
                   <Trans>Try sorting again</Trans>
                 </Button>
               </div>
+            ) : sorting && slowSort ? (
+              <p
+                role="status"
+                className="mb-4 flex min-h-9 items-center gap-2 text-sm text-muted-foreground"
+              >
+                <Spinner aria-hidden="true" />
+                <Trans>Sorting your mail…</Trans>
+              </p>
             ) : showTodos ? (
               todoCard
             ) : null}
@@ -1635,61 +1659,46 @@ function InboxListPage({
                 </Button>
               </div>
             ) : null}
-            {digestOn ? (
-              <InboxDigest
-                rows={digestList}
-                onOpen={openMessage}
-                onArchiveAll={() => archiveMany(digestList)}
-                onShowPile={() => {
-                  const next = new URLSearchParams(params);
-                  next.delete("digest");
-                  setParams(next);
-                }}
-                selectedId={selectedId}
-              />
-            ) : grouped ? (
-              <section className="mb-5">
-                <div className="border-t border-foreground/10">
-                  {senderGroups.map((group) => (
-                    <InboxSenderGroup
-                      key={group.key}
-                      group={group}
-                      expanded={expanded.has(group.key)}
-                      onToggle={() => toggleGroup(senderGroupId(group.key))}
-                      onOpen={openMessage}
-                      onMark={triage ? mark : undefined}
-                      onArchive={archive}
-                      onRead={setRead}
-                      onArchiveGroup={() => archiveMany(group.rows)}
-                      onPickGroup={() => togglePicked(group.rows.map((row) => row.id))}
-                      selectedId={selectedId}
-                      pickedIds={pickedSet}
-                      onPick={pick}
-                      onMove={moveOne}
-                      hideNewsletter={pile === "newsletters"}
-                    />
-                  ))}
-                </div>
-              </section>
-            ) : spamView ? (
-              <InboxGroup
-                rows={rows}
-                onOpen={openMessage}
-                onMark={triage ? mark : undefined}
-                onArchive={archive}
-                onRead={setRead}
-                selectedId={selectedId}
-                pickedIds={pickedSet}
-                onPick={pick}
-                onMove={moveOne}
-                showArchived={false}
-              />
-            ) : (
-              <>
+            <div className={cn(sorting && slowSort && !stalled && "opacity-60")}>
+              {digestOn ? (
+                <InboxDigest
+                  rows={digestList}
+                  onOpen={openMessage}
+                  onArchiveAll={() => archiveMany(digestList)}
+                  onShowPile={() => {
+                    const next = new URLSearchParams(params);
+                    next.delete("digest");
+                    setParams(next);
+                  }}
+                  selectedId={selectedId}
+                />
+              ) : grouped ? (
+                <section className="mb-5">
+                  <div className="border-t border-foreground/10">
+                    {senderGroups.map((group) => (
+                      <InboxSenderGroup
+                        key={group.key}
+                        group={group}
+                        expanded={expanded.has(group.key)}
+                        onToggle={() => toggleGroup(senderGroupId(group.key))}
+                        onOpen={openMessage}
+                        onMark={triage ? mark : undefined}
+                        onArchive={archive}
+                        onRead={setRead}
+                        onArchiveGroup={() => archiveMany(group.rows)}
+                        onPickGroup={() => togglePicked(group.rows.map((row) => row.id))}
+                        selectedId={selectedId}
+                        pickedIds={pickedSet}
+                        onPick={pick}
+                        onMove={moveOne}
+                        hideNewsletter={pile === "newsletters"}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ) : spamView ? (
                 <InboxGroup
-                  title={<Trans>Needs reply</Trans>}
-                  hideAttention
-                  rows={groups.needsReply}
+                  rows={rows}
                   onOpen={openMessage}
                   onMark={triage ? mark : undefined}
                   onArchive={archive}
@@ -1698,11 +1707,14 @@ function InboxListPage({
                   pickedIds={pickedSet}
                   onPick={pick}
                   onMove={moveOne}
+                  showArchived={false}
                 />
-                {resultsView ? (
+              ) : (
+                <>
                   <InboxGroup
-                    query={query}
-                    rows={[...groups.today, ...groups.earlier]}
+                    title={<Trans>Needs reply</Trans>}
+                    hideAttention
+                    rows={groups.needsReply}
                     onOpen={openMessage}
                     onMark={triage ? mark : undefined}
                     onArchive={archive}
@@ -1712,18 +1724,10 @@ function InboxListPage({
                     onPick={pick}
                     onMove={moveOne}
                   />
-                ) : (
-                  <>
+                  {resultsView ? (
                     <InboxGroup
-                      // Today's mail that needs a reply is above, so this group says it holds the rest.
-                      title={
-                        groups.needsReply.length ? (
-                          <Trans>Other mail today</Trans>
-                        ) : (
-                          <Trans>Today</Trans>
-                        )
-                      }
-                      rows={groups.today}
+                      query={query}
+                      rows={[...groups.today, ...groups.earlier]}
                       onOpen={openMessage}
                       onMark={triage ? mark : undefined}
                       onArchive={archive}
@@ -1733,22 +1737,44 @@ function InboxListPage({
                       onPick={pick}
                       onMove={moveOne}
                     />
-                    <InboxGroup
-                      title={<Trans>Earlier</Trans>}
-                      rows={groups.earlier}
-                      onOpen={openMessage}
-                      onMark={triage ? mark : undefined}
-                      onArchive={archive}
-                      onRead={setRead}
-                      selectedId={selectedId}
-                      pickedIds={pickedSet}
-                      onPick={pick}
-                      onMove={moveOne}
-                    />
-                  </>
-                )}
-              </>
-            )}
+                  ) : (
+                    <>
+                      <InboxGroup
+                        // Today's mail that needs a reply is above, so this group says it holds the rest.
+                        title={
+                          groups.needsReply.length ? (
+                            <Trans>Other mail today</Trans>
+                          ) : (
+                            <Trans>Today</Trans>
+                          )
+                        }
+                        rows={groups.today}
+                        onOpen={openMessage}
+                        onMark={triage ? mark : undefined}
+                        onArchive={archive}
+                        onRead={setRead}
+                        selectedId={selectedId}
+                        pickedIds={pickedSet}
+                        onPick={pick}
+                        onMove={moveOne}
+                      />
+                      <InboxGroup
+                        title={<Trans>Earlier</Trans>}
+                        rows={groups.earlier}
+                        onOpen={openMessage}
+                        onMark={triage ? mark : undefined}
+                        onArchive={archive}
+                        onRead={setRead}
+                        selectedId={selectedId}
+                        pickedIds={pickedSet}
+                        onPick={pick}
+                        onMove={moveOne}
+                      />
+                    </>
+                  )}
+                </>
+              )}
+            </div>
             {filtered && fresh && more.token ? (
               <div className="grid place-items-center pb-2">
                 <Button variant="outline" size="sm" disabled={more.busy} onClick={loadMore}>

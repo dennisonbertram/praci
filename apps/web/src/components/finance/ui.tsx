@@ -48,6 +48,7 @@ import {
 } from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
 import { AskBotButton } from "../AskBotButton";
+import { ShowAmountsButton } from "../HideAmountsToggle";
 import { PageNavButton } from "../PageHeader";
 import { MAX_SEGMENTS, shade } from "./charts";
 
@@ -110,7 +111,7 @@ export function SpaceName() {
           <Button
             variant="ghost"
             size="xs"
-            className="max-w-[60%] shrink-0 text-muted-foreground"
+            className="max-w-32 shrink-0 text-muted-foreground sm:max-w-64"
             aria-label={t`Company: ${current.name}. Switch company`}
           />
         }
@@ -413,6 +414,7 @@ export function CompanyMenu({ children, className }: { children?: ReactNode; cla
       <span className="flex min-w-0 shrink items-center gap-0.5 text-[11px] text-muted-foreground">
         {children}
       </span>
+      <ShowAmountsButton />
     </span>
   );
 }
