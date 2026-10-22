@@ -128,7 +128,7 @@ export async function ensureInvestorsAgent(
     spawnKey: investorsAgentSpawnKey(actor.userId),
     name: "Investors agent",
     title: "",
-    description: "Answers questions about your cap table, investors and finances.",
+    description: "Answers questions about your investors, SAFEs and finances.",
     instructions: INVESTORS_AGENT_INSTRUCTIONS,
     notifyOnFinish: true,
     color: pageAgentColor("investors"),

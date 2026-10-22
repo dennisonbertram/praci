@@ -155,16 +155,14 @@ function liftAbove(viewport: HTMLElement): number {
 }
 
 /**
- * How far the toasts must sit in from the right edge to stay clear of an open side panel
- * (`data-toast-panel`). Zero on a phone or when the panel would leave less than a toast's width.
+ * The toasts stay inside an open side panel (`data-toast-panel`) instead of covering the page
+ * beside it: this is the widest a toast may be there. Null on a phone or with no panel open.
  */
-function shiftBeside(toastWidth: number): number {
+function panelToastWidth(): number | null {
   const panel = document.querySelector<HTMLElement>("[data-toast-panel]");
-  if (!panel || isPhone()) return 0;
-  const left = panel.getBoundingClientRect().left;
-  const shift = window.innerWidth - left;
-  // The toast keeps a gutter on both sides of its own width, so its left edge stays on screen.
-  return left >= toastWidth + 2 * TOAST_GUTTER_PX && left < window.innerWidth ? shift : 0;
+  if (!panel || isPhone()) return null;
+  const { left, width } = panel.getBoundingClientRect();
+  return left < window.innerWidth ? Math.max(0, width - 2 * TOAST_GUTTER_PX) : null;
 }
 
 function ToastList({
@@ -186,7 +184,9 @@ function ToastList({
     const place = () => {
       const lift = liftAbove(viewport);
       viewport.style.setProperty("--toast-lift", `${lift}px`);
-      viewport.style.setProperty("--toast-shift", `${shiftBeside(viewport.offsetWidth)}px`);
+      const inPanel = panelToastWidth();
+      if (inPanel === null) viewport.style.removeProperty("--toast-max-width");
+      else viewport.style.setProperty("--toast-max-width", `${inPanel}px`);
     };
     place();
     // The composer grows with its text and the window resizes; a short poll covers both.
@@ -196,7 +196,7 @@ function ToastList({
       clearInterval(timer);
       window.removeEventListener("resize", place);
       viewport.style.removeProperty("--toast-lift");
-      viewport.style.removeProperty("--toast-shift");
+      viewport.style.removeProperty("--toast-max-width");
     };
   }, [shownCount, viewportRef]);
   const [, tick] = useState(0);
@@ -312,8 +312,8 @@ function ToastList({
                 // scaled down by its index; hover or focus fans them into a column.
                 "absolute right-0 bottom-0 left-0 z-[calc(100-var(--i))] origin-bottom",
                 "[--gap:0.5rem] [--peek:1rem] [--height:var(--front)]",
-                "h-[var(--height)] translate-y-[calc(var(--i)*var(--peek)*-1)] scale-[calc(1-var(--i)*0.05)]",
-                "data-[expanded]:h-[var(--toast-height)] data-[expanded]:translate-y-[calc(var(--oy)*-1-var(--i)*var(--gap))] data-[expanded]:scale-100",
+                "min-h-[var(--height)] [&[data-behind]]:h-[var(--height)] translate-y-[calc(var(--i)*var(--peek)*-1)] scale-[calc(1-var(--i)*0.05)]",
+                "data-[expanded]:h-auto data-[expanded]:min-h-[var(--toast-height)] data-[expanded]:translate-y-[calc(var(--oy)*-1-var(--i)*var(--gap))] data-[expanded]:scale-100",
                 "[&[data-behind]:not([data-expanded])]:border-foreground/25! [&[data-behind]:not([data-expanded])]:bg-muted! [&[data-behind]:not([data-expanded])>*]:opacity-0",
                 "data-[starting-style]:translate-y-[150%] data-[starting-style]:opacity-0 motion-reduce:data-[starting-style]:translate-y-[calc(var(--i)*var(--peek)*-1)]",
               ),
@@ -364,7 +364,7 @@ export function NotificationToaster({
           // `data-toast-avoid` element it would cover, and is hidden while a dialog, menu or the
           // navigation drawer is open, since it would cover their content.
           className={cn(
-            "group/viewport pointer-events-none fixed right-[max(calc(1rem+var(--toast-shift,0px)),env(safe-area-inset-right))] bottom-[max(6rem,var(--toast-lift,0px))] z-[110] w-[min(28rem,calc(100vw-2rem))] max-sm:right-auto max-sm:bottom-[max(calc(env(safe-area-inset-bottom)+1rem),var(--toast-lift,0px))] max-sm:left-1/2 max-sm:-translate-x-1/2",
+            "group/viewport pointer-events-none fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[max(6rem,var(--toast-lift,0px))] z-[110] w-[min(28rem,calc(100vw-2rem),var(--toast-max-width,100vw))] max-sm:right-auto max-sm:bottom-[max(calc(env(safe-area-inset-bottom)+1rem),var(--toast-lift,0px))] max-sm:left-1/2 max-sm:-translate-x-1/2",
             COVERED_BY_OVERLAY,
           )}
         >

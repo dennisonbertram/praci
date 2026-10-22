@@ -6566,13 +6566,8 @@ msgid "Needs a server restart"
 msgstr "Needs a server restart"
 
 #: src/components/MailApprovalCard.tsx
-#: src/pages/ActivityList.tsx
 msgid "Needs approval"
 msgstr "Needs approval"
-
-#: src/components/inbox/InboxRow.tsx
-msgid "Needs attention"
-msgstr "Needs attention"
 
 #: src/lib/devin-format.ts
 msgid "Needs input"
@@ -6582,6 +6577,7 @@ msgstr "Needs input"
 msgid "Needs reconnect"
 msgstr "Needs reconnect"
 
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Inbox.tsx
 msgid "Needs reply"
 msgstr "Needs reply"
@@ -11128,10 +11124,6 @@ msgstr "Waiting {hours}h"
 #: src/lib/devin-format.ts
 msgid "Waiting {minutes}m"
 msgstr "Waiting {minutes}m"
-
-#: src/pages/Shell.tsx
-msgid "Waiting for approval"
-msgstr "Waiting for approval"
 
 #: src/components/fundraising/Pipeline.tsx
 msgid "Waiting for Mercury · {waiting}"
