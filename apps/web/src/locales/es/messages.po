@@ -1993,6 +1993,7 @@ msgstr "No se puede alcanzar el servidor."
 #: src/components/ContactDeleteConfirm.tsx
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/AutoSortDialog.tsx
+#: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/ExchangeGroup.tsx
@@ -5895,6 +5896,10 @@ msgstr ""
 msgid "Loading activity…"
 msgstr "Cargando actividad…"
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Loading integrations"
+msgstr ""
+
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Loading memory settings…"
 msgstr "Cargando configuración de memoria…"
@@ -6751,10 +6756,6 @@ msgstr ""
 msgid "No agent connections yet."
 msgstr "Aún no hay conexiones de agentes."
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "No apps match."
-msgstr ""
-
 #: src/pages/Artifacts.tsx
 msgid "No artifacts match these filters."
 msgstr ""
@@ -6845,6 +6846,10 @@ msgstr ""
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No group chats yet."
 msgstr "Aún no hay chats de grupo."
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "No integrations match."
+msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
 #: src/pages/investors/UpdateEditor.tsx
@@ -7084,6 +7089,10 @@ msgstr ""
 #: src/pages/shell/message-cards.tsx
 msgid "Not now"
 msgstr "Ahora no"
+
+#: src/components/data-room/upload-toasts.ts
+msgid "Not retried: the space changed"
+msgstr ""
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/pages/investors/UpdateEditor.tsx
@@ -7602,7 +7611,7 @@ msgid "Paste a replacement key"
 msgstr "Pega una clave de reemplazo"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
-msgid "Paste the MCP server URL from the app's documentation."
+msgid "Paste the app's connection URL from its documentation."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -8601,6 +8610,7 @@ msgstr ""
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/DataRoomStats.tsx
+#: src/components/data-room/DropZone.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Investors.tsx
@@ -9955,6 +9965,7 @@ msgid "Take the tour"
 msgstr ""
 
 #: src/components/ai/primitives.tsx
+#: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ItemRows.tsx
 msgid "Taking longer than usual"
 msgstr ""

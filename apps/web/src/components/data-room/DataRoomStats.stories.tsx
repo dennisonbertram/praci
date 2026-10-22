@@ -61,3 +61,19 @@ export const FewMonths: Story = {
     },
   },
 };
+
+/** Twenty-two years of monthly buckets: the chart stays inside its card on a phone. */
+export const LongHistory: Story = {
+  args: {
+    stats: {
+      ...manyDocuments,
+      dates: {
+        unit: "month",
+        buckets: Array.from({ length: 264 }, (_, index) => ({
+          key: `${2004 + Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}`,
+          count: (index * 7) % 23,
+        })),
+      },
+    },
+  },
+};
