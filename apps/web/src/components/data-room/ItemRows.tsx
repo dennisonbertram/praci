@@ -139,7 +139,7 @@ function Marker({ item }: { item: DataRoomApiItem }) {
   if (item.status === "failed" || isStuck(item)) {
     const Icon = fileIcon(item);
     return (
-      <Icon role="img" aria-label={t`Failed`} className="size-3.5 shrink-0 text-destructive" />
+      <Icon role="img" aria-label={t`Failed`} className="size-3.5 shrink-0 text-muted-foreground" />
     );
   }
   // Stored text means the file is searchable already: the pipeline's later steps are not its reader's wait.
@@ -174,6 +174,7 @@ const DASH = "—";
 /** The document type, or for a finished file without one the reason; empty while it is still being read. */
 const typeText = (item: DataRoomApiItem) =>
   typeLabel(item.facets.docType) ||
+  (item.status === "failed" && isUnreadable(item.error) ? t`Unreadable` : "") ||
   (isSettled(item.status, !!item.previewText) ? t`Not tagged` : "");
 const empty = <span className="text-muted-foreground">{DASH}</span>;
 /** A failed file has nothing to show in a data column; its reason is under the name. */
@@ -204,9 +205,9 @@ function Columns() {
   return (
     <colgroup>
       <col />
-      <col className={cn(MID_COLUMN, "w-28")} />
+      <col className={cn(MID_COLUMN, "w-40")} />
       <col className={cn(MID_COLUMN, "w-24")} />
-      <col className={cn(PARTIES_COLUMN, "w-36 @min-[1100px]/list:w-44")} />
+      <col className={cn(PARTIES_COLUMN, "w-44 @min-[1100px]/list:w-56 @min-[1500px]/list:w-72")} />
       <col className={cn(MID_COLUMN, "w-20")} />
       <col className="w-7" />
     </colgroup>
@@ -362,13 +363,13 @@ function ItemRow({
             >
               {item.name}
             </span>
-            {/* The retry sits on the folder line, so a failed row keeps the height of the others. */}
-            {folder || item.status === "failed" || stuck ? (
+            {/* A failed file's folder is dropped: its reason (and Try again) takes that line, so the row stays short. */}
+            {(folder && item.status !== "failed") || stuck ? (
               <span className="flex min-w-0 flex-wrap items-center gap-x-2">
                 {folder ? (
                   <span className="truncate text-xs text-muted-foreground">{folder}</span>
                 ) : null}
-                {item.status === "failed" || stuck ? <RetryButton item={item} o={o} /> : null}
+                {stuck ? <RetryButton item={item} o={o} /> : null}
               </span>
             ) : null}
             {/* Where the Type, Date and Status columns are hidden (a phone), they go under the name. */}
@@ -384,21 +385,18 @@ function ItemRow({
             >
               {age || label || <TypeAndDate item={item} sortField={sortField} />}
             </span>
-            {item.status === "failed" && !item.error ? (
-              <span
-                data-testid="data-room-failed-reason"
-                className="text-xs text-destructive @min-[640px]/list:hidden"
-              >
-                <Trans>Could not read this file. Delete it and upload it again.</Trans>
-              </span>
-            ) : null}
-            {/* Why it failed, in the row itself: a tooltip is easy to miss and absent on touch. */}
-            {item.status === "failed" && item.error ? (
-              <span
-                data-testid="data-room-error"
-                className="text-xs text-destructive @min-[640px]/list:hidden"
-              >
-                {item.error}
+            {/* Why it failed, in the row itself: a tooltip is easy to miss and absent on touch. An unreadable file's one Delete is in the row menu. */}
+            {item.status === "failed" ? (
+              <span className="flex min-w-0 flex-wrap items-center gap-x-2">
+                <span
+                  data-testid={item.error ? "data-room-error" : "data-room-failed-reason"}
+                  className="text-xs text-destructive"
+                >
+                  {item.error ?? (
+                    <Trans>Could not read this file. Delete it and upload it again.</Trans>
+                  )}
+                </span>
+                {isUnreadable(item.error) ? null : <RetryButton item={item} o={o} />}
               </span>
             ) : null}
             {/* In the name cell, not a row of their own: a row spanning hidden columns squeezed the name. */}
