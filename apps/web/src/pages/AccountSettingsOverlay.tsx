@@ -18,10 +18,9 @@ import {
   Switch,
   Toggle,
 } from "@rakazo/ui-web";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
-import { Link } from "react-router-dom";
 import { AccountAccess } from "../components/AccountAccess";
 import { AiDataSharingSection } from "../components/AiDataSharing";
 import { ApprovalRulesSettings } from "../components/ApprovalRulesSettings";
@@ -248,41 +247,19 @@ export function GeneralSettingsPanels({
 
           {isDeploymentOwner ? <DefaultRunsOnSection /> : null}
 
-          {isDeploymentOwner ? (
-            <section className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-4">
-              <div className="min-w-0">
-                <h3 className="text-[15px] font-medium text-foreground">
-                  <Trans>Integration sign-in</Trans>
-                </h3>
-                <p className="mt-0.5 text-[13px] text-muted-foreground">
-                  <Trans>How Integrations connect for everyone on this server.</Trans>
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                aria-label={t`Open integration sign-in`}
-                render={
-                  <Link
-                    to={`/app/integrations/setup?next=${encodeURIComponent(window.location.pathname + window.location.search)}`}
-                  />
-                }
-              >
-                <Trans>Open</Trans>
-              </Button>
-            </section>
-          ) : null}
-
           <details
             data-testid="advanced-settings"
             className="group rounded-xl border border-border"
           >
             <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 text-[14px] text-foreground/75">
               <span className="block text-[15px] text-foreground">
-                <Trans>Advanced</Trans>
+                <Trans>Chat display</Trans>
               </span>
-              <span aria-hidden="true" className="transition-transform group-open:rotate-90">
-                ›
-              </span>
+              <ChevronRight
+                aria-hidden="true"
+                className="size-4 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+                strokeWidth={1.75}
+              />
             </summary>
             <div className="border-t border-border px-4 pb-5">
               <div className="flex items-start gap-3 pt-5 pointer-coarse:min-h-11 pointer-coarse:items-center">
@@ -505,9 +482,11 @@ function ChangePasswordSection({ email }: { email?: string | null }) {
     <details data-testid="change-password" className="group">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-3 text-[15px] font-medium text-foreground">
         <Trans>Change password</Trans>
-        <span aria-hidden="true" className="transition-transform group-open:rotate-90">
-          ›
-        </span>
+        <ChevronRight
+          aria-hidden="true"
+          className="size-4 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+          strokeWidth={1.75}
+        />
       </summary>
       <div className="grid gap-3 pb-1">
         <input

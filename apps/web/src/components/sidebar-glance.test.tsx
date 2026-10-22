@@ -60,7 +60,7 @@ it("keeps a value out of the rail, where any badge becomes a dot", () => {
 
 it.each([
   ["urgent", "(urgent)"],
-  ["needs_input", "(needs input)"],
+  ["needs_input", "(needs your answer)"],
   ["failed", "(failed)"],
   ["done", "(done)"],
   ["new", "(new)"],

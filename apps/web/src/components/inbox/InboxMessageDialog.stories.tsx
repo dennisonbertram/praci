@@ -126,7 +126,7 @@ export const WithAskAgent: Story = {
   beforeEach: () => mockRpc({ "inbox.get": message }),
 };
 
-/** The agent opens beside the email without moving the email's left edge. */
+/** The agent opens beside the email and the dialog stays centred. */
 export const AskAgentPanelOpen: Story = {
   args: {
     messageId: "msg_ask_panel",

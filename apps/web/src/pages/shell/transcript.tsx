@@ -152,6 +152,8 @@ export const Transcript = memo(function Transcript({
   workingBots,
   workingActivity: activity,
   workingStartedAt,
+  onStopRun,
+  onRetryRun,
   failedNote,
   failedScheduled = false,
   onLoadOlder,
@@ -191,6 +193,8 @@ export const Transcript = memo(function Transcript({
   workingBots: GroupAvatarMember[];
   workingActivity?: WorkingActivity;
   workingStartedAt?: number;
+  onStopRun?: () => void;
+  onRetryRun?: () => void;
   /** Why the last run failed, once its error above the composer was dismissed; "" when unknown. */
   failedNote?: string | null;
   /** The failed run was a routine (a scheduled or Scan now run), not a reply to a message. */
@@ -918,6 +922,8 @@ export const Transcript = memo(function Transcript({
             bots={workingBots}
             label={workingLabel}
             startedAt={workingStartedAt}
+            onStop={onStopRun}
+            onRetry={onRetryRun}
             detail={
               activity?.kind === "tool"
                 ? activity.detail
@@ -1111,7 +1117,7 @@ function MessageHoverActions({
   }
 
   const iconButtonClass =
-    "grid h-7 w-7 place-items-center text-muted-foreground transition-colors hover:text-foreground";
+    "grid h-7 w-7 place-items-center rounded-lg text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring";
   const canRemember =
     Boolean(remember) && message.role === "bot" && canReactToThreadMessage(message);
   const remembered = remember?.ids.has(message.id) ?? false;
@@ -1722,7 +1728,7 @@ const MessageView = memo(function MessageView({
                 {block.lines.map((line) => (
                   <div key={line.k} className="flex items-baseline gap-2.5 text-[15px]">
                     <span className="text-success">✓</span>
-                    <span className="font-semibold text-white">{line.k}</span>
+                    <span className="font-semibold text-foreground">{line.k}</span>
                     <span className="text-muted-foreground">→</span>
                     <span>{line.v}</span>
                   </div>

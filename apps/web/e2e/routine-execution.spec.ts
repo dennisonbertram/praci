@@ -19,7 +19,7 @@ test("Slack message trigger uses the mounted messaging provider and persists", a
   const botId = activeBotId(page);
 
   await page.getByTitle("Computer and routines").click();
-  await page.getByRole("button", { name: "Create Routine" }).click();
+  await page.getByRole("button", { name: "Create a routine" }).click();
   await page.getByPlaceholder("Name this routine").fill("Triage Slack updates");
   await page
     .getByPlaceholder("What should this routine do each time it runs?")
@@ -58,7 +58,7 @@ test("GitHub event trigger exposes signed delivery settings and persists", async
   const botId = activeBotId(page);
 
   await page.getByTitle("Computer and routines").click();
-  await page.getByRole("button", { name: "Create Routine" }).click();
+  await page.getByRole("button", { name: "Create a routine" }).click();
   await page.getByPlaceholder("Name this routine").fill("Review repository events");
   await page
     .getByPlaceholder("What should this routine do each time it runs?")
@@ -127,7 +127,7 @@ test("routine test-run completes and survives reload", async ({ page }, testInfo
 
   await page.getByTitle("Computer and routines").click();
   await expect(page.getByRole("button", { name: "Test run" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Create Routine" }).click();
+  await page.getByRole("button", { name: "Create a routine" }).click();
   await page.locator("label:has-text('Name') input").fill("Daily verification");
   await page
     .locator("label:has-text('Instruction') textarea")

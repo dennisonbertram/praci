@@ -138,6 +138,39 @@ it("on a phone the card sits on the half of the screen away from its target", as
   expect(card().style.top).toBe("16px");
 });
 
+it("on desktop the card stays inside the sidebar column, on the half away from its target", async () => {
+  const aside = document.createElement("aside");
+  aside.getBoundingClientRect = () =>
+    ({
+      top: 0,
+      bottom: window.innerHeight,
+      left: 0,
+      right: 316,
+      width: 316,
+      height: window.innerHeight,
+    }) as DOMRect;
+  document.body.append(aside);
+  const target = document.querySelector('[data-tour="sidebar-inbox"]') as HTMLElement;
+  aside.append(target);
+  target.getBoundingClientRect = () =>
+    ({ top: 100, bottom: 140, left: 10, right: 300, width: 290, height: 40 }) as DOMRect;
+  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
+  const card = document.querySelector("[data-testid='tour-card']") as HTMLElement;
+  expect(card.style.bottom).toBe("16px");
+  expect(card.style.left).toBe("8px");
+  expect(card.style.width).toBe("300px");
+});
+
+it("does not tell anyone to connect Gmail, which may already be connected", async () => {
+  for (const el of document.querySelectorAll("[data-tour]")) el.remove();
+  const el = document.createElement("button");
+  el.dataset.tour = "sidebar-integrations";
+  document.body.append(el);
+  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
+  expect(document.body.textContent).toContain("add more in Integrations");
+  expect(document.body.textContent).not.toContain("Gmail");
+});
+
 it("shows nothing and saves nothing when closed or when no anchor exists", async () => {
   await act(async () =>
     root.render(<FirstRunTour open={false} onClose={vi.fn()} onAsk={vi.fn()} />),
@@ -190,7 +223,7 @@ it("is a complete tour, top to bottom, ending on the composer", async () => {
   expect(seen[1]).toContain("create a bot");
   // New users already ask before email and purchases, so the tour sends nobody to Settings.
   expect(seen[6]).not.toContain("Settings");
-  expect(seen[7]).toContain("Connect Gmail");
+  expect(seen[7]).toContain("Integrations");
   expect(seen[7]).toContain("bots");
   expect(seen.join(" ")).not.toMatch(/agent|apps/i);
   expect(seen[8]).toContain("retake this tour");

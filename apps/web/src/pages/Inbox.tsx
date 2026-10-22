@@ -21,6 +21,9 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   InputGroup,
   InputGroupAddon,
@@ -50,7 +53,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { InboxConsentPrompt } from "../components/AiDataSharing";
 import { AskBotButton } from "../components/AskBotButton";
@@ -88,6 +91,17 @@ import { errorText } from "../lib/user-error";
 type MeetingsState = { source: boolean; syncing: boolean; ready: boolean };
 
 const ALL = "all";
+
+const PHONE_QUERY = "(max-width: 767px)";
+function subscribePhone(onChange: () => void) {
+  if (typeof window.matchMedia !== "function") return () => undefined;
+  const media = window.matchMedia(PHONE_QUERY);
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
+}
+const isPhone = () =>
+  typeof window.matchMedia === "function" && window.matchMedia(PHONE_QUERY).matches;
+
 /** While a refresh reports its sync still running, ask again this often, at most this many times. */
 const SYNC_POLL_MS = 2_000;
 /** The wait doubles after each answer that still says syncing, up to this. */
@@ -276,6 +290,7 @@ function InboxListPage({
   const [reload, setReload] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const polls = useRef(0);
+  const autoRetried = useRef(false);
   // Triage still pending after the last poll: say so and offer a retry instead of spinning.
   const [stalled, setStalled] = useState(false);
   const appliedKey = useRef<string | null>(null);
@@ -377,13 +392,35 @@ function InboxListPage({
 
   // To-dos load beside the list, so the card never pushes loaded rows down.
   const tabKey = tab ?? ALL;
+  const todosNow = useRef(todosByTab);
+  todosNow.current = todosByTab;
+  const meetingsNow = useRef(meetings);
+  meetingsNow.current = meetings;
+  // A later answer that adds or removes a to-do waits here, so the rows under the pointer stay put.
+  const heldTodos = useRef<
+    { tabKey: string; todos: InboxTodo[]; state: MeetingsState | null } | undefined
+  >(undefined);
+  const applyTodos = (key: string, todos: InboxTodo[], state: MeetingsState | null) => {
+    heldTodos.current = undefined;
+    setTodosByTab((all) => ({ ...all, [key]: todos }));
+    setMeetings(state);
+  };
   useEffect(() => {
     if (paused) return;
     let live = true;
     const done = (todos: InboxTodo[], state: MeetingsState | null = null) => {
       if (!live) return;
-      setTodosByTab((all) => ({ ...all, [tabKey]: todos }));
-      setMeetings(state);
+      const before = todosNow.current[tabKey];
+      const sameMeetings = JSON.stringify(state) === JSON.stringify(meetingsNow.current);
+      if (
+        before !== undefined &&
+        before.length !== todos.length &&
+        sameMeetings &&
+        !sortingRef.current &&
+        !sortEnding.current
+      )
+        heldTodos.current = { tabKey, todos, state };
+      else applyTodos(tabKey, todos, state);
       if (sortEnding.current) {
         sortEnding.current = false;
         setSorting(false);
@@ -398,6 +435,11 @@ function InboxListPage({
       live = false;
     };
   }, [tab, tabKey, todoRefresh, paused]);
+  // Opening another list is a change the user made, so the held to-dos show with it.
+  useEffect(() => {
+    const held = heldTodos.current;
+    if (held) applyTodos(held.tabKey, held.todos, held.state);
+  }, [listKey]);
   // The first meeting sync has no event to wait for; look again until it has a checkpoint.
   const meetingsSyncing = Boolean(meetings?.syncing);
   useEffect(() => {
@@ -428,9 +470,16 @@ function InboxListPage({
 
   // Triage runs after the sync returns, so refetch a few times while the list reports it pending.
   useEffect(() => {
+    if (!data?.triagePending) autoRetried.current = false;
     if (paused || !data?.triagePending) return;
     if (polls.current >= TRIAGE_MAX_POLLS) {
-      setStalled(true);
+      // A sort that stalls once starts over by itself before the page says it is slow.
+      if (!autoRetried.current) {
+        autoRetried.current = true;
+        restartSortWatch();
+        setAttempt((n) => n + 1);
+        setReload((n) => n + 1);
+      } else setStalled(true);
       return;
     }
     const timer = setTimeout(() => {
@@ -611,12 +660,16 @@ function InboxListPage({
   // Meeting follow-ups show whenever the user has any or a meeting source, with or without mail triage.
   const meetingTodos = Boolean(meetings?.source) || (todos ?? []).some((todo) => todo.meetingId);
   const showTodos = (triage || meetingTodos) && !sorting && pile === "important";
+  // The first sort shows no rows at all: they would regroup and the To do card would push them down.
+  const sortingRows = (sorting || firstSort) && !stalled;
   const loading =
     !shown ||
+    sortingRows ||
     (!filtered && shown.rows.length === 0 && !synced) ||
     // The To do card is waited for on the Important pile even before it is known to show (meetings
     // arrive with it), so it never pushes the loaded rows down.
     (pile === "important" && !paused && todos === undefined && !sorting);
+  const phone = useSyncExternalStore(subscribePhone, isPhone, () => false);
   // Nothing to search in a mailbox with no mail in any pile.
   const mailboxEmpty =
     !loading &&
@@ -906,6 +959,7 @@ function InboxListPage({
           setReload((n) => n + 1);
         }}
         onDismiss={() => setConsentDismissed(true)}
+        shownElsewhere={failed && !failedEmpty ? failed : undefined}
       />
     ) : null;
   const todoCard = todos ? (
@@ -913,12 +967,13 @@ function InboxListPage({
       todos={todos}
       meetings={meetings ?? undefined}
       onOpen={openMessage}
-      onChange={(next) =>
-        setTodosByTab((all) => ({
-          ...all,
-          [tabKey]: (all[tabKey] ?? []).map((item) => (item.id === next.id ? next : item)),
-        }))
-      }
+      onChange={(next) => {
+        const swap = (items: InboxTodo[]) =>
+          items.map((item) => (item.id === next.id ? next : item));
+        // A held answer must not bring the old state back when it is applied.
+        if (heldTodos.current) heldTodos.current.todos = swap(heldTodos.current.todos);
+        setTodosByTab((all) => ({ ...all, [tabKey]: swap(all[tabKey] ?? []) }));
+      }}
     />
   ) : null;
   const closeMessage = () => {
@@ -1113,6 +1168,69 @@ function InboxListPage({
     </div>
   ) : null;
 
+  const searchMeta = (
+    <>
+      {mailboxEmpty ? null : (
+        <form
+          ref={searchRef}
+          className="min-w-40 flex-1 basis-full @lg/ph:basis-0"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setParam("q", draft.trim());
+          }}
+        >
+          <InputGroup className="w-full max-w-sm">
+            <InputGroupAddon>
+              <Search aria-hidden="true" />
+            </InputGroupAddon>
+            <InputGroupInput
+              type="search"
+              name="inbox-search"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Escape") return;
+                setDraft("");
+                if (query) setParam("q", "");
+              }}
+              // Short enough to fit beside the agent panel; the hover title keeps the example.
+              placeholder={t`Search mail`}
+              title={t`Search mail, e.g. from:sam has:attachment`}
+              aria-label={t`Search mail`}
+              // Nothing to search or filter before mail is connected.
+              disabled={noAccounts}
+              maxLength={MAX_QUERY}
+              className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
+              autoComplete="off"
+            />
+            {draft ? (
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  size="icon-xs"
+                  aria-label={t`Clear`}
+                  onClick={() => {
+                    setDraft("");
+                    clearFilters();
+                    searchRef.current?.querySelector("input")?.focus();
+                  }}
+                >
+                  <X aria-hidden="true" />
+                </InputGroupButton>
+              </InputGroupAddon>
+            ) : null}
+          </InputGroup>
+        </form>
+      )}
+      {/* After the search box, which arrives first: the name loads later and must not push it. */}
+      {spaceName ? (
+        // The full name is in the hover title when the row is too short for it.
+        <span title={spaceName} className="mt-1 truncate @lg/ph:mt-0 @lg/ph:max-w-72">
+          {spaceName}
+        </span>
+      ) : null}
+    </>
+  );
+
   // The bottom padding lets the last rows scroll clear of a toast.
   return (
     <div
@@ -1121,72 +1239,11 @@ function InboxListPage({
     >
       <div className="mx-auto max-w-[1440px]">
         {/* A sticky box sticks inside the scroller's padding, so -top cancels it: rows never show above the header. mb-2 keeps the cards below clear of it. */}
-        <div className="sticky -top-2 z-10 -mx-4 -mt-2 mb-2 bg-background px-4 pt-2 md:-top-5 md:-mx-7 md:-mt-5 md:px-7 md:pt-5">
+        <div className="sticky -top-2 z-20 -mx-4 -mt-2 mb-2 bg-background px-4 pt-2 md:-top-5 md:-mx-7 md:-mt-5 md:px-7 md:pt-5">
           <PageHeader
             compact
             title={<Trans>Inbox</Trans>}
-            meta={
-              <>
-                {mailboxEmpty ? null : (
-                  <form
-                    ref={searchRef}
-                    className="min-w-40 flex-1 basis-full @lg/ph:basis-0"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      setParam("q", draft.trim());
-                    }}
-                  >
-                    <InputGroup className="w-full max-w-sm">
-                      <InputGroupAddon>
-                        <Search aria-hidden="true" />
-                      </InputGroupAddon>
-                      <InputGroupInput
-                        type="search"
-                        name="inbox-search"
-                        value={draft}
-                        onChange={(event) => setDraft(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key !== "Escape") return;
-                          setDraft("");
-                          if (query) setParam("q", "");
-                        }}
-                        // Short enough to fit beside the agent panel; the hover title keeps the example.
-                        placeholder={t`Search mail`}
-                        title={t`Search mail, e.g. from:sam has:attachment`}
-                        aria-label={t`Search mail`}
-                        // Nothing to search or filter before mail is connected.
-                        disabled={noAccounts}
-                        maxLength={MAX_QUERY}
-                        className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
-                        autoComplete="off"
-                      />
-                      {draft ? (
-                        <InputGroupAddon align="inline-end">
-                          <InputGroupButton
-                            size="icon-xs"
-                            aria-label={t`Clear`}
-                            onClick={() => {
-                              setDraft("");
-                              setParam("q", "");
-                              searchRef.current?.querySelector("input")?.focus();
-                            }}
-                          >
-                            <X aria-hidden="true" />
-                          </InputGroupButton>
-                        </InputGroupAddon>
-                      ) : null}
-                    </InputGroup>
-                  </form>
-                )}
-                {/* After the search box, which arrives first: the name loads later and must not push it. */}
-                {spaceName ? (
-                  // The full name is in the hover title when the row is too short for it.
-                  <span title={spaceName} className="mt-1 truncate @lg/ph:mt-0 @lg/ph:max-w-72">
-                    {spaceName}
-                  </span>
-                ) : null}
-              </>
-            }
+            meta={phone ? undefined : searchMeta}
             actions={
               <>
                 {tools ? (
@@ -1264,31 +1321,36 @@ function InboxListPage({
                             {filterLabels()[name]}
                           </DropdownMenuRadioItem>
                         ))}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
-                          <DropdownMenuLabel>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
                             <Trans>Gmail tabs</Trans>
-                          </DropdownMenuLabel>
-                          {(["primary", "promotions", "social", "updates"] as const).map((name) => (
-                            <DropdownMenuRadioItem key={name} value={name} closeOnClick>
-                              {filterLabels()[name]}
-                            </DropdownMenuRadioItem>
-                          ))}
-                        </DropdownMenuGroup>
-                        {triage ? (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuGroup>
-                              <DropdownMenuLabel>
-                                <Trans>Categories</Trans>
-                              </DropdownMenuLabel>
-                              {InboxViewCategorySchema.options.map((name) => (
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            {(["primary", "promotions", "social", "updates"] as const).map(
+                              (name) => (
                                 <DropdownMenuRadioItem key={name} value={name} closeOnClick>
-                                  {categoryLabels()[name]}
+                                  {filterLabels()[name]}
                                 </DropdownMenuRadioItem>
-                              ))}
-                            </DropdownMenuGroup>
-                          </>
+                              ),
+                            )}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        {triage ? (
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              <Trans>Categories</Trans>
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent>
+                              {/* Newsletters is a pile tab, so the category of that name is left out. */}
+                              {InboxViewCategorySchema.options
+                                .filter((name) => name !== "newsletter")
+                                .map((name) => (
+                                  <DropdownMenuRadioItem key={name} value={name} closeOnClick>
+                                    {categoryLabels()[name]}
+                                  </DropdownMenuRadioItem>
+                                ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
                         ) : null}
                       </DropdownMenuRadioGroup>
                       {accounts.length > 1 ? (
@@ -1339,8 +1401,8 @@ function InboxListPage({
                       render={
                         <Button
                           variant="outline"
-                          size="icon-sm"
-                          className="pointer-coarse:size-10"
+                          size="sm"
+                          className="pointer-coarse:h-10 pointer-coarse:min-w-10"
                           aria-label={t`Compose`}
                           onClick={() => setComposing(true)}
                         />
@@ -1383,6 +1445,12 @@ function InboxListPage({
             </div>
           ) : null}
         </div>
+        {/* On a phone the search sits under the sticky title and tabs and scrolls away with the list. */}
+        {phone ? (
+          <div className="mb-3 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+            {searchMeta}
+          </div>
+        ) : null}
 
         {failed && !failedEmpty ? (
           <div
@@ -1442,7 +1510,20 @@ function InboxListPage({
         ) : loading ? (
           <div className="flex flex-col gap-2" aria-busy="true">
             {consentPrompt}
-            {synced ? null : (
+            {sortingRows ? (
+              // After Allow it takes the consent card's place at its height, so the list does not jump.
+              <p
+                role="status"
+                className={cn(
+                  "mb-2 flex min-h-9 items-center gap-2 text-sm text-muted-foreground",
+                  justAllowed && "min-h-16",
+                )}
+              >
+                <Spinner aria-hidden="true" />
+                <Trans>Sorting your mail…</Trans>
+              </p>
+            ) : null}
+            {synced || sortingRows ? null : (
               <p role="status" className="text-sm text-muted-foreground">
                 {slowSync ? (
                   <Trans>First sync can take a minute</Trans>
@@ -1501,18 +1582,6 @@ function InboxListPage({
                   <Trans>Try sorting again</Trans>
                 </Button>
               </div>
-            ) : sorting ? (
-              // After Allow it takes the consent card's place at its height, so the list does not jump.
-              <p
-                role="status"
-                className={cn(
-                  "mb-4 flex min-h-9 items-center gap-2 text-sm text-muted-foreground",
-                  justAllowed && "min-h-16",
-                )}
-              >
-                <Spinner aria-hidden="true" />
-                <Trans>Sorting your mail…</Trans>
-              </p>
             ) : showTodos ? (
               todoCard
             ) : null}
@@ -1524,8 +1593,8 @@ function InboxListPage({
                     : plural(rows.length, { one: "# result", other: "# results" })}
                   {activeFilterLabel ? ` · ${activeFilterLabel}` : null}
                 </span>
-                {/* A search already has the X in its box; a filter or category has only this. */}
-                {query && draft && !filter && !category ? null : (
+                {/* A search has the X in its box, which clears the filter too; a filter alone has only this. */}
+                {query && draft ? null : (
                   <Button variant="ghost" size="sm" onClick={clearFilters}>
                     <Trans>Clear</Trans>
                   </Button>
@@ -1632,6 +1701,7 @@ function InboxListPage({
                 />
                 {resultsView ? (
                   <InboxGroup
+                    query={query}
                     rows={[...groups.today, ...groups.earlier]}
                     onOpen={openMessage}
                     onMark={triage ? mark : undefined}

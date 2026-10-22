@@ -22,8 +22,8 @@ msgid " (failed)"
 msgstr " (failed)"
 
 #: src/components/sidebar-glance.tsx
-msgid " (needs input)"
-msgstr " (needs input)"
+msgid " (needs your answer)"
+msgstr " (needs your answer)"
 
 #: src/components/sidebar-glance.tsx
 msgid " (new)"
@@ -84,6 +84,11 @@ msgstr "{0, plural, one {# file failed} other {# files failed}}"
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
 msgstr "{0, plural, one {# finance lookup} other {# finance lookups}}"
 
+#. placeholder {0}: group.count
+#: src/components/inbox/InboxDigest.tsx
+msgid "{0, plural, one {# message} other {# messages}}"
+msgstr "{0, plural, one {# message} other {# messages}}"
+
 #. placeholder {0}: group.entries.length
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "{0, plural, one {# model} other {# models}}"
@@ -123,6 +128,14 @@ msgstr "{0, plural, one {Added # file} other {Added # files}}"
 #: src/components/data-room/AutoSortDialog.tsx
 msgid "{0, plural, one {Apply # change} other {Apply # changes}}"
 msgstr "{0, plural, one {Apply # change} other {Apply # changes}}"
+
+#. placeholder {0}: rows.length
+#. placeholder {1}: rows.length
+#. placeholder {2}: groups.length
+#. placeholder {3}: groups.length
+#: src/components/inbox/InboxDigest.tsx
+msgid "{0, plural, one {Archive {1} message from {2} sender} other {Archive all # messages from {3, plural, one {# sender} other {# senders}}}}"
+msgstr "{0, plural, one {Archive {1} message from {2} sender} other {Archive all # messages from {3, plural, one {# sender} other {# senders}}}}"
 
 #. placeholder {0}: picks.size
 #: src/components/data-room/ImportFromEmail.tsx
@@ -261,15 +274,15 @@ msgstr "{0} files were not added. Attachments can be up to {MAX_COMPOSE_ATTACHME
 msgid "{0} handling"
 msgstr "{0} handling"
 
-#. placeholder {0}: group.count
-#: src/components/inbox/InboxDigest.tsx
-msgid "{0} messages"
-msgstr "{0} messages"
-
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
 msgid "{0} mo"
 msgstr "{0} mo"
+
+#. placeholder {0}: entries.length
+#: src/lib/approval-toasts.ts
+msgid "{0} need approval"
+msgstr "{0} need approval"
 
 #. placeholder {0}: providerName(source.provider)
 #: src/pages/Finance.tsx
@@ -1000,7 +1013,6 @@ msgstr "Address or ENS"
 
 #: src/components/AiDataSharing.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
-#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
@@ -1008,10 +1020,6 @@ msgstr "Address or ENS"
 #: src/pages/shell/bot-panel.tsx
 msgid "Advanced"
 msgstr "Advanced"
-
-#: src/pages/MemorySettingsOverlay.tsx
-msgid "Advanced: connect an outside memory service"
-msgstr "Advanced: connect an outside memory service"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Advanced..."
@@ -1366,11 +1374,6 @@ msgstr "Archive"
 msgid "Archive {0}"
 msgstr "Archive {0}"
 
-#. placeholder {0}: rows.length
-#: src/components/inbox/InboxDigest.tsx
-msgid "Archive all {0}"
-msgstr "Archive all {0}"
-
 #: src/components/inbox/CleanupHistory.tsx
 msgid "Archive future mail"
 msgstr "Archive future mail"
@@ -1681,6 +1684,10 @@ msgstr "Back"
 #: src/pages/Artifacts.tsx
 msgid "Back to artifacts"
 msgstr "Back to artifacts"
+
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Back to email"
+msgstr "Back to email"
 
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Back to Inbox"
@@ -2170,7 +2177,6 @@ msgstr "Chart hidden while amounts are hidden"
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/integrations/IMessageSection.tsx
-#: src/components/integrations/IntegrationsHome.tsx
 msgid "Chat"
 msgstr "Chat"
 
@@ -2182,17 +2188,13 @@ msgstr "Chat apps"
 msgid "Chat apps, group channels, and agent connections."
 msgstr "Chat apps, group channels, and agent connections."
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Chat display"
+msgstr "Chat display"
+
 #: src/pages/shell/composer.tsx
 msgid "Chat settings"
 msgstr "Chat settings"
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "Chat with your agents over iMessage"
-msgstr "Chat with your agents over iMessage"
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "Chat with your agents over iMessage from your Mac"
-msgstr "Chat with your agents over iMessage from your Mac"
 
 #: src/pages/Shell.tsx
 msgid "Chats"
@@ -2762,10 +2764,6 @@ msgstr "Connect Gmail to send"
 #: src/pages/DataRoom.tsx
 msgid "Connect Gmail to send files"
 msgstr "Connect Gmail to send files"
-
-#: src/components/tour/FirstRunTour.tsx
-msgid "Connect Gmail, Calendar and more in Integrations so bots can read your mail and files."
-msgstr "Connect Gmail, Calendar and more in Integrations so bots can read your mail and files."
 
 #: src/pages/Investors.tsx
 msgid "Connect Google Drive"
@@ -3388,6 +3386,10 @@ msgstr "Could not reach {0}. Check the address and try again."
 msgid "Could not reach Granola"
 msgstr "Could not reach Granola"
 
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Could not reach Praci. Try again."
+msgstr "Could not reach Praci. Try again."
+
 #: src/lib/model-connection-preflight.ts
 msgid "Could not reach the model server."
 msgstr "Could not reach the model server."
@@ -3512,6 +3514,10 @@ msgstr "Could not save bot access"
 #: src/pages/GroupPanel.tsx
 msgid "Could not save group"
 msgstr "Could not save group"
+
+#: src/components/HideAmountsToggle.tsx
+msgid "Could not save Hide amounts"
+msgstr "Could not save Hide amounts"
 
 #: src/pages/Onboarding.tsx
 msgid "Could not save model"
@@ -3776,6 +3782,10 @@ msgstr "Create a key with only Query Funds"
 msgid "Create a read-only key"
 msgstr "Create a read-only key"
 
+#: src/pages/RoutineEditor.tsx
+msgid "Create a routine"
+msgstr "Create a routine"
+
 #: src/pages/Auth.tsx
 msgid "Create account"
 msgstr "Create account"
@@ -3817,10 +3827,6 @@ msgstr "Create Inbox agent"
 #: src/pages/Shell.tsx
 msgid "Create Legal agent"
 msgstr "Create Legal agent"
-
-#: src/pages/RoutineEditor.tsx
-msgid "Create Routine"
-msgstr "Create Routine"
 
 #: src/components/AskCard.tsx
 #: src/pages/shell/dialogs.tsx
@@ -4126,10 +4132,6 @@ msgstr "Desktop update"
 msgid "Details"
 msgstr "Details"
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Developer"
-msgstr "Developer"
-
 #: src/pages/Devin.tsx
 #: src/pages/Shell.tsx
 msgid "Devin"
@@ -4276,10 +4278,6 @@ msgstr "Doc"
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Docker is configured but computers are not responding. Confirm the sandbox supervisor is running, then recreate the stack after changing .env."
 msgstr "Docker is configured but computers are not responding. Confirm the sandbox supervisor is running, then recreate the stack after changing .env."
-
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Docs & files"
-msgstr "Docs & files"
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ItemRows.tsx
@@ -4517,10 +4515,6 @@ msgstr "Edit wallet"
 msgid "Email"
 msgstr "Email"
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Email & calendar"
-msgstr "Email & calendar"
-
 #: src/components/inbox/EmailAgentPanel.tsx
 msgid "Email agent"
 msgstr "Email agent"
@@ -4529,9 +4523,14 @@ msgstr "Email agent"
 msgid "Email and calendar"
 msgstr "Email and calendar"
 
+#: src/components/integrations/parts.tsx
 #: src/pages/Shell.tsx
 msgid "Email chats"
 msgstr "Email chats"
+
+#: src/components/integrations/parts.tsx
+msgid "Email chats can use {appName}"
+msgstr "Email chats can use {appName}"
 
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
@@ -5307,10 +5306,6 @@ msgstr "hour"
 msgid "hours"
 msgstr "hours"
 
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "How Integrations connect for everyone on this server."
-msgstr "How Integrations connect for everyone on this server."
-
 #: src/lib/slash-skills.ts
 msgid "How long cash lasts, with what-ifs."
 msgstr "How long cash lasts, with what-ifs."
@@ -5526,7 +5521,6 @@ msgid "Integration options"
 msgstr "Integration options"
 
 #: src/components/integrations/IntegrationSetup.tsx
-#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/LocalSettings.tsx
 msgid "Integration sign-in"
 msgstr "Integration sign-in"
@@ -5691,6 +5685,10 @@ msgstr "Largest files"
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "last"
 msgstr "last"
+
+#: src/components/inbox/InboxDigest.tsx
+msgid "Last 7 days"
+msgstr "Last 7 days"
 
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -6565,9 +6563,7 @@ msgstr "Needs approval"
 msgid "Needs attention"
 msgstr "Needs attention"
 
-#: src/components/sidebar-glance.tsx
 #: src/lib/devin-format.ts
-#: src/pages/ActivityList.tsx
 msgid "Needs input"
 msgstr "Needs input"
 
@@ -6583,16 +6579,16 @@ msgstr "Needs reply"
 msgid "Needs sign-in"
 msgstr "Needs sign-in"
 
-#: src/pages/ActivityList.tsx
-msgid "Needs takeover"
-msgstr "Needs takeover"
-
 #: src/components/PageAgentsRow.tsx
 #: src/lib/roster-status.ts
 #: src/pages/ActivityList.tsx
+#: src/pages/Shell.tsx
+msgid "Needs takeover"
+msgstr "Needs takeover"
+
+#: src/pages/ActivityList.tsx
 #: src/pages/Devin.tsx
 #: src/pages/devin/DevinSessions.tsx
-#: src/pages/Shell.tsx
 msgid "Needs you"
 msgstr "Needs you"
 
@@ -6619,6 +6615,7 @@ msgid "new"
 msgstr "new"
 
 #: src/components/investors/ActionItems.tsx
+#: src/components/PageAgentsRow.tsx
 #: src/components/sidebar-glance.tsx
 #: src/pages/shell/transcript.tsx
 msgid "New"
@@ -7234,7 +7231,6 @@ msgstr "Only if the server does not use sign-in"
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/investors/ActionItems.tsx
 #: src/components/markdown-link-prompt.tsx
-#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/portal/PortalOpen.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
@@ -7335,10 +7331,6 @@ msgstr "Open in new tab"
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
 msgstr "Open Inbox"
-
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "Open integration sign-in"
-msgstr "Open integration sign-in"
 
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -7494,6 +7486,10 @@ msgstr "Other ways to connect"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
 msgstr "Out"
+
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "Outside memory service"
+msgstr "Outside memory service"
 
 #: src/pages/Board.tsx
 msgid "Owner"
@@ -7958,6 +7954,10 @@ msgstr "Quick status check from everyone, please"
 #: src/pages/shell/transcript.tsx
 msgid "Quote"
 msgstr "Quote"
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Rarely read, and you never wrote to them"
+msgstr "Rarely read, and you never wrote to them"
 
 #: src/pages/shell/transcript.tsx
 msgid "React"
@@ -8765,10 +8765,6 @@ msgstr "SAFEs and funds"
 msgid "SAFEs, if converted at cap"
 msgstr "SAFEs, if converted at cap"
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Sales & CRM"
-msgstr "Sales & CRM"
-
 #: src/components/RunsOnPicker.tsx
 msgid "Sandbox"
 msgstr "Sandbox"
@@ -8933,13 +8929,6 @@ msgstr "Search and follow Devin sessions. Read-only."
 msgid "Search and read files and folders"
 msgstr "Search and read files and folders"
 
-#: src/components/integrations/ConnectAppsStep.tsx
-#: src/components/integrations/CustomConnectionDialog.tsx
-#: src/components/integrations/IntegrationSetup.tsx
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Search apps"
-msgstr "Search apps"
-
 #: src/pages/Artifacts.tsx
 msgid "Search artifacts…"
 msgstr "Search artifacts…"
@@ -8963,6 +8952,13 @@ msgstr "Search documents"
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
 msgstr "Search Drive"
+
+#: src/components/integrations/ConnectAppsStep.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IntegrationSetup.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Search integrations"
+msgstr "Search integrations"
 
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Inbox.tsx
@@ -9027,6 +9023,10 @@ msgstr "Security"
 #: src/pages/shell/composer.tsx
 msgid "See usage"
 msgstr "See usage"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "See what bots can reach, and add more in Integrations."
+msgstr "See what bots can reach, and add more in Integrations."
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "See your cash, burn and runway, pulled from your bank."
@@ -9260,6 +9260,11 @@ msgstr "Share with investors"
 msgid "Shared"
 msgstr "Shared"
 
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Shared {0}"
+msgstr "Shared {0}"
+
 #: src/pages/KnowledgeSection.tsx
 msgid "Shared by all bots"
 msgstr "Shared by all bots"
@@ -9439,6 +9444,10 @@ msgstr "Sign-in failed"
 msgid "Sign-in needed."
 msgstr "Sign-in needed."
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Sign-in options"
+msgstr "Sign-in options"
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/useMcpReconnect.ts
@@ -9567,6 +9576,10 @@ msgstr "Social"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Software update"
 msgstr "Software update"
+
+#: src/components/integrations/parts.tsx
+msgid "Some"
+msgstr "Some"
 
 #: src/pages/Devin.tsx
 msgid "Some sessions could not be read."
@@ -9783,6 +9796,7 @@ msgstr "Still opening…"
 msgid "Still waiting on {service}"
 msgstr "Still waiting on {service}"
 
+#: src/components/ai/primitives.tsx
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/composer.tsx
@@ -9914,6 +9928,7 @@ msgstr "Take control"
 msgid "Take the tour"
 msgstr "Take the tour"
 
+#: src/components/ai/primitives.tsx
 #: src/components/data-room/ItemRows.tsx
 msgid "Taking longer than usual"
 msgstr "Taking longer than usual"
@@ -10326,9 +10341,13 @@ msgstr "This zip is password-protected"
 msgid "This zip is too large to unpack"
 msgstr "This zip is too large to unpack"
 
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "Tick a change to apply it."
-msgstr "Tick a change to apply it."
+#: src/components/integrations/IMessageSection.tsx
+msgid "Through a Photon project"
+msgstr "Through a Photon project"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Through BlueBubbles on your Mac"
+msgstr "Through BlueBubbles on your Mac"
 
 #: src/pages/Board.tsx
 msgid "Tickets track work for your bots. Bots add them when you ask them to track a task, or press New ticket."
@@ -10403,6 +10422,10 @@ msgstr "Too large to preview ({0})"
 #: src/components/data-room/Preview.tsx
 msgid "Too large to search inside"
 msgstr "Too large to search inside"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Tool name"
+msgstr "Tool name"
 
 #: src/lib/run-phase.ts
 msgid "tools"
@@ -10499,6 +10522,7 @@ msgstr "Trial ends {day}"
 msgid "Try {name} again"
 msgstr "Try {name} again"
 
+#: src/components/ai/primitives.tsx
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/ItemRows.tsx
@@ -10833,6 +10857,10 @@ msgstr "Upload {statement} for {0}"
 msgid "Upload a PDF, CSV, OFX or QFX file"
 msgstr "Upload a PDF, CSV, OFX or QFX file"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload a skill file"
+msgstr "Upload a skill file"
+
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed. Check your connection and try again."
 msgstr "Upload failed. Check your connection and try again."
@@ -10848,10 +10876,6 @@ msgstr "Upload files"
 #: src/components/tour/FirstRunTour.tsx
 msgid "Upload files for bots to use."
 msgstr "Upload files for bots to use."
-
-#: src/pages/shell/BotSkillsSection.tsx
-msgid "Upload SKILL.md"
-msgstr "Upload SKILL.md"
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Upload statement"
@@ -10911,6 +10935,10 @@ msgstr "Use Connect to verify the key."
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Use default guidance"
 msgstr "Use default guidance"
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Use my own model"
+msgstr "Use my own model"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Use OAuth"
@@ -11016,7 +11044,7 @@ msgstr "View"
 msgid "View chat"
 msgstr "View chat"
 
-#: src/pages/SettingsOverlay.tsx
+#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Voice"
@@ -11096,10 +11124,6 @@ msgstr "Wallet balances and allocation."
 msgid "Wallet balances and history"
 msgstr "Wallet balances and history"
 
-#: src/components/integrations/FinanceSection.tsx
-msgid "Wallet balances and history · no key needed"
-msgstr "Wallet balances and history · no key needed"
-
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Wallets"
 msgstr "Wallets"
@@ -11107,10 +11131,6 @@ msgstr "Wallets"
 #: src/lib/devin-format.ts
 msgid "Web"
 msgstr "Web"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Web search"
-msgstr "Web search"
 
 #: src/pages/Paywall.tsx
 msgid "Web, desktop and mobile apps"
@@ -11380,14 +11400,26 @@ msgstr "You have an unsent reply to this email."
 msgid "You have control"
 msgstr "You have control"
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "You read most of these"
+msgstr "You read most of these"
+
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "You'll sign in to {0} in a new window."
 msgstr "You'll sign in to {0} in a new window."
 
 #: src/pages/ModelSettingsOverlay.tsx
+msgid "Your bots already have a model."
+msgstr "Your bots already have a model."
+
+#: src/pages/ModelSettingsOverlay.tsx
 msgid "Your bots already use {selectedProviderName}."
 msgstr "Your bots already use {selectedProviderName}."
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Your bots use {modelLabel}."
+msgstr "Your bots use {modelLabel}."
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Your browser blocked the sign-in window"

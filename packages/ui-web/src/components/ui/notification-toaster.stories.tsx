@@ -149,3 +149,43 @@ export const UndoBehindAgentToast: Story = {
     { id: "agent", title: "Ledger agent finished", body: "Nothing was changed.", withBot: true },
   ]),
 };
+
+/** Several approvals arrive as one toast (the app groups them; see approval-toasts). */
+export const ApprovalsGrouped: Story = {
+  args: { onOpen: () => {} },
+  render: render([{ id: "approvals:group", title: "3 need approval", withBot: true }]),
+};
+
+/** The toast sits clear of a page header's buttons and the composer. */
+export const OverPage: Story = {
+  args: { onOpen: () => {} },
+  parameters: { layout: "fullscreen" },
+  decorators: [(Story) => <div className="relative h-screen bg-background">{Story()}</div>],
+  render: () => (
+    <>
+      <header
+        data-testid="page-header"
+        className="flex h-14 items-center justify-end gap-2 border-b border-border px-4"
+      >
+        <button type="button" className="rounded-md border border-border px-3 py-1.5 text-sm">
+          Ask
+        </button>
+        <button
+          type="button"
+          className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground"
+        >
+          Start a round
+        </button>
+      </header>
+      <div
+        data-testid="composer"
+        className="absolute right-4 bottom-4 left-4 h-14 rounded-xl border border-border bg-card sm:left-auto sm:w-96"
+      />
+      <Demo
+        items={[
+          { id: "help", title: "Ledger agent needs you", body: "Send $300.00?", withBot: true },
+        ]}
+      />
+    </>
+  ),
+};

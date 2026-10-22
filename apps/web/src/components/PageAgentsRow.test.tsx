@@ -20,5 +20,14 @@ it("shows a dot only when a page agent needs the person, and toggles", () => {
   act(() => root.render(<PageAgentsRow open count={3} needsYou={false} onToggle={onToggle} />));
   expect(container.querySelector('[data-testid="page-agents-dot"]')).toBeNull();
   expect(container.querySelector("button")?.getAttribute("aria-expanded")).toBe("true");
+  const label = (heldFor?: "answer" | "takeover") => {
+    act(() =>
+      root.render(<PageAgentsRow open count={3} needsYou heldFor={heldFor} onToggle={onToggle} />),
+    );
+    return container.querySelector('[data-testid="page-agents-dot"]')?.getAttribute("aria-label");
+  };
+  expect(label("answer")).toBe("Needs your answer");
+  expect(label("takeover")).toBe("Needs takeover");
+  expect(label()).toBe("New");
   container.remove();
 });

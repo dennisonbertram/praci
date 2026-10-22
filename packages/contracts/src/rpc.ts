@@ -440,6 +440,7 @@ export const appContract = {
           /** true records the tour as seen; false clears it so the tour can run again. */
           tourSeen: z.boolean().optional(),
           hiddenPages: z.array(z.string().min(1).max(64)).max(100).optional(),
+          hideAmounts: z.boolean().optional(),
         }),
       )
       .output(MeSchema),

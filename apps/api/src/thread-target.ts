@@ -50,6 +50,7 @@ import {
   resolveSendAttachments,
 } from "./artifacts.js";
 import { resolveBusyBotName, toComputerStatus } from "./computer-status.js";
+import { dismissPendingChoiceInTransaction } from "./onboarding.js";
 import { withSerializableRetry } from "./serializable-retry.js";
 import { loadMessagePage } from "./thread-message-pages.js";
 
@@ -751,6 +752,17 @@ export async function sendThreadMessage(
           replyQuote,
           clientNonce: input.clientNonce,
         });
+        // The focus card is only posted before the first user message, so only that message can
+        // answer it by typing. Close the card instead of leaving it open.
+        if (
+          (await tx.message.count({ where: { threadId: target.threadId, role: "user" } })) === 1
+        ) {
+          await dismissPendingChoiceInTransaction(tx, {
+            spaceId: actor.spaceId,
+            botId: target.botId,
+            threadId: target.threadId,
+          });
+        }
         const activeRuns = await tx.run.findMany({
           where: {
             threadId: target.threadId,

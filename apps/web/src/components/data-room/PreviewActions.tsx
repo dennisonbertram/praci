@@ -92,8 +92,13 @@ export function FileViewer({
     );
   return item.mimeType === "application/pdf" ? (
     <iframe
-      // Hide the browser viewer's own Download and Print: the pane has Open and Download.
-      src={`${file.url}#toolbar=0`}
+      // Hide the browser viewer's own Download and Print: the pane has Open and Download. Full
+      // screen on a phone keeps the toolbar, whose zoom is the only way to read small print.
+      src={
+        fill && window.matchMedia?.("(max-width: 639px)").matches
+          ? file.url
+          : `${file.url}#toolbar=0`
+      }
       title={item.name}
       className={`w-full shrink-0 rounded-md border border-border bg-muted ${fill ? "h-full" : height}`}
     />
@@ -196,7 +201,7 @@ export function FullScreenPreview({
   const [error, setError] = useState("");
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="flex h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-none flex-col gap-3 sm:max-w-none">
+      <DialogContent className="flex h-dvh max-h-none w-screen max-w-none flex-col gap-3 max-sm:rounded-none sm:h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:max-w-none">
         <div className="flex items-center gap-1 pe-9">
           <DialogTitle className="min-w-0 flex-1 truncate">{item.name}</DialogTitle>
           <PreviewActions item={item} hidden={hidden} onError={setError} />

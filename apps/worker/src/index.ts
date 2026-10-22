@@ -207,6 +207,7 @@ async function main() {
   const executor = createRunExecutor({
     shutdownSignal: shutdown.signal,
     prisma,
+    mcpOAuth,
     runtime,
     // Live per-account Codex catalog; never refreshes or writes credentials.
     codexCatalog: new CodexCatalogCache(),

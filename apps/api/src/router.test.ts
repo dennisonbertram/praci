@@ -164,6 +164,33 @@ describe("account preferences", () => {
     });
   });
 
+  it("saves Hide amounts on the signed-in user and returns it", async () => {
+    const { update, deps, actor, handler } = preferencesDeps("organic");
+    (deps.prisma.user.findUniqueOrThrow as ReturnType<typeof vi.fn>).mockResolvedValue({
+      email: "user@rakazo.test",
+      name: "Test User",
+      avatarStyle: "organic",
+      timezone: null,
+      hideAmounts: true,
+    });
+    const { response } = await handler.handle(
+      new Request("http://127.0.0.1/rpc/preferences/update", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ json: { hideAmounts: true } }),
+      }),
+      { prefix: "/rpc", context: { actor } },
+    );
+    expect(response.status).toBe(200);
+    expect(update).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      data: expect.objectContaining({ hideAmounts: true }),
+    });
+    await expect(response.json()).resolves.toEqual({
+      json: expect.objectContaining({ hideAmounts: true }),
+    });
+  });
+
   it("saves the old cap-table hidden key as investors, once", async () => {
     const { update, actor, handler } = preferencesDeps("organic");
     await handler.handle(

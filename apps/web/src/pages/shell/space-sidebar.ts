@@ -77,13 +77,19 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
   query: string,
   /** The space the app is showing; its headers are marked when several spaces are listed. */
   currentSpaceId?: string,
-  /** Header label for the only space, which needs no name to tell it from others. */
-  soleSpaceTitle?: string,
+  /** Header label for the only space; null leaves the only space without a heading or menu. */
+  soleSpaceTitle?: string | null,
 ) {
   const needle = query.toLowerCase();
   const showSpaceNames = spaces.length > 1;
   return spaces.flatMap((space) => {
-    const spaceLabel = showSpaceNames ? space.name : (soleSpaceTitle ?? space.name);
+    const spaceLabel = showSpaceNames
+      ? space.name
+      : soleSpaceTitle === null
+        ? null
+        : (soleSpaceTitle ?? space.name);
+    // No heading means no menu and nothing to collapse: the chats list on their own.
+    const headless = spaceLabel === null;
     const visibleBots = space.bots.filter((bot) =>
       `${bot.name} ${bot.title ?? ""} ${bot.preview ?? ""}`.toLowerCase().includes(needle),
     );
@@ -125,10 +131,14 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
     const heading = (index: number) => ({
       ...shared,
       title: spaceLabel as string | null,
-      relabeled: !showSpaceNames && soleSpaceTitle !== undefined && soleSpaceTitle !== space.name,
+      relabeled:
+        !showSpaceNames &&
+        !headless &&
+        soleSpaceTitle !== undefined &&
+        soleSpaceTitle !== space.name,
       showLock: showSpaceNames,
       current: showSpaceNames && space.id === currentSpaceId,
-      ...spaceHeaderMenu(space, index === 0),
+      ...spaceHeaderMenu(space, index === 0 && !headless),
     });
     const sections = [];
     if (pinned.length === 0 && folders.length === 0) {
@@ -142,7 +152,7 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
       }
     } else {
       const headKey = key("unassigned");
-      const child = { ...shared, parentKey: headKey };
+      const child = { ...shared, parentKey: headless ? null : headKey };
       sections.push({
         ...heading(0),
         kind: "head" as SidebarBlockKind,
@@ -180,7 +190,9 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
     if (sections.length > 0) return sections;
     // Keep empty spaces selectable; chat clicks are the only switch control.
     if (needle && (space.bots.length > 0 || space.groups.length > 0)) return [];
-    if (!showSpaceNames && space.canRename !== true && space.canDelete !== true) return [];
+    if (headless || (!showSpaceNames && space.canRename !== true && space.canDelete !== true)) {
+      return [];
+    }
     return [
       {
         ...shared,

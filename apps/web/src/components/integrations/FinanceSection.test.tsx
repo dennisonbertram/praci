@@ -159,8 +159,8 @@ it("shows a keyless Blockscout server as Connected and offers the optional key",
   await show([source("mercury", "ok"), source("brex", "ok")]);
   expect(crypto().querySelector('[data-status="connected"]')).not.toBeNull();
   expect(crypto().textContent).not.toContain("Not connected");
-  // Connected without a key is complete, and the tile says no key is needed.
-  expect(crypto().textContent).toContain("no key needed");
+  // Connected without a key is complete, and the tile stays plain.
+  expect(crypto().textContent).toContain("Wallet balances and history");
   // One main action like the other connected tiles; the optional key waits in the menu.
   const links = [...crypto().querySelectorAll("a")].map((a) => a.textContent);
   expect(links).toEqual(["Open Finance"]);
@@ -178,7 +178,7 @@ it("offers a wallet without a key, opens the key modal from the menu, then shows
   expect(crypto().querySelector("input")).toBeNull();
   // No key is needed, so the tile does not say "Not connected"; it offers a wallet, key in the menu.
   expect(crypto().textContent).not.toContain("Not connected");
-  expect(crypto().textContent).toContain("no key needed");
+  expect(crypto().textContent).toContain("Wallet balances and history");
   expect(crypto().textContent).toContain("Ready");
   expect(crypto().querySelector('a[href="/app/finance/crypto"]')?.textContent).toBe("Add wallet");
   await openCryptoMenu();
