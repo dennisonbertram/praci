@@ -2769,10 +2769,6 @@ msgstr "Connect Gmail to send"
 msgid "Connect Gmail to send files"
 msgstr "Connect Gmail to send files"
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Connect Gmail, Calendar and more in Integrations so bots can read your mail and files."
-msgstr "Connect Gmail, Calendar and more in Integrations so bots can read your mail and files."
-
 #: src/pages/Investors.tsx
 msgid "Connect Google Drive"
 msgstr "Connect Google Drive"
@@ -9043,6 +9039,10 @@ msgstr "Security"
 #: src/pages/shell/composer.tsx
 msgid "See usage"
 msgstr "See usage"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "See what bots can reach, and add more in Integrations."
+msgstr "See what bots can reach, and add more in Integrations."
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "See your cash, burn and runway, pulled from your bank."
