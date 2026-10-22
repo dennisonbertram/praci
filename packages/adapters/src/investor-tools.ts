@@ -129,7 +129,10 @@ const AuditArgs = z.object({
  * one. It never closes a request: only the founder does (Mark done or Dismiss).
  */
 export async function auditRequestToolFromTool(
-  deps: { prisma: Pick<PrismaClient, "auditRequest">; scope: { spaceId: string; userId: string } },
+  deps: {
+    prisma: Pick<PrismaClient, "auditRequest" | "run">;
+    scope: { spaceId: string; userId: string };
+  },
   args: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   const parsed = AuditArgs.safeParse(args);

@@ -325,10 +325,11 @@ const MAIL: Mail[] = [
     subject: "SAFE countersigned",
     text: "Maya, the countersigned SAFE for $250,000 is filed. Wire should arrive within two business days.\n\nPriya",
   },
-  // For the Carta agent's audit-response skill: an auditor's confirmation request and its DocuSign.
+  // For the audit-response skill: an auditor's confirmation request and its DocuSign. Recent enough
+  // (under two days) for the mail sync to file the request on arrival.
   {
     thread: "audit-confirmation",
-    agoMs: 2.5 * DAY_MS,
+    agoMs: 1.5 * DAY_MS,
     from: "Quinn Auditwell <quinn@auditwell.example.test>",
     subject: "Audit confirmation: Quill Capital Fund I holdings as of Sep 30",
     text: "Hi Maya,\n\nAs part of the annual audit of Quill Capital Fund I (Mock), please confirm the fund's holdings in Northwind Robotics as of Sep 30, 2026:\n\n- SAFE, purchase amount $250,000, unconverted\n- No other securities\n\nA DocuSign envelope with this confirmation follows. Please reply with any differences by Oct 24.\n\nQuinn Auditwell\nAuditwell LLP (Mock)",
@@ -336,7 +337,7 @@ const MAIL: Mail[] = [
   },
   {
     thread: "audit-docusign",
-    agoMs: 2.4 * DAY_MS,
+    agoMs: 1.4 * DAY_MS,
     from: "DocuSign via Auditwell LLP <dse@docusign.example.test>",
     subject: "Please DocuSign: Investment confirmation for Quill Capital Fund I",
     text: "Quinn Auditwell sent you a document to review and sign: Investment confirmation for Quill Capital Fund I (Mock), as of Sep 30, 2026.\n\nREVIEW DOCUMENT (mock link, does nothing)\n\nDue Oct 24.",

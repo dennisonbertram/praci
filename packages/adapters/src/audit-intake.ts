@@ -9,6 +9,7 @@ import type { Actor, MessageBlock } from "@rakazo/contracts";
 import { investorsAgentSpawnKey } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import {
+  AUDIT_DRAFT_PROMPT_START,
   AUDIT_DRAFTS_PER_DAY,
   appendEventInTransaction,
   claimAuditDraft,
@@ -97,7 +98,7 @@ export type AuditDraftInput = {
 
 const draftPrompt = (input: AuditDraftInput) =>
   [
-    `Answer audit request ${input.requestId} with the audit-response skill.`,
+    `${AUDIT_DRAFT_PROMPT_START}${input.requestId} with the audit-response skill.`,
     `Audit request id: ${input.requestId}.`,
     input.messageId ? `Message id: ${input.messageId}.` : null,
     input.mailThreadId ? `Mail thread id: ${input.mailThreadId}.` : "It did not arrive by mail.",

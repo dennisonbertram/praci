@@ -142,6 +142,7 @@ function auditFake(rows: ReturnType<typeof auditRow>[]) {
           : (r as any)[k] === v,
     );
   const prisma = {
+    run: { findMany: async () => [] },
     auditRequest: {
       findFirst: async ({ where }: { where: Record<string, any> }) =>
         rows.find((r) => matches(r, where)) ?? null,
