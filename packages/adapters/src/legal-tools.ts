@@ -299,23 +299,22 @@ export async function legalToolFromTool(
       const parsed = DeadlineArgs.safeParse(args);
       if (!parsed.success) return { error: issues(parsed.error) };
       const { dueDate, status, ...rest } = parsed.data;
-      // The agent never dismisses: it proposes, and the founder confirms on the Legal page.
-      if (status === "dismissed" && !rest.id) {
-        return { error: "Pass the id of the deadline to propose removing it" };
+      // The agent never closes a deadline: any done/dismissed request only proposes removal of the
+      // owned id, leaving its title, date, kind and evidence as they are, and the founder confirms.
+      if (status === "dismissed" || status === "done") {
+        if (!rest.id) return { error: "Pass the id of the deadline to propose removing it" };
+        const current = await repo.updateDeadline(actor, rest.id, { proposeRemoval: true });
+        return {
+          deadline: toLegalDeadline(current),
+          note: "Proposed for removal; the founder confirms.",
+        };
       }
       const row = await repo.upsertDeadline(actor, {
         ...rest,
-        ...(status && status !== "dismissed" ? { status } : {}),
+        ...(status ? { status } : {}),
         dueDate: parseLegalDay(dueDate) as Date,
       });
-      const marked =
-        status === "dismissed" && row.status === "open"
-          ? await repo.updateDeadline(actor, row.id, { proposeRemoval: true })
-          : row;
-      return {
-        deadline: toLegalDeadline(marked),
-        ...(status === "dismissed" ? { note: "Proposed for removal; the founder confirms." } : {}),
-      };
+      return { deadline: toLegalDeadline(row) };
     }
     if (name === "legal_upsert_node") {
       const parsed = NodeArgs.safeParse(args);
