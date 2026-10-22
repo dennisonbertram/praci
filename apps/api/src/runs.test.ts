@@ -108,8 +108,25 @@ describe("listPendingApprovalNotifications", () => {
     const where = (
       notificationFind.mock.calls[0] as unknown as [{ where: Record<string, unknown> }]
     )[0].where;
-    expect(where).toMatchObject({ threadId: { in: ["t1"] }, seenAt: null });
+    expect(where).toMatchObject({ runId: { in: ["r1"] }, seenAt: null });
     expect(where).not.toHaveProperty("createdAt");
+  });
+
+  it("matches by run, so a stale approval from another agent in the same group thread stays out", async () => {
+    const { prisma, notificationFind } = fake(
+      [
+        { id: "r1", threadId: "g" },
+        { id: "r2", threadId: "g" },
+      ],
+      [
+        { runId: "r1", blocks: [{ kind: "ask", text: "Send?", status: "answered" }] },
+        { runId: "r2", blocks: [{ kind: "ask", text: "Pay?", status: "pending" }] },
+      ],
+    );
+    await listPendingApprovalNotifications(prisma, actor);
+    const call = notificationFind.mock.calls[0] as unknown as [{ where: Record<string, unknown> }];
+    expect(call[0].where).toMatchObject({ runId: { in: ["r2"] } });
+    expect(call[0].where).not.toHaveProperty("threadId");
   });
 
   it("returns nothing when the card was answered", async () => {

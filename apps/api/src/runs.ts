@@ -148,16 +148,16 @@ export async function listPendingApprovalNotifications(prisma: PrismaClient, act
     orderBy: { seq: "asc" },
     select: { runId: true, blocks: true },
   });
-  const threadIds = runs
+  const runIds = runs
     .filter((run) => pendingAskSnippet(messages.filter((m) => m.runId === run.id)) !== undefined)
-    .map((run) => run.threadId);
-  if (threadIds.length === 0) return [];
+    .map((run) => run.id);
+  if (runIds.length === 0) return [];
   return prisma.notification.findMany({
     where: {
       spaceId: actor.spaceId,
       userId: actor.userId,
       surface: "thread",
-      threadId: { in: threadIds },
+      runId: { in: runIds },
       importance: "attention",
       kind: "needs_input",
       title: { endsWith: " needs approval" },
