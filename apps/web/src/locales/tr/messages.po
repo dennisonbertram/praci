@@ -367,6 +367,10 @@ msgstr ""
 msgid "{count, plural, one {# transaction} other {# transactions}}"
 msgstr ""
 
+#: src/components/ContactDeleteConfirm.tsx
+msgid "{count, plural, one {access to # shared document} other {access to # shared documents}}"
+msgstr ""
+
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "{count, plural, one {Synced # meeting} other {Synced # meetings}}"
 msgstr ""
@@ -1201,6 +1205,10 @@ msgstr ""
 msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "Bu sağlayıcı için abonelik girişi değil, bir API anahtarı saklanıyor."
 
+#: src/components/ContactDeleteConfirm.tsx
+msgid "and"
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Answer"
 msgstr "Yanıtla"
@@ -1918,6 +1926,7 @@ msgstr "Sunucuya ulaşılamıyor."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/ContactDeleteConfirm.tsx
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
@@ -1974,10 +1983,6 @@ msgstr "İptal edildi"
 
 #: src/pages/Investors.tsx
 msgid "Cap table"
-msgstr ""
-
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Cap table, equity and investors"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -2675,6 +2680,10 @@ msgstr ""
 msgid "Connect Executor"
 msgstr "Executor'a bağlan"
 
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Connect Gmail"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Connect Gmail to read, sort and answer your mail here."
 msgstr ""
@@ -2835,6 +2844,7 @@ msgid "contracts, NDA, deadlines"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
+#: src/components/CopyLinkDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2842,6 +2852,7 @@ msgstr ""
 msgid "Copied"
 msgstr ""
 
+#: src/components/CopyLinkDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2852,6 +2863,10 @@ msgstr "Kopyala"
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Copy .env example"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Copy link"
 msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
@@ -2873,6 +2888,11 @@ msgstr "Bu sunucu onaylanamadı"
 #: src/pages/shell/message-cards.tsx
 msgid "Could not authorize this app"
 msgstr "Bu uygulama yetkilendirilemedi"
+
+#. placeholder {0}: contact.name
+#: src/pages/Investors.tsx
+msgid "Could not change access for {0}"
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Could not change password"
@@ -3159,6 +3179,10 @@ msgstr ""
 msgid "Could not load integrations"
 msgstr "Entegrasyonlar yüklenemedi"
 
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Could not load investors"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Could not load model settings"
 msgstr "Model ayarları yüklenemedi"
@@ -3204,6 +3228,10 @@ msgstr "Bu sohbet yüklenemedi."
 #: src/components/SheetPreview.tsx
 msgid "Could not load this file."
 msgstr "Bu dosya yüklenemedi."
+
+#: src/pages/portal/PortalHome.tsx
+msgid "Could not load this page"
+msgstr ""
 
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Could not load this update"
@@ -3439,6 +3467,11 @@ msgstr ""
 msgid "Could not search"
 msgstr ""
 
+#. placeholder {0}: contact.name
+#: src/pages/Investors.tsx
+msgid "Could not send a link to {0}"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Could not send reset email"
 msgstr "Sıfırlama e-postası gönderilemedi"
@@ -3446,6 +3479,10 @@ msgstr "Sıfırlama e-postası gönderilemedi"
 #: src/lib/call-session.ts
 msgid "Could not send that"
 msgstr "Gönderilemedi"
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Could not share"
+msgstr ""
 
 #: src/pages/Investors.tsx
 msgid "Could not start an update"
@@ -3474,6 +3511,10 @@ msgstr "Kontrol alınamadı"
 
 #: src/pages/Investors.tsx
 msgid "Could not undo"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Could not unshare"
 msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
@@ -3807,6 +3848,7 @@ msgstr "Varsayılan ({0})"
 msgid "Default ({0})"
 msgstr "Varsayılan ({0})"
 
+#: src/components/ContactDeleteConfirm.tsx
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
@@ -3840,7 +3882,9 @@ msgid "Delete {0}"
 msgstr "{0} sil"
 
 #. placeholder {0}: bot.name
+#. placeholder {0}: contact.name
 #. placeholder {0}: item.name
+#: src/components/ContactDeleteConfirm.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete {0}?"
@@ -3889,6 +3933,11 @@ msgstr "silindi"
 
 #: src/components/data-room/DropZone.tsx
 msgid "Deleted"
+msgstr ""
+
+#. placeholder {0}: gone.name
+#: src/lib/use-contact-notices.ts
+msgid "Deleted {0}"
 msgstr ""
 
 #: src/lib/use-contact-notices.ts
@@ -4092,6 +4141,7 @@ msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/FolderDocuments.tsx
+#: src/pages/portal/PortalHome.tsx
 #: src/pages/Shell.tsx
 msgid "Documents"
 msgstr ""
@@ -4108,6 +4158,7 @@ msgstr "Hesabın yok mu?"
 msgid "Don't share"
 msgstr ""
 
+#: src/components/CopyLinkDialog.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -4129,6 +4180,7 @@ msgstr "Bitti"
 #: src/components/DataExport.tsx
 #: src/components/inbox/MailAttachments.tsx
 #: src/pages/Artifacts.tsx
+#: src/pages/portal/PortalHome.tsx
 msgid "Download"
 msgstr ""
 
@@ -4165,6 +4217,10 @@ msgstr ""
 #: src/pages/investors/UpdateEditor.tsx
 #: src/pages/legal/LegalContracts.tsx
 msgid "Draft"
+msgstr ""
+
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Draft a reply"
 msgstr ""
 
 #: src/components/MailOutbox.tsx
@@ -4257,6 +4313,10 @@ msgstr ""
 msgid "Earlier"
 msgstr ""
 
+#: src/pages/portal/PortalHome.tsx
+msgid "Earlier updates"
+msgstr ""
+
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/finance/FinanceCrypto.tsx
@@ -4313,6 +4373,10 @@ msgstr "Bu e-posta adresinin kaydolmasına izin verilmiyor"
 
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Email not found"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Email them a link"
 msgstr ""
 
 #: src/components/MailThreadCard.tsx
@@ -5314,6 +5378,15 @@ msgstr ""
 msgid "Investors"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Investors, equity and cap table"
+msgstr ""
+
+#. placeholder {0}: day(sent)
+#: src/pages/Investors.tsx
+msgid "Invited {0}"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Isolated"
 msgstr "Yalıtılmış"
@@ -5363,7 +5436,7 @@ msgid "just now"
 msgstr "az önce"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Keep contracts here, and see who owns what in Cap table."
+msgid "Keep contracts here, and see who owns what in Investors."
 msgstr ""
 
 #: src/pages/DataRoom.tsx
@@ -5481,6 +5554,10 @@ msgstr ""
 msgid "Latest {0} of {1}"
 msgstr ""
 
+#: src/pages/portal/PortalHome.tsx
+msgid "Latest update"
+msgstr ""
+
 #: src/components/computer/TerminalApp.tsx
 msgid "Launched {app}"
 msgstr ""
@@ -5547,6 +5624,16 @@ msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
 msgid "Link address"
+msgstr ""
+
+#. placeholder {0}: link.name
+#: src/components/CopyLinkDialog.tsx
+msgid "Link for {0}"
+msgstr ""
+
+#. placeholder {0}: contact.name
+#: src/pages/Investors.tsx
+msgid "Link sent to {0}"
 msgstr ""
 
 #: src/components/AccountAccess.tsx
@@ -6504,6 +6591,7 @@ msgstr ""
 msgid "No group chats yet."
 msgstr ""
 
+#: src/components/data-room/ItemDialogs.tsx
 #: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "No investors yet"
@@ -6830,6 +6918,10 @@ msgstr ""
 msgid "Nothing remembered yet"
 msgstr "Henüz hatırlanan bir şey yok"
 
+#: src/pages/portal/PortalHome.tsx
+msgid "Nothing shared yet."
+msgstr ""
+
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Nothing to clean up. People you have written to or saved as contacts are left out."
 msgstr ""
@@ -6898,6 +6990,7 @@ msgstr ""
 #: src/components/investors/ActionItems.tsx
 #: src/components/markdown-link-prompt.tsx
 #: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/portal/PortalOpen.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
@@ -7049,6 +7142,11 @@ msgstr "Açık işler"
 #: src/pages/Onboarding.tsx
 msgid "OpenAI-compatible server URL"
 msgstr "OpenAI uyumlu sunucu URL'si"
+
+#. placeholder {0}: day(seen)
+#: src/pages/Investors.tsx
+msgid "Opened {0}"
+msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
 msgid "Opened {path}"
@@ -7380,12 +7478,20 @@ msgstr ""
 msgid "Popular apps through Pipedream"
 msgstr ""
 
+#: src/components/CopyLinkDialog.tsx
+msgid "Portal link"
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Post and schedule to social accounts"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "POST to"
+msgstr ""
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Post to portal"
 msgstr ""
 
 #: src/components/fundraising/RoundCard.tsx
@@ -7399,7 +7505,19 @@ msgstr ""
 
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
+#: src/pages/Investors.tsx
+#: src/pages/investors/UpdateEditor.tsx
 msgid "Posted"
+msgstr ""
+
+#. placeholder {0}: result.notified
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Posted · {0} notified"
+msgstr ""
+
+#. placeholder {0}: day(update.sentAt)
+#: src/pages/Investors.tsx
+msgid "Posted {0}"
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
@@ -8097,6 +8215,10 @@ msgstr ""
 msgid "Research & writing"
 msgstr ""
 
+#: src/pages/Investors.tsx
+msgid "Resend link"
+msgstr ""
+
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Reset"
@@ -8197,10 +8319,6 @@ msgstr ""
 msgid "Retrying"
 msgstr ""
 
-#: src/lib/run-phase.ts
-msgid "Retrying: {name}"
-msgstr ""
-
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "Return to Praci"
@@ -8215,9 +8333,18 @@ msgstr ""
 msgid "Review provider settings and test again."
 msgstr "Sağlayıcı ayarlarını gözden geçir ve yeniden test et."
 
+#: src/pages/Investors.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Revoke"
 msgstr "İptal et"
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "revoked"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Revoked"
+msgstr ""
 
 #: src/components/legal/LegalGraph.tsx
 msgid "Right"
@@ -8787,7 +8914,17 @@ msgid "Shape"
 msgstr "Şekil"
 
 #: src/components/AskCard.tsx
+#: src/components/data-room/ItemDialogs.tsx
 msgid "Share"
+msgstr ""
+
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Share {0}"
+msgstr ""
+
+#: src/components/data-room/ItemMenu.tsx
+msgid "Share with investors"
 msgstr ""
 
 #: src/components/AskCard.tsx
@@ -8939,6 +9076,10 @@ msgstr ""
 #: src/lib/model-connection-preflight.ts
 msgid "Sign in with the subscription, or test the API key instead."
 msgstr "Abonelikle oturum aç veya bunun yerine API anahtarını test et."
+
+#: src/pages/portal/PortalHome.tsx
+msgid "Sign out"
+msgstr ""
 
 #: src/pages/Auth.tsx
 #: src/pages/Welcome.tsx
@@ -9096,6 +9237,7 @@ msgstr ""
 
 #: src/App.tsx
 #: src/lib/user-error.ts
+#: src/pages/portal/PortalOpen.tsx
 msgid "Something went wrong. Try again."
 msgstr "Bir şeyler ters gitti. Tekrar deneyin."
 
@@ -9670,6 +9812,10 @@ msgstr ""
 msgid "The web, notes and docs"
 msgstr ""
 
+#: src/components/ContactDeleteConfirm.tsx
+msgid "their portal access"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "These saved settings can't be read. Remove it and add it again."
 msgstr ""
@@ -9684,6 +9830,11 @@ msgstr "Düşünüyor"
 
 #: src/components/AgentPanelIntro.tsx
 msgid "This agent needs a model before it can answer. Add one in Settings, Models."
+msgstr ""
+
+#. placeholder {0}: removes(linked)
+#: src/components/ContactDeleteConfirm.tsx
+msgid "This also removes {0}."
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
@@ -9742,6 +9893,10 @@ msgstr ""
 
 #: src/pages/NotFound.tsx
 msgid "This link is wrong or the page is no longer available."
+msgstr ""
+
+#: src/pages/portal/PortalDead.tsx
+msgid "This link no longer works."
 msgstr ""
 
 #: src/components/RunsOnPicker.tsx
@@ -10012,6 +10167,7 @@ msgstr ""
 #: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
 #: src/pages/Onboarding.tsx
+#: src/pages/portal/PortalHome.tsx
 #: src/pages/Shell.tsx
 msgid "Try again"
 msgstr "Tekrar dene"
@@ -10087,6 +10243,14 @@ msgstr "Atanmamış"
 msgid "Unavailable"
 msgstr ""
 
+#: src/pages/Investors.tsx
+msgid "Unblock"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Unblocked · send a link"
+msgstr ""
+
 #: src/components/finance/ui.tsx
 msgid "Uncategorized"
 msgstr ""
@@ -10160,6 +10324,10 @@ msgstr "Sabitlemeyi kaldır"
 msgid "Unread"
 msgstr ""
 
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Unshare"
+msgstr ""
+
 #. placeholder {0}: counts.unsubscribe
 #: src/components/inbox/CleanupActionBar.tsx
 msgid "Unsubscribe {0}"
@@ -10181,6 +10349,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Unsupported file type: {0}"
 msgstr "Desteklenmeyen dosya türü: {0}"
+
+#: src/pages/investors/UpdateEditor.tsx
+msgid "Unticked investors still see this on the portal."
+msgstr ""
 
 #. placeholder {0}: shortDay(card.to)
 #: src/components/FinanceCards.tsx

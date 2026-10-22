@@ -18,6 +18,7 @@ export * from "./external-conversations.js";
 export * from "./fundraising.js";
 export * from "./groups.js";
 export * from "./history-retrieval.js";
+export * from "./investor-portal.js";
 export * from "./investor-updates.js";
 export * from "./legal.js";
 export * from "./meetings.js";

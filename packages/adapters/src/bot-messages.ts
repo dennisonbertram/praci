@@ -495,7 +495,7 @@ export async function messageBot(
     botId: target.id,
     name: target.name,
     delivered: message,
-    note: `Sent to ${target.name}. Delivery is async; a reply wakes you later as a new message. Continue independent work; send another update later only if it adds something new.`,
+    note: `Sent to ${target.name}. Delivery is async; a reply wakes you later as a new message. Continue independent work; send another update later only if it adds something new. If you tell the owner that you asked ${target.name} to send, pay or change something, end your reply with [Open ${target.name}](/app/${target.id}): the owner approves it in that chat.`,
   };
 }
 

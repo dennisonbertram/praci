@@ -24,6 +24,15 @@ vi.mock("@lingui/react/macro", () => ({
 }));
 
 const rpcMock = vi.hoisted(() => ({
+  linked: vi.fn(
+    async (): Promise<{ portal: boolean; documents: string[] }> => ({
+      portal: false,
+      documents: [],
+    }),
+  ),
+  portalResend: vi.fn(),
+  portalRevoke: vi.fn(),
+  portalUnblock: vi.fn(),
   list: vi.fn(),
   save: vi.fn(),
   remove: vi.fn(),
@@ -51,9 +60,17 @@ const rpcMock = vi.hoisted(() => ({
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
-    contacts: { list: rpcMock.list, save: rpcMock.save, delete: rpcMock.remove },
+    contacts: {
+      list: rpcMock.list,
+      save: rpcMock.save,
+      delete: rpcMock.remove,
+      linked: rpcMock.linked,
+    },
     mcp: { servers: { list: rpcMock.servers } },
     investors: {
+      portalResend: rpcMock.portalResend,
+      portalRevoke: rpcMock.portalRevoke,
+      portalUnblock: rpcMock.portalUnblock,
       capTable: rpcMock.capTable,
       refresh: rpcMock.refresh,
       capTableSave: rpcMock.capTableSave,
@@ -304,6 +321,136 @@ it("edits and deletes a contact from its row menu", async () => {
   await click(menuItem("Delete"));
   expect(rpcMock.remove).toHaveBeenCalledWith({ id: "c1" });
   expect(document.body.textContent).toContain("Deleted Ada");
+});
+
+const portalCell = (id: string) =>
+  container.querySelector(`[data-contact-id="${id}"] [data-portal-state]`)?.textContent;
+
+it("shows each investor's portal state: none, invited, opened, revoked, unblocked", async () => {
+  const dated = (id: string, name: string, portal: Partial<Contact>) => ({
+    ...contact(id, name, "investor"),
+    ...portal,
+  });
+  rpcMock.list.mockResolvedValue([
+    dated("c1", "Ada", {}),
+    dated("c2", "Bo", { portalLinkSentAt: "2026-10-12T10:00:00.000Z" }),
+    dated("c3", "Cy", {
+      portalLinkSentAt: "2026-10-12T10:00:00.000Z",
+      portalLastSeenAt: "2026-10-13T10:00:00.000Z",
+    }),
+    dated("c4", "Di", {
+      portalLinkSentAt: "2026-10-12T10:00:00.000Z",
+      portalBlockedAt: "2026-10-14T10:00:00.000Z",
+    }),
+    dated("c5", "Ed", { portalLastSeenAt: "2026-10-13T10:00:00.000Z" }),
+    // A link sent after the last open reads Invited again.
+    dated("c6", "Flo", {
+      portalLinkSentAt: "2026-10-15T10:00:00.000Z",
+      portalLastSeenAt: "2026-10-13T10:00:00.000Z",
+    }),
+  ]);
+  await show();
+  expect(portalCell("c1")).toBe("—");
+  expect(portalCell("c2")).toBe("Invited Oct 12");
+  expect(portalCell("c3")).toBe("Opened Oct 13");
+  expect(portalCell("c4")).toBe("Revoked");
+  expect(portalCell("c5")).toBe("Unblocked · send a link");
+  expect(portalCell("c6")).toBe("Invited Oct 15");
+});
+
+it("has no Portal column for the board and auditors", async () => {
+  await show("/app/investors?kind=auditor");
+  expect(container.querySelector("[data-portal-state]")).toBeNull();
+  await click(rowActions("Bo"));
+  expect(menuItem("Resend link")).toBeUndefined();
+  expect(menuItem("Copy link")).toBeUndefined();
+});
+
+it("offers Resend, Copy link and Revoke on an investor with access, and Unblock when revoked", async () => {
+  rpcMock.list.mockResolvedValue([
+    { ...contact("c1", "Ada", "investor"), portalLinkSentAt: "2026-10-12T10:00:00.000Z" },
+    { ...contact("c2", "Bo", "investor"), portalBlockedAt: "2026-10-14T10:00:00.000Z" },
+    { ...contact("c3", "Cy", "investor"), email: null },
+  ]);
+  const again = async () => {
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    await show();
+  };
+  await show();
+  await click(rowActions("Ada"));
+  for (const label of ["Resend link", "Copy link", "Revoke", "Edit", "Delete"])
+    expect(menuItem(label)).toBeDefined();
+  expect(menuItem("Unblock")).toBeUndefined();
+  await again();
+  await click(rowActions("Bo"));
+  expect(menuItem("Unblock")).toBeDefined();
+  for (const label of ["Resend link", "Copy link", "Revoke"])
+    expect(menuItem(label)).toBeUndefined();
+  await again();
+  // No email: a link can still be copied, not sent; a contact never given a link has nothing to revoke.
+  await click(rowActions("Cy"));
+  expect(menuItem("Resend link")).toBeUndefined();
+  expect(menuItem("Copy link")).toBeDefined();
+  expect(menuItem("Revoke")).toBeUndefined();
+});
+
+it("Resend link emails a fresh link and says so", async () => {
+  rpcMock.portalResend.mockResolvedValue({ link: null });
+  await show();
+  await click(rowActions("Ada"));
+  await click(menuItem("Resend link"));
+  expect(rpcMock.portalResend).toHaveBeenCalledWith({ contactId: "c1", copy: false });
+  expect(document.body.textContent).toContain("Link sent to Ada");
+});
+
+it("shows the link once when it comes back instead of being emailed", async () => {
+  rpcMock.portalResend.mockResolvedValue({ link: "https://app.example.test/portal/open#abc" });
+  await show();
+  await click(rowActions("Ada"));
+  await click(menuItem("Copy link"));
+  expect(rpcMock.portalResend).toHaveBeenCalledWith({ contactId: "c1", copy: true });
+  const input = document.querySelector<HTMLInputElement>("input[readonly]");
+  expect(input?.value).toBe("https://app.example.test/portal/open#abc");
+});
+
+it("Revoke and Unblock call the portal and reload with no confirmation", async () => {
+  rpcMock.list.mockResolvedValue([
+    { ...contact("c1", "Ada", "investor"), portalLinkSentAt: "2026-10-12T10:00:00.000Z" },
+    { ...contact("c2", "Bo", "investor"), portalBlockedAt: "2026-10-14T10:00:00.000Z" },
+  ]);
+  rpcMock.portalRevoke.mockResolvedValue({});
+  rpcMock.portalUnblock.mockResolvedValue({});
+  await show();
+  await click(rowActions("Ada"));
+  await click(menuItem("Revoke"));
+  expect(rpcMock.portalRevoke).toHaveBeenCalledWith({ contactId: "c1" });
+  expect(document.querySelector('[role="alertdialog"]')).toBeNull();
+  await click(rowActions("Bo"));
+  await click(menuItem("Unblock"));
+  expect(rpcMock.portalUnblock).toHaveBeenCalledWith({ contactId: "c2" });
+});
+
+it("asks before deleting a contact with portal access and gives no Undo for it", async () => {
+  rpcMock.linked.mockResolvedValue({ portal: true, documents: ["Deck.pdf"] });
+  rpcMock.remove.mockResolvedValue({ ok: true });
+  await show();
+  await click(rowActions("Ada"));
+  await click(menuItem("Delete"));
+  expect(rpcMock.remove).not.toHaveBeenCalled();
+  const dialog = document.querySelector('[role="alertdialog"]');
+  expect(dialog?.textContent).toContain("Delete Ada?");
+  expect(dialog?.textContent).toContain(
+    "This also removes their portal access and access to 1 shared document.",
+  );
+  await click(
+    [...(dialog?.querySelectorAll("button") ?? [])].find((b) => b.textContent === "Delete") as
+      | HTMLElement
+      | undefined,
+  );
+  expect(rpcMock.remove).toHaveBeenCalledWith({ id: "c1" });
+  expect(document.body.textContent).toContain("Deleted Ada");
+  expect(button("Undo")).toBeUndefined();
 });
 
 it("searches the contacts", async () => {

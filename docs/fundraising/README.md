@@ -107,6 +107,13 @@ often without a lawyer or CFO:
     no round bar; a signed SAFE's flip to investor is never reversed automatically.
 19. **One audit in two threads shows as two rows** (founder, 2026-10-21); the founder
     dismisses one.
+20. **Approved layout redesign** (founder, 2026-10-21): every section is a card on one
+    content width that matches the header's right edge; the Cap table card holds the source
+    choice (Connect Carta, Use a Google Sheet, Type it in); empty sections keep their real
+    layout with static (non-animated) skeleton placeholders instead of 0, "—" or "No … yet"
+    lines; one Add contact entry in the header; the typed-in table reads as a table (Add holder
+    row, labelled pool value cell); Fundraising shows Attention, Round, Pipeline grouped by
+    stage and SAFEs cards. Mockup: `docs/fundraising/redesign.html`.
 
 Standing constraints: no hosted vendor required (Carta, Google, Mercury, Gmail are
 optional adapters); every row scoped to space and user; email goes out only on the
@@ -578,10 +585,12 @@ their own right-aligned line when they do not fit, and the Shell already collaps
 the sidebar behind its menu button; the mockup's single phone row with a "+" and an
 icon-only Ask is therefore a design target, not something main provides: slice 1 keeps
 `PageHeader` as it is and the narrow header is checked against it (see the founder
-decision in the review record). Empty view: the same
-header with Ask, then three equal buttons in this order: Connect Carta, Use a Google
-Sheet, Type it in. None is filled because the plan cannot know which source the
-founder has. The source line reads "Carta · as of <date>", "Sheet · as of <date>",
+decision in the review record). Empty view (decision 20, view A of the mockup): the same
+header with Add contact and Ask, then the Cap table card, which holds three equal buttons in
+this order: Connect Carta, Use a Google Sheet, Type it in, with static skeleton figures,
+ownership bar and table rows below them. None of the buttons is filled because the plan
+cannot know which source the founder has. Updates and Contacts below it show their
+skeleton layout (static rows, no "No … yet" line) until they hold data. The source line reads "Carta · as of <date>", "Sheet · as of <date>",
 "Typed in · as of <date>" or "Reading sheet…" (during the first read, with no
 snapshot yet, the page body is the one line "Reading <sheet name>…" and no buttons); after a failed read it keeps the
 label of the data shown, in the warning color. Sections, in order:
@@ -1584,6 +1593,35 @@ and what the demo cannot provide.
   only). Send SAFE opens the Mercury hand-off and marks Waiting for Mercury; Not sent reverses it;
   Assign to contact and Unassign on a row. To see Connect Mercury, disconnect Mercury in
   Integrations first. Real Mercury needs the manual check.
+- **Mobile.** Degrades: no screen.
+
+### 11. Layout redesign of Investors and Fundraising
+
+- **Goal.** Decision 20: apply the approved layout redesign (`docs/fundraising/redesign.html`)
+  to both pages once every page slice is in.
+- **Owned files.** The layout of `apps/web/src/pages/Investors.tsx` and `Fundraising.tsx`,
+  their tests and stories; `packages/ui-web` Skeleton (extend the vendored shadcn component
+  with a static, no-pulse variant and a story; do not rewrite it); any small layout components
+  the pages need, each with a story.
+- **Prerequisites.** 3, 5, 6, 7, 8, 9, 10 (after all page slices).
+- **Behavior.** Each view of the mockup, checked one by one: A Investors empty, B typed in with
+  an empty table, C Investors populated, D phone of A, E Fundraising with no round, F
+  Fundraising with an open round, G phone of F. Every section is a card on one content width
+  that matches the header's right edge. The Cap table card holds the source choice. Empty
+  sections keep their real layout with static skeletons. The header has one Add contact entry.
+  The typed-in table has an Add holder row and a labelled pool value cell. Fundraising shows
+  Attention, Round, Pipeline grouped by stage and SAFEs cards. No behavior, data or copy
+  changes beyond what the mockup shows.
+- **Tests first.** Component tests: empty Cap table, Updates and Contacts render static
+  skeletons and no "No … yet" line; exactly one Add contact entry in the Investors header;
+  the typed-in table shows the Add holder row and the labelled pool cell; Fundraising empty
+  shows the skeleton Round, Pipeline and SAFEs cards.
+- **Regression test.** The empty-state skeleton test.
+- **Verify.** `pnpm vitest run apps/web/src/pages/Investors.test.tsx apps/web/src/pages/Fundraising.test.tsx`;
+  the existing e2e specs updated, with screenshots named `investors-empty`,
+  `investors-typed-empty` and `fundraising-empty`; `pnpm design-system:check`.
+- **Hand test.** `DEMO_SLOT=<n> pnpm demo:up`: compare each view A to G with the mockup at 1400
+  px and at 390 px wide.
 - **Mobile.** Degrades: no screen.
 
 Manual checks before calling the epic done: connect a real Carta, Google Drive,
