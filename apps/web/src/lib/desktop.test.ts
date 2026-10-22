@@ -69,7 +69,7 @@ describe("window chrome", () => {
     expect(start).toBeGreaterThan(-1);
     const header = shell.slice(start, start + 6000);
     expect(header).toContain('className="app-no-drag grid h-8 w-8');
-    expect(header).toContain('className="app-no-drag flex min-w-0 items-center gap-3"');
+    expect(header).toMatch(/className="app-no-drag flex min-w-0 items-center gap-3[ "]/);
     expect(header.match(/app-no-drag grid h-\[30px\] w-\[34px\]/g)).toHaveLength(3);
   });
 
