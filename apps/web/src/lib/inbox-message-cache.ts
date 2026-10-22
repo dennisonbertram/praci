@@ -29,6 +29,12 @@ if (typeof window !== "undefined") {
   window.addEventListener(INBOX_CHANGED_EVENT, clearInboxMessages);
 }
 
+/** Drops one message's cached or in-flight load, so the next load asks the server again (a retry of a hung request). */
+export function forgetInboxMessage(messageId: string): void {
+  promises.delete(messageId);
+  values.delete(messageId);
+}
+
 export function peekInboxMessage(messageId: string): InboxMessageOutput | undefined {
   return values.get(messageId);
 }
