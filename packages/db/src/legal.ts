@@ -282,12 +282,15 @@ export function createLegalRepos(prisma: PrismaClient) {
         )?.id;
       }
       if (existingId) {
-        // A deadline the founder closed stays as they left it; only they reopen it.
-        const current = await prisma.legalDeadline.findFirstOrThrow({
+        // Only an open deadline is updated, decided in the database so a founder close in between
+        // wins; a closed one stays as they left it and only they reopen it.
+        await prisma.legalDeadline.updateMany({
+          where: { id: existingId, ...scope(actor), status: "open" },
+          data,
+        });
+        return prisma.legalDeadline.findFirstOrThrow({
           where: { id: existingId, ...scope(actor) },
         });
-        if (current.status === "done" || current.status === "dismissed") return current;
-        return prisma.legalDeadline.update({ where: { id: existingId }, data });
       }
       return prisma.legalDeadline.create({ data: { ...scope(actor), ...data } });
     },

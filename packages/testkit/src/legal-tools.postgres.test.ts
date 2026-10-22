@@ -17,7 +17,7 @@ import {
   legalAgentSpawnKey,
 } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
-import { createDataRoomRepos, createDb, createRepos } from "@rakazo/db";
+import { createDataRoomRepos, createDb, createLegalRepos, createRepos } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   legalConsentGrant,
@@ -748,6 +748,42 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
         await prisma.legalDeadline.findUniqueOrThrow({ where: { id: made.deadline.id } }),
       ).toMatchObject({ status: closed, title: "Renewal notice", notes: "original" });
     }
+  });
+
+  it("keeps the founder's close when it lands between an agent upsert's checks and its write", async () => {
+    const c = await makeActor("race");
+    extra.push(c);
+    const made = await legal(c, "legal_upsert_deadline", {
+      title: "Race",
+      kind: "renewal",
+      dueDate: "2027-03-01",
+    });
+    // The founder closes the deadline just before the agent's update statement runs.
+    const racing = new Proxy(prisma, {
+      get(target, key) {
+        if (key !== "legalDeadline") return Reflect.get(target, key);
+        return new Proxy(target.legalDeadline, {
+          get(model, method) {
+            if (method !== "updateMany") return Reflect.get(model, method).bind(model);
+            return async (args: never) => {
+              await model.update({ where: { id: made.deadline.id }, data: { status: "done" } });
+              return model.updateMany(args);
+            };
+          },
+        });
+      },
+    });
+    const row = await createLegalRepos(racing).upsertDeadline(c, {
+      id: made.deadline.id,
+      title: "Agent title",
+      kind: "renewal",
+      dueDate: new Date("2028-01-01"),
+      status: "open",
+    });
+    expect(row).toMatchObject({ status: "done", title: "Race" });
+    expect(
+      await prisma.legalDeadline.findUniqueOrThrow({ where: { id: made.deadline.id } }),
+    ).toMatchObject({ status: "done", title: "Race" });
   });
 
   it("lists recently done deadlines so a recurring one can get its next occurrence", async () => {
