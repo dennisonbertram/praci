@@ -195,7 +195,7 @@ export function DataRoomStats({
   );
   if (error) {
     return (
-      <div className="flex flex-col gapy-3 px-4 md:px-7 p-3">
+      <div className="flex flex-col gap-y-3 px-4 md:px-7 p-3">
         {header}
         <div className="flex items-center gap-3 text-sm text-destructive">
           {error}
@@ -210,7 +210,7 @@ export function DataRoomStats({
   }
   if (!stats) {
     return (
-      <div className="flex flex-col gapy-3 px-4 md:px-7 p-3" aria-busy="true">
+      <div className="flex flex-col gap-y-3 px-4 md:px-7 p-3" aria-busy="true">
         {header}
         <div className="grid grid-cols-2 gap-2 @min-[640px]/stats:grid-cols-4">
           {[0, 1, 2, 3].map((n) => (
@@ -223,7 +223,7 @@ export function DataRoomStats({
   }
   if (stats.documents === 0) {
     return (
-      <div className="flex flex-col gapy-3 px-4 md:px-7 p-3">
+      <div className="flex flex-col gap-y-3 px-4 md:px-7 p-3">
         {header}
         <p className="p-6 text-center text-sm text-muted-foreground">
           <Trans>No results</Trans>
@@ -244,7 +244,7 @@ export function DataRoomStats({
     },
   ].filter((row) => row.count > 0);
   return (
-    <div className="@container/stats flex flex-col gapy-3 px-4 md:px-7 p-3">
+    <div className="@container/stats flex flex-col gap-y-3 px-4 md:px-7 p-3">
       {header}
       <div className="grid grid-cols-2 gap-2 @min-[640px]/stats:grid-cols-4">
         <Card
