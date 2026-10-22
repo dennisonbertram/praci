@@ -362,7 +362,11 @@ export function InboxRow({
             aria-label={t`Select ${row.from}`}
             checked={picked}
             onClick={(event) => onPick({ shift: event.shiftKey })}
-            className={`absolute start-2 top-1/2 z-10 -translate-y-1/2 @md:start-3 pointer-coarse:after:-start-3.25 pointer-coarse:after:-end-4.25 ${showPick ? "" : "opacity-0 focus-visible:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100"}`}
+            // One Tab stop per row: Right from the row button reaches the box, and x checks the selected row.
+            tabIndex={-1}
+            data-row-stop=""
+            // On touch the control itself is 44 px; the 16 px box is drawn inside it.
+            className={`absolute start-2 top-1/2 z-10 -translate-y-1/2 @md:start-3 pointer-coarse:-start-1.5 pointer-coarse:size-11 pointer-coarse:border-transparent pointer-coarse:bg-transparent pointer-coarse:data-checked:bg-transparent pointer-coarse:dark:bg-transparent pointer-coarse:after:hidden pointer-coarse:before:absolute pointer-coarse:before:size-4 pointer-coarse:before:rounded-[4px] pointer-coarse:before:border pointer-coarse:before:border-input pointer-coarse:data-checked:before:border-primary pointer-coarse:data-checked:before:bg-primary pointer-coarse:[&>[data-slot=checkbox-indicator]]:relative ${showPick ? "" : "opacity-0 focus-visible:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100"}`}
           />
         ) : null}
         {marks.length + actions.length ? (

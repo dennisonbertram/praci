@@ -191,7 +191,8 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
       if (next) navigate(next, { replace: true });
     } else if (item) {
       // A link may open the dialog, but nothing is created until the person clicks Connect in it.
-      setConfirmFirst(true);
+      // A button in the app that was just pressed (router state, which a link cannot set) is that click.
+      setConfirmFirst(!(location.state as { connectNow?: boolean } | null)?.connectNow);
       setAdding(true);
     }
   }, [data.loaded, connectedCount, item, next, navigate, search, location.key]);
@@ -323,6 +324,8 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
   const dialog =
     adding && item ? (
       <ConnectAppDialog
+        // Keyed, because the connected view lists other children before it, which would remount it.
+        key="connect"
         item={item}
         data={data}
         activeBotId={activeBotId}
@@ -333,6 +336,14 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
         onClose={() => {
           setAdding(false);
           setConfirmFirst(false);
+          // Spend the one-time ?connect=1 (and the router state of the button that pressed it), so a
+          // reload after cancelling does not start the sign-in again.
+          if (search.get("connect") === "1") {
+            const rest = new URLSearchParams(search);
+            rest.delete("connect");
+            const query = rest.toString();
+            navigate(`${location.pathname}${query ? `?${query}` : ""}`, { replace: true });
+          }
           setReplacing(null);
           setPermission(undefined);
         }}
@@ -367,8 +378,8 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
 
   if (!data.loaded) return <div className="px-9 py-7">{back}</div>;
   if (rows.length === 0) {
-    // The dialog is the second child in every return so it survives the page switching to the
-    // connected view when the first account lands.
+    // The dialog keeps its key so it survives the page switching to the connected view when the
+    // first account lands.
     return (
       <>
         <div className="px-4 py-6 md:px-9 md:py-7">
