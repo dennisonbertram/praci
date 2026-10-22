@@ -209,6 +209,10 @@ describe("Company tools", () => {
     const hiddenEndpoint = entity("hidden-person", "Hidden Data Room Person", {}, [
       evidence("hidden-endpoint-evidence", "data_room"),
     ]);
+    const stillHiddenEndpoint = {
+      ...(entity("still-hidden-person", "Still Hidden Person", {}) as object),
+      confidence: 0.2,
+    } as never;
     const dataRoomEdge = {
       id: "data-room-edge",
       fromId: "person-1",
@@ -216,9 +220,20 @@ describe("Company tools", () => {
       relation: "works_with",
       role: null,
       confidence: 0.2,
-      status: "suggested",
+      status: "confirmed",
       visibility: "private",
       evidence: [edgeEvidence, corroboratingEdgeEvidence],
+    } as never;
+    const lowConfidenceEdge = {
+      id: "low-confidence-edge",
+      fromId: "person-1",
+      toId: "still-hidden-person",
+      relation: "works_with",
+      role: null,
+      confidence: 0.2,
+      status: "suggested",
+      visibility: "private",
+      evidence: [evidence("low-confidence-edge-evidence", "gmail")],
     } as never;
     const dataRoomEvent = {
       id: "data-room-event",
@@ -229,18 +244,20 @@ describe("Company tools", () => {
       endsOn: null,
       entityIds: ["person-1", "hidden-person"],
       confidence: 0.2,
-      status: "suggested",
+      status: "confirmed",
       visibility: "private",
       evidence: [eventEvidence, corroboratingEventEvidence],
     } as never;
+    const storedOnlyEdge = { ...(dataRoomEdge as object), id: "stored-only-edge" } as never;
+    const storedOnlyEvent = { ...(dataRoomEvent as object), id: "stored-only-event" } as never;
     const personWithNestedRelationships = {
       ...(entity("person-1", "Gmail Person", {}, [gmailEvidence]) as object),
-      edges: [dataRoomEdge],
-      events: [dataRoomEvent],
+      edges: [dataRoomEdge, storedOnlyEdge],
+      events: [dataRoomEvent, storedOnlyEvent],
     } as never;
     companyStoreMock.current = {
-      list: vi.fn(async () => [personWithNestedRelationships, hiddenEndpoint]),
-      listEdges: vi.fn(async () => [dataRoomEdge]),
+      list: vi.fn(async () => [personWithNestedRelationships, hiddenEndpoint, stillHiddenEndpoint]),
+      listEdges: vi.fn(async () => [dataRoomEdge, lowConfidenceEdge]),
       listEvents: vi.fn(async () => [dataRoomEvent]),
       candidates: vi.fn(async () => []),
       teamFacts: vi.fn(async () => ({ entities: [], edges: [], events: [] })),
@@ -273,37 +290,54 @@ describe("Company tools", () => {
     );
 
     const authorizedDeps = { ...deps, dataRoomAllowed: async () => true };
-    const authorizedSearch = await companyToolFromTool(authorizedDeps, "company_search", {});
+    const authorizedSearch = await companyToolFromTool(authorizedDeps, "company_search", {
+      text: "Gmail Person",
+    });
     const authorizedGet = await companyToolFromTool(authorizedDeps, "company_get", {
       kind: "entity",
       id: "person-1",
     });
     const authorizedReview = await companyToolFromTool(authorizedDeps, "company_review_next", {});
-    const authorizedOutput = JSON.stringify([authorizedSearch, authorizedGet, authorizedReview]);
+    const authorizedAll = await companyToolFromTool(authorizedDeps, "company_search", {});
+    const authorizedRelationshipSearch = await companyToolFromTool(
+      authorizedDeps,
+      "company_search",
+      { kind: "edge", text: "works_with" },
+    );
+    const authorizedOutput = JSON.stringify([
+      authorizedSearch,
+      authorizedGet,
+      authorizedReview,
+      authorizedAll,
+    ]);
     expect(authorizedOutput).not.toContain("PRIVATE_GMAIL_QUOTE");
     expect(authorizedOutput).not.toContain("PRIVATE_DATA_ROOM");
     expect(authorizedOutput).not.toContain("PRIVATE_MODEL_METADATA");
     expect(authorizedOutput).not.toContain("extractorModel");
+    expect(JSON.stringify(authorizedAll)).not.toContain("still-hidden-person");
+    expect(JSON.stringify(authorizedAll)).not.toContain("low-confidence-edge");
 
     const facts = authorizedSearch.facts as Array<{
       kind: string;
       record: {
         id: string;
         evidence?: Array<Record<string, unknown>>;
-        edges?: unknown[];
-        events?: unknown[];
+        edges?: Array<Record<string, unknown>>;
+        events?: Array<Record<string, unknown>>;
       };
     }>;
+    const allFacts = authorizedAll.facts as typeof facts;
     const personFact = facts.find(
       (fact) => fact.kind === "entity" && fact.record.id === "person-1",
     );
-    const edgeFact = facts.find(
+    const edgeFact = allFacts.find(
       (fact) => fact.kind === "edge" && fact.record.id === "data-room-edge",
     );
-    const eventFact = facts.find(
+    const eventFact = allFacts.find(
       (fact) => fact.kind === "event" && fact.record.id === "data-room-event",
     );
-    expect(personFact?.record).toMatchObject({ edges: [], events: [] });
+    expect(personFact?.record.edges?.map(({ id }) => id)).toEqual(["data-room-edge"]);
+    expect(personFact?.record.events?.map(({ id }) => id)).toEqual(["data-room-event"]);
     expect(personFact?.record.evidence?.[0]).toMatchObject({
       sourceItemId: "gmail-message-1",
       sourceUrl: "https://mail.example.test/message/1",
@@ -318,6 +352,28 @@ describe("Company tools", () => {
       dataRoomItemId: "dr-item-1",
       sourceItemId: "data-room-event-evidence-source",
     });
+    expect(personFact?.record.edges?.[0]).not.toHaveProperty("evidence[0].quote");
+    expect(personFact?.record.edges?.[0]).not.toHaveProperty("evidence[0].extractorModel");
+    expect(personFact?.record.events?.[0]).not.toHaveProperty("evidence[0].quote");
+    expect(personFact?.record.events?.[0]).not.toHaveProperty("evidence[0].extractorModel");
+    expect(authorizedRelationshipSearch.facts).toEqual([
+      expect.objectContaining({
+        kind: "edge",
+        record: expect.objectContaining({ id: "data-room-edge" }),
+      }),
+    ]);
+    const reviewedPerson = (
+      authorizedReview.suggested as Array<{
+        kind: string;
+        record: { id: string; edges?: Array<Record<string, unknown>> };
+      }>
+    ).find((fact) => fact.kind === "entity" && fact.record.id === "person-1");
+    expect(reviewedPerson?.record.edges?.map(({ id }) => id)).toEqual(["data-room-edge"]);
+    expect(
+      (authorizedReview.suggested as Array<{ kind: string; record: { id: string } }>).some(
+        (fact) => fact.kind === "edge" && fact.record.id === "data-room-edge",
+      ),
+    ).toBe(false);
   });
 
   it("uses event precision and end dates, and withholds legal deadlines without consent", async () => {
