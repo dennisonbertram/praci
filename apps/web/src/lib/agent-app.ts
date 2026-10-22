@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { FINANCE_PROVIDERS, FIRST_PARTY_MCP, isSameMcpEndpoint } from "./integrations";
 import { rpc } from "./rpc";
 
-export type AgentApp = { name: string; logo: string | null };
+/** `bank` is set when the agent belongs to Mercury or Brex, whatever the connection is named. */
+export type AgentApp = { name: string; logo: string | null; bank?: boolean };
 export type AgentAppData = {
   connections: Pick<Connection, "provider" | "displayName" | "agentBotId">[];
   servers: Pick<McpServer, "name" | "endpoint" | "agentBotId">[];
@@ -24,14 +25,21 @@ export function agentApp(
   const connection = data.connections.find((row) => row.agentBotId === bot.id);
   if (connection) {
     const app = data.catalog.find((item) => slugKey(item.slug) === slugKey(connection.provider));
-    return { name: app?.name ?? connection.provider, logo: app?.logo ?? null };
+    const bank = FINANCE_PROVIDERS.some((entry) => entry.provider === slugKey(connection.provider));
+    return {
+      name: app?.name ?? connection.provider,
+      logo: app?.logo ?? null,
+      ...(bank && { bank }),
+    };
   }
   const server = data.servers.find((row) => row.agentBotId === bot.id);
   if (server) {
-    const known =
-      FIRST_PARTY_MCP.find((entry) => isSameMcpEndpoint(server.endpoint, entry.endpoint)) ??
+    const bank =
+      FINANCE_PROVIDERS.find((entry) => isSameMcpEndpoint(server.endpoint, entry.endpoint)) ??
       FINANCE_PROVIDERS.find((entry) => slugKey(entry.name) === slugKey(server.name));
-    return { name: server.name, logo: known?.logo ?? null };
+    const known =
+      bank ?? FIRST_PARTY_MCP.find((entry) => isSameMcpEndpoint(server.endpoint, entry.endpoint));
+    return { name: server.name, logo: known?.logo ?? null, ...(bank && { bank: true }) };
   }
   return undefined;
 }

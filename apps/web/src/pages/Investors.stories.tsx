@@ -23,6 +23,7 @@ const contacts = [
 const noUpdates = {
   "investors.updates.list": [],
   "investors.reminder": { cadence: "monthly" },
+  "investors.capTable": { snapshot: null, syncing: false },
 };
 const update = (over: Partial<InvestorUpdate>): InvestorUpdate => ({
   id: "u1",
@@ -244,7 +245,8 @@ export const CartaNotConnected: Story = {
 
 /** No table yet: pick where it comes from. */
 export const Empty: Story = {
-  beforeEach: () => mockRpc({ "contacts.list": [], "mcp.servers.list": [cartaServer] }),
+  beforeEach: () =>
+    mockRpc({ "contacts.list": [], "mcp.servers.list": [cartaServer], ...noUpdates }),
 };
 
 export const Loading: Story = {
