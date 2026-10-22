@@ -218,7 +218,11 @@ import { fetchDataRoomBlob } from "../lib/data-room";
 import { dataRoomAgentSuggestions, findDataRoomAgent } from "../lib/data-room-agent";
 import { desktopBridge } from "../lib/desktop";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
-import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
+import {
+  maskCurrencyWhenHidden,
+  setHideAmounts,
+  useHideAmounts,
+} from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
 import { appPath } from "../lib/integrations";
 import { findInvestorsAgent, investorsAgentSuggestions } from "../lib/investors-agent";
@@ -1552,6 +1556,8 @@ export function ShellPage() {
         if (cancelled) return;
         const groupList = bootstrap.groups;
         setBootstrapMe(bootstrap.me);
+        // The saved choice belongs to the signed-in user; it replaces the last person's.
+        setHideAmounts(bootstrap.me.hideAmounts ?? false);
         // Agents and new schedules use the user's zone; follow the browser without asking.
         const zone = timezoneToReport(bootstrap.me);
         if (zone) {

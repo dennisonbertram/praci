@@ -179,7 +179,8 @@ async function typeInto(input: HTMLInputElement, value: string) {
   });
 }
 
-async function renderSettings(focusProvider?: string) {
+/** `ownModel: false` leaves the panel as a person on the system model first sees it. */
+async function renderSettings(focusProvider?: string, ownModel = true) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
   document.body.append(container);
@@ -192,6 +193,10 @@ async function renderSettings(focusProvider?: string) {
   await act(async () => {
     await Promise.resolve();
   });
+  const open = ownModel
+    ? [...container.querySelectorAll("button")].find((b) => b.textContent === "Use my own model")
+    : undefined;
+  if (open) await act(async () => open.click());
   return {
     container,
     async unmount() {
@@ -552,6 +557,20 @@ it("lists common providers first and reveals the rest behind More", async () => 
       buttons(view.container, "More")[0]?.click();
     });
     expect(view.container.textContent).toContain("Zeta AI");
+  } finally {
+    await view.unmount();
+  }
+});
+
+it("shows one line and one action on the system model, and opens the providers on request", async () => {
+  const view = await renderSettings(undefined, false);
+  try {
+    expect(view.container.textContent).toContain("Your bots use DeepSeek Chat.");
+    expect(view.container.textContent).not.toContain("Providers");
+    expect(view.container.querySelectorAll("button")).toHaveLength(1);
+    await act(async () => buttons(view.container, "Use my own model")[0]?.click());
+    expect(view.container.textContent).toContain("Providers");
+    expect(view.container.textContent).toContain("Data room search model");
   } finally {
     await view.unmount();
   }

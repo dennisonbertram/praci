@@ -5317,10 +5317,6 @@ msgstr "hour"
 msgid "hours"
 msgstr "hours"
 
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "How Integrations connect for everyone on this server."
-msgstr "How Integrations connect for everyone on this server."
-
 #: src/lib/slash-skills.ts
 msgid "How long cash lasts, with what-ifs."
 msgstr "How long cash lasts, with what-ifs."
@@ -5536,7 +5532,6 @@ msgid "Integration options"
 msgstr "Integration options"
 
 #: src/components/integrations/IntegrationSetup.tsx
-#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/LocalSettings.tsx
 msgid "Integration sign-in"
 msgstr "Integration sign-in"
@@ -7246,7 +7241,6 @@ msgstr "Only if the server does not use sign-in"
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/investors/ActionItems.tsx
 #: src/components/markdown-link-prompt.tsx
-#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/portal/PortalOpen.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
@@ -7347,10 +7341,6 @@ msgstr "Open in new tab"
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
 msgstr "Open Inbox"
-
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "Open integration sign-in"
-msgstr "Open integration sign-in"
 
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -10931,6 +10921,10 @@ msgstr "Use Connect to verify the key."
 msgid "Use default guidance"
 msgstr "Use default guidance"
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Use my own model"
+msgstr "Use my own model"
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Use OAuth"
 msgstr "Use OAuth"
@@ -11035,7 +11029,7 @@ msgstr "View"
 msgid "View chat"
 msgstr "View chat"
 
-#: src/pages/SettingsOverlay.tsx
+#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Voice"
@@ -11401,8 +11395,16 @@ msgid "You'll sign in to {0} in a new window."
 msgstr "You'll sign in to {0} in a new window."
 
 #: src/pages/ModelSettingsOverlay.tsx
+msgid "Your bots already have a model."
+msgstr "Your bots already have a model."
+
+#: src/pages/ModelSettingsOverlay.tsx
 msgid "Your bots already use {selectedProviderName}."
 msgstr "Your bots already use {selectedProviderName}."
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Your bots use {modelLabel}."
+msgstr "Your bots use {modelLabel}."
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Your browser blocked the sign-in window"

@@ -17,7 +17,6 @@ import {
   Monitor,
   Settings,
   ShieldCheck,
-  Volume2,
   XIcon,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -167,7 +166,6 @@ export function SettingsOverlay({
     { id: "general", label: t`General`, icon: Settings },
     { id: "privacy", label: t`Privacy and approvals`, icon: ShieldCheck },
     { id: "models", label: t`Models`, icon: Cpu },
-    { id: "voice", label: t`Voice`, icon: Volume2 },
     ...(showComputer ? [{ id: "computer" as const, label: t`Computer`, icon: Monitor }] : []),
     ...(billingEnabled ? [{ id: "billing" as const, label: t`Billing`, icon: CreditCard }] : []),
   ];
@@ -175,9 +173,11 @@ export function SettingsOverlay({
   const memoryItem: NavItem = { id: "memory", label: t`Memory`, icon: Brain };
   // The phone select lists every page, Memory included.
   const selectItems = [...navItems.slice(0, 3), memoryItem, ...navItems.slice(3)];
+  // Voice lives inside Models; it keeps its own section id so the call card can open it directly.
+  const navSection = section === "voice" ? "models" : section;
 
   const sectionTitle =
-    selectItems.find((item) => item.id === section)?.label ??
+    selectItems.find((item) => item.id === navSection)?.label ??
     (section === "general" ? t`General` : t`Settings`);
 
   const closeLabel =
@@ -191,7 +191,7 @@ export function SettingsOverlay({
 
   const navButton = (item: NavItem) => {
     const Icon = item.icon;
-    const active = item.id === section;
+    const active = item.id === navSection;
     return (
       <button
         key={item.id}
@@ -255,7 +255,7 @@ export function SettingsOverlay({
               data-testid="settings-nav-select"
               aria-label={t`Settings`}
               className="min-w-0 flex-1"
-              value={section}
+              value={navSection}
               disabled={panelBusy}
               onChange={(event) => setSection(event.target.value as SettingsSection)}
             >
@@ -318,7 +318,7 @@ export function SettingsOverlay({
             <div
               className={`min-h-0 flex-1 ${
                 section === "models" || section === "voice" || section === "memory"
-                  ? "flex flex-col overflow-hidden"
+                  ? "flex flex-col overflow-hidden pt-5"
                   : "rk-scroll rk-scroll-fade-bottom rk-fade-popover overflow-y-auto overscroll-contain px-6 pb-6 pt-5 sm:px-8 sm:pb-8"
               }`}
             >
@@ -354,12 +354,28 @@ export function SettingsOverlay({
                 />
               ) : null}
               {section === "billing" && billingEnabled ? <BillingSettingsPanel /> : null}
-              {section === "models" ? (
-                <ModelSettingsOverlay
-                  embedded
-                  onClose={requestClose}
-                  focusProvider={modelProvider}
-                />
+              {section === "models" || section === "voice" ? (
+                <>
+                  {notice && section === "voice" ? (
+                    <p role="status" className="mx-6 mb-3 text-sm text-muted-foreground sm:mx-8">
+                      {notice}
+                    </p>
+                  ) : null}
+                  <ModelSettingsOverlay
+                    embedded
+                    onClose={requestClose}
+                    focusProvider={modelProvider}
+                    view={section === "voice" ? "voice" : "model"}
+                    onViewChange={(view) => setSection(view === "voice" ? "voice" : "models")}
+                    voice={
+                      <VoiceSettingsOverlay
+                        embedded
+                        onClose={requestClose}
+                        onBusyChange={setVoiceBusy}
+                      />
+                    }
+                  />
+                </>
               ) : null}
               {section === "memory" ? (
                 <MemorySettingsOverlay
@@ -369,14 +385,6 @@ export function SettingsOverlay({
                   onConfigChange={onMemoryConfigChange}
                   onBusyChange={setMemoryBusy}
                 />
-              ) : null}
-              {notice && section === "voice" ? (
-                <p role="status" className="mx-6 mb-3 text-sm text-muted-foreground sm:mx-8">
-                  {notice}
-                </p>
-              ) : null}
-              {section === "voice" ? (
-                <VoiceSettingsOverlay embedded onClose={requestClose} onBusyChange={setVoiceBusy} />
               ) : null}
             </div>
           </div>

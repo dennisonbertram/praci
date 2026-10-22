@@ -1,36 +1,18 @@
 import { maskCurrencyText } from "@rakazo/chat-ui/mask-currency";
 import { useSyncExternalStore } from "react";
 
-export const HIDE_AMOUNTS_STORAGE_KEY = "rakazo.hideAmounts";
-
 const listeners = new Set<() => void>();
-let memoryHidden: boolean | null = null;
+let hidden = false;
 
-function getLocalStorage(): Pick<Storage, "getItem" | "setItem"> | null {
-  try {
-    return typeof localStorage !== "undefined" ? localStorage : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Saved "on" hides amounts. Missing or unreadable storage shows them. */
+/** Hide amounts is stored on the signed-in user (Me.hideAmounts), not in the browser. */
 export function getHideAmounts(): boolean {
-  if (memoryHidden !== null) return memoryHidden;
-  try {
-    return getLocalStorage()?.getItem(HIDE_AMOUNTS_STORAGE_KEY) === "on";
-  } catch {
-    return false;
-  }
+  return hidden;
 }
 
-export function setHideAmounts(hidden: boolean): void {
-  memoryHidden = hidden;
-  try {
-    getLocalStorage()?.setItem(HIDE_AMOUNTS_STORAGE_KEY, hidden ? "on" : "off");
-  } catch {
-    // Ignore quota / private-mode failures; the in-memory choice still applies.
-  }
+/** Applies the choice in this tab; the caller saves it to the user's preferences. */
+export function setHideAmounts(next: boolean): void {
+  if (hidden === next) return;
+  hidden = next;
   for (const listener of listeners) listener();
 }
 
@@ -52,7 +34,7 @@ export { maskCurrencyText };
 export const maskCurrencyWhenHidden = (text: string): string =>
   getHideAmounts() ? maskCurrencyText(text) : text;
 
-/** Test helper: forget the in-memory choice so storage is read again, as after a reload. */
+/** Test helper: show amounts again, as for a user who has not hidden them. */
 export function resetHideAmountsMemory(): void {
-  memoryHidden = null;
+  setHideAmounts(false);
 }

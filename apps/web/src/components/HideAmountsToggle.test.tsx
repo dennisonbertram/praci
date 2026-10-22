@@ -11,7 +11,14 @@ const text = vi.hoisted(
 );
 vi.mock("@lingui/core/macro", () => ({ t: text }));
 
-import { resetHideAmountsMemory, setHideAmounts } from "../lib/hide-amounts-preference";
+const update = vi.hoisted(() => vi.fn());
+vi.mock("../lib/rpc", () => ({ rpc: { preferences: { update } } }));
+
+import {
+  getHideAmounts,
+  resetHideAmountsMemory,
+  setHideAmounts,
+} from "../lib/hide-amounts-preference";
 import { HideAmountsMenuItem } from "./HideAmountsToggle";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -37,5 +44,21 @@ it("keeps one label and lets the checked state say whether amounts are hidden", 
   expect(row.querySelector("svg.lucide-check")).not.toBeNull();
   expect(row.textContent).toBe("Hide amounts");
   expect(row.getAttribute("aria-checked")).toBe("true");
+  act(() => root.unmount());
+});
+
+it("saves the choice on the user, and undoes it if saving fails", async () => {
+  update.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error("offline"));
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  act(() => root.render(<HideAmountsMenuItem />));
+  const row = host.querySelector("[data-testid=hide-amounts-menu-item]") as HTMLElement;
+  await act(async () => row.click());
+  expect(update).toHaveBeenLastCalledWith({ hideAmounts: true });
+  expect(getHideAmounts()).toBe(true);
+  await act(async () => row.click());
+  expect(update).toHaveBeenLastCalledWith({ hideAmounts: false });
+  expect(getHideAmounts()).toBe(true);
   act(() => root.unmount());
 });

@@ -176,7 +176,7 @@ export function MemorySettingsOverlay({
           </DialogClose>
         </div>
       ) : (
-        <p className="px-6 pt-1 text-[13.5px] text-muted-foreground/70 sm:px-8">
+        <p className="px-6 text-[13.5px] text-muted-foreground/70 sm:px-8">
           <Trans>What your bots remember between chats, and where they keep it.</Trans>
         </p>
       )}

@@ -5317,10 +5317,6 @@ msgstr "saat"
 msgid "hours"
 msgstr "saat"
 
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "How Integrations connect for everyone on this server."
-msgstr ""
-
 #: src/lib/slash-skills.ts
 msgid "How long cash lasts, with what-ifs."
 msgstr ""
@@ -5536,7 +5532,6 @@ msgid "Integration options"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
-#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/LocalSettings.tsx
 msgid "Integration sign-in"
 msgstr ""
@@ -7246,7 +7241,6 @@ msgstr ""
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/investors/ActionItems.tsx
 #: src/components/markdown-link-prompt.tsx
-#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/portal/PortalOpen.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
@@ -7346,10 +7340,6 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
-msgstr ""
-
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "Open integration sign-in"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -10931,6 +10921,10 @@ msgstr "Anahtarı doğrulamak için Bağlan'ı kullan."
 msgid "Use default guidance"
 msgstr ""
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Use my own model"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Use OAuth"
 msgstr ""
@@ -11035,7 +11029,7 @@ msgstr ""
 msgid "View chat"
 msgstr "Sohbeti görüntüle"
 
-#: src/pages/SettingsOverlay.tsx
+#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Voice"
@@ -11401,7 +11395,15 @@ msgid "You'll sign in to {0} in a new window."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
+msgid "Your bots already have a model."
+msgstr ""
+
+#: src/pages/ModelSettingsOverlay.tsx
 msgid "Your bots already use {selectedProviderName}."
+msgstr ""
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Your bots use {modelLabel}."
 msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
