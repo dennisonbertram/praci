@@ -3010,7 +3010,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           ownerRun: companyOwnerRun,
           companyAgent,
           importer: companyImporter,
-          dataRoomAllowed: companyReadAllowed,
+          readAllowed: companyReadAllowed,
         };
         const companyRunTools = companyToolsForRun(companyToolDeps).filter(
           (tool) =>
@@ -3341,6 +3341,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 ownerRun: companyOwnerRun,
                 companyAgent,
                 importer: companyImporter,
+                readAllowed: companyReadAllowed,
                 dataRoomAllowed: async () => (await legalRunAi()).allowed,
               },
               name,
@@ -4280,6 +4281,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 ownerRun: companyOwnerRun,
                 companyAgent,
                 importer: companyImporter,
+                readAllowed: companyReadAllowed,
                 dataRoomAllowed: async () => (await legalRunAi()).allowed,
               },
               name,

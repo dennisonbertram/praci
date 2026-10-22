@@ -197,7 +197,7 @@ const personFact: CompanyFact = {
     displayName: "Alex Reed",
     normalizedName: "alex reed",
     attrs: {},
-    confidence: 0.7,
+    confidence: 0.2,
     status: "suggested",
     visibility: "private",
     lockedFields: [],
@@ -243,9 +243,10 @@ beforeEach(() => {
   state.sessionGeneration = 0;
   state.rpc.mockReset().mockImplementation(async (procedure: string) => {
     if (procedure === "company/review") return review;
-    if (procedure === "company/fact") return personFact;
+    if (procedure === "company/fact") return null;
     if (procedure === "company/page")
       return { entities: [], edges: [], events: [], latestRun: null };
+    if (procedure === "company/editEntity") return {};
     throw new Error(`Unexpected RPC: ${procedure}`);
   });
   state.alert.mockReset();
@@ -263,6 +264,49 @@ afterEach(() => {
 });
 
 describe("native Company RPCs", () => {
+  it("opens and edits a low-confidence Review fact from review data", async () => {
+    await render(<CompanyScreen />);
+    const open = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Open Alex Reed",
+    );
+    await act(async () => open?.click());
+    expect(state.push).toHaveBeenCalledWith({
+      pathname: "/company-fact",
+      params: { kind: "entity", id: "fact-1", origin: "review" },
+    });
+
+    state.params = { kind: "entity", id: "fact-1", origin: "review" };
+    await render(<CompanyFactScreen />);
+    const procedures = state.rpc.mock.calls.map(([procedure]) => procedure);
+    expect(procedures).toContain("company/review");
+    expect(procedures).not.toContain("company/fact");
+    expect(
+      [...container.querySelectorAll("button")].some((button) => button.textContent === "Edit"),
+    ).toBe(true);
+
+    const edit = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Edit",
+    );
+    await act(async () => edit?.click());
+    const input = container.querySelector('input[aria-label="Name or title"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+        input,
+        "Alex Reed Updated",
+      );
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const save = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Save",
+    );
+    await act(async () => save?.click());
+    expect(state.rpc).toHaveBeenCalledWith("company/editEntity", {
+      entityId: "fact-1",
+      kind: "person",
+      displayName: "Alex Reed Updated",
+    });
+  });
+
   it("confirms and rejects review facts with their entity references", async () => {
     await render(<CompanyScreen />);
     const confirm = [...container.querySelectorAll("button")].find((button) =>

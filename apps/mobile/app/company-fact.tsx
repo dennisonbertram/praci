@@ -21,14 +21,27 @@ import { companyScope, useCompanyQuery } from "../lib/use-company-query";
 import { errorText } from "../lib/user-error";
 
 export default function CompanyFactScreen() {
-  const { kind, id } = useLocalSearchParams<{ kind: string; id: string }>();
+  const { kind, id, origin } = useLocalSearchParams<{
+    kind: string;
+    id: string;
+    origin?: string;
+  }>();
   const { t } = useI18n();
   const candidate = kind === "candidate";
+  const reviewFact = origin === "review" && !candidate;
   const query = useCompanyQuery<CompanyFact | CompanyReview | null>(
-    candidate ? "company/review" : "company/fact",
-    candidate ? {} : { kind, id },
+    candidate || reviewFact ? "company/review" : "company/fact",
+    candidate || reviewFact ? {} : { kind, id },
   );
-  const fact = query.data && "record" in query.data ? query.data : null;
+  const reviewFactItem =
+    reviewFact && query.data && "items" in query.data
+      ? query.data.items.find(
+          (item) => item.kind === "fact" && item.fact.kind === kind && item.fact.record.id === id,
+        )
+      : null;
+  const fact =
+    (query.data && "record" in query.data ? query.data : null) ??
+    (reviewFactItem?.kind === "fact" ? reviewFactItem.fact : null);
   const item =
     query.data && "items" in query.data
       ? query.data.items.find((item) => item.kind === "candidate" && item.candidate.id === id)

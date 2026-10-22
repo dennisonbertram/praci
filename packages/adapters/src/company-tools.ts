@@ -38,7 +38,12 @@ const sanitizeFact = (fact: CompanyFact) => {
     case "entity":
       return {
         ...fact,
-        record: { ...fact.record, evidence: sanitizeEvidence(fact.record.evidence) },
+        record: {
+          ...fact.record,
+          evidence: sanitizeEvidence(fact.record.evidence),
+          edges: [],
+          events: [],
+        },
       };
     case "edge":
       return {
@@ -60,6 +65,7 @@ export type CompanyToolsDeps = {
   ownerRun: boolean;
   companyAgent: boolean;
   importer: boolean;
+  readAllowed: boolean;
   dataRoomAllowed: () => Promise<boolean>;
 };
 
@@ -153,12 +159,11 @@ export function companyToolsForRun(deps: {
   ownerRun: boolean;
   companyAgent: boolean;
   importer: boolean;
-  dataRoomAllowed: boolean;
+  readAllowed: boolean;
 }): ConnectorTool[] {
-  if (!deps.ownerRun) return [];
-  if (deps.importer) return companyImporterTools;
-  if (deps.companyAgent) return companyAgentTools;
-  return deps.ownerRun && deps.dataRoomAllowed ? companyReadTools : [];
+  if (deps.importer) return deps.ownerRun ? companyImporterTools : [];
+  if (deps.companyAgent) return deps.ownerRun ? companyAgentTools : [];
+  return deps.readAllowed ? companyReadTools : [];
 }
 
 function factHasDataRoomEvidence(fact: CompanyFact) {
@@ -540,7 +545,11 @@ export async function companyToolFromTool(
   options: { approvedByCard?: boolean; effectKey?: string } = {},
 ): Promise<Record<string, unknown>> {
   try {
-    if (!deps.ownerRun) return { error: "Company tools require an owner-started foreground run." };
+    const readTool = COMPANY_READ_TOOL_NAMES.has(name);
+    if (readTool && !deps.readAllowed)
+      return { error: "Company reads are not authorized for this run." };
+    if (!readTool && !deps.ownerRun)
+      return { error: "Company tools require an owner-started foreground run." };
     if (name === "company_search") return await searchCompany(deps, raw);
     if (name === "company_get") return await getCompanyFact(deps, raw);
     if (name === "timeline_query") return await queryTimeline(deps, raw, false);

@@ -133,6 +133,8 @@ async function runIdentityExecutor({
   spawnKey,
   trigger = "user",
   groupId = null,
+  botUserId = "user-1",
+  channelRun = false,
   calls = [],
   callBatches,
   autoReview,
@@ -149,6 +151,8 @@ async function runIdentityExecutor({
   spawnKey: string | null;
   trigger?: string;
   groupId?: string | null;
+  botUserId?: string;
+  channelRun?: boolean;
   calls?: Array<{ name: string; args: Record<string, unknown> }>;
   callBatches?: Array<Array<{ name: string; args: Record<string, unknown> }>>;
   autoReview?: { review: ReturnType<typeof vi.fn> };
@@ -175,6 +179,7 @@ async function runIdentityExecutor({
     userId: "user-1",
     status: "queued",
     trigger,
+    sourceMessageId: channelRun ? "channel-message-1" : null,
     leaseFence: 0,
   };
   let request: AgentRunRequest | undefined;
@@ -302,7 +307,7 @@ async function runIdentityExecutor({
     bot: {
       findUniqueOrThrow: vi.fn(async () => ({
         id: run.botId,
-        userId: run.userId,
+        userId: botUserId,
         spaceId: run.spaceId,
         name: "Company agent",
         title: "Assistant",
@@ -337,18 +342,45 @@ async function runIdentityExecutor({
     message: {
       findMany: vi.fn(async () => [
         {
-          id: "message-1",
+          id: channelRun ? "channel-message-1" : "message-1",
           threadId: run.threadId,
           seq: 1,
           role: "user",
           runId: run.id,
-          blocks: [{ kind: "text", text: taskPrompt }],
+          blocks: channelRun
+            ? [
+                {
+                  kind: "channel_message",
+                  provider: "sendblue",
+                  channelId: "channel-1",
+                  fromAddress: "synthetic-channel-source",
+                  fromLabel: "Synthetic channel source",
+                  text: "Synthetic channel message",
+                },
+              ]
+            : [{ kind: "text", text: taskPrompt }],
           replyToMessageId: null,
           replyQuote: null,
           replyTo: null,
         },
       ]),
-      findUnique: vi.fn(async () => null),
+      findFirst: vi.fn(async () => null),
+      findUnique: vi.fn(async ({ where }: { where?: { id?: string } } = {}) =>
+        channelRun && where?.id === "channel-message-1"
+          ? {
+              blocks: [
+                {
+                  kind: "channel_message",
+                  provider: "sendblue",
+                  channelId: "channel-1",
+                  fromAddress: "synthetic-channel-source",
+                  fromLabel: "Synthetic channel source",
+                  text: "Synthetic channel message",
+                },
+              ],
+            }
+          : null,
+      ),
     },
     task: {
       findUniqueOrThrow: vi.fn(async () => ({ id: run.taskId, prompt: taskPrompt })),
@@ -683,6 +715,85 @@ describe("Company identity executor boundaries", () => {
     expect(
       [...request!.subagentToolNames!].some((name) => COMPANY_READ_TOOLS.includes(name as never)),
     ).toBe(false);
+  });
+
+  it("offers and dispatches Company reads for an eligible owner routine without upsert", async () => {
+    setCompanySearchStore();
+    const { request, toolResults } = await runIdentityExecutor({
+      spawnKey: null,
+      trigger: "routine",
+      calls: [
+        { name: "company_search", args: { text: "Synthetic Example" } },
+        {
+          name: "company_fact_upsert",
+          args: {
+            operation: "create",
+            kind: "entity",
+            fact: {
+              kind: "person",
+              displayName: "Synthetic Example",
+              attrs: {},
+              confidence: 0.8,
+            },
+            provenance: "Synthetic owner correction",
+          },
+        },
+      ],
+    });
+
+    expect(request?.tools.map(({ name }) => name)).toEqual(
+      expect.arrayContaining([...COMPANY_READ_TOOLS]),
+    );
+    expect(request?.tools.map(({ name }) => name)).not.toContain("company_fact_upsert");
+    expect(toolResults[0]?.result).toMatchObject({
+      untrusted: true,
+      facts: [
+        expect.objectContaining({
+          record: expect.objectContaining({ id: "company-person-1" }),
+        }),
+      ],
+    });
+    expect(toolResults[1]?.result).toMatchObject({
+      error: expect.stringMatching(/not available/i),
+    });
+  });
+
+  it.each([
+    {
+      label: "a nonowner routine",
+      trigger: "routine",
+      groupId: null,
+      botUserId: "owner-1",
+      channelRun: false,
+    },
+    {
+      label: "a group routine",
+      trigger: "routine",
+      groupId: "group-1",
+      botUserId: "user-1",
+      channelRun: false,
+    },
+    {
+      label: "a messaging-channel run",
+      trigger: "messaging",
+      groupId: null,
+      botUserId: "user-1",
+      channelRun: true,
+    },
+  ])("denies Company reads for $label", async ({ trigger, groupId, botUserId, channelRun }) => {
+    const { request, toolResults } = await runIdentityExecutor({
+      spawnKey: null,
+      trigger,
+      groupId,
+      botUserId,
+      channelRun,
+      calls: [{ name: "company_search", args: { text: "Synthetic Example" } }],
+    });
+
+    expect(request?.tools.map(({ name }) => name)).not.toContain("company_search");
+    expect(toolResults[0]?.result).toMatchObject({
+      error: expect.stringMatching(/not available/i),
+    });
   });
 
   it.each([
