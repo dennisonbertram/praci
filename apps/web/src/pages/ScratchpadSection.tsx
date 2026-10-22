@@ -102,7 +102,7 @@ export function ScratchpadSection({ botId }: { botId: string }) {
 
   return (
     <div className="mt-6" data-testid="bot-scratchpad">
-      <div className="mb-3 text-[14px] text-muted-foreground">
+      <div className="mb-3 text-[13.5px] font-medium text-foreground">
         <Trans>Open work</Trans>
       </div>
       {items.length === 0 ? (

@@ -8777,6 +8777,7 @@ msgstr "Saving..."
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-credentials.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Saving…"
 msgstr "Saving…"
@@ -10986,6 +10987,10 @@ msgstr "Wallets"
 #: src/lib/devin-format.ts
 msgid "Web"
 msgstr "Web"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Web search"
+msgstr "Web search"
 
 #: src/pages/Paywall.tsx
 msgid "Web, desktop and mobile apps"

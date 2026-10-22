@@ -321,6 +321,7 @@ import type { PaletteEntry } from "./shell/command-palette";
 import { CommandPalette, isCommandPaletteHotkey, plainSnippet } from "./shell/command-palette";
 import type { PendingAttachment } from "./shell/composer";
 import { Composer } from "./shell/composer";
+import { isStalePendingAskError } from "./shell/composer-error";
 import {
   ClearConversationDialog,
   DeleteBotDialog,
@@ -3775,11 +3776,11 @@ export function ShellPage() {
   // A computer that is on but has no screen would show a heading over an empty box.
   const noComputerScreen =
     computer?.state === "running" &&
-    !computer.screenAvailable &&
     computer.kind !== "desktop" &&
     !embeddedScreenUrl &&
     !computerError &&
-    !computerOpen;
+    !computerOpen &&
+    !showComputerRecoveryHint;
   const hasControl = userHoldsComputerControl(computer, computerBot?.id);
   const hideScreenLoadError = computerErrorFromScreen && Boolean(embeddedScreenUrl);
   const computerScreenError =
@@ -3828,6 +3829,22 @@ export function ShellPage() {
   useEffect(() => {
     if (staleConsentError) dismissComposerError();
   }, [staleConsentError]);
+  // "Answer the pending ask first" no longer applies once the question is answered.
+  const stalePendingAskError =
+    isStalePendingAskError(
+      sendError,
+      activeSnapshot?.messages ?? [],
+      activeSnapshot?.run?.status,
+    ) ||
+    isStalePendingAskError(
+      displayedRunError,
+      activeSnapshot?.messages ?? [],
+      activeSnapshot?.run?.status,
+    );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the error becomes stale.
+  useEffect(() => {
+    if (stalePendingAskError) dismissComposerError();
+  }, [stalePendingAskError]);
   const paneAcceptsFiles = !pageMode && Boolean(active || activeGroup);
   function onPaneFileDrag(event: DragEvent<HTMLElement>) {
     if (!paneAcceptsFiles || !isUnclaimedFileDrag(event)) return setPaneDraggingFiles(false);
