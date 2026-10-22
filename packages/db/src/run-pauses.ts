@@ -189,21 +189,29 @@ async function closeAndCancelWaitingRuns(
   }
 }
 
+type WaitingDelegate = {
+  id: string;
+  taskId: string;
+  threadId: string;
+  botId: string;
+  sentId: string;
+};
+
 /**
- * The run that asked these agents to act failed, so their open approval cards can never be used.
- * Closes each card as expired and cancels its waiting run. Returns how many runs were closed.
+ * Runs of other agents that wait for the owner's approval of work this bot sent from this thread.
+ * Each is matched through the message it was sent from (the sender's own thread echo), so one
+ * run's delegates are never confused with another run's, or another bot's, of the same time.
  */
-export async function expireDelegatedApprovals(
-  prisma: PrismaClient,
-  input: { spaceId: string; userId: string; fromBotId: string; since: Date },
-): Promise<number> {
-  const waiting = await prisma.run.findMany({
+async function waitingDelegates(
+  tx: Prisma.TransactionClient,
+  input: { spaceId: string; userId: string; fromBotId: string; threadId: string; runId?: string },
+): Promise<WaitingDelegate[]> {
+  const waiting = await tx.run.findMany({
     where: {
       spaceId: input.spaceId,
       userId: input.userId,
       trigger: "bot_message",
       status: "waiting_input",
-      createdAt: { gte: input.since },
     },
     select: {
       id: true,
@@ -213,24 +221,109 @@ export async function expireDelegatedApprovals(
       sourceMessage: { select: { blocks: true } },
     },
   });
-  const mine = waiting.filter(
-    (run) =>
-      Array.isArray(run.sourceMessage?.blocks) &&
-      (run.sourceMessage.blocks as { kind?: string; fromBotId?: string }[]).some(
-        (block) => block.kind === "bot_message_received" && block.fromBotId === input.fromBotId,
-      ),
-  );
-  for (const run of mine) {
-    await prisma.$transaction((tx) =>
-      closeAndCancelWaitingRuns(
-        tx,
-        { spaceId: input.spaceId, threadId: run.threadId, botId: run.botId },
-        [run],
-        "expired",
-      ),
+  const candidates = waiting.flatMap((run) => {
+    const blocks = run.sourceMessage?.blocks;
+    const received = (Array.isArray(blocks) ? blocks : []).find(
+      (block): block is { returnToMessageId: string } =>
+        (block as { kind?: string; fromBotId?: string } | null)?.kind === "bot_message_received" &&
+        (block as { fromBotId?: string }).fromBotId === input.fromBotId &&
+        typeof (block as { returnToMessageId?: unknown }).returnToMessageId === "string",
     );
+    return received ? [{ ...run, sentId: received.returnToMessageId }] : [];
+  });
+  if (candidates.length === 0) return [];
+  const sent = await tx.message.findMany({
+    where: {
+      id: { in: candidates.map((run) => run.sentId) },
+      threadId: input.threadId,
+      role: "bot",
+      ...(input.runId ? { runId: input.runId } : {}),
+    },
+    select: { id: true },
+  });
+  const sentIds = new Set(sent.map((message) => message.id));
+  return candidates.filter((run) => sentIds.has(run.sentId));
+}
+
+/** The messages of this thread whose delegate waits for approval; the thread shows "Waiting". */
+export async function delegatePendingIds(
+  client: Prisma.TransactionClient,
+  input: { spaceId: string; userId: string; fromBotId: string; threadId: string },
+): Promise<string[]> {
+  return (await waitingDelegates(client, input)).map((run) => run.sentId);
+}
+
+/**
+ * The run that asked these agents to act failed, so their open approval cards can never be used.
+ * Runs inside the requester's finalize transaction, after its lease is validated. Each delegate
+ * run is locked and rechecked first, so an approval accepted in the meantime is left alone.
+ * Returns the delegate run ids it closed.
+ */
+export async function expireDelegatedApprovalsInTransaction(
+  tx: Prisma.TransactionClient,
+  input: { spaceId: string; userId: string; fromBotId: string; threadId: string; runId: string },
+): Promise<string[]> {
+  const closed: string[] = [];
+  for (const run of await waitingDelegates(tx, input)) {
+    const locked = await tx.$queryRaw<{ id: string }[]>`
+      SELECT id FROM runs WHERE id = ${run.id} AND status = 'waiting_input' FOR UPDATE`;
+    if (locked.length === 0) continue;
+    await closeAndCancelWaitingRuns(
+      tx,
+      { spaceId: input.spaceId, threadId: run.threadId, botId: run.botId },
+      [run],
+      "expired",
+    );
+    closed.push(run.id);
   }
-  return mine.length;
+  return closed;
+}
+
+/** Tells the thread that sent work to a delegate which of its requests wait for approval. */
+async function announceDelegatePending(
+  prisma: PrismaClient,
+  realtime: RealtimeFanout | undefined,
+  delegateRunId: string,
+) {
+  const run = await prisma.run.findUnique({
+    where: { id: delegateRunId },
+    select: {
+      spaceId: true,
+      userId: true,
+      trigger: true,
+      sourceMessage: { select: { blocks: true } },
+    },
+  });
+  if (run?.trigger !== "bot_message") return;
+  const blocks = run.sourceMessage?.blocks;
+  const received = (Array.isArray(blocks) ? blocks : []).find(
+    (block): block is { fromBotId: string; returnToMessageId: string } =>
+      (block as { kind?: string } | null)?.kind === "bot_message_received" &&
+      typeof (block as { returnToMessageId?: unknown }).returnToMessageId === "string",
+  );
+  if (!received) return;
+  const sent = await prisma.message.findFirst({
+    where: { id: received.returnToMessageId, thread: { spaceId: run.spaceId, userId: run.userId } },
+    select: { threadId: true, botId: true },
+  });
+  if (!sent?.botId) return;
+  const seq = await prisma.$transaction(async (tx) => {
+    const pending = await delegatePendingIds(tx, {
+      spaceId: run.spaceId,
+      userId: run.userId,
+      fromBotId: received.fromBotId,
+      threadId: sent.threadId,
+    });
+    const event = await appendEventInTransaction(tx, {
+      spaceId: run.spaceId,
+      threadId: sent.threadId,
+      botId: sent.botId!,
+      type: "thread.delegate_pending",
+      payload: { pending },
+    });
+    return event.seq;
+  });
+  await notifyRealtime(realtime, sent.threadId, seq);
 }
 
 async function findPendingAsk(
@@ -648,11 +741,18 @@ export async function pauseRunForInput(
       payload: {},
     });
     await tx.event.deleteMany({ where: { runId: input.runId, type: "thread.progress" } });
-    return { threadId: waitingEvent.threadId, seq: waitingEvent.seq };
+    return {
+      threadId: waitingEvent.threadId,
+      seq: waitingEvent.seq,
+      approval: approvalEffectIds.length > 0,
+    };
   });
 
   if (!committed) return false;
   await notifyRealtime(realtime, committed.threadId, committed.seq);
+  if (committed.approval) {
+    await announceDelegatePending(prisma, realtime, input.runId).catch(() => undefined);
+  }
   return true;
 }
 

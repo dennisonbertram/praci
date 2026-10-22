@@ -59,6 +59,7 @@ export function isThreadSnapshotEvent(event: ProductEvent): boolean {
     event.type === "thread.progress" ||
     event.type === "thread.subagent" ||
     event.type === "thread.cloud_agent" ||
+    event.type === "thread.delegate_pending" ||
     event.type === "agent.tool.called" ||
     event.type === "agent.tool.completed" ||
     event.type === "thread.message.created" ||
@@ -308,6 +309,16 @@ export function reduceThreadSnapshot(
     return { ...prev, cursor: event.seq, messages: [...without, next, ...kept] };
   }
 
+  if (event.type === "thread.delegate_pending") {
+    const pending = event.payload.pending;
+    return {
+      ...prev,
+      cursor: event.seq,
+      delegatePending: Array.isArray(pending)
+        ? pending.filter((id): id is string => typeof id === "string")
+        : [],
+    };
+  }
   if (event.type === "thread.cloud_agent") {
     return {
       ...prev,
@@ -338,13 +349,17 @@ export function reduceThreadSnapshot(
     const liveId = progressMessageId(event);
     const { remaining } = takeLiveMessage(prev.messages, liveId);
     const without = remaining.filter((message) => !replacedSubagent(message, replacedSubagentIds));
-    // The delegate answered (or was denied): its outcome reaches this thread as a bot message.
-    const answered = blocks.some((block) => block.kind === "bot_message_received");
+    // A delegate's reply to a request of this thread ends only that request's waiting state.
+    const replyTo = event.payload.replyToMessageId;
+    const stillPending =
+      typeof replyTo === "string"
+        ? prev.delegatePending?.filter((id) => id !== replyTo)
+        : undefined;
     return {
       ...prev,
       cursor: event.seq,
       messages: upsertMessageById(without, next),
-      ...(answered && prev.delegatePending ? { delegatePending: false } : {}),
+      ...(stillPending ? { delegatePending: stillPending } : {}),
     };
   }
   return prev;

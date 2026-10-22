@@ -2530,7 +2530,7 @@ export function ShellPage() {
   const currentRuns = activeThreadRuns(activeSnapshot);
   const answerableAskMessageId = latestAnswerableAskMessageId(activeSnapshot);
   const waitingOnApproval = Boolean(
-    activeSnapshot?.delegatePending ||
+    activeSnapshot?.delegatePending?.length ||
       (answerableAskMessageId &&
         activeSnapshot?.messages
           .find((message) => message.id === answerableAskMessageId)

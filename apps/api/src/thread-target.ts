@@ -37,6 +37,7 @@ import {
   createGroupRepos,
   createRepos,
   createThreadMessageInTransaction,
+  delegatePendingIds,
   expireComputerExecutionLeases,
   IsolationError,
   lockOwnedGroup,
@@ -355,32 +356,17 @@ export async function threadHead(prisma: PrismaClient, target: ThreadTarget) {
   return { threadId: target.threadId, cursor: latest?.seq ?? -1 };
 }
 
-/** True while an agent this bot messaged has an approval waiting for the owner. */
-export async function delegatePending(
+async function delegatePendingField(
   prisma: PrismaClient,
-  bot: { id: string; spaceId: string; userId: string },
-): Promise<boolean> {
-  const waiting = await prisma.run.findMany({
-    where: {
-      spaceId: bot.spaceId,
-      userId: bot.userId,
-      trigger: "bot_message",
-      status: "waiting_input",
-    },
-    select: { sourceMessage: { select: { blocks: true } } },
-    take: 20,
+  target: Extract<ThreadTarget, { kind: "bot" }>,
+) {
+  const delegatePending = await delegatePendingIds(prisma, {
+    spaceId: target.bot.spaceId,
+    userId: target.bot.userId,
+    fromBotId: target.bot.id,
+    threadId: target.threadId,
   });
-  return waiting.some((run) => {
-    const blocks = run.sourceMessage?.blocks;
-    return (
-      Array.isArray(blocks) &&
-      blocks.some(
-        (block) =>
-          (block as { kind?: string; fromBotId?: string } | null)?.kind ===
-            "bot_message_received" && (block as { fromBotId?: string }).fromBotId === bot.id,
-      )
-    );
-  });
+  return delegatePending.length > 0 ? { delegatePending } : {};
 }
 
 export async function threadSnapshot(
@@ -483,7 +469,7 @@ export async function threadSnapshot(
       messages: messagesWithLiveEvents(core.messagePage.messages, core.liveEvents),
       olderCursor: core.messagePage.olderCursor,
       run: core.run ? mapRun(core.run) : null,
-      ...((await delegatePending(deps.prisma, target.bot)) ? { delegatePending: true } : {}),
+      ...(await delegatePendingField(deps.prisma, target)),
       computer: toComputerStatus(target.botId, target.bot.computer, busyBotName),
     };
   }

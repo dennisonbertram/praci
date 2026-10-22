@@ -156,7 +156,6 @@ import {
   createSpaceForMember,
   createThreadMessageInTransaction,
   effectiveMemoryScope,
-  expireDelegatedApprovals,
   findDefaultModelCredential,
   findModelCredential,
   InvalidSpaceNameError,
@@ -9221,16 +9220,8 @@ async function failRun(
   attemptId: string,
   workerId: string,
   fence: number,
-  failure: string,
+  message: string,
 ) {
-  // Work this run handed to another agent must not stay approvable once the run has failed.
-  const expired = await expireDelegatedApprovals(deps.prisma, {
-    spaceId: run.spaceId,
-    userId: run.userId,
-    fromBotId: bot.id,
-    since: run.createdAt,
-  }).catch(() => 0);
-  const message = expired > 0 ? `${failure} Nothing was sent.` : failure;
   const failed = await deps.events.finalizeRun({
     spaceId: run.spaceId,
     threadId: run.threadId,

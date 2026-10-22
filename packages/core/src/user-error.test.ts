@@ -253,7 +253,7 @@ describe("plainRunError", () => {
 });
 
 describe("threadRunError while a delegate waits for approval", () => {
-  const snap = (delegatePending?: boolean) =>
+  const snap = (delegatePending?: string[]) =>
     ({
       run: { id: "r1", status: "failed", error: "This agent could not finish. Try again." },
       messages: [],
@@ -261,11 +261,11 @@ describe("threadRunError while a delegate waits for approval", () => {
     }) as unknown as Parameters<typeof threadRunError>[0];
 
   it("shows no failure while the agent this bot asked waits for approval", () => {
-    expect(threadRunError(snap(true), (error) => error)).toBeNull();
+    expect(threadRunError(snap(["m1"]), (error) => error)).toBeNull();
   });
 
   it("shows the failure again once the approval is answered or denied", () => {
-    expect(threadRunError(snap(false), (error) => error)).toBe(
+    expect(threadRunError(snap([]), (error) => error)).toBe(
       "This agent could not finish. Try again.",
     );
   });
