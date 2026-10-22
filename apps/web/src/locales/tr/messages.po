@@ -5225,6 +5225,10 @@ msgstr ""
 msgid "Gmail filter limit reached"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Gmail Important"
+msgstr ""
+
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail is limiting requests right now."
 msgstr ""
@@ -5583,7 +5587,6 @@ msgstr ""
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/components/inbox/InboxRow.tsx
-#: src/pages/Inbox.tsx
 msgid "Important"
 msgstr ""
 
