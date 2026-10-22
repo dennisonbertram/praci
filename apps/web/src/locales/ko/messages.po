@@ -1061,10 +1061,6 @@ msgstr ""
 msgid "All"
 msgstr ""
 
-#: src/pages/Artifacts.tsx
-msgid "All bots"
-msgstr ""
-
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "All bots can use {0}."
@@ -1109,10 +1105,6 @@ msgstr ""
 
 #: src/pages/ActivityList.tsx
 msgid "All statuses"
-msgstr ""
-
-#: src/pages/Artifacts.tsx
-msgid "All time"
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
@@ -4827,20 +4819,11 @@ msgstr ""
 msgid "Filter by {label}"
 msgstr ""
 
-#: src/pages/Artifacts.tsx
-msgid "Filter by bot"
-msgstr ""
-
-#: src/pages/Artifacts.tsx
-msgid "Filter by date"
-msgstr ""
-
 #: src/pages/KnowledgeSection.tsx
 msgid "Filter memory"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
-#: src/pages/Artifacts.tsx
 msgid "Filters"
 msgstr ""
 
@@ -6601,13 +6584,13 @@ msgstr ""
 msgid "Needs takeover"
 msgstr "인수 필요"
 
-#: src/pages/ActivityList.tsx
 #: src/pages/Devin.tsx
 #: src/pages/devin/DevinSessions.tsx
 msgid "Needs you"
 msgstr ""
 
 #: src/lib/roster-status.ts
+#: src/pages/ActivityList.tsx
 msgid "Needs your answer"
 msgstr "입력 필요"
 
@@ -8917,6 +8900,7 @@ msgstr ""
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -8942,7 +8926,7 @@ msgid "Search and read files and folders"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
-msgid "Search artifacts…"
+msgid "Search artifacts"
 msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx

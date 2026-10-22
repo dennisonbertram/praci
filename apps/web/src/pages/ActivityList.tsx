@@ -2,7 +2,16 @@ import { plural, t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { RunActivityRow, RunStatus } from "@rakazo/contracts";
 import { isAgedStuckWork } from "@rakazo/core";
-import { Button, Input, Label, NativeSelect, NativeSelectOption } from "@rakazo/ui-web";
+import {
+  Button,
+  Input,
+  Label,
+  NativeSelect,
+  NativeSelectOption,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { RowsSkeleton } from "../components/RowsSkeleton";
@@ -130,30 +139,37 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
 
   return (
     <div
-      className="mb-2 flex max-h-[28vh] shrink-0 snap-start lg:max-h-[max(14vh,7.5rem)] flex-col border-b border-border pb-2"
+      className="mb-2 flex max-h-[40vh] shrink-0 snap-start flex-col border-b border-border pb-2"
       data-testid="activity-list"
     >
       <div className="flex items-center justify-between px-2.5 pb-1">
         <h2 className="text-[13px] font-medium text-foreground">
           <Trans>Activity</Trans>
         </h2>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 rounded-full px-2 text-[12px] text-muted-foreground"
-          data-testid="activity-show-filters"
-          aria-expanded={showFilters}
-          onClick={() => setShowFilters((open) => !open)}
-        >
-          <Trans>Filter</Trans>
-        </Button>
+        {/* A popover, so the filter form never takes the list's space. */}
+        <Popover open={showFilters} onOpenChange={setShowFilters}>
+          <PopoverTrigger
+            render={
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 rounded-full px-2 text-[12px] text-muted-foreground"
+                data-testid="activity-show-filters"
+              />
+            }
+          >
+            <Trans>Filter</Trans>
+            {filtersOn ? (
+              <span aria-hidden="true" className="size-1.5 rounded-full bg-primary" />
+            ) : null}
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-72">
+            <ActivityFilters filters={filters} onChange={setFilters} />
+          </PopoverContent>
+        </Popover>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto" data-testid="activity-rows">
-        {/* Inside the scroll area so expanded filters can never squeeze the results to zero height. */}
-        {showFilters || filtersOn ? (
-          <ActivityFilters filters={filters} onChange={setFilters} />
-        ) : null}
         {error ? (
           <div className="px-2.5 pb-2" role="alert">
             <ActivityError error={error} onRetry={() => reloadRef.current?.()} compact />
@@ -170,7 +186,7 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
           </p>
         ) : null}
 
-        <ActivitySection id="activity-needs-heading" title={<Trans>Needs you</Trans>}>
+        <ActivitySection id="activity-needs-heading" title={<Trans>Needs your answer</Trans>}>
           {needsYou.map((run) => (
             <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
           ))}
@@ -288,7 +304,7 @@ function ActivityFilters({
   const statusLabelText = filters.status === "all" ? null : statusLabel(filters.status);
 
   return (
-    <div className="mb-2 flex flex-col gap-2 px-2.5 pt-1">
+    <div className="flex flex-col gap-2">
       <div>
         <Label htmlFor={statusId} className="text-[12.5px] text-muted-foreground/80">
           <Trans>Status</Trans>

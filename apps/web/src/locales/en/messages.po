@@ -1061,10 +1061,6 @@ msgstr "AI data sharing off"
 msgid "All"
 msgstr "All"
 
-#: src/pages/Artifacts.tsx
-msgid "All bots"
-msgstr "All bots"
-
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "All bots can use {0}."
@@ -1110,10 +1106,6 @@ msgstr "All providers"
 #: src/pages/ActivityList.tsx
 msgid "All statuses"
 msgstr "All statuses"
-
-#: src/pages/Artifacts.tsx
-msgid "All time"
-msgstr "All time"
 
 #: src/components/AiDataSharing.tsx
 #: src/components/AskCard.tsx
@@ -4827,20 +4819,11 @@ msgstr "Filter"
 msgid "Filter by {label}"
 msgstr "Filter by {label}"
 
-#: src/pages/Artifacts.tsx
-msgid "Filter by bot"
-msgstr "Filter by bot"
-
-#: src/pages/Artifacts.tsx
-msgid "Filter by date"
-msgstr "Filter by date"
-
 #: src/pages/KnowledgeSection.tsx
 msgid "Filter memory"
 msgstr "Filter memory"
 
 #: src/components/data-room/FilterBar.tsx
-#: src/pages/Artifacts.tsx
 msgid "Filters"
 msgstr "Filters"
 
@@ -6601,13 +6584,13 @@ msgstr "Needs sign-in"
 msgid "Needs takeover"
 msgstr "Needs takeover"
 
-#: src/pages/ActivityList.tsx
 #: src/pages/Devin.tsx
 #: src/pages/devin/DevinSessions.tsx
 msgid "Needs you"
 msgstr "Needs you"
 
 #: src/lib/roster-status.ts
+#: src/pages/ActivityList.tsx
 msgid "Needs your answer"
 msgstr "Needs your answer"
 
@@ -8917,6 +8900,7 @@ msgstr "Scroll sideways to see the whole graph."
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -8942,8 +8926,8 @@ msgid "Search and read files and folders"
 msgstr "Search and read files and folders"
 
 #: src/pages/Artifacts.tsx
-msgid "Search artifacts…"
-msgstr "Search artifacts…"
+msgid "Search artifacts"
+msgstr "Search artifacts"
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Box"
