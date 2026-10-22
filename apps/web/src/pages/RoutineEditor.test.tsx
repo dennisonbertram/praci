@@ -216,6 +216,7 @@ it("shows a forced skill in the picker and keeps the instruction plain", async (
   const skills = [
     { id: "b1", name: "daily-brief", description: "", source: "builtin", readOnly: true },
     { id: "s1", name: "investor-update", description: "", source: "user", readOnly: false },
+    { id: "p1", name: "ship-notes", description: "", source: "plugin", readOnly: true },
   ] as AgentSkillCatalogEntry[];
   await act(async () =>
     root.render(
@@ -244,6 +245,12 @@ it("shows a forced skill in the picker and keeps the instruction plain", async (
   expect(select.value).toBe("investor-update");
   expect((el.querySelector("textarea") as HTMLTextAreaElement).value).toBe("Draft the note.");
   expect(Array.from(select.options)[1]?.value).toBe("investor-update");
+  const groupOf = (value: string) =>
+    (select.querySelector(`option[value="${value}"]`) as HTMLElement).parentElement?.getAttribute(
+      "label",
+    );
+  expect(groupOf("daily-brief")).toBe("Built-in");
+  expect(groupOf("ship-notes")).toBe("Plugins");
   await act(async () => root.unmount());
   el.remove();
   vi.unstubAllGlobals();

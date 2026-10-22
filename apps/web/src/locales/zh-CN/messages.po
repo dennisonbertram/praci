@@ -8141,6 +8141,10 @@ msgstr "播放中…"
 msgid "Plugin"
 msgstr "插件"
 
+#: src/pages/RoutineEditor.tsx
+msgid "Plugins"
+msgstr ""
+
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/pages/Investors.tsx
 msgid "Pool"

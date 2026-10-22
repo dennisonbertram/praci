@@ -486,7 +486,11 @@ export function RoutineEditor({
             { label: t`Yours`, entries: pickableSkills.filter((entry) => entry.source === "user") },
             {
               label: t`Built-in`,
-              entries: pickableSkills.filter((entry) => entry.source !== "user"),
+              entries: pickableSkills.filter((entry) => entry.source === "builtin"),
+            },
+            {
+              label: t`Plugins`,
+              entries: pickableSkills.filter((entry) => entry.source === "plugin"),
             },
           ].map(({ label, entries }) =>
             entries.length ? (

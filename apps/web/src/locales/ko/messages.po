@@ -8141,6 +8141,10 @@ msgstr "재생 중…"
 msgid "Plugin"
 msgstr "플러그인"
 
+#: src/pages/RoutineEditor.tsx
+msgid "Plugins"
+msgstr ""
+
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/pages/Investors.tsx
 msgid "Pool"

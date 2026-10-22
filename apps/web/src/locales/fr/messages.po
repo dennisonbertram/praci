@@ -8141,6 +8141,10 @@ msgstr "Lecture en cours…"
 msgid "Plugin"
 msgstr "Plugin"
 
+#: src/pages/RoutineEditor.tsx
+msgid "Plugins"
+msgstr ""
+
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/pages/Investors.tsx
 msgid "Pool"
