@@ -226,6 +226,19 @@ describe("Investors agent runs", () => {
     }
   });
 
+  it("offers audit_request_upsert to the Investors agent and to no other bot", async () => {
+    const investors = await runInvestors();
+    expect((investors.request?.tools ?? []).map((tool) => tool.name)).toContain(
+      "audit_request_upsert",
+    );
+    for (const spawnKey of ["carta-agent:user-1", "legal-agent:user-1", null]) {
+      const other = await runInvestors("user", spawnKey);
+      expect((other.request?.tools ?? []).map((tool) => tool.name)).not.toContain(
+        "audit_request_upsert",
+      );
+    }
+  });
+
   it("is not offered fundraising_read on a run another bot started", async () => {
     const { request } = await runInvestors("bot_message");
     expect((request?.tools ?? []).map((tool) => tool.name)).not.toContain("fundraising_read");
