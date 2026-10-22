@@ -5,6 +5,7 @@ import { useMatch, useNavigate } from "react-router-dom";
 import { lookupAgentApp } from "../lib/agent-app";
 import { hasApprovalToasts } from "../lib/approval-toasts";
 import { authClient } from "../lib/auth";
+import { openChatBotId } from "../lib/docked-agent";
 import { i18n } from "../lib/i18n";
 import {
   attentionFromDto,
@@ -98,7 +99,7 @@ export function AppToaster() {
           // The open chat already shows its own failure or reply.
           resultShownInOpenChat(
             n,
-            openBotIdRef.current,
+            openChatBotId(openBotIdRef.current),
             document.visibilityState === "visible" && document.hasFocus(),
           )
             ? "skipped"
@@ -128,7 +129,9 @@ export function AppToaster() {
     // the toasts are rebuilt from the server on load, on every change, and every 2 s while shown.
     const syncApprovals = () => {
       if (document.visibilityState !== "visible") return;
-      void followUnansweredApprovals(() => openBotIdRef.current).catch(() => undefined);
+      void followUnansweredApprovals(() => openChatBotId(openBotIdRef.current)).catch(
+        () => undefined,
+      );
     };
     syncApprovals();
     window.addEventListener("rakazo:notifications-changed", syncApprovals);

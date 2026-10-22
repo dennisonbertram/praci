@@ -137,7 +137,7 @@ it("shows an icon, title, one sentence and Add contact when there are no contact
   expect(container.querySelector("h2 + p")?.textContent).toContain("Investors, advisors");
   expect(
     [...container.querySelectorAll("button")].filter((b) => b.textContent?.includes("Add contact")),
-  ).toHaveLength(2);
+  ).toHaveLength(1);
   expect(container.querySelector("table")).toBeNull();
 });
 

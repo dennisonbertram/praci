@@ -222,6 +222,7 @@ import { publishComputerCommand } from "../lib/computer-workspace";
 import { fetchDataRoomBlob } from "../lib/data-room";
 import { dataRoomAgentSuggestions, findDataRoomAgent } from "../lib/data-room-agent";
 import { desktopBridge } from "../lib/desktop";
+import { setDockedAgentBotId } from "../lib/docked-agent";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
 import { findGtmAgent } from "../lib/gtm-agent";
 import {
@@ -966,6 +967,8 @@ export function ShellPage() {
   // Phones open the drawer on the chat list; Activity there is one tap away.
   // Activity is a quick look, not a place: it closes when you go somewhere and a reload starts closed.
   const [activityMode, setActivityMode] = useState(false);
+  // While Activity is open it lists these bots' work, so their chat rows are not repeated below.
+  const [activityBotIds, setActivityBotIds] = useState<ReadonlySet<string>>(new Set());
   const toggleActivityMode = useCallback(() => setActivityMode((on) => !on), []);
   // Activity sits above the chats: show it from its top, not from the row the list had settled on.
   useEffect(() => {
@@ -3618,6 +3621,12 @@ export function ShellPage() {
                     suggestions: investorsAgentSuggestions(),
                   }
                 : null;
+  // The toaster skips an approval toast for the agent whose panel is open.
+  const dockedAgentId = agentPanel?.open ? active?.id : undefined;
+  useEffect(() => {
+    setDockedAgentBotId(dockedAgentId);
+    return () => setDockedAgentBotId(undefined);
+  }, [dockedAgentId]);
   // The Carta agent opened full screen from its panel: same intro, and a way back to Investors.
   const cartaAgentPage =
     !pageMode && !inGroup && active !== undefined && findCartaAgent(bots, userId)?.id === active.id;
@@ -4447,7 +4456,7 @@ export function ShellPage() {
               <InputGroup
                 data-testid="sidebar-search"
                 data-tour="sidebar-search"
-                className="app-no-drag w-auto min-w-0 flex-1 rounded-xl bg-card dark:bg-input border border-border text-muted-foreground focus-within:border-ring"
+                className="app-no-drag w-auto min-w-0 flex-1 rounded-xl bg-card dark:bg-input border border-border text-muted-foreground has-[[data-slot=input-group-control]:focus-visible]:ring-0"
               >
                 <InputGroupAddon>
                   <Search size={16} strokeWidth={1.8} aria-hidden="true" />
@@ -4767,12 +4776,7 @@ export function ShellPage() {
                     rail={rail}
                     onOpen={() => {
                       setMobileSidebarOpen(false);
-                      // The badge counts failed files; the page opens on them.
-                      navigate(
-                        glance.dataRoomWaiting > 0
-                          ? "/app/data-room?status=failed"
-                          : "/app/data-room",
-                      );
+                      navigate("/app/data-room");
                     }}
                     {...glanceBadge({
                       unseen: unseen["data-room"] ?? 0,
@@ -4780,6 +4784,11 @@ export function ShellPage() {
                       value:
                         glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
                       failure: true,
+                      // Only the badge opens the failed files; the row opens everything.
+                      onValueClick: () => {
+                        setMobileSidebarOpen(false);
+                        navigate("/app/data-room?status=failed");
+                      },
                       // The count is failed files, the only ones a person can retry or remove.
                       valueLabel: plural(glance.dataRoomWaiting, {
                         one: "# file failed",
@@ -4820,6 +4829,7 @@ export function ShellPage() {
             <>
               {activityMode && !rail ? (
                 <ActivityList
+                  onListedBots={setActivityBotIds}
                   onOpenRun={(run) => {
                     setMobileSidebarOpen(false);
                     if (run.groupId) navigate(`/app/g/${run.groupId}`);
@@ -4884,14 +4894,22 @@ export function ShellPage() {
                     !row.item.chat.preview &&
                     row.item.chat.status === "idle" &&
                     row.item.chat.id !== active?.id;
-                  const listedRows = foldable
-                    ? nestedRows.filter((row) => !unusedPageAgent(row))
-                    : nestedRows;
+                  const inActivity = (row: (typeof nestedRows)[number]) =>
+                    activityMode &&
+                    !rail &&
+                    row.item.kind === "bot" &&
+                    activityBotIds.has(row.item.chat.id) &&
+                    row.item.chat.id !== active?.id;
+                  const listedRows = (
+                    foldable ? nestedRows.filter((row) => !unusedPageAgent(row)) : nestedRows
+                  ).filter((row) => !inActivity(row));
                   const pageAgentRows = foldable ? listedRows.filter(isPageAgent) : [];
                   const emailChatRows = foldable ? listedRows.filter(isEmailChat) : [];
                   const holdsActive = (rows: typeof nestedRows) =>
                     rows.some((row) => row.item.kind === "bot" && row.item.chat.id === active?.id);
-                  const showPageAgents = pageAgentsOpen || holdsActive(pageAgentRows);
+                  // On a page the group keeps the state the person gave it; the page's own row is highlighted elsewhere.
+                  const showPageAgents =
+                    pageAgentsOpen || (!pageMode && holdsActive(pageAgentRows));
                   const showEmailChats = emailChatsOpen || holdsActive(emailChatRows);
                   const displayRows: (
                     | (typeof nestedRows)[number]

@@ -35,6 +35,18 @@ export const WithBadge: Story = {
   },
 };
 
+/** The badge is its own button beside the row: the row opens everything, the badge opens the failed files. */
+export const WithBadgeAction: Story = {
+  args: {
+    label: "Data room",
+    badgeLabel: "2 files failed",
+    onBadgeClick: () => {},
+    badge: (
+      <span className="ms-auto font-medium text-[11.5px] text-destructive tabular-nums">2</span>
+    ),
+  },
+};
+
 /** The icon rail: labels are tooltips and the badge becomes a dot on the icon. */
 function RailColumn() {
   return (

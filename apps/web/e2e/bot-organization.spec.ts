@@ -167,7 +167,7 @@ test("chat composer controls are vertically centered", async ({ page }, testInfo
   await completeOnboarding(page);
 
   const bar = page.getByTestId("composer-bar");
-  const composer = page.getByRole("combobox", { name: "Message Chief" });
+  const composer = page.getByRole("textbox", { name: "Message Chief" });
   const centers = await bar.evaluate((composerBar) =>
     ["Attach file", "Message Chief", "Voice", "Send"].map((label) => {
       const element = composerBar.querySelector<HTMLElement>(`[aria-label="${label}"]`);

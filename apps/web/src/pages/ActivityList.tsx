@@ -38,9 +38,11 @@ export function statusTone(status: RunActivityRow["status"], updatedAt?: string)
 
 type ActivityListProps = {
   onOpenRun: (run: RunActivityRow) => void;
+  /** The bots whose active runs are listed here, so the chat list can skip them while this is open. */
+  onListedBots?: (botIds: ReadonlySet<string>) => void;
 };
 
-export function ActivityList({ onOpenRun }: ActivityListProps) {
+export function ActivityList({ onOpenRun, onListedBots }: ActivityListProps) {
   const { t } = useLingui();
   const [activeRuns, setActiveRuns] = useState<RunActivityRow[]>([]);
   const [recentRuns, setRecentRuns] = useState<RunActivityRow[]>([]);
@@ -63,14 +65,19 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
       }
       void (async () => {
         try {
-          const [active, recent] = await Promise.all([
-            rpc.runs.list({ filter: "active" }),
-            rpc.runs.list({ filter: "recent" }),
+          // Each list renders as soon as it arrives; the second need not hold up the first.
+          const fresh = () => !cancelled && requestId === generation;
+          await Promise.all([
+            rpc.runs.list({ filter: "active" }).then((result) => {
+              if (!fresh()) return;
+              setActiveRuns(result.runs);
+              setLoading(false);
+            }),
+            rpc.runs.list({ filter: "recent" }).then((result) => {
+              if (fresh()) setRecentRuns(result.runs);
+            }),
           ]);
-          if (cancelled || requestId !== generation) return;
-          setActiveRuns(active.runs);
-          setRecentRuns(recent.runs);
-          setError(null);
+          if (fresh()) setError(null);
         } catch (err) {
           if (cancelled || requestId !== generation) return;
           setError(errorText(err, t`Could not load activity`));
@@ -100,6 +107,11 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
     () => filterActivityRuns(activeRuns, filters),
     [activeRuns, filters],
   );
+  useEffect(() => {
+    onListedBots?.(new Set(filteredActive.map((run) => run.botId)));
+    return () => onListedBots?.(new Set());
+  }, [filteredActive, onListedBots]);
+
   const filteredRecent = useMemo(
     () => filterActivityRuns(recentRuns, filters),
     [recentRuns, filters],
@@ -164,7 +176,7 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
 
   return (
     <div
-      className="mb-2 flex max-h-40 shrink-0 snap-start flex-col border-b border-border pb-2"
+      className="mb-2 flex max-h-[45vh] shrink-0 snap-start flex-col border-b border-border pb-2"
       data-testid="activity-list"
     >
       <div className="flex items-center justify-between px-2.5 pb-1">
@@ -189,7 +201,7 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
               <span aria-hidden="true" className="size-1.5 rounded-full bg-primary" />
             ) : null}
           </PopoverTrigger>
-          <PopoverContent side="right" align="start" className="w-72">
+          <PopoverContent side="right" align="start" className="w-72" initialFocus={false}>
             <ActivityFilters filters={filters} onChange={setFilters} />
           </PopoverContent>
         </Popover>

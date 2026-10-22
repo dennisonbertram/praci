@@ -7076,11 +7076,8 @@ msgstr ""
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 #: src/pages/KnowledgeSection.tsx
-msgid "No matches"
-msgstr ""
-
 #: src/pages/shell/command-palette.tsx
-msgid "No matches in pages, documents, contacts"
+msgid "No matches"
 msgstr ""
 
 #: src/pages/shell/composer.tsx
@@ -9984,7 +9981,7 @@ msgid "Sort descending"
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
-msgid "Sort every file in the Data room"
+msgid "Sort files"
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx

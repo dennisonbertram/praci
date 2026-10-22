@@ -444,7 +444,7 @@ test("bot replies render markdown tables as cards", async ({ page }) => {
   await signup(page, `table-card-${stamp}@rakazo.test`, "password12", "Table Card");
   await completeOnboarding(page);
 
-  const composer = page.getByRole("combobox", { name: /^Message/ });
+  const composer = page.getByRole("textbox", { name: /^Message/ });
   await expect(composer).toBeVisible();
   await composer.fill("show this table:\n\n| Item | Qty |\n| --- | --- |\n| a | 2 |\n| b | 1 |");
   await composer.press("Enter");

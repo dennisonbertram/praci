@@ -50,7 +50,7 @@ test("create group from + and see two bots in one transcript", async ({ page }, 
   });
   await page.reload();
   await expect(page).toHaveURL(groupUrl);
-  await expect(page.getByRole("combobox", { name: "Message Draft team" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Message Draft team" })).toBeVisible();
 
   const groups = await rpc<
     Array<{
@@ -109,7 +109,7 @@ test("create group from + and see two bots in one transcript", async ({ page }, 
   await page.unroute("**/rpc/threads/get");
   await page.reload();
   // The page restores its right panel as it loads; wait for that before opening it by hand.
-  await expect(page.getByRole("combobox", { name: "Message Draft team" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Message Draft team" })).toBeVisible();
 
   await page.getByTestId("bot-settings-trigger").click();
   const desktopSettings = page.getByTestId("side-panel");
@@ -129,18 +129,18 @@ test("create group from + and see two bots in one transcript", async ({ page }, 
   await expect(desktopSettings).not.toBeVisible();
 
   await page
-    .getByRole("combobox", { name: "Message Draft team" })
+    .getByRole("textbox", { name: "Message Draft team" })
     .fill("@Researcher unfinished draft");
   await sidebar.getByRole("button", { name: /^Review team/ }).click();
-  await expect(page.getByRole("combobox", { name: "Message Review team" })).toHaveValue("");
+  await expect(page.getByRole("textbox", { name: "Message Review team" })).toHaveValue("");
   await sidebar.getByRole("button", { name: /^Draft team/ }).click();
   // An unsent message stays with its chat when you leave and come back.
-  await expect(page.getByRole("combobox", { name: "Message Draft team" })).toHaveValue(
+  await expect(page.getByRole("textbox", { name: "Message Draft team" })).toHaveValue(
     "@Researcher unfinished draft",
   );
-  await page.getByRole("combobox", { name: "Message Draft team" }).fill("");
+  await page.getByRole("textbox", { name: "Message Draft team" }).fill("");
 
-  const composer = page.getByRole("combobox", { name: "Message Draft team" });
+  const composer = page.getByRole("textbox", { name: "Message Draft team" });
   await composer.fill("@Res");
   await captureScreenshot(page, testInfo, "group-mention-picker");
   await page.getByRole("option", { name: "@Research Writer", exact: true }).click();
@@ -196,7 +196,7 @@ test("create group from + and see two bots in one transcript", async ({ page }, 
   const cityAsk = page.locator("p").filter({ hasText: /^Which city should I use\?$/ });
   if ((await cityAsk.count()) === 0) {
     await page.reload({ waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("combobox", { name: "Message Draft team" })).toBeVisible({
+    await expect(page.getByRole("textbox", { name: "Message Draft team" })).toBeVisible({
       timeout: 15_000,
     });
   }
@@ -240,7 +240,7 @@ test("create group from + and see two bots in one transcript", async ({ page }, 
   await expect(page).toHaveURL(new RegExp(`/app/g/${reviewGroup.id}$`));
   await expect(page.getByTestId("transcript")).not.toContainText("Answered: Paris");
   releaseReviewSnapshot();
-  await expect(page.getByRole("combobox", { name: "Message Review team" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Message Review team" })).toBeVisible();
   await page.unroute("**/rpc/threads/get");
   await sidebar.getByRole("button", { name: /^Draft team/ }).click();
   await expect(page.getByText("Answered: Paris", { exact: true })).toBeVisible();
@@ -289,12 +289,12 @@ test("create group from + and see two bots in one transcript", async ({ page }, 
   await page.getByTestId("bot-settings-trigger").click();
   await settings.getByRole("button", { name: "Close panel", exact: true }).click();
   await expect(settings).toHaveAttribute("data-panel", "closed");
-  await expect(page.getByRole("combobox", { name: "Message Draft team" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Message Draft team" })).toBeVisible();
 
   await rpc(page, "groups/remove", { groupId: reviewGroup.id });
   await page.goto(`/app/g/${reviewGroup.id}`);
   // An address for a removed group says so instead of jumping to another chat.
   await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
   await page.getByRole("link", { name: "Go to Praci" }).click();
-  await expect(page.getByRole("combobox", { name: /Message/ })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: /Message/ })).toBeVisible();
 });

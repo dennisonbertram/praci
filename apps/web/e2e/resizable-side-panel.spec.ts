@@ -62,7 +62,7 @@ test("phone composer menu and settings panel stay tappable", async ({ page }, te
   await page.setViewportSize({ width: 390, height: 844 });
   await signup(page, `phone-settings-${Date.now()}@rakazo.test`, "password12", "Phone Settings");
   await completeOnboarding(page);
-  await page.getByRole("combobox", { name: /^Message/ }).fill("/");
+  await page.getByRole("textbox", { name: /^Message/ }).fill("/");
   // Tap at the start edge, where the sidebar swipe strip runs beside the chat.
   await page
     .getByTestId("slash-picker")

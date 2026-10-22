@@ -141,7 +141,7 @@ test("message hover shows under-bubble actions; reply links to parent", async ({
 
   const parentText = `hover-parent-${stamp}`;
   const replyText = `hover-reply-${stamp}`;
-  const composer = page.getByRole("combobox", { name: /^Message/ });
+  const composer = page.getByRole("textbox", { name: /^Message/ });
   await expect(composer).toBeVisible();
   await sendComposerMessage(page, composer, parentText);
 
@@ -320,7 +320,7 @@ test("reply preview jumps to parent outside the loaded page", async ({ page }) =
 
   const parentText = `page-parent-${stamp}`;
   const replyText = `page-reply-${stamp}`;
-  const composer = page.getByRole("combobox", { name: /^Message/ });
+  const composer = page.getByRole("textbox", { name: /^Message/ });
   await expect(composer).toBeVisible();
   await sendComposerMessage(page, composer, parentText);
 
@@ -381,7 +381,7 @@ test("reply preview jumps to parent outside the loaded page", async ({ page }) =
   await page.route(hydrateRpc, stripHydrate);
 
   await page.reload({ waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("combobox", { name: /^Message/ })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("textbox", { name: /^Message/ })).toBeVisible({ timeout: 20_000 });
   await expect(page.locator(`[data-message-id="${parentId}"]`)).toHaveCount(0);
   const offlinePreview = page
     .locator(`[data-message-id]`)
@@ -458,7 +458,7 @@ test("hover time shows the date for a message from an earlier day", async ({ pag
   await page.route(hydrateRpc, rewriteHydrate);
 
   await page.reload({ waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("combobox", { name: /^Message/ })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("textbox", { name: /^Message/ })).toBeVisible({ timeout: 20_000 });
   const datedRow = page.locator(`[data-message-id="${messageId}"]`);
   await expect(datedRow).toBeVisible({ timeout: 20_000 });
   await expect.poll(() => page.evaluate(() => document.documentElement.lang)).toBe("en");
@@ -553,7 +553,7 @@ test.describe("touch message actions", () => {
     await expect(page.getByRole("menu").locator("time")).toHaveCount(0);
     await captureScreenshot(page, testInfo, "message-actions-touch-menu");
     await page.keyboard.press("Escape");
-    const composer = page.getByRole("combobox", { name: /^Message/ });
+    const composer = page.getByRole("textbox", { name: /^Message/ });
     await sendComposerMessage(page, composer, `touch-width-${Date.now()}`);
     const userRow = page.locator("[data-message-id]").filter({ hasText: "touch-width-" }).first();
     await expect(userRow).toBeVisible({ timeout: 20_000 });

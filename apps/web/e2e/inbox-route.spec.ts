@@ -7,7 +7,7 @@ test("/app/inbox stays on its own route with no bot thread, and bot routes are u
   await signup(page, `inbox-route-${Date.now()}@rakazo.test`, "password12", "Inbox Route");
   await completeOnboarding(page);
   const botId = activeBotId(page);
-  const composer = page.getByRole("combobox", { name: /Message/ });
+  const composer = page.getByRole("textbox", { name: /Message/ });
   await expect(composer).toBeVisible();
 
   await page.goto("/app/inbox");
