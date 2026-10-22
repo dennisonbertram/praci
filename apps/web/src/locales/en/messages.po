@@ -6583,9 +6583,11 @@ msgstr "Needs sign-in"
 #: src/lib/roster-status.ts
 #: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Needs takeover"
 msgstr "Needs takeover"
 
+#: src/pages/ActivityList.tsx
 #: src/pages/Devin.tsx
 #: src/pages/devin/DevinSessions.tsx
 msgid "Needs you"

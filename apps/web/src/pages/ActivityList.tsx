@@ -130,7 +130,7 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
 
   return (
     <div
-      className="mb-2 flex max-h-[28vh] shrink-0 snap-start flex-col lg:max-h-none border-b border-border pb-2"
+      className="mb-2 flex max-h-[28vh] shrink-0 snap-start lg:max-h-[max(14vh,7.5rem)] flex-col border-b border-border pb-2"
       data-testid="activity-list"
     >
       <div className="flex items-center justify-between px-2.5 pb-1">
@@ -170,7 +170,7 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
           </p>
         ) : null}
 
-        <ActivitySection id="activity-needs-heading" title={needsAnswerLabel()}>
+        <ActivitySection id="activity-needs-heading" title={<Trans>Needs you</Trans>}>
           {needsYou.map((run) => (
             <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
           ))}
