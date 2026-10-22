@@ -906,13 +906,16 @@ test("Inbox rows show one triage label and keep the header and rows on their lin
 });
 
 test.describe("phone Inbox with touch", () => {
-  test.use({ hasTouch: true, isMobile: true, viewport: { width: 375, height: 812 } });
+  test.use({ hasTouch: true });
 
   test("a scrolled list never draws or hit-tests row checkboxes over the title, tabs or menu button", async ({
     page,
   }) => {
     await signup(page, `inbox-touch-${Date.now()}@rakazo.test`, "password12", "Inbox Touch");
     await completeOnboarding(page);
+
+    await page.getByTestId("sidebar-inbox").click();
+    await connectMailFromInbox(page);
 
     // Real: the Gmail emulator and inbox.list. Stubbed: triage on, and enough rows to scroll.
     await page.route("**/rpc/inbox/list", async (route) => {
@@ -922,7 +925,11 @@ test.describe("phone Inbox with touch", () => {
       };
       const first = body.json.rows[0];
       const extra = first
-        ? Array.from({ length: 20 }, (_, index) => ({ ...first, id: `stub-${index}` }))
+        ? Array.from({ length: 20 }, (_, index) => ({
+            ...first,
+            id: `stub-${index}`,
+            subject: `Stub row ${index}`,
+          }))
         : [];
       const rows = [...body.json.rows, ...extra].map((row) => ({
         ...row,
@@ -941,9 +948,10 @@ test.describe("phone Inbox with touch", () => {
     });
 
     await page.getByTestId("sidebar-inbox").click();
-    await connectMailFromInbox(page);
-    await page.getByTestId("sidebar-inbox").click();
+    await page.reload();
 
+    // Setup used the desktop sidebar; only now shrink to a phone.
+    await page.setViewportSize({ width: 375, height: 812 });
     const main = page.getByRole("main");
     await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
     const tabs = main.getByRole("tablist");
@@ -969,7 +977,7 @@ test.describe("phone Inbox with touch", () => {
       };
       return {
         tab: ok('[role="tablist"] [role="tab"]'),
-        menu: ok('[aria-label="Open navigation"]'),
+        menu: ok('[data-page-header] [aria-label="Open navigation"]'),
         title: ok("[data-page-header] h1"),
       };
     });

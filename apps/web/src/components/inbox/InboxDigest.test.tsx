@@ -96,6 +96,11 @@ it("shows one card per sender with the newest subject, summary, date and message
   expect(cards[1]?.querySelector("[data-unread-dot]")).toBeNull();
 });
 
+it("pluralizes messages and senders separately", async () => {
+  await show({ rows: [row("a"), row("b")] });
+  expect(button("Archive all 2 messages from 1 sender")).toBeDefined();
+});
+
 it("opens the issue from its Open button", async () => {
   const onOpen = vi.fn();
   await show({ rows: [row("a"), row("b")], onOpen });

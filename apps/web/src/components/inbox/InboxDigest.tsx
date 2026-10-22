@@ -58,7 +58,7 @@ export function InboxDigest({
           <Archive aria-hidden="true" />
           {plural(rows.length, {
             one: `Archive ${rows.length} message from ${groups.length} sender`,
-            other: `Archive all ${rows.length} messages from ${groups.length} senders`,
+            other: `Archive all # messages from ${plural(groups.length, { one: "# sender", other: "# senders" })}`,
           })}
         </Button>
       </div>
