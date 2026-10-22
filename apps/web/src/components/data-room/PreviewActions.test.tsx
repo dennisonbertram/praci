@@ -17,7 +17,7 @@ vi.mock("../../lib/data-room", async (original) => ({
   openDataRoomFileDirect: direct,
 }));
 
-import { FileViewer } from "./PreviewActions";
+import { FileViewer, PreviewActions } from "./PreviewActions";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -80,4 +80,28 @@ it("before the file loads, Open goes straight to the file, not the frame helper"
   const view = render(item("agreement.pdf", "application/pdf"), "");
   act(() => view.querySelector("button")?.click());
   expect(direct).toHaveBeenCalledTimes(1);
+});
+
+it("hides the header Open and Download below sm only where the PDF shows its own", () => {
+  const draw = (node: DataRoomApiItem, failed = false) => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    act(() =>
+      createRoot(host).render(
+        <PreviewActions
+          item={node}
+          file={{ url: "blob:file", failed }}
+          hidden={false}
+          onError={() => undefined}
+        />,
+      ),
+    );
+    const hidden = (label: string) =>
+      host.querySelector(`button[aria-label="${label}"]`)?.className.includes("max-sm:hidden");
+    host.remove();
+    return [hidden("Open in new tab"), hidden("Download")];
+  };
+  expect(draw(item("a.pdf", "application/pdf"))).toEqual([true, true]);
+  expect(draw(item("a.pdf", "application/pdf"), true)).toEqual([false, false]);
+  expect(draw(item("a.png", "image/png"))).toEqual([false, false]);
 });

@@ -25,6 +25,9 @@ const shares = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/rpc", () => ({
   rpc: {
     investors: { shares },
+    dataRoom: {
+      consent: () => Promise.resolve({ allowed: true, recipients: [], key: "k", version: 1 }),
+    },
     files: { spreadsheetPreview: () => Promise.reject(new Error("offline")) },
   },
 }));
@@ -416,4 +419,32 @@ it("makes the From email link a 44 px target on touch screens", async () => {
   });
   const link = [...container.querySelectorAll("a")].find((a) => a.textContent === "From email");
   expect(link?.className).toContain("pointer-coarse:min-h-11");
+});
+
+it("offers Replace file, not Try again, in the menu and pane for an unreadable file", async () => {
+  const unreadable = {
+    ...receipt,
+    mimeType: "application/pdf",
+    status: "failed",
+    error: "This file isn't a readable PDF.",
+  };
+  await act(async () => {
+    root.render(
+      <Preview item={unreadable} folderPath="" onAction={vi.fn()} onClose={() => undefined} />,
+    );
+  });
+  const labels = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
+  expect(labels).toContain("Replace file");
+  expect(labels).not.toContain("Try again");
+});
+
+it("says a video won't be searchable instead of 'Not tagged yet'", async () => {
+  const video = { ...receipt, name: "demo.mp4", mimeType: "video/mp4", previewText: null };
+  await act(async () => {
+    root.render(
+      <Preview item={video} folderPath="" onAction={vi.fn()} onClose={() => undefined} />,
+    );
+  });
+  expect(container.textContent).toContain("Won't be searchable");
+  expect(container.textContent).not.toContain("Not tagged yet");
 });

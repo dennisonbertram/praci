@@ -26,7 +26,7 @@ import { errorText } from "../../lib/user-error";
 import { AutoFileEmailSetting } from "../AutoFileEmailSetting";
 import { DriveRow } from "./DriveRow";
 import { TOOLBAR_BUTTON, TOOLBAR_LABEL, ToolbarTip } from "./FilterBar";
-import { dateText, failedText, importedText, isNoiseImage } from "./format";
+import { dateText, failedText, importedText, isNoiseImage, isUnsearchableType } from "./format";
 import { DrivePicker } from "./ImportFromDrive";
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -117,7 +117,13 @@ function MessageRow({
               showCheckbox
               checked={done || picks.has(pickKey(row.id, file.id))}
               disabled={done || (full && !picks.has(pickKey(row.id, file.id)))}
-              note={done ? t`In Data room` : undefined}
+              note={
+                done
+                  ? t`In Data room`
+                  : isUnsearchableType(file.mimeType)
+                    ? t`Won't be searchable`
+                    : undefined
+              }
               onToggle={() => onToggle(row.id, [file.id], !picks.has(pickKey(row.id, file.id)))}
               onOpen={() => undefined}
             />

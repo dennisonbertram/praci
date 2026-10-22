@@ -191,3 +191,43 @@ it("keeps the Filters button in the Stats view, where the pills are otherwise ou
   const toggle = container.querySelector<HTMLButtonElement>("button[aria-controls]");
   expect(toggle?.classList.contains("hidden")).toBe(false);
 });
+
+const renderView = (statsView: boolean) =>
+  act(() =>
+    root.render(
+      <FilterBar
+        query=""
+        onQuery={() => undefined}
+        searching={false}
+        filters={{}}
+        onFilters={() => undefined}
+        sort={null}
+        onSort={() => undefined}
+        types={[]}
+        parties={[]}
+        sources={[]}
+        hasDates={false}
+        folders={[]}
+        folderId={undefined}
+        onFolder={() => undefined}
+        onNewFolder={onNewFolder}
+        statsView={statsView}
+        trailing={<span data-testid="view-switch" />}
+      />,
+    ),
+  );
+
+it("keeps the view switch outside the Filters panel and the first row's layout the same in Stats", () => {
+  renderView(false);
+  const first = () => container.firstElementChild?.firstElementChild?.className ?? "";
+  expect(
+    container.querySelector('[data-testid="data-room-filters"] [data-testid="view-switch"]'),
+  ).toBeNull();
+  expect(container.querySelector('[data-testid="view-switch"]')).not.toBeNull();
+  expect(first()).toContain("@min-[800px]/bd:w-80");
+  renderView(true);
+  expect(container.querySelector('[data-testid="view-switch"]')).not.toBeNull();
+  // The search box's room is held in Stats (a spacer with its classes), so nothing shifts.
+  expect(container.querySelector('input[name="data-room-search"]')).toBeNull();
+  for (const cls of ["flex-1", "basis-48", "@min-[800px]/bd:w-80"]) expect(first()).toContain(cls);
+});

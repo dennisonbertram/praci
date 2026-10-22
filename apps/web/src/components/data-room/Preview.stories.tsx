@@ -99,6 +99,30 @@ export const Untagged: Story = {
   },
 };
 
+/** A file that is not a PDF fails the same way every time: Replace file, not Try again. */
+export const UnreadableFile: Story = {
+  args: {
+    item: {
+      ...readyItem,
+      name: "Sample signed NDA.pdf",
+      status: "failed",
+      mimeType: "application/pdf",
+      error: "This file isn't a readable PDF.",
+    },
+  },
+};
+/** Video has no text to read, so the preview says it won't be searchable. */
+export const Video: Story = {
+  args: {
+    item: {
+      ...readyItem,
+      name: "Sample demo.mp4",
+      mimeType: "video/mp4",
+      facets: { ...readyItem.facets, docType: null, docDate: null, parties: [], summary: null },
+    },
+  },
+};
+
 /** Full screen opens the file in a near full-viewport dialog; Open and Download are in its header. */
 export const FullScreen: Story = {
   beforeEach: () => serveFile("pdf"),

@@ -1,11 +1,11 @@
 import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { DataRoomApiItem } from "@rakazo/contracts";
+import type { DataRoomApiItem, DataRoomConsentStatus } from "@rakazo/contracts";
 import { Badge, Button, DialogTitle } from "@rakazo/ui-web";
-import { FileText, RotateCw, Trash2, X } from "lucide-react";
+import { FileText, RotateCw, Trash2, Upload, X } from "lucide-react";
 import type { KeyboardEvent, PointerEvent, ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { canPreviewImage } from "../../lib/data-room";
 import { MASK } from "../../lib/finance-format";
@@ -19,10 +19,11 @@ import { canPreviewSpreadsheet } from "../../lib/spreadsheet";
 import { SheetPreview } from "../SheetPreview";
 import { sourceLabel } from "./FilterBar";
 import {
+  canRetryItem,
   dateText,
   isSettled,
-  isStuck,
   isUnreadable,
+  isUnsearchableType,
   SHARES_CHANGED,
   sizeText,
   typeLabel,
@@ -37,6 +38,7 @@ import {
   useFileUrl,
 } from "./PreviewActions";
 import type { SendTarget } from "./SendToAgent";
+import { uploadFilesToDataRoom } from "./upload-toasts";
 
 function amountText(item: DataRoomApiItem) {
   const { amountCents, currency } = item.facets;
@@ -156,6 +158,71 @@ function useShareCount(item: DataRoomApiItem) {
   return canShare && shared?.id === item.id ? shared.count : null;
 }
 
+/** Uploads another file into the same folder; the unreadable one stays until it is deleted. */
+function ReplaceFile({ folderId }: { folderId: string | null }) {
+  const input = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <input
+        ref={input}
+        type="file"
+        hidden
+        onChange={(event) => {
+          uploadFilesToDataRoom(Array.from(event.target.files ?? []), folderId ?? undefined);
+          event.target.value = "";
+        }}
+      />
+      <Button size="sm" variant="outline" onClick={() => input.current?.click()}>
+        <Upload aria-hidden="true" />
+        <Trans>Replace file</Trans>
+      </Button>
+    </>
+  );
+}
+
+/** Why a finished file has no type: Praci cannot read that kind of file, or may not read documents yet. */
+function UntaggedNote({ item }: { item: DataRoomApiItem }) {
+  const [consent, setConsent] = useState<DataRoomConsentStatus | null>(null);
+  const unsearchable = isUnsearchableType(item.mimeType);
+  useEffect(() => {
+    if (unsearchable) return;
+    let live = true;
+    rpc.dataRoom
+      .consent()
+      .then((next) => live && setConsent(next))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [unsearchable]);
+  const note = "text-xs text-muted-foreground";
+  if (unsearchable)
+    return <p className={note}>{t`Won't be searchable. Praci can't read this kind of file.`}</p>;
+  if (consent && !consent.allowed && consent.recipients.length > 0)
+    return (
+      <div className="flex flex-col items-start gap-1.5">
+        <p className={note}>{t`Not tagged. Praci isn't allowed to read your documents yet.`}</p>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() =>
+            rpc.dataRoom
+              .consentGrant({ key: consent.key, version: consent.version })
+              .then(setConsent)
+              .catch(() => undefined)
+          }
+        >
+          <Trans>Allow</Trans>
+        </Button>
+      </div>
+    );
+  return (
+    <p className={note}>
+      <Trans>Not tagged yet.</Trans>
+    </p>
+  );
+}
+
 /** The summary, facets and source of one item, with Download and the item menu. */
 export function Preview({
   item,
@@ -230,6 +297,7 @@ export function Preview({
         )}
         <PreviewActions
           item={item}
+          file={file}
           hidden={hidden}
           onError={setError}
           onFullScreen={canFullScreen ? () => setFullScreen(true) : undefined}
@@ -237,7 +305,7 @@ export function Preview({
         <ItemMenu
           item={item}
           onAction={onAction}
-          canRetry={item.status === "failed" || isStuck(item)}
+          canRetry={canRetryItem(item)}
           agents={agents}
           onSendToAgent={onSendToAgent}
         />
@@ -263,7 +331,10 @@ export function Preview({
             <Trans>Couldn't read this file</Trans>
           </p>
           {item.error ? <p className="text-muted-foreground">{item.error}</p> : null}
-          {isUnreadable(item.error) ? null : (
+          {isUnreadable(item.error) ? (
+            // A second read fails the same way, so the way forward is a different file.
+            <ReplaceFile folderId={item.folderId} />
+          ) : (
             <Button size="sm" onClick={() => onAction("retry", item)}>
               <RotateCw aria-hidden="true" />
               <Trans>Try again</Trans>
@@ -282,9 +353,7 @@ export function Preview({
       ) : isSettled(item.status, !!item.previewText) && item.error ? (
         <p className="text-xs text-muted-foreground">{t`Couldn't classify`}</p>
       ) : isSettled(item.status, !!item.previewText) && !facets.docType ? (
-        <p className="text-xs text-muted-foreground">
-          <Trans>Not tagged yet.</Trans>
-        </p>
+        <UntaggedNote item={item} />
       ) : null}
       <dl className="grid grid-cols-[72px_1fr] items-baseline gap-x-2 gap-y-1.5 text-sm">
         {facets.docType ? <Field label={t`Type`}>{typeLabel(facets.docType)}</Field> : null}

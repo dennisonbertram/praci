@@ -146,6 +146,12 @@ export function DataRoomPage({
     // Opening the page from the sidebar row drops ?status=failed, which must clear the filter too.
     setOtherFilters(({ status, ...prev }) => (urlFailed ? { ...prev, status: "failed" } : prev));
   }, [urlFailed]);
+  // Stats are a third way to see the same folder and filters, read only while they are shown.
+  // The failed badge lists files to retry, so it never lands on Stats left open earlier.
+  const [showStats, setShowStats] = useState(false);
+  useEffect(() => {
+    if (urlFailed) setShowStats(false);
+  }, [urlFailed, location.key]);
   const statusParamRef = useRef(params.has("status"));
   statusParamRef.current = params.has("status");
   const urlFolderRef = useRef(urlFolder);
@@ -267,8 +273,6 @@ export function DataRoomPage({
       live = false;
     };
   }, [facetFilters, facetsVersion]);
-  // Stats are a third way to see the same folder and filters, read only while they are shown.
-  const [showStats, setShowStats] = useState(false);
   // Ticked files by id, kept across searches and filters; only a folder change or Clear drops them.
   const [checked, setChecked] = useState<ReadonlyMap<string, DataRoomApiItem>>(new Map());
   // The bar says "50 of 69" once a selection leaves rows unloaded; a search has no known total.

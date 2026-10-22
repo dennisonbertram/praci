@@ -97,6 +97,17 @@ export const isNoiseImage = (file: { filename: string; mimeType: string; size: n
  */
 export const isUnreadable = (error: string | null) => !!error && /^This (PDF|file)\b/.test(error);
 
+/** Video and audio have no text to read, so they are never searchable. */
+export const isUnsearchableType = (mimeType: string) => /^(video|audio)\//.test(mimeType);
+
+/** A failed or stalled file that a second read can fix; one that is not a readable file cannot be. */
+export const canRetryItem = (item: {
+  status: string;
+  updatedAt: string;
+  error?: string | null;
+  previewText?: string | null;
+}) => (item.status === "failed" && !isUnreadable(item.error ?? null)) || isStuck(item);
+
 /**
  * "Reading for 5 min" (or hours, days) once a file has been in the pipeline over 2 minutes; empty before that.
  * Counts from the last pipeline write (`updatedAt`), so a retried file starts again at zero.
