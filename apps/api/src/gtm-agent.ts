@@ -1,12 +1,11 @@
 import { ORPCError } from "@orpc/server";
-import type { JobPublisher, SecretStore } from "@rakazo/adapter-kit";
+import type { JobPublisher } from "@rakazo/adapter-kit";
 import { routineWakeupJob } from "@rakazo/adapter-kit";
-import type { Actor, Bot, ZernioPostingCapability } from "@rakazo/contracts";
+import type { Actor, Bot } from "@rakazo/contracts";
 import {
   GTM_WORK_ROUTINE_NAME,
   gtmAgentSpawnKey,
   integrationAgentSpawnKey,
-  isIntegrationAgentForServer,
   isZernioEndpoint,
   pageAgentColor,
   ZERNIO_READ_TOOLS,
@@ -237,41 +236,4 @@ export async function ensureGtmAgent(
   const bot = await ensureGtmBot(deps, actor);
   await ensureGtmRoutine(deps, actor, bot.id);
   return bot;
-}
-
-export async function gtmPostingCapability(
-  deps: {
-    prisma: Pick<PrismaClient, "mcpServer" | "bot" | "secret">;
-    secrets: Pick<SecretStore, "load">;
-  },
-  actor: Actor,
-): Promise<ZernioPostingCapability> {
-  const servers = await deps.prisma.mcpServer.findMany({
-    where: { spaceId: actor.spaceId, userId: actor.userId, enabled: true },
-    include: { agentBot: true },
-  });
-  const linked = servers.filter(
-    (server) =>
-      isZernioEndpoint(server.endpoint) &&
-      server.agentExclusive &&
-      !server.writesEnabled &&
-      isIntegrationAgentForServer(server, server.agentBot),
-  );
-  if (!linked.length) return "not_connected";
-  for (const server of linked) {
-    if (!server.secretId) continue;
-    const secret = await deps.prisma.secret.findFirst({
-      where: { id: server.secretId, spaceId: actor.spaceId, userId: actor.userId, kind: "mcp" },
-    });
-    if (!secret) continue;
-    try {
-      const material = JSON.parse(await deps.secrets.load(secret.ciphertext, secret.id)) as {
-        secret?: unknown;
-      };
-      if (typeof material.secret === "string" && material.secret.trim()) return "ready";
-    } catch {
-      // A malformed or unreadable credential is not a configured API key.
-    }
-  }
-  return "api_key_required";
 }

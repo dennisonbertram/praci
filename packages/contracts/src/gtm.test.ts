@@ -7,12 +7,73 @@ import {
   GTM_POST_TOOL,
   GTM_WORK_ROUTINE_NAME,
   GtmPostInputSchema,
+  GtmQueueInputSchema,
+  GtmQueueOutputSchema,
   gtmAgentSpawnKey,
   isGtmAgentSpawnKey,
 } from "./gtm.js";
 import { BOT_COLORS } from "./ids.js";
 
 describe("GTM contracts", () => {
+  it("accepts strict half-open queue windows of at most 31 days", () => {
+    const input = { from: "2030-01-01T00:00:00Z", to: "2030-02-01T00:00:00+00:00" };
+    expect(GtmQueueInputSchema.parse(input)).toEqual(input);
+    for (const invalid of [
+      { from: input.to, to: input.from },
+      { from: input.from, to: "2030-02-01T00:00:01Z" },
+      { from: "2030-01-01T00:00:00", to: input.to },
+      { ...input, serverId: "caller-controlled" },
+    ]) {
+      expect(GtmQueueInputSchema.safeParse(invalid).success).toBe(false);
+    }
+  });
+
+  it("validates normalized queue results without requiring provider fields", () => {
+    const result = {
+      status: "ready",
+      complete: true,
+      posts: [
+        {
+          id: "post-1",
+          content: "",
+          status: "scheduled",
+          scheduledFor: "2030-01-01T12:00:00.000Z",
+          platforms: [{ platform: "twitter", accountId: "account-1", status: "pending" }],
+        },
+      ],
+    };
+    expect(GtmQueueOutputSchema.parse(result)).toEqual(result);
+    expect(GtmQueueOutputSchema.safeParse({ ...result, status: "unavailable" }).success).toBe(
+      false,
+    );
+    for (const url of ["ftp://example.test/post", "https://user:pass@example.test/post"]) {
+      expect(
+        GtmQueueOutputSchema.safeParse({
+          ...result,
+          posts: [
+            {
+              ...result.posts[0],
+              platforms: [
+                {
+                  platform: "twitter",
+                  accountId: "account-1",
+                  status: "published",
+                  platformPostUrl: url,
+                },
+              ],
+            },
+          ],
+        }).success,
+      ).toBe(false);
+    }
+    expect(
+      GtmQueueOutputSchema.safeParse({
+        ...result,
+        posts: [{ ...result.posts[0], accountId: "secret" }],
+      }).success,
+    ).toBe(false);
+  });
+
   it("recognizes the user-scoped spawn key and uses the assigned colour", () => {
     expect(gtmAgentSpawnKey("u1")).toBe("gtm-agent:u1");
     expect(isGtmAgentSpawnKey(gtmAgentSpawnKey("u1"))).toBe(true);
