@@ -7,6 +7,7 @@ import {
   ZERNIO_API_BASE_URL,
 } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
+import * as z from "zod";
 import {
   claimIntendedEffect,
   completeExternalEffect,
@@ -19,12 +20,13 @@ import { secureFetch } from "./mcp-transport.js";
 import type { RemoteTransportDependencies } from "./remote-mcp.js";
 import { clearPostStamp, consumeApprovedPost } from "./scratchpad-tools.js";
 
-export type ZernioCreateInput = {
-  content: string;
-  scheduledFor: string;
-  platform: string;
-  accountId: string;
-};
+const ZernioPlatformSchema = z.enum(["twitter", "linkedin", "threads", "bluesky"]);
+const ZernioCreateInputSchema = z.strictObject({
+  ...GtmPostInputSchema.shape,
+  platform: ZernioPlatformSchema,
+});
+
+export type ZernioCreateInput = z.infer<typeof ZernioCreateInputSchema>;
 
 export type ZernioCreateResult =
   | { state: "completed"; postId: string; platformPostUrl: string }
@@ -61,8 +63,12 @@ export function parseZernioCreateResponse(
   body: unknown,
   expected: ZernioCreateInput,
 ): ZernioCreateResult {
+  const root = record(body);
+  if (root && Object.hasOwn(root, "success") && Object.hasOwn(root, "error")) {
+    return { state: "uncertain" };
+  }
   if ([400, 401, 403, 429].includes(status)) {
-    const error = record(body);
+    const error = root;
     if (
       error &&
       typeof error.error === "string" &&
@@ -76,11 +82,11 @@ export function parseZernioCreateResponse(
     return { state: "uncertain" };
   }
   if (status < 200 || status >= 300 || status === 202) return { state: "uncertain" };
-  const post = record(record(body)?.post);
+  const post = record(root?.post);
   if (
     !post ||
     typeof post._id !== "string" ||
-    !post._id ||
+    post._id.trim().length === 0 ||
     post.content !== expected.content ||
     typeof post.scheduledFor !== "string" ||
     new Date(post.scheduledFor).getTime() !== new Date(expected.scheduledFor).getTime() ||
@@ -97,10 +103,13 @@ export function parseZernioCreateResponse(
   ) {
     return { state: "uncertain" };
   }
-  if (validProofUrl(target.platformPostUrl)) {
+  if (Object.hasOwn(target, "platformPostUrl")) {
+    if (target.status !== "published" || !validProofUrl(target.platformPostUrl)) {
+      return { state: "uncertain" };
+    }
     return { state: "completed", postId: post._id, platformPostUrl: target.platformPostUrl };
   }
-  if (target.status === "scheduled" || target.status === "queued" || target.status === "pending") {
+  if (target.status === "scheduled") {
     return { state: "queued", postId: post._id };
   }
   return { state: "uncertain" };
@@ -110,18 +119,8 @@ export function createZernioRestAdapter(network: RemoteTransportDependencies = {
   const url = new URL(`${ZERNIO_API_BASE_URL}/v1/posts`);
   return {
     async createPost(input: { apiKey: string; input: ZernioCreateInput; signal?: AbortSignal }) {
-      const parsed = GtmPostInputSchema.safeParse({
-        content: input.input.content,
-        scheduledFor: input.input.scheduledFor,
-        accountId: input.input.accountId,
-      });
-      if (
-        !parsed.success ||
-        !input.apiKey ||
-        !Object.values(GTM_CHANNELS).some(
-          (channel) => "platform" in channel && channel.platform === input.input.platform,
-        )
-      ) {
+      const parsed = ZernioCreateInputSchema.safeParse(input.input);
+      if (!parsed.success || !input.apiKey.trim()) {
         return { state: "uncertain" as const };
       }
       const fetch = secureFetch(
@@ -138,7 +137,7 @@ export function createZernioRestAdapter(network: RemoteTransportDependencies = {
           body: JSON.stringify({
             content: parsed.data.content,
             scheduledFor: parsed.data.scheduledFor,
-            platforms: [{ platform: input.input.platform, accountId: parsed.data.accountId }],
+            platforms: [{ platform: parsed.data.platform, accountId: parsed.data.accountId }],
           }),
           signal: combineSignals(input.signal, AbortSignal.timeout(15_000)),
         });
@@ -150,7 +149,7 @@ export function createZernioRestAdapter(network: RemoteTransportDependencies = {
         } catch {
           body = text;
         }
-        return parseZernioCreateResponse(response.status, body, input.input);
+        return parseZernioCreateResponse(response.status, body, parsed.data);
       } catch {
         return { state: "uncertain" as const };
       } finally {
@@ -227,7 +226,6 @@ export async function resolveZernioApiKey(input: {
     );
     const data = record(material);
     return data &&
-      Object.keys(data).length === 1 &&
       typeof data.secret === "string" &&
       data.secret.length > 0 &&
       data.secret.trim() === data.secret
@@ -245,7 +243,7 @@ export async function executeApprovedGtmPost(input: {
   platform: string;
   effectKey: string;
   createEffect: () => Promise<{ duplicate: boolean; effect: Record<string, unknown> }>;
-  dispatch: (input: ZernioCreateInput) => Promise<unknown>;
+  dispatch: (input: ZernioCreateInput) => Promise<ZernioCreateResult>;
   now?: () => Date;
 }) {
   const existing = await input.prisma.externalEffect.findUnique({
@@ -278,7 +276,7 @@ export async function executeApprovedGtmPost(input: {
       notes: input.input.content,
       scheduledFor: new Date(input.input.scheduledFor),
       target: input.input.accountId,
-      proof: existing ? input.effectKey : null,
+      OR: existing ? [{ proof: input.effectKey }] : [{ proof: null }, { proof: input.effectKey }],
       channel: {
         in: Object.keys(GTM_CHANNELS).filter(
           (key) => "platform" in GTM_CHANNELS[key as keyof typeof GTM_CHANNELS],
@@ -312,12 +310,6 @@ export async function executeApprovedGtmPost(input: {
     },
   );
   if (!consumed.count || consumed.item.channel !== approved[0]!.channel) {
-    if (consumed.count) {
-      await clearPostStamp(
-        { prisma: input.prisma },
-        { ...input.scope, itemId: consumed.item.id, effectKey: input.effectKey },
-      );
-    }
     return { error: "The approved post changed before it could be consumed." };
   }
   let recorded: Awaited<ReturnType<typeof input.createEffect>>;
@@ -348,7 +340,7 @@ export async function executeApprovedGtmPost(input: {
     const gate = current ? resolveDuplicateEffectGate(current as never, "gtm_post") : undefined;
     return gate?.action === "return" ? gate.result : uncertainEffectResult("gtm_post");
   }
-  let result: unknown;
+  let result: ZernioCreateResult;
   try {
     result = await input.dispatch({
       ...input.input,
@@ -358,6 +350,7 @@ export async function executeApprovedGtmPost(input: {
     return settleUncertainEffect(input.prisma, effectId, "gtm_post");
   }
   const outcome = record(result);
+  if (!outcome) return settleUncertainEffect(input.prisma, effectId, "gtm_post");
   if (outcome?.state === "rejected") {
     await clearPostStamp(
       { prisma: input.prisma },
@@ -369,7 +362,11 @@ export async function executeApprovedGtmPost(input: {
   }
   if (outcome?.state === "uncertain")
     return settleUncertainEffect(input.prisma, effectId, "gtm_post");
-  if (outcome?.state !== "completed" && outcome?.state !== "queued") {
+  if (
+    (outcome?.state !== "completed" && outcome?.state !== "queued") ||
+    typeof outcome.postId !== "string" ||
+    outcome.postId.trim().length === 0
+  ) {
     return settleUncertainEffect(input.prisma, effectId, "gtm_post");
   }
   const isCompleted =

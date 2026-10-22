@@ -3329,7 +3329,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 notes: parsed.data.content,
                 scheduledFor: new Date(parsed.data.scheduledFor),
                 target: parsed.data.accountId,
-                proof: previous ? effectKey : null,
+                OR: previous ? [{ proof: effectKey }] : [{ proof: null }, { proof: effectKey }],
               },
               orderBy: [{ createdAt: "asc" }, { id: "asc" }],
             });

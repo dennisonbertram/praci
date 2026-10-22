@@ -1,6 +1,6 @@
 import { GtmPostInputSchema, gtmAgentSpawnKey } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
-import type { ZernioCreateInput } from "./gtm-posting.js";
+import type { ZernioCreateInput, ZernioCreateResult } from "./gtm-posting.js";
 import {
   createZernioRestAdapter,
   executeApprovedGtmPost,
@@ -26,7 +26,7 @@ const post = (overrides: Record<string, unknown> = {}) => ({
     {
       platform: input.platform,
       accountId: input.accountId,
-      status: "scheduled",
+      status: "published",
       platformPostUrl: proofUrl,
     },
   ],
@@ -87,6 +87,70 @@ describe("Zernio REST adapter", () => {
     });
   });
 
+  it("rejects unknown overrides and an empty key before fetch", async () => {
+    const fetch = vi.fn(async () => new Response());
+    const adapter = createZernioRestAdapter({
+      fetch,
+      resolveHostname: async () => [{ address: "203.0.113.10", family: 4 }],
+    });
+
+    await expect(
+      adapter.createPost({
+        apiKey: "offline-test-key",
+        input: { ...input, title: "override" } as never,
+      }),
+    ).resolves.toEqual({ state: "uncertain" });
+    await expect(adapter.createPost({ apiKey: "   ", input })).resolves.toEqual({
+      state: "uncertain",
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("does not follow redirects or retry uncertain HTTP responses", async () => {
+    const redirectFetch = vi.fn(
+      async (_url: string | URL | Request, _init?: RequestInit) =>
+        new Response(null, { status: 302, headers: { location: "https://elsewhere.test/post" } }),
+    );
+    const adapter = createZernioRestAdapter({
+      fetch: redirectFetch,
+      resolveHostname: async () => [{ address: "203.0.113.10", family: 4 }],
+    });
+    await expect(adapter.createPost({ apiKey: "offline-test-key", input })).resolves.toEqual({
+      state: "uncertain",
+    });
+    expect(redirectFetch).toHaveBeenCalledTimes(1);
+    expect(redirectFetch.mock.calls[0]?.[1]).toMatchObject({ redirect: "manual" });
+
+    const serverError = createZernioRestAdapter({
+      fetch: vi.fn(async () => new Response("{}", { status: 500 })),
+      resolveHostname: async () => [{ address: "203.0.113.10", family: 4 }],
+    });
+    await expect(serverError.createPost({ apiKey: "offline-test-key", input })).resolves.toEqual({
+      state: "uncertain",
+    });
+  });
+
+  it("returns uncertain for an aborted transport and malformed success", async () => {
+    const aborted = new AbortController();
+    aborted.abort();
+    const fetch = vi.fn(async () => new Response("{}", { status: 201 }));
+    const adapter = createZernioRestAdapter({
+      fetch,
+      resolveHostname: async () => [{ address: "203.0.113.10", family: 4 }],
+    });
+    await expect(
+      adapter.createPost({ apiKey: "offline-test-key", input, signal: aborted.signal }),
+    ).resolves.toEqual({ state: "uncertain" });
+
+    const malformed = createZernioRestAdapter({
+      fetch: vi.fn(async () => new Response("{}", { status: 201 })),
+      resolveHostname: async () => [{ address: "203.0.113.10", family: 4 }],
+    });
+    await expect(malformed.createPost({ apiKey: "offline-test-key", input })).resolves.toEqual({
+      state: "uncertain",
+    });
+  });
+
   it("requires exact post identity, content, schedule and one matching target", () => {
     const valid = parseZernioCreateResponse(201, { post: post() }, input);
     expect(valid).toEqual({
@@ -121,6 +185,46 @@ describe("Zernio REST adapter", () => {
       state: "queued",
       postId: "post-1",
     });
+  });
+
+  it("requires a well-formed URL and documented status, and rejects ambiguous bodies", () => {
+    const invalidTargets = [
+      {
+        platform: input.platform,
+        accountId: input.accountId,
+        status: "scheduled",
+        platformPostUrl: null,
+      },
+      {
+        platform: input.platform,
+        accountId: input.accountId,
+        status: "scheduled",
+        platformPostUrl: proofUrl,
+      },
+      {
+        platform: input.platform,
+        accountId: input.accountId,
+        status: "failed",
+        platformPostUrl: proofUrl,
+      },
+      {
+        platform: input.platform,
+        accountId: input.accountId,
+        status: "unknown",
+        platformPostUrl: proofUrl,
+      },
+      { platform: input.platform, accountId: input.accountId, status: "published" },
+      { platform: input.platform, accountId: input.accountId, status: "pending" },
+    ];
+    for (const target of invalidTargets) {
+      expect(
+        parseZernioCreateResponse(201, { post: post({ platforms: [target] }) }, input).state,
+      ).toBe("uncertain");
+    }
+    expect(
+      parseZernioCreateResponse(201, { success: true, error: "conflict", post: post() }, input)
+        .state,
+    ).toBe("uncertain");
   });
 
   it.each([202, 409, 500, 502])("treats HTTP %s as uncertain", (status) => {
@@ -189,7 +293,11 @@ describe("Zernio REST adapter", () => {
       secretId: "secret-1",
       agentBot: bot,
     };
-    const secretStore = { load: vi.fn(async () => JSON.stringify({ secret: "offline-key" })) };
+    const secretStore = {
+      load: vi.fn(async () =>
+        JSON.stringify({ secret: "offline-key", headers: { Authorization: "ignored" } }),
+      ),
+    };
     const prisma = {
       mcpServer: { findMany: vi.fn(async () => [server]) },
       secret: {
@@ -332,7 +440,7 @@ function postingState() {
     return { duplicate: true, effect };
   });
   const run = (
-    dispatch: (args: ZernioCreateInput) => Promise<unknown>,
+    dispatch: (args: ZernioCreateInput) => Promise<ZernioCreateResult>,
     overrides: Record<string, unknown> = {},
   ) =>
     executeApprovedGtmPost({
@@ -363,13 +471,47 @@ describe("approved GTM post dispatch", () => {
   it("does not create an effect or dispatch when the exact approved tuple is missing", async () => {
     const state = postingState();
     state.item.notes = "different approved text";
-    const dispatch = vi.fn(async () => ({ state: "completed" as const }));
+    const dispatch = vi.fn(async () => ({
+      state: "completed" as const,
+      postId: "post-1",
+      platformPostUrl: proofUrl,
+    }));
 
     await state.run(dispatch);
 
     expect(state.createEffect).not.toHaveBeenCalled();
     expect(dispatch).not.toHaveBeenCalled();
     expect(state.prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("retains the stamp when the consumed channel no longer matches preflight", async () => {
+    const state = postingState();
+    const findFirst = state.prisma.scratchpadItem.findFirst;
+    let replayChecked = false;
+    findFirst.mockImplementation(async ({ where }) => {
+      if (where.proof === effectKey) {
+        replayChecked = true;
+        return null;
+      }
+      if (replayChecked) state.item.channel = "linkedin";
+      return state.item as never;
+    });
+    const dispatch = vi.fn(async () => ({
+      state: "completed" as const,
+      postId: "post-1",
+      platformPostUrl: proofUrl,
+    }));
+
+    await state.run(dispatch);
+
+    expect(state.item.proof).toBe(effectKey);
+    expect(state.createEffect).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(
+      state.prisma.scratchpadItem.updateMany.mock.calls.filter(
+        ([args]) => args.data.proof === null,
+      ),
+    ).toHaveLength(0);
   });
 
   it("consumes the exact stamp before creating the effect and dispatching", async () => {
@@ -403,6 +545,46 @@ describe("approved GTM post dispatch", () => {
     expect(state.getEffect()).toMatchObject({ status: "completed" });
   });
 
+  it("can resume its own stamp after effect creation failed before dispatch", async () => {
+    const state = postingState();
+    let fail = true;
+    const createEffect = vi.fn(async () => {
+      if (fail) {
+        fail = false;
+        throw new Error("synthetic effect store failure");
+      }
+      return state.createEffect();
+    });
+    const dispatch = vi.fn(async () => ({
+      state: "completed" as const,
+      postId: "post-1",
+      platformPostUrl: proofUrl,
+    }));
+
+    await state.run(dispatch, { createEffect });
+    expect(state.item.proof).toBe(effectKey);
+    expect(dispatch).not.toHaveBeenCalled();
+
+    await state.run(dispatch, { createEffect });
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    expect(state.createEffect).toHaveBeenCalledTimes(1);
+    expect(state.item).toMatchObject({ status: "done", proof: proofUrl });
+  });
+
+  it("treats a completed result without a post ID as uncertain", async () => {
+    const state = postingState();
+    const dispatch = vi.fn(async () => ({
+      state: "completed" as const,
+      postId: "",
+      platformPostUrl: proofUrl,
+    }));
+
+    await state.run(dispatch);
+
+    expect(state.item).toMatchObject({ status: "open", proof: effectKey });
+    expect(state.getEffect()).toMatchObject({ status: "uncertain" });
+  });
+
   it("preserves the approval stamp after uncertain dispatch and never replays it", async () => {
     const state = postingState();
     const dispatch = vi.fn(async () => ({ state: "uncertain" as const }));
@@ -431,10 +613,10 @@ describe("approved GTM post dispatch", () => {
 
   it("allows only one concurrent dispatch for the same approved item and effect", async () => {
     const state = postingState();
-    let release: ((value: unknown) => void) | undefined;
+    let release: ((value: ZernioCreateResult) => void) | undefined;
     const dispatch = vi.fn(
       async () =>
-        new Promise((resolve) => {
+        new Promise<ZernioCreateResult>((resolve) => {
           release = resolve;
         }),
     );
@@ -446,5 +628,29 @@ describe("approved GTM post dispatch", () => {
     await Promise.all([first, second]);
 
     expect(dispatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows only one dispatch and consume when concurrent effect keys differ", async () => {
+    const state = postingState();
+    let release: ((value: ZernioCreateResult) => void) | undefined;
+    const dispatch = vi.fn(
+      async () =>
+        new Promise<ZernioCreateResult>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const first = state.run(dispatch);
+    await vi.waitFor(() => expect(dispatch).toHaveBeenCalledTimes(1));
+    const second = state.run(dispatch, { effectKey: "run:gtm_post:different-effect-key" });
+    release?.({ state: "completed", postId: "post-1", platformPostUrl: proofUrl });
+
+    await Promise.all([first, second]);
+
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    expect(
+      state.prisma.scratchpadItem.updateMany.mock.calls.filter(
+        ([args]) => args.data.proof === effectKey,
+      ),
+    ).toHaveLength(1);
   });
 });
