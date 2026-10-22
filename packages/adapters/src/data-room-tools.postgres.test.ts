@@ -530,7 +530,26 @@ describePostgres("Data room agent tools (PostgreSQL, Gmail and Drive emulators)"
     const listed = (await call("search_data_room", {})) as {
       results: { id: string; name: string }[];
     };
-    expect(listed.results.map((r) => r.id)).toEqual([mine.id]);
+    // Earlier tests leave their own files for this user, so check membership, not the whole list.
+    const listedIds = listed.results.map((r) => r.id);
+    expect(listedIds).toContain(mine.id);
+    expect(listedIds).not.toContain(theirs.id);
+    expect(listedIds).not.toContain(elsewhere.id);
+
+    // A page of one continues with its cursor until every file has been listed once.
+    const walked: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = (await call("search_data_room", { limit: 1, ...(cursor ? { cursor } : {}) })) as {
+        results: { id: string }[];
+        nextCursor?: string;
+      };
+      walked.push(...page.results.map((r) => r.id));
+      cursor = page.nextCursor;
+    } while (cursor);
+    expect(walked).toContain(mine.id);
+    expect(new Set(walked).size).toBe(walked.length);
+    expect(walked.sort()).toEqual([...listedIds].sort());
 
     const read = (await call("read_data_room_item", { item_id: mine.id })) as Record<
       string,

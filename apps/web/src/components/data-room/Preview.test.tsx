@@ -74,7 +74,12 @@ let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
   imageUrl.mockResolvedValue("blob:receipt");
   shares.mockResolvedValue([]);
-  consent.mockResolvedValue({ allowed: true, recipients: [], key: "k", version: "1" });
+  consent.mockResolvedValue({
+    allowed: true,
+    recipients: [{ name: "Model", detail: "" }],
+    key: "k",
+    version: "1",
+  });
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -194,6 +199,21 @@ it("opens a readable PDF in the browser, and says an untagged file has no type y
   expect(container.textContent).toContain("couldn't tell what kind of document it is");
   act(() => icon("Open in new tab").click());
   expect(openItem).toHaveBeenCalledWith(pdf);
+});
+
+it("gives no reason for an untagged file when no model is set up, since classification never ran", async () => {
+  consent.mockResolvedValue({ allowed: true, recipients: [], key: "k", version: "1" });
+  await act(async () => {
+    root.render(
+      <Preview
+        item={{ ...receipt, name: "nda.pdf", mimeType: "application/pdf" }}
+        folderPath=""
+        onAction={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+  });
+  expect(container.textContent).not.toContain("couldn't tell what kind of document it is");
 });
 
 it("says a file too large to read is not searchable inside, instead of not tagged yet", async () => {

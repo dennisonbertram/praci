@@ -136,7 +136,7 @@ async function search(deps: DataRoomToolDeps, actor: Actor, args: Record<string,
     ...(docDateTo ? { docDateTo: new Date(docDateTo) } : {}),
   };
   const repo = createDataRoomRepos(deps.prisma);
-  if (!query) return await listRoom(repo, actor, filters, args.limit);
+  if (!query) return await listRoom(repo, actor, filters, args);
   const page = await repo.searchPage(actor, {
     query,
     filters,
@@ -177,10 +177,13 @@ async function listRoom(
   repo: ReturnType<typeof createDataRoomRepos>,
   actor: Actor,
   filters: Parameters<ReturnType<typeof createDataRoomRepos>["listItemsPage"]>[1],
-  limit: unknown,
+  args: Record<string, unknown>,
 ) {
   const [page, folderRows] = await Promise.all([
-    repo.listItemsPage(actor, filters, { limit: clampInt(limit, 1, MAX_LIST, MAX_LIST) }),
+    repo.listItemsPage(actor, filters, {
+      limit: clampInt(args.limit, 1, MAX_LIST, MAX_LIST),
+      ...(text(args.cursor) ? { cursor: text(args.cursor) } : {}),
+    }),
     repo.listFolders(actor),
   ]);
   const folders = new Map(folderRows.map((folder) => [folder.id, folder]));
@@ -205,7 +208,10 @@ async function listRoom(
       docDate: item.docDate?.toISOString().slice(0, 10) ?? null,
     })),
     ...(page.nextCursor
-      ? { note: `More files exist than the ${MAX_LIST} listed; narrow with filters.` }
+      ? {
+          nextCursor: page.nextCursor,
+          note: "More files follow. Call again with this cursor (and the same filters) until there is no nextCursor before saying a file is missing.",
+        }
       : {}),
   };
 }

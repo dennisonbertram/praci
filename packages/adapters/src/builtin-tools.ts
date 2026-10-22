@@ -1407,6 +1407,10 @@ export const builtinAgentTools: ConnectorTool[] = [
           },
         },
         limit: { type: "number", description: "Default 10, max 20 (a list: 100)." },
+        cursor: {
+          type: "string",
+          description: "A list only: the nextCursor from the previous page, with the same filters.",
+        },
       },
     },
     readOnly: true,

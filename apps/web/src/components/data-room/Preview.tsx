@@ -231,6 +231,8 @@ function UntaggedNote({ item }: { item: DataRoomApiItem }) {
         }
       />
     );
+  // With no model, or while the ask is loading, classification never ran, so there is nothing to say.
+  if (!consent?.allowed || consent.recipients.length === 0) return null;
   return (
     <p className={note}>
       <Trans>Praci read this file but couldn't tell what kind of document it is.</Trans>
