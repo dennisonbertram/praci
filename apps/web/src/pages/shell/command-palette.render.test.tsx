@@ -231,3 +231,23 @@ it("lists the mail action first, marks rows with the group icon, and Enter still
 it("strips markdown from a chat snippet", () => {
   expect(plainSnippet("**Halcyon** closes `Friday`")).toBe("Halcyon closes Friday");
 });
+
+it("keeps a row selected for Enter on open and after the search is cleared", async () => {
+  const onSelectPage = vi.fn();
+  await mount(onSelectPage);
+  const enter = () =>
+    act(async () => {
+      document
+        .querySelector("[data-testid=command-palette-search]")
+        ?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+  expect(document.querySelector("[cmdk-item][data-selected=true]")).not.toBeNull();
+  await enter();
+  expect(onSelectPage).toHaveBeenLastCalledWith("finance");
+  await search("fin");
+  await search("");
+  expect(document.querySelector("[cmdk-item][data-selected=true]")).not.toBeNull();
+  onSelectPage.mockClear();
+  await enter();
+  expect(onSelectPage).toHaveBeenCalledWith("finance");
+});

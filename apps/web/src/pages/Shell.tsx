@@ -5261,7 +5261,11 @@ export function ShellPage() {
             setFocusComposerBotId(chiefId);
             openBot(chiefId);
           }}
-          onSkip={() => setAskChiefChip(true)}
+          onSkip={() => {
+            setAskChiefChip(true);
+            // The chip lives in Chief's composer, so open Chief wherever the tour was skipped.
+            if (chiefId) openBot(chiefId);
+          }}
           onClose={(me, byEscape) => {
             setTourRestart(false);
             setTourEnded(true);

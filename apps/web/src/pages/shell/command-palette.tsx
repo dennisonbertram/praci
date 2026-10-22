@@ -382,7 +382,7 @@ export function CommandPalette({
     >
       <Command
         shouldFilter={false}
-        value={picked}
+        value={picked || undefined}
         onValueChange={setPicked}
         className="rounded-xl! bg-popover"
         data-testid="command-palette"
