@@ -784,13 +784,11 @@ it("shows the figures, source line and holdings of a Carta table; SAFEs sit outs
   const ada = rows.find((r) => r.includes("Ada Example")) ?? "";
   const founder = rows.find((r) => r.includes("Founder Example")) ?? "";
   const pool = rows.find((r) => r.includes("Unallocated pool")) ?? "";
-  const safe = rows.find((r) => r.includes("Dee Newcomer")) ?? "";
   expect(ada).toContain("30.0%");
   expect(founder).toContain("60.0%");
   expect(pool).toContain("10.0%");
-  expect(safe).toContain("$250,000");
-  expect(safe).toContain("—");
-  expect(safe).not.toContain("%");
+  // A SAFE in the snapshot is not a table row; the SAFE list is the one record.
+  expect(rows.some((r) => r.includes("Dee Newcomer"))).toBe(false);
   // The total row shows the percentages adding up to 100%.
   expect(rows.find((r) => r.startsWith("Total")) ?? "").toContain("100.0%");
 });
@@ -812,6 +810,21 @@ it("has only the SAFEs and funds and Board tabs, and opens a holder's contact fr
   expect(document.getElementById("contact-name")).toBeNull();
   await click(container.querySelector("table tbody button[title='Ada Example']") as HTMLElement);
   expect((document.getElementById("contact-name") as HTMLInputElement).value).toBe("Ada Example");
+});
+
+it("counts the SAFE list in Equity raised, with the same count and total as Fundraising", async () => {
+  rpcMock.capTable.mockResolvedValue(
+    state({ ...carta, holders: carta.holders.map((h) => ({ ...h, amountUsd: null })) }),
+  );
+  rpcMock.safesList.mockResolvedValue([
+    safeRow("s1", "Sent Fund", "sent"),
+    safeRow("s2", "Funded Fund", "funded", { amountCents: 2_500_000 }),
+    safeRow("s3", "Draft Fund", "draft"),
+  ]);
+  await show();
+  expect(container.textContent).toContain("Equity raised$75,000");
+  expect(container.textContent).toContain("2 SAFEs");
+  expect(container.textContent).not.toContain("Dee Newcomer");
 });
 
 it("shows a dash for Equity raised when only SAFEs have amounts", async () => {
@@ -1509,10 +1522,13 @@ it("Draft reply starts the draft; Mark done and Dismiss close the request", asyn
   expect(rpcMock.auditsUpdate).toHaveBeenLastCalledWith({ id: "a1", status: "dismissed" });
 });
 
-it("disables Draft reply while a drafting run is going", async () => {
+it("shows a spinner and Drafting… instead of Draft reply while a drafting run is going", async () => {
   rpcMock.auditsList.mockResolvedValue([audit({ drafting: true })]);
   await show();
-  expect((button("Draft reply") as HTMLButtonElement).disabled).toBe(true);
+  expect(button("Draft reply")).toBeUndefined();
+  const drafting = button("Drafting…") as HTMLButtonElement;
+  expect(drafting.disabled).toBe(true);
+  expect(drafting.querySelector("svg")).not.toBeNull();
 });
 
 it("keeps Show done reachable after the last open request closes", async () => {
