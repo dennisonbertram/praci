@@ -19,11 +19,11 @@ import { LoadingState } from "../ai/primitives";
 type Group = { type: AutoSortOperation["type"]; title: string };
 
 const RECENT_MS = 24 * 60 * 60 * 1000;
-/** A change to a file added recently, or a move of a loose file. Folder merges touch older files. */
+/** A loose file's move, or the rename of a file added recently. A file already in a folder stays put unless ticked, and folder merges touch older files. */
 const isNew = (recent: Set<string>) => (op: AutoSortOperation) =>
-  op.type === "merge_folder"
-    ? false
-    : recent.has(op.itemId) || (op.type === "move_item" && op.fromFolderId === null);
+  op.type === "move_item"
+    ? op.fromFolderId === null
+    : op.type === "rename_item" && recent.has(op.itemId);
 
 function Row({
   checked,

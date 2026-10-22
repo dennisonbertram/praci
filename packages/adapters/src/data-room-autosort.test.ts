@@ -90,6 +90,17 @@ describe("buildAutoSortPlan", () => {
     ]);
   });
 
+  it("files into an existing folder of the same name under another parent instead of making a second one", () => {
+    const plan = buildAutoSortPlan({
+      folders,
+      items,
+      proposal: { items: [{ id: "i-pdf", folderPath: ["Cap table"] }] },
+    });
+    expect(plan.operations).toContainEqual(
+      expect.objectContaining({ itemId: "i-pdf", toPath: ["Finance", "Cap Table"] }),
+    );
+  });
+
   it("does not rename a good name", () => {
     const plan = buildAutoSortPlan({
       folders,

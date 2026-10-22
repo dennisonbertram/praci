@@ -7,7 +7,7 @@ import type {
 } from "@rakazo/adapter-kit";
 import { MailProviderError } from "@rakazo/adapter-kit";
 import type { Actor } from "@rakazo/contracts";
-import { DataRoomApiFiltersSchema } from "@rakazo/contracts";
+import { DATA_ROOM_STUCK_MS, DataRoomApiFiltersSchema } from "@rakazo/contracts";
 import { clampInt } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { createDataRoomRepos, eligibleWhere, IsolationError } from "@rakazo/db";
@@ -142,17 +142,21 @@ async function search(deps: DataRoomToolDeps, actor: Actor, args: Record<string,
     limit: clampInt(args.limit, 1, MAX_RESULTS, DEFAULT_RESULTS),
     ...(await dataRoomQueryVector(deps.resolveAi, actor, query)),
   });
-  // A file still being read or indexed cannot match yet; say so, so "nothing found" is not final.
-  const indexing = await deps.prisma.dataRoomItem.count({
-    where: {
-      ...eligibleWhere(actor, { excludeConnectionIds: filters.excludeConnectionIds }),
-      status: { in: ["pending", "extracting", "classifying", "indexing"] },
-    },
-  });
+  // A file still being read or indexed cannot match yet, so an empty answer is not final. Say so only
+  // then: results already found do not depend on it. A file quiet for minutes shows as failed, not pending.
+  const indexing = page.results.length
+    ? 0
+    : await deps.prisma.dataRoomItem.count({
+        where: {
+          ...eligibleWhere(actor, { excludeConnectionIds: filters.excludeConnectionIds }),
+          status: { in: ["pending", "extracting", "classifying", "indexing"] },
+          updatedAt: { gte: new Date(Date.now() - DATA_ROOM_STUCK_MS) },
+        },
+      });
   return {
     ...(indexing
       ? {
-          note: `${indexing} ${indexing === 1 ? "file is" : "files are"} still being indexed, so results may be incomplete. Tell the user and suggest asking again shortly.`,
+          note: `${indexing} ${indexing === 1 ? "file is" : "files are"} still being indexed, so nothing may match yet. Tell the user and suggest asking again shortly.`,
         }
       : {}),
     results: page.results.map(({ item, snippet }) => ({
