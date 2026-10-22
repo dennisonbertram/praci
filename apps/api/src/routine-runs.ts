@@ -69,6 +69,23 @@ export async function listRoutineRuns(
       `)
     : [];
   const replyByRun = new Map(messages.map((message) => [message.runId, message]));
+  // A run that only asked another agent finishes at once; it stays "waiting" until that agent's run ends.
+  const finished = runs.filter((run) => run.status === "completed").map((run) => run.id);
+  const waiting = finished.length
+    ? await prisma.$queryRaw<Array<{ runId: string; name: string }>>(Prisma.sql`
+        SELECT DISTINCT ON (o."runId") o."runId", b.name
+        FROM messages o
+        INNER JOIN messages i
+          ON i.blocks @> jsonb_build_array(jsonb_build_object('returnToMessageId', o.id))
+        INNER JOIN runs c ON c."sourceMessageId" = i.id AND c.trigger = 'bot_message'
+        INNER JOIN bots b ON b.id = c."botId"
+        WHERE o."runId" IN (${Prisma.join(finished)})
+          AND c."spaceId" = ${actor.spaceId} AND c."userId" = ${actor.userId}
+          AND c.status IN ('queued', 'leased', 'running', 'waiting_input', 'waiting_takeover')
+        ORDER BY o."runId", c."createdAt" DESC
+      `)
+    : [];
+  const waitingOn = new Map(waiting.map((row) => [row.runId, row.name]));
   return {
     nextCursor,
     runs: runs.map((run) => ({
@@ -81,6 +98,7 @@ export async function listRoutineRuns(
       completedAt: run.completedAt?.toISOString() ?? null,
       messageId: replyByRun.get(run.id)?.id ?? null,
       preview: firstLine(replyByRun.get(run.id)?.blocks),
+      waitingOn: waitingOn.get(run.id) ?? null,
     })),
   };
 }

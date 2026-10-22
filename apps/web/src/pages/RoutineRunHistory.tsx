@@ -253,7 +253,13 @@ export function RoutineRunHistory({
                       minute: "2-digit",
                     })}
                   </time>
-                  <span className={statusTone(run.status)}>{statusLabel(run.status)}</span>
+                  {run.waitingOn ? (
+                    <span className="text-warning">
+                      <Trans>Waiting on {run.waitingOn}</Trans>
+                    </span>
+                  ) : (
+                    <span className={statusTone(run.status)}>{statusLabel(run.status)}</span>
+                  )}
                 </div>
                 {name ? <p className="mt-1 truncate font-medium text-foreground">{name}</p> : null}
                 {run.preview ? (

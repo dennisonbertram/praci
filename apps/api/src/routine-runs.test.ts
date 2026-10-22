@@ -102,6 +102,27 @@ describe("routine history", () => {
     });
     expect(messages).not.toHaveBeenCalled();
   });
+  it("marks a finished run waiting while the agent it asked is still working", async () => {
+    const { prisma, runs, messages } = fixture();
+    runs.mockResolvedValue(
+      ["run-0", "run-1"].map((id) => ({
+        id,
+        botId: "bot-1",
+        threadId: "thread-1",
+        thread: { groupId: null },
+        status: "completed",
+        createdAt: at,
+        startedAt: at,
+        completedAt: at,
+      })),
+    );
+    messages
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ runId: "run-0", name: "Inbox agent" }]);
+    const history = await listRoutineRuns(prisma, actor, "routine-1");
+    expect(history.runs.map((row) => row.waitingOn)).toEqual(["Inbox agent", null]);
+    expect(RoutineHistorySchema.parse(history)).toEqual(history);
+  });
   it("pages all history using stable timestamp/id boundaries without including the lookahead row", async () => {
     const { prisma, runs } = fixture();
     runs.mockResolvedValue(

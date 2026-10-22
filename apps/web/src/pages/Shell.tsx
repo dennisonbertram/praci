@@ -221,6 +221,7 @@ import {
 import { publishComputerCommand } from "../lib/computer-workspace";
 import { fetchDataRoomBlob } from "../lib/data-room";
 import { dataRoomAgentSuggestions, findDataRoomAgent } from "../lib/data-room-agent";
+import { pendingDelegateAgents } from "../lib/delegate-wait";
 import { desktopBridge } from "../lib/desktop";
 import { setDockedAgentBotId } from "../lib/docked-agent";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
@@ -3973,6 +3974,7 @@ export function ShellPage() {
   const noComputerScreen = isRoutinesOnlyPanel({
     kind: computer?.kind,
     hasScreen: Boolean(embeddedScreenUrl),
+    state: computer?.state,
     hasError: Boolean(computerError),
     open: computerOpen,
     showRecoveryHint: showComputerRecoveryHint,
@@ -4255,6 +4257,21 @@ export function ShellPage() {
               </Button>
             </div>
           ) : null}
+          {pendingDelegateAgents(
+            activeSnapshot?.messages ?? [],
+            activeSnapshot?.delegatePending,
+          ).map((agent) => (
+            <div key={agent.id} className="px-6 pb-2">
+              <Button
+                variant="outline"
+                className="w-full pointer-coarse:h-11"
+                data-testid="delegate-approval-open"
+                onClick={() => navigate(`/app/${encodeURIComponent(agent.id)}`)}
+              >
+                <Trans>Open {agent.name}</Trans>
+              </Button>
+            </div>
+          ))}
           {recordingSkill ? (
             <div className="px-6 pb-2 text-center text-[13px] text-destructive">
               <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
@@ -7422,13 +7439,15 @@ function computerPlaceholder(
 export function isRoutinesOnlyPanel(input: {
   kind: ComputerStatus["kind"] | undefined;
   hasScreen: boolean;
+  state?: ComputerStatus["state"];
   hasError: boolean;
   open: boolean;
   showRecoveryHint: boolean;
 }) {
   return (
     input.kind !== "desktop" &&
-    !input.hasScreen &&
+    // A screen address with no running computer behind it shows nothing worth a heading.
+    !(input.hasScreen && input.state === "running") &&
     !input.hasError &&
     !input.open &&
     !input.showRecoveryHint
