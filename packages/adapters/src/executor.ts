@@ -109,7 +109,6 @@ import {
   findSkillByName,
   formatSkillRunPrompt,
   formatSkillsCatalogInstruction,
-  GTM_PAGE_INSTRUCTIONS,
   humanizeToolName,
   inferAttachmentMimeType,
   isBackgroundRunTrigger,
@@ -4707,13 +4706,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               await pageToolFromTool(
                 name,
                 { prisma: deps.prisma, events: deps.events },
-                {
-                  spaceId: run.spaceId,
-                  botId: bot.id,
-                  userId: bot.userId,
-                  runId,
-                  gtmPage: isGtmAgentSpawnKey(bot.spawnKey),
-                },
+                { spaceId: run.spaceId, botId: bot.id, userId: bot.userId, runId },
                 args,
               ),
             );
@@ -8927,9 +8920,6 @@ function identityInstruction(
   const guide = isIntegrationAgentSpawnKey(spawnKey) || isCartaAgentSpawnKey(spawnKey);
   const inbox = isInboxAgentSpawnKey(spawnKey);
   const withGuide = (text: string) => {
-    if (isGtmAgentSpawnKey(spawnKey) && !text.includes(GTM_PAGE_INSTRUCTIONS)) {
-      text = `${text}\n\n${GTM_PAGE_INSTRUCTIONS}`.trim();
-    }
     if (guide && !text.includes(ONE_APPROVAL_GUIDANCE)) {
       text = `${text} ${ONE_APPROVAL_GUIDANCE}`.trim();
     }
