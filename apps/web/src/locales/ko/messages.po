@@ -9276,6 +9276,11 @@ msgstr ""
 msgid "Shared"
 msgstr "함께 사용"
 
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Shared {0}"
+msgstr ""
+
 #: src/pages/KnowledgeSection.tsx
 msgid "Shared by all bots"
 msgstr ""
@@ -10342,10 +10347,6 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "This zip is too large to unpack"
-msgstr ""
-
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "Tick a change to apply it."
 msgstr ""
 
 #: src/pages/Board.tsx

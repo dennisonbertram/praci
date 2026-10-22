@@ -40,6 +40,7 @@ import { CopyLinkDialog } from "../CopyLinkDialog";
 import type { FolderNode } from "./folders";
 import { folderContents } from "./folders";
 import type { ItemAction } from "./ItemMenu";
+import { showNoticeToast } from "./upload-toasts";
 
 /** The Move select's value for "put it in a new folder", which no folder id can equal. */
 const NEW_FOLDER = "__new__";
@@ -405,7 +406,10 @@ function ShareDialog({ item, onClose }: { item: DataRoomApiItem; onClose: () => 
         emailLink,
       });
       if (result.links.length > 0) setLinks(result.links);
-      else onClose();
+      else {
+        showNoticeToast(t`Shared ${item.name}`);
+        onClose();
+      }
     } catch (cause) {
       setError(errorText(cause, t`Could not share`));
       setBusy(false);

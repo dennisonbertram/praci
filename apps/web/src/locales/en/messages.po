@@ -9276,6 +9276,11 @@ msgstr "Share with investors"
 msgid "Shared"
 msgstr "Shared"
 
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Shared {0}"
+msgstr "Shared {0}"
+
 #: src/pages/KnowledgeSection.tsx
 msgid "Shared by all bots"
 msgstr "Shared by all bots"
@@ -10343,10 +10348,6 @@ msgstr "This zip is password-protected"
 #: src/components/data-room/DropZone.tsx
 msgid "This zip is too large to unpack"
 msgstr "This zip is too large to unpack"
-
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "Tick a change to apply it."
-msgstr "Tick a change to apply it."
 
 #: src/pages/Board.tsx
 msgid "Tickets track work for your bots. Bots add them when you ask them to track a task, or press New ticket."
