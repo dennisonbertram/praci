@@ -129,7 +129,7 @@ export function UnreadDivider() {
     <div
       data-unread-divider=""
       data-testid="unread-divider"
-      className="flex items-center gap-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground in-data-bot-accent:text-bot-accent"
+      className="flex w-160 max-w-full items-center gap-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground in-data-bot-accent:text-bot-accent"
     >
       <span aria-hidden="true" className="h-px flex-1 bg-border in-data-bot-accent:bg-bot-accent" />
       <Trans>New</Trans>
