@@ -1357,11 +1357,11 @@ function InboxListPage({
   return (
     <div
       data-inbox-page
-      className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-20 pt-2 md:px-7 md:pt-5"
+      className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-20 pt-2 md:px-7"
     >
       <div className="mx-auto max-w-[1440px]">
         {/* A sticky box sticks inside the scroller's padding, so -top cancels it: rows never show above the header. mb-2 keeps the cards below clear of it. */}
-        <div className="sticky -top-2 z-20 -mx-4 -mt-2 mb-2 bg-background px-4 pt-2 md:-top-5 md:-mx-7 md:-mt-5 md:px-7 md:pt-5">
+        <div className="sticky -top-2 z-20 -mx-4 -mt-2 mb-2 bg-background px-4 pt-2 md:-mx-7 md:px-7">
           <PageHeader
             compact
             title={<Trans>Inbox</Trans>}
