@@ -240,7 +240,9 @@ export async function chooseFocus(
   botId: string,
   optionId: string,
 ): Promise<void> {
-  const option = FOCUS_OPTIONS.find((entry) => entry.id === optionId);
+  // Cards posted before "A bit of everything" was merged into "day" still carry that option.
+  const wanted = optionId === "everything" ? "day" : optionId;
+  const option = FOCUS_OPTIONS.find((entry) => entry.id === wanted);
   if (!option) throw new IsolationError();
   const { bot, thread } = await requireBotThread(deps, actor, botId);
   const target = { spaceId: actor.spaceId, botId: bot.id, threadId: thread.id };

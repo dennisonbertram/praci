@@ -414,6 +414,7 @@ import {
   mailToolFromTool,
   mailToolsAllowed,
   OWNER_INITIATED_TRIGGERS,
+  recoveryMailAccount,
   selectMailTools,
 } from "./mail-tools.js";
 import type { McpConnector } from "./mcp-connector.js";
@@ -5011,7 +5012,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 approvedMailOutcome(name, result).outcome === "failed"
                   ? await mailAccounts()
                       .then((accounts) =>
-                        inferMailAccount(
+                        recoveryMailAccount(
                           deps.prisma,
                           { spaceId: run.spaceId, userId: bot.userId },
                           accounts,
