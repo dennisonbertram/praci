@@ -226,21 +226,31 @@ it("shows a model slug as its display name under Advanced, so two models are tol
   expect(container.textContent).not.toContain("OpenRouter");
 });
 
-it("describes a document embedding model as reading document text", async () => {
-  consent.aiConsentStatus.mockResolvedValue(
-    statusOf([
-      { ...modelA, allowed: true },
-      { ...modelB, detail: "vendor/embed", allowed: true },
-    ]),
-  );
+const embed = { ...modelB, detail: "vendor/embed", allowed: true };
+const withEmbed = (chat: (typeof embed)[]) => {
   consent.documentConsent.mockResolvedValue({
     ...documents(true, true),
     recipients: [{ name: "OpenRouter", detail: "vendor/embed" }],
   });
+  // With `uses` the status lists chat recipients only, as the server does.
+  consent.aiConsentStatus.mockImplementation(async (uses?: string[]) =>
+    statusOf(uses ? chat : [{ ...modelA, allowed: true }, embed]),
+  );
+};
+
+it("describes a document-only embedding model as reading document text", async () => {
+  withEmbed([{ ...modelA, allowed: true }] as never);
   await render(<AiDataSharingSection />);
   const lines = [...container.querySelectorAll("li")].map((r) => r.textContent);
   expect(lines[0]).toContain("Send chats and mail text");
   expect(lines[1]).toContain("Reads document text");
+});
+
+it("says a model that is also a chat recipient gets chats, mail and document text", async () => {
+  withEmbed([{ ...modelA, allowed: true }, embed] as never);
+  await render(<AiDataSharingSection />);
+  const lines = [...container.querySelectorAll("li")].map((r) => r.textContent);
+  expect(lines[1]).toContain("Send chats, mail and document text");
 });
 
 it("allows every model with the one switch and revokes every model when it is turned off", async () => {

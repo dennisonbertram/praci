@@ -9162,6 +9162,10 @@ msgstr ""
 msgid "Send chats and mail text"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
+msgid "Send chats, mail and document text"
+msgstr ""
+
 #: src/components/AccountAccess.tsx
 msgid "Send deletion code"
 msgstr "Enviar código de exclusão"
