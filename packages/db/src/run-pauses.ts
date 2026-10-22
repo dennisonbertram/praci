@@ -253,6 +253,27 @@ export async function delegatePendingIds(
   return (await waitingDelegates(client, input)).map((run) => run.sentId);
 }
 
+/** The agents holding those approvals, one entry per waiting request, named from the server. */
+export async function delegatePendingAgents(
+  client: Prisma.TransactionClient,
+  input: { spaceId: string; userId: string; fromBotId: string; threadId: string },
+): Promise<{ messageId: string; id: string; name: string }[]> {
+  const runs = await waitingDelegates(client, input);
+  const bots = await client.bot.findMany({
+    where: {
+      id: { in: runs.map((run) => run.botId) },
+      spaceId: input.spaceId,
+      userId: input.userId,
+    },
+    select: { id: true, name: true },
+  });
+  const names = new Map(bots.map((bot) => [bot.id, bot.name]));
+  return runs.flatMap((run) => {
+    const name = names.get(run.botId);
+    return name ? [{ messageId: run.sentId, id: run.botId, name }] : [];
+  });
+}
+
 /**
  * The run that asked these agents to act failed, so their open approval cards can never be used.
  * Runs inside the requester's finalize transaction, after its lease is validated. Each delegate
@@ -316,18 +337,20 @@ async function announceDelegatePending(
   const seq = await prisma.$transaction(async (tx) => {
     // Lock first, so a finalize that published a newer list cannot be overwritten by an older one.
     await tx.$queryRaw`SELECT id FROM threads WHERE id = ${sent.threadId} FOR UPDATE`;
-    const pending = await delegatePendingIds(tx, {
+    const where = {
       spaceId: run.spaceId,
       userId: run.userId,
       fromBotId: received.fromBotId,
       threadId: sent.threadId,
-    });
+    };
+    const pending = await delegatePendingIds(tx, where);
+    const agents = await delegatePendingAgents(tx, where);
     const event = await appendEventInTransaction(tx, {
       spaceId: run.spaceId,
       threadId: sent.threadId,
       botId: sent.botId!,
       type: "thread.delegate_pending",
-      payload: { pending },
+      payload: { pending, agents },
     });
     return event.seq;
   });

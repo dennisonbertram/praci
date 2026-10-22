@@ -317,6 +317,9 @@ export function reduceThreadSnapshot(
       delegatePending: Array.isArray(pending)
         ? pending.filter((id): id is string => typeof id === "string")
         : [],
+      delegatePendingAgents: Array.isArray(event.payload.agents)
+        ? (event.payload.agents as NonNullable<ThreadSnapshot["delegatePendingAgents"]>)
+        : [],
     };
   }
   if (event.type === "thread.cloud_agent") {
@@ -359,7 +362,14 @@ export function reduceThreadSnapshot(
       ...prev,
       cursor: event.seq,
       messages: upsertMessageById(without, next),
-      ...(stillPending ? { delegatePending: stillPending } : {}),
+      ...(stillPending
+        ? {
+            delegatePending: stillPending,
+            delegatePendingAgents: prev.delegatePendingAgents?.filter(
+              (agent) => agent.messageId !== replyTo,
+            ),
+          }
+        : {}),
     };
   }
   return prev;

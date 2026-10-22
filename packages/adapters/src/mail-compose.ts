@@ -361,3 +361,13 @@ export function replyPrefill(
     body: `\n\nOn ${when}, ${sender} wrote:\n${quote(message.text)}`,
   };
 }
+
+/** Whether Reply all would address anyone Reply would not, with the user's own addresses left out. */
+export function replyAllDiffers(
+  message: Parameters<typeof replyPrefill>[0],
+  self: string | string[] | null,
+): boolean {
+  const one = replyPrefill(message, "reply", self);
+  const all = replyPrefill(message, "replyAll", self);
+  return one.to !== all.to || one.cc !== all.cc;
+}

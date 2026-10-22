@@ -90,19 +90,10 @@ export function withoutSelf(contract: LegalContract, selfName?: string): LegalCo
 }
 
 /** Active is the normal case and says nothing; only a contract that is not active gets a chip. */
-function Status({
-  status,
-  inColumn = false,
-}: {
-  status: LegalContractStatus;
-  /** In the Status column an empty cell reads as missing data, so active says so. */
-  inColumn?: boolean;
-}) {
-  if (status === "active") {
-    return inColumn ? <span className="text-muted-foreground">{statusName(status)}</span> : null;
-  }
+function Status({ status }: { status: LegalContractStatus }) {
+  if (status === "active") return null;
   return (
-    <span className="whitespace-nowrap rounded-full border border-border px-2 py-0.5 text-xs">
+    <span className="inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-full border border-border px-2 text-xs leading-none">
       {statusName(status)}
     </span>
   );
@@ -129,9 +120,6 @@ export function LegalContracts({
     if ((event.target as HTMLElement).closest("a, button")) return;
     navigate(`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`, { state: { from: "legal" } });
   };
-  // Active is the normal case. With one exception a chip beside the title says it; the column
-  // appears only when it would hold more than one value.
-  const showStatus = contracts.filter((contract) => contract.status !== "active").length >= 2;
   return (
     <>
       <ul aria-label={t`Contracts`} className="flex flex-col @4xl:hidden">
@@ -172,13 +160,12 @@ export function LegalContracts({
           <Trans>Contracts</Trans>
         </caption>
         <colgroup>
-          <col className={showStatus ? "w-[15%]" : "w-[19%]"} />
-          <col className={showStatus ? "w-[11%]" : "w-[12%]"} />
-          {showStatus ? <col className="w-[7%]" /> : null}
-          <col className={showStatus ? "w-[22%]" : "w-[23%]"} />
-          <col className="w-[22%]" />
-          <col className={showStatus ? "w-[8%]" : "w-[9%]"} />
-          <col className="w-[15%]" />
+          <col className="w-[26%]" />
+          <col className="w-[17%]" />
+          <col className="w-[19%]" />
+          <col className="w-[16%]" />
+          <col className="w-[9%]" />
+          <col className="w-[13%]" />
         </colgroup>
         <TableHeader>
           <TableHeadRow>
@@ -188,11 +175,6 @@ export function LegalContracts({
             <TableHead>
               <Trans>Parties</Trans>
             </TableHead>
-            {showStatus ? (
-              <TableHead>
-                <Trans>Status</Trans>
-              </TableHead>
-            ) : null}
             <TableHead>
               <Trans>Term</Trans>
             </TableHead>
@@ -217,21 +199,16 @@ export function LegalContracts({
               <TableCell title={`${contract.title} (${contract.contractType})`}>
                 <div className="flex items-center gap-2">
                   <Title contract={contract} />
-                  {showStatus ? null : <Status status={contract.status} />}
+                  <Status status={contract.status} />
                 </div>
               </TableCell>
               <TableCell className="truncate" title={contract.counterparties.join(", ")}>
                 {contract.counterparties.join(", ") || dash}
               </TableCell>
-              {showStatus ? (
-                <TableCell>
-                  <Status status={contract.status} inColumn />
-                </TableCell>
-              ) : null}
               <TableCell className="truncate tabular-nums" title={term(contract)}>
                 {term(contract)}
               </TableCell>
-              <TableCell className="whitespace-nowrap" title={renewal(contract)}>
+              <TableCell className="truncate" title={renewal(contract)}>
                 {renewal(contract)}
               </TableCell>
               <TableCell className="text-end tabular-nums">{value(contract)}</TableCell>

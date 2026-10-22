@@ -14,7 +14,9 @@ export function FirstRunTour({
   onClose,
   onAsk,
   onSkip,
+  userId,
 }: {
+  userId?: string | null;
   open: boolean;
   /** The last step's "Ask Chief": finishes the tour, opens Chief and sends a sample question. */
   onAsk: () => void;
@@ -29,9 +31,10 @@ export function FirstRunTour({
     () => [
       {
         id: "search",
-        name: t`Search`,
+        // The sentence names the control itself, so the card has no "Search:" label.
+        name: "",
         anchor: '[data-tour="sidebar-search"]',
-        text: t`Type here to find any page, chat or email.`,
+        text: t`Search finds any page, chat or email.`,
       },
       {
         id: "create",
@@ -97,6 +100,11 @@ export function FirstRunTour({
   );
   if (!open) return null;
   return (
-    <TourPopover steps={steps} onFinish={finish} lastAction={{ label: t`Ask Chief`, run: onAsk }} />
+    <TourPopover
+      userId={userId}
+      steps={steps}
+      onFinish={finish}
+      lastAction={{ label: t`Ask Chief`, run: onAsk }}
+    />
   );
 }

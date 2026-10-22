@@ -112,9 +112,16 @@ describe("isThreadSnapshotEvent", () => {
   it("takes the waiting delegate requests from a thread.delegate_pending event", () => {
     const next = reduceThreadSnapshot(
       snapshot(),
-      event({ type: "thread.delegate_pending", payload: { pending: ["m1", "m2"] } }),
+      event({
+        type: "thread.delegate_pending",
+        payload: { pending: ["m1", "m2"], agents: [{ messageId: "m1", id: "b2", name: "B" }] },
+      }),
     );
-    expect(next).toMatchObject({ cursor: 5, delegatePending: ["m1", "m2"] });
+    expect(next).toMatchObject({
+      cursor: 5,
+      delegatePending: ["m1", "m2"],
+      delegatePendingAgents: [{ messageId: "m1", id: "b2", name: "B" }],
+    });
   });
 
   it("ends only the waiting request that a delegate's reply answers", () => {
@@ -130,8 +137,17 @@ describe("isThreadSnapshotEvent", () => {
           ...(replyToMessageId ? { replyToMessageId } : {}),
         },
       });
-    const waiting = snapshot({ delegatePending: ["m1", "m2"] });
+    const waiting = snapshot({
+      delegatePending: ["m1", "m2"],
+      delegatePendingAgents: [
+        { messageId: "m1", id: "b2", name: "B" },
+        { messageId: "m2", id: "b3", name: "C" },
+      ],
+    });
     expect(reduceThreadSnapshot(waiting, reply("m1"))?.delegatePending).toEqual(["m2"]);
+    expect(reduceThreadSnapshot(waiting, reply("m1"))?.delegatePendingAgents).toEqual([
+      { messageId: "m2", id: "b3", name: "C" },
+    ]);
     // A message that answers no waiting request (a status update, another agent) changes nothing.
     expect(reduceThreadSnapshot(waiting, reply(undefined))?.delegatePending).toEqual(["m1", "m2"]);
     expect(reduceThreadSnapshot(waiting, reply("other"))?.delegatePending).toEqual(["m1", "m2"]);

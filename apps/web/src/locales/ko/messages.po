@@ -539,6 +539,10 @@ msgstr ""
 msgid "{late, plural, one {Overdue by # day} other {Overdue by # days}}"
 msgstr ""
 
+#: src/pages/Fundraising.tsx
+msgid "{legalSafes} SAFEs found in Legal"
+msgstr ""
+
 #: src/lib/relative-time.ts
 msgid "{minutes}m ago"
 msgstr "{minutes}분 전"
@@ -711,6 +715,10 @@ msgstr ""
 
 #: src/components/fundraising/MercuryLine.tsx
 msgid "1 SAFE could not be read"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "1 SAFE found in Legal"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -1051,6 +1059,10 @@ msgstr ""
 #. placeholder {0}: contact.addedBy.name
 #: src/components/ContactDialog.tsx
 msgid "Added by {0}"
+msgstr ""
+
+#: src/components/inbox/MailAttachments.tsx
+msgid "Added to Data room"
 msgstr ""
 
 #. placeholder {0}: currentName ?? ""
@@ -2006,6 +2018,10 @@ msgstr ""
 msgid "Browser notifications"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Building graph…"
+msgstr ""
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "기본 제공"
@@ -2412,6 +2428,10 @@ msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Choose when it runs"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Choose which account to send from."
 msgstr ""
 
 #: src/pages/shell/working-label.ts
@@ -7562,6 +7582,7 @@ msgstr ""
 msgid "Only this bot"
 msgstr ""
 
+#: src/components/data-room/PreviewActions.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
@@ -7576,9 +7597,9 @@ msgstr ""
 msgid "Open"
 msgstr "열기"
 
+#. placeholder {0}: agent.name
 #. placeholder {0}: group.title
 #. placeholder {0}: ref.name
-#. placeholder {0}: sameEmail.name
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/DataRoomRefChips.tsx
 #: src/pages/Shell.tsx
@@ -9248,6 +9269,10 @@ msgstr ""
 msgid "Save proof"
 msgstr ""
 
+#: src/pages/RoutineEditor.tsx
+msgid "Save the routine first"
+msgstr ""
+
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Save the workspace and install current software."
 msgstr "작업 공간을 저장하고 최신 소프트웨어를 설치합니다."
@@ -9362,7 +9387,6 @@ msgstr ""
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
-#: src/components/tour/FirstRunTour.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
@@ -9411,6 +9435,10 @@ msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
+msgstr ""
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Search finds any page, chat or email."
 msgstr ""
 
 #: src/components/integrations/ConnectAppsStep.tsx
@@ -9472,6 +9500,10 @@ msgstr ""
 
 #: src/pages/shell/working-label.ts
 msgid "Searching your mail"
+msgstr ""
+
+#: src/pages/shell/command-palette.tsx
+msgid "Searching…"
 msgstr ""
 
 #: src/components/cap-table/CapTableEditor.tsx
@@ -10262,7 +10294,6 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 #: src/pages/gtm/GtmChannels.tsx
-#: src/pages/legal/LegalContracts.tsx
 msgid "Status"
 msgstr ""
 
@@ -11096,10 +11127,6 @@ msgstr ""
 msgid "Type"
 msgstr ""
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Type here to find any page, chat or email."
-msgstr ""
-
 #: src/pages/Investors.tsx
 msgid "Type it in"
 msgstr ""
@@ -11210,6 +11237,10 @@ msgstr "고정 해제"
 
 #: src/pages/Inbox.tsx
 msgid "Unread"
+msgstr ""
+
+#: src/components/data-room/ItemRows.tsx
+msgid "Unreadable"
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
@@ -11405,6 +11436,11 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Uploaded"
+msgstr ""
+
+#. placeholder {0}: state.folder
+#: src/components/data-room/DropZone.tsx
+msgid "Uploaded to {0}"
 msgstr ""
 
 #: src/components/inbox/InboxRow.tsx
@@ -11629,6 +11665,11 @@ msgstr ""
 #: src/lib/roster-status.ts
 msgid "Waiting in line…"
 msgstr "줄에서 기다리는 중…"
+
+#. placeholder {0}: run.waitingOn
+#: src/pages/RoutineRunHistory.tsx
+msgid "Waiting on {0}"
+msgstr ""
 
 #: src/pages/shell/transcript.tsx
 msgid "Waiting on {delegate}"

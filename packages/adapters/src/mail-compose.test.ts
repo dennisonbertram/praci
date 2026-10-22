@@ -2,7 +2,7 @@ import type { MailMessage } from "@rakazo/adapter-kit";
 import { MailProviderError } from "@rakazo/adapter-kit";
 import { describe, expect, it } from "vitest";
 import { decodeEncodedWords } from "./gmail-mail-provider.js";
-import { buildRawMessage, parseRecipients, replyPrefill } from "./mail-compose.js";
+import { buildRawMessage, parseRecipients, replyAllDiffers, replyPrefill } from "./mail-compose.js";
 import { parseRawMime } from "./mime-parse.js";
 
 const alice = { name: "Alice Example", address: "alice@example.test" };
@@ -337,5 +337,19 @@ describe("buildRawMessage with HTML and attachments", () => {
         }),
       );
     }
+  });
+});
+
+describe("replyAllDiffers", () => {
+  const bob = { address: "bob@example.test" };
+  const mail = (extra: object) => original({ to: [bob], cc: [], ...extra });
+  it("is false when the only other recipient is the user", () => {
+    expect(replyAllDiffers(mail({}), "bob@example.test")).toBe(false);
+  });
+  it("is true when the user was Bcc'd and another person is on To", () => {
+    expect(replyAllDiffers(mail({}), "me@example.test")).toBe(true);
+  });
+  it("is true when someone is on Cc", () => {
+    expect(replyAllDiffers(mail({ cc: [alice] }), "bob@example.test")).toBe(true);
   });
 });

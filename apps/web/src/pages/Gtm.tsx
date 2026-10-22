@@ -33,6 +33,8 @@ export function GtmPage({
   const [params, setParams] = useSearchParams();
   const calendar = params.get("view") === "calendar";
   const [page, setPage] = useState<BotPage | null>(null);
+  const hadContent = useRef(false);
+  if (page?.content.trim()) hadContent.current = true;
   const [editing, setEditing] = useState(false);
   const [goal, setGoal] = useState("");
   const [busy, setBusy] = useState(false);
@@ -242,7 +244,13 @@ export function GtmPage({
                 ) : null}
                 {botId ? (
                   <GtmBlockContext.Provider value={{ overview: data, onChange: changed }}>
-                    <section className="rounded-xl border border-border p-4">
+                    <section
+                      className={
+                        page && !page.content.trim() && !hadContent.current
+                          ? "hidden"
+                          : "rounded-xl border border-border p-4"
+                      }
+                    >
                       <div className="mb-3 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
                         <span>
                           <Trans>Written by GTM agent</Trans>

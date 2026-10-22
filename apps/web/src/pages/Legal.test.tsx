@@ -936,17 +936,16 @@ it("opens no two deadline rows with the same words and leaves out an all-active 
   expect(container.textContent).not.toContain("Status");
 });
 
-it("shows the Status column only for two or more non-active contracts, else a chip by the title", async () => {
+it("keeps the same columns whatever the statuses: no Status column, a chip by the title", async () => {
   const [first, second] = contracts;
   if (!first || !second) throw new Error("fixtures");
-  const one = [first, { ...second, status: "expired" as const }].map((c, i) =>
-    i === 0 ? { ...c, status: "active" as const } : c,
+  const widths = () => [...container.querySelectorAll("col")].map((col) => col.className);
+  await render(
+    <LegalContracts
+      contracts={[first, second].map((c) => ({ ...c, status: "active" as const }))}
+    />,
   );
-  await render(<LegalContracts contracts={one} />);
-  expect([...container.querySelectorAll("thead th")].map((th) => th.textContent)).not.toContain(
-    "Status",
-  );
-  expect(container.querySelector("tbody")?.textContent).toContain("Expired");
+  const before = widths();
   await act(async () => root.unmount());
   root = createRoot(container);
   await render(
@@ -957,9 +956,12 @@ it("shows the Status column only for two or more non-active contracts, else a ch
       ]}
     />,
   );
-  expect([...container.querySelectorAll("thead th")].map((th) => th.textContent)).toContain(
+  expect(widths()).toEqual(before);
+  expect([...container.querySelectorAll("thead th")].map((th) => th.textContent)).not.toContain(
     "Status",
   );
+  expect(container.querySelector("tbody")?.textContent).toContain("Expired");
+  expect(container.querySelector("tbody")?.textContent).toContain("Draft");
 });
 
 it("puts the contract name in the deadline title", async () => {
@@ -1014,9 +1016,9 @@ it("opens the contract from a click anywhere on its row, and shows the Renewal n
   const renewalCell = [...(row?.querySelectorAll("td") ?? [])].find((td) =>
     td.textContent?.startsWith("Auto-renews"),
   );
-  // The notice is never cut off: the column is wide enough to keep it on one line.
-  expect(renewalCell?.className).toContain("whitespace-nowrap");
-  expect(renewalCell?.className).not.toContain("truncate");
+  // A narrow column clips the notice (the title holds it all) rather than running into Value.
+  expect(renewalCell?.className).toContain("truncate");
+  expect(renewalCell?.className).not.toContain("whitespace-nowrap");
   await click(row?.querySelectorAll("td")[3]);
   expect(container.querySelector('[data-testid="where"]')?.textContent).toBe(
     `/app/data-room?item=${contracts[0]!.dataRoomItemId}`,
@@ -1071,22 +1073,6 @@ it("ends a scan that outlasts the wait with a one-line result", async () => {
   } finally {
     vi.useRealTimers();
   }
-});
-
-it("says Active in the Status column instead of leaving the cell blank", async () => {
-  const [first, second] = contracts;
-  if (!first || !second) throw new Error("fixtures");
-  await render(
-    <LegalContracts
-      contracts={[
-        { ...first, status: "active" as const },
-        { ...second, id: id(90), status: "expired" as const },
-        { ...second, id: id(91), status: "draft" as const },
-      ]}
-    />,
-  );
-  const cells = [...container.querySelectorAll("tbody tr")].map((row) => row.textContent);
-  expect(cells.filter((text) => text?.includes("Active"))).toHaveLength(1);
 });
 
 it("shows Reading n of N while a scan runs, from the falling unchecked count", async () => {

@@ -26,7 +26,8 @@ const mocks = vi.hoisted(() => ({
   remove: vi.fn(),
   queue: vi.fn(),
   send: vi.fn(),
-  pageContent: "",
+  pageContent: undefined as string | undefined,
+  panel: vi.fn<(props: unknown) => null>(() => null),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
@@ -37,7 +38,9 @@ vi.mock("../lib/rpc", () => ({
 }));
 vi.mock("./shell/bot-page-panel", () => ({
   BotPagePanel: ({ onPageChange }: { onPageChange: (page: BotPage) => void }) => {
+    mocks.panel({ onPageChange });
     useEffect(() => {
+      if (mocks.pageContent === undefined) return;
       onPageChange({
         botId: "bot_gtm",
         content: mocks.pageContent,
@@ -62,7 +65,7 @@ beforeEach(() => {
   root = createRoot(container);
   mocks.overview.mockResolvedValue(overview);
   mocks.update.mockResolvedValue(item);
-  mocks.pageContent = "";
+  mocks.pageContent = undefined;
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -212,4 +215,20 @@ it("opens the real Calendar and exposes an incomplete provider queue", async () 
   expect(container.querySelector('[data-testid="gtm-calendar-grid"]')).not.toBeNull();
   expect(container.textContent).toContain("Zernio queue incomplete");
   expect(mocks.queue).toHaveBeenCalledTimes(1);
+});
+
+it("keeps the page section visible after an existing page is cleared, hides a never-written one", async () => {
+  type P = { onPageChange: (p: { content: string; updatedAt?: string }) => void };
+  let report!: P["onPageChange"];
+  mocks.panel.mockImplementation((props: unknown) => {
+    report = (props as P).onPageChange;
+    return null;
+  });
+  await render();
+  expect(container.querySelector("section.hidden")).toBeNull();
+  await act(async () => report({ content: "" }));
+  expect(container.querySelector("section.hidden")).not.toBeNull();
+  await act(async () => report({ content: "Plan" }));
+  await act(async () => report({ content: "" }));
+  expect(container.querySelector("section.hidden")).toBeNull();
 });
