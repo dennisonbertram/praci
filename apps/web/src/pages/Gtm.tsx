@@ -73,6 +73,9 @@ export function GtmPage({
         ).values(),
       ]
     : [];
+  // Before a goal exists there is nothing to plan: just the goal card and the Connect row.
+  const bare =
+    Boolean(data) && !data?.goal && !Object.values(data?.groups ?? {}).some((g) => g.length);
   const saveGoal = async () => {
     if (!botId || lock.current) return;
     lock.current = true;
@@ -188,21 +191,23 @@ export function GtmPage({
                 </p>
               ) : null}
             </section>
-            <Tabs
-              value={calendar ? "calendar" : "plan"}
-              onValueChange={(value) =>
-                setParams(value === "calendar" ? { view: "calendar" } : {}, { replace: true })
-              }
-            >
-              <TabsList>
-                <TabsTrigger value="plan">
-                  <Trans>Plan</Trans>
-                </TabsTrigger>
-                <TabsTrigger value="calendar">
-                  <Trans>Calendar</Trans>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {bare ? null : (
+              <Tabs
+                value={calendar ? "calendar" : "plan"}
+                onValueChange={(value) =>
+                  setParams(value === "calendar" ? { view: "calendar" } : {}, { replace: true })
+                }
+              >
+                <TabsList>
+                  <TabsTrigger value="plan">
+                    <Trans>Plan</Trans>
+                  </TabsTrigger>
+                  <TabsTrigger value="calendar">
+                    <Trans>Calendar</Trans>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
             {!data.zernioLinked ||
             (agentLayout && data.postingCapability === "api_key_required") ? (
               <section
@@ -229,17 +234,16 @@ export function GtmPage({
                 </Link>
               </section>
             ) : null}
-            {calendar ? (
+            {calendar && !bare ? (
               <GtmCalendar overview={data} />
             ) : (
               <>
-                {agentLayout ? (
+                {agentLayout && !bare ? (
                   <GtmPlan
                     title={t`Needs you`}
                     items={needsYou}
                     overview={data}
                     onChange={changed}
-                    empty={t`Up to date`}
                   />
                 ) : null}
                 {botId ? (
@@ -270,7 +274,7 @@ export function GtmPage({
                     </section>
                   </GtmBlockContext.Provider>
                 ) : null}
-                {!agentLayout ? (
+                {!agentLayout && !bare ? (
                   <>
                     <GtmChannels overview={data} />
                     <GtmPlan
@@ -278,21 +282,18 @@ export function GtmPage({
                       items={data.groups.needs_you}
                       overview={data}
                       onChange={changed}
-                      empty={t`Up to date`}
                     />
                     <GtmPlan
                       title={t`In progress`}
                       items={data.groups.in_progress}
                       overview={data}
                       onChange={changed}
-                      empty={t`Nothing running`}
                     />
                     <GtmPlan
                       title={t`Drafts for you`}
                       items={data.groups.drafts}
                       overview={data}
                       onChange={changed}
-                      empty={t`No drafts`}
                     />
                     <GtmPlan
                       title={t`Done`}

@@ -401,7 +401,10 @@ function InboxMessage({
               <span dir="auto" className="min-w-0 break-words sm:truncate">
                 <span className="font-semibold text-foreground">{sender.name}</span>
                 {sender.address ? (
-                  <span className="text-xs whitespace-nowrap"> {`<${sender.address}>`}</span>
+                  <span className="block text-xs break-all sm:inline sm:whitespace-nowrap">
+                    {" "}
+                    {`<${sender.address}>`}
+                  </span>
                 ) : null}
               </span>
               <span className="flex shrink-0 items-baseline gap-2">
@@ -453,7 +456,7 @@ function InboxMessage({
           <Skeleton className="h-8 w-full" />
         )}
         {/* The actions need only the id, so they show while the body loads. */}
-        {message || (!gone && !error) ? (
+        {message || !gone ? (
           <div className="flex flex-wrap gap-1.5">
             <Button size="sm" onClick={() => setComposing("reply")}>
               <Reply aria-hidden="true" />

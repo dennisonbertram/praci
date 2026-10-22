@@ -212,7 +212,8 @@
 .rk-chat-markdown blockquote {
   border-left: 3px solid var(--border);
   padding-left: 0.85em;
-  color: var(--muted-foreground);
+  /* A quoted draft is content to read, so it keeps the message's own text colour. */
+  color: inherit;
 }
 
 .rk-chat-markdown table {
