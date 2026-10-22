@@ -1261,7 +1261,7 @@ msgstr "Answer auditor requests"
 msgid "Answered"
 msgstr "Answered"
 
-#. placeholder {0}: selectedAskActionLabel(answer, actions)
+#. placeholder {0}: choice.label
 #: src/components/AskCard.tsx
 msgid "Answered: {0}"
 msgstr "Answered: {0}"
@@ -4641,6 +4641,10 @@ msgstr "Enter the server URL, starting with https://."
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Enter the URL, starting with https://."
 msgstr "Enter the URL, starting with https://."
+
+#: src/pages/Auth.tsx
+msgid "Enter your name"
+msgstr "Enter your name"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Equity"

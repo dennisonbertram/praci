@@ -1261,7 +1261,7 @@ msgstr ""
 msgid "Answered"
 msgstr "Répondu"
 
-#. placeholder {0}: selectedAskActionLabel(answer, actions)
+#. placeholder {0}: choice.label
 #: src/components/AskCard.tsx
 msgid "Answered: {0}"
 msgstr "Répondu : {0}"
@@ -4640,6 +4640,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Enter the URL, starting with https://."
+msgstr ""
+
+#: src/pages/Auth.tsx
+msgid "Enter your name"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx

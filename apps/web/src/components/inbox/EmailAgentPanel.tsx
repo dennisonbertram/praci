@@ -247,7 +247,7 @@ export function EmailAgentPanel({
           <Button
             variant="outline"
             size="sm"
-            disabled={sending}
+            disabled={sending || stale}
             onClick={() => void send(DRAFT_REQUEST)}
           >
             <Trans>Draft a reply</Trans>
