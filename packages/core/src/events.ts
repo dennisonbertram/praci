@@ -397,6 +397,8 @@ const TOOL_VERBS: Record<string, readonly [string, string]> = {
   delete: ["deleting", "deleted"],
   cancel: ["cancelling", "cancelled"],
   upload: ["uploading", "uploaded"],
+  remove: ["removing", "removed"],
+  complete: ["completing", "completed"],
 };
 
 const MAIL_WRITE_PENDING: Record<string, string> = {
@@ -417,8 +419,19 @@ export function mailOutcomeSummary(
 
 const TOOL_NAME_MAX_CHARS = 60;
 
+/** Built-in ids whose own words mean nothing to a person ("scratchpad list"). */
+const PLAIN_TOOL_WORDS: Record<string, string> = {
+  scratchpad_list: "get notes",
+  scratchpad_add: "add note",
+  scratchpad_update: "update note",
+  scratchpad_complete: "complete note",
+  scratchpad_remove: "remove note",
+};
+
 /** The plain lowercase words of any tool id: no `mcp__server__` prefix, no case or separator style. */
 function toolWords(name: string, service?: string): string[] {
+  const plain = PLAIN_TOOL_WORDS[name];
+  if (plain) return plain.split(" ");
   let id = name;
   if (id.startsWith("mcp__")) {
     // mcp__<server slug>__<tool>; the slug can be an opaque id, so keep the tool only.

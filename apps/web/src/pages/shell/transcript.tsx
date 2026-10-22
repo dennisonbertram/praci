@@ -152,6 +152,8 @@ export const Transcript = memo(function Transcript({
   workingBots,
   workingActivity: activity,
   workingStartedAt,
+  onStopRun,
+  onRetryRun,
   failedNote,
   failedScheduled = false,
   onLoadOlder,
@@ -191,6 +193,8 @@ export const Transcript = memo(function Transcript({
   workingBots: GroupAvatarMember[];
   workingActivity?: WorkingActivity;
   workingStartedAt?: number;
+  onStopRun?: () => void;
+  onRetryRun?: () => void;
   /** Why the last run failed, once its error above the composer was dismissed; "" when unknown. */
   failedNote?: string | null;
   /** The failed run was a routine (a scheduled or Scan now run), not a reply to a message. */
@@ -918,6 +922,8 @@ export const Transcript = memo(function Transcript({
             bots={workingBots}
             label={workingLabel}
             startedAt={workingStartedAt}
+            onStop={onStopRun}
+            onRetry={onRetryRun}
             detail={
               activity?.kind === "tool"
                 ? activity.detail

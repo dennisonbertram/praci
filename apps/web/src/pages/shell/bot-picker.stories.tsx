@@ -12,6 +12,7 @@ const meta = {
     onCreateSpace: noop,
     onShowGroupInfo: noop,
     onShowSpaceInfo: noop,
+    canCreateSpace: true,
   },
   decorators: [
     (Story) => (
@@ -26,3 +27,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+/** A solo account with one space: no New space. */
+export const OneSpace: Story = { args: { canCreateSpace: false } };

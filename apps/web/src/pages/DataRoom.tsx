@@ -161,6 +161,13 @@ export function DataRoomPage({
   const sort = searching ? searchSort : listSort;
   const list = useDataRoomList({ query, filters, sort });
   const importActivity = useDataRoomImports();
+  // The import strip belongs to the folder it was shown in; moving to another folder clears it.
+  const strippedFolder = useRef(filters.folderId);
+  useEffect(() => {
+    if (strippedFolder.current === filters.folderId) return;
+    strippedFolder.current = filters.folderId;
+    importActivity.dismiss(importActivity.imports.filter((e) => e.finished).map((e) => e.id));
+  }, [filters.folderId, importActivity]);
   const processing = useDataRoomProcessing();
   const openImported = useCallback(
     (id: string) =>
@@ -701,7 +708,7 @@ export function DataRoomPage({
       ) : (
         <>
           <div className={`${PAGE_GUTTER_X} pb-2.5 empty:hidden`}>
-            <DataRoomConsentPrompt onAllowed={reload} />
+            {showStats ? null : <DataRoomConsentPrompt onAllowed={reload} />}
           </div>
           <FilterBar
             query={queryInput}
@@ -983,7 +990,7 @@ export function DataRoomPage({
       {notice ? (
         <p
           role="status"
-          className="fixed end-4 top-16 z-100 rounded-lg border border-border bg-card p-3 text-sm shadow-md"
+          className="fixed end-4 bottom-24 z-100 rounded-lg border border-border bg-card p-3 text-sm shadow-md sm:bottom-6"
         >
           {notice}
         </p>

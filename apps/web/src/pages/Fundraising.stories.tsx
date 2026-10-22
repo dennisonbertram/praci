@@ -152,7 +152,7 @@ export const ClosedRound: Story = {
     }),
 };
 
-/** Nothing yet: one Start a round state, without Pipeline, the SAFEs card or a second Add prospect. */
+/** Pipeline and SAFEs show before any round; the card offers Start a round. */
 export const NoRound: Story = {
   beforeEach: () =>
     mockRpc({

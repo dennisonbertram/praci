@@ -18,7 +18,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
-  Card,
   enqueueNotificationToast,
   Skeleton,
 } from "@rakazo/ui-web";
@@ -30,11 +29,13 @@ import { ContactDialog } from "../components/ContactDialog";
 import { AssignSafeDialog, InvestorEmailDialog } from "../components/fundraising/MercuryDialogs";
 import { MercuryLine } from "../components/fundraising/MercuryLine";
 import { Pipeline } from "../components/fundraising/Pipeline";
+import { SafeRowPlaceholder } from "../components/fundraising/Placeholders";
 import { RoundCard, RoundDialog } from "../components/fundraising/RoundCard";
 import { SafeCoverSummary, SafeDialog } from "../components/fundraising/SafeDialog";
 import type { SafeStep } from "../components/fundraising/SafeList";
 import { AttentionStrip, MarkDateDialog, SafeList } from "../components/fundraising/SafeList";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
+import { SectionCard } from "../components/SectionCard";
 import { isoFromDay, todayDay } from "../lib/day-input";
 import { connectFinanceProvider } from "../lib/finance-connect";
 import { usdFigure } from "../lib/finance-format";
@@ -108,8 +109,6 @@ export function FundraisingPage({
 
   const round = overview?.round ?? null;
   const open = round && !round.closedAt ? round : null;
-  // Nothing yet: one Start a round state instead of three empty boxes.
-  const fresh = overview !== null && !round && !overview.prospects.length && !overview.safes.length;
 
   const run = (call: () => Promise<unknown>, failure: string) =>
     call()
@@ -192,16 +191,18 @@ export function FundraisingPage({
       <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
         <PageHeader
           title={<Trans>Fundraising</Trans>}
+          meta={
+            overview ? (
+              <MercuryLine
+                state={overview.mercury}
+                onConnect={() => void connectMercury(false)}
+                onRefresh={() => void run(() => rpc.fundraising.refresh(), t`Could not refresh`)}
+                onReconnect={() => void connectMercury(true)}
+              />
+            ) : null
+          }
           actions={
             <>
-              {overview ? (
-                <MercuryLine
-                  state={overview.mercury}
-                  onConnect={() => void connectMercury(false)}
-                  onRefresh={() => void run(() => rpc.fundraising.refresh(), t`Could not refresh`)}
-                  onReconnect={() => void connectMercury(true)}
-                />
-              ) : null}
               <Button variant="outline" size="sm" onClick={() => setEditing(NEW_PROSPECT)}>
                 <Plus aria-hidden="true" />
                 <Trans>Add prospect</Trans>
@@ -233,109 +234,76 @@ export function FundraisingPage({
             </div>
           )
         ) : (
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-4">
             <AttentionStrip
               safes={overview.safes}
               onMark={(safe, step) => setMarking({ safe, step })}
             />
 
-            {fresh ? (
-              <div className="flex flex-col items-center gap-3 py-16 text-center">
-                <p className="text-sm text-muted-foreground">
-                  <Trans>No prospects yet</Trans>
-                </p>
-                <Button onClick={() => setRoundDialog("start")}>
-                  <Trans>Start a round</Trans>
-                </Button>
-              </div>
-            ) : (
-              <>
-                <RoundCard
+            <RoundCard
+              round={round}
+              pendingCents={overview.pendingCents}
+              signedCents={overview.signedCents}
+              fundedCents={overview.fundedCents}
+              onStart={() => setRoundDialog("start")}
+              onEdit={() => setRoundDialog("edit")}
+              onClose={closeRound}
+              onReopen={() =>
+                round &&
+                void run(
+                  () => rpc.fundraising.round.reopen({ id: round.id }),
+                  t`Could not reopen the round`,
+                )
+              }
+            />
+
+            <SectionCard title={t`Pipeline`}>
+              <Pipeline
+                prospects={overview.prospects}
+                savedId={savedId}
+                filledSend={Boolean(open)}
+                onSendSafe={sendSafe}
+                onOpenMercury={openMercury}
+                onNotSent={(prospect) =>
+                  void run(
+                    () => rpc.fundraising.prospects.notSent({ id: prospect.id }),
+                    t`Could not undo Send SAFE`,
+                  )
+                }
+                onEdit={setEditing}
+                onMove={(prospect, stage) => void move(prospect, stage)}
+              />
+            </SectionCard>
+
+            <SectionCard title={t`SAFEs`}>
+              {overview.safes.length === 0 ? (
+                <ul>
+                  <SafeRowPlaceholder />
+                  <SafeRowPlaceholder />
+                </ul>
+              ) : (
+                <SafeList
+                  safes={overview.safes}
                   round={round}
-                  pendingCents={overview.pendingCents}
-                  signedCents={overview.signedCents}
-                  fundedCents={overview.fundedCents}
-                  onStart={() => setRoundDialog("start")}
-                  onEdit={() => setRoundDialog("edit")}
-                  onClose={closeRound}
-                  onReopen={() =>
-                    round &&
+                  onOpen={openSafe}
+                  onAssign={setAssigning}
+                  onUnassign={(safe) =>
                     void run(
-                      () => rpc.fundraising.round.reopen({ id: round.id }),
-                      t`Could not reopen the round`,
+                      () => rpc.fundraising.safes.unassign({ id: safe.id }),
+                      t`Could not unassign`,
                     )
                   }
+                  onMark={(safe, step) => setMarking({ safe, step })}
+                  onCancel={(safe) =>
+                    void run(
+                      () => mark(safe, "cancel", isoFromDay(todayDay())),
+                      t`Could not cancel`,
+                    )
+                  }
+                  onDelete={(safe) => setConfirm({ kind: "delete", safe })}
                 />
-
-                <section className="max-w-5xl" aria-label={t`Pipeline`}>
-                  <h2 className="mb-2 text-sm font-semibold">
-                    <Trans>Pipeline</Trans>
-                  </h2>
-                  {overview.prospects.length === 0 ? (
-                    <div className="flex flex-col items-center gap-3 py-10 text-center">
-                      <p className="text-sm text-muted-foreground">
-                        <Trans>No prospects yet</Trans>
-                      </p>
-                      <Button variant="outline" size="sm" onClick={() => setEditing(NEW_PROSPECT)}>
-                        <Plus aria-hidden="true" />
-                        <Trans>Add prospect</Trans>
-                      </Button>
-                    </div>
-                  ) : (
-                    <Pipeline
-                      prospects={overview.prospects}
-                      savedId={savedId}
-                      filledSend={Boolean(open)}
-                      onSendSafe={sendSafe}
-                      onOpenMercury={openMercury}
-                      onNotSent={(prospect) =>
-                        void run(
-                          () => rpc.fundraising.prospects.notSent({ id: prospect.id }),
-                          t`Could not undo Send SAFE`,
-                        )
-                      }
-                      onEdit={setEditing}
-                      onMove={(prospect, stage) => void move(prospect, stage)}
-                    />
-                  )}
-                </section>
-
-                <Card className="max-w-5xl gap-2 px-3.5 py-3">
-                  <h2 className="text-sm font-semibold">
-                    <Trans>SAFEs</Trans>
-                  </h2>
-                  {overview.safes.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      <Trans>
-                        No SAFEs yet. This list shows SAFEs sent from Praci and SAFEs found in
-                        Mercury.
-                      </Trans>
-                    </p>
-                  ) : (
-                    <SafeList
-                      safes={overview.safes}
-                      round={round}
-                      onOpen={openSafe}
-                      onAssign={setAssigning}
-                      onUnassign={(safe) =>
-                        void run(
-                          () => rpc.fundraising.safes.unassign({ id: safe.id }),
-                          t`Could not unassign`,
-                        )
-                      }
-                      onMark={(safe, step) => setMarking({ safe, step })}
-                      onCancel={(safe) =>
-                        void run(
-                          () => mark(safe, "cancel", isoFromDay(todayDay())),
-                          t`Could not cancel`,
-                        )
-                      }
-                      onDelete={(safe) => setConfirm({ kind: "delete", safe })}
-                    />
-                  )}
-                </Card>
-              </>
-            )}
+              )}
+            </SectionCard>
           </div>
         )}
 

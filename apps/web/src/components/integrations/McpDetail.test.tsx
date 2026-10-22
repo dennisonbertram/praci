@@ -391,6 +391,18 @@ it("lets a bank with no agent allow changes: confirming creates the agent and th
   expect(setWrites).toHaveBeenCalledWith({ id: "s1", enabled: true });
 });
 
+it("gives a bank with no agent a read-only Create agent, no sharing switch, and a setting-up note while allowing changes", async () => {
+  setWrites.mockReturnValue(new Promise(() => {}));
+  create.mockResolvedValue({ server: {}, botId: "bot_new" });
+  await show(false, "https://mcp.mercury.com/mcp", { agentBotId: null, agentExclusive: false });
+  expect(container.textContent).toContain("Create agent");
+  expect(container.querySelector("#server-shared")).toBeNull();
+  expect(container.textContent).not.toContain("Setting up");
+  await act(async () => writesSwitch()?.click());
+  await press("Allow changes");
+  expect(container.textContent).toContain("Setting up the agent");
+});
+
 it("turns the pending switch back off and shows the error when allowing changes fails", async () => {
   create.mockRejectedValue(new Error("nope"));
   await show(false, "https://mcp.mercury.com/mcp", { agentBotId: null, agentExclusive: false });

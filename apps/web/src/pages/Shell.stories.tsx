@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { mockRpc } from "../lib/__mocks__/rpc";
-import { makeBot, mockBots, mockSections } from "../stories/fixtures";
+import { makeBot, mockBots, mockMe, mockSections } from "../stories/fixtures";
 import { ShellPage } from "./Shell";
 
 /** The preview already provides a router at "/", so move it to the route instead of nesting one. */
@@ -453,6 +453,27 @@ export const SidebarEmailChats: Story = {
         dataRoomWaiting: 3,
         hasTickets: false,
         botKinds: {},
+      },
+    });
+  },
+};
+
+/** A new account: the tour opens on the first page row, with the drawer open on a phone. */
+export const FirstRunTour: Story = {
+  decorators: [at("/app/bot_ada")],
+  beforeEach: () => {
+    loadedWith(mockBots[0] as ReturnType<typeof makeBot>)();
+    mockRpc({
+      bootstrap: {
+        me: { ...mockMe, tourSeen: false },
+        bots: mockBots,
+        groups: [],
+        botSections: mockSections,
+        archivedBots: [],
+        archivedGroups: [],
+        thread: null,
+        routines: [],
+        spaces: [space],
       },
     });
   },

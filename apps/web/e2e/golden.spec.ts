@@ -150,7 +150,7 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
   await captureScreenshot(page, testInfo, "10-routine-created");
 
   await openIntegrations(page);
-  await expect(page.getByPlaceholder("Search apps")).toBeVisible();
+  await expect(page.getByPlaceholder("Search integrations")).toBeVisible();
   await expect(page.getByRole("button", { name: "Connect Gmail", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Connect Slack", exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "11-plugins-catalog");

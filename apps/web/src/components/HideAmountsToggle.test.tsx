@@ -32,7 +32,9 @@ it("keeps one label and lets the checked state say whether amounts are hidden", 
   expect(row.textContent).toBe("Hide amounts");
 
   expect(row.getAttribute("aria-checked")).toBe("false");
+  expect(row.querySelector("svg.lucide-check")).toBeNull();
   act(() => setHideAmounts(true));
+  expect(row.querySelector("svg.lucide-check")).not.toBeNull();
   expect(row.textContent).toBe("Hide amounts");
   expect(row.getAttribute("aria-checked")).toBe("true");
   act(() => root.unmount());

@@ -13,6 +13,7 @@ import {
   CommandList,
   CommandShortcut,
   Kbd,
+  Spinner,
 } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
@@ -397,9 +398,20 @@ export function CommandPalette({
         <CommandList
           ref={setListEl}
           onScroll={measureList}
-          className="max-h-[min(24rem,60vh)]"
+          // The last results stay, dimmed, until the new ones arrive.
+          className={`max-h-[min(24rem,60vh)] transition-opacity ${searching ? "opacity-60" : ""}`}
+          aria-busy={searching}
           data-testid="command-palette-list"
         >
+          {searching &&
+          !shownLinks.length &&
+          !shownPages.length &&
+          !shownGroups.length &&
+          !filteredBots.length ? (
+            <div className="flex justify-center py-4">
+              <Spinner aria-hidden="true" />
+            </div>
+          ) : null}
           {searching ? null : (
             <CommandEmpty>
               <Trans>No results</Trans>

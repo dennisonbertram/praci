@@ -59,3 +59,47 @@ export const AllActive: StoryObj<typeof meta> = {
     ),
   ],
 };
+
+const longNames = [
+  "MOCK Insurance Policy - Shieldwell Mutual General Liability",
+  "Master Services Agreement with Northwind Analytics",
+  "Office lease, 2nd floor, Harbour Street",
+  "Mutual non-disclosure agreement with Contoso Labs",
+  "Employment agreement for the head of engineering",
+  "Data processing addendum with Fabrikam Cloud",
+  "Reseller agreement with Tailspin Distribution",
+  "Consulting agreement with Lakeside Advisory",
+  "Software license with Wingtip Systems",
+  "Equipment lease with Adventure Works Finance",
+];
+
+const ten = longNames.map((title, index) => ({
+  ...contracts[index % contracts.length]!,
+  id: `long-${index}`,
+  title,
+  status: "active" as const,
+}));
+
+/** Ten contracts with long names at a phone width: the page should not run past three screens. */
+export const TenOnPhone: StoryObj<typeof meta> = {
+  args: { contracts: ten },
+  decorators: [
+    (Story) => (
+      <div className="@container w-[343px]">
+        <Story />
+      </div>
+    ),
+  ],
+};
+
+/** The same ten in the table at desktop width: every name shows in full, on up to two lines. */
+export const TenOnDesktop: StoryObj<typeof meta> = {
+  args: { contracts: ten },
+  decorators: [
+    (Story) => (
+      <div className="@container w-[1280px]">
+        <Story />
+      </div>
+    ),
+  ],
+};

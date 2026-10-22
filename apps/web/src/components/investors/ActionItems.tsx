@@ -9,10 +9,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Spinner,
 } from "@rakazo/ui-web";
 import { MoreHorizontal } from "lucide-react";
 import { shortDay } from "../../lib/finance-format";
+import { SectionCard } from "../SectionCard";
 
 const day = (iso: string) => shortDay(iso.slice(0, 10), new Date(), i18n.locale || "en");
 
@@ -44,7 +44,7 @@ function AuditRow({
   return (
     <li
       data-audit-id={audit.id}
-      className="flex min-h-11 items-center gap-2 border-t border-border px-2 first:border-t-0"
+      className="flex min-h-11 items-center gap-2 border-t border-border first:border-t-0"
     >
       <div className="min-w-0 flex-1 py-1.5">
         <span className="block truncate text-sm font-medium" title={audit.fund}>
@@ -73,14 +73,7 @@ function AuditRow({
           disabled={audit.drafting}
           onClick={() => onDraft(audit)}
         >
-          {audit.drafting ? (
-            <>
-              <Spinner aria-hidden="true" />
-              <Trans>Drafting…</Trans>
-            </>
-          ) : (
-            <Trans>Draft reply</Trans>
-          )}
+          <Trans>Draft reply</Trans>
         </Button>
       ) : null}
       {done ? null : (
@@ -125,18 +118,15 @@ export function ActionItems({
 }) {
   if (drafts.length === 0 && audits.length === 0) return null;
   return (
-    <section aria-label={t`Action items`} className="mb-5 rounded-xl border border-border">
-      <h2 className="px-3.5 pt-3 text-sm font-semibold">
-        <Trans>Action items</Trans>
-      </h2>
-      <ul className="px-1.5 pb-1.5">
+    <SectionCard title={t`Action items`} attention>
+      <ul>
         {audits.map((audit) => (
           <AuditRow key={audit.id} audit={audit} onDraft={onDraftAudit} onClose={onCloseAudit} />
         ))}
         {drafts.map((draft) => (
           <li
             key={draft.id}
-            className="flex min-h-11 items-center gap-2 border-t border-border px-2 first:border-t-0"
+            className="flex min-h-11 items-center gap-2 border-t border-border first:border-t-0"
           >
             <div className="min-w-0 flex-1 py-1.5">
               <span className="block truncate text-sm font-medium" title={draft.subject}>
@@ -155,6 +145,6 @@ export function ActionItems({
           </li>
         ))}
       </ul>
-    </section>
+    </SectionCard>
   );
 }
