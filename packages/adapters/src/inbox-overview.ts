@@ -1,5 +1,5 @@
 import type { AdapterContext, MailAccount } from "@rakazo/adapter-kit";
-import { applySenderMark, MAIL_GREP_BUDGET, senderMarkMap } from "@rakazo/core";
+import { applySenderMark, MAIL_GREP_BUDGET, senderMarkMap, TRIAGE_VERSION } from "@rakazo/core";
 import { mailSyncStatus, requestMailSync, waitForMailSync } from "./mail-sync-job.js";
 import type { MailToolDeps } from "./mail-tools.js";
 
@@ -137,8 +137,10 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
       ) === "syncing",
   );
   // A failed refresh gets its own "could not read" reply below instead.
-  const sorting =
-    !statuses.some((st) => st.failed) && (firstSync || threads.some((m) => m.needsReply === null));
+  // Same test as the triage worker: a message the model skipped is stamped with null fields and is done, not pending.
+  const untriaged = (m: (typeof threads)[number]) =>
+    !m.fromSelf && (m.triagedAt === null || (m.triageVersion ?? 0) < TRIAGE_VERSION);
+  const sorting = !statuses.some((st) => st.failed) && (firstSync || threads.some(untriaged));
   const result = {
     note: NOTE,
     window: "inbox, last 14 days",
@@ -150,7 +152,7 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
         account: accountLabel(account),
         unread: mine.filter((m) => m.unread).length,
         needsReply: sorting ? null : mine.filter(wantsReply).length,
-        untriaged: mine.filter((m) => m.needsReply === null).length,
+        untriaged: mine.filter(untriaged).length,
         lastSyncedAt: lastSyncedAt?.toISOString() ?? null,
         sync: syncLabel(
           statuses.find((st) => st.connectionId === account.id),

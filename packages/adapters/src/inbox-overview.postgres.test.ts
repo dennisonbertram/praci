@@ -6,7 +6,7 @@ import type {
   MailProvider,
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
-import { MAIL_GREP_BUDGET } from "@rakazo/core";
+import { MAIL_GREP_BUDGET, TRIAGE_VERSION } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -180,7 +180,7 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
     ) =>
       prisma.cachedMailMessage.updateMany({
         where: { spaceId: scope.spaceId, providerMessageId },
-        data: { triagedAt: new Date(), triageVersion: 1, ...data },
+        data: { triagedAt: new Date(), triageVersion: TRIAGE_VERSION, ...data },
       });
     return { scope, gmail, deps, accounts, overview, listCalls, enqueued, triage };
   }
@@ -486,6 +486,16 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
     const done = await t.overview();
     expect(done.sorting).toBeUndefined();
     expect(done.accounts[0]?.needsReply).toBe(1);
+    expect(done.needsReply).toHaveLength(1);
+  });
+
+  it("does not wait on a message the triage model skipped", async () => {
+    const t = await harness({ a: [message("m1", 1), message("m2", 2)] });
+    await t.overview();
+    await t.triage("m1", { needsReply: true, priority: "normal" });
+    await t.triage("m2", {});
+    const done = await t.overview();
+    expect(done.sorting).toBeUndefined();
     expect(done.needsReply).toHaveLength(1);
   });
 });
