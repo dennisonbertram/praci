@@ -14,7 +14,7 @@ vi.mock("../lib/rpc", () => ({
   rpc: { models: { credentials: async () => [], list: async () => [] } },
 }));
 
-import { emptyRoutineDraft, RoutineEditor } from "./RoutineEditor";
+import { emptyRoutineDraft, RoutineEditor, RoutineListHeader } from "./RoutineEditor";
 
 async function buttons(editing: Routine | null) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -143,6 +143,17 @@ it("keeps Save off for a saved routine until a field changes, and shows its next
   await render({ ...draft, name: "Monday cash check" });
   expect(save()?.disabled).toBe(false);
   expect(el.textContent).not.toContain("Next run");
+  await act(async () => root.unmount());
+  el.remove();
+  vi.unstubAllGlobals();
+});
+
+it("labels the routine list's create button in words, visible without hovering", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const el = document.body.appendChild(document.createElement("div"));
+  const root = createRoot(el);
+  await act(async () => root.render(<RoutineListHeader onCreate={() => undefined} />));
+  expect(el.querySelector("button")?.textContent).toBe("Create a routine");
   await act(async () => root.unmount());
   el.remove();
   vi.unstubAllGlobals();

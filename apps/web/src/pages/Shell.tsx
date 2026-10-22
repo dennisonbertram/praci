@@ -3797,10 +3797,11 @@ export function ShellPage() {
   }
 
   const embeddedScreenUrl = embeddableScreenUrl(screenUrl);
-  // A computer that is on but has no screen would show a heading over an empty box.
+  // A computer that is on without a screen, or has never run, would show a heading over an
+  // empty box; the panel is then just the bot's routines.
   const noComputerScreen =
-    computer?.state === "running" &&
-    computer.kind !== "desktop" &&
+    (computer?.state === "running" || computer?.state === "stopped" || !computer) &&
+    computer?.kind !== "desktop" &&
     !embeddedScreenUrl &&
     !computerError &&
     !computerOpen &&
@@ -5228,7 +5229,7 @@ export function ShellPage() {
                                             position: { x: rect.left, y: rect.bottom },
                                           });
                                         }}
-                                        className={`absolute end-2 top-1.5 size-7 rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring group-hover/row:opacity-100 pointer-coarse:hidden ${
+                                        className={`absolute end-2 top-1.5 size-7 rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring group-hover/row:opacity-100 pointer-coarse:top-0 pointer-coarse:size-11 pointer-coarse:opacity-100 ${
                                           botMenu?.id === item.chat.id ? "opacity-100" : ""
                                         }`}
                                       >
@@ -5904,7 +5905,7 @@ export function ShellPage() {
         ) : panel && (active || activeGroup) ? (
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
             {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
-              <div className="mb-4 flex items-center justify-between">
+              <div className="sticky top-0 z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between bg-background px-5 pt-[17px] pb-2">
                 <span className="text-[13.5px] text-muted-foreground">
                   {panel === "settings" ? (
                     active ? (
