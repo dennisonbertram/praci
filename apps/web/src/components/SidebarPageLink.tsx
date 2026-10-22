@@ -75,7 +75,9 @@ export function SidebarPageLink({
         onOpen();
       }}
       className={`mb-0.5 flex items-center ${split ? "w-full" : ""} rounded-xl text-start hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
-        rail ? "justify-center px-0 py-1.5" : "gap-3 px-2.5 py-1 pointer-coarse:py-1.5"
+        rail
+          ? "justify-center px-0 py-1.5"
+          : "gap-3 px-2.5 py-1 pointer-coarse:min-h-11 pointer-coarse:py-1.5"
       } ${current ? "bg-sidebar-accent" : ""}`}
     >
       <span className="relative grid h-6 w-6 pointer-coarse:h-7 pointer-coarse:w-7 place-items-center rounded-lg bg-accent text-foreground/80">
@@ -105,7 +107,7 @@ export function SidebarPageLink({
             type="button"
             aria-label={badgeLabel}
             onClick={onBadgeClick}
-            className="absolute end-1 top-1/2 grid -translate-y-1/2 place-items-center rounded-md px-1.5 py-1 hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11 pointer-coarse:min-w-11"
+            className="absolute end-1 top-1/2 grid min-h-6 min-w-6 -translate-y-1/2 place-items-center rounded-md px-1.5 py-1 hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring pointer-coarse:min-h-11 pointer-coarse:min-w-11"
           >
             {badge}
           </button>

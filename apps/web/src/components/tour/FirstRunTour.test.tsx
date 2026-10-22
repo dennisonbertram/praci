@@ -36,6 +36,7 @@ beforeEach(() => {
   })) as unknown as typeof window.matchMedia;
   update.mockReset().mockResolvedValue({ tourSeen: true });
   document.body.innerHTML = "";
+  sessionStorage.clear();
   for (const id of anchors) {
     const el = document.createElement("button");
     el.dataset.tour = id;
@@ -96,7 +97,25 @@ it("keeps Back and the primary button in the same slots on every stop", async ()
   expect(button("Back").className).toBe(middle[0]);
   expect(button("Done").className).toContain("min-w-16");
   expect(button("Next")).toBeUndefined();
-  expect(button("Skip tour")?.className ?? "invisible").toContain("invisible");
+  // Hidden (not just invisible), so the 9/9 counter sits at the card edge.
+  expect(button("Skip tour")).toBeUndefined();
+});
+
+it("restores the same step after a reload and forgets it when the tour ends", async () => {
+  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
+  await click("Next");
+  expect(document.body.textContent).toContain("2/3");
+  await act(async () =>
+    root.render(<FirstRunTour open={false} onClose={vi.fn()} onAsk={vi.fn()} />),
+  );
+  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
+  expect(document.body.textContent).toContain("2/3");
+  await click("Skip tour");
+  await act(async () =>
+    root.render(<FirstRunTour open={false} onClose={vi.fn()} onAsk={vi.fn()} />),
+  );
+  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
+  expect(document.body.textContent).toContain("1/3");
 });
 
 it("records Skip tour", async () => {
@@ -244,8 +263,7 @@ it("is a complete tour, top to bottom, ending on the composer", async () => {
     if (i < order.length - 1) await click("Next");
   }
   expect(document.body.textContent).toContain("9/9");
-  expect(seen[0]).toMatch(/^Search: Type here/);
-  expect(seen[0]).toContain("find any page, chat");
+  expect(seen[0]).toBe("Search finds any page, chat or email.");
   expect(seen[6]).toContain("Ask Chief");
   expect(seen[1]).toContain("create a bot");
   // New users already ask before email and purchases, so the tour sends nobody to Settings.

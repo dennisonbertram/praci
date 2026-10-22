@@ -8,7 +8,7 @@ export type TourStep = {
   /** CSS selector of the element the step points at. A step whose element is missing is skipped. */
   anchor: string;
   text: string;
-  /** The item the step explains. The card stays in one spot, so its first word names the target. */
+  /** The item the step explains. The card stays in one spot, so its first word names the target. Empty when the text names it. */
   name: string;
 };
 
@@ -26,13 +26,35 @@ function useWide() {
   return wide;
 }
 
+const STEP_KEY = "tour-step";
+// A reload during the tour comes back to the same step. Storage can be blocked, so it is optional.
+const savedStep = () => {
+  try {
+    return sessionStorage.getItem(STEP_KEY);
+  } catch {
+    return null;
+  }
+};
+const saveStep = (id: string | null) => {
+  try {
+    if (id) sessionStorage.setItem(STEP_KEY, id);
+    else sessionStorage.removeItem(STEP_KEY);
+  } catch {}
+};
+
 /** Portaled to the body: the sidebar is transformed, which would otherwise move fixed children. */
-function Ring({ rect }: { rect: DOMRect }) {
-  // Kept inside the window, so a target at the edge does not lose its ring there.
-  const left = Math.max(2, rect.left - 3);
-  const top = Math.max(2, rect.top - 3);
-  const right = Math.min(window.innerWidth - 2, rect.right + 3);
-  const bottom = Math.min(window.innerHeight - 2, rect.bottom + 3);
+function Ring({ rect, bounds }: { rect: DOMRect; bounds: DOMRect | null }) {
+  // The 2px ring is drawn outside its box, so keep that box 4px inside the window (and the sidebar
+  // column when the target is in it); a target at an edge then keeps the whole ring visible.
+  const edge = 4;
+  const left = Math.max(edge, (bounds?.left ?? 0) + edge, rect.left - 3);
+  const top = Math.max(edge, rect.top - 3);
+  const right = Math.min(
+    window.innerWidth - edge,
+    (bounds?.right ?? Infinity) - edge,
+    rect.right + 3,
+  );
+  const bottom = Math.min(window.innerHeight - edge, rect.bottom + 3);
   return createPortal(
     <div
       aria-hidden="true"
@@ -86,12 +108,28 @@ export function TourPopover({
     () => setPresent(steps.filter((step) => document.querySelector(step.anchor))),
     [steps],
   );
-  const [index, setIndex] = useState(0);
+  const [index, setIndexState] = useState(0);
+  const restored = useRef(false);
+  const setIndex = (next: number) => {
+    setIndexState(next);
+    saveStep(present?.[next]?.id ?? null);
+  };
+  useLayoutEffect(() => {
+    if (!present || restored.current) return;
+    restored.current = true;
+    const at = present.findIndex((item) => item.id === savedStep());
+    if (at > 0) setIndexState(at);
+  }, [present]);
   const step = present?.[index];
   const element = step ? document.querySelector(step.anchor) : null;
   // Bumped when the phone drawer is padded for the card, so the ring is measured again on its row.
   const [layoutKey, setLayoutKey] = useState(0);
   const rect = useRect(element, layoutKey);
+  // Ending the tour clears the saved step; the next run starts at the first stop.
+  const finish: typeof onFinish = (result, byEscape) => {
+    if (result !== "empty") saveStep(null);
+    onFinish(result, byEscape);
+  };
   // Sidebar targets get a card, not a popover: on desktop it stays inside the sidebar column so it
   // never covers the page title, chat or composer; on a phone it spans the screen.
   const sidebar = element?.closest("aside") ?? null;
@@ -109,6 +147,7 @@ export function TourPopover({
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.stopPropagation();
+      saveStep(null);
       onFinish("skip", true);
     };
     // On window, so it runs before any drawer listener on the document.
@@ -137,8 +176,12 @@ export function TourPopover({
   const body = (
     <>
       <p className="min-h-10 text-sm" aria-live="polite">
-        <span className="font-medium">{step.name}</span>
-        {": "}
+        {step.name ? (
+          <>
+            <span className="font-medium">{step.name}</span>
+            {": "}
+          </>
+        ) : null}
         {step.text}
       </p>
       {last && lastAction ? (
@@ -147,23 +190,20 @@ export function TourPopover({
           size="sm"
           className="self-start"
           onClick={() => {
-            onFinish("done");
+            finish("done");
             lastAction.run();
           }}
         >
           {lastAction.label}
         </Button>
       ) : null}
-      {/* Same slots at every stop; Skip tour only hides on the last one. */}
+      {/* Skip tour is absent on the last stop, so the counter then starts at the card edge. */}
       <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          className={`-ms-2 ${last ? "invisible" : ""}`}
-          onClick={() => onFinish("skip")}
-        >
-          <Trans>Skip tour</Trans>
-        </Button>
+        {last ? null : (
+          <Button variant="ghost" size="sm" className={`-ms-2`} onClick={() => finish("skip")}>
+            <Trans>Skip tour</Trans>
+          </Button>
+        )}
         <span className="text-xs text-muted-foreground tabular-nums">
           {index + 1}/{present?.length}
         </span>
@@ -177,7 +217,7 @@ export function TourPopover({
           size="sm"
           className="min-w-16"
           autoFocus
-          onClick={() => (last ? onFinish("done") : setIndex(index + 1))}
+          onClick={() => (last ? finish("done") : setIndex(index + 1))}
         >
           {last ? <Trans>Done</Trans> : <Trans>Next</Trans>}
         </Button>
@@ -201,7 +241,7 @@ export function TourPopover({
       : undefined;
     return (
       <>
-        {ring ? <Ring rect={rect} /> : null}
+        {ring ? <Ring rect={rect} bounds={sidebar?.getBoundingClientRect() ?? null} /> : null}
         {createPortal(
           <div
             role="dialog"
@@ -220,12 +260,12 @@ export function TourPopover({
   }
   return (
     <>
-      {ring ? <Ring rect={rect} /> : null}
+      {ring ? <Ring rect={rect} bounds={null} /> : null}
       <Popover
         open
         modal={false}
         onOpenChange={(open, details) => {
-          if (!open && details.reason === "escape-key") onFinish("skip");
+          if (!open && details.reason === "escape-key") finish("skip");
         }}
       >
         <PopoverContent
