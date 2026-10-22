@@ -3,8 +3,8 @@
 
 Rendered React components and native SwiftUI views, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 260 of 260
-- Web and shared components: 688
+- Web and shared component files with stories: 265 of 265
+- Web and shared components: 699
 - Mobile components: 138 in 95 files, mobile — native story pending
 - SwiftUI views: 3 in 2 files, native story pending
 
@@ -81,7 +81,9 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | ComputersUnavailableHint, UnavailableCopy | [apps/web/src/components/ComputersUnavailableHint.tsx](../../apps/web/src/components/ComputersUnavailableHint.tsx) | [ComputersUnavailableHint.stories.tsx](../../apps/web/src/components/ComputersUnavailableHint.stories.tsx) | web |
 | ComputerUpdateProgress | [apps/web/src/components/ComputerUpdateProgress.tsx](../../apps/web/src/components/ComputerUpdateProgress.tsx) | [ComputerUpdateProgress.stories.tsx](../../apps/web/src/components/ComputerUpdateProgress.stories.tsx) | web |
 | ConnectAppsButton | [apps/web/src/components/ConnectAppsButton.tsx](../../apps/web/src/components/ConnectAppsButton.tsx) | [ConnectAppsButton.stories.tsx](../../apps/web/src/components/ConnectAppsButton.stories.tsx) | web |
+| ContactDeleteConfirm | [apps/web/src/components/ContactDeleteConfirm.tsx](../../apps/web/src/components/ContactDeleteConfirm.tsx) | [ContactDeleteConfirm.stories.tsx](../../apps/web/src/components/ContactDeleteConfirm.stories.tsx) | web |
 | ContactDialog | [apps/web/src/components/ContactDialog.tsx](../../apps/web/src/components/ContactDialog.tsx) | [ContactDialog.stories.tsx](../../apps/web/src/components/ContactDialog.stories.tsx) | web |
+| LinkRow, CopyLinkDialog | [apps/web/src/components/CopyLinkDialog.tsx](../../apps/web/src/components/CopyLinkDialog.tsx) | [CopyLinkDialog.stories.tsx](../../apps/web/src/components/CopyLinkDialog.stories.tsx) | web |
 | DataExportSection | [apps/web/src/components/DataExport.tsx](../../apps/web/src/components/DataExport.tsx) | [DataExport.stories.tsx](../../apps/web/src/components/DataExport.stories.tsx) | web |
 | DesktopUpdatesProvider, DesktopUpdateSection | [apps/web/src/components/DesktopUpdates.tsx](../../apps/web/src/components/DesktopUpdates.tsx) | [DesktopUpdates.stories.tsx](../../apps/web/src/components/DesktopUpdates.stories.tsx) | web |
 | EmailCards | [apps/web/src/components/EmailCards.tsx](../../apps/web/src/components/EmailCards.tsx) | [EmailCards.stories.tsx](../../apps/web/src/components/EmailCards.stories.tsx) | web |
@@ -174,7 +176,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | ImportActivity | [apps/web/src/components/data-room/ImportActivity.tsx](../../apps/web/src/components/data-room/ImportActivity.tsx) | [ImportActivity.stories.tsx](../../apps/web/src/components/data-room/ImportActivity.stories.tsx) | web |
 | DrivePicker | [apps/web/src/components/data-room/ImportFromDrive.tsx](../../apps/web/src/components/data-room/ImportFromDrive.tsx) | [ImportFromDrive.stories.tsx](../../apps/web/src/components/data-room/ImportFromDrive.stories.tsx) | web |
 | MessageRow, EmailPicker, ImportSources | [apps/web/src/components/data-room/ImportFromEmail.tsx](../../apps/web/src/components/data-room/ImportFromEmail.tsx) | [ImportFromEmail.stories.tsx](../../apps/web/src/components/data-room/ImportFromEmail.stories.tsx) | web |
-| NameInput, FolderOptions, NewFolderDialog, ItemDialog, DeleteDialog | [apps/web/src/components/data-room/ItemDialogs.tsx](../../apps/web/src/components/data-room/ItemDialogs.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx) | web |
+| NameInput, FolderOptions, NewFolderDialog, ItemDialog, ShareDialog, DeleteDialog | [apps/web/src/components/data-room/ItemDialogs.tsx](../../apps/web/src/components/data-room/ItemDialogs.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx) | web |
 | ItemMenuItems, ItemMenu | [apps/web/src/components/data-room/ItemMenu.tsx](../../apps/web/src/components/data-room/ItemMenu.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx), [ItemMenu.stories.tsx](../../apps/web/src/components/data-room/ItemMenu.stories.tsx) | web |
 | FileContext, Marker, Columns, ListHead, RetryButton, ItemRow, SubfolderList, ListView, ThumbnailImage, TextPreview, TilePreview, GridView, NotTagged, TypeAndDate, Snippet | [apps/web/src/components/data-room/ItemRows.tsx](../../apps/web/src/components/data-room/ItemRows.tsx) | [ItemRows.stories.tsx](../../apps/web/src/components/data-room/ItemRows.stories.tsx) | web |
 | PathBar | [apps/web/src/components/data-room/PathBar.tsx](../../apps/web/src/components/data-room/PathBar.tsx) | [PathBar.stories.tsx](../../apps/web/src/components/data-room/PathBar.stories.tsx) | web |
@@ -338,6 +340,9 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | OnboardingPage | [apps/web/src/pages/Onboarding.tsx](../../apps/web/src/pages/Onboarding.tsx) | [Onboarding.stories.tsx](../../apps/web/src/pages/Onboarding.stories.tsx) | web |
 | PaywallPage | [apps/web/src/pages/Paywall.tsx](../../apps/web/src/pages/Paywall.tsx) | [Paywall.stories.tsx](../../apps/web/src/pages/Paywall.stories.tsx) | web |
 | PeerMessagesOverlay | [apps/web/src/pages/PeerMessagesOverlay.tsx](../../apps/web/src/pages/PeerMessagesOverlay.tsx) | [PeerMessagesOverlay.stories.tsx](../../apps/web/src/pages/PeerMessagesOverlay.stories.tsx) | web |
+| PortalDead | [apps/web/src/pages/portal/PortalDead.tsx](../../apps/web/src/pages/portal/PortalDead.tsx) | [PortalDead.stories.tsx](../../apps/web/src/pages/portal/PortalDead.stories.tsx) | web |
+| UpdateBody, EarlierUpdate, DocumentRow, PortalHome | [apps/web/src/pages/portal/PortalHome.tsx](../../apps/web/src/pages/portal/PortalHome.tsx) | [PortalHome.stories.tsx](../../apps/web/src/pages/portal/PortalHome.stories.tsx) | web |
+| PortalOpen | [apps/web/src/pages/portal/PortalOpen.tsx](../../apps/web/src/pages/portal/PortalOpen.tsx) | [PortalOpen.stories.tsx](../../apps/web/src/pages/portal/PortalOpen.stories.tsx) | web |
 | ResizableSidePanel | [apps/web/src/pages/ResizableSidePanel.tsx](../../apps/web/src/pages/ResizableSidePanel.tsx) | [ResizableSidePanel.stories.tsx](../../apps/web/src/pages/ResizableSidePanel.stories.tsx) | web |
 | RoutineListHeader, RoutineListRow, RoutineEditor, MessageTriggerCard, InboundTriggerCard | [apps/web/src/pages/RoutineEditor.tsx](../../apps/web/src/pages/RoutineEditor.tsx) | [RoutineEditor.stories.tsx](../../apps/web/src/pages/RoutineEditor.stories.tsx) | web |
 | RoutineRunHistory | [apps/web/src/pages/RoutineRunHistory.tsx](../../apps/web/src/pages/RoutineRunHistory.tsx) | [RoutineRunHistory.stories.tsx](../../apps/web/src/pages/RoutineRunHistory.stories.tsx) | web |
@@ -371,7 +376,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
-| App, SessionApp, LegacySetupRedirect, CapTableRedirect, SignInRedirect, SessionUnavailable, AppFailed, GateFallback | [apps/web/src/App.tsx](../../apps/web/src/App.tsx) | [App.stories.tsx](../../apps/web/src/App.stories.tsx) | web |
+| PortalApp, App, SessionApp, LegacySetupRedirect, CapTableRedirect, SignInRedirect, SessionUnavailable, AppFailed, GateFallback | [apps/web/src/App.tsx](../../apps/web/src/App.tsx) | [App.stories.tsx](../../apps/web/src/App.stories.tsx) | web |
 
 ## Mobile app (screens)
 

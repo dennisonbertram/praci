@@ -18,6 +18,7 @@ import {
   Route,
   Routes,
   useLocation,
+  useNavigate,
   useParams,
   useSearchParams,
 } from "react-router-dom";
@@ -45,6 +46,9 @@ import { ConnectedCallbackPage } from "./pages/ConnectedCallback";
 import { GoogleOAuthCallbackPage } from "./pages/GoogleOAuthCallback";
 import { LocalSettingsPage } from "./pages/LocalSettings";
 import { McpOAuthCallbackPage } from "./pages/McpOAuthCallback";
+import { PortalDead } from "./pages/portal/PortalDead";
+import { PortalHome } from "./pages/portal/PortalHome";
+import { PortalOpen } from "./pages/portal/PortalOpen";
 import { ShellPage } from "./pages/Shell";
 
 const AuthPage = lazy(() =>
@@ -62,6 +66,22 @@ const WelcomePage = lazy(() =>
 const NotFoundPage = lazy(() =>
   import("./pages/NotFound").then((module) => ({ default: module.NotFoundPage })),
 );
+
+/** The investor portal: no Shell and no app session. An investor holds a link, never an account. */
+function PortalApp() {
+  const navigate = useNavigate();
+  return (
+    <Routes>
+      <Route path="/portal/open" element={<PortalOpen />} />
+      <Route
+        path="/portal/home"
+        element={<PortalHome onSignedOut={() => navigate("/portal", { replace: true })} />}
+      />
+      <Route path="/portal" element={<PortalDead quiet />} />
+      <Route path="*" element={<PortalDead />} />
+    </Routes>
+  );
+}
 
 function SsoCallbackPage() {
   useEffect(() => {
@@ -89,6 +109,8 @@ export function App() {
           <ErrorBoundary fallback={<AppFailed />}>
             {window.location.pathname === SSO_CALLBACK_PATH ? (
               <SsoCallbackPage />
+            ) : window.location.pathname.startsWith("/portal") ? (
+              <PortalApp />
             ) : window.location.pathname === LOCAL_SETTINGS_PAGE ? (
               <LocalSettingsPage />
             ) : (

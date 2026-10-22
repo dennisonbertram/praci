@@ -66,8 +66,33 @@ export const Draft: Story = { beforeEach: setup(update()) };
 /** An empty body offers Draft with agent. */
 export const EmptyBody: Story = { beforeEach: setup(update({ body: "" })) };
 
-/** Without Gmail the To list is hidden and the one button connects Gmail. */
+/** Without Gmail the To list is hidden; Post to portal puts the update on the portal and Connect Gmail is the other action. */
 export const NoGmail: Story = { beforeEach: setup(update(), []) };
+
+/** A board update never reaches the portal, so without Gmail its one button connects Gmail. */
+export const BoardNoGmail: Story = {
+  beforeEach: setup(update({ audience: "board", recipientContactIds: [] }), []),
+};
+
+/** A posted update is read-only and its footer is gone. */
+export const Posted: Story = {
+  beforeEach: setup(update({ status: "posted", sentAt: "2026-10-02T09:00:00.000Z" }), []),
+};
+
+/** Ada was revoked: greyed, unticked and never emailed. Bo has portal access and is unticked, so one line says so. */
+export const RevokedAndUnticked: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "investors.updates.get": update({ recipientContactIds: ["c1"] }),
+      "investors.updates.accounts": accounts,
+      "contacts.list": [
+        { ...contacts[0], portalBlockedAt: "2026-10-10T00:00:00.000Z" },
+        { ...contacts[1], portalLinkSentAt: "2026-09-01T00:00:00.000Z" },
+        contacts[2],
+      ],
+      "investors.updates.save": update(),
+    }),
+};
 
 export const Sending: Story = {
   beforeEach: setup(

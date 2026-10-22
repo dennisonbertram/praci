@@ -14,7 +14,7 @@ export function runPhaseLine(phase: RunPhase): string | null {
     case "model_wait":
       return t`Waiting for the model`;
     case "retrying":
-      return name ? t`Retrying: ${name}` : t`Retrying`;
+      return t`Retrying`; // the stored name is an internal cause, not copy for people
     default:
       return null;
   }

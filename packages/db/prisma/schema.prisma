@@ -22,11 +22,15 @@ model AiDataConsent {
 }
 
 model User {
+  scratchpadApprovals         ScratchpadApproval[]
   aiDataConsents              AiDataConsent[]
   mailSearches                MailSearch[]
   contacts                    Contact[]
   capTableSnapshots           CapTableSnapshot[]
   investorUpdates             InvestorUpdate[]
+  investorShares              InvestorShare[]
+  investorPortalTokens        InvestorPortalToken[]
+  portalSessions              PortalSession[]
   fundraiseRounds             FundraiseRound[]
   sidebarPages                SidebarPage[]
   notifications               Notification[]
@@ -220,6 +224,7 @@ model Member {
 }
 
 model Space {
+  scratchpadApprovals         ScratchpadApproval[]
   notifications               Notification[]
   notificationEndpoints       NotificationEndpoint[]
   aiDataConsents              AiDataConsent[]
@@ -271,6 +276,9 @@ model Space {
   contacts                    Contact[]
   capTableSnapshots           CapTableSnapshot[]
   investorUpdates             InvestorUpdate[]
+  investorShares              InvestorShare[]
+  investorPortalTokens        InvestorPortalToken[]
+  portalSessions              PortalSession[]
   fundraiseRounds             FundraiseRound[]
   sidebarPages                SidebarPage[]
   agentHomes                  AgentHome[]
@@ -460,6 +468,7 @@ model SpaceVoicePreference {
 }
 
 model Bot {
+  scratchpadApprovals    ScratchpadApproval[]
   screenGeneration       Int                   @default(0)
   mailSearches           MailSearch[]
   id                     String                @id @default(cuid())
@@ -892,28 +901,47 @@ model Routine {
 }
 
 model ScratchpadItem {
-  id          String    @id @default(cuid())
-  spaceId     String
-  space       Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  botId       String
-  bot         Bot       @relation(fields: [botId], references: [id], onDelete: Cascade)
-  userId      String
-  title       String
-  status      String    @default("open")
-  notes       String    @default("")
-  category    String?
-  channel     String?
-  target      String?
+  id           String    @id @default(cuid())
+  spaceId      String
+  space        Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  botId        String
+  bot          Bot       @relation(fields: [botId], references: [id], onDelete: Cascade)
+  userId       String
+  title        String
+  status       String    @default("open")
+  notes        String    @default("")
+  category     String?
+  channel      String?
+  target       String?
   scheduledFor DateTime?
-  proof       String?
-  approvedAt  DateTime?
-  approvedBy  String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  proof        String?
+  approvedAt   DateTime?
+  approvedBy   String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([spaceId, botId, status])
   @@index([spaceId, botId, updatedAt])
   @@map("scratchpad_items")
+}
+
+model ScratchpadApproval {
+  id         String   @id @default(cuid())
+  spaceId    String
+  space      Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  botId      String
+  bot        Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
+  // Deliberately not a foreign key: discarding or expiring an item must not reset quota.
+  itemId     String
+  category   String
+  channel    String
+  approvedBy String
+  approvedAt DateTime @default(now())
+
+  @@index([spaceId, userId, botId, category, channel, approvedBy, approvedAt], map: "scratchpad_approvals_scope_window_idx")
+  @@map("scratchpad_approvals")
 }
 
 model TaughtSkill {
@@ -2450,30 +2478,37 @@ model FinanceExchangeSnapshot {
 }
 
 model Contact {
-  id             String          @id @default(cuid())
-  spaceId        String
-  space          Space           @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  userId         String
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name           String
-  email          String?
+  id               String                @id @default(cuid())
+  spaceId          String
+  space            Space                 @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  email            String?
   /// For example the investor's fund.
-  organization   String?
+  organization     String?
   /// A ContactKind: "investor", "auditor", "customer", "vendor", "partner", "advisor", "legal", "prospect" or "other"
-  kind           String          @default("investor")
-  notes          String?
+  kind             String                @default("investor")
+  notes            String?
   /// Prospect pipeline stage: target, intro, meeting, diligence, committed or passed; null for other contacts.
-  stage          String?
-  checkSizeCents BigInt?
-  nextStep       String?
+  stage            String?
+  checkSizeCents   BigInt?
+  nextStep         String?
   /// The round open when the prospect's stage was last saved as committed; null otherwise.
-  roundId        String?
-  round          FundraiseRound? @relation(fields: [roundId], references: [id], onDelete: SetNull)
+  roundId          String?
+  round            FundraiseRound?       @relation(fields: [roundId], references: [id], onDelete: SetNull)
+  /// Investor portal: when a link was last issued, when it was last opened, and when access was revoked.
+  portalLinkSentAt DateTime?
+  portalLastSeenAt DateTime?
+  portalBlockedAt  DateTime?
+  shares           InvestorShare[]
+  portalTokens     InvestorPortalToken[]
+  portalSessions   PortalSession[]
   /// The agent that added the contact, set by the server; null for a contact added by hand or after the agent was deleted.
-  botId          String?
-  bot            Bot?            @relation(fields: [botId], references: [id], onDelete: SetNull)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  botId            String?
+  bot              Bot?                  @relation(fields: [botId], references: [id], onDelete: SetNull)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 
   @@unique([spaceId, userId, email])
   @@index([spaceId, userId])
@@ -2482,30 +2517,83 @@ model Contact {
   @@map("contacts")
 }
 
+/// A Data room document one investor contact may download from the portal.
+model InvestorShare {
+  id             String       @id @default(cuid())
+  spaceId        String
+  space          Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contactId      String
+  contact        Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  dataRoomItemId String
+  dataRoomItem   DataRoomItem @relation(fields: [dataRoomItemId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@unique([contactId, dataRoomItemId])
+  @@index([spaceId, userId])
+  @@index([dataRoomItemId])
+  @@map("investor_shares")
+}
+
+/// A portal link. Only the sha256 of the token is stored; the token is in the link fragment.
+model InvestorPortalToken {
+  id        String   @id @default(cuid())
+  spaceId   String
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([contactId])
+  @@map("investor_portal_tokens")
+}
+
+/// An open portal session. The cookie holds a random value; only its sha256 is stored.
+model PortalSession {
+  id        String   @id @default(cuid())
+  spaceId   String
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([contactId])
+  @@map("portal_sessions")
+}
+
 /// An update to investors or the board. Draft, then sending, then sent. A sent update is read-only.
 model InvestorUpdate {
-  id                   String   @id @default(cuid())
-  spaceId              String
-  space                Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  userId               String
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                  String    @id @default(cuid())
+  spaceId             String
+  space               Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// "investors" | "board"
-  audience             String
-  subject              String
+  audience            String
+  subject             String
   /// YYYY-MM or YYYY-Qn
-  period               String
+  period              String
   /// Markdown.
-  body                 String   @default("")
+  body                String    @default("")
   /// "draft" | "sending" | "sent" | "posted". Partly sent is derived from the deliveries.
-  status               String   @default("draft")
-  recipientContactIds  String[]
-  fromConnectionId     String?
+  status              String    @default("draft")
+  recipientContactIds String[]
+  fromConnectionId    String?
   /// { [contactId]: [{ n, at, delivered? }] }. The outcome of attempt n is the ComposeSend row whose clientId is `<id>:<contactId>:<n>`.
-  deliveries           Json     @default("{}")
-  sentAt               DateTime?
-  createdAt            DateTime @default(now())
+  deliveries          Json      @default("{}")
+  sentAt              DateTime?
+  createdAt           DateTime  @default(now())
   /// Moves on every recorded delivery, so a sending update with no movement for 10 minutes reads Partly sent.
-  updatedAt            DateTime @updatedAt
+  updatedAt           DateTime  @updatedAt
 
   @@index([spaceId, userId, createdAt])
   @@map("investor_updates")
@@ -2643,6 +2731,7 @@ model DataRoomItem {
   text               DataRoomItemText?
   legalContracts     LegalContract[]
   legalEdges         LegalEdge[]
+  investorShares     InvestorShare[]
 
   @@index([spaceId, folderId])
   @@index([importId])

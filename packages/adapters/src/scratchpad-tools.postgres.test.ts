@@ -1,10 +1,12 @@
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   addScratchpadItemFromTool,
   consumeApprovedPost,
   removeScratchpadItemFromTool,
+  removeScratchpadItemFromUser,
+  updateScratchpadItemFromTool,
   updateScratchpadItemFromUser,
 } from "./scratchpad-tools.js";
 
@@ -241,5 +243,284 @@ describePostgres("scratchpad store (PostgreSQL)", () => {
       where: { spaceId, userId, botId, category: "goal", status: { not: "done" } },
     });
     expect(goals).toHaveLength(1);
+  });
+
+  describe("durable directory approval policy", () => {
+    const now = new Date("2026-10-22T12:00:00.000Z");
+    const scope = { spaceId, userId, botId };
+    const deps = () => ({ prisma, now: () => now });
+    const directory = () =>
+      prisma.scratchpadItem.create({
+        data: {
+          ...scope,
+          title: "Synthetic directory",
+          category: "create_account",
+          channel: "directory",
+          status: "parked",
+        },
+      });
+    const approve = (item: { id: string; updatedAt: Date }) =>
+      updateScratchpadItemFromUser(deps(), {
+        ...scope,
+        itemId: item.id,
+        status: "open",
+        updatedAt: item.updatedAt.toISOString(),
+      });
+    const open = (itemId: string) =>
+      updateScratchpadItemFromTool(deps(), { ...scope, itemId, status: "open" });
+    const park = (itemId: string) =>
+      updateScratchpadItemFromTool(deps(), { ...scope, itemId, status: "parked" });
+    const history = (approvedBy: string) =>
+      prisma.scratchpadApproval.count({ where: { ...scope, approvedBy } });
+    const founderThreshold = async () => {
+      for (let i = 0; i < 3; i++) expect(await approve(await directory())).toHaveProperty("item");
+    };
+    beforeEach(async () => {
+      await prisma.scratchpadApproval.deleteMany({ where: scope });
+      await prisma.scratchpadItem.deleteMany({ where: { ...scope, category: "create_account" } });
+    });
+
+    it("uses database time for grants and quota despite skewed process clocks without an injected now", async () => {
+      const [before] = await prisma.$queryRaw<
+        Array<{ now: Date }>
+      >`SELECT clock_timestamp() AS now`;
+      vi.useFakeTimers({ toFake: ["Date"] });
+      try {
+        vi.setSystemTime(new Date("2000-01-01T00:00:00.000Z"));
+        for (let i = 0; i < 3; i++) {
+          const item = await directory();
+          expect(
+            await updateScratchpadItemFromUser(
+              { prisma },
+              {
+                ...scope,
+                itemId: item.id,
+                status: "open",
+                updatedAt: item.updatedAt.toISOString(),
+              },
+            ),
+          ).toHaveProperty("item");
+        }
+        // A second host's slower clock must still include the preceding host's grants.
+        vi.setSystemTime(new Date("1999-12-31T23:59:00.000Z"));
+        for (let i = 0; i < 5; i++) {
+          const item = await directory();
+          expect(
+            await updateScratchpadItemFromTool(
+              { prisma },
+              {
+                ...scope,
+                itemId: item.id,
+                status: "open",
+              },
+            ),
+          ).toHaveProperty("item");
+        }
+        vi.setSystemTime(new Date("1999-12-31T23:58:00.000Z"));
+        const capped = await directory();
+        expect(
+          await updateScratchpadItemFromTool(
+            { prisma },
+            {
+              ...scope,
+              itemId: capped.id,
+              status: "open",
+            },
+          ),
+        ).toMatchObject({ error: expect.stringContaining("five openings") });
+        const [after] = await prisma.$queryRaw<
+          Array<{ now: Date }>
+        >`SELECT clock_timestamp() AS now`;
+        const events = await prisma.scratchpadApproval.findMany({ where: scope });
+        expect(events).toHaveLength(8);
+        for (const event of events) {
+          expect(event.approvedAt.getTime()).toBeGreaterThanOrEqual(before!.now.getTime());
+          expect(event.approvedAt.getTime()).toBeLessThanOrEqual(after!.now.getTime());
+          const item = await prisma.scratchpadItem.findUniqueOrThrow({
+            where: { id: event.itemId },
+          });
+          expect(item.approvedAt).toEqual(event.approvedAt);
+        }
+        expect(await history("policy")).toBe(5);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("requires distinct founder items and retains history across edits, reparking, discard and expiry", async () => {
+      const first = await directory();
+      for (let i = 0; i < 3; i++) {
+        expect(
+          await approve(await prisma.scratchpadItem.findUniqueOrThrow({ where: { id: first.id } })),
+        ).toHaveProperty("item");
+        expect(await park(first.id)).toHaveProperty("item");
+      }
+      const candidate = await directory();
+      expect(await history("user")).toBe(3);
+      expect(await open(candidate.id)).toHaveProperty("error");
+      const second = await directory();
+      const third = await directory();
+      expect(await approve(second)).toHaveProperty("item");
+      expect(await approve(third)).toHaveProperty("item");
+      expect(
+        await updateScratchpadItemFromUser(deps(), {
+          ...scope,
+          itemId: second.id,
+          notes: "Changed after approval",
+        }),
+      ).toMatchObject({ item: { status: "parked", approvedAt: null } });
+      expect(
+        await removeScratchpadItemFromUser(deps(), { ...scope, itemId: first.id }),
+      ).toHaveProperty("ok", true);
+      // Normal scratchpad expiry also deletes the item, not its approval history.
+      await prisma.scratchpadItem.deleteMany({ where: { ...scope, id: third.id } });
+      expect(await open(candidate.id)).toMatchObject({
+        item: { status: "open", approvedBy: "policy" },
+      });
+      expect(await history("user")).toBe(5);
+    });
+
+    it("counts every reopening but not retries, and discard cannot reset the policy cap", async () => {
+      await founderThreshold();
+      const item = await directory();
+      for (let i = 0; i < 5; i++) {
+        expect(await open(item.id)).toHaveProperty("item");
+        expect(await open(item.id)).toHaveProperty("error");
+        expect(await history("policy")).toBe(i + 1);
+        expect(await park(item.id)).toHaveProperty("item");
+      }
+      expect(await open(item.id)).toHaveProperty("error");
+      expect(
+        await removeScratchpadItemFromUser(deps(), { ...scope, itemId: item.id }),
+      ).toHaveProperty("ok", true);
+      expect(await open((await directory()).id)).toHaveProperty("error");
+      expect(await history("policy")).toBe(5);
+      // The policy cap does not constrain explicit founder approvals.
+      expect(await approve(await directory())).toHaveProperty("item");
+      expect(await history("user")).toBe(4);
+    });
+
+    it("two concurrent policy openings at the cap leave exactly one open", async () => {
+      await founderThreshold();
+      for (let i = 0; i < 4; i++) expect(await open((await directory()).id)).toHaveProperty("item");
+      const left = await directory();
+      const right = await directory();
+      const results = await Promise.all([open(left.id), open(right.id)]);
+      expect(results.filter((result) => "item" in result)).toHaveLength(1);
+      expect(
+        await prisma.scratchpadItem.count({
+          where: {
+            ...scope,
+            id: { in: [left.id, right.id] },
+            status: "open",
+            approvedBy: "policy",
+          },
+        }),
+      ).toBe(1);
+      expect(await history("policy")).toBe(5);
+    });
+
+    it("records nothing for stale, invalid, foreign-scope or repeated approvals", async () => {
+      const item = await directory();
+      expect(
+        await updateScratchpadItemFromTool(deps(), {
+          ...scope,
+          itemId: item.id,
+          notes: "New terms",
+        }),
+      ).toHaveProperty("item");
+      expect(await approve(item)).toEqual({ conflict: true });
+      expect(
+        await updateScratchpadItemFromUser(deps(), { ...scope, itemId: item.id, status: "open" }),
+      ).toHaveProperty("error");
+      expect(
+        await updateScratchpadItemFromUser(deps(), {
+          ...scope,
+          userId: "other-user",
+          itemId: item.id,
+          status: "open",
+          updatedAt: item.updatedAt.toISOString(),
+        }),
+      ).toHaveProperty("error");
+      expect(await history("user")).toBe(0);
+      const current = await prisma.scratchpadItem.findUniqueOrThrow({ where: { id: item.id } });
+      const results = await Promise.all([approve(current), approve(current)]);
+      expect(results.filter((result) => "item" in result)).toHaveLength(1);
+      expect(await history("user")).toBe(1);
+      expect(await approve(current)).toEqual({ conflict: true });
+      expect(await history("user")).toBe(1);
+    });
+
+    it("uses only scoped history in (now minus 24 hours, now], never mutable approval columns", async () => {
+      const otherUser = `${userId}-other`;
+      const otherSpace = `${spaceId}-other`;
+      const otherBot = `${botId}-other`;
+      await prisma.user.create({
+        data: { id: otherUser, name: "Other", email: `${otherUser}@example.test` },
+      });
+      await prisma.space.create({ data: { id: otherSpace, organizationId, name: "Other" } });
+      await prisma.bot.create({
+        data: { id: otherBot, spaceId, userId, name: "Other", color: "black" },
+      });
+      try {
+        const ignored = [
+          { userId: otherUser },
+          { spaceId: otherSpace },
+          { botId: otherBot },
+          { channel: "email" },
+          { category: "public_post" },
+          { approvedAt: new Date(now.getTime() - 86_400_000) },
+          { approvedAt: new Date(now.getTime() - 86_400_001) },
+          { approvedAt: new Date(now.getTime() + 1) },
+        ];
+        for (const approvedBy of ["user", "policy"]) {
+          for (const override of ignored) {
+            for (let i = 0; i < 5; i++)
+              await prisma.scratchpadApproval.create({
+                data: {
+                  ...scope,
+                  itemId: `ignored-${i}`,
+                  category: "create_account",
+                  channel: "directory",
+                  approvedAt: now,
+                  approvedBy,
+                  ...override,
+                },
+              });
+          }
+        }
+        const candidate = await directory();
+        // Legacy/current item columns without ledger rows are not policy authority.
+        for (let i = 0; i < 3; i++)
+          await prisma.scratchpadItem.create({
+            data: {
+              ...scope,
+              title: "No history",
+              category: "create_account",
+              channel: "directory",
+              status: "open",
+              approvedBy: "user",
+              approvedAt: now,
+            },
+          });
+        expect(await open(candidate.id)).toHaveProperty("error");
+        for (let i = 0; i < 3; i++)
+          await prisma.scratchpadApproval.create({
+            data: {
+              ...scope,
+              itemId: `valid-${i}`,
+              category: "create_account",
+              channel: "directory",
+              approvedBy: "user",
+              approvedAt: i === 0 ? new Date(now.getTime() - 86_400_000 + 1) : now,
+            },
+          });
+        expect(await open(candidate.id)).toHaveProperty("item");
+      } finally {
+        await prisma.user.delete({ where: { id: otherUser } });
+        await prisma.space.delete({ where: { id: otherSpace } });
+        await prisma.bot.delete({ where: { id: otherBot } });
+      }
+    });
   });
 });

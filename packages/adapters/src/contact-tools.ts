@@ -20,7 +20,7 @@ import { mailToolsAllowed } from "./mail-tools.js";
 /** The user's important contacts, offered to every agent on an owner-started run. */
 export const CONTACT_ONLY_TOOL_NAMES = new Set(["contacts_list", "contacts_add", "contacts_save"]);
 
-/** The Carta agent's Cap Table page tools. */
+/** The Carta agent's Investors page tools. */
 export const CAP_TABLE_TOOL_NAMES = new Set(["cap_table_read", "cap_table_update"]);
 
 export const CONTACT_TOOL_NAMES = new Set([...CONTACT_ONLY_TOOL_NAMES, ...CAP_TABLE_TOOL_NAMES]);
@@ -39,7 +39,7 @@ export function capTableToolsAllowed(
 }
 
 type ContactToolDeps = {
-  prisma: Pick<PrismaClient, "contact" | "capTableSnapshot" | "fundraiseRound">;
+  prisma: Pick<PrismaClient, "$transaction" | "contact" | "capTableSnapshot" | "fundraiseRound">;
   /** From the run (the bot owner), never from model input. */
   scope: { spaceId: string; userId: string };
   /** The agent running the tool, from the run, never from model input. */
@@ -83,7 +83,7 @@ export async function contactToolFromTool(
           };
     }
     if (name === "cap_table_read") {
-      // What the Cap Table page shows, so the agent can answer from it without Carta.
+      // What the Investors page shows, so the agent can answer from it without Carta.
       return { capTable: await getCapTableSnapshot(deps.prisma, deps.scope) };
     }
     if (name === "cap_table_update") {

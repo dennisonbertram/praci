@@ -28,7 +28,12 @@ import {
   CapTableSourceRefSchema,
   CapTableStateSchema,
 } from "./carta.js";
-import { ContactListInputSchema, ContactSaveInputSchema, ContactSchema } from "./contacts.js";
+import {
+  ContactLinkedSchema,
+  ContactListInputSchema,
+  ContactSaveInputSchema,
+  ContactSchema,
+} from "./contacts.js";
 import {
   DataRoomApiBoxListInputSchema,
   DataRoomApiBoxListOutputSchema,
@@ -236,10 +241,16 @@ import {
   IntegrationSetupStateSchema,
 } from "./integration-settings.js";
 import {
+  InvestorPostResultSchema,
   InvestorReminderCadenceSchema,
+  InvestorShareInputSchema,
+  InvestorShareResultSchema,
+  InvestorUnshareInputSchema,
   InvestorUpdateRetryInputSchema,
   InvestorUpdateSaveInputSchema,
   InvestorUpdateSchema,
+  PortalResendInputSchema,
+  PortalResendResultSchema,
 } from "./investors.js";
 import {
   LegalDeadlineSchema,
@@ -1571,7 +1582,17 @@ export const appContract = {
         .output(InvestorUpdateSchema),
       duplicate: oc.input(z.object({ id: Id })).output(InvestorUpdateSchema),
       delete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
+      /** Without Gmail: the draft becomes Posted on the portal and each investor contact with an email gets a notice. */
+      post: oc.input(z.object({ id: Id })).output(InvestorPostResultSchema),
     },
+    /** The investor contacts a Data room document is shared with. */
+    shares: oc.input(z.object({ itemId: Id })).output(z.array(Id)),
+    share: oc.input(InvestorShareInputSchema).output(InvestorShareResultSchema),
+    unshare: oc.input(InvestorUnshareInputSchema).output(z.object({ ok: z.literal(true) })),
+    /** Mints a new link for an investor contact: emailed, or returned when `copy` or no email provider. */
+    portalResend: oc.input(PortalResendInputSchema).output(PortalResendResultSchema),
+    portalRevoke: oc.input(z.object({ contactId: Id })).output(ContactSchema),
+    portalUnblock: oc.input(z.object({ contactId: Id })).output(ContactSchema),
     /** Reads the update reminder; with `cadence` it changes the monthly routine first. */
     reminder: oc
       .input(z.object({ cadence: InvestorReminderCadenceSchema.optional() }))
@@ -1597,6 +1618,8 @@ export const appContract = {
     list: oc.input(ContactListInputSchema).output(z.array(ContactSchema)),
     save: oc.input(ContactSaveInputSchema).output(ContactSchema),
     delete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
+    /** What deleting the contact would remove besides its own fields. */
+    linked: oc.input(z.object({ id: Id })).output(ContactLinkedSchema),
   },
   sidebarPages: {
     list: oc.output(SidebarPagesStateSchema),

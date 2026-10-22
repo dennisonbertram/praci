@@ -1,6 +1,12 @@
 import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { DataRoomApiFolder, DataRoomApiItem, LegalItemLinks } from "@rakazo/contracts";
+import type {
+  Contact,
+  DataRoomApiFolder,
+  DataRoomApiItem,
+  LegalItemLinks,
+  PortalLink,
+} from "@rakazo/contracts";
 import { DataRoomApiName } from "@rakazo/contracts";
 import {
   AlertDialog,
@@ -12,7 +18,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
+  Checkbox,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -21,12 +29,14 @@ import {
   Label,
   NativeSelect,
   NativeSelectOption,
+  Skeleton,
 } from "@rakazo/ui-web";
 import type { FormEvent } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
+import { CopyLinkDialog } from "../CopyLinkDialog";
 import type { FolderNode } from "./folders";
 import { folderContents } from "./folders";
 import type { ItemAction } from "./ItemMenu";
@@ -207,6 +217,8 @@ export function ItemDialog({
     }
   }
 
+  if (action === "share" && !folder) return <ShareDialog item={item} onClose={onClose} />;
+
   if (action === "delete") {
     // A folder with something in it cannot be deleted: say so before, not after, the click.
     const full =
@@ -334,6 +346,146 @@ export function ItemDialog({
             </Button>
           </DialogFooter>
         </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Share with investors: the investor contacts who already have the file show Unshare, the others a
+ * checkbox. Links are emailed by default; ones that cannot be emailed are shown once to paste.
+ */
+function ShareDialog({ item, onClose }: { item: DataRoomApiItem; onClose: () => void }) {
+  const [investors, setInvestors] = useState<Contact[] | null>(null);
+  const [shared, setShared] = useState<Set<string>>(new Set());
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [emailLink, setEmailLink] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [links, setLinks] = useState<PortalLink[] | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    Promise.all([
+      rpc.contacts.list({ kind: "investor" }),
+      rpc.investors.shares({ itemId: item.id }),
+    ])
+      .then(([list, ids]) => {
+        if (!live) return;
+        setInvestors(list);
+        setShared(new Set(ids));
+      })
+      .catch((cause) => live && setError(errorText(cause, t`Could not load investors`)));
+    return () => {
+      live = false;
+    };
+  }, [item.id]);
+
+  if (links) return <CopyLinkDialog links={links} onClose={onClose} />;
+
+  const unshare = async (contactId: string) => {
+    setBusy(true);
+    setError("");
+    try {
+      await rpc.investors.unshare({ itemId: item.id, contactId });
+      setShared((current) => new Set([...current].filter((id) => id !== contactId)));
+    } catch (cause) {
+      setError(errorText(cause, t`Could not unshare`));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const share = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await rpc.investors.share({
+        itemId: item.id,
+        contactIds: [...picked],
+        emailLink,
+      });
+      if (result.links.length > 0) setLinks(result.links);
+      else onClose();
+    } catch (cause) {
+      setError(errorText(cause, t`Could not share`));
+      setBusy(false);
+    }
+  };
+
+  // A revoked investor cannot use a file, so only one who already has it is listed (to unshare).
+  const rows = (investors ?? []).filter((c) => shared.has(c.id) || !c.portalBlockedAt);
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="break-words leading-snug">{t`Share ${item.name}`}</DialogTitle>
+        </DialogHeader>
+        <DialogBody className="flex flex-col gap-1">
+          {investors === null && !error ? (
+            <Skeleton className="h-9 w-full" aria-busy="true" />
+          ) : null}
+          {investors && rows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              <Trans>No investors yet</Trans>
+            </p>
+          ) : null}
+          {rows.map((contact) =>
+            shared.has(contact.id) ? (
+              <div key={contact.id} className="flex min-h-9 items-center gap-2 text-sm">
+                <span className="min-w-0 flex-1 truncate">{contact.name}</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => void unshare(contact.id)}
+                >
+                  <Trans>Unshare</Trans>
+                </Button>
+              </div>
+            ) : (
+              <div
+                key={contact.id}
+                className="flex min-h-9 items-center gap-2 text-sm pointer-coarse:min-h-11"
+              >
+                <Checkbox
+                  id={`share-${contact.id}`}
+                  checked={picked.has(contact.id)}
+                  onCheckedChange={(next) =>
+                    setPicked((current) => {
+                      const updated = new Set(current);
+                      if (next) updated.add(contact.id);
+                      else updated.delete(contact.id);
+                      return updated;
+                    })
+                  }
+                />
+                <label htmlFor={`share-${contact.id}`} className="min-w-0 flex-1 truncate py-1">
+                  {contact.name}
+                </label>
+              </div>
+            ),
+          )}
+          {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
+        </DialogBody>
+        <DialogFooter className="items-center">
+          <div className="me-auto flex items-center gap-2 text-sm">
+            <Checkbox
+              id="share-email-link"
+              checked={emailLink}
+              onCheckedChange={(next) => setEmailLink(next === true)}
+            />
+            <label htmlFor="share-email-link">
+              <Trans>Email them a link</Trans>
+            </label>
+          </div>
+          <Button type="button" variant="outline" onClick={onClose}>
+            <Trans>Cancel</Trans>
+          </Button>
+          <Button type="button" disabled={busy || picked.size === 0} onClick={() => void share()}>
+            <Trans>Share</Trans>
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

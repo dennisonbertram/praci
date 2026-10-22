@@ -28,6 +28,7 @@ const TECHNICAL_MESSAGE = [
   /\bE(?:CONN[A-Z]+|TIMEDOUT|NOTFOUND|AI_AGAIN|PIPE|HOSTUNREACH|NETUNREACH)\b/,
   /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+$/, // bare internal codes
   /\d+ bytes\b/,
+  /^(?:internal server error|bad gateway|service unavailable|gateway timeout)\.?$/i, // bare HTTP reason phrases
   /unexpected token|is not a function|cannot read propert|undefined is not|null is not an object|json parse error/i,
 ];
 
