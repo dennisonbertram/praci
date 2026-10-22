@@ -78,6 +78,7 @@ export function InboxMessageDialog({
   onMoveToInbox,
   onRead,
   onReplyDone,
+  replyDoneText,
   onAskAgent,
   onAskAgentPanel,
   notice,
@@ -105,6 +106,8 @@ export function InboxMessageDialog({
   onRead?: (read: boolean) => void;
   /** Adds Mark reply done, for a reply to-do the list page hides because this mail is under Needs reply. */
   onReplyDone?: () => void;
+  /** The to-do `onReplyDone` completes; the menu item names it. */
+  replyDoneText?: string;
   /** Adds Ask agent: opens the chat made for this conversation. A rejection shows in the dialog. */
   onAskAgent?: () => Promise<unknown>;
   /** Instead of `onAskAgent`: Ask agent opens this email's agent in a panel inside the dialog. */
@@ -160,6 +163,7 @@ export function InboxMessageDialog({
             onMoveToInbox={onMoveToInbox}
             onRead={onRead}
             onReplyDone={onReplyDone}
+            replyDoneText={replyDoneText}
             onAskAgent={onAskAgent}
             onAskAgentPanel={onAskAgentPanel}
             agentBot={agentBot}
@@ -189,6 +193,7 @@ function InboxMessage({
   onMoveToInbox,
   onRead,
   onReplyDone,
+  replyDoneText,
   onAskAgent,
   onAskAgentPanel,
   agentBot,
@@ -209,6 +214,7 @@ function InboxMessage({
   onMoveToInbox?: () => void;
   onRead?: (read: boolean) => void;
   onReplyDone?: () => void;
+  replyDoneText?: string;
   onAskAgent?: () => Promise<unknown>;
   onAskAgentPanel?: () => Promise<AgentBot>;
   agentBot: AgentBot | null;
@@ -506,7 +512,11 @@ function InboxMessage({
                 {onReplyDone ? (
                   <DropdownMenuItem onClick={onReplyDone}>
                     <Check aria-hidden="true" />
-                    <Trans>Mark reply done</Trans>
+                    {replyDoneText ? (
+                      <Trans>Mark done: {replyDoneText}</Trans>
+                    ) : (
+                      <Trans>Mark reply done</Trans>
+                    )}
                   </DropdownMenuItem>
                 ) : null}
               </DropdownMenuContent>

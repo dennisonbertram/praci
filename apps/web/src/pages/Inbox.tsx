@@ -1064,11 +1064,16 @@ function InboxListPage({
         shownElsewhere={failed && !failedEmpty ? failed : undefined}
       />
     ) : null;
-  // A to-do made from a mail that is a visible Needs reply row would show the same action twice:
-  // the row stays and says "To do", the card drops it.
+  // An undated "Reply to ..." to-do made from a visible Needs reply row would show the same action
+  // twice: the row stays and says "To do", the card drops it. Other tasks from that mail stay.
+  // ponytail: matches English reply wording only; a "needs reply" flag on the to-do would be exact.
   const replyRowIds = new Set(replyRows.map((row) => row.id));
   const repeatsRow = (todo: InboxTodo) =>
-    todo.doneAt === null && Boolean(todo.messageId) && replyRowIds.has(todo.messageId as string);
+    todo.doneAt === null &&
+    !todo.dueOn &&
+    Boolean(todo.messageId) &&
+    replyRowIds.has(todo.messageId as string) &&
+    /^(reply|respond|answer)\b/i.test(todo.text);
   const todoRowIds = new Set(
     (todos ?? []).filter(repeatsRow).map((todo) => todo.messageId as string),
   );
@@ -1992,6 +1997,7 @@ function InboxListPage({
               : undefined
           }
           onRead={openRow ? (read) => setRead(openRow.id, read) : undefined}
+          replyDoneText={openReplyTodo?.text}
           onReplyDone={
             openReplyTodo
               ? () =>

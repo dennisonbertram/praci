@@ -312,12 +312,15 @@ it("offers Mark reply done only when the page passes it", async () => {
         unread={false}
         onRead={() => {}}
         onReplyDone={onReplyDone}
+        replyDoneText="Reply to Morgan"
         onClose={() => {}}
       />,
     ),
   );
   await flush();
-  await act(async () => (await menuItem("Mark reply done"))?.click());
+  const item = await menuItem("Mark done: Reply to Morgan");
+  expect(item).toBeDefined();
+  await act(async () => item?.click());
   expect(onReplyDone).toHaveBeenCalledTimes(1);
 });
 

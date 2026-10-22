@@ -281,4 +281,6 @@ it("marks a row whose mail has an open to-do", async () => {
   );
   const badges = [...container.querySelectorAll('[data-slot="badge"]')].map((b) => b.textContent);
   expect(badges).toEqual(["To do"]);
+  // Phones hide the badge, so a labelled icon says it.
+  expect(container.querySelectorAll('svg[role="img"][aria-label="To do"]')).toHaveLength(1);
 });

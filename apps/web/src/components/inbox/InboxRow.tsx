@@ -18,6 +18,7 @@ import {
   Archive,
   BellOff,
   Ellipsis,
+  ListChecks,
   Mail,
   MailOpen,
   Paperclip,
@@ -365,6 +366,13 @@ export function InboxRow({
             >
               <Trans>To do</Trans>
             </Badge>
+          ) : null}
+          {todo && !label ? (
+            <ListChecks
+              role="img"
+              aria-label={t`To do`}
+              className="col-start-4 row-start-1 size-4 text-muted-foreground @md:hidden"
+            />
           ) : null}
           {label ? <span className="sr-only @md:hidden">{labelNames[label]}</span> : null}
           {row.inInbox || !showArchived ? null : (

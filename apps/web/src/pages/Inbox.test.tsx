@@ -430,7 +430,7 @@ it("focuses the row it returns to without scrolling the list", async () => {
   }
 });
 
-it("drops any to-do whose mail is listed under Needs reply, marks that row, and keeps the rest", async () => {
+it("drops only the undated reply to-do whose mail is listed under Needs reply, marks that row, and keeps the rest", async () => {
   const todo = (id: string, messageId: string, text: string, dueOn: string | null = null) => ({
     id,
     connectionId: "c1",
@@ -458,14 +458,14 @@ it("drops any to-do whose mail is listed under Needs reply, marks that row, and 
     ],
   });
   const c = await render();
-  // A to-do whose mail is a Needs reply row is not repeated on the card, whatever its wording or date.
+  // Only the undated reply to-do is not repeated on the card; other tasks from that mail stay.
   expect(c.textContent).not.toContain("Reply to Morgan about section 9");
-  expect(c.textContent).not.toContain("File the trademark form");
-  expect(c.textContent).not.toContain("Reply to Morgan by Friday");
+  expect(c.textContent).toContain("File the trademark form");
+  expect(c.textContent).toContain("Reply to Morgan by Friday");
   expect(c.textContent).toContain("Pay the invoice");
   // Those rows say "To do" instead.
   const marked = [...c.querySelectorAll("[data-todo]")].map((el) => el.getAttribute("data-row-id"));
-  expect(marked).toEqual(["a", "b"]);
+  expect(marked).toEqual(["a"]);
 });
 
 it("completes a hidden reply to-do from the open mail", async () => {

@@ -6084,6 +6084,10 @@ msgstr ""
 msgid "Mark done"
 msgstr ""
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Mark done: {replyDoneText}"
+msgstr ""
+
 #: src/components/fundraising/SafeList.tsx
 msgid "Mark funded"
 msgstr ""
