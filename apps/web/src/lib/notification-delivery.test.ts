@@ -9,6 +9,7 @@ vi.mock("./approval-toasts", () => ({
 const toasts = vi.mocked(approvalToasts);
 
 import {
+  approvalInOpenChat,
   attentionFromDto,
   deliverNotification,
   openNotificationLink,
@@ -25,6 +26,17 @@ describe("shouldToast", () => {
     [false, false, false],
   ])("visible=%s focused=%s -> %s", (visible, focused, expected) => {
     expect(shouldToast({ visible, focused })).toBe(expected);
+  });
+});
+
+describe("approvalInOpenChat", () => {
+  it("recognises an open bot chat and the open group page, and nothing else", () => {
+    const group = { botId: null, link: "/app/g/g1" };
+    expect(approvalInOpenChat(group, undefined, "/app/g/g1")).toBe(true);
+    expect(approvalInOpenChat(group, undefined, "/app/g/g2")).toBe(false);
+    expect(approvalInOpenChat({ botId: "b1", link: "/app/b1" }, "b1", "/app/b1")).toBe(true);
+    expect(approvalInOpenChat({ botId: "b1", link: null }, "b2", "/app")).toBe(false);
+    expect(approvalInOpenChat({ botId: null, link: null }, undefined, "/app")).toBe(false);
   });
 });
 

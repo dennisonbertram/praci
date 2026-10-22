@@ -49,7 +49,7 @@ describePostgres("notifications RPC (PostgreSQL)", () => {
   const events = createNotificationEvents(fanout);
   const clientFor = (actor: Actor) =>
     createRouterClient(
-      createRouter({ prisma, notificationEvents: events } as unknown as RouterDeps),
+      createRouter({ prisma, notificationEvents: events, env: {} } as unknown as RouterDeps),
       { context: { actor } },
     );
 

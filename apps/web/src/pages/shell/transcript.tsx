@@ -1773,7 +1773,9 @@ const MessageView = memo(function MessageView({
               <div key={i} className={gap}>
                 <MailApprovalCard
                   mail={block.mail}
-                  accounts={mailAccounts}
+                  accounts={mailAccounts.accounts}
+                  accountsStatus={mailAccounts.status}
+                  onRetryAccounts={mailAccounts.retry}
                   status={block.status === "answered" ? "answered" : "pending"}
                   answer={block.answer}
                   canAnswer={canAnswer}

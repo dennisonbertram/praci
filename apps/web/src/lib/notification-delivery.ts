@@ -73,6 +73,15 @@ export function resultShownInOpenChat(
   return inOpenChat && n.kind === "needs_input" && tabInFront;
 }
 
+/** An approval whose card is on screen: its bot's chat is open, or its group chat is the current page. */
+export function approvalInOpenChat(
+  n: Pick<NotificationDto, "botId" | "link">,
+  openBotId: string | undefined,
+  path: string,
+): boolean {
+  return (Boolean(n.botId) && n.botId === openBotId) || (n.link !== null && n.link === path);
+}
+
 /**
  * Opens a notification's link: a Devin session in a new window, which gets no opener or referrer
  * because Devin is another site; anything else is an in-app path and navigates.

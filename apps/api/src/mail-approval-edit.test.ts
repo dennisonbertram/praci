@@ -133,8 +133,35 @@ describe("answerEditedMailApproval", () => {
         ],
       },
     });
-    await t.edit({ account: "sales@example.test" });
+    await t.edit({ account: "conn-2" });
     expect(t.sent[0]).toMatchObject({ connectionId: "conn-2" });
+    // The picked id selects the connection; it is not published on the card.
+    expect(
+      (t.answers[0] as unknown as { mailDenial: { mail: Record<string, unknown> } }).mailDenial
+        .mail,
+    ).not.toHaveProperty("account");
+  });
+
+  it("resolves a picked connection by id even when two labels share a prefix", async () => {
+    const { account: _named, ...unnamed } = stored;
+    const t = setup({ request: unnamed });
+    Object.assign(t.deps, {
+      mail: {
+        listAccounts: async () => [
+          { id: "conn-1", label: "Sales Archive" },
+          { id: "conn-2", label: "Sales" },
+        ],
+      },
+    });
+    await t.edit({ account: "conn-2" });
+    expect(t.sent[0]).toMatchObject({ connectionId: "conn-2" });
+  });
+
+  it("rejects a picked connection id that is not one of the caller's accounts", async () => {
+    const t = setup();
+    expect(await code(t.edit({ account: "someone-elses-conn" }))).toBe("BAD_REQUEST");
+    expect(t.effect.status).toBe("intended");
+    expect(t.compose.send).not.toHaveBeenCalled();
   });
 
   it("publishes only what the person typed, never the stored call's unredacted fields", async () => {

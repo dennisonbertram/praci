@@ -1,20 +1,28 @@
 import type { MailAccountSummary } from "@rakazo/contracts";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { rpc } from "./rpc";
 
-/** The caller's connected mail accounts, read once when `enabled`; empty until then or on failure. */
-export function useMailAccounts(enabled: boolean): MailAccountSummary[] {
+/** The caller's connected mail accounts, read when `enabled`; `status` tells loading and failure from an empty list. */
+export function useMailAccounts(enabled: boolean) {
   const [accounts, setAccounts] = useState<MailAccountSummary[]>([]);
+  const [status, setStatus] = useState<"loading" | "error" | "ready">("loading");
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (!enabled) return;
     let live = true;
+    setStatus("loading");
     rpc.investors.updates.accounts().then(
-      (list) => live && setAccounts(list),
-      () => undefined,
+      (list) => {
+        if (!live) return;
+        setAccounts(list);
+        setStatus("ready");
+      },
+      () => live && setStatus("error"),
     );
     return () => {
       live = false;
     };
-  }, [enabled]);
-  return accounts;
+  }, [enabled, attempt]);
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
+  return { accounts, status: enabled ? status : ("ready" as const), retry };
 }

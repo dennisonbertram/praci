@@ -559,6 +559,8 @@ describePostgres("integration agents (PostgreSQL)", () => {
   it("replace spares a row whose server turned exclusive after the read", async () => {
     const s = await mkServer(userA, "race-replace", "https://api.brex.com/mcp");
     await client(a).integrationAgents.create({ serverId: s.id });
+    // A new agent starts exclusive; this test is about sharing turned on and then off again.
+    await prisma.mcpServer.update({ where: { id: s.id }, data: { agentExclusive: false } });
     const other = await repos.createBot(a, {
       name: "Other2",
       title: "",

@@ -9047,6 +9047,7 @@ msgstr ""
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/DropZone.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Investors.tsx
