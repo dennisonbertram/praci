@@ -46,6 +46,7 @@ import {
   getResponseStreamingPreference,
   setResponseStreamingPreference,
 } from "../lib/response-streaming";
+import { rpc } from "../lib/rpc";
 import {
   getToolActivityPreference,
   setToolActivityPreference,
@@ -95,6 +96,8 @@ export function GeneralSettingsPanels({
     getBotsSidebarDensity,
     () => "comfortable",
   );
+  const themeLabelId = useId();
+  const avatarsLabelId = useId();
   const sidebarDensityLabelId = useId();
   const [streamReplies, setStreamReplies] = useState(
     () => getResponseStreamingPreference() === "on",
@@ -157,7 +160,11 @@ export function GeneralSettingsPanels({
             <h3 className="text-[15px] font-medium text-foreground">
               <Trans>Appearance</Trans>
             </h3>
+            <span id={themeLabelId} className="mt-3 block text-[13px] text-foreground/75">
+              <Trans>Theme</Trans>
+            </span>
             <AppearancePicker
+              labelledBy={themeLabelId}
               value={appearance}
               onChange={(next) => {
                 setAppearance(next);
@@ -192,32 +199,14 @@ export function GeneralSettingsPanels({
                 </Toggle>
               </fieldset>
             </div>
-          </section>
-
-          <section className="rounded-xl border border-border px-4 py-4">
-            <h3 className="text-[15px] font-medium text-foreground">
-              {timezone && onTimezoneChange ? (
-                <Trans>Language and time zone</Trans>
-              ) : (
-                <Trans>Language</Trans>
-              )}
-            </h3>
-            <UiLocalePicker value={locale} onChange={chooseLocale} />
-            {timezone && onTimezoneChange ? (
-              <TimezonePicker value={timezone} onChange={onTimezoneChange} />
-            ) : null}
-          </section>
-          <NotificationSettingsSection />
-        </div>
-        <div className="min-w-0 space-y-5">
-          <section
-            className="rounded-xl border border-border px-4 py-4"
-            data-testid="avatar-style-select"
-          >
-            <h3 className="text-[15px] font-medium text-foreground">
+            <span id={avatarsLabelId} className="mt-4 block text-[13px] text-foreground/75">
               <Trans>Avatars</Trans>
-            </h3>
-            <div className="mt-3 grid grid-cols-2 gap-3">
+            </span>
+            <fieldset
+              aria-labelledby={avatarsLabelId}
+              data-testid="avatar-style-select"
+              className="mt-2 grid min-w-0 grid-cols-2 gap-3"
+            >
               {(["organic", "robot"] as const).map((style) => (
                 <Toggle
                   key={style}
@@ -237,7 +226,7 @@ export function GeneralSettingsPanels({
                   <span>{style === "robot" ? <Trans>Robot</Trans> : <Trans>Organic</Trans>}</span>
                 </Toggle>
               ))}
-            </div>
+            </fieldset>
             {avatarError ? (
               <p role="alert" className="mt-3 text-[12.5px] text-destructive">
                 {avatarError}
@@ -245,6 +234,22 @@ export function GeneralSettingsPanels({
             ) : null}
           </section>
 
+          <section className="rounded-xl border border-border px-4 py-4">
+            <h3 className="text-[15px] font-medium text-foreground">
+              {timezone && onTimezoneChange ? (
+                <Trans>Language and time zone</Trans>
+              ) : (
+                <Trans>Language</Trans>
+              )}
+            </h3>
+            <UiLocalePicker value={locale} onChange={chooseLocale} />
+            {timezone && onTimezoneChange ? (
+              <TimezonePicker value={timezone} onChange={onTimezoneChange} />
+            ) : null}
+          </section>
+          <NotificationSettingsSection />
+        </div>
+        <div className="min-w-0 space-y-5">
           {isDeploymentOwner ? <DefaultRunsOnSection /> : null}
 
           <details
@@ -371,6 +376,14 @@ export function UsageSettingsPanel({
   } | null;
 }) {
   const tokens = usage?.totalTokens;
+  // Provider keys only matter to someone who added their own; the system model needs none.
+  const [hasOwnKey, setHasOwnKey] = useState(false);
+  useEffect(() => {
+    void rpc.models
+      .credentials()
+      .then((credentials) => setHasOwnKey(credentials.length > 0))
+      .catch(() => undefined);
+  }, []);
   return (
     <section data-testid="usage-settings" className="rounded-xl border border-border px-4 py-4">
       <h3 className="text-[15px] font-medium text-foreground">
@@ -391,9 +404,11 @@ export function UsageSettingsPanel({
           )}
         </p>
       ) : null}
-      <p className="mt-2 text-[12.5px] text-muted-foreground/80">
-        <Trans>Model spend uses your provider keys.</Trans>
-      </p>
+      {hasOwnKey ? (
+        <p className="mt-2 text-[12.5px] text-muted-foreground/80">
+          <Trans>Model spend uses your provider keys.</Trans>
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -567,9 +582,11 @@ function SettingsPasswordInput({
 function AppearancePicker({
   value,
   onChange,
+  labelledBy,
 }: {
   value: AppearancePreference;
   onChange: (next: AppearancePreference) => void;
+  labelledBy: string;
 }) {
   const { t } = useLingui();
   const options: { value: AppearancePreference; label: string }[] = [
@@ -580,9 +597,9 @@ function AppearancePicker({
 
   return (
     <fieldset
-      aria-label={t`Appearance`}
+      aria-labelledby={labelledBy}
       data-testid="ui-appearance-select"
-      className="mt-3 grid min-w-0 grid-cols-3 gap-1 rounded-lg bg-muted p-1"
+      className="mt-2 grid min-w-0 grid-cols-3 gap-1 rounded-lg bg-muted p-1"
     >
       {options.map((option) => (
         <Toggle

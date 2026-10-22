@@ -7,6 +7,7 @@ import type {
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { FinanceChromeProvider } from "../../components/finance/ui";
 import { mockRpc } from "../../lib/__mocks__/rpc";
+import { setHideAmounts } from "../../lib/hide-amounts-preference";
 import { FinanceBurnPage, FinanceMonthPage, FinanceRunwayPage } from "./FinanceBurn";
 
 type Account = FinanceBurnOutput["byAccount"][number]["account"];
@@ -219,6 +220,15 @@ export const RunwayWithChrome: Story = {
     </FinanceChromeProvider>
   ),
   beforeEach: () => mockRpc({ "finance.runway": runway }),
+};
+/** Hide amounts on: the header says so and offers Show. */
+export const RunwayAmountsHidden: Story = {
+  render: RunwayWithChrome.render,
+  beforeEach: () => {
+    setHideAmounts(true);
+    mockRpc({ "finance.runway": runway });
+    return () => setHideAmounts(false);
+  },
 };
 export const RunwayBankOnly: Story = {
   render: () => <FinanceRunwayPage />,

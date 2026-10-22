@@ -117,7 +117,11 @@ export function InboxMessageDialog({
         showCloseButton={false}
         className={cn(
           "top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-[7.5vh] md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:translate-y-0 md:rounded-xl md:ring-1",
-          agentBot && "md:h-[85vh] md:w-[min(1152px,94vw)] md:flex-row md:gap-0",
+          // The email column never changes width. Where the screen has room (1634px: the grown dialog
+          // plus a margin), the panel grows the dialog 384px to the right; otherwise it overlays the
+          // email's right side.
+          agentBot &&
+            "md:h-[85vh] min-[1634px]:w-[1152px] min-[1634px]:left-[calc(50%-384px)] min-[1634px]:translate-x-0 min-[1634px]:flex-row min-[1634px]:gap-0",
           composing && "invisible",
         )}
       >
@@ -277,7 +281,12 @@ function InboxMessage({
     : parsed;
   return (
     <>
-      <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col gap-2", agentBot && "md:pe-4")}>
+      <div
+        className={cn(
+          "flex min-h-0 min-w-0 flex-1 flex-col gap-2",
+          agentBot && "min-[1634px]:pe-4",
+        )}
+      >
         <div className="flex items-start gap-2">
           <DialogTitle
             dir="auto"
@@ -401,6 +410,7 @@ function InboxMessage({
                 variant="outline"
                 size="sm"
                 disabled={asking}
+                aria-pressed={onAskAgentPanel ? Boolean(agentBot) : undefined}
                 onClick={() => {
                   setAsking(true);
                   setAskError("");
@@ -544,7 +554,7 @@ function InboxMessage({
         </div>
       </div>
       {agentBot ? (
-        <div className="absolute inset-y-0 end-0 z-10 w-full max-w-[384px] shadow-xl md:relative md:-my-4 md:-me-4 md:w-96 md:max-w-none md:shrink-0 md:shadow-none">
+        <div className="absolute inset-y-0 end-0 z-10 w-full max-w-[384px] shadow-xl min-[1634px]:relative min-[1634px]:-my-4 min-[1634px]:-me-4 min-[1634px]:w-96 min-[1634px]:max-w-none min-[1634px]:shrink-0 min-[1634px]:shadow-none">
           <EmailAgentPanel
             bot={agentBot}
             onClose={() => setAgentBot(null)}

@@ -10,7 +10,7 @@ async function boot(page: Page, width: number, height = 1024) {
   await completeOnboarding(page);
 }
 
-const openComputer = (page: Page) => page.getByTitle("Computer and routines").click();
+const openComputer = (page: Page) => page.getByTitle(/^(Computer and )?routines$/i).click();
 const widthOf = async (page: Page, selector: string) =>
   (await page.locator(selector).first().boundingBox())!.width;
 

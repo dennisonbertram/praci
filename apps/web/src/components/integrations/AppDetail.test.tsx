@@ -105,6 +105,7 @@ function Where() {
   return (
     <>
       <output data-testid="where">{location.pathname}</output>
+      <output data-testid="query">{`${location.search}|${JSON.stringify(location.state)}`}</output>
       <button
         id="go"
         type="button"
@@ -113,24 +114,22 @@ function Where() {
     </>
   );
 }
+const tree = (url: string, value: IntegrationsData, state?: unknown) => (
+  <MemoryRouter
+    initialEntries={[{ pathname: url.split("?")[0], search: `?${url.split("?")[1] ?? ""}`, state }]}
+  >
+    <Where />
+    <Routes>
+      <Route path="/app/integrations/app/:connectorId/:slug" element={<AppDetail data={value} />} />
+      <Route path="*" element={null} />
+    </Routes>
+  </MemoryRouter>
+);
 async function show(url: string, value: IntegrationsData) {
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
-  await act(async () =>
-    root.render(
-      <MemoryRouter initialEntries={[url]}>
-        <Where />
-        <Routes>
-          <Route
-            path="/app/integrations/app/:connectorId/:slug"
-            element={<AppDetail data={value} />}
-          />
-          <Route path="*" element={null} />
-        </Routes>
-      </MemoryRouter>,
-    ),
-  );
+  await act(async () => root.render(tree(url, value)));
 }
 afterEach(() => {
   act(() => root.unmount());
@@ -371,6 +370,38 @@ it("opens the connect dialog on arrival with ?connect=1 and returns to ?next= wh
   expect(where()).toBe("/app/data-room");
 });
 
+it("keeps the same dialog open when the first account lands and the page switches to the connected view", async () => {
+  const url = `${PAGE}?connect=1&next=%2Fapp%2Fdata-room`;
+  await show(url, data());
+  const before = dialog();
+  expect(before).not.toBeNull();
+  const connected: Connection = {
+    ...appConnection({ connectorId: "google", provider: "gmail", displayName: "Gmail" }),
+  };
+  await act(async () => root.render(tree(url, data({ connections: [connected] }))));
+  expect(dialog()).toBe(before);
+});
+
+it("starts the sign-in without a second question when the app's own button sent the person", async () => {
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  await act(async () =>
+    root.render(tree(`${PAGE}?connect=1&next=%2Fapp%2Finbox`, data(), { connectNow: true })),
+  );
+  expect(dialog()?.getAttribute("data-confirm-first")).toBe("false");
+});
+
+it("spends ?connect=1 and the button's state when the sign-in is cancelled, so a reload does not restart it", async () => {
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  await act(async () => root.render(tree(`${PAGE}?connect=1&x=1`, data(), { connectNow: true })));
+  await act(async () => (dialog() as HTMLButtonElement).click());
+  expect(container.querySelector('[data-testid="query"]')?.textContent).toBe("?x=1|null");
+  expect(dialog()).toBeNull();
+});
+
 it("ignores an external ?next= and stays put after connecting", async () => {
   await show(`${PAGE}?connect=1&next=https%3A%2F%2Fevil.example`, data());
   await act(async () => (dialog() as HTMLButtonElement).click());
@@ -524,23 +555,11 @@ it("offers Remove account per row only when there is more than one account", asy
   expect(labels().filter((label) => label === "Remove account")).toHaveLength(2);
 });
 
-it("labels the header of a Composio or Pipedream app with its provider, and a direct app with none", async () => {
+it("names no connector vendor on an app page, and shows no Tools section when there are no tools", async () => {
   await show(APP_PAGE, data({ connections: [appConnection()] }));
-  expect(container.querySelector("h1 + div")?.textContent).toContain("via Composio");
-  act(() => root.unmount());
-  container.remove();
-  await show(
-    "/app/integrations/app/pipedream/notion",
-    data({ connections: [appConnection({ connectorId: "pipedream" })] }),
-  );
-  expect(container.querySelector("h1 + div")?.textContent).toContain("via Pipedream");
-  act(() => root.unmount());
-  container.remove();
-  await show(
-    PAGE,
-    data({ connections: [appConnection({ connectorId: "google", provider: "gmail" })] }),
-  );
-  expect(container.textContent).not.toContain("via ");
+  expect(container.textContent).not.toMatch(/via |Composio|Pipedream/);
+  expect(container.textContent).not.toContain("Tools");
+  expect(container.textContent).not.toContain("No tools available");
 });
 
 it("hides the account name when it only repeats the app name", async () => {

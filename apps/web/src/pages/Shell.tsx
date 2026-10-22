@@ -1217,8 +1217,9 @@ export function ShellPage() {
   const openChatHref =
     inGroup && groupId ? `/app/g/${groupId}` : active ? `/app/${active.id}` : undefined;
   useEffect(() => {
-    if (openChatHref) dismissApprovalToasts(openChatHref);
-  }, [openChatHref]);
+    if (openChatHref)
+      dismissApprovalToasts({ href: openChatHref, botId: inGroup ? undefined : active?.id });
+  }, [openChatHref, inGroup, active?.id]);
   const opening = chatIsOpening({
     hasChat: Boolean(active || activeGroup),
     botsLoaded: initialBotsLoaded,
@@ -1709,6 +1710,11 @@ export function ShellPage() {
       : rpc.agentSkills.list();
     void skills.then(setAgentSkills).catch(() => undefined);
   }, [slashBotId]);
+
+  // The routine form's skill picker lists this bot's enabled skills.
+  useEffect(() => {
+    if (panel === "routine") refreshAgentSkills();
+  }, [panel, refreshAgentSkills]);
 
   useEffect(() => {
     void rpc.voice
@@ -2820,7 +2826,9 @@ export function ShellPage() {
         ...(username ? { username } : {}),
         ...(mail ? { mail } : {}),
       });
-      dismissApprovalToasts(groupId ? `/app/g/${groupId}` : `/app/${botId}`);
+      dismissApprovalToasts(
+        groupId ? { href: `/app/g/${groupId}` } : { href: `/app/${botId}`, botId },
+      );
       if (groupId && activeGroupId.current === groupId) {
         await refreshGroupThreadRef.current(groupId);
       } else if (botId && activeBotId.current === botId) {
@@ -4282,6 +4290,7 @@ export function ShellPage() {
       <aside
         ref={sidebarRef}
         data-sidebar=""
+        data-drawer-open={mobileSidebarOpen ? "" : undefined}
         aria-label={t`Sidebar`}
         onKeyDown={(event) => moveRosterFocus(sidebarRef.current, event)}
         onFocus={(event) => {
@@ -4710,8 +4719,18 @@ export function ShellPage() {
                     (pageAgentKind(rowKey(row)) !== null ||
                       isIntegrationAgentSpawnKey(rowKey(row)));
                   const foldable = !rail && !folder && group.kind !== "pinned";
-                  const pageAgentRows = foldable ? nestedRows.filter(isPageAgent) : [];
-                  const emailChatRows = foldable ? nestedRows.filter(isEmailChat) : [];
+                  // A page makes its agent when opened; it is listed once it has a message or a run.
+                  const unusedPageAgent = (row: (typeof nestedRows)[number]) =>
+                    row.item.kind === "bot" &&
+                    isPageAgent(row) &&
+                    !row.item.chat.preview &&
+                    row.item.chat.status === "idle" &&
+                    row.item.chat.id !== active?.id;
+                  const listedRows = foldable
+                    ? nestedRows.filter((row) => !unusedPageAgent(row))
+                    : nestedRows;
+                  const pageAgentRows = foldable ? listedRows.filter(isPageAgent) : [];
+                  const emailChatRows = foldable ? listedRows.filter(isEmailChat) : [];
                   const holdsActive = (rows: typeof nestedRows) =>
                     rows.some((row) => row.item.kind === "bot" && row.item.chat.id === active?.id);
                   const showPageAgents = pageAgentsOpen || holdsActive(pageAgentRows);
@@ -4722,13 +4741,13 @@ export function ShellPage() {
                   )[] =
                     pageAgentRows.length || emailChatRows.length
                       ? [
-                          ...nestedRows.filter((row) => !isPageAgent(row) && !isEmailChat(row)),
+                          ...listedRows.filter((row) => !isPageAgent(row) && !isEmailChat(row)),
                           ...(pageAgentRows.length ? [{ foldHeader: "page" as const }] : []),
                           ...(showPageAgents ? pageAgentRows : []),
                           ...(emailChatRows.length ? [{ foldHeader: "email" as const }] : []),
                           ...(showEmailChats ? emailChatRows : []),
                         ]
-                      : nestedRows;
+                      : listedRows;
                   const treeActive = nestedRows.some((row) => row.depth > 0 || row.hasChildren);
                   // Reorder among visible siblings so keyboard and drag moves match the tree.
                   const siblingBotIds = (parentId: string | null) =>
@@ -5735,8 +5754,9 @@ export function ShellPage() {
               {!inGroup && !pageMode && active ? (
                 <button
                   type="button"
-                  title={t`Computer and routines`}
-                  aria-label={t`Computer and routines`}
+                  data-testid="computer-routines-button"
+                  title={noComputerScreen ? t`Routines` : t`Computer and routines`}
+                  aria-label={noComputerScreen ? t`Routines` : t`Computer and routines`}
                   onClick={() => {
                     const next = panel === "computer" ? null : "computer";
                     setPanel(next);
@@ -5856,7 +5876,11 @@ export function ShellPage() {
                 setFocusComposerBotId(bot.id);
                 openBot(bot.id);
               }}
-              onConnectMail={() => navigate("/app/integrations?connect=gmail&returnTo=/app/inbox")}
+              onConnectMail={() =>
+                navigate("/app/integrations?connect=gmail&returnTo=/app/inbox", {
+                  state: { connectNow: true },
+                })
+              }
               onReconnectMail={() => navigate("/app/integrations?open=gmail&returnTo=/app/inbox")}
               onAllowMailRules={(connectionId) =>
                 navigate(
@@ -5973,7 +5997,7 @@ export function ShellPage() {
         ) : panel && (active || activeGroup) ? (
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
             {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
-              <div className="sticky top-0 z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between bg-background px-5 pt-[17px] pb-2">
+              <div className="sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between bg-background px-5 pt-[17px] pb-2">
                 <span className="text-[13.5px] text-muted-foreground">
                   {panel === "settings" ? (
                     active ? (
@@ -6086,7 +6110,7 @@ export function ShellPage() {
                           title={t`Bot screen preview`}
                           src={embeddedScreenUrl}
                           sandbox={screenIframeSandbox(embeddedScreenUrl)}
-                          className="h-full w-full border-0 bg-black"
+                          className="h-full w-full border-0 bg-background"
                           allow="clipboard-read; clipboard-write"
                           style={{ pointerEvents: "none" }}
                         />
@@ -6246,6 +6270,7 @@ export function ShellPage() {
                     : `/api/v1/bots/${active.id}/github`
                 }
                 messageProviders={messagingProviders}
+                skills={agentSkills}
                 saving={savingRoutine}
                 running={runningRoutine}
                 error={routineError}

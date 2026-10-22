@@ -558,7 +558,7 @@ import {
 } from "./openrouter-oauth.js";
 import { rememberedMessageIds, rememberThreadMessage } from "./remember-message.js";
 import { listRoutineRuns } from "./routine-runs.js";
-import { listSpaceRuns } from "./runs.js";
+import { listPendingApprovalNotifications, listSpaceRuns } from "./runs.js";
 import { addScreenProxyCapability } from "./screen-proxy.js";
 import { querySpaceSearch } from "./search.js";
 import { withSerializableRetry } from "./serializable-retry.js";
@@ -3329,6 +3329,14 @@ export function createRouter(deps: RouterDeps) {
       }),
       answer: authed.threads.answer.handler(async ({ context, input }) => {
         const target = await resolveThreadTarget(deps.prisma, context.actor, input);
+        // The card is answered, so its "needs approval" notification has nothing left to ask. Other
+        // tabs read this to drop the toast.
+        const clearAsked = () =>
+          markSeen(deps.prisma, {
+            ...context.actor,
+            surface: "thread",
+            threadId: target.threadId,
+          }).catch((error) => getLogger().error("thread answer notification", error));
         if (input.mail && Object.keys(input.mail).length > 0) {
           if (input.answer !== "allow") {
             throw new ORPCError("BAD_REQUEST", { message: "Edits go with Send" });
@@ -3338,10 +3346,12 @@ export function createRouter(deps: RouterDeps) {
             context.actor,
             target,
             { runId: input.runId, messageId: input.messageId, mail: input.mail },
-            () =>
-              deps.jobs.enqueue(runContinueJob(input.runId)).catch((error) => {
+            async () => {
+              await clearAsked();
+              await deps.jobs.enqueue(runContinueJob(input.runId)).catch((error) => {
                 getLogger().error("thread answer enqueue", error);
-              }),
+              });
+            },
           );
           return { ok: true as const };
         }
@@ -3359,6 +3369,7 @@ export function createRouter(deps: RouterDeps) {
               message: "This prompt is no longer awaiting an answer",
             });
           }
+          await clearAsked();
           return { ok: true as const };
         }
         const answered = await deps.events.answerRunInput({
@@ -3376,6 +3387,8 @@ export function createRouter(deps: RouterDeps) {
             message: "This prompt is no longer awaiting an answer",
           });
         }
+        // Before the run continues: its next card must raise a notification this does not clear.
+        await clearAsked();
         await deps.jobs.enqueue(runContinueJob(input.runId)).catch((error) => {
           // The answer and queued run are durable; the reconciler repairs a missed immediate wake.
           getLogger().error("thread answer enqueue", error);
@@ -8497,6 +8510,11 @@ export function createRouter(deps: RouterDeps) {
           throw error;
         }
       }),
+      pendingApprovals: authed.notifications.pendingApprovals.handler(async ({ context }) => ({
+        notifications: (await listPendingApprovalNotifications(deps.prisma, context.actor)).map(
+          toNotificationDto,
+        ),
+      })),
       markSeen: authed.notifications.markSeen.handler(async ({ context, input }) => ({
         count: await markSeen(deps.prisma, {
           ...context.actor,

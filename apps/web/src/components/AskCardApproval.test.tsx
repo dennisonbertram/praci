@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({ t: String.raw }),
@@ -31,6 +31,13 @@ const pending: AskBlock = {
   ],
   status: "pending",
 };
+
+// Each test starts a minute after the last, so an answer in one does not hold the next card's buttons.
+let minute = 0;
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(Date.UTC(2030, 0, 1, 0, ++minute)));
+});
 
 function mount(onAnswer: (text: string) => Promise<void>) {
   const container = document.createElement("div");
@@ -170,4 +177,13 @@ it("masks the amount on a payment button while Hide amounts is on", () => {
   expect(container.textContent).not.toContain("300");
   expect(container.textContent).toContain("Send ");
   setHideAmounts(false);
+});
+
+it("holds a new card's buttons for a second after another card was answered", async () => {
+  const first = mount(async () => undefined);
+  await act(async () => button(first, "Allow once").click());
+  const second = mount(async () => undefined);
+  expect((button(second, "Allow once") as HTMLButtonElement).disabled).toBe(true);
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 1100)));
+  expect((button(second, "Allow once") as HTMLButtonElement).disabled).toBe(false);
 });
