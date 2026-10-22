@@ -6784,7 +6784,6 @@ msgstr ""
 msgid "No longer active"
 msgstr "Больше не активен"
 
-#: src/components/inbox/InboxDigest.tsx
 #: src/pages/Inbox.tsx
 msgid "No mail"
 msgstr ""
@@ -6842,6 +6841,10 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "No net spend in the last 3 full months"
+msgstr ""
+
+#: src/components/inbox/InboxDigest.tsx
+msgid "No newsletters in the last 7 days"
 msgstr ""
 
 #: src/pages/legal/LegalDeadlines.tsx
@@ -9227,6 +9230,10 @@ msgstr "Показать настройки"
 
 #: src/pages/Shell.tsx
 msgid "Show sidebar"
+msgstr ""
+
+#: src/components/inbox/InboxDigest.tsx
+msgid "Show the pile"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx

@@ -6784,7 +6784,6 @@ msgstr "No investors yet"
 msgid "No longer active"
 msgstr "No longer active"
 
-#: src/components/inbox/InboxDigest.tsx
 #: src/pages/Inbox.tsx
 msgid "No mail"
 msgstr "No mail"
@@ -6843,6 +6842,10 @@ msgstr "No more results"
 #: src/pages/Finance.tsx
 msgid "No net spend in the last 3 full months"
 msgstr "No net spend in the last 3 full months"
+
+#: src/components/inbox/InboxDigest.tsx
+msgid "No newsletters in the last 7 days"
+msgstr "No newsletters in the last 7 days"
 
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "No open deadlines."
@@ -9228,6 +9231,10 @@ msgstr "Show settings"
 #: src/pages/Shell.tsx
 msgid "Show sidebar"
 msgstr "Show sidebar"
+
+#: src/components/inbox/InboxDigest.tsx
+msgid "Show the pile"
+msgstr "Show the pile"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Show tool activity"
