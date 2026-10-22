@@ -667,6 +667,23 @@ export async function inferMailAccount(
   return ids.size === 1 ? accounts.find((account) => ids.has(account.id)) : undefined;
 }
 
+/**
+ * The account a failed approved send can be reopened from: the one the call named, else the inferred
+ * one. A send of a saved draft has none: its card is empty, so the composer would open blank.
+ */
+export async function recoveryMailAccount(
+  prisma: PrismaClient,
+  owner: { spaceId: string; userId: string },
+  accounts: MailAccount[],
+  args: Record<string, unknown>,
+): Promise<MailAccount | undefined> {
+  if (typeof args.draftId === "string" && args.draftId.trim()) return undefined;
+  if (typeof args.account === "string" && args.account.trim()) {
+    return findAccount(accounts, args.account);
+  }
+  return inferMailAccount(prisma, owner, accounts, args);
+}
+
 /** The account named by `args.account`, the only connected one, or the one the message is in. */
 async function resolveAccount(
   deps: MailToolDeps,
