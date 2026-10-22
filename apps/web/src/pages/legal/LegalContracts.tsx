@@ -159,7 +159,7 @@ export function LegalContracts({
         <caption className="sr-only">
           <Trans>Contracts</Trans>
         </caption>
-        
+
         <TableHeader>
           <TableHeadRow>
             <TableHead>
@@ -201,10 +201,10 @@ export function LegalContracts({
               <TableCell className="tabular-nums" title={term(contract)}>
                 {term(contract)}
               </TableCell>
-              <TableCell title={renewal(contract)}>
-                {renewal(contract)}
+              <TableCell title={renewal(contract)}>{renewal(contract)}</TableCell>
+              <TableCell className="whitespace-nowrap text-end tabular-nums">
+                {value(contract)}
               </TableCell>
-              <TableCell className="whitespace-nowrap text-end tabular-nums">{value(contract)}</TableCell>
               <TableCell className="whitespace-nowrap ps-4 tabular-nums">
                 <NextDeadline contract={contract} />
               </TableCell>
