@@ -23291,8 +23291,7 @@
                     "type": "object",
                     "properties": {
                       "id": {
-                        "type": "string",
-                        "minLength": 1
+                        "$ref": "#/components/schemas/RpcContactsSaveInputSchema0"
                       },
                       "name": {
                         "type": "string",
@@ -23382,6 +23381,9 @@
                             "type": "null"
                           }
                         ]
+                      },
+                      "roundId": {
+                        "$ref": "#/components/schemas/RpcContactsSaveInputSchema0"
                       }
                     },
                     "required": [
@@ -55121,6 +55123,781 @@
                         "externalComputerTools",
                         "webhookConfigured",
                         "spawnKey"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "402": {
+            "$ref": "#/components/responses/Http402"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "406": {
+            "$ref": "#/components/responses/Http406"
+          },
+          "408": {
+            "$ref": "#/components/responses/Http408"
+          },
+          "409": {
+            "$ref": "#/components/responses/Http409"
+          },
+          "410": {
+            "$ref": "#/components/responses/Http410"
+          },
+          "412": {
+            "$ref": "#/components/responses/Http412"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "422": {
+            "$ref": "#/components/responses/Http422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Http428"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "499": {
+            "$ref": "#/components/responses/Http499"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "501": {
+            "$ref": "#/components/responses/Http501"
+          },
+          "502": {
+            "$ref": "#/components/responses/Http502"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "504": {
+            "$ref": "#/components/responses/Http504"
+          },
+          "default": {
+            "$ref": "#/components/responses/OtherORPCError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/rpc/investors/audits/draft": {
+      "post": {
+        "operationId": "rpc_investors_audits_draft",
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": false,
+            "description": "Native clients send rakazo://; include the application origin for origin checks.",
+            "schema": {
+              "type": "string",
+              "example": "rakazo://"
+            }
+          },
+          {
+            "name": "x-rakazo-space-id",
+            "in": "header",
+            "required": false,
+            "description": "Optional selected space identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "json": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "id"
+                    ]
+                  }
+                },
+                "required": [
+                  "json"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful RPC response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "json"
+                  ],
+                  "properties": {
+                    "json": {
+                      "$schema": "https://json-schema.org/draft/2020-12/schema",
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "$ref": "#/components/schemas/RpcInvestorsAuditsDraftOutputSchema0"
+                        },
+                        "fund": {
+                          "type": "string"
+                        },
+                        "asOf": {
+                          "anyOf": [
+                            {
+                              "$ref": "#/components/schemas/RpcInvestorsAuditsDraftOutputSchema1"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "asOfMatched": {
+                          "type": "boolean"
+                        },
+                        "dueDate": {
+                          "anyOf": [
+                            {
+                              "$ref": "#/components/schemas/RpcInvestorsAuditsDraftOutputSchema1"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "drafted",
+                            "done",
+                            "dismissed"
+                          ]
+                        },
+                        "mailThreadId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "connectionId": {
+                          "anyOf": [
+                            {
+                              "$ref": "#/components/schemas/RpcInvestorsAuditsDraftOutputSchema0"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "draftRef": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "senderKnown": {
+                          "type": "boolean"
+                        },
+                        "notes": {
+                          "type": "string"
+                        },
+                        "dataRoomItemId": {
+                          "anyOf": [
+                            {
+                              "$ref": "#/components/schemas/RpcInvestorsAuditsDraftOutputSchema0"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "drafting": {
+                          "type": "boolean"
+                        },
+                        "newMail": {
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "fund",
+                        "asOf",
+                        "asOfMatched",
+                        "dueDate",
+                        "status",
+                        "mailThreadId",
+                        "connectionId",
+                        "draftRef",
+                        "senderKnown",
+                        "notes",
+                        "dataRoomItemId",
+                        "drafting",
+                        "newMail",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "402": {
+            "$ref": "#/components/responses/Http402"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "406": {
+            "$ref": "#/components/responses/Http406"
+          },
+          "408": {
+            "$ref": "#/components/responses/Http408"
+          },
+          "409": {
+            "$ref": "#/components/responses/Http409"
+          },
+          "410": {
+            "$ref": "#/components/responses/Http410"
+          },
+          "412": {
+            "$ref": "#/components/responses/Http412"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "422": {
+            "$ref": "#/components/responses/Http422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Http428"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "499": {
+            "$ref": "#/components/responses/Http499"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "501": {
+            "$ref": "#/components/responses/Http501"
+          },
+          "502": {
+            "$ref": "#/components/responses/Http502"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "504": {
+            "$ref": "#/components/responses/Http504"
+          },
+          "default": {
+            "$ref": "#/components/responses/OtherORPCError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/rpc/investors/audits/list": {
+      "post": {
+        "operationId": "rpc_investors_audits_list",
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": false,
+            "description": "Native clients send rakazo://; include the application origin for origin checks.",
+            "schema": {
+              "type": "string",
+              "example": "rakazo://"
+            }
+          },
+          {
+            "name": "x-rakazo-space-id",
+            "in": "header",
+            "required": false,
+            "description": "Optional selected space identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "json": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "type": "object",
+                    "properties": {
+                      "includeDone": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                },
+                "required": [
+                  "json"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful RPC response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "json"
+                  ],
+                  "properties": {
+                    "json": {
+                      "$schema": "https://json-schema.org/draft/2020-12/schema",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "$ref": "#/components/schemas/RpcInvestorsAuditsListOutputSchema0"
+                          },
+                          "fund": {
+                            "type": "string"
+                          },
+                          "asOf": {
+                            "anyOf": [
+                              {
+                                "$ref": "#/components/schemas/RpcInvestorsAuditsListOutputSchema1"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "asOfMatched": {
+                            "type": "boolean"
+                          },
+                          "dueDate": {
+                            "anyOf": [
+                              {
+                                "$ref": "#/components/schemas/RpcInvestorsAuditsListOutputSchema1"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "drafted",
+                              "done",
+                              "dismissed"
+                            ]
+                          },
+                          "mailThreadId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "connectionId": {
+                            "anyOf": [
+                              {
+                                "$ref": "#/components/schemas/RpcInvestorsAuditsListOutputSchema0"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "draftRef": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "senderKnown": {
+                            "type": "boolean"
+                          },
+                          "notes": {
+                            "type": "string"
+                          },
+                          "dataRoomItemId": {
+                            "anyOf": [
+                              {
+                                "$ref": "#/components/schemas/RpcInvestorsAuditsListOutputSchema0"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "drafting": {
+                            "type": "boolean"
+                          },
+                          "newMail": {
+                            "type": "boolean"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "fund",
+                          "asOf",
+                          "asOfMatched",
+                          "dueDate",
+                          "status",
+                          "mailThreadId",
+                          "connectionId",
+                          "draftRef",
+                          "senderKnown",
+                          "notes",
+                          "dataRoomItemId",
+                          "drafting",
+                          "newMail",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Http400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Http401"
+          },
+          "402": {
+            "$ref": "#/components/responses/Http402"
+          },
+          "403": {
+            "$ref": "#/components/responses/Http403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Http404"
+          },
+          "405": {
+            "$ref": "#/components/responses/Http405"
+          },
+          "406": {
+            "$ref": "#/components/responses/Http406"
+          },
+          "408": {
+            "$ref": "#/components/responses/Http408"
+          },
+          "409": {
+            "$ref": "#/components/responses/Http409"
+          },
+          "410": {
+            "$ref": "#/components/responses/Http410"
+          },
+          "412": {
+            "$ref": "#/components/responses/Http412"
+          },
+          "413": {
+            "$ref": "#/components/responses/Http413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Http415"
+          },
+          "422": {
+            "$ref": "#/components/responses/Http422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Http428"
+          },
+          "429": {
+            "$ref": "#/components/responses/Http429"
+          },
+          "499": {
+            "$ref": "#/components/responses/Http499"
+          },
+          "500": {
+            "$ref": "#/components/responses/Http500"
+          },
+          "501": {
+            "$ref": "#/components/responses/Http501"
+          },
+          "502": {
+            "$ref": "#/components/responses/Http502"
+          },
+          "503": {
+            "$ref": "#/components/responses/Http503"
+          },
+          "504": {
+            "$ref": "#/components/responses/Http504"
+          },
+          "default": {
+            "$ref": "#/components/responses/OtherORPCError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/rpc/investors/audits/update": {
+      "post": {
+        "operationId": "rpc_investors_audits_update",
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": false,
+            "description": "Native clients send rakazo://; include the application origin for origin checks.",
+            "schema": {
+              "type": "string",
+              "example": "rakazo://"
+            }
+          },
+          {
+            "name": "x-rakazo-space-id",
+            "in": "header",
+            "required": false,
+            "description": "Optional selected space identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "json": {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "done",
+                          "dismissed"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "status"
+                    ]
+                  }
+                },
+                "required": [
+                  "json"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful RPC response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "json"
+                  ],
+                  "properties": {
+                    "json": {
+                      "$schema": "https://json-schema.org/draft/2020-12/schema",
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "$ref": "#/components/schemas/RpcInvestorsAuditsUpdateOutputSchema0"
+                        },
+                        "fund": {
+                          "type": "string"
+                        },
+                        "asOf": {
+                          "anyOf": [
+                            {
+                              "$ref": "#/components/schemas/RpcInvestorsAuditsUpdateOutputSchema1"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "asOfMatched": {
+                          "type": "boolean"
+                        },
+                        "dueDate": {
+                          "anyOf": [
+                            {
+                              "$ref": "#/components/schemas/RpcInvestorsAuditsUpdateOutputSchema1"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "drafted",
+                            "done",
+                            "dismissed"
+                          ]
+                        },
+                        "mailThreadId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "connectionId": {
+                          "anyOf": [
+                            {
+                              "$ref": "#/components/schemas/RpcInvestorsAuditsUpdateOutputSchema0"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "draftRef": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "senderKnown": {
+                          "type": "boolean"
+                        },
+                        "notes": {
+                          "type": "string"
+                        },
+                        "dataRoomItemId": {
+                          "anyOf": [
+                            {
+                              "$ref": "#/components/schemas/RpcInvestorsAuditsUpdateOutputSchema0"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "drafting": {
+                          "type": "boolean"
+                        },
+                        "newMail": {
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "fund",
+                        "asOf",
+                        "asOfMatched",
+                        "dueDate",
+                        "status",
+                        "mailThreadId",
+                        "connectionId",
+                        "draftRef",
+                        "senderKnown",
+                        "notes",
+                        "dataRoomItemId",
+                        "drafting",
+                        "newMail",
+                        "createdAt"
                       ],
                       "additionalProperties": false
                     }
@@ -98812,7 +99589,7 @@
         "maxLength": 4000
       },
       "RpcBotsUpdateInputSchema17": {
-        "maxItems": 123,
+        "maxItems": 124,
         "type": "array",
         "items": {
           "$ref": "#/components/schemas/RpcBotsUpdateInputSchema18"
@@ -98943,6 +99720,10 @@
         "type": "string",
         "format": "date-time",
         "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      },
+      "RpcContactsSaveInputSchema0": {
+        "type": "string",
+        "minLength": 1
       },
       "RpcDataRoomAgentOutputSchema0": {
         "type": "string",
@@ -100732,6 +101513,30 @@
       "RpcInvestorsAgentOutputSchema0": {
         "type": "string",
         "minLength": 1
+      },
+      "RpcInvestorsAuditsDraftOutputSchema0": {
+        "type": "string",
+        "minLength": 1
+      },
+      "RpcInvestorsAuditsDraftOutputSchema1": {
+        "type": "string",
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+      },
+      "RpcInvestorsAuditsListOutputSchema0": {
+        "type": "string",
+        "minLength": 1
+      },
+      "RpcInvestorsAuditsListOutputSchema1": {
+        "type": "string",
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+      },
+      "RpcInvestorsAuditsUpdateOutputSchema0": {
+        "type": "string",
+        "minLength": 1
+      },
+      "RpcInvestorsAuditsUpdateOutputSchema1": {
+        "type": "string",
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
       },
       "RpcInvestorsCapTableOutputSchema0": {
         "type": "string",

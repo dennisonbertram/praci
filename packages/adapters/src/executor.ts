@@ -359,6 +359,7 @@ import {
 } from "./imessage-tools.js";
 import { triageStatus } from "./inbox-triage.js";
 import {
+  auditRequestToolFromTool,
   INVESTOR_UPDATE_TOOL_NAMES,
   investorUpdateToolFromTool,
   investorUpdateToolsAllowed,
@@ -4909,14 +4910,14 @@ export function createRunExecutor(deps: ExecutorDeps) {
             );
           }
           if (INVESTOR_UPDATE_TOOL_NAMES.has(name) && investorsEnabled) {
+            const investorToolDeps = {
+              prisma: deps.prisma,
+              scope: { spaceId: run.spaceId, userId: bot.userId },
+            };
             return finish(
-              await investorUpdateToolFromTool(
-                {
-                  prisma: deps.prisma,
-                  scope: { spaceId: run.spaceId, userId: bot.userId },
-                },
-                args,
-              ),
+              name === "audit_request_upsert"
+                ? await auditRequestToolFromTool(investorToolDeps, args)
+                : await investorUpdateToolFromTool(investorToolDeps, args),
             );
           }
           if (FUNDRAISING_TOOL_NAMES.has(name) && fundraisingEnabled) {
@@ -7615,7 +7616,7 @@ export function selectBuiltinToolsForRun(options: {
   contactsEnabled?: boolean;
   /** The Carta agent on a run its owner started: the Cap Table tools are offered. */
   capTableEnabled?: boolean;
-  /** The Investors agent on a run its owner started: investor_update_draft is offered. */
+  /** The Investors agent on a run its owner started: investor_update_draft and audit_request_upsert are offered. */
   investorsEnabled?: boolean;
   /** The Investors agent on a run its owner started: the Fundraising read tool is offered. */
   fundraisingEnabled?: boolean;

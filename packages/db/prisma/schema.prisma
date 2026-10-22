@@ -27,6 +27,7 @@ model User {
   contacts                    Contact[]
   capTableSnapshots           CapTableSnapshot[]
   investorUpdates             InvestorUpdate[]
+  auditRequests               AuditRequest[]
   fundraiseRounds             FundraiseRound[]
   sidebarPages                SidebarPage[]
   notifications               Notification[]
@@ -271,6 +272,7 @@ model Space {
   contacts                    Contact[]
   capTableSnapshots           CapTableSnapshot[]
   investorUpdates             InvestorUpdate[]
+  auditRequests               AuditRequest[]
   fundraiseRounds             FundraiseRound[]
   sidebarPages                SidebarPage[]
   agentHomes                  AgentHome[]
@@ -2509,6 +2511,47 @@ model InvestorUpdate {
 
   @@index([spaceId, userId, createdAt])
   @@map("investor_updates")
+}
+
+/// An auditor, 409A or DocuSign request. Created by the mail intake job the moment the mail arrives
+/// (so it shows even if drafting never starts), or by the Investors agent for a request that did not
+/// arrive by mail. Only the founder closes it (done or dismissed); a dismissed row keeps its thread.
+model AuditRequest {
+  id              String    @id @default(cuid())
+  spaceId         String
+  space           Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// The subject line until the agent corrects it.
+  fund            String
+  /// Lower case, single spaces: how the agent's upsert finds the same request again.
+  fundKey         String
+  asOf            DateTime? @db.Date
+  /// False when the statement had to use current holdings.
+  asOfMatched     Boolean   @default(true)
+  dueDate         DateTime? @db.Date
+  /// "open" | "drafted" | "done" | "dismissed"
+  status          String    @default("open")
+  dataRoomItemId  String?
+  mailThreadId    String?
+  connectionId    String?
+  /// Gmail draft id.
+  draftRef        String?
+  /// The sender is an Auditor contact.
+  senderKnown     Boolean   @default(false)
+  notes           String    @default("")
+  draftStartedAt  DateTime?
+  draftedAt       DateTime?
+  doneAt          DateTime?
+  /// The newest mail in the thread; later than draftedAt means New mail.
+  lastMailAt      DateTime
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([spaceId, userId, mailThreadId])
+  @@index([spaceId, userId, status])
+  @@index([spaceId, userId, draftStartedAt])
+  @@map("audit_requests")
 }
 
 /// A fundraising round. Open while closedAt is null; at most one open round per space and user

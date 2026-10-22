@@ -21,6 +21,7 @@ export const INVESTORS_AGENT_BUILTIN_TOOLS = [
   "contacts_add",
   "contacts_save",
   "investor_update_draft",
+  "audit_request_upsert",
   "skill_read",
   "finance_overview",
   "finance_breakdown",
@@ -100,3 +101,41 @@ export const InvestorUpdateRetryInputSchema = z.object({
 
 export const InvestorReminderCadenceSchema = z.enum(["monthly", "quarterly", "off"]);
 export type InvestorReminderCadence = z.infer<typeof InvestorReminderCadenceSchema>;
+
+export const AuditRequestStatusSchema = z.enum(["open", "drafted", "done", "dismissed"]);
+export type AuditRequestStatus = z.infer<typeof AuditRequestStatusSchema>;
+
+const Day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+/** An auditor, 409A or DocuSign request. Only the founder closes one (done or dismissed). */
+export const AuditRequestSchema = z.object({
+  id: Id,
+  fund: z.string(),
+  asOf: Day.nullable(),
+  /** False when the statement had to use current holdings. */
+  asOfMatched: z.boolean(),
+  dueDate: Day.nullable(),
+  status: AuditRequestStatusSchema,
+  mailThreadId: z.string().nullable(),
+  connectionId: Id.nullable(),
+  /** Gmail draft id. */
+  draftRef: z.string().nullable(),
+  /** The sender is an Auditor contact. */
+  senderKnown: z.boolean(),
+  notes: z.string(),
+  dataRoomItemId: Id.nullable(),
+  /** A drafting run started in the last few minutes, so Draft reply is hidden. */
+  drafting: z.boolean(),
+  /** Mail arrived in the thread after the draft was made. */
+  newMail: z.boolean(),
+  createdAt: IsoDate,
+});
+export type AuditRequest = z.infer<typeof AuditRequestSchema>;
+
+export const AuditRequestListInputSchema = z.object({ includeDone: z.boolean().optional() });
+
+/** Closing is the only change the founder makes. */
+export const AuditRequestUpdateInputSchema = z.object({
+  id: Id,
+  status: z.enum(["done", "dismissed"]),
+});

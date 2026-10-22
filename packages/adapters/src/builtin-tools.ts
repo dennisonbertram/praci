@@ -1225,6 +1225,25 @@ export const builtinAgentTools: ConnectorTool[] = [
     },
   },
   {
+    name: "audit_request_upsert",
+    description:
+      "Save an audit, confirmation, 409A or DocuSign request on the Investors page. Pass the request id from your task to correct that row (fund, asOf, dueDate, notes) and, once the Gmail draft exists, drafted true with draftRef (the draft id). Without an id it returns the open row with the same fund and asOf, or adds one for a request that did not arrive by mail. asOfMatched false means the statement had to use current holdings. Dates are YYYY-MM-DD. You never close a request: the user marks it done or dismisses it.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "The audit request id from your task." },
+        fund: { type: "string", description: "The fund or auditor that asked." },
+        asOf: { type: ["string", "null"], description: "The date the holdings are as of." },
+        asOfMatched: { type: "boolean" },
+        dueDate: { type: ["string", "null"] },
+        notes: { type: "string" },
+        draftRef: { type: ["string", "null"], description: "The Gmail draft id from mail_draft." },
+        dataRoomItemId: { type: ["string", "null"] },
+        drafted: { type: "boolean", description: "The Gmail draft is ready." },
+      },
+    },
+  },
+  {
     name: "cap_table_read",
     description:
       "The cap table on the user's Cap Table page, as last saved: fully diluted shares, option pool, latest 409A, amount raised, share classes and each holder's security, shares and ownership. Null before the first save. Read this before answering cap table or investor questions.",
