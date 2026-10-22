@@ -360,11 +360,14 @@ it("Ask agent opens the email's agent in a panel, which closes again and can sta
   expect(document.querySelector('[data-testid="agent-panel"]')?.textContent).toContain(
     "Thread agent",
   );
-  // The email column keeps its width: from 1568px the panel sits beside it (1152px dialog), and
-  // below that the panel overlays it (no width formula that shrinks the column).
+  // From 1280px the dialog grows right (left edge fixed) and the panel sits beside the email; below
+  // that the panel overlays and the email column reserves its width.
   const popup = document.querySelector('[data-slot="dialog-content"]')?.className ?? "";
-  expect(popup).toContain("min-[1568px]:w-[1152px]!");
-  expect(popup).not.toContain("calc(50vw");
+  expect(popup).toContain("min-[1280px]:w-[min(1152px,calc(50vw+376px))]!");
+  expect(popup).toContain("min-[1280px]:left-[calc(50%-384px)]!");
+  expect(document.querySelector("[data-slot=dialog-content] > div")?.className).toContain(
+    "md:pe-96",
+  );
   expect(document.querySelector('[data-testid="agent-panel"]')?.parentElement?.className).toContain(
     "absolute",
   );
