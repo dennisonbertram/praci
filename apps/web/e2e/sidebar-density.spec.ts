@@ -50,6 +50,7 @@ test("compact bot sidebar hides previews and preserves roster status accessibly"
   );
 
   const settings = await openUserSettings(page);
+  await settings.getByText("Chat display", { exact: true }).click();
   const compact = settings.getByTestId("bots-sidebar-density-compact");
   await compact.scrollIntoViewIfNeeded();
   await compact.click();

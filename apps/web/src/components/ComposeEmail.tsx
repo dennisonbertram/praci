@@ -218,7 +218,7 @@ export function ComposeEmail({
   // The recipient rows are open while focus is inside them; otherwise many recipients fold up.
   const [expanded, setExpanded] = useState(false);
   const recipientsRef = useRef<HTMLDivElement>(null);
-  const [showFormat, setShowFormat] = useState(true);
+  const [showFormat, setShowFormat] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [quoteOpen, setQuoteOpen] = useState(false);
   const [forwarded, setForwarded] = useState<Forwarded[]>(restore?.forwarded ?? []);

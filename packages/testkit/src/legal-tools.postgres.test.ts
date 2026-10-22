@@ -30,6 +30,7 @@ import {
 import {
   ensureLegalAgent,
   ensureLegalRoutine,
+  LEGAL_AGENT_INSTRUCTIONS,
   LEGAL_SCAN_PROMPT,
 } from "../../../apps/api/src/legal-agent.ts";
 
@@ -455,6 +456,20 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
       modelId: "x",
       thinkingLevel: "low",
     });
+
+    // Instructions still equal to the previous default are updated; an edited prompt is kept.
+    const older = LEGAL_AGENT_INSTRUCTIONS.replace(
+      " If asked to send a notice or any email, say you do not send mail and that the Inbox agent can; never say email is not connected.",
+      "",
+    );
+    expect(older).not.toBe(LEGAL_AGENT_INSTRUCTIONS);
+    await prisma.bot.update({ where: { id: bot.id }, data: { instructions: older } });
+    expect((await ensureLegalAgent(api, c)).instructions).toBe(LEGAL_AGENT_INSTRUCTIONS);
+    await prisma.bot.update({ where: { id: bot.id }, data: { instructions: "My own." } });
+    await ensureLegalAgent(api, c);
+    expect((await prisma.bot.findUniqueOrThrow({ where: { id: bot.id } })).instructions).toBe(
+      "My own.",
+    );
 
     // Two racing calls still leave one routine.
     await prisma.routine.deleteMany({ where: { botId: bot.id } });

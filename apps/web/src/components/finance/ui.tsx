@@ -50,7 +50,6 @@ import { errorText } from "../../lib/user-error";
 import { AskBotButton } from "../AskBotButton";
 import { ShowAmountsButton } from "../HideAmountsToggle";
 import { PageNavButton } from "../PageHeader";
-import { MAX_SEGMENTS, shade } from "./charts";
 
 export type FinanceSpace = { id: string; name: string };
 
@@ -614,11 +613,9 @@ export function Kpi({
 export function BreakdownRows({
   rows,
   to,
-  swatches,
 }: {
   rows: BreakdownRow[];
   to: (row: BreakdownRow) => string;
-  swatches?: boolean;
 }) {
   // While amounts are hidden the bar lengths would still show each share, so the bars stay empty.
   const hidden = useHideAmounts();
@@ -632,16 +629,9 @@ export function BreakdownRows({
           key={row.key}
           to={to(row)}
           // Narrow, the bar moves under the name so the name is not cut off.
-          className="group grid grid-cols-[minmax(0,1fr)_4.5rem_0.75rem] items-center gap-x-2.5 gap-y-1 rounded-lg px-2 py-1.5 outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-foreground @md:grid-cols-[minmax(0,13rem)_1fr_4.5rem_0.75rem] @xl:grid-cols-[minmax(0,17rem)_1fr_4.5rem_0.75rem]"
+          className="group grid grid-cols-[minmax(0,1fr)_4.5rem_0.75rem] items-center gap-x-2.5 gap-y-1 rounded-lg px-2 py-1.5 outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-foreground @md:grid-cols-[minmax(0,2fr)_minmax(4rem,3fr)_4.5rem_0.75rem]"
         >
           <span className="truncate" title={row.label}>
-            {swatches ? (
-              <i
-                className="me-1.5 inline-block size-2 rounded-xs"
-                style={{ background: shade(Math.min(i, MAX_SEGMENTS - 1)) }}
-                aria-hidden="true"
-              />
-            ) : null}
             {row.label}
           </span>
           <span className="col-span-full row-start-2 block h-2 overflow-hidden rounded-sm bg-muted group-hover:bg-border @md:col-span-1 @md:row-start-auto">

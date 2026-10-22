@@ -41,3 +41,12 @@ export const PdfViewer: Story = {
     </div>
   ),
 };
+
+/** The file has not loaded yet: on a phone Open and Download show at once beside the placeholder. */
+export const PdfLoading: Story = {
+  render: (args) => (
+    <div className="h-80 w-full max-w-xl">
+      <FileViewer item={args.item} file={{ url: "", failed: false }} fill />
+    </div>
+  ),
+};

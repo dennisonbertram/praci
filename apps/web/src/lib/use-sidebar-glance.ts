@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { DATA_ROOM_CHANGED } from "./data-room";
 import { rpc } from "./rpc";
 
 /** Dispatched on `window` when a notification arrives or is seen (see the app-root subscription). */
@@ -67,7 +68,12 @@ export function useSidebarGlance(
   useEffect(refresh, [refresh, pathname]);
   useEffect(() => {
     window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, refresh);
-    return () => window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, refresh);
+    // An upload, retry or delete moves the Data room's failed count.
+    window.addEventListener(DATA_ROOM_CHANGED, refresh);
+    return () => {
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, refresh);
+      window.removeEventListener(DATA_ROOM_CHANGED, refresh);
+    };
   }, [refresh]);
 
   const surface = surfaceOfPath(pathname);

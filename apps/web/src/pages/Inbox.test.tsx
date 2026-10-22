@@ -1057,6 +1057,9 @@ it("shows the consent prompt without loading text while the first sync runs", as
     // The choice is the one thing to read before consent: no sync status beside it.
     expect(c.textContent).not.toContain("Reading your mail");
     expect(c.querySelector("[data-consent-prompt]")).not.toBeNull();
+    // Blank bars beside the card look stalled: any skeleton left is hidden.
+    for (const bar of c.querySelectorAll('[data-slot="skeleton"]'))
+      expect(bar.closest("[hidden]")).not.toBeNull();
     await act(async () => {
       await vi.advanceTimersByTimeAsync(5_000);
     });
@@ -1883,4 +1886,25 @@ describe("a list that holds still", () => {
     expect(box("Compose")).toBeTruthy();
     expect(box("Compose")).toBe(box("Cleanup"));
   });
+});
+
+it("keeps the rows inert while a slow first sort is still running, so a tap cannot land on a moved row", async () => {
+  vi.useFakeTimers();
+  try {
+    rpcMock.list.mockImplementation(async () => list([row("a")], { triagePending: true }));
+    const c = await render();
+    expect(c.querySelector("[inert]")).toBeNull();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(16_000);
+    });
+    expect(c.querySelector("[inert]")).not.toBeNull();
+    for (let i = 0; i < 14; i++)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5_000);
+      });
+    expect(c.textContent).toContain("Sorting is taking longer than usual.");
+    expect(c.querySelector("[inert]")).toBeNull();
+  } finally {
+    vi.useRealTimers();
+  }
 });
