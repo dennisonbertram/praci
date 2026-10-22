@@ -6,6 +6,8 @@ Update: new connections now get their own private agent automatically, and the
 This document keeps the original design and decisions; where it says "Only this
 agent", read "Share with all agents" turned off.
 
+Zernio is owned by the GTM agent; posting uses the founder-approved GTM path rather than generic integration writes.
+
 ## Goal
 
 Any integration (an MCP server or a connected app) gets a "Create agent" action on
