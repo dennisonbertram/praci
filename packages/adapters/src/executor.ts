@@ -2761,6 +2761,18 @@ export function createRunExecutor(deps: ExecutorDeps) {
           trigger: run.trigger,
           messagingChannelRun,
         });
+        const companyReadToolsAllowed =
+          companyReadAllowed &&
+          !restrictedContext &&
+          !meetingTaint &&
+          !gtmAgent &&
+          !legalOnly &&
+          !dataRoomAgent &&
+          !meetingAgent &&
+          !investorsAgent &&
+          !cartaAgent &&
+          !integrationAgent &&
+          !appAgentIdentity;
         const companyOwnerRun =
           run.userId === bot.userId &&
           !thread.groupId &&
@@ -3032,7 +3044,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 ? [...builtins, ...(companyReadAllowed ? companyToolsForRun(companyToolDeps) : [])]
                 : [
                     ...builtins,
-                    ...(companyReadAllowed ? companyToolsForRun(companyToolDeps) : []),
+                    ...(companyReadToolsAllowed ? companyToolsForRun(companyToolDeps) : []),
                     ...exposedConnectorTools,
                   ];
         const offeredToolNames = new Set(tools.map((tool) => tool.name));
