@@ -167,7 +167,7 @@ export function ContactsPage({
                 </Button>
               </div>
             ) : (
-              <div>
+              <div className="max-w-4xl">
                 <Table compact className="table-fixed">
                   <TableHeader>
                     <TableHeadRow>
@@ -202,9 +202,9 @@ export function ContactsPage({
                           >
                             {contact.name}
                           </button>
-                          {/* Without room for the Email column, the organization or email shows here. */}
+                          {/* Without room for the Email column, the email (else the organization) shows here. */}
                           <div className="truncate text-xs text-muted-foreground @md:hidden">
-                            {contact.organization ?? contact.email}
+                            {contact.email ?? contact.organization}
                           </div>
                         </TableCell>
                         <TableCell

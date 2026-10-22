@@ -149,8 +149,8 @@ describe.skipIf(!databaseAvailable)("offline schedule approval", () => {
           orderBy: { seq: "desc" },
         });
         const ask = (card.blocks as Array<Record<string, unknown>>).find((b) => b.kind === "ask");
-        expect(ask?.text).toBe("Review before creating the repeating schedule “Digest”");
-        expect(ask?.detail).toContain("repeats: Every day at 7:30 AM (America/New_York)");
+        expect(ask?.text).toBe("Every day at 7:30 AM, posts here");
+        expect(ask?.detail).toContain("time zone: America/New_York");
         expect(ask?.detail).toContain("prompt: Summarize my unread mail");
         await rpc(handles.app, cookie, "threads/answer", {
           botId: bot.id,
