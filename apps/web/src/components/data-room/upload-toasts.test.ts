@@ -5,11 +5,15 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const hoisted = vi.hoisted(() => ({
   upload: vi.fn(),
   enqueue: vi.fn(),
+  close: vi.fn(),
   folders: vi.fn(),
   imports: vi.fn(),
   space: { id: "s1" },
 }));
-vi.mock("@rakazo/ui-web", () => ({ enqueueNotificationToast: hoisted.enqueue }));
+vi.mock("@rakazo/ui-web", () => ({
+  enqueueNotificationToast: hoisted.enqueue,
+  notificationToastManager: { close: hoisted.close },
+}));
 vi.mock("../../lib/rpc", () => ({
   rpc: { dataRoom: { folders: hoisted.folders, imports: hoisted.imports } },
   selectedSpaceId: () => hoisted.space.id,
@@ -289,4 +293,34 @@ it("calls an upload with no progress slow, and offers Cancel and Retry", async (
   if (again?.kind !== "uploading" || !again.stalled) throw new Error("expected a stalled upload");
   again.stalled.cancel();
   expect(names()).toEqual([]);
+});
+
+it("does not retry a stalled upload into a different space", async () => {
+  setUploadScope("u1");
+  hoisted.upload.mockReturnValue(new Promise(() => undefined));
+  uploadFilesToDataRoom([file("deck.pdf")]);
+  await vi.advanceTimersByTimeAsync(15_000);
+  const state = getUploadToasts()[0]?.state;
+  if (state?.kind !== "uploading" || !state.stalled) throw new Error("expected a stalled upload");
+  hoisted.space.id = "s2";
+  state.stalled.retry();
+  expect(hoisted.upload).toHaveBeenCalledTimes(1);
+  expect(hoisted.upload.mock.calls[0]?.[3].aborted).toBe(true);
+  expect(hoisted.enqueue).toHaveBeenCalledWith(
+    expect.objectContaining({ title: "Not retried: the space changed" }),
+  );
+});
+
+it("closes shown notices when the user or space changes", () => {
+  setUploadScope("u1");
+  showNoticeToast("Shared secret.pdf");
+  const id = hoisted.enqueue.mock.calls[0]?.[0].id;
+  setUploadScope("u2");
+  expect(hoisted.close).toHaveBeenCalledWith(id);
+  showNoticeToast("Shared b.pdf");
+  const second = hoisted.enqueue.mock.calls[1]?.[0].id;
+  hoisted.enqueue.mock.calls[1]?.[0].onClose();
+  hoisted.space.id = "s2";
+  getUploadToasts();
+  expect(hoisted.close).not.toHaveBeenCalledWith(second);
 });

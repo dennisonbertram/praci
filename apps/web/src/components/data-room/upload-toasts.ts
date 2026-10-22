@@ -1,6 +1,6 @@
 import { t } from "@lingui/core/macro";
 import type { DataRoomApiImport } from "@rakazo/contracts";
-import { enqueueNotificationToast } from "@rakazo/ui-web";
+import { enqueueNotificationToast, notificationToastManager } from "@rakazo/ui-web";
 import {
   DATA_ROOM_CHANGED,
   DataRoomUploadError,
@@ -81,12 +81,16 @@ const notify = () => {
 let user: string | null = null;
 let scope = "";
 let epoch = 0;
+const notices = new Set<string>();
 function sync() {
   const next = `${user}:${selectedSpaceId()}`;
   if (next === scope) return;
   scope = next;
   epoch += 1;
   toasts = [];
+  // Notices name documents and investors: they must not outlive the user or space they were for.
+  for (const noticeId of notices) notificationToastManager.close(noticeId);
+  notices.clear();
 }
 
 /** Call with the signed-in user's id, or null on sign-out. */
@@ -165,6 +169,13 @@ async function uploadOne(file: File, folderId: string | undefined) {
   const id = nextId++;
   const mine = epoch;
   const current = () => mine === epoch;
+  // A retry must not file the document into whichever user or space is selected now.
+  const sameScope = () => {
+    sync();
+    if (current()) return true;
+    showNoticeToast(t`Not retried: the space changed`);
+    return false;
+  };
   toasts = [...toasts, { id, name: file.name, state: { kind: "uploading", fraction: 0 } }];
   notify();
   const fail = (reason: UploadFailure) => {
@@ -172,7 +183,7 @@ async function uploadOne(file: File, folderId: string | undefined) {
       reason === "folder-gone"
         ? () => {
             dismissUploadToast(id);
-            void uploadOne(file, undefined);
+            if (sameScope()) void uploadOne(file, undefined);
           }
         : undefined;
     update(id, { kind: "error", reason, ...(toTop ? { toTop } : {}) });
@@ -196,7 +207,7 @@ async function uploadOne(file: File, folderId: string | undefined) {
           cancel,
           retry: () => {
             cancel();
-            void uploadOne(file, folderId);
+            if (sameScope()) void uploadOne(file, folderId);
           },
         },
       });
@@ -292,8 +303,10 @@ export const showRenamedToast = (name: string) => showShortToast(name, { kind: "
 export const showNoticeToast = (text: string, since?: number) => {
   sync();
   // `since` is a uploadScopeToken() taken before a slow call; a changed user or space drops the toast.
-  if (since === undefined || since === epoch)
-    enqueueNotificationToast({ id: `data-room-notice-${nextId++}`, title: text });
+  if (since !== undefined && since !== epoch) return;
+  const noticeId = `data-room-notice-${nextId++}`;
+  notices.add(noticeId);
+  enqueueNotificationToast({ id: noticeId, title: text, onClose: () => notices.delete(noticeId) });
 };
 /** Identifies the current user and space; pass it to showNoticeToast to drop a toast that outlives them. */
 export function uploadScopeToken() {

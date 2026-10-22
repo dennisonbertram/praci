@@ -7096,6 +7096,10 @@ msgstr "Not in runway"
 msgid "Not now"
 msgstr "Not now"
 
+#: src/components/data-room/upload-toasts.ts
+msgid "Not retried: the space changed"
+msgstr "Not retried: the space changed"
+
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Not saved"
