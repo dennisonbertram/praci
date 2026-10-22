@@ -198,7 +198,6 @@ import {
   isRetiredVoiceAgentSpawnKey,
   isVoiceAgentSpawnKey,
   isZernioEndpoint,
-  legalAgentSpawnKey,
   NOTIFICATION_HEARTBEAT_ID,
   notificationKindOf,
   OPENAI_COMPATIBLE_PROVIDER_ID,
@@ -1576,41 +1575,9 @@ export function createRouter(deps: RouterDeps) {
       status: authed.aiConsent.status.handler(({ context, input }) =>
         aiConsentStatus(deps, context.actor, input),
       ),
-      allow: authed.aiConsent.allow.handler(async ({ context, input }) => {
-        const status = await allowAiConsent(deps, context.actor, input);
-        // The switch promises files and contracts too, so it also records the Data room's own
-        // consent for the default model and, once it exists, the Legal agent's model.
-        // Only once every model is allowed, which is when Settings reads the switch as on.
-        if (!status.recipients.filter((r) => r.use === "model").every((r) => r.allowed))
-          return status;
-        const documents = async (
-          current: () => Promise<{ key: string; version: string; allowed: boolean }>,
-          grant: (grant: { key: string; version: string }) => Promise<unknown>,
-        ) => {
-          const { key, version, allowed } = await current();
-          if (key && !allowed) await grant({ key, version });
-        };
-        const actor = context.actor;
-        await documents(
-          () => dataRoom.consent(actor),
-          (grant) => dataRoom.consentGrant(actor, grant),
-        ).catch((error) => getLogger().error("data room consent with Allow", error));
-        const legalBot = await deps.prisma.bot.findFirst({
-          where: {
-            userId: actor.userId,
-            spaceId: actor.spaceId,
-            spawnKey: legalAgentSpawnKey(actor.userId),
-            archivedAt: null,
-          },
-          select: { id: true },
-        });
-        if (legalBot)
-          await documents(
-            () => legalConsent(legalDeps, actor),
-            (grant) => legalConsentGrant(legalDeps, actor, grant),
-          ).catch((error) => getLogger().error("legal consent with Allow", error));
-        return status;
-      }),
+      allow: authed.aiConsent.allow.handler(({ context, input }) =>
+        allowAiConsent(deps, context.actor, input),
+      ),
       revoke: authed.aiConsent.revoke.handler(async ({ context, input }) => {
         await deps.prisma.aiDataConsent.deleteMany({
           where: {

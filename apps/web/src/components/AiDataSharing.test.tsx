@@ -46,6 +46,8 @@ const consent = vi.hoisted(() => ({
   allowRecipient: vi.fn(),
   revokeRecipient: vi.fn(),
   aiConsentStatus: vi.fn(),
+  documentConsent: vi.fn(),
+  allowDocuments: vi.fn(),
 }));
 vi.mock("../lib/ai-consent", () => consent);
 vi.mock("../lib/user-error", () => ({
@@ -65,12 +67,21 @@ const statusOf = (list = recipients): AiConsentStatus => ({
   recipients: list,
 });
 
+const documents = (hasModel: boolean, allowed: boolean) => ({
+  key: "data-room:k",
+  version: "d1",
+  allowed,
+  disclosure: "",
+  recipients: hasModel ? [{ name: "OpenRouter", detail: "vendor/model" }] : [],
+});
+
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.resetAllMocks();
+  consent.documentConsent.mockResolvedValue(documents(false, false));
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -285,4 +296,43 @@ it("sends one grant even if Allow is pressed again while the first is in flight"
 
   await act(async () => finish(statusOf()));
   expect(container.querySelector("button")?.disabled).toBe(false);
+});
+
+it("reads off until the documents are allowed too, and the switch then allows them with the models", async () => {
+  const list = (allowed: boolean) =>
+    statusOf([
+      { ...modelA, allowed },
+      { ...modelB, allowed },
+    ]);
+  consent.aiConsentStatus.mockResolvedValue(list(true));
+  consent.documentConsent.mockResolvedValue(documents(true, false));
+  await render(<AiDataSharingSection />);
+  expect(switchStates()[0]).toEqual(["Allow AI models", "false"]);
+  expect(container.querySelector("details")?.open).toBe(true);
+
+  consent.allowRecipient.mockResolvedValue(list(true));
+  consent.allowDocuments.mockResolvedValue(documents(true, true));
+  consent.documentConsent.mockResolvedValue(documents(true, true));
+  await click(container.querySelector('[aria-label="Allow AI models"]'));
+  expect(consent.allowDocuments).toHaveBeenCalledTimes(1);
+  expect(switchStates()[0]).toEqual(["Allow AI models", "true"]);
+});
+
+it("allows only the documents from their own switch, and turning the master off revokes them", async () => {
+  const models = statusOf([{ ...modelA, allowed: true }]);
+  consent.aiConsentStatus.mockResolvedValue(models);
+  consent.documentConsent.mockResolvedValue(documents(true, false));
+  consent.allowDocuments.mockResolvedValue(documents(true, true));
+  await render(<AiDataSharingSection />);
+  consent.documentConsent.mockResolvedValue(documents(true, true));
+  await click(container.querySelector('[aria-label="Documents"]'));
+  expect(consent.allowDocuments).toHaveBeenCalledTimes(1);
+  expect(consent.allowRecipient).not.toHaveBeenCalled();
+  expect(switchStates()[0]).toEqual(["Allow AI models", "true"]);
+
+  consent.revokeRecipient.mockResolvedValue(statusOf([{ ...modelA, allowed: false }]));
+  consent.documentConsent.mockResolvedValue(documents(true, false));
+  await click(container.querySelector('[aria-label="Allow AI models"]'));
+  expect(consent.revokeRecipient.mock.calls).toEqual([["a"], ["data-room:k"]]);
+  expect(switchStates()[0]).toEqual(["Allow AI models", "false"]);
 });

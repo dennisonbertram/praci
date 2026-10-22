@@ -1,12 +1,18 @@
 import { i18n } from "@lingui/core";
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { AiConsentStatus, AiRecipient } from "@rakazo/contracts";
+import type { AiConsentStatus, AiRecipient, DataRoomConsentStatus } from "@rakazo/contracts";
 import { AI_DATA_DISCLOSURES, modelLabel } from "@rakazo/contracts";
 import { Button, Card, cn, Skeleton, Switch } from "@rakazo/ui-web";
 import { ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { aiConsentStatus, allowRecipient, revokeRecipient } from "../lib/ai-consent";
+import {
+  aiConsentStatus,
+  allowDocuments,
+  allowRecipient,
+  documentConsent,
+  revokeRecipient,
+} from "../lib/ai-consent";
 import { INBOX_CHANGED_EVENT } from "../lib/inbox-message-cache";
 import { errorText } from "../lib/user-error";
 
@@ -113,6 +119,8 @@ export function AiDataSharingSection() {
   const { t } = useLingui();
   // null until the first read, so the section holds its place instead of appearing late.
   const [recipients, setRecipients] = useState<AiRecipient[] | null>(null);
+  // Files and contracts need their own consent; null until it loads or when it cannot.
+  const [documents, setDocuments] = useState<DataRoomConsentStatus | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const show = (status: AiConsentStatus) =>
@@ -122,6 +130,9 @@ export function AiDataSharingSection() {
     aiConsentStatus()
       .then((status) => live && show(status))
       .catch(() => live && setRecipients([]));
+    documentConsent()
+      .then((status) => live && setDocuments(status))
+      .catch(() => undefined);
     return () => {
       live = false;
     };
@@ -133,29 +144,44 @@ export function AiDataSharingSection() {
     // An open Inbox reloads, so its sorting and the consent prompt match the switch.
     window.dispatchEvent(new Event(INBOX_CHANGED_EVENT));
   };
-  const run = (change: () => Promise<AiConsentStatus>) => {
+  const run = (change: () => Promise<AiConsentStatus | undefined>) => {
     setPending(true);
     setError("");
     change()
-      .then(afterChange)
+      .then((status) => status && afterChange(status))
+      // Revoking a model also takes back the document grant, so read it again.
+      .then(() => documentConsent().then(setDocuments, () => undefined))
       .catch((cause) => setError(errorText(cause)))
       .finally(() => setPending(false));
   };
   const setOne = (recipient: AiRecipient, allowed: boolean) =>
     run(() => (allowed ? allowRecipient(recipient.key) : revokeRecipient(recipient.key)));
+  const documentsNeeded = (documents?.recipients.length ?? 0) > 0;
+  const setDocumentsAllowed = (allowed: boolean) =>
+    run(async () => {
+      if (allowed) await allowDocuments();
+      else if (documents) await revokeRecipient(documents.key);
+      return aiConsentStatus();
+    });
   const setAll = (allowed: boolean) =>
     run(async () => {
       let status: AiConsentStatus | undefined;
       for (const recipient of recipients ?? []) {
         status = await (allowed ? allowRecipient(recipient.key) : revokeRecipient(recipient.key));
       }
+      // The switch says it covers files and contracts, so it turns their consent on and off too.
+      if (allowed && documentsNeeded && !documents?.allowed) await allowDocuments();
+      if (!allowed && documents && documentsNeeded) await revokeRecipient(documents.key);
       return status ?? aiConsentStatus();
     });
-  // On only when every model is allowed, so it matches what works; a partial grant (for example the
-  // one a Legal Allow made) reads off and Advanced opens to show which models are allowed.
-  const allAllowed = recipients?.every((recipient) => recipient.allowed) ?? false;
+  // On only when every model and the documents are allowed, so it matches what works; a partial
+  // grant (for example the one a Mail Allow made) reads off and Advanced opens to show what is allowed.
+  const allAllowed =
+    (recipients?.every((recipient) => recipient.allowed) ?? false) &&
+    (!documentsNeeded || documents?.allowed === true);
   const partlyAllowed =
-    !allAllowed && (recipients?.some((recipient) => recipient.allowed) ?? false);
+    !allAllowed &&
+    ((recipients?.some((recipient) => recipient.allowed) ?? false) || documents?.allowed === true);
   return (
     <section className="rounded-xl border border-border px-4 py-4">
       <h3 className="text-[15px] font-medium text-foreground">
@@ -189,7 +215,7 @@ export function AiDataSharingSection() {
         </div>
       )}
       {/* With one model the switch above already is that model. */}
-      {recipients && recipients.length > 1 ? (
+      {recipients && (recipients.length > 1 || documentsNeeded) ? (
         <details className="group mt-3" open={partlyAllowed}>
           <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-md text-[13px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
             <Trans>Advanced</Trans>
@@ -213,6 +239,19 @@ export function AiDataSharingSection() {
                 </li>
               );
             })}
+            {documentsNeeded ? (
+              <li className="flex items-center gap-3 pointer-coarse:min-h-11">
+                <Switch
+                  aria-label={t`Documents`}
+                  checked={documents?.allowed === true}
+                  disabled={pending}
+                  onCheckedChange={setDocumentsAllowed}
+                />
+                <span className="text-[14px] text-foreground/75">
+                  <Trans>Documents</Trans>
+                </span>
+              </li>
+            ) : null}
           </ul>
         </details>
       ) : null}

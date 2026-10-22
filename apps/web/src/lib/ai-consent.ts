@@ -9,3 +9,11 @@ export async function allowRecipient(key: string) {
 }
 
 export const revokeRecipient = (key: string) => rpc.aiConsent.revoke({ key });
+
+export const documentConsent = () => rpc.dataRoom.consent();
+
+/** Allows the Data room's models for documents, under the key and version the server reports right now. */
+export async function allowDocuments() {
+  const { key, version } = await documentConsent();
+  return rpc.dataRoom.consentGrant({ key, version });
+}

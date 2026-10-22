@@ -4289,6 +4289,7 @@ msgstr ""
 msgid "Document date"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/FolderDocuments.tsx
 #: src/pages/portal/PortalHome.tsx
