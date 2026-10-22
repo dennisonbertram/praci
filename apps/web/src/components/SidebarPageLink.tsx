@@ -27,6 +27,7 @@ export function RailTip({
  */
 export function SidebarPageLink({
   testId,
+  href,
   current,
   icon,
   label,
@@ -37,6 +38,8 @@ export function SidebarPageLink({
   rail = false,
 }: {
   testId: string;
+  /** Makes the row a real link: it opens in a new tab and is announced as a link. */
+  href?: string;
   current: boolean;
   icon: ReactNode;
   label: string;
@@ -51,16 +54,23 @@ export function SidebarPageLink({
   const collapsed = usePagesCollapsed();
   if (collapsed && !notified && !current) return null;
   const name = badgeLabel ? `${label}, ${badgeLabel}` : label;
+  const Row = href ? "a" : "button";
   return (
     <RailTip rail={rail} label={label}>
-      <button
-        type="button"
+      <Row
+        {...(href ? { href } : { type: "button" as const })}
         data-testid={testId}
         data-tour={testId}
         data-roster-row={testId}
         aria-current={current ? "page" : undefined}
         aria-label={rail || badgeLabel ? name : undefined}
-        onClick={onOpen}
+        onClick={(event) => {
+          // A link keeps the browser's own handling of new-tab clicks; a plain click stays in the app.
+          if (href && (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0))
+            return;
+          event.preventDefault();
+          onOpen();
+        }}
         className={`mb-0.5 flex items-center rounded-xl text-start hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
           rail ? "justify-center px-0 py-1.5" : "gap-3 px-2.5 py-1 pointer-coarse:py-1.5"
         } ${current ? "bg-sidebar-accent" : ""}`}
@@ -81,7 +91,7 @@ export function SidebarPageLink({
             {badge}
           </>
         )}
-      </button>
+      </Row>
     </RailTip>
   );
 }
