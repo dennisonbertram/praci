@@ -1,0 +1,46 @@
+# Walk J2: long journeys for raising and operating (iteration 16)
+
+Walker: uxl16-J2. Target: mock-data demo stack (web :5381), 1440x900, dark theme. Screenshots in /tmp/uxloop16/J2/. Console: no errors, only Vite and React DevTools notices. Note: the demo login is shared with other walkers, so Hide amounts flipped between on and off during the walk (I turned it off once; it was on at the start). Files I added to the Data room (two small .txt files), a Mercury agent (Allow changes), a bot "J2 Digest bot" with one skill and one routine, and one deadline marked Done (Q3 board consent signature) remain in the demo data.
+
+## Story verdicts
+
+| Story | Verdict | Steps actual / ideal | Notes |
+|---|---|---|---|
+| STORY-DRM-109 diligence day (adapted: two small files, no 1.2 GB zip, no password zip) | PASS with caveats | 11 / 14 | Upload, processing strip, Ask answered with a stated gap ("One other file is still being indexed, so results may be incomplete"; this resolves the catalog's UNVERIFIED). Auto-sort failed with "The model could not sort your files." (demo has no model key, expected; no fallback other than Cancel). Zip, video and password-zip steps not tried (need crafted large files). |
+| STORY-DRM-018 first week library | SKIPPED | - | Covered in part by DRM-109 (consent, upload, folders). |
+| STORY-CAP-017 first visit to working setup | PARTLY (Carta already connected, so steps 1-4 skipped) | 4 / 4 | Read table, SAFEs, contacts, Draft reply on audit request, Ask panel. |
+| STORY-CAP-019 auditor confirmation | FAIL (flow) | 2 / 2 | "Draft reply" ran, button reset, no visible result (see J2-01). |
+| STORY-LEG-001 / LEG-007 legal dates | PASS | 4 / 3 | New uploads were auto-scanned into Legal (appear as "Unknown"); Deadlines tab, Ask agent on a notice date, agent spotted a date mismatch and offered a draft; Done with inline Undo. |
+| STORY-FIN-022 / APP-385 agent moves money | PASS | 7 / about 4 | Integrations, Mercury, Allow changes (clear confirm), open Mercury agent, ask, approval card with Details, Send, "Approved here. Waiting for Mercury", final message says to approve in Mercury. Peer path through Chief (APP-388 step 5) SKIPPED: Chief's thread is shared with other walkers. |
+| STORY-APP-363 / 350 bot with skill and routine | PASS with caveats | 13 / about 10 | New bot, rename, Add skill, Create a routine with skill, weekly schedule defaulting to Monday 9:00 AM with "Next run Mon, Oct 26, 9:00 AM", Test run. Test run ended with "I've asked the Inbox agent..." and run status Done (see J2-04). |
+| STORY-CAP-106 Carta connect from Cap table | BLOCKED | - | Carta already connected on the demo; real Carta host not available. |
+| STORY-DRM-103/104/105 zip failures | SKIPPED | - | Need crafted zips; time. |
+| STORY-FIN-019..021, 036 | SKIPPED | - | Finance page checked visually only (clean, no defects). |
+
+## Findings
+
+| id | page / story | sev | cat | what happened vs expected | evidence | suspected code | fix | status |
+|---|---|---|---|---|---|---|---|---|
+| J2-01 | Investors, CAP-019 | P1 | flow | Clicking "Draft reply" on an audit request shows "Drafting..." for about 15 s, then the button returns to "Draft reply". Nothing opens and no message says it finished; the agent's answer ("I haven't drafted a reply: I can't verify those holdings...") exists only in the closed Ask panel. Maya cannot tell whether it worked and may click again. Expected: open the Investors agent panel on click, or show the result on the row (Draft ready / Needs your input). | c07.png, c08.png, c09.png | apps/web/src/pages/Investors.tsx:1162 (onDraftAudit only calls rpc.investors.audits.draft); apps/web/src/components/investors/ActionItems.tsx:78 | Open the Ask panel when a draft starts and show the outcome on the row when it ends. | observed (outcome text depends on the demo model) |
+| J2-02 | Legal, Contracts tab | P2 | visual | Contract names and parties truncate ("MOCK Insurance Poli...", "Shieldwell Insu...") while Term and Renewal columns each get 22% and leave free space. The contract name is the row's identity. Status "Active" is plain grey text while Draft and Unknown are pills. | l01.png | apps/web/src/pages/legal/LegalContracts.tsx:175-181 (col widths: contract 15%, term 22%, renewal 22%) | Give Contract about 24% and Parties about 17%, take it from Term and Renewal; show Active as a pill or hide the pill for all normal states. | observed (widths from source, truncation from screenshot) |
+| J2-03 | Data room, DRM-109 | P2 | flow | Auto-sort ends with "The model could not sort your files." plus Retry and Cancel only. On a missing or failing model there is no pointer to Settings > Models or to sorting by hand, so the user is stuck in a loop of Retry. (The demo has no model key; on a real install this would be a transient failure.) | d05.png, d06.png | Auto-sort dialog in apps/web/src/pages/DataRoom.tsx (Sort files) | Distinguish "no model available" from a model error and link to Settings; keep Retry for the error case. | observed; cause (no key) suspected |
+| J2-04 | Bot routine, APP-350/363 | P2 | flow | Routine Test run: the bot messages the Inbox agent and finishes with "I've asked the Inbox agent to find investor replies ... No schedule was created or changed." The run is marked Done although the digest itself was never delivered to Maya, and "No schedule was created or changed" is noise. Expected: Done only once the answer is in the bot's thread, or the status says "Waiting on Inbox agent". | b15.png, b16.png | routine runner / run status (not located) | Treat a run that only delegated as Waiting, or have the bot wait for the peer's reply before finishing. | observed; scripted demo model may cause the wording |
+| J2-05 | Legal agent, LEG-007 | P3 | flow | Drafted non-renewal notice is plain chat text with placeholders ([Recipient / Provider], [Name]) and no action (copy, open in Inbox composer, send for approval). Maya must copy it by hand. | l05.png | Legal agent instructions / tools | Offer "Open in composer" on a drafted notice. | observed |
+| J2-06 | Data room list | P3 | visual | On a failed row the inline "Delete" button sits next to the folder name in the Name cell and deletes without the row being opened; the same Delete exists in the preview. The reason ("This file isn't a readable PDF.") is hidden in the list and only shows after opening the row (in the narrow list with preview open). | d01.png, d09.png, d10.png | apps/web/src/pages/DataRoom.tsx failed row cell | Show the reason line under the name in the list at all widths; keep one Delete. | observed |
+| J2-07 | Bot settings, skill form | P3 | visual | The new-skill fields (Name, What it does, Instructions) are inset 10 px on both sides compared with Name and Description above (x 1087-1410 vs 1077-1420). | b05.png | bot settings Skills form | Use the same field width as the rest of the panel. | observed |
+| J2-08 | Bot panel, computer view | P3 | visual | Opening the computer and routines panel on a new bot shows the Routines header, then about 250 px of blank space, then the label "J2 Digest bot's computer" with nothing under it (no empty text). | b09.png | computer panel | Hide the heading or add a short empty state until the bot has used its computer. | observed |
+| J2-09 | Investors contacts, CAP-017 | P3 | flow | In "SAFEs and funds" the contact rows end with a "—" column even for Priya Placeholder at Quill Capital, who holds the $250,000 SAFE listed just above; the SAFE list names Harbor Angels and Quill Capital but the contacts are people, with no amount tied to them. Unclear what the column means. | c05.png | apps/web/src/pages/Investors.tsx (contacts list) | Show the holder's SAFE amount on the linked contact, or drop the column. | observed; meaning of "—" unverified |
+| J2-10 | Mercury approval | P3 | copy | Asked to pay "Acme (Mock)"; the card names "Acme Servo Supply (Mock)". The card is clear, but the changed name is not marked, so a hurried approver could miss that the recipient is a different spelling. | a06.png, a07.png | Mercury requestSendMoney card | Show "You asked for: Acme (Mock)" when the resolved name differs. | observed |
+
+## Excellent
+
+- Mercury approval card: one question, amount and account in the title, a Details fold with amount, recipient, source account and note, Send as the dominant button, then "Approved here. Waiting for Mercury" and an honest closing message that Mercury still needs its own approval.
+- "Allow changes in Mercury?" dialog says exactly what the agent can do and that it asks first.
+- Routine editor: Monday 9:00 AM default, time zone in words, "Next run Mon, Oct 26, 9:00 AM", Run history with View chat.
+- Legal: deadline rows with reason text and relative due dates, Done with inline Undo, badge on the sidebar clears; the Legal agent noticed a Dec 1 versus Nov 2 mismatch and asked what to do with one-tap options.
+- Data room agent states that indexing is incomplete instead of presenting a partial answer as final. Uploaded files flowed into Legal without extra steps.
+- Finance page: dense but clean, no overflow, no geometry-audit defects beyond normal flex-row noise.
+
+## Not verified
+
+Real Carta, real Mercury approval, zip and large-file uploads, Chief-to-Mercury delegation, phone width, touch emulation.
