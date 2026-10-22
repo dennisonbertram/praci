@@ -258,7 +258,10 @@ export function FullScreenPreview({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         // Start on Close rather than "Open in new tab"; Escape then works from the first press.
-        initialFocus={() => document.querySelector<HTMLElement>('[data-slot="dialog-close"]')}
+        // This dialog mounts last, so its Close is the last one (an enclosing dialog's comes first).
+        initialFocus={() =>
+          [...document.querySelectorAll<HTMLElement>('[data-slot="dialog-close"]')].at(-1)
+        }
         className="flex h-dvh max-h-none w-screen max-w-none flex-col gap-3 max-sm:rounded-none sm:h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:max-w-none"
       >
         <div className="flex items-center gap-1 pe-9">
