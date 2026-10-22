@@ -42,9 +42,9 @@ const render = (folderId: string | undefined, onSelect = vi.fn()) => {
   return onSelect;
 };
 
-it("shows nothing at the top level", () => {
+it("shows only All items at the top level, so entering a folder adds no row", () => {
   render(undefined);
-  expect(container.querySelector("nav")).toBeNull();
+  expect(container.querySelector("nav")?.textContent).toBe("All items");
 });
 
 it("shows the path, links to every folder above and marks the open one", () => {

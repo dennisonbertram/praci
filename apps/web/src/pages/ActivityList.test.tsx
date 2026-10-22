@@ -110,6 +110,11 @@ it("keeps the Activity header and Filter toggle visible while the filter form is
   expect(container.querySelector('[data-testid="activity-status-filter"]')).not.toBeNull();
   expect(container.querySelector("h2")?.textContent).toBe("Activity");
   expect(toggle()?.getAttribute("aria-expanded")).toBe("true");
+  // The filter form scrolls with the rows, so it cannot squeeze them to zero height.
+  const rows = container.querySelector('[data-testid="activity-rows"]');
+  expect(rows?.contains(container.querySelector('[data-testid="activity-status-filter"]'))).toBe(
+    true,
+  );
 
   await act(async () => toggle()?.click());
   expect(container.querySelector('[data-testid="activity-status-filter"]')).toBeNull();

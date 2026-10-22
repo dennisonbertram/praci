@@ -249,7 +249,11 @@ function EmptyState({ cryptoCents, onAdd }: { cryptoCents: number | null; onAdd:
   return (
     <div>
       {/* The page title stays where every page has it, with the empty state under it. */}
-      <PageHeader title={<Trans>Finance</Trans>} meta={<CompanyMenu />} />
+      <PageHeader
+        title={<Trans>Finance</Trans>}
+        meta={<CompanyMenu />}
+        actions={<AskAgentButton />}
+      />
       <PageEmptyState
         icon={FINANCE_PROVIDERS.map(({ provider, name, logo }) => (
           <AppLogo key={provider} name={name} logo={logo} size="lg" />
@@ -423,6 +427,11 @@ function Overview({
                     aria-hidden="true"
                     className={`size-1.5 shrink-0 rounded-full ${sourceDot}`}
                   />
+                  {sourceDot !== "bg-success" ? (
+                    <span className="sr-only">
+                      {sourceDot === "bg-destructive" ? t`Sync failed.` : t`Sign-in needed.`}
+                    </span>
+                  ) : null}
                   <span className="truncate @max-sm/ph:sr-only">
                     {syncing
                       ? t`${sourceNames} · syncing…`
@@ -977,7 +986,10 @@ function SubscriptionsTable({
                   </div>
                 ) : null}
                 {similar ? (
-                  <span className="ms-1.5 rounded-full border border-border px-1.5 text-[11px] font-normal text-muted-foreground">
+                  <span
+                    title={similar}
+                    className="ms-1.5 inline-block max-w-full truncate rounded-full border border-border px-1.5 align-middle text-[11px] font-normal text-muted-foreground"
+                  >
                     {similar}
                   </span>
                 ) : null}

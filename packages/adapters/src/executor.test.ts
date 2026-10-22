@@ -24,6 +24,7 @@ import {
   loadCurrentTurnImages,
   MEMORY_GUIDANCE,
   missingTurnImagesInstruction,
+  NOT_CONNECTED_GUIDANCE,
   PLAIN_CAPABILITY_GUIDANCE,
   parseUpdateBotPatch,
   persistentComputerInstruction,
@@ -1272,6 +1273,7 @@ describe("directoryDescription", () => {
     expect(line).toContain("quote the figures in your reply yourself");
     expect(line).toContain("[Open Finance](/app/finance)");
     expect(line).toContain("no accounts are connected yet");
+    expect(line).toContain("Never link Finance in a reply about a payment");
     expect(line).not.toContain("instead of messaging it");
   });
 
@@ -1283,6 +1285,8 @@ describe("directoryDescription", () => {
     expect(integration).toContain("Message it with message_bot");
     expect(integration).toContain("give the user the answer yourself");
     expect(integration).toContain("[Open Integrations](/app/integrations)");
+    expect(integration).toContain("copied exactly");
+    expect(NOT_CONNECTED_GUIDANCE).toContain("[Open Integrations](/app/integrations)");
     expect(integration).not.toContain("instead of messaging it");
   });
 
@@ -1315,6 +1319,7 @@ describe("userTurnInstructions", () => {
   const stableMiddle = [
     "A bot and a subagent are different. Never use both for the same request.",
     PLAIN_CAPABILITY_GUIDANCE,
+    NOT_CONNECTED_GUIDANCE,
     "create_space proposes a new privacy boundary inside the current organization. Use it when the user asks to create a space or separate data between teams or projects. It always pauses for explicit user approval; never claim the space exists before the tool succeeds.",
     "spawn_bot creates a lasting regular bot (own chat, computer, memory) that appears in the user's bot list. If the user asked to create a bot, call spawn_bot once and stop. Do not run_subagent to demo it.",
     "update_bot updates this bot's own name (chat header / list label), title, description, avatar, and notifyOnFinish. When the user asks you to rename yourself, change your title or description, change your profile picture, or turn finish notifications on or off, call update_bot — do not claim you changed them without the tool. Pass color for a hex or encoded shape, artifact_id for an image in this space, or use_attached_image when they attached a picture on this message.",

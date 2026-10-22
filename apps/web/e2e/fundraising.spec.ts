@@ -42,6 +42,20 @@ test("Fundraising: add a prospect, start a round, commit, close and reopen", asy
   await expect(main.getByText("Pending").locator("..")).toContainText("$250,000");
   await captureScreenshot(page, testInfo, "fundraising");
 
+  // Send SAFE (no Mercury): the Draft takes the prospect out of the pipeline; the bar does not move.
+  await main.getByRole("button", { name: "Send SAFE" }).click();
+  const safe = page.getByRole("dialog");
+  await expect(safe.getByLabel("Amount")).toHaveValue("250000");
+  await safe.getByRole("button", { name: "Send SAFE" }).click();
+  await expect(page.getByRole("link", { name: "YC documents ›" })).toBeVisible();
+  await page.getByRole("dialog").getByRole("button", { name: "Mark sent" }).click();
+  const safes = main.getByRole("heading", { name: "SAFEs" }).locator("..");
+  await expect(safes.getByText("Example Ventures")).toBeVisible();
+  await expect(safes.getByText("Sent", { exact: true })).toBeVisible();
+  await expect(main.getByRole("button", { name: "Send SAFE" })).toHaveCount(0);
+  await expect(main.getByText("Pending").locator("..")).toContainText("$250,000");
+  await captureScreenshot(page, testInfo, "fundraising-safe");
+
   // Close: the commitment counts nowhere. Reopen: it counts again.
   await main.getByRole("button", { name: "Round actions" }).click();
   await page.getByRole("menuitem", { name: "Close round" }).click();

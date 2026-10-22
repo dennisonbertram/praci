@@ -345,7 +345,14 @@ export function ArtifactsPage({
                 </Toggle>
               )}
               {!artifactId && !nothingYet ? viewToggle("hidden md:flex") : null}
-              {onAskAgent ? <AskBotButton botName="Chief" onClick={onAskAgent} /> : null}
+              {onAskAgent ? (
+                <AskBotButton botName="Chief" onClick={onAskAgent} />
+              ) : (
+                // Chief loads after the page; keep its place so Filters does not jump.
+                <span aria-hidden="true" inert className="invisible">
+                  <AskBotButton botName="Chief" onClick={() => {}} />
+                </span>
+              )}
             </>
           }
         />
@@ -582,6 +589,7 @@ function ArtifactTable({
         <colgroup>
           <col />
           {showBot ? <col className={`${MID_COLUMN} w-40`} /> : null}
+          <col className={`${MID_COLUMN} w-24`} />
           <col className={`${MID_COLUMN} w-28`} />
           <col className="w-9" />
         </colgroup>
@@ -599,6 +607,9 @@ function ArtifactTable({
               </TableHead>
             ) : null}
             <TableHead className={MID_COL}>
+              <Trans>Type</Trans>
+            </TableHead>
+            <TableHead className={`${MID_COL} text-end`}>
               <Trans>Added</Trans>
             </TableHead>
             <TableHead />
@@ -607,6 +618,7 @@ function ArtifactTable({
         <TableBody aria-label={t`Artifacts`}>
           {items.map((artifact) => {
             const bot = artifact.botId ? botsById.get(artifact.botId) : undefined;
+            const title = displayName(artifact.name);
             return (
               <TableRow
                 key={artifact.id}
@@ -662,14 +674,19 @@ function ArtifactTable({
                     )}
                   </TableCell>
                 ) : null}
-                <TableCell className={`${MID_COL} truncate text-muted-foreground tabular-nums`}>
+                <TableCell className={`${MID_COL} truncate text-muted-foreground`}>
+                  {kindLabel(artifact.mimeType)}
+                </TableCell>
+                <TableCell
+                  className={`${MID_COL} truncate text-end text-muted-foreground tabular-nums`}
+                >
                   {formatRelativeTime(artifact.createdAt)}
                 </TableCell>
                 <TableCell className="pe-0">
                   <button
                     type="button"
-                    aria-label={t`Delete ${artifact.name}`}
-                    title={t`Delete ${artifact.name}`}
+                    aria-label={t`Delete ${title}`}
+                    title={t`Delete ${title}`}
                     onClick={(event) => {
                       event.stopPropagation();
                       onRequestDelete(artifact);
@@ -831,18 +848,19 @@ function ArtifactCard({
   onRequestDelete: (artifact: ArtifactSummary) => void;
 }) {
   const { t } = useLingui();
+  const title = displayName(artifact.name);
   return (
     <div className="group relative">
       <Link
         to={`/app/artifacts/${artifact.id}`}
         // h-full: cards in one grid row share a height, so the hover Delete stays inside each.
-        className="flex h-full flex-col gap-4 rounded-2xl border border-border bg-card p-4 text-foreground hover:bg-accent/40"
+        className="flex h-full flex-col gap-4 rounded-2xl border border-border bg-card p-4 text-foreground hover:bg-accent/40 max-md:flex-row max-md:items-center max-md:gap-3 max-md:p-3"
       >
         <div className="flex items-center justify-between">
           <span className="grid h-9 w-9 place-items-center rounded-[10px] bg-accent text-accent-foreground">
             <ArtifactMimeIcon mimeType={artifact.mimeType} />
           </span>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 max-md:hidden">
             {artifact.versionCount > 1 ? (
               <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-semibold text-muted-foreground">
                 {`v${artifact.version}`}
@@ -853,37 +871,37 @@ function ArtifactCard({
             </span>
           </div>
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 max-md:flex-1">
           <div className="truncate text-[15px] font-semibold">{displayName(artifact.name)}</div>
           {artifact.description ? (
-            <div className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">
+            <div className="mt-1 line-clamp-2 max-md:hidden text-[13px] leading-relaxed text-muted-foreground">
               {artifact.description}
             </div>
           ) : null}
         </div>
-        {/* On hover the Delete button covers the time; where it always shows (touch), pe-8 keeps clear. */}
-        <div className="mt-auto flex items-center gap-2 text-[12px] text-muted-foreground pointer-coarse:pe-8">
+        {/* pe-8 keeps the time clear of the Delete button, so hovering never covers it. */}
+        <div className="mt-auto flex items-center gap-2 pe-8 text-[12px] text-muted-foreground max-md:mt-0">
           {bot ? (
-            <>
+            <span className="contents max-md:hidden">
               <BotAvatar color={bot.color} identity={bot.id} size={20} status={bot.status} />
               <span className="min-w-0 flex-1 truncate">{bot.name}</span>
-            </>
+            </span>
           ) : (
-            <span className="flex-1" />
+            <span className="flex-1 max-md:hidden" />
           )}
           <span className="shrink-0">{formatRelativeTime(artifact.createdAt)}</span>
         </div>
       </Link>
       <button
         type="button"
-        aria-label={t`Delete ${artifact.name}`}
-        title={t`Delete ${artifact.name}`}
+        aria-label={t`Delete ${title}`}
+        title={t`Delete ${title}`}
         onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
           onRequestDelete(artifact);
         }}
-        className="absolute bottom-3 end-3 grid h-7 w-7 place-items-center rounded-lg bg-card text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100"
+        className="absolute bottom-3 end-3 grid h-7 w-7 place-items-center rounded-lg bg-card max-md:bottom-auto max-md:top-1/2 max-md:-translate-y-1/2 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100"
       >
         <Trash2 size={14} strokeWidth={1.9} />
       </button>
@@ -903,6 +921,7 @@ function ArtifactRow({
   onRequestDelete: (artifact: ArtifactSummary) => void;
 }) {
   const { t } = useLingui();
+  const title = displayName(artifact.name);
   return (
     <div className={`group relative ${active ? "bg-accent/60" : "hover:bg-accent/40"}`}>
       <Link to={`/app/artifacts/${artifact.id}`} className="flex flex-col gap-1 px-4 py-3 pe-10">
@@ -937,8 +956,8 @@ function ArtifactRow({
       </Link>
       <button
         type="button"
-        aria-label={t`Delete ${artifact.name}`}
-        title={t`Delete ${artifact.name}`}
+        aria-label={t`Delete ${title}`}
+        title={t`Delete ${title}`}
         onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();

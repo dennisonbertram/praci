@@ -1,6 +1,11 @@
 import type { Actor, RunActivityRow } from "@rakazo/contracts";
 import { MessageBlock } from "@rakazo/contracts";
-import { ACTIVE_RUN_STATUSES, BACKGROUND_RUN_TRIGGERS, botMessageContext } from "@rakazo/core";
+import {
+  ACTIVE_RUN_STATUSES,
+  BACKGROUND_RUN_TRIGGERS,
+  botMessageContext,
+  plainTextFromMarkdown,
+} from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 
 const RECENT_LIMIT = 20;
@@ -27,7 +32,9 @@ export function activityPromptSnippet(
     message.intent === "result" || message.intent === "status" || message.intent === "fyi"
       ? `Update from ${name}`
       : `${name} asked`;
-  return promptSnippet(message.text.trim() ? `${label}: ${message.text}` : label, max);
+  // The other agent's text is markdown; the row shows one plain line.
+  const text = plainTextFromMarkdown(message.text);
+  return promptSnippet(text ? `${label}: ${text}` : label, max);
 }
 
 export function activityNotificationsEnabled(

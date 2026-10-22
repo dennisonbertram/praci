@@ -93,6 +93,50 @@ it("records Skip tour", async () => {
   expect(update).toHaveBeenCalledWith({ tourSeen: true });
 });
 
+it("tells the shell about Skip tour, so Ask Chief stays one tap away, but not about Done", async () => {
+  const onSkip = vi.fn();
+  await act(async () =>
+    root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} onSkip={onSkip} />),
+  );
+  await click("Skip tour");
+  expect(onSkip).toHaveBeenCalledTimes(1);
+  await act(async () =>
+    root.render(<FirstRunTour open={false} onClose={vi.fn()} onAsk={vi.fn()} onSkip={onSkip} />),
+  );
+  await act(async () =>
+    root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} onSkip={onSkip} />),
+  );
+  await click("Next");
+  await click("Next");
+  await click("Done");
+  expect(onSkip).toHaveBeenCalledTimes(1);
+});
+
+it("on a phone the card sits within 120px of its target, above a target in the lower half", async () => {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  })) as unknown as typeof window.matchMedia;
+  const rect = (top: number) =>
+    ({ top, bottom: top + 40, left: 10, right: 300, width: 290, height: 40 }) as DOMRect;
+  const at = (id: string, top: number) => {
+    const el = document.querySelector(`[data-tour="${id}"]`) as HTMLElement;
+    el.getBoundingClientRect = () => rect(top);
+  };
+  at("sidebar-inbox", 100);
+  at("user-menu", 700);
+  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
+  const card = () => document.querySelector("[data-testid='tour-card']") as HTMLElement;
+  // Upper-half target: the card starts just below it.
+  expect(card().style.top).toBe("150px");
+  await click("Next");
+  await click("Next");
+  // Lower-half target: the card ends just above it (768px window).
+  expect(card().style.bottom).toBe(`${window.innerHeight - 700 + 10}px`);
+});
+
 it("shows nothing and saves nothing when closed or when no anchor exists", async () => {
   await act(async () =>
     root.render(<FirstRunTour open={false} onClose={vi.fn()} onAsk={vi.fn()} />),
