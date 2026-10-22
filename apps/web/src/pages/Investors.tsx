@@ -70,11 +70,6 @@ import { DRIVE_PAGE } from "../components/data-room/ImportFromEmail";
 import { CustomConnectionDialog } from "../components/integrations/CustomConnectionDialog";
 import { useIntegrations } from "../components/integrations/useIntegrations";
 import { ActionItems } from "../components/investors/ActionItems";
-import {
-  ContactRowPlaceholder,
-  FiguresPlaceholder,
-  OwnershipPlaceholder,
-} from "../components/investors/Placeholders";
 import { SearchField } from "../components/ListControls";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { SectionCard } from "../components/SectionCard";
@@ -1201,9 +1196,7 @@ export function InvestorsPage({
                     {snapshot.holders.length === 0 &&
                     !snapshot.fullyDilutedShares &&
                     !snapshot.latest409a &&
-                    countedSafes(safes).length === 0 ? (
-                      <FiguresPlaceholder />
-                    ) : (
+                    countedSafes(safes).length === 0 ? null : (
                       <Summary snapshot={snapshot} safes={safes} safesFailed={safesFailed} />
                     )}
                     {snapshot.source === "native" ? (
@@ -1317,17 +1310,6 @@ export function InvestorsPage({
                         </Button>
                       </div>
                     )}
-                    <hr className="my-4 border-border" />
-                    <FiguresPlaceholder />
-                    <OwnershipPlaceholder className="mb-3" />
-                    <div className="@container">
-                      <HoldingsTable
-                        rows={[]}
-                        placeholderRows={3}
-                        onAddContact={() => {}}
-                        onOpenContact={() => {}}
-                      />
-                    </div>
                   </>
                 )}
               </SectionCard>
@@ -1421,11 +1403,9 @@ export function InvestorsPage({
                       </Button>
                     </div>
                   ) : (
-                    <ul>
-                      {[0, 1, 2].map((n) => (
-                        <ContactRowPlaceholder key={n} />
-                      ))}
-                    </ul>
+                    <p className="text-sm text-muted-foreground">
+                      <Trans>No contacts yet</Trans>
+                    </p>
                   )
                 ) : (
                   <ul>

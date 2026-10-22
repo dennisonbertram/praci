@@ -3488,6 +3488,18 @@ export function ShellPage() {
   );
 
   const cartaSuggestions = [t`Who are our investors?`];
+  // A bank's own chat starts with two read questions, like the other page agents.
+  const bankAgent = active ? agentAppFor(active.id, active.spaceId)?.bank : undefined;
+  const bankAgentPage =
+    !pageMode &&
+    !inGroup &&
+    active !== undefined &&
+    isIntegrationAgentSpawnKey(active.spawnKey) &&
+    bankAgent === true;
+  const bankSuggestions = [
+    t`What are our account balances?`,
+    t`What were the biggest payments this month?`,
+  ];
   const cartaAgentIntro = t`The Carta agent reads your cap table from Carta and answers questions about it. Try one:`;
   // The connector's agent is made on first visit, as the plan says; anyone else gets null.
   useEffect(() => {
@@ -4053,6 +4065,15 @@ export function ShellPage() {
             <Trans>Back to Investors</Trans>
           </Link>
         </div>
+      ) : null}
+      {bankAgentPage && transcriptMessages.length === 0 && !transcriptRunning && activeSnapshot ? (
+        <AgentPanelIntro
+          description=""
+          suggestions={bankSuggestions}
+          onAddModel={bootstrapMe?.needsModel === true ? () => openSettings("models") : undefined}
+          disabled={sending}
+          onPick={(text) => void sendMessage(text, [], newClientId())}
+        />
       ) : null}
       {cartaAgentPage && transcriptMessages.length === 0 && !transcriptRunning && activeSnapshot ? (
         <AgentPanelIntro
