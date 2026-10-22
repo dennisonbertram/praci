@@ -4,7 +4,7 @@ Target: mock-data demo stack on web :5381, 1440x900, signed in as the mock found
 
 Scope note: iteration-19 `clusters.json` has only C1-C22. C23-C31 do not exist, so only C21 and C22 were verified. C1-C20 are not in this walk.
 
-Environment note: the demo stack on :5381/:3308 stopped responding about 20 minutes into the walk (the page showed "Could not reach the server") and later came back with fresh data (sessions invalid, Legal 13 contracts became 11). I signed in again and continued. Storybook smoke ran from the main checkout (`/Users/dennison/develop/rakazo`, HEAD 7e039a1f2) because the worktree has no `node_modules`.
+Environment note: the demo stack on :5381/:3308 stopped responding about 20 minutes into the walk (the page showed "Could not reach the server") and later came back with fresh data (sessions invalid, Legal 13 contracts became 11). I signed in again and continued. Storybook smoke ran from the main checkout (`the main checkout`, HEAD 7e039a1f2) because the worktree has no `node_modules`.
 
 ## Story verdicts
 
