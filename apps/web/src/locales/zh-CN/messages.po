@@ -7061,10 +7061,6 @@ msgstr ""
 msgid "Not supported here"
 msgstr ""
 
-#: src/components/data-room/ItemRows.tsx
-msgid "Not tagged"
-msgstr ""
-
 #: src/components/data-room/Preview.tsx
 msgid "Not tagged yet."
 msgstr ""
@@ -7880,6 +7876,10 @@ msgstr "表情回应"
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Read"
+msgstr ""
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Read and searchable"
 msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
@@ -8906,10 +8906,6 @@ msgstr ""
 msgid "Search: {0}"
 msgstr ""
 
-#: src/components/data-room/DataRoomStats.tsx
-msgid "Searchable"
-msgstr ""
-
 #: src/pages/DataRoom.tsx
 msgid "Searching in {openFolderPath}"
 msgstr ""
@@ -9658,6 +9654,10 @@ msgstr ""
 msgid "Still has access to: {0}"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Still looking. This can take a minute."
+msgstr ""
+
 #: src/components/ShellSkeleton.tsx
 msgid "Still opening…"
 msgstr ""
@@ -9787,6 +9787,10 @@ msgstr "接管控制权"
 
 #: src/pages/Shell.tsx
 msgid "Take the tour"
+msgstr ""
+
+#: src/components/data-room/ItemRows.tsx
+msgid "Taking longer than usual"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx

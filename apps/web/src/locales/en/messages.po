@@ -7061,10 +7061,6 @@ msgstr "Not spam"
 msgid "Not supported here"
 msgstr "Not supported here"
 
-#: src/components/data-room/ItemRows.tsx
-msgid "Not tagged"
-msgstr "Not tagged"
-
 #: src/components/data-room/Preview.tsx
 msgid "Not tagged yet."
 msgstr "Not tagged yet."
@@ -7881,6 +7877,10 @@ msgstr "Reactions"
 #: src/components/integrations/AppDetail.tsx
 msgid "Read"
 msgstr "Read"
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Read and searchable"
+msgstr "Read and searchable"
 
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -8906,10 +8906,6 @@ msgstr "Search the directory"
 msgid "Search: {0}"
 msgstr "Search: {0}"
 
-#: src/components/data-room/DataRoomStats.tsx
-msgid "Searchable"
-msgstr "Searchable"
-
 #: src/pages/DataRoom.tsx
 msgid "Searching in {openFolderPath}"
 msgstr "Searching in {openFolderPath}"
@@ -9658,6 +9654,10 @@ msgstr "Steps to follow"
 msgid "Still has access to: {0}"
 msgstr "Still has access to: {0}"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Still looking. This can take a minute."
+msgstr "Still looking. This can take a minute."
+
 #: src/components/ShellSkeleton.tsx
 msgid "Still opening…"
 msgstr "Still opening…"
@@ -9788,6 +9788,10 @@ msgstr "Take control"
 #: src/pages/Shell.tsx
 msgid "Take the tour"
 msgstr "Take the tour"
+
+#: src/components/data-room/ItemRows.tsx
+msgid "Taking longer than usual"
+msgstr "Taking longer than usual"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Talks to people outside your company. Private tools are turned off."
