@@ -3,7 +3,12 @@ import { act } from "react";
 import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { clearAgentAppCache, INTEGRATIONS_CHANGED_EVENT, useAgentApp } from "./agent-app";
+import {
+  clearAgentAppCache,
+  INTEGRATIONS_CHANGED_EVENT,
+  lookupBotApp,
+  useAgentApp,
+} from "./agent-app";
 import { rpc } from "./rpc";
 
 vi.mock("./rpc", () => ({
@@ -90,4 +95,20 @@ it("marks a bank agent by its endpoint even after the connection is renamed", as
   await act(async () => root.render(<Probe spaces={["s1"]} />));
   await settle();
   expect(lookup("b1", "s1")?.bank).toBe(true);
+});
+
+it("finds a toast's bot in the spaces already loaded, without another bots.list", async () => {
+  vi.mocked(rpc.bots.list).mockResolvedValue([
+    { id: "b1", spawnKey: "integration-agent:s", color: "#000" },
+  ] as never);
+  vi.mocked(rpc.mcp.servers.list).mockResolvedValue([
+    { name: "Brex", endpoint: null, agentBotId: "b1" },
+  ] as never);
+  await act(async () => root.render(<Probe spaces={["s1"]} />));
+  await settle();
+  const calls = vi.mocked(rpc.bots.list).mock.calls.length;
+  const found = await lookupBotApp("u1", "b1");
+  await lookupBotApp("u1", "b1");
+  expect(found?.app?.name).toBe("Brex");
+  expect(rpc.bots.list).toHaveBeenCalledTimes(calls);
 });

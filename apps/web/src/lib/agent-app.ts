@@ -2,7 +2,7 @@ import type { Connection, ConnectionCatalogItem, McpServer } from "@rakazo/contr
 import { isCartaAgentSpawnKey, isIntegrationAgentSpawnKey } from "@rakazo/contracts";
 import { useEffect, useState } from "react";
 import { FINANCE_PROVIDERS, FIRST_PARTY_MCP, isSameMcpEndpoint } from "./integrations";
-import { rpc } from "./rpc";
+import { rpc, selectedSpaceId } from "./rpc";
 
 /** `bank` is set when the agent belongs to Mercury or Brex, whatever the connection is named. */
 export type AgentApp = { name: string; logo: string | null; bank?: boolean };
@@ -46,12 +46,21 @@ export function agentApp(
 
 type SpaceData = AgentAppData & { bots: Awaited<ReturnType<typeof rpc.bots.list>> };
 
-/** The app behind one integration agent, or undefined for an ordinary bot. */
-export async function lookupAgentApp(
-  userId: string,
-  bot: { id: string; spaceId: string; spawnKey: string | null },
-) {
-  return agentApp(bot, await loadSpace(userId, bot.spaceId));
+/**
+ * The bot and its app, found in the spaces already loaded for this user (the sidebar loads them),
+ * so a toast needs no list request of its own. Only when nothing was loaded yet does it load the
+ * selected space.
+ */
+export async function lookupBotApp(userId: string, botId: string) {
+  const prefix = `${userId}:`;
+  const loaded = [...cache].filter(([key]) => key.startsWith(prefix)).map(([, space]) => space);
+  if (loaded.length === 0) loaded.push(loadSpace(userId, selectedSpaceId() ?? ""));
+  for (const result of await Promise.allSettled(loaded)) {
+    if (result.status !== "fulfilled") continue;
+    const bot = result.value.bots.find((b) => b.id === botId);
+    if (bot) return { bot, app: agentApp(bot, result.value) };
+  }
+  return undefined;
 }
 
 /** Fired after the integrations or their agents change, so cached logos are looked up again. */
