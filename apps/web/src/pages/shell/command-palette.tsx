@@ -388,9 +388,13 @@ export function CommandPalette({
   );
   const shownLinks = linkGroups.filter((group) => group.entries.length > 0);
   const fallbackLinks = shownLinks.filter((group) => group.fallback);
-  // A title match outranks text found only in a body: a group with one comes first, and a group
-  // keeps at most 3 body-only rows after its title matches.
+  // A title match outranks text found only in a body: a group with an exact title comes first, then
+  // one with a partial title match, and a group keeps at most 3 body-only rows after its title matches.
   const titleHit = (entry: PaletteEntry) => entry.label.toLowerCase().includes(needle);
+  const groupRank = (group: PaletteLinkGroup) =>
+    group.entries.some((entry) => entry.label.toLowerCase() === needle)
+      ? 2
+      : Number(group.entries.some(titleHit));
   const directLinks = shownLinks
     .filter((group) => !group.fallback)
     .map((group) => {
@@ -398,7 +402,7 @@ export function CommandPalette({
       const bodies = group.entries.filter((entry) => !titleHit(entry)).slice(0, 3);
       return { ...group, entries: [...titles, ...bodies] };
     })
-    .sort((a, b) => Number(b.entries.some(titleHit)) - Number(a.entries.some(titleHit)));
+    .sort((a, b) => groupRank(b) - groupRank(a));
   const noDirectMatch =
     !directLinks.length &&
     !shownPages.length &&

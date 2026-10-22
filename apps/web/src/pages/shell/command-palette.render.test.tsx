@@ -409,3 +409,22 @@ it("lists an exact title match ahead of body-only hits and passes the query as t
   expect(headings()).toEqual(["Artifacts", "Documents"]);
   expect(document.body.textContent).toContain("Esc");
 });
+
+it("puts a group with an exact title ahead of a group with a partial title match", async () => {
+  const searchLinks = async () => [
+    {
+      heading: "Documents",
+      entries: [
+        { id: "/d1", label: "Hiring Plan notes" },
+        { id: "/d2", label: "Board Update", detail: "mentions hiring plan" },
+      ],
+    },
+    { heading: "Artifacts", entries: [{ id: "/a1", label: "Hiring Plan" }] },
+  ];
+  await mount(vi.fn(), searchLinks);
+  await search("Hiring Plan");
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  });
+  expect(headings()).toEqual(["Artifacts", "Documents"]);
+});
