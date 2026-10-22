@@ -364,3 +364,48 @@ it("shows only the link text of a markdown link in a snippet", () => {
     "a reply. Open Settings now",
   );
 });
+
+it("masks dollar amounts in result details while Hide amounts is on, and shows them again off", async () => {
+  const { setHideAmounts } = await import("../../lib/hide-amounts-preference");
+  const searchLinks = async () => [
+    {
+      heading: "Chats",
+      entries: [{ id: "/c", label: "Chief", detail: "runway is $1,620,000 at current burn" }],
+    },
+  ];
+  await mount(vi.fn(), searchLinks);
+  await search("runway");
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  });
+  expect(listText()).toContain("$1,620,000");
+  await act(async () => setHideAmounts(true));
+  expect(listText()).not.toContain("1,620,000");
+  await act(async () => setHideAmounts(false));
+  expect(listText()).toContain("$1,620,000");
+});
+
+it("lists an exact title match ahead of body-only hits and passes the query as typed", async () => {
+  const seen: string[] = [];
+  const searchLinks = async (q: string) => {
+    seen.push(q);
+    return [
+      {
+        heading: "Documents",
+        entries: [
+          { id: "/d1", label: "Monthly Update", detail: "mentions hiring plan" },
+          { id: "/d2", label: "Board Update", detail: "mentions hiring plan" },
+        ],
+      },
+      { heading: "Artifacts", entries: [{ id: "/a1", label: "Hiring Plan - Q4" }] },
+    ];
+  };
+  await mount(vi.fn(), searchLinks);
+  await search("Hiring Plan");
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  });
+  expect(seen).toEqual(["Hiring Plan"]);
+  expect(headings()).toEqual(["Artifacts", "Documents"]);
+  expect(document.body.textContent).toContain("Esc");
+});
