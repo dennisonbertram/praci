@@ -155,3 +155,52 @@ it("says how many non-USD transactions a category's total leaves out", async () 
   expect(container.textContent).toContain("$22,500");
   expect(container.textContent).toContain("1 non-USD not counted");
 });
+
+it("says what the month under way has cost, since the chart and the change stop at the last full month", async () => {
+  const charge = (id: string, day: string, amountCents: number) => ({
+    id,
+    provider: "mercury",
+    externalId: id,
+    accountExternalId: "a",
+    postedAt: `${day}T12:00:00.000Z`,
+    purchasedAt: null,
+    amountCents,
+    currency: "USD",
+    counterparty: "Globex Cloud",
+    vendorKey: "globex",
+    category: null,
+    status: "posted",
+    kind: "card",
+    classification: "spend",
+    cardLastFour: null,
+    cardholder: null,
+    memo: null,
+    hasReceipt: false,
+    dashboardUrl: null,
+  });
+  rpcMock.vendor.mockResolvedValue({
+    key: "globex",
+    name: "Globex Cloud",
+    isSubscription: true,
+    monthlyAvgCents: 201_600,
+    changePct: 35,
+    changeFromMonth: "2026-06",
+    firstSeenAt: "2026-04-02T00:00:00.000Z",
+    paidWith: [],
+    monthly: ["04", "05", "06", "07", "08", "09"].map((m) => ({
+      month: `2026-${m}`,
+      cents: 200_000,
+    })),
+    currentMonth: { month: "2026-10", cents: 240_000 },
+    charges: [charge("a", "2026-10-16", -240_000), charge("b", "2026-09-16", -200_000)],
+  } as unknown as FinanceVendorOutput);
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceVendorPage keyName="globex" />
+      </MemoryRouter>,
+    ),
+  );
+  await act(async () => {});
+  expect(container.textContent).toContain("Oct so far: $2,400");
+});

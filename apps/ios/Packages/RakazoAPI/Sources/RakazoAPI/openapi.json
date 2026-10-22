@@ -42525,21 +42525,11 @@
                         "monthly": {
                           "type": "array",
                           "items": {
-                            "type": "object",
-                            "properties": {
-                              "month": {
-                                "$ref": "#/components/schemas/RpcFinanceVendorOutputSchema1"
-                              },
-                              "cents": {
-                                "$ref": "#/components/schemas/RpcFinanceVendorOutputSchema0"
-                              }
-                            },
-                            "required": [
-                              "month",
-                              "cents"
-                            ],
-                            "additionalProperties": false
+                            "$ref": "#/components/schemas/RpcFinanceVendorOutputSchema4"
                           }
+                        },
+                        "currentMonth": {
+                          "$ref": "#/components/schemas/RpcFinanceVendorOutputSchema4"
                         },
                         "charges": {
                           "type": "array",
@@ -106848,6 +106838,22 @@
           "brex",
           "statement"
         ]
+      },
+      "RpcFinanceVendorOutputSchema4": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "$ref": "#/components/schemas/RpcFinanceVendorOutputSchema1"
+          },
+          "cents": {
+            "$ref": "#/components/schemas/RpcFinanceVendorOutputSchema0"
+          }
+        },
+        "required": [
+          "month",
+          "cents"
+        ],
+        "additionalProperties": false
       },
       "RpcFinanceWalletAddOutputSchema0": {
         "type": "string",

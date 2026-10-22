@@ -169,6 +169,9 @@ describe("figures the Finance pages derive from amounts", () => {
     expect(changeText(53)).not.toMatch(/[↑↓]/);
     expect(changeText(-53)).toBe(changeText(53));
     expect(changeText(0)).not.toMatch(/\d/);
+    // A flat subscription has no change to show, masked or not.
+    expect(trendText([4_500, 4_500, 4_500])).toBeNull();
+    expect(trendText([10_000, 11_000, 12_000])).not.toMatch(/\d/);
     expect(axisMoney(-250_000)).not.toMatch(/\d/);
     expect(txnDay({ purchasedAt: null, postedAt: "2026-10-01T00:00:00Z" })).toBe("2026-10-01");
   });

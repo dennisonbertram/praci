@@ -192,6 +192,21 @@ export const VendorComparedWithFirstMonth: Story = {
     }),
 };
 
+/** The chart and the change stop at the last full month; the month under way is said under the chart. */
+export const VendorMonthSoFar: Story = {
+  render: () => <FinanceVendorPage keyName="acme-hosting" />,
+  beforeEach: () =>
+    mockRpc({
+      "finance.vendor": {
+        ...vendor,
+        charges: [
+          { ...txn("t9", 16, -240_000, "Acme Hosting"), postedAt: "2026-04-16T12:00:00.000Z" },
+          ...transactions,
+        ],
+      },
+    }),
+};
+
 export const VendorWithoutChange: Story = {
   render: () => <FinanceVendorPage keyName="acme-hosting" />,
   beforeEach: () =>

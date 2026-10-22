@@ -311,6 +311,12 @@ msgstr ""
 msgid "{0} settings"
 msgstr ""
 
+#. placeholder {0}: monthShort(running.month)
+#. placeholder {1}: money(running.cents)
+#: src/pages/finance/FinanceSpend.tsx
+msgid "{0} so far: {1}"
+msgstr ""
+
 #. placeholder {0}: statement.transactionCount
 #: src/components/finance/StatementReviewCard.tsx
 msgid "{0} transactions"
