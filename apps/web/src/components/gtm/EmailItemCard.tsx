@@ -7,7 +7,13 @@ import type {
   MailEdits,
   ScratchpadItem,
 } from "@rakazo/contracts";
-import { Button, Input, NativeSelect, NativeSelectOption } from "@rakazo/ui-web";
+import {
+  Button,
+  enqueueNotificationToast,
+  Input,
+  NativeSelect,
+  NativeSelectOption,
+} from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { emailCompliance } from "../../lib/email-compliance";
@@ -138,6 +144,15 @@ export function EmailItemCard({
         ...original,
       });
       setNotice(outcomeText(result));
+      if (result.status === "unknown") {
+        enqueueNotificationToast({
+          id: `gtm-email-${item.id}`,
+          title: item.title,
+          body: outcomeText(result),
+          href: "/app/inbox",
+          timeout: 0,
+        });
+      }
       if (result.status === "sent" || result.status === "unknown") {
         await rpc.scratchpad.update({ itemId: item.id, status: "done", proof: `gmail:${item.id}` });
       } else {

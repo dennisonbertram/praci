@@ -12,7 +12,16 @@ vi.mock("@lingui/core/macro", () => ({
 vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
-const mocks = vi.hoisted(() => ({ update: vi.fn(), remove: vi.fn(), send: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  update: vi.fn(),
+  remove: vi.fn(),
+  send: vi.fn(),
+  toast: vi.fn(),
+}));
+vi.mock("@rakazo/ui-web", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  enqueueNotificationToast: mocks.toast,
+}));
 vi.mock("../../lib/rpc", () => ({
   rpc: {
     scratchpad: { update: mocks.update, remove: mocks.remove },
@@ -105,6 +114,15 @@ it.each(["sent", "unknown", "saved", "failed", "reconnect", "disabled"] as const
     );
     if (!["sent", "unknown"].includes(status))
       expect(host.querySelector('[role="status"]')?.textContent).toBeTruthy();
+    if (status === "unknown") {
+      expect(mocks.toast).toHaveBeenCalledWith({
+        id: `gtm-email-${email.id}`,
+        title: email.title,
+        body: "Sending was not confirmed. Check Sent in Inbox; this email will not be sent again.",
+        href: "/app/inbox",
+        timeout: 0,
+      });
+    } else expect(mocks.toast).not.toHaveBeenCalled();
   },
 );
 
