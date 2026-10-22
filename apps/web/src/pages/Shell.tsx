@@ -81,10 +81,10 @@ import {
 import {
   ArrowLeft,
   BookUser,
+  CalendarClock,
   ChartColumn,
   ChevronDown,
   CircleAlert,
-  Clock,
   CodeXml,
   Compass,
   Files,
@@ -102,7 +102,6 @@ import {
   Megaphone,
   Menu,
   MessageSquare,
-  Monitor,
   MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
@@ -2364,7 +2363,11 @@ export function ShellPage() {
             detail: doc.detail,
           })),
         },
-        { heading: t`Chats`, icon: <MessageSquare size={16} strokeWidth={1.75} />, entries: chats },
+        {
+          heading: t`Chats`,
+          icon: <MessageSquare size={16} strokeWidth={1.75} />,
+          entries: chats,
+        },
         {
           heading: t`Artifacts`,
           icon: <Files size={16} strokeWidth={1.75} />,
@@ -6036,11 +6039,8 @@ export function ShellPage() {
                   data-active={panel === "computer" ? "" : undefined}
                   className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 >
-                  {noComputerScreen ? (
-                    <Clock size={18} strokeWidth={1.6} className="text-foreground/75" />
-                  ) : (
-                    <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
-                  )}
+                  {/* One icon whatever the computer state, so it does not change while the panel loads. */}
+                  <CalendarClock size={18} strokeWidth={1.6} className="text-foreground/75" />
                 </button>
               ) : null}
             </div>
@@ -6313,7 +6313,7 @@ export function ShellPage() {
                       }}
                     />
                   ) : null}
-                  {/* The Monitor button in the chat header is the way back to the computer. */}
+                  {/* The Routines button in the chat header is the way back to the computer. */}
                   {active && panel !== "settings" ? (
                     <Button
                       variant="ghost"

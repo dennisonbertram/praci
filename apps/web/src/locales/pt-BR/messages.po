@@ -4899,7 +4899,7 @@ msgstr "A cada hora"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
-msgid "Every month"
+msgid "Every month on the 1st"
 msgstr "A cada mês"
 
 #: src/pages/finance/FinanceSpend.tsx
@@ -6166,6 +6166,10 @@ msgstr "Carregando minha atividade"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Loading integrations"
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Loading integrations…"
 msgstr ""
 
 #: src/pages/MemorySettingsOverlay.tsx

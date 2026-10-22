@@ -13,6 +13,45 @@ export function GtmChannels({ overview }: { overview: GtmOverview }) {
     ready: t`Ready`,
     draft_only: t`Draft only`,
   };
+  const rows: {
+    key: string;
+    label: string;
+    destination: string;
+    rule: string;
+    status: GtmOverview["channels"][number]["status"];
+  }[] = [];
+  for (const row of overview.channels) {
+    const channel = GTM_CHANNELS[row.channel];
+    const directory = row.channel === "directory";
+    const email = row.channel === "email";
+    const draft = channel.approval === "draft_only";
+    const destination = directory
+      ? t`Browser`
+      : email
+        ? overview.gmailAccounts.map((account) => account.address ?? account.label).join(", ") ||
+          t`Inbox (Gmail)`
+        : draft
+          ? t`Draft only`
+          : row.accounts.map((account) => account.label).join(", ") || "Zernio";
+    const rule = directory
+      ? t`${policy.founderApprovals} of ${policy.approvalsBeforeAuto} approvals before auto · ${policy.autoOpenings} of ${policy.dailyCap} today`
+      : draft
+        ? "—"
+        : email
+          ? t`Approve every email`
+          : t`Approve every post`;
+    // Channels with the same unconnected or draft-only state read as one row.
+    const same = rows.find(
+      (other) =>
+        (row.status === "not_connected" || draft) &&
+        other.status === row.status &&
+        other.destination === destination &&
+        other.rule === rule,
+    );
+    if (same) same.label += `, ${channel.label}`;
+    else
+      rows.push({ key: row.channel, label: channel.label, destination, rule, status: row.status });
+  }
   return (
     <section aria-label={t`Channels`} className="rounded-xl border border-border">
       <h2 className="px-4 pt-4 text-sm font-semibold">
@@ -36,36 +75,16 @@ export function GtmChannels({ overview }: { overview: GtmOverview }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {overview.channels.map((row) => {
-            const channel = GTM_CHANNELS[row.channel];
-            const directory = row.channel === "directory";
-            const email = row.channel === "email";
-            const draft = channel.approval === "draft_only";
-            const destination = directory
-              ? t`Browser`
-              : email
-                ? overview.gmailAccounts
-                    .map((account) => account.address ?? account.label)
-                    .join(", ") || t`Inbox (Gmail)`
-                : draft
-                  ? t`Draft only`
-                  : row.accounts.map((account) => account.label).join(", ") || "Zernio";
-            const rule = directory
-              ? t`${policy.founderApprovals} of ${policy.approvalsBeforeAuto} approvals before auto · ${policy.autoOpenings} of ${policy.dailyCap} today`
-              : draft
-                ? "—"
-                : email
-                  ? t`Approve every email`
-                  : t`Approve every post`;
+          {rows.map((row) => {
             return (
-              <TableRow key={row.channel}>
-                <TableCell className="ps-4 font-medium">{channel.label}</TableCell>
+              <TableRow key={row.key}>
+                <TableCell className="ps-4 font-medium">{row.label}</TableCell>
                 <TableCell className="max-w-48 whitespace-normal break-words text-muted-foreground">
-                  {destination}
-                  <span className="mt-1 block text-xs sm:hidden">{rule}</span>
+                  {row.destination}
+                  <span className="mt-1 block text-xs sm:hidden">{row.rule}</span>
                 </TableCell>
                 <TableCell className="hidden max-w-64 whitespace-normal text-xs text-muted-foreground sm:table-cell">
-                  {rule}
+                  {row.rule}
                 </TableCell>
                 <TableCell
                   className={

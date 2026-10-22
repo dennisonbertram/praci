@@ -4899,8 +4899,8 @@ msgstr "Every hour"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
-msgid "Every month"
-msgstr "Every month"
+msgid "Every month on the 1st"
+msgstr "Every month on the 1st"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Every two weeks"
@@ -6167,6 +6167,10 @@ msgstr "Loading activity…"
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Loading integrations"
 msgstr "Loading integrations"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Loading integrations…"
+msgstr "Loading integrations…"
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Loading memory settings…"
