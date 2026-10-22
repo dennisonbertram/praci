@@ -161,6 +161,7 @@ export const UsageWithOwnKey: StoryObj = {
   ),
 };
 
+/** No tasks yet and no own key: the card is not shown at all. */
 export const UsageEmpty: StoryObj = {
   beforeEach: () => mockRpc({ "models.credentials": [] }),
   render: () => (

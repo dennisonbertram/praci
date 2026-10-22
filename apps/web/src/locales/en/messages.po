@@ -2990,7 +2990,7 @@ msgstr "Connected"
 msgid "Connected · {0}"
 msgstr "Connected · {0}"
 
-#. placeholder {0}: new Date(row.createdAt).toLocaleDateString()
+#. placeholder {0}: new Date(row.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" })
 #: src/components/integrations/AppDetail.tsx
 msgid "Connected {0}"
 msgstr "Connected {0}"
@@ -4027,6 +4027,10 @@ msgstr "Created"
 #: src/pages/DataRoom.tsx
 msgid "Created {0}"
 msgstr "Created {0}"
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Creates a {service} agent that asks you before each change."
+msgstr "Creates a {service} agent that asks you before each change."
 
 #: src/components/integrations/McpDetail.tsx
 msgid "Creating agent"
@@ -6748,9 +6752,8 @@ msgstr "Monthly spend · {0} – {1}"
 msgid "More"
 msgstr "More"
 
-#. placeholder {0}: app.name
 #. placeholder {0}: exchange.name
-#. placeholder {0}: server.name
+#. placeholder {0}: source.name
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "More {0} actions"
@@ -6784,10 +6787,6 @@ msgstr "More computer actions"
 #: src/pages/ActivityList.tsx
 msgid "More filters"
 msgstr "More filters"
-
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "More Granola actions"
-msgstr "More Granola actions"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "More settings"
@@ -7608,14 +7607,6 @@ msgstr "Off"
 msgid "Off in Settings"
 msgstr "Off in Settings"
 
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Off: other agents reach {service} only through this agent."
-msgstr "Off: other agents reach {service} only through this agent."
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Off: the agent only reads. On: it can also make changes, and asks you before each one."
-msgstr "Off: the agent only reads. On: it can also make changes, and asks you before each one."
-
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "On a call with {0}"
@@ -7624,14 +7615,6 @@ msgstr "On a call with {0}"
 #: src/pages/RoutineEditor.tsx
 msgid "On a schedule"
 msgstr "On a schedule"
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "On: creates a {service} agent that can read and, after you approve, make changes."
-msgstr "On: creates a {service} agent that can read and, after you approve, make changes."
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "On: other agents can read {service}. Changes still go through this agent and ask first."
-msgstr "On: other agents can read {service}. Changes still go through this agent and ask first."
 
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
@@ -7886,6 +7869,10 @@ msgstr "Original message unavailable"
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Other"
 msgstr "Other"
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Other agents can read {service}; changes still go through this agent."
+msgstr "Other agents can read {service}; changes still go through this agent."
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Other connection types"
@@ -10652,6 +10639,10 @@ msgstr "That folder no longer exists"
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "the {month} statement"
 msgstr "the {month} statement"
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "The agent asks you before each change."
+msgstr "The agent asks you before each change."
 
 #: src/pages/investors/UpdateEditor.tsx
 msgid "The agent did not finish a draft"

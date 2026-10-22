@@ -174,9 +174,6 @@ function McpCard({
   const managePath = granola ? GRANOLA_PATH : `/app/integrations/mcp/${server.id}`;
   return (
     <Card>
-      {status === "connected" ? (
-        <TileMenu label={t`More ${server.name} actions`} manageTo={managePath} />
-      ) : null}
       <CardHead
         name={server.name}
         logo={known?.logo}
@@ -229,10 +226,8 @@ function GranolaKeyCard({
   status: NonNullable<IntegrationsData["meetings"]>;
   description?: string;
 }) {
-  const { t } = useLingui();
   return (
     <Card>
-      <TileMenu label={t`More Granola actions`} manageTo={GRANOLA_PATH} />
       <CardHead name="Granola" sub={description} to={GRANOLA_PATH} />
       <div className="mt-auto flex min-h-7 items-center gap-2">
         <GranolaStatusLine status={status} />
@@ -262,13 +257,9 @@ function AppCard({
   const description = data.catalog.find(
     (item) => item.connectorId === app.connectorId && item.slug === app.provider,
   )?.description;
-  const { t } = useLingui();
   const to = appPath({ connectorId: app.connectorId, slug: app.provider });
   return (
     <Card>
-      {app.status === "connected" ? (
-        <TileMenu label={t`More ${app.name} actions`} manageTo={to} />
-      ) : null}
       <CardHead
         name={app.name}
         logo={app.logo}

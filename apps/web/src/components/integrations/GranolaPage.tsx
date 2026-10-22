@@ -30,7 +30,7 @@ export function GranolaPage({
       <div className="mx-auto max-w-[1040px]">
         <Link
           to="/app/integrations"
-          className="mb-3.5 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="rk-tap mb-3.5 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
           <Trans>Integrations</Trans>

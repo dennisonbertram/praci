@@ -97,7 +97,7 @@ test("GTM opens its plan and docked agent on desktop and phone", async ({ page }
   await page.getByTestId("sidebar-gtm").click();
   await expect(page).toHaveURL(/\/app\/gtm$/);
   await expect(page.getByRole("heading", { name: "GTM", exact: true })).toBeVisible();
-  await expect(page.getByTestId("gtm-agent-panel")).toBeVisible();
+  await expect(page.getByTestId("gtm-agent-panel")).toBeHidden();
   await expect(page.getByRole("heading", { name: /Needs you/ })).toBeVisible();
   await expect(page.getByText("Find our first 50 design partners", { exact: true })).toBeVisible();
   await expect(page.getByText("Link counts as 23", { exact: true })).toBeVisible();

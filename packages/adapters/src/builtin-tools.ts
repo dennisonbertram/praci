@@ -1248,7 +1248,7 @@ export const builtinAgentTools: ConnectorTool[] = [
   {
     name: "cap_table_read",
     description:
-      "The cap table on the user's Investors page, as last saved: fully diluted shares, option pool, latest 409A, amount raised, share classes and each holder's security, shares and ownership. Null before the first save. Read this before answering cap table or investor questions.",
+      "The cap table on the user's Investors page, as last saved: fully diluted shares, option pool, latest 409A, amount raised, share classes and each holder's security, shares and ownershipPercent (as the page shows it; null for SAFEs, which are listed separately with atCapPercent), so answer ownership questions from it and never from Carta. Null before the first save. Read this before answering cap table or investor questions.",
     inputSchema: { type: "object", properties: {} },
     readOnly: true,
   },
@@ -1873,7 +1873,7 @@ export const builtinAgentTools: ConnectorTool[] = [
   {
     name: "schedule_create",
     description:
-      'Create a reminder or recurring job for this bot. Use for "remind me in 10 minutes" or "every morning send a joke". One-shot (runAt, delayMinutes, or delaySeconds) is free and runs without asking. Repeating (cron or every/unit, min 1 minute) pauses for the user to approve a card that shows the schedule and the full prompt, so write the prompt as the exact instructions to run each time. The prompt is only the work to do (\"draft the investor note and post it here\"), never the timing (\"every Monday at 9\"), which goes in cron or every/unit. Times are in the user\'s time zone unless you pass timezone.',
+      'Create a reminder or recurring job for this bot. Use for "remind me in 10 minutes" or "every morning send a joke". One-shot (runAt, delayMinutes, or delaySeconds) is free and runs without asking. Repeating (cron or every/unit, min 1 minute) pauses for the user to approve a card that shows the schedule and the full prompt, so write the prompt as the exact instructions to run each time. The prompt is only the work to do ("draft the investor note and post it here"), never the timing ("every Monday at 9"), which goes in cron or every/unit. Times are in the user\'s time zone unless you pass timezone.',
     inputSchema: scheduleCreateInputSchema,
   },
   {
