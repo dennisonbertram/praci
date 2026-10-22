@@ -18,10 +18,9 @@ import {
   Switch,
   Toggle,
 } from "@rakazo/ui-web";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
-import { Link } from "react-router-dom";
 import { AccountAccess } from "../components/AccountAccess";
 import { AiDataSharingSection } from "../components/AiDataSharing";
 import { ApprovalRulesSettings } from "../components/ApprovalRulesSettings";
@@ -47,6 +46,7 @@ import {
   getResponseStreamingPreference,
   setResponseStreamingPreference,
 } from "../lib/response-streaming";
+import { rpc } from "../lib/rpc";
 import {
   getToolActivityPreference,
   setToolActivityPreference,
@@ -96,6 +96,8 @@ export function GeneralSettingsPanels({
     getBotsSidebarDensity,
     () => "comfortable",
   );
+  const themeLabelId = useId();
+  const avatarsLabelId = useId();
   const sidebarDensityLabelId = useId();
   const [streamReplies, setStreamReplies] = useState(
     () => getResponseStreamingPreference() === "on",
@@ -152,13 +154,17 @@ export function GeneralSettingsPanels({
       ) : null}
 
       {/* Two columns when the pane is wide, so General is not one long scroll. */}
-      <div className="grid items-start gap-5 @2xl:grid-cols-2">
+      <div className="grid items-start gap-5 @2xl:grid-cols-2 @2xl:grid-rows-[auto_1fr]">
         <div className="min-w-0 space-y-5">
           <section className="rounded-xl border border-border px-4 py-4">
             <h3 className="text-[15px] font-medium text-foreground">
               <Trans>Appearance</Trans>
             </h3>
+            <span id={themeLabelId} className="mt-3 block text-[13px] text-foreground/75">
+              <Trans>Theme</Trans>
+            </span>
             <AppearancePicker
+              labelledBy={themeLabelId}
               value={appearance}
               onChange={(next) => {
                 setAppearance(next);
@@ -193,32 +199,14 @@ export function GeneralSettingsPanels({
                 </Toggle>
               </fieldset>
             </div>
-          </section>
-
-          <section className="rounded-xl border border-border px-4 py-4">
-            <h3 className="text-[15px] font-medium text-foreground">
-              {timezone && onTimezoneChange ? (
-                <Trans>Language and time zone</Trans>
-              ) : (
-                <Trans>Language</Trans>
-              )}
-            </h3>
-            <UiLocalePicker value={locale} onChange={chooseLocale} />
-            {timezone && onTimezoneChange ? (
-              <TimezonePicker value={timezone} onChange={onTimezoneChange} />
-            ) : null}
-          </section>
-          <NotificationSettingsSection />
-        </div>
-        <div className="min-w-0 space-y-5">
-          <section
-            className="rounded-xl border border-border px-4 py-4"
-            data-testid="avatar-style-select"
-          >
-            <h3 className="text-[15px] font-medium text-foreground">
+            <span id={avatarsLabelId} className="mt-4 block text-[13px] text-foreground/75">
               <Trans>Avatars</Trans>
-            </h3>
-            <div className="mt-3 grid grid-cols-2 gap-3">
+            </span>
+            <fieldset
+              aria-labelledby={avatarsLabelId}
+              data-testid="avatar-style-select"
+              className="mt-2 grid min-w-0 grid-cols-2 gap-3"
+            >
               {(["organic", "robot"] as const).map((style) => (
                 <Toggle
                   key={style}
@@ -238,39 +226,16 @@ export function GeneralSettingsPanels({
                   <span>{style === "robot" ? <Trans>Robot</Trans> : <Trans>Organic</Trans>}</span>
                 </Toggle>
               ))}
-            </div>
+            </fieldset>
             {avatarError ? (
               <p role="alert" className="mt-3 text-[12.5px] text-destructive">
                 {avatarError}
               </p>
             ) : null}
           </section>
-
+        </div>
+        <div className="min-w-0 space-y-5 @2xl:col-start-2 @2xl:row-span-2 @2xl:row-start-1">
           {isDeploymentOwner ? <DefaultRunsOnSection /> : null}
-
-          {isDeploymentOwner ? (
-            <section className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-4">
-              <div className="min-w-0">
-                <h3 className="text-[15px] font-medium text-foreground">
-                  <Trans>Integration sign-in</Trans>
-                </h3>
-                <p className="mt-0.5 text-[13px] text-muted-foreground">
-                  <Trans>How Integrations connect for everyone on this server.</Trans>
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                aria-label={t`Open integration sign-in`}
-                render={
-                  <Link
-                    to={`/app/integrations/setup?next=${encodeURIComponent(window.location.pathname + window.location.search)}`}
-                  />
-                }
-              >
-                <Trans>Open</Trans>
-              </Button>
-            </section>
-          ) : null}
 
           <details
             data-testid="advanced-settings"
@@ -278,11 +243,13 @@ export function GeneralSettingsPanels({
           >
             <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 text-[14px] text-foreground/75">
               <span className="block text-[15px] text-foreground">
-                <Trans>Advanced</Trans>
+                <Trans>Chat display</Trans>
               </span>
-              <span aria-hidden="true" className="transition-transform group-open:rotate-90">
-                ›
-              </span>
+              <ChevronRight
+                aria-hidden="true"
+                className="size-4 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+                strokeWidth={1.75}
+              />
             </summary>
             <div className="border-t border-border px-4 pb-5">
               <div className="flex items-start gap-3 pt-5 pointer-coarse:min-h-11 pointer-coarse:items-center">
@@ -342,32 +309,47 @@ export function GeneralSettingsPanels({
             </div>
           </details>
 
+          <section className="rounded-xl border border-border px-4 py-4">
+            <h3 className="text-[15px] font-medium text-foreground">
+              {timezone && onTimezoneChange ? (
+                <Trans>Language and time zone</Trans>
+              ) : (
+                <Trans>Language</Trans>
+              )}
+            </h3>
+            <UiLocalePicker value={locale} onChange={chooseLocale} />
+            {timezone && onTimezoneChange ? (
+              <TimezonePicker value={timezone} onChange={onTimezoneChange} />
+            ) : null}
+          </section>
+          <NotificationSettingsSection />
           {children}
         </div>
+        {/* Rare actions come last, below everything that loads on its own, so nothing above them moves.
+            Delete is last of all, so a destructive action is never the first thing on the page. */}
+        <section className="min-w-0 divide-y divide-border rounded-xl border border-border px-4 @2xl:col-start-1 @2xl:row-start-2">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-3">
+            <h3 className="text-[15px] font-medium text-foreground">
+              <Trans>Account</Trans>
+            </h3>
+            <p className="min-w-0 text-[14px] text-foreground/75">
+              {name}
+              {email ? (
+                <span title={email} className="block truncate text-[13px] text-muted-foreground/70">
+                  {email}
+                </span>
+              ) : null}
+            </p>
+          </div>
+          <DataExportSection />
+          {accountSecurity?.hasPassword && accountSecurity.passwordChangeEnabled !== false ? (
+            <ChangePasswordSection email={email} />
+          ) : null}
+          <div data-testid="account-access" className="pb-3">
+            <AccountAccess onSecurity={setAccountSecurity} />
+          </div>
+        </section>
       </div>
-
-      {/* Rare actions come last, below everything that loads on its own, so nothing above them moves.
-          Delete is last of all, so a destructive action is never the first thing on the page. */}
-      <section className="divide-y divide-border rounded-xl border border-border px-4">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-3">
-          <h3 className="text-[15px] font-medium text-foreground">
-            <Trans>Account</Trans>
-          </h3>
-          <p className="text-[14px] text-foreground/75">
-            {name}
-            {email ? (
-              <span className="ms-2 text-[13px] text-muted-foreground/70">{email}</span>
-            ) : null}
-          </p>
-        </div>
-        <DataExportSection />
-        {accountSecurity?.hasPassword && accountSecurity.passwordChangeEnabled !== false ? (
-          <ChangePasswordSection email={email} />
-        ) : null}
-        <div data-testid="account-access" className="pb-3">
-          <AccountAccess onSecurity={setAccountSecurity} />
-        </div>
-      </section>
     </div>
   );
 }
@@ -394,6 +376,14 @@ export function UsageSettingsPanel({
   } | null;
 }) {
   const tokens = usage?.totalTokens;
+  // Provider keys only matter to someone who added their own; the system model needs none.
+  const [hasOwnKey, setHasOwnKey] = useState(false);
+  useEffect(() => {
+    void rpc.models
+      .credentials()
+      .then((credentials) => setHasOwnKey(credentials.length > 0))
+      .catch(() => undefined);
+  }, []);
   return (
     <section data-testid="usage-settings" className="rounded-xl border border-border px-4 py-4">
       <h3 className="text-[15px] font-medium text-foreground">
@@ -414,9 +404,11 @@ export function UsageSettingsPanel({
           )}
         </p>
       ) : null}
-      <p className="mt-2 text-[12.5px] text-muted-foreground/80">
-        <Trans>Model spend uses your provider keys.</Trans>
-      </p>
+      {hasOwnKey ? (
+        <p className="mt-2 text-[12.5px] text-muted-foreground/80">
+          <Trans>Model spend uses your provider keys.</Trans>
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -505,9 +497,11 @@ function ChangePasswordSection({ email }: { email?: string | null }) {
     <details data-testid="change-password" className="group">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-3 text-[15px] font-medium text-foreground">
         <Trans>Change password</Trans>
-        <span aria-hidden="true" className="transition-transform group-open:rotate-90">
-          ›
-        </span>
+        <ChevronRight
+          aria-hidden="true"
+          className="size-4 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+          strokeWidth={1.75}
+        />
       </summary>
       <div className="grid gap-3 pb-1">
         <input
@@ -588,9 +582,11 @@ function SettingsPasswordInput({
 function AppearancePicker({
   value,
   onChange,
+  labelledBy,
 }: {
   value: AppearancePreference;
   onChange: (next: AppearancePreference) => void;
+  labelledBy: string;
 }) {
   const { t } = useLingui();
   const options: { value: AppearancePreference; label: string }[] = [
@@ -601,9 +597,9 @@ function AppearancePicker({
 
   return (
     <fieldset
-      aria-label={t`Appearance`}
+      aria-labelledby={labelledBy}
       data-testid="ui-appearance-select"
-      className="mt-3 grid min-w-0 grid-cols-3 gap-1 rounded-lg bg-muted p-1"
+      className="mt-2 grid min-w-0 grid-cols-3 gap-1 rounded-lg bg-muted p-1"
     >
       {options.map((option) => (
         <Toggle

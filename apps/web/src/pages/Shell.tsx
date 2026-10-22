@@ -25,6 +25,7 @@ import type {
 import {
   ATTACHMENT_MAX_BYTES,
   ATTACHMENT_MAX_COUNT,
+  DATA_ROOM_METADATA_ORDINAL,
   DEFAULT_AVATAR_STYLE,
   FIRST_BOT_SPAWN_KEY,
   isIntegrationAgentSpawnKey,
@@ -41,6 +42,7 @@ import {
   DEFAULT_BOT_COLOR,
   inferAttachmentMimeType,
   isActive,
+  isApprovalAskBlock,
   isRunTerminalEvent,
   latestAnswerableAskMessageId,
   matchesArtifactQuery,
@@ -81,6 +83,7 @@ import {
   ChartColumn,
   ChevronDown,
   CircleAlert,
+  Clock,
   CodeXml,
   Compass,
   Files,
@@ -178,9 +181,10 @@ import { glanceBadge, StatusMark } from "../components/sidebar-glance";
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
+import { connectCardsOpen, focusQuestionOpen } from "../components/tour/connect-cards";
 import { FirstRunTour } from "../components/tour/FirstRunTour";
-import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
+import { dismissApprovalToasts } from "../lib/approval-toasts";
 import { artifactDisplayName } from "../lib/artifact-name";
 import type { ArtifactTarget } from "../lib/artifact-open";
 import { authClient } from "../lib/auth";
@@ -217,7 +221,12 @@ import { fetchDataRoomBlob } from "../lib/data-room";
 import { dataRoomAgentSuggestions, findDataRoomAgent } from "../lib/data-room-agent";
 import { desktopBridge } from "../lib/desktop";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
-import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
+import {
+  maskCurrencyWhenHidden,
+  setHideAmounts,
+  setHideAmountsUser,
+  useHideAmounts,
+} from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
 import { appPath } from "../lib/integrations";
 import { findInvestorsAgent, investorsAgentSuggestions } from "../lib/investors-agent";
@@ -240,12 +249,15 @@ import {
 } from "../lib/right-panel-state";
 import {
   compactRosterStatusLabel,
+  needsAnswerLabel,
   rosterHasUndismissedRunError,
+  rosterHeldFor,
+  rosterStatusChanged,
   rosterWorkStatusLabel,
 } from "../lib/roster-status";
 import { formatRosterTime } from "../lib/roster-time";
 import type { MissingBotSeen } from "../lib/route-bot";
-import { resolveRouteBot } from "../lib/route-bot";
+import { resolveRouteBot, shouldClearMissingBot, useGiveUpOnMissingBot } from "../lib/route-bot";
 import { clearSpaceSelection, rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { readSeenRunErrorIds, rememberSeenRunErrorId } from "../lib/run-error-storage";
 import type { DataRoomRef } from "../lib/send-to-agent";
@@ -369,6 +381,24 @@ export type { PendingAttachment };
 export { Composer, Transcript, UnreadDivider };
 
 /** Safety-net refresh of the sidebar list; events and tab focus keep it current in between. */
+/**
+ * Stops a slow run, then resends only if the stop succeeded and the person is still in the
+ * chat they clicked in (the resend reads the current chat, so it must not follow a navigation).
+ */
+export async function retryAfterStop({
+  stop,
+  destination,
+  resend,
+}: {
+  stop: () => Promise<boolean>;
+  destination: () => string | null;
+  resend: () => void;
+}) {
+  const origin = destination();
+  if (!(await stop()) || destination() !== origin) return;
+  resend();
+}
+
 export const BOTS_POLL_MS = 90_000;
 const THREAD_SNAPSHOT_TIMEOUT_MS = 2_000;
 /** Bound Settings leave so a hung voice status refresh cannot block dismissal. */
@@ -448,7 +478,7 @@ function readCollapsedRosterParents(userId: string | null | undefined): Set<stri
 type SearchLink = { id: string; label: string; detail?: string };
 
 /** Data room files (by name and content) and artifacts matching a search; a failure only hides that group. */
-async function findDocumentsAndArtifacts(query: string) {
+export async function findDocumentsAndArtifacts(query: string) {
   const [documents, artifacts] = await Promise.all([
     Promise.all([
       rpc.dataRoom.search({ query, limit: 5 }),
@@ -466,10 +496,16 @@ async function findDocumentsAndArtifacts(query: string) {
           }
           return names.join(" / ");
         };
-        return result.results.map(({ item }) => ({
+        return result.results.map(({ item, ordinal, snippet }) => ({
           id: item.id,
           label: item.name,
-          detail: folderPath(item.folderId) || undefined,
+          // A match inside the file shows the matching text; a name match shows the folder.
+          detail:
+            ordinal === DATA_ROOM_METADATA_ORDINAL
+              ? folderPath(item.folderId) || undefined
+              : (maskOptional(
+                  snippet.replaceAll("\u0001", "").replaceAll("\u0002", "").trim() || null,
+                ) ?? undefined),
         }));
       })
       .catch((): SearchLink[] => []),
@@ -480,7 +516,14 @@ async function findDocumentsAndArtifacts(query: string) {
         result.items
           .filter((item) => matchesArtifactQuery(item, query))
           .slice(0, 5)
-          .map((item) => ({ id: item.id, label: artifactDisplayName(item.name) })),
+          .map((item) => ({
+            id: item.id,
+            label: artifactDisplayName(item.name),
+            // A description hit shows why the artifact matched.
+            detail: item.name.toLowerCase().includes(query.toLowerCase())
+              ? undefined
+              : (maskOptional(item.description ?? null) ?? undefined),
+          })),
       )
       .catch((): SearchLink[] => []),
   ]);
@@ -590,6 +633,9 @@ export function ShellPage() {
   const [collapsedSidebarSections, setCollapsedSidebarSections] = useState(() => new Set<string>());
   const [collapsedRosterParents, setCollapsedRosterParents] = useState(() => new Set<string>());
 
+  useEffect(() => {
+    setHideAmountsUser(userId ?? null);
+  }, [userId]);
   useEffect(() => {
     setCollapsedSidebarSections(readCollapsedSidebarSections(userId));
     setCollapsedRosterParents(readCollapsedRosterParents(userId));
@@ -896,16 +942,15 @@ export function ShellPage() {
     return () => desktop.removeEventListener("change", closeMobileSidebar);
   }, []);
   // Phones open the drawer on the chat list; Activity there is one tap away.
-  const [activityMode, setActivityMode] = useState(
-    () => readActivityMode() && window.matchMedia(SIDEBAR_DOCKED_QUERY).matches,
-  );
-  const toggleActivityMode = useCallback(() => {
-    setActivityMode((on) => {
-      const next = !on;
-      writeActivityMode(next);
-      return next;
-    });
-  }, []);
+  // Activity is a quick look, not a place: it closes when you go somewhere and a reload starts closed.
+  const [activityMode, setActivityMode] = useState(false);
+  const toggleActivityMode = useCallback(() => setActivityMode((on) => !on), []);
+  // Activity sits above the chats: show it from its top, not from the row the list had settled on.
+  useEffect(() => {
+    if (activityMode) sidebarScrollRef.current?.scrollTo({ top: 0 });
+  }, [activityMode]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: close on every navigation
+  useEffect(() => setActivityMode(false), [pathname]);
   const [botMenu, setBotMenu] = useState<{
     kind: "bot" | "group";
     id: string;
@@ -957,23 +1002,7 @@ export function ShellPage() {
   // After Skip tour the first question stays one tap away in Chief's composer.
   const [askChiefChip, setAskChiefChip] = useState(false);
   // The tour waits for the first-run focus question, so its popovers never cover the choices.
-  const firstQuestionOpen = Boolean(
-    snapshot?.messages.some((message) =>
-      message.blocks.some(
-        (block) =>
-          block.kind === "choice" &&
-          block.question === "What do you want me on first?" &&
-          !block.answerId,
-      ),
-    ),
-  );
-  const tourOpen =
-    tourRestart ||
-    (bootstrapMe?.tourSeen === false && !tourEnded && bots.length > 0 && !firstQuestionOpen);
-  // On a phone the tour points into the sidebar drawer, so open it while the tour runs.
-  useEffect(() => {
-    if (tourOpen && !window.matchMedia("(min-width: 1024px)").matches) setMobileSidebarOpen(true);
-  }, [tourOpen]);
+  const firstQuestionOpen = focusQuestionOpen(snapshot?.messages ?? []);
   const activeSpaceId = bootstrapMe?.spaceId;
   const agentAppFor = useAgentApp(
     userId,
@@ -1192,6 +1221,13 @@ export function ShellPage() {
   computerOpenRef.current = computerOpen;
   computerBotIdRef.current = computerBotId ?? active?.id;
   const activeGroup = groups.find((group) => group.id === groupId);
+  // An approval in the chat that is open (a bot, a page agent or a group) is already on screen.
+  const openChatHref =
+    inGroup && groupId ? `/app/g/${groupId}` : active ? `/app/${active.id}` : undefined;
+  useEffect(() => {
+    if (openChatHref)
+      dismissApprovalToasts({ href: openChatHref, botId: inGroup ? undefined : active?.id });
+  }, [openChatHref, inGroup, active?.id]);
   const opening = chatIsOpening({
     hasChat: Boolean(active || activeGroup),
     botsLoaded: initialBotsLoaded,
@@ -1319,6 +1355,19 @@ export function ShellPage() {
           navigate("/onboarding", { replace: true });
           return;
         }
+        // A chat given up on while this refresh was slow is real after all.
+        if (
+          listApplied &&
+          shouldClearMissingBot(
+            missingPathRef.current,
+            window.location.pathname,
+            list,
+            routeBotId.current,
+          )
+        ) {
+          missingPathRef.current = null;
+          setMissingPath(null);
+        }
         // An unknown address keeps showing Page not found instead of jumping to a chat.
         if (missingPathRef.current === window.location.pathname) return;
         const currentGroupId = routeGroupId.current;
@@ -1348,11 +1397,11 @@ export function ShellPage() {
     },
     [navigate],
   );
-
   useLayoutEffect(() => {
     routeBotStart.current = { id: botId, epoch: botsRefreshEpoch.current };
   }, [botId]);
 
+  useGiveUpOnMissingBot(routeBot.waiting, botId, () => markMissing(window.location.pathname));
   // A route bot the list does not know yet (created on another page) gets one refresh before the
   // chat falls back to the first bot; the chat area keeps its loading state meanwhile.
   useEffect(() => {
@@ -1545,6 +1594,8 @@ export function ShellPage() {
         if (cancelled) return;
         const groupList = bootstrap.groups;
         setBootstrapMe(bootstrap.me);
+        // The saved choice belongs to the signed-in user; it replaces the last person's.
+        setHideAmounts(bootstrap.me.hideAmounts ?? false);
         // Agents and new schedules use the user's zone; follow the browser without asking.
         const zone = timezoneToReport(bootstrap.me);
         if (zone) {
@@ -1668,6 +1719,11 @@ export function ShellPage() {
     void skills.then(setAgentSkills).catch(() => undefined);
   }, [slashBotId]);
 
+  // The routine form's skill picker lists this bot's enabled skills.
+  useEffect(() => {
+    if (panel === "routine") refreshAgentSkills();
+  }, [panel, refreshAgentSkills]);
+
   useEffect(() => {
     void rpc.voice
       .status()
@@ -1790,9 +1846,7 @@ export function ShellPage() {
         } else if (
           event.type === "bot.spawned" ||
           event.type === "bot.deleted" ||
-          event.type === "bot.updated" ||
-          event.type === "run.started" ||
-          isRunTerminalEvent(event) ||
+          rosterStatusChanged(event) ||
           event.type === "thread.cleared"
         ) {
           void refreshBots().catch(() => undefined);
@@ -1868,11 +1922,7 @@ export function ShellPage() {
           computerRef,
         ),
       onEvent: (event, _initial) => {
-        if (
-          event.type === "run.started" ||
-          event.type === "bot.updated" ||
-          isRunTerminalEvent(event)
-        ) {
+        if (rosterStatusChanged(event)) {
           void refreshBots().catch(() => undefined);
         }
         if (isRunTerminalEvent(event) || event.type === "run.waiting_input") {
@@ -1913,7 +1963,14 @@ export function ShellPage() {
               },
             ]
           : [];
-    return sidebarGroupsForSpaces(sidebarSpaces, "", bootstrapMe?.spaceId, t`Personal`);
+    // Only a space of one person goes without a heading; a shared space keeps its name and menu.
+    const alone = spaces.length === 1 && spaces[0]?.memberCount === 1;
+    return sidebarGroupsForSpaces(
+      sidebarSpaces,
+      "",
+      bootstrapMe?.spaceId,
+      alone ? null : t`Personal`,
+    );
   }, [bootstrapMe, botSections, listedBots, groups, spaces, t]);
   // What the list shows now, so a drop can be turned into a move.
   const sidebarLayout = useMemo<SidebarLayout>(() => {
@@ -2246,14 +2303,6 @@ export function ShellPage() {
       ]);
       return [
         {
-          heading: t`Mail`,
-          first: true,
-          icon: <Search size={16} strokeWidth={1.75} />,
-          entries: [
-            { id: `/app/inbox?q=${encodeURIComponent(q)}`, label: t`Search mail for “${q}”` },
-          ],
-        },
-        {
           heading: t`Contacts`,
           icon: <BookUser size={16} strokeWidth={1.75} />,
           entries: contacts.map((c) => ({
@@ -2278,7 +2327,16 @@ export function ShellPage() {
           entries: found.artifacts.map((item) => ({
             id: `/app/artifacts/${encodeURIComponent(item.id)}`,
             label: item.label,
+            detail: item.detail,
           })),
+        },
+        {
+          heading: t`Mail`,
+          fallback: true,
+          icon: <Search size={16} strokeWidth={1.75} />,
+          entries: [
+            { id: `/app/inbox?q=${encodeURIComponent(q)}`, label: t`Search mail for “${q}”` },
+          ],
         },
       ];
     },
@@ -2373,6 +2431,15 @@ export function ShellPage() {
     setPanelState((current) => (current === "routine" ? null : current));
   }, [active?.id]);
 
+  // A link to /app?settings=privacy (agent replies use it for a missing AI consent) opens that switch.
+  useEffect(() => {
+    if (searchParams.get("settings") !== "privacy") return;
+    openSettings("privacy");
+    const next = new URLSearchParams(searchParams);
+    next.delete("settings");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   useEffect(() => {
     const messageId = searchParams.get("m");
     const routineId = searchParams.get("routine");
@@ -2463,6 +2530,13 @@ export function ShellPage() {
   }, []);
   const currentRuns = activeThreadRuns(activeSnapshot);
   const answerableAskMessageId = latestAnswerableAskMessageId(activeSnapshot);
+  const waitingOnApproval = Boolean(
+    activeSnapshot?.delegatePending?.length ||
+      (answerableAskMessageId &&
+        activeSnapshot?.messages
+          .find((message) => message.id === answerableAskMessageId)
+          ?.blocks.some((block) => block.kind === "ask" && isApprovalAskBlock(block))),
+  );
   const workingRuns = currentRuns.filter((run) =>
     ["running", "queued", "leased"].includes(run.status),
   );
@@ -2668,6 +2742,26 @@ export function ShellPage() {
   const openBot = useCallback((id: string) => navigate(`/app/${id}`), [navigate]);
   // Contacts and Artifacts have no agent of their own: their Ask opens Chief, the first bot.
   const chiefId = bots.find((bot) => bot.spawnKey === FIRST_BOT_SPAWN_KEY && !bot.archivedAt)?.id;
+  // Chief's app cards come first; the tour starts once one is connected or another page is open.
+  const connectCardsWaiting =
+    active?.id === chiefId &&
+    snapshot?.botId === chiefId &&
+    connectCardsOpen(snapshot?.messages ?? []);
+  const tourOpen =
+    tourRestart ||
+    (bootstrapMe?.tourSeen === false &&
+      !tourEnded &&
+      bots.length > 0 &&
+      !firstQuestionOpen &&
+      !connectCardsWaiting);
+  // On a phone the tour points into the sidebar drawer, so open it while the tour runs. On a
+  // docked sidebar the tour card is as wide as the sidebar, so a collapsed rail is expanded
+  // (for this session only; the saved preference is unchanged).
+  useEffect(() => {
+    if (!tourOpen) return;
+    if (window.matchMedia("(min-width: 1024px)").matches) setBotsSidebarCollapsed(false);
+    else setMobileSidebarOpen(true);
+  }, [tourOpen]);
   const askChief = chiefId ? () => openBot(chiefId) : undefined;
 
   async function startElioCall() {
@@ -2748,6 +2842,9 @@ export function ShellPage() {
         ...(username ? { username } : {}),
         ...(mail ? { mail } : {}),
       });
+      dismissApprovalToasts(
+        groupId ? { href: `/app/g/${groupId}` } : { href: `/app/${botId}`, botId },
+      );
       if (groupId && activeGroupId.current === groupId) {
         await refreshGroupThreadRef.current(groupId);
       } else if (botId && activeBotId.current === botId) {
@@ -3032,8 +3129,8 @@ export function ShellPage() {
       t,
     ],
   );
-  const stopRun = useCallback(async () => {
-    if (sending) return;
+  const stopRun = useCallback(async (): Promise<boolean> => {
+    if (sending) return false;
     sendingRef.current = true;
     setSending(true);
     try {
@@ -3047,7 +3144,7 @@ export function ShellPage() {
           if (activeGroupId.current === groupTarget) {
             setSendError(errorText(error, t`Failed to stop`));
           }
-          return;
+          return false;
         }
         // Clear run UI ahead of the run.cancelled event so refresh races with in-flight gets.
         if (activeGroupId.current === groupTarget) {
@@ -3056,9 +3153,9 @@ export function ShellPage() {
           );
         }
         await refreshGroupThreadRef.current(groupTarget).catch(() => undefined);
-        return;
+        return true;
       }
-      if (!botTarget) return;
+      if (!botTarget) return false;
       setSendError(null);
       try {
         await rpc.threads.stop({ botId: botTarget });
@@ -3066,7 +3163,7 @@ export function ShellPage() {
         if (activeBotId.current === botTarget) {
           setSendError(errorText(error, t`Failed to stop`));
         }
-        return;
+        return false;
       }
       // Clear local run/busy immediately rather than waiting for run.cancelled so a
       // superseded in-flight refresh (older cursor) cannot leave Stop enabled / Take control
@@ -3081,6 +3178,7 @@ export function ShellPage() {
         }
       }
       await refreshThreadRef.current(botTarget).catch(() => undefined);
+      return true;
     } finally {
       sendingRef.current = false;
       setSending(false);
@@ -3773,14 +3871,15 @@ export function ShellPage() {
   }
 
   const embeddedScreenUrl = embeddableScreenUrl(screenUrl);
-  // A computer that is on but has no screen would show a heading over an empty box.
-  const noComputerScreen =
-    computer?.state === "running" &&
-    computer.kind !== "desktop" &&
-    !embeddedScreenUrl &&
-    !computerError &&
-    !computerOpen &&
-    !showComputerRecoveryHint;
+  // Without a screen to show (whatever the computer's state), the panel is just the bot's
+  // routines: no heading over an empty box.
+  const noComputerScreen = isRoutinesOnlyPanel({
+    kind: computer?.kind,
+    hasScreen: Boolean(embeddedScreenUrl),
+    hasError: Boolean(computerError),
+    open: computerOpen,
+    showRecoveryHint: showComputerRecoveryHint,
+  });
   const hasControl = userHoldsComputerControl(computer, computerBot?.id);
   const hideScreenLoadError = computerErrorFromScreen && Boolean(embeddedScreenUrl);
   const computerScreenError =
@@ -3954,6 +4053,18 @@ export function ShellPage() {
                 workingBots={workingBots}
                 workingActivity={soleWorkingActivity}
                 workingStartedAt={workingStartedAt}
+                onStopRun={() => void stopRun()}
+                onRetryRun={
+                  // A routine has no message to resend; Stop is the only slow-run action.
+                  activeSnapshot?.run?.trigger === "routine"
+                    ? undefined
+                    : () =>
+                        void retryAfterStop({
+                          stop: stopRun,
+                          destination: () => activeGroupId.current ?? activeBotId.current ?? null,
+                          resend: retryFailedRun,
+                        })
+                }
                 failedNote={dismissedRunError}
                 failedScheduled={activeSnapshot?.run?.trigger === "routine"}
                 onLoadOlder={loadOlder}
@@ -4058,6 +4169,7 @@ export function ShellPage() {
               onRemoveDataRoomItem={removeDataRoomItem}
               attachmentNotice={attachmentNotice}
               onDismissAttachmentNotice={() => setAttachmentNotice(null)}
+              placeholder={waitingOnApproval ? needsAnswerLabel() : undefined}
               sendError={sendError}
               runError={displayedRunError}
               runErrorId={displayedRunErrorId}
@@ -4077,7 +4189,7 @@ export function ShellPage() {
               quickAsk={
                 askChiefChip && active?.id === chiefId
                   ? {
-                      label: t`Ask Chief`,
+                      label: t`What should I do first this week?`,
                       onAsk: () => {
                         setAskChiefChip(false);
                         void sendMessage(t`What should I do first this week?`, [], newClientId());
@@ -4085,7 +4197,9 @@ export function ShellPage() {
                     }
                   : undefined
               }
-              onStop={stopRun}
+              onStop={async () => {
+                await stopRun();
+              }}
               onVoice={!inGroup && active ? () => void startElioCall() : undefined}
               artifactTarget={transcriptArtifactTarget}
               replyTarget={activeReplyTarget}
@@ -4192,6 +4306,8 @@ export function ShellPage() {
       {/* biome-ignore lint/a11y/noStaticElementInteractions: key and focus events bubble up from the row buttons inside */}
       <aside
         ref={sidebarRef}
+        data-sidebar=""
+        data-drawer-open={mobileSidebarOpen ? "" : undefined}
         aria-label={t`Sidebar`}
         onKeyDown={(event) => moveRosterFocus(sidebarRef.current, event)}
         onFocus={(event) => {
@@ -4237,7 +4353,10 @@ export function ShellPage() {
                 <InputGroupInput
                   readOnly
                   value=""
-                  onClick={() => setCommandPaletteOpen(true)}
+                  onClick={() => {
+                    // The box keeps focus until the palette takes it, so closing returns here.
+                    setCommandPaletteOpen(true);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
@@ -4247,7 +4366,7 @@ export function ShellPage() {
                   placeholder={t`Search`}
                   autoComplete="off"
                   name="sidebar-search"
-                  className="cursor-pointer"
+                  className="cursor-pointer placeholder:text-foreground/70"
                 />
               </InputGroup>
             )
@@ -4264,7 +4383,7 @@ export function ShellPage() {
                   onClick={toggleActivityMode}
                   className={`app-no-drag flex h-8 w-8 items-center justify-center rounded-full ${
                     activityMode
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-sidebar-accent text-foreground"
                       : "text-muted-foreground/70 hover:text-foreground/75"
                   }`}
                 >
@@ -4281,17 +4400,6 @@ export function ShellPage() {
                 >
                   <PanelLeftClose size={15} strokeWidth={1.8} aria-hidden="true" />
                 </button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="app-no-drag lg:hidden"
-                  aria-label={t`Close menu`}
-                  title={t`Close menu`}
-                  data-testid="close-mobile-sidebar"
-                  onClick={() => setMobileSidebarOpen(false)}
-                >
-                  <X size={16} strokeWidth={1.8} aria-hidden="true" />
-                </Button>
                 <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
                   <PopoverTrigger
                     className="app-no-drag flex h-8 w-8 items-center justify-center text-[21px] text-muted-foreground/70 hover:text-foreground/75"
@@ -4329,6 +4437,7 @@ export function ShellPage() {
                         setMobileSidebarOpen(false);
                         setPickerInfoTopic("group");
                       }}
+                      canCreateSpace={spaces.length > 1}
                       onShowSpaceInfo={() => {
                         setCreateMenuOpen(false);
                         setMobileSidebarOpen(false);
@@ -4337,928 +4446,1004 @@ export function ShellPage() {
                     />
                   </PopoverContent>
                 </Popover>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="app-no-drag lg:hidden"
+                  aria-label={t`Close menu`}
+                  title={t`Close menu`}
+                  data-testid="close-mobile-sidebar"
+                  data-drawer-focus
+                  onClick={() => setMobileSidebarOpen(false)}
+                >
+                  <X size={16} strokeWidth={1.8} aria-hidden="true" />
+                </Button>
               </div>
             )
           }
         />
-        {bootstrapMe === undefined ? null : (
-          // Waiting for the account (undefined) keeps pages the user hid from flashing in.
-          // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
-          <div className="flex max-h-[50vh] shrink-0 flex-col overflow-y-auto border-b border-border px-2.5 pb-1">
-            <SidebarPagesGroup
-              title={t`Pages`}
-              collapsed={collapsedSidebarSections.has("pages")}
-              rail={rail}
-              onToggle={() => toggleSidebarSection("pages")}
-              pages={[
-                { key: "inbox", label: t`Inbox` },
-                { key: "finance", label: t`Finance` },
-                { key: "legal", label: t`Legal` },
-                ...(glance.devinConnected ? [{ key: "devin", label: t`Devin` }] : []),
-                { key: "investors", label: t`Investors` },
-                { key: "fundraising", label: t`Fundraising` },
-                { key: "contacts", label: t`Contacts` },
-                { key: "data-room", label: t`Data room` },
-                { key: "artifacts", label: t`Artifacts` },
-                ...addedPages,
-              ]}
-              hidden={hiddenPages}
-              onToggleHidden={toggleHiddenPage}
+        {/* A page has no top band in the rail (the desktop app keeps one for its window controls), so the way back to the full sidebar sits here. */}
+        {rail && pageMode && !desktopBridge() ? (
+          <button
+            type="button"
+            data-testid="restore-bots-sidebar"
+            aria-label={t`Show sidebar`}
+            title={t`Show sidebar`}
+            onClick={() => setBotsSidebarCollapsedPref(false)}
+            className="app-no-drag mx-auto mt-1 grid size-9 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+          >
+            <PanelLeftOpen size={16} strokeWidth={1.8} aria-hidden="true" />
+          </button>
+        ) : null}
+        {/* On a phone the pages and the chats scroll together; from lg up each keeps its own scroll. */}
+        <div className="flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents">
+          {bootstrapMe === undefined ? null : (
+            // Waiting for the account (undefined) keeps pages the user hid from flashing in.
+            // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
+            // On a phone Activity takes its place until it is closed, so the chats stay in view.
+            <div
+              className={`flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:max-h-[50vh] lg:overflow-y-auto ${activityMode && !rail ? "max-lg:hidden" : ""}`}
             >
-              {hiddenPages.includes("inbox") ? null : (
-                <SidebarPageLink
-                  testId="sidebar-inbox"
-                  current={inboxMode}
-                  icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`Inbox`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/inbox");
-                  }}
-                  {...glanceBadge({
-                    unseen: unseen.inbox ?? 0,
-                    value: inboxUnread > 0 ? String(inboxUnread) : undefined,
-                    valueLabel: plural(inboxUnread, { one: "# unread", other: "# unread" }),
-                    rail,
-                  })}
-                />
-              )}
-              {hiddenPages.includes("finance") ? null : (
-                <SidebarPageLink
-                  testId="sidebar-finance"
-                  current={financeMode}
-                  icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`Finance`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/finance");
-                  }}
-                  {...glanceBadge({ unseen: unseen.finance ?? 0, rail })}
-                />
-              )}
-              {hiddenPages.includes("legal") ? null : (
-                <SidebarPageLink
-                  testId="sidebar-legal"
-                  current={legalMode}
-                  icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`Legal`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/legal");
-                  }}
-                  {...glanceBadge({
-                    unseen: unseen.legal ?? 0,
-                    rail,
-                    value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
-                    valueLabel: plural(glance.legalDueSoon, {
-                      one: "# due soon",
-                      other: "# due soon",
-                    }),
-                  })}
-                />
-              )}
-              {hiddenPages.includes("devin") || !glance.devinConnected ? null : (
-                <SidebarPageLink
-                  testId="sidebar-devin"
-                  current={devinMode}
-                  icon={<CodeXml size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`Devin`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/devin");
-                  }}
-                  // A count, never a dot: the page lists what needs you.
-                  {...glanceBadge({
-                    unseen: 0,
-                    rail,
-                    value: glance.devinNeedsYou > 0 ? String(glance.devinNeedsYou) : undefined,
-                    valueLabel: plural(glance.devinNeedsYou, {
-                      one: "# needs you",
-                      other: "# need you",
-                    }),
-                  })}
-                />
-              )}
-              {hiddenPages.includes("investors") ? null : (
-                <SidebarPageLink
-                  testId="sidebar-investors"
-                  current={investorsMode}
-                  icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`Investors`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/investors");
-                  }}
-                  {...glanceBadge({ unseen: unseen.investors ?? 0, rail })}
-                />
-              )}
-              {hiddenPages.includes("fundraising") ? null : (
-                <SidebarPageLink
-                  testId="sidebar-fundraising"
-                  current={fundraisingMode}
-                  icon={<HandCoins size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`Fundraising`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/fundraising");
-                  }}
-                />
-              )}
-              {hiddenPages.includes("contacts") ? null : (
-                <SidebarPageLink
-                  testId="sidebar-contacts"
-                  current={contactsMode}
-                  icon={<BookUser size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`Contacts`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/contacts");
-                  }}
-                />
-              )}
-              {hiddenPages.includes("data-room") ? null : (
-                <SidebarPageLink
-                  testId="sidebar-data-room"
-                  current={dataRoomMode}
-                  icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`Data room`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/data-room");
-                  }}
-                  {...glanceBadge({
-                    unseen: unseen["data-room"] ?? 0,
-                    rail,
-                    value: glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
-                    failure: true,
-                    // The count is failed files, the only ones a person can retry or remove.
-                    valueLabel: plural(glance.dataRoomWaiting, {
-                      one: "# file failed",
-                      other: "# files failed",
-                    }),
-                  })}
-                />
-              )}
-              {hiddenPages.includes("artifacts") ? null : (
-                <SidebarPageLink
-                  testId="sidebar-artifacts"
-                  current={artifactsMode}
-                  // Not the Data room's folder icon: these are files bots made.
-                  icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
-                  label={t`Artifacts`}
-                  rail={rail}
-                  onOpen={() => {
-                    setMobileSidebarOpen(false);
-                    navigate("/app/artifacts");
-                  }}
-                  {...glanceBadge({ unseen: unseen.artifacts ?? 0, rail })}
-                />
-              )}
-              <SidebarPages
+              <SidebarPagesGroup
+                title={t`Pages`}
+                collapsed={collapsedSidebarSections.has("pages")}
                 rail={rail}
+                onToggle={() => toggleSidebarSection("pages")}
+                pages={[
+                  { key: "inbox", label: t`Inbox` },
+                  { key: "finance", label: t`Finance` },
+                  { key: "legal", label: t`Legal` },
+                  ...(glance.devinConnected ? [{ key: "devin", label: t`Devin` }] : []),
+                  { key: "investors", label: t`Investors` },
+                  { key: "fundraising", label: t`Fundraising` },
+                  { key: "contacts", label: t`Contacts` },
+                  { key: "data-room", label: t`Data room` },
+                  { key: "artifacts", label: t`Artifacts` },
+                  ...addedPages,
+                ]}
                 hidden={hiddenPages}
-                onListed={setAddedPages}
-                onOpen={() => setMobileSidebarOpen(false)}
-              />
-            </SidebarPagesGroup>
-          </div>
-        )}
-        <div
-          ref={sidebarScrollRef}
-          className="rk-scroll rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5"
-        >
-          <>
-            {activityMode && !rail ? (
-              <ActivityList
-                onOpenRun={(run) => {
-                  setMobileSidebarOpen(false);
-                  if (run.groupId) navigate(`/app/g/${run.groupId}`);
-                  else navigate(`/app/${run.botId}`);
-                }}
-              />
-            ) : null}
-            {!initialBotsLoaded && bots.length === 0 && !rail ? (
-              <div className="space-y-2 px-1 pt-2" aria-hidden="true">
-                {[0, 1, 2, 3].map((row) => (
-                  <div key={row} className="flex items-center gap-3 rounded-xl px-2 py-2.5">
-                    <Skeleton className="size-9 rounded-full" />
-                    <Skeleton className="h-3 w-2/5" />
-                  </div>
-                ))}
-              </div>
-            ) : null}
-            <SidebarDnd
-              layout={sidebarLayout}
-              labelFor={sidebarDragLabel}
-              onDrop={dropSidebarItem}
-              overlay={sidebarDragOverlay}
-            >
-              {sidebarGroups.map((group) => {
-                const activeSpace = group.spaceId === bootstrapMe?.spaceId;
-                const folder = group.kind === "folder" && group.sectionId ? group.sectionId : null;
-                // Closing the heading hides everything under it.
-                if (!rail && group.parentKey && collapsedSidebarSections.has(group.parentKey)) {
-                  return null;
-                }
-                const collapsed = folder
-                  ? activeSpace
-                    ? group.collapsed
-                    : collapsedSidebarSections.has(group.key)
-                  : Boolean(group.title) && collapsedSidebarSections.has(group.key);
-                // The most urgent status in a folder, so a closed folder hides nothing.
-                const folderStatus = folder
-                  ? NOTIFICATION_KINDS.find((kind) =>
-                      group.bots.some(
-                        (item) => item.kind === "bot" && glance.botKinds[item.chat.id] === kind,
-                      ),
-                    )
-                  : undefined;
-                const dragEnabled = activeSpace && !rail && group.kind !== "pinned";
-                const nestedRows = nestRosterByParent(group.bots, collapsedRosterParents);
-                // Page and integration agents, and the chat made for each email, fold into one row
-                // each; Chief and the person's bots stay listed.
-                const rowKey = (row: (typeof nestedRows)[number]) =>
-                  "spawnKey" in row.item.chat ? String(row.item.chat.spawnKey) : null;
-                const isEmailChat = (row: (typeof nestedRows)[number]) =>
-                  row.item.kind === "bot" && isMailThreadAgentSpawnKey(rowKey(row));
-                const isPageAgent = (row: (typeof nestedRows)[number]) =>
-                  row.item.kind === "bot" &&
-                  (pageAgentKind(rowKey(row)) !== null || isIntegrationAgentSpawnKey(rowKey(row)));
-                const foldable = !rail && !folder && group.kind !== "pinned";
-                const pageAgentRows = foldable ? nestedRows.filter(isPageAgent) : [];
-                const emailChatRows = foldable ? nestedRows.filter(isEmailChat) : [];
-                const holdsActive = (rows: typeof nestedRows) =>
-                  rows.some((row) => row.item.kind === "bot" && row.item.chat.id === active?.id);
-                const showPageAgents = pageAgentsOpen || holdsActive(pageAgentRows);
-                const showEmailChats = emailChatsOpen || holdsActive(emailChatRows);
-                const displayRows: (
-                  | (typeof nestedRows)[number]
-                  | { foldHeader: "page" | "email" }
-                )[] =
-                  pageAgentRows.length || emailChatRows.length
-                    ? [
-                        ...nestedRows.filter((row) => !isPageAgent(row) && !isEmailChat(row)),
-                        ...(pageAgentRows.length ? [{ foldHeader: "page" as const }] : []),
-                        ...(showPageAgents ? pageAgentRows : []),
-                        ...(emailChatRows.length ? [{ foldHeader: "email" as const }] : []),
-                        ...(showEmailChats ? emailChatRows : []),
-                      ]
+                onToggleHidden={toggleHiddenPage}
+              >
+                {hiddenPages.includes("inbox") ? null : (
+                  <SidebarPageLink
+                    testId="sidebar-inbox"
+                    current={inboxMode}
+                    icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
+                    label={t`Inbox`}
+                    rail={rail}
+                    onOpen={() => {
+                      setMobileSidebarOpen(false);
+                      navigate("/app/inbox");
+                    }}
+                    {...glanceBadge({
+                      unseen: unseen.inbox ?? 0,
+                      value: inboxUnread > 0 ? String(inboxUnread) : undefined,
+                      valueLabel: plural(inboxUnread, { one: "# unread", other: "# unread" }),
+                      rail,
+                    })}
+                  />
+                )}
+                {hiddenPages.includes("finance") ? null : (
+                  <SidebarPageLink
+                    testId="sidebar-finance"
+                    current={financeMode}
+                    icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
+                    label={t`Finance`}
+                    rail={rail}
+                    onOpen={() => {
+                      setMobileSidebarOpen(false);
+                      navigate("/app/finance");
+                    }}
+                    {...glanceBadge({ unseen: unseen.finance ?? 0, rail })}
+                  />
+                )}
+                {hiddenPages.includes("legal") ? null : (
+                  <SidebarPageLink
+                    testId="sidebar-legal"
+                    current={legalMode}
+                    icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
+                    label={t`Legal`}
+                    rail={rail}
+                    onOpen={() => {
+                      setMobileSidebarOpen(false);
+                      navigate("/app/legal");
+                    }}
+                    {...glanceBadge({
+                      unseen: unseen.legal ?? 0,
+                      rail,
+                      value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
+                      valueLabel: plural(glance.legalDueSoon, {
+                        one: "# due soon",
+                        other: "# due soon",
+                      }),
+                    })}
+                  />
+                )}
+                {hiddenPages.includes("devin") || !glance.devinConnected ? null : (
+                  <SidebarPageLink
+                    testId="sidebar-devin"
+                    current={devinMode}
+                    icon={<CodeXml size={15} strokeWidth={1.8} aria-hidden="true" />}
+                    label={t`Devin`}
+                    rail={rail}
+                    onOpen={() => {
+                      setMobileSidebarOpen(false);
+                      navigate("/app/devin");
+                    }}
+                    // A count, never a dot: the page lists what needs you.
+                    {...glanceBadge({
+                      unseen: 0,
+                      rail,
+                      value: glance.devinNeedsYou > 0 ? String(glance.devinNeedsYou) : undefined,
+                      valueLabel: plural(glance.devinNeedsYou, {
+                        one: "# needs you",
+                        other: "# need you",
+                      }),
+                    })}
+                  />
+                )}
+                {hiddenPages.includes("investors") ? null : (
+                  <SidebarPageLink
+                    testId="sidebar-investors"
+                    current={investorsMode}
+                    icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
+                    label={t`Investors`}
+                    rail={rail}
+                    onOpen={() => {
+                      setMobileSidebarOpen(false);
+                      navigate("/app/investors");
+                    }}
+                    {...glanceBadge({ unseen: unseen.investors ?? 0, rail })}
+                  />
+                )}
+                {hiddenPages.includes("fundraising") ? null : (
+                  <SidebarPageLink
+                    testId="sidebar-fundraising"
+                    current={fundraisingMode}
+                    icon={<HandCoins size={15} strokeWidth={1.8} aria-hidden="true" />}
+                    label={t`Fundraising`}
+                    rail={rail}
+                    onOpen={() => {
+                      setMobileSidebarOpen(false);
+                      navigate("/app/fundraising");
+                    }}
+                  />
+                )}
+                {hiddenPages.includes("contacts") ? null : (
+                  <SidebarPageLink
+                    testId="sidebar-contacts"
+                    current={contactsMode}
+                    icon={<BookUser size={15} strokeWidth={1.8} aria-hidden="true" />}
+                    label={t`Contacts`}
+                    rail={rail}
+                    onOpen={() => {
+                      setMobileSidebarOpen(false);
+                      navigate("/app/contacts");
+                    }}
+                  />
+                )}
+                {hiddenPages.includes("data-room") ? null : (
+                  <SidebarPageLink
+                    testId="sidebar-data-room"
+                    current={dataRoomMode}
+                    icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
+                    label={t`Data room`}
+                    rail={rail}
+                    onOpen={() => {
+                      setMobileSidebarOpen(false);
+                      navigate("/app/data-room");
+                    }}
+                    {...glanceBadge({
+                      unseen: unseen["data-room"] ?? 0,
+                      rail,
+                      value:
+                        glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
+                      failure: true,
+                      // The count is failed files, the only ones a person can retry or remove.
+                      valueLabel: plural(glance.dataRoomWaiting, {
+                        one: "# file failed",
+                        other: "# files failed",
+                      }),
+                    })}
+                  />
+                )}
+                {hiddenPages.includes("artifacts") ? null : (
+                  <SidebarPageLink
+                    testId="sidebar-artifacts"
+                    current={artifactsMode}
+                    // Not the Data room's folder icon: these are files bots made.
+                    icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
+                    label={t`Artifacts`}
+                    rail={rail}
+                    onOpen={() => {
+                      setMobileSidebarOpen(false);
+                      navigate("/app/artifacts");
+                    }}
+                    {...glanceBadge({ unseen: unseen.artifacts ?? 0, rail })}
+                  />
+                )}
+                <SidebarPages
+                  rail={rail}
+                  hidden={hiddenPages}
+                  onListed={setAddedPages}
+                  onOpen={() => setMobileSidebarOpen(false)}
+                />
+              </SidebarPagesGroup>
+            </div>
+          )}
+          <div
+            ref={sidebarScrollRef}
+            className="rk-scroll rk-scroll-fade-y flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:overflow-y-auto [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
+          >
+            <>
+              {activityMode && !rail ? (
+                <ActivityList
+                  onOpenRun={(run) => {
+                    setMobileSidebarOpen(false);
+                    if (run.groupId) navigate(`/app/g/${run.groupId}`);
+                    else navigate(`/app/${run.botId}`);
+                  }}
+                />
+              ) : null}
+              {!initialBotsLoaded && bots.length === 0 && !rail ? (
+                <div className="space-y-2 px-1 pt-2" aria-hidden="true">
+                  {[0, 1, 2, 3].map((row) => (
+                    <div key={row} className="flex items-center gap-3 rounded-xl px-2 py-2.5">
+                      <Skeleton className="size-9 rounded-full" />
+                      <Skeleton className="h-3 w-2/5" />
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              <SidebarDnd
+                layout={sidebarLayout}
+                labelFor={sidebarDragLabel}
+                onDrop={dropSidebarItem}
+                overlay={sidebarDragOverlay}
+              >
+                {sidebarGroups.map((group) => {
+                  const activeSpace = group.spaceId === bootstrapMe?.spaceId;
+                  const folder =
+                    group.kind === "folder" && group.sectionId ? group.sectionId : null;
+                  // Closing the heading hides everything under it.
+                  if (!rail && group.parentKey && collapsedSidebarSections.has(group.parentKey)) {
+                    return null;
+                  }
+                  const collapsed = folder
+                    ? activeSpace
+                      ? group.collapsed
+                      : collapsedSidebarSections.has(group.key)
+                    : Boolean(group.title) && collapsedSidebarSections.has(group.key);
+                  // The most urgent status in a folder, so a closed folder hides nothing.
+                  const folderStatus = folder
+                    ? NOTIFICATION_KINDS.find((kind) =>
+                        group.bots.some(
+                          (item) => item.kind === "bot" && glance.botKinds[item.chat.id] === kind,
+                        ),
+                      )
+                    : undefined;
+                  const dragEnabled = activeSpace && !rail && group.kind !== "pinned";
+                  const nestedRows = nestRosterByParent(group.bots, collapsedRosterParents);
+                  // Page and integration agents, and the chat made for each email, fold into one row
+                  // each; Chief and the person's bots stay listed.
+                  const rowKey = (row: (typeof nestedRows)[number]) =>
+                    "spawnKey" in row.item.chat ? String(row.item.chat.spawnKey) : null;
+                  const isEmailChat = (row: (typeof nestedRows)[number]) =>
+                    row.item.kind === "bot" && isMailThreadAgentSpawnKey(rowKey(row));
+                  const isPageAgent = (row: (typeof nestedRows)[number]) =>
+                    row.item.kind === "bot" &&
+                    (pageAgentKind(rowKey(row)) !== null ||
+                      isIntegrationAgentSpawnKey(rowKey(row)));
+                  const foldable = !rail && !folder && group.kind !== "pinned";
+                  // A page makes its agent when opened; it is listed once it has a message or a run.
+                  const unusedPageAgent = (row: (typeof nestedRows)[number]) =>
+                    row.item.kind === "bot" &&
+                    isPageAgent(row) &&
+                    !row.item.chat.preview &&
+                    row.item.chat.status === "idle" &&
+                    row.item.chat.id !== active?.id;
+                  const listedRows = foldable
+                    ? nestedRows.filter((row) => !unusedPageAgent(row))
                     : nestedRows;
-                const treeActive = nestedRows.some((row) => row.depth > 0 || row.hasChildren);
-                // Reorder among visible siblings so keyboard and drag moves match the tree.
-                const siblingBotIds = (parentId: string | null) =>
-                  nestedRows.flatMap((row) =>
-                    row.item.kind === "bot" && row.parentId === parentId ? [row.item.chat.id] : [],
-                  );
-                // The heading's menu: space rename and delete where allowed, and the folder actions.
-                const hasSpaceActions =
-                  group.canRenameSpace ||
-                  group.canDeleteSpace ||
-                  (activeSpace && Boolean(group.title) && ["head", "space"].includes(group.kind));
-                // "Personal" replaces the lone space's name, so the name stays in the label.
-                const sidebarHeader = {
-                  name: group.relabeled ? `${group.title} (${group.spaceName})` : group.title,
-                };
-                return (
-                  <div key={group.key} data-sidebar-group={group.key}>
-                    {rail ? (
-                      <div
-                        className={
-                          group.title && group.kind !== "head"
-                            ? "mx-2 mt-2 mb-1 border-t border-border"
-                            : undefined
-                        }
-                      />
-                    ) : null}
-                    {!rail && folder ? (
-                      <FolderHeader
-                        id={folder}
-                        name={group.title ?? ""}
-                        count={group.bots.length}
-                        collapsed={collapsed}
-                        status={folderStatus}
-                        unread={group.bots.some((item) => item.chat.unread)}
-                        editing={editingFolderId === folder}
-                        readOnly={!activeSpace}
-                        onToggle={() =>
-                          activeSpace
-                            ? void toggleFolder(folder, !collapsed)
-                            : toggleSidebarSection(group.key)
-                        }
-                        onStartRename={() => setEditingFolderId(folder)}
-                        onRename={(name) => void renameFolder(folder, name)}
-                        onCancelRename={() => setEditingFolderId(null)}
-                        onDelete={() => void deleteFolder(folder)}
-                        takenNames={botSections.map((section) => section.name)}
-                      />
-                    ) : null}
-                    {!rail && !folder && (group.title || hasSpaceActions) ? (
-                      <div
-                        data-roster-item={group.key}
-                        className={
-                          group.title && hasSpaceActions
-                            ? "grid pt-3 pb-0.5"
-                            : `flex items-center pt-3 pb-0.5${group.title ? "" : " justify-end"}`
-                        }
-                      >
-                        {group.title ? (
-                          <button
-                            type="button"
-                            aria-current={group.current ? "true" : undefined}
-                            data-roster-row={group.key}
-                            data-sidebar-current={group.current ? "" : undefined}
-                            title={group.relabeled ? group.spaceName : undefined}
-                            className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-foreground/70"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
-                            onClick={() => {
-                              if (group.emptySpaceId) {
-                                openSpaceChat(group.emptySpaceId, "/onboarding");
-                                return;
+                  const pageAgentRows = foldable ? listedRows.filter(isPageAgent) : [];
+                  const emailChatRows = foldable ? listedRows.filter(isEmailChat) : [];
+                  const holdsActive = (rows: typeof nestedRows) =>
+                    rows.some((row) => row.item.kind === "bot" && row.item.chat.id === active?.id);
+                  const showPageAgents = pageAgentsOpen || holdsActive(pageAgentRows);
+                  const showEmailChats = emailChatsOpen || holdsActive(emailChatRows);
+                  const displayRows: (
+                    | (typeof nestedRows)[number]
+                    | { foldHeader: "page" | "email" }
+                  )[] =
+                    pageAgentRows.length || emailChatRows.length
+                      ? [
+                          ...listedRows.filter((row) => !isPageAgent(row) && !isEmailChat(row)),
+                          ...(pageAgentRows.length ? [{ foldHeader: "page" as const }] : []),
+                          ...(showPageAgents ? pageAgentRows : []),
+                          ...(emailChatRows.length ? [{ foldHeader: "email" as const }] : []),
+                          ...(showEmailChats ? emailChatRows : []),
+                        ]
+                      : listedRows;
+                  const treeActive = nestedRows.some((row) => row.depth > 0 || row.hasChildren);
+                  // Reorder among visible siblings so keyboard and drag moves match the tree.
+                  const siblingBotIds = (parentId: string | null) =>
+                    nestedRows.flatMap((row) =>
+                      row.item.kind === "bot" && row.parentId === parentId
+                        ? [row.item.chat.id]
+                        : [],
+                    );
+                  // The heading's menu: space rename and delete where allowed, and the folder actions.
+                  const hasSpaceActions =
+                    group.canRenameSpace ||
+                    group.canDeleteSpace ||
+                    (activeSpace && Boolean(group.title) && ["head", "space"].includes(group.kind));
+                  // "Personal" replaces the lone space's name, so the name stays in the label.
+                  const sidebarHeader = {
+                    name: group.relabeled ? `${group.title} (${group.spaceName})` : group.title,
+                  };
+                  return (
+                    <div key={group.key} data-sidebar-group={group.key}>
+                      {rail ? (
+                        <div
+                          className={
+                            group.title && group.kind !== "head"
+                              ? "mx-2 mt-2 mb-1 border-t border-border"
+                              : undefined
+                          }
+                        />
+                      ) : null}
+                      {!rail && folder ? (
+                        <FolderHeader
+                          id={folder}
+                          name={group.title ?? ""}
+                          count={group.bots.length}
+                          collapsed={collapsed}
+                          status={folderStatus}
+                          unread={group.bots.some((item) => item.chat.unread)}
+                          editing={editingFolderId === folder}
+                          readOnly={!activeSpace}
+                          onToggle={() =>
+                            activeSpace
+                              ? void toggleFolder(folder, !collapsed)
+                              : toggleSidebarSection(group.key)
+                          }
+                          onStartRename={() => setEditingFolderId(folder)}
+                          onRename={(name) => void renameFolder(folder, name)}
+                          onCancelRename={() => setEditingFolderId(null)}
+                          onDelete={() => void deleteFolder(folder)}
+                          takenNames={botSections.map((section) => section.name)}
+                        />
+                      ) : null}
+                      {!rail && !folder && (group.title || hasSpaceActions) ? (
+                        <div
+                          data-roster-item={group.key}
+                          className={
+                            group.title && hasSpaceActions
+                              ? "grid pt-3 pb-0.5"
+                              : `flex items-center pt-3 pb-0.5${group.title ? "" : " justify-end"}`
+                          }
+                        >
+                          {group.title ? (
+                            <button
+                              type="button"
+                              aria-current={group.current ? "true" : undefined}
+                              data-roster-row={group.key}
+                              data-sidebar-current={group.current ? "" : undefined}
+                              title={group.relabeled ? group.spaceName : undefined}
+                              className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-foreground/70"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
+                              onClick={() => {
+                                if (group.emptySpaceId) {
+                                  openSpaceChat(group.emptySpaceId, "/onboarding");
+                                  return;
+                                }
+                                toggleSidebarSection(group.key);
+                              }}
+                              onContextMenu={
+                                hasSpaceActions
+                                  ? (event) => {
+                                      event.preventDefault();
+                                      spaceMenuAnchor.current = event.currentTarget;
+                                      setSpaceMenu({
+                                        id: group.spaceId,
+                                        position: { x: event.clientX, y: event.clientY },
+                                      });
+                                    }
+                                  : undefined
                               }
-                              toggleSidebarSection(group.key);
-                            }}
-                            onContextMenu={
-                              hasSpaceActions
-                                ? (event) => {
-                                    event.preventDefault();
-                                    spaceMenuAnchor.current = event.currentTarget;
-                                    setSpaceMenu({
-                                      id: group.spaceId,
-                                      position: { x: event.clientX, y: event.clientY },
-                                    });
+                              aria-expanded={group.emptySpaceId ? undefined : !collapsed}
+                              aria-label={
+                                group.emptySpaceId
+                                  ? t`Open ${group.title}`
+                                  : collapsed
+                                    ? t`Expand ${sidebarHeader.name}`
+                                    : t`Collapse ${sidebarHeader.name}`
+                              }
+                            >
+                              <span className="flex min-w-0 items-center gap-1.5">
+                                {group.current ? (
+                                  <span
+                                    className="size-1.5 shrink-0 rounded-full bg-primary"
+                                    aria-hidden="true"
+                                  />
+                                ) : null}
+                                {group.showLock ? (
+                                  <Lock size={11} strokeWidth={2} aria-hidden="true" />
+                                ) : null}
+                                {/* Long space names wrap to a second line instead of being cut off. */}
+                                <span className="line-clamp-2 text-start break-words">
+                                  {group.title}
+                                </span>
+                              </span>
+                              {group.emptySpaceId ? null : (
+                                <ChevronDown
+                                  size={14}
+                                  strokeWidth={1.8}
+                                  className={
+                                    collapsed
+                                      ? "-rotate-90 transition-transform"
+                                      : "transition-transform"
                                   }
-                                : undefined
-                            }
-                            aria-expanded={group.emptySpaceId ? undefined : !collapsed}
-                            aria-label={
-                              group.emptySpaceId
-                                ? t`Open ${group.title}`
-                                : collapsed
-                                  ? t`Expand ${sidebarHeader.name}`
-                                  : t`Collapse ${sidebarHeader.name}`
-                            }
-                          >
-                            <span className="flex min-w-0 items-center gap-1.5">
-                              {group.current ? (
-                                <span
-                                  className="size-1.5 shrink-0 rounded-full bg-primary"
                                   aria-hidden="true"
                                 />
-                              ) : null}
-                              {group.showLock ? (
-                                <Lock size={11} strokeWidth={2} aria-hidden="true" />
-                              ) : null}
-                              {/* Long space names wrap to a second line instead of being cut off. */}
-                              <span className="line-clamp-2 text-start break-words">
-                                {group.title}
-                              </span>
-                            </span>
-                            {group.emptySpaceId ? null : (
-                              <ChevronDown
-                                size={14}
-                                strokeWidth={1.8}
-                                className={
-                                  collapsed
-                                    ? "-rotate-90 transition-transform"
-                                    : "transition-transform"
-                                }
-                                aria-hidden="true"
-                              />
-                            )}
-                          </button>
-                        ) : null}
-                        {hasSpaceActions ? (
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className={`focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
-                              group.title
-                                ? "col-start-1 row-start-1 justify-self-end self-center"
-                                : ""
-                            }`}
-                            data-roster-actions=""
-                            aria-label={t`Actions for ${group.spaceName}`}
-                            onClick={(event) => {
-                              const rect = event.currentTarget.getBoundingClientRect();
-                              spaceMenuAnchor.current = event.currentTarget;
-                              setSpaceMenu({
-                                id: group.spaceId,
-                                position: { x: rect.left, y: rect.bottom },
-                              });
-                            }}
-                          >
-                            <MoreHorizontal size={14} aria-hidden="true" />
-                          </Button>
-                        ) : null}
-                      </div>
-                    ) : null}
-                    {!rail && group.kind === "root" && group.parentKey && group.bots.length > 0 ? (
-                      <div className="mt-1 px-2.5 py-1.5 text-[13px] font-medium text-foreground/80">
-                        <Trans>Chats</Trans>
-                      </div>
-                    ) : null}
-                    {rail || !collapsed ? (
-                      <SortableList
-                        ids={displayRows.flatMap((row) =>
-                          "item" in row
-                            ? [itemDragId({ kind: row.item.kind, id: row.item.chat.id })]
-                            : [],
-                        )}
-                      >
-                        {displayRows.map((displayRow) => {
-                          if ("foldHeader" in displayRow) {
-                            const email = displayRow.foldHeader === "email";
-                            const rows = email ? emailChatRows : pageAgentRows;
-                            return (
-                              <PageAgentsRow
-                                key={displayRow.foldHeader}
-                                label={email ? t`Email chats` : t`Page agents`}
-                                testId={email ? "sidebar-email-chats" : undefined}
-                                open={email ? showEmailChats : showPageAgents}
-                                count={rows.length}
-                                needsYou={rows.some(
-                                  (row) =>
-                                    row.item.chat.unread || glance.botKinds[row.item.chat.id],
-                                )}
-                                onToggle={() =>
-                                  email
-                                    ? setEmailChatsOpen((open) => !open)
-                                    : setPageAgentsOpen((open) => !open)
-                                }
-                              />
-                            );
-                          }
-                          const { item, depth, hasChildren, parentId } = displayRow;
-                          const parentCollapsed =
-                            hasChildren && collapsedRosterParents.has(item.chat.id);
-                          const selected =
-                            (item.kind === "bot" &&
-                              !inGroup &&
-                              !pageMode &&
-                              active?.id === item.chat.id) ||
-                            (item.kind === "group" && inGroup && activeGroup?.id === item.chat.id);
-                          const compact = botsSidebarDensity === "compact";
-                          const workStatusLabel =
-                            item.kind === "bot"
-                              ? maskOptional(
-                                  rosterWorkStatusLabel(item.chat.status, item.chat.runPhase),
-                                )
-                              : null;
-                          // Ink for work in progress; only a waiting question uses a status colour.
-                          const workTone =
-                            item.kind === "bot" && item.chat.status === "waiting_input"
-                              ? "text-warning"
-                              : "text-foreground";
-                          const rowError =
-                            item.kind === "bot" &&
-                            (rosterHasUndismissedRunError(
-                              item.chat.runErrorId,
-                              dismissedRunErrorIds,
-                            ) ||
-                              (active?.id === item.chat.id && Boolean(displayedRunError)));
-                          const compactStatusLabel =
-                            compact && item.kind === "bot"
-                              ? rowError
-                                ? t`Error`
-                                : maskOptional(
-                                    compactRosterStatusLabel(item.chat.status, item.chat.runPhase),
-                                  )
-                              : null;
-                          const rosterLine = compact
-                            ? compactStatusLabel
-                            : (workStatusLabel ??
-                              (item.kind === "bot"
-                                ? maskCurrencyWhenHidden(item.chat.preview) ||
-                                  (item.chat.status !== "idle" ? item.chat.status : "")
-                                : maskCurrencyWhenHidden(item.chat.preview) ||
-                                  item.chat.members.map((member) => member.name).join(", ")));
-                          const rowDragEnabled =
-                            dragEnabled && item.chat.spaceId === bootstrapMe?.spaceId;
-                          return (
-                            <SortableRow
-                              key={`${item.kind}:${item.chat.id}`}
-                              id={itemDragId({ kind: item.kind, id: item.chat.id })}
-                              disabled={!rowDragEnabled}
+                              )}
+                            </button>
+                          ) : null}
+                          {hasSpaceActions ? (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className={`focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
+                                group.title
+                                  ? "col-start-1 row-start-1 justify-self-end self-center"
+                                  : ""
+                              }`}
+                              data-roster-actions=""
+                              aria-label={t`Actions for ${group.spaceName}`}
+                              onClick={(event) => {
+                                const rect = event.currentTarget.getBoundingClientRect();
+                                spaceMenuAnchor.current = event.currentTarget;
+                                setSpaceMenu({
+                                  id: group.spaceId,
+                                  position: { x: rect.left, y: rect.bottom },
+                                });
+                              }}
                             >
-                              {(row) => (
-                                <div
-                                  ref={row.setNodeRef}
-                                  data-drops-before={row.dropsBefore ? "" : undefined}
-                                  data-roster-item={item.chat.id}
-                                  data-tour={item.chat.id === chiefId ? "sidebar-chat" : undefined}
-                                  className={`group/row relative mb-1 data-drops-before:border-t-2 data-drops-before:border-ring ${
-                                    !rail && (folder || group.kind === "pinned") ? "ms-3" : ""
-                                  }`}
-                                  style={{ ...row.style, opacity: row.isDragging ? 0.4 : 1 }}
-                                >
-                                  {hasChildren && !rail ? (
-                                    <span
-                                      className="absolute inset-y-0 z-10 flex w-3.5 items-center justify-center"
-                                      style={{ insetInlineStart: `${10 + depth * 14}px` }}
-                                    >
+                              <MoreHorizontal size={14} aria-hidden="true" />
+                            </Button>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      {!rail &&
+                      group.kind === "root" &&
+                      group.parentKey &&
+                      group.bots.length > 0 ? (
+                        <div className="mt-1 px-2.5 py-1.5 text-[13px] font-medium text-foreground/80">
+                          <Trans>Chats</Trans>
+                        </div>
+                      ) : null}
+                      {rail || !collapsed ? (
+                        <SortableList
+                          ids={displayRows.flatMap((row) =>
+                            "item" in row
+                              ? [itemDragId({ kind: row.item.kind, id: row.item.chat.id })]
+                              : [],
+                          )}
+                        >
+                          {displayRows.map((displayRow) => {
+                            if ("foldHeader" in displayRow) {
+                              const email = displayRow.foldHeader === "email";
+                              const rows = email ? emailChatRows : pageAgentRows;
+                              const held = rows.map((row) =>
+                                row.item.kind === "bot"
+                                  ? rosterHeldFor(row.item.chat.status)
+                                  : null,
+                              );
+                              const heldFor = held.includes("answer")
+                                ? "answer"
+                                : held.includes("takeover")
+                                  ? "takeover"
+                                  : null;
+                              return (
+                                <PageAgentsRow
+                                  key={displayRow.foldHeader}
+                                  label={email ? t`Email chats` : t`Page agents`}
+                                  testId={email ? "sidebar-email-chats" : undefined}
+                                  open={email ? showEmailChats : showPageAgents}
+                                  count={rows.length}
+                                  needsYou={
+                                    heldFor !== null ||
+                                    rows.some(
+                                      (row) =>
+                                        row.item.chat.unread || glance.botKinds[row.item.chat.id],
+                                    )
+                                  }
+                                  heldFor={heldFor}
+                                  onToggle={() =>
+                                    email
+                                      ? setEmailChatsOpen((open) => !open)
+                                      : setPageAgentsOpen((open) => !open)
+                                  }
+                                />
+                              );
+                            }
+                            const { item, depth, hasChildren, parentId } = displayRow;
+                            const parentCollapsed =
+                              hasChildren && collapsedRosterParents.has(item.chat.id);
+                            const selected =
+                              (item.kind === "bot" &&
+                                !inGroup &&
+                                !pageMode &&
+                                active?.id === item.chat.id) ||
+                              (item.kind === "group" &&
+                                inGroup &&
+                                activeGroup?.id === item.chat.id);
+                            const compact = botsSidebarDensity === "compact";
+                            const workStatusLabel =
+                              item.kind === "bot"
+                                ? maskOptional(
+                                    rosterWorkStatusLabel(item.chat.status, item.chat.runPhase),
+                                  )
+                                : null;
+                            // Ink for work in progress; only a waiting question uses a status colour.
+                            const workTone =
+                              item.kind === "bot" && item.chat.status === "waiting_input"
+                                ? "text-warning"
+                                : "text-foreground";
+                            const rowError =
+                              item.kind === "bot" &&
+                              (rosterHasUndismissedRunError(
+                                item.chat.runErrorId,
+                                dismissedRunErrorIds,
+                              ) ||
+                                (active?.id === item.chat.id && Boolean(displayedRunError)));
+                            const compactStatusLabel =
+                              compact && item.kind === "bot"
+                                ? rowError
+                                  ? t`Error`
+                                  : maskOptional(
+                                      compactRosterStatusLabel(
+                                        item.chat.status,
+                                        item.chat.runPhase,
+                                      ),
+                                    )
+                                : null;
+                            const rosterLine = compact
+                              ? compactStatusLabel
+                              : (workStatusLabel ??
+                                (item.kind === "bot"
+                                  ? maskCurrencyWhenHidden(item.chat.preview) ||
+                                    (item.chat.status !== "idle" ? item.chat.status : "")
+                                  : maskCurrencyWhenHidden(item.chat.preview) ||
+                                    item.chat.members.map((member) => member.name).join(", ")));
+                            const rowDragEnabled =
+                              dragEnabled && item.chat.spaceId === bootstrapMe?.spaceId;
+                            return (
+                              <SortableRow
+                                key={`${item.kind}:${item.chat.id}`}
+                                id={itemDragId({ kind: item.kind, id: item.chat.id })}
+                                disabled={!rowDragEnabled}
+                              >
+                                {(row) => (
+                                  <div
+                                    ref={row.setNodeRef}
+                                    data-drops-before={row.dropsBefore ? "" : undefined}
+                                    data-roster-item={item.chat.id}
+                                    data-tour={
+                                      item.chat.id === chiefId ? "sidebar-chat" : undefined
+                                    }
+                                    className={`group/row relative mb-1 data-drops-before:border-t-2 data-drops-before:border-ring ${
+                                      !rail && (folder || group.kind === "pinned") ? "ms-3" : ""
+                                    }`}
+                                    style={{ ...row.style, opacity: row.isDragging ? 0.4 : 1 }}
+                                  >
+                                    {hasChildren && !rail ? (
+                                      <span
+                                        className="absolute inset-y-0 z-10 flex w-3.5 items-center justify-center"
+                                        style={{ insetInlineStart: `${10 + depth * 14}px` }}
+                                      >
+                                        <button
+                                          type="button"
+                                          aria-expanded={!parentCollapsed}
+                                          aria-label={
+                                            parentCollapsed
+                                              ? t`Expand ${item.chat.name}`
+                                              : t`Collapse ${item.chat.name}`
+                                          }
+                                          className="inline-flex size-3.5 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
+                                          onClick={() => toggleRosterParent(item.chat.id)}
+                                        >
+                                          <ChevronDown
+                                            size={12}
+                                            strokeWidth={2}
+                                            className={`transition-transform ${
+                                              parentCollapsed ? "-rotate-90" : ""
+                                            }`}
+                                            aria-hidden="true"
+                                          />
+                                        </button>
+                                      </span>
+                                    ) : null}
+                                    <RailTip rail={rail} label={item.chat.name}>
                                       <button
                                         type="button"
-                                        aria-expanded={!parentCollapsed}
                                         aria-label={
-                                          parentCollapsed
-                                            ? t`Expand ${item.chat.name}`
-                                            : t`Collapse ${item.chat.name}`
+                                          rail
+                                            ? item.chat.unread
+                                              ? `${item.chat.name}${t` (unread)`}`
+                                              : item.chat.name
+                                            : undefined
                                         }
-                                        className="inline-flex size-3.5 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
-                                        onClick={() => toggleRosterParent(item.chat.id)}
-                                      >
-                                        <ChevronDown
-                                          size={12}
-                                          strokeWidth={2}
-                                          className={`transition-transform ${
-                                            parentCollapsed ? "-rotate-90" : ""
-                                          }`}
-                                          aria-hidden="true"
-                                        />
-                                      </button>
-                                    </span>
-                                  ) : null}
-                                  <RailTip rail={rail} label={item.chat.name}>
-                                    <button
-                                      type="button"
-                                      aria-label={
-                                        rail
-                                          ? item.chat.unread
-                                            ? `${item.chat.name}${t` (unread)`}`
-                                            : item.chat.name
-                                          : undefined
-                                      }
-                                      {...row.handleProps}
-                                      data-roster-row={item.chat.id}
-                                      data-roster-bot-id={
-                                        item.kind === "bot" ? item.chat.id : undefined
-                                      }
-                                      data-roster-unread={item.chat.unread ? "true" : undefined}
-                                      data-file-drop={
-                                        fileDropBotId === item.chat.id ? "" : undefined
-                                      }
-                                      data-roster-error={rowError && compact ? "true" : undefined}
-                                      data-roster-depth={
-                                        item.kind === "bot" && treeActive ? depth : undefined
-                                      }
-                                      aria-current={selected ? "page" : undefined}
-                                      aria-keyshortcuts={
-                                        item.kind === "bot"
-                                          ? "Alt+ArrowUp Alt+ArrowDown"
-                                          : undefined
-                                      }
-                                      onDragEnter={(event) => {
-                                        if (item.kind === "bot") rowFileDrag(event, item.chat);
-                                      }}
-                                      onDragOver={(event) => {
-                                        if (item.kind === "bot") rowFileDrag(event, item.chat);
-                                      }}
-                                      onDragLeave={(event) => {
-                                        if (
-                                          !event.currentTarget.contains(
-                                            event.relatedTarget as Node | null,
-                                          )
-                                        )
-                                          setFileDropBotId(null);
-                                      }}
-                                      onDrop={(event) => {
-                                        if (item.kind === "bot" && isUnclaimedFileDrag(event)) {
-                                          event.preventDefault();
-                                          setFileDropBotId(null);
-                                          if (item.chat.spaceId !== bootstrapMe?.spaceId) return;
-                                          // Keep the "Skipped ..." notice through the thread-change reset.
-                                          if (item.chat.id !== active?.id)
-                                            keepNoticeFor.current = item.chat.id;
-                                          onAttachmentPick(event.dataTransfer.files, item.chat.id);
-                                          setFocusComposerBotId(item.chat.id);
-                                          setMobileSidebarOpen(false);
-                                          openBot(item.chat.id);
-                                          return;
+                                        {...row.handleProps}
+                                        data-roster-row={item.chat.id}
+                                        data-roster-bot-id={
+                                          item.kind === "bot" ? item.chat.id : undefined
                                         }
-                                      }}
-                                      onKeyDown={(event) => {
-                                        if (
-                                          item.kind !== "bot" ||
-                                          !event.altKey ||
-                                          (event.key !== "ArrowUp" && event.key !== "ArrowDown")
-                                        ) {
-                                          (
-                                            row.handleProps.onKeyDown as
-                                              | KeyboardEventHandler
-                                              | undefined
-                                          )?.(event);
-                                          return;
+                                        data-roster-unread={item.chat.unread ? "true" : undefined}
+                                        data-file-drop={
+                                          fileDropBotId === item.chat.id ? "" : undefined
                                         }
-                                        const siblings = siblingBotIds(parentId);
-                                        const index = siblings.indexOf(item.chat.id);
-                                        const target =
-                                          siblings[index + (event.key === "ArrowUp" ? -1 : 1)];
-                                        if (!target) return;
-                                        event.preventDefault();
-                                        // Up goes before the neighbor; down goes before whatever follows it.
-                                        const order = group.bots.map((entry) => entry.chat.id);
-                                        const beforeId =
-                                          event.key === "ArrowUp"
-                                            ? target
-                                            : (order[order.indexOf(target) + 1] ?? null);
-                                        void moveSidebarItem(
-                                          { kind: "bot", id: item.chat.id },
-                                          folder,
-                                          beforeId === null
-                                            ? null
-                                            : {
-                                                kind: group.bots.find(
-                                                  (entry) => entry.chat.id === beforeId,
-                                                )!.kind,
-                                                id: beforeId,
-                                              },
-                                        );
-                                      }}
-                                      onClick={() => {
-                                        openSpaceChat(
-                                          item.chat.spaceId,
+                                        data-roster-error={rowError && compact ? "true" : undefined}
+                                        data-roster-depth={
+                                          item.kind === "bot" && treeActive ? depth : undefined
+                                        }
+                                        aria-current={selected ? "page" : undefined}
+                                        aria-keyshortcuts={
                                           item.kind === "bot"
-                                            ? `/app/${item.chat.id}`
-                                            : `/app/g/${item.chat.id}`,
-                                        );
-                                      }}
-                                      onContextMenu={(event) => {
-                                        if (item.chat.spaceId !== bootstrapMe?.spaceId) return;
-                                        event.preventDefault();
-                                        botMenuAnchor.current = event.currentTarget;
-                                        setBotMenu({
-                                          kind: item.kind,
-                                          id: item.chat.id,
-                                          position: { x: event.clientX, y: event.clientY },
-                                        });
-                                      }}
-                                      className={`relative flex w-full items-center ${
-                                        rail
-                                          ? "justify-center rounded-xl px-0 py-1"
-                                          : compact
-                                            ? "gap-2.5 rounded-xl px-2.5 py-1"
-                                            : "gap-3 rounded-xl px-2.5 py-2"
-                                      } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring text-start ${
-                                        rowDragEnabled ? "cursor-grab active:cursor-grabbing" : ""
-                                      } ${
-                                        selected
-                                          ? "bg-sidebar-accent"
-                                          : "group-hover/row:bg-sidebar-accent"
-                                      } data-file-drop:ring-2 data-file-drop:ring-inset data-file-drop:ring-ring`}
-                                      style={
-                                        treeActive && !rail
-                                          ? { paddingInlineStart: `${24 + depth * 14}px` }
-                                          : undefined
-                                      }
-                                    >
-                                      {item.kind === "bot" ? (
-                                        <AgentAvatar
-                                          app={agentAppFor(item.chat.id, item.chat.spaceId)}
-                                          color={item.chat.color}
-                                          identity={item.chat.id}
-                                          size={36}
-                                          status={item.chat.status}
-                                        />
-                                      ) : (
-                                        <GroupAvatar
-                                          members={
-                                            item.chat.id === activeSnapshot?.groupId
-                                              ? (activeSnapshot.members ?? item.chat.members)
-                                              : item.chat.members
+                                            ? "Alt+ArrowUp Alt+ArrowDown"
+                                            : undefined
+                                        }
+                                        onDragEnter={(event) => {
+                                          if (item.kind === "bot") rowFileDrag(event, item.chat);
+                                        }}
+                                        onDragOver={(event) => {
+                                          if (item.kind === "bot") rowFileDrag(event, item.chat);
+                                        }}
+                                        onDragLeave={(event) => {
+                                          if (
+                                            !event.currentTarget.contains(
+                                              event.relatedTarget as Node | null,
+                                            )
+                                          )
+                                            setFileDropBotId(null);
+                                        }}
+                                        onDrop={(event) => {
+                                          if (item.kind === "bot" && isUnclaimedFileDrag(event)) {
+                                            event.preventDefault();
+                                            setFileDropBotId(null);
+                                            if (item.chat.spaceId !== bootstrapMe?.spaceId) return;
+                                            // Keep the "Skipped ..." notice through the thread-change reset.
+                                            if (item.chat.id !== active?.id)
+                                              keepNoticeFor.current = item.chat.id;
+                                            onAttachmentPick(
+                                              event.dataTransfer.files,
+                                              item.chat.id,
+                                            );
+                                            setFocusComposerBotId(item.chat.id);
+                                            setMobileSidebarOpen(false);
+                                            openBot(item.chat.id);
+                                            return;
                                           }
-                                          size={36}
-                                        />
-                                      )}
-                                      {rail && item.chat.unread ? (
-                                        <span
-                                          data-testid="rail-badge"
-                                          aria-hidden="true"
-                                          className="absolute end-1 top-0.5 size-2.5 rounded-full border-2 border-sidebar bg-primary"
-                                        />
-                                      ) : null}
-                                      {rail ? null : (
-                                        <div className="min-w-0 flex-1">
-                                          <div className="flex items-start justify-between gap-1.5">
-                                            <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-                                              <span
-                                                dir="auto"
-                                                data-roster-bot-name={
-                                                  item.kind === "bot" ? "" : undefined
-                                                }
-                                                title={item.chat.name}
-                                                className={`min-w-0 line-clamp-2 break-words text-[14.5px] leading-[18px] font-normal text-foreground ${
-                                                  item.chat.unread ? "font-medium" : ""
-                                                }`}
-                                              >
-                                                {item.chat.name}
-                                              </span>
-                                              {item.chat.unread ? (
-                                                <span className="sr-only">
-                                                  <Trans> (unread)</Trans>
-                                                </span>
-                                              ) : null}
-                                            </div>
-                                            <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0">
-                                              {item.kind === "bot" &&
-                                              glance.botKinds[item.chat.id] ? (
-                                                <StatusMark
-                                                  kind={glance.botKinds[item.chat.id]!}
-                                                  botId={item.chat.id}
-                                                />
-                                              ) : null}
-                                              {!compact ? (
-                                                <span className="text-[12px] leading-[18px] text-muted-foreground tabular-nums">
-                                                  {formatRosterTime(item.chat.updatedAt)}
-                                                </span>
-                                              ) : null}
-                                              {item.chat.unread ? (
+                                        }}
+                                        onKeyDown={(event) => {
+                                          if (
+                                            item.kind !== "bot" ||
+                                            !event.altKey ||
+                                            (event.key !== "ArrowUp" && event.key !== "ArrowDown")
+                                          ) {
+                                            (
+                                              row.handleProps.onKeyDown as
+                                                | KeyboardEventHandler
+                                                | undefined
+                                            )?.(event);
+                                            return;
+                                          }
+                                          const siblings = siblingBotIds(parentId);
+                                          const index = siblings.indexOf(item.chat.id);
+                                          const target =
+                                            siblings[index + (event.key === "ArrowUp" ? -1 : 1)];
+                                          if (!target) return;
+                                          event.preventDefault();
+                                          // Up goes before the neighbor; down goes before whatever follows it.
+                                          const order = group.bots.map((entry) => entry.chat.id);
+                                          const beforeId =
+                                            event.key === "ArrowUp"
+                                              ? target
+                                              : (order[order.indexOf(target) + 1] ?? null);
+                                          void moveSidebarItem(
+                                            { kind: "bot", id: item.chat.id },
+                                            folder,
+                                            beforeId === null
+                                              ? null
+                                              : {
+                                                  kind: group.bots.find(
+                                                    (entry) => entry.chat.id === beforeId,
+                                                  )!.kind,
+                                                  id: beforeId,
+                                                },
+                                          );
+                                        }}
+                                        onClick={() => {
+                                          openSpaceChat(
+                                            item.chat.spaceId,
+                                            item.kind === "bot"
+                                              ? `/app/${item.chat.id}`
+                                              : `/app/g/${item.chat.id}`,
+                                          );
+                                        }}
+                                        onContextMenu={(event) => {
+                                          if (item.chat.spaceId !== bootstrapMe?.spaceId) return;
+                                          event.preventDefault();
+                                          botMenuAnchor.current = event.currentTarget;
+                                          setBotMenu({
+                                            kind: item.kind,
+                                            id: item.chat.id,
+                                            position: { x: event.clientX, y: event.clientY },
+                                          });
+                                        }}
+                                        className={`relative flex w-full items-center ${
+                                          rail
+                                            ? "justify-center rounded-xl px-0 py-1"
+                                            : compact
+                                              ? "gap-2.5 rounded-xl px-2.5 py-1"
+                                              : "gap-3 rounded-xl px-2.5 py-2"
+                                        } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring text-start ${
+                                          rowDragEnabled ? "cursor-grab active:cursor-grabbing" : ""
+                                        } ${
+                                          selected
+                                            ? "bg-sidebar-accent"
+                                            : "group-hover/row:bg-sidebar-accent"
+                                        } data-file-drop:ring-2 data-file-drop:ring-inset data-file-drop:ring-ring`}
+                                        style={
+                                          treeActive && !rail
+                                            ? { paddingInlineStart: `${24 + depth * 14}px` }
+                                            : undefined
+                                        }
+                                      >
+                                        {item.kind === "bot" ? (
+                                          <AgentAvatar
+                                            app={agentAppFor(item.chat.id, item.chat.spaceId)}
+                                            color={item.chat.color}
+                                            identity={item.chat.id}
+                                            size={36}
+                                            status={item.chat.status}
+                                          />
+                                        ) : (
+                                          <GroupAvatar
+                                            members={
+                                              item.chat.id === activeSnapshot?.groupId
+                                                ? (activeSnapshot.members ?? item.chat.members)
+                                                : item.chat.members
+                                            }
+                                            size={36}
+                                          />
+                                        )}
+                                        {rail && item.chat.unread ? (
+                                          <span
+                                            data-testid="rail-badge"
+                                            aria-hidden="true"
+                                            className="absolute end-1 top-0.5 size-2.5 rounded-full border-2 border-sidebar bg-primary"
+                                          />
+                                        ) : null}
+                                        {rail ? null : (
+                                          <div className="min-w-0 flex-1">
+                                            <div className="flex items-start justify-between gap-1.5">
+                                              <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
                                                 <span
-                                                  aria-hidden="true"
-                                                  className="inline-block h-2 w-2 rounded-full bg-foreground"
-                                                />
-                                              ) : null}
+                                                  dir="auto"
+                                                  data-roster-bot-name={
+                                                    item.kind === "bot" ? "" : undefined
+                                                  }
+                                                  title={item.chat.name}
+                                                  className={`min-w-0 line-clamp-2 break-words text-[14.5px] leading-[18px] font-normal text-foreground ${
+                                                    item.chat.unread ? "font-medium" : ""
+                                                  }`}
+                                                >
+                                                  {item.chat.name}
+                                                </span>
+                                                {item.chat.unread ? (
+                                                  <span className="sr-only">
+                                                    <Trans> (unread)</Trans>
+                                                  </span>
+                                                ) : null}
+                                              </div>
+                                              <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0 pointer-coarse:me-9">
+                                                {item.kind === "bot" &&
+                                                glance.botKinds[item.chat.id] ? (
+                                                  <StatusMark
+                                                    kind={glance.botKinds[item.chat.id]!}
+                                                    botId={item.chat.id}
+                                                  />
+                                                ) : null}
+                                                {!compact ? (
+                                                  <span className="text-[12px] leading-[18px] text-muted-foreground tabular-nums">
+                                                    {formatRosterTime(item.chat.updatedAt)}
+                                                  </span>
+                                                ) : null}
+                                                {item.chat.unread ? (
+                                                  <span
+                                                    aria-hidden="true"
+                                                    className="inline-block h-2 w-2 rounded-full bg-foreground"
+                                                  />
+                                                ) : null}
+                                              </div>
                                             </div>
-                                          </div>
-                                          {compact ? (
-                                            compactStatusLabel ? (
+                                            {compact ? (
+                                              compactStatusLabel ? (
+                                                <div
+                                                  dir="auto"
+                                                  data-roster-status={
+                                                    rowError
+                                                      ? "error"
+                                                      : item.kind === "bot"
+                                                        ? item.chat.status
+                                                        : undefined
+                                                  }
+                                                  className={`flex items-center gap-1 text-[12px] leading-[18px] ${
+                                                    rowError
+                                                      ? "font-medium text-destructive"
+                                                      : workStatusLabel
+                                                        ? `font-semibold ${workTone}`
+                                                        : "font-medium text-foreground/75"
+                                                  }`}
+                                                >
+                                                  {rowError ? (
+                                                    <CircleAlert size={12} aria-hidden="true" />
+                                                  ) : null}
+                                                  <span>{compactStatusLabel}</span>
+                                                </div>
+                                              ) : null
+                                            ) : (
                                               <div
                                                 dir="auto"
-                                                data-roster-status={
-                                                  rowError
-                                                    ? "error"
-                                                    : item.kind === "bot"
-                                                      ? item.chat.status
-                                                      : undefined
+                                                data-roster-preview={
+                                                  !workStatusLabel ? "true" : undefined
                                                 }
-                                                className={`flex items-center gap-1 text-[12px] leading-[18px] ${
-                                                  rowError
-                                                    ? "font-medium text-destructive"
-                                                    : workStatusLabel
-                                                      ? `font-semibold ${workTone}`
-                                                      : "font-medium text-foreground/75"
+                                                className={`truncate text-[12px] leading-[18px] ${
+                                                  workStatusLabel
+                                                    ? `font-semibold ${workTone}`
+                                                    : item.chat.unread
+                                                      ? "font-medium text-foreground/75"
+                                                      : "text-muted-foreground"
                                                 }`}
                                               >
-                                                {rowError ? (
-                                                  <CircleAlert size={12} aria-hidden="true" />
-                                                ) : null}
-                                                <span>{compactStatusLabel}</span>
+                                                {rosterLine}
                                               </div>
-                                            ) : null
-                                          ) : (
-                                            <div
-                                              dir="auto"
-                                              data-roster-preview={
-                                                !workStatusLabel ? "true" : undefined
-                                              }
-                                              className={`truncate text-[12px] leading-[18px] ${
-                                                workStatusLabel
-                                                  ? `font-semibold ${workTone}`
-                                                  : item.chat.unread
-                                                    ? "font-medium text-foreground/75"
-                                                    : "text-muted-foreground"
-                                              }`}
-                                            >
-                                              {rosterLine}
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                    </button>
-                                  </RailTip>
-                                  {/* The right-click menu, also reachable on hover or by keyboard. */}
-                                  {!rail && item.chat.spaceId === bootstrapMe?.spaceId ? (
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      data-testid="roster-row-actions"
-                                      data-roster-actions=""
-                                      aria-label={t`Actions for ${item.chat.name}`}
-                                      aria-haspopup="menu"
-                                      onClick={(event) => {
-                                        const rect = event.currentTarget.getBoundingClientRect();
-                                        botMenuAnchor.current = event.currentTarget;
-                                        setBotMenu({
-                                          kind: item.kind,
-                                          id: item.chat.id,
-                                          position: { x: rect.left, y: rect.bottom },
-                                        });
-                                      }}
-                                      className={`absolute end-2 top-1.5 size-7 rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring group-hover/row:opacity-100 pointer-coarse:hidden ${
-                                        botMenu?.id === item.chat.id ? "opacity-100" : ""
-                                      }`}
-                                    >
-                                      <MoreHorizontal
-                                        size={15}
-                                        strokeWidth={1.7}
-                                        aria-hidden="true"
-                                      />
-                                    </Button>
-                                  ) : null}
-                                </div>
-                              )}
-                            </SortableRow>
-                          );
-                        })}
-                      </SortableList>
-                    ) : null}
-                  </div>
-                );
-              })}
-              {rail ? null : <RootEnd />}
-            </SidebarDnd>
-          </>
-          {archivedBots.length + archivedGroups.length > 0 && !rail ? (
-            <div className="mt-2 border-t border-border pt-2">
-              <button
-                type="button"
-                aria-expanded={archivedOpen}
-                onClick={() => setArchivedOpen((open) => !open)}
-                className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-[13.5px] text-muted-foreground hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-              >
-                <span>
-                  <Trans>Archived</Trans>
-                </span>
-                <span>{archivedBots.length + archivedGroups.length}</span>
-              </button>
-              {archivedOpen ? (
-                <>
-                  {archivedBots.map((bot) => (
-                    <div key={bot.id} className="flex items-center gap-2 rounded-lg px-2.5 py-2">
-                      <BotAvatar
-                        color={bot.color}
-                        identity={bot.id}
-                        size={28}
-                        status={bot.status}
-                      />
-                      <span
-                        className="min-w-0 flex-1 truncate text-[14px] text-foreground/75"
-                        dir="auto"
-                      >
-                        {bot.name}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={() =>
-                          void rpc.bots.restore({ botId: bot.id }).then(() => refreshBots(true))
-                        }
-                      >
-                        <Trans>Restore</Trans>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        className="text-destructive hover:text-destructive"
-                        aria-label={t`Delete ${bot.name}`}
-                        onClick={() => setDeleteTarget(bot)}
-                      >
-                        <Trans>Delete</Trans>
-                      </Button>
+                                            )}
+                                          </div>
+                                        )}
+                                      </button>
+                                    </RailTip>
+                                    {/* The right-click menu, also reachable on hover or by keyboard. */}
+                                    {!rail && item.chat.spaceId === bootstrapMe?.spaceId ? (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        data-testid="roster-row-actions"
+                                        data-roster-actions=""
+                                        aria-label={t`Actions for ${item.chat.name}`}
+                                        aria-haspopup="menu"
+                                        onClick={(event) => {
+                                          const rect = event.currentTarget.getBoundingClientRect();
+                                          botMenuAnchor.current = event.currentTarget;
+                                          setBotMenu({
+                                            kind: item.kind,
+                                            id: item.chat.id,
+                                            position: { x: rect.left, y: rect.bottom },
+                                          });
+                                        }}
+                                        className={`absolute end-2 top-1.5 size-7 rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring group-hover/row:opacity-100 pointer-coarse:top-0 pointer-coarse:size-11 pointer-coarse:opacity-100 ${
+                                          botMenu?.id === item.chat.id ? "opacity-100" : ""
+                                        }`}
+                                      >
+                                        <MoreHorizontal
+                                          size={15}
+                                          strokeWidth={1.7}
+                                          aria-hidden="true"
+                                        />
+                                      </Button>
+                                    ) : null}
+                                  </div>
+                                )}
+                              </SortableRow>
+                            );
+                          })}
+                        </SortableList>
+                      ) : null}
                     </div>
-                  ))}
-                  {archivedGroups.map((group) => (
-                    <div key={group.id} className="flex items-center gap-2 rounded-lg px-2.5 py-2">
-                      <GroupAvatar members={group.members} size={28} />
-                      <span
-                        className="min-w-0 flex-1 truncate text-[14px] text-foreground/75"
-                        dir="auto"
+                  );
+                })}
+                {rail ? null : <RootEnd />}
+              </SidebarDnd>
+            </>
+            {archivedBots.length + archivedGroups.length > 0 && !rail ? (
+              <div className="mt-2 border-t border-border pt-2">
+                <button
+                  type="button"
+                  aria-expanded={archivedOpen}
+                  onClick={() => setArchivedOpen((open) => !open)}
+                  className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-[13.5px] text-muted-foreground hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                >
+                  <span>
+                    <Trans>Archived</Trans>
+                  </span>
+                  <span>{archivedBots.length + archivedGroups.length}</span>
+                </button>
+                {archivedOpen ? (
+                  <>
+                    {archivedBots.map((bot) => (
+                      <div key={bot.id} className="flex items-center gap-2 rounded-lg px-2.5 py-2">
+                        <BotAvatar
+                          color={bot.color}
+                          identity={bot.id}
+                          size={28}
+                          status={bot.status}
+                        />
+                        <span
+                          className="min-w-0 flex-1 truncate text-[14px] text-foreground/75"
+                          dir="auto"
+                        >
+                          {bot.name}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() =>
+                            void rpc.bots.restore({ botId: bot.id }).then(() => refreshBots(true))
+                          }
+                        >
+                          <Trans>Restore</Trans>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          className="text-destructive hover:text-destructive"
+                          aria-label={t`Delete ${bot.name}`}
+                          onClick={() => setDeleteTarget(bot)}
+                        >
+                          <Trans>Delete</Trans>
+                        </Button>
+                      </div>
+                    ))}
+                    {archivedGroups.map((group) => (
+                      <div
+                        key={group.id}
+                        className="flex items-center gap-2 rounded-lg px-2.5 py-2"
                       >
-                        {group.name}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={() =>
-                          void rpc.groups
-                            .restore({ groupId: group.id })
-                            .then(() => refreshBots(true))
-                        }
-                      >
-                        <Trans>Restore</Trans>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        className="text-destructive hover:text-destructive"
-                        aria-label={t`Delete ${group.name}`}
-                        onClick={() => setDeleteGroupTarget(group)}
-                      >
-                        <Trans>Delete</Trans>
-                      </Button>
-                    </div>
-                  ))}
-                </>
-              ) : null}
-            </div>
-          ) : null}
+                        <GroupAvatar members={group.members} size={28} />
+                        <span
+                          className="min-w-0 flex-1 truncate text-[14px] text-foreground/75"
+                          dir="auto"
+                        >
+                          {group.name}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() =>
+                            void rpc.groups
+                              .restore({ groupId: group.id })
+                              .then(() => refreshBots(true))
+                          }
+                        >
+                          <Trans>Restore</Trans>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          className="text-destructive hover:text-destructive"
+                          aria-label={t`Delete ${group.name}`}
+                          onClick={() => setDeleteGroupTarget(group)}
+                        >
+                          <Trans>Delete</Trans>
+                        </Button>
+                      </div>
+                    ))}
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </div>
         {/* The top border shows that the list above scrolls under this row. */}
         <div className="border-t border-sidebar-border px-2.5 pt-1">
@@ -5279,11 +5464,8 @@ export function ShellPage() {
             setFocusComposerBotId(chiefId);
             openBot(chiefId);
           }}
-          onSkip={() => {
-            setAskChiefChip(true);
-            // The chip lives in Chief's composer, so open Chief wherever the tour was skipped.
-            if (chiefId) openBot(chiefId);
-          }}
+          // The chip waits in Chief's composer; Skip leaves the person on the page they are on.
+          onSkip={() => setAskChiefChip(true)}
           onClose={(me, byEscape) => {
             setTourRestart(false);
             setTourEnded(true);
@@ -5397,7 +5579,7 @@ export function ShellPage() {
           data-testid="bots-sidebar-edge"
           aria-label={t`Resize sidebar`}
           tabIndex={-1}
-          className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 lg:block ${
+          className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 focus-visible:bg-ring focus-visible:outline-none lg:block ${
             botsSidebarCollapsed ? "start-12" : "start-[308px]"
           }`}
           onPointerDown={(event) => {
@@ -5482,7 +5664,7 @@ export function ShellPage() {
           <div
             className={`app-drag flex items-center justify-between px-3 lg:px-[22px] ${
               pageMode
-                ? `${TOP_BAR_HEIGHT}${botsSidebarCollapsed ? "" : " lg:hidden"}${headerMenus > 0 ? " max-lg:hidden" : ""}`
+                ? `${TOP_BAR_HEIGHT}${botsSidebarCollapsed && desktopBridge() ? "" : " lg:hidden"}${headerMenus > 0 ? " max-lg:hidden" : ""}`
                 : `border-b border-sidebar-border ${TOP_BAR_HEIGHT}`
             }`}
           >
@@ -5499,7 +5681,7 @@ export function ShellPage() {
               >
                 <Menu size={19} strokeWidth={1.7} />
               </button>
-              {botsSidebarCollapsed ? (
+              {botsSidebarCollapsed && (!pageMode || desktopBridge()) ? (
                 <button
                   type="button"
                   data-testid="restore-bots-sidebar"
@@ -5516,7 +5698,7 @@ export function ShellPage() {
                   type="button"
                   data-testid="bot-settings-trigger"
                   onClick={() => setPanel(inGroup ? "group-settings" : "settings")}
-                  className="app-no-drag flex min-w-0 items-center gap-3"
+                  className="app-no-drag flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   {inGroup ? (
                     <GroupAvatar
@@ -5568,7 +5750,7 @@ export function ShellPage() {
                   aria-label={t`Page`}
                   onClick={() => setPanel(panel === "page" ? null : "page")}
                   data-active={panel === "page" ? "" : undefined}
-                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 >
                   <FileText size={18} strokeWidth={1.6} className="text-foreground/75" />
                 </button>
@@ -5580,7 +5762,7 @@ export function ShellPage() {
                   aria-label={t`List`}
                   onClick={() => setPanel(panel === "list" ? null : "list")}
                   data-active={panel === "list" ? "" : undefined}
-                  className={`app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent ${panel === null ? "xl:hidden" : ""}`}
+                  className={`app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${panel === null ? "xl:hidden" : ""}`}
                 >
                   <ListTodo size={18} strokeWidth={1.6} className="text-foreground/75" />
                 </button>
@@ -5588,8 +5770,9 @@ export function ShellPage() {
               {!inGroup && !pageMode && active ? (
                 <button
                   type="button"
-                  title={t`Computer and routines`}
-                  aria-label={t`Computer and routines`}
+                  data-testid="computer-routines-button"
+                  title={noComputerScreen ? t`Routines` : t`Computer and routines`}
+                  aria-label={noComputerScreen ? t`Routines` : t`Computer and routines`}
                   onClick={() => {
                     const next = panel === "computer" ? null : "computer";
                     setPanel(next);
@@ -5599,9 +5782,13 @@ export function ShellPage() {
                     }
                   }}
                   data-active={panel === "computer" ? "" : undefined}
-                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 >
-                  <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
+                  {noComputerScreen ? (
+                    <Clock size={18} strokeWidth={1.6} className="text-foreground/75" />
+                  ) : (
+                    <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
+                  )}
                 </button>
               ) : null}
             </div>
@@ -5709,7 +5896,11 @@ export function ShellPage() {
                 setFocusComposerBotId(bot.id);
                 openBot(bot.id);
               }}
-              onConnectMail={() => navigate("/app/integrations?connect=gmail&returnTo=/app/inbox")}
+              onConnectMail={() =>
+                navigate("/app/integrations?connect=gmail&returnTo=/app/inbox", {
+                  state: { connectNow: true },
+                })
+              }
               onReconnectMail={() => navigate("/app/integrations?open=gmail&returnTo=/app/inbox")}
               onAllowMailRules={(connectionId) =>
                 navigate(
@@ -5826,7 +6017,7 @@ export function ShellPage() {
         ) : panel && (active || activeGroup) ? (
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
             {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
-              <div className="mb-4 flex items-center justify-between">
+              <div className="sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between bg-background px-5 pt-[17px] pb-2">
                 <span className="text-[13.5px] text-muted-foreground">
                   {panel === "settings" ? (
                     active ? (
@@ -5839,7 +6030,7 @@ export function ShellPage() {
                   ) : panel === "list" ? (
                     <Trans>List</Trans>
                   ) : active ? (
-                    noComputerScreen ? null : (
+                    computerScreenError || noComputerScreen ? null : (
                       computerStateLabel(computer?.state)
                     )
                   ) : (
@@ -5939,7 +6130,7 @@ export function ShellPage() {
                           title={t`Bot screen preview`}
                           src={embeddedScreenUrl}
                           sandbox={screenIframeSandbox(embeddedScreenUrl)}
-                          className="h-full w-full border-0 bg-black"
+                          className="h-full w-full border-0 bg-background"
                           allow="clipboard-read; clipboard-write"
                           style={{ pointerEvents: "none" }}
                         />
@@ -6099,8 +6290,17 @@ export function ShellPage() {
                     : `/api/v1/bots/${active.id}/github`
                 }
                 messageProviders={messagingProviders}
+                skills={agentSkills}
                 saving={savingRoutine}
-                running={runningRoutine}
+                // Stays on until the run itself finishes, not just until the request returns.
+                running={
+                  runningRoutine ||
+                  Boolean(
+                    editingRoutine &&
+                      snapshot?.run?.routineId === editingRoutine.id &&
+                      isActive(snapshot.run.status),
+                  )
+                }
                 error={routineError}
                 onBack={() => setPanel("computer")}
                 onClose={() => setPanel(null)}
@@ -6366,14 +6566,14 @@ export function ShellPage() {
                 navigate(contextBot ? `/app/${chat.id}` : `/app/g/${chat.id}`);
               });
             }}
-            onClear={() => {
-              setClearTarget(
-                contextBot
-                  ? { kind: "bot", chat: contextBot }
-                  : { kind: "group", chat: contextGroup! },
-              );
-              setBotMenu(null);
-            }}
+            onClear={
+              contextBot
+                ? undefined
+                : () => {
+                    setClearTarget({ kind: "group", chat: contextGroup! });
+                    setBotMenu(null);
+                  }
+            }
             onArchive={() => {
               setBotMenu(null);
               const request = contextBot
@@ -6432,7 +6632,7 @@ export function ShellPage() {
                     }}
                   >
                     <WandSparkles />
-                    {t`Auto-group`}
+                    {t`Group chats into folders`}
                   </DropdownMenuItem>
                 </>
               ) : null}
@@ -6580,7 +6780,7 @@ export function ShellPage() {
 
         {folderUndo ? (
           <SidebarUndoNotice
-            message={t`Auto-grouped`}
+            message={t`Chats grouped into folders`}
             onUndo={() => void undoAutoGroup()}
             onDismiss={() => setFolderUndo(null)}
           />
@@ -6606,6 +6806,11 @@ export function ShellPage() {
             setMobileSidebarOpen(false);
             navigate(`/app/g/${id}`);
           }}
+          // Without a space heading, its menu is gone; the palette still reaches this action.
+          actions={[
+            { label: t`New folder`, run: () => void createFolder() },
+            { label: t`Group chats into folders`, run: () => void autoGroupSidebar() },
+          ]}
           searchLinks={searchPaletteLinks}
           onOpenPath={openSearchResult}
         />
@@ -6802,7 +7007,7 @@ export function ShellPage() {
                 {!recordingSkill && hasControl ? (
                   computer?.takeoverRequested ? (
                     <span className="rounded-full bg-warning/15 px-[11px] py-1 text-[13px] text-warning">
-                      <Trans>Needs you</Trans>
+                      <Trans>Needs takeover</Trans>
                     </span>
                   ) : (
                     <span className="rounded-full bg-success/15 px-[11px] py-1 text-[13px] text-success">
@@ -7037,13 +7242,30 @@ function computerPlaceholder(
   return t`Computer is stopped`;
 }
 
+/** True when the panel has no computer screen to show, in any computer state: just routines. */
+export function isRoutinesOnlyPanel(input: {
+  kind: ComputerStatus["kind"] | undefined;
+  hasScreen: boolean;
+  hasError: boolean;
+  open: boolean;
+  showRecoveryHint: boolean;
+}) {
+  return (
+    input.kind !== "desktop" &&
+    !input.hasScreen &&
+    !input.hasError &&
+    !input.open &&
+    !input.showRecoveryHint
+  );
+}
+
 /** Panel heading for the bot computer, in words rather than the raw state slug. */
 function computerStateLabel(state: ComputerStatus["state"] | undefined) {
-  if (state === "running") return t`Computer is on`;
+  // The "Routines" heading below is the title; the header names the computer only when it needs attention.
+  if (state === "running" || state === "stopped" || !state) return null;
   if (state === "booting") return t`Computer is starting`;
   if (state === "suspended") return t`Computer is asleep`;
-  if (state === "error") return t`Computer could not start`;
-  return t`Computer is off`;
+  return t`Computer could not start`;
 }
 
 function computerLabel(mode: ComputerStatus["mode"] | undefined, botName: string) {

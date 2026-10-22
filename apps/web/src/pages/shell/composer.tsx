@@ -67,6 +67,7 @@ export const Composer = memo(function Composer({
   sendError,
   runError,
   onRetryRun,
+  onRetrySend,
   runErrorId,
   onRunErrorPresented,
   onDismissError,
@@ -107,6 +108,8 @@ export const Composer = memo(function Composer({
   sendError: string | null;
   runError: string | null;
   onRetryRun?: () => void;
+  /** Sends a failed message again when the composer holds no draft to resend (such as a chip); offered with a send error. */
+  onRetrySend?: () => void;
   runErrorId: string | null;
   onRunErrorPresented: (runId: string) => void;
   onDismissError: () => void;
@@ -521,6 +524,9 @@ export const Composer = memo(function Composer({
     });
   }
 
+  // A textarea clips its placeholder without an ellipsis, so cut a long name here.
+  const placeholderName =
+    activeName && activeName.length > 32 ? `${activeName.slice(0, 31).trimEnd()}…` : activeName;
   const showComposerPlaceholder =
     draft.length === 0 && selectedSkill === null && selectedMentions.length === 0;
   const expanded = composerExpanded || selectedSkill !== null || selectedMentions.length > 0;
@@ -620,6 +626,7 @@ export const Composer = memo(function Composer({
   return (
     <fieldset
       aria-label={t`Message composer`}
+      data-toast-avoid=""
       data-dragging={draggingFiles ? "files" : undefined}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
@@ -637,6 +644,12 @@ export const Composer = memo(function Composer({
           ref={runErrorRef}
           message={(sendError ?? runError) as string}
           onRetry={!sendError ? onRetryRun : undefined}
+          onRetrySend={
+            // A restored draft goes out again through the composer, so a success clears it.
+            sendError && onRetrySend
+              ? () => (draft.trim() ? void send() : onRetrySend())
+              : undefined
+          }
           onOpenModelSettings={!sendError ? onOpenModelSettings : undefined}
           onNavigate={!sendError ? onNavigate : undefined}
           onDismiss={() => {
@@ -1089,7 +1102,7 @@ export const Composer = memo(function Composer({
                   : (placeholderText ??
                     // On a phone the header already names the agent, and a long name wraps.
                     (activeName && !window.matchMedia?.("(max-width: 480px)").matches
-                      ? t`Message ${activeName}`
+                      ? t`Message ${placeholderName}`
                       : t`Message…`))
                 : undefined
             }

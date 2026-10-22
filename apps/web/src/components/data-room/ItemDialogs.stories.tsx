@@ -51,7 +51,7 @@ const investorContact = (id: string, name: string, extra: Record<string, unknown
   updatedAt: "2026-10-15T00:00:00.000Z",
   ...extra,
 });
-/** Share with investors: Ada already has the file (Unshare), Bo and Cy do not; "Email them a link" is ticked. */
+/** Share with investors: Ada already has the file (Unshare), Bo and Cy do not; "Email them a link" starts unticked. */
 export const Share: Story = {
   args: { action: "share" },
   beforeEach: () =>

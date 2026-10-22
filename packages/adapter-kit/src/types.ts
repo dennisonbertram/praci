@@ -525,6 +525,11 @@ export interface AgentRunRequest {
    * When set, skip synthetic empty-turn fallbacks (including after tools).
    */
   allowSilentEmpty?: boolean;
+  /**
+   * True once this turn handed its work to another agent. The answer then arrives as that agent's
+   * message, so ending the turn with no final text is neither nudged nor a failure.
+   */
+  delegated?: () => boolean;
   /** Contextual fallback when a non-silent run produces no written response. */
   emptyResponseText?: string;
   /**

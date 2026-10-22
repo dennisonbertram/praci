@@ -62,7 +62,7 @@ export function ItemMenuItems<T extends { name: string }>({
       {"parentId" in item ? null : (
         <Item onClick={() => onAction("share", item)}>
           <Share2 aria-hidden="true" />
-          <Trans>Share with investors</Trans>
+          <Trans>Share</Trans>
         </Item>
       )}
       <Item onClick={() => onAction("move", item)}>

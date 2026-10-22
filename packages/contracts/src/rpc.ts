@@ -206,6 +206,7 @@ import {
   SafeSaveInputSchema,
   SafeSchema,
 } from "./fundraising.js";
+import { GtmOverviewSchema, GtmQueueInputSchema, GtmQueueOutputSchema } from "./gtm.js";
 import { Id, IsoDate } from "./ids.js";
 import {
   CleanupArchiveInputSchema,
@@ -440,6 +441,7 @@ export const appContract = {
           /** true records the tour as seen; false clears it so the tour can run again. */
           tourSeen: z.boolean().optional(),
           hiddenPages: z.array(z.string().min(1).max(64)).max(100).optional(),
+          hideAmounts: z.boolean().optional(),
         }),
       )
       .output(MeSchema),
@@ -1319,6 +1321,8 @@ export const appContract = {
           nextCursor: z.string().nullable(),
         }),
       ),
+    /** Unseen "needs approval" notifications whose card is still unanswered on a live run of an existing agent. */
+    pendingApprovals: oc.output(z.object({ notifications: z.array(NotificationSchema) })),
     markSeen: oc
       // `id` or `threadId` narrows it to one notification or one thread on the surface. `botId`
       // alone marks everything from that agent seen, whatever its surface.
@@ -1344,6 +1348,8 @@ export const appContract = {
         devinNeedsYou: z.number().int(),
         /** The space has a Devin connection; the Devin page shows in the sidebar only then. */
         devinConnected: z.boolean(),
+        /** Parked gated GTM items still waiting for the founder on their active GTM agent. */
+        gtmNeedsYou: z.number().int(),
         dataRoomWaiting: z.number().int(),
         /** A ticket exists in the space; the Task board shows in menus only then. */
         hasTickets: z.boolean(),
@@ -1547,6 +1553,10 @@ export const appContract = {
   gtm: {
     /** Idempotent: creates the GTM agent and hourly work routine. */
     agent: oc.output(BotSchema),
+    /** Read-only actor-scoped GTM plan, channel, and policy overview. */
+    overview: oc.output(GtmOverviewSchema),
+    /** The app-owned Zernio REST queue, using a configured API key only. */
+    queue: oc.input(GtmQueueInputSchema).output(GtmQueueOutputSchema),
     /** Configuration status for app-owned Zernio posting; never validates a live API key. */
     postingCapability: oc.output(ZernioPostingCapabilitySchema),
   },

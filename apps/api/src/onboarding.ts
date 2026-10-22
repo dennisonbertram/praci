@@ -1,6 +1,6 @@
 import type { ConnectorRegistry } from "@rakazo/adapters";
 import type { Actor, MessageBlock } from "@rakazo/contracts";
-import { featuredConnectorProvidersMatch } from "@rakazo/core";
+import { describeApp, featuredConnectorProvidersMatch } from "@rakazo/core";
 import type { Prisma, PrismaClient, ThreadEvents } from "@rakazo/db";
 import {
   appendEventInTransaction,
@@ -44,8 +44,8 @@ const FOCUS_OPTIONS: FocusOption[] = [
     id: "day",
     letter: "B",
     label: "Day-to-day work",
-    summary: "Slack, calendar, and email",
-    apps: ["slack", "gmail", "googlecalendar"],
+    summary: "email, Slack, calendar, and docs",
+    apps: ["gmail", "slack", "googlecalendar", "googledocs"],
   },
   {
     id: "research",
@@ -54,18 +54,12 @@ const FOCUS_OPTIONS: FocusOption[] = [
     summary: "the web, notes, and docs",
     apps: ["hackernews", "notion", "googledocs"],
   },
-  {
-    id: "everything",
-    letter: "D",
-    label: "A bit of everything",
-    summary: "email, Slack, and docs",
-    apps: ["gmail", "slack", "googledocs"],
-  },
 ];
 
 const APP_DESCRIPTIONS: Record<string, string> = {
   slack: "Search, read, and send messages.",
-  gmail: "Search, read, draft, and send email.",
+  // The one Gmail description, shared with the Integrations card.
+  gmail: describeApp("gmail")?.description ?? "",
   googlecalendar: "Search events and schedule meetings.",
   notion: "Search and edit pages and databases.",
   googledocs: "Draft and edit documents.",
@@ -194,6 +188,39 @@ export async function promptFocus(
   await deps.events.notify(target.threadId, committed.event.seq);
 }
 
+/**
+ * Closes the open focus card in a thread. Used when the user dismisses it and when they answer it
+ * by typing, so a typed answer never leaves the card open. Returns the event, or null if none was open.
+ */
+export async function dismissPendingChoiceInTransaction(
+  tx: Prisma.TransactionClient,
+  target: { spaceId: string; botId: string; threadId: string },
+) {
+  await tx.$executeRaw`SELECT id FROM threads WHERE id = ${target.threadId} FOR UPDATE`;
+  const recent = await tx.message.findMany({
+    where: { threadId: target.threadId },
+    orderBy: { createdAt: "asc" },
+  });
+  const pending = recent.find((message) =>
+    messageHasPendingChoice(message.blocks as MessageBlock[]),
+  );
+  if (!pending) return null;
+  const blocks = (pending.blocks as MessageBlock[]).map((block) =>
+    block.kind === "choice" && !block.answerId
+      ? { ...block, answerId: FOCUS_DISMISSED_ANSWER_ID }
+      : block,
+  );
+  await tx.message.update({ where: { id: pending.id }, data: { blocks } });
+  const event = await appendEventInTransaction(tx, {
+    spaceId: target.spaceId,
+    threadId: target.threadId,
+    botId: target.botId,
+    type: "thread.message.updated",
+    payload: { messageId: pending.id, role: "bot", blocks },
+  });
+  return { messageId: pending.id, blocks, event };
+}
+
 export async function dismissFocus(
   deps: OnboardingDeps,
   actor: Actor,
@@ -201,31 +228,9 @@ export async function dismissFocus(
 ): Promise<void> {
   const { bot, thread } = await requireBotThread(deps, actor, botId);
   const target = { spaceId: actor.spaceId, botId: bot.id, threadId: thread.id };
-  const claimed = await deps.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    await tx.$executeRaw`SELECT id FROM threads WHERE id = ${thread.id} FOR UPDATE`;
-    const recent = await tx.message.findMany({
-      where: { threadId: thread.id },
-      orderBy: { createdAt: "asc" },
-    });
-    const pending = recent.find((message) =>
-      messageHasPendingChoice(message.blocks as MessageBlock[]),
-    );
-    if (!pending) return null;
-    const blocks = (pending.blocks as MessageBlock[]).map((block) =>
-      block.kind === "choice" && !block.answerId
-        ? { ...block, answerId: FOCUS_DISMISSED_ANSWER_ID }
-        : block,
-    );
-    await tx.message.update({ where: { id: pending.id }, data: { blocks } });
-    const event = await appendEventInTransaction(tx, {
-      spaceId: target.spaceId,
-      threadId: target.threadId,
-      botId: target.botId,
-      type: "thread.message.updated",
-      payload: { messageId: pending.id, role: "bot", blocks },
-    });
-    return { messageId: pending.id, blocks, event };
-  });
+  const claimed = await deps.prisma.$transaction((tx: Prisma.TransactionClient) =>
+    dismissPendingChoiceInTransaction(tx, target),
+  );
   if (!claimed) return;
   await deps.events.notify(target.threadId, claimed.event.seq);
 }
@@ -236,7 +241,9 @@ export async function chooseFocus(
   botId: string,
   optionId: string,
 ): Promise<void> {
-  const option = FOCUS_OPTIONS.find((entry) => entry.id === optionId);
+  // Cards posted before "A bit of everything" was merged into "day" still carry that option.
+  const wanted = optionId === "everything" ? "day" : optionId;
+  const option = FOCUS_OPTIONS.find((entry) => entry.id === wanted);
   if (!option) throw new IsolationError();
   const { bot, thread } = await requireBotThread(deps, actor, botId);
   const target = { spaceId: actor.spaceId, botId: bot.id, threadId: thread.id };
@@ -323,7 +330,8 @@ export async function chooseFocus(
   await post(deps, target, [
     {
       kind: "text",
-      text: `${got} Connect ${named} here and I’ll use what you already have.${option.note ? ` ${option.note}` : ""}`,
+      // One sentence above the cards; the sidebar already links Finance, Investors and the Data room.
+      text: `Connect ${named} here and I’ll use what you already have.`,
     },
   ]);
   await post(deps, target, cards);

@@ -417,7 +417,8 @@ import {
   financeStatementUpload,
 } from "./finance-statements.js";
 import { fundraisingOverview, fundraisingRefresh } from "./fundraising.js";
-import { ensureGtmAgent, ensureGtmBot, gtmPostingCapability } from "./gtm-agent.js";
+import { gtmNeedsYouCount, gtmOverview, gtmPostingCapability, gtmQueue } from "./gtm.js";
+import { ensureGtmAgent, ensureGtmBot } from "./gtm-agent.js";
 import {
   inboxFeedbackSet,
   inboxGet,
@@ -527,7 +528,7 @@ import { createRouteContext } from "./routes/context.js";
 import { createUpdaterRoutes } from "./routes/updater.js";
 
 import { listRoutineRuns } from "./routine-runs.js";
-import { listSpaceRuns } from "./runs.js";
+import { listPendingApprovalNotifications, listSpaceRuns } from "./runs.js";
 import { addScreenProxyCapability } from "./screen-proxy.js";
 import { querySpaceSearch } from "./search.js";
 import { withSerializableRetry } from "./serializable-retry.js";
@@ -1468,6 +1469,7 @@ export function createRouter(deps: RouterDeps) {
             timezone: input.timezone,
             tourSeenAt:
               input.tourSeen === undefined ? undefined : input.tourSeen ? new Date() : null,
+            hideAmounts: input.hideAmounts,
             // A tab open across the cap-table rename may still send the old key.
             hiddenPages: input.hiddenPages && [
               ...new Set(input.hiddenPages.map((key) => (key === "cap-table" ? "investors" : key))),
@@ -3156,6 +3158,14 @@ export function createRouter(deps: RouterDeps) {
       }),
       answer: authed.threads.answer.handler(async ({ context, input }) => {
         const target = await resolveThreadTarget(deps.prisma, context.actor, input);
+        // The card is answered, so its "needs approval" notification has nothing left to ask. Other
+        // tabs read this to drop the toast.
+        const clearAsked = () =>
+          markSeen(deps.prisma, {
+            ...context.actor,
+            surface: "thread",
+            threadId: target.threadId,
+          }).catch((error) => getLogger().error("thread answer notification", error));
         if (input.mail && Object.keys(input.mail).length > 0) {
           if (input.answer !== "allow") {
             throw new ORPCError("BAD_REQUEST", { message: "Edits go with Send" });
@@ -3165,10 +3175,12 @@ export function createRouter(deps: RouterDeps) {
             context.actor,
             target,
             { runId: input.runId, messageId: input.messageId, mail: input.mail },
-            () =>
-              deps.jobs.enqueue(runContinueJob(input.runId)).catch((error) => {
+            async () => {
+              await clearAsked();
+              await deps.jobs.enqueue(runContinueJob(input.runId)).catch((error) => {
                 getLogger().error("thread answer enqueue", error);
-              }),
+              });
+            },
           );
           return { ok: true as const };
         }
@@ -3186,6 +3198,7 @@ export function createRouter(deps: RouterDeps) {
               message: "This prompt is no longer awaiting an answer",
             });
           }
+          await clearAsked();
           return { ok: true as const };
         }
         const answered = await deps.events.answerRunInput({
@@ -3203,6 +3216,8 @@ export function createRouter(deps: RouterDeps) {
             message: "This prompt is no longer awaiting an answer",
           });
         }
+        // Before the run continues: its next card must raise a notification this does not clear.
+        await clearAsked();
         await deps.jobs.enqueue(runContinueJob(input.runId)).catch((error) => {
           // The answer and queued run are durable; the reconciler repairs a missed immediate wake.
           getLogger().error("thread answer enqueue", error);
@@ -4356,7 +4371,8 @@ export function createRouter(deps: RouterDeps) {
           if (existing) return { runId: existing.id };
         }
         const skillRecords = await agentSkills.listWithContent(context.actor);
-        const prompt = expandSkillReferencesInPrompt(routine.prompt, skillRecords);
+        // The saved prompt can still open with its schedule; a test does the work once, now.
+        const prompt = `${expandSkillReferencesInPrompt(routine.prompt, skillRecords)}\n\nThis is a test run: do the work above now and post the result here. Ignore any timing in it, and do not create or change schedules.`;
         let run: { id: string };
         try {
           // Task + run must commit together so a nonce collision cannot leave an orphan queued Task.
@@ -7409,6 +7425,30 @@ export function createRouter(deps: RouterDeps) {
           throw mapSpaceLifecycleError(error);
         }),
       ),
+      overview: authed.gtm.overview.handler(({ context }) =>
+        gtmOverview(
+          {
+            prisma: deps.prisma,
+            secrets: deps.secrets,
+            mcp: deps.gtmMcp ?? deps.mcp,
+            queueReader: deps.gtmQueueReader,
+          },
+          context.actor,
+          context.signal,
+        ),
+      ),
+      queue: authed.gtm.queue.handler(({ context, input }) =>
+        gtmQueue(
+          {
+            prisma: deps.prisma,
+            secrets: deps.secrets,
+            queueReader: deps.gtmQueueReader,
+          },
+          context.actor,
+          input,
+          context.signal,
+        ),
+      ),
       postingCapability: authed.gtm.postingCapability.handler(({ context }) =>
         gtmPostingCapability({ prisma: deps.prisma, secrets: deps.secrets }, context.actor),
       ),
@@ -8309,6 +8349,11 @@ export function createRouter(deps: RouterDeps) {
           throw error;
         }
       }),
+      pendingApprovals: authed.notifications.pendingApprovals.handler(async ({ context }) => ({
+        notifications: (await listPendingApprovalNotifications(deps.prisma, context.actor)).map(
+          toNotificationDto,
+        ),
+      })),
       markSeen: authed.notifications.markSeen.handler(async ({ context, input }) => ({
         count: await markSeen(deps.prisma, {
           ...context.actor,
@@ -8330,6 +8375,7 @@ export function createRouter(deps: RouterDeps) {
           legalDueSoon,
           devinNeedsYou,
           isDevinConnected,
+          gtmNeedsYou,
           dataRoomWaiting,
           hasTicket,
           botKinds,
@@ -8338,6 +8384,7 @@ export function createRouter(deps: RouterDeps) {
           legalDueSoonCount(legalDeps, context.actor, 7),
           devinNeedsYouCount(devinDeps, context.actor),
           devinConnected(devinDeps, context.actor),
+          gtmNeedsYouCount(deps.prisma, context.actor),
           // Failed items are the only ones the user can act on (retry or remove).
           deps.prisma.dataRoomItem.count({
             where: {
@@ -8359,6 +8406,7 @@ export function createRouter(deps: RouterDeps) {
           legalDueSoon,
           devinNeedsYou,
           devinConnected: isDevinConnected,
+          gtmNeedsYou,
           dataRoomWaiting,
           hasTickets: Boolean(hasTicket),
           botKinds,
@@ -8524,7 +8572,14 @@ async function spaceNavigationDto(
     select: {
       spaceId: true,
       role: true,
-      space: { select: { name: true, isDefault: true, deletingAt: true } },
+      space: {
+        select: {
+          name: true,
+          isDefault: true,
+          deletingAt: true,
+          _count: { select: { memberships: true } },
+        },
+      },
     },
     orderBy: { createdAt: "asc" },
   });
@@ -8593,6 +8648,7 @@ async function spaceNavigationDto(
         name: membership.space.name,
         isDefault: membership.space.isDefault,
         hasContent: spacesWithContent.has(membership.spaceId),
+        memberCount: membership.space._count.memberships,
         canRename: membership.role === "owner" && membership.space.deletingAt === null,
         canDelete:
           membership.role === "owner" &&
@@ -8712,6 +8768,7 @@ async function meDto(deps: RouterDeps, actor: Actor): Promise<Me> {
     timezone: user.timezone ?? null,
     tourSeen: Boolean(user.tourSeenAt),
     hiddenPages: user.hiddenPages ?? [],
+    hideAmounts: user.hideAmounts,
     billingEnabled: Boolean(deps.billing) && !actor.isDeploymentOwner,
   };
 }

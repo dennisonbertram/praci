@@ -327,3 +327,96 @@ it("reserves the peek of the rear sheets above the front toast", async () => {
   // jsdom measures no heights, so the front is 0px and two rear sheets reserve 2 x 16px.
   expect(stack.style.getPropertyValue("--stack")).toBe("32px");
 });
+
+it("sits at the bottom, clear of the page header and its buttons", async () => {
+  await mount();
+  const classes = viewport()?.className ?? "";
+  expect(classes).toContain("bottom-[max(6rem,");
+  expect(classes).not.toMatch(/(^|\s)(max-sm:)?top-/);
+});
+
+it("runs onClose when a toast is closed", async () => {
+  const onClose = vi.fn();
+  await mount();
+  await add(1, { onClose });
+  await act(async () => document.querySelector<HTMLElement>("[aria-label=Dismiss]")?.click());
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+it("keeps the toast and its Dismiss button in the accessibility tree", async () => {
+  await mount();
+  await add(1);
+  expect(cards()[0]?.getAttribute("aria-hidden")).not.toBe("true");
+  expect(document.querySelector("[aria-label=Dismiss]")?.getAttribute("aria-hidden")).not.toBe(
+    "true",
+  );
+});
+
+it("hides while a dialog, menu or the drawer is open", async () => {
+  await mount();
+  expect(viewport()?.className).toContain("[role=dialog][data-open]");
+  expect(viewport()?.className).toContain("[data-drawer-open]");
+});
+
+it("rises above a composer it would cover", async () => {
+  await mount();
+  const composer = document.createElement("div");
+  composer.setAttribute("data-toast-avoid", "");
+  composer.getBoundingClientRect = () =>
+    ({
+      top: 600,
+      bottom: 760,
+      left: 0,
+      right: window.innerWidth,
+      height: 160,
+      width: window.innerWidth,
+    }) as DOMRect;
+  viewport()!.getBoundingClientRect = () =>
+    ({ top: 500, bottom: 600, left: 100, right: 500, height: 100, width: 400 }) as DOMRect;
+  document.body.append(composer);
+  await add(1);
+  // innerHeight 768 - 600 + 8
+  expect(viewport()?.style.getPropertyValue("--toast-lift")).toBe("176px");
+});
+
+it("sits left of an open side panel, narrowed to the main column when it is narrow", async () => {
+  await mount();
+  const panel = document.createElement("aside");
+  panel.setAttribute("data-toast-panel", "");
+  panel.getBoundingClientRect = () =>
+    ({ top: 0, bottom: 768, left: 640, right: 1024, height: 768, width: 384 }) as DOMRect;
+  document.body.append(panel);
+  await add(1);
+  // innerWidth 1024 - 640; the column is 640 - 2 * 16 gutter wide
+  expect(viewport()?.style.getPropertyValue("--toast-shift")).toBe("384px");
+  expect(viewport()?.style.getPropertyValue("--toast-max-width")).toBe("608px");
+  expect(viewport()?.className).toContain("var(--toast-shift,0px)");
+  expect(viewport()?.className).toContain("var(--toast-max-width,100vw)");
+  expect(viewport()?.className).toContain(
+    "max-sm:bottom-[max(calc(env(safe-area-inset-bottom)+1rem)",
+  );
+  panel.remove();
+});
+
+it("narrows to the main column instead of covering the panel when little room is left", async () => {
+  await mount();
+  const panel = document.createElement("aside");
+  panel.setAttribute("data-toast-panel", "");
+  window.innerWidth = 768;
+  panel.getBoundingClientRect = () =>
+    ({ top: 0, bottom: 768, left: 384, right: 768, height: 768, width: 384 }) as DOMRect;
+  document.body.append(panel);
+  await add(1);
+  expect(viewport()?.style.getPropertyValue("--toast-shift")).toBe("384px");
+  expect(viewport()?.style.getPropertyValue("--toast-max-width")).toBe("352px");
+  panel.remove();
+  window.innerWidth = 1024;
+});
+
+it("keeps the front card's height following its content, so a wrapped body is never cut", async () => {
+  await mount();
+  await add(1);
+  const className = cards()[0]?.className ?? "";
+  expect(className).toContain("min-h-[var(--height)]");
+  expect(className).not.toMatch(/(^|\s)h-\[var\(--height\)\]/);
+});

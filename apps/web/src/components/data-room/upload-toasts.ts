@@ -1,5 +1,6 @@
 import { t } from "@lingui/core/macro";
 import type { DataRoomApiImport } from "@rakazo/contracts";
+import { enqueueNotificationToast, notificationToastManager } from "@rakazo/ui-web";
 import {
   DATA_ROOM_CHANGED,
   DataRoomUploadError,
@@ -18,6 +19,7 @@ export type UploadFailure =
   | "zip-encrypted"
   | "zip-unsafe"
   | "zip-invalid"
+  | "network"
   | "failed";
 const UPLOAD_FAILURES = [
   "invalid",
@@ -27,12 +29,18 @@ const UPLOAD_FAILURES = [
   "zip-encrypted",
   "zip-unsafe",
   "zip-invalid",
+  "network",
 ];
 export type UploadToast = {
   id: number;
   name: string;
   state:
-    | { kind: "uploading"; fraction: number }
+    | {
+        kind: "uploading";
+        fraction: number;
+        /** Set when no progress arrived for a while: the card then offers Cancel and Retry. */
+        stalled?: { cancel: () => void; retry: () => void };
+      }
     /** After the upload: a zip being unpacked; `progress` is its import row, null until read. */
     | { kind: "importing"; progress: DataRoomApiImport | null }
     /** A zip was filed: `count` files, 0 when all of them were in the Data room already. */
@@ -46,16 +54,19 @@ export type UploadToast = {
     | { kind: "error"; reason: UploadFailure; toTop?: () => void }
     | { kind: "deleted" }
     | { kind: "renamed" }
-    /** A one-line message; the toast's `name` is the text. */
-    | { kind: "notice" }
     /** An Auto-sort was applied; `undo` reverses that batch. */
     | { kind: "sorted"; count: number; undo: () => void };
 };
 
-const DONE_TOAST_MS = 10_000;
-const FAILED_TOAST_MS = 15_000;
+/** An upload that reports no progress for this long is called slow, and can be cancelled or retried. */
+const UPLOAD_STALL_MS = 15_000;
+// Finished and failed toasts both clear after 8 s, so none lingers over the page.
+const DONE_TOAST_MS = 8_000;
+const FAILED_TOAST_MS = 8_000;
 /** Short: it only confirms, and it sits over the lower right of the page. */
 const DELETED_TOAST_MS = 5_000;
+/** The Auto-sort toast carries Undo, so it stays longer. */
+const UNDO_TOAST_MS = 10_000;
 const HELD_RECHECK_MS = 2_000;
 const FOLLOW_MS = 1_000;
 let nextId = 1;
@@ -70,12 +81,16 @@ const notify = () => {
 let user: string | null = null;
 let scope = "";
 let epoch = 0;
+const notices = new Set<string>();
 function sync() {
   const next = `${user}:${selectedSpaceId()}`;
   if (next === scope) return;
   scope = next;
   epoch += 1;
   toasts = [];
+  // Notices name documents and investors: they must not outlive the user or space they were for.
+  for (const noticeId of notices) notificationToastManager.close(noticeId);
+  notices.clear();
 }
 
 /** Call with the signed-in user's id, or null on sign-out. */
@@ -154,6 +169,13 @@ async function uploadOne(file: File, folderId: string | undefined) {
   const id = nextId++;
   const mine = epoch;
   const current = () => mine === epoch;
+  // A retry must not file the document into whichever user or space is selected now.
+  const sameScope = () => {
+    sync();
+    if (current()) return true;
+    showNoticeToast(t`Not retried: the space changed`);
+    return false;
+  };
   toasts = [...toasts, { id, name: file.name, state: { kind: "uploading", fraction: 0 } }];
   notify();
   const fail = (reason: UploadFailure) => {
@@ -161,16 +183,50 @@ async function uploadOne(file: File, folderId: string | undefined) {
       reason === "folder-gone"
         ? () => {
             dismissUploadToast(id);
-            void uploadOne(file, undefined);
+            if (sameScope()) void uploadOne(file, undefined);
           }
         : undefined;
     update(id, { kind: "error", reason, ...(toTop ? { toTop } : {}) });
     dismissLater(id, FAILED_TOAST_MS);
   };
+  const controller = new AbortController();
+  let fraction = 0;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const watch = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      if (!current()) return;
+      const cancel = () => {
+        controller.abort();
+        dismissUploadToast(id);
+      };
+      update(id, {
+        kind: "uploading",
+        fraction,
+        stalled: {
+          cancel,
+          retry: () => {
+            cancel();
+            if (sameScope()) void uploadOne(file, folderId);
+          },
+        },
+      });
+    }, UPLOAD_STALL_MS);
+  };
+  watch();
   try {
-    const uploaded = await uploadToDataRoom(file, folderId, (fraction) => {
-      if (current()) update(id, { kind: "uploading", fraction });
-    });
+    const uploaded = await uploadToDataRoom(
+      file,
+      folderId,
+      (next) => {
+        fraction = next;
+        if (!current()) return;
+        update(id, { kind: "uploading", fraction });
+        watch();
+      },
+      controller.signal,
+    );
+    clearTimeout(timer);
     // A zip is unpacked in the background: this card follows its import row from here.
     if (!("item" in uploaded)) {
       if (!current()) return;
@@ -203,7 +259,9 @@ async function uploadOne(file: File, folderId: string | undefined) {
     window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
     dismissLater(id, DONE_TOAST_MS);
   } catch (error) {
-    if (!current()) return;
+    clearTimeout(timer);
+    // Cancelled or retried from the card: it has already gone.
+    if (!current() || (error instanceof DataRoomUploadError && error.message === "aborted")) return;
     const reason =
       error instanceof DataRoomUploadError && UPLOAD_FAILURES.includes(error.message)
         ? (error.message as UploadFailure)
@@ -241,8 +299,20 @@ function showShortToast(name: string, state: UploadToast["state"]) {
 export const showDeletedToast = (name: string) => showShortToast(name, { kind: "deleted" });
 /** A toast confirming a rename, under the new name. */
 export const showRenamedToast = (name: string) => showShortToast(name, { kind: "renamed" });
-/** A short message, such as a link to a folder that no longer exists. */
-export const showNoticeToast = (text: string) => showShortToast(text, { kind: "notice" });
+/** A short message, such as a link to a folder that no longer exists, in the app's shared toast host. */
+export const showNoticeToast = (text: string, since?: number) => {
+  sync();
+  // `since` is a uploadScopeToken() taken before a slow call; a changed user or space drops the toast.
+  if (since !== undefined && since !== epoch) return;
+  const noticeId = `data-room-notice-${nextId++}`;
+  notices.add(noticeId);
+  enqueueNotificationToast({ id: noticeId, title: text, onClose: () => notices.delete(noticeId) });
+};
+/** Identifies the current user and space; pass it to showNoticeToast to drop a toast that outlives them. */
+export function uploadScopeToken() {
+  sync();
+  return epoch;
+}
 
 /** A toast saying how many items an Auto-sort touched, with Undo for that batch. */
 export function showSortedToast(count: number, batchId: string) {
@@ -260,7 +330,7 @@ export function showSortedToast(count: number, batchId: string) {
   };
   toasts = [...toasts, { id, name: "", state: { kind: "sorted", count, undo } }];
   notify();
-  dismissLater(id, DONE_TOAST_MS);
+  dismissLater(id, UNDO_TOAST_MS);
 }
 
 /** Shows a toast in any state and keeps it; for Storybook, which has no upload to run. */

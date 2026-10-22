@@ -6,6 +6,7 @@ import type {
   FinanceTransaction,
 } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { FinanceChromeProvider } from "../../components/finance/ui";
 import { mockRpc } from "../../lib/__mocks__/rpc";
 import { FinanceAccountPage, FinanceAccountsPage } from "./FinanceAccounts";
 
@@ -126,6 +127,30 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = { beforeEach: () => mockRpc(loaded) };
+
+/** A phone's header with a company switcher: the company's name shortens before it leaves the screen. */
+export const PhoneWithCompany: Story = {
+  decorators: [
+    (Story) => (
+      <div className="@container w-[375px]">
+        <FinanceChromeProvider
+          value={{
+            onAskAgent: () => undefined,
+            spaceId: "s1",
+            spaces: [
+              { id: "s1", name: "Northwind Robotics" },
+              { id: "s2", name: "Empty space" },
+            ],
+            onSwitchSpace: () => undefined,
+          }}
+        >
+          <Story />
+        </FinanceChromeProvider>
+      </div>
+    ),
+  ],
+  beforeEach: () => mockRpc(loaded),
+};
 
 export const FilteredToOneSource: Story = {
   args: { source: "brex" },

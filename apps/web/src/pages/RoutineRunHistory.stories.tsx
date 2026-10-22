@@ -13,6 +13,7 @@ const run = (n: number, status: RoutineRun["status"], chat = true): RoutineRun =
   startedAt: `2026-01-0${n}T09:00:05.000Z`,
   completedAt: status === "completed" || status === "failed" ? `2026-01-0${n}T09:01:35.000Z` : null,
   messageId: chat ? `msg_${n}` : null,
+  preview: chat ? "Cash is steady at the same level as last week." : null,
 });
 
 const history: RoutineHistory = {

@@ -1,5 +1,6 @@
 import type { GroupAvatarMember } from "@rakazo/ui-web";
 import { BotAvatar, GroupAvatar } from "@rakazo/ui-web";
+import { ChevronRight } from "lucide-react";
 import { LoadingState } from "./primitives";
 
 /** Lightweight peer event shown without exposing the exchanged message body. */
@@ -23,12 +24,13 @@ export function CollaborationMarker({
         data-testid="peer-receipt-chip"
         aria-label={ariaLabel}
         onClick={onClick}
-        className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground/75"
+        className="inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground/75"
       >
         <BotAvatar color={color} identity={identity} size={16} />
         <span dir="auto" className="truncate">
           {label}
         </span>
+        <ChevronRight aria-hidden size={14} strokeWidth={1.8} className="shrink-0 rtl:rotate-180" />
       </button>
     </div>
   );
@@ -41,6 +43,8 @@ export function ActiveBotGlyph({
   detail,
   detailSince,
   waitingLabel,
+  onStop,
+  onRetry,
 }: {
   bots: GroupAvatarMember[];
   label: string;
@@ -48,6 +52,8 @@ export function ActiveBotGlyph({
   detail?: string;
   detailSince?: number;
   waitingLabel?: string;
+  onStop?: () => void;
+  onRetry?: () => void;
 }) {
   return (
     <div className="flex min-h-10 items-center px-1">
@@ -58,6 +64,8 @@ export function ActiveBotGlyph({
         detail={detail}
         detailSince={detailSince}
         waitingLabel={waitingLabel}
+        onStop={onStop}
+        onRetry={onRetry}
       />
     </div>
   );

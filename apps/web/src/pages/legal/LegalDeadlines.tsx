@@ -17,6 +17,16 @@ const UNDO_MS = 30_000;
 /** Deadlines closer than this get a "due in N days" line. */
 const SOON_DAYS = 30;
 
+/** The sentence the Legal agent adds to every derived notice deadline; the list says it once. */
+const DERIVED_NOTE = "Derived from the expiration date and the notice period.";
+
+/** A row's own note: without the shared sentence, and with any ISO date written as the page writes dates. */
+const rowNote = (notes: string | null) =>
+  (notes ?? "")
+    .replace(DERIVED_NOTE, "")
+    .replace(/\b\d{4}-\d{2}-\d{2}\b/g, (iso) => fullDay(iso))
+    .trim();
+
 const rowHeight = (event: React.MouseEvent<HTMLElement>) =>
   event.currentTarget.closest("li")?.getBoundingClientRect().height ?? 0;
 
@@ -44,7 +54,6 @@ export function LegalDeadlines({
   /** Opens the Legal agent with this deadline as the question; without it no row offers Ask agent. */
   onAsk?: (deadline: LegalDeadline) => void;
 }) {
-  const [closing, setClosing] = useState<string | null>(null);
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState("");
   const [undo, setUndo] = useState<{
@@ -52,31 +61,50 @@ export function LegalDeadlines({
     status: LegalDeadlineStatus;
     /** The closed row's height, so the Undo line holds its place and the list does not move. */
     height: number;
+    /** Where the row stood, for when the refetched list no longer holds it. */
+    index: number;
   } | null>(null);
   useHideAmounts();
   const undoTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  /** The latest close request, so Undo waits for it instead of racing it. */
+  const closing = useRef<Promise<boolean>>(Promise.resolve(true));
   useEffect(() => () => clearTimeout(undoTimer.current), []);
-  const close = async (deadline: LegalDeadline, status: LegalDeadlineStatus, height: number) => {
-    setClosing(deadline.id);
+  const close = (deadline: LegalDeadline, status: LegalDeadlineStatus, height: number) => {
+    const request = send(deadline, status, height);
+    closing.current = request;
+    return request;
+  };
+  const send = async (deadline: LegalDeadline, status: LegalDeadlineStatus, height: number) => {
+    const index = deadlines.indexOf(deadline);
     setError("");
+    // The row leaves at once with its Undo line; the request settles behind it.
+    setGone((ids) => new Set(ids).add(deadline.id));
+    setUndo({ deadline, status, height, index });
+    clearTimeout(undoTimer.current);
+    undoTimer.current = setTimeout(() => setUndo(null), UNDO_MS);
     try {
       await rpc.legal.updateDeadline({ id: deadline.id, status });
-      setGone((ids) => new Set(ids).add(deadline.id));
-      setUndo({ deadline, status, height });
-      clearTimeout(undoTimer.current);
-      undoTimer.current = setTimeout(() => setUndo(null), UNDO_MS);
       onChanged();
       // The sidebar Legal badge counts open deadlines, so it refreshes now, not on the next page change.
       window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
+      return true;
     } catch (cause) {
+      setGone((ids) => {
+        const next = new Set(ids);
+        next.delete(deadline.id);
+        return next;
+      });
+      // Only this row's Undo; another row may have closed since.
+      setUndo((current) => (current?.deadline.id === deadline.id ? null : current));
       setError(errorText(cause));
-    } finally {
-      setClosing(null);
+      return false;
     }
   };
   const reopen = async () => {
     if (!undo) return;
     setError("");
+    // A failed close already put the row back and reported the error.
+    if (!(await closing.current)) return;
     try {
       await rpc.legal.updateDeadline({ id: undo.deadline.id, status: "open" });
       setGone((ids) => {
@@ -124,6 +152,11 @@ export function LegalDeadlines({
       </Button>
     </>
   ) : null;
+  // The page reloads after Done and the server lists open deadlines only, so the closed row is put back at its place for the Undo line.
+  const rows =
+    undo && !deadlines.some((deadline) => deadline.id === undo.deadline.id)
+      ? deadlines.toSpliced(undo.index, 0, undo.deadline)
+      : deadlines;
   if (open.length === 0) {
     return (
       <div>
@@ -148,7 +181,7 @@ export function LegalDeadlines({
         </p>
       ) : null}
       <ul className="flex flex-col">
-        {deadlines.map((deadline) => {
+        {rows.map((deadline) => {
           if (undo?.deadline.id === deadline.id && gone.has(deadline.id)) {
             return (
               <li
@@ -214,9 +247,9 @@ export function LegalDeadlines({
                     {maskCurrencyWhenHidden(deadline.sourceQuote)}
                   </blockquote>
                 ) : null}
-                {deadline.notes ? (
+                {rowNote(deadline.notes) ? (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {maskCurrencyWhenHidden(deadline.notes)}
+                    {maskCurrencyWhenHidden(rowNote(deadline.notes))}
                   </p>
                 ) : null}
               </div>
@@ -240,7 +273,6 @@ export function LegalDeadlines({
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={closing === deadline.id}
                   aria-label={t`Mark ${name} done`}
                   onClick={(event) => void close(deadline, "done", rowHeight(event))}
                 >
@@ -249,7 +281,6 @@ export function LegalDeadlines({
                 <Button
                   size="sm"
                   variant="ghost"
-                  disabled={closing === deadline.id}
                   title={t`Not a real deadline: hide it`}
                   aria-label={t`Dismiss ${name}`}
                   onClick={(event) => void close(deadline, "dismissed", rowHeight(event))}
@@ -261,6 +292,13 @@ export function LegalDeadlines({
           );
         })}
       </ul>
+      {open.some((deadline) => deadline.notes?.includes(DERIVED_NOTE)) ? (
+        <p className="mt-3 text-xs text-muted-foreground">
+          <Trans>
+            Notice deadlines are derived from the expiration date and the notice period.
+          </Trans>
+        </p>
+      ) : null}
     </div>
   );
 }

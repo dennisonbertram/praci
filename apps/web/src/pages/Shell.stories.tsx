@@ -3,8 +3,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { userEvent, within } from "storybook/test";
 import { mockRpc } from "../lib/__mocks__/rpc";
-import { makeBot, mockBots, mockSections } from "../stories/fixtures";
+import { makeBot, mockBots, mockMe, mockSections } from "../stories/fixtures";
 import { ShellPage } from "./Shell";
 
 /** The preview already provides a router at "/", so move it to the route instead of nesting one. */
@@ -291,6 +292,40 @@ export const Conversation: Story = {
   beforeEach: loaded,
 };
 
+/** A bot with no computer in use: the button and the panel are titled Routines, with no empty screen. */
+export const ConversationRoutines: Story = {
+  decorators: [at("/app/bot_ada")],
+  beforeEach: () => {
+    loaded();
+    mockRpc({
+      "computer.screenUrl": { url: null },
+      "models.credentials": [],
+      "models.list": [],
+      "voice.voices": [],
+      "scratchpad.list": [],
+      "botSecrets.list": [],
+      "memory.list": [],
+      "agentSkills.forBot": [],
+      "agentSkills.drafts": [],
+      "connections.effectiveAccess": {},
+    });
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole("button", { name: "Routines" }));
+  },
+};
+
+/** The bot settings panel scrolled: its title stays on a solid band with nothing showing above it. */
+export const ConversationBotSettings: Story = {
+  ...ConversationRoutines,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole("button", { name: "Routines" }));
+    await userEvent.click(await canvas.findByRole("button", { name: "Show settings" }));
+  },
+};
+
 /** Two replies arrived since the reader last opened the thread: the divider goes before the first. */
 export const ConversationUnreadDivider: Story = {
   decorators: [at("/app/bot_ada")],
@@ -344,9 +379,6 @@ export const SidebarPageAgents: Story = {
   decorators: [at("/app/bot_chief")],
   beforeEach: () => {
     loadedWith(rootAgents[0] as ReturnType<typeof makeBot>)();
-    try {
-      localStorage.setItem("rakazo.activity-mode", "1");
-    } catch {}
     mockRpc({
       "spaces.list": {
         ...navigation,
@@ -393,6 +425,123 @@ export const SidebarPageAgents: Story = {
       },
     });
   },
+  // Activity starts closed on every load.
+  play: async ({ canvasElement }) => {
+    const toggle = await within(canvasElement).findByRole("button", {
+      name: "Activity",
+    });
+    await userEvent.click(toggle);
+  },
+};
+
+const activityBots = [
+  agent("bot_chief", "Chief", "#6366f1", { position: 0, pinned: true }),
+  agent("bot_mercury", "Mercury agent", BOT_COLORS[2], {
+    position: 1,
+    spawnKey: "integration-agent:server_mercury",
+    status: "waiting_input",
+  }),
+  ...["Scout", "Ops weekly", "Board prep", "Hiring", "Support triage", "Recruiter"].map((name, i) =>
+    agent(`bot_chat_${i}`, name, BOT_COLORS[i % BOT_COLORS.length] ?? "#6366f1", {
+      position: 2 + i,
+    }),
+  ),
+];
+
+/** Activity open on a full-height screen: every page stays listed and the chats keep their rows. A payment approval reads "Needs your answer" in the row, as in Activity. */
+export const SidebarActivityOpen: Story = {
+  decorators: [
+    (Story) => (
+      <div className="h-dvh">
+        <Story />
+      </div>
+    ),
+    at("/app/bot_chief"),
+  ],
+  beforeEach: () => {
+    loadedWith(activityBots[0] as ReturnType<typeof makeBot>)();
+    const run = (
+      runId: string,
+      botId: string,
+      botName: string,
+      status: string,
+      snippet: string,
+    ) => ({
+      runId,
+      botId,
+      botName,
+      groupId: null,
+      groupName: null,
+      threadId: `thread_${botId}`,
+      status,
+      trigger: "user",
+      notificationsEnabled: false,
+      promptSnippet: snippet,
+      updatedAt: STAMP,
+    });
+    mockRpc({
+      "spaces.list": {
+        ...navigation,
+        current: { ...navigation.current, bots: activityBots, groups: [], botSections: [] },
+      },
+      "runs.list": (input: unknown) =>
+        (input as { filter: string }).filter === "active"
+          ? {
+              runs: [
+                run(
+                  "run_pay",
+                  "bot_mercury",
+                  "Mercury agent",
+                  "waiting_input",
+                  "Send $1,200.00 to Acme?",
+                ),
+                run("run_a", "bot_chat_0", "Scout", "running", "Find three leads"),
+                run("run_b", "bot_chat_1", "Ops weekly", "running", "Draft the update"),
+              ],
+            }
+          : { runs: [] },
+      bootstrap: {
+        me: demoMe,
+        bots: activityBots,
+        groups: [],
+        botSections: [],
+        archivedBots: [],
+        archivedGroups: [],
+        thread: { ...snapshot, botId: "bot_chief" },
+        routines: [],
+        spaces: [{ ...space, bots: [], groups: [], botSections: [] }],
+      },
+      "notifications.unseenCounts": { counts: {} },
+      "notifications.glance": {
+        financeRunwayMonths: null,
+        legalDueSoon: 0,
+        dataRoomWaiting: 0,
+        hasTickets: false,
+        botKinds: { bot_mercury: "needs_input" },
+      },
+    });
+  },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await within(canvasElement).findByRole("button", { name: "Activity" }));
+  },
+};
+
+/** A page with the sidebar folded to the icon rail: the page header sits at the top, with no band above it. */
+export const SidebarRailPage: Story = {
+  ...SidebarActivityOpen,
+  decorators: [
+    (Story) => (
+      <div className="h-dvh">
+        <Story />
+      </div>
+    ),
+    at("/app/contacts"),
+  ],
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      await within(canvasElement).findByRole("button", { name: "Hide sidebar" }),
+    );
+  },
 };
 
 const emailChatBots = [
@@ -401,6 +550,12 @@ const emailChatBots = [
   agent("bot_counsel", "Counsel agent", BOT_COLORS[3], {
     position: 2,
     spawnKey: "legal-agent:user_demo",
+    preview: "Which contracts renew soon?",
+  }),
+  // Made when its page was opened, never used: not listed.
+  agent("bot_finance_page", "Finance agent", BOT_COLORS[1], {
+    position: 9,
+    spawnKey: "finance-agent:user_demo",
   }),
   ...[
     "Q3 board deck",
@@ -417,7 +572,7 @@ const emailChatBots = [
   ),
 ];
 
-/** Six Ask-agent chats fold into one "Email chats" row; the lone Legal agent folds into "Page agents". */
+/** Six Ask-agent chats fold into one "Email chats" row; the Legal agent, which has been used, folds into "Page agents"; the unused Finance agent is not listed. */
 export const SidebarEmailChats: Story = {
   // The sidebar only scrolls inside a bounded page, as in the app.
   decorators: [
@@ -453,6 +608,27 @@ export const SidebarEmailChats: Story = {
         dataRoomWaiting: 3,
         hasTickets: false,
         botKinds: {},
+      },
+    });
+  },
+};
+
+/** A new account: the tour opens on the first page row, with the drawer open on a phone. */
+export const FirstRunTour: Story = {
+  decorators: [at("/app/bot_ada")],
+  beforeEach: () => {
+    loadedWith(mockBots[0] as ReturnType<typeof makeBot>)();
+    mockRpc({
+      bootstrap: {
+        me: { ...mockMe, tourSeen: false },
+        bots: mockBots,
+        groups: [],
+        botSections: mockSections,
+        archivedBots: [],
+        archivedGroups: [],
+        thread: null,
+        routines: [],
+        spaces: [space],
       },
     });
   },

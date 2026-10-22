@@ -164,6 +164,33 @@ describe("account preferences", () => {
     });
   });
 
+  it("saves Hide amounts on the signed-in user and returns it", async () => {
+    const { update, deps, actor, handler } = preferencesDeps("organic");
+    (deps.prisma.user.findUniqueOrThrow as ReturnType<typeof vi.fn>).mockResolvedValue({
+      email: "user@rakazo.test",
+      name: "Test User",
+      avatarStyle: "organic",
+      timezone: null,
+      hideAmounts: true,
+    });
+    const { response } = await handler.handle(
+      new Request("http://127.0.0.1/rpc/preferences/update", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ json: { hideAmounts: true } }),
+      }),
+      { prefix: "/rpc", context: { actor } },
+    );
+    expect(response.status).toBe(200);
+    expect(update).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      data: expect.objectContaining({ hideAmounts: true }),
+    });
+    await expect(response.json()).resolves.toEqual({
+      json: expect.objectContaining({ hideAmounts: true }),
+    });
+  });
+
   it("saves the old cap-table hidden key as investors, once", async () => {
     const { update, actor, handler } = preferencesDeps("organic");
     await handler.handle(
@@ -694,6 +721,7 @@ describe("MCP server deletion", () => {
     const deleteServer = vi.fn().mockResolvedValue({ id: "server-1" });
     const deleteSecrets = vi.fn().mockResolvedValue({ count: 0 });
     const prisma = {
+      devinConnectionState: { findUnique: vi.fn().mockResolvedValue(null) },
       mcpServer: {
         findFirst: vi.fn().mockResolvedValue({ id: "server-1", secretId: "old-secret" }),
         delete: deleteServer,
@@ -777,6 +805,7 @@ describe("MCP prepared credential updates", () => {
       ],
     ]);
     const prisma = {
+      devinConnectionState: { findUnique: async () => null },
       mcpServer: {
         findFirst: async () => ({ ...server }),
         update: async ({
@@ -1186,7 +1215,8 @@ describe("connections.complete", () => {
         provider: "gmail",
         providerRef: "gmail",
         displayName: "Gmail",
-        status: "pending",
+        // Revoke only needs the provider for a connected row; complete needs a pending one.
+        status: operation === "revoke" ? "connected" : "pending",
         createdAt: new Date(0),
       };
       const client = {
@@ -1201,6 +1231,9 @@ describe("connections.complete", () => {
         },
         cachedMailMessage: { deleteMany: vi.fn(async () => ({ count: 0 })) },
         mailSenderStat: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+        mailSenderDecision: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+        mailActionLog: { deleteMany: vi.fn(async () => ({ count: 0 })) },
+        mailSearch: { deleteMany: vi.fn(async () => ({ count: 0 })) },
         inboxTodo: { deleteMany: vi.fn(async () => ({ count: 0 })) },
         mailSyncState: { deleteMany: vi.fn(async () => ({ count: 0 })) },
         $executeRaw: vi.fn(),

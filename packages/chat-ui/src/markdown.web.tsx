@@ -519,7 +519,7 @@ export function LinkifiedText({ children: raw }: { children: string }) {
             {linkLabel(part.value, part.href)}
           </WebsiteLink>
         ) : (
-          <ConfirmableAnchor key={index} href={part.href} className="text-link underline">
+          <ConfirmableAnchor key={index} href={part.href} className="text-foreground underline">
             {part.value}
           </ConfirmableAnchor>
         ),

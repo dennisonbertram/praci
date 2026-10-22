@@ -13,14 +13,23 @@ import {
   CommandList,
   CommandShortcut,
   Kbd,
+  Spinner,
 } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 
 /** Chat snippets come from markdown replies; show them as plain text. */
 export function plainSnippet(text: string): string {
-  return text.replace(/\*\*|__|`/g, "");
+  return text.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/\*\*|__|`/g, "");
 }
 
 function isApplePlatform() {
@@ -68,13 +77,18 @@ function ranked<T>(items: readonly T[], score: (item: T) => number | null): T[] 
     .map((entry) => entry.item);
 }
 
+const CLIP_BEFORE = 24;
+
 /** The typed text inside a result, underlined so a result shows why it matched. */
-function Highlight({ text, needle }: { text: string; needle: string }) {
+function Highlight({ text, needle, clip }: { text: string; needle: string; clip?: boolean }) {
   const at = needle ? text.toLowerCase().indexOf(needle) : -1;
   if (at < 0) return <>{text}</>;
+  // A long title is cut at the end by the row, so drop text before the match to keep it in view.
+  const from = clip && at > CLIP_BEFORE ? at - CLIP_BEFORE / 2 : 0;
   return (
     <>
-      {text.slice(0, at)}
+      {from ? "…" : ""}
+      {text.slice(from, at)}
       <mark className="bg-transparent text-inherit underline decoration-2 underline-offset-2">
         {text.slice(at, at + needle.length)}
       </mark>
@@ -98,12 +112,12 @@ export type PaletteEntry = {
   date?: string;
 };
 
-/** A group of search results. `icon` marks every row of the group; `first` lists it above the pages. */
+/** A group of search results. `icon` marks every row of the group; `fallback` lists it after every direct match. */
 export type PaletteLinkGroup = {
   heading: string;
   entries: PaletteEntry[];
   icon?: ReactNode;
-  first?: boolean;
+  fallback?: boolean;
 };
 
 export function CommandPalette({
@@ -117,6 +131,7 @@ export function CommandPalette({
   onSelectGroup = () => undefined,
   searchLinks,
   onOpenPath = () => undefined,
+  actions = [],
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -129,6 +144,8 @@ export function CommandPalette({
   /** Documents and artifacts matching the text; entry ids are the routes they open. */
   searchLinks?: (query: string) => Promise<PaletteLinkGroup[]>;
   onOpenPath?: (path: string) => void;
+  /** Commands found only by typing; they have no row in the empty palette. */
+  actions?: { label: string; run: () => void }[];
 }) {
   useHideAmounts();
   const [search, setSearch] = useState("");
@@ -140,6 +157,13 @@ export function CommandPalette({
 
   useEffect(() => {
     if (!open) setSearch("");
+  }, [open]);
+  // Whatever had focus when it opened gets it back, so Escape does not drop focus to the page body.
+  const openedFrom = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    if (open && document.activeElement instanceof HTMLElement) {
+      openedFrom.current = document.activeElement;
+    }
   }, [open]);
 
   const needle = search.trim().toLowerCase();
@@ -176,6 +200,9 @@ export function CommandPalette({
     paletteMatchScore(entry.label, needle, entry.keywords);
   const shownPages = needle ? ranked(pages, entryScore) : pages;
   const shownGroups = needle ? ranked(groups, entryScore) : groups;
+  const shownActions = needle
+    ? ranked(actions, (action) => paletteMatchScore(action.label, needle))
+    : [];
   const filteredBots = useMemo(
     () => (needle ? ranked(bots, (bot) => paletteMatchScore(bot.name, needle, bot.title)) : bots),
     [bots, needle],
@@ -339,11 +366,11 @@ export function CommandPalette({
             ) : null}
             <span className="min-w-0 flex-1">
               <span className="block truncate font-medium text-foreground" dir="auto">
-                <Highlight text={maskCurrencyWhenHidden(entry.label)} needle={needle} />
+                <Highlight text={maskCurrencyWhenHidden(entry.label)} needle={needle} clip />
               </span>
               {detail ? (
                 <span className="block truncate text-[13px] text-muted-foreground" dir="auto">
-                  <Highlight text={detail} needle={needle} />
+                  <Highlight text={detail} needle={needle} clip />
                 </span>
               ) : null}
             </span>
@@ -356,33 +383,54 @@ export function CommandPalette({
     </CommandGroup>
   );
   const shownLinks = linkGroups.filter((group) => group.entries.length > 0);
-  const leadingLinks = shownLinks.filter((group) => group.first).map(linkGroup);
-  const linksGroups = shownLinks.filter((group) => !group.first).map(linkGroup);
+  const fallbackLinks = shownLinks.filter((group) => group.fallback);
+  const directLinks = shownLinks.filter((group) => !group.fallback);
+  const noDirectMatch =
+    !directLinks.length &&
+    !shownPages.length &&
+    !shownGroups.length &&
+    !shownActions.length &&
+    !filteredBots.length;
   const searching = Boolean(needle && searchLinks && answered !== needle);
 
-  // The mail action leads the list, but Enter still opens the best match: select it by value.
+  // Direct matches come first, so Enter opens the first row; with none, the catch-all search does.
   const bestValue = (() => {
     if (!needle) return "";
+    // A contact or document named exactly as typed wins; with no page or bot match, the first one does.
+    const linkEntries = directLinks.flatMap((g) => g.entries);
+    const exact = linkEntries.find((entry) => entry.label.toLowerCase() === needle);
+    if (exact) return `link:${exact.id}`;
     const first = sectionOrder[0];
-    if (first === "bots") return filteredBots[0]?.id ?? "";
-    if (first === "groups") return shownGroups[0] ? `group:${shownGroups[0].id}` : "";
-    return shownPages[0] ? `page:${shownPages[0].id}` : "";
+    const local =
+      first === "bots"
+        ? (filteredBots[0]?.id ?? "")
+        : first === "groups"
+          ? shownGroups[0]
+            ? `group:${shownGroups[0].id}`
+            : ""
+          : shownPages[0]
+            ? `page:${shownPages[0].id}`
+            : "";
+    const last = linkEntries[0] ?? fallbackLinks[0]?.entries[0];
+    return local || (last ? `link:${last.id}` : "");
   })();
   const [picked, setPicked] = useState("");
   // biome-ignore lint/correctness/useExhaustiveDependencies: restart from the best match when the query changes
-  useEffect(() => setPicked(bestValue), [needle, bestValue, leadingLinks.length]);
+  useEffect(() => setPicked(bestValue), [needle, bestValue]);
 
   return (
     <CommandDialog
       open={open}
       onOpenChange={onOpenChange}
+      finalFocus={() => openedFrom.current}
       title={t`Go to`}
       description={t`Search pages, bots, groups, documents and artifacts`}
-      className="sm:max-w-xl"
+      // On a phone the keyboard covers the lower half, so the palette sits at the top.
+      className="max-sm:top-3 sm:max-w-xl"
     >
       <Command
         shouldFilter={false}
-        value={picked || undefined}
+        value={picked || bestValue || undefined}
         onValueChange={setPicked}
         className="rounded-xl! bg-popover"
         data-testid="command-palette"
@@ -397,21 +445,57 @@ export function CommandPalette({
         <CommandList
           ref={setListEl}
           onScroll={measureList}
-          className="max-h-[min(24rem,60vh)]"
+          // The last results stay, dimmed, until the new ones arrive.
+          className={`max-h-[min(27rem,60vh)] max-sm:max-h-[45vh] transition-opacity ${searching ? "opacity-60" : ""}`}
+          aria-busy={searching}
           data-testid="command-palette-list"
         >
+          {searching &&
+          !shownLinks.length &&
+          !shownPages.length &&
+          !shownGroups.length &&
+          !shownActions.length &&
+          !filteredBots.length ? (
+            <div className="flex justify-center py-4">
+              <Spinner aria-hidden="true" />
+            </div>
+          ) : null}
           {searching ? null : (
             <CommandEmpty>
               <Trans>No results</Trans>
             </CommandEmpty>
           )}
-          {leadingLinks}
+          {needle && !searching && noDirectMatch && fallbackLinks.length ? (
+            <p className="px-3 py-3 text-sm text-muted-foreground">
+              <Trans>No matches in pages, documents, contacts</Trans>
+            </p>
+          ) : null}
           {sectionOrder.map((section) => (
             <Fragment key={section}>
               {section === "bots" ? botsGroup : section === "groups" ? groupsGroup : pagesGroup}
             </Fragment>
           ))}
-          {linksGroups}
+          {directLinks.map(linkGroup)}
+          {shownActions.length ? (
+            <CommandGroup>
+              {shownActions.map((action) => (
+                <CommandItem
+                  key={action.label}
+                  value={`action:${action.label}`}
+                  onSelect={() => {
+                    action.run();
+                    onOpenChange(false);
+                  }}
+                  className={`items-center gap-3 rounded-xl! px-2.5 py-2 ${SELECTED_ROW}`}
+                >
+                  <span className="truncate font-medium text-foreground">
+                    <Highlight text={action.label} needle={needle} />
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ) : null}
+          {fallbackLinks.map(linkGroup)}
         </CommandList>
         {moreBelow ? (
           <div

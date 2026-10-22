@@ -169,8 +169,16 @@ it("offers Disconnect sign-in only while signed in", async () => {
     );
   };
   await render("connected");
-  expect(container.textContent).toContain("Disconnect sign-in");
+  // Healthy: Reconnect and Disconnect wait in one menu, not beside the title.
+  expect(container.textContent).not.toContain("Reconnect");
+  await act(async () =>
+    container.querySelector<HTMLElement>('[aria-label="Sign-in options"]')?.click(),
+  );
+  expect(document.body.textContent).toContain("Disconnect sign-in");
+  expect(document.body.textContent).toContain("Reconnect");
   await render("reconnect");
+  expect(container.querySelector('[aria-label="Sign-in options"]')).toBeNull();
+  expect(container.textContent).toContain("Reconnect");
   expect(container.textContent).not.toContain("Disconnect sign-in");
 });
 
@@ -310,9 +318,12 @@ it("disables the row buttons and shows Creating agent while the agent is being c
     [...container.querySelectorAll<HTMLButtonElement>("button")].find(
       (b) => b.textContent === label,
     );
-  for (const label of ["Reconnect", "Disconnect sign-in", "Rename", "Creating agent"]) {
+  for (const label of ["Rename", "Creating agent"]) {
     expect(button(label)?.disabled, label).toBe(true);
   }
+  expect(
+    container.querySelector<HTMLButtonElement>('[aria-label="Sign-in options"]')?.disabled,
+  ).toBe(true);
   expect(button("Create agent")).toBeUndefined();
   await act(async () => finish({ server: {}, botId: "bot_new" }));
 });
@@ -375,6 +386,13 @@ it("draws the Granola agent link once, under the key status, and names the route
   expect(container.querySelector("#server-shared")).toBeNull();
 });
 
+it("says the agent is created on allowing changes, not a name, before it exists", async () => {
+  await show(false, "https://mcp.mercury.com/mcp", { agentBotId: null, agentExclusive: false });
+  const agent = container.querySelector('section[aria-label="Agent"]');
+  expect(agent?.textContent).toContain("Created when you allow changes");
+  expect(agent?.textContent).not.toContain("Mercury agent");
+});
+
 it("lets a bank with no agent allow changes: confirming creates the agent and the switch reads on at once", async () => {
   let finish: (value: object) => void = () => {};
   create.mockResolvedValue({ server: {}, botId: "bot_new" });
@@ -389,6 +407,19 @@ it("lets a bank with no agent allow changes: confirming creates the agent and th
   expect(navigate).not.toHaveBeenCalled();
   await act(async () => finish({}));
   expect(setWrites).toHaveBeenCalledWith({ id: "s1", enabled: true });
+});
+
+it("gives a bank with no agent one setup control (the switch), no Create agent, no sharing switch, and a setting-up note while allowing changes", async () => {
+  setWrites.mockReturnValue(new Promise(() => {}));
+  create.mockResolvedValue({ server: {}, botId: "bot_new" });
+  await show(false, "https://mcp.mercury.com/mcp", { agentBotId: null, agentExclusive: false });
+  expect(container.textContent).not.toContain("Create agent");
+  expect(writesSwitch()).not.toBeNull();
+  expect(container.querySelector("#server-shared")).toBeNull();
+  expect(container.textContent).not.toContain("Setting up");
+  await act(async () => writesSwitch()?.click());
+  await press("Allow changes");
+  expect(container.textContent).toContain("Setting up the agent");
 });
 
 it("turns the pending switch back off and shows the error when allowing changes fails", async () => {

@@ -1,27 +1,25 @@
 import { Trans } from "@lingui/react/macro";
 import type { DataRoomConsentStatus } from "@rakazo/contracts";
 import { rpc } from "../../lib/rpc";
-import { ConsentCard } from "../AiDataSharing";
+import { DocumentsConsentCard } from "../AiDataSharing";
 
 /** Asks once before the Legal agent may read Data Room documents; grants exactly the shown key and version. */
 export function LegalConsentPrompt({
   consent,
   onChange,
+  className = "mb-4",
 }: {
+  className?: string;
   consent: DataRoomConsentStatus;
   /** Called with the new status after a grant, or with the fresh one when the shown key was stale. */
   onChange: (status: DataRoomConsentStatus) => void;
 }) {
   return (
-    <ConsentCard
+    <DocumentsConsentCard
       id="legal-consent"
-      className="mb-4"
-      heading={<Trans>Let Praci read your contracts</Trans>}
-      sends={
-        <Trans>
-          The text of your Data room documents is sent to the AI model that runs your bots.
-        </Trans>
-      }
+      className={className}
+      consent={consent}
+      declinedText={<Trans>Praci doesn't read your documents.</Trans>}
       onAllow={async () => {
         try {
           onChange(await rpc.legal.consentGrant({ key: consent.key, version: consent.version }));

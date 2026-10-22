@@ -24,11 +24,10 @@ import {
 import { Search } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import type { CategoryFilter, ConnectedApp } from "../../lib/integrations";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import type { ConnectedApp } from "../../lib/integrations";
 import {
   appPath,
-  CATEGORY_IDS,
   FINANCE_PROVIDERS,
   FIRST_PARTY_MCP,
   filterCatalog,
@@ -57,7 +56,6 @@ import {
   AgentStack,
   CardHead,
   IntegrationTile,
-  MenuSlot,
   OPEN_LINK,
   PHONE_ROW,
   SectionTitle,
@@ -68,6 +66,10 @@ import { agentsFor } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
 
 const PHONE_POPULAR = 3;
+
+/** The filter chips: All, then the section headings that hold tiles of their own. */
+const CHIPS = ["all", "finance", "social", "equity", "tools"] as const;
+type Chip = (typeof CHIPS)[number];
 const GRANOLA_PATH = "/app/integrations/granola";
 
 function hostOf(value: string | null) {
@@ -96,7 +98,6 @@ function OpenPageLink({ to, children }: { to: string; children: ReactNode }) {
       <Link to={to} className={OPEN_LINK}>
         {children}
       </Link>
-      <MenuSlot />
     </>
   );
 }
@@ -389,7 +390,7 @@ export function IntegrationsHome({
   const { t } = useLingui();
   const [params] = useSearchParams();
   const [query, setQuery] = useState(params.get("q") ?? "");
-  const [category, setCategory] = useState<CategoryFilter>(
+  const [category, setCategory] = useState<Chip>(
     params.get("category") === "finance" ? "finance" : "all",
   );
   const financeRef = useRef<HTMLDivElement>(null);
@@ -401,6 +402,7 @@ export function IntegrationsHome({
   // ...&returnTo=/app/investors sends the founder back there when that dialog closes.
   const returnTo = useRef(appReturnPath(params.get("returnTo")));
   const navigate = useNavigate();
+  const location = useLocation();
   const [visible, setVisible] = useState(CONNECTION_CATALOG_PAGE_SIZE);
   /** On a phone the Popular list starts at three apps, so the whole page is not one long scroll. */
   const [phoneAll, setPhoneAll] = useState(false);
@@ -420,14 +422,13 @@ export function IntegrationsHome({
   const [devinDialog, setDevinDialog] = useState<"connect" | "replace" | null>(null);
   const [removing, setRemoving] = useState<CapabilityInstall | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
-  const labels: Record<CategoryFilter, string> = {
+  // The chips are the page's own section headings (plus All), so each one jumps to a heading you can see.
+  const labels: Record<Chip, string> = {
     all: t`All`,
-    email_calendar: t`Email & calendar`,
-    chat: t`Chat`,
-    docs_files: t`Docs & files`,
     finance: t`Finance`,
-    developer: t`Developer`,
-    sales_crm: t`Sales & CRM`,
+    social: t`Social`,
+    equity: t`Equity`,
+    tools: t`Tools`,
   };
 
   const apps = useMemo(
@@ -438,17 +439,13 @@ export function IntegrationsHome({
     () => popularApps(data.catalog, data.connections),
     [data.catalog, data.connections],
   );
-  const results = useMemo(() => filterCatalog(open, { query, category }), [open, query, category]);
-  // A chip that leads to no app is not offered. Finance always has its own tiles.
-  const chips = CATEGORY_IDS.filter(
-    (id) =>
-      id === "all" ||
-      id === "finance" ||
-      id === category ||
-      open.some((item) => item.category === id) ||
-      FIRST_PARTY_MCP.some((entry) => entry.category === id),
+  // Only Finance also narrows the Popular catalog; Social, Equity and Tools hold just their own tiles.
+  const results = useMemo(
+    () =>
+      category === "all" || category === "finance" ? filterCatalog(open, { query, category }) : [],
+    [open, query, category],
   );
-  const firstPartySections = { social: t`Social`, equity: t`Equity`, tools: t`Tools` };
+  const firstPartySections = { social: labels.social, equity: labels.equity, tools: labels.tools };
   const firstPartyDescription = {
     zernio: t`Post and schedule to social accounts`,
     carta: t`Investors, equity and cap table`,
@@ -470,16 +467,27 @@ export function IntegrationsHome({
     data.meetings && data.meetings.status !== "disconnected" ? data.meetings : null;
   const hasGranolaServer = data.servers.some((server) => isGranolaEndpoint(server.endpoint));
   const keyOnlyGranola = Boolean(granolaKey) && !hasGranolaServer;
-  const firstPartyMcp = FIRST_PARTY_MCP.filter(
+  const unconnectedFirstParty = FIRST_PARTY_MCP.filter(
     (entry) =>
-      (category === "all" || category === entry.category) &&
-      entry.name.toLowerCase().includes(query.trim().toLowerCase()) &&
       !data.servers.some(
         (server) => "endpoint" in server && isSameMcpEndpoint(server.endpoint, entry.endpoint),
       ) &&
       !data.sources.some((source) => isSameMcpEndpoint(source.source, entry.endpoint)) &&
       // A connected API key is already Granola's tile under Connected.
       !(entry.id === "granola" && keyOnlyGranola),
+  );
+  const firstPartyMcp = unconnectedFirstParty.filter(
+    (entry) =>
+      (category === "all" || category === entry.section || category === entry.category) &&
+      entry.name.toLowerCase().includes(query.trim().toLowerCase()),
+  );
+  // A chip whose heading would not show is not offered. Finance always has its own tiles.
+  const chips = CHIPS.filter(
+    (id) =>
+      id === "all" ||
+      id === "finance" ||
+      id === category ||
+      unconnectedFirstParty.some((entry) => entry.section === id),
   );
   const [chatMatches, setChatMatches] = useState(0);
   const financeServerIds = data.financeSources.flatMap((source) =>
@@ -518,9 +526,11 @@ export function IntegrationsHome({
     chatMatches > 0 ||
     (searching && connectedApps.length > 0);
   const wholeList = category === "all";
+  const anyConnected =
+    apps.length + servers.length + data.sources.length + connectedKeys.size > 0 || keyOnlyGranola;
   const hasConnected = chipOnly
     ? connectedApps.length > 0 || (category === "finance" && connectedKeys.size > 0)
-    : apps.length + servers.length + data.sources.length + connectedKeys.size > 0 || keyOnlyGranola;
+    : anyConnected;
   // Native Google items fill the catalog without a managed provider, so ask the setup state. Only
   // the deployment owner is told which providers are configured; a member (whose list is empty)
   // can tell from the catalog itself, and a failed call falls back to whether it has anything.
@@ -567,7 +577,10 @@ export function IntegrationsHome({
     if (entry) return connectFirstParty(entry);
     // A catalog app (?connect=gmail from the Inbox) opens its own page's connect flow.
     const app = data.catalog.find((item) => item.slug.toLowerCase() === wanted.toLowerCase());
-    if (app) navigate(appPath(app, { connect, next: returnTo.current ?? undefined }));
+    if (app)
+      navigate(appPath(app, { connect, next: returnTo.current ?? undefined }), {
+        state: location.state,
+      });
     else setQuery(wanted);
     returnTo.current = null;
   }, [data.loaded, data.catalog, firstPartyMcp, navigate]);
@@ -603,22 +616,18 @@ export function IntegrationsHome({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
-        <div className="max-w-[1040px]">
+        <div>
           <PageHeader title={<Trans>Integrations</Trans>} className="mb-1" />
         </div>
       </div>
       <div className={`rk-scroll min-h-0 flex-1 overflow-y-auto ${PAGE_GUTTER_X} pb-6`}>
-        <div className="max-w-[1040px]">
-          <p className="mb-5 max-w-[640px] text-muted-foreground">
-            <Trans>
-              Connect the apps you use so your bots can read and act in them. You choose which bots
-              get access to each one.
-            </Trans>
-          </p>
+        <div>
           {/* Until everything has loaded, show placeholders, not tiles that read "Not connected". */}
           {!data.loaded ? (
             <div
               aria-busy="true"
+              role="status"
+              aria-label={t`Loading integrations`}
               className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
             >
               {[0, 1, 2, 3, 4, 5].map((n) => (
@@ -633,6 +642,51 @@ export function IntegrationsHome({
           ) : null}
           {data.loaded ? (
             <>
+              {/* Above Connected, so filtering it never moves the input. */}
+              {notSetUp ? null : (
+                <>
+                  <div className="relative mb-3 max-w-[420px]">
+                    <Search
+                      aria-hidden="true"
+                      className="pointer-events-none absolute start-2.5 top-2.5 size-4 text-muted-foreground"
+                    />
+                    <Input
+                      type="search"
+                      className="h-9 ps-8"
+                      value={query}
+                      placeholder={t`Search integrations`}
+                      aria-label={t`Search integrations`}
+                      onChange={(event) => {
+                        setQuery(event.target.value);
+                        setVisible(CONNECTION_CATALOG_PAGE_SIZE);
+                      }}
+                    />
+                  </div>
+                  <fieldset
+                    aria-label={t`Category`}
+                    className="m-0 mb-4 flex min-w-0 flex-wrap gap-1.5 border-0 p-0"
+                  >
+                    {chips.map((id) => (
+                      <button
+                        key={id}
+                        type="button"
+                        aria-pressed={category === id}
+                        onClick={() => {
+                          setCategory(id);
+                          setVisible(CONNECTION_CATALOG_PAGE_SIZE);
+                        }}
+                        className={`rounded-full border px-3 py-1 text-xs ${
+                          category === id
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-card text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {labels[id]}
+                      </button>
+                    ))}
+                  </fieldset>
+                </>
+              )}
               {(searching ? connectedApps.length > 0 : hasConnected) ? (
                 <>
                   <SectionTitle>
@@ -752,50 +806,6 @@ export function IntegrationsHome({
                   ))}
                 </div>
               ) : null}
-              {notSetUp ? null : (
-                <>
-                  <div className="relative mt-6 mb-3 max-w-[420px]">
-                    <Search
-                      aria-hidden="true"
-                      className="pointer-events-none absolute start-2.5 top-2.5 size-4 text-muted-foreground"
-                    />
-                    <Input
-                      type="search"
-                      className="h-9 ps-8"
-                      value={query}
-                      placeholder={t`Search apps`}
-                      aria-label={t`Search apps`}
-                      onChange={(event) => {
-                        setQuery(event.target.value);
-                        setVisible(CONNECTION_CATALOG_PAGE_SIZE);
-                      }}
-                    />
-                  </div>
-                  <fieldset
-                    aria-label={t`Category`}
-                    className="m-0 mb-1.5 flex min-w-0 flex-wrap gap-1.5 border-0 p-0"
-                  >
-                    {chips.map((id) => (
-                      <button
-                        key={id}
-                        type="button"
-                        aria-pressed={category === id}
-                        onClick={() => {
-                          setCategory(id);
-                          setVisible(CONNECTION_CATALOG_PAGE_SIZE);
-                        }}
-                        className={`rounded-full border px-3 py-1 text-xs ${
-                          category === id
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-card text-muted-foreground hover:bg-muted"
-                        }`}
-                      >
-                        {labels[id]}
-                      </button>
-                    ))}
-                  </fieldset>
-                </>
-              )}
               {/* While filtering, every kind of match shares this one grid; its parts drop their own. */}
               <div
                 className={
@@ -815,7 +825,7 @@ export function IntegrationsHome({
                         )}
                         {results.length === 0 && !otherMatches ? (
                           <p className="py-2 text-muted-foreground" data-testid="no-apps">
-                            <Trans>No apps match.</Trans>
+                            <Trans>No integrations match.</Trans>
                           </p>
                         ) : (
                           <>
@@ -922,7 +932,7 @@ export function IntegrationsHome({
                   ) : null;
                 })}
 
-                {category === "all" || category === "chat" ? (
+                {category === "all" ? (
                   <IMessageSection
                     query={query}
                     flat={filtering}

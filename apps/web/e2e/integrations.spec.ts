@@ -32,9 +32,9 @@ test("Integrations page: filter apps, connect Gmail, manage it on its detail pag
   await expect(page.getByText("Popular", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Apps", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "All", exact: true }).click();
-  await page.getByPlaceholder("Search apps").fill("zzz-no-such-app");
+  await page.getByPlaceholder("Search integrations").fill("zzz-no-such-app");
   await expect(page.getByTestId("no-apps")).toBeVisible();
-  await page.getByPlaceholder("Search apps").fill("");
+  await page.getByPlaceholder("Search integrations").fill("");
 
   // Connect dialog: sign-in, which agents, done.
   await page.getByRole("button", { name: "Connect Gmail", exact: true }).click();

@@ -245,7 +245,7 @@ describe("importing a skill from a URL", () => {
       importer("# no frontmatter").service.importFromUrl(actor, {
         url: "https://example.com/SKILL.md",
       }),
-    ).rejects.toThrow(/frontmatter/i);
+    ).rejects.toThrow(/name and description/i);
   });
 
   it("reads name and description from an uploaded SKILL.md the same way", async () => {

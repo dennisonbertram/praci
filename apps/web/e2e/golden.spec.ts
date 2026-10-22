@@ -71,7 +71,7 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
     .toBe("waiting_takeover");
   const computerCard = page.getByTestId("computer-card");
   await expect(computerCard).toBeVisible();
-  await expect(computerCard.getByText("Needs you", { exact: true })).toBeVisible();
+  await expect(computerCard.getByText("Needs takeover", { exact: true })).toBeVisible();
   await expect(computerCard.getByTestId("computer-card-open")).toBeVisible();
   await captureScreenshot(page, testInfo, "08-protected-input-request");
   await computerCard.getByTestId("computer-card-open").click();
@@ -102,9 +102,9 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
   // Agent computer toggles the panel. Re-open when closed so Open can refresh computer status.
   const sidePanel = page.getByTestId("side-panel");
   if ((await sidePanel.getAttribute("data-panel")) === "computer") {
-    await page.getByTitle("Computer and routines").click();
+    await page.getByTitle(/^(Computer and )?routines$/i).click();
   }
-  await page.getByTitle("Computer and routines").click();
+  await page.getByTitle(/^(Computer and )?routines$/i).click();
   await expect(sidePanel).toHaveAttribute("data-panel", "computer");
   await expect(sidePanel).toHaveCSS("width", "384px");
   const [mainBox, panelBox] = await Promise.all([
@@ -131,7 +131,7 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
   });
   await captureScreenshot(page, testInfo, "09a-computer-takeover-skipped");
 
-  await page.getByRole("button", { name: "Create Routine" }).click();
+  await page.getByRole("button", { name: "Create a routine" }).click();
   await page.locator("label:has-text('Name') input").fill("Monday briefing");
   await page
     .locator("label:has-text('Instruction') textarea")
@@ -150,7 +150,7 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
   await captureScreenshot(page, testInfo, "10-routine-created");
 
   await openIntegrations(page);
-  await expect(page.getByPlaceholder("Search apps")).toBeVisible();
+  await expect(page.getByPlaceholder("Search integrations")).toBeVisible();
   await expect(page.getByRole("button", { name: "Connect Gmail", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Connect Slack", exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "11-plugins-catalog");
@@ -251,7 +251,7 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
   await page.getByText("Chief").first().click();
   const gear = page.getByRole("button", { name: "Show settings" });
   if (!(await gear.isVisible().catch(() => false))) {
-    await page.getByTitle("Computer and routines").click();
+    await page.getByTitle(/^(Computer and )?routines$/i).click();
   }
   await gear.click();
   const downloadPromise = page.waitForEvent("download");
@@ -370,8 +370,8 @@ test("sign-in, spawn, and stop work in the shell", async ({ page }, testInfo) =>
 
   await page.context().clearCookies();
   await page.goto("/sign-in");
-  await page.getByPlaceholder("Your email address").fill(email);
-  await page.getByPlaceholder("Password").fill("password12");
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page.getByLabel("Password", { exact: true }).fill("password12");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.waitForURL(/\/app/, { timeout: 20_000 });
   await expect(sidebarBotButton(page, /^Chief/)).toBeVisible();

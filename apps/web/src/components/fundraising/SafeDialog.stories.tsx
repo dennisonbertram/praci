@@ -1,5 +1,6 @@
 import type { Contact, Safe } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { withPageBehind } from "../../stories/decorators";
 import { SafeCoverSummary, SafeDialog } from "./SafeDialog";
 
 const prospect: Contact = {
@@ -54,6 +55,7 @@ const meta = {
   title: "Fundraising/SafeDialog",
   component: SafeDialog,
   args: { prospect, round, onClose: () => {}, onSave: async () => {} },
+  decorators: [withPageBehind()],
 } satisfies Meta<typeof SafeDialog>;
 export default meta;
 type Story = StoryObj<typeof meta>;

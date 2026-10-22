@@ -1,12 +1,20 @@
+import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ChatMarkdown } from "@rakazo/chat-ui/web";
 import type { ThreadMessage } from "@rakazo/contracts";
 import { commandVariableName } from "@rakazo/contracts";
-import { isApprovalAskBlock, isSecretAskBlock, selectedAskActionLabel } from "@rakazo/core";
+import {
+  formatMessageTime,
+  isApprovalAskBlock,
+  isClosedApprovalAnswer,
+  isSecretAskBlock,
+  resolveAskChoice,
+} from "@rakazo/core";
 import { Button, Input } from "@rakazo/ui-web";
 import { Check, KeyRound, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { errorText } from "../lib/user-error";
 import { SecretRequestDialog } from "./SecretRequestDialog";
 
@@ -20,15 +28,22 @@ function formatAnsweredState(
   actions?: AskBlock["actions"],
   consent?: boolean,
   share?: boolean,
+  waitsFor?: string,
 ): string {
   if (secret) return t`Saved`;
   if (!answer) return t`Answered`;
   if (share && approval) return answer === "allow" ? t`Shared` : t`Not shared`;
   if (consent && approval) return answer === "allow" ? t`Allowed` : t`Not now`;
-  if (!approval) return t`Answered: ${selectedAskActionLabel(answer, actions)}`;
+  // A typed answer is already the user's own bubble; only a chosen option is named here.
+  if (!approval) {
+    const choice = resolveAskChoice(answer, actions);
+    return choice ? t`Answered: ${choice.label}` : t`Answered`;
+  }
+  if (answer === "superseded") return t`No longer active`;
+  if (answer === "expired") return t`Expired`;
   if (outcome === "created") return t`Created`;
   if (outcome === "cancelled") return t`Cancelled`;
-  if (answer === "allow") return t`Approved`;
+  if (answer === "allow") return waitsFor ? t`Approved here. Waiting for ${waitsFor}` : t`Approved`;
   if (answer === "always") return t`Always allowed`;
   if (answer === "deny") return t`Denied`;
   return t`Answered: ${answer}`;
@@ -42,7 +57,8 @@ function answeredTone(
   outcome?: "created" | "cancelled",
 ): { className: string; Icon?: typeof Check } {
   if (secret || outcome === "created") return { className: "text-success" };
-  if (!approval || outcome === "cancelled") return { className: "text-muted-foreground" };
+  if (!approval || outcome === "cancelled" || isClosedApprovalAnswer(answer))
+    return { className: "text-muted-foreground" };
   if (answer === "deny") return { className: "text-destructive", Icon: X };
   if (answer === "allow" || answer === "always")
     return { className: "text-foreground", Icon: Check };
@@ -62,7 +78,9 @@ function approvalActionLabel(
   if (consent && id === "deny") return t`Not now`;
   if (outcome === "created") return t`Create space`;
   if (outcome === "cancelled") return t`Cancel`;
-  if (id === "allow") return t`Allow once`;
+  // A payment's label already carries the amount ("Send $300.00"): keep it.
+  if (id === "allow")
+    return fallback.startsWith("Send ") ? maskCurrencyWhenHidden(fallback) : t`Allow once`;
   if (id === "always") return t`Always allow this`;
   if (id === "deny") return t`Deny`;
   return fallback;
@@ -74,16 +92,26 @@ function secretFieldLabel(purpose: AskBlock["purpose"]): string {
   return t`Code`;
 }
 
+/** When a card here was last answered; the next card to appear soon after may land under the pointer. */
+let lastAnsweredAt = 0;
+const RECENT_ANSWER_MS = 30_000;
+const SETTLE_MS = 1000;
+
 export function AskCard({
   block,
   canAnswer,
+  requestedAt,
   onAnswer,
 }: {
   block: AskBlock;
   canAnswer: boolean;
+  /** When the card was posted, shown beside its result so similar cards can be told apart. */
+  requestedAt?: string;
   onAnswer: (text: string, username?: string) => Promise<void>;
 }) {
   const { t } = useLingui();
+  // Re-render when Hide amounts changes: a payment button carries its amount.
+  useHideAmounts();
   const [editing, setEditing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [answer, setAnswer] = useState("");
@@ -91,6 +119,16 @@ export function AskCard({
   const [error, setError] = useState<string | null>(null);
   const questionId = useId();
   const answeredHere = useRef(false);
+  // A card that replaces one just answered keeps its buttons off for a second, so a second click
+  // meant for the old card cannot approve the new one.
+  const [settling, setSettling] = useState(
+    () => block.status !== "answered" && Date.now() - lastAnsweredAt < RECENT_ANSWER_MS,
+  );
+  useEffect(() => {
+    if (!settling) return;
+    const timer = setTimeout(() => setSettling(false), SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [settling]);
   const submitting = pendingAction !== null;
   const approvalActions = isApprovalAskBlock(block) ? block.actions : undefined;
   const askActions = block.actions;
@@ -125,6 +163,7 @@ export function AskCard({
     }
     try {
       await onAnswer(submitValue, submitUsername);
+      lastAnsweredAt = Date.now();
       answeredHere.current = true;
       // The card's buttons vanish with the answer; keep the keyboard in the conversation.
       if (!secretInput) document.querySelector<HTMLElement>("[data-composer-input]")?.focus();
@@ -172,17 +211,17 @@ export function AskCard({
       {block.detail && block.consent ? (
         <p className="mt-2 text-[13px] text-muted-foreground">{block.detail}</p>
       ) : block.detail && !secretInput && block.detailFolded ? (
-        <details className="mt-3 text-[13px] text-muted-foreground">
+        <details key={block.status} className="mt-3 text-[13px] text-muted-foreground">
           <summary className="w-fit cursor-pointer">
             <Trans>Details</Trans>
           </summary>
           <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-muted px-3.5 py-3 font-mono text-[12.5px] leading-[1.7]">
-            {block.detail}
+            {block.detail.trim()}
           </pre>
         </details>
       ) : block.detail && !secretInput ? (
-        <p className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words text-[13.5px] leading-[1.5] text-muted-foreground">
-          {block.detail}
+        <p className="mt-3 whitespace-pre-wrap break-words text-[13.5px] leading-[1.5] text-muted-foreground">
+          {block.detail.trim()}
         </p>
       ) : null}
       {block.status === "answered" ? (
@@ -207,7 +246,16 @@ export function AskCard({
                 askActions,
                 Boolean(block.consent),
                 Boolean(block.share),
+                block.waitsFor,
               )}
+              {requestedAt && approvalActions ? (
+                <time
+                  dateTime={requestedAt}
+                  className="ms-auto shrink-0 whitespace-nowrap font-normal text-muted-foreground"
+                >
+                  {formatMessageTime(requestedAt, i18n.locale || "en")}
+                </time>
+              ) : null}
             </div>
           );
         })()
@@ -230,7 +278,7 @@ export function AskCard({
                   <Button
                     variant="link"
                     className="h-auto p-0"
-                    disabled={submitting}
+                    disabled={submitting || settling}
                     onClick={() => void submitAnswer(action.id)}
                   >
                     {pendingAction === action.id ? (
@@ -248,7 +296,7 @@ export function AskCard({
                   key={action.id}
                   variant={approvalActions && action.id === "allow" ? "default" : "outline"}
                   className="h-auto w-full justify-start whitespace-normal px-3.5 py-3 text-start font-normal"
-                  disabled={submitting}
+                  disabled={submitting || settling}
                   onClick={() => void submitAnswer(action.id)}
                 >
                   {pendingAction === action.id ? (
@@ -270,7 +318,7 @@ export function AskCard({
         </div>
       ) : secretInput ? (
         <div className="mt-3.5 border-t border-border pt-3.5">
-          <Button disabled={submitting} onClick={() => setDialogOpen(true)}>
+          <Button disabled={submitting || settling} onClick={() => setDialogOpen(true)}>
             {submitting ? <Trans>Saving…</Trans> : <Trans>Provide secret</Trans>}
           </Button>
           <SecretRequestDialog
@@ -304,7 +352,7 @@ export function AskCard({
             </Button>
             <Button
               variant="outline"
-              disabled={submitting}
+              disabled={submitting || settling}
               onClick={() => {
                 setAnswer("");
                 setEditing(false);
@@ -316,10 +364,14 @@ export function AskCard({
         </form>
       ) : (
         <div className="mt-3.5 flex gap-2">
-          <Button disabled={submitting} onClick={() => void submitAnswer("approved")}>
+          <Button disabled={submitting || settling} onClick={() => void submitAnswer("approved")}>
             {submitting ? <Trans>Sending…</Trans> : <Trans>Send it</Trans>}
           </Button>
-          <Button variant="outline" disabled={submitting} onClick={() => setEditing(true)}>
+          <Button
+            variant="outline"
+            disabled={submitting || settling}
+            onClick={() => setEditing(true)}
+          >
             <Trans>Edit first</Trans>
           </Button>
         </div>

@@ -20,13 +20,13 @@ import {
   Ellipsis,
   Mail,
   MailOpen,
+  Paperclip,
   ShieldAlert,
   ShieldCheck,
   Star,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
-import { useState } from "react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { formatMailTime } from "../../lib/mail-time";
 
@@ -37,6 +37,66 @@ const LABEL_DOT = {
   spam: "bg-warning",
   junk: "border-2 border-warning",
 } as const;
+
+/** The words of a search worth marking: operators like `from:` are dropped, and so are negations. */
+export function searchTerms(query: string | undefined): string[] {
+  const words = (query ?? "").match(/[^\s"()]+/g) ?? [];
+  const terms = words.flatMap((word) => {
+    if (word.startsWith("-")) return [];
+    const [, operator = "", rest = word] = word.match(/^([a-z_]+):(.*)$/i) ?? [];
+    // Other operators (has:, is:, after:) filter without matching words.
+    if (operator && !/^(from|to|subject)$/i.test(operator)) return [];
+    const value = rest;
+    return value.length > 1 && !/^(or|and)$/i.test(value) ? [value] : [];
+  });
+  return [...new Set(terms.map((term) => term.toLowerCase()))];
+}
+
+const termPattern = (terms: string[]) =>
+  new RegExp(
+    `(${terms.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`,
+    "gi",
+  );
+
+/** The snippet cut to start just before its first match, or null when it holds none. */
+export function matchSnippet(snippet: string, terms: string[]): string | null {
+  const at = snippet.search(termPattern(terms));
+  if (at < 0) return null;
+  return at > 30 ? `…${snippet.slice(at - 20)}` : snippet;
+}
+
+/** The text with search matches in <mark>; the text is never parsed as HTML. */
+function Marked({ text, terms }: { text: string; terms: string[] }) {
+  if (terms.length === 0) return <>{text}</>;
+  const pattern = termPattern(terms);
+  return (
+    <>
+      {text.split(pattern).map((part, index) =>
+        // An odd index is a match: split keeps the captured group between the pieces.
+        index % 2 ? (
+          // biome-ignore lint/suspicious/noArrayIndexKey: the parts are a fixed split of one string
+          <mark key={index} className="rounded-sm bg-warning/25 px-0.5 text-inherit">
+            {part}
+          </mark>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
+}
+
+/** Left and Right move among a row's button and its actions, which stay out of the Tab order. */
+function moveAmongStops(event: React.KeyboardEvent<HTMLElement>) {
+  if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+  const stops = [...event.currentTarget.querySelectorAll<HTMLElement>("[data-row-stop]")];
+  const at = stops.indexOf(document.activeElement as HTMLElement);
+  if (at < 0) return;
+  const next = stops[at + (event.key === "ArrowRight" ? 1 : -1)];
+  if (!next) return;
+  event.preventDefault();
+  next.focus();
+}
 
 /** Spam and trash are for inbox mail; Not spam for mail the Spam pile shows. */
 export type MailMoveOp = "spam" | "notSpam" | "trash";
@@ -52,12 +112,15 @@ export interface RowPicking {
   showArchived?: boolean;
   /** Hide the Newsletter label, as in the Newsletters pile. */
   hideNewsletter?: boolean;
+  /** The search the rows answer: matched words are marked and the snippet shows the match. */
+  query?: string;
 }
 
 /** The InboxRow props for one row of a list that passes `RowPicking`. */
 export const rowPicking = (id: string, picking: RowPicking) => ({
   showArchived: picking.showArchived,
   hideNewsletter: picking.hideNewsletter,
+  query: picking.query,
   ...(picking.onMove ? { onMove: (op: MailMoveOp) => picking.onMove?.(op, id) } : {}),
   ...(picking.onPick
     ? {
@@ -77,10 +140,13 @@ export function InboxGroup({
   onRead,
   selectedId,
   hideAttention,
+  unreadTotal,
   ...picking
 }: {
   /** Omitted for search results, which show one count instead. */
   title?: React.ReactNode;
+  /** Unread across the whole group when only the first rows are listed, so the count holds when it expands. */
+  unreadTotal?: number;
   rows: MailRow[];
   onOpen: (id: string) => void;
   /** Present only while triage is enabled. */
@@ -94,7 +160,7 @@ export function InboxGroup({
   const { t } = useLingui();
   if (rows.length === 0) return null;
   // The same number the sidebar badge counts: mail not yet read, not every row in the group.
-  const unread = rows.filter((row) => row.unread).length;
+  const unread = unreadTotal ?? rows.filter((row) => row.unread).length;
   return (
     <section className="mb-5">
       {title ? (
@@ -138,6 +204,7 @@ export function InboxRow({
   onMove,
   showArchived = true,
   hideNewsletter = false,
+  query,
 }: {
   row: MailRow;
   onOpen: () => void;
@@ -156,11 +223,12 @@ export function InboxRow({
   onMove?: (op: MailMoveOp) => void;
   showArchived?: boolean;
   hideNewsletter?: boolean;
+  query?: string;
 }) {
   const { t } = useLingui();
   useHideAmounts();
   const labelNames = {
-    attention: t`Needs attention`,
+    attention: row.needsReply === true ? t`Needs reply` : t`Needs attention`,
     newsletter: t`Newsletter`,
     spam: t`Spam`,
     junk: t`Junk`,
@@ -170,12 +238,13 @@ export function InboxRow({
     (hideAttention && found === "attention") || (hideNewsletter && found === "newsletter")
       ? null
       : found;
-  const summary = rowSummary(row);
+  const terms = searchTerms(query);
+  // A search shows the snippet around the match, so the row says why it was found.
+  const summary = terms.length
+    ? (matchSnippet(row.snippet, terms) ?? rowSummary(row))
+    : rowSummary(row);
   // The checkbox takes the place of the unread dot while the pointer is on the row or any row is checked.
   const showPick = picked || anyPicked;
-  // The revealed buttons join the Tab order only while the row has focus, so a list keeps one stop per row.
-  const [focusWithin, setFocusWithin] = useState(false);
-  const reachable = selected || focusWithin;
   const muted = row.feedback === "noise";
   // Marks belong to the sender, so the hint says so.
   const markHint = {
@@ -213,21 +282,16 @@ export function InboxRow({
   ];
   return (
     <div className="border-b border-foreground/10">
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: only tracks focus inside the row; the row button and actions are the controls */}
-      <div
-        className="group/row relative"
-        onFocus={() => setFocusWithin(true)}
-        onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) setFocusWithin(false);
-        }}
-      >
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: only moves focus between the row button and its actions; those are the controls */}
+      <div className="group/row relative" onKeyDown={moveAmongStops}>
         <button
           type="button"
           aria-haspopup="dialog"
           aria-current={selected ? "true" : undefined}
           data-row-id={row.id}
+          data-row-stop=""
           onClick={onOpen}
-          className={`grid h-16 w-full min-w-0 grid-cols-[8px_minmax(0,1fr)_auto] content-center items-center gap-x-2 gap-y-0.5 border-s-2 ps-2.5 pe-3 text-start text-[15px] font-normal hover:bg-muted @md:h-14 @md:gap-x-4 @md:ps-3.5 @md:pe-4 @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_minmax(4rem,auto)] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_minmax(4rem,auto)] @3xl:grid-cols-[8px_200px_minmax(0,1fr)_auto_minmax(4rem,auto)] ${selected ? "border-primary bg-muted" : "border-transparent"} ${marks.length + actions.length ? "pointer-coarse:pe-16" : ""} ${muted ? "text-muted-foreground" : ""}`}
+          className={`grid h-16 w-full min-w-0 grid-cols-[8px_minmax(0,1fr)_auto] content-center items-center gap-x-2 gap-y-0.5 border-s-2 ps-2.5 pe-3 text-start text-[15px] font-normal outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset @md:h-14 @md:gap-x-4 @md:ps-3.5 @md:pe-4 @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_minmax(4rem,auto)] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_minmax(4rem,auto)] @3xl:grid-cols-[8px_200px_minmax(0,1fr)_auto_minmax(4rem,auto)] ${selected ? "border-primary bg-muted" : "border-transparent"} ${marks.length + actions.length ? "pointer-coarse:pe-16" : ""} ${muted ? "text-muted-foreground" : ""}`}
         >
           <span
             aria-hidden="true"
@@ -245,7 +309,7 @@ export function InboxRow({
                 className="me-1 inline size-3.5 align-text-bottom text-destructive"
               />
             ) : null}
-            {row.fromSelf ? t`You` : row.from}
+            {row.fromSelf ? t`You` : <Marked text={row.from} terms={terms} />}
             {row.unread ? (
               <span className="sr-only">
                 <Trans> (unread)</Trans>
@@ -264,9 +328,12 @@ export function InboxRow({
                 className={`me-1.5 inline-block size-2 rounded-full align-middle @md:hidden ${LABEL_DOT[label]}`}
               />
             ) : null}
-            {maskCurrencyWhenHidden(row.subject)}
+            <Marked text={maskCurrencyWhenHidden(row.subject)} terms={terms} />
             {summary ? (
-              <span className="text-muted-foreground"> — {maskCurrencyWhenHidden(summary)}</span>
+              <span className="text-muted-foreground">
+                {" — "}
+                <Marked text={maskCurrencyWhenHidden(summary)} terms={terms} />
+              </span>
             ) : null}
           </span>
           {label && row.inInbox ? (
@@ -291,6 +358,13 @@ export function InboxRow({
             dateTime={row.receivedAt}
             className={`col-start-3 row-start-1 text-end text-[13px] text-muted-foreground @md:col-start-5 whitespace-nowrap tabular-nums ${marks.length + actions.length ? "@max-md:group-focus-within/row:opacity-0 @max-md:group-hover/row:opacity-0 pointer-coarse:opacity-100" : ""}`}
           >
+            {row.hasAttachment ? (
+              <Paperclip
+                role="img"
+                aria-label={t`Has attachment`}
+                className="me-1 inline size-3 align-text-bottom"
+              />
+            ) : null}
             {formatMailTime(row.receivedAt)}
           </time>
         </button>
@@ -299,7 +373,11 @@ export function InboxRow({
             aria-label={t`Select ${row.from}`}
             checked={picked}
             onClick={(event) => onPick({ shift: event.shiftKey })}
-            className={`absolute start-2 top-1/2 z-10 -translate-y-1/2 @md:start-3 pointer-coarse:after:-start-3.25 pointer-coarse:after:-end-4.25 ${showPick ? "" : "opacity-0 focus-visible:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100"}`}
+            // One Tab stop per row: Right from the row button reaches the box, and x checks the selected row.
+            tabIndex={-1}
+            data-row-stop=""
+            // On touch the control itself is 44 px; the 16 px box is drawn inside it.
+            className={`absolute start-2 top-1/2 z-10 -translate-y-1/2 @md:start-3 pointer-coarse:-start-1.5 pointer-coarse:size-11 pointer-coarse:border-transparent pointer-coarse:bg-transparent pointer-coarse:data-checked:bg-transparent pointer-coarse:dark:bg-transparent pointer-coarse:after:hidden pointer-coarse:before:absolute pointer-coarse:before:size-4 pointer-coarse:before:rounded-[4px] pointer-coarse:before:border pointer-coarse:before:border-input pointer-coarse:data-checked:before:border-primary pointer-coarse:data-checked:before:bg-primary pointer-coarse:[&>[data-slot=checkbox-indicator]]:relative ${showPick ? "" : "opacity-0 focus-visible:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100"}`}
           />
         ) : null}
         {marks.length + actions.length ? (
@@ -317,7 +395,8 @@ export function InboxRow({
                           variant="ghost"
                           size="icon-xs"
                           aria-label={name}
-                          tabIndex={reachable ? 0 : -1}
+                          tabIndex={-1}
+                          data-row-stop=""
                           className="text-muted-foreground"
                           onClick={(event) => {
                             event.stopPropagation();
@@ -342,7 +421,8 @@ export function InboxRow({
                           size="icon-xs"
                           aria-label={name}
                           aria-pressed={pressed}
-                          tabIndex={reachable ? 0 : -1}
+                          tabIndex={-1}
+                          data-row-stop=""
                           className={pressed ? "text-foreground" : "text-muted-foreground"}
                           onClick={(event) => {
                             event.stopPropagation();
@@ -367,7 +447,7 @@ export function InboxRow({
                     className={`absolute end-3 top-1/2 hidden -translate-y-1/2 bg-muted pointer-coarse:inline-flex pointer-coarse:size-10 @max-md:inline-flex aria-expanded:opacity-100 pointer-coarse:opacity-100 ${selected ? "" : "opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
                   />
                 }
-                aria-label={t`More`}
+                aria-label={t`More actions for ${row.from}`}
               >
                 <Ellipsis aria-hidden="true" />
               </DropdownMenuTrigger>

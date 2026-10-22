@@ -57,6 +57,13 @@ test("create opens a greeted chat; picker lists bots; sidebar collapses", async 
   await page.mouse.up();
   await expect(page.getByTestId("bots-sidebar")).toHaveAttribute("data-collapsed", "false");
   await captureScreenshot(page, testInfo, "bots-sidebar-expanded");
+
+  // The tour card is as wide as the sidebar, so the tour expands a collapsed rail.
+  await page.getByTestId("minimize-bots-sidebar").click();
+  await expect(page.getByTestId("bots-sidebar")).toHaveAttribute("data-collapsed", "true");
+  await page.getByTestId("user-menu-trigger").click();
+  await page.getByTestId("take-tour").click();
+  await expect(page.getByTestId("bots-sidebar")).toHaveAttribute("data-collapsed", "false");
 });
 
 test("picker rows explain groups and spaces", async ({ page }, testInfo) => {

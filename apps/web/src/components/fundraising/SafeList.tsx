@@ -27,6 +27,7 @@ import { todayDay } from "../../lib/day-input";
 import { shortDay, usdFigure } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
+import { SectionCard } from "../SectionCard";
 
 export type SafeStep = Exclude<SafeMarkInput["action"], "cancel">;
 
@@ -155,10 +156,7 @@ export function AttentionStrip({
   });
   if (items.length === 0) return null;
   return (
-    <section
-      aria-label={t`Attention`}
-      className="max-w-5xl rounded-lg border border-border px-3.5 py-2"
-    >
+    <SectionCard title={t`Attention`} attention>
       <ul>
         {items.map(({ safe, why }) => (
           <li
@@ -196,7 +194,7 @@ export function AttentionStrip({
           </li>
         ))}
       </ul>
-    </section>
+    </SectionCard>
   );
 }
 
@@ -232,10 +230,7 @@ function SafeRow({
     native ? null : t`from Mercury`,
   ].filter(Boolean);
   return (
-    <li
-      data-safe-id={safe.id}
-      className="flex min-h-11 items-center gap-2 border-t border-border px-2 first:border-t-0"
-    >
+    <li data-safe-id={safe.id} className="flex min-h-13 items-center gap-2 border-t border-border">
       <div className="min-w-0 flex-1">
         <button
           type="button"

@@ -87,6 +87,18 @@ it("offers Ask Chief beside Done on the last step only, and it ends the tour fir
   expect(onAsk).toHaveBeenCalledTimes(1);
 });
 
+it("keeps Back and the primary button in the same slots on every stop", async () => {
+  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
+  await click("Next");
+  const middle = [button("Back").className, button("Next").className];
+  await click("Next");
+  // Last stop: Ask Chief moves into the body; Skip tour stays in its slot, hidden.
+  expect(button("Back").className).toBe(middle[0]);
+  expect(button("Done").className).toContain("min-w-16");
+  expect(button("Next")).toBeUndefined();
+  expect(button("Skip tour")?.className ?? "invisible").toContain("invisible");
+});
+
 it("records Skip tour", async () => {
   await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
   await click("Skip tour");
@@ -112,7 +124,7 @@ it("tells the shell about Skip tour, so Ask Chief stays one tap away, but not ab
   expect(onSkip).toHaveBeenCalledTimes(1);
 });
 
-it("on a phone the card sits within 120px of its target, above a target in the lower half", async () => {
+it("on a phone the card sits right beside its target, below a high one and above a low one", async () => {
   window.matchMedia = ((query: string) => ({
     matches: false,
     media: query,
@@ -129,12 +141,49 @@ it("on a phone the card sits within 120px of its target, above a target in the l
   at("user-menu", 700);
   await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
   const card = () => document.querySelector("[data-testid='tour-card']") as HTMLElement;
-  // Upper-half target: the card starts just below it.
-  expect(card().style.top).toBe("150px");
+  // Upper-half target (bottom at 140): the card starts 8px under it.
+  expect(card().style.top).toBe("148px");
+  expect(card().style.bottom).toBe("");
   await click("Next");
   await click("Next");
-  // Lower-half target: the card ends just above it (768px window).
-  expect(card().style.bottom).toBe(`${window.innerHeight - 700 + 10}px`);
+  // Lower-half target (top at 700): the card ends 8px above it.
+  expect(card().style.bottom).toBe(`${window.innerHeight - 700 + 8}px`);
+  expect(card().style.top).toBe("");
+});
+
+it("on desktop the card sits beside the sidebar at the foot of the page, the same at every stop", async () => {
+  const aside = document.createElement("aside");
+  aside.getBoundingClientRect = () =>
+    ({
+      top: 0,
+      bottom: window.innerHeight,
+      left: 0,
+      right: 316,
+      width: 316,
+      height: window.innerHeight,
+    }) as DOMRect;
+  document.body.append(aside);
+  const target = document.querySelector('[data-tour="sidebar-inbox"]') as HTMLElement;
+  aside.append(target);
+  target.getBoundingClientRect = () =>
+    ({ top: 100, bottom: 140, left: 10, right: 300, width: 290, height: 40 }) as DOMRect;
+  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
+  const card = document.querySelector("[data-testid='tour-card']") as HTMLElement;
+  // Not level with the target: that would cover the page title or the chat's first lines.
+  expect(card.style.top).toBe("");
+  expect(card.style.bottom).toBe("16px");
+  expect(card.style.left).toBe("324px");
+  expect(card.style.width).toBe("288px");
+});
+
+it("does not tell anyone to connect Gmail, which may already be connected", async () => {
+  for (const el of document.querySelectorAll("[data-tour]")) el.remove();
+  const el = document.createElement("button");
+  el.dataset.tour = "sidebar-integrations";
+  document.body.append(el);
+  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
+  expect(document.body.textContent).toContain("add more in Integrations");
+  expect(document.body.textContent).not.toContain("Gmail");
 });
 
 it("shows nothing and saves nothing when closed or when no anchor exists", async () => {
@@ -184,12 +233,13 @@ it("is a complete tour, top to bottom, ending on the composer", async () => {
     if (i < order.length - 1) await click("Next");
   }
   expect(document.body.textContent).toContain("9/9");
+  expect(seen[0]).toMatch(/^Search: Type here/);
   expect(seen[0]).toContain("find any page, chat");
   expect(seen[6]).toContain("Ask Chief");
   expect(seen[1]).toContain("create a bot");
   // New users already ask before email and purchases, so the tour sends nobody to Settings.
   expect(seen[6]).not.toContain("Settings");
-  expect(seen[7]).toContain("Connect Gmail");
+  expect(seen[7]).toContain("Integrations");
   expect(seen[7]).toContain("bots");
   expect(seen.join(" ")).not.toMatch(/agent|apps/i);
   expect(seen[8]).toContain("retake this tour");

@@ -15,6 +15,7 @@ import {
   pauseRunForInput,
   pauseRunForTakeover,
   sendUserMessage,
+  setApprovalWaitsFor,
   setMailApprovalOutcome,
 } from "./events.js";
 import { RunHistoryWriteError } from "./messages.js";
@@ -86,11 +87,13 @@ describe("finalizeRun", () => {
       $queryRaw: vi.fn(async () => []),
       run: {
         findUnique: vi.fn(async () => ({ status: "running" })),
-        findUniqueOrThrow: vi.fn(async () => ({ sourceMessage: null })),
+        findUniqueOrThrow: vi.fn(async () => ({ sourceMessage: null, userId: "user-1" })),
+        findMany: vi.fn(async () => []),
         findFirst: vi.fn(async () => null),
         updateMany: vi.fn(async () => ({ count: 1 })),
       },
       attempt: { updateMany: vi.fn(async () => ({ count: 1 })) },
+      message: { findMany: vi.fn(async () => []) },
       task: { updateMany: vi.fn(async () => ({ count: 1 })) },
       thread: { update: vi.fn(async () => ({ nextEventSeq: 1 })) },
       event: { create: createEvent, deleteMany: vi.fn(async () => ({ count: 0 })) },
@@ -134,12 +137,14 @@ describe("finalizeRun", () => {
       $queryRaw: vi.fn(async () => []),
       run: {
         findUnique: vi.fn(async () => ({ status: "running", startedAt: null })),
-        findUniqueOrThrow: vi.fn(async () => ({ sourceMessage: null })),
+        findUniqueOrThrow: vi.fn(async () => ({ sourceMessage: null, userId: "user-1" })),
+        findMany: vi.fn(async () => []),
         findFirst: vi.fn(async () => null),
         updateMany: vi.fn(async () => ({ count: 1 })),
         create: vi.fn(async () => ({ id: "run-reply" })),
       },
       attempt: { updateMany: vi.fn(async () => ({ count: 1 })) },
+      message: { findMany: vi.fn(async () => []) },
       task: {
         updateMany: vi.fn(async () => ({ count: 1 })),
         create: vi.fn(async () => ({ id: "task-reply" })),
@@ -199,12 +204,14 @@ describe("finalizeRun", () => {
       $queryRaw: vi.fn(async () => []),
       run: {
         findUnique: vi.fn(async () => ({ status: "running", startedAt: null })),
-        findUniqueOrThrow: vi.fn(async () => ({ sourceMessage: null })),
+        findUniqueOrThrow: vi.fn(async () => ({ sourceMessage: null, userId: "user-1" })),
+        findMany: vi.fn(async () => []),
         findFirst: vi.fn(async () => null),
         updateMany: vi.fn(async () => ({ count: 1 })),
         create: vi.fn(async () => ({ id: "run-reply" })),
       },
       attempt: { updateMany: vi.fn(async () => ({ count: 1 })) },
+      message: { findMany: vi.fn(async () => []) },
       task: {
         updateMany: vi.fn(async () => ({ count: 1 })),
         create: vi.fn(async () => ({ id: "task-reply" })),
@@ -276,12 +283,14 @@ describe("finalizeRun", () => {
       $queryRaw: vi.fn(async () => []),
       run: {
         findUnique: vi.fn(async () => ({ status: "running", startedAt: null })),
-        findUniqueOrThrow: vi.fn(async () => ({ sourceMessage: null })),
+        findUniqueOrThrow: vi.fn(async () => ({ sourceMessage: null, userId: "user-1" })),
+        findMany: vi.fn(async () => []),
         findFirst: vi.fn(async () => null),
         updateMany: vi.fn(async () => ({ count: 1 })),
         create: vi.fn(async () => ({ id: "run-reply" })),
       },
       attempt: { updateMany: vi.fn(async () => ({ count: 1 })) },
+      message: { findMany: vi.fn(async () => []) },
       task: {
         updateMany: vi.fn(async () => ({ count: 1 })),
         create: vi.fn(async () => ({ id: "task-reply" })),
@@ -644,6 +653,81 @@ describe("pauseRunForInput", () => {
       "run.waiting_input",
     ]);
     expect(publish).toHaveBeenCalledWith("thread:thread-1", JSON.stringify({ cursor: 8 }));
+  });
+
+  it("reuses the pending approval card when a resumed run asks for the same effect again", async () => {
+    const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
+      run: {
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUnique: vi.fn().mockResolvedValue({
+          status: "running",
+          createdAt: new Date("2026-08-16T12:00:00.000Z"),
+          threadId: "thread-1",
+        }),
+      },
+      attempt: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      thread: { update: vi.fn().mockResolvedValue({ nextEventSeq: 9 }) },
+      message: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: "message-1",
+            blocks: [
+              {
+                kind: "ask",
+                text: "Send $300?",
+                status: "pending",
+                approvalEffectId: "effect-1",
+                actions: [
+                  { id: "allow", label: "Send" },
+                  { id: "deny", label: "Deny" },
+                ],
+              },
+            ],
+          },
+        ]),
+        create: vi.fn(),
+      },
+      event: {
+        create: vi.fn(async ({ data }: { data: { seq: number; type: string } }) => ({
+          ...event(data.seq),
+          type: data.type,
+        })),
+        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+    };
+    const prisma = {
+      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+    } as unknown as PrismaClient;
+
+    await expect(
+      pauseRunForInput(prisma, {
+        spaceId: "workspace-1",
+        threadId: "thread-1",
+        botId: "bot-1",
+        runId: "run-1",
+        attemptId: "attempt-1",
+        leaseOwner: "worker-1",
+        leaseFence: 3,
+        blocks: [
+          {
+            kind: "ask",
+            text: "Send $300?",
+            approvalEffectId: "effect-1",
+            actions: [
+              { id: "allow", label: "Send" },
+              { id: "deny", label: "Deny" },
+            ],
+          },
+        ],
+      }),
+    ).resolves.toBe(true);
+
+    // One payment request keeps one live card; the run still waits on it.
+    expect(tx.message.create).not.toHaveBeenCalled();
+    expect(tx.run.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: "waiting_input" }) }),
+    );
   });
 
   it("stores offered choice actions on the run checkpoint for resume", async () => {
@@ -1514,6 +1598,45 @@ describe("answerWaitingRunWithTextInTransaction", () => {
         data: { status: "queued" },
       }),
     );
+  });
+
+  it("never resolves a payment card from relayed 'Yes, pay' text", async () => {
+    const tx = {
+      message: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: "message-1",
+            blocks: [
+              {
+                kind: "ask",
+                approvalEffectId: "effect-money",
+                text: "Send $1,200.00?",
+                status: "pending",
+                actions: [
+                  { id: "allow", label: "Send" },
+                  { id: "deny", label: "Deny" },
+                ],
+              },
+            ],
+          },
+        ]),
+      },
+      run: { findFirst: vi.fn(), updateMany: vi.fn() },
+      task: { updateMany: vi.fn() },
+      externalEffect: { update: vi.fn() },
+    };
+
+    await expect(
+      answerWaitingRunWithTextInTransaction(tx as never, {
+        spaceId: "workspace-1",
+        threadId: "thread-1",
+        runId: "run-1",
+        answeredByUserId: "user-1",
+        answer: "Yes, pay $1,200 to Acme",
+      }),
+    ).resolves.toBeNull();
+    expect(tx.run.updateMany).not.toHaveBeenCalled();
+    expect(tx.externalEffect.update).not.toHaveBeenCalled();
   });
 
   it("leaves approval and secret cards on the dedicated answer path", async () => {
@@ -3442,6 +3565,47 @@ describe("setMailApprovalOutcome", () => {
       data: { result: { note: "nothing was sent", outcome: "failed" } },
     });
     expect(tx.message.update.mock.calls[0]?.[0].data.blocks[0].mail.outcome).toBe("failed");
+  });
+});
+
+describe("setApprovalWaitsFor", () => {
+  it("marks the card as waiting on the service that accepted the payment", async () => {
+    const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
+      message: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "message-1",
+          runId: "run-1",
+          blocks: [
+            { kind: "ask", approvalEffectId: "effect-1", text: "Send $5?", status: "answered" },
+          ],
+        }),
+        update: vi.fn().mockResolvedValue({ id: "message-1" }),
+      },
+      run: { findUnique: vi.fn().mockResolvedValue({ botId: "bot-1" }) },
+      thread: { update: vi.fn().mockResolvedValue({ nextEventSeq: 10 }) },
+      event: {
+        create: vi.fn(async ({ data }: { data: { seq: number; type: string } }) => ({
+          ...event(data.seq),
+          type: data.type,
+        })),
+      },
+    };
+    const prisma = {
+      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+    } as unknown as PrismaClient;
+    await setApprovalWaitsFor(
+      prisma,
+      {
+        spaceId: "workspace-1",
+        threadId: "thread-1",
+        messageId: "message-1",
+        effectId: "effect-1",
+        waitsFor: "Mercury",
+      },
+      new TestFanout(),
+    );
+    expect(tx.message.update.mock.calls[0]?.[0].data.blocks[0].waitsFor).toBe("Mercury");
   });
 });
 

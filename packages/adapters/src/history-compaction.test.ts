@@ -6,6 +6,7 @@ import type {
 } from "@rakazo/adapter-kit";
 import { historyCompactJob } from "@rakazo/adapter-kit";
 import type { MessageBlock } from "@rakazo/contracts";
+import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createLogger, createTestSink, installLogger, wrapJobPayload } from "@rakazo/logging";
 import { describe, expect, it, vi } from "vitest";
@@ -230,6 +231,8 @@ type HarnessMessage = {
 function compactionHarness(
   options: {
     deploymentModelKey?: string;
+    /** Whether the thread owner allowed the model; default true. */
+    consented?: boolean;
     deploymentModelConfigured?: boolean;
     settings?: { defaultModelProvider: string | null; defaultModelId: string | null } | null;
     messages?: HarnessMessage[];
@@ -297,6 +300,11 @@ function compactionHarness(
           thread.historyCompactionSummary = args.data.historyCompactionSummary;
           return { count: 1 };
         },
+      ),
+    },
+    aiDataConsent: {
+      findUnique: vi.fn(async () =>
+        options.consented === false ? null : { version: AI_DISCLOSURE_VERSION },
       ),
     },
     event: {
@@ -391,6 +399,15 @@ function compactionHarness(
     deps,
   };
 }
+
+describe("compaction needs AI data consent for the summarizing model", () => {
+  it("sends nothing and leaves the history alone when the model is not allowed", async () => {
+    const harness = compactionHarness({ deploymentModelKey: "openrouter-key", consented: false });
+    await compactHistory(harness.deps, "thread-1");
+    expect(harness.runtime.run).not.toHaveBeenCalled();
+    expect(harness.prisma.thread.updateMany).not.toHaveBeenCalled();
+  });
+});
 
 describe("summarizeTimeoutMs", () => {
   it("keeps the short timeout for a small prompt", () => {

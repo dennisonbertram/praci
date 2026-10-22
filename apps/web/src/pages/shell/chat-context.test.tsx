@@ -44,8 +44,8 @@ it("renders an unselectable semantic separator", () => {
       <TimeSeparator createdAt={new Date(2026, 9, 6, 16, 5).toISOString()} locale="en-US" />,
     ),
   );
-  expect(container.querySelector("h3")?.textContent).toContain("4:05 PM");
-  expect(container.querySelector("h3")?.className).toContain("select-none");
+  expect(container.querySelector("h2")?.textContent).toContain("4:05 PM");
+  expect(container.querySelector("h2")?.className).toContain("select-none");
 });
 it("shows a compact composer quote and dismisses it", () => {
   const onDismiss = vi.fn();

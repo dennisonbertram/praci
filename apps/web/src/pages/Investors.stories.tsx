@@ -517,10 +517,47 @@ const fullSnapshot = {
   ],
 };
 
-/** A long table with SAFE holders shown as plain rows outside the percent column. */
+const sentSafe = (id: string, investorName: string, amountCents: number) => ({
+  id,
+  source: "mercury" as const,
+  contactId: null,
+  roundId: null,
+  investorName,
+  investorEmail: null,
+  amountCents,
+  valuationType: "post_money_cap" as const,
+  capCents: 1_000_000_000,
+  discountPercent: null,
+  mfn: false,
+  proRata: false,
+  governingState: null,
+  investmentDate: null,
+  expiresAt: null,
+  canceledAt: null,
+  sentAt: "2026-10-01T00:00:00.000Z",
+  signedByOwnerAt: null,
+  signedByInvestorAt: null,
+  paidAt: null,
+  documentUrl: null,
+  status: "sent" as const,
+  createdAt: "2026-10-01T00:00:00.000Z",
+});
+
+/**
+ * A long table. SAFEs come only from the SAFE list (as on Fundraising): a SAFE in the snapshot is not
+ * a row, Equity raised adds the Funded SAFEs (a Sent one shows as committed), and one group below the table converts them at cap.
+ */
 export const FullTableWithSafes: Story = {
   beforeEach: () =>
     mockRpc({
+      "fundraising.safes.list": [
+        sentSafe("s1", "Harbor Angels", 5_000_000),
+        {
+          ...sentSafe("s2", "Ada Fund", 25_000_000),
+          status: "funded" as const,
+          paidAt: "2026-10-05T00:00:00.000Z",
+        },
+      ],
       "contacts.list": [
         contact("c9", "Casey Advisor", "other", "Independent advisor"),
         contact("c10", "Angel One", "investor", null),

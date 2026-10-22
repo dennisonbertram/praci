@@ -58,6 +58,16 @@ describe("sidebarGroupsForSpaces", () => {
     expect(group).toMatchObject({ title: "Personnel", spaceName: "Personal", relabeled: true });
   });
 
+  it("lists the only space's chats with no heading or menu, and brings them back with a second space", () => {
+    const only = [space("space-1", "Personal", { canRename: true })];
+    const [solo] = sidebarGroupsForSpaces(only, "", "space-1", null);
+    expect(solo).toMatchObject({ title: null, canRenameSpace: false, canDeleteSpace: false });
+    expect(solo?.bots).toHaveLength(1);
+
+    const both = sidebarGroupsForSpaces([...only, space("space-2", "Work")], "", "space-1", null);
+    expect(both.map((group) => group.title)).toEqual(["Personal", "Work"]);
+  });
+
   it("does not relabel a lone space whose name already matches the label", () => {
     const [group] = sidebarGroupsForSpaces(
       [space("space-1", "Personal")],

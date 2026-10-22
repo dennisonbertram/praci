@@ -1,5 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Bot } from "@rakazo/contracts";
+import { isMailThreadAgentSpawnKey } from "@rakazo/contracts";
 import { Badge, BotAvatar, cn, Switch } from "@rakazo/ui-web";
 import type { ComponentProps, ReactNode } from "react";
 import { Link } from "react-router-dom";
@@ -13,12 +14,7 @@ export const PHONE_ROW =
 
 /** The tile's one main link, like "Open Inbox" on Gmail. It never wraps; all share one width. */
 export const OPEN_LINK =
-  "relative z-10 ms-auto inline-flex h-7 pointer-coarse:h-11 min-w-28 max-sm:min-w-0 shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted";
-
-/** Where a tile's overflow menu sits; tiles with no menu keep the room, so every tile's main link lines up. */
-export function MenuSlot() {
-  return <span aria-hidden="true" className="size-6 shrink-0 pointer-coarse:size-11" />;
-}
+  "relative z-10 ms-auto inline-flex h-7 pointer-coarse:h-11 min-w-28 max-sm:min-w-30 shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted";
 
 export function IntegrationTile({ className, ...props }: ComponentProps<"div">) {
   return (
@@ -89,9 +85,15 @@ export function AgentToggleList({
   onToggle: (botId: string, next: boolean) => void;
 }) {
   const { t } = useLingui();
+  // Each email's own chat is one agent; they share a single row, as in the sidebar.
+  const emailChats = bots.filter((bot) => isMailThreadAgentSpawnKey(bot.spawnKey));
+  const rows = bots.filter((bot) => !isMailThreadAgentSpawnKey(bot.spawnKey));
+  // Mixed access reads as on (some chats still have it), so one click revokes all and never grants first.
+  const someEmailOn = emailChats.some((bot) => isOn(bot.id));
+  const allEmailOn = emailChats.every((bot) => isOn(bot.id));
   return (
     <div className="divide-y divide-border rounded-xl border border-border bg-card">
-      {bots.map((bot) => (
+      {rows.map((bot) => (
         <div key={bot.id} className="flex items-center gap-3 px-3.5 py-2.5">
           <BotAvatar color={bot.color} identity={bot.id} size={22} />
           <span className="min-w-0 flex-1 truncate text-sm">{bot.name}</span>
@@ -103,6 +105,29 @@ export function AgentToggleList({
           />
         </div>
       ))}
+      {emailChats.length > 0 ? (
+        <div className="flex items-center gap-3 px-3.5 py-2.5">
+          <span className="min-w-0 flex-1 truncate text-sm">
+            <Trans>Email chats</Trans>
+            <span className="ms-2 text-xs tabular-nums text-muted-foreground">
+              {emailChats.length}
+            </span>
+            {someEmailOn && !allEmailOn ? (
+              <span className="ms-2 text-xs text-muted-foreground">
+                <Trans>Some</Trans>
+              </span>
+            ) : null}
+          </span>
+          <Switch
+            aria-label={t`Email chats can use ${appName}`}
+            checked={someEmailOn}
+            disabled={disabled}
+            onCheckedChange={(next) => {
+              for (const bot of emailChats) onToggle(bot.id, next);
+            }}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -112,15 +137,17 @@ export function CardHead({
   logo,
   sub,
   to,
+  letter,
 }: {
   name: string;
   logo?: string | null;
   sub?: string;
   to?: string;
+  letter?: string;
 }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <AppLogo name={name} logo={logo} />
+      <AppLogo name={name} logo={logo} letter={letter} />
       <div className="min-w-0">
         {to ? (
           <Link to={to} className="block truncate font-semibold after:absolute after:inset-0">

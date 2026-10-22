@@ -4,11 +4,11 @@ import { Toast } from "@base-ui/react/toast";
 import { Button } from "@rakazo/ui-web/components/ui/button";
 import { cn } from "@rakazo/ui-web/lib/utils";
 import { XIcon } from "lucide-react";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 export const MAX_VISIBLE_NOTIFICATION_TOASTS = 3;
-/** Phones have no room for a stack: one toast, docked at the top so it never covers the composer, an approval card or the drawer. */
+/** Phones have no room for a stack: one toast, docked above the composer so it never covers the page header or its buttons. */
 export const MAX_VISIBLE_NOTIFICATION_TOASTS_PHONE = 1;
 
 const PHONE_QUERY = "(max-width: 639px)";
@@ -32,6 +32,8 @@ export type NotificationToastData = {
 };
 
 export type NotificationToastInput = NotificationToastData & {
+  /** Runs when the toast closes for any reason, including `close(id)`. */
+  onClose?: () => void;
   id: string;
   title: string;
   body?: string;
@@ -50,6 +52,7 @@ export function enqueueNotificationToast({
   title,
   body,
   timeout,
+  onClose,
   ...data
 }: NotificationToastInput) {
   return notificationToastManager.add({
@@ -57,6 +60,7 @@ export function enqueueNotificationToast({
     title,
     description: body,
     timeout,
+    onClose,
     priority: "high",
     data,
   });
@@ -127,16 +131,81 @@ function ToastBody({
   );
 }
 
+const GAP_ABOVE_PX = 8;
+const TOAST_GUTTER_PX = 16;
+
+/** Hides the toasts while an open dialog, menu or navigation drawer would sit under them. */
+const COVERED_BY_OVERLAY =
+  "[body:has([role=dialog][data-open],[role=alertdialog][data-open],[role=menu][data-open],[data-drawer-open])_&]:invisible";
+
+/**
+ * How far the toasts must sit above the bottom edge to clear every `data-toast-avoid` element (the
+ * composer, a suggestion chip row) that they would overlap sideways. Zero when nothing is in the way.
+ */
+function liftAbove(viewport: HTMLElement): number {
+  const box = viewport.getBoundingClientRect();
+  let lift = 0;
+  for (const el of document.querySelectorAll<HTMLElement>("[data-toast-avoid]")) {
+    const rect = el.getBoundingClientRect();
+    if (rect.height === 0 || rect.right <= box.left || rect.left >= box.right) continue;
+    if (rect.bottom <= 0 || rect.top >= window.innerHeight) continue;
+    lift = Math.max(lift, window.innerHeight - rect.top + GAP_ABOVE_PX);
+  }
+  return lift;
+}
+
+/**
+ * Keeps the toasts out of an open side panel (`data-toast-panel`): they sit in the main column left
+ * of it, and are narrowed when the column is narrower than a toast. Null on a phone or with no panel.
+ */
+function besidePanel(): { shift: number; maxWidth: number } | null {
+  const panel = document.querySelector<HTMLElement>("[data-toast-panel]");
+  if (!panel || isPhone()) return null;
+  const { left } = panel.getBoundingClientRect();
+  if (left >= window.innerWidth) return null;
+  return { shift: window.innerWidth - left, maxWidth: Math.max(0, left - 2 * TOAST_GUTTER_PX) };
+}
+
 function ToastList({
   onOpen,
   dismissLabel,
   formatTime,
+  viewportRef,
 }: {
   onOpen: (href: string) => void | Promise<void>;
   dismissLabel: string;
   formatTime?: (iso: string) => string;
+  viewportRef: RefObject<HTMLDivElement | null>;
 }) {
   const { toasts, close } = Toast.useToastManager<NotificationToastData>();
+  const shownCount = toasts.length;
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || shownCount === 0) return;
+    const place = () => {
+      const lift = liftAbove(viewport);
+      viewport.style.setProperty("--toast-lift", `${lift}px`);
+      const beside = besidePanel();
+      if (beside === null) {
+        viewport.style.removeProperty("--toast-shift");
+        viewport.style.removeProperty("--toast-max-width");
+      } else {
+        viewport.style.setProperty("--toast-shift", `${beside.shift}px`);
+        viewport.style.setProperty("--toast-max-width", `${beside.maxWidth}px`);
+      }
+    };
+    place();
+    // The composer grows with its text and the window resizes; a short poll covers both.
+    const timer = setInterval(place, 400);
+    window.addEventListener("resize", place);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("resize", place);
+      viewport.style.removeProperty("--toast-lift");
+      viewport.style.removeProperty("--toast-shift");
+      viewport.style.removeProperty("--toast-max-width");
+    };
+  }, [shownCount, viewportRef]);
   const [, tick] = useState(0);
   // The relative time is refreshed while any toast is open.
   const open = toasts.length > 0 && Boolean(formatTime);
@@ -181,6 +250,9 @@ function ToastList({
       key={toast.id}
       toast={toast}
       data-slot="notification-toast"
+      // Base UI hides a high-priority toast from assistive technology until it has focus, which
+      // leaves its Dismiss button unreachable.
+      aria-hidden={false}
       data-has-action={toast.data?.action ? "" : undefined}
       data-behind={behind ? "" : undefined}
       style={style}
@@ -208,6 +280,7 @@ function ToastList({
       <Toast.Close
         className="absolute top-2 right-2 inline-flex size-6 pointer-coarse:top-0 pointer-coarse:right-0 pointer-coarse:size-11 cursor-pointer items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         aria-label={dismissLabel}
+        aria-hidden={false}
       >
         <XIcon className="size-3.5" aria-hidden="true" />
       </Toast.Close>
@@ -246,8 +319,8 @@ function ToastList({
                 // scaled down by its index; hover or focus fans them into a column.
                 "absolute right-0 bottom-0 left-0 z-[calc(100-var(--i))] origin-bottom",
                 "[--gap:0.5rem] [--peek:1rem] [--height:var(--front)]",
-                "h-[var(--height)] translate-y-[calc(var(--i)*var(--peek)*-1)] scale-[calc(1-var(--i)*0.05)]",
-                "data-[expanded]:h-[var(--toast-height)] data-[expanded]:translate-y-[calc(var(--oy)*-1-var(--i)*var(--gap))] data-[expanded]:scale-100",
+                "min-h-[var(--height)] [&[data-behind]]:h-[var(--height)] translate-y-[calc(var(--i)*var(--peek)*-1)] scale-[calc(1-var(--i)*0.05)]",
+                "data-[expanded]:h-auto data-[expanded]:min-h-[var(--toast-height)] data-[expanded]:translate-y-[calc(var(--oy)*-1-var(--i)*var(--gap))] data-[expanded]:scale-100",
                 "[&[data-behind]:not([data-expanded])]:border-foreground/25! [&[data-behind]:not([data-expanded])]:bg-muted! [&[data-behind]:not([data-expanded])>*]:opacity-0",
                 "data-[starting-style]:translate-y-[150%] data-[starting-style]:opacity-0 motion-reduce:data-[starting-style]:translate-y-[calc(var(--i)*var(--peek)*-1)]",
               ),
@@ -281,6 +354,7 @@ export function NotificationToaster({
   formatTime?: (iso: string) => string;
   manager?: typeof notificationToastManager;
 }) {
+  const viewportRef = useRef<HTMLDivElement>(null);
   return (
     <Toast.Provider
       toastManager={manager}
@@ -289,13 +363,24 @@ export function NotificationToaster({
     >
       <Toast.Portal>
         <Toast.Viewport
+          ref={viewportRef}
           role="status"
           aria-live="polite"
-          // Top-right under the page header, clear of the agent panel's composer, and above dialogs and
-          // their scrim (z-50) so a notice's button stays clickable. On phones: centred at the top.
-          className="group/viewport pointer-events-none fixed top-16 right-[max(1rem,env(safe-area-inset-right))] z-[110] w-[min(28rem,calc(100vw-2rem))] max-sm:top-[max(1rem,env(safe-area-inset-top))] max-sm:right-auto max-sm:left-1/2 max-sm:-translate-x-1/2"
+          // Bottom-right, below the page header and its buttons and above the agent composer, and above
+          // dialogs and their scrim (z-50). On phones: centred, above the composer. It rises above any
+          // `data-toast-avoid` element it would cover, and is hidden while a dialog, menu or the
+          // navigation drawer is open, since it would cover their content.
+          className={cn(
+            "group/viewport pointer-events-none fixed right-[max(calc(1rem+var(--toast-shift,0px)),env(safe-area-inset-right))] bottom-[max(6rem,var(--toast-lift,0px))] z-[110] w-[min(28rem,calc(100vw-2rem),var(--toast-max-width,100vw))] max-sm:right-auto max-sm:bottom-[max(calc(env(safe-area-inset-bottom)+1rem),var(--toast-lift,0px))] max-sm:left-1/2 max-sm:-translate-x-1/2",
+            COVERED_BY_OVERLAY,
+          )}
         >
-          <ToastList onOpen={onOpen} dismissLabel={dismissLabel} formatTime={formatTime} />
+          <ToastList
+            onOpen={onOpen}
+            dismissLabel={dismissLabel}
+            formatTime={formatTime}
+            viewportRef={viewportRef}
+          />
         </Toast.Viewport>
       </Toast.Portal>
     </Toast.Provider>

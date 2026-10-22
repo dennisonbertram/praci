@@ -1,5 +1,5 @@
 import { i18n } from "@lingui/core";
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type {
   AuditRequest,
@@ -14,7 +14,7 @@ import type {
   Safe,
 } from "@rakazo/contracts";
 import { isCartaEndpoint } from "@rakazo/contracts";
-import { capTableMath, isSafeSecurity } from "@rakazo/core";
+import { capTableMath, countedSafes, isSafeSecurity } from "@rakazo/core";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,13 +42,21 @@ import {
   TabsList,
   TabsTrigger,
 } from "@rakazo/ui-web";
-import { ChevronDown, MoreHorizontal, Plus, RefreshCw } from "lucide-react";
+import {
+  ChevronDown,
+  CirclePlus,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+  Sheet,
+  Type,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
 import { ContactDeleteConfirm, hasLinks } from "../components/ContactDeleteConfirm";
 import type { ContactPrefill as Prefill } from "../components/ContactDialog";
-import { ContactDialog, contactAddLabels } from "../components/ContactDialog";
+import { ContactDialog } from "../components/ContactDialog";
 import { CopyLinkDialog } from "../components/CopyLinkDialog";
 import type { SaveResult } from "../components/cap-table/CapTableEditor";
 import { CapTableEditor } from "../components/cap-table/CapTableEditor";
@@ -62,8 +70,14 @@ import { DRIVE_PAGE } from "../components/data-room/ImportFromEmail";
 import { CustomConnectionDialog } from "../components/integrations/CustomConnectionDialog";
 import { useIntegrations } from "../components/integrations/useIntegrations";
 import { ActionItems } from "../components/investors/ActionItems";
+import {
+  ContactRowPlaceholder,
+  FiguresPlaceholder,
+  OwnershipPlaceholder,
+} from "../components/investors/Placeholders";
 import { SearchField } from "../components/ListControls";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
+import { SectionCard } from "../components/SectionCard";
 import { hasConnectedCarta } from "../lib/carta-agent";
 import { shareCount, shortDay, usdFigure } from "../lib/finance-format";
 import { useHideAmounts } from "../lib/hide-amounts-preference";
@@ -88,6 +102,8 @@ const POLL_MS = 3000;
 /** How often an idle page checks for a change made elsewhere, such as in another tab. */
 const IDLE_POLL_MS = 30_000;
 const DASH = "—";
+/** The three equal source choices in the Cap table card. */
+const SOURCE_BUTTON = "h-11 justify-start gap-2.5 rounded-xl px-3.5 font-semibold";
 
 const num = (value: number | null) => shareCount(value, i18n.locale || "en");
 const usd = (value: number | null, digits = 0) => usdFigure(value, digits, i18n.locale || "en");
@@ -122,17 +138,41 @@ function Figure({ title, value, hint }: { title: string; value: string; hint?: s
   );
 }
 
-/** Fully diluted shares (with the 409A when known) and Equity raised, which never counts SAFE money. */
-function Summary({ snapshot }: { snapshot: Snapshot }) {
+/**
+ * Fully diluted shares (with the 409A when known) and Equity raised: the table's invested money plus
+ * the SAFEs, which come only from the shared SAFE list (the one Fundraising shows).
+ */
+function Summary({
+  snapshot,
+  safes,
+  safesFailed,
+}: {
+  snapshot: Snapshot;
+  safes: readonly Safe[];
+  safesFailed: boolean;
+}) {
   useHideAmounts();
   const math = capTableMath(snapshot);
   const a = snapshot.latest409a;
-  // Nothing known to add up shows a dash, not $0; SAFE money is never counted.
-  const raised = snapshot.holders.some((h) => h.amountUsd != null && !isSafeSecurity(h.security))
-    ? usd(math.raisedUsd)
-    : DASH;
+  // Nothing known to add up shows a dash, not $0. Table rows that are SAFEs are not counted: the
+  // SAFE list is the record.
+  const counted = countedSafes(safes);
+  // Raised money is Funded only; Sent and Signed SAFEs are promises, shown apart as committed.
+  const sumUsd = (status: Safe["status"][]) =>
+    counted
+      .filter((safe) => status.includes(safe.status))
+      .reduce((sum, safe) => sum + safe.amountCents / 100, 0);
+  const safeUsd = sumUsd(["funded"]);
+  const committedUsd = sumUsd(["sent", "signed"]);
+  // A failed SAFE request would make the total look complete when it is not.
+  const raised =
+    !safesFailed &&
+    (counted.length > 0 ||
+      snapshot.holders.some((h) => h.amountUsd != null && !isSafeSecurity(h.security)))
+      ? usd(math.raisedUsd + safeUsd)
+      : DASH;
   return (
-    <div className="grid grid-cols-2 gap-2 @md/bd:gap-3">
+    <div className="mb-4 grid grid-cols-2 gap-2 @md/bd:gap-3">
       <Figure
         title={t`Fully diluted`}
         value={num(snapshot.fullyDilutedShares)}
@@ -142,7 +182,17 @@ function Summary({ snapshot }: { snapshot: Snapshot }) {
             : undefined
         }
       />
-      <Figure title={t`Equity raised`} value={raised} />
+      <Figure
+        title={t`Equity raised`}
+        value={raised}
+        hint={
+          committedUsd > 0
+            ? t`${usd(committedUsd)} committed`
+            : counted.length > 0
+              ? plural(counted.length, { one: "# SAFE", other: "# SAFEs" })
+              : undefined
+        }
+      />
     </div>
   );
 }
@@ -224,7 +274,7 @@ function UpdateRow({
           ? t`Sent ${day(update.sentAt)}`
           : update.period;
   return (
-    <li className="flex min-h-11 items-center gap-2 border-t border-border px-2 first:border-t-0">
+    <li className="flex min-h-13 items-center gap-2 border-t border-border">
       <button
         type="button"
         data-row-open
@@ -307,51 +357,52 @@ function UpdatesSection({
   doneToggle: { shown: boolean; onToggle: () => void } | null;
 }) {
   return (
-    <section className="mb-5 max-w-5xl" aria-label={t`Updates`}>
-      <div className="mb-1 flex items-center gap-2">
-        <h2 className="me-auto text-sm font-semibold">
-          <Trans>Updates</Trans>
-        </h2>
-        {doneToggle ? (
-          <Button variant="ghost" size="sm" onClick={doneToggle.onToggle}>
-            {doneToggle.shown ? <Trans>Hide done</Trans> : <Trans>Show done</Trans>}
+    <SectionCard
+      title={t`Updates`}
+      actions={
+        <>
+          {doneToggle ? (
+            <Button variant="ghost" size="sm" onClick={doneToggle.onToggle}>
+              {doneToggle.shown ? <Trans>Hide done</Trans> : <Trans>Show done</Trans>}
+            </Button>
+          ) : null}
+          <Button variant="outline" size="sm" onClick={onNew}>
+            <Plus aria-hidden="true" />
+            <Trans>New update</Trans>
           </Button>
-        ) : null}
-        <Button variant="outline" size="sm" onClick={onNew}>
-          <Plus aria-hidden="true" />
-          <Trans>New update</Trans>
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={<Button variant="ghost" size="icon-sm" aria-label={t`Update options`} />}
-          >
-            <MoreHorizontal aria-hidden="true" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <Trans>Reminder</Trans>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuRadioGroup
-                  value={cadence}
-                  onValueChange={(next) => onReminder(next as InvestorReminderCadence)}
-                >
-                  <DropdownMenuRadioItem value="monthly">
-                    <Trans>Monthly</Trans>
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="quarterly">
-                    <Trans>Quarterly</Trans>
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="off">
-                    <Trans>Off</Trans>
-                  </DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={<Button variant="ghost" size="icon-sm" aria-label={t`Update options`} />}
+            >
+              <MoreHorizontal aria-hidden="true" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Trans>Reminder</Trans>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuRadioGroup
+                    value={cadence}
+                    onValueChange={(next) => onReminder(next as InvestorReminderCadence)}
+                  >
+                    <DropdownMenuRadioItem value="monthly">
+                      <Trans>Monthly</Trans>
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="quarterly">
+                      <Trans>Quarterly</Trans>
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="off">
+                      <Trans>Off</Trans>
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
+      }
+    >
       {failed ? (
         <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
           <span className="text-destructive">
@@ -364,7 +415,7 @@ function UpdatesSection({
       ) : updates === null ? (
         <Skeleton className="h-9 w-full" aria-busy="true" />
       ) : updates.length === 0 ? (
-        <p className="py-3 text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           <Trans>No updates yet</Trans>
         </p>
       ) : (
@@ -382,7 +433,7 @@ function UpdatesSection({
           ))}
         </ul>
       )}
-    </section>
+    </SectionCard>
   );
 }
 
@@ -425,7 +476,7 @@ function ContactRow({
   return (
     <li
       data-contact-id={contact.id}
-      className={`flex min-h-11 items-center gap-2 border-t border-border px-2 first:border-t-0 ${saved ? SAVED_ROW_CLASS : ""}`}
+      className={`flex min-h-13 items-center gap-2 border-t border-border ${saved ? SAVED_ROW_CLASS : ""}`}
     >
       <button
         type="button"
@@ -635,11 +686,19 @@ export function InvestorsPage({
         notify(errorText(cause, failure));
         loadUpdates();
       });
-  const startUpdate = (audience: "investors" | "board") =>
-    rpc.investors.updates
+  // Repeated clicks while a draft is being created must not create more drafts.
+  const startingUpdate = useRef(false);
+  const startUpdate = (audience: "investors" | "board") => {
+    if (startingUpdate.current) return Promise.resolve();
+    startingUpdate.current = true;
+    return rpc.investors.updates
       .save({ audience })
       .then((created) => navigate(`/app/investors/updates/${created.id}`))
-      .catch((cause) => notify(errorText(cause, t`Could not start an update`)));
+      .catch((cause) => notify(errorText(cause, t`Could not start an update`)))
+      .finally(() => {
+        startingUpdate.current = false;
+      });
+  };
   const retryUpdate = (update: InvestorUpdate) => {
     if (update.deliveries.some((d) => d.state === "unknown")) return setResending(update);
     void updateAction(() => rpc.investors.updates.retry({ id: update.id }), t`Could not retry`);
@@ -656,16 +715,27 @@ export function InvestorsPage({
       });
   };
 
+  // The header slot of the Cap table card, where the typed-in table shows Saved and Not saved.
+  const [statusSlot, setStatusSlot] = useState<HTMLElement | null>(null);
   const [capFailed, setCapFailed] = useState(false);
   const [safes, setSafes] = useState<Safe[]>([]);
+  const [safesFailed, setSafesFailed] = useState(false);
   const latestCap = useRef(0);
   const loadCap = useCallback(() => {
     const request = ++latestCap.current;
     // The SAFE rows under the table are secondary: if they cannot load, the table still shows.
+    // One quiet retry, so a single dropped request does not show a dash.
     void rpc.fundraising.safes
       .list()
-      .then((rows) => request === latestCap.current && setSafes(rows ?? []))
-      .catch(() => {});
+      .catch(() => rpc.fundraising.safes.list())
+      .then((rows) => {
+        if (request !== latestCap.current) return;
+        setSafes(rows ?? []);
+        setSafesFailed(false);
+      })
+      .catch(() => {
+        if (request === latestCap.current) setSafesFailed(true);
+      });
     return rpc.investors
       .capTable()
       .then((state) => {
@@ -856,15 +926,22 @@ export function InvestorsPage({
   const holdingRows: HoldingRow[] =
     snapshot && math
       ? [
-          ...snapshot.holders.map((holder, i) => ({
-            key: `h${i}`,
-            name: holder.name,
-            security: holder.security,
-            shares: holder.shares,
-            amountUsd: holder.amountUsd,
-            percent: math.holders[i]?.percent ?? null,
-            contact: contactFor(allContacts, holder),
-          })),
+          ...snapshot.holders.flatMap((holder, i) =>
+            // SAFEs come from the SAFE list below the table, never from the snapshot.
+            isSafeSecurity(holder.security)
+              ? []
+              : [
+                  {
+                    key: `h${i}`,
+                    name: holder.name,
+                    security: holder.security,
+                    shares: holder.shares,
+                    amountUsd: holder.amountUsd,
+                    percent: math.holders[i]?.percent ?? null,
+                    contact: contactFor(allContacts, holder),
+                  },
+                ],
+          ),
           ...(math.pool
             ? [
                 {
@@ -895,12 +972,7 @@ export function InvestorsPage({
     investor: t`SAFEs and funds`,
     board: t`Board`,
   };
-  const emptyText: Record<ContactTab, string> = {
-    investor: t`No investors yet`,
-    board: t`No board members yet`,
-  };
   const hasBoard = allContacts.some((c) => c.kind === "board");
-  const addKindLabel = contactAddLabels();
   const addContact = () => setEditing({ name: "", email: null, organization: null, kind: tab });
   const openContact = (id: string) => {
     const found = allContacts.find((c) => c.id === id);
@@ -1092,243 +1164,292 @@ export function InvestorsPage({
             </Button>
           </div>
         ) : null}
-        <ActionItems
-          drafts={(updates ?? []).filter((u) => u.status === "draft")}
-          audits={audits.filter((a) => a.status !== "done" || showDone)}
-          onOpen={(update) => navigate(`/app/investors/updates/${update.id}`)}
-          onDraftAudit={(audit) =>
-            void auditAction(
-              () => rpc.investors.audits.draft({ id: audit.id }),
-              t`Could not start the draft`,
-            )
-          }
-          onCloseAudit={(audit, status) =>
-            void auditAction(
-              () => rpc.investors.audits.update({ id: audit.id, status }),
-              t`Could not update the request`,
-            )
-          }
-        />
+        <div className="flex flex-col gap-4">
+          <ActionItems
+            drafts={(updates ?? []).filter((u) => u.status === "draft")}
+            audits={audits.filter((a) => a.status !== "done" || showDone)}
+            onOpen={(update) => navigate(`/app/investors/updates/${update.id}`)}
+            onDraftAudit={(audit) =>
+              void auditAction(
+                () => rpc.investors.audits.draft({ id: audit.id }),
+                t`Could not start the draft`,
+              )
+            }
+            onCloseAudit={(audit, status) =>
+              void auditAction(
+                () => rpc.investors.audits.update({ id: audit.id, status }),
+                t`Could not update the request`,
+              )
+            }
+          />
 
-        {!serversChecked || (cap === null && !capFailed) ? (
-          <div className="flex flex-col gap-2" aria-busy="true">
-            {[0, 1, 2].map((n) => (
-              <Skeleton key={n} className="h-9 w-full" />
-            ))}
-          </div>
-        ) : (
-          <>
-            {snapshot && math ? (
-              <div className="mb-5 flex flex-col gap-3">
-                <div className="max-w-3xl">
-                  <Summary snapshot={snapshot} />
-                </div>
-                <Card className="max-w-5xl gap-3 px-3.5 py-3">
-                  <h2 className="text-sm font-semibold">
-                    <Trans>Cap table</Trans>
-                  </h2>
-                  {snapshot.source === "native" ? (
-                    <CapTableEditor
-                      snapshot={snapshot}
-                      onSave={saveTable}
-                      contactIdFor={(name) =>
-                        contactFor(allContacts, { name, email: null })?.id ?? null
-                      }
-                      onAddContact={(name) => addHolderAsContact(name)}
-                      onOpenContact={openContact}
-                    />
-                  ) : (
-                    <div className="@container">
-                      <OwnershipBar
-                        className="mb-3"
-                        classes={math.classes}
-                        pool={math.pool?.percent ?? null}
-                      />
-                      <HoldingsTable
-                        rows={holdingRows}
-                        onAddContact={(row) =>
-                          addHolderAsContact(
-                            row.name,
-                            snapshot.holders.find((holder) => holder.name === row.name)?.email ??
-                              null,
-                          )
+          {!serversChecked || (cap === null && !capFailed) ? (
+            <div className="flex flex-col gap-2" aria-busy="true">
+              {[0, 1, 2].map((n) => (
+                <Skeleton key={n} className="h-9 w-full" />
+              ))}
+            </div>
+          ) : (
+            <>
+              <SectionCard
+                title={t`Cap table`}
+                actions={<span ref={setStatusSlot} className="flex items-center gap-2 text-xs" />}
+              >
+                {snapshot && math ? (
+                  <>
+                    {snapshot.holders.length === 0 &&
+                    !snapshot.fullyDilutedShares &&
+                    !snapshot.latest409a &&
+                    countedSafes(safes).length === 0 ? (
+                      <FiguresPlaceholder />
+                    ) : (
+                      <Summary snapshot={snapshot} safes={safes} safesFailed={safesFailed} />
+                    )}
+                    {snapshot.source === "native" ? (
+                      <CapTableEditor
+                        snapshot={snapshot}
+                        onSave={saveTable}
+                        contactIdFor={(name) =>
+                          contactFor(allContacts, { name, email: null })?.id ?? null
                         }
+                        onAddContact={(name) => addHolderAsContact(name)}
                         onOpenContact={openContact}
+                        statusSlot={statusSlot}
+                      />
+                    ) : (
+                      <div className="@container">
+                        <OwnershipBar
+                          className="mb-3"
+                          classes={math.classes}
+                          pool={math.pool?.percent ?? null}
+                        />
+                        <HoldingsTable
+                          rows={holdingRows}
+                          onAddContact={(row) =>
+                            addHolderAsContact(
+                              row.name,
+                              snapshot.holders.find((holder) => holder.name === row.name)?.email ??
+                                null,
+                            )
+                          }
+                          onOpenContact={openContact}
+                        />
+                      </div>
+                    )}
+                    <SafeRows safes={safes} />
+                  </>
+                ) : (
+                  <>
+                    {reading ? (
+                      <p className="text-sm text-muted-foreground">
+                        <Trans>Reading Carta…</Trans>
+                      </p>
+                    ) : sheetPending && sheetReading ? (
+                      <p className="text-sm text-muted-foreground">
+                        {t`Reading ${raw?.sourceRef?.name ?? ""}…`}
+                      </p>
+                    ) : sheetPending && readFailed ? (
+                      <div className="flex flex-wrap items-center gap-2 text-sm">
+                        <span className="w-full text-warning">
+                          <Trans>The sheet could not be read.</Trans>
+                        </span>
+                        <Button variant="outline" onClick={() => void refresh()}>
+                          <Trans>Try again</Trans>
+                        </Button>
+                        <Button variant="outline" onClick={() => void typeItIn()}>
+                          <Trans>Type it in</Trans>
+                        </Button>
+                      </div>
+                    ) : (
+                      // No table yet: pick where it comes from. None is filled; the page cannot know which fits.
+                      <div className="grid grid-cols-1 gap-2 @md/bd:grid-cols-3">
+                        {neverRead ? (
+                          // Connected but unread: reading starts with a model; Type it in stays available.
+                          needsModel && onOpenModelSettings ? (
+                            <Button
+                              variant="outline"
+                              className={SOURCE_BUTTON}
+                              onClick={onOpenModelSettings}
+                            >
+                              <CirclePlus aria-hidden="true" className="text-muted-foreground" />
+                              <Trans>Add a model</Trans>
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              className={SOURCE_BUTTON}
+                              onClick={() => void refresh()}
+                            >
+                              <CirclePlus aria-hidden="true" className="text-muted-foreground" />
+                              <Trans>Read cap table</Trans>
+                            </Button>
+                          )
+                        ) : serversFailed ? null : (
+                          <Button
+                            variant="outline"
+                            className={SOURCE_BUTTON}
+                            onClick={() => setConnecting(true)}
+                          >
+                            <CirclePlus aria-hidden="true" className="text-muted-foreground" />
+                            {cartaExpired ? (
+                              <Trans>Reconnect Carta</Trans>
+                            ) : (
+                              <Trans>Connect Carta</Trans>
+                            )}
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          className={SOURCE_BUTTON}
+                          onClick={() => void chooseSheet()}
+                        >
+                          <Sheet aria-hidden="true" className="text-muted-foreground" />
+                          <Trans>Use a Google Sheet</Trans>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className={SOURCE_BUTTON}
+                          onClick={() => void typeItIn()}
+                        >
+                          <Type aria-hidden="true" className="text-muted-foreground" />
+                          <Trans>Type it in</Trans>
+                        </Button>
+                      </div>
+                    )}
+                    <hr className="my-4 border-border" />
+                    <FiguresPlaceholder />
+                    <OwnershipPlaceholder className="mb-3" />
+                    <div className="@container">
+                      <HoldingsTable
+                        rows={[]}
+                        placeholderRows={3}
+                        onAddContact={() => {}}
+                        onOpenContact={() => {}}
                       />
                     </div>
-                  )}
-                  <SafeRows safes={safes} />
-                </Card>
-              </div>
-            ) : reading ? (
-              <p className="mb-5 text-sm text-muted-foreground">
-                <Trans>Reading Carta…</Trans>
-              </p>
-            ) : sheetPending && sheetReading ? (
-              <p className="mb-5 text-sm text-muted-foreground">
-                {t`Reading ${raw?.sourceRef?.name ?? ""}…`}
-              </p>
-            ) : sheetPending && readFailed ? (
-              <div className="mb-5 flex flex-wrap items-center gap-2 text-sm">
-                <span className="w-full text-warning">
-                  <Trans>The sheet could not be read.</Trans>
-                </span>
-                <Button variant="outline" onClick={() => void refresh()}>
-                  <Trans>Try again</Trans>
-                </Button>
-                <Button variant="outline" onClick={() => void typeItIn()}>
-                  <Trans>Type it in</Trans>
-                </Button>
-              </div>
-            ) : (
-              // No table yet: pick where it comes from. Neither choice is filled; the page cannot know which fits.
-              <div className="mb-5 flex flex-wrap items-center gap-2">
-                {neverRead ? (
-                  // Connected but unread: reading starts with a model; Type it in stays available.
-                  needsModel && onOpenModelSettings ? (
-                    <Button variant="outline" onClick={onOpenModelSettings}>
-                      <Trans>Add a model</Trans>
-                    </Button>
-                  ) : (
-                    <Button variant="outline" onClick={() => void refresh()}>
-                      <Trans>Read cap table</Trans>
-                    </Button>
-                  )
-                ) : serversFailed ? null : (
-                  <Button variant="outline" onClick={() => setConnecting(true)}>
-                    {cartaExpired ? <Trans>Reconnect Carta</Trans> : <Trans>Connect Carta</Trans>}
-                  </Button>
+                  </>
                 )}
-                <Button variant="outline" onClick={() => void chooseSheet()}>
-                  <Trans>Use a Google Sheet</Trans>
-                </Button>
-                <Button variant="outline" onClick={() => void typeItIn()}>
-                  <Trans>Type it in</Trans>
-                </Button>
-              </div>
-            )}
+              </SectionCard>
 
-            <UpdatesSection
-              updates={updates}
-              cadence={cadence}
-              failed={updatesFailed}
-              onNew={() => void startUpdate("investors")}
-              onOpen={(update) => navigate(`/app/investors/updates/${update.id}`)}
-              onRetry={retryUpdate}
-              onMarkDelivered={(update) =>
-                void updateAction(
-                  () => rpc.investors.updates.markDelivered({ id: update.id }),
-                  t`Could not mark delivered`,
-                )
-              }
-              onDuplicate={(update) =>
-                void rpc.investors.updates
-                  .duplicate({ id: update.id })
-                  .then((copy) => navigate(`/app/investors/updates/${copy.id}`))
-                  .catch((cause) => notify(errorText(cause, t`Could not duplicate`)))
-              }
-              onDelete={setDeletingUpdate}
-              onReminder={changeReminder}
-              onReload={loadUpdates}
-              doneToggle={
-                audits.some((a) => a.status === "done")
-                  ? { shown: showDone, onToggle: () => setShowDone((v) => !v) }
-                  : null
-              }
-            />
-
-            <section className="mb-5 max-w-5xl" aria-label={t`Contacts`}>
-              <Tabs
-                value={tab}
-                onValueChange={(next) =>
-                  setParam("kind", next === "investor" ? undefined : String(next))
+              <UpdatesSection
+                updates={updates}
+                cadence={cadence}
+                failed={updatesFailed}
+                onNew={() => void startUpdate("investors")}
+                onOpen={(update) => navigate(`/app/investors/updates/${update.id}`)}
+                onRetry={retryUpdate}
+                onMarkDelivered={(update) =>
+                  void updateAction(
+                    () => rpc.investors.updates.markDelivered({ id: update.id }),
+                    t`Could not mark delivered`,
+                  )
                 }
-                className="mb-3"
-              >
-                <TabsList className="rounded-2xl" aria-label={t`Kind`}>
-                  {CONTACT_TABS.map((value) => (
-                    <TabsTrigger
-                      key={value}
-                      value={value}
-                      className="h-7 flex-none rounded-full px-3"
-                    >
-                      {tabNames[value]}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
-              {tab === "board" && hasBoard ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mb-2 me-2"
-                  onClick={() => void startUpdate("board")}
-                >
-                  <Trans>Message the board</Trans>
-                </Button>
-              ) : null}
-              {allContacts.length > 0 && !error ? (
-                <SearchField
-                  className="mb-2 w-full @md/bd:w-72"
-                  value={query}
-                  onChange={(next) => setParam("q", next || undefined)}
-                  placeholder={t`Search`}
-                  label={t`Search`}
-                  name="contact-search"
-                />
-              ) : null}
-              {error ? (
-                <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
-                  <span className="text-destructive">{error}</span>
-                  <Button variant="outline" size="sm" onClick={load}>
-                    <Trans>Try again</Trans>
-                  </Button>
-                </div>
-              ) : contacts === null ? (
-                <div className="flex flex-col gap-2" aria-busy="true">
-                  {[0, 1].map((n) => (
-                    <Skeleton key={n} className="h-9 w-full" />
-                  ))}
-                </div>
-              ) : shown.length === 0 ? (
-                <div className="flex flex-col items-center gap-3 py-10 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    {needle ? t`No matches` : emptyText[tab]}
-                  </p>
-                  {needle ? (
-                    <Button variant="outline" size="sm" onClick={() => setParam("q", undefined)}>
-                      <Trans>Clear filters</Trans>
-                    </Button>
-                  ) : (
-                    <Button variant="outline" size="sm" onClick={addContact}>
-                      <Plus aria-hidden="true" />
-                      {addKindLabel[tab]}
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <ul>
-                  {shown.map((contact) => (
-                    <ContactRow
-                      key={contact.id}
-                      contact={contact}
-                      saved={contact.id === savedId}
-                      portal={tab === "investor"}
-                      onEdit={() => setEditing(contact)}
-                      onDelete={() => void deleteContact(contact)}
-                      onResend={() => void sendLink(contact, false)}
-                      onCopyLink={() => void sendLink(contact, true)}
-                      onRevoke={() => void changePortal(contact, "revoke")}
-                      onUnblock={() => void changePortal(contact, "unblock")}
-                    />
-                  ))}
-                </ul>
-              )}
-            </section>
+                onDuplicate={(update) =>
+                  void rpc.investors.updates
+                    .duplicate({ id: update.id })
+                    .then((copy) => navigate(`/app/investors/updates/${copy.id}`))
+                    .catch((cause) => notify(errorText(cause, t`Could not duplicate`)))
+                }
+                onDelete={setDeletingUpdate}
+                onReminder={changeReminder}
+                onReload={loadUpdates}
+                doneToggle={
+                  audits.some((a) => a.status === "done")
+                    ? { shown: showDone, onToggle: () => setShowDone((v) => !v) }
+                    : null
+                }
+              />
 
-            <FolderDocuments folderPath={CAP_TABLE_FOLDER} />
-          </>
-        )}
+              <SectionCard title={t`Contacts`}>
+                <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <Tabs
+                    value={tab}
+                    onValueChange={(next) =>
+                      setParam("kind", next === "investor" ? undefined : String(next))
+                    }
+                  >
+                    <TabsList className="rounded-2xl" aria-label={t`Kind`}>
+                      {CONTACT_TABS.map((value) => (
+                        <TabsTrigger
+                          key={value}
+                          value={value}
+                          className="h-7 flex-none rounded-full px-3"
+                        >
+                          {tabNames[value]}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                  {tab === "board" && hasBoard ? (
+                    <Button variant="outline" size="sm" onClick={() => void startUpdate("board")}>
+                      <Trans>Message the board</Trans>
+                    </Button>
+                  ) : null}
+                  {allContacts.length > 0 && !error ? (
+                    <SearchField
+                      className="w-full @md/bd:ms-auto @md/bd:w-56"
+                      value={query}
+                      onChange={(next) => setParam("q", next || undefined)}
+                      placeholder={t`Search`}
+                      label={t`Search`}
+                      name="contact-search"
+                    />
+                  ) : null}
+                </div>
+                {error ? (
+                  <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
+                    <span className="text-destructive">{error}</span>
+                    <Button variant="outline" size="sm" onClick={load}>
+                      <Trans>Try again</Trans>
+                    </Button>
+                  </div>
+                ) : contacts === null ? (
+                  <div className="flex flex-col gap-2" aria-busy="true">
+                    {[0, 1].map((n) => (
+                      <Skeleton key={n} className="h-9 w-full" />
+                    ))}
+                  </div>
+                ) : shown.length === 0 ? (
+                  needle ? (
+                    <div className="flex flex-col items-center gap-3 py-10 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        <Trans>No matches</Trans>
+                      </p>
+                      <Button variant="outline" size="sm" onClick={() => setParam("q", undefined)}>
+                        <Trans>Clear filters</Trans>
+                      </Button>
+                    </div>
+                  ) : (
+                    <ul>
+                      {[0, 1, 2].map((n) => (
+                        <ContactRowPlaceholder key={n} />
+                      ))}
+                    </ul>
+                  )
+                ) : (
+                  <ul>
+                    {shown.map((contact) => (
+                      <ContactRow
+                        key={contact.id}
+                        contact={contact}
+                        saved={contact.id === savedId}
+                        portal={tab === "investor"}
+                        onEdit={() => setEditing(contact)}
+                        onDelete={() => void deleteContact(contact)}
+                        onResend={() => void sendLink(contact, false)}
+                        onCopyLink={() => void sendLink(contact, true)}
+                        onRevoke={() => void changePortal(contact, "revoke")}
+                        onUnblock={() => void changePortal(contact, "unblock")}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </SectionCard>
+
+              <FolderDocuments folderPath={CAP_TABLE_FOLDER} />
+            </>
+          )}
+        </div>
 
         <AlertDialog
           open={deletingUpdate !== null}

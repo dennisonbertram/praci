@@ -37,7 +37,10 @@ vi.mock("@rakazo/ui-web", () => ({
 vi.mock("../lib/auth-capabilities", () => ({ fetchAuthCapabilities: vi.fn() }));
 vi.mock("../lib/auth", () => ({
   authClient: {
-    signIn: { social: vi.fn(async () => ({})) },
+    signIn: {
+      social: vi.fn(async () => ({})),
+      email: vi.fn(async () => ({ error: { code: "INVALID_EMAIL_OR_PASSWORD", message: "no" } })),
+    },
     requestPasswordReset: vi.fn(async () => ({})),
     resetPassword: vi.fn(async () => ({})),
   },
@@ -243,4 +246,102 @@ it("names the sign-in button Sign in and keeps room for an error line", async ()
   expect(host.querySelector('button[type="submit"]')?.textContent).toBe("Sign in");
   // The alert line exists before any error, so showing one moves no field.
   expect(host.querySelector('[role="alert"]')?.textContent).toBe("");
+});
+
+it("puts focus back on the email field after a failed sign-in", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({
+    ...capabilities,
+    sso: null,
+    passwordAuth: true,
+  });
+  await render("in");
+  await act(async () => {
+    setValue(host.querySelector<HTMLInputElement>('input[name="email"]')!, "maya@example.com");
+    setValue(host.querySelector<HTMLInputElement>('input[type="password"]')!, "wrong-password");
+  });
+  (host.querySelector('button[type="submit"]') as HTMLButtonElement).focus();
+  await act(async () => {
+    host
+      .querySelector("form")
+      ?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  expect(document.activeElement).toBe(host.querySelector('input[name="email"]'));
+});
+
+it("shows the 8-character rule in red on the page, not as a native bubble", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...capabilities, passwordAuth: true });
+  await render("up");
+  const password = host.querySelector<HTMLInputElement>('input[type="password"]')!;
+  expect(password.minLength).toBe(-1);
+  await act(async () => {
+    setValue(host.querySelector<HTMLInputElement>('input[name="name"]')!, "Maya");
+    setValue(host.querySelector<HTMLInputElement>('input[name="email"]')!, "maya@example.com");
+    setValue(password, "short");
+  });
+  const form = host.querySelector("form")!;
+  await act(async () => {
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  const hint = [...host.querySelectorAll("p")].find(
+    (p) => p.textContent === "At least 8 characters.",
+  );
+  expect(hint?.className).toContain("text-destructive");
+});
+
+it("shows an inline red message for an empty name, not the browser's native bubble", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...capabilities, passwordAuth: true });
+  await render("up");
+  const form = host.querySelector("form")!;
+  expect(form.noValidate).toBe(true);
+  await act(async () => {
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  const alert = host.querySelector('[role="alert"]');
+  expect(alert?.textContent).toBe("Enter your name");
+  expect(alert?.className).toContain("text-destructive");
+});
+
+it("marks each invalid sign-up field with its own message and leaves valid fields alone", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({ ...capabilities, passwordAuth: true });
+  await render("up");
+  const form = host.querySelector("form")!;
+  const submit = () =>
+    act(async () => {
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+  const field = (name: string) => host.querySelector<HTMLInputElement>(`input[name="${name}"]`)!;
+  const message = (name: string) =>
+    document.getElementById(field(name).getAttribute("aria-describedby") ?? "")?.textContent;
+
+  await submit();
+  expect(["name", "email", "password"].map((n) => field(n).getAttribute("aria-invalid"))).toEqual([
+    "true",
+    "true",
+    "true",
+  ]);
+  expect(message("name")).toBe("Enter your name");
+  expect(message("email")).toBe("Enter a valid email");
+
+  await act(async () => {
+    setValue(field("name"), "Maya");
+    setValue(field("email"), "maya@bad");
+    setValue(field("password"), "abc");
+  });
+  expect(field("name").getAttribute("aria-invalid")).toBeNull();
+  await submit();
+  expect(field("name").getAttribute("aria-invalid")).toBeNull();
+  expect(message("email")).toBe("Enter a valid email");
+  expect(field("password").getAttribute("aria-invalid")).toBe("true");
+  expect(message("password")).toBe("At least 8 characters.");
+});
+
+it("keeps native required and minLength validation on the password-reset form", async () => {
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/reset-password?token=t"]}>
+        <PasswordResetPage />
+      </MemoryRouter>,
+    ),
+  );
+  expect(host.querySelector("form")?.noValidate).toBe(false);
 });

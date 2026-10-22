@@ -4,6 +4,7 @@ import type { DataRoomApiItem } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 vi.mock("@lingui/core/macro", () => ({ t: (parts: TemplateStringsArray) => parts.join("") }));
@@ -18,6 +19,14 @@ vi.mock("../../lib/data-room", async (original) => ({
   dataRoomFileUrl: imageUrl,
   openDataRoomItem: openItem,
   saveDataRoomItem: saveItem,
+}));
+
+const shares = vi.hoisted(() => vi.fn());
+vi.mock("../../lib/rpc", () => ({
+  rpc: {
+    investors: { shares },
+    files: { spreadsheetPreview: () => Promise.reject(new Error("offline")) },
+  },
 }));
 
 import { setHideAmounts } from "../../lib/hide-amounts-preference";
@@ -55,6 +64,7 @@ let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
   imageUrl.mockResolvedValue("blob:receipt");
+  shares.mockResolvedValue([]);
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -69,12 +79,23 @@ afterEach(() => {
 const icon = (label: string) =>
   container.querySelector(`button[aria-label="${label}"]`) as HTMLButtonElement;
 
-const render = () =>
+const render = (onClose: () => void = () => undefined) =>
   act(async () => {
     root.render(
-      <Preview item={receipt} folderPath="" onAction={() => undefined} onClose={() => undefined} />,
+      <Preview item={receipt} folderPath="" onAction={() => undefined} onClose={onClose} />,
     );
   });
+
+it("closes on Escape from a control inside the pane", async () => {
+  const onClose = vi.fn();
+  await render(onClose);
+  await act(async () => {
+    icon("Close preview")?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+  });
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
 
 it("shows the picture of an image item", async () => {
   await render();
@@ -315,7 +336,7 @@ it("offers Send to agent in the preview's More actions menu when there are agent
   const names = Array.from(document.body.querySelectorAll('[role="menuitem"]')).map((e) =>
     e.textContent?.trim(),
   );
-  expect(names).toEqual(["Send to agent", "Share with investors", "Move", "Rename", "Delete"]);
+  expect(names).toEqual(["Send to agent", "Share", "Move", "Rename", "Delete"]);
 });
 
 it("downloads from the header icon", async () => {
@@ -337,4 +358,62 @@ it("opens the picture in a full-screen dialog without fetching it again, and Esc
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   });
   expect(document.body.querySelector('[data-slot="dialog-content"]')).toBeNull();
+});
+
+it("offers no Try again for a PDF that cannot be read, since it fails the same way", async () => {
+  const unreadable = {
+    ...receipt,
+    mimeType: "application/pdf",
+    status: "failed",
+    error: "This PDF is password-protected.",
+  };
+  await act(async () => {
+    root.render(
+      <Preview item={unreadable} folderPath="" onAction={vi.fn()} onClose={() => undefined} />,
+    );
+  });
+  const labels = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
+  expect(labels).not.toContain("Try again");
+  expect(labels).toContain("Delete");
+});
+
+it("says how many investors have the file, and nothing when none do", async () => {
+  await render();
+  expect(container.textContent).not.toContain("Shared");
+  shares.mockResolvedValue(["c1", "c2"]);
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await render();
+  expect(container.textContent).toContain("SharedWith");
+});
+
+it("does not show the previous file's sharing count while the next file loads", async () => {
+  shares.mockResolvedValue(["c1", "c2"]);
+  await render();
+  expect(container.textContent).toContain("SharedWith");
+  shares.mockReturnValue(new Promise(() => undefined));
+  await act(async () => {
+    root.render(
+      <Preview
+        item={{ ...receipt, id: "other" }}
+        folderPath=""
+        onAction={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+  });
+  expect(container.textContent).not.toContain("Shared");
+});
+
+it("makes the From email link a 44 px target on touch screens", async () => {
+  const mail = { ...receipt, source: "gmail", sourceUrl: "/app/inbox/t1" } as DataRoomApiItem;
+  await act(async () => {
+    root.render(
+      <MemoryRouter>
+        <Preview item={mail} folderPath="" onAction={() => undefined} onClose={() => undefined} />
+      </MemoryRouter>,
+    );
+  });
+  const link = [...container.querySelectorAll("a")].find((a) => a.textContent === "From email");
+  expect(link?.className).toContain("pointer-coarse:min-h-11");
 });

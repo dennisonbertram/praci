@@ -2,12 +2,16 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { Bot, ThreadMessage, ThreadSnapshot } from "@rakazo/contracts";
 import { latestAnswerableAskMessageId, newClientId } from "@rakazo/core";
 import { BotAvatar, Button } from "@rakazo/ui-web";
-import { PanelRightClose } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowLeft, PanelRightClose } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { dismissApprovalToasts, markApprovalChatOpen } from "../../lib/approval-toasts";
 import { rpc } from "../../lib/rpc";
+import { useAttended } from "../../lib/use-sidebar-glance";
 import { Composer } from "../../pages/shell/composer";
 import { Transcript } from "../../pages/shell/transcript";
+import type { ComposerDraft } from "../BotToolControls";
+import { BotToolControlsContext, useBotToolControls } from "../BotToolControls";
 
 const noop = () => undefined;
 const asyncNoop = async () => {};
@@ -35,10 +39,6 @@ export function latestPendingDraft(messages: readonly ThreadMessage[]): string |
 }
 
 const DRAFT_REQUEST = "Draft a reply";
-// A leading "Draft reply:" label, with optional markdown emphasis around it, such as **Draft reply:**.
-const DRAFT_LABEL = /^[*_]*draft( reply)?[*_]*:[*_]*\s*/i;
-const asksForDraft = (text: string) =>
-  /\b(draft|write)\b.*\breply\b/i.test(text) && !/\b(don'?t|do not|no)\b.*\breply\b/i.test(text);
 
 /**
  * A message the owner wrote. Agent-to-agent deliveries also carry role "user", and the seeded email
@@ -49,29 +49,6 @@ const isOwnerMessage = (message: ThreadMessage) =>
   !message.blocks.some((b) =>
     ["bot_message_received", "channel_message", "handoff"].includes(b.kind),
   );
-
-/**
- * The text of the agent's first plain-text answer after the owner's latest request, when that
- * request asks to draft or write a reply. It is for a model that writes the draft as text instead
- * of proposing a mail_send card. Later agent messages do not move it; questions and other
- * requests have none.
- */
-export function latestTextDraft(messages: readonly ThreadMessage[]): string | undefined {
-  const at = messages.findLastIndex(isOwnerMessage);
-  if (at < 0 || !asksForDraft(textOf(messages[at] as ThreadMessage))) return undefined;
-  for (const message of messages.slice(at + 1)) {
-    const answer = message.role === "bot" ? textOf(message) : "";
-    // A question is the agent asking for more, not a draft.
-    if (answer && !answer.endsWith("?")) return answer.replace(DRAFT_LABEL, "");
-  }
-  return undefined;
-}
-
-const textOf = (message: ThreadMessage) =>
-  message.blocks
-    .flatMap((block) => (block.kind === "text" ? [block.text] : []))
-    .join("\n\n")
-    .trim();
 
 /**
  * An email's own agent, docked inside the message dialog. It is the Shell's page-agent panel (header,
@@ -86,8 +63,8 @@ export function EmailAgentPanel({
 }: {
   bot: Bot;
   onClose: () => void;
-  /** Opens the Reply composer with the agent's draft as its text. */
-  onReplyWithDraft: (draft: string) => void;
+  /** Opens the Reply composer with the agent's draft as its text, or a failed send as it was written. */
+  onReplyWithDraft: (draft: string, failed?: ComposerDraft) => void;
 }) {
   const { t } = useLingui();
   const navigate = useNavigate();
@@ -113,6 +90,31 @@ export function EmailAgentPanel({
   useEffect(() => {
     void load();
   }, [load]);
+  // This email's cards are on screen, so they raise no toast. Marking them seen also drops the
+  // toast in other tabs.
+  useEffect(() => markApprovalChatOpen(bot.id), [bot.id]);
+  // Only a tab the person is looking at may clear the alert; a background one would hide it unseen.
+  const attended = useAttended();
+  const cardOnScreen = Boolean(
+    snapshot?.messages.some((m) =>
+      m.blocks.some((b) => b.kind === "ask" && b.status !== "answered"),
+    ),
+  );
+  useEffect(() => {
+    if (cardOnScreen && attended)
+      void rpc.notifications.markSeen({ botId: bot.id }).catch(() => undefined);
+  }, [cardOnScreen, attended, bot.id]);
+  // A failed send reopens as a reply to this email, so the account is the email's own.
+  const outer = useBotToolControls();
+  const controls = useMemo(
+    () => ({
+      editableBotName: (id: string | undefined) => outer?.editableBotName(id),
+      disableTool: async (id: string, tool: string) => outer?.disableTool(id, tool),
+      openComposer: (failed: ComposerDraft) => onReplyWithDraft(failed.body, failed),
+      accountFromThread: true,
+    }),
+    [outer, onReplyWithDraft],
+  );
   const running = Boolean(
     snapshot?.run && ["running", "queued", "leased"].includes(snapshot.run.status),
   );
@@ -150,18 +152,27 @@ export function EmailAgentPanel({
     }
   }, [snapshot, running, lastBotId]);
 
-  const draft =
-    latestPendingDraft(snapshot?.messages ?? []) ?? latestTextDraft(snapshot?.messages ?? []);
+  const draft = latestPendingDraft(snapshot?.messages ?? []);
+  const lastSend = useRef<{ text: string; nonce: string } | null>(null);
   const send = async (text: string, clientNonce?: string) => {
+    const attempt = { text, nonce: clientNonce || newClientId() };
+    lastSend.current = attempt;
+    setSendError(null);
     setStale(true);
     setSending(true);
     try {
       sentHere.current = true;
-      await rpc.threads.send({ botId: bot.id, clientNonce: clientNonce || newClientId(), text });
+      await rpc.threads.send({ botId: bot.id, clientNonce: attempt.nonce, text });
       await load();
       return true;
     } catch (cause) {
-      setSendError(cause instanceof Error ? cause.message : String(cause));
+      setStale(false);
+      const message = cause instanceof Error ? cause.message : String(cause);
+      setSendError(
+        cause instanceof TypeError || /failed to fetch|load failed|network/i.test(message)
+          ? t`Could not reach Praci. Try again.`
+          : message,
+      );
       return false;
     } finally {
       setSending(false);
@@ -174,7 +185,16 @@ export function EmailAgentPanel({
       aria-label={t`Email agent`}
       className="flex h-full min-h-0 w-full flex-col border-s border-sidebar-border bg-background"
     >
-      <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-2">
+      <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-2 max-md:justify-start">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={t`Back to email`}
+          className="-ms-2 md:hidden"
+          onClick={onClose}
+        >
+          <ArrowLeft aria-hidden="true" className="rtl:rotate-180" />
+        </Button>
         <button
           type="button"
           aria-label={t`Open email agent full screen`}
@@ -187,63 +207,77 @@ export function EmailAgentPanel({
             <Trans>Email agent</Trans>
           </span>
         </button>
-        <Button variant="ghost" size="icon-sm" aria-label={t`Close agent`} onClick={onClose}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={t`Close agent`}
+          className="max-md:hidden"
+          onClick={onClose}
+        >
           <PanelRightClose aria-hidden="true" />
         </Button>
       </div>
       {snapshot ? (
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <Transcript
-            scrollRef={scrollRef}
-            sentHere={sentHere}
-            scrollRequest={null}
-            onScrollRequestHandled={noop}
-            artifactTarget={artifactTarget}
-            messages={snapshot.messages}
-            // The lookups are the point of this panel, so they show whatever the chat setting says.
-            showToolActivity
-            olderCursor={snapshot.olderCursor}
-            loadingOlder={false}
-            answerableAskMessageId={latestAnswerableAskMessageId(snapshot)}
-            running={running}
-            workingBots={[]}
-            onLoadOlder={asyncNoop}
-            onOpenBot={noop}
-            onAnswer={async (message, text, username, mail) => {
-              await rpc.threads.answer({
-                botId: bot.id,
-                runId: message.runId ?? "",
-                messageId: message.id,
-                answer: text,
-                ...(username ? { username } : {}),
-                ...(mail ? { mail } : {}),
-              });
-              await load();
-            }}
-            onReply={noop}
-            onQuote={noop}
-            onReact={asyncNoop}
-            onJumpToMessage={noop}
-            onOpenPeerMessages={noop}
-            peerBot={() => undefined}
-            onRefresh={async () => void (await load())}
-            onBotChanged={asyncNoop}
-            onAddRoutine={noop}
-            voiceReady={false}
-            speakingMessageId={null}
-            onSpeak={noop}
-            onOpenComputer={noop}
-          />
+          <BotToolControlsContext.Provider value={controls}>
+            <Transcript
+              scrollRef={scrollRef}
+              sentHere={sentHere}
+              scrollRequest={null}
+              onScrollRequestHandled={noop}
+              artifactTarget={artifactTarget}
+              // A run held on an approval is not working; its progress line would say it is.
+              messages={
+                running
+                  ? snapshot.messages
+                  : snapshot.messages.filter((message) => !message.id.startsWith("progress:"))
+              }
+              // The lookups are the point of this panel, so they show whatever the chat setting says.
+              showToolActivity
+              olderCursor={snapshot.olderCursor}
+              loadingOlder={false}
+              answerableAskMessageId={latestAnswerableAskMessageId(snapshot)}
+              running={running}
+              workingBots={[]}
+              onLoadOlder={asyncNoop}
+              onOpenBot={noop}
+              onAnswer={async (message, text, username, mail) => {
+                await rpc.threads.answer({
+                  botId: bot.id,
+                  runId: message.runId ?? "",
+                  messageId: message.id,
+                  answer: text,
+                  ...(username ? { username } : {}),
+                  ...(mail ? { mail } : {}),
+                });
+                dismissApprovalToasts({ href: `/app/${bot.id}`, botId: bot.id });
+                await load();
+              }}
+              onReply={noop}
+              onQuote={noop}
+              onReact={asyncNoop}
+              onJumpToMessage={noop}
+              onOpenPeerMessages={noop}
+              peerBot={() => undefined}
+              onRefresh={async () => void (await load())}
+              onBotChanged={asyncNoop}
+              onAddRoutine={noop}
+              voiceReady={false}
+              speakingMessageId={null}
+              onSpeak={noop}
+              onOpenComputer={noop}
+            />
+          </BotToolControlsContext.Provider>
         </div>
       ) : (
         <div className="min-h-0 flex-1" />
       )}
       {snapshot && !snapshot.messages.some(isOwnerMessage) ? (
-        <div className="shrink-0 px-7 pb-2">
+        <div data-toast-avoid="" className="shrink-0 px-7 pb-2">
           <Button
             variant="outline"
             size="sm"
-            disabled={sending}
+            disabled={sending || stale}
             onClick={() => void send(DRAFT_REQUEST)}
           >
             <Trans>Draft a reply</Trans>
@@ -251,7 +285,7 @@ export function EmailAgentPanel({
         </div>
       ) : null}
       {draft && !running && !stale ? (
-        <div className="shrink-0 px-7 pb-2">
+        <div data-toast-avoid="" className="shrink-0 px-7 pb-2">
           <Button variant="outline" size="sm" onClick={() => onReplyWithDraft(draft)}>
             <Trans>Reply with draft</Trans>
           </Button>
@@ -269,6 +303,10 @@ export function EmailAgentPanel({
         runErrorId={null}
         onRunErrorPresented={noop}
         onDismissError={() => setSendError(null)}
+        onRetrySend={() => {
+          const last = lastSend.current;
+          if (last) void send(last.text, last.nonce);
+        }}
         sending={false}
         fileInputRef={fileInputRef}
         onAttachmentPick={() => false}

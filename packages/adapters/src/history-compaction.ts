@@ -1,10 +1,12 @@
 import type { AgentRunRequest, AgentRuntime, JobPublisher } from "@rakazo/adapter-kit";
 import { historyCompactJob } from "@rakazo/adapter-kit";
 import type { MessageBlock } from "@rakazo/contracts";
+import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
 import { blocksToAgentHistoryText, escapePromptData } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { recordUsage } from "@rakazo/db";
 import { getLogger, unwrapJobPayload } from "@rakazo/logging";
+import { aiRecipient } from "./ai-consent.js";
 import { formatCurrentTimeInstruction } from "./current-time.js";
 import { resolveDeploymentModel } from "./deployment-model.js";
 import type {
@@ -355,6 +357,42 @@ export async function compactHistory(deps: CompactHistoryDeps, threadId: string)
   if (!deps.runtime.describe().capabilities.compaction || model.provider === "scripted") {
     getLogger().info(`history.compact skipped for thread ${threadId}: no usable summarizer model`);
     return;
+  }
+
+  // The history goes to this model, so the thread owner must have allowed this recipient. Unknown
+  // or failing lookups mean no: skip and leave the history as it is.
+  const recipient = (() => {
+    try {
+      return aiRecipient({
+        provider: model.provider,
+        modelId: model.id,
+        baseUrl: model.baseUrl,
+        use: "model",
+      });
+    } catch {
+      return null;
+    }
+  })();
+  if (recipient) {
+    const consented = await deps.prisma.aiDataConsent
+      .findUnique({
+        where: {
+          userId_spaceId_recipientKey: {
+            userId: thread.userId,
+            spaceId: thread.spaceId,
+            recipientKey: recipient.key,
+          },
+        },
+        select: { version: true },
+      })
+      .then(
+        (row) => row?.version === AI_DISCLOSURE_VERSION,
+        () => false,
+      );
+    if (!consented) {
+      getLogger().info(`history.compact skipped for thread ${threadId}: no AI data consent`);
+      return;
+    }
   }
 
   let summary = "";

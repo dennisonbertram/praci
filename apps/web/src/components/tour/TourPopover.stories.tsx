@@ -38,13 +38,33 @@ function FakeSidebar({ children }: { children: React.ReactNode }) {
 }
 
 const steps: TourStep[] = [
-  { id: "search", anchor: '[data-tour="sidebar-search"]', text: "Type here to find anything." },
-  { id: "create", anchor: '[data-tour="create-menu"]', text: "Press + to create a bot." },
-  { id: "chat", anchor: "[data-sidebar-group]", text: "Chat with Chief here." },
-  { id: "inbox", anchor: '[data-tour="sidebar-inbox"]', text: "Inbox sorts your mail." },
-  { id: "gone", anchor: '[data-tour="sidebar-missing"]', text: "Never shown." },
-  { id: "finance", anchor: '[data-tour="sidebar-finance"]', text: "Finance shows runway." },
-  { id: "account", anchor: '[data-tour="user-menu"]', text: "Settings are here." },
+  {
+    id: "search",
+    name: "Search",
+    anchor: '[data-tour="sidebar-search"]',
+    text: "Type here to find anything.",
+  },
+  {
+    id: "create",
+    name: "Create",
+    anchor: '[data-tour="create-menu"]',
+    text: "Press + to create a bot.",
+  },
+  { id: "chat", name: "Chief", anchor: "[data-sidebar-group]", text: "Chat with Chief here." },
+  {
+    id: "inbox",
+    name: "Inbox",
+    anchor: '[data-tour="sidebar-inbox"]',
+    text: "Inbox sorts your mail.",
+  },
+  { id: "gone", name: "Gone", anchor: '[data-tour="sidebar-missing"]', text: "Never shown." },
+  {
+    id: "finance",
+    name: "Finance",
+    anchor: '[data-tour="sidebar-finance"]',
+    text: "Finance shows runway.",
+  },
+  { id: "account", name: "Account", anchor: '[data-tour="user-menu"]', text: "Settings are here." },
 ];
 
 const meta = {
@@ -70,9 +90,9 @@ export const Phone: StoryObj<typeof meta> = {
   parameters: { viewport: { defaultViewport: "mobile1" } },
 };
 
-/** The last stop at the bottom of a phone: the card sits just above the account button. */
+/** The last stop at the bottom of a phone: the card sits just above the account button, with Ask Chief on the left. */
 export const PhoneLastStop: StoryObj<typeof meta> = {
-  args: { steps: steps.slice(-1) },
+  args: { steps: steps.slice(-1), lastAction: { label: "Ask Chief", run: () => undefined } },
   globals: { viewport: { value: "mobile1" } },
   parameters: { viewport: { defaultViewport: "mobile1" } },
 };

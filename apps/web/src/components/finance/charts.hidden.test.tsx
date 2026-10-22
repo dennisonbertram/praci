@@ -136,6 +136,41 @@ it("draws one $0 gridline, not '$0, $0, $0', when there is nothing to plot", asy
   if (width) Object.defineProperty(HTMLElement.prototype, "clientWidth", width);
 });
 
+it("keeps every period a keyboard link on touch screens", async () => {
+  vi.stubGlobal("matchMedia", () => ({ matches: true }));
+  const opened: string[] = [];
+  await withWidth(async (el) => {
+    const root = createRoot(el);
+    const day = (d: number) => ({
+      start: `2026-10-0${d}`,
+      end: `2026-10-0${d}`,
+      outCents: 100_000,
+      revenueCents: 0,
+      financingCents: 0,
+      partial: false,
+    });
+    await act(async () =>
+      root.render(
+        <BurnLines
+          label="Burn"
+          granularity="day"
+          series={[day(1), day(2)]}
+          onOpen={(m) => opened.push(m.start)}
+        />,
+      ),
+    );
+    expect(el.querySelector("[data-testid=burn-touch-target]")).not.toBeNull();
+    const links = [...el.querySelectorAll('g[role="link"]')] as SVGGElement[];
+    expect(links).toHaveLength(2);
+    await act(async () =>
+      links[0]?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })),
+    );
+    expect(opened).toEqual(["2026-10-01"]);
+    act(() => root.unmount());
+  });
+  vi.unstubAllGlobals();
+});
+
 const withWidth = async (run: (el: HTMLElement) => Promise<void>) => {
   const width = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
   Object.defineProperty(HTMLElement.prototype, "clientWidth", {
@@ -152,7 +187,7 @@ const withWidth = async (run: (el: HTMLElement) => Promise<void>) => {
   }
 };
 
-it("draws Out as a line with a gradient area, a dashed last segment for today, and a hover tooltip", async () => {
+it("draws Out as a line with a gradient area, no line to the running day, and a hover tooltip", async () => {
   await withWidth(async (el) => {
     const root = createRoot(el);
     const spend = [0, 2_000, 700_000, 5_000, 9_000];
@@ -172,9 +207,7 @@ it("draws Out as a line with a gradient area, a dashed last segment for today, a
     const gradientId = (area?.getAttribute("fill") ?? "").slice(5, -1);
     expect(document.getElementById(gradientId)?.querySelectorAll("stop")).toHaveLength(2);
     expect(el.querySelector("[data-testid=burn-out-line]")?.getAttribute("d")).toContain("C");
-    expect(
-      el.querySelector("[data-testid=burn-out-partial]")?.getAttribute("stroke-dasharray"),
-    ).toBe("4 4");
+    expect(el.querySelector("[data-testid=burn-out-partial]")).toBeNull();
     expect(el.querySelector("[data-testid=burn-out-end]")).not.toBeNull();
     expect(el.textContent).not.toContain("So far");
     // The curve never dips below the zero line (the largest y is the baseline).
@@ -265,7 +298,7 @@ it("labels weeks, months, quarters and years, and names the bucket in the toolti
   });
 });
 
-it("dashes only the last segment, and keeps few buckets at the left edge", async () => {
+it("stops the line before the running bucket, and keeps few buckets at the left edge", async () => {
   await withWidth(async (el) => {
     const root = createRoot(el);
     const segments = (id: string) =>
@@ -282,19 +315,22 @@ it("dashes only the last segment, and keeps few buckets at the left edge", async
       bucket("2026-10-12", "2026-10-18", 20_000, true),
     ]);
     expect(segments("burn-out-line")).toBe(1);
-    expect(segments("burn-out-partial")).toBe(1);
+    expect(el.querySelector("[data-testid=burn-out-partial]")).toBeNull();
+    expect(el.querySelector("[data-testid=burn-out-end]")).not.toBeNull();
     // Three buckets of a 600px chart do not spread over the full width.
     const x = (i: number) => Number(el.querySelectorAll("g[role=link] text")[i]?.getAttribute("x"));
     expect(x(0)).toBeLessThan(100);
     expect(x(2)).toBeLessThan(300);
 
-    // Two buckets: the one segment is the last, so it is the dashed one.
+    // Two buckets: the finished one is a lone point, so no line is drawn.
     await render([
       bucket("2026-10-05", "2026-10-11", 10_000),
       bucket("2026-10-12", "2026-10-18", 20_000, true),
     ]);
-    expect(segments("burn-out-line")).toBe(0);
-    expect(segments("burn-out-partial")).toBe(1);
+    expect(el.querySelector("[data-testid=burn-out-line]")).toBeNull();
+    expect(el.querySelector("[data-testid=burn-out-end]")).not.toBeNull();
+    // The finished bucket is a filled dot without hover, so it does not vanish.
+    expect(el.querySelectorAll("circle.fill-foreground")).toHaveLength(1);
     act(() => root.unmount());
   });
 });

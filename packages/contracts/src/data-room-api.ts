@@ -145,7 +145,7 @@ export const DataRoomApiSearchInputSchema = z.object({
 });
 /** The ordinal of the chunk that holds an item's name, folder and facets; text chunks start at 0. */
 /** A file still being read after this long (no pipeline write) is stuck and offers Try again. */
-export const DATA_ROOM_STUCK_MS = 10 * 60_000;
+export const DATA_ROOM_STUCK_MS = 3 * 60_000;
 
 export const DATA_ROOM_METADATA_ORDINAL = -1;
 
@@ -183,10 +183,19 @@ export const DataRoomConsentStatusSchema = z.object({
   disclosure: z.string(),
   /** Empty when no model is set up, in which case nothing is sent anywhere. */
   recipients: z.array(z.object({ name: z.string(), detail: z.string() })),
+  /** The Space this status is for, so a later grant can be refused if the caller moved to another. */
+  spaceId: z.string().optional(),
 });
 export type DataRoomConsentStatus = z.infer<typeof DataRoomConsentStatusSchema>;
 
-export const DataRoomConsentGrantInputSchema = z.object({ key: z.string(), version: z.string() });
+export const DataRoomConsentGrantInputSchema = z.object({
+  key: z.string(),
+  version: z.string(),
+  /** The Space of the status the user reviewed; a different current Space is refused. */
+  spaceId: z.string().optional(),
+  /** Records only the document consent, not the general model grants (Settings' Documents switch). */
+  documentsOnly: z.boolean().optional(),
+});
 
 /** Attachments of the caller's own cached messages, copied into the Data room. */
 export const DataRoomApiImportEmailInputSchema = z.object({

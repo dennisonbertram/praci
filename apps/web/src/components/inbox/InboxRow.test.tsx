@@ -74,19 +74,39 @@ it("shows a compact label dot in the narrow pane that names the label", async ()
   expect(dot?.className).toContain("@md:hidden");
 });
 
-it("lets Tab reach the revealed row actions once the row has focus", async () => {
+it("keeps the row actions out of the Tab order and reaches them with the arrow keys", async () => {
   await show();
-  const archive = () => document.querySelector<HTMLElement>('button[aria-label="Archive"]');
-  expect(archive()?.tabIndex).toBe(-1);
-  await act(async () => document.querySelector<HTMLElement>("button[data-row-id]")?.focus());
-  expect(archive()?.tabIndex).toBe(0);
-  await act(async () => document.querySelector<HTMLElement>("button[data-row-id]")?.blur());
-  expect(archive()?.tabIndex).toBe(-1);
+  const rowButton = document.querySelector<HTMLElement>("button[data-row-id]");
+  const archive = document.querySelector<HTMLElement>('button[aria-label="Archive"]');
+  expect(archive?.tabIndex).toBe(-1);
+  await act(async () => rowButton?.focus());
+  await act(async () => {
+    rowButton?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true }),
+    );
+  });
+  expect(document.activeElement).toBe(archive);
+  await act(async () => {
+    archive?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true, cancelable: true }),
+    );
+  });
+  expect(document.activeElement).toBe(rowButton);
+});
+
+it("marks the searched words and shows the snippet around the match", async () => {
+  await show({
+    query: "halcyon",
+    row: { ...row, subject: "Release notes", snippet: `${"x ".repeat(40)}the Halcyon board ships` },
+  });
+  const marks = [...document.querySelectorAll("mark")].map((m) => m.textContent);
+  expect(marks).toEqual(["Halcyon"]);
+  expect(document.querySelector("button[data-row-id]")?.textContent).toContain("…");
 });
 
 it("gives the More trigger a larger touch target on coarse pointers", async () => {
   await show();
-  expect(document.querySelector('button[aria-label="More"]')?.className).toContain(
+  expect(document.querySelector('button[aria-label^="More actions for"]')?.className).toContain(
     "pointer-coarse:size-10",
   );
 });
@@ -95,7 +115,7 @@ it("shows the More menu trigger below md as well as on touch, since the inline a
   await show();
   const inline = document.querySelector('button[aria-label="Archive"]')?.parentElement;
   expect(inline?.className).toContain("@max-md:hidden");
-  const more = document.querySelector('button[aria-label="More"]');
+  const more = document.querySelector('button[aria-label^="More actions for"]');
   expect(more?.className).toContain("@max-md:inline-flex");
   expect(more?.className).toContain("pointer-coarse:inline-flex");
 });
@@ -123,7 +143,9 @@ it("masks currency in the subject and preview while amounts are hidden", async (
 
 it("says in the More menu that a mark covers all mail from the sender", async () => {
   await show();
-  await act(async () => document.querySelector<HTMLElement>('button[aria-label="More"]')?.click());
+  await act(async () =>
+    document.querySelector<HTMLElement>('button[aria-label^="More actions for"]')?.click(),
+  );
   const items = [...document.querySelectorAll('[role="menuitemcheckbox"]')].map(
     (el) => el.textContent,
   );
@@ -173,6 +195,20 @@ it("offers no checkbox unless the list can check rows", async () => {
   expect(document.querySelector('[role="checkbox"]')).toBeNull();
 });
 
+it("keeps the checkbox out of the Tab order and reaches it with the arrow keys", async () => {
+  await show({ onPick: vi.fn() });
+  const rowButton = document.querySelector<HTMLElement>("button[data-row-id]");
+  const box = document.querySelector<HTMLElement>('[role="checkbox"]');
+  expect(box?.tabIndex).toBe(-1);
+  await act(async () => rowButton?.focus());
+  await act(async () => {
+    rowButton?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true }),
+    );
+  });
+  expect(document.activeElement).toBe(box);
+});
+
 it("checks the row from its own checkbox without opening it, and passes the shift key", async () => {
   const onPick = vi.fn();
   const onOpen = vi.fn();
@@ -217,7 +253,9 @@ it("hides the Newsletter label inside the Newsletters pile only", async () => {
 });
 
 const menuItems = async () => {
-  await act(async () => document.querySelector<HTMLElement>('button[aria-label="More"]')?.click());
+  await act(async () =>
+    document.querySelector<HTMLElement>('button[aria-label^="More actions for"]')?.click(),
+  );
   return [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')];
 };
 
@@ -260,4 +298,26 @@ it("labels the group number as unread mail, not a row count", async () => {
     root.render(<InboxGroup title="Earlier" rows={rows} onOpen={() => {}} onMark={undefined} />),
   );
   expect(document.querySelector("h2")?.textContent).toBe("Earlier1 unread");
+});
+
+it("keeps the group's unread count when only the first rows are listed", async () => {
+  await act(async () =>
+    root.render(
+      <InboxGroup
+        title="Needs reply"
+        rows={[row]}
+        unreadTotal={7}
+        onOpen={() => {}}
+        onMark={undefined}
+      />,
+    ),
+  );
+  expect(document.querySelector("h2")?.textContent).toBe("Needs reply7 unread");
+});
+
+it("shows a paperclip by the time only when the message has an attachment", async () => {
+  await show();
+  expect(document.querySelector('[aria-label="Has attachment"]')).toBeNull();
+  await show({ row: { ...row, hasAttachment: true } });
+  expect(document.querySelector('[aria-label="Has attachment"]')).not.toBeNull();
 });

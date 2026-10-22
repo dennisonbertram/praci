@@ -18,6 +18,8 @@ export const ProductEventType = z.enum([
   "thread.computer",
   "thread.subagent",
   "thread.cloud_agent",
+  /** payload: { pending: string[] } messages of this thread whose delegate waits for approval */
+  "thread.delegate_pending",
   "thread.call.ended",
   "run.started",
   "run.checkpointed",
@@ -203,6 +205,8 @@ export const MessageBlock = z.discriminatedUnion("kind", [
     detail: z.string().optional(),
     /** Show `detail` behind a "Details" disclosure (raw tool arguments), not open on the card. */
     detailFolded: z.boolean().optional(),
+    /** The service that must still approve a money request on its own side after the person allows it. */
+    waitsFor: z.string().optional(),
     mail: MailApprovalSchema.optional(),
     /**
      * A held message from one bot to an external bot: Allow delivers exactly the text on the card,

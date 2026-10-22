@@ -315,6 +315,7 @@ export function createDataRoomService(deps: DataRoomDeps) {
       allowed: ai?.allowed ?? false,
       disclosure: DATA_ROOM_DISCLOSURE,
       recipients: ai?.recipients.map(({ name, detail }) => ({ name, detail })) ?? [],
+      spaceId: actor.spaceId,
       ai,
     };
   }
@@ -494,10 +495,15 @@ export function createDataRoomService(deps: DataRoomDeps) {
      */
     consentGrant: async (
       actor: Actor,
-      input: { key: string; version: string },
+      input: { key: string; version: string; spaceId?: string; documentsOnly?: boolean },
     ): Promise<DataRoomConsentStatus> => {
       const { ai, ...status } = await consentStatus(actor);
-      if (!ai?.recipients.length || input.key !== status.key || input.version !== status.version) {
+      if (
+        !ai?.recipients.length ||
+        input.key !== status.key ||
+        input.version !== status.version ||
+        (input.spaceId !== undefined && input.spaceId !== actor.spaceId)
+      ) {
         throw new ORPCError("CONFLICT", { message: "AI data sharing changed. Review it again." });
       }
       await deps.prisma.aiDataConsent.upsert({
@@ -517,7 +523,7 @@ export function createDataRoomService(deps: DataRoomDeps) {
         update: { version: status.version, grantedAt: new Date() },
       });
       // One consent per model: Settings shows these models as allowed too.
-      for (const { key } of ai.recipients) {
+      for (const { key } of input.documentsOnly ? [] : ai.recipients) {
         await deps.prisma.aiDataConsent.upsert({
           where: {
             userId_spaceId_recipientKey: {

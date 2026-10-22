@@ -73,9 +73,12 @@ it("names each row's folder in All items, and not inside that folder", () => {
     snippets: [],
   }));
   act(() => root.render(<ListView rows={rows} o={o()} />));
-  expect(names()).toEqual(["lease.pdfLegal— · Mar 4, 2026", "loose.pdf— · Mar 4, 2026"]);
+  expect(names()).toEqual([
+    "lease.pdfLegalNot tagged · Added Mar 4, 2026",
+    "loose.pdfNot tagged · Added Mar 4, 2026",
+  ]);
   act(() => root.render(<ListView rows={rows.slice(0, 1)} o={o("f-legal")} />));
-  expect(names()).toEqual(["lease.pdf— · Mar 4, 2026"]);
+  expect(names()).toEqual(["lease.pdfNot tagged · Added Mar 4, 2026"]);
 });
 
 it("renders a native table in the Cap table style, with the header hidden on a phone", () => {
@@ -93,7 +96,7 @@ it("renders a native table in the Cap table style, with the header hidden on a p
   const head = container.querySelector('[data-testid="data-room-head"]');
   expect(head?.className).toContain("hidden");
   expect(head?.querySelector("th")?.className).toContain("text-xs");
-  expect(head?.textContent).toBe("NameTypeAddedParties");
+  expect(head?.textContent).toBe("NameTypeAddedPartiesStatus");
   expect(container.querySelectorAll("colgroup > col")).toHaveLength(6);
 });
 
@@ -140,7 +143,7 @@ it("puts the status in its own column as a badge, and never in the Type cell", (
   ].map((i) => ({ item: i as DataRoomApiItem, snippets: [] }));
   act(() => root.render(<ListView rows={rows} o={o()} />));
   const cells = Array.from(container.querySelectorAll('[data-testid="data-room-status"]'));
-  expect(cells.map((cell) => cell.textContent)).toEqual(["Failed", "Reading", "—"]);
+  expect(cells.map((cell) => cell.textContent)).toEqual(["Failed", "Reading", ""]);
   expect(cells[0]?.querySelector("[data-slot=badge]")).not.toBeNull();
   // The Type cell (second) never holds a status word.
   for (const row of container.querySelectorAll("[data-row]")) {
@@ -255,7 +258,7 @@ it("puts the type and date under the name for a phone, and says when a file is n
     (line) => line.textContent,
   );
   expect(lines[0]).toMatch(/^Presentation · Dec 21, 2025$/);
-  expect(lines[1]).toBe("—");
+  expect(lines[1]).toBe("Not tagged");
 });
 
 it("highlights the shown row and bolds only its name cell's text via the name style", () => {
@@ -278,14 +281,15 @@ it("gives a tile's type and date a line each, and marks an untagged tile", () =>
       (s) => s.textContent,
     );
   expect(lines(tiles[0] as Element)).toEqual(["Presentation", "Dec 21, 2025"]);
-  expect(tiles[1]?.textContent).toContain("—");
+  expect(tiles[1]?.textContent).toContain("Not tagged");
+  expect(tiles[1]?.textContent).not.toContain("—");
 });
 
 it("sizes the columns with table-column <col>s, not table-cell", () => {
   act(() => root.render(<ListView rows={[{ item: item("a", null), snippets: [] }]} o={o()} />));
   const cols = Array.from(container.querySelectorAll("col")).map((c) => c.className);
   expect(cols.some((c) => c.includes("table-cell"))).toBe(false);
-  // Status keeps its column even with no status, so the others do not move between folders.
+  // Type, Added, Parties and Status.
   expect(cols.filter((c) => c.includes("table-column"))).toHaveLength(4);
 });
 
@@ -316,11 +320,11 @@ it("makes only the first row a Tab stop, with menus out of the Tab order", () =>
   expect(menus.map((m) => m.tabIndex)).toEqual([-1, -1, -1]);
 });
 
-it("shows the added date under the name of an untagged file on a phone", () => {
+it("says why a finished file has no type, with no dash, under the name on a phone", () => {
   const rows = [{ item: item("loose", null), snippets: [] }];
   act(() => root.render(<ListView rows={rows} o={o()} />));
   expect(container.querySelector('[data-testid="data-room-subline"]')?.textContent).toBe(
-    "— · Mar 4, 2026",
+    "Not tagged · Added Mar 4, 2026",
   );
 });
 
@@ -331,9 +335,8 @@ it("puts a sub-folder's menu in the same column as a file's at every list width"
       <ListView
         rows={[{ item: item("a", null), snippets: [] }]}
         o={o()}
-        lead={(showStatus) => (
+        lead={() => (
           <SubfolderList
-            showStatus={showStatus}
             folders={[invoices]}
             contents={() => "2 items"}
             onOpen={vi.fn()}
@@ -487,7 +490,7 @@ it("offers the same actions in the right-click menu as in the row's More actions
       ?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
   });
   await flush();
-  expect(names()).toEqual(["Send to agent", "Share with investors", "Move", "Rename", "Delete"]);
+  expect(names()).toEqual(["Send to agent", "Share", "Move", "Rename", "Delete"]);
 });
 
 it("keeps Move, Rename and Delete in the right-click menu when there is no agent to send to", async () => {
@@ -638,7 +641,7 @@ it("keeps Try again for a failure that is not about the file's bytes", () => {
 });
 
 it("shows how long a file has been Reading once that passes two minutes", () => {
-  const long = new Date(Date.now() - 5 * 60_000).toISOString();
+  const long = new Date(Date.now() - 150_000).toISOString();
   const short = new Date(Date.now() - 30_000).toISOString();
   const rows = asRows(
     { ...item("old", null), status: "extracting", updatedAt: long },
@@ -663,12 +666,12 @@ it("counts the Reading age from the last pipeline write, not from when the file 
   expect(container.querySelector('[data-testid="data-room-subline"]')?.textContent).toBe("Reading");
 });
 
-it("offers Try again on a file still Reading after 10 minutes", () => {
+it("offers Try again on a file still Reading after 3 minutes", () => {
   const onAction = vi.fn();
   const rows = asRows({
     ...item("stuck", null),
     status: "extracting",
-    updatedAt: new Date(Date.now() - 11 * 60_000).toISOString(),
+    updatedAt: new Date(Date.now() - 4 * 60_000).toISOString(),
   });
   act(() => root.render(<ListView rows={rows} o={{ ...o(), onAction }} />));
   expect(container.querySelector('[data-testid="data-room-subline"]')?.textContent).toBe(
@@ -681,18 +684,48 @@ it("offers Try again on a file still Reading after 10 minutes", () => {
   expect(onAction).toHaveBeenCalledWith("retry", expect.objectContaining({ id: "stuck" }));
 });
 
-it("keeps the Status column's space but leaves it blank when no row has a status", () => {
+it("shows no Reading on a file whose text is already stored", () => {
+  const rows = asRows({ ...item("texted", null), status: "classifying", previewText: "Minutes" });
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  expect(container.textContent).not.toContain("Reading");
+});
+
+it("shows a file icon, not a spinner, on a file whose text is already stored, in list and grid", () => {
+  const rows = asRows({ ...item("texted", null), status: "classifying", previewText: "Minutes" });
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  expect(container.querySelector("[role=presentation]")).toBeNull();
+  act(() => root.render(<GridView rows={rows} o={o()} />));
+  expect(container.querySelector("[role=presentation]")).toBeNull();
+});
+
+it("keeps the Status column when no row has a status, so the columns never move", () => {
   act(() => root.render(<ListView rows={asRows(item("a", null), item("b", null))} o={o()} />));
-  expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).not.toContain(
-    "Status",
-  );
-  expect(container.querySelector('[data-testid="data-room-status"]')?.textContent).toBe("");
-  act(() =>
-    root.render(
-      <ListView rows={asRows(item("a", null), { ...item("b", null), status: "failed" })} o={o()} />,
-    ),
-  );
   expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).toContain(
     "Status",
   );
+});
+
+it("closes the side preview on Escape from the shown row only", () => {
+  const onClosePreview = vi.fn();
+  const rows = [item("a", null), item("b", null)].map((i) => ({ item: i, snippets: [] }));
+  act(() => root.render(<ListView rows={rows} o={{ ...o(), shownId: "a", onClosePreview }} />));
+  const press = (id: string) =>
+    act(() => {
+      container
+        .querySelector(`[data-item-id="${id}"]`)
+        ?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+  press("b");
+  expect(onClosePreview).not.toHaveBeenCalled();
+  press("a");
+  expect(onClosePreview).toHaveBeenCalledTimes(1);
+});
+
+it("shows no dash in the Type and Parties cells of a failed file", () => {
+  act(() =>
+    root.render(<ListView rows={asRows({ ...item("a", null), status: "failed" })} o={o()} />),
+  );
+  const row = container.querySelector("[data-row]");
+  expect(row?.children[1]?.textContent).toBe("");
+  expect(row?.children[3]?.textContent).toBe("");
 });

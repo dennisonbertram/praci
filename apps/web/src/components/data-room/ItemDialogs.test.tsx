@@ -31,6 +31,10 @@ const investors = vi.hoisted(() => ({ shares: vi.fn(), share: vi.fn(), unshare: 
 const contacts = vi.hoisted(() => ({ list: vi.fn() }));
 vi.mock("../../lib/rpc", () => ({ rpc: { dataRoom: rpc, legal, investors, contacts } }));
 
+const notice = vi.hoisted(() => vi.fn());
+const scopeToken = vi.hoisted(() => vi.fn(() => 7));
+vi.mock("./upload-toasts", () => ({ showNoticeToast: notice, uploadScopeToken: scopeToken }));
+
 import { resetHideAmountsMemory, setHideAmounts } from "../../lib/hide-amounts-preference";
 import { folderNodes } from "./folders";
 import { ItemDialog } from "./ItemDialogs";
@@ -380,12 +384,13 @@ describe("Share with investors", () => {
     expect(named("Share")?.hasAttribute("disabled")).toBe(true);
   });
 
-  it("Share gives the ticked investors the file and emails them a link by default", async () => {
+  it("Share gives the ticked investors the file and emails a link only when asked", async () => {
     investors.share.mockResolvedValue({ links: [] });
     await open();
     await act(async () => document.getElementById("share-c2")?.click());
     expect(named("Share")?.hasAttribute("disabled")).toBe(false);
     expect(dialog()?.textContent).toContain("Email them a link");
+    await act(async () => document.getElementById("share-email-link")?.click());
     await act(async () => named("Share")?.click());
     expect(investors.share).toHaveBeenCalledWith({
       itemId: "i1",
@@ -393,6 +398,8 @@ describe("Share with investors", () => {
       emailLink: true,
     });
     expect(onClose).toHaveBeenCalled();
+    // The dialog closes, so a toast naming who got the file is the only confirmation.
+    expect(notice).toHaveBeenCalledWith("Shared Lease.pdf with Bo", 7);
   });
 
   it("shows the links when they could not be emailed", async () => {

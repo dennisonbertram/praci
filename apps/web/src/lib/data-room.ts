@@ -113,9 +113,14 @@ export function uploadToDataRoom(
   file: File,
   folderId: string | undefined,
   onProgress: (fraction: number) => void,
+  signal?: AbortSignal,
 ): Promise<DataRoomApiUploadResponse> {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
+    signal?.addEventListener("abort", () => {
+      request.abort();
+      reject(new DataRoomUploadError("aborted"));
+    });
     const query = new URLSearchParams({ name: file.name, ...(folderId ? { folderId } : {}) });
     request.open("POST", `/api/data-room/upload?${query}`);
     request.withCredentials = true;
@@ -126,7 +131,7 @@ export function uploadToDataRoom(
     request.upload.onprogress = (event) => {
       if (event.lengthComputable) onProgress(event.loaded / event.total);
     };
-    request.onerror = () => reject(new DataRoomUploadError("failed"));
+    request.onerror = () => reject(new DataRoomUploadError("network"));
     request.onload = () => {
       if (request.status === 400) {
         // A zip that could not be unpacked says why; any other 400 is a bad file name.

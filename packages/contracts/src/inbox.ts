@@ -81,6 +81,8 @@ export const MailSignalsSchema = z.object({
   auth: z.object({ dkim: AuthResult, spf: AuthResult, dmarc: AuthResult }),
   /** A passing DKIM signature lists both list-unsubscribe and list-unsubscribe-post in h=. */
   dkimCoversUnsubscribe: z.boolean(),
+  /** The top-level MIME type is multipart/mixed, which is how mail with attached files arrives. */
+  attachment: z.boolean().optional(),
   categories: z.object({
     spam: z.boolean(),
     promotions: z.boolean(),
@@ -140,6 +142,8 @@ export const MailRowSchema = z.object({
   fromAddress: z.string().optional(),
   /** The pile the row belongs to (Gmail spam rows are "spam"); null while undecided. Optional for older servers. */
   pile: InboxPileSchema.nullable().optional(),
+  /** The message carries an attached file; optional for older servers and rows synced before it was recorded. */
+  hasAttachment: z.boolean().optional(),
 });
 
 /** Which account a request covers; omitted means every connected mail account. */

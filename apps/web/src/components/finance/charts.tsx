@@ -41,6 +41,11 @@ export function niceRange(min: number, max: number): { step: number; top: number
  * its axis starts at the nearest step below the lowest value. Other lines keep `niceRange`.
  */
 function lineRange(min: number, max: number) {
+  // A constant balance gets room on both sides so the line sits mid-chart.
+  if (min === max && min > 0) {
+    const step = Math.max(Math.round(min / 10), 100);
+    return { step, floor: min - step, top: min + step };
+  }
   if (min > 0 && max - min < max / 2) {
     const { step } = niceScale(max - min);
     const floor = Math.floor(min / step) * step;
@@ -349,7 +354,7 @@ function monotoneSegments(pts: [number, number][]): string[] {
 
 /**
  * Out, revenue and financing for each bucket as lines (Out has a gradient under it); each bucket
- * opens its detail. A bucket still running ends Out's line with a dashed segment and a hollow dot.
+ * opens its detail. A bucket still running is a hollow dot, not part of the line.
  */
 export function BurnLines({
   series,
@@ -367,6 +372,9 @@ export function BurnLines({
   useHideAmounts();
   const gradient = useId();
   const [active, setActive] = useState<number | null>(null);
+  // A finger cannot hit 20 px columns, so on touch the whole plot is one target: a tap picks the
+  // nearest period (its figures show), a second tap in the same column opens it.
+  const touch = window.matchMedia?.("(pointer: coarse)").matches ?? false;
   return (
     <Chart height={height} label={label}>
       {(width) => {
@@ -391,10 +399,11 @@ export function BurnLines({
         const line = (pick: (m: CashPoint) => number) =>
           series.map((m, i): [number, number] => [cx(i), y(Math.min(pick(m), scale.top))]);
         const out = line((m) => m.outCents);
-        const outSegs = monotoneSegments(out);
         const last = series.length - 1;
         const partial = series[last]?.partial === true && last > 0;
-        const solidSegs = partial ? outSegs.slice(0, -1) : outSegs;
+        // A bucket still running is a hollow dot only: a line to it would read as spend falling.
+        const drawn = partial ? out.slice(0, -1) : out;
+        const outSegs = monotoneSegments(drawn);
         const start = (p: [number, number] | undefined) =>
           `M${p?.[0].toFixed(1)},${p?.[1].toFixed(1)}`;
         const hasRevenue = series.some((m) => m.revenueCents > 0);
@@ -477,29 +486,22 @@ export function BurnLines({
                     />
                   </>
                 ) : null}
-                <path
-                  data-testid="burn-out-area"
-                  d={area(out, outSegs)}
-                  fill={`url(#${gradient}-out)`}
-                />
-                <path
-                  data-testid="burn-out-line"
-                  d={`${start(out[0])}${solidSegs.join("")}`}
-                  fill="none"
-                  className="stroke-foreground"
-                  strokeWidth={1.75}
-                  strokeLinecap="round"
-                />
-                {partial ? (
-                  <path
-                    data-testid="burn-out-partial"
-                    d={`${start(out[last - 1])}${outSegs.at(-1)}`}
-                    fill="none"
-                    className="stroke-foreground"
-                    strokeWidth={1.75}
-                    strokeDasharray="4 4"
-                    strokeLinecap="round"
-                  />
+                {drawn.length > 1 ? (
+                  <>
+                    <path
+                      data-testid="burn-out-area"
+                      d={area(drawn, outSegs)}
+                      fill={`url(#${gradient}-out)`}
+                    />
+                    <path
+                      data-testid="burn-out-line"
+                      d={`${start(drawn[0])}${outSegs.join("")}`}
+                      fill="none"
+                      className="stroke-foreground"
+                      strokeWidth={1.75}
+                      strokeLinecap="round"
+                    />
+                  </>
                 ) : null}
               </>
             ) : null}
@@ -526,7 +528,7 @@ export function BurnLines({
                   className="fill-card stroke-foreground"
                   strokeWidth={1.5}
                 />
-              ) : series.length === 1 || i === active ? (
+              ) : drawn.length === 1 || i === active ? (
                 <circle key={series[i]?.start} cx={px} cy={py} r={3} className="fill-foreground" />
               ) : null,
             )}
@@ -550,16 +552,21 @@ export function BurnLines({
                 // biome-ignore lint/a11y/useSemanticElements: an SVG group cannot be an <a> that the router can drive
                 <g
                   key={m.start}
+                  // Pointer events go to the touch target below; keyboard access to every period stays.
                   role="link"
                   tabIndex={0}
                   aria-label={`${granularity === "day" ? dayMonth(m.start) : name}: ${money(m.outCents)}`}
-                  className="cursor-pointer outline-none"
-                  onClick={open}
                   onKeyDown={keyActivate(open)}
-                  onMouseEnter={() => setActive(i)}
-                  onMouseLeave={() => setActive(null)}
                   onFocus={() => setActive(i)}
                   onBlur={() => setActive(null)}
+                  {...(touch
+                    ? {}
+                    : {
+                        onClick: open,
+                        onMouseEnter: () => setActive(i),
+                        onMouseLeave: () => setActive(null),
+                      })}
+                  className="cursor-pointer outline-none"
                 >
                   <rect
                     x={left + slot * i}
@@ -584,6 +591,28 @@ export function BurnLines({
                 </g>
               );
             })}
+            {touch ? (
+              // Pointer only: each period above is the keyboard and screen reader control.
+              // biome-ignore lint/a11y/noStaticElementInteractions: a tap overlay; the periods are the accessible controls
+              <rect
+                data-testid="burn-touch-target"
+                x={left}
+                y={top}
+                width={Math.max(width - left - right, 0)}
+                height={base - top}
+                className="fill-transparent outline-none"
+                onClick={(event) => {
+                  const box = event.currentTarget.getBoundingClientRect();
+                  const i = Math.floor(
+                    ((event.clientX - box.left) / box.width) * Math.max(series.length, MIN_SLOTS),
+                  );
+                  const point = series[i];
+                  if (!point) return;
+                  if (i === active) onOpen(point);
+                  else setActive(i);
+                }}
+              />
+            ) : null}
             {series.map((m, i) => {
               if (m.financingCents <= scale.top) return null;
               const when = granularity === "day" ? dayMonth(m.start) : (names[i] ?? "");

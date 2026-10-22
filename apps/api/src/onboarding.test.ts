@@ -1,6 +1,11 @@
 import type * as db from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
-import { chooseFocus, markAppConnected, seedBlankBotGreeting } from "./onboarding.js";
+import {
+  chooseFocus,
+  dismissPendingChoiceInTransaction,
+  markAppConnected,
+  seedBlankBotGreeting,
+} from "./onboarding.js";
 
 const posted = vi.hoisted(() => [] as Array<{ blocks: unknown[] }>);
 vi.mock("@rakazo/db", async (original) => ({
@@ -149,18 +154,23 @@ describe("company focus", () => {
     );
     // One sentence above the cards, not three bubbles that all say connect.
     expect(texts[0]).toBe(
-      "Got it. Email, calendar, and your company pages. Connect Gmail and Google Calendar here and I’ll use what you already have. For cash and equity, connect your bank, card, and Carta in [Finance](/app/finance) and [Investors](/app/investors). Board decks and investor documents go in the [Data room](/app/data-room).",
+      "Connect Gmail and Google Calendar here and I’ll use what you already have.",
     );
-    // One bubble and the cards, with the page pointers inside the bubble.
+    // One bubble and the cards.
     expect(texts).toHaveLength(1);
     expect(posted).toHaveLength(2);
   });
 });
 
 describe("focus choices", () => {
-  it("offers four choices, with no second choice for the same apps as Day-to-day work", async () => {
+  it("has one choice for day-to-day work, not a second one for nearly the same apps", async () => {
     const { deps, actor } = fixture([]);
-    await expect(chooseFocus(deps, actor, "bot", "inbox")).rejects.toThrow();
+    // A card posted before the merge still offers "everything"; it counts as "day".
+    await chooseFocus(deps, actor, "bot", "everything");
+    expect(posted[0]?.blocks[0]).toEqual({
+      kind: "text",
+      text: "Got it. Email, Slack, calendar, and docs.",
+    });
   });
   it("summarizes the company choice by what it connects", async () => {
     const { deps, actor } = fixture([]);
@@ -169,5 +179,23 @@ describe("focus choices", () => {
       kind: "text",
       text: "Got it. Email, calendar, and your company pages.",
     });
+  });
+});
+
+describe("answering the focus card by typing", () => {
+  const target = { spaceId: "space", botId: "bot", threadId: "thread" };
+  it("closes the open card once", async () => {
+    const { tx } = fixture([]);
+    const closed = await dismissPendingChoiceInTransaction(tx as never, target);
+    expect(closed?.blocks).toEqual([{ kind: "choice", answerId: "_dismissed" }]);
+    expect(tx.message.update).toHaveBeenCalledTimes(1);
+  });
+  it("does nothing when no card is open", async () => {
+    const { tx } = fixture([]);
+    tx.message.findMany.mockResolvedValueOnce([
+      { id: "choice", blocks: [{ kind: "choice", answerId: "day" }] },
+    ]);
+    expect(await dismissPendingChoiceInTransaction(tx as never, target)).toBeNull();
+    expect(tx.message.update).not.toHaveBeenCalled();
   });
 });

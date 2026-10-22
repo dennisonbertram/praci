@@ -17,6 +17,9 @@ type AuthMode = "in" | "up" | "forgot";
 const fieldClass = "mt-2 h-12 rounded-xl px-4 text-base md:text-base";
 export const submitClass = "mt-3 h-12 w-full rounded-xl text-base";
 
+// The submit button is disabled while a request runs, which drops focus; an error puts it back on the email field.
+const focusEmail = () => document.getElementById("email")?.focus();
+
 export function AuthPage({ mode }: { mode: AuthMode }) {
   const { t } = useLingui();
   const navigate = useNavigate();
@@ -31,6 +34,11 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
     return authErrorText({ code }, t`Could not continue`);
   });
   const [pending, setPending] = useState(false);
+  const [tooShort, setTooShort] = useState(false);
+  // Each field's own message sits under it; `error` stays for what only the server can say.
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
   // Signup triggers a session refresh that remounts the anonymous auth page.
   const sent = resetSent || searchParams.get("verify") === "email";
@@ -71,11 +79,19 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!reset?.passwordAuth) return;
-    const issue = credentialIssue({ email, password: mode === "forgot" ? undefined : password });
-    if (issue) {
-      setError(credentialIssueText(issue));
-      return;
-    }
+    const issues = {
+      name: mode === "up" && !name.trim() ? t`Enter your name` : null,
+      email: credentialIssue({ email }) ? credentialIssueText("email") : null,
+      password: mode === "in" && !password ? credentialIssueText("password") : null,
+    };
+    // At sign-up the rule under the field is the message: a short or empty password turns it red.
+    const short = mode === "up" && password.length < 8;
+    setError(null);
+    setNameError(issues.name);
+    setEmailError(issues.email);
+    setPasswordError(issues.password);
+    setTooShort(short);
+    if (issues.name || issues.email || issues.password || short) return;
     setPending(true);
     setError(null);
     try {
@@ -106,6 +122,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           : await authClient.signIn.email({ email: trimmedEmail, password });
       if (result.error) {
         setError(authErrorText(result.error, t`Could not continue`));
+        focusEmail();
         return;
       }
       if (mode === "up" && signupRequiresEmailVerification(result.data)) {
@@ -116,6 +133,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
       navigate(mode === "up" ? "/onboarding" : signInNext(searchParams.get("next")));
     } catch {
       setError(t`Could not reach the server`);
+      focusEmail();
     } finally {
       setPending(false);
     }
@@ -148,7 +166,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   }
 
   return (
-    <AuthFrame onSubmit={submit} title={title}>
+    <AuthFrame noValidate onSubmit={submit} title={title}>
       {sent ? (
         <div className="flex w-full flex-col items-center gap-4 text-center">
           {resetSent ? (
@@ -171,7 +189,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           ) : null}
           <Link
             to="/sign-in"
-            className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5"
+            className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <Trans>Back to sign in</Trans>
           </Link>
@@ -225,10 +243,19 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     // Chief greets the founder by this name; without it the email handle stood in.
                     required
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder={t`Your name`}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      setNameError(null);
+                    }}
+                    aria-invalid={nameError ? true : undefined}
+                    aria-describedby={nameError ? "name-error" : undefined}
                     className={fieldClass}
                   />
+                  {nameError ? (
+                    <p id="name-error" role="alert" className="mt-1.5 text-sm text-destructive">
+                      {nameError}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
               <div className="w-full">
@@ -240,13 +267,21 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                   name="email"
                   autoComplete="username"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t`Your email address`}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setEmailError(null);
+                  }}
                   type="email"
                   required
-                  aria-invalid={error ? true : undefined}
+                  aria-invalid={error || emailError ? true : undefined}
+                  aria-describedby={emailError ? "email-error" : undefined}
                   className={fieldClass}
                 />
+                {emailError ? (
+                  <p id="email-error" role="alert" className="mt-1.5 text-sm text-destructive">
+                    {emailError}
+                  </p>
+                ) : null}
               </div>
               {mode !== "forgot" ? (
                 <div className="mt-4 w-full">
@@ -259,12 +294,21 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                       name="password"
                       autoComplete={mode === "in" ? "current-password" : "new-password"}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder={t`Password`}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setTooShort(false);
+                        setPasswordError(null);
+                      }}
                       type={showPassword ? "text" : "password"}
                       required
-                      minLength={8}
-                      aria-invalid={error ? true : undefined}
+                      aria-invalid={error || tooShort || passwordError ? true : undefined}
+                      aria-describedby={
+                        mode === "up"
+                          ? "password-hint"
+                          : passwordError
+                            ? "password-error"
+                            : undefined
+                      }
                       className={`${fieldClass} mt-0 pr-12`}
                     />
                     <Button
@@ -280,15 +324,24 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     </Button>
                   </div>
                   {mode === "up" ? (
-                    <p className="mt-1.5 text-sm text-muted-foreground">
+                    <p
+                      id="password-hint"
+                      role={tooShort ? "alert" : undefined}
+                      className={`mt-1.5 text-sm ${tooShort ? "text-destructive" : "text-muted-foreground"}`}
+                    >
                       <Trans>At least 8 characters.</Trans>
                     </p>
                   ) : null}
+                  {mode === "in" && passwordError ? (
+                    <p id="password-error" role="alert" className="mt-1.5 text-sm text-destructive">
+                      {passwordError}
+                    </p>
+                  ) : null}
                   {mode === "in" && reset?.passwordReset ? (
-                    <div className="mt-0.5 text-right text-sm">
+                    <div className="text-right text-sm">
                       <Link
                         to="/forgot-password"
-                        className="inline-block py-3 font-medium text-foreground"
+                        className="inline-block py-2 font-medium text-foreground pointer-coarse:py-3 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                       >
                         <Trans>Forgot password?</Trans>
                       </Link>
@@ -297,7 +350,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                 </div>
               ) : null}
               {/* Always present with room for one line, so an error moves no field. */}
-              <p role="alert" className="mt-3 min-h-5 w-full text-sm text-destructive">
+              <p role="alert" className="mt-1 min-h-5 w-full text-sm text-destructive">
                 {error}
               </p>
               <Button type="submit" size="lg" disabled={pending} className={submitClass}>
@@ -329,7 +382,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     <Trans>Don’t have an account?</Trans>{" "}
                     <Link
                       to="/sign-up"
-                      className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5"
+                      className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     >
                       <Trans>Sign up</Trans>
                     </Link>
@@ -339,7 +392,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     <Trans>Already have an account?</Trans>{" "}
                     <Link
                       to="/sign-in"
-                      className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5"
+                      className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     >
                       <Trans>Sign in</Trans>
                     </Link>
@@ -347,7 +400,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                 ) : (
                   <Link
                     to="/sign-in"
-                    className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5"
+                    className="inline-block py-3 font-medium text-foreground sm:py-0 pointer-coarse:py-3.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   >
                     <Trans>Back to sign in</Trans>
                   </Link>
@@ -405,7 +458,10 @@ export function PasswordResetPage() {
     >
       {linkInvalid ? (
         <>
-          <Link to="/forgot-password" className="font-medium">
+          <Link
+            to="/forgot-password"
+            className="font-medium rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
             <Trans>Request a new link</Trans>
           </Link>
         </>
@@ -414,7 +470,10 @@ export function PasswordResetPage() {
           <p className="text-lg">
             <Trans>Password updated</Trans>
           </p>
-          <Link to="/sign-in" className="mt-6 inline-block font-medium">
+          <Link
+            to="/sign-in"
+            className="mt-6 inline-block font-medium rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
             <Trans>Sign in</Trans>
           </Link>
         </div>
@@ -441,7 +500,10 @@ export function PasswordResetPage() {
           <Button type="submit" size="lg" disabled={pending} className={submitClass}>
             {pending ? <Trans>Working…</Trans> : <Trans>Reset password</Trans>}
           </Button>
-          <Link to="/sign-in" className="mt-6 font-medium">
+          <Link
+            to="/sign-in"
+            className="mt-6 font-medium rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
             <Trans>Back to sign in</Trans>
           </Link>
         </>
@@ -453,20 +515,29 @@ export function PasswordResetPage() {
 export function AuthFrame({
   title,
   onSubmit,
+  noValidate,
   children,
 }: {
   title: React.ReactNode;
+  noValidate?: boolean;
   onSubmit: (event: React.FormEvent) => void;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex min-h-full items-center justify-center bg-background px-6 py-16 text-foreground">
-      <form onSubmit={onSubmit} className="flex w-[460px] flex-col items-center">
+      <form
+        noValidate={noValidate}
+        onSubmit={onSubmit}
+        className="flex w-[460px] flex-col items-center"
+      >
         <div className="flex h-[74px] w-[74px] items-center justify-center gap-[11px] rounded-full bg-muted">
           <span className="h-5 w-[9px] rounded-full bg-primary" />
           <span className="h-5 w-[9px] rounded-full bg-primary" />
         </div>
-        <h1 aria-live="polite" className="mb-9 mt-7 text-4xl font-medium tracking-tight">
+        <h1
+          aria-live="polite"
+          className="mb-9 mt-7 text-center text-4xl font-medium tracking-tight"
+        >
           {title}
         </h1>
         {children}

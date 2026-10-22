@@ -88,7 +88,7 @@ export function isAutoFileMessage(row: FilingCandidate): boolean {
   );
 }
 
-/** The owner's setting; no row means on. */
+/** The owner's setting; no row means off. */
 export async function autoFileEmailEnabled(
   prisma: Pick<PrismaClient, "dataRoomPreference">,
   scope: Scope,
@@ -97,7 +97,7 @@ export async function autoFileEmailEnabled(
     where: { spaceId_userId: { spaceId: scope.spaceId, userId: scope.userId } },
     select: { autoFileEmail: true },
   });
-  return row?.autoFileEmail ?? true;
+  return row?.autoFileEmail ?? false;
 }
 
 const FILING_SELECT = {

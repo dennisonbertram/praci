@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({ t: String.raw }),
@@ -14,6 +14,7 @@ vi.mock("@rakazo/chat-ui/web", () => ({
   ChatMarkdown: ({ children }: { children: ReactNode }) => children,
 }));
 
+import { setHideAmounts } from "../lib/hide-amounts-preference";
 import type { AskBlock } from "./AskCard";
 import { AskCard } from "./AskCard";
 
@@ -30,6 +31,13 @@ const pending: AskBlock = {
   ],
   status: "pending",
 };
+
+// Each test starts a minute after the last, so an answer in one does not hold the next card's buttons.
+let minute = 0;
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(Date.UTC(2030, 0, 1, 0, ++minute)));
+});
 
 function mount(onAnswer: (text: string) => Promise<void>) {
   const container = document.createElement("div");
@@ -123,4 +131,59 @@ it("shows the approval detail in the body font", () => {
     (el) => el.textContent === "From Operating checking.",
   );
   expect(detail?.className).not.toContain("font-mono");
+});
+
+it("labels a payment's main button with its amount and drops blank lines from Details", () => {
+  const container = document.createElement("div");
+  document.body.append(container);
+  act(() =>
+    createRoot(container).render(
+      <AskCard
+        block={{
+          ...pending,
+          detail: "\n\nAmount: $300.00",
+          detailFolded: true,
+          actions: [
+            { id: "allow", label: "Send $300.00" },
+            { id: "deny", label: "Deny" },
+          ],
+        }}
+        canAnswer
+        onAnswer={async () => undefined}
+      />,
+    ),
+  );
+  expect(button(container, "Send $300.00")).toBeDefined();
+  expect(button(container, "Allow once")).toBeUndefined();
+  expect(container.querySelector("pre")?.textContent).toBe("Amount: $300.00");
+});
+
+it("masks the amount on a payment button while Hide amounts is on", () => {
+  setHideAmounts(true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const payment: AskBlock = {
+    ...pending,
+    actions: [
+      { id: "allow", label: "Send $300.00" },
+      { id: "deny", label: "Deny" },
+    ],
+  };
+  act(() =>
+    createRoot(container).render(
+      <AskCard block={payment} canAnswer onAnswer={async () => undefined} />,
+    ),
+  );
+  expect(container.textContent).not.toContain("300");
+  expect(container.textContent).toContain("Send ");
+  setHideAmounts(false);
+});
+
+it("holds a new card's buttons for a second after another card was answered", async () => {
+  const first = mount(async () => undefined);
+  await act(async () => button(first, "Allow once").click());
+  const second = mount(async () => undefined);
+  expect((button(second, "Allow once") as HTMLButtonElement).disabled).toBe(true);
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 1100)));
+  expect((button(second, "Allow once") as HTMLButtonElement).disabled).toBe(false);
 });

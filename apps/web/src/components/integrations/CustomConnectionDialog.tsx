@@ -527,7 +527,7 @@ export function CustomConnectionDialog({
               ) : service && useApiKey ? (
                 keyHint
               ) : service ? null : (
-                <Trans>Paste the MCP server URL from the app's documentation.</Trans>
+                <Trans>Paste the app's connection URL from its documentation.</Trans>
               )}
             </DialogDescription>
             {/* A first-party service has a known URL, so it shows no connection settings. */}
@@ -838,7 +838,7 @@ export function CustomConnectionDialog({
                 autoFocus
                 value={directoryQuery}
                 onChange={(event) => setDirectoryQuery(event.target.value)}
-                placeholder={view.publicCatalog ? t`Search apps` : "github.com"}
+                placeholder={view.publicCatalog ? t`Search integrations` : "github.com"}
                 aria-label={t`Search`}
               />
               <Button type="submit" disabled={busy || !directoryQuery.trim()}>

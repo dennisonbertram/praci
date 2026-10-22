@@ -8,10 +8,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@rakazo/ui-web";
+import { ChevronDown } from "lucide-react";
 import { formatRelativeTime } from "../../lib/relative-time";
 
 /**
- * The Fundraising header's Mercury line: Connect Mercury, "Mercury · 5m ago" with Refresh, or
+ * The Fundraising header's Mercury line (beside the title, like the Investors source line): Connect Mercury, "Mercury · 5m ago" with Refresh, or
  * "Sync failed" with Refresh and Reconnect. Rows Mercury sent that could not be read are named
  * beside it; none of them was written.
  */
@@ -28,7 +29,12 @@ export function MercuryLine({
 }) {
   if (state.status === "not_connected")
     return (
-      <Button variant="outline" size="sm" onClick={onConnect}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="-mx-1 h-8 px-1 text-xs font-normal text-muted-foreground pointer-coarse:h-11"
+        onClick={onConnect}
+      >
         <Trans>Connect Mercury</Trans>
       </Button>
     );
@@ -51,13 +57,14 @@ export function MercuryLine({
             <Button
               variant="ghost"
               size="sm"
-              className={failed ? "text-warning" : "text-muted-foreground"}
+              className={`-mx-1 h-8 px-1 text-xs font-normal pointer-coarse:h-11 ${failed ? "text-warning" : "text-muted-foreground"}`}
             />
           }
         >
           {label}
+          <ChevronDown aria-hidden="true" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="start">
           <DropdownMenuItem onClick={onRefresh}>
             <Trans>Refresh</Trans>
           </DropdownMenuItem>

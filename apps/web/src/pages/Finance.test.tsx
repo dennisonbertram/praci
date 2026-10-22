@@ -311,7 +311,10 @@ it("notes non-USD transactions only when some are left out", async () => {
   root = createRoot(container);
   await show("/app/finance");
   await flush();
-  expect(container.querySelector('a[aria-label*="3 non-USD not counted"]')).not.toBeNull();
+  // The link's name starts with its visible text and adds the count after it.
+  const sync = [...container.querySelectorAll("a")].find((a) => a.textContent?.includes("non-USD"));
+  expect(sync?.getAttribute("aria-label")).toBeNull();
+  expect(sync?.textContent).toMatch(/3 non-USD not counted$/);
 });
 
 it("sends Reconnect to Integrations instead of connecting", async () => {
@@ -459,7 +462,7 @@ it("hides Cash and Runway when only Brex is connected, and still shows spend", a
   expect(container.querySelector('a[href="/app/finance/runway"]')).toBeNull();
   expect(container.textContent).not.toContain("Runway");
   expect(container.textContent).not.toContain("Cash");
-  expect(container.textContent).toContain("Spent so far this month · Oct 1");
+  expect(container.textContent).toContain("Out so far this month · Oct 1");
   expect(container.textContent).toContain("Monthly burn");
   expect(container.textContent).toContain("Add Mercury");
 });
@@ -855,7 +858,7 @@ it("names the space on detail pages too, switches company from there, and puts A
   expect(titleRow?.querySelector('button[aria-label="Ask Finance agent"]')).not.toBeNull();
 });
 
-it("names the company on a detail page even with one space, as plain text with no switcher", async () => {
+it("shows no company name on a detail page when there is one space", async () => {
   rpcMock.vendor.mockResolvedValue({
     key: "acme-hosting",
     name: "Acme Hosting",
@@ -880,9 +883,8 @@ it("names the company on a detail page even with one space, as plain text with n
     );
   });
   await flush();
-  expect(container.querySelector('[title="Example Space One"]')?.textContent).toBe(
-    "Example Space One",
-  );
+  // The only company needs no name beside the title (UX loop 9 C10).
+  expect(container.querySelector('[title="Example Space One"]')).toBeNull();
   expect(container.querySelector('button[aria-label^="Company:"]')).toBeNull();
 });
 

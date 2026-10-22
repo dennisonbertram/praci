@@ -150,3 +150,20 @@ it("says Not supported here when the Notification API is missing", async () => {
   expect(container.textContent).not.toContain("Blocked");
   expect((row("Browser notifications") as HTMLButtonElement).disabled).toBe(true);
 });
+
+it("keeps the Notifications card in place while preferences load", async () => {
+  setPermission("granted");
+  api.preferences.mockReturnValue(new Promise(() => {}));
+  await render();
+  expect(container.querySelector("section[aria-label=Notifications]")).not.toBeNull();
+  expect(row("Browser notifications")?.hasAttribute("disabled")).toBe(true);
+});
+
+it("does not show Browser as on before the saved preference has loaded", async () => {
+  setPermission("granted");
+  api.preferences.mockReturnValue(new Promise(() => {}));
+  await render();
+  const el = row("Browser notifications") as HTMLButtonElement;
+  expect(el.getAttribute("aria-checked")).toBe("false");
+  expect(el.disabled).toBe(true);
+});

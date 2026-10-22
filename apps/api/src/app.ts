@@ -130,6 +130,7 @@ import { mountDataRoomRoutes } from "./data-room.js";
 import { mountEmailImageProxy } from "./email-image-proxy.js";
 import type { AppEnv } from "./env.js";
 import { loadEnv } from "./env.js";
+import type { GtmQueueReader } from "./gtm.js";
 import { healthRoutes } from "./health.js";
 import { mountInboxAttachment } from "./inbox-attachment.js";
 import {
@@ -210,6 +211,9 @@ export async function createApp(
     cryptoFetch?: typeof fetch;
     /** Replaces the real meeting providers, so the demo and tests run Granola against its emulator. */
     meetingSources?: MeetingSourceRegistry;
+    /** Offline acceptance seams limited to GTM account and queue reads. */
+    gtmQueueReader?: GtmQueueReader;
+    gtmMcp?: Pick<McpConnector, "callServerTool">;
   } = {},
 ): Promise<AppHandles> {
   const {
@@ -228,6 +232,8 @@ export async function createApp(
     financeCallToolFor: financeCallToolOverride,
     cryptoFetch,
     meetingSources,
+    gtmQueueReader,
+    gtmMcp,
     ...envOverrides
   } = overrides;
   const env = { ...loadEnv(process.env), ...envOverrides };
@@ -536,6 +542,7 @@ export async function createApp(
     notificationEvents,
     contextStrategy,
     prisma,
+    mcpOAuth,
     runtime,
     codexCatalog,
     sandbox,
@@ -665,6 +672,8 @@ export async function createApp(
     financeCallToolFor: financeCallToolOverride ?? createFinanceCallToolFor(prisma, mcp),
     safeCallToolFor: createSafeCallToolFor(prisma, mcp),
     mcp,
+    ...(gtmQueueReader ? { gtmQueueReader } : {}),
+    ...(gtmMcp ? { gtmMcp } : {}),
     // The same offline fake serves exchange reads (Coinbase, Kraken) and their prices.
     ...(cryptoFetch ? { exchangeFetch: cryptoFetch } : {}),
     ...(meetingSources ? { meetingSources } : {}),

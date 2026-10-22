@@ -162,6 +162,8 @@ describePostgres(
             createdAt: new Date(),
           },
         });
+        // Filing mail attachments is opt-in; these people have opted in.
+        await prisma.dataRoomPreference.create({ data: { ...who, autoFileEmail: true } });
       }
     });
     afterAll(async () => {
@@ -247,9 +249,10 @@ describePostgres(
       expect(filed).toHaveLength(1);
     });
 
-    it("files nothing while the setting is off, and a missing setting means on", async () => {
-      await prisma.dataRoomPreference.create({
-        data: { ...owner, autoFileEmail: false },
+    it("files nothing while the setting is off or missing, and files once it is on", async () => {
+      await prisma.dataRoomPreference.update({
+        where: { spaceId_userId: owner },
+        data: { autoFileEmail: false },
       });
       const off = await connect("off-1", [message("m1", 1)]);
       expect(await sync(off)).toHaveLength(0);
@@ -260,7 +263,9 @@ describePostgres(
       );
       expect((await items(owner)).filter((i) => i.sourceConnectionId === off.id)).toHaveLength(0);
       await prisma.dataRoomPreference.delete({ where: { spaceId_userId: owner } });
-      const on = await connect("off-2", [message("m2", 1)]);
+      expect(await sync(await connect("off-2", [message("m2", 1)]))).toHaveLength(0);
+      await prisma.dataRoomPreference.create({ data: { ...owner, autoFileEmail: true } });
+      const on = await connect("off-3", [message("m3", 1)]);
       expect(await sync(on)).toHaveLength(1);
     });
 

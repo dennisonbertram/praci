@@ -46,8 +46,8 @@ import {
   NativeSelectOption,
   Skeleton,
 } from "@rakazo/ui-web";
-import { Check, ChevronDown, Copy, X } from "lucide-react";
-import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from "react";
+import { Check, ChevronDown, ChevronRight, Copy, X } from "lucide-react";
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode, RefObject } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   ModelPreflightFeedback,
@@ -71,6 +71,19 @@ import { useOpenRouterSignIn } from "../lib/use-openrouter-signin";
 import { errorText } from "../lib/user-error";
 import { ModelBackupsSettings } from "./ModelBackupsSettings";
 
+/** Every disclosure on Settings shows the same chevron, not the browser's filled triangle. */
+const DISCLOSURE_SUMMARY = "flex w-fit cursor-pointer list-none select-none items-center gap-1";
+
+function DisclosureChevron() {
+  return (
+    <ChevronRight
+      aria-hidden="true"
+      className="size-4 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+      strokeWidth={1.75}
+    />
+  );
+}
+
 const COMMON_PROVIDERS = ["anthropic", "openai", "google", "openrouter", "xai", "mistral"];
 
 export function ModelSettingsOverlay({
@@ -78,6 +91,10 @@ export function ModelSettingsOverlay({
   embedded = false,
   localOwner = false,
   focusProvider,
+  voice,
+  view = "model",
+  onViewChange,
+  switchDisabled = false,
 }: {
   onClose: () => void;
   /** Render panel body only for the shared Settings shell. */
@@ -88,10 +105,22 @@ export function ModelSettingsOverlay({
    * space's default provider (a rejected key whose provider the caller does not know).
    */
   focusProvider?: string;
+  /** Embedded only: the Voice panel, offered beside the model once "Use my own model" is open. */
+  voice?: ReactNode;
+  view?: "model" | "voice";
+  onViewChange?: (view: "model" | "voice") => void;
+  /** Keeps the Model/Voice switch still while a voice change is saving. */
+  switchDisabled?: boolean;
 }) {
   const { t } = useLingui();
+  // A person on the system model sees one line; providers, backups, search model and Voice open on request.
+  const [ownOpen, setOwnOpen] = useState(focusProvider !== undefined || view === "voice");
   const [catalog, setCatalog] = useState<ModelCatalogEntry[]>([]);
   const [credentials, setCredentials] = useState<ModelCredential[]>([]);
+  // A connected key keeps the full panel open, even after the last one is disconnected.
+  useEffect(() => {
+    if (credentials.length > 0) setOwnOpen(true);
+  }, [credentials]);
   const [me, setMe] = useState<Me | null>(null);
   const [provider, setProvider] = useState(focusProvider ?? "");
   // The provider whose optional personal-key form is open.
@@ -267,16 +296,24 @@ export function ModelSettingsOverlay({
     () => new Map(credentials.map((entry) => [entry.provider, entry])),
     [credentials],
   );
-  // The server's own provider and the active model's provider count as connected too, so the
-  // provider in use is listed first instead of lost in the A-Z list.
+  // "Connected" means a stored key. The provider in use may rely on the server's credentials
+  // instead, so it is marked "In use" and listed first rather than called connected.
   const connectedProviderIds = useMemo(
+    () => new Set(credentials.map((entry) => entry.provider)),
+    [credentials],
+  );
+  const inUseProviderIds = useMemo(
     () =>
-      new Set([
-        ...credentials.map((entry) => entry.provider),
-        ...(me?.hostCredentialProvider ? [me.hostCredentialProvider] : []),
-        ...(me?.defaultProvider && !me.needsModel ? [me.defaultProvider] : []),
-      ]),
-    [credentials, me?.hostCredentialProvider, me?.defaultProvider, me?.needsModel],
+      // One provider: the one the bots use. The server's own credentials count only when no
+      // default model names a provider.
+      new Set(
+        me?.defaultProvider && !me.needsModel
+          ? [me.defaultProvider]
+          : me?.hostCredentialProvider
+            ? [me.hostCredentialProvider]
+            : [],
+      ),
+    [me?.hostCredentialProvider, me?.defaultProvider, me?.needsModel],
   );
   const searching = providerQuery.trim() !== "";
   const filteredGroups = useMemo(() => {
@@ -302,9 +339,10 @@ export function ModelSettingsOverlay({
     return [...matched].sort(
       (a, b) =>
         score(a) - score(b) ||
+        Number(inUseProviderIds.has(b.id)) - Number(inUseProviderIds.has(a.id)) ||
         Number(connectedProviderIds.has(b.id)) - Number(connectedProviderIds.has(a.id)),
     );
-  }, [groups, providerQuery, connectedProviderIds]);
+  }, [groups, providerQuery, connectedProviderIds, inUseProviderIds]);
   // Browsing separates connected providers into their own section; searching
   // flattens back into one ranked list.
   const connectedGroups = useMemo(
@@ -322,13 +360,23 @@ export function ModelSettingsOverlay({
   const shownOtherGroups =
     searching || showAllProviders
       ? otherGroups
-      : otherGroups.filter((group) => COMMON_PROVIDERS.includes(group.id) || group.id === provider);
+      : otherGroups.filter(
+          (group) =>
+            COMMON_PROVIDERS.includes(group.id) ||
+            group.id === provider ||
+            inUseProviderIds.has(group.id),
+        );
   const modelsForProvider = catalog.filter((entry) => entry.provider === provider);
   const selected = modelsForProvider.find((entry) => entry.id === modelId) ?? modelsForProvider[0];
   selectedLabelRef.current = selected?.label;
   const selectedProviderName = selected?.providerName ?? selected?.provider ?? "";
   const disconnectName = selectedProviderName;
   const hostCredentialSource = me?.hostCredentialSource ?? "";
+  const defaultModelLabel =
+    catalog.find((entry) => entry.provider === me?.defaultProvider && entry.id === me?.defaultModel)
+      ?.label ??
+    me?.defaultModel ??
+    "";
   const serverCredentialsNote = (
     <p className="text-sm leading-[1.5] text-muted-foreground">
       <Trans>
@@ -743,7 +791,11 @@ export function ModelSettingsOverlay({
             )}
           </span>
         </span>
-        {!connectedSection && rowCredential ? (
+        {inUseProviderIds.has(group.id) ? (
+          <span className="text-[12px] text-muted-foreground">
+            {connectedProviderIds.has(group.id) ? <Trans>In use</Trans> : <Trans>Included</Trans>}
+          </span>
+        ) : !connectedSection && rowCredential ? (
           <span className="text-[12px] text-success">
             <Trans>Connected</Trans>
           </span>
@@ -1133,8 +1185,9 @@ export function ModelSettingsOverlay({
   // OpenAI-compatible connections keep an optional key behind a disclosure.
   const compatKeyBlock = isOpenAiCompatible ? (
     <div className="mt-5">
-      <details className="text-[13.5px] text-muted-foreground">
-        <summary className="w-fit cursor-pointer select-none">
+      <details className="group text-[13.5px] text-muted-foreground">
+        <summary className={DISCLOSURE_SUMMARY}>
+          <DisclosureChevron />
           <Trans>API key</Trans>
         </summary>
         <Input
@@ -1211,9 +1264,7 @@ export function ModelSettingsOverlay({
             <X />
           </DialogClose>
         </DialogHeader>
-      ) : (
-        <p className="px-6 pt-1 text-[13.5px] text-muted-foreground/70 sm:px-8">{description}</p>
-      )}
+      ) : null}
 
       {/* The active model shows in the picker and the provider list; only the empty case needs a line. */}
       {me?.needsModel ? (
@@ -1222,9 +1273,14 @@ export function ModelSettingsOverlay({
         >
           <Trans>Pick a provider below and connect it.</Trans>
         </p>
+      ) : defaultModelLabel ? (
+        // Side by side the active model shows beside the list; stacked it would sit below six rows.
+        <p
+          className={`mx-6 text-[13px] text-muted-foreground sm:mx-8 min-[1040px]:hidden ${embedded ? "mt-4" : "mt-5"}`}
+        >
+          <Trans>Your bots use {defaultModelLabel}.</Trans>
+        </p>
       ) : null}
-
-      <EmbeddingModelField />
 
       <div className="rk-scroll flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-6 sm:px-8 min-[1040px]:flex-row min-[1040px]:overflow-hidden">
         <div className="flex min-h-0 shrink-0 flex-col min-[1040px]:w-[310px]">
@@ -1313,8 +1369,9 @@ export function ModelSettingsOverlay({
                       className="mt-2 h-10 text-foreground"
                     />
                   </label>
-                  <details className="mt-2 text-[13px] leading-[1.5] text-muted-foreground">
-                    <summary className="w-fit cursor-pointer select-none">
+                  <details className="group mt-2 text-[13px] leading-[1.5] text-muted-foreground">
+                    <summary className={DISCLOSURE_SUMMARY}>
+                      <DisclosureChevron />
                       <Trans>Setup help</Trans>
                     </summary>
                     <p className="mt-1">
@@ -1490,13 +1547,14 @@ export function ModelSettingsOverlay({
                   {saveButton}
                   {/* Sign-in and the key field open only on request; the model above is what people change. */}
                   <details
-                    className="mt-6 border-t border-border pt-4 text-sm text-muted-foreground"
+                    className="group mt-6 border-t border-border pt-4 text-sm text-muted-foreground"
                     open={ownKeyProvider === provider}
                     onToggle={(event) =>
                       setOwnKeyProvider(event.currentTarget.open ? provider : null)
                     }
                   >
-                    <summary className="w-fit cursor-pointer select-none">
+                    <summary className={DISCLOSURE_SUMMARY}>
+                      <DisclosureChevron />
                       <Trans>Replace key</Trans>
                     </summary>
                     <div className="mt-5">{connectionControls}</div>
@@ -1509,18 +1567,21 @@ export function ModelSettingsOverlay({
                   {provider === me?.hostCredentialProvider ? (
                     serverCredentialsNote
                   ) : (
-                    <p className="text-sm leading-[1.5] text-muted-foreground">
-                      <Trans>Your bots already use {selectedProviderName}.</Trans>
+                    <p className="hidden text-sm leading-[1.5] text-muted-foreground min-[1040px]:block">
+                      {defaultModelLabel
+                        ? t`Your bots use ${defaultModelLabel}.`
+                        : t`Your bots already have a model.`}
                     </p>
                   )}
                   <details
-                    className="mt-5 text-sm text-muted-foreground"
+                    className="group mt-5 text-sm text-muted-foreground"
                     open={ownKeyProvider === provider}
                     onToggle={(event) =>
                       setOwnKeyProvider(event.currentTarget.open ? provider : null)
                     }
                   >
-                    <summary className="w-fit cursor-pointer select-none">
+                    <summary className={DISCLOSURE_SUMMARY}>
+                      <DisclosureChevron />
                       <Trans>Use your own key</Trans>
                     </summary>
                     <div className="mt-5">{connectionControls}</div>
@@ -1550,6 +1611,7 @@ export function ModelSettingsOverlay({
               credentials={credentials}
             />
           ) : null}
+          <EmbeddingModelField />
         </div>
       </div>
       <AlertDialog open={confirmDisconnect} onOpenChange={setConfirmDisconnect}>
@@ -1583,9 +1645,50 @@ export function ModelSettingsOverlay({
   );
 
   if (embedded) {
+    const modelLabel = defaultModelLabel;
+    // Not while loading: the full panel's own skeleton shows instead of a line that then changes.
+    const simple = !ownOpen && !!me && !me.needsModel && credentials.length === 0;
     return (
       <div data-testid="model-settings" className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {body}
+        {!me && loading ? (
+          <Skeleton data-testid="provider-skeleton" className="mx-6 h-10 sm:mx-8" />
+        ) : simple ? (
+          <div className="flex flex-col items-start gap-3 px-6 sm:px-8">
+            <p className="text-[13.5px] text-muted-foreground">
+              {modelLabel ? t`Your bots use ${modelLabel}.` : t`Your bots already have a model.`}
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setOwnOpen(true);
+                setOwnKeyProvider(provider);
+              }}
+            >
+              <Trans>Use my own model</Trans>
+            </Button>
+          </div>
+        ) : (
+          <>
+            {voice ? (
+              <div className="flex gap-1 px-6 sm:px-8">
+                {(["model", "voice"] as const).map((next) => (
+                  <Button
+                    key={next}
+                    size="xs"
+                    variant={view === next ? "default" : "outline"}
+                    className="rounded-full"
+                    aria-pressed={view === next}
+                    disabled={switchDisabled}
+                    onClick={() => onViewChange?.(next)}
+                  >
+                    {next === "model" ? <Trans>Model</Trans> : <Trans>Voice</Trans>}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+            {view === "voice" && voice ? voice : body}
+          </>
+        )}
       </div>
     );
   }
@@ -1642,8 +1745,9 @@ function EmbeddingModelField() {
 
   // Rarely changed, so it sits behind a disclosure instead of as an empty row under the active model.
   return (
-    <details className="mx-6 mt-3 text-[13px] text-muted-foreground sm:mx-8">
-      <summary className="cursor-pointer">
+    <details className="group mt-6 text-[13px] text-muted-foreground">
+      <summary className={DISCLOSURE_SUMMARY}>
+        <DisclosureChevron />
         <Trans>Data room search model</Trans>
       </summary>
       <div className="mt-2 flex items-baseline gap-3">

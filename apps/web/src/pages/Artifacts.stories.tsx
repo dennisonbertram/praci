@@ -161,22 +161,20 @@ export const Empty: Story = { beforeEach: () => load([]) };
 
 export const EmptyWithMorePages: Story = { beforeEach: () => load([], "cursor_2") };
 
-export const FiltersOpen: Story = {
+/** The date pill open beside the search box. */
+export const DateFilterOpen: Story = {
   beforeEach: () => load(),
   play: async ({ canvasElement }) => {
-    await userEvent.click(await within(canvasElement).findByRole("button", { name: "Filters" }));
+    await userEvent.click(await within(canvasElement).findByRole("button", { name: /Added/ }));
   },
 };
 
-/** A search that matches nothing, with the Filters panel closed again: the button shows a dot and the list can be reset. */
+/** A search that matches nothing: the list can be reset. */
 export const NoMatch: Story = {
   beforeEach: () => load(),
   play: async ({ canvasElement }) => {
     const view = within(canvasElement);
-    const filters = await view.findByRole("button", { name: "Filters" });
-    await userEvent.click(filters);
-    await userEvent.type(await view.findByPlaceholderText("Search artifacts…"), "zzzz");
-    await userEvent.click(filters);
+    await userEvent.type(await view.findByPlaceholderText("Search"), "zzzz");
   },
 };
 

@@ -15,6 +15,11 @@ vi.mock("@lingui/core/macro", () => ({
 vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
+const enqueue = vi.hoisted(() => vi.fn());
+vi.mock("@rakazo/ui-web", async (original) => ({
+  ...(await original<typeof import("@rakazo/ui-web")>()),
+  enqueueNotificationToast: enqueue,
+}));
 const autoSort = vi.hoisted(() => ({ plan: vi.fn(), apply: vi.fn(), undo: vi.fn() }));
 vi.mock("../../lib/rpc", () => ({
   rpc: { dataRoom: { autoSort } },
@@ -143,7 +148,7 @@ it("shows Sorted N items after applying, and Undo reverses that batch", async ()
   await flush();
   expect(autoSort.undo).toHaveBeenCalledWith({ batchId: "b1" });
   expect(getUploadToasts().some((t) => t.id === toast?.id)).toBe(false);
-  expect(getUploadToasts().map((t) => t.name)).toContain("Undid 2, skipped 1");
+  expect(enqueue).toHaveBeenCalledWith(expect.objectContaining({ title: "Undid 2, skipped 1" }));
 });
 
 it("does not call a plan with no model 'Already tidy.', and offers Retry", async () => {
@@ -191,6 +196,18 @@ it("Select all ticks the whole plan, so applying it takes two clicks", async () 
   expect(button("Apply").textContent).toBe("Apply 2 changes");
 });
 
+it("shows one Select all when there are several changes", async () => {
+  autoSort.plan.mockResolvedValue({
+    mode: "ai",
+    operations: [
+      { ...plan.operations[1], key: "m1", fromFolderId: "f9" },
+      { ...plan.operations[1], key: "m2", itemId: "i3", fromFolderId: "f9" },
+    ],
+  });
+  await render();
+  expect(document.body.textContent?.match(/Select all/g)).toHaveLength(1);
+});
+
 it("says what to do when no change is ticked, instead of Apply 0 changes", async () => {
   autoSort.plan.mockResolvedValue({
     mode: "ai",
@@ -198,9 +215,12 @@ it("says what to do when no change is ticked, instead of Apply 0 changes", async
   });
   await render();
   expect(boxes().map((b) => b.getAttribute("aria-checked"))).toEqual(["false"]);
-  expect(document.body.textContent).toContain("Tick a change to apply it.");
   expect(button("Apply").textContent).toBe("Apply");
   expect(button("Apply").hasAttribute("disabled")).toBe(true);
+  // A visible Select all next to Apply, instead of a hint to find the checkbox.
+  act(() => button("Select all").click());
+  expect(boxes().map((b) => b.getAttribute("aria-checked"))).toEqual(["true"]);
+  expect(button("Apply").textContent).toBe("Apply 1 change");
 });
 
 it("leaves files already in a folder unticked and groups moves by destination", async () => {

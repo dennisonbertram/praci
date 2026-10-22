@@ -1,9 +1,20 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as approvalToasts from "./approval-toasts";
+
+vi.mock("./approval-toasts", () => ({
+  enqueueApprovalToast: vi.fn(),
+  hasApprovalToast: vi.fn(() => false),
+  retainApprovalToasts: vi.fn(),
+}));
+const toasts = vi.mocked(approvalToasts);
+
 import {
+  attentionFromDto,
   deliverNotification,
   openNotificationLink,
   resultShownInOpenChat,
   shouldToast,
+  syncApprovalToasts,
 } from "./notification-delivery";
 
 describe("shouldToast", () => {
@@ -193,5 +204,76 @@ describe("opening a notification link", () => {
     t.show.mock.calls[0]?.[2]();
     expect(focus).toHaveBeenCalledTimes(1);
     expect(open).not.toHaveBeenCalled();
+  });
+});
+
+describe("attentionFromDto", () => {
+  const base = {
+    id: "n1",
+    botId: "b1",
+    surface: "chat",
+    threadId: null,
+    title: "Inbox agent needs approval",
+    body: null,
+    link: "/app/b1",
+    importance: "attention" as const,
+    createdAt: "2030-01-01T00:00:00.000Z",
+    seenAt: null,
+    shownAt: null,
+  };
+  it("keeps an approval toast until it is opened or dismissed", () => {
+    expect(attentionFromDto({ ...base, kind: "needs_input" }).timeout).toBe(0);
+    expect(attentionFromDto({ ...base, kind: "done" }).timeout).toBeUndefined();
+  });
+  it("groups only approvals; questions and codes stay their own toasts", () => {
+    const needs = { ...base, kind: "needs_input" as const };
+    expect(attentionFromDto(needs).approval).toBe(true);
+    expect(attentionFromDto({ ...needs, title: "Inbox agent needs an answer" }).approval).toBe(
+      false,
+    );
+    expect(attentionFromDto({ ...needs, title: "Inbox agent needs a code" }).approval).toBe(false);
+    expect(attentionFromDto({ ...base, kind: "done" }).approval).toBeUndefined();
+  });
+});
+
+describe("syncApprovalToasts", () => {
+  const approval = {
+    id: "n9",
+    botId: "mercury",
+    surface: "thread",
+    threadId: "t1",
+    title: "Mercury agent needs approval",
+    body: null,
+    link: "/app/mercury",
+    importance: "attention" as const,
+    kind: "needs_input" as const,
+    createdAt: "2030-01-01T00:00:00.000Z",
+    seenAt: null,
+    shownAt: "2030-01-01T00:00:01.000Z",
+  };
+  const options = { complete: true, onSeen: () => () => undefined };
+  beforeEach(() => {
+    toasts.enqueueApprovalToast.mockClear();
+    toasts.retainApprovalToasts.mockClear();
+    toasts.hasApprovalToast.mockReturnValue(false);
+  });
+  it("shows an unanswered approval again after a reload, keyed by the bot that holds the card", () => {
+    syncApprovalToasts([approval], options);
+    expect(toasts.enqueueApprovalToast).toHaveBeenCalledTimes(1);
+    expect(toasts.enqueueApprovalToast.mock.calls[0]?.[1]).toEqual({ botId: "mercury" });
+    // A payment Chief asked for is held by the Mercury agent: the toast opens that chat.
+    expect(toasts.enqueueApprovalToast.mock.calls[0]?.[0]).toMatchObject({ href: "/app/mercury" });
+    expect(toasts.retainApprovalToasts).toHaveBeenCalledWith(new Set(["n9"]));
+  });
+  it("shows nothing for a seen approval and drops toasts the server no longer lists", () => {
+    syncApprovalToasts([{ ...approval, seenAt: "2030-01-01T00:01:00.000Z" }], options);
+    expect(toasts.enqueueApprovalToast).not.toHaveBeenCalled();
+    expect(toasts.retainApprovalToasts).toHaveBeenCalledWith(new Set());
+  });
+  it("leaves toasts alone when the list was cut short or the toast already shows", () => {
+    toasts.hasApprovalToast.mockReturnValue(true);
+    syncApprovalToasts([approval], { ...options, complete: false });
+    expect(toasts.enqueueApprovalToast).not.toHaveBeenCalled();
+    expect(toasts.retainApprovalToasts).not.toHaveBeenCalled();
   });
 });

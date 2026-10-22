@@ -109,6 +109,8 @@ export * from "./granola-api-emulator.js";
 export * from "./granola-meeting-source.js";
 export * from "./graphql-connectors.js";
 export * from "./group-handoff.js";
+export { resolveZernioApiKey } from "./gtm-posting.js";
+export * from "./gtm-queue.js";
 export * from "./home.js";
 export * from "./host-aware-sandbox.js";
 export * from "./imessage-notification.js";

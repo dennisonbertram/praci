@@ -39,6 +39,7 @@ import type { BillingService } from "../billing.js";
 import type { createDataRoomService } from "../data-room.js";
 import type { FinanceCryptoDeps } from "../finance.js";
 import type { ParseStatement } from "../finance-statements.js";
+import type { GtmQueueReader } from "../gtm.js";
 
 export interface RouterDeps {
   /** Transactional email for portal links; absent when the deployment has none. */
@@ -88,6 +89,10 @@ export interface RouterDeps {
   safeCallToolFor?: SafeSyncDeps["callToolFor"];
   /** Reruns a pin's saved read-only tool call on refresh; unset where MCP is off. */
   mcp?: Pick<McpConnector, "callServerTool" | "listServerTools">;
+  /** Replaces the app-owned Zernio queue reader for offline tests and the local demo. */
+  gtmQueueReader?: GtmQueueReader;
+  /** Replaces only the GTM overview's read-only account caller in offline acceptance. */
+  gtmMcp?: Pick<McpConnector, "callServerTool">;
   /** Replaces the read-only Devin caller built from `mcp`; tests pass a fake. */
   devinCallTool?: DevinCallTool;
   /** Meeting providers for the Granola key check; the demo and tests point Granola at the emulator. */

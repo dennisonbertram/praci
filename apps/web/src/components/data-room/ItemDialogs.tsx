@@ -39,7 +39,9 @@ import { errorText } from "../../lib/user-error";
 import { CopyLinkDialog } from "../CopyLinkDialog";
 import type { FolderNode } from "./folders";
 import { folderContents } from "./folders";
+import { SHARES_CHANGED } from "./format";
 import type { ItemAction } from "./ItemMenu";
+import { showNoticeToast, uploadScopeToken } from "./upload-toasts";
 
 /** The Move select's value for "put it in a new folder", which no folder id can equal. */
 const NEW_FOLDER = "__new__";
@@ -353,13 +355,13 @@ export function ItemDialog({
 
 /**
  * Share with investors: the investor contacts who already have the file show Unshare, the others a
- * checkbox. Links are emailed by default; ones that cannot be emailed are shown once to paste.
+ * checkbox. Links are emailed only when asked; ones that cannot be emailed are shown once to paste.
  */
 function ShareDialog({ item, onClose }: { item: DataRoomApiItem; onClose: () => void }) {
   const [investors, setInvestors] = useState<Contact[] | null>(null);
   const [shared, setShared] = useState<Set<string>>(new Set());
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [emailLink, setEmailLink] = useState(true);
+  const [emailLink, setEmailLink] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [links, setLinks] = useState<PortalLink[] | null>(null);
@@ -388,6 +390,7 @@ function ShareDialog({ item, onClose }: { item: DataRoomApiItem; onClose: () => 
     setError("");
     try {
       await rpc.investors.unshare({ itemId: item.id, contactId });
+      window.dispatchEvent(new Event(SHARES_CHANGED));
       setShared((current) => new Set([...current].filter((id) => id !== contactId)));
     } catch (cause) {
       setError(errorText(cause, t`Could not unshare`));
@@ -398,14 +401,27 @@ function ShareDialog({ item, onClose }: { item: DataRoomApiItem; onClose: () => 
   const share = async () => {
     setBusy(true);
     setError("");
+    const since = uploadScopeToken();
     try {
       const result = await rpc.investors.share({
         itemId: item.id,
         contactIds: [...picked],
         emailLink,
       });
+      window.dispatchEvent(new Event(SHARES_CHANGED));
       if (result.links.length > 0) setLinks(result.links);
-      else onClose();
+      else {
+        const names = (investors ?? []).filter((c) => picked.has(c.id)).map((c) => c.name);
+        const [who = ""] = names;
+        const count = names.length;
+        showNoticeToast(
+          count === 1
+            ? t`Shared ${item.name} with ${who}`
+            : t`Shared ${item.name} with ${count} investors`,
+          since,
+        );
+        onClose();
+      }
     } catch (cause) {
       setError(errorText(cause, t`Could not share`));
       setBusy(false);

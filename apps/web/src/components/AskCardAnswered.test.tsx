@@ -51,6 +51,8 @@ it.each([
   ["always", "text-foreground", "lucide-check"],
   ["deny", "text-destructive", "lucide-x"],
   ["confirm-payment", "text-muted-foreground", null],
+  ["superseded", "text-muted-foreground", null],
+  ["expired", "text-muted-foreground", null],
 ])("shows the %s outcome without success green", (answer, colour, icon) => {
   const line = render(answer);
   expect(line.className).toContain(colour);
@@ -63,6 +65,74 @@ it.each([
   ["allow", "Approved"],
   ["always", "Always allowed"],
   ["deny", "Denied"],
+  ["superseded", "No longer active"],
+  ["expired", "Expired"],
 ])("words the %s answer as %s", (answer, words) => {
   expect(render(answer).textContent).toBe(words);
+});
+
+it("shows a typed answer once: the card says Answered, the user bubble carries the text", () => {
+  const container = document.createElement("div");
+  act(() =>
+    createRoot(container).render(
+      <AskCard
+        block={{ kind: "ask", text: "Which month?", status: "answered", answer: "October" }}
+        canAnswer={false}
+        onAnswer={async () => undefined}
+      />,
+    ),
+  );
+  expect(container.querySelector(".font-medium")?.textContent).toBe("Answered");
+  expect(container.textContent).not.toContain("October");
+});
+
+it("says an approved payment still waits for its provider, and when it was requested", () => {
+  const container = document.createElement("div");
+  act(() =>
+    createRoot(container).render(
+      <AskCard
+        block={{ ...answered("allow"), waitsFor: "Mercury" }}
+        canAnswer={false}
+        requestedAt="2026-10-22T07:44:00.000Z"
+        onAnswer={async () => undefined}
+      />,
+    ),
+  );
+  const line = container.querySelector(".font-medium") as HTMLElement;
+  expect(line.textContent).toContain("Approved here. Waiting for Mercury");
+  expect(container.querySelector("time")?.getAttribute("dateTime")).toBe(
+    "2026-10-22T07:44:00.000Z",
+  );
+});
+
+it("closes Details on an answered card, denied or approved", () => {
+  for (const answer of ["allow", "deny"]) {
+    const container = document.createElement("div");
+    const block = { ...answered(answer), detail: "amount: 5", detailFolded: true };
+    act(() =>
+      createRoot(container).render(
+        <AskCard block={block} canAnswer={false} onAnswer={async () => undefined} />,
+      ),
+    );
+    expect(container.querySelector("details")?.hasAttribute("open")).toBe(false);
+  }
+});
+
+it("shows a long instruction in full, with no nested scroll box", () => {
+  const container = document.createElement("div");
+  act(() =>
+    createRoot(container).render(
+      <AskCard
+        block={{
+          ...answered("allow"),
+          status: "pending",
+          answer: undefined,
+          detail: "x ".repeat(400),
+        }}
+        canAnswer
+        onAnswer={async () => undefined}
+      />,
+    ),
+  );
+  expect(container.querySelector(".overflow-auto")).toBeNull();
 });

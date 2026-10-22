@@ -62,7 +62,10 @@ export function PathBar({
   return (
     <Breadcrumb
       aria-label={t`Path`}
-      className="sticky top-0 z-10 border-b border-border bg-background px-3 py-1.5"
+      className={`sticky top-0 z-10 flex h-9 items-center border-b border-border bg-background px-3 ${
+        // The folder button above the list already names "All items" on a phone.
+        folderId ? "" : "@max-[639px]/bd:hidden"
+      }`}
     >
       <BreadcrumbList className="flex-nowrap gap-1 text-xs">
         {shown.map((crumb, index) => (

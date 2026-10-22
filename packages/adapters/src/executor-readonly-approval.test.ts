@@ -179,6 +179,7 @@ function fixture({
   connector: realConnector,
   peer,
   mcpServers,
+  bank,
   history,
   threadMarkedAtStart = false,
   knownBots,
@@ -205,6 +206,8 @@ function fixture({
   };
   /** MCP server rows the bot lookups find, keyed by the agent bot they name. */
   mcpServers?: { id: string; endpoint: string; agentBotId: string }[];
+  /** The owner has a signed-in Mercury server (for the bank connection line). */
+  bank?: boolean;
   /** Earlier thread messages, and the spawn key of each bot they name. */
   history?: { blocks: unknown[] }[];
   /** The thread already carries the durable meeting mark when the run starts. */
@@ -398,14 +401,24 @@ function fixture({
       ),
     },
     mcpServer: {
-      findMany: vi.fn(async ({ where }: { where?: { agentBotId?: string } } = {}) =>
-        mcpServers
-          ? mcpServers
-              .filter((server) => server.agentBotId === where?.agentBotId)
-              .map((server) => ({ ...server, spaceId: run.spaceId, userId: run.userId }))
-          : peer?.linked
-            ? (peer.serverIds ?? ["server-1"]).map((id) => ({ id }))
-            : [],
+      findMany: vi.fn(
+        async ({ where }: { where?: { agentBotId?: string; enabled?: boolean } } = {}) =>
+          bank && where?.enabled
+            ? [
+                {
+                  id: "bank-1",
+                  endpoint: "https://mcp.mercury.com/mcp",
+                  secretId: null,
+                  agentBotId: null,
+                },
+              ]
+            : mcpServers
+              ? mcpServers
+                  .filter((server) => server.agentBotId === where?.agentBotId)
+                  .map((server) => ({ ...server, spaceId: run.spaceId, userId: run.userId }))
+              : peer?.linked
+                ? (peer.serverIds ?? ["server-1"]).map((id) => ({ id }))
+                : [],
       ),
     },
     attempt: {
@@ -492,6 +505,9 @@ function fixture({
       updateMany: vi.fn(async () => ({ count: 1 })),
     },
     aiDataConsent: {
+      // The chat's own gate reads findUnique and is always consented here; findFirst is the
+      // tool-time check, which a test can withdraw after the run has started.
+      findUnique: vi.fn(async () => ({ version: AI_DISCLOSURE_VERSION })),
       findFirst: vi.fn(async () => (triage.chatNeedsConsent ? null : { userId: "user-1" })),
     },
     spaceModelPreference: { findFirst: vi.fn(async () => null) },
@@ -554,6 +570,7 @@ function fixture({
   });
   const executor = createRunExecutor({
     prisma,
+    mcpOAuth: { statusFor: async () => "connected" as const },
     runtime: { describe: () => ({ capabilities: { scripted: false } }), run: runtimeRun },
     connector: realConnector ?? {
       discoverTools: async () =>
@@ -786,6 +803,7 @@ describe("external bots", () => {
         audience,
         existingSharedMemory: fact,
         ticketBoard: true,
+        bank: true,
         prompt: "What is the status of RK-7?",
         bot: { name: "Support", title: "", description: "Help the public" },
       });
@@ -801,10 +819,12 @@ describe("external bots", () => {
     expect(everything).not.toContain("PRIVATE-TICKET-NOTE");
     expect(everything).not.toContain("Renew vendor contract");
     expect(everything).not.toContain("Mercury");
+    expect(everything).not.toContain("Facts: connected banks");
     // Control: an internal run does carry them, and has no protective prompt.
     const internal = await run("internal");
     expect(JSON.stringify([internal.instructions, internal.history])).toContain(fact);
     expect(internal.instructions).toContain("PRIVATE-TICKET-NOTE");
+    expect(internal.instructions).toContain("Facts: connected banks: Mercury");
     expect(internal.instructions).not.toContain(EXTERNAL_BOT_PROMPT);
   });
 
@@ -1482,7 +1502,7 @@ describe("Inbox agent mail without AI data sharing consent", () => {
         expect.objectContaining({
           kind: "ask",
           approvalEffectId: effect!.id,
-          text: "Allow your mail to be sent to D (via M)?",
+          text: "Share your chats and mail with the AI model that runs your bots?",
           detail: expect.stringContaining("stays on until you turn it off"),
           consent: { version: AI_DISCLOSURE_VERSION },
           actions: [

@@ -1,0 +1,49 @@
+# Walk J2: long journeys for raising and operating
+
+Session uxl14-J2, mock demo stack (web 5381), 1440x900, signed in as the seeded mock founder. Screenshots: /tmp/uxloop14/J2/. No console errors or page errors in the whole session. Geometry audit: no horizontal overflow, no overflow spills, no wrapped button labels (table-cell hits are noise).
+
+## Story verdicts
+
+| Story | Verdict | Steps actual / ideal | Notes |
+|---|---|---|---|
+| STORY-DRM-109 diligence day (zip, loose video, SAFE, protected zip, Auto-sort, ask agent) | PASS with findings | 14 / 14 (plus one Allow click for consent) | Real files made locally (small zip of 4 PDFs, 6 MB video, password zip). Protected zip rejected with a clear red line; zip contents typed and filed; Auto-sort applied with Undo; Data room agent answered the change-of-control question and warned that one file was still being indexed. Big sizes (1.2 GB) not tried. The duplicate-SAFE card "Already in Investors" did not appear because the demo has no matching SAFE. |
+| STORY-CAP-106 / CAP-017 cap table after a SAFE | PARTLY WALKED (PASS on page, FAIL on closing the loop) | about 9 / 14 | Carta is already connected in the demo, so connect steps skipped. Investors page, Carta chip Refresh, SAFE list, Equity raised $250,000 + $50,000 committed all consistent. After filing a signed SAFE in the Data room the Investors page did not change and nothing says why (Mercury is the only SAFE record). Investors agent forwarded the question to the Carta agent, which replied it could not read the cap table; mock environment. |
+| STORY-LEG-017 legal deadlines over time | PASS with findings | 5 / 6 | Deadlines tab, Done with inline Undo, sidebar badge cleared at once. Scan now runs but showed "Scanning..." for 1+ minutes with no progress. No view of completed items. |
+| STORY-APP-388 / money approval via another bot | PASS with findings | 6 / 3 | Bot asked Mercury agent, approval card appeared in the Mercury agent's thread with clear Details (amount, payee, account, note), Send / Deny, then "Approved". Friction is how Maya finds that card (see findings). |
+| STORY-APP-363 + STORY-APP-172 bot with skill and routine | PASS | 14 / 22 and 7 / 6 | New bot, rename, Add skill inline, `/inv` picker, skill chip, run works; Create a routine, skill picker, schedule, Save gives "Saved" and "Next run Mon, Oct 26, 9:00 AM", Test run, Run history with "View chat". Clear improvement over the catalog text. |
+| STORY-FIN-022 monthly review, reconnect | SKIPPED | n/a | Needs a Mercury reconnect fixture and the other money story already used Mercury; skipped for time. |
+| Draft agent skills from chat (APP-363 steps 3-12) | SKIPPED | n/a | Scripted model cannot be steered to draft a skill; skill created by hand instead. |
+
+## Findings
+
+| ID | Story / page | Sev | Cat | What happened vs expected | Evidence | Suspected code | Proposed fix |
+|---|---|---|---|---|---|---|---|
+| J2-01 | APP-388, money approval | P1 | flow | Observed. Maya asked her own bot to pay. The bot's chat shows only "Messaged Mercury agent"; the composer placeholder and sidebar say "Needs your answer", but there is nothing to answer in that chat. The approval card is only in the Mercury agent thread, reachable by opening the "Messaged Mercury agent" chip (view-only copy of the request) or finding the sidebar row. A toast appeared earlier but showed another walker's amount. | m1-pay.png, m3-peer.png, m6-mercury.png | peer-message / approval routing in Shell.tsx; chat composer placeholder | Show the pending payment card (or a "Waiting for your approval" row with a link to it) in the requester's thread, and only say "Needs your answer" where a card is. |
+| J2-02 | APP-388, money approval | P1 | copy | Observed. After Maya approved the $150 payment (about 7:39), the bot posted at 7:43 "was submitted as a request and is waiting for your approval. No request link was provided." The text is stale, and "No request link was provided" is internal wording. Nothing reports the result after approval. | m8-sent.png, m9-bot.png | Mercury agent report to peer bot; message_bot reply handling | Post the outcome (approved / denied / sent) back to the requesting bot, and drop the "request link" sentence from the user-facing text. |
+| J2-03 | APP-388, Mercury agent thread | P1 (suspected) | bug | Observed once, concurrent walkers present. A $250 card displayed "No longer active" in one screenshot and, minutes later, the same position showed live Send $250.00 / Deny buttons. Could be a new card from another walker inserted, or a superseded card reviving. Not confirmed. | m6-mercury.png vs m8-sent.png | approval card state in chat message rendering | Re-test on a single-user stack; if confirmed, make expired/superseded a terminal server state. |
+| J2-04 | DRM-109, Data room | P2 | visual | Observed. Upload cards and the "Sorted 36 items / Undo" toast sit at bottom centre of the viewport, on top of the file list's name column, hiding the rows she is waiting to see. | d3-upload-a.png, d10-applied.png | apps/web/src/components/data-room/DropZone.tsx:144 (left-1/2 on sm) | Anchor the stack bottom-right as the approval toasts are, or at the bottom of the list pane. |
+| J2-05 | DRM-109, Data room | P2 | flow | Observed. Auto-sort says "Sort every file in the Data room", pre-selects nothing, and proposes 36 changes including 30 already-filed MOCK files (Legal to Legal / Contracts) when Maya just added six files. She must choose Select all or hunt for her files. | d8-autosort2.png | AutoSortDialog.tsx | Default the dialog to files added in the last session / unfiled files, with "Show all" for the rest, and preselect the proposal. |
+| J2-06 | DRM-109, processing strip | P2 | perf | Observed. The strip said "Processing 1 file / Reading MOCK Board Minutes" for several minutes before the row flipped to "Reading took too long" with Try again. The failed row has no "Failed" pill like the NDA row, so the two failures look different. | d6-details.png, f1-failedmenu.png | ProcessingStrip.tsx; ItemRows.tsx status cell | Time out reads sooner or show "Still reading" after 60 s; show the same Failed pill for every failed row. |
+| J2-07 | Legal | P2 | flow | Observed. "37 Data room documents not yet checked by Legal" counts HR offer letters, investor updates and the Bylaws, and the Contracts tab already lists some of the same files (Change-of-Control-MSA shows as Unknown). The nag cannot be cleared by Maya short of a full scan. | l4-unchecked.png, l1-legal.png | Legal page unchecked-documents query | Count only contract-like, untagged-by-Legal documents; link the count to Scan now. |
+| J2-08 | Legal | P2 | perf | Observed. After Scan now the button said "Scanning..." for more than a minute with no progress or result line; "Last scan 4m ago" stayed. | l5-scan.png, b1-create.png | Legal scan status | Show what is being read (n of N) or a "Finished" line. |
+| J2-09 | LEG-017 | P2 | flow | Observed. Done items vanish; no closed or history view, so at quarter end Maya cannot list what she handled (catalog S-LEG-06 still true). | l3-done.png | Legal deadlines tab | Add a "Done" filter under Deadlines. |
+| J2-10 | CAP-106 | P2 | flow | Observed. She files the signed Acme SAFE in the Data room (tagged Contract, Acme Ventures, filed to Fundraising / SAFEs) and the Investors page and the SAFE list do not change. Nothing says that SAFEs come from Mercury. Consistent with the owner decision, but a one-line pointer (or an Investors "Add SAFE" hint) is missing at the moment she expects it. | c1-investors.png, c3-investors-c.png | Investors page empty-state / SAFE list | When a SAFE-tagged file has no Mercury record, show a row action on the Data room card: "Not in Investors yet". |
+| J2-11 | Sidebar Legal badge | P3 | a11y | Observed. Badge "1" has aria-label "Legal, 1 due soon", but Deadlines shows 1 overdue and 5 more due within 30 days. The label does not match the count (it counts overdue only). | Legal row in s0-home.png / l2-deadlines.png | apps/web/src/pages/Shell.tsx:4556 | Label "1 overdue" to match the owner decision. |
+| J2-12 | Investors header | P3 | visual | Observed. Carta chip menu is 128 px wide so "Change source" wraps to two lines. | c4-carta.png | Investors header dropdown | Let the menu size to its content. |
+| J2-13 | Routine editor | P3 | visual | Observed. In the saved schedule card, "at" ends the first line and the time select wraps to a second line (panel about 360 px wide). | r6-weekly.png | RoutineSchedule.tsx | Put the time on its own row or shrink the day select. |
+| J2-14 | Routine editor | P3 | flow | Observed. A routine with a skill and an empty Instruction saves without complaint, fine, but the instruction placeholder gives no hint that the skill replaces it. | r6-weekly.png | RoutineEditor.tsx | Change placeholder when a skill is chosen. |
+| J2-15 | New bot | P3 | flow | Observed. Three new bots are all named "New Bot" in the sidebar until renamed (Name field is focused and selected, which helps). | b2-newbot.png | Shell.tsx new-bot flow | Accepted: renaming prompt works; no action unless the owner wants numbering. |
+
+## Praise (observed)
+
+- Data room agent answer names the matching file and says the index was not finished, so the answer is not overclaimed.
+- Approval card Details lists amount, payee, account and note; cards that are no longer valid say "No longer active".
+- Routine editor: "Saved", "Next run Mon, Oct 26, 9:00 AM", Run history with "View chat".
+- Skill flow: inline Add skill, `/inv` picker, removable skill chip.
+- Legal Done has an inline Undo and the badge clears at once.
+
+## Not covered / limits
+
+- 1.2 GB upload, real Drive, Box or email import (no connection), real OAuth. Duplicate-SAFE card not triggered.
+- Phone width, touch emulation and dark/light switching not done.
+- Carta connect steps (already connected on the demo).

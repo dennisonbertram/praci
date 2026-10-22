@@ -1,4 +1,4 @@
-import { cartaAgentSpawnKey } from "@rakazo/contracts";
+import { cartaAgentSpawnKey, gtmAgentSpawnKey } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import {
   buildApprovalAskBlock,
@@ -65,9 +65,21 @@ describe("describeApprovalAction money and generic tools", () => {
     if (block.kind !== "ask") throw new Error("expected ask block");
     expect(block.text).toBe("Send $1,200.00 to Acme Supplies from Operating?");
     expect(block.text).not.toMatch(/rcp-9|chk-1|mcp__/);
+    expect(block.actions?.[0]).toEqual({ id: "allow", label: "Send $1,200.00" });
     // Details lists labelled rows, with no tool id and no raw JSON.
     expect(block.detailFolded).toBe(true);
     expect(block.detail).toBe("Amount: $1,200.00\nTo: Acme Supplies\nFrom account: Operating");
+  });
+
+  it("does not claim a wait on the service before the request was submitted", () => {
+    const block = buildApprovalAskBlock(
+      "e1",
+      "mcp__finance-mercury__requestSendMoney",
+      { amount: 5 },
+      [],
+      { serviceName: "Mercury" },
+    );
+    expect(block.kind === "ask" && block.waitsFor).toBeUndefined();
   });
 
   it("keeps hand-written titles", () => {
@@ -90,6 +102,34 @@ describe("describeApprovalAction money and generic tools", () => {
   });
 });
 
+describe("integration-agent write classification", () => {
+  it("treats GTM Zernio connector writes as mandatory-defense actions", () => {
+    expect(
+      isIntegrationAgentWrite(
+        gtmAgentSpawnKey("user-1"),
+        {
+          connectorId: "mcp",
+          endpoint: "https://mcp.zernio.com/mcp",
+          toolName: "posts_create",
+        },
+        true,
+      ),
+    ).toBe(true);
+
+    expect(
+      isIntegrationAgentWrite(
+        gtmAgentSpawnKey("user-1"),
+        {
+          connectorId: "mcp",
+          endpoint: "https://mcp.zernio.com/mcp",
+          toolName: "posts_list",
+        },
+        true,
+      ),
+    ).toBe(false);
+  });
+});
+
 describe("buildApprovalAskBlock schedule card", () => {
   it("shows the schedule in words and the whole prompt, uncut", () => {
     const prompt = `Summarize my mail. ${"x".repeat(5_000)}`;
@@ -100,14 +140,14 @@ describe("buildApprovalAskBlock schedule card", () => {
       [],
       {
         schedule: {
-          summary: "creating the repeating schedule “Digest”",
-          detail: `repeats: Every day at 8:00 AM (America/New_York)\nprompt: ${prompt}`,
+          summary: "Every day at 8:00 AM, posts here",
+          detail: `time zone: America/New_York\nprompt: ${prompt}`,
         },
       },
     );
     if (block.kind !== "ask") throw new Error("expected an ask block");
-    expect(block.text).toBe("Review before creating the repeating schedule “Digest”");
-    expect(block.detail).toContain("repeats: Every day at 8:00 AM (America/New_York)");
+    expect(block.text).toBe("Every day at 8:00 AM, posts here");
+    expect(block.detailFolded).toBe(true);
     expect(block.detail).toContain(prompt);
     expect(block.actions?.map((action) => action.id)).toEqual(["allow", "always", "deny"]);
   });
@@ -296,7 +336,7 @@ describe("mail approval payload", () => {
     };
     expect(text("mail_send")).toBe("Review before sending email to Jana <jana@example.test>");
     expect(text("mcp__finance-mercury__requestTransferMoney")).toBe(
-      "Review before Request transfer money → Jana <jana@example.test>",
+      "Review before Ask to transfer money → Jana <jana@example.test>",
     );
     expect(text("mail_draft")).toBe("Review before saving a draft to Jana <jana@example.test>");
   });
@@ -407,13 +447,10 @@ describe("resolveMoneyNames", () => {
 });
 
 describe("buildConsentAskBlock", () => {
-  it("names the model in words, never the raw model id", () => {
-    const block = buildConsentAskBlock("e1", {
-      name: "OpenRouter",
-      detail: "openai/gpt-6-luna, forwarded to its provider",
-    });
+  it("names the recipient like the document consent cards, never a model id", () => {
+    const block = buildConsentAskBlock("e1");
     expect(block).toMatchObject({
-      text: "Allow your mail to be sent to GPT-6 Luna?",
+      text: "Share your chats and mail with the AI model that runs your bots?",
     });
     expect(JSON.stringify(block)).not.toMatch(/openai\/|forwarded to its provider/);
   });

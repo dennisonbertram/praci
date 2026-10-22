@@ -15,8 +15,8 @@ import {
   BOT_DESCRIPTION_MAX_LENGTH,
   BOT_NAME_MAX_LENGTH,
   BOT_TITLE_MAX_LENGTH,
+  BUILTIN_TOOL_NAMES,
   botAudienceEditable,
-  isBuiltinToolName,
 } from "@rakazo/contracts";
 import {
   connectedModelChoices,
@@ -33,7 +33,7 @@ import {
   Textarea,
   Toggle,
 } from "@rakazo/ui-web";
-import { ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Download } from "lucide-react";
 import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { SuccessPop } from "../../components/ai/primitives";
 import { ErrorBoundary, SectionLoadFailed } from "../../components/ErrorBoundary";
@@ -82,7 +82,7 @@ function ComputerModePicker({
   return (
     <div className="mt-4">
       <div className="text-[13.5px] font-medium text-foreground">
-        <Trans>Computer</Trans>
+        <Trans>Workspace</Trans>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-2">
         {(["team", "dedicated"] as const).map((mode) => (
@@ -94,19 +94,16 @@ function ComputerModePicker({
             onPressedChange={(pressed) => {
               if (pressed) onChange(mode);
             }}
-            className={`capitalize ${SELECTED_SEGMENT}`}
+            className={SELECTED_SEGMENT}
           >
-            {mode === "team" ? <Trans>Team</Trans> : <Trans>Private</Trans>}
+            {mode === "team" ? (
+              <Trans>Shared with your other bots</Trans>
+            ) : (
+              <Trans>Only this bot</Trans>
+            )}
           </Toggle>
         ))}
       </div>
-      <p className="mt-2 text-[12px] text-muted-foreground/70">
-        {value === "team" ? (
-          <Trans>Shares one computer with your other bots.</Trans>
-        ) : (
-          <Trans>Has its own computer.</Trans>
-        )}
-      </p>
     </div>
   );
 }
@@ -225,7 +222,6 @@ export function BotSettings({
       live = false;
     };
   }, [bot.audience, bot.id]);
-  const [toolNameDraft, setToolNameDraft] = useState("");
   const [credentials, setCredentials] = useState<ModelCredential[]>([]);
   const [catalog, setCatalog] = useState<ModelCatalogEntry[]>([]);
   const [me, setMe] = useState<Me | null>(null);
@@ -233,7 +229,6 @@ export function BotSettings({
   // True for about two seconds after a save succeeds.
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toolError, setToolError] = useState<string | null>(null);
   // Bumped by Advanced choices that save as soon as they change.
   const [saveTick, setSaveTick] = useState(0);
   useEffect(() => {
@@ -427,22 +422,9 @@ export function BotSettings({
   }
   executeSaveRef.current = executeSave;
 
-  function disableBuiltinTools(raw: string) {
-    const names = raw
-      .split(",")
-      .map((entry) => entry.trim().toLowerCase().replace(/\s+/g, "_"))
-      .filter(Boolean);
-    if (!names.length) return;
-    const unknown = names.filter((entry) => !isBuiltinToolName(entry));
-    if (unknown.length) {
-      setToolError(t`Unknown tool: ${unknown.join(", ")}`);
-      return;
-    }
-    setToolNameDraft("");
-    setToolError(null);
-    const added = names.filter((entry) => !disabledBuiltinTools.includes(entry));
-    if (!added.length) return;
-    const next = [...disabledBuiltinTools, ...new Set(added)];
+  function disableBuiltinTool(name: string) {
+    if (!name || disabledBuiltinTools.includes(name)) return;
+    const next = [...disabledBuiltinTools, name];
     setDisabledBuiltinTools(next);
     void enqueueSave({ disabledBuiltinTools: next });
   }
@@ -517,6 +499,7 @@ export function BotSettings({
           onClick={() => setUnfolded(true)}
         >
           <Trans>More settings</Trans>
+          <ChevronDown aria-hidden="true" className="size-4" />
         </Button>
       ) : (
         <>
@@ -589,7 +572,8 @@ export function BotSettings({
                 <>
                   <p className="mt-2 text-[12px] text-muted-foreground/70">
                     <Trans>
-                      Talks to people outside your company. Private tools are turned off.
+                      Talks to people outside your company. Anything private it would share waits
+                      for your approval. Private tools are turned off.
                     </Trans>
                   </p>
                   {grantedConnections.length ? (
@@ -649,11 +633,11 @@ export function BotSettings({
           />
           <details
             data-testid="bot-settings-advanced"
-            className="group mt-5"
+            className="group mt-5 open:pb-3"
             onToggle={(event) => {
               if (!event.currentTarget.open) return;
               setAdvancedOpened(true);
-              event.currentTarget.scrollIntoView?.({ block: "start", behavior: "smooth" });
+              event.currentTarget.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
             }}
           >
             <summary
@@ -807,30 +791,22 @@ export function BotSettings({
             ) : null}
             <label htmlFor={`${ids}-disabled-tools`} className={advancedLabelClass}>
               <Trans>Disabled tools</Trans>
-              <Input
+              <NativeSelect
                 id={`${ids}-disabled-tools`}
-                value={toolNameDraft}
-                placeholder={t`Web search`}
-                spellCheck={false}
-                autoCapitalize="off"
-                autoCorrect="off"
-                onChange={(event) => {
-                  setToolNameDraft(event.target.value);
-                  setToolError(null);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key !== "Enter") return;
-                  event.preventDefault();
-                  disableBuiltinTools(event.currentTarget.value);
-                }}
-                onBlur={(event) => {
-                  if (event.currentTarget.value.trim())
-                    disableBuiltinTools(event.currentTarget.value);
-                }}
-                className="mt-1.5"
-              />
+                className="mt-1.5 w-full"
+                value=""
+                onChange={(event) => disableBuiltinTool(event.target.value)}
+              >
+                <NativeSelectOption value="">{t`Turn off a tool`}</NativeSelectOption>
+                {BUILTIN_TOOL_NAMES.filter((name) => !disabledBuiltinTools.includes(name)).map(
+                  (name) => (
+                    <NativeSelectOption key={name} value={name}>
+                      {toolLabel(name)}
+                    </NativeSelectOption>
+                  ),
+                )}
+              </NativeSelect>
             </label>
-            {toolError ? <p className="mt-1.5 text-[13px] text-destructive">{toolError}</p> : null}
             {disabledBuiltinTools.map((toolName) => (
               <label
                 key={toolName}
@@ -853,17 +829,18 @@ export function BotSettings({
             {advancedOpened ? <BotCredentialsSection botId={bot.id} /> : null}
           </details>
           {error ? <p className="mt-2 text-[13px] text-destructive">{error}</p> : null}
-          <div className="mt-3 flex flex-col gap-3">
+          <div className="mt-3 flex flex-col">
             <Button
               variant="ghost"
-              className={`${FOOTER_ROW} h-auto p-0 font-normal text-muted-foreground hover:bg-transparent hover:text-foreground`}
+              className={`${FOOTER_ROW} h-9 justify-start px-0 font-normal text-muted-foreground hover:bg-transparent hover:text-foreground`}
               onClick={() => void onExport()}
             >
               <Trans>Export</Trans>
+              <Download aria-hidden="true" className="size-4" />
             </Button>
             <Button
               variant="ghost"
-              className={`${FOOTER_ROW} h-auto p-0 font-normal text-destructive hover:bg-transparent hover:text-destructive`}
+              className={`${FOOTER_ROW} h-9 justify-start px-0 font-normal text-destructive hover:bg-transparent hover:text-destructive`}
               onClick={onClear}
             >
               <Trans>Clear conversation</Trans>

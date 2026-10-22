@@ -31,13 +31,11 @@ import {
   ArrowLeft,
   Download,
   FileText,
-  Filter,
   LayoutGrid,
   List,
   Lock,
   Maximize2,
   Minimize2,
-  Search,
   Trash2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -45,6 +43,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArtifactPreview } from "../components/ArtifactPreview";
 import { AskBotButton } from "../components/AskBotButton";
 import { Tip } from "../components/data-room/FilterBar";
+import { PickFilter, SearchField } from "../components/ListControls";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { artifactDisplayName as displayName } from "../lib/artifact-name";
@@ -127,7 +126,6 @@ export function ArtifactsPage({
   // Bots that own at least one artifact. Only grows, so filtering to one bot keeps the others listed.
   const [ownerBotIds, setOwnerBotIds] = useState<ReadonlySet<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>(readViewMode);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [maximized, setMaximized] = useState(false);
@@ -201,11 +199,6 @@ export function ArtifactsPage({
       return next.size === prev.size ? prev : next;
     });
   }, [items]);
-
-  // The filter panel only matters while browsing; opening an artifact gives the viewer the space.
-  useEffect(() => {
-    if (artifactId) setFiltersOpen(false);
-  }, [artifactId]);
 
   const ownerBots = useMemo(
     () => bots.filter((bot) => ownerBotIds.has(bot.id)),
@@ -326,29 +319,11 @@ export function ArtifactsPage({
           }
           actions={
             <>
-              {/* Filters act on the list, so they go when an open document hides it (phone, maximized). */}
-              {(artifactId && maximized) || nothingYet ? null : (
-                <Toggle
-                  variant="outline"
-                  size="sm"
-                  pressed={filtersOpen}
-                  onPressedChange={setFiltersOpen}
-                  data-testid="artifacts-filters"
-                  data-active={filterActive || undefined}
-                  className={artifactId ? "hidden md:flex" : undefined}
-                >
-                  <Filter aria-hidden="true" />
-                  <Trans>Filters</Trans>
-                  {filterActive ? (
-                    <span aria-hidden="true" className="size-1.5 rounded-full bg-primary" />
-                  ) : null}
-                </Toggle>
-              )}
               {!artifactId && !nothingYet ? viewToggle("hidden md:flex") : null}
               {onAskAgent ? (
                 <AskBotButton botName="Chief" onClick={onAskAgent} />
               ) : (
-                // Chief loads after the page; keep its place so Filters does not jump.
+                // Chief loads after the page; keep its place so the view switch does not jump.
                 <span aria-hidden="true" inert className="invisible">
                   <AskBotButton botName="Chief" onClick={() => {}} />
                 </span>
@@ -357,52 +332,41 @@ export function ArtifactsPage({
           }
         />
       </div>
-      {filtersOpen && !(artifactId && maximized) ? (
-        <div className={`${PAGE_GUTTER_X} flex flex-wrap items-center gap-1.5 pb-2.5`}>
-          <div className="relative w-full max-w-[260px]">
-            <Search
-              size={14}
-              strokeWidth={1.9}
-              className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder={t`Search artifacts…`}
-              className="w-full rounded-lg border border-border bg-background py-1.5 ps-8 pe-3 text-[13px] outline-none focus:border-ring"
-            />
-          </div>
-          <NativeSelect
-            aria-label={t`Filter by date`}
-            className="w-auto text-[13px]"
-            value={dateFilter}
-            onChange={(event) => setDateFilter(event.target.value as DateFilter)}
-          >
-            <NativeSelectOption value="all">{t`All time`}</NativeSelectOption>
-            <NativeSelectOption value="today">{t`Today`}</NativeSelectOption>
-            <NativeSelectOption value="week">{t`This week`}</NativeSelectOption>
-            <NativeSelectOption value="month">{t`This month`}</NativeSelectOption>
-          </NativeSelect>
+      {/* The list's controls go when an open document hides the list (phone, maximized). */}
+      {nothingYet || (artifactId && maximized) ? null : (
+        <div
+          className={`${PAGE_GUTTER_X} flex-wrap items-center gap-1.5 pb-2.5 ${artifactId ? "hidden md:flex" : "flex"}`}
+        >
+          <SearchField
+            className="w-full md:w-72"
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder={t`Search`}
+            label={t`Search artifacts`}
+            name="artifacts-search"
+          />
+          <PickFilter
+            label={t`Added`}
+            value={dateFilter === "all" ? undefined : dateFilter}
+            options={[
+              ["today", t`Today`],
+              ["week", t`This week`],
+              ["month", t`This month`],
+            ]}
+            onChange={(next) => setDateFilter((next as DateFilter | undefined) ?? "all")}
+          />
           {ownerBots.length > 1 ? (
-            <NativeSelect
-              aria-label={t`Filter by bot`}
-              className="w-auto text-[13px]"
-              value={activeBotId ?? ""}
-              onChange={(event) => setActiveBotId(event.target.value || null)}
-            >
-              <NativeSelectOption value="">{t`All bots`}</NativeSelectOption>
-              {ownerBots.map((bot) => (
-                <NativeSelectOption key={bot.id} value={bot.id}>
-                  {bot.name}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
+            <PickFilter
+              label={t`Bot`}
+              value={activeBotId ?? undefined}
+              options={ownerBots.map((bot) => [bot.id, bot.name])}
+              onChange={(next) => setActiveBotId(next ?? null)}
+            />
           ) : null}
           {/* On a phone the header has no room for the view switch, so it waits here with the filters. */}
           {!artifactId ? viewToggle("ms-auto md:hidden") : null}
         </div>
-      ) : null}
+      )}
 
       <div className="flex min-h-0 flex-1 overflow-hidden border-t border-border">
         {artifactId ? (
@@ -539,6 +503,8 @@ function BrowsingPane({
       />
     );
   }
+  // Ten cards that all say "6m ago" tell nothing; the time shows once the cards differ.
+  const cardsDiffer = new Set(items.map((item) => formatRelativeTime(item.createdAt))).size > 1;
   return (
     <div className="@container/list rk-scroll min-h-0 flex-1 overflow-y-auto">
       {viewMode === "grid" ? (
@@ -550,6 +516,7 @@ function BrowsingPane({
               key={item.id}
               artifact={item}
               bot={item.botId ? botsById.get(item.botId) : undefined}
+              showTime={cardsDiffer || items.length < 2}
               onRequestDelete={onRequestDelete}
             />
           ))}
@@ -800,9 +767,20 @@ function IndexPane({
   loadingMore: boolean;
   onLoadMore: () => void;
 }) {
+  const pane = useRef<HTMLElement>(null);
+  const count = items?.length ?? -1;
+  // Opening a row from the grid or a link can leave it under the pane's edge.
+  useEffect(() => {
+    pane.current
+      ?.querySelector<HTMLElement>("[aria-current=page]")
+      ?.scrollIntoView?.({ block: "nearest" });
+  }, [selectedId, count]);
   return (
     // Phones show the list or the open artifact, never both side by side.
-    <aside className="hidden w-[320px] shrink-0 flex-col overflow-y-auto border-e border-border md:flex">
+    <aside
+      ref={pane}
+      className="hidden w-[320px] shrink-0 flex-col overflow-y-auto border-e border-border md:flex"
+    >
       {items === null ? (
         <div className="grid flex-1 place-items-center p-6 text-center text-sm text-muted-foreground/80">
           {loadError ?? <Trans>Loading…</Trans>}
@@ -841,10 +819,12 @@ function IndexPane({
 function ArtifactCard({
   artifact,
   bot,
+  showTime,
   onRequestDelete,
 }: {
   artifact: ArtifactSummary;
   bot: Bot | undefined;
+  showTime: boolean;
   onRequestDelete: (artifact: ArtifactSummary) => void;
 }) {
   const { t } = useLingui();
@@ -879,8 +859,8 @@ function ArtifactCard({
             </div>
           ) : null}
         </div>
-        {/* pe-8 keeps the time clear of the Delete button, so hovering never covers it. */}
-        <div className="mt-auto flex items-center gap-2 pe-8 text-[12px] text-muted-foreground max-md:mt-0">
+        {/* The time ends at the type label's edge. Delete takes its place on hover; where it is always shown (touch, narrow) pe-8 keeps them apart. */}
+        <div className="mt-auto flex items-center gap-2 text-[12px] text-muted-foreground max-md:mt-0 max-md:pe-8 pointer-coarse:pe-8">
           {bot ? (
             <span className="contents max-md:hidden">
               <BotAvatar color={bot.color} identity={bot.id} size={20} status={bot.status} />
@@ -889,7 +869,11 @@ function ArtifactCard({
           ) : (
             <span className="flex-1 max-md:hidden" />
           )}
-          <span className="shrink-0">{formatRelativeTime(artifact.createdAt)}</span>
+          {showTime ? (
+            <span className="shrink-0 md:group-focus-within:invisible md:group-hover:invisible">
+              {formatRelativeTime(artifact.createdAt)}
+            </span>
+          ) : null}
         </div>
       </Link>
       <button
@@ -924,7 +908,11 @@ function ArtifactRow({
   const title = displayName(artifact.name);
   return (
     <div className={`group relative ${active ? "bg-accent/60" : "hover:bg-accent/40"}`}>
-      <Link to={`/app/artifacts/${artifact.id}`} className="flex flex-col gap-1 px-4 py-3 pe-10">
+      <Link
+        to={`/app/artifacts/${artifact.id}`}
+        aria-current={active ? "page" : undefined}
+        className="flex flex-col gap-1 px-4 py-3 pe-10"
+      >
         <div className="flex items-center gap-2">
           <span className="grid h-6 w-6 shrink-0 place-items-center rounded-[7px] bg-accent text-accent-foreground">
             <ArtifactMimeIcon mimeType={artifact.mimeType} small />
@@ -1113,13 +1101,13 @@ function PreviewPane({
           <>
             {state.artifact.mimeType === "text/html" ? (
               <Tip label={t`Isolated preview — no access to your account`}>
-                <span
-                  role="img"
+                <button
+                  type="button"
                   aria-label={t`Isolated preview — no access to your account`}
-                  className="grid h-8 w-8 shrink-0 place-items-center text-muted-foreground"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
                 >
-                  <Lock size={15} strokeWidth={1.9} />
-                </span>
+                  <Lock size={15} strokeWidth={1.9} aria-hidden="true" />
+                </button>
               </Tip>
             ) : null}
             <Button

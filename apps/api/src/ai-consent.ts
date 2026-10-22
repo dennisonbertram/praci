@@ -6,6 +6,7 @@ import {
   inboxClassifierSelected,
   parseModelSecret,
   queueMeetingDigests,
+  resolveDataRoomAi,
   selectConfiguredModel,
   TYPESAFE_CLASSIFIER_ID,
   toStringRecord,
@@ -249,6 +250,21 @@ export async function aiConsentStatus(
   // granting, but not for a chat send, which it does not take part in.
   if (modelsEnabled && !query.uses && inboxClassifierSelected()) {
     add(aiRecipient({ provider: TYPESAFE_CLASSIFIER_ID, use: "model" }));
+  }
+  // The Data room's embedding model also receives document text, so Settings lists it (and the
+  // switch revokes it) with the other models.
+  if (modelsEnabled && !query.uses) {
+    const documents = await resolveDataRoomAi(
+      { prisma: deps.prisma, resolveModel: deps.resolveModel },
+      actor,
+    ).catch(() => null);
+    for (const recipient of documents?.recipients ?? [])
+      if (!recipients.has(recipient.key))
+        recipients.set(recipient.key, {
+          ...recipient,
+          use: "model",
+          allowed: allowed.has(recipient.key),
+        });
   }
   return {
     scope: createHash("sha256")

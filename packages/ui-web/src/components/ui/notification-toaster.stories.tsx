@@ -149,3 +149,116 @@ export const UndoBehindAgentToast: Story = {
     { id: "agent", title: "Ledger agent finished", body: "Nothing was changed.", withBot: true },
   ]),
 };
+
+/** Several approvals arrive as one toast (the app groups them; see approval-toasts). */
+export const ApprovalsGrouped: Story = {
+  args: { onOpen: () => {} },
+  render: render([{ id: "approvals:group", title: "3 need approval", withBot: true }]),
+};
+
+/** The toast sits clear of a page header's buttons and rises above a composer (`data-toast-avoid`) that is taller than its usual spot. */
+export const OverPage: Story = {
+  args: { onOpen: () => {} },
+  parameters: { layout: "fullscreen" },
+  decorators: [(Story) => <div className="relative h-screen bg-background">{Story()}</div>],
+  render: () => (
+    <>
+      <header
+        data-testid="page-header"
+        className="flex h-14 items-center justify-end gap-2 border-b border-border px-4"
+      >
+        <button type="button" className="rounded-md border border-border px-3 py-1.5 text-sm">
+          Ask
+        </button>
+        <button
+          type="button"
+          className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground"
+        >
+          Start a round
+        </button>
+      </header>
+      <div
+        data-testid="composer"
+        data-toast-avoid=""
+        className="absolute right-4 bottom-4 left-4 h-32 rounded-xl border border-border bg-card sm:left-auto sm:w-96"
+      />
+      <Demo
+        items={[
+          { id: "help", title: "Ledger agent needs you", body: "Send $300.00?", withBot: true },
+        ]}
+      />
+    </>
+  ),
+};
+
+/** An open dialog hides the toast, so it never covers the dialog's content. */
+export const BehindDialog: Story = {
+  args: { onOpen: () => {} },
+  parameters: { layout: "fullscreen" },
+  decorators: [(Story) => <div className="relative h-screen bg-background">{Story()}</div>],
+  render: () => (
+    <>
+      <div
+        role="dialog"
+        data-open=""
+        aria-label="Example dialog"
+        className="absolute right-4 bottom-4 w-96 rounded-xl border border-border bg-card p-6"
+      >
+        Dialog content stays readable while a notice waits.
+      </div>
+      <Demo items={[{ id: "help", title: "Ledger agent needs you", body: "Send $300.00?" }]} />
+    </>
+  ),
+};
+
+/** An open side panel (`data-toast-panel`) is never covered: the toast sits left of it. */
+export const BesideSidePanel: Story = {
+  args: { onOpen: () => {} },
+  parameters: { layout: "fullscreen" },
+  decorators: [(Story) => <div className="relative h-screen bg-background">{Story()}</div>],
+  render: () => (
+    <>
+      <aside
+        data-toast-panel=""
+        className="absolute inset-y-0 right-0 w-96 border-l border-border bg-background p-4"
+      >
+        <p className="text-sm font-medium">New skill</p>
+        <div className="mt-3 h-24 rounded-md border border-border" />
+        <p className="mt-6 text-sm text-muted-foreground">Instructions</p>
+        <div className="mt-2 h-40 rounded-md border border-border" />
+      </aside>
+      <Demo
+        items={[
+          {
+            id: "help",
+            title: "Mercury agent needs approval",
+            body: "Send $250.00?",
+            withBot: true,
+          },
+        ]}
+      />
+    </>
+  ),
+};
+
+/** With an agent panel docked, the toast sits in the main column, left of the panel, so neither is covered. */
+export const BesidePanel: Story = {
+  args: { onOpen: () => {} },
+  decorators: [
+    (Story) => (
+      <div className="flex h-96 bg-background">
+        <div className="flex-1 p-4 text-sm">Page content stays uncovered.</div>
+        <aside data-toast-panel="" className="w-96 border-l border-border" />
+        {Story()}
+      </div>
+    ),
+  ],
+  render: render([
+    {
+      id: "approval",
+      title: "Vendor security questionnaire needs approval",
+      body: "Send the completed questionnaire to security@halcyon-logistics.example.test",
+      withBot: true,
+    },
+  ]),
+};

@@ -21,6 +21,9 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   InputGroup,
   InputGroupAddon,
@@ -50,7 +53,15 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { InboxConsentPrompt } from "../components/AiDataSharing";
 import { AskBotButton } from "../components/AskBotButton";
@@ -88,6 +99,17 @@ import { errorText } from "../lib/user-error";
 type MeetingsState = { source: boolean; syncing: boolean; ready: boolean };
 
 const ALL = "all";
+
+const PHONE_QUERY = "(max-width: 767px)";
+function subscribePhone(onChange: () => void) {
+  if (typeof window.matchMedia !== "function") return () => undefined;
+  const media = window.matchMedia(PHONE_QUERY);
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
+}
+const isPhone = () =>
+  typeof window.matchMedia === "function" && window.matchMedia(PHONE_QUERY).matches;
+
 /** While a refresh reports its sync still running, ask again this often, at most this many times. */
 const SYNC_POLL_MS = 2_000;
 /** The wait doubles after each answer that still says syncing, up to this. */
@@ -97,6 +119,14 @@ const couldNotArchive = (count: number) => t`Couldn't archive ${count}`;
 // ponytail: bounded polling while triage runs; add a user-level event if it often takes longer than 30 seconds.
 const TRIAGE_POLL_MS = 5_000;
 const TRIAGE_MAX_POLLS = 6;
+/** Needs reply lists this many rows first, then "Show N more". */
+const NEEDS_REPLY_SHOWN = 5;
+/** The heading a dated row sits under on the sender piles, the same split Important uses. */
+const dayOf = (receivedAt: string) => {
+  const now = new Date();
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return new Date(receivedAt).getTime() >= midnight ? "today" : "earlier";
+};
 // ponytail: an open Inbox looks for new mail once a minute (the server syncs at most that often);
 // switch to a pushed event if the delay matters.
 const NEW_MAIL_POLL_MS = 60_000;
@@ -276,8 +306,13 @@ function InboxListPage({
   const [reload, setReload] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const polls = useRef(0);
+  const autoRetried = useRef(false);
   // Triage still pending after the last poll: say so and offer a retry instead of spinning.
   const [stalled, setStalled] = useState(false);
+  // After 15 s of the first sort the unsorted rows show, dimmed, so the page is never only grey bars.
+  const [slowSort, setSlowSort] = useState(false);
+  // A sync has returned a last-sync time, so the loading line never says "First sync" on an old mailbox.
+  const [everSynced, setEverSynced] = useState(false);
   const appliedKey = useRef<string | null>(null);
   const archiving = useRef(new Map<string, Promise<boolean>>());
   const [composing, setComposing] = useState(false);
@@ -289,7 +324,21 @@ function InboxListPage({
   const sortEnding = useRef(false);
   // "Not now" on the sorting prompt hides it for this visit only.
   const [consentDismissed, setConsentDismissed] = useState(false);
+  const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+  const [filterTipOpen, setFilterTipOpen] = useState(false);
+  const filterClosedAt = useRef(0);
   const [justAllowed, setJustAllowed] = useState(false);
+  // Needs reply shows its first few rows so today's mail stays on the first screen.
+  const [allReplies, setAllReplies] = useState(false);
+  // Classifications as the list showed them when triage began, so rows move once, when it ends.
+  // Kept per list, so another account's view never reads it; a row the user marked since is not held.
+  const heldTriage = useRef<{
+    key: string;
+    rows: Map<
+      string,
+      Pick<MailRow, "needsReply" | "priority" | "reason" | "category" | "feedback">
+    >;
+  } | null>(null);
 
   // A message sent from any composer: reload, since the send synced the account.
   useEffect(() => {
@@ -377,13 +426,35 @@ function InboxListPage({
 
   // To-dos load beside the list, so the card never pushes loaded rows down.
   const tabKey = tab ?? ALL;
+  const todosNow = useRef(todosByTab);
+  todosNow.current = todosByTab;
+  const meetingsNow = useRef(meetings);
+  meetingsNow.current = meetings;
+  // A later answer that adds or removes a to-do waits here, so the rows under the pointer stay put.
+  const heldTodos = useRef<
+    { tabKey: string; todos: InboxTodo[]; state: MeetingsState | null } | undefined
+  >(undefined);
+  const applyTodos = (key: string, todos: InboxTodo[], state: MeetingsState | null) => {
+    heldTodos.current = undefined;
+    setTodosByTab((all) => ({ ...all, [key]: todos }));
+    setMeetings(state);
+  };
   useEffect(() => {
     if (paused) return;
     let live = true;
     const done = (todos: InboxTodo[], state: MeetingsState | null = null) => {
       if (!live) return;
-      setTodosByTab((all) => ({ ...all, [tabKey]: todos }));
-      setMeetings(state);
+      const before = todosNow.current[tabKey];
+      const sameMeetings = JSON.stringify(state) === JSON.stringify(meetingsNow.current);
+      if (
+        before !== undefined &&
+        before.length !== todos.length &&
+        sameMeetings &&
+        !sortingRef.current &&
+        !sortEnding.current
+      )
+        heldTodos.current = { tabKey, todos, state };
+      else applyTodos(tabKey, todos, state);
       if (sortEnding.current) {
         sortEnding.current = false;
         setSorting(false);
@@ -398,6 +469,11 @@ function InboxListPage({
       live = false;
     };
   }, [tab, tabKey, todoRefresh, paused]);
+  // Opening another list is a change the user made, so the held to-dos show with it.
+  useEffect(() => {
+    const held = heldTodos.current;
+    if (held) applyTodos(held.tabKey, held.todos, held.state);
+  }, [listKey]);
   // The first meeting sync has no event to wait for; look again until it has a checkpoint.
   const meetingsSyncing = Boolean(meetings?.syncing);
   useEffect(() => {
@@ -428,9 +504,20 @@ function InboxListPage({
 
   // Triage runs after the sync returns, so refetch a few times while the list reports it pending.
   useEffect(() => {
+    if (!data?.triagePending) autoRetried.current = false;
     if (paused || !data?.triagePending) return;
     if (polls.current >= TRIAGE_MAX_POLLS) {
-      setStalled(true);
+      // A sort that stalls once starts over by itself before the page says it is slow.
+      if (!autoRetried.current) {
+        autoRetried.current = true;
+        restartSortWatch();
+        setAttempt((n) => n + 1);
+        setReload((n) => n + 1);
+      } else if (!stalled) {
+        setStalled(true);
+        // Polling stopped: read the list once more so a missed finish cannot leave the sort spinning.
+        setReload((n) => n + 1);
+      }
       return;
     }
     const timer = setTimeout(() => {
@@ -449,12 +536,14 @@ function InboxListPage({
     // The server queues the sync and answers at once; ask again until it is done, then list.
     const sync = async () => {
       let result = await rpc.inbox.refresh({});
+      if (result?.syncedAt && live) setEverSynced(true);
       for (let i = 0; i < SYNC_POLL_MAX && live && result?.syncing; i++) {
         await new Promise<void>((resolve) => {
           wake = resolve;
           timer = setTimeout(resolve, Math.min(SYNC_POLL_MS * 2 ** i, SYNC_POLL_MAX_MS));
         });
         if (live) result = await rpc.inbox.refresh({});
+        if (result?.syncedAt && live) setEverSynced(true);
       }
     };
     sync()
@@ -503,6 +592,15 @@ function InboxListPage({
     // The to-dos reload when triage finishes; sorting ends when they arrive, so the page changes once.
     else if (!shown?.triagePending && !sortEnding.current) setSorting(false);
   }, [firstSort, shown?.triagePending]);
+  // Allow starts the sort clock: the sync that queues triage can take a while, and the list says
+  // so meanwhile. If triage never starts, the page goes back to normal after a minute.
+  useEffect(() => {
+    if (!sorting || shown?.triagePending) return;
+    const timer = setTimeout(() => {
+      if (!sortEnding.current) setSorting(false);
+    }, 60_000);
+    return () => clearTimeout(timer);
+  }, [sorting, shown?.triagePending]);
   const narrowed = triage && Boolean(category);
   // A search or narrowed list is one date-ordered list under a result count, not Needs reply / Today / Earlier.
   const resultsView = filtered || narrowed;
@@ -519,6 +617,49 @@ function InboxListPage({
     () => (digestOn ? digestRows(rows, new Date()) : []),
     [digestOn, rows],
   );
+  // While triage runs on a list that already shows classifications, new answers wait: the
+  // classifications from before stay, and rows classified later join the grouping when it finishes.
+  const holdWhilePending = useCallback(
+    (list: MailRow[]) => {
+      if (!shown?.triagePending || stalled || filtered) {
+        heldTriage.current = null;
+        return list;
+      }
+      if (heldTriage.current?.key !== listKey) {
+        heldTriage.current = {
+          key: listKey,
+          rows: new Map(
+            list.map((row) => [
+              row.id,
+              {
+                needsReply: row.needsReply,
+                priority: row.priority,
+                reason: row.reason,
+                category: row.category,
+                feedback: row.feedback,
+              },
+            ]),
+          ),
+        };
+      }
+      const held = heldTriage.current.rows;
+      const none = {
+        needsReply: null,
+        priority: null,
+        reason: null,
+        category: null,
+        feedback: null,
+      };
+      return list.map((row) => {
+        const before = held.get(row.id);
+        // A mark or undo changes the row's classification now, so it is not held back.
+        if (before && before.feedback !== row.feedback) return row;
+        const { feedback: _, ...classes } = before ?? none;
+        return { ...row, ...classes };
+      });
+    },
+    [shown?.triagePending, stalled, filtered, listKey],
+  );
   const groups = useMemo(
     () =>
       groupInbox(
@@ -533,11 +674,13 @@ function InboxListPage({
             }))
           : resultsView
             ? rows.map((row) => ({ ...row, needsReply: null }))
-            : rows,
+            : holdWhilePending(rows),
         new Date(),
       ),
-    [rows, resultsView, sorting],
+    [rows, resultsView, sorting, holdWhilePending],
   );
+  const replyRows = allReplies ? groups.needsReply : groups.needsReply.slice(0, NEEDS_REPLY_SHOWN);
+  const hiddenReplies = groups.needsReply.length - replyRows.length;
   // Display order. A group header takes its own id; a sender with one message shows as that message.
   const ids = useMemo(() => {
     if (digestOn) return groupBySender(digestList).map((group) => group.newest.id);
@@ -551,8 +694,8 @@ function InboxListPage({
             ],
       );
     if (pile === "spam") return rows.map((row) => row.id);
-    return [...groups.needsReply, ...groups.today, ...groups.earlier].map((row) => row.id);
-  }, [digestOn, digestList, grouped, senderGroups, expanded, pile, rows, groups]);
+    return [...replyRows, ...groups.today, ...groups.earlier].map((row) => row.id);
+  }, [digestOn, digestList, grouped, senderGroups, expanded, pile, rows, groups, replyRows]);
   // The messages the open message's arrows and the prefetch can reach.
   const messageIds = useMemo(() => ids.filter((id) => !isSenderGroupId(id)), [ids]);
   const accounts = data?.accounts ?? [];
@@ -611,12 +754,22 @@ function InboxListPage({
   // Meeting follow-ups show whenever the user has any or a meeting source, with or without mail triage.
   const meetingTodos = Boolean(meetings?.source) || (todos ?? []).some((todo) => todo.meetingId);
   const showTodos = (triage || meetingTodos) && !sorting && pile === "important";
+  // The first sort shows no rows at all: they would regroup and the To do card would push them down.
+  const sortingNow = sorting || firstSort;
+  useEffect(() => {
+    if (!sortingNow) return setSlowSort(false);
+    const timer = setTimeout(() => setSlowSort(true), 15_000);
+    return () => clearTimeout(timer);
+  }, [sortingNow]);
+  const sortingRows = sortingNow && !stalled && !slowSort;
   const loading =
     !shown ||
+    sortingRows ||
     (!filtered && shown.rows.length === 0 && !synced) ||
     // The To do card is waited for on the Important pile even before it is known to show (meetings
     // arrive with it), so it never pushes the loaded rows down.
     (pile === "important" && !paused && todos === undefined && !sorting);
+  const phone = useSyncExternalStore(subscribePhone, isPhone, () => false);
   // Nothing to search in a mailbox with no mail in any pile.
   const mailboxEmpty =
     !loading &&
@@ -902,23 +1055,42 @@ function InboxListPage({
         onAllowed={() => {
           restartSortWatch();
           setJustAllowed(true);
+          // An already sorted mailbox has nothing to wait for; the clearing effects never rerun for it.
+          if (shown?.rows.every((row) => row.needsReply === null)) setSorting(true);
           setAttempt((n) => n + 1);
           setReload((n) => n + 1);
         }}
         onDismiss={() => setConsentDismissed(true)}
+        shownElsewhere={failed && !failedEmpty ? failed : undefined}
       />
     ) : null;
-  const todoCard = todos ? (
+  // "Reply to Morgan ..." with no date repeats its row under Needs reply: the row stays, the card drops it.
+  // ponytail: matches English reply wording only; a "needs reply" flag on the to-do would be exact.
+  const needsReplyIds = new Set(groups.needsReply.map((row) => row.id));
+  const repeatsRow = (todo: InboxTodo) =>
+    todo.doneAt === null &&
+    !todo.dueOn &&
+    Boolean(todo.messageId) &&
+    needsReplyIds.has(todo.messageId as string) &&
+    /^(reply|respond|answer)\b/i.test(todo.text);
+  const cardTodos = todos?.filter((todo) => !repeatsRow(todo));
+  // Its checkbox is gone from the card, so the open mail offers the completion instead.
+  const openReplyTodo = openId
+    ? todos?.find((todo) => todo.messageId === openId && repeatsRow(todo))
+    : undefined;
+  const changeTodo = (next: InboxTodo) => {
+    const swap = (items: InboxTodo[]) => items.map((item) => (item.id === next.id ? next : item));
+    // A held answer must not bring the old state back when it is applied.
+    if (heldTodos.current) heldTodos.current.todos = swap(heldTodos.current.todos);
+    setTodosByTab((all) => ({ ...all, [tabKey]: swap(all[tabKey] ?? []) }));
+  };
+  const todoCard = cardTodos ? (
     <TodoCard
-      todos={todos}
+      todos={cardTodos}
+      compact={phone}
       meetings={meetings ?? undefined}
       onOpen={openMessage}
-      onChange={(next) =>
-        setTodosByTab((all) => ({
-          ...all,
-          [tabKey]: (all[tabKey] ?? []).map((item) => (item.id === next.id ? next : item)),
-        }))
-      }
+      onChange={changeTodo}
     />
   ) : null;
   const closeMessage = () => {
@@ -1032,7 +1204,8 @@ function InboxListPage({
       requestAnimationFrame(() =>
         [...document.querySelectorAll<HTMLElement>("[data-row-id]")]
           .find((el) => el.dataset.rowId === selectedId)
-          ?.focus(),
+          // Not scrolled to: after a reply the row has moved to another group, and the list stays put.
+          ?.focus({ preventScroll: true }),
       );
     }
   }, [openId, selectedId]);
@@ -1113,6 +1286,69 @@ function InboxListPage({
     </div>
   ) : null;
 
+  const searchMeta = (
+    <>
+      {mailboxEmpty ? null : (
+        <form
+          ref={searchRef}
+          className="min-w-40 flex-1 basis-full @lg/ph:basis-0"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setParam("q", draft.trim());
+          }}
+        >
+          <InputGroup className="w-full max-w-sm">
+            <InputGroupAddon>
+              <Search aria-hidden="true" />
+            </InputGroupAddon>
+            <InputGroupInput
+              type="search"
+              name="inbox-search"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Escape") return;
+                setDraft("");
+                if (query) setParam("q", "");
+              }}
+              // Short enough to fit beside the agent panel; the hover title keeps the example.
+              placeholder={t`Search mail`}
+              title={t`Search mail, e.g. from:sam has:attachment`}
+              aria-label={t`Search mail`}
+              // Nothing to search or filter before mail is connected.
+              disabled={noAccounts}
+              maxLength={MAX_QUERY}
+              className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
+              autoComplete="off"
+            />
+            {draft ? (
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  size="icon-xs"
+                  aria-label={t`Clear`}
+                  onClick={() => {
+                    setDraft("");
+                    clearFilters();
+                    searchRef.current?.querySelector("input")?.focus();
+                  }}
+                >
+                  <X aria-hidden="true" />
+                </InputGroupButton>
+              </InputGroupAddon>
+            ) : null}
+          </InputGroup>
+        </form>
+      )}
+      {/* After the search box, which arrives first: the name loads later and must not push it. */}
+      {spaceName ? (
+        // The full name is in the hover title when the row is too short for it.
+        <span title={spaceName} className="mt-1 truncate @lg/ph:mt-0 @lg/ph:max-w-72">
+          {spaceName}
+        </span>
+      ) : null}
+    </>
+  );
+
   // The bottom padding lets the last rows scroll clear of a toast.
   return (
     <div
@@ -1121,72 +1357,11 @@ function InboxListPage({
     >
       <div className="mx-auto max-w-[1440px]">
         {/* A sticky box sticks inside the scroller's padding, so -top cancels it: rows never show above the header. mb-2 keeps the cards below clear of it. */}
-        <div className="sticky -top-2 z-10 -mx-4 -mt-2 mb-2 bg-background px-4 pt-2 md:-top-5 md:-mx-7 md:-mt-5 md:px-7 md:pt-5">
+        <div className="sticky -top-2 z-20 -mx-4 -mt-2 mb-2 bg-background px-4 pt-2 md:-top-5 md:-mx-7 md:-mt-5 md:px-7 md:pt-5">
           <PageHeader
             compact
             title={<Trans>Inbox</Trans>}
-            meta={
-              <>
-                {mailboxEmpty ? null : (
-                  <form
-                    ref={searchRef}
-                    className="min-w-40 flex-1 basis-full @lg/ph:basis-0"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      setParam("q", draft.trim());
-                    }}
-                  >
-                    <InputGroup className="w-full max-w-sm">
-                      <InputGroupAddon>
-                        <Search aria-hidden="true" />
-                      </InputGroupAddon>
-                      <InputGroupInput
-                        type="search"
-                        name="inbox-search"
-                        value={draft}
-                        onChange={(event) => setDraft(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key !== "Escape") return;
-                          setDraft("");
-                          if (query) setParam("q", "");
-                        }}
-                        // Short enough to fit beside the agent panel; the hover title keeps the example.
-                        placeholder={t`Search mail`}
-                        title={t`Search mail, e.g. from:sam has:attachment`}
-                        aria-label={t`Search mail`}
-                        // Nothing to search or filter before mail is connected.
-                        disabled={noAccounts}
-                        maxLength={MAX_QUERY}
-                        className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
-                        autoComplete="off"
-                      />
-                      {draft ? (
-                        <InputGroupAddon align="inline-end">
-                          <InputGroupButton
-                            size="icon-xs"
-                            aria-label={t`Clear`}
-                            onClick={() => {
-                              setDraft("");
-                              setParam("q", "");
-                              searchRef.current?.querySelector("input")?.focus();
-                            }}
-                          >
-                            <X aria-hidden="true" />
-                          </InputGroupButton>
-                        </InputGroupAddon>
-                      ) : null}
-                    </InputGroup>
-                  </form>
-                )}
-                {/* After the search box, which arrives first: the name loads later and must not push it. */}
-                {spaceName ? (
-                  // The full name is in the hover title when the row is too short for it.
-                  <span title={spaceName} className="mt-1 truncate @lg/ph:mt-0 @lg/ph:max-w-72">
-                    {spaceName}
-                  </span>
-                ) : null}
-              </>
-            }
+            meta={phone ? undefined : searchMeta}
             actions={
               <>
                 {tools ? (
@@ -1215,8 +1390,23 @@ function InboxListPage({
                   </Tooltip>
                 ) : null}
                 {tools ? (
-                  <DropdownMenu>
-                    <Tooltip>
+                  <DropdownMenu
+                    onOpenChange={(open) => {
+                      setFilterMenuOpen(open);
+                      if (!open) {
+                        // Closing returns focus to the button, which must not reopen its tooltip.
+                        setFilterTipOpen(false);
+                        filterClosedAt.current = Date.now();
+                      }
+                    }}
+                  >
+                    <Tooltip
+                      open={filterTipOpen && !filterMenuOpen}
+                      onOpenChange={(open) => {
+                        if (!open || Date.now() - filterClosedAt.current > 400)
+                          setFilterTipOpen(open);
+                      }}
+                    >
                       <TooltipTrigger
                         render={
                           <DropdownMenuTrigger
@@ -1264,31 +1454,36 @@ function InboxListPage({
                             {filterLabels()[name]}
                           </DropdownMenuRadioItem>
                         ))}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
-                          <DropdownMenuLabel>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
                             <Trans>Gmail tabs</Trans>
-                          </DropdownMenuLabel>
-                          {(["primary", "promotions", "social", "updates"] as const).map((name) => (
-                            <DropdownMenuRadioItem key={name} value={name} closeOnClick>
-                              {filterLabels()[name]}
-                            </DropdownMenuRadioItem>
-                          ))}
-                        </DropdownMenuGroup>
-                        {triage ? (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuGroup>
-                              <DropdownMenuLabel>
-                                <Trans>Categories</Trans>
-                              </DropdownMenuLabel>
-                              {InboxViewCategorySchema.options.map((name) => (
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            {(["primary", "promotions", "social", "updates"] as const).map(
+                              (name) => (
                                 <DropdownMenuRadioItem key={name} value={name} closeOnClick>
-                                  {categoryLabels()[name]}
+                                  {filterLabels()[name]}
                                 </DropdownMenuRadioItem>
-                              ))}
-                            </DropdownMenuGroup>
-                          </>
+                              ),
+                            )}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        {triage ? (
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              <Trans>Categories</Trans>
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent>
+                              {/* Newsletters is a pile tab, so the category of that name is left out. */}
+                              {InboxViewCategorySchema.options
+                                .filter((name) => name !== "newsletter")
+                                .map((name) => (
+                                  <DropdownMenuRadioItem key={name} value={name} closeOnClick>
+                                    {categoryLabels()[name]}
+                                  </DropdownMenuRadioItem>
+                                ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
                         ) : null}
                       </DropdownMenuRadioGroup>
                       {accounts.length > 1 ? (
@@ -1339,8 +1534,8 @@ function InboxListPage({
                       render={
                         <Button
                           variant="outline"
-                          size="icon-sm"
-                          className="pointer-coarse:size-10"
+                          size="sm"
+                          className="pointer-coarse:h-10 pointer-coarse:min-w-10"
                           aria-label={t`Compose`}
                           onClick={() => setComposing(true)}
                         />
@@ -1383,6 +1578,12 @@ function InboxListPage({
             </div>
           ) : null}
         </div>
+        {/* On a phone the search sits under the sticky title and tabs and scrolls away with the list. */}
+        {phone ? (
+          <div className="mb-3 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+            {searchMeta}
+          </div>
+        ) : null}
 
         {failed && !failedEmpty ? (
           <div
@@ -1442,9 +1643,22 @@ function InboxListPage({
         ) : loading ? (
           <div className="flex flex-col gap-2" aria-busy="true">
             {consentPrompt}
-            {synced ? null : (
+            {sortingRows ? (
+              // After Allow it takes the consent card's place at its height, so the list does not jump.
+              <p
+                role="status"
+                className={cn(
+                  "mb-2 flex min-h-9 items-center gap-2 text-sm text-muted-foreground",
+                  justAllowed && "min-h-16",
+                )}
+              >
+                <Spinner aria-hidden="true" />
+                <Trans>Sorting your mail…</Trans>
+              </p>
+            ) : null}
+            {synced || sortingRows ? null : (
               <p role="status" className="text-sm text-muted-foreground">
-                {slowSync ? (
+                {slowSync && !everSynced && !data?.syncedAt ? (
                   <Trans>First sync can take a minute</Trans>
                 ) : (
                   <Trans>Reading your mail…</Trans>
@@ -1501,14 +1715,10 @@ function InboxListPage({
                   <Trans>Try sorting again</Trans>
                 </Button>
               </div>
-            ) : sorting ? (
-              // After Allow it takes the consent card's place at its height, so the list does not jump.
+            ) : sorting && slowSort ? (
               <p
                 role="status"
-                className={cn(
-                  "mb-4 flex min-h-9 items-center gap-2 text-sm text-muted-foreground",
-                  justAllowed && "min-h-16",
-                )}
+                className="mb-4 flex min-h-9 items-center gap-2 text-sm text-muted-foreground"
               >
                 <Spinner aria-hidden="true" />
                 <Trans>Sorting your mail…</Trans>
@@ -1524,8 +1734,8 @@ function InboxListPage({
                     : plural(rows.length, { one: "# result", other: "# results" })}
                   {activeFilterLabel ? ` · ${activeFilterLabel}` : null}
                 </span>
-                {/* A search already has the X in its box; a filter or category has only this. */}
-                {query && draft && !filter && !category ? null : (
+                {/* A search has the X in its box, which clears the filter too; a filter alone has only this. */}
+                {query && draft ? null : (
                   <Button variant="ghost" size="sm" onClick={clearFilters}>
                     <Trans>Clear</Trans>
                   </Button>
@@ -1566,61 +1776,58 @@ function InboxListPage({
                 </Button>
               </div>
             ) : null}
-            {digestOn ? (
-              <InboxDigest
-                rows={digestList}
-                onOpen={openMessage}
-                onArchiveAll={() => archiveMany(digestList)}
-                onShowPile={() => {
-                  const next = new URLSearchParams(params);
-                  next.delete("digest");
-                  setParams(next);
-                }}
-                selectedId={selectedId}
-              />
-            ) : grouped ? (
-              <section className="mb-5">
-                <div className="border-t border-foreground/10">
-                  {senderGroups.map((group) => (
-                    <InboxSenderGroup
-                      key={group.key}
-                      group={group}
-                      expanded={expanded.has(group.key)}
-                      onToggle={() => toggleGroup(senderGroupId(group.key))}
-                      onOpen={openMessage}
-                      onMark={triage ? mark : undefined}
-                      onArchive={archive}
-                      onRead={setRead}
-                      onArchiveGroup={() => archiveMany(group.rows)}
-                      onPickGroup={() => togglePicked(group.rows.map((row) => row.id))}
-                      selectedId={selectedId}
-                      pickedIds={pickedSet}
-                      onPick={pick}
-                      onMove={moveOne}
-                      hideNewsletter={pile === "newsletters"}
-                    />
-                  ))}
-                </div>
-              </section>
-            ) : spamView ? (
-              <InboxGroup
-                rows={rows}
-                onOpen={openMessage}
-                onMark={triage ? mark : undefined}
-                onArchive={archive}
-                onRead={setRead}
-                selectedId={selectedId}
-                pickedIds={pickedSet}
-                onPick={pick}
-                onMove={moveOne}
-                showArchived={false}
-              />
-            ) : (
-              <>
+            <div className={cn(sorting && slowSort && !stalled && "opacity-60")}>
+              {digestOn ? (
+                <InboxDigest
+                  rows={digestList}
+                  onOpen={openMessage}
+                  onArchiveAll={() => archiveMany(digestList)}
+                  onShowPile={() => {
+                    const next = new URLSearchParams(params);
+                    next.delete("digest");
+                    setParams(next);
+                  }}
+                  selectedId={selectedId}
+                />
+              ) : grouped ? (
+                <section className="mb-5">
+                  <div className="border-t border-foreground/10">
+                    {senderGroups.map((group, index) => {
+                      const day = dayOf(group.newest.receivedAt);
+                      const first =
+                        index === 0 ||
+                        day !== dayOf(senderGroups[index - 1]?.newest.receivedAt ?? "");
+                      return (
+                        <Fragment key={group.key}>
+                          {first ? (
+                            <h2 className="mb-2 mt-5 text-[13px] font-semibold text-muted-foreground first:mt-0">
+                              {day === "today" ? <Trans>Today</Trans> : <Trans>Earlier</Trans>}
+                            </h2>
+                          ) : null}
+                          <InboxSenderGroup
+                            group={group}
+                            expanded={expanded.has(group.key)}
+                            onToggle={() => toggleGroup(senderGroupId(group.key))}
+                            onOpen={openMessage}
+                            onMark={triage ? mark : undefined}
+                            onArchive={archive}
+                            onRead={setRead}
+                            onArchiveGroup={() => archiveMany(group.rows)}
+                            onPickGroup={() => togglePicked(group.rows.map((row) => row.id))}
+                            selectedId={selectedId}
+                            pickedIds={pickedSet}
+                            onPick={pick}
+                            onMove={moveOne}
+                            hideNewsletter={pile === "newsletters"}
+                          />
+                        </Fragment>
+                      );
+                    })}
+                  </div>
+                </section>
+              ) : spamView ? (
                 <InboxGroup
-                  title={<Trans>Needs reply</Trans>}
-                  hideAttention
-                  rows={groups.needsReply}
+                  rows={rows}
                   onOpen={openMessage}
                   onMark={triage ? mark : undefined}
                   onArchive={archive}
@@ -1629,10 +1836,15 @@ function InboxListPage({
                   pickedIds={pickedSet}
                   onPick={pick}
                   onMove={moveOne}
+                  showArchived={false}
                 />
-                {resultsView ? (
+              ) : (
+                <>
                   <InboxGroup
-                    rows={[...groups.today, ...groups.earlier]}
+                    title={<Trans>Needs reply</Trans>}
+                    hideAttention
+                    rows={replyRows}
+                    unreadTotal={groups.needsReply.filter((row) => row.unread).length}
                     onOpen={openMessage}
                     onMark={triage ? mark : undefined}
                     onArchive={archive}
@@ -1642,18 +1854,20 @@ function InboxListPage({
                     onPick={pick}
                     onMove={moveOne}
                   />
-                ) : (
-                  <>
+                  {hiddenReplies > 0 ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mb-5 -mt-3 text-muted-foreground"
+                      onClick={() => setAllReplies(true)}
+                    >
+                      <Trans>Show {hiddenReplies} more</Trans>
+                    </Button>
+                  ) : null}
+                  {resultsView ? (
                     <InboxGroup
-                      // Today's mail that needs a reply is above, so this group says it holds the rest.
-                      title={
-                        groups.needsReply.length ? (
-                          <Trans>Other mail today</Trans>
-                        ) : (
-                          <Trans>Today</Trans>
-                        )
-                      }
-                      rows={groups.today}
+                      query={query}
+                      rows={[...groups.today, ...groups.earlier]}
                       onOpen={openMessage}
                       onMark={triage ? mark : undefined}
                       onArchive={archive}
@@ -1663,22 +1877,44 @@ function InboxListPage({
                       onPick={pick}
                       onMove={moveOne}
                     />
-                    <InboxGroup
-                      title={<Trans>Earlier</Trans>}
-                      rows={groups.earlier}
-                      onOpen={openMessage}
-                      onMark={triage ? mark : undefined}
-                      onArchive={archive}
-                      onRead={setRead}
-                      selectedId={selectedId}
-                      pickedIds={pickedSet}
-                      onPick={pick}
-                      onMove={moveOne}
-                    />
-                  </>
-                )}
-              </>
-            )}
+                  ) : (
+                    <>
+                      <InboxGroup
+                        // Today's mail that needs a reply is above, so this group says it holds the rest.
+                        title={
+                          groups.needsReply.length ? (
+                            <Trans>Other mail today</Trans>
+                          ) : (
+                            <Trans>Today</Trans>
+                          )
+                        }
+                        rows={groups.today}
+                        onOpen={openMessage}
+                        onMark={triage ? mark : undefined}
+                        onArchive={archive}
+                        onRead={setRead}
+                        selectedId={selectedId}
+                        pickedIds={pickedSet}
+                        onPick={pick}
+                        onMove={moveOne}
+                      />
+                      <InboxGroup
+                        title={<Trans>Earlier</Trans>}
+                        rows={groups.earlier}
+                        onOpen={openMessage}
+                        onMark={triage ? mark : undefined}
+                        onArchive={archive}
+                        onRead={setRead}
+                        selectedId={selectedId}
+                        pickedIds={pickedSet}
+                        onPick={pick}
+                        onMove={moveOne}
+                      />
+                    </>
+                  )}
+                </>
+              )}
+            </div>
             {filtered && fresh && more.token ? (
               <div className="grid place-items-center pb-2">
                 <Button variant="outline" size="sm" disabled={more.busy} onClick={loadMore}>
@@ -1756,6 +1992,15 @@ function InboxListPage({
               : undefined
           }
           onRead={openRow ? (read) => setRead(openRow.id, read) : undefined}
+          onReplyDone={
+            openReplyTodo
+              ? () =>
+                  rpc.inbox.todos
+                    .setDone({ id: openReplyTodo.id, done: true })
+                    .then(changeTodo)
+                    .catch((cause) => setError(errorText(cause)))
+              : undefined
+          }
           notice={openId ? toast : null}
         />
         <InboxShortcuts open={help} onClose={() => setHelp(false)} />

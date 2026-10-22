@@ -4,9 +4,15 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => ({
   upload: vi.fn(),
+  enqueue: vi.fn(),
+  close: vi.fn(),
   folders: vi.fn(),
   imports: vi.fn(),
   space: { id: "s1" },
+}));
+vi.mock("@rakazo/ui-web", () => ({
+  enqueueNotificationToast: hoisted.enqueue,
+  notificationToastManager: { close: hoisted.close },
 }));
 vi.mock("../../lib/rpc", () => ({
   rpc: { dataRoom: { folders: hoisted.folders, imports: hoisted.imports } },
@@ -26,7 +32,9 @@ import {
   setOpenDataRoomFolder,
   setUploadScope,
   showDeletedToast,
+  showNoticeToast,
   uploadFilesToDataRoom,
+  uploadScopeToken,
 } from "./upload-toasts";
 
 const names = () => getUploadToasts().map((toast) => toast.name);
@@ -80,7 +88,9 @@ it("dismisses a failed upload by itself after a while", async () => {
   uploadFilesToDataRoom([file("big.bin")]);
   await flush();
   expect(names()).toEqual(["big.bin"]);
-  await vi.advanceTimersByTimeAsync(20_000);
+  await vi.advanceTimersByTimeAsync(7_000);
+  expect(names()).toEqual(["big.bin"]);
+  await vi.advanceTimersByTimeAsync(1_500);
   expect(names()).toEqual([]);
 });
 
@@ -243,7 +253,74 @@ it("says a deleted folder is gone and offers to upload the same file to the top 
   if (toast?.state.kind !== "error") throw new Error("expected an error toast");
   toast.state.toTop?.();
   await flush();
-  expect(hoisted.upload).toHaveBeenLastCalledWith(deck, undefined, expect.any(Function));
+  expect(hoisted.upload).toHaveBeenLastCalledWith(
+    deck,
+    undefined,
+    expect.any(Function),
+    expect.any(AbortSignal),
+  );
   expect(getUploadToasts().map((t) => t.state.kind)).toEqual(["uploaded"]);
   window.removeEventListener(DATA_ROOM_CHANGED, changed);
+});
+
+it("drops a notice whose user changed before it was shown, and shows the rest in the shared host", () => {
+  setUploadScope("u1");
+  const since = uploadScopeToken();
+  setUploadScope("u2");
+  showNoticeToast("Shared secret.pdf", since);
+  expect(hoisted.enqueue).not.toHaveBeenCalled();
+  showNoticeToast("Shared ok.pdf", uploadScopeToken());
+  expect(hoisted.enqueue).toHaveBeenCalledWith(expect.objectContaining({ title: "Shared ok.pdf" }));
+  expect(names()).toEqual([]);
+});
+
+it("calls an upload with no progress slow, and offers Cancel and Retry", async () => {
+  setUploadScope("u1");
+  hoisted.upload.mockReturnValue(new Promise(() => undefined));
+  uploadFilesToDataRoom([file("deck.pdf")]);
+  await flush();
+  expect(getUploadToasts()[0]?.state).toMatchObject({ kind: "uploading" });
+  expect(getUploadToasts()[0]?.state).not.toHaveProperty("stalled");
+  await vi.advanceTimersByTimeAsync(15_000);
+  const state = getUploadToasts()[0]?.state;
+  if (state?.kind !== "uploading" || !state.stalled) throw new Error("expected a stalled upload");
+  state.stalled.retry();
+  expect(hoisted.upload).toHaveBeenCalledTimes(2);
+  expect(hoisted.upload.mock.calls[0]?.[3].aborted).toBe(true);
+  expect(names()).toEqual(["deck.pdf"]);
+  await vi.advanceTimersByTimeAsync(15_000);
+  const again = getUploadToasts()[0]?.state;
+  if (again?.kind !== "uploading" || !again.stalled) throw new Error("expected a stalled upload");
+  again.stalled.cancel();
+  expect(names()).toEqual([]);
+});
+
+it("does not retry a stalled upload into a different space", async () => {
+  setUploadScope("u1");
+  hoisted.upload.mockReturnValue(new Promise(() => undefined));
+  uploadFilesToDataRoom([file("deck.pdf")]);
+  await vi.advanceTimersByTimeAsync(15_000);
+  const state = getUploadToasts()[0]?.state;
+  if (state?.kind !== "uploading" || !state.stalled) throw new Error("expected a stalled upload");
+  hoisted.space.id = "s2";
+  state.stalled.retry();
+  expect(hoisted.upload).toHaveBeenCalledTimes(1);
+  expect(hoisted.upload.mock.calls[0]?.[3].aborted).toBe(true);
+  expect(hoisted.enqueue).toHaveBeenCalledWith(
+    expect.objectContaining({ title: "Not retried: the space changed" }),
+  );
+});
+
+it("closes shown notices when the user or space changes", () => {
+  setUploadScope("u1");
+  showNoticeToast("Shared secret.pdf");
+  const id = hoisted.enqueue.mock.calls[0]?.[0].id;
+  setUploadScope("u2");
+  expect(hoisted.close).toHaveBeenCalledWith(id);
+  showNoticeToast("Shared b.pdf");
+  const second = hoisted.enqueue.mock.calls[1]?.[0].id;
+  hoisted.enqueue.mock.calls[1]?.[0].onClose();
+  hoisted.space.id = "s2";
+  getUploadToasts();
+  expect(hoisted.close).not.toHaveBeenCalledWith(second);
 });

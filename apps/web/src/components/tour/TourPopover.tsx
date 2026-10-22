@@ -8,9 +8,14 @@ export type TourStep = {
   /** CSS selector of the element the step points at. A step whose element is missing is skipped. */
   anchor: string;
   text: string;
+  /** The item the step explains. The card stays in one spot, so its first word names the target. */
+  name: string;
 };
 
-/** Below the `lg` breakpoint the sidebar is a drawer (the shell opens it for the tour); the card sits on the screen half away from the ring. */
+/** About as tall as a card; keeps a card placed under a target inside the window. */
+const CARD_HEIGHT = 140;
+
+/** Below the `lg` breakpoint the sidebar is a drawer (the shell opens it for the tour). */
 const WIDE = "(min-width: 1024px)";
 
 function useWide() {
@@ -88,6 +93,10 @@ export function TourPopover({
   const step = present?.[index];
   const element = step ? document.querySelector(step.anchor) : null;
   const rect = useRect(element);
+  // Sidebar targets get a card, not a popover: on desktop it stays inside the sidebar column so it
+  // never covers the page title, chat or composer; on a phone it spans the screen.
+  const sidebar = element?.closest("aside") ?? null;
+  const card = !wide || sidebar !== null;
 
   // Nothing to point at: close without recording, so the tour can still run once the page has loaded.
   const empty = present?.length === 0;
@@ -96,7 +105,7 @@ export function TourPopover({
   }, [empty, onFinish]);
   // On a phone the card is not a popover, so Escape needs its own handler.
   useEffect(() => {
-    if (wide) return;
+    if (!card) return;
     // Capture phase: the tour ends first, so the sidebar drawer behind it stays open for one more press.
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -106,43 +115,55 @@ export function TourPopover({
     // On window, so it runs before any drawer listener on the document.
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [wide, onFinish]);
+  }, [card, onFinish]);
   if (!step) return null;
 
   const last = index === (present?.length ?? 0) - 1;
   const body = (
     <>
-      <p className="text-sm" aria-live="polite">
+      <p className="min-h-10 text-sm" aria-live="polite">
+        <span className="font-medium">{step.name}</span>
+        {": "}
         {step.text}
       </p>
+      {last && lastAction ? (
+        <Button
+          variant="outline"
+          size="sm"
+          className="self-start"
+          onClick={() => {
+            onFinish("done");
+            lastAction.run();
+          }}
+        >
+          {lastAction.label}
+        </Button>
+      ) : null}
+      {/* Same slots at every stop; Skip tour only hides on the last one. */}
       <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className={`-ms-2 ${last ? "invisible" : ""}`}
+          onClick={() => onFinish("skip")}
+        >
+          <Trans>Skip tour</Trans>
+        </Button>
         <span className="text-xs text-muted-foreground tabular-nums">
           {index + 1}/{present?.length}
         </span>
         <span className="flex-1" />
-        {last ? null : (
-          <Button variant="ghost" size="sm" onClick={() => onFinish("skip")}>
-            <Trans>Skip tour</Trans>
-          </Button>
-        )}
         {index > 0 ? (
           <Button variant="outline" size="sm" onClick={() => setIndex(index - 1)}>
             <Trans>Back</Trans>
           </Button>
         ) : null}
-        {last && lastAction ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              onFinish("done");
-              lastAction.run();
-            }}
-          >
-            {lastAction.label}
-          </Button>
-        ) : null}
-        <Button size="sm" autoFocus onClick={() => (last ? onFinish("done") : setIndex(index + 1))}>
+        <Button
+          size="sm"
+          className="min-w-16"
+          autoFocus
+          onClick={() => (last ? onFinish("done") : setIndex(index + 1))}
+        >
           {last ? <Trans>Done</Trans> : <Trans>Next</Trans>}
         </Button>
       </div>
@@ -150,14 +171,24 @@ export function TourPopover({
   );
 
   const ring = rect && rect.width > 0 && rect.right > 0 && rect.left < window.innerWidth;
-  if (!wide) {
-    // Next to the ring: below a target in the upper half, above one in the lower half.
-    const below = !ring || rect.top + rect.height / 2 < window.innerHeight / 2;
-    const place = !ring
-      ? { bottom: 16 }
-      : below
-        ? { top: rect.bottom + 10 }
-        : { bottom: window.innerHeight - rect.top + 10 };
+  if (card) {
+    const column = wide && sidebar ? sidebar.getBoundingClientRect() : null;
+    // Beside the sidebar at the foot of the page (above the composer when there is one), the same
+    // spot at every stop: it never covers the page title or the first lines of the chat, and Next stays put.
+    const composerTop = document
+      .querySelector('[data-testid="composer-bar"]')
+      ?.getBoundingClientRect().top;
+    const targetAbove = ring && rect.top + rect.height / 2 < window.innerHeight / 2;
+    const place =
+      column && ring
+        ? { bottom: composerTop ? window.innerHeight - composerTop + 8 : 16 }
+        : // A phone: right beside the target, below a high one and above a low one.
+          ring
+          ? targetAbove
+            ? { top: Math.min(rect.bottom + 8, window.innerHeight - CARD_HEIGHT - 8) }
+            : { bottom: Math.max(window.innerHeight - rect.top + 8, 8) }
+          : { bottom: 16 };
+    const span = column ? { left: column.right + 8, width: 288 } : undefined;
     return (
       <>
         {ring ? <Ring rect={rect} /> : null}
@@ -166,8 +197,8 @@ export function TourPopover({
             role="dialog"
             aria-label={t`Tour`}
             data-testid="tour-card"
-            style={place}
-            className="fixed inset-x-4 z-50 flex flex-col gap-2.5 rounded-lg bg-popover p-3 text-popover-foreground shadow-md ring-1 ring-foreground/10"
+            style={{ ...place, ...span }}
+            className={`fixed z-50 flex flex-col gap-2.5 rounded-lg bg-popover p-3 text-popover-foreground shadow-md ring-1 ring-foreground/10 ${span ? "" : "inset-x-4"}`}
           >
             {body}
           </div>,
@@ -176,18 +207,6 @@ export function TourPopover({
       </>
     );
   }
-  // Beside the sidebar, at one x, so the card never covers a row other than its own target.
-  const sidebar = element?.closest("aside");
-  const anchor =
-    element && sidebar
-      ? {
-          getBoundingClientRect: () => {
-            const row = element.getBoundingClientRect();
-            const edge = sidebar.getBoundingClientRect().right;
-            return new DOMRect(edge, row.top, 0, row.height);
-          },
-        }
-      : element;
   return (
     <>
       {ring ? <Ring rect={rect} /> : null}
@@ -199,9 +218,9 @@ export function TourPopover({
         }}
       >
         <PopoverContent
-          anchor={anchor}
-          side={sidebar ? "right" : "bottom"}
-          align={sidebar ? "center" : "start"}
+          anchor={element}
+          side="bottom"
+          align="start"
           sideOffset={10}
           data-testid="tour-popover"
           className="w-72"

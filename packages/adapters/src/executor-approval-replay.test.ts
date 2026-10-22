@@ -1,4 +1,5 @@
 import type { ConnectorTool } from "@rakazo/adapter-kit";
+import { closeApprovalAsks, latestAnswerableAskMessageId, threadRunError } from "@rakazo/core";
 import { approvalEffectKey } from "@rakazo/core/node/approval-effect-key";
 import { describe, expect, it } from "vitest";
 import {
@@ -6,6 +7,7 @@ import {
   approvedCatalogReplay,
   approvedReplayArgs,
   boundDirectApprovalRequest,
+  CLOSED_APPROVAL_MESSAGE,
   catalogApprovalRequest,
   createApprovedEffectReplayQueue,
   resolveDuplicateEffectGate,
@@ -66,6 +68,14 @@ describe("executor approval replay", () => {
     expect(queue.take("destination.write")).toEqual({ sequence: 2 });
     expect(queue.take("destination.write")).toBeUndefined();
     expect(queue.assertDrained).not.toThrow();
+  });
+
+  it("keeps an unanswered approval paused, whatever the run's task text says", () => {
+    // Only the card's own answer moves an effect to approved; a resume sees "intended" and
+    // pauses on the existing card instead of executing or issuing a new decision.
+    expect(resolveDuplicateEffectGate({ status: "intended" }, "requestSendMoney")).toEqual({
+      action: "paused",
+    });
   });
 
   it("uses a stable secondary key when approval timestamps match", () => {
@@ -445,5 +455,57 @@ describe("denied effect result", () => {
       action: "return",
       result: { error: expect.stringContaining("The user denied this action") },
     });
+  });
+});
+
+describe("approval card lifecycle", () => {
+  const card = {
+    kind: "ask",
+    text: "Send $75?",
+    status: "pending",
+    approvalEffectId: "effect-1",
+    actions: [
+      { id: "allow", label: "Send $75.00" },
+      { id: "deny", label: "Deny" },
+    ],
+  } as const;
+
+  it.each(["superseded", "expired"])("never replays a %s approval", (status) => {
+    const gate = resolveDuplicateEffectGate({ status }, "requestSendMoney");
+    expect(gate).toEqual({ action: "return", result: { error: CLOSED_APPROVAL_MESSAGE } });
+  });
+
+  it("closes only unanswered approval cards, and a closed card is no longer answerable", () => {
+    const answered = { ...card, approvalEffectId: "effect-0", status: "answered", answer: "deny" };
+    const question = { kind: "ask", text: "Which city?", status: "pending" };
+    const closed = closeApprovalAsks([card, answered, question], "superseded");
+
+    expect(closed[0]).toMatchObject({ status: "answered", answer: "superseded" });
+    expect(closed[1]).toEqual(answered);
+    expect(closed[2]).toEqual(question);
+
+    const snapshot = (blocks: typeof closed) => ({
+      messages: [{ id: "m1", runId: "run-1", blocks }],
+      activeRuns: [{ id: "run-1", status: "waiting_input" }],
+    });
+    expect(latestAnswerableAskMessageId(snapshot([card]))).toBe("m1");
+    expect(latestAnswerableAskMessageId(snapshot([closed[0]!]))).toBeNull();
+  });
+
+  it("does not report an earlier failed run while another run waits for approval", () => {
+    const failed = {
+      id: "run-failed",
+      status: "failed",
+      error: "This agent could not finish. Try again.",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    const snapshot = (activeRuns: Array<{ id: string; status: string }>) =>
+      ({ run: failed, activeRuns, messages: [] }) as never;
+    const describeError = (error: string) => error;
+
+    expect(threadRunError(snapshot([]), describeError)).toBe(failed.error);
+    expect(
+      threadRunError(snapshot([{ id: "run-2", status: "waiting_input" }]), describeError),
+    ).toBe(null);
   });
 });

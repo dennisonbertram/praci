@@ -48,6 +48,8 @@ import {
 } from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
 import { AskBotButton } from "../AskBotButton";
+import { ShowAmountsButton } from "../HideAmountsToggle";
+import { PageNavButton } from "../PageHeader";
 import { MAX_SEGMENTS, shade } from "./charts";
 
 export type FinanceSpace = { id: string; name: string };
@@ -100,13 +102,8 @@ export function SpaceName() {
     current.name,
     spaces.map((space) => space.name),
   );
-  if (!onSwitchSpace || spaces.length < 2) {
-    return (
-      <span title={current.name} className="min-w-0 truncate ps-2 text-xs text-muted-foreground">
-        {label}
-      </span>
-    );
-  }
+  // The only company needs no name beside the title.
+  if (!onSwitchSpace || spaces.length < 2) return null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -114,7 +111,7 @@ export function SpaceName() {
           <Button
             variant="ghost"
             size="xs"
-            className="min-w-0 max-w-full shrink text-muted-foreground"
+            className="min-w-0 max-w-56 shrink text-muted-foreground sm:max-w-64"
             aria-label={t`Company: ${current.name}. Switch company`}
           />
         }
@@ -147,7 +144,7 @@ export function AskAgentButton() {
   if (!onAskAgent) return null;
   return (
     <div className="ms-auto">
-      <AskBotButton botName={agentName ?? "Finance agent"} onClick={onAskAgent} compact />
+      <AskBotButton botName={agentName ?? "Finance agent"} onClick={onAskAgent} />
     </div>
   );
 }
@@ -335,6 +332,7 @@ export function DetailHead({
           heading && back ? "min-h-10" : "mb-1.5 min-h-8",
         )}
       >
+        <PageNavButton />
         {/* Back names the page before, for every page up to two levels down; only a charge, four
       levels down, needs the trail's links. */}
         {back ? (
@@ -384,8 +382,11 @@ export function DetailHead({
           </nav>
         )}
         {back ? heading : null}
-        {/* On a phone the company takes what the row has left, so Ask stays beside the title. */}
-        <CompanyMenu className="max-sm:min-w-0 max-sm:flex-1 max-sm:basis-16" />
+        {/* On a phone the company takes what the row has left (and truncates). Beside a Back button it
+            keeps room for its name and wraps to the next line, with Ask, rather than being cut to a few letters. */}
+        <CompanyMenu
+          className={back ? undefined : "max-sm:min-w-0 max-sm:flex-1 max-sm:basis-16"}
+        />
         {back ? end : null}
       </div>
       {heading && !back ? (
@@ -413,9 +414,10 @@ export function CompanyMenu({ children, className }: { children?: ReactNode; cla
       )}
     >
       <SpaceName />
-      <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-muted-foreground">
+      <span className="flex min-w-0 shrink items-center gap-0.5 text-[11px] text-muted-foreground">
         {children}
       </span>
+      <ShowAmountsButton />
     </span>
   );
 }

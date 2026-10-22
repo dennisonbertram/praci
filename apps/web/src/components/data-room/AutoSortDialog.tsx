@@ -235,10 +235,16 @@ export function AutoSortDialog({
           {/* Nothing to apply (a failed or empty plan): the button would only read "Apply 0 changes". */}
           {plan && plan.operations.length === 0 ? null : error && !plan ? null : (
             <>
-              {plan && chosen.length === 0 ? (
-                <span className="me-auto self-center text-[13px] text-muted-foreground">
-                  <Trans>Tick a change to apply it.</Trans>
-                </span>
+              {/* With several changes the checkbox at the top is the one Select all. */}
+              {plan && plan.operations.length === 1 && chosen.length === 0 ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="me-auto"
+                  onClick={() => setOff(new Set())}
+                >
+                  <Trans>Select all</Trans>
+                </Button>
               ) : null}
               <Button type="button" disabled={busy || !plan || chosen.length === 0} onClick={apply}>
                 {chosen.length === 0

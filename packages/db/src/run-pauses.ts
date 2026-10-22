@@ -6,13 +6,16 @@ import {
   LoginSecretValue,
   MessageBlock as MessageBlockSchema,
 } from "@rakazo/contracts";
+import type { ClosedApprovalAnswer } from "@rakazo/core";
 import {
   callIdFromClientNonce,
+  closeApprovalAsks,
   isApprovalAskBlock,
   isConversationalRun,
   isSecretAskBlock,
   resolveAskChoice,
 } from "@rakazo/core";
+import { cancelRunsInTransaction } from "./cancel-runs.js";
 import type { Prisma, PrismaClient } from "./client.js";
 import type {
   AnswerRunInput,
@@ -70,6 +73,265 @@ function resumePrompt(
   return [run.task?.prompt.trim(), `${question.trim()}\nAnswer: ${answer}`]
     .filter(Boolean)
     .join("\n\n");
+}
+
+/**
+ * Close every unanswered approval card of these runs and its pending effect, so the stored card
+ * can never be approved later. Returns how many cards were closed.
+ */
+export async function closeApprovalCardsInTransaction(
+  tx: Prisma.TransactionClient,
+  input: {
+    spaceId: string;
+    threadId: string;
+    botId: string;
+    runIds: string[];
+    answer: ClosedApprovalAnswer;
+  },
+): Promise<number> {
+  if (input.runIds.length === 0) return 0;
+  const messages = await tx.message.findMany({
+    where: { threadId: input.threadId, runId: { in: input.runIds }, role: "bot" },
+    select: { id: true, runId: true, blocks: true },
+  });
+  let closed = 0;
+  for (const message of messages) {
+    const parsed = MessageBlockSchema.array().safeParse(message.blocks);
+    if (!parsed.success) continue;
+    const effectIds = parsed.data.flatMap((block) =>
+      block.kind === "ask" && block.status !== "answered" && block.approvalEffectId
+        ? [block.approvalEffectId]
+        : [],
+    );
+    if (effectIds.length === 0) continue;
+    const blocks = closeApprovalAsks(parsed.data, input.answer);
+    await tx.externalEffect.updateMany({
+      where: { id: { in: effectIds }, spaceId: input.spaceId, status: "intended" },
+      data: { status: input.answer },
+    });
+    await tx.message.update({ where: { id: message.id }, data: { blocks } });
+    await appendEventInTransaction(tx, {
+      spaceId: input.spaceId,
+      threadId: input.threadId,
+      botId: input.botId,
+      type: "thread.message.updated",
+      runId: message.runId ?? undefined,
+      payload: { messageId: message.id, role: "bot", blocks },
+    });
+    closed += effectIds.length;
+  }
+  return closed;
+}
+
+/**
+ * A newer approval for the identical request (same tool and arguments) replaces older delegated ones waiting in this
+ * thread (the sender asked twice for one job). The older cards are closed and their runs cancelled
+ * without an outcome message, so the thread shows one live card and one outcome.
+ */
+async function supersedeOlderApprovals(
+  tx: Prisma.TransactionClient,
+  input: { spaceId: string; threadId: string; botId: string; runId: string },
+  approvalEffectId: string,
+) {
+  const effect = await tx.externalEffect.findUnique({
+    where: { id: approvalEffectId },
+    select: { kind: true, request: true },
+  });
+  // A mail-consent card belongs to its own run; only an action's approval is replaced.
+  if (!effect || effect.kind === AI_CONSENT_EFFECT_KIND) return;
+  const older = await tx.run.findMany({
+    where: {
+      spaceId: input.spaceId,
+      threadId: input.threadId,
+      botId: input.botId,
+      id: { not: input.runId },
+      trigger: "bot_message",
+      status: "waiting_input",
+      // Only the same request replaces it: another payment in this thread has different arguments.
+      effects: {
+        some: {
+          status: "intended",
+          kind: effect.kind,
+          request: { equals: effect.request as never },
+        },
+      },
+    },
+    select: { id: true, taskId: true },
+  });
+  if (older.length === 0) return;
+  await closeAndCancelWaitingRuns(tx, input, older, "superseded");
+}
+
+async function closeAndCancelWaitingRuns(
+  tx: Prisma.TransactionClient,
+  input: { spaceId: string; threadId: string; botId: string },
+  older: { id: string; taskId: string }[],
+  answer: ClosedApprovalAnswer,
+) {
+  const runIds = older.map((run) => run.id);
+  await closeApprovalCardsInTransaction(tx, { ...input, runIds, answer });
+  const now = new Date();
+  await cancelRunsInTransaction(tx, older, now);
+  await tx.attempt.updateMany({
+    where: { runId: { in: runIds }, status: "waiting_input" },
+    data: { status: "cancelled", finishedAt: now },
+  });
+  await tx.run.updateMany({ where: { id: { in: runIds } }, data: { botOutcomeReturnedAt: now } });
+  for (const id of runIds) {
+    await appendEventInTransaction(tx, {
+      spaceId: input.spaceId,
+      threadId: input.threadId,
+      botId: input.botId,
+      type: "run.cancelled",
+      runId: id,
+      payload: {},
+    });
+  }
+}
+
+type WaitingDelegate = {
+  id: string;
+  taskId: string;
+  threadId: string;
+  botId: string;
+  sentId: string;
+};
+
+/**
+ * Runs of other agents that wait for the owner's approval of work this bot sent from this thread.
+ * Each is matched through the message it was sent from (the sender's own thread echo), so one
+ * run's delegates are never confused with another run's, or another bot's, of the same time.
+ */
+async function waitingDelegates(
+  tx: Prisma.TransactionClient,
+  input: { spaceId: string; userId: string; fromBotId: string; threadId: string; runId?: string },
+): Promise<WaitingDelegate[]> {
+  const waiting = await tx.run.findMany({
+    where: {
+      spaceId: input.spaceId,
+      userId: input.userId,
+      trigger: "bot_message",
+      status: "waiting_input",
+    },
+    select: {
+      id: true,
+      taskId: true,
+      threadId: true,
+      botId: true,
+      sourceMessage: { select: { blocks: true } },
+    },
+  });
+  const candidates = waiting.flatMap((run) => {
+    const blocks = run.sourceMessage?.blocks;
+    const received = (Array.isArray(blocks) ? blocks : []).find(
+      (block): block is { returnToMessageId: string } =>
+        (block as { kind?: string; fromBotId?: string } | null)?.kind === "bot_message_received" &&
+        (block as { fromBotId?: string }).fromBotId === input.fromBotId &&
+        typeof (block as { returnToMessageId?: unknown }).returnToMessageId === "string",
+    );
+    return received ? [{ ...run, sentId: received.returnToMessageId }] : [];
+  });
+  if (candidates.length === 0) return [];
+  const sent = await tx.message.findMany({
+    where: {
+      id: { in: candidates.map((run) => run.sentId) },
+      threadId: input.threadId,
+      role: "bot",
+      ...(input.runId ? { runId: input.runId } : {}),
+    },
+    select: { id: true },
+  });
+  const sentIds = new Set(sent.map((message) => message.id));
+  return candidates.filter((run) => sentIds.has(run.sentId));
+}
+
+/** The messages of this thread whose delegate waits for approval; the thread shows "Waiting". */
+export async function delegatePendingIds(
+  client: Prisma.TransactionClient,
+  input: { spaceId: string; userId: string; fromBotId: string; threadId: string },
+): Promise<string[]> {
+  return (await waitingDelegates(client, input)).map((run) => run.sentId);
+}
+
+/**
+ * The run that asked these agents to act failed, so their open approval cards can never be used.
+ * Runs inside the requester's finalize transaction, after its lease is validated. Each delegate
+ * run is locked and rechecked first, so an approval accepted in the meantime is left alone.
+ * Returns the delegate run ids it closed.
+ */
+export async function expireDelegatedApprovalsInTransaction(
+  tx: Prisma.TransactionClient,
+  input: { spaceId: string; userId: string; fromBotId: string; threadId: string; runId: string },
+): Promise<string[]> {
+  const closed: string[] = [];
+  const delegates = await waitingDelegates(tx, input);
+  // Thread locks first, in a stable order, then run locks: the same order as commitAnswerRunInput,
+  // so expiry and an approval of the same delegate cannot deadlock.
+  for (const threadId of [...new Set(delegates.map((run) => run.threadId))].sort()) {
+    await tx.$queryRaw`SELECT id FROM threads WHERE id = ${threadId} FOR UPDATE`;
+  }
+  for (const run of delegates) {
+    const locked = await tx.$queryRaw<{ id: string }[]>`
+      SELECT id FROM runs WHERE id = ${run.id} AND status = 'waiting_input' FOR UPDATE`;
+    if (locked.length === 0) continue;
+    await closeAndCancelWaitingRuns(
+      tx,
+      { spaceId: input.spaceId, threadId: run.threadId, botId: run.botId },
+      [run],
+      "expired",
+    );
+    closed.push(run.id);
+  }
+  return closed;
+}
+
+/** Tells the thread that sent work to a delegate which of its requests wait for approval. */
+async function announceDelegatePending(
+  prisma: PrismaClient,
+  realtime: RealtimeFanout | undefined,
+  delegateRunId: string,
+) {
+  const run = await prisma.run.findUnique({
+    where: { id: delegateRunId },
+    select: {
+      spaceId: true,
+      userId: true,
+      trigger: true,
+      sourceMessage: { select: { blocks: true } },
+    },
+  });
+  if (run?.trigger !== "bot_message") return;
+  const blocks = run.sourceMessage?.blocks;
+  const received = (Array.isArray(blocks) ? blocks : []).find(
+    (block): block is { fromBotId: string; returnToMessageId: string } =>
+      (block as { kind?: string } | null)?.kind === "bot_message_received" &&
+      typeof (block as { returnToMessageId?: unknown }).returnToMessageId === "string",
+  );
+  if (!received) return;
+  const sent = await prisma.message.findFirst({
+    where: { id: received.returnToMessageId, thread: { spaceId: run.spaceId, userId: run.userId } },
+    select: { threadId: true, botId: true },
+  });
+  if (!sent?.botId) return;
+  const seq = await prisma.$transaction(async (tx) => {
+    // Lock first, so a finalize that published a newer list cannot be overwritten by an older one.
+    await tx.$queryRaw`SELECT id FROM threads WHERE id = ${sent.threadId} FOR UPDATE`;
+    const pending = await delegatePendingIds(tx, {
+      spaceId: run.spaceId,
+      userId: run.userId,
+      fromBotId: received.fromBotId,
+      threadId: sent.threadId,
+    });
+    const event = await appendEventInTransaction(tx, {
+      spaceId: run.spaceId,
+      threadId: sent.threadId,
+      botId: sent.botId!,
+      type: "thread.delegate_pending",
+      payload: { pending },
+    });
+    return event.seq;
+  });
+  await notifyRealtime(realtime, sent.threadId, seq);
 }
 
 async function findPendingAsk(
@@ -445,21 +707,39 @@ export async function pauseRunForInput(
     });
     if (attempt.count !== 1) throw new Error("Active run attempt was not available to pause");
 
-    const message = await createThreadMessageInTransaction(tx, {
-      threadId: input.threadId,
-      role: "bot",
-      blocks: input.blocks,
-      botId: input.botId,
-      runId: input.runId,
-    });
-    await appendEventInTransaction(tx, {
-      spaceId: input.spaceId,
-      threadId: input.threadId,
-      botId: input.botId,
-      type: "thread.message.created",
-      runId: input.runId,
-      payload: { messageId: message.id, role: "bot", blocks: input.blocks },
-    });
+    // A resumed run that asks again for the same approval keeps its one unanswered card, so a
+    // payment request never has two live cards.
+    const approvalEffectIds = input.blocks.flatMap((block) =>
+      block.kind === "ask" && block.approvalEffectId ? [block.approvalEffectId] : [],
+    );
+    const existingCard =
+      approvalEffectIds.length > 0 &&
+      (await findPendingAsk(tx, input).then(
+        (found) =>
+          found !== null &&
+          approvalEffectIds.includes(found.pendingAsk.approvalEffectId ?? "") &&
+          isApprovalAskBlock(found.pendingAsk),
+      ));
+    if (!existingCard) {
+      const message = await createThreadMessageInTransaction(tx, {
+        threadId: input.threadId,
+        role: "bot",
+        blocks: input.blocks,
+        botId: input.botId,
+        runId: input.runId,
+      });
+      await appendEventInTransaction(tx, {
+        spaceId: input.spaceId,
+        threadId: input.threadId,
+        botId: input.botId,
+        type: "thread.message.created",
+        runId: input.runId,
+        payload: { messageId: message.id, role: "bot", blocks: input.blocks },
+      });
+      if (approvalEffectIds.length > 0) {
+        await supersedeOlderApprovals(tx, input, approvalEffectIds[0]!);
+      }
+    }
     const waitingEvent = await appendEventInTransaction(tx, {
       spaceId: input.spaceId,
       threadId: input.threadId,
@@ -469,11 +749,18 @@ export async function pauseRunForInput(
       payload: {},
     });
     await tx.event.deleteMany({ where: { runId: input.runId, type: "thread.progress" } });
-    return { threadId: waitingEvent.threadId, seq: waitingEvent.seq };
+    return {
+      threadId: waitingEvent.threadId,
+      seq: waitingEvent.seq,
+      approval: approvalEffectIds.length > 0,
+    };
   });
 
   if (!committed) return false;
   await notifyRealtime(realtime, committed.threadId, committed.seq);
+  if (committed.approval) {
+    await announceDelegatePending(prisma, realtime, input.runId).catch(() => undefined);
+  }
   return true;
 }
 

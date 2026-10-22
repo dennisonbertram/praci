@@ -31,7 +31,6 @@ export function NotificationSettingsSection() {
     };
   }, []);
 
-  if (!prefs) return null;
   const save = async (channels: NotificationPreferences["channels"]) => {
     setPending(true);
     setError("");
@@ -51,34 +50,34 @@ export function NotificationSettingsSection() {
     if (granted === "granted") await save({ browser: true });
   };
   const browserBlocked = permission === undefined || permission === "denied";
+  const channels = prefs?.channels ?? {};
 
   return (
-    <section className="rounded-xl border border-border px-4 py-4">
-      <h3 className="text-[15px] font-medium text-foreground">
-        <Trans>Notifications</Trans>
-      </h3>
+    <section aria-label={t`Notifications`} className="rounded-xl border border-border px-4 py-4">
       {error ? (
         <p role="alert" className="mt-2 text-sm text-destructive">
           {error}
         </p>
       ) : null}
-      <ul className="mt-3 flex flex-col gap-3">
-        <li className="flex items-center gap-3 pointer-coarse:min-h-11">
-          <Switch
-            id={`${id}-browser`}
-            aria-label={t`Browser notifications`}
-            checked={permission === "granted" && prefs.channels.browser !== false}
-            disabled={pending || browserBlocked}
-            onCheckedChange={(on) => void setBrowser(on)}
-          />
-          <Label
-            htmlFor={`${id}-browser`}
-            className="text-[14px] font-normal text-foreground/75 pointer-coarse:self-stretch pointer-coarse:flex-1"
-          >
-            <Trans>Browser notifications</Trans>
-          </Label>
-          {browserBlocked ? (
-            <span className="text-[13px] text-muted-foreground">
+      <ul className="flex flex-col gap-3">
+        <li>
+          <div className="flex items-center gap-3 pointer-coarse:min-h-11">
+            <Switch
+              id={`${id}-browser`}
+              aria-label={t`Browser notifications`}
+              checked={!!prefs && permission === "granted" && channels.browser !== false}
+              disabled={!prefs || pending || browserBlocked}
+              onCheckedChange={(on) => void setBrowser(on)}
+            />
+            <Label
+              htmlFor={`${id}-browser`}
+              className="text-[14px] font-normal text-foreground/75 pointer-coarse:flex-1 pointer-coarse:self-stretch"
+            >
+              <Trans>Browser notifications</Trans>
+            </Label>
+          </div>
+          {prefs && browserBlocked ? (
+            <span className="block text-[13px] text-muted-foreground">
               {permission === undefined ? (
                 <Trans>Not supported here</Trans>
               ) : (
@@ -87,12 +86,12 @@ export function NotificationSettingsSection() {
             </span>
           ) : null}
         </li>
-        {prefs.hasPhone ? (
+        {prefs?.hasPhone ? (
           <li className="flex items-center gap-3 pointer-coarse:min-h-11">
             <Switch
               id={`${id}-phone`}
               aria-label={t`Phone`}
-              checked={prefs.channels.push !== false}
+              checked={channels.push !== false}
               disabled={pending}
               onCheckedChange={(on) => void save({ push: on })}
             />
@@ -104,12 +103,12 @@ export function NotificationSettingsSection() {
             </Label>
           </li>
         ) : null}
-        {prefs.hasImessage ? (
+        {prefs?.hasImessage ? (
           <li className="flex items-center gap-3 pointer-coarse:min-h-11">
             <Switch
               id={`${id}-imessage`}
               aria-label={t`iMessage`}
-              checked={prefs.channels.imessage !== false}
+              checked={channels.imessage !== false}
               disabled={pending}
               onCheckedChange={(on) => void save({ imessage: on })}
             />

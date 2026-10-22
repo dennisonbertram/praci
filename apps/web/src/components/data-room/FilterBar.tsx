@@ -5,8 +5,10 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
   Popover,
@@ -300,16 +302,12 @@ export function FilterBar({
   return (
     // Search and Sort share the first row; the filter pills wrap on a row of their own below, or,
     // given room, between the two. Sort never moves down among the pills.
-    <div className={`flex flex-wrap items-start gap-1.5 pb-2.5 ${PAGE_GUTTER_X}`}>
-      {statsView ? (
-        // Where the search box is, so Filters stays at the right edge in every view.
-        <div
-          aria-hidden="true"
-          className="order-1 min-w-0 flex-1 basis-48 @min-[640px]/bd:hidden"
-        />
-      ) : (
+    <div
+      className={`flex flex-wrap items-start gap-1.5 pb-1.5 @min-[640px]/bd:pb-2.5 ${PAGE_GUTTER_X}`}
+    >
+      {statsView ? null : (
         <SearchField
-          className="order-1 min-w-0 flex-1 basis-48 @min-[640px]/bd:me-1.5 @min-[640px]/bd:w-80 @min-[640px]/bd:flex-none"
+          className="order-1 min-w-0 flex-1 basis-48 @min-[800px]/bd:me-1.5 @min-[800px]/bd:w-80 @min-[800px]/bd:flex-none"
           value={query}
           onChange={onQuery}
           placeholder={t`Search names and text`}
@@ -330,11 +328,13 @@ export function FilterBar({
         {activeFilters > 0 ? <span className="tabular-nums">{activeFilters}</span> : null}
       </Button>
       {/* Where the folder tree is hidden, this picks the folder; it sits with Sort, not the pills. */}
-      <div className="order-2 flex h-8 items-center gap-1 @min-[800px]/bd:hidden">
+      <div className="order-2 flex h-8 min-w-0 items-center gap-1 @min-[800px]/bd:hidden">
         <DropdownMenu>
           <DropdownMenuTrigger
             data-testid="data-room-folder-picker"
-            render={<Button variant="outline" size="sm" className="max-w-44 rounded-full" />}
+            render={
+              <Button variant="outline" size="sm" className="max-w-36 min-w-0 rounded-full" />
+            }
             title={openFolder?.path}
           >
             <Folder aria-hidden="true" />
@@ -360,6 +360,16 @@ export function FilterBar({
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>
+            {/* Here, not a button of its own: on a phone the toolbar must stay one row. */}
+            {onAutoSort ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onAutoSort}>
+                  <WandSparkles aria-hidden="true" />
+                  <Trans>Auto-sort</Trans>
+                </DropdownMenuItem>
+              </>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
         <Tip label={t`New folder`}>
@@ -367,13 +377,6 @@ export function FilterBar({
             <FolderPlus aria-hidden="true" />
           </Button>
         </Tip>
-        {onAutoSort ? (
-          <Tip label={t`Auto-sort`}>
-            <Button variant="outline" size="icon" aria-label={t`Auto-sort`} onClick={onAutoSort}>
-              <WandSparkles aria-hidden="true" />
-            </Button>
-          </Tip>
-        ) : null}
       </div>
       <div
         id="data-room-filters"
