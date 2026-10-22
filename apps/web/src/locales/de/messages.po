@@ -1300,6 +1300,10 @@ msgid "API key"
 msgstr "API-Schlüssel"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
+msgid "API key configured (not verified)."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "API key header"
 msgstr "API-Schlüssel-Header"
 
@@ -2633,6 +2637,10 @@ msgstr ""
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
 msgstr "Computer sind aus. Setze SANDBOX_PROVIDER=docker mit SANDBOX_SUPERVISOR_TOKEN, oder setze SANDBOX_PROVIDER auf e2b, daytona oder box mit dem passenden API-Key. Stack nach der Änderung von .env neu erstellen."
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Configure API key"
+msgstr ""
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "Löschen bestätigen"
@@ -2789,6 +2797,10 @@ msgstr "Treg verbinden"
 
 #: src/components/integrations/ConnectAppsStep.tsx
 msgid "Connect your apps"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Connect Zernio to enable reads."
 msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
@@ -7194,6 +7206,10 @@ msgstr "OAuth-Autorisierung wurde abgebrochen."
 msgid "OAuth connection failed"
 msgstr "OAuth-Verbindung fehlgeschlagen"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "OAuth connects reads only. Posting requires an API key."
+msgstr ""
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Obligation"
 msgstr ""
@@ -7773,12 +7789,26 @@ msgstr ""
 msgid "Posted {0}"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting needs an API key."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting readiness unavailable."
+msgstr ""
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
 msgstr ""
 
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Praci keeps your meetings and to-dos."
+msgstr ""
+
+#. placeholder {0}: usd(safe.capCents)
+#: src/components/fundraising/SafeDialog.tsx
+#: src/components/fundraising/SafeList.tsx
+msgid "Pre-money cap {0}"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -9755,6 +9785,7 @@ msgstr ""
 msgid "Still waiting on {service}"
 msgstr ""
 
+#: src/components/ai/primitives.tsx
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/composer.tsx
@@ -9886,6 +9917,7 @@ msgstr "Kontrolle übernehmen"
 msgid "Take the tour"
 msgstr ""
 
+#: src/components/ai/primitives.tsx
 #: src/components/data-room/ItemRows.tsx
 msgid "Taking longer than usual"
 msgstr ""
@@ -10475,6 +10507,7 @@ msgstr ""
 msgid "Try {name} again"
 msgstr ""
 
+#: src/components/ai/primitives.tsx
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/ItemRows.tsx
@@ -10872,12 +10905,20 @@ msgstr ""
 msgid "Use an API key instead"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use API key"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Use Connect to verify the key."
 msgstr "Nutze Verbinden, um den Schlüssel zu prüfen."
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Use default guidance"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use OAuth"
 msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx

@@ -3954,6 +3954,8 @@ export function ShellPage() {
                 workingBots={workingBots}
                 workingActivity={soleWorkingActivity}
                 workingStartedAt={workingStartedAt}
+                onStopRun={() => void stopRun()}
+                onRetryRun={() => void stopRun().then(retryFailedRun)}
                 failedNote={dismissedRunError}
                 failedScheduled={activeSnapshot?.run?.trigger === "routine"}
                 onLoadOlder={loadOlder}
@@ -5839,7 +5841,7 @@ export function ShellPage() {
                   ) : panel === "list" ? (
                     <Trans>List</Trans>
                   ) : active ? (
-                    noComputerScreen ? null : (
+                    noComputerScreen || computerScreenError ? null : (
                       computerStateLabel(computer?.state)
                     )
                   ) : (

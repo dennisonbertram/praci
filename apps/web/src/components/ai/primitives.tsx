@@ -1,3 +1,4 @@
+import { t } from "@lingui/core/macro";
 import { cn } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
@@ -25,12 +26,16 @@ const CHEVRON_DELAYS = Array.from({ length: 9 }, (_, i) => {
   return (column + Math.abs(row - 1)) * 90;
 });
 
-/** Format wall-clock seconds since `startedAtMs` as `0.0s` / `1m 2.3s`. */
+/** After this long a run offers Stop and Try again, and the timer drops its tenths. */
+export const SLOW_RUN_AFTER_MS = 120_000;
+
+/** Format wall-clock seconds since `startedAtMs` as `0.0s` / `1m 2.3s`, and `2m 5s` once slow. */
 export function formatElapsed(startedAtMs: number, nowMs: number): string {
   const totalTenths = Math.round(Math.max(0, nowMs - startedAtMs) / 100);
   const minutes = Math.floor(totalTenths / 600);
   const seconds = (totalTenths % 600) / 10;
   if (minutes === 0) return `${seconds.toFixed(1)}s`;
+  if (totalTenths * 100 >= SLOW_RUN_AFTER_MS) return `${minutes}m ${Math.floor(seconds)}s`;
   return `${minutes}m ${seconds.toFixed(1)}s`;
 }
 
@@ -56,6 +61,8 @@ function DefaultLoadingState({
   detail,
   detailSince,
   waitingLabel,
+  onStop,
+  onRetry,
 }: {
   indicator?: React.ReactNode;
   label: string;
@@ -63,6 +70,8 @@ function DefaultLoadingState({
   detail?: string;
   detailSince?: number;
   waitingLabel?: string;
+  onStop?: () => void;
+  onRetry?: () => void;
 }) {
   const [mountedAt] = useState(() => Date.now());
   const now = useNow();
@@ -106,6 +115,22 @@ function DefaultLoadingState({
             ) : null}
           </span>
         ) : null}
+        {onStop && now - (startedAt ?? mountedAt) >= SLOW_RUN_AFTER_MS ? (
+          <span
+            data-testid="working-slow"
+            className="flex items-center gap-2 text-[12px] text-muted-foreground"
+          >
+            {t`Taking longer than usual`}
+            <button type="button" className="underline hover:text-foreground" onClick={onStop}>
+              {t`Stop`}
+            </button>
+            {onRetry ? (
+              <button type="button" className="underline hover:text-foreground" onClick={onRetry}>
+                {t`Try again`}
+              </button>
+            ) : null}
+          </span>
+        ) : null}
       </span>
     </>
   );
@@ -118,6 +143,8 @@ export function LoadingState({
   detail,
   detailSince,
   waitingLabel,
+  onStop,
+  onRetry,
 }: {
   indicator?: React.ReactNode;
   label?: string;
@@ -129,6 +156,9 @@ export function LoadingState({
   detailSince?: number;
   /** Shown after a long quiet spell, such as "Still waiting on Gmail". */
   waitingLabel?: string;
+  /** After two minutes the row offers Stop; with `onRetry`, also Try again. */
+  onStop?: () => void;
+  onRetry?: () => void;
 }) {
   return (
     <span
@@ -142,6 +172,8 @@ export function LoadingState({
         detail={detail}
         detailSince={detailSince}
         waitingLabel={waitingLabel}
+        onStop={onStop}
+        onRetry={onRetry}
       />
     </span>
   );
