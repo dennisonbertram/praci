@@ -43,7 +43,7 @@ vi.mock("../../pages/shell/composer", () => ({
 const get = vi.fn();
 const navigate = vi.fn();
 const send = vi.fn();
-const markSeen = vi.fn(async () => ({ count: 0 }));
+const markSeen = vi.fn(async (_input: unknown) => ({ count: 0 }));
 vi.mock("../../lib/rpc", () => ({
   rpc: {
     notifications: { markSeen: (input: unknown) => markSeen(input) },
