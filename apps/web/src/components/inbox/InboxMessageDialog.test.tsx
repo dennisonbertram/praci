@@ -432,7 +432,10 @@ it("shows no Ask agent button when the page gives no action", async () => {
 });
 
 it("keeps Reply as the one filled button, with Reply all and Forward in More", async () => {
-  get.mockImplementation(async ({ messageId }) => message(messageId));
+  get.mockImplementation(async ({ messageId }) => ({
+    ...message(messageId),
+    cc: "c@example.com",
+  }));
   act(() =>
     root.render(<InboxMessageDialog messageId="m2" onArchive={() => {}} onClose={() => {}} />),
   );
@@ -443,6 +446,20 @@ it("keeps Reply as the one filled button, with Reply all and Forward in More", a
   expect(visible).toEqual(["Reply", "Archive", "More"]);
   expect(await menuItem("Reply all")).toBeDefined();
   expect(document.querySelector('[role="menuitem"]:nth-child(2)')?.textContent).toBe("Forward");
+});
+
+it("offers no Reply all when the mail has one recipient", async () => {
+  get.mockImplementation(async ({ messageId }) => message(messageId));
+  act(() =>
+    root.render(<InboxMessageDialog messageId="m2" onArchive={() => {}} onClose={() => {}} />),
+  );
+  await flush();
+  const more = document.querySelector<HTMLElement>('button[aria-label="More"]');
+  await act(async () => more?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true })));
+  await act(async () => more?.click());
+  const items = [...document.querySelectorAll('[role="menuitem"]')].map((i) => i.textContent);
+  expect(items).toContain("Forward");
+  expect(items).not.toContain("Reply all");
 });
 
 it("shows no archive or read buttons and ignores e without them", async () => {

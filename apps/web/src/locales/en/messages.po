@@ -1049,6 +1049,10 @@ msgstr "Added"
 msgid "Added by {0}"
 msgstr "Added by {0}"
 
+#: src/components/inbox/MailAttachments.tsx
+msgid "Added to Data room"
+msgstr "Added to Data room"
+
 #. placeholder {0}: currentName ?? ""
 #: src/components/data-room/DropZone.tsx
 msgid "Adding {added} of {total} · {0}"

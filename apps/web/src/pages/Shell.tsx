@@ -2888,9 +2888,32 @@ export function ShellPage() {
     [],
   );
   const [composerDraft, setComposerDraft] = useState<ComposerDraft | null>(null);
+  // The From choices when a failed send named none: the composer shows a picker for them.
+  const [composerAccounts, setComposerAccounts] = useState<
+    Awaited<ReturnType<typeof rpc.inbox.list>>["accounts"] | null
+  >(null);
   const botToolControls = useMemo<BotToolControls>(
     () => ({
-      openComposer: setComposerDraft,
+      openComposer: (draft) => {
+        setComposerAccounts(null);
+        if (draft.connectionId) return setComposerDraft(draft);
+        const wanted = draft.account.trim().toLowerCase();
+        rpc.inbox
+          .list({})
+          .then(({ accounts }) => {
+            const from =
+              accounts.find(
+                (a) => a.address?.toLowerCase() === wanted || a.label.toLowerCase() === wanted,
+              ) ?? accounts[0];
+            setComposerAccounts(accounts);
+            setComposerDraft({
+              ...draft,
+              connectionId: from?.connectionId ?? "",
+              account: from?.label ?? "",
+            });
+          })
+          .catch(() => setComposerDraft(draft));
+      },
       editableBotName: (botId) => botsRef.current.find((bot) => bot.id === botId)?.name,
       disableTool: async (botId, tool) => {
         const bot = botsRef.current.find((item) => item.id === botId);
@@ -4208,9 +4231,11 @@ export function ShellPage() {
           {composerDraft ? (
             <ComposeEmail
               seed={NEW_MESSAGE}
-              accounts={[
-                { connectionId: composerDraft.connectionId, label: composerDraft.account },
-              ]}
+              accounts={
+                composerAccounts ?? [
+                  { connectionId: composerDraft.connectionId, label: composerDraft.account },
+                ]
+              }
               connectionId={composerDraft.connectionId}
               restore={{
                 seed: NEW_MESSAGE,
@@ -4227,7 +4252,7 @@ export function ShellPage() {
                 forwarded: [],
                 files: [],
                 saved: false,
-                accounts: [
+                accounts: composerAccounts ?? [
                   { connectionId: composerDraft.connectionId, label: composerDraft.account },
                 ],
               }}
