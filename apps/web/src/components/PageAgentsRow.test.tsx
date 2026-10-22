@@ -28,6 +28,6 @@ it("shows a dot only when a page agent needs the person, and toggles", () => {
   };
   expect(label("answer")).toBe("Needs your answer");
   expect(label("takeover")).toBe("Needs takeover");
-  expect(label()).toBe("Needs you");
+  expect(label()).toBe("New");
   container.remove();
 });

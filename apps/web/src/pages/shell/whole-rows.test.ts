@@ -19,12 +19,18 @@ function list(rows: number, height = 100) {
   return el;
 }
 
-it("gives up the leftover height so the last visible row is whole", () => {
+it("gives up a small leftover so the last visible row is whole", () => {
+  const el = list(6, 96);
+  endOnWholeRow(el);
+  expect(el.style.marginBottom).toBe("6px");
+  endOnWholeRow(el);
+  expect(el.style.marginBottom).toBe("6px");
+});
+
+it("keeps a large leftover as a partly shown row instead of a dead band", () => {
   const el = list(6);
   endOnWholeRow(el);
-  expect(el.style.marginBottom).toBe("10px");
-  endOnWholeRow(el);
-  expect(el.style.marginBottom).toBe("10px");
+  expect(el.style.marginBottom).toBe("");
 });
 
 it("leaves a list that fits alone, and clears an old margin", () => {

@@ -13,6 +13,7 @@ import {
   emptyActivityFilters,
   filterActivityRuns,
 } from "../lib/activity-list-filters";
+import { needsAnswerLabel } from "../lib/roster-status";
 import { formatRosterTime } from "../lib/roster-time";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
@@ -129,7 +130,7 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
 
   return (
     <div
-      className="mb-2 flex max-h-[28vh] shrink-0 flex-col border-b border-border pb-2"
+      className="mb-2 flex max-h-[28vh] shrink-0 snap-start lg:max-h-[max(14vh,7.5rem)] flex-col border-b border-border pb-2"
       data-testid="activity-list"
     >
       <div className="flex items-center justify-between px-2.5 pb-1">
@@ -475,7 +476,7 @@ export function statusLabel(status: RunActivityRow["status"]): string {
     case "running":
       return t`Running`;
     case "waiting_input":
-      return t`Needs your answer`;
+      return needsAnswerLabel();
     case "waiting_takeover":
       return t`Needs takeover`;
     case "completed":
