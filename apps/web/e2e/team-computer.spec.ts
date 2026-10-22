@@ -305,7 +305,10 @@ async function setComputerMode(
     (element as HTMLDetailsElement).open = true;
   });
   await settings
-    .getByRole("button", { name: mode === "team" ? "Team" : "Private", exact: true })
+    .getByRole("button", {
+      name: mode === "team" ? "Shared with your other bots" : "Only this bot",
+      exact: true,
+    })
     .click();
   await expect
     .poll(async () => {

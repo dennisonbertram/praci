@@ -2592,7 +2592,6 @@ msgid "Compose"
 msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/transcript.tsx
 msgid "Computer"
 msgstr "Computador"
@@ -2619,14 +2618,6 @@ msgstr "O computador está dormindo"
 
 #: src/pages/Shell.tsx
 msgid "Computer is asleep. Open it to wake."
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Computer is off"
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Computer is on"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -5210,10 +5201,6 @@ msgstr ""
 msgid "Has attachment"
 msgstr ""
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Has its own computer."
-msgstr ""
-
 #: src/pages/RoutineEditor.tsx
 msgid "header"
 msgstr ""
@@ -7245,6 +7232,10 @@ msgstr ""
 msgid "Only if the server does not use sign-in"
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Only this bot"
+msgstr ""
+
 #: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
@@ -7881,10 +7872,6 @@ msgstr ""
 #: src/pages/SettingsOverlay.tsx
 msgid "Privacy and approvals"
 msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Private"
-msgstr "Privado"
 
 #: src/components/integrations/ExchangeConnectDialog.tsx
 msgid "Private key"
@@ -8900,6 +8887,18 @@ msgid "Say yes or no, or answer in a sentence."
 msgstr "Diga sim ou não, ou responda em uma frase."
 
 #: src/pages/Legal.tsx
+msgid "Scan cancelled."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scan finished: {contractsChanged, plural, one {# contract} other {# contracts}} and {deadlinesAdded, plural, one {# deadline} other {# deadlines}} added or updated."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scan finished: nothing changed."
+msgstr ""
+
+#: src/pages/Legal.tsx
 msgid "Scan now"
 msgstr ""
 
@@ -9298,13 +9297,13 @@ msgstr ""
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Shared with your other bots"
+msgstr ""
+
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
 msgid "Shares"
-msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Shares one computer with your other bots."
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -9988,10 +9987,6 @@ msgstr "Ensinar uma tarefa"
 #: src/pages/Shell.tsx
 msgid "Teaching in progress. Stop teaching before sending a new message."
 msgstr "Ensino em andamento. Pare de ensinar antes de enviar uma nova mensagem."
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Team"
-msgstr "Equipe"
 
 #: src/pages/Shell.tsx
 msgid "Team Computer"
@@ -11350,6 +11345,10 @@ msgstr "Trabalhando…"
 
 #: src/lib/sidebar-page-copy.ts
 msgid "Workload and key people, from your connected tools"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Workspace"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
