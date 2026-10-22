@@ -7,10 +7,12 @@ import {
   integrationPresetForEndpoint,
   isCartaAgentSpawnKey,
   isCartaEndpoint,
+  isGtmAgentSpawnKey,
   isIntegrationAgentSpawnKey,
   isInvestorsAgentSpawnKey,
   isMailAgentSpawnKey,
   isReadTool,
+  isZernioEndpoint,
   MAX_COMPOSE_BODY,
   modelLabel,
 } from "@rakazo/contracts";
@@ -192,6 +194,13 @@ export const isIntegrationAgentWrite = (
     | undefined,
   readOnly: boolean | undefined,
 ): boolean => {
+  if (isGtmAgentSpawnKey(botSpawnKey)) {
+    if (route?.connectorId !== "mcp" || !isZernioEndpoint(route.endpoint)) return false;
+    return !isReadTool(
+      { name: route.toolName ?? "", annotations: { readOnlyHint: readOnly } },
+      integrationPresetForEndpoint(route.endpoint),
+    );
+  }
   if (isCartaAgentSpawnKey(botSpawnKey)) {
     if (route?.connectorId !== "mcp" || !isCartaEndpoint(route.endpoint)) return false;
     return !isReadTool(

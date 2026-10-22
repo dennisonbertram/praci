@@ -25,7 +25,7 @@ test("routine active switch keeps its thumb inside the track", async ({ page }, 
   await signup(page, `routine-toggle-${stamp}@rakazo.test`, "password12", "Routine Toggle");
   await completeOnboarding(page);
   await page.getByTitle("Computer and routines").click();
-  await page.getByRole("button", { name: "Create Routine" }).click();
+  await page.getByRole("button", { name: "Create a routine" }).click();
 
   const toggle = page.getByRole("switch", { name: "Active" });
   const thumb = toggle.locator("span");
@@ -139,7 +139,7 @@ test("a routine runs on the bot's model until another is picked", async ({ page 
   const botId = activeBotId(page);
 
   await page.getByTitle("Computer and routines").click();
-  await page.getByRole("button", { name: "Create Routine" }).click();
+  await page.getByRole("button", { name: "Create a routine" }).click();
   await page.locator("label:has-text('Name') input").fill("Model check");
   await page.locator("label:has-text('Instruction') textarea").fill("Check the inbox");
   await addScheduleTrigger(page, "Every day");
@@ -197,7 +197,7 @@ test("invalid advanced cron is rejected without creating a routine", async ({ pa
   const botId = activeBotId(page);
 
   await page.getByTitle("Computer and routines").click();
-  await page.getByRole("button", { name: "Create Routine" }).click();
+  await page.getByRole("button", { name: "Create a routine" }).click();
   await page.locator("label:has-text('Name') input").fill("Broken schedule");
   await page.locator("label:has-text('Instruction') textarea").fill("This should never run");
   await addScheduleTrigger(page, "Advanced...");
@@ -218,7 +218,7 @@ test("a successful routine create is not reported as failed when refresh fails",
   const botId = activeBotId(page);
 
   await page.getByTitle("Computer and routines").click();
-  await page.getByRole("button", { name: "Create Routine" }).click();
+  await page.getByRole("button", { name: "Create a routine" }).click();
   await page.locator("label:has-text('Name') input").fill("Persisted routine");
   await page.locator("label:has-text('Instruction') textarea").fill("Run once each morning");
   await addScheduleTrigger(page, "Every day");
@@ -386,7 +386,7 @@ test("interval schedule only offers amounts the unit can run", async ({ page }, 
   await completeOnboarding(page);
 
   await page.getByTitle("Computer and routines").click();
-  await page.getByRole("button", { name: "Create Routine" }).click();
+  await page.getByRole("button", { name: "Create a routine" }).click();
   await addScheduleTrigger(page, "Interval");
 
   const amount = page.getByRole("combobox", { name: "Interval amount" });

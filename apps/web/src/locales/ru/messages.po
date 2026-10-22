@@ -3777,6 +3777,10 @@ msgstr ""
 msgid "Create a read-only key"
 msgstr ""
 
+#: src/pages/RoutineEditor.tsx
+msgid "Create a routine"
+msgstr "Создать задачу"
+
 #: src/pages/Auth.tsx
 msgid "Create account"
 msgstr "Зарегистрироваться"
@@ -3818,10 +3822,6 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Create Legal agent"
 msgstr ""
-
-#: src/pages/RoutineEditor.tsx
-msgid "Create Routine"
-msgstr "Создать задачу"
 
 #: src/components/AskCard.tsx
 #: src/pages/shell/dialogs.tsx
@@ -10418,6 +10418,10 @@ msgstr ""
 msgid "Too large to search inside"
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Tool name"
+msgstr ""
+
 #: src/lib/run-phase.ts
 msgid "tools"
 msgstr ""
@@ -11117,10 +11121,6 @@ msgstr ""
 
 #: src/lib/devin-format.ts
 msgid "Web"
-msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Web search"
 msgstr ""
 
 #: src/pages/Paywall.tsx
