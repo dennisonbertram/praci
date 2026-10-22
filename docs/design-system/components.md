@@ -4,7 +4,7 @@
 Rendered React components and native SwiftUI views, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 267 of 267
-- Web and shared components: 706
+- Web and shared components: 705
 - Mobile components: 138 in 95 files, mobile — native story pending
 - SwiftUI views: 3 in 2 files, native story pending
 
@@ -179,7 +179,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | MessageRow, EmailPicker, ImportSources | [apps/web/src/components/data-room/ImportFromEmail.tsx](../../apps/web/src/components/data-room/ImportFromEmail.tsx) | [ImportFromEmail.stories.tsx](../../apps/web/src/components/data-room/ImportFromEmail.stories.tsx) | web |
 | NameInput, FolderOptions, NewFolderDialog, ItemDialog, ShareDialog, DeleteDialog | [apps/web/src/components/data-room/ItemDialogs.tsx](../../apps/web/src/components/data-room/ItemDialogs.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx) | web |
 | ItemMenuItems, ItemMenu | [apps/web/src/components/data-room/ItemMenu.tsx](../../apps/web/src/components/data-room/ItemMenu.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx), [ItemMenu.stories.tsx](../../apps/web/src/components/data-room/ItemMenu.stories.tsx) | web |
-| FileContext, Marker, Columns, ListHead, RetryButton, ItemRow, SubfolderList, ListView, ThumbnailImage, TextPreview, TilePreview, GridView, NotTagged, TypeAndDate, Snippet | [apps/web/src/components/data-room/ItemRows.tsx](../../apps/web/src/components/data-room/ItemRows.tsx) | [ItemRows.stories.tsx](../../apps/web/src/components/data-room/ItemRows.stories.tsx) | web |
+| FileContext, Marker, Columns, ListHead, RetryButton, ItemRow, SubfolderList, ListView, ThumbnailImage, TextPreview, TilePreview, GridView, TypeAndDate, Snippet | [apps/web/src/components/data-room/ItemRows.tsx](../../apps/web/src/components/data-room/ItemRows.tsx) | [ItemRows.stories.tsx](../../apps/web/src/components/data-room/ItemRows.stories.tsx) | web |
 | PathBar | [apps/web/src/components/data-room/PathBar.tsx](../../apps/web/src/components/data-room/PathBar.tsx) | [PathBar.stories.tsx](../../apps/web/src/components/data-room/PathBar.stories.tsx) | web |
 | Field, Tag, Preview | [apps/web/src/components/data-room/Preview.tsx](../../apps/web/src/components/data-room/Preview.tsx) | [Preview.stories.tsx](../../apps/web/src/components/data-room/Preview.stories.tsx) | web |
 | FileViewer, IconAction, PreviewActions, FullScreenPreview | [apps/web/src/components/data-room/PreviewActions.tsx](../../apps/web/src/components/data-room/PreviewActions.tsx) | [PreviewActions.stories.tsx](../../apps/web/src/components/data-room/PreviewActions.stories.tsx) | web |
