@@ -483,7 +483,12 @@ it("allows reading through the consent card with the reviewed key, version and s
   await renderUntagged();
   expect(container.textContent).toContain("sent to the AI model");
   await clickButton("Allow");
-  expect(consentGrant).toHaveBeenCalledWith({ key: "k1", version: "v1", spaceId: "space-a" });
+  expect(consentGrant).toHaveBeenCalledWith({
+    key: "k1",
+    version: "v1",
+    spaceId: "space-a",
+    documentsOnly: true,
+  });
 });
 
 it("shows the error and reloads consent when the grant is rejected", async () => {

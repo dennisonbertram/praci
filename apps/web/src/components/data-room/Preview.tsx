@@ -7,6 +7,7 @@ import { FileText, RotateCw, Trash2, Upload, X } from "lucide-react";
 import type { KeyboardEvent, PointerEvent, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { allowDocuments } from "../../lib/ai-consent";
 import { canPreviewImage, DATA_ROOM_CHANGED } from "../../lib/data-room";
 import { MASK } from "../../lib/finance-format";
 import {
@@ -217,8 +218,7 @@ function UntaggedNote({ item }: { item: DataRoomApiItem }) {
         consent={consent}
         declinedText={<Trans>Not tagged. Praci can't read your documents.</Trans>}
         onAllow={() =>
-          rpc.dataRoom
-            .consentGrant({ key: consent.key, version: consent.version, spaceId: consent.spaceId })
+          allowDocuments(consent)
             .then(setConsent)
             .catch((cause) => {
               // The providers or Space changed since this was read: show the current ask.
