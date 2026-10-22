@@ -358,6 +358,7 @@ import {
 } from "./shell/dialogs";
 import { GroupIntro } from "./shell/GroupIntro";
 import { moveRosterFocus, rosterRowId, syncRosterTabStops } from "./shell/roster-tab-stops";
+import { moreBarHeight, rowsBelow } from "./shell/rows-below";
 import { SidebarHeaderRow, TOP_BAR_HEIGHT } from "./shell/sidebar-header-row";
 import {
   activeSpaceFirst,
@@ -925,6 +926,31 @@ export function ShellPage() {
     mutate.observe(list, { childList: true, subtree: true });
     return () => {
       cancelAnimationFrame(frame);
+      resize.disconnect();
+      mutate.disconnect();
+    };
+  }, [mobileSidebarOpen]);
+  // "+N more" over the foot of the list while rows remain below the fold.
+  const [hiddenRows, setHiddenRows] = useState(0);
+  useEffect(() => {
+    const scrollers = [sidebarPaneRef.current, sidebarScrollRef.current];
+    let frame = 0;
+    const measure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => setHiddenRows(rowsBelow(scrollers)));
+    };
+    measure();
+    for (const el of scrollers) el?.addEventListener("scroll", measure, { passive: true });
+    const resize = new ResizeObserver(measure);
+    const mutate = new MutationObserver(measure);
+    for (const el of scrollers) {
+      if (!el) continue;
+      resize.observe(el);
+      mutate.observe(el, { childList: true, subtree: true });
+    }
+    return () => {
+      cancelAnimationFrame(frame);
+      for (const el of scrollers) el?.removeEventListener("scroll", measure);
       resize.disconnect();
       mutate.disconnect();
     };
@@ -4668,9 +4694,9 @@ export function ShellPage() {
           {bootstrapMe === undefined ? null : (
             // Waiting for the account (undefined) keeps pages the user hid from flashing in.
             // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
-            // On a phone Activity takes its place until it is closed, so the chats stay in view.
+            // Activity takes its place until it is closed, so the chats keep their rows.
             <div
-              className={`flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:max-h-[50vh] lg:overflow-y-auto short:lg:max-h-none short:lg:overflow-visible ${activityMode && !rail ? "max-lg:hidden" : ""}`}
+              className={`flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:max-h-[50vh] lg:overflow-y-auto short:lg:max-h-none short:lg:overflow-visible ${activityMode && !rail ? "hidden" : ""}`}
             >
               <SidebarPagesGroup
                 title={t`Pages`}
@@ -5319,6 +5345,7 @@ export function ShellPage() {
                                         }
                                         {...row.handleProps}
                                         data-roster-row={item.chat.id}
+                                        data-roster-chat=""
                                         data-roster-bot-id={
                                           item.kind === "bot" ? item.chat.id : undefined
                                         }
@@ -5490,7 +5517,9 @@ export function ShellPage() {
                                                   </span>
                                                 ) : null}
                                               </div>
-                                              <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0 pointer-coarse:me-9">
+                                              <div
+                                                className={`flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0 pointer-coarse:me-9 ${botMenu?.id === item.chat.id ? "pointer-fine:opacity-0" : ""}`}
+                                              >
                                                 {/* Roomy rows show the status mark on the preview line, so a Working row keeps its height. */}
                                                 {compact &&
                                                 item.kind === "bot" &&
@@ -5700,6 +5729,24 @@ export function ShellPage() {
             ) : null}
           </div>
         </div>
+        {hiddenRows > 0 && !rail ? (
+          <div className="relative h-0 shrink-0">
+            <button
+              type="button"
+              data-testid="sidebar-more-rows"
+              className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center bg-sidebar text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+              style={{ height: moreBarHeight() }}
+              onClick={() => {
+                const pane = sidebarPaneRef.current;
+                const list = sidebarScrollRef.current;
+                const scroller = pane && pane.scrollHeight > pane.clientHeight + 1 ? pane : list;
+                scroller?.scrollBy({ top: scroller.clientHeight * 0.8, behavior: "smooth" });
+              }}
+            >
+              <Trans>+{hiddenRows} more</Trans>
+            </button>
+          </div>
+        ) : null}
         {/* The top border shows that the list above scrolls under this row. */}
         <div className="border-t border-sidebar-border px-2.5 pt-1">
           <ConnectAppsButton
@@ -6804,6 +6851,7 @@ export function ShellPage() {
                     setPanelState("computer");
                     setRestoredPanelKey(destKey);
                     setBotMenu(null);
+                    closeMobileSidebar();
                   }
                 : undefined
             }
@@ -6824,9 +6872,11 @@ export function ShellPage() {
               setPanelState(contextBot ? "settings" : "group-settings");
               setRestoredPanelKey(destKey);
               setBotMenu(null);
+              closeMobileSidebar();
             }}
             onDuplicate={() => {
               setBotMenu(null);
+              closeMobileSidebar();
               const request = contextBot
                 ? rpc.bots.duplicate({ botId: contextBot.id })
                 : rpc.groups.duplicate({ groupId: contextGroup!.id });

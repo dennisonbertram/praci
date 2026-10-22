@@ -701,6 +701,10 @@ msgstr ""
 msgid "* So far"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "+{hiddenRows} more"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "+{more} more"
