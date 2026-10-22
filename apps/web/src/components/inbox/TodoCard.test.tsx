@@ -57,6 +57,14 @@ it("collapses open to-dos beyond two and expands them", () => {
   expect(toggle()?.textContent).toBe("Show less");
 });
 
+it("shows one open to-do first on a phone", () => {
+  act(() =>
+    root.render(<TodoCard todos={[1, 2, 3].map((n) => todo(n))} compact onChange={() => {}} />),
+  );
+  expect(hiddenTexts()).toEqual(["Todo 2", "Todo 3"]);
+  expect(toggle()?.textContent).toBe("2 more");
+});
+
 it("shows no toggle when two or fewer are open", () => {
   act(() => root.render(<TodoCard todos={[todo(1), todo(2)]} onChange={() => {}} />));
   expect(toggle()).toBeNull();

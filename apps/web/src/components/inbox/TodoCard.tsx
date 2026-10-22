@@ -8,6 +8,8 @@ import { errorText } from "../../lib/user-error";
 import { Shimmer } from "../ai/primitives";
 
 const COLLAPSED_OPEN = 2;
+/** A phone shows one open to-do first, so the first mail starts higher up the screen. */
+const COLLAPSED_OPEN_COMPACT = 1;
 
 /** The open to-dos triage keeps; the page loads them with the list. Hidden when there are none. */
 export function TodoCard({
@@ -15,7 +17,9 @@ export function TodoCard({
   onChange,
   onOpen,
   meetings,
+  compact = false,
 }: {
+  compact?: boolean;
   todos: InboxTodo[];
   onChange: (todo: InboxTodo) => void;
   /** Opens the email a to-do came from. */
@@ -41,10 +45,11 @@ export function TodoCard({
   const ordered = [...todos].sort(
     (a, b) => Number(doneWhenShown.current.get(a.id)) - Number(doneWhenShown.current.get(b.id)),
   );
+  const shownOpen = compact ? COLLAPSED_OPEN_COMPACT : COLLAPSED_OPEN;
   const isCollapsed = (todo: InboxTodo, index: number) =>
-    !expanded && todo.doneAt === null && index >= COLLAPSED_OPEN;
+    !expanded && todo.doneAt === null && index >= shownOpen;
   const hiddenCount = ordered.filter(
-    (todo, index) => todo.doneAt === null && index >= COLLAPSED_OPEN,
+    (todo, index) => todo.doneAt === null && index >= shownOpen,
   ).length;
   const dueLabel = (dueOn: string, days: number) => {
     if (days === 0) return t`Today`;

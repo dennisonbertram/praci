@@ -61,7 +61,13 @@ vi.mock("../lib/inbox-message-cache", () => ({
 }));
 const realDialog = vi.hoisted(() => ({ on: false }));
 vi.mock("../components/AiDataSharing", () => ({
-  InboxConsentPrompt: () => <div data-consent-prompt />,
+  InboxConsentPrompt: ({ onAllowed }: { onAllowed: () => void }) => (
+    <div data-consent-prompt>
+      <button type="button" onClick={onAllowed}>
+        Allow sorting
+      </button>
+    </div>
+  ),
 }));
 vi.mock("../components/ComposeEmail", () => ({
   ComposeEmail: () => <div data-testid="compose" />,
@@ -76,6 +82,7 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
     onArchive,
     onMoveToInbox,
     onAskAgentPanel,
+    onReplyDone,
     notice,
   }: {
     messageId: string | null;
@@ -83,6 +90,7 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
     onArchive?: () => void;
     onMoveToInbox?: () => void;
     onAskAgentPanel?: () => Promise<unknown>;
+    onReplyDone?: () => void;
     notice?: ReactNode;
   }) =>
     messageId ? (
@@ -94,6 +102,11 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
         {onArchive ? (
           <button type="button" onClick={onArchive}>
             dialog archive
+          </button>
+        ) : null}
+        {onReplyDone ? (
+          <button type="button" onClick={onReplyDone}>
+            dialog reply done
           </button>
         ) : null}
         {onAskAgentPanel ? (
@@ -397,6 +410,97 @@ it("Escape with no applied search only clears the typed text", async () => {
   await press("Escape", input);
   expect(input.value).toBe("");
   expect(location.search).toBe("");
+});
+
+it("focuses the row it returns to without scrolling the list", async () => {
+  const focus = vi.spyOn(HTMLElement.prototype, "focus");
+  try {
+    const c = await render();
+    await click(c.querySelector('[data-row-id="a"]'));
+    focus.mockClear();
+    await click(byText(c, "close"));
+    await act(async () => void (await new Promise((r) => requestAnimationFrame(r))));
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(focus).not.toHaveBeenCalledWith();
+  } finally {
+    focus.mockRestore();
+  }
+});
+
+it("drops an undated reply to-do whose mail is listed under Needs reply, and keeps the rest", async () => {
+  const todo = (id: string, messageId: string, text: string, dueOn: string | null = null) => ({
+    id,
+    connectionId: "c1",
+    messageId,
+    text,
+    detail: null,
+    from: "Dana",
+    priority: null,
+    dueOn,
+    doneAt: null,
+  });
+  rpcMock.list.mockResolvedValue(
+    list([row("a", { needsReply: true }), row("b", { needsReply: true })]),
+  );
+  rpcMock.todos.mockResolvedValue({
+    todos: [
+      todo("t1", "a", "Reply to Morgan about section 9"),
+      todo("t2", "b", "File the trademark form"),
+      todo("t3", "a", "Reply to Morgan by Friday", "2099-01-01"),
+    ],
+  });
+  const c = await render();
+  expect(c.textContent).not.toContain("Reply to Morgan about section 9");
+  expect(c.textContent).toContain("File the trademark form");
+  expect(c.textContent).toContain("Reply to Morgan by Friday");
+});
+
+it("completes a hidden reply to-do from the open mail", async () => {
+  const hidden = {
+    id: "t1",
+    connectionId: "c1",
+    messageId: "a",
+    text: "Reply to Morgan about section 9",
+    detail: null,
+    from: "Dana",
+    priority: null,
+    dueOn: null,
+    doneAt: null,
+  };
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true })]));
+  rpcMock.todos.mockResolvedValue({ todos: [hidden] });
+  rpcMock.setDone.mockResolvedValue({ ...hidden, doneAt: new Date().toISOString() });
+  const c = await render();
+  expect(c.textContent).not.toContain("Reply to Morgan about section 9");
+  await click(c.querySelector('[data-row-id="a"]'));
+  await click(byText(document.body, "dialog reply done"));
+  expect(rpcMock.setDone).toHaveBeenCalledWith({ id: "t1", done: true });
+});
+
+it("does not show sorting when Allow is pressed on an already sorted mailbox", async () => {
+  const blocked = {
+    enabled: false,
+    triageBlocked: { reason: "needs_consent", recipient: { key: "k", name: "Model" } } as never,
+  };
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")], blocked));
+  const c = await render();
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  await click(byText(c, "Allow sorting"));
+  expect(c.textContent).not.toContain("Sorting your mail…");
+  expect(c.querySelector("[aria-busy=true]")).toBeNull();
+});
+
+it("closes the Filter tooltip with its menu", async () => {
+  const c = await render();
+  const button = c.querySelector<HTMLElement>('[data-testid="inbox-filter"]');
+  await act(async () => button?.focus());
+  await click(button);
+  await act(async () => {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  });
+  await dwell(600);
+  expect(document.querySelector('[role="menu"]')).toBeNull();
+  expect(document.querySelector('[data-slot="tooltip-content"]')).toBeNull();
 });
 
 it("returns focus to the search field after Clear", async () => {
@@ -790,6 +894,26 @@ it("shows the unsorted rows, dimmed, after 15 s of the first sort", async () => 
   expect(c.textContent).toContain("noise a");
   expect(c.textContent).toContain("Sorting your mail…");
   expect(c.querySelector(".opacity-60")).not.toBeNull();
+});
+
+it("starts the first-sort clock at Allow: sorting is said at once and the unsorted rows show after 15 s", async () => {
+  const blocked = {
+    enabled: false,
+    triageBlocked: { reason: "needs_consent", recipient: { key: "k", name: "Model" } } as never,
+  };
+  rpcMock.list.mockResolvedValue(list([row("a"), row("b")], blocked));
+  const c = await render();
+  expect(c.querySelector("[data-consent-prompt]")).not.toBeNull();
+  // The first sync after Allow has not queued triage yet; the to-dos are still loading.
+  rpcMock.list.mockResolvedValue(list([row("a"), row("b")]));
+  rpcMock.todos.mockReturnValue(new Promise(() => {}));
+  await click(byText(c, "Allow sorting"));
+  expect(c.textContent).toContain("Sorting your mail…");
+  expect(c.querySelector("[aria-busy=true]")).not.toBeNull();
+  await dwell(16_000);
+  expect(c.querySelector("[aria-busy=true]")).toBeNull();
+  expect(c.textContent).toContain("noise a");
+  expect(c.textContent).toContain("Sorting your mail…");
 });
 
 it("does not say First sync once a refresh reports an earlier sync", async () => {

@@ -83,6 +83,84 @@ export function ConsentCard({
   );
 }
 
+const DISMISSED_KEY = "rakazo.dataRoomConsentDismissed";
+
+/** The consent version this browser said "Not now" to; asked again only when it changes. */
+function readDismissed(): string | null {
+  try {
+    return localStorage.getItem(DISMISSED_KEY);
+  } catch {
+    return null;
+  }
+}
+function saveDismissed(value: string | null) {
+  try {
+    if (value === null) localStorage.removeItem(DISMISSED_KEY);
+    else localStorage.setItem(DISMISSED_KEY, value);
+  } catch {
+    // Storage blocked: "Not now" lasts until the page closes.
+  }
+}
+
+/**
+ * The one card that asks to send documents to the space's model, on Legal and on the Data room, with
+ * Allow and Not now. After "Not now" (remembered in this browser until the request changes) one line
+ * stays, with a way to be asked again.
+ */
+export function DocumentsConsentCard({
+  consent,
+  onAllow,
+  declinedText,
+  id,
+  className,
+}: {
+  consent: DataRoomConsentStatus;
+  onAllow: () => Promise<unknown>;
+  /** What stays true after Not now, e.g. "Praci doesn't tag new files." */
+  declinedText: ReactNode;
+  id: string;
+  className?: string;
+}) {
+  const [dismissed, setDismissed] = useState(readDismissed);
+  const version = `${consent.key}:${consent.version}`;
+  if (dismissed === version) {
+    return (
+      <Card
+        size="sm"
+        className={cn(
+          "flex-row flex-wrap items-center gap-x-2 gap-y-0 px-3.5 py-2 text-xs text-muted-foreground",
+          className,
+        )}
+      >
+        {declinedText}
+        <Button
+          variant="link"
+          size="xs"
+          className="h-auto p-0"
+          onClick={() => {
+            saveDismissed(null);
+            setDismissed(null);
+          }}
+        >
+          <Trans>Let Praci read documents</Trans>
+        </Button>
+      </Card>
+    );
+  }
+  return (
+    <ConsentCard
+      id={id}
+      className={className}
+      heading={<Trans>Let Praci read your documents</Trans>}
+      onAllow={onAllow}
+      onDismiss={() => {
+        saveDismissed(version);
+        setDismissed(version);
+      }}
+    />
+  );
+}
+
 /** Asks once for the model that would sort the Inbox; the one button grants exactly that recipient. */
 export function InboxConsentPrompt({
   recipient,
