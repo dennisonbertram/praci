@@ -328,14 +328,32 @@ button.rk-table-sort {
   .rk-table-box .rk-table th,
   .rk-table-box .rk-table td,
   .rk-table-box .rk-table .rk-table-cell-text {
+    /* The table sets each column's min-width inline to its full text width; override it. */
     min-width: 0 !important;
     max-width: none;
     white-space: normal;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
     overflow: visible;
     text-overflow: clip;
     padding-left: 0.3em;
     padding-right: 0.3em;
+  }
+
+  /* Text columns keep a readable width; if the columns do not fit, the card
+     scrolls sideways and the right edge fades. */
+  .rk-table-box .rk-table td:not(.rk-align-right),
+  .rk-table-box .rk-table th:not(.rk-align-right) {
+    min-width: 9ch !important;
+  }
+
+  .rk-table-box .rk-table-scroll {
+    background:
+      linear-gradient(to right, var(--card) 30%, transparent) left / 1.5em 100% no-repeat local,
+      linear-gradient(to left, var(--card) 30%, transparent) right / 1.5em 100% no-repeat local,
+      linear-gradient(to right, color-mix(in srgb, var(--foreground) 22%, transparent), transparent)
+      left / 0.7em 100% no-repeat scroll,
+      linear-gradient(to left, color-mix(in srgb, var(--foreground) 22%, transparent), transparent)
+      right / 0.7em 100% no-repeat scroll;
   }
 
   /* Amounts stay whole; the text columns give way. */

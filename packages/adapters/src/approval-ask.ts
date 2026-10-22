@@ -112,7 +112,13 @@ export function buildApprovalAskBlock(
             { id: "deny", label: "Cancel", outcome: "cancelled" },
           ]
         : [
-            { id: "allow", label: "Allow once" },
+            {
+              id: "allow",
+              label:
+                isSendMoney(toolName) && args.amount != null
+                  ? `Send ${formatAmount(args.amount, args.currency)}`
+                  : "Allow once",
+            },
             ...(options?.fullMail ||
             options?.integrationWriteTool !== undefined ||
             options?.noAlwaysAllow ||
@@ -138,7 +144,7 @@ export function buildConsentAskBlock(
   return {
     kind: "ask",
     approvalEffectId: effectId,
-    text: `Allow your mail to be sent to ${model || recipient.name}?`,
+    text: `Share your chats and mail with ${model || recipient.name}?`,
     // The clause says the permission is standing, not for this one read.
     detail: `${AI_DATA_DISCLOSURES.model} This stays on until you turn it off in Settings under Privacy and approvals.`,
     consent: { version: AI_DISCLOSURE_VERSION },

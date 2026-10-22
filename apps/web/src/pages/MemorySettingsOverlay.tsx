@@ -13,7 +13,7 @@ import {
   NativeSelectOption,
   Toggle,
 } from "@rakazo/ui-web";
-import { XIcon } from "lucide-react";
+import { ChevronRight, XIcon } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
@@ -216,8 +216,13 @@ export function MemorySettingsOverlay({
           </div>
         ) : registration ? (
           <details data-testid="memory-provider-advanced" className="group">
-            <summary className="cursor-pointer text-[13.5px] text-muted-foreground hover:text-foreground">
-              <Trans>Advanced: connect an outside memory service</Trans>
+            <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[13.5px] text-muted-foreground hover:text-foreground">
+              <ChevronRight
+                aria-hidden="true"
+                className="size-4 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+                strokeWidth={1.75}
+              />
+              <Trans>Outside memory service</Trans>
             </summary>
             <p className="mt-2 mb-4 text-[13px] text-muted-foreground/80">
               {registration.description}

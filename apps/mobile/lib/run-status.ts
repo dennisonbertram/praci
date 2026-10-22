@@ -79,7 +79,7 @@ export function botRowStatus(bot: {
     case "running":
       return t("Working…");
     case "waiting_input":
-      return t("Needs an answer");
+      return t("Needs your answer");
     case "waiting_takeover":
       return t("Needs you");
     default:

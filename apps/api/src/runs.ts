@@ -37,6 +37,20 @@ export function activityPromptSnippet(
   return promptSnippet(text ? `${label}: ${text}` : label, max);
 }
 
+/** The question or approval a held run is waiting on, as one plain line; undefined when none is pending. */
+export function pendingAskSnippet(messages: readonly { blocks: unknown }[]): string | undefined {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const parsed = MessageBlock.array().safeParse(messages[index]?.blocks);
+    if (!parsed.success) continue;
+    for (const block of parsed.data) {
+      if (block.kind === "ask" && block.status !== "answered") {
+        return promptSnippet(plainTextFromMarkdown(block.text));
+      }
+    }
+  }
+  return undefined;
+}
+
 export function activityNotificationsEnabled(
   groupId: string | null,
   notifyOnFinish: boolean,
@@ -78,6 +92,16 @@ export async function listSpaceRuns(
     take: filter === "recent" ? RECENT_LIMIT : undefined,
   });
 
+  // A held run previews its own question or approval instead of the prompt that started it.
+  const heldRunIds = rows.filter((row) => row.status === "waiting_input").map((row) => row.id);
+  const askMessages = heldRunIds.length
+    ? await prisma.message.findMany({
+        where: { runId: { in: heldRunIds }, thread: { spaceId: actor.spaceId } },
+        orderBy: { seq: "asc" },
+        select: { runId: true, blocks: true },
+      })
+    : [];
+
   return rows.map((row) => ({
     runId: row.id,
     botId: row.botId,
@@ -88,11 +112,13 @@ export async function listSpaceRuns(
     status: row.status as RunActivityRow["status"],
     trigger: row.trigger as RunActivityRow["trigger"],
     notificationsEnabled: activityNotificationsEnabled(row.thread.groupId, row.bot.notifyOnFinish),
-    promptSnippet: activityPromptSnippet({
-      trigger: row.trigger,
-      prompt: row.task.prompt,
-      sourceBlocks: row.sourceMessage?.blocks,
-    }),
+    promptSnippet:
+      pendingAskSnippet(askMessages.filter((message) => message.runId === row.id)) ??
+      activityPromptSnippet({
+        trigger: row.trigger,
+        prompt: row.task.prompt,
+        sourceBlocks: row.sourceMessage?.blocks,
+      }),
     updatedAt: (filter === "recent" && row.completedAt
       ? row.completedAt
       : row.updatedAt

@@ -404,8 +404,6 @@ function ItemRow({
       >
         {label ? (
           <Badge variant={item.status === "failed" ? "destructive" : "secondary"}>{label}</Badge>
-        ) : showStatus ? (
-          empty
         ) : null}
       </TableCell>
       <TableCell className="pe-0">

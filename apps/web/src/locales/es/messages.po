@@ -22,7 +22,7 @@ msgid " (failed)"
 msgstr ""
 
 #: src/components/sidebar-glance.tsx
-msgid " (needs input)"
+msgid " (needs your answer)"
 msgstr ""
 
 #: src/components/sidebar-glance.tsx
@@ -1000,7 +1000,6 @@ msgstr ""
 
 #: src/components/AiDataSharing.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
-#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
@@ -1008,10 +1007,6 @@ msgstr ""
 #: src/pages/shell/bot-panel.tsx
 msgid "Advanced"
 msgstr "Avanzado"
-
-#: src/pages/MemorySettingsOverlay.tsx
-msgid "Advanced: connect an outside memory service"
-msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Advanced..."
@@ -1616,14 +1611,6 @@ msgstr "Autorizar"
 msgid "Authorize this server so bots can use its tools. A popup opens."
 msgstr ""
 
-#: src/pages/Shell.tsx
-msgid "Auto-group"
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Auto-grouped"
-msgstr ""
-
 #: src/pages/legal/LegalContracts.tsx
 msgid "Auto-renews"
 msgstr ""
@@ -1688,10 +1675,6 @@ msgstr "Atrás"
 
 #: src/pages/Artifacts.tsx
 msgid "Back to artifacts"
-msgstr ""
-
-#: src/components/inbox/EmailAgentPanel.tsx
-msgid "Back to email"
 msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -2194,6 +2177,10 @@ msgstr "Apps de chat"
 msgid "Chat apps, group channels, and agent connections."
 msgstr "Apps de chat, canales de grupo y conexiones de agentes."
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Chat display"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "Chat settings"
 msgstr ""
@@ -2208,6 +2195,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Chats"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Chats grouped into folders"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
@@ -3394,10 +3385,6 @@ msgstr ""
 
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Could not reach Granola"
-msgstr ""
-
-#: src/components/inbox/EmailAgentPanel.tsx
-msgid "Could not reach Praci. Try again."
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -4655,6 +4642,7 @@ msgstr ""
 msgid "Equity"
 msgstr ""
 
+#: src/components/investors/Placeholders.tsx
 #: src/pages/Investors.tsx
 msgid "Equity raised"
 msgstr ""
@@ -5027,6 +5015,7 @@ msgstr "Pantalla completa"
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
+#: src/components/investors/Placeholders.tsx
 #: src/pages/Investors.tsx
 msgid "Fully diluted"
 msgstr ""
@@ -5171,6 +5160,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Group"
 msgstr "Grupo"
+
+#: src/pages/Shell.tsx
+msgid "Group chats into folders"
+msgstr ""
 
 #: src/pages/BotContextMenu.tsx
 #: src/pages/GroupPanel.tsx
@@ -5647,10 +5640,6 @@ msgstr ""
 msgid "just now"
 msgstr "ahora mismo"
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Keep contracts here, and see who owns what in Investors."
-msgstr ""
-
 #: src/pages/DataRoom.tsx
 msgid "Keep contracts, board decks and investor documents in one place."
 msgstr ""
@@ -5663,6 +5652,10 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 msgid "Keep memories"
 msgstr "Conservar memorias"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Keep your contracts here and see which are due soon."
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "key"
@@ -5805,11 +5798,8 @@ msgstr ""
 msgid "Let Praci read documents"
 msgstr ""
 
-#: src/components/legal/ConsentPrompt.tsx
-msgid "Let Praci read your contracts"
-msgstr ""
-
 #: src/components/data-room/ConsentPrompt.tsx
+#: src/components/legal/ConsentPrompt.tsx
 msgid "Let Praci read your documents"
 msgstr ""
 
@@ -6574,9 +6564,7 @@ msgstr ""
 msgid "Needs attention"
 msgstr ""
 
-#: src/components/sidebar-glance.tsx
 #: src/lib/devin-format.ts
-#: src/pages/ActivityList.tsx
 msgid "Needs input"
 msgstr "Necesita entrada"
 
@@ -6592,6 +6580,7 @@ msgstr ""
 msgid "Needs sign-in"
 msgstr ""
 
+#: src/components/PageAgentsRow.tsx
 #: src/pages/ActivityList.tsx
 msgid "Needs takeover"
 msgstr "Necesita toma de control"
@@ -6605,9 +6594,12 @@ msgstr "Necesita toma de control"
 msgid "Needs you"
 msgstr ""
 
+#: src/components/PageAgentsRow.tsx
+#: src/components/sidebar-glance.tsx
 #: src/lib/roster-status.ts
+#: src/pages/ActivityList.tsx
 msgid "Needs your answer"
-msgstr ""
+msgstr "Necesita entrada"
 
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -6786,7 +6778,6 @@ msgstr ""
 msgid "No bank accounts yet. Connect Mercury or Brex, or upload a bank statement, with Add account."
 msgstr ""
 
-#: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "No board members yet"
 msgstr ""
@@ -6855,7 +6846,6 @@ msgid "No group chats yet."
 msgstr "Aún no hay chats de grupo."
 
 #: src/components/data-room/ItemDialogs.tsx
-#: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "No investors yet"
 msgstr ""
@@ -6931,10 +6921,6 @@ msgstr ""
 msgid "No open deadlines."
 msgstr ""
 
-#: src/pages/Fundraising.tsx
-msgid "No prospects yet"
-msgstr ""
-
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "No providers found."
 msgstr "No se encontraron proveedores."
@@ -6982,10 +6968,6 @@ msgstr "Aún no hay ejecuciones"
 msgid "No rush"
 msgstr ""
 
-#: src/pages/Fundraising.tsx
-msgid "No SAFEs yet"
-msgstr ""
-
 #: src/pages/Finance.tsx
 msgid "No spend in this period"
 msgstr ""
@@ -7017,10 +6999,6 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 msgid "No trigger"
 msgstr "Sin disparador"
-
-#: src/pages/Investors.tsx
-msgid "No updates yet"
-msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "No wallets yet. Add a wallet address to see its balances here."
@@ -7518,6 +7496,10 @@ msgstr ""
 msgid "Out"
 msgstr ""
 
+#: src/pages/MemorySettingsOverlay.tsx
+msgid "Outside memory service"
+msgstr ""
+
 #: src/pages/Board.tsx
 msgid "Owner"
 msgstr ""
@@ -7731,6 +7713,7 @@ msgstr "Reproduciendo…"
 msgid "Plugin"
 msgstr "Plugin"
 
+#: src/components/cap-table/CapTableEditor.tsx
 #: src/pages/Investors.tsx
 msgid "Pool"
 msgstr ""
@@ -7803,6 +7786,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Posting readiness unavailable."
+msgstr ""
+
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "Praci can now read your documents."
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
@@ -8676,6 +8663,10 @@ msgid "Rotate key"
 msgstr "Rotar clave"
 
 #: src/components/fundraising/RoundCard.tsx
+msgid "Round"
+msgstr ""
+
+#: src/components/fundraising/RoundCard.tsx
 msgid "Round actions"
 msgstr ""
 
@@ -8947,13 +8938,6 @@ msgstr ""
 msgid "Search and read files and folders"
 msgstr ""
 
-#: src/components/integrations/ConnectAppsStep.tsx
-#: src/components/integrations/CustomConnectionDialog.tsx
-#: src/components/integrations/IntegrationSetup.tsx
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Search apps"
-msgstr "Buscar apps"
-
 #: src/pages/Artifacts.tsx
 msgid "Search artifacts…"
 msgstr ""
@@ -8976,6 +8960,13 @@ msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
+msgstr ""
+
+#: src/components/integrations/ConnectAppsStep.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IntegrationSetup.tsx
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Search integrations"
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
@@ -9233,6 +9224,10 @@ msgstr ""
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Set up app catalog"
+msgstr ""
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Setting up the agent..."
 msgstr ""
 
 #: src/components/call/CallCard.tsx
@@ -9793,6 +9788,7 @@ msgstr ""
 msgid "Still waiting on {service}"
 msgstr ""
 
+#: src/components/ai/primitives.tsx
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/composer.tsx
@@ -9924,6 +9920,7 @@ msgstr "Tomar el control"
 msgid "Take the tour"
 msgstr ""
 
+#: src/components/ai/primitives.tsx
 #: src/components/data-room/ItemRows.tsx
 msgid "Taking longer than usual"
 msgstr ""
@@ -10157,10 +10154,6 @@ msgstr ""
 
 #: src/components/AiDataSharing.tsx
 msgid "The text is sent to the AI model that runs your bots."
-msgstr ""
-
-#: src/components/legal/ConsentPrompt.tsx
-msgid "The text of your Data room documents is sent to the AI model that runs your bots."
 msgstr ""
 
 #: src/components/finance/StatementReviewCard.tsx
@@ -10513,6 +10506,7 @@ msgstr ""
 msgid "Try {name} again"
 msgstr ""
 
+#: src/components/ai/primitives.tsx
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/ItemRows.tsx
@@ -10847,8 +10841,16 @@ msgstr ""
 msgid "Upload a PDF, CSV, OFX or QFX file"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload a skill file"
+msgstr ""
+
 #: src/components/data-room/DropZone.tsx
-msgid "Upload failed"
+msgid "Upload failed. Check your connection and try again."
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Upload failed. The server could not save this file."
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
@@ -10856,11 +10858,7 @@ msgid "Upload files"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Upload files for bots to use. Artifacts holds what bots make."
-msgstr ""
-
-#: src/pages/shell/BotSkillsSection.tsx
-msgid "Upload SKILL.md"
+msgid "Upload files for bots to use."
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -11104,10 +11102,6 @@ msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
 msgid "Wallet balances and history"
-msgstr ""
-
-#: src/components/integrations/FinanceSection.tsx
-msgid "Wallet balances and history · no key needed"
 msgstr ""
 
 #: src/pages/finance/FinanceCrypto.tsx
