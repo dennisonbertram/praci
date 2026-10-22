@@ -163,12 +163,8 @@ function Summary({
       .reduce((sum, safe) => sum + safe.amountCents / 100, 0);
   const committedUsd = sumUsd(["sent", "signed"]);
   // A failed SAFE request would make the total look complete when it is not.
-  const raised =
-    !safesFailed &&
-    (counted.length > 0 ||
-      snapshot.holders.some((h) => h.amountUsd != null && !isSafeSecurity(h.security)))
-      ? usd(equityRaisedUsd(snapshot.holders, counted))
-      : DASH;
+  const raisedUsd = equityRaisedUsd(snapshot.holders, safes);
+  const raised = !safesFailed && raisedUsd != null ? usd(raisedUsd) : DASH;
   return (
     <div className="mb-4 grid grid-cols-2 gap-2 @md/bd:gap-3">
       <Figure

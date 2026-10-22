@@ -101,10 +101,17 @@ describe("equityRaisedUsd", () => {
       { status: "funded", amountCents: 15_000_000 },
       { status: "sent", amountCents: 5_000_000 },
       { status: "signed", amountCents: 5_000_000 },
-    ];
+    ] as const;
     expect(equityRaisedUsd(holders, safes)).toBe(250_000);
     expect(
       capTableMath({ fullyDilutedShares: 100, optionPoolAvailable: null, holders }).raisedUsd,
     ).toBe(100_000);
+  });
+
+  it("is null when nothing is known to add up", () => {
+    expect(
+      equityRaisedUsd([holder("A", 100, null), holder("Fund", null, 9, "SAFE")], []),
+    ).toBeNull();
+    expect(equityRaisedUsd([], [{ status: "draft", amountCents: 100 }])).toBeNull();
   });
 });
