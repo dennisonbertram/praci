@@ -37,6 +37,7 @@ import {
   Mail,
   MoreHorizontal,
   PanelLeftClose,
+  PanelLeftOpen,
   PieChart,
   Scale,
   Search,
@@ -76,6 +77,7 @@ import { FirstRunTour } from "../../components/tour/FirstRunTour";
 import type { AgentApp } from "../../lib/agent-app";
 import { clearAgentAppCache } from "../../lib/agent-app";
 import { authClient } from "../../lib/auth";
+import { desktopBridge } from "../../lib/desktop";
 import { maskCurrencyWhenHidden } from "../../lib/hide-amounts-preference";
 import { isUnclaimedFileDrag } from "../../lib/pending-attachments";
 import type { Panel } from "../../lib/right-panel-state";
@@ -173,13 +175,19 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
   query: string,
   /** The space the app is showing; its headers are marked when several spaces are listed. */
   currentSpaceId?: string,
-  /** Header label for the only space, which needs no name to tell it from others. */
-  soleSpaceTitle?: string,
+  /** Header label for the only space; null leaves the only space without a heading or menu. */
+  soleSpaceTitle?: string | null,
 ) {
   const needle = query.toLowerCase();
   const showSpaceNames = spaces.length > 1;
   return spaces.flatMap((space) => {
-    const spaceLabel = showSpaceNames ? space.name : (soleSpaceTitle ?? space.name);
+    const spaceLabel = showSpaceNames
+      ? space.name
+      : soleSpaceTitle === null
+        ? null
+        : (soleSpaceTitle ?? space.name);
+    // No heading means no menu and nothing to collapse: the chats list on their own.
+    const headless = spaceLabel === null;
     const visibleBots = space.bots.filter((bot) =>
       `${bot.name} ${bot.title ?? ""} ${bot.preview ?? ""}`.toLowerCase().includes(needle),
     );
@@ -221,10 +229,14 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
     const heading = (index: number) => ({
       ...shared,
       title: spaceLabel as string | null,
-      relabeled: !showSpaceNames && soleSpaceTitle !== undefined && soleSpaceTitle !== space.name,
+      relabeled:
+        !showSpaceNames &&
+        !headless &&
+        soleSpaceTitle !== undefined &&
+        soleSpaceTitle !== space.name,
       showLock: showSpaceNames,
       current: showSpaceNames && space.id === currentSpaceId,
-      ...spaceHeaderMenu(space, index === 0),
+      ...spaceHeaderMenu(space, index === 0 && !headless),
     });
     const sections = [];
     if (pinned.length === 0 && folders.length === 0) {
@@ -238,7 +250,7 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
       }
     } else {
       const headKey = key("unassigned");
-      const child = { ...shared, parentKey: headKey };
+      const child = { ...shared, parentKey: headless ? null : headKey };
       sections.push({
         ...heading(0),
         kind: "head" as SidebarBlockKind,
@@ -276,7 +288,9 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
     if (sections.length > 0) return sections;
     // Keep empty spaces selectable; chat clicks are the only switch control.
     if (needle && (space.bots.length > 0 || space.groups.length > 0)) return [];
-    if (!showSpaceNames && space.canRename !== true && space.canDelete !== true) return [];
+    if (headless || (!showSpaceNames && space.canRename !== true && space.canDelete !== true)) {
+      return [];
+    }
     return [
       {
         ...shared,
@@ -593,10 +607,14 @@ export function SpaceSidebar({
               <InputGroupInput
                 readOnly
                 value=""
-                onClick={onOpenSearch}
+                onClick={(e) => {
+                  e.currentTarget.blur();
+                  onOpenSearch();
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
+                    e.currentTarget.blur();
                     onOpenSearch();
                   }
                 }}
@@ -637,17 +655,6 @@ export function SpaceSidebar({
               >
                 <PanelLeftClose size={15} strokeWidth={1.8} aria-hidden="true" />
               </button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="app-no-drag lg:hidden"
-                aria-label={t`Close menu`}
-                title={t`Close menu`}
-                data-testid="close-mobile-sidebar"
-                onClick={() => setMobileSidebarOpen(false)}
-              >
-                <X size={16} strokeWidth={1.8} aria-hidden="true" />
-              </Button>
               <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
                 <PopoverTrigger
                   className="app-no-drag flex h-8 w-8 items-center justify-center text-[21px] text-muted-foreground/70 hover:text-foreground/75"
@@ -693,16 +700,39 @@ export function SpaceSidebar({
                   />
                 </PopoverContent>
               </Popover>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="app-no-drag lg:hidden"
+                aria-label={t`Close menu`}
+                title={t`Close menu`}
+                data-testid="close-mobile-sidebar"
+                onClick={() => setMobileSidebarOpen(false)}
+              >
+                <X size={16} strokeWidth={1.8} aria-hidden="true" />
+              </Button>
             </div>
           )
         }
       />
+      {rail && pageMode && !desktopBridge() ? (
+        <button
+          type="button"
+          data-testid="restore-bots-sidebar"
+          aria-label={t`Show sidebar`}
+          title={t`Show sidebar`}
+          onClick={() => setBotsSidebarCollapsedPref(false)}
+          className="app-no-drag mx-auto mt-1 grid size-9 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+        >
+          <PanelLeftOpen size={16} strokeWidth={1.8} aria-hidden="true" />
+        </button>
+      ) : null}
       <div className="flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents">
         {bootstrapMe === undefined ? null : (
           // Waiting for the account (undefined) keeps pages the user hid from flashing in.
           // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
           <div
-            className={`flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:overflow-y-auto ${activityMode ? "lg:max-h-[16vh]" : "lg:max-h-[50vh]"}`}
+            className={`flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:max-h-[50vh] lg:overflow-y-auto ${activityMode && !rail ? "max-lg:hidden" : ""}`}
           >
             <SidebarPagesGroup
               title={t`Pages`}
@@ -1430,7 +1460,7 @@ export function SpaceSidebar({
                                               </span>
                                             ) : null}
                                           </div>
-                                          <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0">
+                                          <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0 pointer-coarse:me-9">
                                             {item.kind === "bot" &&
                                             glance.botKinds[item.chat.id] ? (
                                               <StatusMark
@@ -1516,7 +1546,7 @@ export function SpaceSidebar({
                                         position: { x: rect.left, y: rect.bottom },
                                       });
                                     }}
-                                    className={`absolute end-2 top-1.5 size-7 rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring group-hover/row:opacity-100 pointer-coarse:hidden ${
+                                    className={`absolute end-2 top-1.5 size-7 rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring group-hover/row:opacity-100 pointer-coarse:top-0 pointer-coarse:size-11 pointer-coarse:opacity-100 ${
                                       botMenu?.id === item.chat.id ? "opacity-100" : ""
                                     }`}
                                   >

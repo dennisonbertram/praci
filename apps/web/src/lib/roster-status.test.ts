@@ -3,6 +3,7 @@ import {
   compactRosterStatusLabel,
   rosterHasUndismissedRunError,
   rosterHeldFor,
+  rosterStatusChanged,
   rosterWorkStatusLabel,
 } from "./roster-status";
 
@@ -45,7 +46,7 @@ describe("compactRosterStatusLabel", () => {
     expect(compactRosterStatusLabel("leased")).toBe("Starting…");
     expect(compactRosterStatusLabel("running")).toBe("Working…");
     expect(compactRosterStatusLabel("waiting_input")).toBe("Needs your answer");
-    expect(compactRosterStatusLabel("waiting_takeover")).toBe("Needs you");
+    expect(compactRosterStatusLabel("waiting_takeover")).toBe("Needs takeover");
     expect(compactRosterStatusLabel("failed")).toBe("Error");
   });
 
@@ -77,5 +78,14 @@ describe("rosterHeldFor", () => {
     expect(rosterHeldFor("waiting_input")).toBe("answer");
     expect(rosterHeldFor("waiting_takeover")).toBe("takeover");
     expect(rosterHeldFor("running")).toBeNull();
+  });
+});
+
+describe("rosterStatusChanged", () => {
+  it("refreshes the sidebar when a run pauses for an approval or question", () => {
+    expect(rosterStatusChanged({ type: "run.waiting_input" })).toBe(true);
+    expect(rosterStatusChanged({ type: "run.started" })).toBe(true);
+    expect(rosterStatusChanged({ type: "run.completed" })).toBe(true);
+    expect(rosterStatusChanged({ type: "thread.message.created" })).toBe(false);
   });
 });

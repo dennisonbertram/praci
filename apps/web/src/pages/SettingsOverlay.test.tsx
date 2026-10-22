@@ -101,6 +101,12 @@ it("lists Privacy and approvals as its own tab", async () => {
   expect(await navIds({})).toContain("settings-nav-privacy");
 });
 
+it("folds Voice into Models: no Voice entry in the settings nav", async () => {
+  const ids = await navIds({});
+  expect(ids).toContain("settings-nav-models");
+  expect(ids).not.toContain("settings-nav-voice");
+});
+
 it("keeps one dialog height for every section and locks the app behind it while open", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const app = document.createElement("div");
@@ -136,7 +142,7 @@ it("keeps one dialog height for every section and locks the app behind it while 
   expect(general).toContain("h-[min(760px");
   expect(app.hasAttribute("inert")).toBe(true);
   await act(async () =>
-    (document.querySelector("[data-testid=settings-nav-voice]") as HTMLElement).click(),
+    (document.querySelector("[data-testid=settings-nav-memory]") as HTMLElement).click(),
   );
   expect(panel()?.className).toBe(general);
   await show(false);

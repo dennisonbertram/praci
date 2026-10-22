@@ -1619,6 +1619,7 @@ export function createRouter(deps: RouterDeps) {
             timezone: input.timezone,
             tourSeenAt:
               input.tourSeen === undefined ? undefined : input.tourSeen ? new Date() : null,
+            hideAmounts: input.hideAmounts,
             // A tab open across the cap-table rename may still send the old key.
             hiddenPages: input.hiddenPages && [
               ...new Set(input.hiddenPages.map((key) => (key === "cap-table" ? "investors" : key))),
@@ -8735,7 +8736,14 @@ async function spaceNavigationDto(
     select: {
       spaceId: true,
       role: true,
-      space: { select: { name: true, isDefault: true, deletingAt: true } },
+      space: {
+        select: {
+          name: true,
+          isDefault: true,
+          deletingAt: true,
+          _count: { select: { memberships: true } },
+        },
+      },
     },
     orderBy: { createdAt: "asc" },
   });
@@ -8804,6 +8812,7 @@ async function spaceNavigationDto(
         name: membership.space.name,
         isDefault: membership.space.isDefault,
         hasContent: spacesWithContent.has(membership.spaceId),
+        memberCount: membership.space._count.memberships,
         canRename: membership.role === "owner" && membership.space.deletingAt === null,
         canDelete:
           membership.role === "owner" &&
@@ -8923,6 +8932,7 @@ async function meDto(deps: RouterDeps, actor: Actor): Promise<Me> {
     timezone: user.timezone ?? null,
     tourSeen: Boolean(user.tourSeenAt),
     hiddenPages: user.hiddenPages ?? [],
+    hideAmounts: user.hideAmounts,
     billingEnabled: Boolean(deps.billing) && !actor.isDeploymentOwner,
   };
 }

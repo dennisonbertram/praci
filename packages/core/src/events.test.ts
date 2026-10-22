@@ -590,7 +590,25 @@ describe("humanizeToolName", () => {
 
   it("splits camelCase ids, with or without an MCP prefix", () => {
     expect(humanizeToolName("mcp__finance-mercury__getAccounts")).toBe("Get accounts");
-    expect(humanizeToolName("requestSendMoney")).toBe("Request send money");
+    expect(humanizeToolName("requestSendMoney")).toBe("Ask to send money");
+  });
+
+  it("gives internal tools plain phrases without catalog, underscores or ids", () => {
+    for (const id of [
+      "task_catalog",
+      "legal_unreviewed_documents",
+      "mcp__finance-mercury__requestSendMoney",
+      "mcp__finance-mercury__requestTransferMoney",
+    ]) {
+      for (const tense of ["activity", "done"] as const) {
+        expect(toolPhrase(id, tense)).not.toMatch(/_|catalog|[a-z][A-Z]|^Request/);
+      }
+    }
+    expect(toolPhrase("task_catalog", "activity")).toBe("Checking open tasks");
+    expect(toolPhrase("legal_unreviewed_documents", "done")).toBe("Checked unreviewed documents");
+    expect(toolPhrase("mcp__finance-mercury__requestSendMoney", "activity")).toBe(
+      "Asking to send money",
+    );
   });
 });
 

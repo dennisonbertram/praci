@@ -134,7 +134,6 @@ import type { SendTarget } from "../components/data-room/SendToAgent";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
 import { AgentAvatar } from "../components/integrations/AgentAvatar";
 import { DevinConnectDialog } from "../components/integrations/DevinConnectDialog";
-import { LegalPanelConsent } from "../components/legal/ConsentPrompt";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
 import { PageNavContext } from "../components/PageHeader";
 import { RowsSkeleton } from "../components/RowsSkeleton";
@@ -149,6 +148,7 @@ import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOv
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
 import { connectCardsOpen } from "../components/tour/connect-cards";
 import { useAgentApp } from "../lib/agent-app";
+import { dismissApprovalToasts } from "../lib/approval-toasts";
 import { artifactDisplayName } from "../lib/artifact-name";
 import type { ArtifactTarget } from "../lib/artifact-open";
 import { authClient } from "../lib/auth";
@@ -185,7 +185,7 @@ import { fetchDataRoomBlob } from "../lib/data-room";
 import { dataRoomAgentSuggestions, findDataRoomAgent } from "../lib/data-room-agent";
 import { desktopBridge } from "../lib/desktop";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
-import { useHideAmounts } from "../lib/hide-amounts-preference";
+import { setHideAmounts, setHideAmountsUser, useHideAmounts } from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
 import { appPath } from "../lib/integrations";
 import { findInvestorsAgent, investorsAgentSuggestions } from "../lib/investors-agent";
@@ -206,8 +206,9 @@ import {
   rightPanelStorageKey,
   writeRightPanelState,
 } from "../lib/right-panel-state";
+import { rosterStatusChanged } from "../lib/roster-status";
 import type { MissingBotSeen } from "../lib/route-bot";
-import { resolveRouteBot } from "../lib/route-bot";
+import { resolveRouteBot, shouldClearMissingBot, useGiveUpOnMissingBot } from "../lib/route-bot";
 import { rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { readSeenRunErrorIds, rememberSeenRunErrorId } from "../lib/run-error-storage";
 import type { DataRoomRef } from "../lib/send-to-agent";
@@ -563,6 +564,9 @@ export function ShellPage() {
   const [collapsedRosterParents, setCollapsedRosterParents] = useState(() => new Set<string>());
 
   useEffect(() => {
+    setHideAmountsUser(userId ?? null);
+  }, [userId]);
+  useEffect(() => {
     setCollapsedSidebarSections(readCollapsedSidebarSections(userId));
     setCollapsedRosterParents(readCollapsedRosterParents(userId));
   }, [userId]);
@@ -848,6 +852,10 @@ export function ShellPage() {
   // Activity is a quick look, not a place: it closes when you go somewhere and a reload starts closed.
   const [activityMode, setActivityMode] = useState(false);
   const toggleActivityMode = useCallback(() => setActivityMode((on) => !on), []);
+  // Activity sits above the chats: show it from its top, not from the row the list had settled on.
+  useEffect(() => {
+    if (activityMode) sidebarScrollRef.current?.scrollTo({ top: 0 });
+  }, [activityMode]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: close on every navigation
   useEffect(() => setActivityMode(false), [pathname]);
   const [botMenu, setBotMenu] = useState<{
@@ -1129,6 +1137,12 @@ export function ShellPage() {
   computerOpenRef.current = computerOpen;
   computerBotIdRef.current = computerBotId ?? active?.id;
   const activeGroup = groups.find((group) => group.id === groupId);
+  // An approval in the chat that is open (a bot, a page agent or a group) is already on screen.
+  const openChatHref =
+    inGroup && groupId ? `/app/g/${groupId}` : active ? `/app/${active.id}` : undefined;
+  useEffect(() => {
+    if (openChatHref) dismissApprovalToasts(openChatHref);
+  }, [openChatHref]);
   const opening = chatIsOpening({
     hasChat: Boolean(active || activeGroup),
     botsLoaded: initialBotsLoaded,
@@ -1256,6 +1270,19 @@ export function ShellPage() {
           navigate("/onboarding", { replace: true });
           return;
         }
+        // A chat given up on while this refresh was slow is real after all.
+        if (
+          listApplied &&
+          shouldClearMissingBot(
+            missingPathRef.current,
+            window.location.pathname,
+            list,
+            routeBotId.current,
+          )
+        ) {
+          missingPathRef.current = null;
+          setMissingPath(null);
+        }
         // An unknown address keeps showing Page not found instead of jumping to a chat.
         if (missingPathRef.current === window.location.pathname) return;
         const currentGroupId = routeGroupId.current;
@@ -1289,6 +1316,7 @@ export function ShellPage() {
     routeBotStart.current = { id: botId, epoch: botsRefreshEpoch.current };
   }, [botId]);
 
+  useGiveUpOnMissingBot(routeBot.waiting, botId, () => markMissing(window.location.pathname));
   // A route bot the list does not know yet (created on another page) gets one refresh before the
   // chat falls back to the first bot; the chat area keeps its loading state meanwhile.
   useEffect(() => {
@@ -1481,6 +1509,8 @@ export function ShellPage() {
         if (cancelled) return;
         const groupList = bootstrap.groups;
         setBootstrapMe(bootstrap.me);
+        // The saved choice belongs to the signed-in user; it replaces the last person's.
+        setHideAmounts(bootstrap.me.hideAmounts ?? false);
         // Agents and new schedules use the user's zone; follow the browser without asking.
         const zone = timezoneToReport(bootstrap.me);
         if (zone) {
@@ -1726,9 +1756,7 @@ export function ShellPage() {
         } else if (
           event.type === "bot.spawned" ||
           event.type === "bot.deleted" ||
-          event.type === "bot.updated" ||
-          event.type === "run.started" ||
-          isRunTerminalEvent(event) ||
+          rosterStatusChanged(event) ||
           event.type === "thread.cleared"
         ) {
           void refreshBots().catch(() => undefined);
@@ -1804,11 +1832,7 @@ export function ShellPage() {
           computerRef,
         ),
       onEvent: (event, _initial) => {
-        if (
-          event.type === "run.started" ||
-          event.type === "bot.updated" ||
-          isRunTerminalEvent(event)
-        ) {
+        if (rosterStatusChanged(event)) {
           void refreshBots().catch(() => undefined);
         }
         if (isRunTerminalEvent(event) || event.type === "run.waiting_input") {
@@ -1849,7 +1873,14 @@ export function ShellPage() {
               },
             ]
           : [];
-    return sidebarGroupsForSpaces(sidebarSpaces, "", bootstrapMe?.spaceId, t`Personal`);
+    // Only a space of one person goes without a heading; a shared space keeps its name and menu.
+    const alone = spaces.length === 1 && spaces[0]?.memberCount === 1;
+    return sidebarGroupsForSpaces(
+      sidebarSpaces,
+      "",
+      bootstrapMe?.spaceId,
+      alone ? null : t`Personal`,
+    );
   }, [bootstrapMe, botSections, listedBots, groups, spaces, t]);
   // What the list shows now, so a drop can be turned into a move.
   const sidebarLayout = useMemo<SidebarLayout>(() => {
@@ -2616,9 +2647,13 @@ export function ShellPage() {
       bots.length > 0 &&
       !firstQuestionOpen &&
       !connectCardsWaiting);
-  // On a phone the tour points into the sidebar drawer, so open it while the tour runs.
+  // On a phone the tour points into the sidebar drawer, so open it while the tour runs. On a
+  // docked sidebar the tour card is as wide as the sidebar, so a collapsed rail is expanded
+  // (for this session only; the saved preference is unchanged).
   useEffect(() => {
-    if (tourOpen && !window.matchMedia("(min-width: 1024px)").matches) setMobileSidebarOpen(true);
+    if (!tourOpen) return;
+    if (window.matchMedia("(min-width: 1024px)").matches) setBotsSidebarCollapsed(false);
+    else setMobileSidebarOpen(true);
   }, [tourOpen]);
   const askChief = chiefId ? () => openBot(chiefId) : undefined;
 
@@ -2700,6 +2735,7 @@ export function ShellPage() {
         ...(username ? { username } : {}),
         ...(mail ? { mail } : {}),
       });
+      dismissApprovalToasts(groupId ? `/app/g/${groupId}` : `/app/${botId}`);
       if (groupId && activeGroupId.current === groupId) {
         await refreshGroupThreadRef.current(groupId);
       } else if (botId && activeBotId.current === botId) {
@@ -3726,10 +3762,11 @@ export function ShellPage() {
   }
 
   const embeddedScreenUrl = embeddableScreenUrl(screenUrl);
-  // A computer that is on but has no screen would show a heading over an empty box.
+  // A computer that is on without a screen, or has never run, would show a heading over an
+  // empty box; the panel is then just the bot's routines.
   const noComputerScreen =
-    computer?.state === "running" &&
-    computer.kind !== "desktop" &&
+    (computer?.state === "running" || computer?.state === "stopped" || !computer) &&
+    computer?.kind !== "desktop" &&
     !embeddedScreenUrl &&
     !computerError &&
     !computerOpen &&
@@ -4007,7 +4044,6 @@ export function ShellPage() {
               <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
             </div>
           ) : null}
-          {legalWaitsForConsent ? <LegalPanelConsent /> : null}
           {active || activeGroup ? (
             <Composer
               key={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
@@ -4352,7 +4388,7 @@ export function ShellPage() {
           <div
             className={`app-drag flex items-center justify-between px-3 lg:px-[22px] ${
               pageMode
-                ? `${TOP_BAR_HEIGHT}${botsSidebarCollapsed ? "" : " lg:hidden"}${headerMenus > 0 ? " max-lg:hidden" : ""}`
+                ? `${TOP_BAR_HEIGHT}${botsSidebarCollapsed && desktopBridge() ? "" : " lg:hidden"}${headerMenus > 0 ? " max-lg:hidden" : ""}`
                 : `border-b border-sidebar-border ${TOP_BAR_HEIGHT}`
             }`}
           >
@@ -4369,7 +4405,7 @@ export function ShellPage() {
               >
                 <Menu size={19} strokeWidth={1.7} />
               </button>
-              {botsSidebarCollapsed ? (
+              {botsSidebarCollapsed && (!pageMode || desktopBridge()) ? (
                 <button
                   type="button"
                   data-testid="restore-bots-sidebar"
@@ -4696,7 +4732,7 @@ export function ShellPage() {
         ) : panel && (active || activeGroup) ? (
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
             {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
-              <div className="mb-4 flex items-center justify-between">
+              <div className="sticky top-0 z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between bg-background px-5 pt-[17px] pb-2">
                 <span className="text-[13.5px] text-muted-foreground">
                   {panel === "settings" ? (
                     active ? (
@@ -5476,6 +5512,11 @@ export function ShellPage() {
             setMobileSidebarOpen(false);
             navigate(`/app/g/${id}`);
           }}
+          // Without a space heading, its menu is gone; the palette still reaches this action.
+          actions={[
+            { label: t`New folder`, run: () => void createFolder() },
+            { label: t`Group chats into folders`, run: () => void autoGroupSidebar() },
+          ]}
           searchLinks={searchPaletteLinks}
           onOpenPath={openSearchResult}
         />
@@ -5672,7 +5713,7 @@ export function ShellPage() {
                 {!recordingSkill && hasControl ? (
                   computer?.takeoverRequested ? (
                     <span className="rounded-full bg-warning/15 px-[11px] py-1 text-[13px] text-warning">
-                      <Trans>Needs you</Trans>
+                      <Trans>Needs takeover</Trans>
                     </span>
                   ) : (
                     <span className="rounded-full bg-success/15 px-[11px] py-1 text-[13px] text-success">

@@ -198,9 +198,12 @@ it("says what to do when no change is ticked, instead of Apply 0 changes", async
   });
   await render();
   expect(boxes().map((b) => b.getAttribute("aria-checked"))).toEqual(["false"]);
-  expect(document.body.textContent).toContain("Tick a change to apply it.");
   expect(button("Apply").textContent).toBe("Apply");
   expect(button("Apply").hasAttribute("disabled")).toBe(true);
+  // A visible Select all next to Apply, instead of a hint to find the checkbox.
+  act(() => button("Select all").click());
+  expect(boxes().map((b) => b.getAttribute("aria-checked"))).toEqual(["true"]);
+  expect(button("Apply").textContent).toBe("Apply 1 change");
 });
 
 it("leaves files already in a folder unticked and groups moves by destination", async () => {

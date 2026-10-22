@@ -324,6 +324,8 @@ export const SpaceSchema = z.object({
   canRename: z.boolean().optional(),
   /** True only when the current member may delete this non-default space. */
   canDelete: z.boolean().optional(),
+  /** Members of the space, so the sidebar can drop the heading of a space that is only the caller's. */
+  memberCount: z.number().int().positive().optional(),
   bots: z.array(SpaceBotSchema),
   groups: z.array(SpaceGroupSchema),
   externalConversations: z.array(ExternalConversationSchema),
@@ -1608,6 +1610,8 @@ export const MeSchema = z.object({
   tourSeen: z.boolean(),
   /** Sidebar page keys this user hid; the pages stay reachable by URL and search. */
   hiddenPages: z.array(z.string()).optional(),
+  /** True when this user chose to mask money figures. */
+  hideAmounts: z.boolean().optional(),
   /** True when this deployment bills and the user is not the deployment owner. */
   billingEnabled: z.boolean(),
 });

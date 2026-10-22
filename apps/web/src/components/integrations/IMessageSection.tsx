@@ -16,7 +16,7 @@ import { useCopyText } from "../../lib/copy-text";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { AppLogo } from "./AppLogo";
-import { CardHead, IntegrationTile, SectionTitle } from "./parts";
+import { CardHead, IntegrationTile, MenuSlot, SectionTitle } from "./parts";
 
 type Provider = MessagingSetupState["providers"][number];
 type FieldSpec = { id: string; label: string; secret?: boolean; optional?: boolean };
@@ -308,12 +308,12 @@ export function IMessageSection({
     {
       id: "photon" as const,
       name: t`iMessage`,
-      sub: t`Chat with your agents over iMessage`,
+      sub: t`Through a Photon project`,
     },
     {
       id: "bluebubbles" as const,
       name: t`iMessage on your Mac`,
-      sub: t`Chat with your agents over iMessage from your Mac`,
+      sub: t`Through BlueBubbles on your Mac`,
     },
   ].filter((tile) => tile.name.toLowerCase().includes(query.trim().toLowerCase()));
   const shown = state?.canConfigure ? tiles.length : 0;
@@ -365,6 +365,7 @@ export function IMessageSection({
                 >
                   {provider.configured ? <Trans>Edit</Trans> : <Trans>Connect</Trans>}
                 </Button>
+                <MenuSlot />
               </div>
             </IntegrationTile>
           );

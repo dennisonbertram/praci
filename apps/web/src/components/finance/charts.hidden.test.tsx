@@ -136,6 +136,41 @@ it("draws one $0 gridline, not '$0, $0, $0', when there is nothing to plot", asy
   if (width) Object.defineProperty(HTMLElement.prototype, "clientWidth", width);
 });
 
+it("keeps every period a keyboard link on touch screens", async () => {
+  vi.stubGlobal("matchMedia", () => ({ matches: true }));
+  const opened: string[] = [];
+  await withWidth(async (el) => {
+    const root = createRoot(el);
+    const day = (d: number) => ({
+      start: `2026-10-0${d}`,
+      end: `2026-10-0${d}`,
+      outCents: 100_000,
+      revenueCents: 0,
+      financingCents: 0,
+      partial: false,
+    });
+    await act(async () =>
+      root.render(
+        <BurnLines
+          label="Burn"
+          granularity="day"
+          series={[day(1), day(2)]}
+          onOpen={(m) => opened.push(m.start)}
+        />,
+      ),
+    );
+    expect(el.querySelector("[data-testid=burn-touch-target]")).not.toBeNull();
+    const links = [...el.querySelectorAll('g[role="link"]')] as SVGGElement[];
+    expect(links).toHaveLength(2);
+    await act(async () =>
+      links[0]?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })),
+    );
+    expect(opened).toEqual(["2026-10-01"]);
+    act(() => root.unmount());
+  });
+  vi.unstubAllGlobals();
+});
+
 const withWidth = async (run: (el: HTMLElement) => Promise<void>) => {
   const width = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
   Object.defineProperty(HTMLElement.prototype, "clientWidth", {

@@ -125,7 +125,7 @@ export function TodoCard({
                 </div>
                 {todo.dueOn && days !== null ? (
                   <span
-                    className={`whitespace-nowrap text-xs ${tone === "crit" ? "text-destructive" : tone === "warn" ? "text-warning" : "text-muted-foreground"}`}
+                    className={`whitespace-nowrap text-xs ${tone === "crit" && days < 0 ? "text-destructive" : tone !== "none" ? "text-warning" : "text-muted-foreground"}`}
                   >
                     {dueLabel(todo.dueOn, days)}
                   </span>

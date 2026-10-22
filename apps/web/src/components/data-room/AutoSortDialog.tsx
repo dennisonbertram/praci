@@ -236,9 +236,14 @@ export function AutoSortDialog({
           {plan && plan.operations.length === 0 ? null : error && !plan ? null : (
             <>
               {plan && chosen.length === 0 ? (
-                <span className="me-auto self-center text-[13px] text-muted-foreground">
-                  <Trans>Tick a change to apply it.</Trans>
-                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="me-auto"
+                  onClick={() => setOff(new Set())}
+                >
+                  <Trans>Select all</Trans>
+                </Button>
               ) : null}
               <Button type="button" disabled={busy || !plan || chosen.length === 0} onClick={apply}>
                 {chosen.length === 0

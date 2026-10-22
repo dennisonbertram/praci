@@ -1,4 +1,4 @@
-import { cartaAgentSpawnKey } from "@rakazo/contracts";
+import { cartaAgentSpawnKey, gtmAgentSpawnKey } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import {
   buildApprovalAskBlock,
@@ -88,6 +88,34 @@ describe("describeApprovalAction money and generic tools", () => {
     );
     expect(write.kind === "ask" && write.detailFolded).toBe(true);
     expect(mail.kind === "ask" && mail.detailFolded).toBeFalsy();
+  });
+});
+
+describe("integration-agent write classification", () => {
+  it("treats GTM Zernio connector writes as mandatory-defense actions", () => {
+    expect(
+      isIntegrationAgentWrite(
+        gtmAgentSpawnKey("user-1"),
+        {
+          connectorId: "mcp",
+          endpoint: "https://mcp.zernio.com/mcp",
+          toolName: "posts_create",
+        },
+        true,
+      ),
+    ).toBe(true);
+
+    expect(
+      isIntegrationAgentWrite(
+        gtmAgentSpawnKey("user-1"),
+        {
+          connectorId: "mcp",
+          endpoint: "https://mcp.zernio.com/mcp",
+          toolName: "posts_list",
+        },
+        true,
+      ),
+    ).toBe(false);
   });
 });
 
@@ -408,13 +436,10 @@ describe("resolveMoneyNames", () => {
 });
 
 describe("buildConsentAskBlock", () => {
-  it("names the model in words, never the raw model id", () => {
-    const block = buildConsentAskBlock("e1", {
-      name: "OpenRouter",
-      detail: "openai/gpt-6-luna, forwarded to its provider",
-    });
+  it("names the recipient like the document consent cards, never a model id", () => {
+    const block = buildConsentAskBlock("e1");
     expect(block).toMatchObject({
-      text: "Share your chats and mail with GPT-6 Luna?",
+      text: "Share your chats and mail with the AI model that runs your bots?",
     });
     expect(JSON.stringify(block)).not.toMatch(/openai\/|forwarded to its provider/);
   });

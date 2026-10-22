@@ -855,7 +855,7 @@ it("names the space on detail pages too, switches company from there, and puts A
   expect(titleRow?.querySelector('button[aria-label="Ask Finance agent"]')).not.toBeNull();
 });
 
-it("names the company on a detail page even with one space, as plain text with no switcher", async () => {
+it("shows no company name on a detail page when there is one space", async () => {
   rpcMock.vendor.mockResolvedValue({
     key: "acme-hosting",
     name: "Acme Hosting",
@@ -880,9 +880,8 @@ it("names the company on a detail page even with one space, as plain text with n
     );
   });
   await flush();
-  expect(container.querySelector('[title="Example Space One"]')?.textContent).toBe(
-    "Example Space One",
-  );
+  // The only company needs no name beside the title (UX loop 9 C10).
+  expect(container.querySelector('[title="Example Space One"]')).toBeNull();
   expect(container.querySelector('button[aria-label^="Company:"]')).toBeNull();
 });
 

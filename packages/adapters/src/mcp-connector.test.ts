@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import type { ConnectorCall, ConnectorEvent } from "@rakazo/adapter-kit";
 import {
   CARTA_MCP_ENDPOINT,
   CARTA_READ_TOOLS,
@@ -6,12 +7,15 @@ import {
   cartaAgentSpawnKey,
   DEVIN_READ_TOOLS,
   DEVIN_WRITE_TOOLS,
+  gtmAgentSpawnKey,
+  ZERNIO_MCP_ENDPOINT,
 } from "@rakazo/contracts";
 import { createLogger, createTestSink, getLogger, installLogger } from "@rakazo/logging";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { isIntegrationAgentWrite } from "./approval-ask.js";
 import { InfisicalSecretStore } from "./infisical-secret-store.js";
-import { allowlistDrift, McpConnector } from "./mcp-connector.js";
+import { DIRECT_TOOL_LIMIT } from "./lazy-tool-catalog.js";
+import { allowlistDrift, assignmentAllowsTool, McpConnector } from "./mcp-connector.js";
 import type { McpOAuthBroker } from "./mcp-oauth.js";
 import { StoredMcpOAuthProvider } from "./mcp-oauth.js";
 import { InMemoryRealtimeFanout } from "./realtime.js";
@@ -2093,6 +2097,296 @@ describe("MCP connector Carta integration-agent policy", () => {
       } finally {
         await connector.close();
       }
+    }
+  });
+});
+
+describe("MCP connector Zernio read-only policy", () => {
+  const reads = [
+    "accounts_list",
+    "accounts_get",
+    "profiles_list",
+    "profiles_get",
+    "posts_list",
+    "posts_get",
+    "posts_list_failed",
+    "media_check_upload_status",
+    "docs_search",
+  ];
+  const denied = [
+    "posts_create",
+    "gtm_post",
+    "posts_publish_now",
+    "call_tool",
+    "search_tools",
+    "generated_posts_create",
+    "posts_create_generated",
+    "accounts_list_generated",
+    "accounts_list_extra",
+    "ACCOUNTS_LIST",
+    "made_up_tool",
+  ];
+  const agent = {
+    id: "bot-gtm",
+    spawnKey: gtmAgentSpawnKey("u1"),
+    spaceId: "w1",
+    userId: "u1",
+    archivedAt: null as Date | null,
+  };
+  const tool = (name: string) => ({
+    name,
+    inputSchema: { type: "object" },
+    annotations: { readOnlyHint: true },
+  });
+
+  function setup({ lazy = false } = {}) {
+    const assignment = {
+      ...ASSIGNMENT,
+      allowedTools: [] as string[],
+      botId: agent.id,
+      bot: { ...agent },
+      server: {
+        ...SERVER,
+        slug: "zernio",
+        name: "Zernio",
+        endpoint: ZERNIO_MCP_ENDPOINT,
+        spaceId: "w1",
+        userId: "u1",
+        agentBotId: agent.id as string | null,
+        agentBot: { ...agent } as typeof agent | null,
+        agentExclusive: true,
+        writesEnabled: true,
+      },
+    };
+    const state = {
+      failNext: false,
+      initializations: 0,
+      calls: [] as string[],
+      tools: [...reads, ...denied].map(tool),
+    };
+    const extraState = {
+      failNext: false,
+      initializations: 0,
+      calls: [] as string[],
+      tools: Array.from({ length: DIRECT_TOOL_LIMIT + 1 }, (_, i) => tool(`read_${i}`)),
+    };
+    const zernioFetch = mcpFetch(state, ZERNIO_MCP_ENDPOINT);
+    const extraFetch = mcpFetch(extraState);
+    vi.stubGlobal("fetch", (input: string | URL | Request, init?: RequestInit) =>
+      logicalHref(input, init) === ZERNIO_MCP_ENDPOINT
+        ? zernioFetch(input, init)
+        : extraFetch(input, init),
+    );
+    const extra = {
+      ...ASSIGNMENT,
+      botId: agent.id,
+      serverId: "extra-server",
+      server: { ...SERVER, id: "extra-server", slug: "extra" },
+    };
+    const findFirst = vi.fn(async () => assignment);
+    const connector = new McpConnector(
+      {
+        botMcpServer: {
+          findMany: vi.fn(async () => (lazy ? [assignment, extra] : [assignment])),
+          findFirst,
+        },
+      } as never,
+      {} as never,
+      { network: TEST_NETWORK },
+    );
+    const context = {
+      operationId: "test",
+      traceId: "test",
+      spaceId: "w1",
+      userId: "u1",
+      botId: agent.id,
+      signal: new AbortController().signal,
+    };
+    const execute = async (call: ConnectorCall) => {
+      const events: ConnectorEvent[] = [];
+      for await (const event of connector.execute(call, context)) events.push(event);
+      return events;
+    };
+    const call = (name: string) =>
+      execute({
+        tool: `mcp__zernio__${name}`,
+        args: {},
+        executionId: name,
+        route: {
+          connectorId: "mcp",
+          resourceId: SERVER.id,
+          toolName: name,
+          endpoint: ZERNIO_MCP_ENDPOINT,
+          discoveredReadOnly: true,
+        },
+      });
+    return { assignment, connector, context, state, extraState, execute, call, findFirst };
+  }
+
+  it("no Zernio tool outside the allowlist passes, even with allowAllTools", async () => {
+    const { assignment, connector, context, state, call } = setup();
+    try {
+      for (const name of [...reads, ...denied]) {
+        for (const annotations of [undefined, { readOnlyHint: true }, { readOnlyHint: false }]) {
+          expect(assignmentAllowsTool(assignment, name, annotations), name).toBe(
+            reads.includes(name),
+          );
+        }
+      }
+      const discovered = await connector.discoverTools(context);
+      expect(discovered.map((entry) => entry.route?.toolName)).toEqual(reads);
+      expect(discovered.every((entry) => entry.readOnly === true)).toBe(true);
+      for (const name of denied) expect(await call(name), name).toMatchObject([{ type: "error" }]);
+      expect(state.calls).toEqual([]);
+      for (const name of reads) expect(await call(name), name).toMatchObject([{ type: "result" }]);
+      expect(state.calls).toEqual(reads);
+    } finally {
+      await connector.close();
+    }
+  });
+
+  it("does not let an explicit stored allowlist or writes switch admit remote writes", async () => {
+    const { assignment, connector, context, state, call } = setup();
+    try {
+      assignment.allowAllTools = false;
+      assignment.allowedTools = [...reads, ...denied];
+      for (const writesEnabled of [false, true]) {
+        assignment.server.writesEnabled = writesEnabled;
+        expect(
+          (await connector.discoverTools(context)).map((entry) => entry.route?.toolName),
+        ).toEqual(reads);
+        for (const name of denied)
+          expect(await call(name), name).toMatchObject([{ type: "error" }]);
+      }
+      expect(state.calls).toEqual([]);
+    } finally {
+      await connector.close();
+    }
+  });
+
+  it.each([
+    "different bot",
+    "wrong owner",
+    "wrong space",
+    "wrong spawn key",
+    "archived bot",
+    "missing link",
+    "missing linked bot",
+    "invalid linked owner",
+    "invalid linked space",
+    "invalid linked key",
+    "archived linked bot",
+    "mismatched linked id",
+  ])("denies discovery and calls with a %s", async (invalid) => {
+    const { assignment, connector, context, state, call } = setup();
+    switch (invalid) {
+      case "different bot":
+        assignment.botId = assignment.bot.id = context.botId = "other-bot";
+        break;
+      case "wrong owner":
+        assignment.bot.userId = "u2";
+        break;
+      case "wrong space":
+        assignment.bot.spaceId = "w2";
+        break;
+      case "wrong spawn key":
+        assignment.bot.spawnKey = "integration-agent:server-1";
+        break;
+      case "archived bot":
+        assignment.bot.archivedAt = new Date("2026-01-01T00:00:00Z");
+        break;
+      case "missing link":
+        assignment.server.agentBotId = null;
+        break;
+      case "missing linked bot":
+        assignment.server.agentBot = null;
+        break;
+      case "invalid linked owner":
+        assignment.server.agentBot!.userId = "u2";
+        break;
+      case "invalid linked space":
+        assignment.server.agentBot!.spaceId = "w2";
+        break;
+      case "invalid linked key":
+        assignment.server.agentBot!.spawnKey = "integration-agent:server-1";
+        break;
+      case "archived linked bot":
+        assignment.server.agentBot!.archivedAt = new Date("2026-01-01T00:00:00Z");
+        break;
+      case "mismatched linked id":
+        assignment.server.agentBot!.id = "other-bot";
+        break;
+    }
+    try {
+      expect(await connector.discoverTools(context)).toEqual([]);
+      for (const name of [...reads, ...denied]) {
+        expect(assignmentAllowsTool(assignment, name, { readOnlyHint: true }), name).toBe(false);
+        expect(await call(name), name).toMatchObject([{ type: "error" }]);
+      }
+      expect(state.calls).toEqual([]);
+    } finally {
+      await connector.close();
+    }
+  });
+
+  it("rechecks the linked agent at call time after successful discovery", async () => {
+    const { assignment, connector, context, state, call, findFirst } = setup();
+    try {
+      expect(
+        (await connector.discoverTools(context)).map((entry) => entry.route?.toolName),
+      ).toEqual(reads);
+      findFirst.mockResolvedValueOnce(assignment).mockResolvedValue({
+        ...assignment,
+        server: { ...assignment.server, agentBot: null },
+      });
+      expect(await call("accounts_list")).toMatchObject([{ type: "error" }]);
+      expect(findFirst).toHaveBeenCalledTimes(2);
+      expect(state.calls).toEqual([]);
+    } finally {
+      await connector.close();
+    }
+  });
+
+  it("keeps lazy catalog search, load, resolve and execute inside the same allowlist", async () => {
+    const { assignment, connector, context, state, extraState, execute } = setup({ lazy: true });
+    const catalogCall = (operation: string, args: Record<string, unknown>): ConnectorCall => ({
+      tool: `catalog_mcp_${operation}_tool`,
+      args,
+      executionId: operation,
+      route: { connectorId: "mcp", toolName: `__catalog_${operation}` },
+    });
+    try {
+      const wrappers = await connector.discoverTools(context);
+      expect(wrappers.map((entry) => entry.route?.toolName)).toEqual([
+        "__catalog_search",
+        "__catalog_load",
+        "__catalog_execute",
+      ]);
+      expect(await execute(catalogCall("search", { query: "posts_create" }))).toEqual([
+        { type: "result", data: { tools: [] } },
+      ]);
+      for (const name of denied) {
+        for (const id of [name, `mcp__zernio__${name}`, `${SERVER.id}:${name}`]) {
+          expect(await execute(catalogCall("load", { id }))).toMatchObject([{ type: "error" }]);
+          const call = catalogCall("execute", { id, arguments: {} });
+          await expect(connector.resolveCall(call, context)).rejects.toThrow("not authorized");
+          expect(await execute(call)).toMatchObject([{ type: "error" }]);
+        }
+      }
+      expect(state.calls).toEqual([]);
+      const call = catalogCall("execute", { id: `${SERVER.id}:accounts_list`, arguments: {} });
+      const resolved = await connector.resolveCall(call, context);
+      expect(resolved?.tool.route?.toolName).toBe("accounts_list");
+      expect(await execute(call)).toMatchObject([{ type: "result" }]);
+      expect(state.calls).toEqual(["accounts_list"]);
+      assignment.botId = assignment.bot.id = context.botId = "other-bot";
+      await expect(connector.resolveCall(call, context)).rejects.toThrow("not authorized");
+      expect(await execute(call)).toMatchObject([{ type: "error" }]);
+      expect(await execute(resolved!.call)).toMatchObject([{ type: "error" }]);
+      expect(state.calls).toEqual(["accounts_list"]);
+      expect(extraState.calls).toEqual([]);
+    } finally {
+      await connector.close();
     }
   });
 });

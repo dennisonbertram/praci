@@ -28,6 +28,15 @@ export function CleanupSenderRow({
   const { t } = useLingui();
   const pileNames = { important: t`Important`, updates: t`Updates`, newsletters: t`Newsletters` };
   const readPercent = Math.round((sender.readCount / Math.max(sender.messageCount, 1)) * 100);
+  // Why a sender is listed: the two cases the numbers settle. A decided sender shows its decision instead.
+  const reason =
+    sender.skipInbox || sender.learnedPile || sender.spamLike
+      ? null
+      : sender.preselected
+        ? t`Rarely read, and you never wrote to them`
+        : readPercent >= 50
+          ? t`You read most of these`
+          : null;
   return (
     // biome-ignore lint/a11y/noLabelWithoutControl: the Checkbox component renders the input inside this label
     <label
@@ -49,9 +58,10 @@ export function CleanupSenderRow({
             {sender.address}
           </span>
         </div>
-        {accountLabel || sender.spamLike || sender.skipInbox || sender.learnedPile ? (
+        {accountLabel || reason || sender.spamLike || sender.skipInbox || sender.learnedPile ? (
           <div className="flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
             {accountLabel ? <span dir="auto">{accountLabel}</span> : null}
+            {reason ? <span>{reason}</span> : null}
             {sender.spamLike ? (
               <span className="text-warning">
                 <Trans>Looks like spam</Trans>

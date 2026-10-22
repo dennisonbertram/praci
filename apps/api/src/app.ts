@@ -536,6 +536,7 @@ export async function createApp(
     notificationEvents,
     contextStrategy,
     prisma,
+    mcpOAuth,
     runtime,
     codexCatalog,
     sandbox,

@@ -8,7 +8,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 export const MAX_VISIBLE_NOTIFICATION_TOASTS = 3;
-/** Phones have no room for a stack: one toast, docked at the top so it never covers the composer, an approval card or the drawer. */
+/** Phones have no room for a stack: one toast, docked above the composer so it never covers the page header or its buttons. */
 export const MAX_VISIBLE_NOTIFICATION_TOASTS_PHONE = 1;
 
 const PHONE_QUERY = "(max-width: 639px)";
@@ -32,6 +32,8 @@ export type NotificationToastData = {
 };
 
 export type NotificationToastInput = NotificationToastData & {
+  /** Runs when the toast closes for any reason, including `close(id)`. */
+  onClose?: () => void;
   id: string;
   title: string;
   body?: string;
@@ -50,6 +52,7 @@ export function enqueueNotificationToast({
   title,
   body,
   timeout,
+  onClose,
   ...data
 }: NotificationToastInput) {
   return notificationToastManager.add({
@@ -57,6 +60,7 @@ export function enqueueNotificationToast({
     title,
     description: body,
     timeout,
+    onClose,
     priority: "high",
     data,
   });
@@ -291,9 +295,10 @@ export function NotificationToaster({
         <Toast.Viewport
           role="status"
           aria-live="polite"
-          // Top-right under the page header, clear of the agent panel's composer, and above dialogs and
-          // their scrim (z-50) so a notice's button stays clickable. On phones: centred at the top.
-          className="group/viewport pointer-events-none fixed top-16 right-[max(1rem,env(safe-area-inset-right))] z-[110] w-[min(28rem,calc(100vw-2rem))] max-sm:top-[max(1rem,env(safe-area-inset-top))] max-sm:right-auto max-sm:left-1/2 max-sm:-translate-x-1/2"
+          // Bottom-right, below the page header and its buttons and above the agent composer, and above
+          // dialogs and their scrim (z-50) so a notice's button stays clickable. On phones: centred,
+          // above the composer.
+          className="group/viewport pointer-events-none fixed right-[max(1rem,env(safe-area-inset-right))] bottom-24 z-[110] w-[min(28rem,calc(100vw-2rem))] max-sm:right-auto max-sm:bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] max-sm:left-1/2 max-sm:-translate-x-1/2"
         >
           <ToastList onOpen={onOpen} dismissLabel={dismissLabel} formatTime={formatTime} />
         </Toast.Viewport>

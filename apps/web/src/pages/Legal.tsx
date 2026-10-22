@@ -13,7 +13,7 @@ import {
   SpaceName,
   useFinanceQuery,
 } from "../components/finance/ui";
-import { LEGAL_CONSENT_GRANTED, LegalConsentPrompt } from "../components/legal/ConsentPrompt";
+import { LegalConsentPrompt } from "../components/legal/ConsentPrompt";
 import { LegalGraphView } from "../components/legal/LegalGraph";
 import { PageHeader } from "../components/PageHeader";
 import { DATA_ROOM_PATH } from "../lib/data-room";
@@ -71,12 +71,14 @@ export function LegalPage({
       value={{ onAskAgent, agentName: "Legal agent", spaces, spaceId, onSwitchSpace }}
     >
       <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
-        <Legal
-          onOpenSettings={onOpenSettings}
-          settingsOpen={settingsOpen}
-          onAskAbout={onAskAbout}
-          onConsentChange={onConsentChange}
-        />
+        <div className="mx-auto max-w-[1440px]">
+          <Legal
+            onOpenSettings={onOpenSettings}
+            settingsOpen={settingsOpen}
+            onAskAbout={onAskAbout}
+            onConsentChange={onConsentChange}
+          />
+        </div>
       </div>
     </FinanceChromeProvider>
   );
@@ -180,17 +182,6 @@ function Legal({
     }
   };
 
-  // Allow in the agent panel: re-read, then scan like the page's own card does.
-  const scanRef = useRef(scan);
-  scanRef.current = scan;
-  useEffect(() => {
-    const granted = () => {
-      reload.current.consent();
-      void scanRef.current();
-    };
-    window.addEventListener(LEGAL_CONSENT_GRANTED, granted);
-    return () => window.removeEventListener(LEGAL_CONSENT_GRANTED, granted);
-  }, []);
   // A failed first load has nothing to show; a failed re-read keeps the page and says so.
   if (overview.error && !data) {
     return (
@@ -236,7 +227,7 @@ function Legal({
                 ) : (
                   <Trans>Last scan {lastScan}. Daily scan paused.</Trans>
                 )
-              ) : data.agent.dailyScanActive ? (
+              ) : running ? null : data.agent.dailyScanActive ? (
                 <Trans>Not scanned yet</Trans>
               ) : (
                 <Trans>Not scanned yet. Daily scan paused.</Trans>
@@ -314,7 +305,7 @@ function Legal({
         <p className="-mt-2 mb-4 text-sm text-muted-foreground">
           <Link
             to={`${DATA_ROOM_PATH}?legal=unchecked`}
-            className="rk-tap inline-flex min-h-6 items-center text-sm hover:text-foreground hover:underline underline-offset-2"
+            className="rk-tap inline-flex min-h-6 items-center text-sm text-foreground hover:underline underline-offset-2"
           >
             {plural(counts.unreviewedDocuments, {
               one: "# Data room document not yet checked by Legal",
@@ -323,25 +314,23 @@ function Legal({
           </Link>
         </p>
       ) : null}
-      {data.contracts.length === 0 && data.deadlines.length === 0 ? (
+      {/* Before Allow the empty tabs below show what Legal will fill in; the card above is the instruction. */}
+      {!needsConsent && data.contracts.length === 0 && data.deadlines.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-10 text-center">
-          {/* While consent is missing the card above is the only instruction. */}
-          {needsConsent ? null : (
-            <p className="max-w-sm text-sm text-muted-foreground">
-              {running ? (
-                <Trans>Reading your Data room…</Trans>
-              ) : data.agent.lastScanAt ? (
-                <Trans>No contracts or deadlines found on {fullDay(data.agent.lastScanAt)}.</Trans>
-              ) : data.agent.dailyScanActive ? (
-                <Trans>
-                  Press Scan now to read your Data room for contracts and deadlines. Legal also
-                  scans every day.
-                </Trans>
-              ) : (
-                <Trans>Press Scan now to read your Data room for contracts and deadlines.</Trans>
-              )}
-            </p>
-          )}
+          <p className="max-w-sm text-sm text-muted-foreground">
+            {running ? (
+              <Trans>Reading your Data room…</Trans>
+            ) : data.agent.lastScanAt ? (
+              <Trans>No contracts or deadlines found on {fullDay(data.agent.lastScanAt)}.</Trans>
+            ) : data.agent.dailyScanActive ? (
+              <Trans>
+                Press Scan now to read your Data room for contracts and deadlines. Legal also scans
+                every day.
+              </Trans>
+            ) : (
+              <Trans>Press Scan now to read your Data room for contracts and deadlines.</Trans>
+            )}
+          </p>
         </div>
       ) : (
         <>
