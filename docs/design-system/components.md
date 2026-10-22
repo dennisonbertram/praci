@@ -4,7 +4,7 @@
 Rendered React components and native SwiftUI views, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 272 of 272
-- Web and shared components: 723
+- Web and shared components: 724
 - Mobile components: 138 in 95 files, mobile — native story pending
 - SwiftUI views: 3 in 2 files, native story pending
 
@@ -226,7 +226,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | EmailAgentPanel | [apps/web/src/components/inbox/EmailAgentPanel.tsx](../../apps/web/src/components/inbox/EmailAgentPanel.tsx) | [EmailAgentPanel.stories.tsx](../../apps/web/src/components/inbox/EmailAgentPanel.stories.tsx) | web |
 | InboxCleanup, OpenLink | [apps/web/src/components/inbox/InboxCleanup.tsx](../../apps/web/src/components/inbox/InboxCleanup.tsx) | [InboxCleanup.stories.tsx](../../apps/web/src/components/inbox/InboxCleanup.stories.tsx) | web |
 | InboxDigest | [apps/web/src/components/inbox/InboxDigest.tsx](../../apps/web/src/components/inbox/InboxDigest.tsx) | [InboxDigest.stories.tsx](../../apps/web/src/components/inbox/InboxDigest.stories.tsx) | web |
-| InboxMessageDialog, InboxMessage, SentMark, ThreadMessages, ThreadMessage | [apps/web/src/components/inbox/InboxMessageDialog.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.tsx) | [InboxMessageDialog.stories.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.stories.tsx) | web |
+| Addresses, InboxMessageDialog, InboxMessage, SentMark, ThreadMessages, ThreadMessage | [apps/web/src/components/inbox/InboxMessageDialog.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.tsx) | [InboxMessageDialog.stories.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.stories.tsx) | web |
 | InboxPileTabs | [apps/web/src/components/inbox/InboxPileTabs.tsx](../../apps/web/src/components/inbox/InboxPileTabs.tsx) | [InboxPileTabs.stories.tsx](../../apps/web/src/components/inbox/InboxPileTabs.stories.tsx) | web |
 | Marked, InboxGroup, InboxRow | [apps/web/src/components/inbox/InboxRow.tsx](../../apps/web/src/components/inbox/InboxRow.tsx) | [InboxRow.stories.tsx](../../apps/web/src/components/inbox/InboxRow.stories.tsx) | web |
 | InboxSenderGroup | [apps/web/src/components/inbox/InboxSenderGroup.tsx](../../apps/web/src/components/inbox/InboxSenderGroup.tsx) | [InboxSenderGroup.stories.tsx](../../apps/web/src/components/inbox/InboxSenderGroup.stories.tsx) | web |
