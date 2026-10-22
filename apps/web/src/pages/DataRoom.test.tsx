@@ -647,10 +647,10 @@ it("keeps the Type, Party and Date filters while no item has them, and keeps the
   expect(labels()).toContain("Filter by Document date");
   // One source filters nothing, and a source with no files would only lead to "No results".
   expect(labels()).not.toContain("Filter by Source");
-  // The header is the same whether or not a file has a status.
+  // The Status column shows only while a file has a status.
   const head = () => container.querySelector('[data-testid="data-room-head"]')?.textContent;
   const bareHead = head();
-  expect(bareHead).toBe("NameTypeAddedPartiesStatus");
+  expect(bareHead).toBe("NameTypeAddedParties");
 
   rpcMock.list.mockResolvedValue({
     items: [item("a.txt"), { ...bare("m.txt"), source: "gmail" }],
@@ -842,7 +842,7 @@ it("lists an open folder's sub-folders above its files, and opens one on click",
   ).toBe(true);
 });
 
-it("shows the next item after deleting the previewed one, so the preview stays open", async () => {
+it("closes the preview after deleting the previewed item", async () => {
   rpcMock.list.mockResolvedValue({
     items: [item("a.txt"), item("b.txt"), item("c.txt")],
     nextCursor: null,
@@ -872,7 +872,7 @@ it("shows the next item after deleting the previewed one, so the preview stays o
   await act(async () => confirm?.click());
   await settle();
   expect(rpcMock.itemDelete).toHaveBeenCalledWith({ id: "id-a.txt" });
-  expect(heading()?.textContent).toBe("b.txt");
+  expect(heading()).toBeNull();
 });
 
 const typeSearch = async (value: string) => {

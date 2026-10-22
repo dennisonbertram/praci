@@ -2412,6 +2412,10 @@ msgstr "Choose a Google Sheet"
 msgid "Choose a new password"
 msgstr "Choose a new password"
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Choose a tool"
+msgstr "Choose a tool"
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Choose file"
 msgstr "Choose file"
@@ -4149,7 +4153,6 @@ msgstr "Default ({0})"
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
-#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/components/integrations/StoredMeetingsList.tsx
@@ -6288,6 +6291,7 @@ msgstr "Mail from {0} is now marked important"
 msgid "Make sure nothing is still running on this computer."
 msgstr "Make sure nothing is still running on this computer."
 
+#: src/components/integrations/parts.tsx
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Manage"
 msgstr "Manage"
@@ -6714,10 +6718,17 @@ msgstr "Monthly spend · {0} – {1}"
 msgid "More"
 msgstr "More"
 
+#. placeholder {0}: app.name
 #. placeholder {0}: exchange.name
+#. placeholder {0}: server.name
 #: src/components/integrations/FinanceSection.tsx
+#: src/components/integrations/IntegrationsHome.tsx
 msgid "More {0} actions"
 msgstr "More {0} actions"
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "More {name} actions"
+msgstr "More {name} actions"
 
 #. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name
@@ -6743,6 +6754,10 @@ msgstr "More computer actions"
 #: src/pages/ActivityList.tsx
 msgid "More filters"
 msgstr "More filters"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "More Granola actions"
+msgstr "More Granola actions"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "More settings"
@@ -8741,7 +8756,6 @@ msgstr "Remove"
 #: src/components/compose/RecipientField.tsx
 #: src/components/ComposeEmail.tsx
 #: src/components/integrations/AppDetail.tsx
-#: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
 #: src/pages/shell/composer.tsx
 msgid "Remove {0}"
@@ -11118,10 +11132,6 @@ msgstr "Try the test again."
 msgid "Turn off"
 msgstr "Turn off"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Turn off a tool"
-msgstr "Turn off a tool"
-
 #: src/components/MailApprovalCard.tsx
 msgid "Turn off drafts for {botName}?"
 msgstr "Turn off drafts for {botName}?"
@@ -11255,10 +11265,6 @@ msgstr "Unpin"
 #: src/pages/Inbox.tsx
 msgid "Unread"
 msgstr "Unread"
-
-#: src/components/data-room/ItemRows.tsx
-msgid "Unreadable"
-msgstr "Unreadable"
 
 #: src/components/data-room/ItemDialogs.tsx
 msgid "Unshare"
