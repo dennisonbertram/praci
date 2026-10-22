@@ -91,41 +91,52 @@ export async function listSafes(prisma: Pick<PrismaClient, "safe">, actor: Scope
  */
 export async function saveSafe(db: Db, actor: Scope, input: SafeSaveInput): Promise<Safe> {
   const scope = ownerOf(actor);
-  if (input.contactId) {
-    const contact = await db.contact.findFirst({
-      where: { id: input.contactId, ...scope },
-      select: { id: true },
+  return db.$transaction(async (tx) => {
+    if (input.contactId) {
+      const contact = await lockContact(tx, scope, input.contactId);
+      if (!contact) throw new IsolationError("Contact not found");
+      const existing = await listSafesOf(tx, scope, input.contactId);
+      if (existing.some((safe) => isActiveSafe(safe.status))) throw new SafeActiveError();
+    }
+    const round = await tx.fundraiseRound.findFirst({
+      where: { ...scope, closedAt: null },
+      select: { id: true, capCents: true },
     });
-    if (!contact) throw new IsolationError("Contact not found");
-    const existing = await listSafesOf(db, scope, contact.id);
-    if (existing.some((safe) => isActiveSafe(safe.status))) throw new SafeActiveError();
-  }
-  const round = await db.fundraiseRound.findFirst({
-    where: { ...scope, closedAt: null },
-    select: { id: true, capCents: true },
+    const capCents = input.capCents ?? cents(round?.capCents ?? null);
+    if (!capCents) throw new SafeCapRequiredError();
+    const row = await tx.safe.create({
+      data: {
+        ...scope,
+        source: "native",
+        contactId: input.contactId ?? null,
+        roundId: round?.id ?? null,
+        investorName: input.investorName,
+        investorEmail: input.investorEmail ?? null,
+        amountCents: input.amountCents,
+        capCents,
+        proRata: input.proRata,
+        governingState: input.governingState || null,
+        investmentDate: input.investmentDate ? new Date(input.investmentDate) : null,
+      },
+    });
+    return toSafe(row);
   });
-  const capCents = input.capCents ?? cents(round?.capCents ?? null);
-  if (!capCents) throw new SafeCapRequiredError();
-  const row = await db.safe.create({
-    data: {
-      ...scope,
-      source: "native",
-      contactId: input.contactId ?? null,
-      roundId: round?.id ?? null,
-      investorName: input.investorName,
-      investorEmail: input.investorEmail ?? null,
-      amountCents: input.amountCents,
-      capCents,
-      proRata: input.proRata,
-      governingState: input.governingState || null,
-      investmentDate: input.investmentDate ? new Date(input.investmentDate) : null,
-    },
-  });
-  return toSafe(row);
 }
 
-const listSafesOf = async (db: Pick<PrismaClient, "safe">, scope: Scope, contactId: string) =>
-  (await db.safe.findMany({ where: { ...scope, contactId } })).map((row) => toSafe(row));
+/** Row lock on the user's contact, so overlapping requests for one investor run one at a time. */
+async function lockContact(tx: Prisma.TransactionClient, scope: Scope, id: string) {
+  const rows = await tx.$queryRaw<{ id: string }[]>`
+    SELECT id FROM contacts
+    WHERE id = ${id} AND "spaceId" = ${scope.spaceId} AND "userId" = ${scope.userId}
+    FOR UPDATE`;
+  return rows[0] ?? null;
+}
+
+const listSafesOf = async (
+  db: Pick<Prisma.TransactionClient, "safe">,
+  scope: Scope,
+  contactId: string,
+) => (await db.safe.findMany({ where: { ...scope, contactId } })).map((row) => toSafe(row));
 
 const MARK_FIELDS = {
   sent: (at: Date | null) => ({ sentAt: at }),
@@ -148,21 +159,35 @@ export async function markSafe(db: Db, actor: Scope, input: SafeMarkInput): Prom
   const at = input.at ? new Date(input.at) : null;
   if (input.action === "cancel" && at && row.paidAt)
     throw new SafeStateError("A funded SAFE cannot be canceled.");
-  // Undoing a cancel must not leave the contact with two active SAFEs.
-  if (input.action === "cancel" && !at && row.contactId) {
-    const others = (await listSafesOf(db, scope, row.contactId)).filter((s) => s.id !== row.id);
-    if (others.some((safe) => isActiveSafe(safe.status))) throw new SafeActiveError();
-  }
+  if (input.action === "funded" && at && row.canceledAt)
+    throw new SafeStateError("A canceled SAFE cannot be funded.");
   const flips = Boolean(
     at && row.contactId && (input.action === "signed" || input.action === "funded"),
   );
   await db.$transaction(async (tx) => {
-    // A cancel applies only while unpaid, so it cannot race a funding request.
+    // Undoing a cancel must not leave the contact with two active SAFEs.
+    if (input.action === "cancel" && !at && row.contactId) {
+      await lockContact(tx, scope, row.contactId);
+      const others = (await listSafesOf(tx, scope, row.contactId)).filter((s) => s.id !== row.id);
+      if (others.some((safe) => isActiveSafe(safe.status))) throw new SafeActiveError();
+    }
+    // Cancel applies only while unpaid and funding only while not canceled, so neither races the other.
+    const guard =
+      input.action === "cancel" && at
+        ? { paidAt: null }
+        : input.action === "funded" && at
+          ? { canceledAt: null }
+          : {};
     const { count } = await tx.safe.updateMany({
-      where: { id: row.id, ...scope, ...(input.action === "cancel" && at ? { paidAt: null } : {}) },
+      where: { id: row.id, ...scope, ...guard },
       data: MARK_FIELDS[input.action](at),
     });
-    if (count === 0) throw new SafeStateError("A funded SAFE cannot be canceled.");
+    if (count === 0)
+      throw new SafeStateError(
+        input.action === "funded"
+          ? "A canceled SAFE cannot be funded."
+          : "A funded SAFE cannot be canceled.",
+      );
     if (flips)
       await tx.contact.updateMany({
         where: { id: row.contactId as string, ...scope, kind: "prospect" },

@@ -76,4 +76,8 @@ describe("at-cap math", () => {
     const other = { ...base, amountCents: 2_500_000 };
     expect(atCapSum([base, other, { ...base, capCents: null }])).toBe(7.5);
   });
+  it("rounds only the total, so many small SAFEs are not summed as zero", () => {
+    const small = { ...base, amountCents: 4_000_000, capCents: 10_000_000_000 };
+    expect(atCapSum(Array.from({ length: 10 }, () => small))).toBe(0.4);
+  });
 });

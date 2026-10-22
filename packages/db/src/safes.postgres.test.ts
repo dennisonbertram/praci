@@ -183,6 +183,20 @@ describePostgres("safes (PostgreSQL)", () => {
     expect(await inPipeline()).toBe(true);
   });
 
+  it("refuses to fund a canceled SAFE, and lets two overlapping saves create only one", async () => {
+    const e = await person("stale-fund@example.test");
+    const first = await draft(e.id);
+    await markSafe(prisma, mine, { id: first.id, action: "signed", at });
+    await markSafe(prisma, mine, { id: first.id, action: "cancel", at });
+    await expect(
+      markSafe(prisma, mine, { id: first.id, action: "funded", at }),
+    ).rejects.toBeInstanceOf(SafeStateError);
+    expect((await listSafes(prisma, mine)).find((s) => s.id === first.id)?.paidAt).toBeNull();
+    const f = await person("overlap@example.test");
+    const results = await Promise.allSettled([draft(f.id), draft(f.id), draft(f.id)]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+  });
+
   it("keeps a closed round's SAFEs and counts them as that round's funded money", async () => {
     const e = await person("e@example.test");
     const safe = await draft(e.id, { amountCents: 2_000_000 });

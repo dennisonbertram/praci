@@ -46,13 +46,16 @@ export function needsAttention(safe: SafeFacts, now = new Date()): "deposit" | "
   return null;
 }
 
+const atCapRatio = (safe: Pick<SafeFacts, "amountCents" | "capCents">) =>
+  safe.capCents ? safe.amountCents / safe.capCents : null;
+
 /** Post-money ownership if converted at the cap: amount over cap, one decimal. Null without a cap. */
 export function atCapPercent(safe: Pick<SafeFacts, "amountCents" | "capCents">): number | null {
-  return safe.capCents ? Math.round((safe.amountCents / safe.capCents) * 1000) / 10 : null;
+  const ratio = atCapRatio(safe);
+  return ratio == null ? null : Math.round(ratio * 1000) / 10;
 }
 
-/** Combined at-cap dilution: the sum of the SAFEs' percentages; a SAFE without a cap adds nothing. */
+/** Combined at-cap dilution: the SAFEs' ratios summed, then rounded once; a SAFE without a cap adds nothing. */
 export function atCapSum(safes: readonly Pick<SafeFacts, "amountCents" | "capCents">[]): number {
-  const tenths = safes.reduce((sum, safe) => sum + Math.round((atCapPercent(safe) ?? 0) * 10), 0);
-  return tenths / 10;
+  return Math.round(safes.reduce((sum, safe) => sum + (atCapRatio(safe) ?? 0), 0) * 1000) / 10;
 }
