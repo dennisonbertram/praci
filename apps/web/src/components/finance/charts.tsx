@@ -719,9 +719,15 @@ export function BurnLines({
               />
             ) : null}
             {series.map((m, i) => {
-              if (m.financingCents <= scale.top) return null;
+              const off = m.financingCents > scale.top;
+              // A quarter or year has few marks, so a bare ring beside the legend is named in place.
+              const named =
+                !off &&
+                m.financingCents > 0 &&
+                (granularity === "quarter" || granularity === "year");
+              if (!off && !named) return null;
               const when = granularity === "day" ? dayMonth(m.start) : (names[i] ?? "");
-              const text = `${t`Financing, ${when}`} ↑ ${money(m.financingCents)}`;
+              const text = `${t`Financing, ${when}`} ${off ? "↑ " : ""}${money(m.financingCents)}`;
               // About 6.5 px a character at 12 px; a centred label that would pass either edge hugs it.
               const half = (text.length * 6.5) / 2;
               const anchor =
@@ -731,7 +737,7 @@ export function BurnLines({
                   key={m.start}
                   data-testid="financing-clipped"
                   x={anchor === "end" ? width - 8 : anchor === "start" ? 8 : cx(i)}
-                  y={top - 12}
+                  y={off ? top - 12 : y(m.financingCents) - 10}
                   textAnchor={anchor}
                   className="fill-foreground"
                   fontSize={12}

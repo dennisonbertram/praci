@@ -541,7 +541,7 @@ export function Section({
   return (
     <Card id={id} size="sm" className={cn("scroll-mt-3 px-3.5", className)}>
       {title || action ? (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="flex min-h-6 flex-wrap items-center gap-x-3 gap-y-2">
           {title ? (
             <h2 className="whitespace-nowrap text-xs font-semibold text-muted-foreground">
               {title}

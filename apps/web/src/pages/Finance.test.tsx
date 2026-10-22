@@ -465,7 +465,7 @@ it("hides Cash and Runway when only Brex is connected, and still shows spend", a
   expect(container.querySelector('a[href="/app/finance/runway"]')).toBeNull();
   expect(container.textContent).not.toContain("Runway");
   expect(container.textContent).not.toContain("Cash");
-  expect(container.textContent).toContain("Out so far this month, not over · Oct 1");
+  expect(container.textContent).toContain("Spent so far this month · Oct 1");
   expect(container.textContent).toContain("Monthly burn");
   expect(container.textContent).toContain("Add Mercury");
 });

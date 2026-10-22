@@ -379,7 +379,7 @@ function Overview({
       : period === "year"
         ? t`${year} so far`
         : period === "month"
-          ? t`Out so far this month, not over`
+          ? t`Spent so far this month`
           : null;
   const previousRange = range({ start: totals.previousStart, end: totals.previousEnd });
   const bars = data.cashSeries[period];
@@ -408,8 +408,8 @@ function Overview({
 
   return (
     <div>
-      {/* Sticks like the Inbox header: -top cancels the scroller's padding, so rows never show above it. */}
-      <div className="sticky -top-2 z-20 -mx-4 -mt-2 bg-background px-4 pt-2 md:-top-5 md:-mx-7 md:-mt-5 md:px-7 md:pt-5 pb-4">
+      {/* Sticks like the Inbox header from md up: -top cancels the scroller's padding, so rows never show above it. A phone keeps the screen for the figures. */}
+      <div className="pb-4 md:sticky md:-top-5 md:z-20 md:-mx-7 md:-mt-5 md:bg-background md:px-7 md:pt-5">
         <PageHeader
           className="mb-0"
           title={<Trans>Finance</Trans>}
@@ -437,7 +437,9 @@ function Overview({
                       {sourceDot === "bg-destructive" ? t`Sync failed.` : t`Sign-in needed.`}
                     </span>
                   ) : null}
-                  {data.excludedNonUsdCount > 0 ? <span> · {nonUsdNote}</span> : null}
+                  {data.excludedNonUsdCount > 0 ? (
+                    <span className="max-sm:hidden"> · {nonUsdNote}</span>
+                  ) : null}
                 </Link>
                 <Tooltip>
                   <TooltipTrigger
