@@ -96,7 +96,7 @@ msgstr ""
 
 #. placeholder {0}: glance.legalDueSoon
 #: src/pages/Shell.tsx
-msgid "{0, plural, one {# overdue or due this week} other {# overdue or due this week}}"
+msgid "{0, plural, one {# overdue or due in the next 7 days} other {# overdue or due in the next 7 days}}"
 msgstr ""
 
 #. placeholder {0}: rows.length

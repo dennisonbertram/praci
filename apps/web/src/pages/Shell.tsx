@@ -4567,8 +4567,8 @@ export function ShellPage() {
                       rail,
                       value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
                       valueLabel: plural(glance.legalDueSoon, {
-                        one: "# overdue or due this week",
-                        other: "# overdue or due this week",
+                        one: "# overdue or due in the next 7 days",
+                        other: "# overdue or due in the next 7 days",
                       }),
                     })}
                   />

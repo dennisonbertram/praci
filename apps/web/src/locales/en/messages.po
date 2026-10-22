@@ -96,8 +96,8 @@ msgstr "{0, plural, one {# needs you} other {# need you}}"
 
 #. placeholder {0}: glance.legalDueSoon
 #: src/pages/Shell.tsx
-msgid "{0, plural, one {# overdue or due this week} other {# overdue or due this week}}"
-msgstr "{0, plural, one {# overdue or due this week} other {# overdue or due this week}}"
+msgid "{0, plural, one {# overdue or due in the next 7 days} other {# overdue or due in the next 7 days}}"
+msgstr "{0, plural, one {# overdue or due in the next 7 days} other {# overdue or due in the next 7 days}}"
 
 #. placeholder {0}: rows.length
 #: src/pages/Inbox.tsx
