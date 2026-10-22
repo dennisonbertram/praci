@@ -34,6 +34,7 @@ model User {
   auditRequests               AuditRequest[]
   fundraiseRounds             FundraiseRound[]
   safes                       Safe[]
+  safeSyncStates              SafeSyncState[]
   sidebarPages                SidebarPage[]
   notifications               Notification[]
   notificationEndpoints       NotificationEndpoint[]
@@ -284,6 +285,7 @@ model Space {
   auditRequests               AuditRequest[]
   fundraiseRounds             FundraiseRound[]
   safes                       Safe[]
+  safeSyncStates              SafeSyncState[]
   sidebarPages                SidebarPage[]
   agentHomes                  AgentHome[]
   browserProfiles             BrowserProfile[]
@@ -2270,6 +2272,7 @@ model FinanceTransaction {
   hasReceipt        Boolean    @default(false)
   dashboardUrl      String?
   updatedAt         DateTime   @updatedAt
+  safe              Safe?
 
   // finance_transactions_statement_key is raw SQL (partial unique where provider = 'statement').
   @@unique([mcpServerId, externalId])
@@ -2505,6 +2508,8 @@ model Contact {
   portalLinkSentAt DateTime?
   portalLastSeenAt DateTime?
   portalBlockedAt  DateTime?
+  /// When Send SAFE opened Mercury; null when the prospect is not waiting for a Mercury SAFE.
+  mercurySentAt    DateTime?
   shares           InvestorShare[]
   portalTokens     InvestorPortalToken[]
   portalSessions   PortalSession[]
@@ -2609,36 +2614,36 @@ model InvestorUpdate {
 /// arrive by mail. Only the founder closes it (done or dismissed); a dismissed row keeps its thread.
 /// audit_requests_agent_open_key is raw SQL, a partial unique index over the agent-added rows.
 model AuditRequest {
-  id              String    @id @default(cuid())
-  spaceId         String
-  space           Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String    @id @default(cuid())
+  spaceId        String
+  space          Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// The subject line until the agent corrects it.
-  fund            String
+  fund           String
   /// Lower case, single spaces: how the agent's upsert finds the same request again.
-  fundKey         String
-  asOf            DateTime? @db.Date
+  fundKey        String
+  asOf           DateTime? @db.Date
   /// False when the statement had to use current holdings.
-  asOfMatched     Boolean   @default(true)
-  dueDate         DateTime? @db.Date
+  asOfMatched    Boolean   @default(true)
+  dueDate        DateTime? @db.Date
   /// "open" | "drafted" | "done" | "dismissed"
-  status          String    @default("open")
-  dataRoomItemId  String?
-  mailThreadId    String?
-  connectionId    String?
+  status         String    @default("open")
+  dataRoomItemId String?
+  mailThreadId   String?
+  connectionId   String?
   /// Gmail draft id.
-  draftRef        String?
+  draftRef       String?
   /// The sender is an Auditor contact.
-  senderKnown     Boolean   @default(false)
-  notes           String    @default("")
-  draftStartedAt  DateTime?
-  draftedAt       DateTime?
-  doneAt          DateTime?
+  senderKnown    Boolean   @default(false)
+  notes          String    @default("")
+  draftStartedAt DateTime?
+  draftedAt      DateTime?
+  doneAt         DateTime?
   /// The newest mail in the thread; later than draftedAt means New mail.
-  lastMailAt      DateTime
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  lastMailAt     DateTime
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@unique([spaceId, userId, mailThreadId])
   @@index([spaceId, userId, status])
@@ -2670,45 +2675,70 @@ model FundraiseRound {
 /// A SAFE. A native row is the founder's own record of a YC post-money cap SAFE they send themselves;
 /// its status is derived from the dates (packages/core/src/safes.ts), never stored.
 model Safe {
-  id                 String          @id @default(cuid())
-  spaceId            String
-  space              Space           @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  userId             String
-  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                   String              @id @default(cuid())
+  spaceId              String
+  space                Space               @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId               String
+  user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// "native" | "mercury"
-  source             String          @default("native")
+  source               String              @default("native")
   /// Mercury's id; null on a native row.
-  externalId         String?
-  contactId          String?
-  contact            Contact?        @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  roundId            String?
-  round              FundraiseRound? @relation(fields: [roundId], references: [id], onDelete: SetNull)
-  investorName       String
-  investorEmail      String?
-  amountCents        BigInt
+  externalId           String?
+  contactId            String?
+  contact              Contact?            @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  roundId              String?
+  round                FundraiseRound?     @relation(fields: [roundId], references: [id], onDelete: SetNull)
+  investorName         String
+  investorEmail        String?
+  amountCents          BigInt
   /// "post_money_cap" on every native row.
-  valuationType      String          @default("post_money_cap")
-  capCents           BigInt?
-  discountPercent    Float?
-  mfn                Boolean         @default(false)
-  proRata            Boolean         @default(false)
-  governingState     String?
-  investmentDate     DateTime?
-  expiresAt          DateTime?
-  canceledAt         DateTime?
-  sentAt             DateTime?
-  signedByOwnerAt    DateTime?
-  signedByInvestorAt DateTime?
-  paidAt             DateTime?
-  documentUrl        String?
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+  valuationType        String              @default("post_money_cap")
+  capCents             BigInt?
+  discountPercent      Float?
+  mfn                  Boolean             @default(false)
+  proRata              Boolean             @default(false)
+  governingState       String?
+  investmentDate       DateTime?
+  expiresAt            DateTime?
+  canceledAt           DateTime?
+  sentAt               DateTime?
+  signedByOwnerAt      DateTime?
+  signedByInvestorAt   DateTime?
+  paidAt               DateTime?
+  documentUrl          String?
+  /// Mercury only: the Finance deposit matched to this SAFE. A transaction links to at most one SAFE.
+  financeTransactionId String?             @unique
+  financeTransaction   FinanceTransaction? @relation(fields: [financeTransactionId], references: [id], onDelete: SetNull)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
 
   @@unique([spaceId, userId, source, externalId])
   @@index([spaceId, userId])
   @@index([contactId])
   @@index([roundId])
   @@map("safes")
+}
+
+/// Throttle, claim and last result of the Mercury SAFE sync. One row per space and user; not tied to the
+/// MCP server, so removing Mercury changes nothing and reconnecting continues from it.
+model SafeSyncState {
+  spaceId        String
+  space          Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastSyncedAt   DateTime?
+  /// Claim held by the process that is syncing; stale after 2 minutes.
+  syncStartedAt  DateTime?
+  claimToken     String?
+  lastErrorAt    DateTime?
+  /// Short failure reason; never a vendor payload or credential.
+  lastError      String?
+  needsReconnect Boolean   @default(false)
+  /// Rows of the last answer that could not be read.
+  unreadable     Int       @default(0)
+
+  @@id([spaceId, userId])
+  @@map("safe_sync_states")
 }
 
 /// The Carta agent's latest read of the company's cap table. One row per user, replaced on each sync.

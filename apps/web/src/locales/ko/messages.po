@@ -628,6 +628,10 @@ msgstr ""
 msgid "{unread} unread"
 msgstr ""
 
+#: src/components/fundraising/MercuryLine.tsx
+msgid "{unreadable} SAFEs could not be read"
+msgstr ""
+
 #: src/pages/shell/transcript.tsx
 msgid "{workingBotName} is working"
 msgstr "{workingBotName} 작업 중"
@@ -656,6 +660,10 @@ msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
 msgid "0x… or name.eth"
+msgstr ""
+
+#: src/components/fundraising/MercuryLine.tsx
+msgid "1 SAFE could not be read"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -1511,6 +1519,15 @@ msgstr ""
 msgid "Asset"
 msgstr ""
 
+#: src/components/fundraising/MercuryDialogs.tsx
+msgid "Assign"
+msgstr ""
+
+#: src/components/fundraising/MercuryDialogs.tsx
+#: src/components/fundraising/SafeList.tsx
+msgid "Assign to contact"
+msgstr ""
+
 #: src/pages/RoutineSchedule.tsx
 msgid "at {timeSelect}"
 msgstr "{timeSelect}에"
@@ -1564,10 +1581,6 @@ msgstr ""
 
 #: src/components/ContactDialog.tsx
 msgid "Auditor"
-msgstr ""
-
-#: src/pages/Investors.tsx
-msgid "Auditors"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -1969,6 +1982,7 @@ msgstr "서버에 연결할 수 없습니다."
 #: src/components/finance/RenameAccountDialog.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/finance/WalletDialog.tsx
+#: src/components/fundraising/MercuryDialogs.tsx
 #: src/components/fundraising/RoundCard.tsx
 #: src/components/fundraising/SafeDialog.tsx
 #: src/components/fundraising/SafeList.tsx
@@ -2761,6 +2775,10 @@ msgstr ""
 msgid "Connect MCP server “{name}”"
 msgstr "MCP 서버 ‘{name}’ 연결"
 
+#: src/components/fundraising/MercuryLine.tsx
+msgid "Connect Mercury"
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
 msgstr ""
@@ -2841,6 +2859,10 @@ msgstr "연결 테스트에 실패했습니다."
 
 #: src/components/integrations/DevinConnectDialog.tsx
 msgid "Connects Devin for everyone in this space. Read-only."
+msgstr ""
+
+#: src/components/fundraising/MercuryDialogs.tsx
+msgid "Contact"
 msgstr ""
 
 #: src/pages/Contacts.tsx
@@ -3011,6 +3033,10 @@ msgstr "연결하지 못했습니다."
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Could not connect {0}"
 msgstr "{0}에 연결하지 못했습니다."
+
+#: src/pages/Fundraising.tsx
+msgid "Could not connect Mercury"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Could not connect this provider"
@@ -3310,6 +3336,11 @@ msgstr ""
 msgid "Could not load voice settings"
 msgstr "음성 설정을 불러오지 못했습니다."
 
+#. placeholder {0}: prospect.name
+#: src/pages/Fundraising.tsx
+msgid "Could not mark {0} waiting"
+msgstr ""
+
 #: src/pages/Investors.tsx
 msgid "Could not mark delivered"
 msgstr ""
@@ -3379,6 +3410,10 @@ msgstr ""
 
 #: src/components/integrations/useMcpReconnect.ts
 msgid "Could not reconnect"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "Could not refresh"
 msgstr ""
 
 #: src/pages/Investors.tsx
@@ -3452,6 +3487,7 @@ msgstr ""
 msgid "Could not run routine"
 msgstr "루틴을 실행할 수 없습니다"
 
+#: src/components/fundraising/MercuryDialogs.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/components/RunsOnPicker.tsx
 #: src/pages/ExternalConversationSettings.tsx
@@ -3580,8 +3616,16 @@ msgid "Could not take control"
 msgstr "직접 조작으로 전환하지 못했습니다."
 
 #: src/pages/Fundraising.tsx
+msgid "Could not unassign"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
 #: src/pages/Investors.tsx
 msgid "Could not undo"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "Could not undo Send SAFE"
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
@@ -4046,6 +4090,10 @@ msgstr "거부됨"
 #: src/components/AskCard.tsx
 msgid "Deny"
 msgstr "거부"
+
+#: src/components/fundraising/SafeList.tsx
+msgid "Deposit in Finance"
+msgstr ""
 
 #: src/pages/Board.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -5517,6 +5565,10 @@ msgstr ""
 msgid "Investor document"
 msgstr ""
 
+#: src/components/fundraising/MercuryDialogs.tsx
+msgid "Investor email"
+msgstr ""
+
 #: src/pages/Investors.tsx
 #: src/pages/Shell.tsx
 msgid "Investors"
@@ -6184,6 +6236,14 @@ msgstr ""
 msgid "Merchant"
 msgstr ""
 
+#: src/components/fundraising/MercuryLine.tsx
+msgid "Mercury"
+msgstr ""
+
+#: src/components/fundraising/MercuryLine.tsx
+msgid "Mercury · {synced}"
+msgstr ""
+
 #: src/components/data-room/AutoSortDialog.tsx
 msgid "Merge"
 msgstr ""
@@ -6697,10 +6757,6 @@ msgstr ""
 msgid "No artifacts yet"
 msgstr ""
 
-#: src/pages/Investors.tsx
-msgid "No auditors yet"
-msgstr ""
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "No authentication"
 msgstr "인증 없음"
@@ -7057,6 +7113,7 @@ msgstr ""
 msgid "Not searchable"
 msgstr ""
 
+#: src/components/fundraising/Pipeline.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Not sent"
 msgstr ""
@@ -7299,6 +7356,10 @@ msgstr ""
 
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Open link"
+msgstr ""
+
+#: src/components/fundraising/Pipeline.tsx
+msgid "Open Mercury"
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
@@ -8060,6 +8121,7 @@ msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
+#: src/components/fundraising/MercuryLine.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -8156,6 +8218,7 @@ msgstr ""
 
 #: src/App.tsx
 #: src/components/ErrorBoundary.tsx
+#: src/components/fundraising/MercuryLine.tsx
 #: src/pages/Finance.tsx
 #: src/pages/Investors.tsx
 #: src/pages/RoutineRunHistory.tsx
@@ -8680,6 +8743,10 @@ msgstr ""
 msgid "SAFEs"
 msgstr ""
 
+#: src/pages/Investors.tsx
+msgid "SAFEs and funds"
+msgstr ""
+
 #: src/components/cap-table/SafeRows.tsx
 msgid "SAFEs, if converted at cap"
 msgstr ""
@@ -8791,6 +8858,7 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-credentials.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Saving…"
 msgstr "저장 중…"
@@ -9035,6 +9103,7 @@ msgstr "보내기"
 msgid "Send reset link"
 msgstr "재설정 링크 보내기"
 
+#: src/components/fundraising/MercuryDialogs.tsx
 #: src/components/fundraising/Pipeline.tsx
 #: src/components/fundraising/SafeDialog.tsx
 msgid "Send SAFE"
@@ -9792,6 +9861,10 @@ msgstr ""
 msgid "Switching…"
 msgstr "전환 중…"
 
+#: src/components/fundraising/MercuryLine.tsx
+msgid "Sync failed"
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "Sync failed."
 msgstr ""
@@ -10342,6 +10415,8 @@ msgstr ""
 msgid "Top parties"
 msgstr ""
 
+#: src/components/cap-table/CapTableEditor.tsx
+#: src/components/cap-table/HoldingsTable.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Total"
 msgstr ""
@@ -10499,6 +10574,10 @@ msgstr ""
 #: src/components/cap-table/OwnershipBar.tsx
 #: src/pages/Investors.tsx
 msgid "Unallocated pool"
+msgstr ""
+
+#: src/components/fundraising/SafeList.tsx
+msgid "Unassign"
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
@@ -10944,6 +11023,10 @@ msgstr ""
 msgid "Waiting {minutes}m"
 msgstr ""
 
+#: src/components/fundraising/Pipeline.tsx
+msgid "Waiting for Mercury · {waiting}"
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/SignInStep.tsx
 msgid "Waiting for sign-in"
@@ -11000,6 +11083,10 @@ msgstr ""
 
 #: src/lib/devin-format.ts
 msgid "Web"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Web search"
 msgstr ""
 
 #: src/pages/Paywall.tsx

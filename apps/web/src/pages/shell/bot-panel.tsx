@@ -65,7 +65,6 @@ type AudiencePatch = {
 const SELECTED_SEGMENT =
   "aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground hover:aria-pressed:bg-primary hover:aria-pressed:text-primary-foreground";
 
-const fieldLabelClass = "mt-4 block text-[14px] text-muted-foreground";
 // Advanced sections share the heading style of Notifications, Skills, Memory and Credentials.
 const advancedLabelClass = "mt-4 block text-[13.5px] font-medium text-foreground";
 
@@ -200,6 +199,10 @@ export function BotSettings({
     if (pendingSavesRef.current === 0) setDisabledBuiltinTools(next);
   }, [bot.disabledBuiltinTools]);
   const [audience, setAudience] = useState<BotAudience>(bot.audience);
+  // Follow a change made elsewhere; a save in flight owns the value until it finishes.
+  useEffect(() => {
+    if (pendingSavesRef.current === 0) setAudience(bot.audience);
+  }, [bot.audience]);
   const [allowedTargets, setAllowedTargets] = useState<string[]>(bot.externalMessageTargets);
   const [computerOn, setComputerOn] = useState(bot.externalComputerTools);
   const [grantedConnections, setGrantedConnections] = useState<string[]>([]);
@@ -426,7 +429,7 @@ export function BotSettings({
   function disableBuiltinTools(raw: string) {
     const names = raw
       .split(",")
-      .map((entry) => entry.trim())
+      .map((entry) => entry.trim().toLowerCase().replace(/\s+/g, "_"))
       .filter(Boolean);
     if (!names.length) return;
     const unknown = names.filter((entry) => !isBuiltinToolName(entry));
@@ -492,7 +495,7 @@ export function BotSettings({
           }}
         />
       </div>
-      <label htmlFor={`${ids}-name`} className="mt-4 block text-[13.5px] text-muted-foreground/80">
+      <label htmlFor={`${ids}-name`} className={advancedLabelClass}>
         <Trans>Name</Trans>
         <Input
           id={`${ids}-name`}
@@ -516,7 +519,7 @@ export function BotSettings({
         </Button>
       ) : (
         <>
-          <label htmlFor={`${ids}-description`} className={fieldLabelClass}>
+          <label htmlFor={`${ids}-description`} className={advancedLabelClass}>
             <Trans>Description</Trans>
             <Textarea
               id={`${ids}-description`}
@@ -820,7 +823,7 @@ export function BotSettings({
               <Input
                 id={`${ids}-disabled-tools`}
                 value={toolNameDraft}
-                placeholder="web_search"
+                placeholder={t`Web search`}
                 spellCheck={false}
                 autoCapitalize="off"
                 autoCorrect="off"
@@ -837,7 +840,7 @@ export function BotSettings({
                   if (event.currentTarget.value.trim())
                     disableBuiltinTools(event.currentTarget.value);
                 }}
-                className="mt-1.5 font-mono"
+                className="mt-1.5"
               />
             </label>
             {toolError ? <p className="mt-1.5 text-[13px] text-destructive">{toolError}</p> : null}
@@ -847,7 +850,7 @@ export function BotSettings({
                 htmlFor={`${ids}-disabled-${toolName}`}
                 className="mt-2 flex items-center justify-between gap-3 text-[13px] text-foreground/80 pointer-coarse:min-h-11"
               >
-                <span className="font-mono">{toolName}</span>
+                <span>{toolLabel(toolName)}</span>
                 <Switch
                   id={`${ids}-disabled-${toolName}`}
                   checked
@@ -887,6 +890,12 @@ export function BotSettings({
 
 /** The footer rows (Advanced, Export, Clear conversation) share one layout and right edge. */
 const FOOTER_ROW = "flex w-full items-center justify-between gap-3 text-[14px]";
+
+/** `web_search` shown as "Web search". */
+function toolLabel(name: string) {
+  const text = name.replace(/_/g, " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
 
 function sameStringList(left: readonly string[], right: readonly string[]) {
   return left.length === right.length && left.every((entry, index) => entry === right[index]);

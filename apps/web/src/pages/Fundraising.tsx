@@ -27,6 +27,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AskBotButton } from "../components/AskBotButton";
 import type { ContactPrefill as Prefill } from "../components/ContactDialog";
 import { ContactDialog } from "../components/ContactDialog";
+import { AssignSafeDialog, InvestorEmailDialog } from "../components/fundraising/MercuryDialogs";
+import { MercuryLine } from "../components/fundraising/MercuryLine";
 import { Pipeline } from "../components/fundraising/Pipeline";
 import { RoundCard, RoundDialog } from "../components/fundraising/RoundCard";
 import { SafeCoverSummary, SafeDialog } from "../components/fundraising/SafeDialog";
@@ -34,12 +36,22 @@ import type { SafeStep } from "../components/fundraising/SafeList";
 import { AttentionStrip, MarkDateDialog, SafeList } from "../components/fundraising/SafeList";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { isoFromDay, todayDay } from "../lib/day-input";
+import { connectFinanceProvider } from "../lib/finance-connect";
 import { usdFigure } from "../lib/finance-format";
 import { rpc } from "../lib/rpc";
 import { useContactNotices } from "../lib/use-contact-notices";
 import { errorText } from "../lib/user-error";
 
 const usd = (cents: number) => usdFigure(cents / 100, 0, i18n.locale || "en");
+
+/** Mercury's dashboard, where the founder creates the SAFE (Capital, then SAFEs); its API cannot. */
+const MERCURY_URL = "https://app.mercury.com";
+const openMercury = () => window.open(MERCURY_URL, "_blank", "noopener");
+
+/** Mercury's own document link opens only when it is https. */
+const openDocument = (url: string) => {
+  if (/^https:\/\//i.test(url)) window.open(url, "_blank", "noopener");
+};
 
 const NEW_PROSPECT: Prefill = { name: "", email: null, organization: null, kind: "prospect" };
 
@@ -60,6 +72,9 @@ export function FundraisingPage({
   // Send SAFE for this prospect; then the saved SAFE's cover summary.
   const [sending, setSending] = useState<Contact | null>(null);
   const [cover, setCover] = useState<Safe | null>(null);
+  // Send SAFE with Mercury for a prospect that has no email yet, and Assign to contact.
+  const [needsEmail, setNeedsEmail] = useState<Contact | null>(null);
+  const [assigning, setAssigning] = useState<Safe | null>(null);
   const [marking, setMarking] = useState<{ safe: Safe; step: SafeStep } | null>(null);
   const [confirm, setConfirm] = useState<
     { kind: "close"; unpaid: Safe[] } | { kind: "delete"; safe: Safe } | null
@@ -103,6 +118,25 @@ export function FundraisingPage({
       () => rpc.fundraising.prospects.save({ id: prospect.id, stage }),
       t`Could not move ${prospect.name}`,
     );
+
+  const mercuryConnected = overview ? overview.mercury.status !== "not_connected" : false;
+  // With Mercury the SAFE is made there: open it, then mark the prospect Waiting for Mercury.
+  function sendSafe(prospect: Contact) {
+    if (!mercuryConnected) return setSending(prospect);
+    if (!prospect.email?.trim()) return setNeedsEmail(prospect);
+    openMercury();
+    void run(
+      () => rpc.fundraising.prospects.markWaiting({ id: prospect.id }),
+      t`Could not mark ${prospect.name} waiting`,
+    );
+  }
+  const connectMercury = (reconnect: boolean) =>
+    connectFinanceProvider("mercury", reconnect)
+      .then(() => rpc.fundraising.refresh())
+      .then(load)
+      .catch((cause) => notify(errorText(cause, t`Could not connect Mercury`)));
+  const openSafe = (safe: Safe) =>
+    safe.source === "mercury" && safe.documentUrl ? openDocument(safe.documentUrl) : setCover(safe);
 
   const markDone = (): Record<SafeMarkInput["action"], string> => ({
     sent: t`Marked sent`,
@@ -158,6 +192,14 @@ export function FundraisingPage({
           title={<Trans>Fundraising</Trans>}
           actions={
             <>
+              {overview ? (
+                <MercuryLine
+                  state={overview.mercury}
+                  onConnect={() => void connectMercury(false)}
+                  onRefresh={() => void run(() => rpc.fundraising.refresh(), t`Could not refresh`)}
+                  onReconnect={() => void connectMercury(true)}
+                />
+              ) : null}
               <Button variant="outline" size="sm" onClick={() => setEditing(NEW_PROSPECT)}>
                 <Plus aria-hidden="true" />
                 <Trans>Add prospect</Trans>
@@ -231,7 +273,14 @@ export function FundraisingPage({
                   prospects={overview.prospects}
                   savedId={savedId}
                   filledSend={Boolean(open)}
-                  onSendSafe={setSending}
+                  onSendSafe={sendSafe}
+                  onOpenMercury={openMercury}
+                  onNotSent={(prospect) =>
+                    void run(
+                      () => rpc.fundraising.prospects.notSent({ id: prospect.id }),
+                      t`Could not undo Send SAFE`,
+                    )
+                  }
                   onEdit={setEditing}
                   onMove={(prospect, stage) => void move(prospect, stage)}
                 />
@@ -250,7 +299,14 @@ export function FundraisingPage({
                 <SafeList
                   safes={overview.safes}
                   round={round}
-                  onOpen={setCover}
+                  onOpen={openSafe}
+                  onAssign={setAssigning}
+                  onUnassign={(safe) =>
+                    void run(
+                      () => rpc.fundraising.safes.unassign({ id: safe.id }),
+                      t`Could not unassign`,
+                    )
+                  }
                   onMark={(safe, step) => setMarking({ safe, step })}
                   onCancel={(safe) =>
                     void run(
@@ -287,6 +343,30 @@ export function FundraisingPage({
               const saved = await rpc.fundraising.safes.save(input);
               setSending(null);
               setCover(saved);
+              load();
+            }}
+          />
+        ) : null}
+        {needsEmail ? (
+          <InvestorEmailDialog
+            onClose={() => setNeedsEmail(null)}
+            onSave={async (email) => {
+              // Opened first, while the click still counts, so the browser does not block it.
+              openMercury();
+              await rpc.contacts.save({ id: needsEmail.id, name: needsEmail.name, email });
+              await rpc.fundraising.prospects.markWaiting({ id: needsEmail.id });
+              setNeedsEmail(null);
+              load();
+            }}
+          />
+        ) : null}
+        {assigning ? (
+          <AssignSafeDialog
+            contacts={contacts ?? []}
+            onClose={() => setAssigning(null)}
+            onAssign={async (contactId) => {
+              await rpc.fundraising.safes.assign({ id: assigning.id, contactId });
+              setAssigning(null);
               load();
             }}
           />

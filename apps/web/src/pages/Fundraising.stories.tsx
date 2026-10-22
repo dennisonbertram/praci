@@ -37,6 +37,8 @@ const prospects = [
   prospect("p4", "Old Example Fund", { stage: "passed" }),
 ];
 
+const NOT_CONNECTED = { status: "not_connected", lastSyncedAt: null, unreadable: 0 } as const;
+
 const meta = {
   title: "Fundraising/FundraisingPage",
   component: FundraisingPage,
@@ -57,6 +59,7 @@ export const OpenRound: Story = {
   beforeEach: () =>
     mockRpc({
       "fundraising.overview": {
+        mercury: NOT_CONNECTED,
         round,
         pendingCents: 25_000_000,
         signedCents: 0,
@@ -100,6 +103,7 @@ export const WithSafes: Story = {
   beforeEach: () =>
     mockRpc({
       "fundraising.overview": {
+        mercury: NOT_CONNECTED,
         round,
         pendingCents: 7_500_000,
         signedCents: 5_000_000,
@@ -136,6 +140,7 @@ export const ClosedRound: Story = {
   beforeEach: () =>
     mockRpc({
       "fundraising.overview": {
+        mercury: NOT_CONNECTED,
         round: { ...round, closedAt: "2026-10-20T00:00:00.000Z" },
         pendingCents: 0,
         signedCents: 0,
@@ -152,6 +157,7 @@ export const NoRound: Story = {
   beforeEach: () =>
     mockRpc({
       "fundraising.overview": {
+        mercury: NOT_CONNECTED,
         round: null,
         pendingCents: 0,
         signedCents: 0,
@@ -174,4 +180,35 @@ export const LoadError: Story = {
         throw new Error("Could not load fundraising");
       },
     }),
+};
+
+/** Mercury connected: a prospect waiting for its SAFE, an unassigned Mercury SAFE and a matched deposit. */
+export const WithMercury: Story = {
+  beforeEach: () => {
+    const waiting = {
+      ...prospects[0],
+      stage: "committed" as const,
+      mercurySentAt: "2026-10-20T00:00:00.000Z",
+    };
+    return mockRpc({
+      "fundraising.overview": {
+        mercury: { status: "ok", lastSyncedAt: new Date().toISOString(), unreadable: 1 },
+        round,
+        pendingCents: 25_000_000,
+        signedCents: 0,
+        fundedCents: 5_000_000,
+        prospects: [waiting, ...prospects.slice(1)],
+        safes: [
+          safe("m1", "Quill Capital", {
+            source: "mercury",
+            status: "funded",
+            paidAt: "2026-10-12T00:00:00.000Z",
+            financeTransactionId: "tx1",
+          }),
+          safe("m2", "Harbor Angels", { source: "mercury", status: "sent", roundId: null }),
+        ],
+      },
+      "contacts.list": prospects,
+    });
+  },
 };

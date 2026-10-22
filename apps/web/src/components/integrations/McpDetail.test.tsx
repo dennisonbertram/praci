@@ -97,6 +97,13 @@ afterEach(() => {
   act(() => root.render(null));
 });
 
+it("keeps Zernio exclusive and read-only while offering its existing connection an API key", async () => {
+  await show(false, "https://mcp.zernio.com/mcp", { agentBotId: "gtm-1", agentExclusive: true });
+  expect(writesSwitch()).toBeNull();
+  expect(container.querySelector("#server-shared")).toBeNull();
+  expect(document.body.textContent).toContain("Configure API key");
+});
+
 it("asks before turning Carta changes on, then saves", async () => {
   setWrites.mockResolvedValue({});
   await show(false);

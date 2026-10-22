@@ -628,6 +628,10 @@ msgstr "{unpriced} unpriced"
 msgid "{unread} unread"
 msgstr "{unread} unread"
 
+#: src/components/fundraising/MercuryLine.tsx
+msgid "{unreadable} SAFEs could not be read"
+msgstr "{unreadable} SAFEs could not be read"
+
 #: src/pages/shell/transcript.tsx
 msgid "{workingBotName} is working"
 msgstr "{workingBotName} is working"
@@ -657,6 +661,10 @@ msgstr "+{more} more"
 #: src/components/finance/WalletDialog.tsx
 msgid "0x… or name.eth"
 msgstr "0x… or name.eth"
+
+#: src/components/fundraising/MercuryLine.tsx
+msgid "1 SAFE could not be read"
+msgstr "1 SAFE could not be read"
 
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -1511,6 +1519,15 @@ msgstr "Asking another agent"
 msgid "Asset"
 msgstr "Asset"
 
+#: src/components/fundraising/MercuryDialogs.tsx
+msgid "Assign"
+msgstr "Assign"
+
+#: src/components/fundraising/MercuryDialogs.tsx
+#: src/components/fundraising/SafeList.tsx
+msgid "Assign to contact"
+msgstr "Assign to contact"
+
 #: src/pages/RoutineSchedule.tsx
 msgid "at {timeSelect}"
 msgstr "at {timeSelect}"
@@ -1565,10 +1582,6 @@ msgstr "Audit request · {0}"
 #: src/components/ContactDialog.tsx
 msgid "Auditor"
 msgstr "Auditor"
-
-#: src/pages/Investors.tsx
-msgid "Auditors"
-msgstr "Auditors"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Auth header"
@@ -1969,6 +1982,7 @@ msgstr "Can't reach the server."
 #: src/components/finance/RenameAccountDialog.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/finance/WalletDialog.tsx
+#: src/components/fundraising/MercuryDialogs.tsx
 #: src/components/fundraising/RoundCard.tsx
 #: src/components/fundraising/SafeDialog.tsx
 #: src/components/fundraising/SafeList.tsx
@@ -2761,6 +2775,10 @@ msgstr "Connect mail"
 msgid "Connect MCP server “{name}”"
 msgstr "Connect MCP server “{name}”"
 
+#: src/components/fundraising/MercuryLine.tsx
+msgid "Connect Mercury"
+msgstr "Connect Mercury"
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
 msgstr "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
@@ -2842,6 +2860,10 @@ msgstr "Connection test failed."
 #: src/components/integrations/DevinConnectDialog.tsx
 msgid "Connects Devin for everyone in this space. Read-only."
 msgstr "Connects Devin for everyone in this space. Read-only."
+
+#: src/components/fundraising/MercuryDialogs.tsx
+msgid "Contact"
+msgstr "Contact"
 
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
@@ -3011,6 +3033,10 @@ msgstr "Could not connect"
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Could not connect {0}"
 msgstr "Could not connect {0}"
+
+#: src/pages/Fundraising.tsx
+msgid "Could not connect Mercury"
+msgstr "Could not connect Mercury"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Could not connect this provider"
@@ -3310,6 +3336,11 @@ msgstr "Could not load updates"
 msgid "Could not load voice settings"
 msgstr "Could not load voice settings"
 
+#. placeholder {0}: prospect.name
+#: src/pages/Fundraising.tsx
+msgid "Could not mark {0} waiting"
+msgstr "Could not mark {0} waiting"
+
 #: src/pages/Investors.tsx
 msgid "Could not mark delivered"
 msgstr "Could not mark delivered"
@@ -3380,6 +3411,10 @@ msgstr "Could not read this file. Delete it and upload it again."
 #: src/components/integrations/useMcpReconnect.ts
 msgid "Could not reconnect"
 msgstr "Could not reconnect"
+
+#: src/pages/Fundraising.tsx
+msgid "Could not refresh"
+msgstr "Could not refresh"
 
 #: src/pages/Investors.tsx
 msgid "Could not refresh from Carta"
@@ -3452,6 +3487,7 @@ msgstr "Could not retry"
 msgid "Could not run routine"
 msgstr "Could not run routine"
 
+#: src/components/fundraising/MercuryDialogs.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/components/RunsOnPicker.tsx
 #: src/pages/ExternalConversationSettings.tsx
@@ -3580,9 +3616,17 @@ msgid "Could not take control"
 msgstr "Could not take control"
 
 #: src/pages/Fundraising.tsx
+msgid "Could not unassign"
+msgstr "Could not unassign"
+
+#: src/pages/Fundraising.tsx
 #: src/pages/Investors.tsx
 msgid "Could not undo"
 msgstr "Could not undo"
+
+#: src/pages/Fundraising.tsx
+msgid "Could not undo Send SAFE"
+msgstr "Could not undo Send SAFE"
 
 #: src/components/data-room/ItemDialogs.tsx
 msgid "Could not unshare"
@@ -4046,6 +4090,10 @@ msgstr "Denied"
 #: src/components/AskCard.tsx
 msgid "Deny"
 msgstr "Deny"
+
+#: src/components/fundraising/SafeList.tsx
+msgid "Deposit in Finance"
+msgstr "Deposit in Finance"
 
 #: src/pages/Board.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -5517,6 +5565,10 @@ msgstr "Investor"
 msgid "Investor document"
 msgstr "Investor document"
 
+#: src/components/fundraising/MercuryDialogs.tsx
+msgid "Investor email"
+msgstr "Investor email"
+
 #: src/pages/Investors.tsx
 #: src/pages/Shell.tsx
 msgid "Investors"
@@ -6184,6 +6236,14 @@ msgstr "Mentions only"
 msgid "Merchant"
 msgstr "Merchant"
 
+#: src/components/fundraising/MercuryLine.tsx
+msgid "Mercury"
+msgstr "Mercury"
+
+#: src/components/fundraising/MercuryLine.tsx
+msgid "Mercury · {synced}"
+msgstr "Mercury · {synced}"
+
 #: src/components/data-room/AutoSortDialog.tsx
 msgid "Merge"
 msgstr "Merge"
@@ -6697,10 +6757,6 @@ msgstr "No artifacts match these filters."
 msgid "No artifacts yet"
 msgstr "No artifacts yet"
 
-#: src/pages/Investors.tsx
-msgid "No auditors yet"
-msgstr "No auditors yet"
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "No authentication"
 msgstr "No authentication"
@@ -7057,6 +7113,7 @@ msgstr "Not scanned yet. Daily scan paused."
 msgid "Not searchable"
 msgstr "Not searchable"
 
+#: src/components/fundraising/Pipeline.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Not sent"
 msgstr "Not sent"
@@ -7300,6 +7357,10 @@ msgstr "Open Investors"
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Open link"
 msgstr "Open link"
+
+#: src/components/fundraising/Pipeline.tsx
+msgid "Open Mercury"
+msgstr "Open Mercury"
 
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/pages/shell/composer-error.tsx
@@ -8060,6 +8121,7 @@ msgstr "Recipients"
 
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
+#: src/components/fundraising/MercuryLine.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -8156,6 +8218,7 @@ msgstr "Redirect URI"
 
 #: src/App.tsx
 #: src/components/ErrorBoundary.tsx
+#: src/components/fundraising/MercuryLine.tsx
 #: src/pages/Finance.tsx
 #: src/pages/Investors.tsx
 #: src/pages/RoutineRunHistory.tsx
@@ -8680,6 +8743,10 @@ msgstr "safe, round, raise"
 msgid "SAFEs"
 msgstr "SAFEs"
 
+#: src/pages/Investors.tsx
+msgid "SAFEs and funds"
+msgstr "SAFEs and funds"
+
 #: src/components/cap-table/SafeRows.tsx
 msgid "SAFEs, if converted at cap"
 msgstr "SAFEs, if converted at cap"
@@ -8791,6 +8858,7 @@ msgstr "Saving..."
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-credentials.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Saving…"
 msgstr "Saving…"
@@ -9035,6 +9103,7 @@ msgstr "Send it"
 msgid "Send reset link"
 msgstr "Send reset link"
 
+#: src/components/fundraising/MercuryDialogs.tsx
 #: src/components/fundraising/Pipeline.tsx
 #: src/components/fundraising/SafeDialog.tsx
 msgid "Send SAFE"
@@ -9792,6 +9861,10 @@ msgstr "Suspicious"
 msgid "Switching…"
 msgstr "Switching…"
 
+#: src/components/fundraising/MercuryLine.tsx
+msgid "Sync failed"
+msgstr "Sync failed"
+
 #: src/pages/Finance.tsx
 msgid "Sync failed."
 msgstr "Sync failed."
@@ -10342,6 +10415,8 @@ msgstr "Tools from an Executor server you run"
 msgid "Top parties"
 msgstr "Top parties"
 
+#: src/components/cap-table/CapTableEditor.tsx
+#: src/components/cap-table/HoldingsTable.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Total"
 msgstr "Total"
@@ -10500,6 +10575,10 @@ msgstr "Types"
 #: src/pages/Investors.tsx
 msgid "Unallocated pool"
 msgstr "Unallocated pool"
+
+#: src/components/fundraising/SafeList.tsx
+msgid "Unassign"
+msgstr "Unassign"
 
 #: src/pages/BotContextMenu.tsx
 msgid "Unassigned"
@@ -10944,6 +11023,10 @@ msgstr "Waiting {hours}h"
 msgid "Waiting {minutes}m"
 msgstr "Waiting {minutes}m"
 
+#: src/components/fundraising/Pipeline.tsx
+msgid "Waiting for Mercury · {waiting}"
+msgstr "Waiting for Mercury · {waiting}"
+
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/SignInStep.tsx
 msgid "Waiting for sign-in"
@@ -11001,6 +11084,10 @@ msgstr "Wallets"
 #: src/lib/devin-format.ts
 msgid "Web"
 msgstr "Web"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Web search"
+msgstr "Web search"
 
 #: src/pages/Paywall.tsx
 msgid "Web, desktop and mobile apps"

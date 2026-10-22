@@ -556,7 +556,7 @@ export function BotSkillsSection({
                 onClick={() => void save()}
                 className="rounded-lg bg-muted px-3 py-1.5 text-[13px] text-foreground disabled:opacity-50"
               >
-                <Trans>Save</Trans>
+                {busy ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
               </Button>
             ) : null}
             <Button
