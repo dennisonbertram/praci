@@ -586,17 +586,17 @@ describe("catalog wrapper names", () => {
 });
 
 describe("payment outcome wording for the model", () => {
-  it("says sent when the bank accepted the payment", () => {
-    const out = approvedPaymentResult({ status: "sent" }, "Mercury") as { note: string };
-    expect(out.note).toContain("Mercury accepted it");
-    expect(out.note).toContain("was sent");
-  });
-
-  it("names the bank's own approval when the payment is pendingApproval", () => {
-    const out = approvedPaymentResult({ status: "pendingApproval" }, "Mercury") as { note: string };
-    expect(out.note).toContain("Mercury still needs its own approval");
-    expect(out.note).not.toContain("No further approval");
-    expect(out.note).toContain("do not say it was sent");
+  it.each([
+    ["accepted", { status: "sent" }],
+    ["pending", { status: "pendingApproval" }],
+    ["approval required text", "Approval is required in Mercury before payment can be sent"],
+    ["unknown", { foo: 1 }],
+  ])("never claims success in the note: %s", (_name, result) => {
+    const out = approvedPaymentResult(result, "Mercury") as { note: string };
+    expect(out.note).toContain("approval in Praci is recorded");
+    expect(out.note).toContain("exactly as returned");
+    expect(out.note).not.toMatch(/it was sent|was sent and|No further approval/);
+    expect(out.note).toContain("do not say the payment was sent unless");
   });
 
   it("speaks to the person in the second person after a denial", () => {

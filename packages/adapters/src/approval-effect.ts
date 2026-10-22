@@ -365,16 +365,13 @@ export const DENIED_ACTION_MESSAGE =
   'The person you are talking to denied this action. When you tell them, address them as "you" (say "you denied it"), not in the third person. Do not retry it, rephrase it, or try a near-identical variant in this run; any repeat is refused automatically. Tell the user it was not done and ask what they want instead. Try again only if the user asks again in a new message.';
 
 /**
- * Wording for a payment the person approved here and the tool call returned without an error.
- * When the bank reports `pendingApproval` it still needs its own approval, so the note says so.
+ * Wording for a payment the person approved here. It never claims the payment went through:
+ * the bank's own result decides that, and the bank may still need its own approval.
  */
 export function approvedPaymentResult(result: unknown, bank = "the bank"): unknown {
-  const pending = JSON.stringify(result)?.includes("pendingApproval");
   return {
     result,
-    note: pending
-      ? `The person's approval in Praci is done, and ${bank} accepted the request, but ${bank} still needs its own approval before it processes the payment. Tell them in one line to finish that approval in ${bank}; do not say it was sent, and do not ask them to approve again in chat.`
-      : `The person approved this payment and ${bank} accepted it. Tell them in one line that it was sent; do not ask them to approve again.`,
+    note: `The person's approval in Praci is recorded. Report ${bank}'s result exactly as returned (pending, rejected, unknown or accepted); do not say the payment was sent unless that result shows ${bank} accepted it, and if it says ${bank} still needs an approval, tell them to finish it in ${bank}. Do not ask them to approve again in Praci.`,
   };
 }
 

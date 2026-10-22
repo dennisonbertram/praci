@@ -45,10 +45,10 @@ describe("connected app agent description", () => {
 });
 
 describe("writer agent instructions on payment outcomes", () => {
-  it("allows 'sent' only when the tool result shows acceptance and reports failures", () => {
+  it("reports failures and never tells the agent to say 'sent'", () => {
     const text = instructions("Mercury");
-    expect(text).toContain("only when the tool result shows Mercury accepted it");
-    expect(text).toContain("error or refuses the call, report that failure");
-    expect(text).not.toContain("say it was sent; never");
+    expect(text).toContain("error or refuses the call, report that failure as a failure");
+    expect(text).toContain("exactly as the tool returned it");
+    expect(text).not.toContain("say it was sent");
   });
 });
