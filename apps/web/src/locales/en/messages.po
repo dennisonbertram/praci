@@ -238,6 +238,11 @@ msgstr "{0} API key"
 msgid "{0} can use {appName}"
 msgstr "{0} can use {appName}"
 
+#. placeholder {0}: usd(committedUsd)
+#: src/pages/Investors.tsx
+msgid "{0} committed"
+msgstr "{0} committed"
+
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "{0} connected"
@@ -2780,10 +2785,6 @@ msgstr "Connect MCP server “{name}”"
 msgid "Connect Mercury"
 msgstr "Connect Mercury"
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Connect the apps you use so your bots can read and act in them."
-msgstr "Connect the apps you use so your bots can read and act in them."
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Connect Treg"
 msgstr "Connect Treg"
@@ -3844,6 +3845,10 @@ msgstr "Created"
 #: src/pages/DataRoom.tsx
 msgid "Created {0}"
 msgstr "Created {0}"
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Created when you allow changes"
+msgstr "Created when you allow changes"
 
 #: src/components/integrations/McpDetail.tsx
 msgid "Creating agent"
@@ -6808,6 +6813,10 @@ msgstr "No contacts yet"
 msgid "No contracts or deadlines found on {0}."
 msgstr "No contracts or deadlines found on {0}."
 
+#: src/pages/Legal.tsx
+msgid "No contracts yet"
+msgstr "No contracts yet"
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
 msgstr "No credentials saved for this bot."
@@ -7004,6 +7013,10 @@ msgstr "No transactions on this account yet"
 #: src/pages/RoutineEditor.tsx
 msgid "No trigger"
 msgstr "No trigger"
+
+#: src/pages/Investors.tsx
+msgid "No updates yet"
+msgstr "No updates yet"
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "No wallets yet. Add a wallet address to see its balances here."
@@ -8120,7 +8133,6 @@ msgid "Reading…"
 msgstr "Reading…"
 
 #: src/components/data-room/DataRoomStats.tsx
-#: src/components/integrations/FinanceSection.tsx
 msgid "Ready"
 msgstr "Ready"
 

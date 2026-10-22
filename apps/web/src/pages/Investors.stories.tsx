@@ -545,14 +545,18 @@ const sentSafe = (id: string, investorName: string, amountCents: number) => ({
 
 /**
  * A long table. SAFEs come only from the SAFE list (as on Fundraising): a SAFE in the snapshot is not
- * a row, Equity raised adds the listed SAFEs, and one group below the table converts them at cap.
+ * a row, Equity raised adds the Funded SAFEs (a Sent one shows as committed), and one group below the table converts them at cap.
  */
 export const FullTableWithSafes: Story = {
   beforeEach: () =>
     mockRpc({
       "fundraising.safes.list": [
         sentSafe("s1", "Harbor Angels", 5_000_000),
-        sentSafe("s2", "Ada Fund", 25_000_000),
+        {
+          ...sentSafe("s2", "Ada Fund", 25_000_000),
+          status: "funded" as const,
+          paidAt: "2026-10-05T00:00:00.000Z",
+        },
       ],
       "contacts.list": [
         contact("c9", "Casey Advisor", "other", "Independent advisor"),

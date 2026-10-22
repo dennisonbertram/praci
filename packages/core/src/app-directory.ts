@@ -11,7 +11,7 @@ const fin: ConnectionCategory = "finance";
 
 /** The one static directory of what an agent can do with an app, keyed by normalized slug. */
 const DIRECTORY: Record<string, AppEntry> = {
-  gmail: { category: mail, description: "Read, search and draft email" },
+  gmail: { category: mail, description: "Search, read, draft and send email" },
   googlecalendar: { category: mail, description: "Read your schedule and create events" },
   outlook: { category: mail, description: "Read, search and draft email and events" },
   googledrive: { category: docs, description: "Search, read and create files and documents" },
