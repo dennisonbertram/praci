@@ -6584,13 +6584,13 @@ msgstr ""
 msgid "Needs takeover"
 msgstr "Requer assumir o controle"
 
+#: src/pages/ActivityList.tsx
 #: src/pages/Devin.tsx
 #: src/pages/devin/DevinSessions.tsx
 msgid "Needs you"
 msgstr ""
 
 #: src/lib/roster-status.ts
-#: src/pages/ActivityList.tsx
 msgid "Needs your answer"
 msgstr "Precisa de entrada"
 

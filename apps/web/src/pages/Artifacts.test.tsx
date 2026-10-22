@@ -182,6 +182,31 @@ it("explains what artifacts are when the space has none", async () => {
   }
 });
 
+it("scrolls to the open artifact when a later page brings its row in", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const scrolled = vi.fn();
+  Element.prototype.scrollIntoView = function (this: Element) {
+    if (this.getAttribute("aria-current") === "page") scrolled();
+  };
+  api.listSpace.mockImplementation(async (input: { cursor?: string }) =>
+    input.cursor
+      ? { items: [artifact("Beta report", "artifact-2")], nextCursor: null }
+      : { items: [artifact("Alpha notes", "artifact-1")], nextCursor: "artifact-1" },
+  );
+  const page = await renderArtifacts("/app/artifacts/artifact-2");
+  try {
+    expect(scrolled).not.toHaveBeenCalled();
+    const more = [...page.container.querySelectorAll("button")].find((b) =>
+      /load more/i.test(b.textContent ?? ""),
+    );
+    await act(async () => more?.click());
+    await vi.waitFor(() => expect(scrolled).toHaveBeenCalled());
+  } finally {
+    await page.cleanup();
+    vi.unstubAllGlobals();
+  }
+});
+
 it("gives an open artifact a way back to the list", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   api.listSpace.mockResolvedValue({ items: [artifact("Update", "artifact-1")], nextCursor: null });

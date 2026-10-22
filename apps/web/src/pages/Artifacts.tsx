@@ -765,13 +765,13 @@ function IndexPane({
   onLoadMore: () => void;
 }) {
   const pane = useRef<HTMLElement>(null);
-  const loaded = items !== null;
+  const count = items?.length ?? -1;
   // Opening a row from the grid or a link can leave it under the pane's edge.
   useEffect(() => {
     pane.current
       ?.querySelector<HTMLElement>("[aria-current=page]")
       ?.scrollIntoView?.({ block: "nearest" });
-  }, [selectedId, loaded]);
+  }, [selectedId, count]);
   return (
     // Phones show the list or the open artifact, never both side by side.
     <aside

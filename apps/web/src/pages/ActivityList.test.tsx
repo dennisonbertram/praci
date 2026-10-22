@@ -71,8 +71,8 @@ it("leads with what needs the founder and folds finished runs until asked", asyn
   document.body.append(container);
   await act(async () => createRoot(container).render(view()));
 
-  expect(container.textContent).toContain("Needs your answer");
-  expect(container.querySelector("#activity-needs-heading")?.textContent).toBe("Needs your answer");
+  expect(container.textContent).toContain("Needs you");
+  expect(container.querySelector("#activity-needs-heading")?.textContent).toBe("Needs you");
   // Height stays bounded so the chat roster below remains visible, yet holds about five rows.
   expect(container.querySelector('[data-testid="activity-list"]')?.className).toContain(
     "max-h-[40vh]",
@@ -117,6 +117,8 @@ it("opens the filter form in a popover so it never takes the list's space", asyn
   expect(status).not.toBeNull();
   // The form lives outside the activity list, so the rows keep their whole window.
   expect(container.contains(status)).toBe(false);
+  // It opens beside the sidebar, not over the rows beneath the button.
+  expect(document.querySelector("[data-side]")?.getAttribute("data-side")).toBe("right");
   expect(container.querySelector('button[aria-label$=", Needs your answer"]')).not.toBeNull();
 });
 

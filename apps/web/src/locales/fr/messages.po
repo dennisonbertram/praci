@@ -6584,13 +6584,13 @@ msgstr ""
 msgid "Needs takeover"
 msgstr "Nécessite une intervention"
 
+#: src/pages/ActivityList.tsx
 #: src/pages/Devin.tsx
 #: src/pages/devin/DevinSessions.tsx
 msgid "Needs you"
 msgstr "A besoin de vous"
 
 #: src/lib/roster-status.ts
-#: src/pages/ActivityList.tsx
 msgid "Needs your answer"
 msgstr "Nécessite une saisie"
 
@@ -8927,7 +8927,7 @@ msgstr ""
 
 #: src/pages/Artifacts.tsx
 msgid "Search artifacts"
-msgstr ""
+msgstr "Rechercher des artefacts…"
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Box"

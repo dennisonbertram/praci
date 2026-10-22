@@ -164,7 +164,7 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
               <span aria-hidden="true" className="size-1.5 rounded-full bg-primary" />
             ) : null}
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-72">
+          <PopoverContent side="right" align="start" className="w-72">
             <ActivityFilters filters={filters} onChange={setFilters} />
           </PopoverContent>
         </Popover>
@@ -186,7 +186,7 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
           </p>
         ) : null}
 
-        <ActivitySection id="activity-needs-heading" title={<Trans>Needs your answer</Trans>}>
+        <ActivitySection id="activity-needs-heading" title={<Trans>Needs you</Trans>}>
           {needsYou.map((run) => (
             <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
           ))}
