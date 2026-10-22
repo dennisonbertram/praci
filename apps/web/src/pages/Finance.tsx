@@ -622,7 +622,7 @@ function Overview({
               >
                 {money(totals.currentCents)}
               </Link>
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 {soFar
                   ? period === "month"
                     ? t`${soFar} · ${spentRange}`
@@ -673,13 +673,13 @@ function Overview({
             )}
             {bars.at(-1)?.partial &&
             bars.some((p) => p.outCents || p.revenueCents || p.financingCents) ? (
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 <Trans>* So far</Trans>
               </div>
             ) : null}
           </Section>
 
-          <div className="grid items-start gap-3 @3xl:grid-cols-2">
+          <div className="grid gap-3 @3xl:grid-cols-2">
             <BackHere
               value={{
                 label: t`Breakdown`,
@@ -719,7 +719,7 @@ function Overview({
                     <Trans>No spend in this period</Trans>
                   </div>
                 ) : null}
-                <div className="mt-auto flex items-center justify-between text-[11px] text-muted-foreground">
+                <div className="mt-auto flex items-center justify-between text-xs text-muted-foreground">
                   {periodBreakdown ? spentRange : <Trans>Last 90 days</Trans>}
                   <ShowAll
                     total={breakdownRows.length}
@@ -731,78 +731,73 @@ function Overview({
               </Section>
             </BackHere>
 
-            {/* Subscriptions sit under Upcoming, which is short, so the right column has no dead area. */}
-            <div className="flex flex-col gap-3">
-              <BackHere value={{ label: t`Upcoming`, to: `${financePath.dashboard()}#upcoming` }}>
-                <Section
-                  id="upcoming"
-                  title={<Trans>Upcoming · 30 days</Trans>}
-                  action={
-                    data.upcoming.totalCents > 0 ? (
-                      <span className="text-xs font-semibold tabular-nums">
-                        ~{money(data.upcoming.totalCents)}
-                      </span>
-                    ) : null
-                  }
-                >
-                  <div className="-mx-2">
-                    {(allUpcoming ? upcomingRows : upcomingRows.slice(0, MAX_ROWS)).map((item) => (
-                      <UpcomingRow key={`${item.kind}:${item.key}`} item={item} />
-                    ))}
+            <BackHere value={{ label: t`Upcoming`, to: `${financePath.dashboard()}#upcoming` }}>
+              <Section
+                id="upcoming"
+                title={<Trans>Upcoming · 30 days</Trans>}
+                action={
+                  data.upcoming.totalCents > 0 ? (
+                    <span className="text-xs font-semibold tabular-nums">
+                      ~{money(data.upcoming.totalCents)}
+                    </span>
+                  ) : null
+                }
+              >
+                <div className="-mx-2">
+                  {(allUpcoming ? upcomingRows : upcomingRows.slice(0, MAX_ROWS)).map((item) => (
+                    <UpcomingRow key={`${item.kind}:${item.key}`} item={item} />
+                  ))}
+                </div>
+                {upcomingRows.length === 0 ? (
+                  <div className="py-2 text-muted-foreground">
+                    <Trans>Nothing due in the next 30 days</Trans>
                   </div>
-                  {upcomingRows.length === 0 ? (
-                    <div className="py-2 text-muted-foreground">
-                      <Trans>Nothing due in the next 30 days</Trans>
-                    </div>
-                  ) : null}
-                  <div className="mt-auto flex justify-end text-[11px] text-muted-foreground">
+                ) : null}
+                <div className="mt-auto flex justify-end text-xs text-muted-foreground">
+                  <ShowAll
+                    total={upcomingRows.length}
+                    cap={MAX_ROWS}
+                    expanded={allUpcoming}
+                    onToggle={() => setAllUpcoming((v) => !v)}
+                  />
+                </div>
+              </Section>
+            </BackHere>
+          </div>
+
+          <BackHere
+            value={{ label: t`Subscriptions`, to: `${financePath.dashboard()}#subscriptions` }}
+          >
+            <Section id="subscriptions" title={<Trans>Subscriptions</Trans>}>
+              {subs.items.length === 0 ? (
+                <div className="py-2 text-muted-foreground">
+                  <Trans>None yet. A vendor shows here after three similar monthly charges.</Trans>
+                </div>
+              ) : (
+                <div>
+                  <SubscriptionsTable
+                    subs={subs}
+                    rows={allSubs ? subs.items : subs.items.slice(0, MAX_ROWS)}
+                  />
+                  <div className="flex items-center justify-between border-t border-border pt-2 text-xs text-muted-foreground">
+                    <span>
+                      {plural(subs.items.length, {
+                        one: "# subscription",
+                        other: "# subscriptions",
+                      })}{" "}
+                      · {t`${monthlyTotal}/mo`}
+                    </span>
                     <ShowAll
-                      total={upcomingRows.length}
+                      total={subs.items.length}
                       cap={MAX_ROWS}
-                      expanded={allUpcoming}
-                      onToggle={() => setAllUpcoming((v) => !v)}
+                      expanded={allSubs}
+                      onToggle={() => setAllSubs((v) => !v)}
                     />
                   </div>
-                </Section>
-              </BackHere>
-
-              <BackHere
-                value={{ label: t`Subscriptions`, to: `${financePath.dashboard()}#subscriptions` }}
-              >
-                <Section id="subscriptions" title={<Trans>Subscriptions</Trans>}>
-                  {subs.items.length === 0 ? (
-                    <div className="py-2 text-muted-foreground">
-                      <Trans>
-                        None yet. A vendor shows here after three similar monthly charges.
-                      </Trans>
-                    </div>
-                  ) : (
-                    <div>
-                      <SubscriptionsTable
-                        subs={subs}
-                        rows={allSubs ? subs.items : subs.items.slice(0, MAX_ROWS)}
-                      />
-                      <div className="flex items-center justify-between border-t border-border pt-2 text-xs text-muted-foreground">
-                        <span>
-                          {plural(subs.items.length, {
-                            one: "# subscription",
-                            other: "# subscriptions",
-                          })}{" "}
-                          · {t`${monthlyTotal}/mo`}
-                        </span>
-                        <ShowAll
-                          total={subs.items.length}
-                          cap={MAX_ROWS}
-                          expanded={allSubs}
-                          onToggle={() => setAllSubs((v) => !v)}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </Section>
-              </BackHere>
-            </div>
-          </div>
+                </div>
+              )}
+            </Section>
+          </BackHere>
         </div>
       )}
     </div>
@@ -889,10 +884,10 @@ export function UpcomingRow({ item }: { item: UpcomingItem }) {
       {/* Narrow, the name gets the whole first line; the dates and tag sit under it. */}
       <span className="flex min-w-0 flex-col items-start gap-0.5 @md:flex-row @md:items-center @md:gap-1.5">
         <span className="min-w-0 max-w-full truncate">{item.name}</span>
-        <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span className="@md:hidden">{dates}</span>
           {item.kind === "recurring" && !item.cardBill ? null : (
-            <span className="shrink-0 rounded-full border border-border px-1.5 text-[11px]">
+            <span className="shrink-0 rounded-full border border-border px-1.5 text-xs">
               {upcomingTag(item)}
             </span>
           )}
@@ -971,11 +966,11 @@ function SubscriptionsTable({
             <Trans>Per month</Trans>
           </TableHead>
           {showTrend ? (
-            <TableHead className="text-end hidden @md:table-cell">
+            <TableHead className="text-end hidden whitespace-nowrap @md:table-cell">
               <Trans>3-mo change</Trans>
             </TableHead>
           ) : null}
-          <TableHead className="text-end hidden @md:table-cell">
+          <TableHead className="text-end hidden whitespace-nowrap @md:table-cell">
             <Trans>Last charge</Trans>
           </TableHead>
           <TableHead />
@@ -996,13 +991,13 @@ function SubscriptionsTable({
                 <HereLink
                   to={financePath.vendor(sub.key)}
                   aria-label={paidWith ? t`${name}, paid with ${paidWith}` : name}
-                  className="outline-none hover:underline focus-visible:underline"
+                  className="rk-tap outline-none hover:underline focus-visible:underline"
                 >
                   {sub.name}
                 </HereLink>
                 {trendText(sub.trendCents) ? (
                   <span
-                    className={`ms-1.5 text-[11px] font-normal tabular-nums text-muted-foreground ${showTrend ? "@md:hidden" : ""}`}
+                    className={`ms-1.5 text-xs font-normal tabular-nums text-muted-foreground ${showTrend ? "@md:hidden" : ""}`}
                   >
                     {trendText(sub.trendCents)}
                   </span>
@@ -1010,7 +1005,7 @@ function SubscriptionsTable({
                 {similar ? (
                   <span
                     title={similar}
-                    className="ms-1.5 inline-block max-w-full truncate rounded-full border border-border px-1.5 align-middle text-[11px] font-normal text-muted-foreground"
+                    className="ms-1.5 inline-block max-w-full truncate rounded-full border border-border px-1.5 align-middle text-xs font-normal text-muted-foreground"
                   >
                     {similar}
                   </span>
@@ -1018,7 +1013,7 @@ function SubscriptionsTable({
                 {paidWith ? (
                   <span
                     role="tooltip"
-                    className="pointer-events-none invisible ms-2.5 hidden whitespace-nowrap rounded-full bg-primary px-2.5 py-0.5 align-middle text-[11px] font-normal leading-4 text-primary-foreground group-focus-within/row:visible group-hover/row:visible @md:inline-block"
+                    className="pointer-events-none invisible ms-2.5 hidden whitespace-nowrap rounded-full bg-primary px-2.5 py-0.5 align-middle text-xs font-normal leading-4 text-primary-foreground group-focus-within/row:visible group-hover/row:visible @md:inline-block"
                   >
                     {paidWith}
                   </span>

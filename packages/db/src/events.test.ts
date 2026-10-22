@@ -87,7 +87,8 @@ describe("finalizeRun", () => {
       $queryRaw: vi.fn(async () => []),
       run: {
         findUnique: vi.fn(async () => ({ status: "running" })),
-        findUniqueOrThrow: vi.fn(async () => ({ sourceMessage: null })),
+        findUniqueOrThrow: vi.fn(async () => ({ sourceMessage: null, userId: "user-1" })),
+        findMany: vi.fn(async () => []),
         findFirst: vi.fn(async () => null),
         updateMany: vi.fn(async () => ({ count: 1 })),
       },
@@ -136,7 +137,8 @@ describe("finalizeRun", () => {
       $queryRaw: vi.fn(async () => []),
       run: {
         findUnique: vi.fn(async () => ({ status: "running", startedAt: null })),
-        findUniqueOrThrow: vi.fn(async () => ({ sourceMessage: null })),
+        findUniqueOrThrow: vi.fn(async () => ({ sourceMessage: null, userId: "user-1" })),
+        findMany: vi.fn(async () => []),
         findFirst: vi.fn(async () => null),
         updateMany: vi.fn(async () => ({ count: 1 })),
         create: vi.fn(async () => ({ id: "run-reply" })),
@@ -202,7 +204,8 @@ describe("finalizeRun", () => {
       $queryRaw: vi.fn(async () => []),
       run: {
         findUnique: vi.fn(async () => ({ status: "running", startedAt: null })),
-        findUniqueOrThrow: vi.fn(async () => ({ sourceMessage: null })),
+        findUniqueOrThrow: vi.fn(async () => ({ sourceMessage: null, userId: "user-1" })),
+        findMany: vi.fn(async () => []),
         findFirst: vi.fn(async () => null),
         updateMany: vi.fn(async () => ({ count: 1 })),
         create: vi.fn(async () => ({ id: "run-reply" })),
@@ -280,7 +283,8 @@ describe("finalizeRun", () => {
       $queryRaw: vi.fn(async () => []),
       run: {
         findUnique: vi.fn(async () => ({ status: "running", startedAt: null })),
-        findUniqueOrThrow: vi.fn(async () => ({ sourceMessage: null })),
+        findUniqueOrThrow: vi.fn(async () => ({ sourceMessage: null, userId: "user-1" })),
+        findMany: vi.fn(async () => []),
         findFirst: vi.fn(async () => null),
         updateMany: vi.fn(async () => ({ count: 1 })),
         create: vi.fn(async () => ({ id: "run-reply" })),

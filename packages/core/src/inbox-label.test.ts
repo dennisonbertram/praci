@@ -36,6 +36,11 @@ describe("inboxLabel", () => {
     expect(label({ category: "receipt", priority: "low" })).toBeNull();
   });
 
+  it("drops Needs attention once the newest message is the user's own reply", () => {
+    expect(label({ priority: "important", fromSelf: true })).toBeNull();
+    expect(label({ category: "action", fromSelf: true })).toBeNull();
+  });
+
   it("drops Needs attention for a sender marked noise", () => {
     expect(label({ needsReply: true, priority: "critical", feedback: "noise" })).toBeNull();
     expect(label({ category: "action", feedback: "noise" })).toBeNull();

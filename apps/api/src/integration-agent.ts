@@ -520,7 +520,7 @@ export async function ensureIntegrationAgent(
       spawnKey: reused?.spawnKey ?? spawnKey,
       name: `${service} agent`,
       title: "",
-      description: `Your ${service} account`,
+      description: preset?.description ?? `Your ${service} account`,
       instructions: instructions(service, preset?.instructions, isDevinEndpoint(server.endpoint)),
       notifyOnFinish: true,
       color: appAgentColor([service], spawnKey),

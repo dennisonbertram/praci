@@ -528,6 +528,7 @@ export class PiAgentRuntime implements AgentRuntime {
                 // another model turn that would hide the error.
                 !providerFailureText(event.message) &&
                 !host.pausePending &&
+                !request.delegated?.() &&
                 silentToolContinuations < MAX_SILENT_TOOL_CONTINUATIONS
               ) {
                 silentToolContinuations += 1;
@@ -619,7 +620,7 @@ export class PiAgentRuntime implements AgentRuntime {
             streamed = budgetMessage;
           }
         } else if (!host.pausePending && toolWorkPendingFinal) {
-          if (request.allowSilentEmpty) {
+          if (request.allowSilentEmpty || request.delegated?.()) {
             // Scheduled/FYI runs may finish after tools with no user-visible text.
             streamed = "";
           } else {
@@ -632,9 +633,9 @@ export class PiAgentRuntime implements AgentRuntime {
           if (fallback.trim()) {
             queue.push({ type: "text", text: fallback });
             streamed = fallback;
-          } else if (toolWorkPendingFinal && !request.allowSilentEmpty) {
+          } else if (toolWorkPendingFinal && !request.allowSilentEmpty && !request.delegated?.()) {
             throw new Error(MISSING_TOOL_FINAL_RESPONSE_ERROR);
-          } else if (toolCalls === 0 && !request.allowSilentEmpty) {
+          } else if (toolCalls === 0 && !request.allowSilentEmpty && !request.delegated?.()) {
             streamed = request.emptyResponseText?.trim() || "No response. Try again.";
             queue.push({ type: "text", text: streamed });
           }

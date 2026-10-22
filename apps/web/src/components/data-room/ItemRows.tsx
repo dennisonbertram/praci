@@ -136,7 +136,7 @@ function rowProps(item: DataRoomApiItem, o: RowInteraction, first: boolean) {
 
 /** A document icon (red when the file failed), or a spinner while the file is being read. */
 function Marker({ item }: { item: DataRoomApiItem }) {
-  if (item.status === "failed") {
+  if (item.status === "failed" || isStuck(item)) {
     const Icon = fileIcon(item);
     return (
       <Icon role="img" aria-label={t`Failed`} className="size-3.5 shrink-0 text-destructive" />
@@ -188,7 +188,7 @@ const PARTIES_COLUMN = "hidden @min-[800px]/list:table-column";
 const ROW_ACTIONS =
   "opacity-0 group-hover/row:opacity-100 group-focus-visible/row:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100 pointer-coarse:opacity-100";
 /** The edge padding the list had as grid rows; the table sits inside it. */
-const LIST_PAD = "px-4 md:px-7 @min-[800px]/bd:px-2";
+const LIST_PAD = "px-4 md:px-7 @min-[800px]/bd:ps-2";
 /** The Date column follows the sort: when the file was added, or the date on the document. */
 const dateOf = (item: DataRoomApiItem, field: SortField | undefined) =>
   field === "date" ? dateText(item.facets.docDate) : dateText(item.createdAt, true);
@@ -422,8 +422,11 @@ function ItemRow({
         className={MID_COL}
         title={item.status === "failed" ? (item.error ?? undefined) : undefined}
       >
+        {/* A read that timed out looks like any other failure; Try again is on the row. */}
         {label ? (
-          <Badge variant={item.status === "failed" ? "destructive" : "secondary"}>{label}</Badge>
+          <Badge variant={item.status === "failed" || stuck ? "destructive" : "secondary"}>
+            {stuck ? statusLabel("failed") : label}
+          </Badge>
         ) : null}
       </TableCell>
       <TableCell className="pe-0">
@@ -540,7 +543,7 @@ export function ListView({
 }) {
   return (
     <div className={LIST_PAD}>
-      <Table className="max-w-4xl">
+      <Table>
         <Columns />
         <ListHead sortField={sortField} rows={rows} o={o} />
         {lead?.()}

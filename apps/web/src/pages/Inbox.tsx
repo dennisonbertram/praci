@@ -1064,15 +1064,19 @@ function InboxListPage({
         shownElsewhere={failed && !failedEmpty ? failed : undefined}
       />
     ) : null;
-  // "Reply to Morgan ..." with no date repeats its row under Needs reply: the row stays, the card drops it.
+  // An undated "Reply to ..." to-do made from a visible Needs reply row would show the same action
+  // twice: the row stays and says "To do", the card drops it. Other tasks from that mail stay.
   // ponytail: matches English reply wording only; a "needs reply" flag on the to-do would be exact.
-  const needsReplyIds = new Set(groups.needsReply.map((row) => row.id));
+  const replyRowIds = new Set(replyRows.map((row) => row.id));
   const repeatsRow = (todo: InboxTodo) =>
     todo.doneAt === null &&
     !todo.dueOn &&
     Boolean(todo.messageId) &&
-    needsReplyIds.has(todo.messageId as string) &&
+    replyRowIds.has(todo.messageId as string) &&
     /^(reply|respond|answer)\b/i.test(todo.text);
+  const todoRowIds = new Set(
+    (todos ?? []).filter(repeatsRow).map((todo) => todo.messageId as string),
+  );
   const cardTodos = todos?.filter((todo) => !repeatsRow(todo));
   // Its checkbox is gone from the card, so the open mail offers the completion instead.
   const openReplyTodo = openId
@@ -1844,6 +1848,7 @@ function InboxListPage({
                     title={<Trans>Needs reply</Trans>}
                     hideAttention
                     rows={replyRows}
+                    todoIds={todoRowIds}
                     unreadTotal={groups.needsReply.filter((row) => row.unread).length}
                     onOpen={openMessage}
                     onMark={triage ? mark : undefined}
@@ -1992,6 +1997,7 @@ function InboxListPage({
               : undefined
           }
           onRead={openRow ? (read) => setRead(openRow.id, read) : undefined}
+          replyDoneText={openReplyTodo?.text}
           onReplyDone={
             openReplyTodo
               ? () =>

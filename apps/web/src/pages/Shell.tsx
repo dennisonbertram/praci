@@ -254,6 +254,7 @@ import {
   rosterHeldFor,
   rosterStatusChanged,
   rosterWorkStatusLabel,
+  waitingForApprovalLabel,
 } from "../lib/roster-status";
 import { formatRosterTime } from "../lib/roster-time";
 import type { MissingBotSeen } from "../lib/route-bot";
@@ -272,6 +273,7 @@ import {
   useDrawerFocus,
   useSidebarDocked,
 } from "../lib/shell-layout";
+import { rememberThread } from "../lib/thread-cache";
 import {
   activeThreadRuns,
   applyThreadSendReceipt,
@@ -790,6 +792,8 @@ export function ShellPage() {
   // Last-known computer/screen per bot, so switching back to an already-seen
   // bot paints its computer pane instantly instead of blanking it while the
   // thread + screen RPCs round-trip again (see refreshThread / refreshComputerScreen).
+  // Last thread per bot: returning to a chat shows its messages while the fresh copy loads.
+  const threadCacheRef = useRef(new Map<string, ThreadSnapshot>());
   const computerCacheRef = useRef(
     new Map<string, { computer: ComputerStatus | null; screenUrl: string | null }>(),
   );
@@ -815,6 +819,7 @@ export function ShellPage() {
 
   function commitSnapshot(next: ThreadSnapshot | null) {
     snapshotRef.current = next;
+    rememberThread(threadCacheRef.current, next, 8);
     setSnapshot(withLiveStreamingProgress(next, streamResponsesRef.current));
   }
 
@@ -885,6 +890,7 @@ export function ShellPage() {
   const sidebarDocked = useSidebarDocked();
   const sidebarRef = useRef<HTMLElement>(null);
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
+  const sidebarPaneRef = useRef<HTMLDivElement>(null);
   const rosterStopId = useRef<string | null>(null);
   // After every render, since rows come and go: keeps the chat list to one tab stop.
   useEffect(() => syncRosterTabStops(sidebarRef.current, rosterStopId.current));
@@ -907,6 +913,10 @@ export function ShellPage() {
       resize.disconnect();
       mutate.disconnect();
     };
+  }, [mobileSidebarOpen]);
+  // The drawer keeps its scroll offset while closed; open it on Pages, not where the chats were left.
+  useEffect(() => {
+    if (mobileSidebarOpen) sidebarPaneRef.current?.scrollTo({ top: 0 });
   }, [mobileSidebarOpen]);
   const closeMobileSidebar = useCallback(() => setMobileSidebarOpen(false), []);
   useDrawerFocus(mobileSidebarOpen, closeMobileSidebar, sidebarRef);
@@ -1788,6 +1798,8 @@ export function ShellPage() {
     } else {
       setScreenUrl(null);
     }
+    const cachedThread = threadCacheRef.current.get(active.id);
+    if (cachedThread && snapshotRef.current?.botId !== active.id) commitSnapshot(cachedThread);
     expandedHistoryThread.current = null;
     historyEpoch.current += 1;
     const abort = new AbortController();
@@ -2531,10 +2543,11 @@ export function ShellPage() {
   const currentRuns = activeThreadRuns(activeSnapshot);
   const answerableAskMessageId = latestAnswerableAskMessageId(activeSnapshot);
   const waitingOnApproval = Boolean(
-    answerableAskMessageId &&
-      activeSnapshot?.messages
-        .find((message) => message.id === answerableAskMessageId)
-        ?.blocks.some((block) => block.kind === "ask" && isApprovalAskBlock(block)),
+    activeSnapshot?.delegatePending?.length ||
+      (answerableAskMessageId &&
+        activeSnapshot?.messages
+          .find((message) => message.id === answerableAskMessageId)
+          ?.blocks.some((block) => block.kind === "ask" && isApprovalAskBlock(block))),
   );
   const workingRuns = currentRuns.filter((run) =>
     ["running", "queued", "leased"].includes(run.status),
@@ -4168,7 +4181,13 @@ export function ShellPage() {
               onRemoveDataRoomItem={removeDataRoomItem}
               attachmentNotice={attachmentNotice}
               onDismissAttachmentNotice={() => setAttachmentNotice(null)}
-              placeholder={waitingOnApproval ? needsAnswerLabel() : undefined}
+              placeholder={
+                activeSnapshot?.delegatePending?.length
+                  ? waitingForApprovalLabel()
+                  : waitingOnApproval
+                    ? needsAnswerLabel()
+                    : undefined
+              }
               sendError={sendError}
               runError={displayedRunError}
               runErrorId={displayedRunErrorId}
@@ -4475,7 +4494,10 @@ export function ShellPage() {
           </button>
         ) : null}
         {/* On a phone the pages and the chats scroll together; from lg up each keeps its own scroll. */}
-        <div className="flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents">
+        <div
+          ref={sidebarPaneRef}
+          className="flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents"
+        >
           {bootstrapMe === undefined ? null : (
             // Waiting for the account (undefined) keeps pages the user hid from flashing in.
             // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
@@ -4552,8 +4574,8 @@ export function ShellPage() {
                       rail,
                       value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
                       valueLabel: plural(glance.legalDueSoon, {
-                        one: "# due soon",
-                        other: "# due soon",
+                        one: "# overdue or due in the next 7 days",
+                        other: "# overdue or due in the next 7 days",
                       }),
                     })}
                   />
@@ -4630,7 +4652,12 @@ export function ShellPage() {
                     rail={rail}
                     onOpen={() => {
                       setMobileSidebarOpen(false);
-                      navigate("/app/data-room");
+                      // The badge counts failed files; the page opens on them.
+                      navigate(
+                        glance.dataRoomWaiting > 0
+                          ? "/app/data-room?status=failed"
+                          : "/app/data-room",
+                      );
                     }}
                     {...glanceBadge({
                       unseen: unseen["data-room"] ?? 0,
@@ -4758,7 +4785,15 @@ export function ShellPage() {
                       ? [
                           ...listedRows.filter((row) => !isPageAgent(row) && !isEmailChat(row)),
                           ...(pageAgentRows.length ? [{ foldHeader: "page" as const }] : []),
-                          ...(showPageAgents ? pageAgentRows : []),
+                          // Open only because the chat is a page agent: list just that one.
+                          ...(showPageAgents
+                            ? pageAgentsOpen
+                              ? pageAgentRows
+                              : pageAgentRows.filter(
+                                  (row) =>
+                                    row.item.kind === "bot" && row.item.chat.id === active?.id,
+                                )
+                            : []),
                           ...(emailChatRows.length ? [{ foldHeader: "email" as const }] : []),
                           ...(showEmailChats ? emailChatRows : []),
                         ]

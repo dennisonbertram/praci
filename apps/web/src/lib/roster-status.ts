@@ -15,6 +15,11 @@ export function needsAnswerLabel(): string {
   return t`Needs your answer`;
 }
 
+/** A request this agent sent waits for the owner's approval on another agent's card. */
+export function waitingForApprovalLabel(): string {
+  return t`Waiting for approval`;
+}
+
 /**
  * Events after which a bot's sidebar status is out of date. A run that pauses for an approval or
  * question must refresh the list too, or its row keeps saying "Working…" until the next poll.

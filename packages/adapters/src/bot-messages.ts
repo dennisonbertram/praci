@@ -446,7 +446,15 @@ export async function messageBot(
           botId: target.id,
           type: "thread.message.created",
           runId: nextRun.id,
-          payload: { messageId: inbound.id, role: "user", blocks: [inboundBlock] },
+          payload: {
+            messageId: inbound.id,
+            role: "user",
+            blocks: [inboundBlock],
+            // Lets the receiving thread tell which of its requests this answers.
+            ...(sourceContext?.fromBotId === target.id && intent !== "fyi"
+              ? { replyToMessageId: sourceContext.returnToMessageId }
+              : {}),
+          },
         });
         const outboundEvent = await appendEventInTransaction(tx, {
           spaceId: run.spaceId,
