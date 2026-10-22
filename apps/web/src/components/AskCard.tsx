@@ -39,7 +39,7 @@ function formatAnsweredState(
     const choice = resolveAskChoice(answer, actions);
     return choice ? t`Answered: ${choice.label}` : t`Answered`;
   }
-  if (answer === "superseded") return t`No longer active`;
+  if (answer === "superseded") return t`Replaced by a newer request`;
   if (answer === "expired") return t`Expired`;
   if (outcome === "created") return t`Created`;
   if (outcome === "cancelled") return t`Cancelled`;

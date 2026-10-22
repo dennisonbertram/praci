@@ -8573,6 +8573,10 @@ msgstr "Replace key"
 msgid "Replace value"
 msgstr "Replace value"
 
+#: src/components/AskCard.tsx
+msgid "Replaced by a newer request"
+msgstr "Replaced by a newer request"
+
 #: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
@@ -11237,6 +11241,10 @@ msgstr "Waiting {hours}h"
 #: src/lib/devin-format.ts
 msgid "Waiting {minutes}m"
 msgstr "Waiting {minutes}m"
+
+#: src/lib/roster-status.ts
+msgid "Waiting for approval"
+msgstr "Waiting for approval"
 
 #: src/components/fundraising/Pipeline.tsx
 msgid "Waiting for Mercury · {waiting}"

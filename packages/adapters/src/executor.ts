@@ -4412,11 +4412,19 @@ export function createRunExecutor(deps: ExecutorDeps) {
               },
               select: { id: true, status: true, request: true, result: true },
             });
-            const repeated = denied.find(
-              (prior) =>
-                prior.id !== applied.effect.id &&
-                repeatsDeniedRequest(replayEffectToolName, prior.request, effectRequest),
-            );
+            const repeated =
+              denied.find(
+                (prior) =>
+                  prior.id !== applied.effect.id &&
+                  repeatsDeniedRequest(replayEffectToolName, prior.request, effectRequest),
+              ) ??
+              (await priorDenialAwaitingOwner(
+                deps.prisma,
+                run,
+                replayEffectToolName,
+                effectRequest,
+                applied.effect.id,
+              ));
             if (repeated) {
               const gate = resolveDuplicateEffectGate(repeated, name);
               const result =
@@ -8567,9 +8575,88 @@ async function loadBotDirectory(
   );
 }
 
+/**
+ * A delegate (bank) run asked again for a payment the owner already denied in an earlier run.
+ * The denial stands until the owner sends a new message in the requester's thread; an agent
+ * re-asking on its own gets the existing denial back instead of a new approval card.
+ */
+export async function priorDenialAwaitingOwner(
+  prisma: PrismaClient,
+  run: {
+    spaceId: string;
+    userId: string;
+    botId: string;
+    trigger: string;
+    sourceMessageId: string | null;
+  },
+  kind: string,
+  request: unknown,
+  currentEffectId: string,
+) {
+  if (run.trigger !== "bot_message" || !run.sourceMessageId) return undefined;
+  const source = await prisma.message.findUnique({
+    where: { id: run.sourceMessageId },
+    select: { blocks: true },
+  });
+  const returnTo = (Array.isArray(source?.blocks) ? (source.blocks as MessageBlock[]) : []).find(
+    (block) => block.kind === "bot_message_received" && block.returnToMessageId,
+  );
+  const sentId = returnTo?.kind === "bot_message_received" ? returnTo.returnToMessageId : undefined;
+  const sent = sentId
+    ? await prisma.message.findUnique({ where: { id: sentId }, select: { threadId: true } })
+    : null;
+  if (!sent) return undefined;
+  // Page through the denials until one matches: an old matching denial still applies.
+  let prior:
+    | { id: string; status: string; request: unknown; result: unknown; updatedAt: Date }
+    | undefined;
+  for (let skip = 0; !prior; skip += 50) {
+    const page = await prisma.externalEffect.findMany({
+      where: {
+        spaceId: run.spaceId,
+        kind,
+        status: "denied",
+        id: { not: currentEffectId },
+        run: { userId: run.userId, botId: run.botId, trigger: "bot_message" },
+      },
+      orderBy: { updatedAt: "desc" },
+      skip,
+      take: 50,
+      select: { id: true, status: true, request: true, result: true, updatedAt: true },
+    });
+    prior = page.find((effect) => repeatsDeniedRequest(kind, effect.request, request));
+    if (page.length < 50) break;
+  }
+  if (!prior) return undefined;
+  // Only words the owner typed reset the guard: bot-to-bot deliveries are also stored as user-role
+  // messages, but they carry a bot author or a bot_message_received block.
+  for (let skip = 0; ; skip += 50) {
+    const page = await prisma.message.findMany({
+      where: {
+        threadId: sent.threadId,
+        role: "user",
+        botId: null,
+        createdAt: { gt: prior.updatedAt },
+      },
+      orderBy: { createdAt: "asc" },
+      skip,
+      take: 50,
+      select: { blocks: true },
+    });
+    const human = page.some(
+      (message) =>
+        !(Array.isArray(message.blocks) ? (message.blocks as MessageBlock[]) : []).some(
+          (block) => block.kind === "bot_message_received",
+        ),
+    );
+    if (human) return undefined;
+    if (page.length < 50) return prior;
+  }
+}
+
 /** Integrations cannot fix a missing AI consent, so those failures link to the switch instead. */
 const CONSENT_LINK_GUIDANCE =
-  " If the reason is that AI data sharing, permission or consent is not allowed, or the AI model recipient is unknown, end with [Open Settings](/app?settings=privacy) instead and never with an Integrations link. If the reason is that a payee has no matching recipient, say exactly that, name the payee, say the recipient must be added at the bank first, and do not link Settings or Integrations.";
+  " If the reason is that AI data sharing, permission or consent is not allowed, or the AI model recipient is unknown, end with [Open Settings](/app?settings=privacy) instead and never with an Integrations link. If the reason is that a payee has no matching recipient, say exactly that, name the payee, say the recipient must be added at the bank first, and end with [Open Integrations](/app/integrations) so the user can reach the bank. When the user approves a payment, report the outcome in one plain line (submitted, or failed with the reason) instead of repeating that it waits for approval, and never mention a missing request link or other tool internals. A denial covers only the request that was denied: when the user asks again in a new message for the same payment, message the agent again as a new request.";
 
 /**
  * A teammate's description in the bot directory. Integration, Carta and Finance agents are messaged

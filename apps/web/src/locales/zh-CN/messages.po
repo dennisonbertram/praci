@@ -6914,7 +6914,7 @@ msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "No longer active"
-msgstr "已停用"
+msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "No mail"
@@ -8571,6 +8571,10 @@ msgstr "替换密钥"
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Replace value"
+msgstr ""
+
+#: src/components/AskCard.tsx
+msgid "Replaced by a newer request"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -11236,6 +11240,10 @@ msgstr ""
 
 #: src/lib/devin-format.ts
 msgid "Waiting {minutes}m"
+msgstr ""
+
+#: src/lib/roster-status.ts
+msgid "Waiting for approval"
 msgstr ""
 
 #: src/components/fundraising/Pipeline.tsx
