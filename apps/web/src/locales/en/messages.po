@@ -918,6 +918,10 @@ msgstr "Add connected models to use them as backups."
 msgid "Add contact"
 msgstr "Add contact"
 
+#: src/pages/Legal.tsx
+msgid "Add contracts to your Data room and Legal reads them."
+msgstr "Add contracts to your Data room and Legal reads them."
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Add credential"
 msgstr "Add credential"
@@ -929,6 +933,7 @@ msgstr "Add custom connection"
 #: src/components/data-room/DataRoomImportMenu.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/DataRoom.tsx
+#: src/pages/Legal.tsx
 msgid "Add files"
 msgstr "Add files"
 
@@ -4288,6 +4293,7 @@ msgstr "Docker is configured but computers are not responding. Confirm the sandb
 msgid "Document date"
 msgstr "Document date"
 
+#: src/components/AiDataSharing.tsx
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/FolderDocuments.tsx
 #: src/pages/portal/PortalHome.tsx

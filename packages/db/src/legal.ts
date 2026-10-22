@@ -18,6 +18,14 @@ export class LegalRevisionError extends Error {
   }
 }
 
+/** No value: null, an empty list or text, or the placeholder status. */
+const isBlank = (value: unknown, field: string) =>
+  value === null ||
+  value === undefined ||
+  value === "" ||
+  (Array.isArray(value) && value.length === 0) ||
+  (field === "status" && value === "unknown");
+
 const MAX_LIST = 500;
 const MAX_GRAPH_NODES = 2000;
 
@@ -174,12 +182,33 @@ export function createLegalRepos(prisma: PrismaClient) {
         analyzedRevision: input.revision,
         analyzedAt: new Date(),
       };
+      const key = {
+        spaceId_userId_dataRoomItemId: { ...scope(actor), dataRoomItemId: input.dataRoomItemId },
+      };
+      const stored = await prisma.legalContract.findUnique({ where: key });
+      // An extraction that comes back empty for a field never erases what is stored (a re-scan of a
+      // thin or unreadable document would otherwise blank dates and values, and with them the
+      // deadlines derived from them). A different value still replaces it, since a document can be
+      // amended. Switching to or from "not legal" is the one explicit reclassification.
+      const keep =
+        stored &&
+        stored.contractType !== LEGAL_NOT_LEGAL_TYPE &&
+        input.contractType !== LEGAL_NOT_LEGAL_TYPE;
+      const merged = keep
+        ? {
+            ...data,
+            ...Object.fromEntries(
+              (Object.keys(data) as (keyof typeof data)[])
+                .filter((field) => field !== "analyzedRevision" && field !== "analyzedAt")
+                .filter((field) => isBlank(data[field], field) && !isBlank(stored[field], field))
+                .map((field) => [field, stored[field]]),
+            ),
+          }
+        : data;
       return prisma.legalContract.upsert({
-        where: {
-          spaceId_userId_dataRoomItemId: { ...scope(actor), dataRoomItemId: input.dataRoomItemId },
-        },
+        where: key,
         create: { ...scope(actor), dataRoomItemId: input.dataRoomItemId, ...data },
-        update: data,
+        update: merged,
       });
     },
 

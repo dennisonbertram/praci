@@ -549,6 +549,45 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     expect(left.map((d: any) => d.id)).toEqual([manual.deadline.id]);
   });
 
+  it("keeps stored term, value and deadlines when a re-scan extracts nothing", async () => {
+    const item = await addItem(a, "rescan.txt", "Office lease with a value.");
+    const base = {
+      dataRoomItemId: item.id,
+      revision: item.revision,
+      title: "Rescan lease",
+      contractType: "lease",
+      status: "active",
+      counterparties: ["Landlord LLC"],
+      effectiveDate: "2026-01-01",
+      expirationDate: "2030-12-31",
+      autoRenews: true,
+      renewalNoticeDays: 60,
+      valueCents: "9000000",
+      currency: "usd",
+    };
+    const first = await legal(a, "legal_upsert_contract", base);
+    const contractId = first.contract.id;
+    await legal(a, "legal_upsert_contract", {
+      dataRoomItemId: item.id,
+      revision: item.revision,
+      title: "Rescan lease",
+      contractType: "lease",
+      status: "unknown",
+    });
+    const row = await prisma.legalContract.findUniqueOrThrow({ where: { id: contractId } });
+    expect(row).toMatchObject({
+      status: "active",
+      valueCents: 9000000n,
+      currency: "USD",
+      counterparties: ["Landlord LLC"],
+      autoRenews: true,
+      renewalNoticeDays: 60,
+    });
+    expect(row.expirationDate?.toISOString().slice(0, 10)).toBe("2030-12-31");
+    const open = (await legal(a, "legal_query", { view: "deadlines", contractId })).deadlines;
+    expect(open.map((d: any) => d.kind).sort()).toEqual(["notice", "renewal"]);
+  });
+
   it("opens a new derived deadline when a closed one's date has changed, and keeps the closed one", async () => {
     const item = await addItem(a, "renewal.txt", "Software renewal.");
     const base = {

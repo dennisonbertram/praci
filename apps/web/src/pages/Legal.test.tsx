@@ -30,6 +30,7 @@ const rpcMock = vi.hoisted(() => ({
 }));
 vi.mock("../lib/rpc", () => ({ rpc: { legal: rpcMock } }));
 
+import { LEGAL_CONSENT_REQUIRED_MESSAGE } from "@rakazo/contracts";
 import { LegalGraphView, labelLines, MAX_GRAPH_NODES } from "../components/legal/LegalGraph";
 import { setHideAmounts } from "../lib/hide-amounts-preference";
 import { LegalPage } from "./Legal";
@@ -92,8 +93,47 @@ it("shows counts and contracts, with the value formatted from the decimal string
   expect(button("Allow")).toBeUndefined();
 });
 
-it("shows the empty state, loading skeleton and load error", async () => {
+/** A Data room with files Legal has not read yet. */
+const emptyWithFiles = {
+  ...emptyOverview,
+  counts: { ...emptyOverview.counts, unreviewedDocuments: 2 },
+};
+
+it("shows one sentence and Add files, not a consent card, when the Data room is empty", async () => {
   rpcMock.overview.mockResolvedValue(emptyOverview);
+  rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
+  await render(<LegalPage />);
+  expect(container.textContent).toContain("Add contracts to your Data room and Legal reads them.");
+  expect(container.querySelector('a[href="/app/data-room"]')?.textContent).toBe("Add files");
+  expect(container.textContent).not.toContain("Let Praci read your documents");
+  expect(tab("Contracts")).toBeUndefined();
+  expect(button("Scan now")).toBeUndefined();
+});
+
+it("hides a consent-failed scan banner once consent exists, and so while Allow is offered", async () => {
+  const failed = {
+    ...overview,
+    agent: {
+      ...overview.agent,
+      lastScanRun: { id: id(8), status: "failed", error: LEGAL_CONSENT_REQUIRED_MESSAGE },
+    },
+  };
+  rpcMock.overview.mockResolvedValue(failed);
+  rpcMock.consent.mockResolvedValue(consentFixture);
+  await render(<LegalPage />);
+  expect(container.querySelector('[data-testid="scan-failed"]')).toBeNull();
+  expect(button("Scan now")?.disabled).toBe(false);
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
+  await render(<LegalPage />);
+  expect(container.querySelector('[data-testid="scan-failed"]')).toBeNull();
+  expect(button("Allow")).toBeDefined();
+  expect(button("Scan now")).toBeUndefined();
+});
+
+it("shows the empty state, loading skeleton and load error", async () => {
+  rpcMock.overview.mockResolvedValue(emptyWithFiles);
   await render(<LegalPage />);
   expect(container.textContent).toContain("Press Scan now to read your Data room");
   expect(container.textContent).toContain("Not scanned yet");
@@ -148,7 +188,7 @@ it("asks for consent when it is not allowed, and grants the shown key", async ()
 });
 
 it("does not repeat the card's sentence on an empty page waiting for consent", async () => {
-  rpcMock.overview.mockResolvedValue(emptyOverview);
+  rpcMock.overview.mockResolvedValue(emptyWithFiles);
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
   await render(<LegalPage />);
   expect(container.textContent).toContain("Let Praci read your documents");
@@ -157,7 +197,7 @@ it("does not repeat the card's sentence on an empty page waiting for consent", a
 });
 
 it("shows the empty Contracts and Deadlines tabs under the consent card", async () => {
-  rpcMock.overview.mockResolvedValue(emptyOverview);
+  rpcMock.overview.mockResolvedValue(emptyWithFiles);
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
   await render(<LegalPage />);
   expect(tab("Contracts")).toBeDefined();
@@ -452,7 +492,7 @@ it("offers the OpenRouter key field when the last scan's key was rejected", asyn
 });
 
 it("has one Scan now button on an empty page", async () => {
-  rpcMock.overview.mockResolvedValue(emptyOverview);
+  rpcMock.overview.mockResolvedValue(emptyWithFiles);
   await render(<LegalPage />);
   expect(
     [...container.querySelectorAll("button")].filter((b) => b.textContent === "Scan now"),

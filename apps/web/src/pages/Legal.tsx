@@ -1,6 +1,7 @@
 import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { LegalDeadline } from "@rakazo/contracts";
+import { LEGAL_CONSENT_REQUIRED_MESSAGE } from "@rakazo/contracts";
 import { Button, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -73,6 +74,7 @@ export function LegalPage({
       <div className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5">
         <div className="mx-auto max-w-[1440px]">
           <Legal
+            selfName={spaces?.find((space) => space.id === spaceId)?.name}
             onOpenSettings={onOpenSettings}
             settingsOpen={settingsOpen}
             onAskAbout={onAskAbout}
@@ -85,11 +87,14 @@ export function LegalPage({
 }
 
 function Legal({
+  selfName,
   onOpenSettings,
   settingsOpen,
   onAskAbout,
   onConsentChange,
 }: {
+  /** The company itself, left out of each contract's Parties. */
+  selfName?: string;
   onOpenSettings?: () => void;
   settingsOpen: boolean;
   onAskAbout?: (question: string) => void;
@@ -196,6 +201,11 @@ function Legal({
     );
   }
   if (!data) return <LegalSkeleton />;
+  // Nothing in the Data room yet: one sentence and Add files, not a consent card or empty tabs.
+  const noDocuments =
+    data.counts.contracts + data.counts.openDeadlines + data.counts.unreviewedDocuments === 0 &&
+    !data.agent.lastScanAt &&
+    !running;
   const needsConsent = status?.allowed === false;
   const setupMissing = needsConsent;
   const scanDisabled = running;
@@ -238,7 +248,7 @@ function Legal({
         actions={
           <>
             {/* Until consent exists the card holds the one action. */}
-            {setupMissing ? null : (
+            {setupMissing || noDocuments ? null : (
               <Button variant="outline" disabled={scanDisabled} onClick={() => void scan()}>
                 {running ? <Trans>Scanning…</Trans> : <Trans>Scan now</Trans>}
               </Button>
@@ -259,7 +269,7 @@ function Legal({
           {scanError}
         </p>
       ) : null}
-      {status && !status.allowed && status.recipients.length > 0 ? (
+      {!noDocuments && status && !status.allowed && status.recipients.length > 0 ? (
         <LegalConsentPrompt
           consent={status}
           onChange={(next) => {
@@ -269,7 +279,11 @@ function Legal({
           }}
         />
       ) : null}
-      {lastRun?.status === "failed" && !running && lastRun.id !== dismissedRun ? (
+      {lastRun?.status === "failed" &&
+      !running &&
+      lastRun.id !== dismissedRun &&
+      // A consent failure is fixed by the Allow card above, or already fixed: it is never a banner.
+      !(status && lastRun.error === LEGAL_CONSENT_REQUIRED_MESSAGE) ? (
         <div
           role="status"
           data-testid="scan-failed"
@@ -305,7 +319,7 @@ function Legal({
         <p className="-mt-2 mb-4 text-sm text-muted-foreground">
           <Link
             to={`${DATA_ROOM_PATH}?legal=unchecked`}
-            className="rk-tap inline-flex min-h-6 items-center text-sm text-foreground hover:underline underline-offset-2"
+            className="rk-tap inline-flex min-h-6 items-center text-sm text-foreground underline underline-offset-2"
           >
             {plural(counts.unreviewedDocuments, {
               one: "# Data room document not yet checked by Legal",
@@ -315,7 +329,16 @@ function Legal({
         </p>
       ) : null}
       {/* Before Allow the empty tabs below show what Legal will fill in; the card above is the instruction. */}
-      {!needsConsent && data.contracts.length === 0 && data.deadlines.length === 0 ? (
+      {noDocuments ? (
+        <div className="flex flex-col items-center gap-3 py-10 text-center">
+          <p className="max-w-sm text-sm text-muted-foreground">
+            <Trans>Add contracts to your Data room and Legal reads them.</Trans>
+          </p>
+          <Button variant="outline" render={<Link to={DATA_ROOM_PATH} />}>
+            <Trans>Add files</Trans>
+          </Button>
+        </div>
+      ) : !needsConsent && data.contracts.length === 0 && data.deadlines.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-10 text-center">
           <p className="max-w-sm text-sm text-muted-foreground">
             {running ? (
@@ -335,11 +358,14 @@ function Legal({
       ) : (
         <>
           <Tabs value={view} onValueChange={(next) => setView(next as View)} className="mb-3">
-            <TabsList className="rounded-full" aria-label={t`View`}>
-              <TabsTrigger value="contracts" className="rounded-full px-3">
+            <TabsList
+              className="max-w-full justify-start overflow-x-auto rounded-full"
+              aria-label={t`View`}
+            >
+              <TabsTrigger value="contracts" className="rounded-full px-2 sm:px-3">
                 <Trans>Contracts</Trans> {counts.contracts}
               </TabsTrigger>
-              <TabsTrigger value="deadlines" className="rounded-full px-3">
+              <TabsTrigger value="deadlines" className="rounded-full px-2 sm:px-3">
                 <Trans>Deadlines</Trans> {counts.openDeadlines}
                 {overdue > 0 ? (
                   <span className="ms-1 text-destructive">
@@ -347,12 +373,14 @@ function Legal({
                   </span>
                 ) : null}
               </TabsTrigger>
-              <TabsTrigger value="graph" className="rounded-full px-3">
+              <TabsTrigger value="graph" className="rounded-full px-2 sm:px-3">
                 <Trans>Graph</Trans>
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          {view === "contracts" ? <LegalContracts contracts={data.contracts} /> : null}
+          {view === "contracts" ? (
+            <LegalContracts contracts={data.contracts} selfName={selfName} />
+          ) : null}
           {view === "deadlines" ? (
             <LegalDeadlines
               deadlines={data.deadlines}

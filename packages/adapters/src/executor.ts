@@ -8346,6 +8346,10 @@ async function loadBotDirectory(
   );
 }
 
+/** Integrations cannot fix a missing AI consent, so those failures link to the switch instead. */
+const CONSENT_LINK_GUIDANCE =
+  " If the reason is that AI data sharing, permission or consent is not allowed, or the recipient is unknown, end with [Open Settings](/app?settings=privacy) instead and never with an Integrations link.";
+
 /**
  * A teammate's description in the bot directory. Integration, Carta and Finance agents are messaged
  * by other bots: they answer with their own data and the asking bot passes it on to the user.
@@ -8355,12 +8359,12 @@ export function directoryDescription(peer: {
   spawnKey: string | null;
 }): string {
   if (isIntegrationAgentSpawnKey(peer.spawnKey) || isCartaAgentSpawnKey(peer.spawnKey)) {
-    return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text, and when its answer comes in, give the user the answer yourself. Do not tell the user to ask it themselves. If its answer says it could not do something, give the user that reason and end your reply with the link in its answer, copied exactly (do not swap it for a general page), or [Open Integrations](/app/integrations) when it has none; never reply only that the request could not be completed.`;
+    return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text, and when its answer comes in, give the user the answer yourself. Do not tell the user to ask it themselves. If its answer says it could not do something, give the user that reason and end your reply with the link in its answer, copied exactly (do not swap it for a general page), or [Open Integrations](/app/integrations) when it has none; never reply only that the request could not be completed.${CONSENT_LINK_GUIDANCE}`;
   }
   if (!isFinanceAgentSpawnKey(peer.spawnKey)) {
     return peer.description;
   }
-  return `${peer.description} Message it with message_bot whenever the user asks about cash, runway, burn or spending, even if they did not name it. It answers with the figures from the Finance page. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text. When its answer comes in, quote the figures in your reply yourself and end with [Open Finance](/app/finance) for the detail. Never estimate a figure yourself; if it cannot answer, or no accounts are connected yet, say so and still end with [Open Finance](/app/finance). If the user asks to pay or change something, message the Mercury or Brex agent instead, and give the user its reason and end your reply with its link, or [Open Integrations](/app/integrations) when it has none. Never link Finance in a reply about a payment or other change: Finance does not show the request.`.trim();
+  return `${peer.description} Message it with message_bot whenever the user asks about cash, runway, burn or spending, even if they did not name it. It answers with the figures from the Finance page. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text. When its answer comes in, quote the figures in your reply yourself and end with [Open Finance](/app/finance) for the detail. Never estimate a figure yourself; if it cannot answer, or no accounts are connected yet, say so and still end with [Open Finance](/app/finance). If the user asks to pay or change something, message the Mercury or Brex agent instead, and give the user its reason and end your reply with its link, or [Open Integrations](/app/integrations) when it has none. Never link Finance in a reply about a payment or other change: Finance does not show the request.${CONSENT_LINK_GUIDANCE}`.trim();
 }
 
 export const PLAIN_CAPABILITY_GUIDANCE =
