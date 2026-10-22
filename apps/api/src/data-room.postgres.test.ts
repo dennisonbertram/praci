@@ -885,12 +885,12 @@ describePostgres("Data room API (PostgreSQL)", () => {
     await expect(client(actors.b).dataRoom.itemRetry({ id: failed.id })).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
-    // A file mid-read restarts only after it has gone quiet for 10 minutes.
+    // A file mid-read restarts only after it has gone quiet for 3 minutes.
     await prisma.dataRoomItem.update({ where: { id: failed.id }, data: { status: "extracting" } });
     await expect(c.dataRoom.itemRetry({ id: failed.id })).rejects.toMatchObject({
       code: "CONFLICT",
     });
-    await prisma.$executeRaw`UPDATE data_room_items SET "updatedAt" = now() - interval '11 minutes' WHERE id = ${failed.id}`;
+    await prisma.$executeRaw`UPDATE data_room_items SET "updatedAt" = now() - interval '4 minutes' WHERE id = ${failed.id}`;
     expect(await c.dataRoom.itemRetry({ id: failed.id })).toMatchObject({ status: "pending" });
     await c.dataRoom.itemDelete({ id: failed.id });
     enqueued.length = 0;

@@ -6980,10 +6980,6 @@ msgstr ""
 msgid "No tickets yet"
 msgstr ""
 
-#: src/components/integrations/AppDetail.tsx
-msgid "No tools available."
-msgstr ""
-
 #: src/components/finance/ui.tsx
 msgid "No transactions in this period"
 msgstr ""
@@ -9243,6 +9239,7 @@ msgstr "Forma"
 
 #: src/components/AskCard.tsx
 #: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/ItemMenu.tsx
 msgid "Share"
 msgstr ""
 
@@ -9251,18 +9248,20 @@ msgstr ""
 msgid "Share {0}"
 msgstr ""
 
-#: src/components/data-room/ItemMenu.tsx
-msgid "Share with investors"
-msgstr ""
-
 #: src/components/AskCard.tsx
+#: src/components/data-room/Preview.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Shared"
 msgstr "Compartilhado"
 
 #. placeholder {0}: item.name
 #: src/components/data-room/ItemDialogs.tsx
-msgid "Shared {0}"
+msgid "Shared {0} with {count} investors"
+msgstr ""
+
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Shared {0} with {who}"
 msgstr ""
 
 #: src/pages/KnowledgeSection.tsx
@@ -11281,6 +11280,14 @@ msgstr ""
 #: src/components/PageAgentIntro.tsx
 #: src/lib/investors-agent.ts
 msgid "Who owns what in the company?"
+msgstr ""
+
+#: src/components/data-room/Preview.tsx
+msgid "With {shareCount} investors"
+msgstr ""
+
+#: src/components/data-room/Preview.tsx
+msgid "With 1 investor"
 msgstr ""
 
 #: src/components/EmailCards.tsx
