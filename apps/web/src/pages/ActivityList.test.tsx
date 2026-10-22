@@ -75,7 +75,7 @@ it("leads with what needs the founder and folds finished runs until asked", asyn
   expect(container.querySelector("#activity-needs-heading")?.textContent).toBe("Needs you");
   // Height stays bounded so the chat roster below remains visible, yet holds about five rows.
   expect(container.querySelector('[data-testid="activity-list"]')?.className).toContain(
-    "max-h-[40vh]",
+    "max-h-40",
   );
   expect(container.textContent).not.toContain("Finished");
   const toggle = container.querySelector<HTMLButtonElement>(
