@@ -53,7 +53,15 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { InboxConsentPrompt } from "../components/AiDataSharing";
 import { AskBotButton } from "../components/AskBotButton";
@@ -111,6 +119,14 @@ const couldNotArchive = (count: number) => t`Couldn't archive ${count}`;
 // ponytail: bounded polling while triage runs; add a user-level event if it often takes longer than 30 seconds.
 const TRIAGE_POLL_MS = 5_000;
 const TRIAGE_MAX_POLLS = 6;
+/** Needs reply lists this many rows first, then "Show N more". */
+const NEEDS_REPLY_SHOWN = 5;
+/** The heading a dated row sits under on the sender piles, the same split Important uses. */
+const dayOf = (receivedAt: string) => {
+  const now = new Date();
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return new Date(receivedAt).getTime() >= midnight ? "today" : "earlier";
+};
 // ponytail: an open Inbox looks for new mail once a minute (the server syncs at most that often);
 // switch to a pushed event if the delay matters.
 const NEW_MAIL_POLL_MS = 60_000;
@@ -312,6 +328,17 @@ function InboxListPage({
   const [filterTipOpen, setFilterTipOpen] = useState(false);
   const filterClosedAt = useRef(0);
   const [justAllowed, setJustAllowed] = useState(false);
+  // Needs reply shows its first few rows so today's mail stays on the first screen.
+  const [allReplies, setAllReplies] = useState(false);
+  // Classifications as the list showed them when triage began, so rows move once, when it ends.
+  // Kept per list, so another account's view never reads it; a row the user marked since is not held.
+  const heldTriage = useRef<{
+    key: string;
+    rows: Map<
+      string,
+      Pick<MailRow, "needsReply" | "priority" | "reason" | "category" | "feedback">
+    >;
+  } | null>(null);
 
   // A message sent from any composer: reload, since the send synced the account.
   useEffect(() => {
@@ -590,6 +617,49 @@ function InboxListPage({
     () => (digestOn ? digestRows(rows, new Date()) : []),
     [digestOn, rows],
   );
+  // While triage runs on a list that already shows classifications, new answers wait: the
+  // classifications from before stay, and rows classified later join the grouping when it finishes.
+  const holdWhilePending = useCallback(
+    (list: MailRow[]) => {
+      if (!shown?.triagePending || stalled || filtered) {
+        heldTriage.current = null;
+        return list;
+      }
+      if (heldTriage.current?.key !== listKey) {
+        heldTriage.current = {
+          key: listKey,
+          rows: new Map(
+            list.map((row) => [
+              row.id,
+              {
+                needsReply: row.needsReply,
+                priority: row.priority,
+                reason: row.reason,
+                category: row.category,
+                feedback: row.feedback,
+              },
+            ]),
+          ),
+        };
+      }
+      const held = heldTriage.current.rows;
+      const none = {
+        needsReply: null,
+        priority: null,
+        reason: null,
+        category: null,
+        feedback: null,
+      };
+      return list.map((row) => {
+        const before = held.get(row.id);
+        // A mark or undo changes the row's classification now, so it is not held back.
+        if (before && before.feedback !== row.feedback) return row;
+        const { feedback: _, ...classes } = before ?? none;
+        return { ...row, ...classes };
+      });
+    },
+    [shown?.triagePending, stalled, filtered, listKey],
+  );
   const groups = useMemo(
     () =>
       groupInbox(
@@ -604,11 +674,13 @@ function InboxListPage({
             }))
           : resultsView
             ? rows.map((row) => ({ ...row, needsReply: null }))
-            : rows,
+            : holdWhilePending(rows),
         new Date(),
       ),
-    [rows, resultsView, sorting],
+    [rows, resultsView, sorting, holdWhilePending],
   );
+  const replyRows = allReplies ? groups.needsReply : groups.needsReply.slice(0, NEEDS_REPLY_SHOWN);
+  const hiddenReplies = groups.needsReply.length - replyRows.length;
   // Display order. A group header takes its own id; a sender with one message shows as that message.
   const ids = useMemo(() => {
     if (digestOn) return groupBySender(digestList).map((group) => group.newest.id);
@@ -622,8 +694,8 @@ function InboxListPage({
             ],
       );
     if (pile === "spam") return rows.map((row) => row.id);
-    return [...groups.needsReply, ...groups.today, ...groups.earlier].map((row) => row.id);
-  }, [digestOn, digestList, grouped, senderGroups, expanded, pile, rows, groups]);
+    return [...replyRows, ...groups.today, ...groups.earlier].map((row) => row.id);
+  }, [digestOn, digestList, grouped, senderGroups, expanded, pile, rows, groups, replyRows]);
   // The messages the open message's arrows and the prefetch can reach.
   const messageIds = useMemo(() => ids.filter((id) => !isSenderGroupId(id)), [ids]);
   const accounts = data?.accounts ?? [];
@@ -1720,25 +1792,37 @@ function InboxListPage({
               ) : grouped ? (
                 <section className="mb-5">
                   <div className="border-t border-foreground/10">
-                    {senderGroups.map((group) => (
-                      <InboxSenderGroup
-                        key={group.key}
-                        group={group}
-                        expanded={expanded.has(group.key)}
-                        onToggle={() => toggleGroup(senderGroupId(group.key))}
-                        onOpen={openMessage}
-                        onMark={triage ? mark : undefined}
-                        onArchive={archive}
-                        onRead={setRead}
-                        onArchiveGroup={() => archiveMany(group.rows)}
-                        onPickGroup={() => togglePicked(group.rows.map((row) => row.id))}
-                        selectedId={selectedId}
-                        pickedIds={pickedSet}
-                        onPick={pick}
-                        onMove={moveOne}
-                        hideNewsletter={pile === "newsletters"}
-                      />
-                    ))}
+                    {senderGroups.map((group, index) => {
+                      const day = dayOf(group.newest.receivedAt);
+                      const first =
+                        index === 0 ||
+                        day !== dayOf(senderGroups[index - 1]?.newest.receivedAt ?? "");
+                      return (
+                        <Fragment key={group.key}>
+                          {first ? (
+                            <h2 className="mb-2 mt-5 text-[13px] font-semibold text-muted-foreground first:mt-0">
+                              {day === "today" ? <Trans>Today</Trans> : <Trans>Earlier</Trans>}
+                            </h2>
+                          ) : null}
+                          <InboxSenderGroup
+                            group={group}
+                            expanded={expanded.has(group.key)}
+                            onToggle={() => toggleGroup(senderGroupId(group.key))}
+                            onOpen={openMessage}
+                            onMark={triage ? mark : undefined}
+                            onArchive={archive}
+                            onRead={setRead}
+                            onArchiveGroup={() => archiveMany(group.rows)}
+                            onPickGroup={() => togglePicked(group.rows.map((row) => row.id))}
+                            selectedId={selectedId}
+                            pickedIds={pickedSet}
+                            onPick={pick}
+                            onMove={moveOne}
+                            hideNewsletter={pile === "newsletters"}
+                          />
+                        </Fragment>
+                      );
+                    })}
                   </div>
                 </section>
               ) : spamView ? (
@@ -1759,7 +1843,7 @@ function InboxListPage({
                   <InboxGroup
                     title={<Trans>Needs reply</Trans>}
                     hideAttention
-                    rows={groups.needsReply}
+                    rows={replyRows}
                     onOpen={openMessage}
                     onMark={triage ? mark : undefined}
                     onArchive={archive}
@@ -1769,6 +1853,16 @@ function InboxListPage({
                     onPick={pick}
                     onMove={moveOne}
                   />
+                  {hiddenReplies > 0 ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mb-5 -mt-3 text-muted-foreground"
+                      onClick={() => setAllReplies(true)}
+                    >
+                      <Trans>Show {hiddenReplies} more</Trans>
+                    </Button>
+                  ) : null}
                   {resultsView ? (
                     <InboxGroup
                       query={query}
