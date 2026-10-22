@@ -8,7 +8,7 @@ async function openComposer(page: Page) {
   await completeOnboarding(page);
   await page.goto("/app");
   await page.waitForURL(/\/app\/[^/]+$/);
-  const composer = page.getByRole("combobox", { name: /Message/ });
+  const composer = page.getByRole("textbox", { name: /Message/ });
   await expect(composer).toBeVisible();
   return composer;
 }

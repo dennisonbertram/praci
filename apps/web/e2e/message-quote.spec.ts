@@ -66,7 +66,7 @@ test("selecting a text span quotes it into a reply", async ({ page }, testInfo) 
   await completeOnboarding(page);
 
   const transcript = page.getByTestId("transcript");
-  const composer = page.getByRole("combobox", { name: /Message/ });
+  const composer = page.getByRole("textbox", { name: /Message/ });
   const quoteButton = page.getByTestId("quote-selection");
 
   const sourceText = `quote-source-${stamp} shows **forty two percent** growth`;
@@ -154,7 +154,7 @@ test("rendered markdown selections survive server quote derivation", async ({ pa
   await completeOnboarding(page);
 
   const transcript = page.getByTestId("transcript");
-  const composer = page.getByRole("combobox", { name: /Message/ });
+  const composer = page.getByRole("textbox", { name: /Message/ });
   const sourceMarker = `md-${stamp}`;
   await composer.fill(`quote markdown fixture ${sourceMarker}`);
   await composer.press("Enter");
@@ -228,7 +228,7 @@ test("selecting text inside a table cell quotes the rendered cell", async ({ pag
   await completeOnboarding(page);
 
   const transcript = page.getByTestId("transcript");
-  const composer = page.getByRole("combobox", { name: /Message/ });
+  const composer = page.getByRole("textbox", { name: /Message/ });
   const cellText = `quarterly revenue ${stamp}`;
   // The scripted bot echoes the prompt, so the reply carries a table card.
   // Chrome (row numbers, toolbar, pager) is unselectable; cell text is not.
@@ -278,7 +278,7 @@ test("an armed reply survives the parent paging out of the transcript", async ({
   await completeOnboarding(page);
 
   const transcript = page.getByTestId("transcript");
-  const composer = page.getByRole("combobox", { name: /Message/ });
+  const composer = page.getByRole("textbox", { name: /Message/ });
   const botId = activeBotId(page);
   const userRow = (text: string) =>
     transcript
@@ -357,7 +357,7 @@ test("a selection spanning two messages offers no quote action", async ({ page }
   await completeOnboarding(page);
 
   const transcript = page.getByTestId("transcript");
-  const composer = page.getByRole("combobox", { name: /Message/ });
+  const composer = page.getByRole("textbox", { name: /Message/ });
   // The scripted bot echoes user text; scope to user bubbles for unique rows.
   const userRow = (text: string) =>
     transcript
@@ -385,7 +385,7 @@ test("quoting a second message retargets the armed reply", async ({ page }) => {
   await completeOnboarding(page);
 
   const transcript = page.getByTestId("transcript");
-  const composer = page.getByRole("combobox", { name: /Message/ });
+  const composer = page.getByRole("textbox", { name: /Message/ });
   const quoteButton = page.getByTestId("quote-selection");
   const replyChip = page.getByTestId("reply-chip");
   const userRow = (text: string) =>

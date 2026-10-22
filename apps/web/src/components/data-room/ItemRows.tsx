@@ -204,9 +204,9 @@ function Columns() {
   return (
     <colgroup>
       <col />
-      <col className={cn(MID_COLUMN, "w-36")} />
+      <col className={cn(MID_COLUMN, "w-28")} />
       <col className={cn(MID_COLUMN, "w-24")} />
-      <col className={cn(PARTIES_COLUMN, "w-48 @min-[1100px]/list:w-64")} />
+      <col className={cn(PARTIES_COLUMN, "w-36 @min-[1100px]/list:w-44")} />
       <col className={cn(MID_COLUMN, "w-20")} />
       <col className="w-7" />
     </colgroup>
@@ -275,7 +275,6 @@ function RetryButton({ item, o }: { item: DataRoomApiItem; o: RowInteraction }) 
     <Button
       variant="outline"
       size="xs"
-      className="mt-1"
       onClick={(event) => {
         event.stopPropagation();
         o.onAction(unreadable ? "delete" : "retry", item);
@@ -334,7 +333,7 @@ function ItemRow({
         <div className="flex min-w-0 items-center gap-2">
           {/* On touch the checkbox always shows, so the slot is a 44 px target. */}
           <span className="relative inline-flex shrink-0 pointer-coarse:items-center">
-            {/* On touch the box has its own 44 px slot beside the icon, so it never reads as the icon. */}
+            {/* On touch the box is a 44 px control in its own slot beside the icon, so it never reads as the icon. */}
             {o.onCheck ? (
               <span aria-hidden="true" className="hidden size-11 pointer-coarse:block" />
             ) : null}
@@ -347,7 +346,7 @@ function ItemRow({
                 onCheckedChange={() => o.onCheck?.(item)}
                 onClick={(event) => event.stopPropagation()}
                 // Over the icon: shown on hover, while ticked, and always on touch screens.
-                className="absolute -inset-0.5 size-auto bg-background opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 pointer-coarse:inset-y-3.25 pointer-coarse:start-3.25 pointer-coarse:end-auto pointer-coarse:size-4.5 pointer-coarse:opacity-100 data-checked:opacity-100 dark:bg-background"
+                className="absolute -inset-0.5 size-auto bg-background opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 pointer-coarse:inset-y-auto pointer-coarse:start-0 pointer-coarse:top-0 pointer-coarse:end-auto pointer-coarse:size-11 pointer-coarse:border-transparent pointer-coarse:bg-transparent pointer-coarse:data-checked:bg-transparent pointer-coarse:dark:bg-transparent pointer-coarse:after:hidden pointer-coarse:before:absolute pointer-coarse:before:size-4.5 pointer-coarse:before:rounded-[4px] pointer-coarse:before:border pointer-coarse:before:border-input pointer-coarse:data-checked:before:border-primary pointer-coarse:data-checked:before:bg-primary pointer-coarse:[&>[data-slot=checkbox-indicator]]:relative pointer-coarse:opacity-100 data-checked:opacity-100 dark:bg-background"
               />
             ) : null}
           </span>
@@ -363,8 +362,14 @@ function ItemRow({
             >
               {item.name}
             </span>
-            {folder ? (
-              <span className="truncate text-xs text-muted-foreground">{folder}</span>
+            {/* The retry sits on the folder line, so a failed row keeps the height of the others. */}
+            {folder || item.status === "failed" || stuck ? (
+              <span className="flex min-w-0 flex-wrap items-center gap-x-2">
+                {folder ? (
+                  <span className="truncate text-xs text-muted-foreground">{folder}</span>
+                ) : null}
+                {item.status === "failed" || stuck ? <RetryButton item={item} o={o} /> : null}
+              </span>
             ) : null}
             {/* Where the Type, Date and Status columns are hidden (a phone), they go under the name. */}
             <span
@@ -373,25 +378,27 @@ function ItemRow({
                 "truncate text-xs text-muted-foreground",
                 // On a wide list the Status column says it; the age has no column, so it stays.
                 !age && "@min-[640px]/list:hidden",
-                item.status === "failed" && "text-destructive",
+                // A failed file's reason (or the Failed pill) is its one signal.
+                item.status === "failed" && "hidden",
               )}
             >
               {age || label || <TypeAndDate item={item} sortField={sortField} />}
             </span>
             {item.status === "failed" && !item.error ? (
-              <span data-testid="data-room-failed-reason" className="text-xs text-destructive">
+              <span
+                data-testid="data-room-failed-reason"
+                className="text-xs text-destructive @min-[640px]/list:hidden"
+              >
                 <Trans>Could not read this file. Delete it and upload it again.</Trans>
               </span>
             ) : null}
             {/* Why it failed, in the row itself: a tooltip is easy to miss and absent on touch. */}
             {item.status === "failed" && item.error ? (
-              <span data-testid="data-room-error" className="text-xs text-destructive">
+              <span
+                data-testid="data-room-error"
+                className="text-xs text-destructive @min-[640px]/list:hidden"
+              >
                 {item.error}
-              </span>
-            ) : null}
-            {item.status === "failed" || stuck ? (
-              <span>
-                <RetryButton item={item} o={o} />
               </span>
             ) : null}
             {/* In the name cell, not a row of their own: a row spanning hidden columns squeezed the name. */}
@@ -415,7 +422,7 @@ function ItemRow({
         className={cn(PARTIES_COL, "truncate text-muted-foreground")}
         title={parties || undefined}
       >
-        {parties || blank(item)}
+        {parties || empty}
       </TableCell>
       <TableCell
         data-testid="data-room-status"
@@ -445,7 +452,8 @@ function ItemRow({
 }
 
 /** Shared by the file tiles and the sub-folder tiles, so a grid reads as one set of tiles. */
-const TILE_GRID = "grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 p-3";
+const TILE_GRID =
+  "grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 py-3 px-4 md:px-7 @min-[800px]/bd:ps-2";
 /** The icon area at the top of every tile: no fill of its own, so file and folder tiles match. */
 const ICON_AREA = "grid h-20 place-items-center rounded-md [&>svg]:size-6";
 const TILE =

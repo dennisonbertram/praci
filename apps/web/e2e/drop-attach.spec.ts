@@ -35,7 +35,7 @@ test("dropping files on an agent attaches them and sends with Enter", async ({ p
   await dropFile(page.locator(`[data-roster-bot-id="${betaId}"]`), "sidebar.txt");
   await expect(page).toHaveURL(new RegExp(`/app/${betaId}$`));
   await expect(page.getByRole("button", { name: "Remove sidebar.txt" })).toBeVisible();
-  await expect(page.getByRole("combobox", { name: /Message/ })).toBeFocused();
+  await expect(page.getByRole("textbox", { name: /Message/ })).toBeFocused();
   await expect(overlay).toHaveCount(0);
 
   // (c) Enter sends an attachment-only message; the transcript shows it.
@@ -65,7 +65,7 @@ test("a sidebar drop on a narrow screen closes the sidebar and keeps the skipped
     10 * 1024 * 1024 + 1,
   );
   await expect(page.getByRole("button", { name: "Close navigation" })).toHaveCount(0);
-  await expect(page.getByRole("combobox", { name: /Message/ })).toBeFocused();
+  await expect(page.getByRole("textbox", { name: /Message/ })).toBeFocused();
   await expect(page.getByText("Skipped huge.txt (over 10 MB)")).toBeVisible();
   await expect(page.getByTestId("data-room-drop-overlay")).toHaveCount(0);
 });

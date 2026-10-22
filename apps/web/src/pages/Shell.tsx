@@ -136,6 +136,7 @@ import {
   useLocation,
   useMatch,
   useNavigate,
+  useNavigationType,
   useParams,
   useSearchParams,
 } from "react-router-dom";
@@ -221,6 +222,7 @@ import { publishComputerCommand } from "../lib/computer-workspace";
 import { fetchDataRoomBlob } from "../lib/data-room";
 import { dataRoomAgentSuggestions, findDataRoomAgent } from "../lib/data-room-agent";
 import { desktopBridge } from "../lib/desktop";
+import { setDockedAgentBotId } from "../lib/docked-agent";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
 import { findGtmAgent } from "../lib/gtm-agent";
 import {
@@ -862,7 +864,12 @@ export function ShellPage() {
     setMissingPath(path);
   }, []);
   // A link inside Settings (for example Server integrations) opens a page; the dialog closes.
-  useEffect(() => setSettingsOpen(false), [pathname]);
+  // A replace (the Chief thread route settling on its bot or thread) is a redirect, not a visit.
+  const navigationType = useNavigationType();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new pathname closes Settings
+  useEffect(() => {
+    if (navigationType !== "REPLACE") setSettingsOpen(false);
+  }, [pathname]);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
   const [settingsModelProvider, setSettingsModelProvider] = useState<string | undefined>();
   /** Why Settings opened, shown at the top of its pane (Call Elio without a voice provider). */
@@ -960,6 +967,8 @@ export function ShellPage() {
   // Phones open the drawer on the chat list; Activity there is one tap away.
   // Activity is a quick look, not a place: it closes when you go somewhere and a reload starts closed.
   const [activityMode, setActivityMode] = useState(false);
+  // While Activity is open it lists these bots' work, so their chat rows are not repeated below.
+  const [activityBotIds, setActivityBotIds] = useState<ReadonlySet<string>>(new Set());
   const toggleActivityMode = useCallback(() => setActivityMode((on) => !on), []);
   // Activity sits above the chats: show it from its top, not from the row the list had settled on.
   useEffect(() => {
@@ -3488,6 +3497,18 @@ export function ShellPage() {
   );
 
   const cartaSuggestions = [t`Who are our investors?`];
+  // A bank's own chat starts with two read questions, like the other page agents.
+  const bankAgent = active ? agentAppFor(active.id, active.spaceId)?.bank : undefined;
+  const bankAgentPage =
+    !pageMode &&
+    !inGroup &&
+    active !== undefined &&
+    isIntegrationAgentSpawnKey(active.spawnKey) &&
+    bankAgent === true;
+  const bankSuggestions = [
+    t`What are our account balances?`,
+    t`What were the biggest payments this month?`,
+  ];
   const cartaAgentIntro = t`The Carta agent reads your cap table from Carta and answers questions about it. Try one:`;
   // The connector's agent is made on first visit, as the plan says; anyone else gets null.
   useEffect(() => {
@@ -3600,6 +3621,12 @@ export function ShellPage() {
                     suggestions: investorsAgentSuggestions(),
                   }
                 : null;
+  // The toaster skips an approval toast for the agent whose panel is open.
+  const dockedAgentId = agentPanel?.open ? active?.id : undefined;
+  useEffect(() => {
+    setDockedAgentBotId(dockedAgentId);
+    return () => setDockedAgentBotId(undefined);
+  }, [dockedAgentId]);
   // The Carta agent opened full screen from its panel: same intro, and a way back to Investors.
   const cartaAgentPage =
     !pageMode && !inGroup && active !== undefined && findCartaAgent(bots, userId)?.id === active.id;
@@ -4054,6 +4081,15 @@ export function ShellPage() {
           </Link>
         </div>
       ) : null}
+      {bankAgentPage && transcriptMessages.length === 0 && !transcriptRunning && activeSnapshot ? (
+        <AgentPanelIntro
+          description=""
+          suggestions={bankSuggestions}
+          onAddModel={bootstrapMe?.needsModel === true ? () => openSettings("models") : undefined}
+          disabled={sending}
+          onPick={(text) => void sendMessage(text, [], newClientId())}
+        />
+      ) : null}
       {cartaAgentPage && transcriptMessages.length === 0 && !transcriptRunning && activeSnapshot ? (
         <AgentPanelIntro
           description={cartaAgentIntro}
@@ -4420,7 +4456,7 @@ export function ShellPage() {
               <InputGroup
                 data-testid="sidebar-search"
                 data-tour="sidebar-search"
-                className="app-no-drag w-auto min-w-0 flex-1 rounded-xl bg-card dark:bg-input border border-border text-muted-foreground focus-within:border-ring"
+                className="app-no-drag w-auto min-w-0 flex-1 rounded-xl bg-card dark:bg-input border border-border text-muted-foreground has-[[data-slot=input-group-control]:focus-visible]:ring-0"
               >
                 <InputGroupAddon>
                   <Search size={16} strokeWidth={1.8} aria-hidden="true" />
@@ -4586,6 +4622,7 @@ export function ShellPage() {
                 {hiddenPages.includes("inbox") ? null : (
                   <SidebarPageLink
                     testId="sidebar-inbox"
+                    href="/app/inbox"
                     current={inboxMode}
                     icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Inbox`}
@@ -4605,6 +4642,7 @@ export function ShellPage() {
                 {hiddenPages.includes("finance") ? null : (
                   <SidebarPageLink
                     testId="sidebar-finance"
+                    href="/app/finance"
                     current={financeMode}
                     icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Finance`}
@@ -4619,6 +4657,7 @@ export function ShellPage() {
                 {hiddenPages.includes("legal") ? null : (
                   <SidebarPageLink
                     testId="sidebar-legal"
+                    href="/app/legal"
                     current={legalMode}
                     icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Legal`}
@@ -4663,6 +4702,7 @@ export function ShellPage() {
                 {hiddenPages.includes("devin") || !glance.devinConnected ? null : (
                   <SidebarPageLink
                     testId="sidebar-devin"
+                    href="/app/devin"
                     current={devinMode}
                     icon={<CodeXml size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Devin`}
@@ -4686,6 +4726,7 @@ export function ShellPage() {
                 {hiddenPages.includes("investors") ? null : (
                   <SidebarPageLink
                     testId="sidebar-investors"
+                    href="/app/investors"
                     current={investorsMode}
                     icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Investors`}
@@ -4700,6 +4741,7 @@ export function ShellPage() {
                 {hiddenPages.includes("fundraising") ? null : (
                   <SidebarPageLink
                     testId="sidebar-fundraising"
+                    href="/app/fundraising"
                     current={fundraisingMode}
                     icon={<HandCoins size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Fundraising`}
@@ -4713,6 +4755,7 @@ export function ShellPage() {
                 {hiddenPages.includes("contacts") ? null : (
                   <SidebarPageLink
                     testId="sidebar-contacts"
+                    href="/app/contacts"
                     current={contactsMode}
                     icon={<BookUser size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Contacts`}
@@ -4726,18 +4769,14 @@ export function ShellPage() {
                 {hiddenPages.includes("data-room") ? null : (
                   <SidebarPageLink
                     testId="sidebar-data-room"
+                    href="/app/data-room"
                     current={dataRoomMode}
                     icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Data room`}
                     rail={rail}
                     onOpen={() => {
                       setMobileSidebarOpen(false);
-                      // The badge counts failed files; the page opens on them.
-                      navigate(
-                        glance.dataRoomWaiting > 0
-                          ? "/app/data-room?status=failed"
-                          : "/app/data-room",
-                      );
+                      navigate("/app/data-room");
                     }}
                     {...glanceBadge({
                       unseen: unseen["data-room"] ?? 0,
@@ -4745,6 +4784,11 @@ export function ShellPage() {
                       value:
                         glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
                       failure: true,
+                      // Only the badge opens the failed files; the row opens everything.
+                      onValueClick: () => {
+                        setMobileSidebarOpen(false);
+                        navigate("/app/data-room?status=failed");
+                      },
                       // The count is failed files, the only ones a person can retry or remove.
                       valueLabel: plural(glance.dataRoomWaiting, {
                         one: "# file failed",
@@ -4756,6 +4800,7 @@ export function ShellPage() {
                 {hiddenPages.includes("artifacts") ? null : (
                   <SidebarPageLink
                     testId="sidebar-artifacts"
+                    href="/app/artifacts"
                     current={artifactsMode}
                     // Not the Data room's folder icon: these are files bots made.
                     icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
@@ -4784,6 +4829,7 @@ export function ShellPage() {
             <>
               {activityMode && !rail ? (
                 <ActivityList
+                  onListedBots={setActivityBotIds}
                   onOpenRun={(run) => {
                     setMobileSidebarOpen(false);
                     if (run.groupId) navigate(`/app/g/${run.groupId}`);
@@ -4848,14 +4894,22 @@ export function ShellPage() {
                     !row.item.chat.preview &&
                     row.item.chat.status === "idle" &&
                     row.item.chat.id !== active?.id;
-                  const listedRows = foldable
-                    ? nestedRows.filter((row) => !unusedPageAgent(row))
-                    : nestedRows;
+                  const inActivity = (row: (typeof nestedRows)[number]) =>
+                    activityMode &&
+                    !rail &&
+                    row.item.kind === "bot" &&
+                    activityBotIds.has(row.item.chat.id) &&
+                    row.item.chat.id !== active?.id;
+                  const listedRows = (
+                    foldable ? nestedRows.filter((row) => !unusedPageAgent(row)) : nestedRows
+                  ).filter((row) => !inActivity(row));
                   const pageAgentRows = foldable ? listedRows.filter(isPageAgent) : [];
                   const emailChatRows = foldable ? listedRows.filter(isEmailChat) : [];
                   const holdsActive = (rows: typeof nestedRows) =>
                     rows.some((row) => row.item.kind === "bot" && row.item.chat.id === active?.id);
-                  const showPageAgents = pageAgentsOpen || holdsActive(pageAgentRows);
+                  // On a page the group keeps the state the person gave it; the page's own row is highlighted elsewhere.
+                  const showPageAgents =
+                    pageAgentsOpen || (!pageMode && holdsActive(pageAgentRows));
                   const showEmailChats = emailChatsOpen || holdsActive(emailChatRows);
                   const displayRows: (
                     | (typeof nestedRows)[number]
@@ -6139,7 +6193,7 @@ export function ShellPage() {
         ) : panel && (active || activeGroup) ? (
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
             {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
-              <div className="sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between bg-background px-5 pt-[17px] pb-2">
+              <div className="sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between border-b border-border bg-background px-5 pt-[17px] pb-2">
                 <span className="text-[13.5px] text-muted-foreground">
                   {panel === "settings" ? (
                     active ? (

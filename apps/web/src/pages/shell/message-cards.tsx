@@ -9,12 +9,31 @@ import { BuiCard, SuccessPop } from "../../components/ai/primitives";
 import { AppLogo } from "../../components/integrations/AppLogo";
 import type { ArtifactTarget } from "../../lib/artifact-open";
 import { chartViewport } from "../../lib/chart-viewport";
-import { useHideAmounts } from "../../lib/hide-amounts-preference";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { connectMcpOauth } from "../../lib/mcp-connect";
 import { PLUGIN_CONNECT_WINDOW } from "../../lib/plugin-connect";
 import { rpc } from "../../lib/rpc";
 import { useArtifactImageState } from "../../lib/use-artifact-image";
 import { errorText } from "../../lib/user-error";
+
+/** The ticked lines under a reply, such as Cash → $100,000; amounts follow Hide amounts like the sentence above. */
+export function ResultCard({ block }: { block: Extract<MessageBlock, { kind: "card" }> }) {
+  useHideAmounts();
+  return (
+    <div className="flex justify-start">
+      <div className="flex flex-col gap-2 rounded-[20px] bg-muted px-5 py-4">
+        {block.lines.map((line) => (
+          <div key={line.k} className="flex items-baseline gap-2.5 text-[15px]">
+            <span className="text-success">✓</span>
+            <span className="font-semibold text-foreground">{line.k}</span>
+            <span className="text-muted-foreground">→</span>
+            <span>{maskCurrencyWhenHidden(line.v)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function ChoiceCard({
   botId,

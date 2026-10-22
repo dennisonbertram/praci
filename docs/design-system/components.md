@@ -3,8 +3,8 @@
 
 Rendered React components and native SwiftUI views, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 276 of 276
-- Web and shared components: 728
+- Web and shared component files with stories: 274 of 274
+- Web and shared components: 721
 - Mobile components: 138 in 95 files, mobile — native story pending
 - SwiftUI views: 3 in 2 files, native story pending
 
@@ -212,7 +212,6 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | OneFieldDialog, InvestorEmailDialog, AssignSafeDialog | [apps/web/src/components/fundraising/MercuryDialogs.tsx](../../apps/web/src/components/fundraising/MercuryDialogs.tsx) | [MercuryDialogs.stories.tsx](../../apps/web/src/components/fundraising/MercuryDialogs.stories.tsx) | web |
 | MercuryLine | [apps/web/src/components/fundraising/MercuryLine.tsx](../../apps/web/src/components/fundraising/MercuryLine.tsx) | [MercuryLine.stories.tsx](../../apps/web/src/components/fundraising/MercuryLine.stories.tsx) | web |
 | ProspectRow, Pipeline | [apps/web/src/components/fundraising/Pipeline.tsx](../../apps/web/src/components/fundraising/Pipeline.tsx) | [Pipeline.stories.tsx](../../apps/web/src/components/fundraising/Pipeline.stories.tsx) | web |
-| RoundBarPlaceholder, LegendValuePlaceholder, ProspectRowPlaceholder, SafeRowPlaceholder | [apps/web/src/components/fundraising/Placeholders.tsx](../../apps/web/src/components/fundraising/Placeholders.tsx) | [Placeholders.stories.tsx](../../apps/web/src/components/fundraising/Placeholders.stories.tsx) | web |
 | RoundDialog, Segment, Figure, RoundCard | [apps/web/src/components/fundraising/RoundCard.tsx](../../apps/web/src/components/fundraising/RoundCard.tsx) | [RoundCard.stories.tsx](../../apps/web/src/components/fundraising/RoundCard.stories.tsx) | web |
 | SafeDialog, SafeCoverSummary | [apps/web/src/components/fundraising/SafeDialog.tsx](../../apps/web/src/components/fundraising/SafeDialog.tsx) | [SafeDialog.stories.tsx](../../apps/web/src/components/fundraising/SafeDialog.stories.tsx) | web |
 | MarkDateDialog, AttentionStrip, SafeRow, SafeList | [apps/web/src/components/fundraising/SafeList.tsx](../../apps/web/src/components/fundraising/SafeList.tsx) | [SafeList.stories.tsx](../../apps/web/src/components/fundraising/SafeList.stories.tsx) | web |
@@ -268,7 +267,6 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
 | AuditRow, ActionItems | [apps/web/src/components/investors/ActionItems.tsx](../../apps/web/src/components/investors/ActionItems.tsx) | [ActionItems.stories.tsx](../../apps/web/src/components/investors/ActionItems.stories.tsx) | web |
-| FiguresPlaceholder, OwnershipPlaceholder, ContactRowPlaceholder | [apps/web/src/components/investors/Placeholders.tsx](../../apps/web/src/components/investors/Placeholders.tsx) | [Placeholders.stories.tsx](../../apps/web/src/components/investors/Placeholders.stories.tsx) | web |
 
 ## Web components/legal
 
@@ -338,7 +336,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | UpdateEditor | [apps/web/src/pages/investors/UpdateEditor.tsx](../../apps/web/src/pages/investors/UpdateEditor.tsx) | [UpdateEditor.stories.tsx](../../apps/web/src/pages/investors/UpdateEditor.stories.tsx) | web |
 | KnowledgeSection, SpaceMemorySection, MemoryDocumentList | [apps/web/src/pages/KnowledgeSection.tsx](../../apps/web/src/pages/KnowledgeSection.tsx) | [KnowledgeSection.stories.tsx](../../apps/web/src/pages/KnowledgeSection.stories.tsx) | web |
 | LegalPage, Legal, DoneDeadlines, GraphTab, LegalSkeleton | [apps/web/src/pages/Legal.tsx](../../apps/web/src/pages/Legal.tsx) | [Legal.stories.tsx](../../apps/web/src/pages/Legal.stories.tsx) | web |
-| NextDeadline, Title, Field, Status, LegalContracts | [apps/web/src/pages/legal/LegalContracts.tsx](../../apps/web/src/pages/legal/LegalContracts.tsx) | [LegalContracts.stories.tsx](../../apps/web/src/pages/legal/LegalContracts.stories.tsx) | web |
+| NextDeadline, Title, Status, LegalContracts | [apps/web/src/pages/legal/LegalContracts.tsx](../../apps/web/src/pages/legal/LegalContracts.tsx) | [LegalContracts.stories.tsx](../../apps/web/src/pages/legal/LegalContracts.stories.tsx) | web |
 | LegalDeadlines | [apps/web/src/pages/legal/LegalDeadlines.tsx](../../apps/web/src/pages/legal/LegalDeadlines.tsx) | [LegalDeadlines.stories.tsx](../../apps/web/src/pages/legal/LegalDeadlines.stories.tsx) | web |
 | LocalSettingsPage | [apps/web/src/pages/LocalSettings.tsx](../../apps/web/src/pages/LocalSettings.tsx) | [LocalSettings.stories.tsx](../../apps/web/src/pages/LocalSettings.stories.tsx) | web |
 | McpOAuthCallbackPage | [apps/web/src/pages/McpOAuthCallback.tsx](../../apps/web/src/pages/McpOAuthCallback.tsx) | [McpOAuthCallback.stories.tsx](../../apps/web/src/pages/McpOAuthCallback.stories.tsx) | web |
@@ -376,7 +374,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | NewSpaceDialog, RenameSpaceDialog, PickerInfoDialog, NewBotSectionDialog, RenameBotSectionDialog, ClearConversationDialog, DeleteBotDialog, DeleteItemDialog | [apps/web/src/pages/shell/dialogs.tsx](../../apps/web/src/pages/shell/dialogs.tsx) | [dialogs.stories.tsx](../../apps/web/src/pages/shell/dialogs.stories.tsx) | web |
 | GroupIntro | [apps/web/src/pages/shell/GroupIntro.tsx](../../apps/web/src/pages/shell/GroupIntro.tsx) | [GroupIntro.stories.tsx](../../apps/web/src/pages/shell/GroupIntro.stories.tsx) | web |
 | MentionIcon | [apps/web/src/pages/shell/mention-icon.tsx](../../apps/web/src/pages/shell/mention-icon.tsx) | [mention-icon.stories.tsx](../../apps/web/src/pages/shell/mention-icon.stories.tsx) | web |
-| ChoiceCard, OnboardingFocusQuestion, OnboardingFocusOptionHint, OnboardingFocusOptionLabel, AppConnectCard, ChartCanvas, ChartCanvasPlot, McpApprovalCard, ChartBlockView, ArtifactImage, ArtifactImageGrid | [apps/web/src/pages/shell/message-cards.tsx](../../apps/web/src/pages/shell/message-cards.tsx) | [message-cards.stories.tsx](../../apps/web/src/pages/shell/message-cards.stories.tsx) | web |
+| ResultCard, ChoiceCard, OnboardingFocusQuestion, OnboardingFocusOptionHint, OnboardingFocusOptionLabel, AppConnectCard, ChartCanvas, ChartCanvasPlot, McpApprovalCard, ChartBlockView, ArtifactImage, ArtifactImageGrid | [apps/web/src/pages/shell/message-cards.tsx](../../apps/web/src/pages/shell/message-cards.tsx) | [message-cards.stories.tsx](../../apps/web/src/pages/shell/message-cards.stories.tsx) | web |
 | SidebarHeaderRow | [apps/web/src/pages/shell/sidebar-header-row.tsx](../../apps/web/src/pages/shell/sidebar-header-row.tsx) | [sidebar-header-row.stories.tsx](../../apps/web/src/pages/shell/sidebar-header-row.stories.tsx) | web |
 | ThreadMarkdown, UnreadDivider, Transcript, QuoteSelectionButton, MessageHoverActions, SpeakerHeader, MessageView | [apps/web/src/pages/shell/transcript.tsx](../../apps/web/src/pages/shell/transcript.tsx) | [transcript.stories.tsx](../../apps/web/src/pages/shell/transcript.stories.tsx) | web |
 | VoiceSettingsOverlay | [apps/web/src/pages/VoiceSettingsOverlay.tsx](../../apps/web/src/pages/VoiceSettingsOverlay.tsx) | [VoiceSettingsOverlay.stories.tsx](../../apps/web/src/pages/VoiceSettingsOverlay.stories.tsx) | web |

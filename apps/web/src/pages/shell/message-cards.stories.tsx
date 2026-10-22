@@ -12,6 +12,7 @@ import {
   ChartCanvas,
   ChoiceCard,
   McpApprovalCard,
+  ResultCard,
 } from "./message-cards";
 
 type Block<K extends MessageBlock["kind"]> = Extract<MessageBlock, { kind: K }>;
@@ -311,5 +312,19 @@ export const ArtifactImageFailed: Story = {
   beforeEach: () => mockRpc({ "artifacts.get": () => Promise.reject(new Error("gone")) }),
   render: () => (
     <ArtifactImage target={{ botId: "bot_ada" }} artifactId="art_5" name="sample-missing.png" />
+  ),
+};
+
+export const Result: Story = {
+  render: () => (
+    <ResultCard
+      block={{
+        kind: "card",
+        lines: [
+          { k: "Cash", v: "$100,000" },
+          { k: "Runway", v: "10 months" },
+        ],
+      }}
+    />
   ),
 };

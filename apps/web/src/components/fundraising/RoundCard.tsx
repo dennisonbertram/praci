@@ -26,7 +26,6 @@ import { shortDay, usdFigure } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { errorText } from "../../lib/user-error";
 import { SectionCard } from "../SectionCard";
-import { LegendValuePlaceholder, RoundBarPlaceholder } from "./Placeholders";
 
 const usd = (cents: number) => usdFigure(cents / 100, 0, i18n.locale || "en");
 
@@ -216,29 +215,7 @@ export function RoundCard({
             ) : null}
           </>
         }
-      >
-        {round ? null : (
-          <>
-            <RoundBarPlaceholder />
-            <div className="mt-3 grid grid-cols-2 gap-3 @md/bd:grid-cols-4">
-              {[
-                [t`Funded`, LEGEND_DOTS.funded],
-                [t`Signed`, LEGEND_DOTS.signed],
-                [t`Pending`, LEGEND_DOTS.pending],
-                [t`Target`, LEGEND_DOTS.target],
-              ].map(([title, dot]) => (
-                <div key={title} className="min-w-0">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <i aria-hidden="true" className={cn("size-2 rounded-full", dot)} />
-                    {title}
-                  </div>
-                  <LegendValuePlaceholder />
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </SectionCard>
+      />
     );
   }
   const total = fundedCents + signedCents + pendingCents;

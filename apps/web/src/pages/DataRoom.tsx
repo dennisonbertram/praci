@@ -143,7 +143,8 @@ export function DataRoomPage({
   // The sidebar badge links here while the page may already be open.
   const urlFailed = params.get("status") === "failed";
   useEffect(() => {
-    if (urlFailed) setOtherFilters((prev) => ({ ...prev, status: "failed" }));
+    // Opening the page from the sidebar row drops ?status=failed, which must clear the filter too.
+    setOtherFilters(({ status, ...prev }) => (urlFailed ? { ...prev, status: "failed" } : prev));
   }, [urlFailed]);
   const statusParamRef = useRef(params.has("status"));
   statusParamRef.current = params.has("status");

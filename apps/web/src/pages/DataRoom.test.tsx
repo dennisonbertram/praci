@@ -172,6 +172,15 @@ function GoFailed() {
   );
 }
 
+function GoAll() {
+  const navigate = useNavigate();
+  return (
+    <button type="button" data-testid="go-all" onClick={() => navigate("/")}>
+      all
+    </button>
+  );
+}
+
 async function renderPage(entry = "/") {
   await act(async () => {
     root.render(
@@ -179,6 +188,7 @@ async function renderPage(entry = "/") {
         <DataRoomPage />
         <GoToB />
         <GoFailed />
+        <GoAll />
       </MemoryRouter>,
     );
   });
@@ -1314,4 +1324,15 @@ it("filters to failed files when the sidebar badge link is followed while the pa
     container.querySelector<HTMLElement>('[data-testid="go-failed"]')?.click();
   });
   expect(rpcMock.list.mock.calls.at(-1)?.[0]).toMatchObject({ status: "failed" });
+});
+
+it("shows all files again when the sidebar row is followed after the failed filter", async () => {
+  await renderPage();
+  await act(async () => {
+    container.querySelector<HTMLElement>('[data-testid="go-failed"]')?.click();
+  });
+  await act(async () => {
+    container.querySelector<HTMLElement>('[data-testid="go-all"]')?.click();
+  });
+  expect(rpcMock.list.mock.calls.at(-1)?.[0]).not.toHaveProperty("status", "failed");
 });

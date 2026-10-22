@@ -262,7 +262,7 @@ export function FilterBar({
   hasDates: boolean;
   /** Stats count by the filters only: search and sort order a list, so they are left out. */
   statsView?: boolean;
-  /** The view toggles: on a phone they sit in the folder row; Sort waits behind Filters. */
+  /** The view toggles: on a phone they wait behind Filters (in Stats, in the folder row). */
   trailing?: ReactNode;
 }) {
   const labels = sortLabels();
@@ -436,13 +436,15 @@ export function FilterBar({
           />
         ) : null}
         {/* On a phone Sort ends the filter row; alone it took a row of its own above the chips. */}
-        {pillsOpen && !statsView ? (
+        {pillsOpen ? (
           <div className="ms-auto flex items-center gap-0.5 @min-[640px]/bd:hidden">
-            {sortControl}
+            {statsView ? null : sortControl}
+            {trailing}
           </div>
         ) : null}
       </div>
-      {trailing ? (
+      {/* On a phone the view toggles wait behind Filters; in Stats they stay, so Stats can be left. */}
+      {trailing && statsView && !pillsOpen ? (
         <div className="order-3 ms-auto flex h-8 items-center @min-[640px]/bd:hidden">
           {trailing}
         </div>

@@ -238,8 +238,8 @@ it("keeps a renamed file's type while search re-indexes it, and names a failure 
   act(() => root.render(<ListView rows={rows} o={o()} />));
   expect(container.textContent).toContain("Roadmap");
   expect(container.textContent).not.toContain("Reading");
-  // The phone-only line under the name, for where the Type column is hidden.
-  expect(names()[1]).toContain("scan.pdfFailed");
+  // The reason under the name is the phone's one failure signal; a wide list shows the Failed pill.
+  expect(names()[1]).toContain("Could not read this file");
 });
 
 const tagged = (id: string, docType: string | null, docDate: string | null) =>
@@ -722,11 +722,20 @@ it("closes the side preview on Escape from the shown row only", () => {
   expect(onClosePreview).toHaveBeenCalledTimes(1);
 });
 
-it("shows no dash in the Type and Parties cells of a failed file", () => {
+it("shows no dash in the Type cell and a dash in the Parties cell of a failed file", () => {
   act(() =>
     root.render(<ListView rows={asRows({ ...item("a", null), status: "failed" })} o={o()} />),
   );
   const row = container.querySelector("[data-row]");
   expect(row?.children[1]?.textContent).toBe("");
-  expect(row?.children[3]?.textContent).toBe("");
+  expect(row?.children[3]?.textContent).toBe("—");
+});
+
+it("makes the row checkbox a 44 px control on touch screens", () => {
+  act(() =>
+    root.render(<ListView rows={asRows(item("a", null))} o={{ ...o(), onCheck: () => {} }} />),
+  );
+  const box = container.querySelector('[aria-label^="Select"]')?.className ?? "";
+  expect(box).toContain("pointer-coarse:size-11");
+  expect(box).not.toContain("pointer-coarse:size-4.5");
 });

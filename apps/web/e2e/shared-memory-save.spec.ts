@@ -8,7 +8,7 @@ test("shared memory save writes without an approval card", async ({ page }) => {
   await signup(page, `shared-memory-${stamp}@rakazo.test`, "password12", "Shared Memory");
   await completeOnboarding(page);
 
-  const composer = page.getByRole("combobox", { name: "Message Chief" });
+  const composer = page.getByRole("textbox", { name: "Message Chief" });
   await composer.fill(`save shared memory MEMORY.md with: ${content}`);
   await composer.press("Enter");
 

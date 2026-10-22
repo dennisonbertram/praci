@@ -19,9 +19,9 @@ test("shows peer chips in transcript and opens view-only peer chat", async ({ pa
     notifyOnFinish: true,
   });
   await page.reload();
-  await expect(page.getByRole("combobox", { name: "Message Chief" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Message Chief" })).toBeVisible();
 
-  const composer = page.getByRole("combobox", { name: "Message Chief" });
+  const composer = page.getByRole("textbox", { name: "Message Chief" });
   await composer.fill("message the bot named Researcher saying peer-exchange-alpha");
   await composer.press("Enter");
   await expect(page.getByText("messaging that bot now.").first()).toBeVisible({

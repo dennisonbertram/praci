@@ -843,7 +843,7 @@ export function ModelSettingsOverlay({
           <ModelThinkingOptions
             showThinking={false}
             disabled={busy}
-            advancedLabel={t`Advanced`}
+            advancedLabel={t`Model options`}
             maxTokens={maxTokens}
             onMaxTokensChange={(value) => {
               selectionRevisionRef.current += 1;
@@ -1465,7 +1465,7 @@ export function ModelSettingsOverlay({
                       setNotice(null);
                     }}
                     disabled={busy}
-                    advancedLabel={t`Advanced`}
+                    advancedLabel={t`Model options`}
                     thinkingLabel={t`Supports thinking`}
                     thinkingLevel={thinkingLevel}
                     onThinkingLevelChange={(value) => {
