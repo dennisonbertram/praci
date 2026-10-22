@@ -136,7 +136,9 @@ vi.mock("../components/inbox/InboxRow", () => ({
     onArchive,
     onRead,
     selectedId,
+    todoIds,
   }: {
+    todoIds?: ReadonlySet<string>;
     title?: ReactNode;
     rows: MailRow[];
     onOpen: (id: string) => void;
@@ -154,6 +156,7 @@ vi.mock("../components/inbox/InboxRow", () => ({
           data-selected={selectedId === row.id}
           data-feedback={row.feedback ?? ""}
           data-category={row.category ?? ""}
+          data-todo={todoIds?.has(row.id) ? "" : undefined}
           onClick={() => onOpen(row.id)}
         >
           {row.subject}
@@ -427,7 +430,7 @@ it("focuses the row it returns to without scrolling the list", async () => {
   }
 });
 
-it("drops an undated reply to-do whose mail is listed under Needs reply, and keeps the rest", async () => {
+it("drops any to-do whose mail is listed under Needs reply, marks that row, and keeps the rest", async () => {
   const todo = (id: string, messageId: string, text: string, dueOn: string | null = null) => ({
     id,
     connectionId: "c1",
@@ -440,19 +443,29 @@ it("drops an undated reply to-do whose mail is listed under Needs reply, and kee
     doneAt: null,
   });
   rpcMock.list.mockResolvedValue(
-    list([row("a", { needsReply: true }), row("b", { needsReply: true })]),
+    list([
+      row("a", { needsReply: true }),
+      row("b", { needsReply: true }),
+      row("c", { needsReply: false }),
+    ]),
   );
   rpcMock.todos.mockResolvedValue({
     todos: [
       todo("t1", "a", "Reply to Morgan about section 9"),
       todo("t2", "b", "File the trademark form"),
       todo("t3", "a", "Reply to Morgan by Friday", "2099-01-01"),
+      todo("t4", "c", "Pay the invoice"),
     ],
   });
   const c = await render();
+  // A to-do whose mail is a Needs reply row is not repeated on the card, whatever its wording or date.
   expect(c.textContent).not.toContain("Reply to Morgan about section 9");
-  expect(c.textContent).toContain("File the trademark form");
-  expect(c.textContent).toContain("Reply to Morgan by Friday");
+  expect(c.textContent).not.toContain("File the trademark form");
+  expect(c.textContent).not.toContain("Reply to Morgan by Friday");
+  expect(c.textContent).toContain("Pay the invoice");
+  // Those rows say "To do" instead.
+  const marked = [...c.querySelectorAll("[data-todo]")].map((el) => el.getAttribute("data-row-id"));
+  expect(marked).toEqual(["a", "b"]);
 });
 
 it("completes a hidden reply to-do from the open mail", async () => {
@@ -1026,7 +1039,7 @@ it("shows nothing from the first sort until it and its to-dos have landed, then 
   const todo = {
     id: "t1",
     connectionId: "c1",
-    messageId: "a",
+    messageId: "elsewhere",
     text: "Send the deck",
     detail: null,
     from: "Dana",
@@ -1691,7 +1704,7 @@ describe("a list that holds still", () => {
     const todo = {
       id: "t1",
       connectionId: "c1",
-      messageId: "a",
+      messageId: "elsewhere",
       text: "Send the deck",
       detail: null,
       from: "Dana",
@@ -1716,7 +1729,7 @@ describe("a list that holds still", () => {
     const make = (id: string) => ({
       id,
       connectionId: "c1",
-      messageId: "a",
+      messageId: "elsewhere",
       text: `Task ${id}`,
       detail: null,
       from: "Dana",

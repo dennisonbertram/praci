@@ -780,6 +780,10 @@ msgstr "Account name"
 msgid "Accounts"
 msgstr "Accounts"
 
+#: src/components/inbox/InboxRow.tsx
+msgid "Action"
+msgstr "Action"
+
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Action confirmations"
 msgstr "Action confirmations"
@@ -2125,15 +2129,14 @@ msgstr "Categorize transactions"
 msgid "Category"
 msgstr "Category"
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "cc"
+msgstr "cc"
+
 #: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Cc"
 msgstr "Cc"
-
-#. placeholder {0}: message.cc
-#: src/components/inbox/InboxMessageDialog.tsx
-msgid "cc {0}"
-msgstr "cc {0}"
 
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Chain"
@@ -5439,6 +5442,7 @@ msgstr "Import from Google Drive"
 
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Inbox.tsx
 msgid "Important"
 msgstr "Important"
@@ -6592,10 +6596,6 @@ msgstr "Needs a server restart"
 #: src/components/MailApprovalCard.tsx
 msgid "Needs approval"
 msgstr "Needs approval"
-
-#: src/components/inbox/InboxRow.tsx
-msgid "Needs attention"
-msgstr "Needs attention"
 
 #: src/lib/devin-format.ts
 msgid "Needs input"
@@ -10483,6 +10483,10 @@ msgstr "Time zone updated"
 msgid "Title"
 msgstr "Title"
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "to"
+msgstr "to"
+
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/MailApprovalCard.tsx
@@ -10491,16 +10495,12 @@ msgstr "Title"
 msgid "To"
 msgstr "To"
 
-#. placeholder {0}: message.to
-#: src/components/inbox/InboxMessageDialog.tsx
-msgid "to {0}"
-msgstr "to {0}"
-
 #. placeholder {0}: filters.dateRange.to
 #: src/pages/ActivityList.tsx
 msgid "To {0}"
 msgstr "To {0}"
 
+#: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/TodoCard.tsx
 #: src/lib/ticket-status.ts
 msgid "To do"
@@ -10997,6 +10997,7 @@ msgstr "Upload to All items"
 msgid "Uploaded"
 msgstr "Uploaded"
 
+#: src/components/inbox/InboxRow.tsx
 #: src/components/sidebar-glance.tsx
 #: src/lib/ticket-priority.ts
 msgid "Urgent"
