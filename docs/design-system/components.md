@@ -5,7 +5,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 
 - Web and shared component files with stories: 281 of 281
 - Web and shared components: 733
-- Mobile components: 138 in 95 files, mobile — native story pending
+- Mobile components: 149 in 99 files, mobile — native story pending
 - SwiftUI views: 3 in 2 files, native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -413,6 +413,8 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | ArtifactDetailScreen, ArtifactPreview | [apps/mobile/app/artifact.tsx](../../apps/mobile/app/artifact.tsx) | mobile — native story pending | mobile |
 | ArtifactsScreen, Chip, ArtifactRow | [apps/mobile/app/artifacts.tsx](../../apps/mobile/app/artifacts.tsx) | mobile — native story pending | mobile |
 | BotSettingsScreen | [apps/mobile/app/bot-settings.tsx](../../apps/mobile/app/bot-settings.tsx) | mobile — native story pending | mobile |
+| CompanyFactScreen, FactDetail, CandidateDetail | [apps/mobile/app/company-fact.tsx](../../apps/mobile/app/company-fact.tsx) | mobile — native story pending | mobile |
+| CompanyScreen, CompanyMap, CompanyAgenda, CompanyReviewList, CompanyProgress, QueryStatus | [apps/mobile/app/company.tsx](../../apps/mobile/app/company.tsx) | mobile — native story pending | mobile |
 | Computer, ComputerReleaseActions, ScreenWebView | [apps/mobile/app/computer.tsx](../../apps/mobile/app/computer.tsx) | mobile — native story pending | mobile |
 | GroupSettingsScreen | [apps/mobile/app/group-settings.tsx](../../apps/mobile/app/group-settings.tsx) | mobile — native story pending | mobile |
 | ImageScreen | [apps/mobile/app/image.tsx](../../apps/mobile/app/image.tsx) | mobile — native story pending | mobile |
@@ -444,6 +446,8 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | BotOrganizeModal, SectionOption | [apps/mobile/components/bot-organize-modal.tsx](../../apps/mobile/components/bot-organize-modal.tsx) | mobile — native story pending | mobile |
 | CallCard, RoundButton, Waveform | [apps/mobile/components/CallCard.tsx](../../apps/mobile/components/CallCard.tsx) | mobile — native story pending | mobile |
 | ChoiceCard | [apps/mobile/components/ChoiceCard.tsx](../../apps/mobile/components/ChoiceCard.tsx) | mobile — native story pending | mobile |
+| CompanyList | [apps/mobile/components/company-list.ios.tsx](../../apps/mobile/components/company-list.ios.tsx) | mobile — native story pending | mobile |
+| CompanyList | [apps/mobile/components/company-list.tsx](../../apps/mobile/components/company-list.tsx) | mobile — native story pending | mobile |
 | ComposerReplyPreview | [apps/mobile/components/composer-reply-preview.tsx](../../apps/mobile/components/composer-reply-preview.tsx) | mobile — native story pending | mobile |
 | ComputerKeyboardBar | [apps/mobile/components/computer-keyboard-bar.tsx](../../apps/mobile/components/computer-keyboard-bar.tsx) | mobile — native story pending | mobile |
 | ComputerMaintenanceActions | [apps/mobile/components/computer-maintenance-actions.tsx](../../apps/mobile/components/computer-maintenance-actions.tsx) | mobile — native story pending | mobile |
