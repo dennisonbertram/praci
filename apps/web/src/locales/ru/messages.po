@@ -2172,7 +2172,6 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/integrations/IMessageSection.tsx
-#: src/components/integrations/IntegrationsHome.tsx
 msgid "Chat"
 msgstr ""
 
@@ -2190,14 +2189,6 @@ msgstr ""
 
 #: src/pages/shell/composer.tsx
 msgid "Chat settings"
-msgstr ""
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "Chat with your agents over iMessage"
-msgstr ""
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "Chat with your agents over iMessage from your Mac"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -4136,10 +4127,6 @@ msgstr "Обновление настольного приложения"
 msgid "Details"
 msgstr ""
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Developer"
-msgstr ""
-
 #: src/pages/Devin.tsx
 #: src/pages/Shell.tsx
 msgid "Devin"
@@ -4285,10 +4272,6 @@ msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Docker is configured but computers are not responding. Confirm the sandbox supervisor is running, then recreate the stack after changing .env."
-msgstr ""
-
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Docs & files"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -4527,10 +4510,6 @@ msgstr ""
 msgid "Email"
 msgstr "Электронная почта"
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Email & calendar"
-msgstr ""
-
 #: src/components/inbox/EmailAgentPanel.tsx
 msgid "Email agent"
 msgstr ""
@@ -4539,8 +4518,13 @@ msgstr ""
 msgid "Email and calendar"
 msgstr ""
 
+#: src/components/integrations/parts.tsx
 #: src/pages/Shell.tsx
 msgid "Email chats"
+msgstr ""
+
+#: src/components/integrations/parts.tsx
+msgid "Email chats can use {appName}"
 msgstr ""
 
 #: src/lib/user-error.ts
@@ -8781,10 +8765,6 @@ msgstr ""
 msgid "SAFEs, if converted at cap"
 msgstr ""
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Sales & CRM"
-msgstr ""
-
 #: src/components/RunsOnPicker.tsx
 msgid "Sandbox"
 msgstr ""
@@ -9455,6 +9435,10 @@ msgstr ""
 msgid "Sign-in needed."
 msgstr ""
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Sign-in options"
+msgstr ""
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/useMcpReconnect.ts
@@ -9583,6 +9567,10 @@ msgstr ""
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Software update"
 msgstr "Обновление программного обеспечения"
+
+#: src/components/integrations/parts.tsx
+msgid "Some"
+msgstr ""
 
 #: src/pages/Devin.tsx
 msgid "Some sessions could not be read."
@@ -10342,6 +10330,14 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "This zip is too large to unpack"
+msgstr ""
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Through a Photon project"
+msgstr ""
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Through BlueBubbles on your Mac"
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
