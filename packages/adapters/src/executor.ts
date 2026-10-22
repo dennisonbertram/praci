@@ -2367,14 +2367,24 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const chatModelAllowed = async (provider: string, modelId: string): Promise<boolean> => {
           if (!chatGated) return true;
           try {
-            const model = await resolveConnectedModel(run, provider, modelId);
-            const recipient = aiRecipient({
-              provider,
-              modelId,
-              baseUrl: model.baseUrl,
-              use: "model",
-            });
-            if (!recipient) return true;
+            // Consent is per recipient, so a custom model that is not in the catalog is allowed
+            // when its recipient is. A connection supplies the endpoint; without one, only a
+            // provider with a fixed recipient can be checked.
+            const credential = await findModelCredential(deps.prisma, run, provider, modelId);
+            const baseUrl = credential
+              ? (
+                  await resolveModelKey(
+                    deps,
+                    run.userId,
+                    run.spaceId,
+                    credential,
+                    provider,
+                    modelId,
+                  )
+                ).baseUrl
+              : undefined;
+            const recipient = aiRecipient({ provider, modelId, baseUrl, use: "model" });
+            if (!recipient) return provider === "scripted";
             const row = await deps.prisma.aiDataConsent.findUnique({
               where: {
                 userId_spaceId_recipientKey: {

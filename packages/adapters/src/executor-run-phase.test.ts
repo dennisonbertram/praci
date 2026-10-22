@@ -125,6 +125,7 @@ async function continueRun(storedPhase: RunPhase | null = null, trigger = "user"
     },
 
     aiDataConsent: { findUnique: vi.fn(async () => ({ version: AI_DISCLOSURE_VERSION })) },
+    user: { findUnique: vi.fn(async () => ({ timezone: null })) },
     deploymentSettings: {
       findUnique: vi.fn(async () => ({
         defaultModelProvider: "openrouter",
