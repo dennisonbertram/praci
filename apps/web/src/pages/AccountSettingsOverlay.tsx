@@ -252,7 +252,7 @@ export function GeneralSettingsPanels({
               />
             </summary>
             <div className="border-t border-border px-4 pb-5">
-              <div className="flex items-start gap-3 pt-5 pointer-coarse:min-h-11 pointer-coarse:items-center">
+              <div className="mt-5 flex items-start gap-3 pointer-coarse:min-h-11 pointer-coarse:items-center">
                 <Switch
                   id={streamRepliesId}
                   data-testid="response-streaming-toggle"
@@ -270,7 +270,7 @@ export function GeneralSettingsPanels({
                   <Trans>Stream replies</Trans>
                 </Label>
               </div>
-              <div className="flex items-start gap-3 pt-4 pointer-coarse:min-h-11 pointer-coarse:items-center">
+              <div className="mt-4 flex items-start gap-3 pointer-coarse:min-h-11 pointer-coarse:items-center">
                 <Switch
                   id={showToolActivityId}
                   data-testid="tool-activity-toggle"
@@ -288,7 +288,7 @@ export function GeneralSettingsPanels({
                   <Trans>Show tool activity</Trans>
                 </Label>
               </div>
-              <div className="flex items-start gap-3 pt-4 pointer-coarse:min-h-11 pointer-coarse:items-center">
+              <div className="mt-4 flex items-start gap-3 pointer-coarse:min-h-11 pointer-coarse:items-center">
                 <Switch
                   id={loadRemoteImagesId}
                   data-testid="remote-images-toggle"

@@ -144,7 +144,7 @@ export async function listSpaceRuns(
 }
 
 /**
- * The unseen "needs approval" notifications whose card is still waiting for an answer: the run is
+ * The "needs approval" notifications (seen or not: viewing a card is not answering it) whose card is still waiting for an answer: the run is
  * held for input, its agent exists and is not archived, and a card on it is unanswered. Reading the
  * runs rather than the notification history keeps an old approval, or one for a deleted agent,
  * from being restored or dropped by how long ago it was sent.
@@ -178,7 +178,6 @@ export async function listPendingApprovalNotifications(prisma: PrismaClient, act
       importance: "attention",
       kind: "needs_input",
       title: { endsWith: " needs approval" },
-      seenAt: null,
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
