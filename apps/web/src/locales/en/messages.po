@@ -869,6 +869,10 @@ msgstr "Add a run time for this one-shot."
 msgid "Add a schedule, webhook, GitHub, or message trigger"
 msgstr "Add a schedule, webhook, GitHub, or message trigger"
 
+#: src/pages/RoutineEditor.tsx
+msgid "Add a skill"
+msgstr "Add a skill"
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceAccounts.tsx
@@ -2706,10 +2710,6 @@ msgstr "Connect a model"
 #: src/pages/Legal.tsx
 msgid "Connect a model in Settings first."
 msgstr "Connect a model in Settings first."
-
-#: src/pages/ModelBackupsSettings.tsx
-msgid "Connect a provider to add backups."
-msgstr "Connect a provider to add backups."
 
 #: src/pages/Shell.tsx
 msgid "Connect a voice provider to call Elio."
@@ -8672,6 +8672,7 @@ msgstr "Routine"
 
 #: src/pages/BotContextMenu.tsx
 #: src/pages/RoutineEditor.tsx
+#: src/pages/Shell.tsx
 msgid "Routines"
 msgstr "Routines"
 
@@ -9934,8 +9935,8 @@ msgid "Taking longer than usual"
 msgstr "Taking longer than usual"
 
 #: src/pages/shell/bot-panel.tsx
-msgid "Talks to people outside your company. Private tools are turned off."
-msgstr "Talks to people outside your company. Private tools are turned off."
+msgid "Talks to people outside your company. Anything private it would share waits for your approval. Private tools are turned off."
+msgstr "Talks to people outside your company. Anything private it would share waits for your approval. Private tools are turned off."
 
 #: src/components/ContactDialog.tsx
 #: src/components/fundraising/RoundCard.tsx
@@ -10180,6 +10181,10 @@ msgstr "The web, notes and docs"
 msgid "their portal access"
 msgstr "their portal access"
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Theme"
+msgstr "Theme"
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "These saved settings can't be read. Remove it and add it again."
 msgstr "These saved settings can't be read. Remove it and add it again."
@@ -10423,10 +10428,6 @@ msgstr "Too large to preview ({0})"
 msgid "Too large to search inside"
 msgstr "Too large to search inside"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Tool name"
-msgstr "Tool name"
-
 #: src/lib/run-phase.ts
 msgid "tools"
 msgstr "tools"
@@ -10559,6 +10560,10 @@ msgstr "Try the test again."
 msgid "Turn off"
 msgstr "Turn off"
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Turn off a tool"
+msgstr "Turn off a tool"
+
 #: src/components/MailApprovalCard.tsx
 msgid "Turn off drafts for {botName}?"
 msgstr "Turn off drafts for {botName}?"
@@ -10683,11 +10688,6 @@ msgstr "Unknown bot"
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Unknown source: {unknownSource}"
 msgstr "Unknown source: {unknownSource}"
-
-#. placeholder {0}: unknown.join(", ")
-#: src/pages/shell/bot-panel.tsx
-msgid "Unknown tool: {0}"
-msgstr "Unknown tool: {0}"
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Unlink"
@@ -10959,6 +10959,10 @@ msgstr "Use this sheet"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Use your own key"
 msgstr "Use your own key"
+
+#: src/pages/ModelBackupsSettings.tsx
+msgid "Use your own model to add backups."
+msgstr "Use your own model to add backups."
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationAgentSection.tsx
@@ -11414,8 +11418,8 @@ msgid "Your bots already have a model."
 msgstr "Your bots already have a model."
 
 #: src/pages/ModelSettingsOverlay.tsx
-msgid "Your bots already use {selectedProviderName}."
-msgstr "Your bots already use {selectedProviderName}."
+msgid "Your bots use {defaultModelLabel}."
+msgstr "Your bots use {defaultModelLabel}."
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Your bots use {modelLabel}."

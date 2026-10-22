@@ -340,7 +340,7 @@ it("treats the provider this space already uses as connected, with a key optiona
   const view = await renderSettings();
   try {
     const text = view.container.textContent ?? "";
-    expect(text).toContain("Your bots already use DeepSeek.");
+    expect(text).toContain("Your bots use DeepSeek Chat.");
     expect(text).not.toContain("Connect this provider");
     expect(text).toContain("Use your own key");
     // A founder should learn they need to do nothing here before reading a list of providers.
