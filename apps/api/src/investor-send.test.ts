@@ -384,6 +384,14 @@ describe("deliverPortalLinks", () => {
     expect(noProvider.links.map((l) => l.contactId)).toEqual(["bob"]);
   });
 
+  it("hands back the link when an email fails and still tries the rest", async () => {
+    const { deps } = setup();
+    vi.mocked(deps.email!.send).mockRejectedValueOnce(new Error("smtp down"));
+    const result = await deliverPortalLinks(deps, actor, ["ann", "bob"], { copy: false });
+    expect(result.links.map((l) => l.contactId)).toEqual(["ann"]);
+    expect(deps.email!.send).toHaveBeenCalledTimes(2);
+  });
+
   it("skips a contact that is not the owner's", async () => {
     const { deps } = setup();
     const result = await deliverPortalLinks(deps, actor, ["ghost"], { copy: true });

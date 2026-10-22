@@ -90,9 +90,9 @@ const button = (label: string) =>
     | undefined;
 const click = (el: HTMLElement | undefined) => act(async () => el?.click());
 
-async function show(initial: InvestorUpdate, accounts: unknown[] = gmail) {
+async function show(initial: InvestorUpdate, accounts: unknown[] = gmail, lookupOk = true) {
   rpcMock.get.mockResolvedValue(initial);
-  rpcMock.accounts.mockResolvedValue(accounts);
+  if (lookupOk) rpcMock.accounts.mockResolvedValue(accounts);
   await act(async () =>
     root.render(
       <MemoryRouter initialEntries={["/app/investors/updates/u1"]}>
@@ -178,6 +178,12 @@ it("without Gmail an investor update is posted to the portal, with Connect Gmail
   expect(button("Connect Gmail")).toBeDefined();
   expect(button("Send")).toBeUndefined();
   expect(button("Connect Gmail to send")).toBeUndefined();
+});
+
+it("does not offer Post to portal while the Gmail lookup is failing", async () => {
+  rpcMock.accounts.mockRejectedValue(new Error("down"));
+  await show(update(), undefined, false);
+  expect(button("Post to portal")).toBeUndefined();
 });
 
 it("without Gmail a board update has only Connect Gmail to send: board updates never reach the portal", async () => {

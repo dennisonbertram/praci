@@ -324,11 +324,17 @@ export async function deliverPortalLinks(
       links.push({ contactId, name: contact.name, link: minted.link });
       continue;
     }
-    await deps.email.send({
-      to: minted.email,
-      subject: `${company} · your link`,
-      text: `Your link to ${company}'s investor portal:\n\n${minted.link}`,
-    });
+    try {
+      await deps.email.send({
+        to: minted.email,
+        subject: `${company} · your link`,
+        text: `Your link to ${company}'s investor portal:\n\n${minted.link}`,
+      });
+    } catch (error) {
+      if (options.strict) throw error;
+      // The share is already saved and a retry would find nothing new, so the founder gets the link to copy.
+      links.push({ contactId, name: contact.name, link: minted.link });
+    }
   }
   return { links };
 }

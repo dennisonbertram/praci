@@ -118,7 +118,8 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
   }, [contacts, ticked, update?.audience]);
 
   const draft = update?.status === "draft";
-  const gmail = (accounts?.length ?? 0) > 0;
+  // Until the lookup answers (or if it fails) assume Gmail, so Post to portal is never offered by mistake.
+  const gmail = accounts === null || accounts.length > 0;
 
   const editor = useComposeEditor({
     disabled: !draft,
@@ -157,7 +158,7 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
     void rpc.investors.updates
       .accounts()
       .then((list) => live && setAccounts(list))
-      .catch(() => live && setAccounts([]));
+      .catch(() => undefined);
     return () => {
       live = false;
     };
@@ -631,7 +632,9 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
             </>
           ) : (
             <Button
-              disabled={busy || drafting || recipients.length === 0 || bodyEmpty}
+              disabled={
+                busy || drafting || accounts === null || recipients.length === 0 || bodyEmpty
+              }
               onClick={trySend}
             >
               <Trans>Send</Trans>
