@@ -404,6 +404,12 @@ export function DataRoomPage({
         setDialogOpen(narrow);
       }
     },
+    onClosePreview: narrow
+      ? undefined
+      : () => {
+          setPinned(null);
+          setPreviewOpen(false);
+        },
     onAction: (kind, item) => (kind === "retry" ? retry(item) : setAction({ kind, item })),
     // Tick boxes are for the list; the grid has its tiles' own menus.
     ...(view === "list" || searching
