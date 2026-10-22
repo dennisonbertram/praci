@@ -71,7 +71,7 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
     .toBe("waiting_takeover");
   const computerCard = page.getByTestId("computer-card");
   await expect(computerCard).toBeVisible();
-  await expect(computerCard.getByText("Needs you", { exact: true })).toBeVisible();
+  await expect(computerCard.getByText("Needs takeover", { exact: true })).toBeVisible();
   await expect(computerCard.getByTestId("computer-card-open")).toBeVisible();
   await captureScreenshot(page, testInfo, "08-protected-input-request");
   await computerCard.getByTestId("computer-card-open").click();

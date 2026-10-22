@@ -6591,6 +6591,7 @@ msgstr ""
 #: src/lib/roster-status.ts
 #: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Needs takeover"
 msgstr "Necesita toma de control"
 

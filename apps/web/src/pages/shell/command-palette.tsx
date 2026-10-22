@@ -69,13 +69,18 @@ function ranked<T>(items: readonly T[], score: (item: T) => number | null): T[] 
     .map((entry) => entry.item);
 }
 
+const CLIP_BEFORE = 24;
+
 /** The typed text inside a result, underlined so a result shows why it matched. */
-function Highlight({ text, needle }: { text: string; needle: string }) {
+function Highlight({ text, needle, clip }: { text: string; needle: string; clip?: boolean }) {
   const at = needle ? text.toLowerCase().indexOf(needle) : -1;
   if (at < 0) return <>{text}</>;
+  // A long title is cut at the end by the row, so drop text before the match to keep it in view.
+  const from = clip && at > CLIP_BEFORE ? at - CLIP_BEFORE / 2 : 0;
   return (
     <>
-      {text.slice(0, at)}
+      {from ? "…" : ""}
+      {text.slice(from, at)}
       <mark className="bg-transparent text-inherit underline decoration-2 underline-offset-2">
         {text.slice(at, at + needle.length)}
       </mark>
@@ -346,11 +351,11 @@ export function CommandPalette({
             ) : null}
             <span className="min-w-0 flex-1">
               <span className="block truncate font-medium text-foreground" dir="auto">
-                <Highlight text={maskCurrencyWhenHidden(entry.label)} needle={needle} />
+                <Highlight text={maskCurrencyWhenHidden(entry.label)} needle={needle} clip />
               </span>
               {detail ? (
                 <span className="block truncate text-[13px] text-muted-foreground" dir="auto">
-                  <Highlight text={detail} needle={needle} />
+                  <Highlight text={detail} needle={needle} clip />
                 </span>
               ) : null}
             </span>
@@ -370,10 +375,22 @@ export function CommandPalette({
   // The mail action leads the list, but Enter still opens the best match: select it by value.
   const bestValue = (() => {
     if (!needle) return "";
+    // A contact or document named exactly as typed wins; with no page or bot match, the first one does.
+    const linkEntries = shownLinks.filter((group) => !group.first).flatMap((g) => g.entries);
+    const exact = linkEntries.find((entry) => entry.label.toLowerCase() === needle);
+    if (exact) return `link:${exact.id}`;
     const first = sectionOrder[0];
-    if (first === "bots") return filteredBots[0]?.id ?? "";
-    if (first === "groups") return shownGroups[0] ? `group:${shownGroups[0].id}` : "";
-    return shownPages[0] ? `page:${shownPages[0].id}` : "";
+    const local =
+      first === "bots"
+        ? (filteredBots[0]?.id ?? "")
+        : first === "groups"
+          ? shownGroups[0]
+            ? `group:${shownGroups[0].id}`
+            : ""
+          : shownPages[0]
+            ? `page:${shownPages[0].id}`
+            : "";
+    return local || (linkEntries[0] ? `link:${linkEntries[0].id}` : "");
   })();
   const [picked, setPicked] = useState("");
   // biome-ignore lint/correctness/useExhaustiveDependencies: restart from the best match when the query changes
@@ -389,7 +406,7 @@ export function CommandPalette({
     >
       <Command
         shouldFilter={false}
-        value={picked || undefined}
+        value={picked || bestValue || undefined}
         onValueChange={setPicked}
         className="rounded-xl! bg-popover"
         data-testid="command-palette"

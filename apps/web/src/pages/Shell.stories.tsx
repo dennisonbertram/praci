@@ -550,6 +550,12 @@ const emailChatBots = [
   agent("bot_counsel", "Counsel agent", BOT_COLORS[3], {
     position: 2,
     spawnKey: "legal-agent:user_demo",
+    preview: "Which contracts renew soon?",
+  }),
+  // Made when its page was opened, never used: not listed.
+  agent("bot_finance_page", "Finance agent", BOT_COLORS[1], {
+    position: 9,
+    spawnKey: "finance-agent:user_demo",
   }),
   ...[
     "Q3 board deck",
@@ -566,7 +572,7 @@ const emailChatBots = [
   ),
 ];
 
-/** Six Ask-agent chats fold into one "Email chats" row; the lone Legal agent folds into "Page agents". */
+/** Six Ask-agent chats fold into one "Email chats" row; the Legal agent, which has been used, folds into "Page agents"; the unused Finance agent is not listed. */
 export const SidebarEmailChats: Story = {
   // The sidebar only scrolls inside a bounded page, as in the app.
   decorators: [

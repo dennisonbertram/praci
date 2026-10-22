@@ -1856,7 +1856,8 @@ const MessageView = memo(function MessageView({
                       : "rounded-full bg-success/15 px-[11px] py-1 text-[13px] text-success"
                   }
                 >
-                  {block.state}
+                  {/* The stored state is "Needs you"; computer cards are takeovers, not questions. */}
+                  {block.state === "Needs you" ? <Trans>Needs takeover</Trans> : block.state}
                 </span>
               </div>
               <div className="my-2.5 text-[14.5px] leading-[1.5] text-foreground/75">
