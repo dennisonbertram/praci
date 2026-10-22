@@ -1248,7 +1248,7 @@ export const builtinAgentTools: ConnectorTool[] = [
   {
     name: "cap_table_read",
     description:
-      "The cap table on the user's Investors page, as last saved: fully diluted shares, option pool, latest 409A, amount raised, share classes and each holder's security, shares and ownership. Null before the first save. Read this before answering cap table or investor questions.",
+      "The cap table on the user's Investors page, as last saved: fully diluted shares, option pool, latest 409A, amount raised, share classes and each holder's security, shares and ownershipPercent (as the page shows it; null for SAFEs, which are listed separately with atCapPercent), so answer ownership questions from it and never from Carta. Null before the first save. Read this before answering cap table or investor questions.",
     inputSchema: { type: "object", properties: {} },
     readOnly: true,
   },

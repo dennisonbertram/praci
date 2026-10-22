@@ -124,7 +124,26 @@ export function DataRoomPage({
   // View and sort are remembered for this browser.
   const [saved] = useState(readDataRoomView);
   const [view, setView] = useState<"list" | "grid">(saved.view);
-  const [queryInput, setQueryInput] = useState("");
+  // The command palette's "See all in Data room" arrives with the search in ?q=.
+  const urlQuery = params.get("q") ?? "";
+  const [queryInput, setQueryInput] = useState(urlQuery);
+  useEffect(() => setQueryInput(urlQuery), [urlQuery]);
+  // Edits and clearing go back to ?q= so a reload restores what the box shows.
+  const changeQuery = useCallback(
+    (value: string) => {
+      setQueryInput(value);
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (value) next.set("q", value);
+          else next.delete("q");
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setParams],
+  );
   const debouncedQuery = useDebounced(queryInput.trim(), SEARCH_DEBOUNCE_MS);
   // Clearing the box shows the list again at once; only typing waits for a pause.
   const query = queryInput.trim() === "" ? "" : debouncedQuery;
@@ -346,7 +365,7 @@ export function DataRoomPage({
       .then((item) => {
         if (!current || item.id !== linkedItem) return;
         // Show the folder the item is in, so the list and the preview agree.
-        setQueryInput("");
+        changeQuery("");
         setFilters(item.folderId ? { folderId: item.folderId } : {}, true);
         explicit.current = item.id;
         setPinned(item);
@@ -692,7 +711,7 @@ export function DataRoomPage({
 
   return (
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
+      <div className={`${PAGE_GUTTER_X} pt-2`}>
         {fromLegal ? (
           <Link
             to="/app/legal"
@@ -786,7 +805,7 @@ export function DataRoomPage({
           </div>
           <FilterBar
             query={queryInput}
-            onQuery={setQueryInput}
+            onQuery={changeQuery}
             searching={searching}
             filters={filters}
             onFilters={(next) => setFilters(next)}
@@ -953,7 +972,7 @@ export function DataRoomPage({
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setQueryInput("");
+                            changeQuery("");
                             clearFilters();
                           }}
                         >

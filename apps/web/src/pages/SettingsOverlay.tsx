@@ -119,6 +119,8 @@ export function SettingsOverlay({
       : document.querySelector<HTMLElement>('[data-testid="user-menu-trigger"]');
   };
   const [section, setSection] = useState<SettingsSection>(initialSection);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const advancedShown = advancedOpen || section === "memory";
   const [memoryBusy, setMemoryBusy] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [keepComputerRecovery, setKeepComputerRecovery] = useState(false);
@@ -282,17 +284,20 @@ export function SettingsOverlay({
           >
             {navItems.map(navButton)}
             {/* Memory is rarely needed; it opens from here and stays open while it is the page. */}
-            <details className="group" open={section === "memory"}>
-              <summary className="flex cursor-pointer list-none items-center gap-2.5 rounded-lg px-2.5 py-2 pointer-coarse:min-h-11 text-[13.5px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
-                <ChevronRight
-                  aria-hidden="true"
-                  className="size-4 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none"
-                  strokeWidth={1.75}
-                />
-                <Trans>Advanced</Trans>
-              </summary>
-              <div className="ms-3">{navButton(memoryItem)}</div>
-            </details>
+            <button
+              type="button"
+              aria-expanded={advancedShown}
+              onClick={() => setAdvancedOpen(!advancedShown)}
+              className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 pointer-coarse:min-h-11 text-start text-[13.5px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <ChevronRight
+                aria-hidden="true"
+                className={`size-4 shrink-0 transition-transform motion-reduce:transition-none ${advancedShown ? "rotate-90" : ""}`}
+                strokeWidth={1.75}
+              />
+              <Trans>Advanced</Trans>
+            </button>
+            {advancedShown ? <div className="ms-3">{navButton(memoryItem)}</div> : null}
           </nav>
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -315,7 +320,7 @@ export function SettingsOverlay({
               className={`min-h-0 flex-1 ${
                 section === "models" || section === "voice" || section === "memory"
                   ? "flex flex-col overflow-hidden pt-5"
-                  : "rk-scroll rk-scroll-fade-bottom rk-fade-popover overflow-y-auto overscroll-contain px-6 pb-6 pt-5 sm:px-8 sm:pb-8"
+                  : "rk-scroll rk-scroll-fade-bottom rk-fade-popover overflow-y-auto overscroll-contain px-2 pb-6 pt-5 sm:px-8 sm:pb-8"
               }`}
             >
               {section === "general" ? (

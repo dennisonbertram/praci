@@ -124,6 +124,7 @@ export const SearchFindsContactsAndChats: Story = {
       {
         heading: "Documents",
         icon: <FileText size={16} strokeWidth={1.75} />,
+        more: { id: "/app/data-room?q=halcyon", label: "See all in Data room" },
         entries: [
           {
             id: "/app/data-room?item=d1",

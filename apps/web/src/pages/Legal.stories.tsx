@@ -27,7 +27,9 @@ export const Default: Story = {
       "legal.overview": overview,
       "legal.consent": consent,
       "legal.graph": graph,
-      "legal.doneDeadlines": deadlines.slice(0, 2).map((d) => ({ ...d, status: "done" })),
+      "legal.doneDeadlines": deadlines
+        .slice(0, 2)
+        .map((d, i) => ({ ...d, status: i === 0 ? "done" : "dismissed" })),
     }),
 };
 

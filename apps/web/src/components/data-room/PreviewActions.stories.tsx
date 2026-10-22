@@ -60,7 +60,7 @@ export const PdfOnPhone: Story = {
         <PreviewActions {...args} />
       </div>
       <div className="h-40">
-        <FileViewer item={args.item} file={args.file} fill />
+        <FileViewer item={args.item} file={{ url: samplePdf, failed: false }} fill />
       </div>
     </div>
   ),

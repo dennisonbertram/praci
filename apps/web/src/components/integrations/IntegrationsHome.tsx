@@ -174,9 +174,6 @@ function McpCard({
   const managePath = granola ? GRANOLA_PATH : `/app/integrations/mcp/${server.id}`;
   return (
     <Card>
-      {status === "connected" ? (
-        <TileMenu label={t`More ${server.name} actions`} manageTo={managePath} />
-      ) : null}
       <CardHead
         name={server.name}
         logo={known?.logo}
@@ -229,10 +226,8 @@ function GranolaKeyCard({
   status: NonNullable<IntegrationsData["meetings"]>;
   description?: string;
 }) {
-  const { t } = useLingui();
   return (
     <Card>
-      <TileMenu label={t`More Granola actions`} manageTo={GRANOLA_PATH} />
       <CardHead name="Granola" sub={description} to={GRANOLA_PATH} />
       <div className="mt-auto flex min-h-7 items-center gap-2">
         <GranolaStatusLine status={status} />
@@ -262,13 +257,9 @@ function AppCard({
   const description = data.catalog.find(
     (item) => item.connectorId === app.connectorId && item.slug === app.provider,
   )?.description;
-  const { t } = useLingui();
   const to = appPath({ connectorId: app.connectorId, slug: app.provider });
   return (
     <Card>
-      {app.status === "connected" ? (
-        <TileMenu label={t`More ${app.name} actions`} manageTo={to} />
-      ) : null}
       <CardHead
         name={app.name}
         logo={app.logo}
@@ -389,6 +380,7 @@ export function IntegrationsHome({
     params.get("category") === "finance" ? "finance" : "all",
   );
   const financeRef = useRef<HTMLDivElement>(null);
+  const lapsedRef = useRef<HTMLDivElement>(null);
   const jumpToFinance = useRef(params.get("category") === "finance");
   // /app/integrations?connect=carta opens that first-party tile's sign-in once the page has loaded.
   const connectOnLoad = useRef(params.get("connect"));
@@ -462,9 +454,10 @@ export function IntegrationsHome({
   const financeStatus = useFinanceStatus();
   const connectedKeys = connectedFinanceKeys(data.financeSources, financeStatus);
   const financeNames = FINANCE_PROVIDERS.map((entry) => entry.name.toLowerCase());
+  const financeMatches = financeNames.some((name) => name.includes(query.trim().toLowerCase()));
   const showFinance =
     (category === "all" || category === "finance") &&
-    financeNames.some((name) => name.includes(query.trim().toLowerCase())) &&
+    financeMatches &&
     connectedKeys.size < FINANCE_TILE_COUNT;
   const granolaKey =
     data.meetings && data.meetings.status !== "disconnected" ? data.meetings : null;
@@ -552,7 +545,9 @@ export function IntegrationsHome({
   useEffect(() => {
     if (!jumpToFinance.current || !data.loaded) return;
     jumpToFinance.current = false;
-    financeRef.current?.scrollIntoView?.({ block: "start" });
+    // A lapsed bank's reconnect tile sits above the finance section, so land on it first.
+    const target = lapsedRef.current?.firstChild ? lapsedRef.current : financeRef.current;
+    target?.scrollIntoView?.({ block: "start" });
   }, [data.loaded]);
 
   // After Done, focus the new card (the Connect button it came from is gone).
@@ -632,7 +627,7 @@ export function IntegrationsHome({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* The title stays put and the cards scroll under its line. */}
-      <div className={`${PAGE_GUTTER_X} border-b border-border pt-2 md:pt-5`}>
+      <div className={`${PAGE_GUTTER_X} pt-2`}>
         <PageHeader title={<Trans>Integrations</Trans>} className="mb-2" />
       </div>
       <div className={`rk-scroll min-h-0 flex-1 overflow-y-auto ${PAGE_GUTTER_X} pt-4 pb-6`}>
@@ -707,6 +702,17 @@ export function IntegrationsHome({
           ) : null}
           {data.loaded ? (
             <>
+              {/* A lapsed connection is the one thing to fix, so it sits above Connected. */}
+              {(wholeList || category === "finance") && financeMatches ? (
+                <div ref={lapsedRef} className="mb-3 scroll-mt-4 empty:hidden">
+                  <FinanceSection
+                    mode="lapsed"
+                    sources={data.financeSources}
+                    status={financeStatus}
+                    onChanged={() => void data.refresh()}
+                  />
+                </div>
+              ) : null}
               {(searching ? connectedApps.length > 0 : hasConnected) ? (
                 <>
                   <SectionTitle>

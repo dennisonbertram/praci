@@ -360,7 +360,7 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
+      <div className={`${PAGE_GUTTER_X} pt-2`}>
         <Link
           to="/app/investors"
           className="mb-1 inline-flex min-h-6 items-center gap-1 text-sm text-muted-foreground hover:text-foreground pointer-coarse:min-h-11"

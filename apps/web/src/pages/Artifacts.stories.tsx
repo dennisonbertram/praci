@@ -22,7 +22,7 @@ const base = (
 });
 
 const items = [
-  base({ id: "art_md", name: "Weekly notes", description: "Notes from the sample week." }),
+  base({ id: "art_md", name: "Weekly notes.md", description: "Notes from the sample week." }),
   base({
     id: "art_html",
     name: "Sample dashboard",
