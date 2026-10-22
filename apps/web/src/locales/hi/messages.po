@@ -6601,7 +6601,6 @@ msgstr ""
 msgid "No longer active"
 msgstr "अब सक्रिय नहीं"
 
-#: src/components/inbox/InboxDigest.tsx
 #: src/pages/Inbox.tsx
 msgid "No mail"
 msgstr ""
@@ -6659,6 +6658,10 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "No net spend in the last 3 full months"
+msgstr ""
+
+#: src/components/inbox/InboxDigest.tsx
+msgid "No newsletters in the last 7 days"
 msgstr ""
 
 #: src/pages/legal/LegalDeadlines.tsx
@@ -9008,6 +9011,10 @@ msgstr "सेटिंग्स दिखाएं"
 
 #: src/pages/Shell.tsx
 msgid "Show sidebar"
+msgstr ""
+
+#: src/components/inbox/InboxDigest.tsx
+msgid "Show the pile"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx

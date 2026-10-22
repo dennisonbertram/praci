@@ -34,6 +34,7 @@ const rpcMock = vi.hoisted(() => ({
   askAgent: vi.fn(),
   todos: vi.fn(),
   setDone: vi.fn(),
+  connections: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
@@ -49,6 +50,7 @@ vi.mock("../lib/rpc", () => ({
       askAgent: rpcMock.askAgent,
       todos: { list: rpcMock.todos, setDone: rpcMock.setDone },
     },
+    connections: { list: rpcMock.connections },
   },
 }));
 vi.mock("../lib/inbox-message-cache", () => ({
@@ -273,6 +275,7 @@ beforeEach(() => {
   }));
   rpcMock.markRead.mockResolvedValue({ ok: true });
   rpcMock.list.mockResolvedValue(list([row("a"), row("b"), row("c")]));
+  rpcMock.connections.mockResolvedValue([{ provider: "gmail", status: "connected" }]);
 });
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0)) await cleanup();
@@ -559,6 +562,22 @@ it("shows one result count with a Clear that drops the search and filter togethe
   expect(c.textContent).not.toContain("Needs reply");
   await click(byText(c, "Clear"));
   expect(location.search).toBe("");
+});
+
+it("hides the pile tabs and keeps one Clear while showing search results", async () => {
+  const c = await render(["/app/inbox?q=zebra"]);
+  expect(c.textContent).toContain("3 results");
+  expect(c.textContent).not.toContain("Newsletters");
+  const clears = [...c.querySelectorAll("button")].filter(
+    (b) => b.textContent === "Clear" || b.getAttribute("aria-label") === "Clear",
+  );
+  expect(clears).toHaveLength(1);
+});
+
+it("names the active filter in the results bar, not on the Filter button", async () => {
+  const c = await render(["/app/inbox?filter=unread"]);
+  expect(c.textContent).toContain("3 results · Unread");
+  expect(c.querySelector('[data-testid="inbox-filter"]')?.textContent).toBe("");
 });
 
 it("pages a search with a Loading label and ends with No more results", async () => {
@@ -1002,6 +1021,22 @@ it("shows the rate-limit notice in the warning colour above cached mail", async 
   expect(alert?.textContent).toContain("Gmail is limiting requests right now.");
   expect(alert?.className).toContain("text-warning");
   expect(alert?.className).not.toContain("text-destructive");
+});
+
+it("shows Connect mail without waiting for the slow list when no Gmail is connected", async () => {
+  rpcMock.connections.mockResolvedValue([]);
+  rpcMock.list.mockReturnValue(new Promise(() => {}));
+  const c = await render();
+  expect(c.textContent).toContain("No mail connected");
+  expect(c.textContent).not.toContain("First sync can take a minute");
+  expect(c.textContent).not.toContain("Reading your mail");
+});
+
+it("keeps the skeleton while a connected account's list is slow", async () => {
+  rpcMock.list.mockReturnValue(new Promise(() => {}));
+  const c = await render();
+  expect(c.querySelector("[aria-busy='true']")).not.toBeNull();
+  expect(c.textContent).not.toContain("No mail connected");
 });
 
 it("turns off search and Filter until mail is connected", async () => {

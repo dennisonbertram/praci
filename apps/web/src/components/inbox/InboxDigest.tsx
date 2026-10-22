@@ -16,6 +16,7 @@ export function InboxDigest({
   loading = false,
   onOpen,
   onArchiveAll,
+  onShowPile,
   selectedId,
 }: {
   /** Already limited to the digest window and ordered newest first (`digestRows`). */
@@ -23,6 +24,8 @@ export function InboxDigest({
   loading?: boolean;
   onOpen: (messageId: string) => void;
   onArchiveAll: () => void;
+  /** Leaves the digest for the whole pile, when the window holds nothing. */
+  onShowPile: () => void;
   /** The focused card, as the keyboard leaves it. */
   selectedId?: string;
 }) {
@@ -38,9 +41,14 @@ export function InboxDigest({
     );
   if (rows.length === 0)
     return (
-      <p className="py-16 text-center text-sm text-muted-foreground">
-        <Trans>No mail</Trans>
-      </p>
+      <div className="flex flex-col items-center gap-3 py-16 text-sm text-muted-foreground">
+        <p>
+          <Trans>No newsletters in the last 7 days</Trans>
+        </p>
+        <Button variant="outline" size="sm" onClick={onShowPile}>
+          <Trans>Show the pile</Trans>
+        </Button>
+      </div>
     );
   const groups = groupBySender(rows);
   return (

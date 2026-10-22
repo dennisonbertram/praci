@@ -506,6 +506,11 @@ function InboxListPage({
   const narrowed = triage && Boolean(category);
   // A search or narrowed list is one date-ordered list under a result count, not Needs reply / Today / Earlier.
   const resultsView = filtered || narrowed;
+  const activeFilterLabel = filter
+    ? filterLabels()[filter]
+    : triage && category
+      ? categoryLabels()[category]
+      : undefined;
   // Updates and Newsletters list one group per sender; Spam is a flat list; Important is dated.
   const grouped = pile === "updates" || pile === "newsletters";
   const senderGroups = useMemo(() => (grouped ? groupBySender(rows) : []), [grouped, rows]);
@@ -551,6 +556,23 @@ function InboxListPage({
   // The messages the open message's arrows and the prefetch can reach.
   const messageIds = useMemo(() => ids.filter((id) => !isSenderGroupId(id)), [ids]);
   const accounts = data?.accounts ?? [];
+  // The list answers slowly and is the only thing that names the accounts, so the connections
+  // list (fast) decides "no mail connected" first. Any Gmail connection, even a lapsed one, keeps the normal path.
+  const [noGmail, setNoGmail] = useState(false);
+  useEffect(() => {
+    if (paused) return;
+    let live = true;
+    rpc.connections
+      .list()
+      .then((rows) => {
+        if (live) setNoGmail(!rows.some((row) => row.provider.trim().toLowerCase() === "gmail"));
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [paused]);
+  const noAccounts = data ? accounts.length === 0 : noGmail;
   // With two or more accounts the Filter menu picks one; the button then names it.
   const tabLabel =
     accounts.length > 1
@@ -1095,22 +1117,16 @@ function InboxListPage({
   return (
     <div
       data-inbox-page
-      className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-20 pt-2 md:px-7 md:pt-5 xl:px-10"
+      className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-20 pt-2 md:px-7 md:pt-5"
     >
       <div className="mx-auto max-w-[1440px]">
         {/* A sticky box sticks inside the scroller's padding, so -top cancels it: rows never show above the header. mb-2 keeps the cards below clear of it. */}
-        <div className="sticky -top-2 z-10 -mx-4 -mt-2 mb-2 bg-background px-4 pt-2 md:-top-5 md:-mx-7 md:-mt-5 md:px-7 md:pt-5 xl:-mx-10 xl:px-10">
+        <div className="sticky -top-2 z-10 -mx-4 -mt-2 mb-2 bg-background px-4 pt-2 md:-top-5 md:-mx-7 md:-mt-5 md:px-7 md:pt-5">
           <PageHeader
             compact
             title={<Trans>Inbox</Trans>}
             meta={
               <>
-                {spaceName ? (
-                  // The full name is in the hover title when the row is too short for it.
-                  <span title={spaceName} className="truncate @lg/ph:max-w-72">
-                    {spaceName}
-                  </span>
-                ) : null}
                 {mailboxEmpty ? null : (
                   <form
                     ref={searchRef}
@@ -1139,7 +1155,7 @@ function InboxListPage({
                         title={t`Search mail, e.g. from:sam has:attachment`}
                         aria-label={t`Search mail`}
                         // Nothing to search or filter before mail is connected.
-                        disabled={Boolean(data) && accounts.length === 0}
+                        disabled={noAccounts}
                         maxLength={MAX_QUERY}
                         className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
                         autoComplete="off"
@@ -1162,6 +1178,13 @@ function InboxListPage({
                     </InputGroup>
                   </form>
                 )}
+                {/* After the search box, which arrives first: the name loads later and must not push it. */}
+                {spaceName ? (
+                  // The full name is in the hover title when the row is too short for it.
+                  <span title={spaceName} className="mt-1 truncate @lg/ph:mt-0 @lg/ph:max-w-72">
+                    {spaceName}
+                  </span>
+                ) : null}
               </>
             }
             actions={
@@ -1209,16 +1232,17 @@ function InboxListPage({
                                 className="pointer-coarse:h-10 pointer-coarse:min-w-10"
                               />
                             }
+                            // The button keeps one width: the filter's name is in the results bar.
                             aria-label={
-                              filter || (triage && category) || tabLabel ? undefined : t`Filter`
+                              tabLabel
+                                ? undefined
+                                : activeFilterLabel
+                                  ? `${t`Filter`}: ${activeFilterLabel}`
+                                  : t`Filter`
                             }
                           >
                             <ListFilter aria-hidden="true" />
-                            {filter
-                              ? filterLabels()[filter]
-                              : triage && category
-                                ? categoryLabels()[category]
-                                : tabLabel}
+                            {tabLabel}
                           </DropdownMenuTrigger>
                         }
                       />
@@ -1331,7 +1355,7 @@ function InboxListPage({
               </>
             }
           />
-          {tools ? (
+          {tools && !query ? (
             <div className="flex flex-wrap items-center gap-2">
               <InboxPileTabs
                 value={pile}
@@ -1341,7 +1365,9 @@ function InboxListPage({
               {pile === "newsletters" ? (
                 <Toggle
                   size="sm"
-                  className="-mt-2 mb-4 ms-auto"
+                  variant="outline"
+                  // Pressed shows as a dark border, not a fill: the selected pile tab is the one filled control.
+                  className="-mt-2 mb-4 ms-auto aria-pressed:border-foreground aria-pressed:bg-transparent data-[state=on]:bg-transparent"
                   pressed={digest}
                   onPressedChange={(on) => {
                     const next = new URLSearchParams(params);
@@ -1390,12 +1416,12 @@ function InboxListPage({
           >
             {fixButton}
           </PageEmptyState>
-        ) : data && accounts.length === 0 && todos === undefined && !paused ? (
+        ) : noAccounts && todos === undefined && !paused ? (
           // Whether the user has meeting follow-ups decides the page, so it waits for them.
           <div className="flex flex-col gap-2" aria-busy="true">
             <Skeleton className="h-9 w-full" />
           </div>
-        ) : data && accounts.length === 0 && meetingTodos ? (
+        ) : noAccounts && meetingTodos ? (
           // A meeting-only user: the follow-ups come first, with a plain way to add mail.
           <>
             {todoCard}
@@ -1403,7 +1429,7 @@ function InboxListPage({
               <Trans>Connect mail</Trans>
             </Button>
           </>
-        ) : data && accounts.length === 0 ? (
+        ) : noAccounts ? (
           <PageEmptyState
             icon={<Mail className="size-8" strokeWidth={1.6} aria-hidden="true" />}
             title={<Trans>No mail connected</Trans>}
@@ -1496,10 +1522,14 @@ function InboxListPage({
                   {more.token && fresh
                     ? plural(rows.length, { one: "#+ result", other: "#+ results" })
                     : plural(rows.length, { one: "# result", other: "# results" })}
+                  {activeFilterLabel ? ` · ${activeFilterLabel}` : null}
                 </span>
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
-                  <Trans>Clear</Trans>
-                </Button>
+                {/* A search already has the X in its box; a filter or category has only this. */}
+                {query && !filter && !category ? null : (
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    <Trans>Clear</Trans>
+                  </Button>
+                )}
               </div>
             ) : null}
             {pickedRows.length > 0 ? (
@@ -1541,6 +1571,11 @@ function InboxListPage({
                 rows={digestList}
                 onOpen={openMessage}
                 onArchiveAll={() => archiveMany(digestList)}
+                onShowPile={() => {
+                  const next = new URLSearchParams(params);
+                  next.delete("digest");
+                  setParams(next);
+                }}
                 selectedId={selectedId}
               />
             ) : grouped ? (

@@ -302,24 +302,28 @@ function AttachmentPreviewDialog({
         className="flex h-dvh max-h-none w-full max-w-none flex-col gap-2 rounded-none sm:max-w-none md:h-[85vh] md:w-[min(960px,94vw)] md:rounded-xl"
       >
         <div className="flex items-center gap-1 pe-8">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={t`Previous attachment`}
-            disabled={index === 0}
-            onClick={() => step(-1)}
-          >
-            <ChevronLeft aria-hidden="true" className="rtl:rotate-180" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={t`Next attachment`}
-            disabled={index === attachments.length - 1}
-            onClick={() => step(1)}
-          >
-            <ChevronRight aria-hidden="true" className="rtl:rotate-180" />
-          </Button>
+          {attachments.length > 1 ? (
+            <>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={t`Previous attachment`}
+                disabled={index === 0}
+                onClick={() => step(-1)}
+              >
+                <ChevronLeft aria-hidden="true" className="rtl:rotate-180" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={t`Next attachment`}
+                disabled={index === attachments.length - 1}
+                onClick={() => step(1)}
+              >
+                <ChevronRight aria-hidden="true" className="rtl:rotate-180" />
+              </Button>
+            </>
+          ) : null}
           <DialogTitle dir="auto" className="min-w-0 flex-1 truncate text-sm font-medium">
             {attachment.filename}
           </DialogTitle>
