@@ -51,6 +51,7 @@ vi.mock("../lib/rpc", () => ({
 }));
 vi.mock("../lib/inbox-message-cache", () => ({
   INBOX_CHANGED_EVENT: "rakazo:inbox-changed",
+  ROW_MENU_EVENT: "rakazo:inbox-row-menu",
   prefetchInboxMessage: rpcMock.prefetch,
   peekInboxMessage: () => undefined,
   loadInboxMessage: () => new Promise(() => {}),

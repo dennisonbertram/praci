@@ -278,8 +278,7 @@ describe("mail_get", () => {
       { prisma: { cachedMailMessage: { findMany: async () => [] } } },
     );
     expect(await mailToolFromTool("mail_get", deps, context(), { id: "m3" })).toEqual({
-      error:
-        "Pass account (the address from the row's acct: field) when more than one mail account is connected",
+      error: "Choose which mail account to use: a@example.test or b@example.test.",
     });
     const result = (await mailToolFromTool("mail_get", deps, context(), {
       id: "m3",

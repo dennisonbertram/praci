@@ -29,6 +29,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
+import { ROW_MENU_EVENT } from "../../lib/inbox-message-cache";
 import { formatMailTime } from "../../lib/mail-time";
 import { dueLabel } from "./TodoCard";
 
@@ -311,7 +312,7 @@ export function InboxRow({
           data-row-id={row.id}
           data-row-stop=""
           onClick={onOpen}
-          className={`grid h-16 w-full min-w-0 grid-cols-[8px_minmax(0,1fr)_auto] content-center items-center gap-x-2 gap-y-0.5 border-s-2 ps-2.5 pe-3 text-start text-[15px] font-normal outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset @md:h-14 @md:gap-x-4 @md:ps-3.5 @md:pe-4 @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_minmax(4rem,auto)] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_minmax(4rem,auto)] @3xl:grid-cols-[8px_200px_minmax(0,1fr)_auto_minmax(4rem,auto)] ${selected ? "border-primary bg-muted" : "border-transparent"} ${marks.length + actions.length ? "pointer-coarse:pe-16" : ""} ${muted ? "text-muted-foreground" : ""}`}
+          className={`grid h-16 w-full min-w-0 grid-cols-[8px_minmax(0,1fr)_auto] content-center items-center gap-x-2 gap-y-0.5 border-s-2 ps-2.5 pe-3 text-start text-[15px] font-normal outline-none [@media(hover:hover)]:hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset @md:h-14 @md:gap-x-4 @md:ps-3.5 @md:pe-4 @md:grid-cols-[8px_110px_minmax(0,1fr)_auto_minmax(4rem,auto)] @xl:grid-cols-[8px_140px_minmax(0,1fr)_auto_minmax(4rem,auto)] @3xl:grid-cols-[8px_200px_minmax(0,1fr)_auto_minmax(4rem,auto)] ${selected ? "border-primary bg-muted" : "border-transparent"} ${marks.length + actions.length ? "pointer-coarse:pe-16" : ""} ${muted ? "text-muted-foreground" : ""}`}
         >
           <span
             aria-hidden="true"
@@ -474,7 +475,11 @@ export function InboxRow({
                 );
               })}
             </div>
-            <DropdownMenu>
+            <DropdownMenu
+              onOpenChange={(open) =>
+                window.dispatchEvent(new CustomEvent(ROW_MENU_EVENT, { detail: open }))
+              }
+            >
               <DropdownMenuTrigger
                 render={
                   <Button

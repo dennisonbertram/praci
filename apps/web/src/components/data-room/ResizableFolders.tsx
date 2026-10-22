@@ -80,7 +80,7 @@ export function ResizableFolders({
         aria-valuemin={MIN_FOLDERS_WIDTH}
         aria-valuemax={maxWidth()}
         aria-valuenow={width}
-        className="absolute inset-y-0 -end-[3px] z-20 m-0 h-full w-[7px] touch-none cursor-col-resize border-0 bg-transparent hover:bg-border focus-visible:bg-ring focus-visible:outline-none"
+        className="absolute inset-y-0 -end-[3px] z-20 m-0 h-full w-[7px] touch-none cursor-col-resize border-0 bg-transparent hover:bg-border focus-visible:bg-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         onPointerDown={(event: PointerEvent<HTMLHRElement>) => {
           if (event.button !== 0) return;
           event.preventDefault();

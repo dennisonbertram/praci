@@ -55,6 +55,7 @@ vi.mock("../lib/rpc", () => ({
 }));
 vi.mock("../lib/inbox-message-cache", () => ({
   INBOX_CHANGED_EVENT: "rakazo:inbox-changed",
+  ROW_MENU_EVENT: "rakazo:inbox-row-menu",
   prefetchInboxMessage: () => {},
   peekInboxMessage: () => undefined,
   loadInboxMessage: () => new Promise(() => {}),
@@ -954,6 +955,34 @@ it("starts the first-sort clock at Allow: sorting is said at once and the unsort
   expect(c.textContent).toContain("Sorting your mail…");
 });
 
+it("keeps rows still while a row menu is open and the first sort finishes", async () => {
+  const blocked = {
+    enabled: false,
+    triageBlocked: { reason: "needs_consent", recipient: { key: "k", name: "Model" } } as never,
+  };
+  rpcMock.list.mockResolvedValue(list([row("a"), row("b")], blocked));
+  const c = await render();
+  rpcMock.list.mockResolvedValue(list([row("a"), row("b")]));
+  await click(byText(c, "Allow sorting"));
+  await dwell(16_000);
+  expect(c.textContent).toContain("Sorting your mail…");
+  await act(async () => {
+    window.dispatchEvent(new CustomEvent("rakazo:inbox-row-menu", { detail: true }));
+  });
+  // Triage lands while the menu is open; the sort ends, and the rows must stay where they are.
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+  await dwell(61_000);
+  expect(c.textContent).not.toContain("Sorting your mail…");
+  const headings = () => [...c.querySelectorAll("h2")].map((h) => h.textContent);
+  expect(headings()).not.toContain("Needs reply");
+  await act(async () => {
+    window.dispatchEvent(new CustomEvent("rakazo:inbox-row-menu", { detail: false }));
+  });
+  await dwell(100);
+  expect(headings()).toContain("Needs reply");
+});
+
 it("does not say First sync once a refresh reports an earlier sync", async () => {
   vi.useFakeTimers();
   try {
@@ -1133,6 +1162,35 @@ it("holds rows in their groups while triage is still running", async () => {
   expect(
     other && b && other.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING,
   ).toBeTruthy();
+});
+
+it("keeps rows in their groups while a row menu is open", async () => {
+  let classified = false;
+  rpcMock.list.mockImplementation(async () =>
+    list([row("a", { needsReply: true }), classified ? row("b", { needsReply: true }) : row("b")]),
+  );
+  const c = await render();
+  const menu = (open: boolean) =>
+    act(async () => {
+      window.dispatchEvent(new CustomEvent("rakazo:inbox-row-menu", { detail: open }));
+    });
+  const afterOther = () => {
+    const other = [...c.querySelectorAll("h2")].find((h) => h.textContent === "Other mail today");
+    const b = c.querySelector('button[data-row-id="b"]');
+    return Boolean(
+      other && b && other.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  };
+  await menu(true);
+  classified = true;
+  await act(async () => {
+    window.dispatchEvent(new Event("rakazo:inbox-changed"));
+  });
+  await dwell(1_000);
+  expect(afterOther()).toBe(true);
+  await menu(false);
+  await dwell(100);
+  expect(afterOther()).toBe(false);
 });
 
 it("does not hold a mark back while triage is running", async () => {

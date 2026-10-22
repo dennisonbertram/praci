@@ -699,8 +699,7 @@ async function resolveAccount(
   if (inferred) return { account: inferred };
   if (accounts.length > 1) {
     return {
-      error:
-        "Pass account (the address from the row's acct: field) when more than one mail account is connected",
+      error: `Choose which mail account to use: ${accounts.map(accountName).join(" or ")}.`,
     };
   }
   return accounts[0] ? { account: accounts[0] } : { error: "No connected mail account" };

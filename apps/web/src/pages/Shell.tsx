@@ -83,6 +83,7 @@ import {
   ListTodo,
   Mail,
   Maximize2,
+  Megaphone,
   Menu,
   MessageSquare,
   Monitor,
@@ -152,6 +153,7 @@ import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
 import { connectCardsOpen, focusQuestionOpen } from "../components/tour/connect-cards";
+import { tourInProgress } from "../components/tour/TourPopover";
 import { useAgentApp } from "../lib/agent-app";
 import { dismissApprovalToasts } from "../lib/approval-toasts";
 import { artifactDisplayName } from "../lib/artifact-name";
@@ -180,6 +182,7 @@ import {
   useAutoCreateCartaAgent,
   useOnPhoneWidth,
 } from "../lib/carta-agent";
+import { recoverComposerDraft } from "../lib/composer-accounts";
 import {
   embeddableScreenUrl,
   loadComputerScreen,
@@ -188,6 +191,7 @@ import {
 import { publishComputerCommand } from "../lib/computer-workspace";
 import { fetchDataRoomBlob } from "../lib/data-room";
 import { dataRoomAgentSuggestions, findDataRoomAgent } from "../lib/data-room-agent";
+import { pendingDelegateAgents } from "../lib/delegate-wait";
 import { desktopBridge } from "../lib/desktop";
 import { setDockedAgentBotId } from "../lib/docked-agent";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
@@ -276,6 +280,7 @@ import { FundraisingPage } from "./Fundraising";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
 import { GtmPage } from "./Gtm";
 import { InboxPage } from "./Inbox";
+import { IntegrationsPage } from "./Integrations";
 import { InvestorsPage } from "./Investors";
 import { UpdateEditor } from "./investors/UpdateEditor";
 import { LegalPage } from "./Legal";
@@ -337,9 +342,6 @@ const SettingsOverlay = lazyOverlay(() =>
 );
 const PeerMessagesOverlay = lazyOverlay(() =>
   import("./PeerMessagesOverlay").then((module) => module.PeerMessagesOverlay),
-);
-const IntegrationsPage = lazy(() =>
-  import("./Integrations").then((module) => ({ default: module.IntegrationsPage })),
 );
 
 export type { PendingAttachment };
@@ -819,12 +821,12 @@ export function ShellPage() {
     missingPathRef.current = path;
     setMissingPath(path);
   }, []);
-  // A link inside Settings (for example Server integrations) opens a page; the dialog closes.
-  // A replace (the Chief thread route settling on its bot or thread) is a redirect, not a visit.
+  // Only Back/Forward closes Settings. Nothing inside the dialog links to a page, and a route that
+  // is still loading pushes or replaces its own path, which must not close a dialog just opened.
   const navigationType = useNavigationType();
   // biome-ignore lint/correctness/useExhaustiveDependencies: only a new pathname closes Settings
   useEffect(() => {
-    if (navigationType !== "REPLACE") setSettingsOpen(false);
+    if (navigationType === "POP") setSettingsOpen(false);
   }, [pathname]);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
   const [settingsModelProvider, setSettingsModelProvider] = useState<string | undefined>();
@@ -948,6 +950,10 @@ export function ShellPage() {
   const [bootstrapMe, setBootstrapMe] = useState<Me | null>();
   const [tourRestart, setTourRestart] = useState(false);
   const tourQuestion = useRef(false);
+  // A reload part-way through a tour reopens it, even a retake of a tour already seen.
+  useEffect(() => {
+    if (userId && tourInProgress(userId)) setTourRestart(true);
+  }, [userId]);
   // Once the tour ends, a late profile response that still says unseen cannot restart it.
   const [tourEnded, setTourEnded] = useState(false);
   // After Skip tour the first question stays one tap away in Chief's composer.
@@ -2210,6 +2216,7 @@ export function ShellPage() {
         keywords: t`contracts, NDA, deadlines`,
         icon: <Scale {...icon} />,
       },
+      { id: "gtm", label: t`GTM`, icon: <Megaphone {...icon} /> },
       // Only once Devin is connected; before that its Integrations card is the way in.
       ...(glance.devinConnected
         ? [{ id: "devin", label: t`Devin`, icon: <CodeXml {...icon} /> }]
@@ -2814,9 +2821,46 @@ export function ShellPage() {
     [],
   );
   const [composerDraft, setComposerDraft] = useState<ComposerDraft | null>(null);
+  // The Space the open composer was started in, kept for its save and send calls.
+  const [composerSpaceId, setComposerSpaceId] = useState<string | null>(null);
+  // The From choices when a failed send named none: the composer shows a picker for them.
+  const [composerAccounts, setComposerAccounts] = useState<
+    Awaited<ReturnType<typeof rpc.inbox.list>>["accounts"] | null
+  >(null);
+  const composerScopeRef = useRef({ userId, spaceId: bootstrapMe?.spaceId });
+  composerScopeRef.current = { userId, spaceId: bootstrapMe?.spaceId };
   const botToolControls = useMemo<BotToolControls>(
     () => ({
-      openComposer: setComposerDraft,
+      openComposer: (draft) => {
+        setComposerAccounts(null);
+        // Pinned to the Space of the thread the failed send is in, not the shared selection.
+        const botId = activeBotId.current;
+        const groupId = activeGroupId.current;
+        const threadSpace = groupId
+          ? groupsRef.current.find((group) => group.id === groupId)?.spaceId
+          : botsRef.current.find((bot) => bot.id === botId)?.spaceId;
+        const origin = {
+          userId: composerScopeRef.current.userId,
+          spaceId: composerScopeRef.current.spaceId,
+          selected: selectedSpaceId(),
+        };
+        const spaceId = threadSpace ?? origin.spaceId ?? null;
+        setComposerSpaceId(spaceId);
+        if (draft.connectionId) return setComposerDraft(draft);
+        void recoverComposerDraft(
+          draft,
+          spaceId,
+          (space) => rpc.inbox.list({}, { context: { spaceId: space } }),
+          () =>
+            composerScopeRef.current.userId === origin.userId &&
+            composerScopeRef.current.spaceId === origin.spaceId &&
+            selectedSpaceId() === origin.selected,
+        ).then((recovered) => {
+          if (!recovered) return;
+          setComposerAccounts(recovered.accounts);
+          setComposerDraft(recovered.draft);
+        });
+      },
       editableBotName: (botId) => botsRef.current.find((bot) => bot.id === botId)?.name,
       disableTool: async (botId, tool) => {
         const bot = botsRef.current.find((item) => item.id === botId);
@@ -3899,6 +3943,7 @@ export function ShellPage() {
   const noComputerScreen = isRoutinesOnlyPanel({
     kind: computer?.kind,
     hasScreen: Boolean(embeddedScreenUrl),
+    state: computer?.state,
     hasError: Boolean(computerError),
     open: computerOpen,
     showRecoveryHint: showComputerRecoveryHint,
@@ -4133,10 +4178,13 @@ export function ShellPage() {
           {composerDraft ? (
             <ComposeEmail
               seed={NEW_MESSAGE}
-              accounts={[
-                { connectionId: composerDraft.connectionId, label: composerDraft.account },
-              ]}
+              accounts={
+                composerAccounts ?? [
+                  { connectionId: composerDraft.connectionId, label: composerDraft.account },
+                ]
+              }
               connectionId={composerDraft.connectionId}
+              spaceId={composerSpaceId}
               restore={{
                 seed: NEW_MESSAGE,
                 clientId: crypto.randomUUID().replaceAll("-", ""),
@@ -4152,7 +4200,7 @@ export function ShellPage() {
                 forwarded: [],
                 files: [],
                 saved: false,
-                accounts: [
+                accounts: composerAccounts ?? [
                   { connectionId: composerDraft.connectionId, label: composerDraft.account },
                 ],
               }}
@@ -4180,6 +4228,18 @@ export function ShellPage() {
               </Button>
             </div>
           ) : null}
+          {pendingDelegateAgents(activeSnapshot?.delegatePendingAgents).map((agent) => (
+            <div key={agent.id} className="px-6 pb-2">
+              <Button
+                variant="outline"
+                className="w-full pointer-coarse:h-11"
+                data-testid="delegate-approval-open"
+                onClick={() => navigate(`/app/${encodeURIComponent(agent.id)}`)}
+              >
+                <Trans>Open {agent.name}</Trans>
+              </Button>
+            </div>
+          ))}
           {recordingSkill ? (
             <div className="px-6 pb-2 text-center text-[13px] text-destructive">
               <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
@@ -4389,6 +4449,7 @@ export function ShellPage() {
         sidebarGroups={sidebarGroups}
         botSections={botSections}
         bootstrapMe={bootstrapMe}
+        userId={userId}
         collapsedRosterParents={collapsedRosterParents}
         editingFolderId={editingFolderId}
         toggleFolder={toggleFolder}
@@ -4668,13 +4729,11 @@ export function ShellPage() {
           </div>
           {integrationsMode ? (
             <ErrorBoundary fallback={<SectionLoadFailed />}>
-              <Suspense fallback={<RowsSkeleton className="p-6" />}>
-                <IntegrationsPage
-                  activeBotId={activeBotId.current}
-                  onOpenMessaging={() => setMessagingSettingsOpen(true)}
-                  onOpenAiDataSharing={() => openSettings("general")}
-                />
-              </Suspense>
+              <IntegrationsPage
+                activeBotId={activeBotId.current}
+                onOpenMessaging={() => setMessagingSettingsOpen(true)}
+                onOpenAiDataSharing={() => openSettings("general")}
+              />
             </ErrorBoundary>
           ) : dataRoomMode ? (
             <DataRoomPage
@@ -4899,7 +4958,10 @@ export function ShellPage() {
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
             {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
               <div className="sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between border-b border-border bg-background px-5 pt-[17px] pb-2">
-                <span className="text-[13.5px] text-muted-foreground">
+                <span
+                  className="min-w-0 truncate text-[13.5px] text-muted-foreground"
+                  title={panel === "settings" && active ? t`${active.name} settings` : undefined}
+                >
                   {panel === "settings" ? (
                     active ? (
                       t`${active.name} settings`
@@ -4918,7 +4980,7 @@ export function ShellPage() {
                     <Trans>Group</Trans>
                   )}
                 </span>
-                <div className="flex gap-1">
+                <div className="flex shrink-0 gap-1">
                   {active &&
                   panel === "computer" &&
                   !computerOpen &&
@@ -6127,13 +6189,15 @@ function computerPlaceholder(
 export function isRoutinesOnlyPanel(input: {
   kind: ComputerStatus["kind"] | undefined;
   hasScreen: boolean;
+  state?: ComputerStatus["state"];
   hasError: boolean;
   open: boolean;
   showRecoveryHint: boolean;
 }) {
   return (
     input.kind !== "desktop" &&
-    !input.hasScreen &&
+    // A stale screen address with the computer stopped shows nothing; asleep still offers Open.
+    !(input.hasScreen && input.state !== "stopped") &&
     !input.hasError &&
     !input.open &&
     !input.showRecoveryHint

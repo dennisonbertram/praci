@@ -654,9 +654,12 @@ export function InvestorsPage({
     const timer = setInterval(loadAudits, POLL_MS);
     return () => clearInterval(timer);
   }, [anyDrafting, loadAudits]);
-  const auditAction = (call: () => Promise<unknown>, failure: string) =>
+  const auditAction = (call: () => Promise<unknown>, failure: string, then?: () => void) =>
     call()
-      .then(loadAudits)
+      .then(() => {
+        loadAudits();
+        then?.();
+      })
       .catch((cause) => {
         notify(errorText(cause, failure));
         loadAudits();
@@ -1163,6 +1166,8 @@ export function InvestorsPage({
               void auditAction(
                 () => rpc.investors.audits.draft({ id: audit.id }),
                 t`Could not start the draft`,
+                // The agent's answer (a draft, or why it could not draft) appears in its panel.
+                onShowAgent,
               )
             }
             onCloseAudit={(audit, status) =>

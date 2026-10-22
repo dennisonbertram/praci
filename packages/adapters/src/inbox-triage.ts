@@ -12,7 +12,7 @@ import type { TriageBlocked } from "@rakazo/contracts";
 import { AI_DISCLOSURE_VERSION, inboxAgentSpawnKey } from "@rakazo/contracts";
 import type { TriageInputMessage, TriageItem } from "@rakazo/core";
 import {
-  isNoReplyCategory,
+  keepsNeedsReply,
   MAX_TRIAGE_PER_RUN,
   needsLlmDetail,
   planTodoSync,
@@ -203,36 +203,44 @@ async function triagePass(
   const hasBacklog = eligible.length > MAX_TRIAGE_PER_RUN;
   const selected = eligible.slice(0, MAX_TRIAGE_PER_RUN);
 
+  // The batches are independent, so they run together: the first sort waits for one model call,
+  // not one per 20 messages. A failed batch is rethrown after the others have written.
+  const batches = Array.from({ length: Math.ceil(selected.length / TRIAGE_BATCH_SIZE) }, (_, n) =>
+    selected.slice(n * TRIAGE_BATCH_SIZE, (n + 1) * TRIAGE_BATCH_SIZE),
+  );
   let classified = 0;
-  for (let i = 0; i < selected.length; i += TRIAGE_BATCH_SIZE) {
-    const batch = selected.slice(i, i + TRIAGE_BATCH_SIZE);
-    const items = await triageBatch(deps, ready, scope, await toInput(prisma, scope, batch));
-    const byId = new Map(items.map((item) => [item.id, item]));
-    // An id the model skipped is stamped too, with null fields, so it is not paid for again.
-    await prisma.$transaction(
-      batch.map((row) => {
-        const item = byId.get(row.id);
-        return prisma.cachedMailMessage.updateMany({
-          where: { id: row.id, userId, spaceId },
-          data: {
-            triagedAt: new Date(),
-            triageVersion: TRIAGE_VERSION,
-            needsReply: item?.needsReply ?? null,
-            priority: item?.priority ?? null,
-            category: item?.category ?? null,
-            // The model category decides the pile when there is one; the free rules are the fallback.
-            pile: item
-              ? resolvePile(row.rulePile, item.category, row.notSpamAt !== null)
-              : row.rulePile,
-            reason: item?.reason || null,
-            todoText: item?.todo ?? null,
-            dueOn: item?.due ? new Date(`${item.due}T00:00:00Z`) : null,
-          },
-        });
-      }),
-    );
-    classified += batch.length;
-  }
+  const settled = await Promise.allSettled(
+    batches.map(async (batch) => {
+      const items = await triageBatch(deps, ready, scope, await toInput(prisma, scope, batch));
+      const byId = new Map(items.map((item) => [item.id, item]));
+      // An id the model skipped is stamped too, with null fields, so it is not paid for again.
+      await prisma.$transaction(
+        batch.map((row) => {
+          const item = byId.get(row.id);
+          return prisma.cachedMailMessage.updateMany({
+            where: { id: row.id, userId, spaceId },
+            data: {
+              triagedAt: new Date(),
+              triageVersion: TRIAGE_VERSION,
+              needsReply: item?.needsReply ?? null,
+              priority: item?.priority ?? null,
+              category: item?.category ?? null,
+              // The model category decides the pile when there is one; the free rules are the fallback.
+              pile: item
+                ? resolvePile(row.rulePile, item.category, row.notSpamAt !== null)
+                : row.rulePile,
+              reason: item?.reason || null,
+              todoText: item?.todo ?? null,
+              dueOn: item?.due ? new Date(`${item.due}T00:00:00Z`) : null,
+            },
+          });
+        }),
+      );
+      classified += batch.length;
+    }),
+  );
+  const failure = settled.find((entry) => entry.status === "rejected");
+  if (failure?.status === "rejected") throw failure.reason;
 
   // Runs even when nothing was classified: a sent reply can end a to-do with no new triage.
   await syncTodos(prisma, scope, windowStart);
@@ -386,7 +394,7 @@ async function triageBatch(
     return [
       {
         id: m.id,
-        needsReply: !isNoReplyCategory(base.category) && base.needsReply,
+        needsReply: keepsNeedsReply(base.category, base.needsReply),
         priority: base.priority,
         category: base.category,
         reason: text?.reason ?? "",

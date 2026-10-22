@@ -152,3 +152,36 @@ it("keeps one dialog height for every section and locks the app behind it while 
   app.remove();
   vi.unstubAllGlobals();
 });
+
+it("closes on Escape at once even when the voice status refresh is slow", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const onClose = vi.fn();
+  await act(async () =>
+    root.render(
+      <I18nProvider i18n={i18n}>
+        <SettingsOverlay
+          name="Demo"
+          onUsageOpen={() => undefined}
+          avatarStyle="robot"
+          onAvatarStyleChange={async () => undefined}
+          memoryConfig={null}
+          onMemoryConfigChange={() => undefined}
+          onVoiceStatusMaybeChanged={() => new Promise<void>(() => undefined)}
+          onClose={onClose}
+        />
+      </I18nProvider>,
+    ),
+  );
+  await act(async () => {
+    document
+      .querySelector("[data-testid=user-settings]")
+      ?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  });
+  expect(onClose).toHaveBeenCalledTimes(1);
+  await act(async () => root.unmount());
+  container.remove();
+  vi.unstubAllGlobals();
+});

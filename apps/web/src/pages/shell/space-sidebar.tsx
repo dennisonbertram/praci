@@ -2,6 +2,7 @@ import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Bot, Group, Me, ThreadSnapshot } from "@rakazo/contracts";
 import {
+  isGtmAgentSpawnKey,
   isIntegrationAgentSpawnKey,
   isMailThreadAgentSpawnKey,
   NOTIFICATION_KINDS,
@@ -75,6 +76,7 @@ import {
 } from "../../components/sidebar-folders/SidebarDnd";
 import { glanceBadge, StatusMark } from "../../components/sidebar-glance";
 import { FirstRunTour } from "../../components/tour/FirstRunTour";
+import { clearTourStep } from "../../components/tour/TourPopover";
 import type { AgentApp } from "../../lib/agent-app";
 import { clearAgentAppCache } from "../../lib/agent-app";
 import { authClient } from "../../lib/auth";
@@ -377,6 +379,7 @@ export type SpaceSidebarProps = {
   bootstrapMe: Me | null | undefined;
   setBootstrapMe: Dispatch<SetStateAction<Me | null | undefined>>;
   chiefId: string | undefined;
+  userId?: string | null;
   tourOpen: boolean;
   onTourAsk: () => void;
   onTourSkip: () => void;
@@ -487,6 +490,7 @@ export function SpaceSidebar({
   bootstrapMe,
   setBootstrapMe,
   chiefId,
+  userId,
   tourOpen,
   onTourAsk,
   onTourSkip,
@@ -756,6 +760,7 @@ export function SpaceSidebar({
                 { key: "inbox", label: t`Inbox` },
                 { key: "finance", label: t`Finance` },
                 { key: "legal", label: t`Legal` },
+                { key: "gtm", label: t`GTM` },
                 ...(glance.devinConnected ? [{ key: "devin", label: t`Devin` }] : []),
                 { key: "investors", label: t`Investors` },
                 { key: "fundraising", label: t`Fundraising` },
@@ -828,6 +833,7 @@ export function SpaceSidebar({
               {hiddenPages.includes("gtm") ? null : (
                 <SidebarPageLink
                   testId="sidebar-gtm"
+                  href="/app/gtm"
                   current={gtmMode}
                   icon={<Megaphone size={15} strokeWidth={1.8} aria-hidden="true" />}
                   label={t`GTM`}
@@ -1026,7 +1032,9 @@ export function SpaceSidebar({
               const isPageAgent = (row: (typeof nestedRows)[number]) => {
                 return (
                   row.item.kind === "bot" &&
-                  (pageAgentKind(rowKey(row)) !== null || isIntegrationAgentSpawnKey(rowKey(row)))
+                  (pageAgentKind(rowKey(row)) !== null ||
+                    isGtmAgentSpawnKey(rowKey(row)) ||
+                    isIntegrationAgentSpawnKey(rowKey(row)))
                 );
               };
               const foldable = !rail && !folder && group.kind !== "pinned";
@@ -1531,7 +1539,8 @@ export function SpaceSidebar({
                                             ) : null}
                                           </div>
                                           <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0 pointer-coarse:me-9">
-                                            {item.kind === "bot" &&
+                                            {compact &&
+                                            item.kind === "bot" &&
                                             glance.botKinds[item.chat.id] ? (
                                               <StatusMark
                                                 kind={glance.botKinds[item.chat.id]!}
@@ -1582,7 +1591,7 @@ export function SpaceSidebar({
                                             data-roster-preview={
                                               !workStatusLabel ? "true" : undefined
                                             }
-                                            className={`truncate text-[12px] leading-[18px] ${
+                                            className={`flex items-center gap-1.5 text-[12px] leading-[18px] ${
                                               workStatusLabel
                                                 ? `font-semibold ${workTone}`
                                                 : item.chat.unread
@@ -1590,7 +1599,14 @@ export function SpaceSidebar({
                                                   : "text-muted-foreground"
                                             }`}
                                           >
-                                            {rosterLine}
+                                            {item.kind === "bot" &&
+                                            glance.botKinds[item.chat.id] ? (
+                                              <StatusMark
+                                                kind={glance.botKinds[item.chat.id]!}
+                                                botId={item.chat.id}
+                                              />
+                                            ) : null}
+                                            <span className="min-w-0 truncate">{rosterLine}</span>
                                           </div>
                                         )}
                                       </div>
@@ -1738,6 +1754,7 @@ export function SpaceSidebar({
       </div>
       <FirstRunTour
         open={tourOpen}
+        userId={userId}
         onAsk={onTourAsk}
         onSkip={onTourSkip}
         onClose={(me, byEscape) => {
@@ -1832,6 +1849,7 @@ export function SpaceSidebar({
             className="w-full justify-start font-normal"
             onClick={() =>
               void authClient.signOut().then(() => {
+                clearTourStep(userId);
                 clearAgentAppCache();
                 clearSpaceSelection();
                 navigate("/");
