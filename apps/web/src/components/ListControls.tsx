@@ -99,10 +99,13 @@ export function PickFilter({
   value,
   options,
   empty,
+  anyLabel,
   onChange,
 }: {
   label: string;
   value: string | undefined;
+  /** When set, the menu starts with this choice (for example "Any time"), the pill shows it while no value is picked, and picking it clears the filter. */
+  anyLabel?: string;
   /** [value, display name] pairs. */
   options: [string, string][];
   /** Shown in the menu when there is nothing to pick, so the pill never vanishes unexplained. */
@@ -123,7 +126,7 @@ export function PickFilter({
           }
           aria-label={value ? `${label}: ${shown}` : t`Filter by ${label}`}
         >
-          {value ? `${label}: ${shown}` : label}
+          {value ? `${label}: ${shown}` : anyLabel ? `${label}: ${anyLabel}` : label}
           {value ? null : <ChevronDown aria-hidden="true" />}
         </DropdownMenuTrigger>
         {/* As wide as its longest value (within the screen), so names do not wrap. */}
@@ -133,8 +136,13 @@ export function PickFilter({
         >
           <DropdownMenuRadioGroup
             value={value ?? ""}
-            onValueChange={(next) => onChange(String(next))}
+            onValueChange={(next) => onChange(String(next) || undefined)}
           >
+            {anyLabel ? (
+              <DropdownMenuRadioItem value="" closeOnClick>
+                {anyLabel}
+              </DropdownMenuRadioItem>
+            ) : null}
             {options.map(([option, name]) => (
               <DropdownMenuRadioItem key={option} value={option} closeOnClick>
                 {name}
