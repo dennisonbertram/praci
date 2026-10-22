@@ -7,7 +7,11 @@ import { enqueueNotificationToast, notificationToastManager } from "@rakazo/ui-w
  * pending approvals show as one "N need approval" toast that opens the newest; one shows as itself.
  */
 const GROUP_ID = "approvals:group";
-const pending = new Map<string, { toast: NotificationToastInput; chat: string | undefined }>();
+/** Where an approval waits: the chat link, and the bot whose chat holds its card (a page agent or one email's agent). */
+export type ApprovalChat = { href?: string; botId?: string | null };
+const pending = new Map<string, { toast: NotificationToastInput; chat: ApprovalChat }>();
+/** Approvals the person dismissed: a later rebuild from the server must not show them again. */
+const dismissed = new Set<string>();
 const shown = new Set<string>();
 /** The approval whose group toast was just opened: opening clears it alone, dismissing clears all. */
 let openedId: string | undefined;
@@ -51,10 +55,12 @@ function sync() {
     const onClose = () => {
       if (syncing) return;
       shown.delete(id);
-      if (id !== GROUP_ID) pending.delete(id);
-      else if (openedId) pending.delete(openedId);
+      const gone = id !== GROUP_ID ? [id] : openedId ? [openedId] : [...pending.keys()];
       // Dismissing the group dismisses every approval in it.
-      else pending.clear();
+      for (const goneId of gone) {
+        pending.delete(goneId);
+        dismissed.add(goneId);
+      }
       openedId = undefined;
       sync();
     };
@@ -67,16 +73,42 @@ function sync() {
   }
 }
 
-/** `toast.href` is the chat the approval waits in. */
-export function enqueueApprovalToast(toast: NotificationToastInput) {
-  pending.set(toast.id, { toast: { ...toast, timeout: 0 }, chat: toast.href });
+/** Chats that show their own cards while mounted (an email's agent panel). */
+const openBots = new Set<string>();
+
+/** Marks a bot's chat as on screen, so its approvals raise no toast. Returns the undo. */
+export function markApprovalChatOpen(botId: string) {
+  openBots.add(botId);
+  dismissApprovalToasts({ botId });
+  return () => void openBots.delete(botId);
+}
+
+export function enqueueApprovalToast(toast: NotificationToastInput, chat: ApprovalChat = {}) {
+  if (dismissed.has(toast.id) || (chat.botId && openBots.has(chat.botId))) return;
+  pending.set(toast.id, { toast: { ...toast, timeout: 0 }, chat: { href: toast.href, ...chat } });
   sync();
 }
 
-/** The approvals in that chat were answered, or the chat is open: their toasts have nothing left to say. */
-export function dismissApprovalToasts(chat: string) {
+/**
+ * The approvals in that chat were answered, or the chat is open: their toasts have nothing left to say.
+ * A chat is named by its link or by its bot; the bot also covers a link that points somewhere else.
+ */
+export function dismissApprovalToasts(chat: string | ApprovalChat) {
+  const ref = typeof chat === "string" ? { href: chat } : chat;
   let changed = false;
   for (const [id, entry] of pending)
-    if (entry.chat === chat) changed = pending.delete(id) || changed;
+    if ((ref.href && entry.chat.href === ref.href) || (ref.botId && entry.chat.botId === ref.botId))
+      changed = pending.delete(id) || changed;
   if (changed) sync();
 }
+
+/** Keeps only the approvals the server still reports unanswered; the others were answered elsewhere. */
+export function retainApprovalToasts(unansweredIds: ReadonlySet<string>) {
+  let changed = false;
+  for (const id of [...pending.keys()])
+    if (!unansweredIds.has(id)) changed = pending.delete(id) || changed;
+  if (changed) sync();
+}
+
+export const hasApprovalToast = (id: string) => pending.has(id) || dismissed.has(id);
+export const hasApprovalToasts = () => pending.size > 0;

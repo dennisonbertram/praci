@@ -3,6 +3,7 @@ import { NotificationToaster } from "@rakazo/ui-web";
 import { useEffect, useRef } from "react";
 import { useMatch, useNavigate } from "react-router-dom";
 import { lookupAgentApp } from "../lib/agent-app";
+import { hasApprovalToasts } from "../lib/approval-toasts";
 import { authClient } from "../lib/auth";
 import { i18n } from "../lib/i18n";
 import {
@@ -11,6 +12,7 @@ import {
   NOTIFICATION_SETTINGS_CHANGED,
   openNotificationLink,
   resultShownInOpenChat,
+  syncApprovalToasts,
 } from "../lib/notification-delivery";
 import { followNotifications } from "../lib/notification-stream";
 import { formatRelativeTime } from "../lib/relative-time";
@@ -34,6 +36,32 @@ const markOpened = (n: NotificationDto) =>
       n.threadId ? { surface: n.surface, threadId: n.threadId } : { surface: n.surface, id: n.id },
     )
     .then(announceChange, () => undefined);
+
+const APPROVAL_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
+const APPROVAL_PAGES = 10;
+const APPROVAL_POLL_MS = 2000;
+
+/** Lists the week's notifications and lets the toasts follow the approvals still unanswered. */
+async function followUnansweredApprovals(openBotId: () => string | undefined) {
+  const found: NotificationDto[] = [];
+  let cursor: string | undefined;
+  let complete = false;
+  const since = new Date(Date.now() - APPROVAL_LOOKBACK_MS).toISOString();
+  for (let page = 0; page < APPROVAL_PAGES; page++) {
+    const result = await rpc.notifications.list(cursor ? { cursor } : { since });
+    found.push(...result.notifications);
+    if (!result.nextCursor) {
+      complete = true;
+      break;
+    }
+    cursor = result.nextCursor;
+  }
+  syncApprovalToasts(found, {
+    complete,
+    onSeen: (n) => () => void markOpened(n),
+    skip: (n) => Boolean(n.botId) && n.botId === openBotId(),
+  });
+}
 
 /** The sending bot's avatar; a failed lookup just means a toast without one. */
 async function avatarFor(n: NotificationDto, userId: string | undefined) {
@@ -110,8 +138,21 @@ export function AppToaster() {
       },
       controller.signal,
     );
+    // A reload loses the in-memory toasts and an answer in another tab never reaches this one, so
+    // the toasts are rebuilt from the server on load, on every change, and every 2 s while shown.
+    const syncApprovals = () => {
+      if (document.visibilityState !== "visible") return;
+      void followUnansweredApprovals(() => openBotIdRef.current).catch(() => undefined);
+    };
+    syncApprovals();
+    window.addEventListener("rakazo:notifications-changed", syncApprovals);
+    const poll = setInterval(() => {
+      if (hasApprovalToasts()) syncApprovals();
+    }, APPROVAL_POLL_MS);
     return () => {
       controller.abort();
+      clearInterval(poll);
+      window.removeEventListener("rakazo:notifications-changed", syncApprovals);
       window.removeEventListener(NOTIFICATION_SETTINGS_CHANGED, reload);
     };
   }, []);
