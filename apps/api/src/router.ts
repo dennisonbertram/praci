@@ -4542,7 +4542,8 @@ export function createRouter(deps: RouterDeps) {
           if (existing) return { runId: existing.id };
         }
         const skillRecords = await agentSkills.listWithContent(context.actor);
-        const prompt = expandSkillReferencesInPrompt(routine.prompt, skillRecords);
+        // The saved prompt can still open with its schedule; a test does the work once, now.
+        const prompt = `${expandSkillReferencesInPrompt(routine.prompt, skillRecords)}\n\nThis is a test run: do the work above now and post the result here. Ignore any timing in it, and do not create or change schedules.`;
         let run: { id: string };
         try {
           // Task + run must commit together so a nonce collision cannot leave an orphan queued Task.

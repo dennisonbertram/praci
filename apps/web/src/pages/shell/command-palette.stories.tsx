@@ -41,6 +41,17 @@ export const ManyBots: Story = {
 };
 
 export const NoSearchMatch: Story = {
+  name: "No match keeps Search mail for",
+  args: {
+    searchLinks: async () => [
+      {
+        heading: "Mail",
+        fallback: true,
+        icon: <Search size={16} strokeWidth={1.75} />,
+        entries: [{ id: "/app/inbox?q=zzzz", label: "Search mail for “zzzz”" }],
+      },
+    ],
+  },
   play: async () => {
     await userEvent.type(await screen.findByTestId("command-palette-search"), "zzzz");
   },
@@ -69,7 +80,7 @@ export const SearchFindsContactsAndChats: Story = {
     searchLinks: async () => [
       {
         heading: "Mail",
-        first: true,
+        fallback: true,
         icon: <Search size={16} strokeWidth={1.75} />,
         entries: [{ id: "/app/inbox?q=halcyon", label: "Search mail for “halcyon”" }],
       },

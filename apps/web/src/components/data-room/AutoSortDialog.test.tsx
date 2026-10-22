@@ -15,6 +15,11 @@ vi.mock("@lingui/core/macro", () => ({
 vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
+const enqueue = vi.hoisted(() => vi.fn());
+vi.mock("@rakazo/ui-web", async (original) => ({
+  ...(await original<typeof import("@rakazo/ui-web")>()),
+  enqueueNotificationToast: enqueue,
+}));
 const autoSort = vi.hoisted(() => ({ plan: vi.fn(), apply: vi.fn(), undo: vi.fn() }));
 vi.mock("../../lib/rpc", () => ({
   rpc: { dataRoom: { autoSort } },
@@ -143,7 +148,7 @@ it("shows Sorted N items after applying, and Undo reverses that batch", async ()
   await flush();
   expect(autoSort.undo).toHaveBeenCalledWith({ batchId: "b1" });
   expect(getUploadToasts().some((t) => t.id === toast?.id)).toBe(false);
-  expect(getUploadToasts().map((t) => t.name)).toContain("Undid 2, skipped 1");
+  expect(enqueue).toHaveBeenCalledWith(expect.objectContaining({ title: "Undid 2, skipped 1" }));
 });
 
 it("does not call a plan with no model 'Already tidy.', and offers Retry", async () => {

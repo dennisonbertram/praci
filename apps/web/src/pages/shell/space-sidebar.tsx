@@ -607,15 +607,14 @@ export function SpaceSidebar({
               </InputGroupAddon>
               <InputGroupInput
                 readOnly
+                data-drawer-focus
                 value=""
-                onClick={(e) => {
-                  e.currentTarget.blur();
+                onClick={() => {
                   onOpenSearch();
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    e.currentTarget.blur();
                     onOpenSearch();
                   }
                 }}
@@ -922,7 +921,7 @@ export function SpaceSidebar({
         )}
         <div
           ref={sidebarScrollRef}
-          className="rk-scroll rk-scroll-fade-y flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:overflow-y-auto [&_[data-roster-row]]:snap-start"
+          className="rk-scroll rk-scroll-fade-y flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:overflow-y-auto [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
         >
           {activityMode && !rail ? (
             <ActivityList

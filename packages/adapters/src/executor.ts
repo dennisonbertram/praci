@@ -189,6 +189,7 @@ import {
   cartaMailSendIsComplete,
   isCartaMailSend,
   isIntegrationAgentWrite,
+  isSendMoney,
   resolveMoneyNames,
 } from "./approval-ask.js";
 import {
@@ -495,6 +496,7 @@ import {
   createScheduleFromTool,
   filterBuiltinToolsForRun,
   filterBuiltinToolsForThread,
+  keepForcedSkill,
   listSchedulesFromTool,
   loadUserTimezone,
   scheduleApproval,
@@ -3643,6 +3645,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
             userId: run.userId,
             ...(thread.groupId ? { threadId: thread.id } : {}),
           };
+          if (name === "schedule_create" && typeof args.prompt === "string") {
+            args = { ...args, prompt: keepForcedSkill(args.prompt, task.prompt) };
+          }
           const scheduleCard = await scheduleApproval(
             deps,
             scheduleScope,
@@ -6540,6 +6545,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 }
               }
             }
+            if (
+              approvedByCard &&
+              applied &&
+              isSendMoney(name) &&
+              callRoute?.serverName &&
+              toolResultError(result) === undefined
+            ) {
+              await recordPaymentSubmitted(deps, run, applied.effect.id, callRoute.serverName);
+            }
             return finish(result);
           }
           return finish({ error: `unknown tool ${name}` });
@@ -8346,6 +8360,10 @@ async function loadBotDirectory(
   );
 }
 
+/** Integrations cannot fix a missing AI consent, so those failures link to the switch instead. */
+const CONSENT_LINK_GUIDANCE =
+  " If the reason is that AI data sharing, permission or consent is not allowed, or the AI model recipient is unknown, end with [Open Settings](/app?settings=privacy) instead and never with an Integrations link. If the reason is that a payee has no matching recipient, say exactly that, name the payee, say the recipient must be added at the bank first, and do not link Settings or Integrations.";
+
 /**
  * A teammate's description in the bot directory. Integration, Carta and Finance agents are messaged
  * by other bots: they answer with their own data and the asking bot passes it on to the user.
@@ -8355,19 +8373,19 @@ export function directoryDescription(peer: {
   spawnKey: string | null;
 }): string {
   if (isIntegrationAgentSpawnKey(peer.spawnKey) || isCartaAgentSpawnKey(peer.spawnKey)) {
-    return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text, and when its answer comes in, give the user the answer yourself. Do not tell the user to ask it themselves. If its answer says it could not do something, give the user that reason and end your reply with the link in its answer, copied exactly (do not swap it for a general page), or [Open Integrations](/app/integrations) when it has none; never reply only that the request could not be completed.`;
+    return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text, and when its answer comes in, give the user the answer yourself. Do not tell the user to ask it themselves. If its answer says it could not do something, give the user that reason and end your reply with the link in its answer, copied exactly (do not swap it for a general page), or [Open Integrations](/app/integrations) when it has none; never reply only that the request could not be completed.${CONSENT_LINK_GUIDANCE}`;
   }
   if (!isFinanceAgentSpawnKey(peer.spawnKey)) {
     return peer.description;
   }
-  return `${peer.description} Message it with message_bot whenever the user asks about cash, runway, burn or spending, even if they did not name it. It answers with the figures from the Finance page. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text. When its answer comes in, quote the figures in your reply yourself and end with [Open Finance](/app/finance) for the detail. Never estimate a figure yourself; if it cannot answer, or no accounts are connected yet, say so and still end with [Open Finance](/app/finance). If the user asks to pay or change something, message the Mercury or Brex agent instead, and give the user its reason and end your reply with its link, or [Open Integrations](/app/integrations) when it has none. Never link Finance in a reply about a payment or other change: Finance does not show the request.`.trim();
+  return `${peer.description} Message it with message_bot whenever the user asks about cash, runway, burn or spending, even if they did not name it. It answers with the figures from the Finance page. Do not write a reply to the user until its answer arrives: after messaging it, end your turn without text. When its answer comes in, quote the figures in your reply yourself and end with [Open Finance](/app/finance) for the detail. Never estimate a figure yourself; if it cannot answer, or no accounts are connected yet, say so and still end with [Open Finance](/app/finance). If the user asks to pay or change something, message the Mercury or Brex agent instead, and give the user its actual reason and end your reply with its link, or [Open Integrations](/app/integrations) when it has none. Post exactly one message per payment request, only after its answer arrives, saying one of: waiting for the user's approval, not submitted (with the reason), or submitted. If its answer is about a different payment than the one you asked for, say so; never report it as this request's outcome. If you cannot message it, say so and tell the user to ask the Mercury or Brex agent directly. Never link Finance in a reply about a payment or other change: Finance does not show the request.${CONSENT_LINK_GUIDANCE}`.trim();
 }
 
 export const PLAIN_CAPABILITY_GUIDANCE =
   'When you tell the user what you can do, describe it in plain words (for example "check bank transactions"), never as raw tool names. Name an email by its subject and a record by its name, never by its id.';
 
 export const NOT_CONNECTED_GUIDANCE =
-  "If the user asks about mail, calendar or files and you have no tool for it because the account is not connected, say so and end with [Open Integrations](/app/integrations). If the user asks to pay a bill or change something at their bank and no bank agent is among your teammates, do not say no payment connection exists. If no bank is connected, say so and that adding one in Finance comes first, and end with [Open Finance](/app/finance). The same goes for a question about cash, balance, spending or runway with no bank connected. If a bank is connected but has no agent yet, say that turning on Allow changes for the bank under Integrations sets it up. End with [Open Integrations](/app/integrations).";
+  'If the user asks about mail, calendar or files and you have no tool for it because the account is not connected, say so and end with [Open Integrations](/app/integrations). If the user asks to pay a bill or change something at their bank and no bank agent is among your teammates, do not say no payment connection exists. If no bank is connected, say "Add a bank account in Finance" and end with [Open Finance](/app/finance); do not mention Integrations in that reply. The same goes for a question about cash, balance, spending or runway with no bank connected. If a bank is connected but has no agent yet, say that turning on Allow changes for the bank under Integrations sets it up. End with [Open Integrations](/app/integrations).';
 
 /**
  * The user's connected banks as plain facts, so the model does not guess which branch of
@@ -8394,7 +8412,7 @@ export function financeConnectionLineFor(
       : [];
   });
   if (banks.length === 0) {
-    return "Facts: no bank (Mercury or Brex) is connected. For a bank request, say that connecting one under Integrations comes first.";
+    return 'Facts: no bank (Mercury or Brex) is connected. For a bank request, say "Add a bank account in Finance" and end with [Open Finance](/app/finance); do not mention Integrations.';
   }
   const list = banks
     .map(
@@ -9098,22 +9116,9 @@ async function recordApprovedMailOutcome(
   result: Record<string, unknown>,
 ) {
   const { outcome, error } = approvedMailOutcome(name, result);
+  const card = await findApprovalCard(deps, run, effectId);
+  if (!card) return;
   try {
-    const messages = await deps.prisma.message.findMany({
-      where: { runId: run.id, role: "bot" },
-      select: { id: true, threadId: true, blocks: true },
-    });
-    const card = messages.find(
-      (message) =>
-        Array.isArray(message.blocks) &&
-        message.blocks.some(
-          (block) =>
-            block !== null &&
-            typeof block === "object" &&
-            (block as { approvalEffectId?: unknown }).approvalEffectId === effectId,
-        ),
-    );
-    if (!card) return;
     await deps.events.setMailApprovalOutcome({
       spaceId: run.spaceId,
       threadId: card.threadId,
@@ -9125,6 +9130,59 @@ async function recordApprovedMailOutcome(
   } catch (cause) {
     // The card is a view of the result; the agent still gets the real one.
     getLogger().error("mail approval outcome", cause);
+  }
+}
+
+/** The card message for an approval in this run, or undefined once it is gone (a cleared thread). */
+async function findApprovalCard(
+  deps: ExecutorDeps,
+  run: { id: string },
+  effectId: string,
+): Promise<{ id: string; threadId: string } | undefined> {
+  try {
+    const messages = await deps.prisma.message.findMany({
+      where: { runId: run.id, role: "bot" },
+      select: { id: true, threadId: true, blocks: true },
+    });
+    return messages.find(
+      (message) =>
+        Array.isArray(message.blocks) &&
+        message.blocks.some(
+          (block) =>
+            block !== null &&
+            typeof block === "object" &&
+            (block as { approvalEffectId?: unknown }).approvalEffectId === effectId,
+        ),
+    );
+  } catch (cause) {
+    getLogger().error("approval card lookup", cause);
+    return undefined;
+  }
+}
+
+/**
+ * Once the provider has accepted a money request, the card says the provider still has to approve
+ * it. A connector error or a refused recheck never gets here, so the card never claims a wait for
+ * a payment that was not submitted.
+ */
+async function recordPaymentSubmitted(
+  deps: ExecutorDeps,
+  run: { id: string; spaceId: string },
+  effectId: string,
+  service: string,
+) {
+  const card = await findApprovalCard(deps, run, effectId);
+  if (!card) return;
+  try {
+    await deps.events.setApprovalWaitsFor({
+      spaceId: run.spaceId,
+      threadId: card.threadId,
+      messageId: card.id,
+      effectId,
+      waitsFor: service,
+    });
+  } catch (cause) {
+    getLogger().error("approval waits-for", cause);
   }
 }
 

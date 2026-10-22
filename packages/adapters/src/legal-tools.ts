@@ -391,19 +391,26 @@ async function upsertContract(deps: LegalToolDeps, args: Record<string, unknown>
 async function deriveDeadlines(deps: LegalToolDeps, contract: LegalContractRecord, quote?: string) {
   const repo = createLegalRepos(deps.prisma);
   const actor = actorOf(deps.scope);
-  const wanted: { title: string; kind: string; dueDate: Date }[] = [];
+  const wanted: { title: string; kind: string; dueDate: Date; notes?: string }[] = [];
   const live = contract.status === "active" || contract.status === "unknown";
   if (live && contract.expirationDate) {
-    wanted.push({
-      title: contract.autoRenews ? "Renews" : "Expires",
-      kind: contract.autoRenews ? "renewal" : "termination",
-      dueDate: contract.expirationDate,
-    });
+    // An auto-renewing contract with a notice period is one row: the notice, with the renewal date in its notes.
+    const folded = contract.autoRenews && contract.renewalNoticeDays !== null;
+    if (!folded) {
+      wanted.push({
+        title: contract.autoRenews ? "Renews" : "Expires",
+        kind: contract.autoRenews ? "renewal" : "termination",
+        dueDate: contract.expirationDate,
+      });
+    }
     if (contract.renewalNoticeDays !== null) {
       wanted.push({
         title: "Renewal notice deadline",
         kind: "notice",
         dueDate: addDays(contract.expirationDate, -contract.renewalNoticeDays),
+        notes: folded
+          ? `${NOTICE_NOTE} Renews automatically on ${contract.expirationDate.toISOString().slice(0, 10)}.`
+          : undefined,
       });
     }
   }
@@ -431,10 +438,12 @@ async function deriveDeadlines(deps: LegalToolDeps, contract: LegalContractRecor
         id: existing?.id,
         contractId: contract.id,
         dataRoomItemId: contract.dataRoomItemId,
-        ...item,
+        title: item.title,
+        kind: item.kind,
+        dueDate: item.dueDate,
         derived: true,
         sourceQuote: quote,
-        notes: NOTICE_NOTE,
+        notes: item.notes ?? NOTICE_NOTE,
       }),
     );
   }

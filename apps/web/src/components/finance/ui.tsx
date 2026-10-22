@@ -111,7 +111,7 @@ export function SpaceName() {
           <Button
             variant="ghost"
             size="xs"
-            className="max-w-32 shrink-0 text-muted-foreground sm:max-w-64"
+            className="max-w-56 shrink-0 text-muted-foreground sm:max-w-64"
             aria-label={t`Company: ${current.name}. Switch company`}
           />
         }

@@ -25,6 +25,7 @@ import type {
 import {
   ATTACHMENT_MAX_BYTES,
   ATTACHMENT_MAX_COUNT,
+  DATA_ROOM_METADATA_ORDINAL,
   DEFAULT_AVATAR_STYLE,
   FIRST_BOT_SPAWN_KEY,
   isMailThreadAgentSpawnKey,
@@ -146,7 +147,7 @@ import { SidebarUndoNotice } from "../components/sidebar-folders/SidebarUndoNoti
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
-import { connectCardsOpen } from "../components/tour/connect-cards";
+import { connectCardsOpen, focusQuestionOpen } from "../components/tour/connect-cards";
 import { useAgentApp } from "../lib/agent-app";
 import { dismissApprovalToasts } from "../lib/approval-toasts";
 import { artifactDisplayName } from "../lib/artifact-name";
@@ -185,7 +186,12 @@ import { fetchDataRoomBlob } from "../lib/data-room";
 import { dataRoomAgentSuggestions, findDataRoomAgent } from "../lib/data-room-agent";
 import { desktopBridge } from "../lib/desktop";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
-import { setHideAmounts, setHideAmountsUser, useHideAmounts } from "../lib/hide-amounts-preference";
+import {
+  maskCurrencyWhenHidden,
+  setHideAmounts,
+  setHideAmountsUser,
+  useHideAmounts,
+} from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
 import { appPath } from "../lib/integrations";
 import { findInvestorsAgent, investorsAgentSuggestions } from "../lib/investors-agent";
@@ -422,8 +428,10 @@ function readCollapsedRosterParents(userId: string | null | undefined): Set<stri
 /** A non-chat search result: a Data room document, artifact or contact. */
 type SearchLink = { id: string; label: string; detail?: string };
 
+const maskOptional = (text: string | null) => (text ? maskCurrencyWhenHidden(text) : null);
+
 /** Data room files (by name and content) and artifacts matching a search; a failure only hides that group. */
-async function findDocumentsAndArtifacts(query: string) {
+export async function findDocumentsAndArtifacts(query: string) {
   const [documents, artifacts] = await Promise.all([
     Promise.all([
       rpc.dataRoom.search({ query, limit: 5 }),
@@ -441,10 +449,16 @@ async function findDocumentsAndArtifacts(query: string) {
           }
           return names.join(" / ");
         };
-        return result.results.map(({ item }) => ({
+        return result.results.map(({ item, ordinal, snippet }) => ({
           id: item.id,
           label: item.name,
-          detail: folderPath(item.folderId) || undefined,
+          // A match inside the file shows the matching text; a name match shows the folder.
+          detail:
+            ordinal === DATA_ROOM_METADATA_ORDINAL
+              ? folderPath(item.folderId) || undefined
+              : (maskOptional(
+                  snippet.replaceAll("\u0001", "").replaceAll("\u0002", "").trim() || null,
+                ) ?? undefined),
         }));
       })
       .catch((): SearchLink[] => []),
@@ -455,7 +469,14 @@ async function findDocumentsAndArtifacts(query: string) {
         result.items
           .filter((item) => matchesArtifactQuery(item, query))
           .slice(0, 5)
-          .map((item) => ({ id: item.id, label: artifactDisplayName(item.name) })),
+          .map((item) => ({
+            id: item.id,
+            label: artifactDisplayName(item.name),
+            // A description hit shows why the artifact matched.
+            detail: item.name.toLowerCase().includes(query.toLowerCase())
+              ? undefined
+              : (maskOptional(item.description ?? null) ?? undefined),
+          })),
       )
       .catch((): SearchLink[] => []),
   ]);
@@ -909,16 +930,7 @@ export function ShellPage() {
   // After Skip tour the first question stays one tap away in Chief's composer.
   const [askChiefChip, setAskChiefChip] = useState(false);
   // The tour waits for the first-run focus question, so its popovers never cover the choices.
-  const firstQuestionOpen = Boolean(
-    snapshot?.messages.some((message) =>
-      message.blocks.some(
-        (block) =>
-          block.kind === "choice" &&
-          block.question === "What do you want me on first?" &&
-          !block.answerId,
-      ),
-    ),
-  );
+  const firstQuestionOpen = focusQuestionOpen(snapshot?.messages ?? []);
   const activeSpaceId = bootstrapMe?.spaceId;
   const agentAppFor = useAgentApp(
     userId,
@@ -2219,14 +2231,6 @@ export function ShellPage() {
       ]);
       return [
         {
-          heading: t`Mail`,
-          first: true,
-          icon: <Search size={16} strokeWidth={1.75} />,
-          entries: [
-            { id: `/app/inbox?q=${encodeURIComponent(q)}`, label: t`Search mail for “${q}”` },
-          ],
-        },
-        {
           heading: t`Contacts`,
           icon: <BookUser size={16} strokeWidth={1.75} />,
           entries: contacts.map((c) => ({
@@ -2251,7 +2255,16 @@ export function ShellPage() {
           entries: found.artifacts.map((item) => ({
             id: `/app/artifacts/${encodeURIComponent(item.id)}`,
             label: item.label,
+            detail: item.detail,
           })),
+        },
+        {
+          heading: t`Mail`,
+          fallback: true,
+          icon: <Search size={16} strokeWidth={1.75} />,
+          entries: [
+            { id: `/app/inbox?q=${encodeURIComponent(q)}`, label: t`Search mail for “${q}”` },
+          ],
         },
       ];
     },
@@ -2345,6 +2358,15 @@ export function ShellPage() {
     setDeleteRoutineTarget(null);
     setPanelState((current) => (current === "routine" ? null : current));
   }, [active?.id]);
+
+  // A link to /app?settings=privacy (agent replies use it for a missing AI consent) opens that switch.
+  useEffect(() => {
+    if (searchParams.get("settings") !== "privacy") return;
+    openSettings("privacy");
+    const next = new URLSearchParams(searchParams);
+    next.delete("settings");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const messageId = searchParams.get("m");
@@ -4086,7 +4108,7 @@ export function ShellPage() {
               quickAsk={
                 askChiefChip && active?.id === chiefId
                   ? {
-                      label: t`Ask Chief`,
+                      label: t`What should I do first this week?`,
                       onAsk: () => {
                         setAskChiefChip(false);
                         void sendMessage(t`What should I do first this week?`, [], newClientId());
@@ -4430,7 +4452,7 @@ export function ShellPage() {
                   type="button"
                   data-testid="bot-settings-trigger"
                   onClick={() => setPanel(inGroup ? "group-settings" : "settings")}
-                  className="app-no-drag flex min-w-0 items-center gap-3"
+                  className="app-no-drag flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   {inGroup ? (
                     <GroupAvatar
@@ -4482,7 +4504,7 @@ export function ShellPage() {
                   aria-label={t`Page`}
                   onClick={() => setPanel(panel === "page" ? null : "page")}
                   data-active={panel === "page" ? "" : undefined}
-                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 >
                   <FileText size={18} strokeWidth={1.6} className="text-foreground/75" />
                 </button>
@@ -4494,7 +4516,7 @@ export function ShellPage() {
                   aria-label={t`List`}
                   onClick={() => setPanel(panel === "list" ? null : "list")}
                   data-active={panel === "list" ? "" : undefined}
-                  className={`app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent ${panel === null ? "xl:hidden" : ""}`}
+                  className={`app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${panel === null ? "xl:hidden" : ""}`}
                 >
                   <ListTodo size={18} strokeWidth={1.6} className="text-foreground/75" />
                 </button>
@@ -4514,7 +4536,7 @@ export function ShellPage() {
                     }
                   }}
                   data-active={panel === "computer" ? "" : undefined}
-                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 >
                   <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
                 </button>
@@ -4758,7 +4780,7 @@ export function ShellPage() {
                   ) : panel === "list" ? (
                     <Trans>List</Trans>
                   ) : active ? (
-                    noComputerScreen || computerScreenError ? null : (
+                    computerScreenError ? null : (
                       computerStateLabel(computer?.state)
                     )
                   ) : (
@@ -5964,11 +5986,11 @@ function computerPlaceholder(
 
 /** Panel heading for the bot computer, in words rather than the raw state slug. */
 function computerStateLabel(state: ComputerStatus["state"] | undefined) {
-  if (state === "running") return t`Computer is on`;
+  // The "Routines" heading below is the title; the header names the computer only when it needs attention.
+  if (state === "running" || state === "stopped" || !state) return null;
   if (state === "booting") return t`Computer is starting`;
   if (state === "suspended") return t`Computer is asleep`;
-  if (state === "error") return t`Computer could not start`;
-  return t`Computer is off`;
+  return t`Computer could not start`;
 }
 
 function computerLabel(mode: ComputerStatus["mode"] | undefined, botName: string) {

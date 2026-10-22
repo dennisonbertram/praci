@@ -53,8 +53,11 @@ export function useDrawerFocus(
   useEffect(() => {
     if (!open) return;
     opener.current = document.activeElement;
-    // Not the search field: on a phone, focusing it raises the keyboard over the list.
-    drawer.current?.querySelector<HTMLElement>("button, a[href]")?.focus();
+    // The search box (read-only, so it raises no keyboard) is the way in; else the first control.
+    (
+      drawer.current?.querySelector<HTMLElement>("[data-drawer-focus]") ??
+      drawer.current?.querySelector<HTMLElement>("button, a[href]")
+    )?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") close();
     };

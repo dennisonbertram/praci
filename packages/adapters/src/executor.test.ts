@@ -1323,6 +1323,14 @@ describe("directoryDescription", () => {
     expect(line).not.toContain("instead of messaging it");
   });
 
+  it("links a consent failure to the Settings switch, never to Integrations", () => {
+    for (const spawnKey of [financeAgentSpawnKey("u1"), "integration-agent:server-1"]) {
+      const line = directoryDescription({ description: "Works with the account.", spawnKey });
+      expect(line).toContain("[Open Settings](/app?settings=privacy)");
+      expect(line).toContain("never with an Integrations link");
+    }
+  });
+
   it("tells peers to message an integration agent too", () => {
     const integration = directoryDescription({
       description: "Works with the user's Mercury account.",
@@ -1355,6 +1363,17 @@ describe("directoryDescription", () => {
       "";
     expect(directory).toContain("Owns: Carta. Ask it for anything in Carta.");
     expect(directory.split("Each integration agent owns one account").length - 1).toBe(1);
+  });
+
+  it("reports a missing payee as a missing recipient, not a settings problem", () => {
+    const finance = directoryDescription({
+      description: "Reads Finance.",
+      spawnKey: "finance-agent:u1",
+    });
+    expect(finance).not.toContain("or the recipient is unknown");
+    expect(finance).toContain("has no matching recipient");
+    expect(finance).toContain("Post exactly one message per payment request");
+    expect(finance).toContain("ask the Mercury or Brex agent directly");
   });
 
   it("leaves other bots' descriptions alone", () => {
