@@ -32,6 +32,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ComposeRestore } from "../../components/ComposeEmail";
 import { ComposeEmail } from "../../components/ComposeEmail";
 import { recallClosed } from "../../components/compose/draft-memory";
 import { SandboxedHtmlViewer } from "../../components/SandboxedHtmlViewer";
@@ -45,6 +46,7 @@ import {
 } from "../../lib/inbox-message-cache";
 import { MAIL_SENT_EVENT } from "../../lib/outbox";
 import { errorText } from "../../lib/user-error";
+import type { ComposerDraft } from "../BotToolControls";
 import { EmailAgentPanel } from "./EmailAgentPanel";
 import { MailAttachments } from "./MailAttachments";
 
@@ -221,6 +223,31 @@ function InboxMessage({
   const [askError, setAskError] = useState("");
   // The agent's draft for the Reply composer, until that composer closes.
   const [agentDraft, setAgentDraft] = useState<string | undefined>();
+  // A failed send reopened as written, so its recipients and subject survive.
+  const [failedDraft, setFailedDraft] = useState<ComposerDraft | undefined>();
+  const restore = useMemo<ComposeRestore | undefined>(
+    () =>
+      failedDraft?.connectionId && composing === "reply"
+        ? {
+            seed: { kind: "reply", messageId },
+            clientId: crypto.randomUUID().replaceAll("-", ""),
+            fields: {
+              connectionId: failedDraft.connectionId,
+              to: failedDraft.to,
+              cc: failedDraft.cc,
+              bcc: failedDraft.bcc,
+              subject: failedDraft.subject,
+              html: "",
+              text: failedDraft.body,
+            },
+            forwarded: [],
+            files: [],
+            saved: false,
+            accounts: [{ connectionId: failedDraft.connectionId, label: failedDraft.account }],
+          }
+        : undefined,
+    [failedDraft, composing, messageId],
+  );
   const seed = useMemo(
     () => (composing ? ({ kind: composing, messageId } as const) : null),
     [composing, messageId],
@@ -490,9 +517,11 @@ function InboxMessage({
             seed={seed}
             accounts={[]}
             draft={composing === "reply" ? agentDraft : undefined}
+            restore={restore}
             onClose={() => {
               setComposing(null);
               setAgentDraft(undefined);
+              setFailedDraft(undefined);
             }}
           />
         ) : null}
@@ -565,8 +594,9 @@ function InboxMessage({
           <EmailAgentPanel
             bot={agentBot}
             onClose={() => setAgentBot(null)}
-            onReplyWithDraft={(text) => {
+            onReplyWithDraft={(text, failed) => {
               setAgentDraft(text);
+              setFailedDraft(failed);
               setComposing("reply");
             }}
           />

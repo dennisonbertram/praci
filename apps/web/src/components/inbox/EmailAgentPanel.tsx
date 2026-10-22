@@ -10,6 +10,7 @@ import { rpc } from "../../lib/rpc";
 import { useAttended } from "../../lib/use-sidebar-glance";
 import { Composer } from "../../pages/shell/composer";
 import { Transcript } from "../../pages/shell/transcript";
+import type { ComposerDraft } from "../BotToolControls";
 import { BotToolControlsContext, useBotToolControls } from "../BotToolControls";
 
 const noop = () => undefined;
@@ -62,8 +63,8 @@ export function EmailAgentPanel({
 }: {
   bot: Bot;
   onClose: () => void;
-  /** Opens the Reply composer with the agent's draft as its text. */
-  onReplyWithDraft: (draft: string) => void;
+  /** Opens the Reply composer with the agent's draft as its text, or a failed send as it was written. */
+  onReplyWithDraft: (draft: string, failed?: ComposerDraft) => void;
 }) {
   const { t } = useLingui();
   const navigate = useNavigate();
@@ -109,7 +110,7 @@ export function EmailAgentPanel({
     () => ({
       editableBotName: (id: string | undefined) => outer?.editableBotName(id),
       disableTool: async (id: string, tool: string) => outer?.disableTool(id, tool),
-      openComposer: (failed: { body: string }) => onReplyWithDraft(failed.body),
+      openComposer: (failed: ComposerDraft) => onReplyWithDraft(failed.body, failed),
       accountFromThread: true,
     }),
     [outer, onReplyWithDraft],
