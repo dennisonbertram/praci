@@ -440,6 +440,10 @@ it("marks Fundraising as current and opens its page", async () => {
 
     const link = container.querySelector<HTMLButtonElement>('[data-testid="sidebar-fundraising"]');
     expect(link?.getAttribute("aria-current")).toBe("page");
+    const scrollArea = link?.closest(".max-lg\\:overflow-y-auto");
+    expect(scrollArea).not.toBeNull();
+    expect(scrollArea?.querySelector(".rk-scroll")?.className).toContain("lg:overflow-y-auto");
+    expect(scrollArea?.querySelector(".rk-scroll")?.className).toContain("lg:snap-proximity");
 
     await act(async () => link?.click());
     expect(container.querySelector('[data-testid="current-path"]')?.textContent).toBe(

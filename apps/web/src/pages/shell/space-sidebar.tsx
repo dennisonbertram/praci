@@ -326,6 +326,7 @@ export type SpaceSidebarProps = {
   navigate: NavigateFunction;
   setPanel: (next: Panel | ((current: Panel) => Panel)) => void;
   setNewSpaceOpen: Dispatch<SetStateAction<boolean>>;
+  canCreateSpace: boolean;
   setPickerInfoTopic: Dispatch<SetStateAction<"group" | "space" | null>>;
   sidebarScrollRef: RefObject<HTMLDivElement | null>;
   collapsedSidebarSections: ReadonlySet<string>;
@@ -441,6 +442,7 @@ export function SpaceSidebar({
   navigate,
   setPanel,
   setNewSpaceOpen,
+  canCreateSpace,
   setPickerInfoTopic,
   sidebarScrollRef,
   collapsedSidebarSections,
@@ -680,6 +682,7 @@ export function SpaceSidebar({
                       setMobileSidebarOpen(false);
                       setPickerInfoTopic("group");
                     }}
+                    canCreateSpace={canCreateSpace}
                     onShowSpaceInfo={() => {
                       setCreateMenuOpen(false);
                       setMobileSidebarOpen(false);
@@ -692,892 +695,918 @@ export function SpaceSidebar({
           )
         }
       />
-      {bootstrapMe === undefined ? null : (
-        // Waiting for the account (undefined) keeps pages the user hid from flashing in.
-        // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
-        <div className="flex max-h-[50vh] shrink-0 flex-col overflow-y-auto border-b border-border px-2.5 pb-1">
-          <SidebarPagesGroup
-            title={t`Pages`}
-            collapsed={collapsedSidebarSections.has("pages")}
-            rail={rail}
-            onToggle={() => toggleSidebarSection("pages")}
-            pages={[
-              { key: "inbox", label: t`Inbox` },
-              { key: "finance", label: t`Finance` },
-              { key: "legal", label: t`Legal` },
-              ...(glance.devinConnected ? [{ key: "devin", label: t`Devin` }] : []),
-              { key: "investors", label: t`Investors` },
-              { key: "fundraising", label: t`Fundraising` },
-              { key: "contacts", label: t`Contacts` },
-              { key: "data-room", label: t`Data room` },
-              { key: "artifacts", label: t`Artifacts` },
-              ...addedPages,
-            ]}
-            hidden={hiddenPages}
-            onToggleHidden={toggleHiddenPage}
-          >
-            {hiddenPages.includes("inbox") ? null : (
-              <SidebarPageLink
-                testId="sidebar-inbox"
-                current={inboxMode}
-                icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Inbox`}
-                rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/inbox");
-                }}
-                {...glanceBadge({
-                  unseen: unseen.inbox ?? 0,
-                  value: inboxUnread > 0 ? String(inboxUnread) : undefined,
-                  valueLabel: plural(inboxUnread, { one: "# unread", other: "# unread" }),
-                  rail,
-                })}
-              />
-            )}
-            {hiddenPages.includes("finance") ? null : (
-              <SidebarPageLink
-                testId="sidebar-finance"
-                current={financeMode}
-                icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Finance`}
-                rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/finance");
-                }}
-                {...glanceBadge({ unseen: unseen.finance ?? 0, rail })}
-              />
-            )}
-            {hiddenPages.includes("legal") ? null : (
-              <SidebarPageLink
-                testId="sidebar-legal"
-                current={legalMode}
-                icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Legal`}
-                rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/legal");
-                }}
-                {...glanceBadge({
-                  unseen: unseen.legal ?? 0,
-                  rail,
-                  value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
-                  valueLabel: plural(glance.legalDueSoon, {
-                    one: "# due soon",
-                    other: "# due soon",
-                  }),
-                })}
-              />
-            )}
-            {hiddenPages.includes("devin") || !glance.devinConnected ? null : (
-              <SidebarPageLink
-                testId="sidebar-devin"
-                current={devinMode}
-                icon={<CodeXml size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Devin`}
-                rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/devin");
-                }}
-                // A count, never a dot: the page lists what needs you.
-                {...glanceBadge({
-                  unseen: 0,
-                  rail,
-                  value: glance.devinNeedsYou > 0 ? String(glance.devinNeedsYou) : undefined,
-                  valueLabel: plural(glance.devinNeedsYou, {
-                    one: "# needs you",
-                    other: "# need you",
-                  }),
-                })}
-              />
-            )}
-            {hiddenPages.includes("investors") ? null : (
-              <SidebarPageLink
-                testId="sidebar-investors"
-                current={investorsMode}
-                icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Investors`}
-                rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/investors");
-                }}
-                {...glanceBadge({ unseen: unseen.investors ?? 0, rail })}
-              />
-            )}
-            {hiddenPages.includes("fundraising") ? null : (
-              <SidebarPageLink
-                testId="sidebar-fundraising"
-                current={fundraisingMode}
-                icon={<HandCoins size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Fundraising`}
-                rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/fundraising");
-                }}
-              />
-            )}
-            {hiddenPages.includes("contacts") ? null : (
-              <SidebarPageLink
-                testId="sidebar-contacts"
-                current={contactsMode}
-                icon={<BookUser size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Contacts`}
-                rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/contacts");
-                }}
-              />
-            )}
-            {hiddenPages.includes("data-room") ? null : (
-              <SidebarPageLink
-                testId="sidebar-data-room"
-                current={dataRoomMode}
-                icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Data room`}
-                rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/data-room");
-                }}
-                {...glanceBadge({
-                  unseen: unseen["data-room"] ?? 0,
-                  rail,
-                  value: glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
-                  valueLabel: plural(glance.dataRoomWaiting, {
-                    one: "# file failed",
-                    other: "# files failed",
-                  }),
-                  failure: true,
-                })}
-              />
-            )}
-            {hiddenPages.includes("artifacts") ? null : (
-              <SidebarPageLink
-                testId="sidebar-artifacts"
-                current={artifactsMode}
-                // Not the Data room's folder icon: these are files bots made.
-                icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Artifacts`}
-                rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/artifacts");
-                }}
-                {...glanceBadge({ unseen: unseen.artifacts ?? 0, rail })}
-              />
-            )}
-            <SidebarPages
+      <div className="flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents">
+        {bootstrapMe === undefined ? null : (
+          // Waiting for the account (undefined) keeps pages the user hid from flashing in.
+          // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
+          <div className="flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:max-h-[50vh] lg:overflow-y-auto">
+            <SidebarPagesGroup
+              title={t`Pages`}
+              collapsed={collapsedSidebarSections.has("pages")}
               rail={rail}
+              onToggle={() => toggleSidebarSection("pages")}
+              pages={[
+                { key: "inbox", label: t`Inbox` },
+                { key: "finance", label: t`Finance` },
+                { key: "legal", label: t`Legal` },
+                ...(glance.devinConnected ? [{ key: "devin", label: t`Devin` }] : []),
+                { key: "investors", label: t`Investors` },
+                { key: "fundraising", label: t`Fundraising` },
+                { key: "contacts", label: t`Contacts` },
+                { key: "data-room", label: t`Data room` },
+                { key: "artifacts", label: t`Artifacts` },
+                ...addedPages,
+              ]}
               hidden={hiddenPages}
-              onListed={setAddedPages}
-              onOpen={() => setMobileSidebarOpen(false)}
-            />
-          </SidebarPagesGroup>
-        </div>
-      )}
-      <div
-        ref={sidebarScrollRef}
-        className="rk-scroll rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5"
-      >
-        {activityMode && !rail ? (
-          <ActivityList
-            onOpenRun={(run) => {
-              setMobileSidebarOpen(false);
-              if (run.groupId) navigate(`/app/g/${run.groupId}`);
-              else navigate(`/app/${run.botId}`);
-            }}
-          />
-        ) : null}
-        {!initialBotsLoaded && bots.length === 0 && !rail ? (
-          <div className="space-y-2 px-1 pt-2" aria-hidden="true">
-            {[0, 1, 2, 3].map((row) => (
-              <div key={row} className="flex items-center gap-3 rounded-xl px-2 py-2.5">
-                <Skeleton className="size-9 rounded-full" />
-                <Skeleton className="h-3 w-2/5" />
-              </div>
-            ))}
+              onToggleHidden={toggleHiddenPage}
+            >
+              {hiddenPages.includes("inbox") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-inbox"
+                  current={inboxMode}
+                  icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Inbox`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/inbox");
+                  }}
+                  {...glanceBadge({
+                    unseen: unseen.inbox ?? 0,
+                    value: inboxUnread > 0 ? String(inboxUnread) : undefined,
+                    valueLabel: plural(inboxUnread, { one: "# unread", other: "# unread" }),
+                    rail,
+                  })}
+                />
+              )}
+              {hiddenPages.includes("finance") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-finance"
+                  current={financeMode}
+                  icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Finance`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/finance");
+                  }}
+                  {...glanceBadge({ unseen: unseen.finance ?? 0, rail })}
+                />
+              )}
+              {hiddenPages.includes("legal") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-legal"
+                  current={legalMode}
+                  icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Legal`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/legal");
+                  }}
+                  {...glanceBadge({
+                    unseen: unseen.legal ?? 0,
+                    rail,
+                    value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
+                    valueLabel: plural(glance.legalDueSoon, {
+                      one: "# due soon",
+                      other: "# due soon",
+                    }),
+                  })}
+                />
+              )}
+              {hiddenPages.includes("devin") || !glance.devinConnected ? null : (
+                <SidebarPageLink
+                  testId="sidebar-devin"
+                  current={devinMode}
+                  icon={<CodeXml size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Devin`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/devin");
+                  }}
+                  // A count, never a dot: the page lists what needs you.
+                  {...glanceBadge({
+                    unseen: 0,
+                    rail,
+                    value: glance.devinNeedsYou > 0 ? String(glance.devinNeedsYou) : undefined,
+                    valueLabel: plural(glance.devinNeedsYou, {
+                      one: "# needs you",
+                      other: "# need you",
+                    }),
+                  })}
+                />
+              )}
+              {hiddenPages.includes("investors") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-investors"
+                  current={investorsMode}
+                  icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Investors`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/investors");
+                  }}
+                  {...glanceBadge({ unseen: unseen.investors ?? 0, rail })}
+                />
+              )}
+              {hiddenPages.includes("fundraising") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-fundraising"
+                  current={fundraisingMode}
+                  icon={<HandCoins size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Fundraising`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/fundraising");
+                  }}
+                />
+              )}
+              {hiddenPages.includes("contacts") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-contacts"
+                  current={contactsMode}
+                  icon={<BookUser size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Contacts`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/contacts");
+                  }}
+                />
+              )}
+              {hiddenPages.includes("data-room") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-data-room"
+                  current={dataRoomMode}
+                  icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Data room`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/data-room");
+                  }}
+                  {...glanceBadge({
+                    unseen: unseen["data-room"] ?? 0,
+                    rail,
+                    value: glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
+                    valueLabel: plural(glance.dataRoomWaiting, {
+                      one: "# file failed",
+                      other: "# files failed",
+                    }),
+                    failure: true,
+                  })}
+                />
+              )}
+              {hiddenPages.includes("artifacts") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-artifacts"
+                  current={artifactsMode}
+                  // Not the Data room's folder icon: these are files bots made.
+                  icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Artifacts`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/artifacts");
+                  }}
+                  {...glanceBadge({ unseen: unseen.artifacts ?? 0, rail })}
+                />
+              )}
+              <SidebarPages
+                rail={rail}
+                hidden={hiddenPages}
+                onListed={setAddedPages}
+                onOpen={() => setMobileSidebarOpen(false)}
+              />
+            </SidebarPagesGroup>
           </div>
-        ) : null}
-        <SidebarDnd
-          layout={sidebarLayout}
-          labelFor={sidebarDragLabel}
-          onDrop={dropSidebarItem}
-          overlay={sidebarDragOverlay}
+        )}
+        <div
+          ref={sidebarScrollRef}
+          className="rk-scroll rk-scroll-fade-y flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:overflow-y-auto [&_[data-roster-row]]:snap-start"
         >
-          {sidebarGroups.map((group) => {
-            const activeSpace = group.spaceId === bootstrapMe?.spaceId;
-            const folder = group.kind === "folder" && group.sectionId ? group.sectionId : null;
-            // Closing the heading hides everything under it.
-            if (!rail && group.parentKey && collapsedSidebarSections.has(group.parentKey)) {
-              return null;
-            }
-            const collapsed = folder
-              ? activeSpace
-                ? group.collapsed
-                : collapsedSidebarSections.has(group.key)
-              : Boolean(group.title) && collapsedSidebarSections.has(group.key);
-            // The most urgent status in a folder, so a closed folder hides nothing.
-            const folderStatus = folder
-              ? NOTIFICATION_KINDS.find((kind) =>
-                  group.bots.some(
-                    (item) => item.kind === "bot" && glance.botKinds[item.chat.id] === kind,
-                  ),
-                )
-              : undefined;
-            const dragEnabled = activeSpace && !rail && group.kind !== "pinned";
-            const nestedRows = nestRosterByParent(group.bots, collapsedRosterParents);
-            const rowKey = (row: (typeof nestedRows)[number]) =>
-              "spawnKey" in row.item.chat ? String(row.item.chat.spawnKey) : null;
-            const isEmailChat = (row: (typeof nestedRows)[number]) =>
-              row.item.kind === "bot" && isMailThreadAgentSpawnKey(rowKey(row));
-            const isPageAgent = (row: (typeof nestedRows)[number]) => {
+          {activityMode && !rail ? (
+            <ActivityList
+              onOpenRun={(run) => {
+                setMobileSidebarOpen(false);
+                if (run.groupId) navigate(`/app/g/${run.groupId}`);
+                else navigate(`/app/${run.botId}`);
+              }}
+            />
+          ) : null}
+          {!initialBotsLoaded && bots.length === 0 && !rail ? (
+            <div className="space-y-2 px-1 pt-2" aria-hidden="true">
+              {[0, 1, 2, 3].map((row) => (
+                <div key={row} className="flex items-center gap-3 rounded-xl px-2 py-2.5">
+                  <Skeleton className="size-9 rounded-full" />
+                  <Skeleton className="h-3 w-2/5" />
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <SidebarDnd
+            layout={sidebarLayout}
+            labelFor={sidebarDragLabel}
+            onDrop={dropSidebarItem}
+            overlay={sidebarDragOverlay}
+          >
+            {sidebarGroups.map((group) => {
+              const activeSpace = group.spaceId === bootstrapMe?.spaceId;
+              const folder = group.kind === "folder" && group.sectionId ? group.sectionId : null;
+              // Closing the heading hides everything under it.
+              if (!rail && group.parentKey && collapsedSidebarSections.has(group.parentKey)) {
+                return null;
+              }
+              const collapsed = folder
+                ? activeSpace
+                  ? group.collapsed
+                  : collapsedSidebarSections.has(group.key)
+                : Boolean(group.title) && collapsedSidebarSections.has(group.key);
+              // The most urgent status in a folder, so a closed folder hides nothing.
+              const folderStatus = folder
+                ? NOTIFICATION_KINDS.find((kind) =>
+                    group.bots.some(
+                      (item) => item.kind === "bot" && glance.botKinds[item.chat.id] === kind,
+                    ),
+                  )
+                : undefined;
+              const dragEnabled = activeSpace && !rail && group.kind !== "pinned";
+              const nestedRows = nestRosterByParent(group.bots, collapsedRosterParents);
+              const rowKey = (row: (typeof nestedRows)[number]) =>
+                "spawnKey" in row.item.chat ? String(row.item.chat.spawnKey) : null;
+              const isEmailChat = (row: (typeof nestedRows)[number]) =>
+                row.item.kind === "bot" && isMailThreadAgentSpawnKey(rowKey(row));
+              const isPageAgent = (row: (typeof nestedRows)[number]) => {
+                return (
+                  row.item.kind === "bot" &&
+                  (pageAgentKind(rowKey(row)) !== null || isIntegrationAgentSpawnKey(rowKey(row)))
+                );
+              };
+              const foldable = !rail && !folder && group.kind !== "pinned";
+              const pageAgentRows = foldable ? nestedRows.filter(isPageAgent) : [];
+              const emailChatRows = foldable ? nestedRows.filter(isEmailChat) : [];
+              const holdsActive = (rows: typeof nestedRows) =>
+                rows.some((row) => row.item.kind === "bot" && row.item.chat.id === active?.id);
+              const showPageAgents = pageAgentsOpen || holdsActive(pageAgentRows);
+              const showEmailChats = emailChatsOpen || holdsActive(emailChatRows);
+              const displayRows: (
+                | (typeof nestedRows)[number]
+                | { foldHeader: "page" | "email" }
+              )[] =
+                pageAgentRows.length || emailChatRows.length
+                  ? [
+                      ...nestedRows.filter((row) => !isPageAgent(row) && !isEmailChat(row)),
+                      ...(pageAgentRows.length ? [{ foldHeader: "page" as const }] : []),
+                      ...(showPageAgents ? pageAgentRows : []),
+                      ...(emailChatRows.length ? [{ foldHeader: "email" as const }] : []),
+                      ...(showEmailChats ? emailChatRows : []),
+                    ]
+                  : nestedRows;
+              const treeActive = nestedRows.some((row) => row.depth > 0 || row.hasChildren);
+              // Reorder among visible siblings so keyboard and drag moves match the tree.
+              const siblingBotIds = (parentId: string | null) =>
+                nestedRows.flatMap((row) =>
+                  row.item.kind === "bot" && row.parentId === parentId ? [row.item.chat.id] : [],
+                );
+              // The heading's menu: space rename and delete where allowed, and the folder actions.
+              const hasSpaceActions =
+                group.canRenameSpace ||
+                group.canDeleteSpace ||
+                (activeSpace && Boolean(group.title) && ["head", "space"].includes(group.kind));
+              // "Personal" replaces the lone space's name, so the name stays in the label.
+              const sidebarHeader = {
+                name: group.relabeled ? `${group.title} (${group.spaceName})` : group.title,
+              };
               return (
-                row.item.kind === "bot" &&
-                (pageAgentKind(rowKey(row)) !== null || isIntegrationAgentSpawnKey(rowKey(row)))
-              );
-            };
-            const foldable = !rail && !folder && group.kind !== "pinned";
-            const pageAgentRows = foldable ? nestedRows.filter(isPageAgent) : [];
-            const emailChatRows = foldable ? nestedRows.filter(isEmailChat) : [];
-            const holdsActive = (rows: typeof nestedRows) =>
-              rows.some((row) => row.item.kind === "bot" && row.item.chat.id === active?.id);
-            const showPageAgents = pageAgentsOpen || holdsActive(pageAgentRows);
-            const showEmailChats = emailChatsOpen || holdsActive(emailChatRows);
-            const displayRows: ((typeof nestedRows)[number] | { foldHeader: "page" | "email" })[] =
-              pageAgentRows.length || emailChatRows.length
-                ? [
-                    ...nestedRows.filter((row) => !isPageAgent(row) && !isEmailChat(row)),
-                    ...(pageAgentRows.length ? [{ foldHeader: "page" as const }] : []),
-                    ...(showPageAgents ? pageAgentRows : []),
-                    ...(emailChatRows.length ? [{ foldHeader: "email" as const }] : []),
-                    ...(showEmailChats ? emailChatRows : []),
-                  ]
-                : nestedRows;
-            const treeActive = nestedRows.some((row) => row.depth > 0 || row.hasChildren);
-            // Reorder among visible siblings so keyboard and drag moves match the tree.
-            const siblingBotIds = (parentId: string | null) =>
-              nestedRows.flatMap((row) =>
-                row.item.kind === "bot" && row.parentId === parentId ? [row.item.chat.id] : [],
-              );
-            // The heading's menu: space rename and delete where allowed, and the folder actions.
-            const hasSpaceActions =
-              group.canRenameSpace ||
-              group.canDeleteSpace ||
-              (activeSpace && Boolean(group.title) && ["head", "space"].includes(group.kind));
-            // "Personal" replaces the lone space's name, so the name stays in the label.
-            const sidebarHeader = {
-              name: group.relabeled ? `${group.title} (${group.spaceName})` : group.title,
-            };
-            return (
-              <div key={group.key} data-sidebar-group={group.key}>
-                {rail ? (
-                  <div
-                    className={
-                      group.title && group.kind !== "head"
-                        ? "mx-2 mt-2 mb-1 border-t border-border"
-                        : undefined
-                    }
-                  />
-                ) : null}
-                {!rail && folder ? (
-                  <FolderHeader
-                    id={folder}
-                    name={group.title ?? ""}
-                    count={group.bots.length}
-                    collapsed={collapsed}
-                    status={folderStatus}
-                    unread={group.bots.some((item) => item.chat.unread)}
-                    editing={editingFolderId === folder}
-                    readOnly={!activeSpace}
-                    onToggle={() =>
-                      activeSpace
-                        ? void toggleFolder(folder, !collapsed)
-                        : toggleSidebarSection(group.key)
-                    }
-                    onStartRename={() => setEditingFolderId(folder)}
-                    onRename={(name) => void renameFolder(folder, name)}
-                    onCancelRename={() => setEditingFolderId(null)}
-                    onDelete={() => void deleteFolder(folder)}
-                    takenNames={botSections.map((section) => section.name)}
-                  />
-                ) : null}
-                {!rail && !folder && (group.title || hasSpaceActions) ? (
-                  <div
-                    data-roster-item={group.key}
-                    className={
-                      group.title && hasSpaceActions
-                        ? "grid pt-3 pb-0.5"
-                        : `flex items-center pt-3 pb-0.5${group.title ? "" : " justify-end"}`
-                    }
-                  >
-                    {group.title ? (
-                      <button
-                        type="button"
-                        aria-current={group.current ? "true" : undefined}
-                        data-roster-row={group.key}
-                        data-sidebar-current={group.current ? "" : undefined}
-                        title={group.relabeled ? group.spaceName : undefined}
-                        className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-foreground/70"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
-                        onClick={() => {
-                          if (group.emptySpaceId) {
-                            openSpaceChat(group.emptySpaceId, "/onboarding");
-                            return;
+                <div key={group.key} data-sidebar-group={group.key}>
+                  {rail ? (
+                    <div
+                      className={
+                        group.title && group.kind !== "head"
+                          ? "mx-2 mt-2 mb-1 border-t border-border"
+                          : undefined
+                      }
+                    />
+                  ) : null}
+                  {!rail && folder ? (
+                    <FolderHeader
+                      id={folder}
+                      name={group.title ?? ""}
+                      count={group.bots.length}
+                      collapsed={collapsed}
+                      status={folderStatus}
+                      unread={group.bots.some((item) => item.chat.unread)}
+                      editing={editingFolderId === folder}
+                      readOnly={!activeSpace}
+                      onToggle={() =>
+                        activeSpace
+                          ? void toggleFolder(folder, !collapsed)
+                          : toggleSidebarSection(group.key)
+                      }
+                      onStartRename={() => setEditingFolderId(folder)}
+                      onRename={(name) => void renameFolder(folder, name)}
+                      onCancelRename={() => setEditingFolderId(null)}
+                      onDelete={() => void deleteFolder(folder)}
+                      takenNames={botSections.map((section) => section.name)}
+                    />
+                  ) : null}
+                  {!rail && !folder && (group.title || hasSpaceActions) ? (
+                    <div
+                      data-roster-item={group.key}
+                      className={
+                        group.title && hasSpaceActions
+                          ? "grid pt-3 pb-0.5"
+                          : `flex items-center pt-3 pb-0.5${group.title ? "" : " justify-end"}`
+                      }
+                    >
+                      {group.title ? (
+                        <button
+                          type="button"
+                          aria-current={group.current ? "true" : undefined}
+                          data-roster-row={group.key}
+                          data-sidebar-current={group.current ? "" : undefined}
+                          title={group.relabeled ? group.spaceName : undefined}
+                          className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-foreground/70"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
+                          onClick={() => {
+                            if (group.emptySpaceId) {
+                              openSpaceChat(group.emptySpaceId, "/onboarding");
+                              return;
+                            }
+                            toggleSidebarSection(group.key);
+                          }}
+                          onContextMenu={
+                            hasSpaceActions
+                              ? (event) => {
+                                  event.preventDefault();
+                                  spaceMenuAnchor.current = event.currentTarget;
+                                  setSpaceMenu({
+                                    id: group.spaceId,
+                                    position: { x: event.clientX, y: event.clientY },
+                                  });
+                                }
+                              : undefined
                           }
-                          toggleSidebarSection(group.key);
-                        }}
-                        onContextMenu={
-                          hasSpaceActions
-                            ? (event) => {
-                                event.preventDefault();
-                                spaceMenuAnchor.current = event.currentTarget;
-                                setSpaceMenu({
-                                  id: group.spaceId,
-                                  position: { x: event.clientX, y: event.clientY },
-                                });
+                          aria-expanded={group.emptySpaceId ? undefined : !collapsed}
+                          aria-label={
+                            group.emptySpaceId
+                              ? t`Open ${group.title}`
+                              : collapsed
+                                ? t`Expand ${sidebarHeader.name}`
+                                : t`Collapse ${sidebarHeader.name}`
+                          }
+                        >
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            {group.current ? (
+                              <span
+                                className="size-1.5 shrink-0 rounded-full bg-primary"
+                                aria-hidden="true"
+                              />
+                            ) : null}
+                            {group.showLock ? (
+                              <Lock size={11} strokeWidth={2} aria-hidden="true" />
+                            ) : null}
+                            {/* Long space names wrap to a second line instead of being cut off. */}
+                            <span className="line-clamp-2 text-start break-words">
+                              {group.title}
+                            </span>
+                          </span>
+                          {group.emptySpaceId ? null : (
+                            <ChevronDown
+                              size={14}
+                              strokeWidth={1.8}
+                              className={
+                                collapsed
+                                  ? "-rotate-90 transition-transform"
+                                  : "transition-transform"
                               }
-                            : undefined
-                        }
-                        aria-expanded={group.emptySpaceId ? undefined : !collapsed}
-                        aria-label={
-                          group.emptySpaceId
-                            ? t`Open ${group.title}`
-                            : collapsed
-                              ? t`Expand ${sidebarHeader.name}`
-                              : t`Collapse ${sidebarHeader.name}`
-                        }
-                      >
-                        <span className="flex min-w-0 items-center gap-1.5">
-                          {group.current ? (
-                            <span
-                              className="size-1.5 shrink-0 rounded-full bg-primary"
                               aria-hidden="true"
                             />
-                          ) : null}
-                          {group.showLock ? (
-                            <Lock size={11} strokeWidth={2} aria-hidden="true" />
-                          ) : null}
-                          {/* Long space names wrap to a second line instead of being cut off. */}
-                          <span className="line-clamp-2 text-start break-words">{group.title}</span>
-                        </span>
-                        {group.emptySpaceId ? null : (
-                          <ChevronDown
-                            size={14}
-                            strokeWidth={1.8}
-                            className={
-                              collapsed ? "-rotate-90 transition-transform" : "transition-transform"
-                            }
-                            aria-hidden="true"
-                          />
-                        )}
-                      </button>
-                    ) : null}
-                    {hasSpaceActions ? (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className={`focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
-                          group.title ? "col-start-1 row-start-1 justify-self-end self-center" : ""
-                        }`}
-                        data-roster-actions=""
-                        aria-label={t`Actions for ${group.spaceName}`}
-                        onClick={(event) => {
-                          const rect = event.currentTarget.getBoundingClientRect();
-                          spaceMenuAnchor.current = event.currentTarget;
-                          setSpaceMenu({
-                            id: group.spaceId,
-                            position: { x: rect.left, y: rect.bottom },
-                          });
-                        }}
-                      >
-                        <MoreHorizontal size={14} aria-hidden="true" />
-                      </Button>
-                    ) : null}
-                  </div>
-                ) : null}
-                {!rail && group.kind === "root" && group.parentKey && group.bots.length > 0 ? (
-                  <div className="mt-1 px-2.5 py-1.5 text-[13px] font-medium text-foreground/80">
-                    <Trans>Chats</Trans>
-                  </div>
-                ) : null}
-                {rail || !collapsed ? (
-                  <SortableList
-                    ids={displayRows.flatMap((row) =>
-                      "item" in row
-                        ? [itemDragId({ kind: row.item.kind, id: row.item.chat.id })]
-                        : [],
-                    )}
-                  >
-                    {displayRows.map((displayRow) => {
-                      if ("foldHeader" in displayRow) {
-                        const email = displayRow.foldHeader === "email";
-                        const rows = email ? emailChatRows : pageAgentRows;
-                        return (
-                          <PageAgentsRow
-                            key={displayRow.foldHeader}
-                            label={email ? t`Email chats` : t`Page agents`}
-                            testId={email ? "sidebar-email-chats" : undefined}
-                            open={email ? showEmailChats : showPageAgents}
-                            count={rows.length}
-                            needsYou={rows.some(
-                              (row) => row.item.chat.unread || glance.botKinds[row.item.chat.id],
-                            )}
-                            onToggle={() =>
-                              email
-                                ? setEmailChatsOpen((open) => !open)
-                                : setPageAgentsOpen((open) => !open)
-                            }
-                          />
-                        );
-                      }
-                      const { item, depth, hasChildren, parentId } = displayRow;
-                      const parentCollapsed =
-                        hasChildren && collapsedRosterParents.has(item.chat.id);
-                      const selected =
-                        (item.kind === "bot" &&
-                          !inGroup &&
-                          !pageMode &&
-                          active?.id === item.chat.id) ||
-                        (item.kind === "group" && inGroup && activeGroup?.id === item.chat.id);
-                      const compact = botsSidebarDensity === "compact";
-                      const workStatusLabel =
-                        item.kind === "bot"
-                          ? maskOptional(
-                              rosterWorkStatusLabel(item.chat.status, item.chat.runPhase),
-                            )
-                          : null;
-                      const workTone =
-                        item.kind === "bot" && item.chat.status === "waiting_input"
-                          ? "text-warning"
-                          : "text-foreground";
-                      const rowError =
-                        item.kind === "bot" &&
-                        (rosterHasUndismissedRunError(item.chat.runErrorId, dismissedRunErrorIds) ||
-                          (active?.id === item.chat.id && Boolean(displayedRunError)));
-                      const compactStatusLabel =
-                        compact && item.kind === "bot"
-                          ? rowError
-                            ? t`Error`
-                            : maskOptional(
-                                compactRosterStatusLabel(item.chat.status, item.chat.runPhase),
-                              )
-                          : null;
-                      const rosterLine = compact
-                        ? compactStatusLabel
-                        : (workStatusLabel ??
-                          (item.kind === "bot"
-                            ? maskCurrencyWhenHidden(item.chat.preview) ||
-                              (item.chat.status !== "idle" ? item.chat.status : "")
-                            : maskCurrencyWhenHidden(item.chat.preview) ||
-                              item.chat.members.map((member) => member.name).join(", ")));
-                      const rowDragEnabled =
-                        dragEnabled && item.chat.spaceId === bootstrapMe?.spaceId;
-                      return (
-                        <SortableRow
-                          key={`${item.kind}:${item.chat.id}`}
-                          id={itemDragId({ kind: item.kind, id: item.chat.id })}
-                          disabled={!rowDragEnabled}
+                          )}
+                        </button>
+                      ) : null}
+                      {hasSpaceActions ? (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className={`focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
+                            group.title
+                              ? "col-start-1 row-start-1 justify-self-end self-center"
+                              : ""
+                          }`}
+                          data-roster-actions=""
+                          aria-label={t`Actions for ${group.spaceName}`}
+                          onClick={(event) => {
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            spaceMenuAnchor.current = event.currentTarget;
+                            setSpaceMenu({
+                              id: group.spaceId,
+                              position: { x: rect.left, y: rect.bottom },
+                            });
+                          }}
                         >
-                          {(row) => (
-                            <div
-                              ref={row.setNodeRef}
-                              data-drops-before={row.dropsBefore ? "" : undefined}
-                              data-roster-item={item.chat.id}
-                              data-tour={item.chat.id === chiefId ? "sidebar-chat" : undefined}
-                              className={`group/row relative mb-1 data-drops-before:border-t-2 data-drops-before:border-ring ${
-                                !rail && (folder || group.kind === "pinned") ? "ms-3" : ""
-                              }`}
-                              style={{ ...row.style, opacity: row.isDragging ? 0.4 : 1 }}
-                            >
-                              {hasChildren && !rail ? (
-                                <span
-                                  className="absolute inset-y-0 z-10 flex w-3.5 items-center justify-center"
-                                  style={{ insetInlineStart: `${10 + depth * 14}px` }}
-                                >
+                          <MoreHorizontal size={14} aria-hidden="true" />
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {!rail && group.kind === "root" && group.parentKey && group.bots.length > 0 ? (
+                    <div className="mt-1 px-2.5 py-1.5 text-[13px] font-medium text-foreground/80">
+                      <Trans>Chats</Trans>
+                    </div>
+                  ) : null}
+                  {rail || !collapsed ? (
+                    <SortableList
+                      ids={displayRows.flatMap((row) =>
+                        "item" in row
+                          ? [itemDragId({ kind: row.item.kind, id: row.item.chat.id })]
+                          : [],
+                      )}
+                    >
+                      {displayRows.map((displayRow) => {
+                        if ("foldHeader" in displayRow) {
+                          const email = displayRow.foldHeader === "email";
+                          const rows = email ? emailChatRows : pageAgentRows;
+                          return (
+                            <PageAgentsRow
+                              key={displayRow.foldHeader}
+                              label={email ? t`Email chats` : t`Page agents`}
+                              testId={email ? "sidebar-email-chats" : undefined}
+                              open={email ? showEmailChats : showPageAgents}
+                              count={rows.length}
+                              needsYou={rows.some(
+                                (row) => row.item.chat.unread || glance.botKinds[row.item.chat.id],
+                              )}
+                              onToggle={() =>
+                                email
+                                  ? setEmailChatsOpen((open) => !open)
+                                  : setPageAgentsOpen((open) => !open)
+                              }
+                            />
+                          );
+                        }
+                        const { item, depth, hasChildren, parentId } = displayRow;
+                        const parentCollapsed =
+                          hasChildren && collapsedRosterParents.has(item.chat.id);
+                        const selected =
+                          (item.kind === "bot" &&
+                            !inGroup &&
+                            !pageMode &&
+                            active?.id === item.chat.id) ||
+                          (item.kind === "group" && inGroup && activeGroup?.id === item.chat.id);
+                        const compact = botsSidebarDensity === "compact";
+                        const workStatusLabel =
+                          item.kind === "bot"
+                            ? maskOptional(
+                                rosterWorkStatusLabel(item.chat.status, item.chat.runPhase),
+                              )
+                            : null;
+                        const workTone =
+                          item.kind === "bot" && item.chat.status === "waiting_input"
+                            ? "text-warning"
+                            : "text-foreground";
+                        const rowError =
+                          item.kind === "bot" &&
+                          (rosterHasUndismissedRunError(
+                            item.chat.runErrorId,
+                            dismissedRunErrorIds,
+                          ) ||
+                            (active?.id === item.chat.id && Boolean(displayedRunError)));
+                        const compactStatusLabel =
+                          compact && item.kind === "bot"
+                            ? rowError
+                              ? t`Error`
+                              : maskOptional(
+                                  compactRosterStatusLabel(item.chat.status, item.chat.runPhase),
+                                )
+                            : null;
+                        const rosterLine = compact
+                          ? compactStatusLabel
+                          : (workStatusLabel ??
+                            (item.kind === "bot"
+                              ? maskCurrencyWhenHidden(item.chat.preview) ||
+                                (item.chat.status !== "idle" ? item.chat.status : "")
+                              : maskCurrencyWhenHidden(item.chat.preview) ||
+                                item.chat.members.map((member) => member.name).join(", ")));
+                        const rowDragEnabled =
+                          dragEnabled && item.chat.spaceId === bootstrapMe?.spaceId;
+                        return (
+                          <SortableRow
+                            key={`${item.kind}:${item.chat.id}`}
+                            id={itemDragId({ kind: item.kind, id: item.chat.id })}
+                            disabled={!rowDragEnabled}
+                          >
+                            {(row) => (
+                              <div
+                                ref={row.setNodeRef}
+                                data-drops-before={row.dropsBefore ? "" : undefined}
+                                data-roster-item={item.chat.id}
+                                data-tour={item.chat.id === chiefId ? "sidebar-chat" : undefined}
+                                className={`group/row relative mb-1 data-drops-before:border-t-2 data-drops-before:border-ring ${
+                                  !rail && (folder || group.kind === "pinned") ? "ms-3" : ""
+                                }`}
+                                style={{ ...row.style, opacity: row.isDragging ? 0.4 : 1 }}
+                              >
+                                {hasChildren && !rail ? (
+                                  <span
+                                    className="absolute inset-y-0 z-10 flex w-3.5 items-center justify-center"
+                                    style={{ insetInlineStart: `${10 + depth * 14}px` }}
+                                  >
+                                    <button
+                                      type="button"
+                                      aria-expanded={!parentCollapsed}
+                                      aria-label={
+                                        parentCollapsed
+                                          ? t`Expand ${item.chat.name}`
+                                          : t`Collapse ${item.chat.name}`
+                                      }
+                                      className="inline-flex size-3.5 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
+                                      onClick={() => toggleRosterParent(item.chat.id)}
+                                    >
+                                      <ChevronDown
+                                        size={12}
+                                        strokeWidth={2}
+                                        className={`transition-transform ${
+                                          parentCollapsed ? "-rotate-90" : ""
+                                        }`}
+                                        aria-hidden="true"
+                                      />
+                                    </button>
+                                  </span>
+                                ) : null}
+                                <RailTip rail={rail} label={item.chat.name}>
                                   <button
                                     type="button"
-                                    aria-expanded={!parentCollapsed}
                                     aria-label={
-                                      parentCollapsed
-                                        ? t`Expand ${item.chat.name}`
-                                        : t`Collapse ${item.chat.name}`
+                                      rail
+                                        ? item.chat.unread
+                                          ? `${item.chat.name}${t` (unread)`}`
+                                          : item.chat.name
+                                        : undefined
                                     }
-                                    className="inline-flex size-3.5 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
-                                    onClick={() => toggleRosterParent(item.chat.id)}
-                                  >
-                                    <ChevronDown
-                                      size={12}
-                                      strokeWidth={2}
-                                      className={`transition-transform ${
-                                        parentCollapsed ? "-rotate-90" : ""
-                                      }`}
-                                      aria-hidden="true"
-                                    />
-                                  </button>
-                                </span>
-                              ) : null}
-                              <RailTip rail={rail} label={item.chat.name}>
-                                <button
-                                  type="button"
-                                  aria-label={
-                                    rail
-                                      ? item.chat.unread
-                                        ? `${item.chat.name}${t` (unread)`}`
-                                        : item.chat.name
-                                      : undefined
-                                  }
-                                  {...row.handleProps}
-                                  data-roster-row={item.chat.id}
-                                  data-roster-bot-id={
-                                    item.kind === "bot" ? item.chat.id : undefined
-                                  }
-                                  data-roster-unread={item.chat.unread ? "true" : undefined}
-                                  data-file-drop={fileDropBotId === item.chat.id ? "" : undefined}
-                                  data-roster-error={rowError && compact ? "true" : undefined}
-                                  data-roster-depth={
-                                    item.kind === "bot" && treeActive ? depth : undefined
-                                  }
-                                  aria-current={selected ? "page" : undefined}
-                                  aria-keyshortcuts={
-                                    item.kind === "bot" ? "Alt+ArrowUp Alt+ArrowDown" : undefined
-                                  }
-                                  onDragEnter={(event) => {
-                                    if (item.kind === "bot") rowFileDrag(event, item.chat);
-                                  }}
-                                  onDragOver={(event) => {
-                                    if (item.kind === "bot") rowFileDrag(event, item.chat);
-                                  }}
-                                  onDragLeave={(event) => {
-                                    if (
-                                      !event.currentTarget.contains(
-                                        event.relatedTarget as Node | null,
+                                    {...row.handleProps}
+                                    data-roster-row={item.chat.id}
+                                    data-roster-bot-id={
+                                      item.kind === "bot" ? item.chat.id : undefined
+                                    }
+                                    data-roster-unread={item.chat.unread ? "true" : undefined}
+                                    data-file-drop={fileDropBotId === item.chat.id ? "" : undefined}
+                                    data-roster-error={rowError && compact ? "true" : undefined}
+                                    data-roster-depth={
+                                      item.kind === "bot" && treeActive ? depth : undefined
+                                    }
+                                    aria-current={selected ? "page" : undefined}
+                                    aria-keyshortcuts={
+                                      item.kind === "bot" ? "Alt+ArrowUp Alt+ArrowDown" : undefined
+                                    }
+                                    onDragEnter={(event) => {
+                                      if (item.kind === "bot") rowFileDrag(event, item.chat);
+                                    }}
+                                    onDragOver={(event) => {
+                                      if (item.kind === "bot") rowFileDrag(event, item.chat);
+                                    }}
+                                    onDragLeave={(event) => {
+                                      if (
+                                        !event.currentTarget.contains(
+                                          event.relatedTarget as Node | null,
+                                        )
                                       )
-                                    )
-                                      setFileDropBotId(null);
-                                  }}
-                                  onDrop={(event) => {
-                                    if (item.kind === "bot" && isUnclaimedFileDrag(event)) {
-                                      event.preventDefault();
-                                      setFileDropBotId(null);
-                                      if (item.chat.spaceId !== bootstrapMe?.spaceId) return;
-                                      // Keep the "Skipped ..." notice through the thread-change reset.
-                                      if (item.chat.id !== active?.id)
-                                        keepNoticeFor.current = item.chat.id;
-                                      onAttachmentPick(event.dataTransfer.files, item.chat.id);
-                                      setFocusComposerBotId(item.chat.id);
-                                      setMobileSidebarOpen(false);
-                                      openBot(item.chat.id);
-                                      return;
-                                    }
-                                  }}
-                                  onKeyDown={(event) => {
-                                    if (
-                                      item.kind !== "bot" ||
-                                      !event.altKey ||
-                                      (event.key !== "ArrowUp" && event.key !== "ArrowDown")
-                                    ) {
-                                      (
-                                        row.handleProps.onKeyDown as
-                                          | KeyboardEventHandler
-                                          | undefined
-                                      )?.(event);
-                                      return;
-                                    }
-                                    const siblings = siblingBotIds(parentId);
-                                    const index = siblings.indexOf(item.chat.id);
-                                    const target =
-                                      siblings[index + (event.key === "ArrowUp" ? -1 : 1)];
-                                    if (!target) return;
-                                    event.preventDefault();
-                                    // Up goes before the neighbor; down goes before whatever follows it.
-                                    const order = group.bots.map((entry) => entry.chat.id);
-                                    const beforeId =
-                                      event.key === "ArrowUp"
-                                        ? target
-                                        : (order[order.indexOf(target) + 1] ?? null);
-                                    void moveSidebarItem(
-                                      { kind: "bot", id: item.chat.id },
-                                      folder,
-                                      beforeId === null
-                                        ? null
-                                        : {
-                                            kind: group.bots.find(
-                                              (entry) => entry.chat.id === beforeId,
-                                            )!.kind,
-                                            id: beforeId,
-                                          },
-                                    );
-                                  }}
-                                  onClick={() => {
-                                    openSpaceChat(
-                                      item.chat.spaceId,
-                                      item.kind === "bot"
-                                        ? `/app/${item.chat.id}`
-                                        : `/app/g/${item.chat.id}`,
-                                    );
-                                  }}
-                                  onContextMenu={(event) => {
-                                    if (item.chat.spaceId !== bootstrapMe?.spaceId) return;
-                                    event.preventDefault();
-                                    botMenuAnchor.current = event.currentTarget;
-                                    setBotMenu({
-                                      kind: item.kind,
-                                      id: item.chat.id,
-                                      position: { x: event.clientX, y: event.clientY },
-                                    });
-                                  }}
-                                  className={`relative flex w-full items-center ${
-                                    rail
-                                      ? "justify-center rounded-xl px-0 py-1"
-                                      : compact
-                                        ? "gap-2.5 rounded-xl px-2.5 py-1"
-                                        : "gap-3 rounded-xl px-2.5 py-2"
-                                  } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring text-start ${
-                                    rowDragEnabled ? "cursor-grab active:cursor-grabbing" : ""
-                                  } ${
-                                    selected
-                                      ? "bg-sidebar-accent"
-                                      : "group-hover/row:bg-sidebar-accent"
-                                  } data-file-drop:ring-2 data-file-drop:ring-inset data-file-drop:ring-ring`}
-                                  style={
-                                    treeActive && !rail
-                                      ? { paddingInlineStart: `${24 + depth * 14}px` }
-                                      : undefined
-                                  }
-                                >
-                                  {item.kind === "bot" ? (
-                                    <AgentAvatar
-                                      app={agentAppFor(item.chat.id, item.chat.spaceId)}
-                                      color={item.chat.color}
-                                      identity={item.chat.id}
-                                      size={36}
-                                      status={item.chat.status}
-                                    />
-                                  ) : (
-                                    <GroupAvatar
-                                      members={
-                                        item.chat.id === activeSnapshot?.groupId
-                                          ? (activeSnapshot.members ?? item.chat.members)
-                                          : item.chat.members
+                                        setFileDropBotId(null);
+                                    }}
+                                    onDrop={(event) => {
+                                      if (item.kind === "bot" && isUnclaimedFileDrag(event)) {
+                                        event.preventDefault();
+                                        setFileDropBotId(null);
+                                        if (item.chat.spaceId !== bootstrapMe?.spaceId) return;
+                                        // Keep the "Skipped ..." notice through the thread-change reset.
+                                        if (item.chat.id !== active?.id)
+                                          keepNoticeFor.current = item.chat.id;
+                                        onAttachmentPick(event.dataTransfer.files, item.chat.id);
+                                        setFocusComposerBotId(item.chat.id);
+                                        setMobileSidebarOpen(false);
+                                        openBot(item.chat.id);
+                                        return;
                                       }
-                                      size={36}
-                                    />
-                                  )}
-                                  {rail && item.chat.unread ? (
-                                    <span
-                                      data-testid="rail-badge"
-                                      aria-hidden="true"
-                                      className="absolute end-1 top-0.5 size-2.5 rounded-full border-2 border-sidebar bg-primary"
-                                    />
-                                  ) : null}
-                                  {rail ? null : (
-                                    <div className="min-w-0 flex-1">
-                                      <div className="flex items-start justify-between gap-1.5">
-                                        <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-                                          <span
-                                            dir="auto"
-                                            data-roster-bot-name={
-                                              item.kind === "bot" ? "" : undefined
-                                            }
-                                            title={item.chat.name}
-                                            className={`min-w-0 line-clamp-2 break-words text-[14.5px] leading-[18px] font-normal text-foreground ${
-                                              item.chat.unread ? "font-medium" : ""
-                                            }`}
-                                          >
-                                            {item.chat.name}
-                                          </span>
-                                          {item.chat.unread ? (
-                                            <span className="sr-only">
-                                              <Trans> (unread)</Trans>
-                                            </span>
-                                          ) : null}
-                                        </div>
-                                        <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0">
-                                          {item.kind === "bot" && glance.botKinds[item.chat.id] ? (
-                                            <StatusMark
-                                              kind={glance.botKinds[item.chat.id]!}
-                                              botId={item.chat.id}
-                                            />
-                                          ) : null}
-                                          {!compact ? (
-                                            <span className="text-[12px] leading-[18px] text-muted-foreground tabular-nums">
-                                              {formatRosterTime(item.chat.updatedAt)}
-                                            </span>
-                                          ) : null}
-                                          {item.chat.unread ? (
+                                    }}
+                                    onKeyDown={(event) => {
+                                      if (
+                                        item.kind !== "bot" ||
+                                        !event.altKey ||
+                                        (event.key !== "ArrowUp" && event.key !== "ArrowDown")
+                                      ) {
+                                        (
+                                          row.handleProps.onKeyDown as
+                                            | KeyboardEventHandler
+                                            | undefined
+                                        )?.(event);
+                                        return;
+                                      }
+                                      const siblings = siblingBotIds(parentId);
+                                      const index = siblings.indexOf(item.chat.id);
+                                      const target =
+                                        siblings[index + (event.key === "ArrowUp" ? -1 : 1)];
+                                      if (!target) return;
+                                      event.preventDefault();
+                                      // Up goes before the neighbor; down goes before whatever follows it.
+                                      const order = group.bots.map((entry) => entry.chat.id);
+                                      const beforeId =
+                                        event.key === "ArrowUp"
+                                          ? target
+                                          : (order[order.indexOf(target) + 1] ?? null);
+                                      void moveSidebarItem(
+                                        { kind: "bot", id: item.chat.id },
+                                        folder,
+                                        beforeId === null
+                                          ? null
+                                          : {
+                                              kind: group.bots.find(
+                                                (entry) => entry.chat.id === beforeId,
+                                              )!.kind,
+                                              id: beforeId,
+                                            },
+                                      );
+                                    }}
+                                    onClick={() => {
+                                      openSpaceChat(
+                                        item.chat.spaceId,
+                                        item.kind === "bot"
+                                          ? `/app/${item.chat.id}`
+                                          : `/app/g/${item.chat.id}`,
+                                      );
+                                    }}
+                                    onContextMenu={(event) => {
+                                      if (item.chat.spaceId !== bootstrapMe?.spaceId) return;
+                                      event.preventDefault();
+                                      botMenuAnchor.current = event.currentTarget;
+                                      setBotMenu({
+                                        kind: item.kind,
+                                        id: item.chat.id,
+                                        position: { x: event.clientX, y: event.clientY },
+                                      });
+                                    }}
+                                    className={`relative flex w-full items-center ${
+                                      rail
+                                        ? "justify-center rounded-xl px-0 py-1"
+                                        : compact
+                                          ? "gap-2.5 rounded-xl px-2.5 py-1"
+                                          : "gap-3 rounded-xl px-2.5 py-2"
+                                    } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring text-start ${
+                                      rowDragEnabled ? "cursor-grab active:cursor-grabbing" : ""
+                                    } ${
+                                      selected
+                                        ? "bg-sidebar-accent"
+                                        : "group-hover/row:bg-sidebar-accent"
+                                    } data-file-drop:ring-2 data-file-drop:ring-inset data-file-drop:ring-ring`}
+                                    style={
+                                      treeActive && !rail
+                                        ? { paddingInlineStart: `${24 + depth * 14}px` }
+                                        : undefined
+                                    }
+                                  >
+                                    {item.kind === "bot" ? (
+                                      <AgentAvatar
+                                        app={agentAppFor(item.chat.id, item.chat.spaceId)}
+                                        color={item.chat.color}
+                                        identity={item.chat.id}
+                                        size={36}
+                                        status={item.chat.status}
+                                      />
+                                    ) : (
+                                      <GroupAvatar
+                                        members={
+                                          item.chat.id === activeSnapshot?.groupId
+                                            ? (activeSnapshot.members ?? item.chat.members)
+                                            : item.chat.members
+                                        }
+                                        size={36}
+                                      />
+                                    )}
+                                    {rail && item.chat.unread ? (
+                                      <span
+                                        data-testid="rail-badge"
+                                        aria-hidden="true"
+                                        className="absolute end-1 top-0.5 size-2.5 rounded-full border-2 border-sidebar bg-primary"
+                                      />
+                                    ) : null}
+                                    {rail ? null : (
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-start justify-between gap-1.5">
+                                          <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
                                             <span
-                                              aria-hidden="true"
-                                              className="inline-block h-2 w-2 rounded-full bg-foreground"
-                                            />
-                                          ) : null}
+                                              dir="auto"
+                                              data-roster-bot-name={
+                                                item.kind === "bot" ? "" : undefined
+                                              }
+                                              title={item.chat.name}
+                                              className={`min-w-0 line-clamp-2 break-words text-[14.5px] leading-[18px] font-normal text-foreground ${
+                                                item.chat.unread ? "font-medium" : ""
+                                              }`}
+                                            >
+                                              {item.chat.name}
+                                            </span>
+                                            {item.chat.unread ? (
+                                              <span className="sr-only">
+                                                <Trans> (unread)</Trans>
+                                              </span>
+                                            ) : null}
+                                          </div>
+                                          <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0">
+                                            {item.kind === "bot" &&
+                                            glance.botKinds[item.chat.id] ? (
+                                              <StatusMark
+                                                kind={glance.botKinds[item.chat.id]!}
+                                                botId={item.chat.id}
+                                              />
+                                            ) : null}
+                                            {!compact ? (
+                                              <span className="text-[12px] leading-[18px] text-muted-foreground tabular-nums">
+                                                {formatRosterTime(item.chat.updatedAt)}
+                                              </span>
+                                            ) : null}
+                                            {item.chat.unread ? (
+                                              <span
+                                                aria-hidden="true"
+                                                className="inline-block h-2 w-2 rounded-full bg-foreground"
+                                              />
+                                            ) : null}
+                                          </div>
                                         </div>
-                                      </div>
-                                      {compact ? (
-                                        compactStatusLabel ? (
+                                        {compact ? (
+                                          compactStatusLabel ? (
+                                            <div
+                                              dir="auto"
+                                              data-roster-status={
+                                                rowError
+                                                  ? "error"
+                                                  : item.kind === "bot"
+                                                    ? item.chat.status
+                                                    : undefined
+                                              }
+                                              className={`flex items-center gap-1 text-[12px] leading-[18px] ${
+                                                rowError
+                                                  ? "font-medium text-destructive"
+                                                  : workStatusLabel
+                                                    ? `font-semibold ${workTone}`
+                                                    : "font-medium text-foreground/75"
+                                              }`}
+                                            >
+                                              {rowError ? (
+                                                <CircleAlert size={12} aria-hidden="true" />
+                                              ) : null}
+                                              <span>{compactStatusLabel}</span>
+                                            </div>
+                                          ) : null
+                                        ) : (
                                           <div
                                             dir="auto"
-                                            data-roster-status={
-                                              rowError
-                                                ? "error"
-                                                : item.kind === "bot"
-                                                  ? item.chat.status
-                                                  : undefined
+                                            data-roster-preview={
+                                              !workStatusLabel ? "true" : undefined
                                             }
-                                            className={`flex items-center gap-1 text-[12px] leading-[18px] ${
-                                              rowError
-                                                ? "font-medium text-destructive"
-                                                : workStatusLabel
-                                                  ? `font-semibold ${workTone}`
-                                                  : "font-medium text-foreground/75"
+                                            className={`truncate text-[12px] leading-[18px] ${
+                                              workStatusLabel
+                                                ? `font-semibold ${workTone}`
+                                                : item.chat.unread
+                                                  ? "font-medium text-foreground/75"
+                                                  : "text-muted-foreground"
                                             }`}
                                           >
-                                            {rowError ? (
-                                              <CircleAlert size={12} aria-hidden="true" />
-                                            ) : null}
-                                            <span>{compactStatusLabel}</span>
+                                            {rosterLine}
                                           </div>
-                                        ) : null
-                                      ) : (
-                                        <div
-                                          dir="auto"
-                                          data-roster-preview={
-                                            !workStatusLabel ? "true" : undefined
-                                          }
-                                          className={`truncate text-[12px] leading-[18px] ${
-                                            workStatusLabel
-                                              ? `font-semibold ${workTone}`
-                                              : item.chat.unread
-                                                ? "font-medium text-foreground/75"
-                                                : "text-muted-foreground"
-                                          }`}
-                                        >
-                                          {rosterLine}
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                                </button>
-                              </RailTip>
-                              {/* The right-click menu, also reachable on hover or by keyboard. */}
-                              {!rail && item.chat.spaceId === bootstrapMe?.spaceId ? (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  data-testid="roster-row-actions"
-                                  data-roster-actions=""
-                                  aria-label={t`Actions for ${item.chat.name}`}
-                                  aria-haspopup="menu"
-                                  onClick={(event) => {
-                                    const rect = event.currentTarget.getBoundingClientRect();
-                                    botMenuAnchor.current = event.currentTarget;
-                                    setBotMenu({
-                                      kind: item.kind,
-                                      id: item.chat.id,
-                                      position: { x: rect.left, y: rect.bottom },
-                                    });
-                                  }}
-                                  className={`absolute end-2 top-1.5 size-7 rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring group-hover/row:opacity-100 pointer-coarse:hidden ${
-                                    botMenu?.id === item.chat.id ? "opacity-100" : ""
-                                  }`}
-                                >
-                                  <MoreHorizontal size={15} strokeWidth={1.7} aria-hidden="true" />
-                                </Button>
-                              ) : null}
-                            </div>
-                          )}
-                        </SortableRow>
-                      );
-                    })}
-                  </SortableList>
-                ) : null}
-              </div>
-            );
-          })}
-          {rail ? null : <RootEnd />}
-        </SidebarDnd>
-        {archivedBots.length + archivedGroups.length > 0 && !rail ? (
-          <div className="mt-2 border-t border-border pt-2">
-            <button
-              type="button"
-              aria-expanded={archivedOpen}
-              onClick={() => setArchivedOpen((open) => !open)}
-              className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-[13.5px] text-muted-foreground hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-            >
-              <span>
-                <Trans>Archived</Trans>
-              </span>
-              <span>{archivedBots.length + archivedGroups.length}</span>
-            </button>
-            {archivedOpen ? (
-              <>
-                {archivedBots.map((bot) => (
-                  <div key={bot.id} className="flex items-center gap-2 rounded-lg px-2.5 py-2">
-                    <BotAvatar color={bot.color} identity={bot.id} size={28} status={bot.status} />
-                    <span
-                      className="min-w-0 flex-1 truncate text-[14px] text-foreground/75"
-                      dir="auto"
-                    >
-                      {bot.name}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      onClick={() =>
-                        void rpc.bots.restore({ botId: bot.id }).then(() => refreshBots(true))
-                      }
-                    >
-                      <Trans>Restore</Trans>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      className="text-destructive hover:text-destructive"
-                      aria-label={t`Delete ${bot.name}`}
-                      onClick={() => setDeleteTarget(bot)}
-                    >
-                      <Trans>Delete</Trans>
-                    </Button>
-                  </div>
-                ))}
-                {archivedGroups.map((group) => (
-                  <div key={group.id} className="flex items-center gap-2 rounded-lg px-2.5 py-2">
-                    <GroupAvatar members={group.members} size={28} />
-                    <span
-                      className="min-w-0 flex-1 truncate text-[14px] text-foreground/75"
-                      dir="auto"
-                    >
-                      {group.name}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      onClick={() =>
-                        void rpc.groups.restore({ groupId: group.id }).then(() => refreshBots(true))
-                      }
-                    >
-                      <Trans>Restore</Trans>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      className="text-destructive hover:text-destructive"
-                      aria-label={t`Delete ${group.name}`}
-                      onClick={() => setDeleteGroupTarget(group)}
-                    >
-                      <Trans>Delete</Trans>
-                    </Button>
-                  </div>
-                ))}
-              </>
-            ) : null}
-          </div>
-        ) : null}
+                                        )}
+                                      </div>
+                                    )}
+                                  </button>
+                                </RailTip>
+                                {/* The right-click menu, also reachable on hover or by keyboard. */}
+                                {!rail && item.chat.spaceId === bootstrapMe?.spaceId ? (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    data-testid="roster-row-actions"
+                                    data-roster-actions=""
+                                    aria-label={t`Actions for ${item.chat.name}`}
+                                    aria-haspopup="menu"
+                                    onClick={(event) => {
+                                      const rect = event.currentTarget.getBoundingClientRect();
+                                      botMenuAnchor.current = event.currentTarget;
+                                      setBotMenu({
+                                        kind: item.kind,
+                                        id: item.chat.id,
+                                        position: { x: rect.left, y: rect.bottom },
+                                      });
+                                    }}
+                                    className={`absolute end-2 top-1.5 size-7 rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring group-hover/row:opacity-100 pointer-coarse:hidden ${
+                                      botMenu?.id === item.chat.id ? "opacity-100" : ""
+                                    }`}
+                                  >
+                                    <MoreHorizontal
+                                      size={15}
+                                      strokeWidth={1.7}
+                                      aria-hidden="true"
+                                    />
+                                  </Button>
+                                ) : null}
+                              </div>
+                            )}
+                          </SortableRow>
+                        );
+                      })}
+                    </SortableList>
+                  ) : null}
+                </div>
+              );
+            })}
+            {rail ? null : <RootEnd />}
+          </SidebarDnd>
+          {archivedBots.length + archivedGroups.length > 0 && !rail ? (
+            <div className="mt-2 border-t border-border pt-2">
+              <button
+                type="button"
+                aria-expanded={archivedOpen}
+                onClick={() => setArchivedOpen((open) => !open)}
+                className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-[13.5px] text-muted-foreground hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+              >
+                <span>
+                  <Trans>Archived</Trans>
+                </span>
+                <span>{archivedBots.length + archivedGroups.length}</span>
+              </button>
+              {archivedOpen ? (
+                <>
+                  {archivedBots.map((bot) => (
+                    <div key={bot.id} className="flex items-center gap-2 rounded-lg px-2.5 py-2">
+                      <BotAvatar
+                        color={bot.color}
+                        identity={bot.id}
+                        size={28}
+                        status={bot.status}
+                      />
+                      <span
+                        className="min-w-0 flex-1 truncate text-[14px] text-foreground/75"
+                        dir="auto"
+                      >
+                        {bot.name}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() =>
+                          void rpc.bots.restore({ botId: bot.id }).then(() => refreshBots(true))
+                        }
+                      >
+                        <Trans>Restore</Trans>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        className="text-destructive hover:text-destructive"
+                        aria-label={t`Delete ${bot.name}`}
+                        onClick={() => setDeleteTarget(bot)}
+                      >
+                        <Trans>Delete</Trans>
+                      </Button>
+                    </div>
+                  ))}
+                  {archivedGroups.map((group) => (
+                    <div key={group.id} className="flex items-center gap-2 rounded-lg px-2.5 py-2">
+                      <GroupAvatar members={group.members} size={28} />
+                      <span
+                        className="min-w-0 flex-1 truncate text-[14px] text-foreground/75"
+                        dir="auto"
+                      >
+                        {group.name}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() =>
+                          void rpc.groups
+                            .restore({ groupId: group.id })
+                            .then(() => refreshBots(true))
+                        }
+                      >
+                        <Trans>Restore</Trans>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        className="text-destructive hover:text-destructive"
+                        aria-label={t`Delete ${group.name}`}
+                        onClick={() => setDeleteGroupTarget(group)}
+                      >
+                        <Trans>Delete</Trans>
+                      </Button>
+                    </div>
+                  ))}
+                </>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       </div>
       {/* The top border shows that the list above scrolls under this row. */}
       <div className="border-t border-sidebar-border px-2.5 pt-1">

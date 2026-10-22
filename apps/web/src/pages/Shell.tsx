@@ -134,6 +134,7 @@ import type { SendTarget } from "../components/data-room/SendToAgent";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
 import { AgentAvatar } from "../components/integrations/AgentAvatar";
 import { DevinConnectDialog } from "../components/integrations/DevinConnectDialog";
+import { LegalPanelConsent } from "../components/legal/ConsentPrompt";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
 import { PageNavContext } from "../components/PageHeader";
 import { RowsSkeleton } from "../components/RowsSkeleton";
@@ -146,6 +147,7 @@ import { SidebarUndoNotice } from "../components/sidebar-folders/SidebarUndoNoti
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
+import { connectCardsOpen } from "../components/tour/connect-cards";
 import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import { useAgentApp } from "../lib/agent-app";
 import { artifactDisplayName } from "../lib/artifact-name";
@@ -897,13 +899,6 @@ export function ShellPage() {
       ),
     ),
   );
-  const tourOpen =
-    tourRestart ||
-    (bootstrapMe?.tourSeen === false && !tourEnded && bots.length > 0 && !firstQuestionOpen);
-  // On a phone the tour points into the sidebar drawer, so open it while the tour runs.
-  useEffect(() => {
-    if (tourOpen && !window.matchMedia("(min-width: 1024px)").matches) setMobileSidebarOpen(true);
-  }, [tourOpen]);
   const activeSpaceId = bootstrapMe?.spaceId;
   const agentAppFor = useAgentApp(
     userId,
@@ -1278,7 +1273,6 @@ export function ShellPage() {
     },
     [navigate],
   );
-
   useLayoutEffect(() => {
     routeBotStart.current = { id: botId, epoch: botsRefreshEpoch.current };
   }, [botId]);
@@ -2598,6 +2592,22 @@ export function ShellPage() {
   const openBot = useCallback((id: string) => navigate(`/app/${id}`), [navigate]);
   // Contacts and Artifacts have no agent of their own: their Ask opens Chief, the first bot.
   const chiefId = bots.find((bot) => bot.spawnKey === FIRST_BOT_SPAWN_KEY && !bot.archivedAt)?.id;
+  // Chief's app cards come first; the tour starts once one is connected or another page is open.
+  const connectCardsWaiting =
+    active?.id === chiefId &&
+    snapshot?.botId === chiefId &&
+    connectCardsOpen(snapshot?.messages ?? []);
+  const tourOpen =
+    tourRestart ||
+    (bootstrapMe?.tourSeen === false &&
+      !tourEnded &&
+      bots.length > 0 &&
+      !firstQuestionOpen &&
+      !connectCardsWaiting);
+  // On a phone the tour points into the sidebar drawer, so open it while the tour runs.
+  useEffect(() => {
+    if (tourOpen && !window.matchMedia("(min-width: 1024px)").matches) setMobileSidebarOpen(true);
+  }, [tourOpen]);
   const askChief = chiefId ? () => openBot(chiefId) : undefined;
 
   async function startElioCall() {
@@ -3972,6 +3982,7 @@ export function ShellPage() {
               <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
             </div>
           ) : null}
+          {legalWaitsForConsent ? <LegalPanelConsent /> : null}
           {active || activeGroup ? (
             <Composer
               key={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
@@ -4138,6 +4149,7 @@ export function ShellPage() {
         navigate={navigate}
         setPanel={setPanel}
         setNewSpaceOpen={setNewSpaceOpen}
+        canCreateSpace={spaces.length > 1}
         setPickerInfoTopic={setPickerInfoTopic}
         sidebarScrollRef={sidebarScrollRef}
         collapsedSidebarSections={collapsedSidebarSections}
@@ -4215,10 +4227,7 @@ export function ShellPage() {
           setFocusComposerBotId(chiefId);
           openBot(chiefId);
         }}
-        onTourSkip={() => {
-          setAskChiefChip(true);
-          if (chiefId) openBot(chiefId);
-        }}
+        onTourSkip={() => setAskChiefChip(true)}
         onTourEnd={() => setTourEnded(true)}
         setTourRestart={setTourRestart}
         setBootstrapMe={setBootstrapMe}
@@ -5266,7 +5275,7 @@ export function ShellPage() {
                     }}
                   >
                     <WandSparkles />
-                    {t`Auto-group`}
+                    {t`Group chats into folders`}
                   </DropdownMenuItem>
                 </>
               ) : null}
@@ -5414,7 +5423,7 @@ export function ShellPage() {
 
         {folderUndo ? (
           <SidebarUndoNotice
-            message={t`Auto-grouped`}
+            message={t`Chats grouped into folders`}
             onUndo={() => void undoAutoGroup()}
             onDismiss={() => setFolderUndo(null)}
           />

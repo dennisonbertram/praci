@@ -112,7 +112,7 @@ it("tells the shell about Skip tour, so Ask Chief stays one tap away, but not ab
   expect(onSkip).toHaveBeenCalledTimes(1);
 });
 
-it("on a phone the card sits within 120px of its target, above a target in the lower half", async () => {
+it("on a phone the card sits on the half of the screen away from its target", async () => {
   window.matchMedia = ((query: string) => ({
     matches: false,
     media: query,
@@ -129,12 +129,13 @@ it("on a phone the card sits within 120px of its target, above a target in the l
   at("user-menu", 700);
   await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
   const card = () => document.querySelector("[data-testid='tour-card']") as HTMLElement;
-  // Upper-half target: the card starts just below it.
-  expect(card().style.top).toBe("150px");
+  // Upper-half target: the card is at the bottom, so the rows around the target stay visible.
+  expect(card().style.bottom).toBe("16px");
+  expect(card().style.top).toBe("");
   await click("Next");
   await click("Next");
-  // Lower-half target: the card ends just above it (768px window).
-  expect(card().style.bottom).toBe(`${window.innerHeight - 700 + 10}px`);
+  // Lower-half target: the card is at the top.
+  expect(card().style.top).toBe("16px");
 });
 
 it("shows nothing and saves nothing when closed or when no anchor exists", async () => {

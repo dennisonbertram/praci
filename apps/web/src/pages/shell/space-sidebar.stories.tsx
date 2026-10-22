@@ -195,6 +195,7 @@ export function SidebarFixture({
     navigate,
     setPanel: () => undefined,
     setNewSpaceOpen,
+    canCreateSpace: true,
     setPickerInfoTopic,
     sidebarScrollRef,
     collapsedSidebarSections: new Set<string>(),

@@ -66,8 +66,8 @@ it("names where documents go and grants exactly the shown key and version on All
     version: "2026-10-22",
   });
   expect(onAllowed).toHaveBeenCalledTimes(1);
-  // Allowed: the prompt goes away.
-  expect(container.textContent).toBe("");
+  // Allowed: the card goes away and one line says what changed.
+  expect(container.textContent).toBe("Praci can now read your documents.");
 });
 
 it("shows why the grant failed and keeps asking", async () => {
