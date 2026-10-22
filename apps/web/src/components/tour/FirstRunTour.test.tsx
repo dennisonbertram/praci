@@ -124,7 +124,7 @@ it("tells the shell about Skip tour, so Ask Chief stays one tap away, but not ab
   expect(onSkip).toHaveBeenCalledTimes(1);
 });
 
-it("on a phone the card stays at the top of the drawer, and moves down only for a target under it", async () => {
+it("on a phone the card stays at the foot at every stop and the drawer is padded above it", async () => {
   window.matchMedia = ((query: string) => ({
     matches: false,
     media: query,
@@ -136,21 +136,27 @@ it("on a phone the card stays at the top of the drawer, and moves down only for 
   const at = (id: string, top: number) => {
     const el = document.querySelector(`[data-tour="${id}"]`) as HTMLElement;
     el.getBoundingClientRect = () => rect(top);
+    el.scrollIntoView = vi.fn();
   };
-  at("sidebar-inbox", 100);
+  const drawer = document.createElement("aside");
+  document.body.append(drawer);
+  drawer.append(...document.querySelectorAll("[data-tour]"));
+  at("sidebar-inbox", 20);
   at("sidebar-integrations", 650);
   at("user-menu", 700);
   await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
   const card = () => document.querySelector("[data-testid='tour-card']") as HTMLElement;
-  // A target under the top spot: the card goes to the bottom instead.
-  expect(card().style.bottom).toBe("16px");
-  expect(card().style.top).toBe("");
-  // Every later stop keeps the card at the top, so Next stays put and the footer rows stay visible.
+  // A target at the top of the screen and footer rows low down: the card never moves.
   for (let i = 0; i < 2; i++) {
+    expect(card().style.bottom).toBe("16px");
+    expect(card().style.top).toBe("");
+    expect(drawer.style.paddingBottom).not.toBe("");
     await click("Next");
-    expect(card().style.top).toBe("16px");
-    expect(card().style.bottom).toBe("");
   }
+  await act(async () =>
+    root.render(<FirstRunTour open={false} onClose={vi.fn()} onAsk={vi.fn()} />),
+  );
+  expect(drawer.style.paddingBottom).toBe("");
 });
 
 it("on desktop the card sits inside the sidebar above its footer, so the chat stays clear", async () => {

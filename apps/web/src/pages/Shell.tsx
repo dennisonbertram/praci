@@ -98,6 +98,7 @@ import {
   LogOut,
   Mail,
   Maximize2,
+  Megaphone,
   Menu,
   MessageSquare,
   Monitor,
@@ -221,6 +222,7 @@ import { fetchDataRoomBlob } from "../lib/data-room";
 import { dataRoomAgentSuggestions, findDataRoomAgent } from "../lib/data-room-agent";
 import { desktopBridge } from "../lib/desktop";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
+import { findGtmAgent } from "../lib/gtm-agent";
 import {
   maskCurrencyWhenHidden,
   setHideAmounts,
@@ -310,6 +312,7 @@ import { DevinPage } from "./Devin";
 import { FinancePage } from "./Finance";
 import { FundraisingPage } from "./Fundraising";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
+import { GtmPage } from "./Gtm";
 import { InboxPage } from "./Inbox";
 import { InvestorsPage } from "./Investors";
 import { UpdateEditor } from "./investors/UpdateEditor";
@@ -661,6 +664,9 @@ export function ShellPage() {
   const [legalAgentOpen, setLegalAgentOpen] = useState(false);
   const [creatingLegalAgent, setCreatingLegalAgent] = useState(false);
   const [legalAgentError, setLegalAgentError] = useState("");
+  const [gtmAgentOpen, setGtmAgentOpen] = useState(false);
+  const [creatingGtmAgent, setCreatingGtmAgent] = useState(false);
+  const [gtmAgentError, setGtmAgentError] = useState("");
   // The Legal page reports whether it still lacks consent; its Allow is the only one, so the agent waits for it.
   const [legalConsentMissing, setLegalConsentMissing] = useState(false);
   const [devinAgentOpen, setDevinAgentOpen] = useState(false);
@@ -1152,6 +1158,7 @@ export function ShellPage() {
   const financeMode = useMatch("/app/finance/*") != null;
   const dataRoomMode = useMatch("/app/data-room") != null;
   const legalMode = useMatch("/app/legal") != null;
+  const gtmMode = useMatch("/app/gtm") != null;
   const devinMode = useMatch("/app/devin") != null;
   const artifactsMode = useMatch("/app/artifacts/*") != null;
   // The route exists only while bootstrap enables the board (see App).
@@ -1166,6 +1173,7 @@ export function ShellPage() {
     inboxMode ||
     financeMode ||
     legalMode ||
+    gtmMode ||
     devinMode ||
     investorsMode ||
     fundraisingMode ||
@@ -1183,6 +1191,9 @@ export function ShellPage() {
   useEffect(() => {
     if (!legalMode) setLegalAgentOpen(false);
   }, [legalMode]);
+  useEffect(() => {
+    setGtmAgentOpen(gtmMode && window.matchMedia("(min-width: 768px)").matches);
+  }, [gtmMode]);
   useEffect(() => {
     if (!devinMode) setDevinAgentOpen(false);
   }, [devinMode]);
@@ -1207,11 +1218,13 @@ export function ShellPage() {
             ? findDataRoomAgent(bots, userId)
             : legalMode
               ? findLegalAgent(bots, userId)
-              : devinMode
-                ? bots.find((bot) => bot.id === devinAgentId)
-                : investorsMode || fundraisingMode
-                  ? findInvestorsAgent(bots, userId)
-                  : routeBot.bot;
+              : gtmMode
+                ? findGtmAgent(bots, userId)
+                : devinMode
+                  ? bots.find((bot) => bot.id === devinAgentId)
+                  : investorsMode || fundraisingMode
+                    ? findInvestorsAgent(bots, userId)
+                    : routeBot.bot;
   // A bot made with "New bot" opens with only its name until it has answered a message.
   useEffect(() => {
     // The snapshot can still be the previous thread's for a render after the bot opens.
@@ -3342,6 +3355,37 @@ export function ShellPage() {
     if (!active && !creatingLegalAgent) void createLegalAgent();
   }
 
+  async function createGtmAgent() {
+    setCreatingGtmAgent(true);
+    setGtmAgentError("");
+    try {
+      await rpc.gtm.agent();
+      await refreshBots();
+    } catch (error) {
+      setGtmAgentError(errorText(error, t`Could not create the GTM agent`));
+    } finally {
+      setCreatingGtmAgent(false);
+    }
+  }
+
+  function askGtmAgent() {
+    setGtmAgentOpen(true);
+    if (!active && !creatingGtmAgent) void createGtmAgent();
+  }
+
+  const gtmAgentAsked = useRef<string | null>(null);
+  const gtmAgentScope =
+    gtmMode && initialBotsLoaded && userId ? `${bootstrapMe?.spaceId}:${userId}` : null;
+  useEffect(() => {
+    if (!gtmAgentScope) {
+      gtmAgentAsked.current = null;
+      return;
+    }
+    if (active || gtmAgentAsked.current === gtmAgentScope) return;
+    gtmAgentAsked.current = gtmAgentScope;
+    void createGtmAgent();
+  });
+
   /** A row's Ask agent: opens the panel and sends the question. Before the agent exists it only creates it. */
   function askLegalAgentAbout(question: string) {
     askLegalAgent();
@@ -3435,6 +3479,7 @@ export function ShellPage() {
     () => {
       setCartaAgentCollapsed(true);
       setInboxAgentCollapsed(true);
+      setGtmAgentOpen(false);
     },
     () => {
       setCartaAgentCollapsed(readCartaAgentCollapsed(userId));
@@ -3443,6 +3488,18 @@ export function ShellPage() {
   );
 
   const cartaSuggestions = [t`Who are our investors?`];
+  // A bank's own chat starts with two read questions, like the other page agents.
+  const bankAgent = active ? agentAppFor(active.id, active.spaceId)?.bank : undefined;
+  const bankAgentPage =
+    !pageMode &&
+    !inGroup &&
+    active !== undefined &&
+    isIntegrationAgentSpawnKey(active.spawnKey) &&
+    bankAgent === true;
+  const bankSuggestions = [
+    t`What are our account balances?`,
+    t`What were the biggest payments this month?`,
+  ];
   const cartaAgentIntro = t`The Carta agent reads your cap table from Carta and answers questions about it. Try one:`;
   // The connector's agent is made on first visit, as the plan says; anyone else gets null.
   useEffect(() => {
@@ -3526,22 +3583,35 @@ export function ShellPage() {
                 creating: creatingLegalAgent,
                 error: legalAgentError,
               }
-            : investorsAgentPage
+            : gtmMode
               ? {
-                  name: "investors-agent",
-                  testId: "investors-agent-panel",
-                  // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
-                  open: investorsPanel.open,
-                  collapse: () => setCartaAgentCollapsedPref(true),
-                  collapseLabel: t`Collapse Investors agent`,
-                  // A failed creation is retried from the panel; the agent otherwise appears by itself.
-                  create: investorsAgentError ? createInvestorsAgent : undefined,
-                  createLabel: t`Try again`,
-                  creating: creatingInvestorsAgent,
-                  error: investorsAgentError,
-                  suggestions: investorsAgentSuggestions(),
+                  name: "gtm-agent",
+                  testId: "gtm-agent-panel",
+                  open: gtmAgentOpen,
+                  collapse: () => setGtmAgentOpen(false),
+                  collapseLabel: t`Collapse GTM agent`,
+                  create: createGtmAgent,
+                  createLabel: t`Create GTM agent`,
+                  creating: creatingGtmAgent,
+                  error: gtmAgentError,
+                  suggestions: [t`Help me find our first 50 design partners`],
                 }
-              : null;
+              : investorsAgentPage
+                ? {
+                    name: "investors-agent",
+                    testId: "investors-agent-panel",
+                    // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
+                    open: investorsPanel.open,
+                    collapse: () => setCartaAgentCollapsedPref(true),
+                    collapseLabel: t`Collapse Investors agent`,
+                    // A failed creation is retried from the panel; the agent otherwise appears by itself.
+                    create: investorsAgentError ? createInvestorsAgent : undefined,
+                    createLabel: t`Try again`,
+                    creating: creatingInvestorsAgent,
+                    error: investorsAgentError,
+                    suggestions: investorsAgentSuggestions(),
+                  }
+                : null;
   // The Carta agent opened full screen from its panel: same intro, and a way back to Investors.
   const cartaAgentPage =
     !pageMode && !inGroup && active !== undefined && findCartaAgent(bots, userId)?.id === active.id;
@@ -3995,6 +4065,15 @@ export function ShellPage() {
             <Trans>Back to Investors</Trans>
           </Link>
         </div>
+      ) : null}
+      {bankAgentPage && transcriptMessages.length === 0 && !transcriptRunning && activeSnapshot ? (
+        <AgentPanelIntro
+          description=""
+          suggestions={bankSuggestions}
+          onAddModel={bootstrapMe?.needsModel === true ? () => openSettings("models") : undefined}
+          disabled={sending}
+          onPick={(text) => void sendMessage(text, [], newClientId())}
+        />
       ) : null}
       {cartaAgentPage && transcriptMessages.length === 0 && !transcriptRunning && activeSnapshot ? (
         <AgentPanelIntro
@@ -4528,6 +4607,7 @@ export function ShellPage() {
                 {hiddenPages.includes("inbox") ? null : (
                   <SidebarPageLink
                     testId="sidebar-inbox"
+                    href="/app/inbox"
                     current={inboxMode}
                     icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Inbox`}
@@ -4547,6 +4627,7 @@ export function ShellPage() {
                 {hiddenPages.includes("finance") ? null : (
                   <SidebarPageLink
                     testId="sidebar-finance"
+                    href="/app/finance"
                     current={financeMode}
                     icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Finance`}
@@ -4561,6 +4642,7 @@ export function ShellPage() {
                 {hiddenPages.includes("legal") ? null : (
                   <SidebarPageLink
                     testId="sidebar-legal"
+                    href="/app/legal"
                     current={legalMode}
                     icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Legal`}
@@ -4580,9 +4662,32 @@ export function ShellPage() {
                     })}
                   />
                 )}
+                {hiddenPages.includes("gtm") ? null : (
+                  <SidebarPageLink
+                    testId="sidebar-gtm"
+                    current={gtmMode}
+                    icon={<Megaphone size={15} strokeWidth={1.8} aria-hidden="true" />}
+                    label={t`GTM`}
+                    rail={rail}
+                    onOpen={() => {
+                      setMobileSidebarOpen(false);
+                      navigate("/app/gtm");
+                    }}
+                    {...glanceBadge({
+                      unseen: 0,
+                      rail,
+                      value: glance.gtmNeedsYou > 0 ? String(glance.gtmNeedsYou) : undefined,
+                      valueLabel: plural(glance.gtmNeedsYou, {
+                        one: "# needs you",
+                        other: "# need you",
+                      }),
+                    })}
+                  />
+                )}
                 {hiddenPages.includes("devin") || !glance.devinConnected ? null : (
                   <SidebarPageLink
                     testId="sidebar-devin"
+                    href="/app/devin"
                     current={devinMode}
                     icon={<CodeXml size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Devin`}
@@ -4606,6 +4711,7 @@ export function ShellPage() {
                 {hiddenPages.includes("investors") ? null : (
                   <SidebarPageLink
                     testId="sidebar-investors"
+                    href="/app/investors"
                     current={investorsMode}
                     icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Investors`}
@@ -4620,6 +4726,7 @@ export function ShellPage() {
                 {hiddenPages.includes("fundraising") ? null : (
                   <SidebarPageLink
                     testId="sidebar-fundraising"
+                    href="/app/fundraising"
                     current={fundraisingMode}
                     icon={<HandCoins size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Fundraising`}
@@ -4633,6 +4740,7 @@ export function ShellPage() {
                 {hiddenPages.includes("contacts") ? null : (
                   <SidebarPageLink
                     testId="sidebar-contacts"
+                    href="/app/contacts"
                     current={contactsMode}
                     icon={<BookUser size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Contacts`}
@@ -4646,6 +4754,7 @@ export function ShellPage() {
                 {hiddenPages.includes("data-room") ? null : (
                   <SidebarPageLink
                     testId="sidebar-data-room"
+                    href="/app/data-room"
                     current={dataRoomMode}
                     icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`Data room`}
@@ -4676,6 +4785,7 @@ export function ShellPage() {
                 {hiddenPages.includes("artifacts") ? null : (
                   <SidebarPageLink
                     testId="sidebar-artifacts"
+                    href="/app/artifacts"
                     current={artifactsMode}
                     // Not the Data room's folder icon: these are files bots made.
                     icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
@@ -5887,6 +5997,14 @@ export function ShellPage() {
                 // Like Finance: the auth boundary changes, so reload on the other space's Legal page.
                 if (selectSpace(spaceId)) window.location.assign("/app/legal");
               }}
+            />
+          ) : gtmMode ? (
+            <GtmPage
+              key={bootstrapMe?.spaceId}
+              botId={active?.id}
+              remote={pageRemote}
+              onAskAgent={askGtmAgent}
+              agentOpen={gtmAgentOpen}
             />
           ) : devinMode ? (
             <DevinPage

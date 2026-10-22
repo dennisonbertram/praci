@@ -724,7 +724,12 @@ export function RoutineEditor({
       ) : null}
 
       {editing ? (
-        <RoutineRunHistory key={editing.id} routineId={editing.id} running={running} />
+        <RoutineRunHistory
+          key={editing.id}
+          routineId={editing.id}
+          name={editing.name}
+          running={running}
+        />
       ) : null}
     </div>
   );

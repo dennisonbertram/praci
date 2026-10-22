@@ -43,7 +43,18 @@ vi.mock("../lib/rpc", async (importOriginal) => ({
   },
 }));
 
+import { findGtmAgent } from "../lib/gtm-agent";
 import { setHideAmounts } from "../lib/hide-amounts-preference";
+
+it("selects only the signed-in founder's GTM panel agent", () => {
+  const bots = [
+    { spawnKey: "gtm-agent:other", id: "other" },
+    { spawnKey: "gtm-agent:owner", id: "mine" },
+  ];
+  expect(findGtmAgent(bots, "owner")?.id).toBe("mine");
+  expect(findGtmAgent(bots, null)).toBeUndefined();
+});
+
 import {
   BOTS_POLL_MS,
   Composer,

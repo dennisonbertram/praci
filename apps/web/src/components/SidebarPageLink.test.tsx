@@ -77,3 +77,27 @@ it("keeps rail items in tab order and shows the label as a tooltip on keyboard f
   expect(document.body.textContent).toContain("Inbox");
   expect(document.querySelector('[role="tooltip"], [data-slot="tooltip-content"]')).not.toBeNull();
 });
+
+it("renders a real link that opens in the app on a plain click and is left to the browser on Cmd-click", () => {
+  const onOpen = vi.fn();
+  act(() => {
+    createRoot(container).render(
+      <SidebarPageLink
+        testId="a"
+        href="/app/inbox"
+        current={false}
+        icon={<Mail aria-hidden="true" />}
+        label="Inbox"
+        onOpen={onOpen}
+      />,
+    );
+  });
+  const link = container.querySelector("a") as HTMLAnchorElement;
+  expect(link.getAttribute("href")).toBe("/app/inbox");
+  act(() => link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })));
+  expect(onOpen).toHaveBeenCalledTimes(1);
+  act(() =>
+    link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, metaKey: true })),
+  );
+  expect(onOpen).toHaveBeenCalledTimes(1);
+});
