@@ -678,6 +678,10 @@ msgstr "* So far"
 msgid "+{more} more"
 msgstr "+{more} more"
 
+#: src/components/data-room/ImportActivity.tsx
+msgid "+{unnamed} more"
+msgstr "+{unnamed} more"
+
 #: src/components/finance/WalletDialog.tsx
 msgid "0x… or name.eth"
 msgstr "0x… or name.eth"
@@ -2347,6 +2351,10 @@ msgstr "Clear {rangeLabel}"
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Clear {sourceName} filter"
 msgstr "Clear {sourceName} filter"
+
+#: src/pages/DataRoom.tsx
+msgid "Clear all"
+msgstr "Clear all"
 
 #: src/pages/BotContextMenu.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -9444,6 +9452,11 @@ msgstr "Shell"
 msgid "Show {hiddenReplies} more"
 msgstr "Show {hiddenReplies} more"
 
+#. placeholder {0}: plan.operations.length
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Show all {0} changes"
+msgstr "Show all {0} changes"
+
 #: src/pages/Finance.tsx
 msgid "Show all {total}"
 msgstr "Show all {total}"
@@ -9756,6 +9769,10 @@ msgstr "Sort descending"
 #: src/components/data-room/AutoSortDialog.tsx
 msgid "Sort every file in the Data room"
 msgstr "Sort every file in the Data room"
+
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Sort new files"
+msgstr "Sort new files"
 
 #: src/components/ListControls.tsx
 msgid "Sort: {fieldLabel}"

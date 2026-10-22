@@ -4645,7 +4645,12 @@ export function ShellPage() {
                     rail={rail}
                     onOpen={() => {
                       setMobileSidebarOpen(false);
-                      navigate("/app/data-room");
+                      // The badge counts failed files; the page opens on them.
+                      navigate(
+                        glance.dataRoomWaiting > 0
+                          ? "/app/data-room?status=failed"
+                          : "/app/data-room",
+                      );
                     }}
                     {...glanceBadge({
                       unseen: unseen["data-room"] ?? 0,
