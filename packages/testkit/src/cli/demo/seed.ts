@@ -923,16 +923,7 @@ async function seedLegal(prisma: PrismaClient, actor: Actor): Promise<string> {
         kind: "notice",
         derived: true,
         sourceQuote: spec.renewalQuote,
-        notes: `${MOCK_NOTE}: ${spec.renewalNoticeDays} days before it renews.`,
-      });
-      await legal.upsertDeadline(actor, {
-        contractId: contract.id,
-        dataRoomItemId: item.id,
-        title: "Renews automatically",
-        dueDate: expiration,
-        kind: "renewal",
-        derived: true,
-        sourceQuote: spec.renewalQuote,
+        notes: `${MOCK_NOTE}: ${spec.renewalNoticeDays} days before it renews automatically.`,
       });
     }
     const contractNode = await legal.upsertNode(actor, {
