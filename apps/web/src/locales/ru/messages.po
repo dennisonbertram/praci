@@ -1509,7 +1509,6 @@ msgid "Ask before sending external email"
 msgstr "Спросите перед отправкой внешнего электронного письма"
 
 #: src/components/tour/FirstRunTour.tsx
-#: src/pages/Shell.tsx
 msgid "Ask Chief"
 msgstr ""
 
@@ -2098,10 +2097,6 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Cash out and cash in over time"
-msgstr ""
-
-#: src/pages/shell/message-cards.tsx
-msgid "Cash, cap table, investors and email"
 msgstr ""
 
 #: src/components/FinanceCards.tsx
@@ -4561,6 +4556,10 @@ msgstr ""
 #: src/lib/user-error.ts
 msgid "Email verification required"
 msgstr "Требуется подтверждение электронной почты"
+
+#: src/pages/shell/message-cards.tsx
+msgid "Email, calendar and your company pages"
+msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Email, Slack and docs"

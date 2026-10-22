@@ -178,7 +178,7 @@ import { glanceBadge, StatusMark } from "../components/sidebar-glance";
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
-import { connectCardsOpen } from "../components/tour/connect-cards";
+import { connectCardsOpen, focusQuestionOpen } from "../components/tour/connect-cards";
 import { FirstRunTour } from "../components/tour/FirstRunTour";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
 import { dismissApprovalToasts } from "../lib/approval-toasts";
@@ -985,16 +985,7 @@ export function ShellPage() {
   // After Skip tour the first question stays one tap away in Chief's composer.
   const [askChiefChip, setAskChiefChip] = useState(false);
   // The tour waits for the first-run focus question, so its popovers never cover the choices.
-  const firstQuestionOpen = Boolean(
-    snapshot?.messages.some((message) =>
-      message.blocks.some(
-        (block) =>
-          block.kind === "choice" &&
-          block.question === "What do you want me on first?" &&
-          !block.answerId,
-      ),
-    ),
-  );
+  const firstQuestionOpen = focusQuestionOpen(snapshot?.messages ?? []);
   const activeSpaceId = bootstrapMe?.spaceId;
   const agentAppFor = useAgentApp(
     userId,
@@ -4172,7 +4163,7 @@ export function ShellPage() {
               quickAsk={
                 askChiefChip && active?.id === chiefId
                   ? {
-                      label: t`Ask Chief`,
+                      label: t`What should I do first this week?`,
                       onAsk: () => {
                         setAskChiefChip(false);
                         void sendMessage(t`What should I do first this week?`, [], newClientId());

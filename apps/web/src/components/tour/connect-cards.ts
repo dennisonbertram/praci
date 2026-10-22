@@ -10,3 +10,15 @@ export function connectCardsOpen(messages: readonly { blocks: readonly MessageBl
   );
   return cards.length > 0 && cards.every((card) => card.status === "pending");
 }
+
+/** True while the first-run focus card is neither answered nor dismissed (a dismissed card has an answer id). */
+export function focusQuestionOpen(messages: readonly { blocks: readonly MessageBlock[] }[]) {
+  return messages.some((message) =>
+    message.blocks.some(
+      (block) =>
+        block.kind === "choice" &&
+        block.question === "What do you want me on first?" &&
+        !block.answerId,
+    ),
+  );
+}

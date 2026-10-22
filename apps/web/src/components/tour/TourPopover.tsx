@@ -10,6 +10,9 @@ export type TourStep = {
   text: string;
 };
 
+/** About as tall as a card; keeps a card placed under a target inside the window. */
+const CARD_HEIGHT = 140;
+
 /** Below the `lg` breakpoint the sidebar is a drawer (the shell opens it for the tour). */
 const WIDE = "(min-width: 1024px)";
 
@@ -116,13 +119,30 @@ export function TourPopover({
   const last = index === (present?.length ?? 0) - 1;
   const body = (
     <>
-      <p className="text-sm" aria-live="polite">
+      <p className="min-h-10 text-sm" aria-live="polite">
         {step.text}
       </p>
-      {/* Skip tour stays on the left and Next on the right at every stop, so neither moves. */}
+      {/* Same slots at every stop: the left button is Skip tour, or Ask Chief on the last stop. */}
       <div className="flex items-center gap-2">
-        {last ? null : (
-          <Button variant="ghost" size="sm" className="-ms-2" onClick={() => onFinish("skip")}>
+        {last && lastAction ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-ms-2"
+            onClick={() => {
+              onFinish("done");
+              lastAction.run();
+            }}
+          >
+            {lastAction.label}
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`-ms-2 ${last ? "invisible" : ""}`}
+            onClick={() => onFinish("skip")}
+          >
             <Trans>Skip tour</Trans>
           </Button>
         )}
@@ -135,19 +155,7 @@ export function TourPopover({
             <Trans>Back</Trans>
           </Button>
         ) : null}
-        {last && lastAction ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              onFinish("done");
-              lastAction.run();
-            }}
-          >
-            {lastAction.label}
-          </Button>
-        ) : null}
-        <Button size="sm" autoFocus onClick={() => (last ? onFinish("done") : setIndex(index + 1))}>
+        <Button size="sm" className="min-w-16" autoFocus onClick={() => (last ? onFinish("done") : setIndex(index + 1))}>
           {last ? <Trans>Done</Trans> : <Trans>Next</Trans>}
         </Button>
       </div>
@@ -160,15 +168,24 @@ export function TourPopover({
     // Beside the ringed row, in the page next to the sidebar, so the sidebar's own rows stay visible.
     // Centred on the row and kept inside the window; a phone puts it on the half away from the ring.
     const targetAbove = ring && rect.top + rect.height / 2 < window.innerHeight / 2;
+    // The composer, when it is on the page: a card for a low target stays above it.
+    const composerTop = document
+      .querySelector('[data-testid="composer-bar"]')
+      ?.getBoundingClientRect().top;
     const place =
       column && ring
-        ? {
-            top: Math.min(Math.max(rect.top + rect.height / 2, 96), window.innerHeight - 96),
-            transform: "translateY(-50%)",
-          }
-        : targetAbove || !ring
-          ? { bottom: 16 }
-          : { top: 16 };
+        ? targetAbove || !composerTop
+          ? {
+              top: Math.min(Math.max(rect.top + rect.height / 2, 96), window.innerHeight - 96),
+              transform: "translateY(-50%)",
+            }
+          : { bottom: window.innerHeight - composerTop + 8 }
+        : // A phone: right beside the target, below a high one and above a low one.
+          ring
+          ? targetAbove
+            ? { top: Math.min(rect.bottom + 8, window.innerHeight - CARD_HEIGHT - 8) }
+            : { bottom: Math.max(window.innerHeight - rect.top + 8, 8) }
+          : { bottom: 16 };
     const span = column ? { left: column.right + 8, width: 288 } : undefined;
     return (
       <>

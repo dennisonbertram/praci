@@ -70,9 +70,9 @@ export const Phone: StoryObj<typeof meta> = {
   parameters: { viewport: { defaultViewport: "mobile1" } },
 };
 
-/** The last stop at the bottom of a phone: the card sits just above the account button. */
+/** The last stop at the bottom of a phone: the card sits just above the account button, with Ask Chief on the left. */
 export const PhoneLastStop: StoryObj<typeof meta> = {
-  args: { steps: steps.slice(-1) },
+  args: { steps: steps.slice(-1), lastAction: { label: "Ask Chief", run: () => undefined } },
   globals: { viewport: { value: "mobile1" } },
   parameters: { viewport: { defaultViewport: "mobile1" } },
 };

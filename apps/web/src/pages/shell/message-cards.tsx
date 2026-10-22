@@ -130,7 +130,7 @@ function OnboardingFocusOptionHint({ id, question }: { id: string; question: str
   if (question !== "What do you want me on first?") return null;
   const hint =
     id === "company" ? (
-      <Trans>Cash, cap table, investors and email</Trans>
+      <Trans>Email, calendar and your company pages</Trans>
     ) : id === "day" ? (
       <Trans>Slack, calendar and email</Trans>
     ) : id === "inbox" ? (
