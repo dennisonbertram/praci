@@ -82,8 +82,17 @@ export async function roundIdForStage(
  */
 async function writeContact(prisma: Db, actor: Scope, input: ContactSaveInput): Promise<Contact> {
   const scope = ownerOf(actor);
-  const { id, ...fields } = input;
-  const data = { ...fields, roundId: await roundIdForStage(prisma, scope, fields.stage) };
+  const { id, roundId: keepRound, ...fields } = input;
+  let roundId = await roundIdForStage(prisma, scope, fields.stage);
+  if (keepRound && fields.stage === "committed") {
+    const own = await prisma.fundraiseRound.findFirst({
+      where: { id: keepRound, ...scope },
+      select: { id: true },
+    });
+    if (!own) throw new IsolationError("Round not found");
+    roundId = own.id;
+  }
+  const data = { ...fields, roundId };
   if (!id)
     return toContact(
       await prisma.contact.create({ data: { ...scope, ...data }, include: withBot }),

@@ -60,6 +60,8 @@ export const ContactSaveInputSchema = z.object({
   stage: ContactStageSchema.nullish(),
   checkSizeCents: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).nullish(),
   nextStep: z.string().trim().max(500).nullish(),
+  /** Keeps a Committed prospect in this round (Undo of a delete) instead of the open one. */
+  roundId: Id.optional(),
 });
 export type ContactSaveInput = z.infer<typeof ContactSaveInputSchema>;
 
