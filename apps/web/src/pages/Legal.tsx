@@ -194,6 +194,8 @@ function Legal({
     const stop = setTimeout(() => {
       clearInterval(poll);
       setWaitingFor(null);
+      beforeScan.current = null;
+      setScanResult(t`Scan is still running. Check back shortly.`);
     }, SCAN_WAIT_MS);
     return () => {
       clearInterval(poll);

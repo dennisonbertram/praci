@@ -156,7 +156,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     expect(saved.derivedDeadlines.map((d: any) => [d.kind, d.dueDate])).toEqual([
       ["notice", "2027-03-01"],
     ]);
-    expect(saved.derivedDeadlines[0].notes).toContain("Renews automatically on 2027-03-31");
+    expect(saved.derivedDeadlines[0].notes).toContain("Renews automatically on Mar 31, 2027");
     expect((await legal(a, "legal_unreviewed_documents", {})).documents).toEqual([]);
 
     await prisma.dataRoomItem.update({

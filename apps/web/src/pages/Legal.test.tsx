@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { act, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const text = vi.hoisted(
@@ -43,7 +43,7 @@ import {
   id,
   overview,
 } from "./legal/fixtures";
-import { LegalContracts } from "./legal/LegalContracts";
+import { LegalContracts, withoutSelf } from "./legal/LegalContracts";
 import { LegalDeadlines } from "./legal/LegalDeadlines";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -923,6 +923,72 @@ it("names the contract in the Undo line and keeps it for 30 seconds", async () =
     expect(button("Undo")).toBeDefined();
     await act(async () => void (await vi.advanceTimersByTimeAsync(2_000)));
     expect(button("Undo")).toBeUndefined();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("leaves the company out of Parties even with a (Mock) note or a suffix, so the counterparty comes first", () => {
+  const mine = { ...contracts[0]!, counterparties: ["Northwind Robotics (Mock)", "Acme Hosting"] };
+  expect(withoutSelf(mine, "Northwind Robotics").counterparties).toEqual(["Acme Hosting"]);
+  const suffixed = { ...contracts[0]!, counterparties: ["Northwind Robotics, Inc.", "Acme"] };
+  expect(withoutSelf(suffixed, "Northwind Robotics").counterparties).toEqual(["Acme"]);
+  // Only the company itself: kept, so the cell is not empty.
+  const only = { ...contracts[0]!, counterparties: ["Northwind Robotics (Mock)"] };
+  expect(withoutSelf(only, "Northwind Robotics").counterparties).toEqual(only.counterparties);
+});
+
+it("opens the contract from a click anywhere on its row, and shows the Renewal notice in full", async () => {
+  const Where = () => <p data-testid="where">{useLocation().pathname + useLocation().search}</p>;
+  await render(
+    <>
+      <LegalContracts contracts={contracts} />
+      <Where />
+    </>,
+  );
+  const row = container.querySelector("tbody tr");
+  const renewalCell = [...(row?.querySelectorAll("td") ?? [])].find((td) =>
+    td.textContent?.startsWith("Auto-renews"),
+  );
+  expect(renewalCell?.className).not.toContain("truncate");
+  await click(row?.querySelectorAll("td")[3]);
+  expect(container.querySelector('[data-testid="where"]')?.textContent).toBe(
+    `/app/data-room?item=${contracts[0]!.dataRoomItemId}`,
+  );
+});
+
+it("says the derivation of notice deadlines once, and writes dates in notes the way the page does", async () => {
+  const note = "Derived from the expiration date and the notice period.";
+  const rows = [
+    { ...deadlines[0]!, id: id(80), notes: `${note} Renews automatically on 2026-12-10.` },
+    { ...deadlines[1]!, id: id(81), notes: note },
+  ];
+  await render(<LegalDeadlines deadlines={rows} onChanged={() => {}} today="2026-10-16" />);
+  const page = container.textContent ?? "";
+  expect(page.split("derived from the expiration date").length - 1).toBe(1);
+  expect(page).not.toContain("Derived from");
+  expect(page).toContain("Renews automatically on Dec 10, 2026.");
+  expect(page).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+});
+
+it("ends a scan that outlasts the wait with a one-line result", async () => {
+  vi.useFakeTimers();
+  try {
+    const running = {
+      ...overview,
+      agent: {
+        ...overview.agent,
+        lastScanRun: { id: id(7), status: "running" as const, error: null },
+      },
+    };
+    rpcMock.overview.mockResolvedValueOnce(overview).mockResolvedValue(running);
+    rpcMock.scanNow.mockResolvedValue({ runId: id(7), botId: id(2) });
+    await render(<LegalPage />);
+    await click(button("Scan now"));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(5 * 60_000 + 100)));
+    expect(container.querySelector("[role=status]")?.textContent).toContain(
+      "Scan is still running",
+    );
   } finally {
     vi.useRealTimers();
   }

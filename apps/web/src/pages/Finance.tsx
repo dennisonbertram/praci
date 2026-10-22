@@ -436,11 +436,12 @@ function Overview({
                       </span>
                     ) : null}
                     <span className="truncate">
-                      {syncing
-                        ? t`${sourceNames} · syncing…`
-                        : updated
-                          ? t`${sourceNames} · synced ${updated}`
-                          : sourceNames}
+                      {/* A phone has room for the time only; Accounts names the sources. */}
+                      <span className={updated || syncing ? "max-sm:hidden" : undefined}>
+                        {sourceNames}
+                        {updated || syncing ? " · " : ""}
+                      </span>
+                      {syncing ? t`syncing…` : updated ? t`synced ${updated}` : null}
                     </span>
                   </TooltipTrigger>
                   {data.excludedNonUsdCount > 0 ? (
