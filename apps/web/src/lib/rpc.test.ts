@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { clearSpaceSelection, selectedSpaceId, selectSpace } from "./rpc.js";
+import { clearSpaceSelection, coalescedFetch, selectedSpaceId, selectSpace } from "./rpc.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -47,5 +47,30 @@ describe("space selection storage", () => {
 
     expect(selectSpace("space-support")).toBe(true);
     expect(setItem).toHaveBeenCalledWith("rakazo:space-id", "space-support");
+  });
+});
+
+describe("coalescedFetch", () => {
+  const call = (path: string, send: (r: Request) => Promise<Response>, space = "a") =>
+    coalescedFetch(
+      new Request(`http://x/rpc${path}`, { method: "POST", body: "{}" }),
+      send,
+      "{}",
+      space,
+    );
+
+  it("shares one request between identical in-flight list calls", async () => {
+    const send = vi.fn(async () => new Response('{"ok":1}'));
+    const [a, b] = await Promise.all([call("/bots/list", send), call("/bots/list", send)]);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(await a.text()).toBe('{"ok":1}');
+    expect(await b.text()).toBe('{"ok":1}');
+  });
+
+  it("does not share across spaces or other procedures", async () => {
+    const send = vi.fn(async () => new Response("{}"));
+    await Promise.all([call("/bots/list", send, "a"), call("/bots/list", send, "b")]);
+    await Promise.all([call("/bots/create", send), call("/bots/create", send)]);
+    expect(send).toHaveBeenCalledTimes(4);
   });
 });

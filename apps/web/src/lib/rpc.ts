@@ -51,6 +51,33 @@ export function withSpaceHeaders(
   return headers;
 }
 
+/**
+ * Read calls that several components issue at once (sidebar, thread refresh, toasts).
+ * Identical calls made while one is in flight share its response.
+ */
+const COALESCED_PATHS = ["/bots/list", "/routines/list"];
+const inFlight = new Map<string, Promise<Response>>();
+
+export function coalescedFetch(
+  request: Request,
+  send: (request: Request) => Promise<Response>,
+  body: string,
+  spaceId: string | null,
+): Promise<Response> {
+  const path = new URL(request.url).pathname;
+  if (!COALESCED_PATHS.some((suffix) => path.endsWith(suffix))) return send(request);
+  const key = `${spaceId ?? ""}|${path}|${body}`;
+  let pending = inFlight.get(key);
+  if (!pending) {
+    // Shared requests ignore per-caller abort signals so one caller cannot cancel the others.
+    pending = send(
+      new Request(request.url, { method: request.method, headers: request.headers, body }),
+    ).finally(() => inFlight.delete(key));
+    inFlight.set(key, pending);
+  }
+  return pending.then((response) => response.clone());
+}
+
 const link = new RPCLink<RpcClientContext>({
   url: () =>
     typeof window === "undefined"
@@ -69,10 +96,13 @@ const link = new RPCLink<RpcClientContext>({
     }
     const spaceId =
       options.context.spaceId === undefined ? selectedSpaceId() : options.context.spaceId;
-    return fetch(request, {
-      headers: withSpaceHeaders(request.headers, spaceId),
-      credentials: "include",
-    });
+    const send = (req: Request) =>
+      fetch(req, {
+        headers: withSpaceHeaders(req.headers, spaceId),
+        credentials: "include",
+      });
+    if (request.method !== "POST") return send(request);
+    return coalescedFetch(request, send, await request.clone().text(), spaceId);
   },
 });
 
