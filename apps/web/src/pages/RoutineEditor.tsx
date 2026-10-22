@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
   Input,
   NativeSelect,
+  NativeSelectOptGroup,
   NativeSelectOption,
   Popover,
   PopoverContent,
@@ -316,18 +317,6 @@ export function RoutineEditor({
     draft.webhookEnabled ||
     draft.githubEnabled ||
     Boolean(draft.messageProvider);
-  // Flash "Saved" when a save finishes without an error.
-  const [justSaved, setJustSaved] = useState(false);
-  const wasSaving = useRef(false);
-  useEffect(() => {
-    if (wasSaving.current && !saving && !error) {
-      setJustSaved(true);
-      const timer = setTimeout(() => setJustSaved(false), 2000);
-      wasSaving.current = saving;
-      return () => clearTimeout(timer);
-    }
-    wasSaving.current = saving;
-  }, [saving, error]);
   // A saved routine has nothing to save until a field changes. The baseline is the draft as
   // it stood when this routine was opened or last saved (the parent swaps `editing` on save).
   const draftKey = JSON.stringify(draft);
@@ -493,11 +482,23 @@ export function RoutineEditor({
           }
         >
           <NativeSelectOption value="">{t`Add a skill`}</NativeSelectOption>
-          {pickableSkills.map((entry) => (
-            <NativeSelectOption key={entry.id} value={entry.name}>
-              {slashSkillLabel(entry).title}
-            </NativeSelectOption>
-          ))}
+          {[
+            { label: t`Yours`, entries: pickableSkills.filter((entry) => entry.source === "user") },
+            {
+              label: t`Built-in`,
+              entries: pickableSkills.filter((entry) => entry.source !== "user"),
+            },
+          ].map(({ label, entries }) =>
+            entries.length ? (
+              <NativeSelectOptGroup key={label} label={label}>
+                {entries.map((entry) => (
+                  <NativeSelectOption key={entry.id} value={entry.name}>
+                    {slashSkillLabel(entry).title}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelectOptGroup>
+            ) : null,
+          )}
         </NativeSelect>
       ) : null}
 
@@ -738,7 +739,7 @@ export function RoutineEditor({
 
       <div className="mt-5">
         <Button disabled={saving || running || !hasTriggers || unchanged} onClick={onSave}>
-          {saving ? t`Saving…` : justSaved ? t`Saved` : t`Save`}
+          {saving ? t`Saving…` : unchanged ? t`Saved` : t`Save`}
         </Button>
       </div>
       {error ? (

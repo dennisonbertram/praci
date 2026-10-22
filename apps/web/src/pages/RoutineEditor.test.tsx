@@ -138,7 +138,10 @@ it("keeps Save off for a saved routine until a field changes, and shows its next
   const save = () =>
     [...el.querySelectorAll("button")].find((button) => button.textContent === "Save");
   await render(draft);
-  expect(save()?.disabled).toBe(true);
+  expect(save()).toBeUndefined();
+  // Nothing edited: the button keeps saying "Saved", not "Save", so a Test run does not look like an edit.
+  const saved = [...el.querySelectorAll("button")].find((b) => b.textContent === "Saved");
+  expect(saved?.disabled).toBe(true);
   expect(el.textContent).toContain("Next run");
   await render({ ...draft, name: "Monday cash check" });
   expect(save()?.disabled).toBe(false);
