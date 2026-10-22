@@ -2253,6 +2253,10 @@ msgstr ""
 msgid "Check for updates"
 msgstr "Rechercher des mises à jour"
 
+#: src/pages/Legal.tsx
+msgid "Check now"
+msgstr ""
+
 #: src/components/ContactDialog.tsx
 msgid "Check size"
 msgstr ""
@@ -4484,6 +4488,7 @@ msgid "Drop to add to Data room"
 msgstr ""
 
 #: src/pages/Finance.tsx
+#: src/pages/legal/LegalContracts.tsx
 msgid "Due"
 msgstr ""
 
@@ -8549,6 +8554,7 @@ msgid "Renews {day}"
 msgstr ""
 
 #: src/components/fundraising/RoundCard.tsx
+#: src/pages/Legal.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Reopen"
 msgstr "Rouvrir"
@@ -8732,10 +8738,6 @@ msgstr ""
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 msgid "Revenue"
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Review"
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -8965,6 +8967,10 @@ msgstr "Enregistré. Tournez pour révéler."
 
 #: src/pages/shell/working-label.ts
 msgid "Saving a contact"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Saving results…"
 msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx

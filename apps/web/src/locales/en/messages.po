@@ -2253,6 +2253,10 @@ msgstr "Check for receipt"
 msgid "Check for updates"
 msgstr "Check for updates"
 
+#: src/pages/Legal.tsx
+msgid "Check now"
+msgstr "Check now"
+
 #: src/components/ContactDialog.tsx
 msgid "Check size"
 msgstr "Check size"
@@ -4484,6 +4488,7 @@ msgid "Drop to add to Data room"
 msgstr "Drop to add to Data room"
 
 #: src/pages/Finance.tsx
+#: src/pages/legal/LegalContracts.tsx
 msgid "Due"
 msgstr "Due"
 
@@ -8549,6 +8554,7 @@ msgid "Renews {day}"
 msgstr "Renews {day}"
 
 #: src/components/fundraising/RoundCard.tsx
+#: src/pages/Legal.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Reopen"
 msgstr "Reopen"
@@ -8733,10 +8739,6 @@ msgstr "Return to Praci"
 #: src/components/finance/ui.tsx
 msgid "Revenue"
 msgstr "Revenue"
-
-#: src/pages/Legal.tsx
-msgid "Review"
-msgstr "Review"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
@@ -8966,6 +8968,10 @@ msgstr "Saved. Rotate to reveal."
 #: src/pages/shell/working-label.ts
 msgid "Saving a contact"
 msgstr "Saving a contact"
+
+#: src/pages/Legal.tsx
+msgid "Saving results…"
+msgstr "Saving results…"
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Saving your workspace"
