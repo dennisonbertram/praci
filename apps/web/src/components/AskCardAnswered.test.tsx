@@ -66,3 +66,18 @@ it.each([
 ])("words the %s answer as %s", (answer, words) => {
   expect(render(answer).textContent).toBe(words);
 });
+
+it("shows a typed answer once: the card says Answered, the user bubble carries the text", () => {
+  const container = document.createElement("div");
+  act(() =>
+    createRoot(container).render(
+      <AskCard
+        block={{ kind: "ask", text: "Which month?", status: "answered", answer: "October" }}
+        canAnswer={false}
+        onAnswer={async () => undefined}
+      />,
+    ),
+  );
+  expect(container.querySelector(".font-medium")?.textContent).toBe("Answered");
+  expect(container.textContent).not.toContain("October");
+});

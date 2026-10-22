@@ -3,7 +3,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { ChatMarkdown } from "@rakazo/chat-ui/web";
 import type { ThreadMessage } from "@rakazo/contracts";
 import { commandVariableName } from "@rakazo/contracts";
-import { isApprovalAskBlock, isSecretAskBlock, selectedAskActionLabel } from "@rakazo/core";
+import { isApprovalAskBlock, isSecretAskBlock, resolveAskChoice } from "@rakazo/core";
 import { Button, Input } from "@rakazo/ui-web";
 import { Check, KeyRound, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
@@ -26,7 +26,11 @@ function formatAnsweredState(
   if (!answer) return t`Answered`;
   if (share && approval) return answer === "allow" ? t`Shared` : t`Not shared`;
   if (consent && approval) return answer === "allow" ? t`Allowed` : t`Not now`;
-  if (!approval) return t`Answered: ${selectedAskActionLabel(answer, actions)}`;
+  // A typed answer is already the user's own bubble; only a chosen option is named here.
+  if (!approval) {
+    const choice = resolveAskChoice(answer, actions);
+    return choice ? t`Answered: ${choice.label}` : t`Answered`;
+  }
   if (outcome === "created") return t`Created`;
   if (outcome === "cancelled") return t`Cancelled`;
   if (answer === "allow") return t`Approved`;

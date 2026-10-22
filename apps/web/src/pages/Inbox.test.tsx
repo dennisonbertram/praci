@@ -781,6 +781,36 @@ it("stops spinning when sorting stalls and offers to try again", async () => {
   expect(c.textContent).toContain("Sorting your mail…");
 });
 
+it("shows the unsorted rows, dimmed, after 15 s of the first sort", async () => {
+  rpcMock.list.mockImplementation(async () => list([row("a"), row("b")], { triagePending: true }));
+  const c = await render();
+  expect(c.querySelector("[aria-busy=true]")).not.toBeNull();
+  await dwell(16_000);
+  expect(c.querySelector("[aria-busy=true]")).toBeNull();
+  expect(c.textContent).toContain("noise a");
+  expect(c.textContent).toContain("Sorting your mail…");
+  expect(c.querySelector(".opacity-60")).not.toBeNull();
+});
+
+it("does not say First sync once a refresh reports an earlier sync", async () => {
+  vi.useFakeTimers();
+  try {
+    rpcMock.list.mockReturnValue(new Promise(() => {}));
+    rpcMock.refresh.mockImplementation(async () => ({
+      syncing: true,
+      syncedAt: "2026-01-01T00:00:00Z",
+    }));
+    const c = await render();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6_000);
+    });
+    expect(c.textContent).not.toContain("First sync can take a minute");
+    expect(c.textContent).toContain("Reading your mail…");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 it("keeps the sorting stall notice through the minute sync", async () => {
   vi.useFakeTimers();
   try {
@@ -822,6 +852,7 @@ it("says a first sync can take a minute after 5 s, and shows the consent prompt 
     rpcMock.list.mockResolvedValue(
       list([], {
         enabled: false,
+        syncedAt: null,
         triageBlocked: {
           reason: "needs_consent",
           recipient: { key: "k", name: "Model" },

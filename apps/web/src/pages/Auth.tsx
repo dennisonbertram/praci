@@ -72,6 +72,10 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!reset?.passwordAuth) return;
+    if (mode === "up" && !name.trim()) {
+      setError(t`Enter your name`);
+      return;
+    }
     const issue = credentialIssue({ email, password: mode === "forgot" ? undefined : password });
     if (issue) {
       setError(credentialIssueText(issue));
@@ -154,7 +158,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   }
 
   return (
-    <AuthFrame onSubmit={submit} title={title}>
+    <AuthFrame noValidate onSubmit={submit} title={title}>
       {sent ? (
         <div className="flex w-full flex-col items-center gap-4 text-center">
           {resetSent ? (
@@ -473,15 +477,21 @@ export function PasswordResetPage() {
 export function AuthFrame({
   title,
   onSubmit,
+  noValidate,
   children,
 }: {
   title: React.ReactNode;
+  noValidate?: boolean;
   onSubmit: (event: React.FormEvent) => void;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex min-h-full items-center justify-center bg-background px-6 py-16 text-foreground">
-      <form onSubmit={onSubmit} className="flex w-[460px] flex-col items-center">
+      <form
+        noValidate={noValidate}
+        onSubmit={onSubmit}
+        className="flex w-[460px] flex-col items-center"
+      >
         <div className="flex h-[74px] w-[74px] items-center justify-center gap-[11px] rounded-full bg-muted">
           <span className="h-5 w-[9px] rounded-full bg-primary" />
           <span className="h-5 w-[9px] rounded-full bg-primary" />

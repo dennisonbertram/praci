@@ -71,7 +71,7 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
     .toBe("waiting_takeover");
   const computerCard = page.getByTestId("computer-card");
   await expect(computerCard).toBeVisible();
-  await expect(computerCard.getByText("Needs you", { exact: true })).toBeVisible();
+  await expect(computerCard.getByText("Needs takeover", { exact: true })).toBeVisible();
   await expect(computerCard.getByTestId("computer-card-open")).toBeVisible();
   await captureScreenshot(page, testInfo, "08-protected-input-request");
   await computerCard.getByTestId("computer-card-open").click();
@@ -102,9 +102,9 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
   // Agent computer toggles the panel. Re-open when closed so Open can refresh computer status.
   const sidePanel = page.getByTestId("side-panel");
   if ((await sidePanel.getAttribute("data-panel")) === "computer") {
-    await page.getByTitle("Computer and routines").click();
+    await page.getByTitle(/^(Computer and )?routines$/i).click();
   }
-  await page.getByTitle("Computer and routines").click();
+  await page.getByTitle(/^(Computer and )?routines$/i).click();
   await expect(sidePanel).toHaveAttribute("data-panel", "computer");
   await expect(sidePanel).toHaveCSS("width", "384px");
   const [mainBox, panelBox] = await Promise.all([
@@ -251,7 +251,7 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
   await page.getByText("Chief").first().click();
   const gear = page.getByRole("button", { name: "Show settings" });
   if (!(await gear.isVisible().catch(() => false))) {
-    await page.getByTitle("Computer and routines").click();
+    await page.getByTitle(/^(Computer and )?routines$/i).click();
   }
   await gear.click();
   const downloadPromise = page.waitForEvent("download");

@@ -191,6 +191,18 @@ it("Select all ticks the whole plan, so applying it takes two clicks", async () 
   expect(button("Apply").textContent).toBe("Apply 2 changes");
 });
 
+it("shows one Select all when there are several changes", async () => {
+  autoSort.plan.mockResolvedValue({
+    mode: "ai",
+    operations: [
+      { ...plan.operations[1], key: "m1", fromFolderId: "f9" },
+      { ...plan.operations[1], key: "m2", itemId: "i3", fromFolderId: "f9" },
+    ],
+  });
+  await render();
+  expect(document.body.textContent?.match(/Select all/g)).toHaveLength(1);
+});
+
 it("says what to do when no change is ticked, instead of Apply 0 changes", async () => {
   autoSort.plan.mockResolvedValue({
     mode: "ai",

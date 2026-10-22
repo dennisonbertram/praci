@@ -193,6 +193,20 @@ it("offers no checkbox unless the list can check rows", async () => {
   expect(document.querySelector('[role="checkbox"]')).toBeNull();
 });
 
+it("keeps the checkbox out of the Tab order and reaches it with the arrow keys", async () => {
+  await show({ onPick: vi.fn() });
+  const rowButton = document.querySelector<HTMLElement>("button[data-row-id]");
+  const box = document.querySelector<HTMLElement>('[role="checkbox"]');
+  expect(box?.tabIndex).toBe(-1);
+  await act(async () => rowButton?.focus());
+  await act(async () => {
+    rowButton?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true }),
+    );
+  });
+  expect(document.activeElement).toBe(box);
+});
+
 it("checks the row from its own checkbox without opening it, and passes the shift key", async () => {
   const onPick = vi.fn();
   const onOpen = vi.fn();

@@ -429,6 +429,11 @@ const PLAIN_TOOL_WORDS: Record<string, string> = {
   scratchpad_remove: "remove note",
   task_catalog: "get open tasks",
   legal_unreviewed_documents: "get unreviewed documents",
+  legal_upsert_node: "update legal records",
+  legal_upsert_contract: "update contracts",
+  legal_upsert_deadline: "update deadlines",
+  legal_link: "update legal records",
+  legal_query: "get legal records",
   // Mercury asks for approval; nothing moves until the user allows it.
   "request send money": "ask to send money",
   "request transfer money": "ask to transfer money",

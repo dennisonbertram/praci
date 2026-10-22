@@ -1,4 +1,4 @@
-import type { Routine } from "@rakazo/contracts";
+import type { AgentSkillCatalogEntry, Routine } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { mockRpc, resetRpcMocks } from "../lib/__mocks__/rpc";
@@ -121,6 +121,7 @@ function Editor({
   initial,
   webhook = { path: "/hooks/bot_demo/abc123", secret: null, configured: false },
   messageProviders = ["slack"],
+  skills = [],
   saving = false,
   running = false,
   error = null,
@@ -129,6 +130,7 @@ function Editor({
   initial: ReturnType<typeof emptyRoutineDraft>;
   webhook?: { path: string; secret: string | null; configured: boolean };
   messageProviders?: string[];
+  skills?: AgentSkillCatalogEntry[];
   saving?: boolean;
   running?: boolean;
   error?: string | null;
@@ -143,6 +145,7 @@ function Editor({
       webhook={webhook}
       githubPath="/hooks/github/bot_demo"
       messageProviders={messageProviders}
+      skills={skills}
       saving={saving}
       running={running}
       error={error}
@@ -155,6 +158,28 @@ function Editor({
     />
   );
 }
+
+const skillOptions: AgentSkillCatalogEntry[] = [
+  {
+    id: "skill_1",
+    name: "Weekly cash check",
+    description: "Reads balances and flags changes.",
+    source: "user",
+    readOnly: false,
+  },
+  {
+    id: "skill_2",
+    name: "finance-monthly-review",
+    description: "Spend, changes, and new or upcoming charges.",
+    source: "builtin",
+    readOnly: true,
+  },
+];
+
+/** The bot's skills can be added to the instruction; choosing one inserts its @mention. */
+export const WithSkills: Story = {
+  render: () => <Editor editing={null} initial={emptyRoutineDraft()} skills={skillOptions} />,
+};
 
 export const NewRoutine: Story = {
   render: () => <Editor editing={null} initial={emptyRoutineDraft()} />,

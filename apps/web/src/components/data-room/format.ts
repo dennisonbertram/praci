@@ -30,16 +30,17 @@ export const typeLabel = (docType: string | null) =>
 /**
  * True once the item's text, type and folder are in place. "indexing" only brings search up to
  * date (after a rename or move too), so it shows as done rather than sending the row back to
- * "Reading".
+ * "Reading". Once the text is stored (`hasText`) the file is searchable, so it never reads "Reading".
  */
-export const isSettled = (status: string) => status === "ready" || status === "indexing";
+export const isSettled = (status: string, hasText = false) =>
+  status === "ready" || status === "indexing" || (hasText && status !== "failed");
 
 /**
  * The word for an item's status. Every working step is "Reading": whether the item is then tagged
  * and filed depends on consent, so the list never promises filing it may not do.
  */
-export const statusLabel = (status: string) =>
-  status === "failed" ? t`Failed` : isSettled(status) ? "" : t`Reading`;
+export const statusLabel = (status: string, hasText = false) =>
+  status === "failed" ? t`Failed` : isSettled(status, hasText) ? "" : t`Reading`;
 
 /** The step a working item is in, for the hint on its row. */
 export const stageLabel = (status: string) =>
@@ -109,7 +110,14 @@ export function readingAge(updatedAt: string, now = Date.now()) {
   return days < 1 ? t`Reading for ${hours} h` : t`Reading for ${days} d`;
 }
 
-/** A file still being read with no pipeline write for 10 minutes: it offers Try again. */
-export const isStuck = (item: { status: string; updatedAt: string }, now = Date.now()) =>
+/** A file still being read with no pipeline write for 3 minutes and no stored text: it offers Try again. */
+export const isStuck = (
+  item: { status: string; updatedAt: string; previewText?: string | null },
+  now = Date.now(),
+) =>
   !["ready", "failed"].includes(item.status) &&
+  !item.previewText &&
   now - new Date(item.updatedAt).getTime() > DATA_ROOM_STUCK_MS;
+
+/** ShareDialog fires this after a share or unshare so an open preview recounts who has the file. */
+export const SHARES_CHANGED = "data-room-shares-changed";

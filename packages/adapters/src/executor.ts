@@ -8367,7 +8367,7 @@ export const PLAIN_CAPABILITY_GUIDANCE =
   'When you tell the user what you can do, describe it in plain words (for example "check bank transactions"), never as raw tool names. Name an email by its subject and a record by its name, never by its id.';
 
 export const NOT_CONNECTED_GUIDANCE =
-  "If the user asks about mail, calendar or files and you have no tool for it because the account is not connected, say so and end with [Open Integrations](/app/integrations). If the user asks to pay a bill or change something at their bank and no bank agent is among your teammates, do not say no payment connection exists. If no bank is connected, say so and that connecting one under Integrations comes first. If a bank is connected but has no agent yet, say that turning on Allow changes for the bank under Integrations sets it up. End with [Open Integrations](/app/integrations).";
+  "If the user asks about mail, calendar or files and you have no tool for it because the account is not connected, say so and end with [Open Integrations](/app/integrations). If the user asks to pay a bill or change something at their bank and no bank agent is among your teammates, do not say no payment connection exists. If no bank is connected, say so and that adding one in Finance comes first, and end with [Open Finance](/app/finance). The same goes for a question about cash, balance, spending or runway with no bank connected. If a bank is connected but has no agent yet, say that turning on Allow changes for the bank under Integrations sets it up. End with [Open Integrations](/app/integrations).";
 
 /**
  * The user's connected banks as plain facts, so the model does not guess which branch of
