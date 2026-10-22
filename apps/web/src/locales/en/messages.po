@@ -198,6 +198,18 @@ msgstr "{0} (over 10 MB)"
 msgid "{0} (overdue)"
 msgstr "{0} (overdue)"
 
+#. placeholder {0}: owner(investorName)
+#. placeholder {1}: usd(amountCents)
+#: src/pages/Fundraising.tsx
+msgid "{0} {1} SAFE is signed and unpaid."
+msgstr "{0} {1} SAFE is signed and unpaid."
+
+#. placeholder {0}: owner(investorName)
+#. placeholder {1}: usd(amountCents)
+#: src/pages/Fundraising.tsx
+msgid "{0} {1} SAFE will be removed."
+msgstr "{0} {1} SAFE will be removed."
+
 #. placeholder {0}: selected.name
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "{0} API key"
@@ -450,16 +462,6 @@ msgstr "{imported, plural, one {Imported # file} other {Imported # files}}"
 #: src/pages/Shell.tsx
 msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
 msgstr "{inboxUnread, plural, one {# unread} other {# unread}}"
-
-#. placeholder {0}: usd(amountCents)
-#: src/pages/Fundraising.tsx
-msgid "{investorName}'s {0} SAFE is signed and unpaid."
-msgstr "{investorName}'s {0} SAFE is signed and unpaid."
-
-#. placeholder {0}: usd(amountCents)
-#: src/pages/Fundraising.tsx
-msgid "{investorName}'s {0} SAFE will be removed."
-msgstr "{investorName}'s {0} SAFE will be removed."
 
 #: src/components/sidebar-folders/SidebarDnd.tsx
 msgid "{item} dropped on {target}."

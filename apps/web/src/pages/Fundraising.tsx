@@ -135,15 +135,17 @@ export function FundraisingPage({
     void run(() => rpc.fundraising.round.close({ id: round.id }), t`Could not close the round`);
   };
 
+  // "Harbor Angels' $50,000 SAFE", "Ada Fund's $50,000 SAFE".
+  const owner = (name: string) => (name.endsWith("s") ? `${name}'` : `${name}'s`);
   const confirmText = (() => {
     if (confirm?.kind === "delete") {
       const { investorName, amountCents } = confirm.safe;
-      return t`${investorName}'s ${usd(amountCents)} SAFE will be removed.`;
+      return t`${owner(investorName)} ${usd(amountCents)} SAFE will be removed.`;
     }
     const first = confirm?.unpaid[0];
     if (confirm?.unpaid.length === 1 && first) {
       const { investorName, amountCents } = first;
-      return t`${investorName}'s ${usd(amountCents)} SAFE is signed and unpaid.`;
+      return t`${owner(investorName)} ${usd(amountCents)} SAFE is signed and unpaid.`;
     }
     const count = confirm?.unpaid.length ?? 0;
     return t`${count} SAFEs are signed and unpaid.`;

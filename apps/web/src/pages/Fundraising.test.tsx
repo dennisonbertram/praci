@@ -484,7 +484,7 @@ it("confirms Close round only while a SAFE is signed and unpaid, and keeps the S
   await click(container.querySelector('[aria-label="Round actions"]'));
   await click(menuItem("Close round"));
   expect(rpcMock.roundClose).not.toHaveBeenCalled();
-  expect(document.body.textContent).toContain("Harbor Angels's $50,000 SAFE is signed and unpaid.");
+  expect(document.body.textContent).toContain("Harbor Angels' $50,000 SAFE is signed and unpaid.");
   rpcMock.roundClose.mockResolvedValue(closedRound);
   rpcMock.overview.mockResolvedValue(overview(closedRound, [], 0, [unpaid]));
   await click(dialogButton("Close round"));

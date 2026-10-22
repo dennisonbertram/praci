@@ -233,8 +233,9 @@ export function SafeCoverSummary({
     [t`Investor`, safe.investorName],
     [t`Amount`, usd(safe.amountCents)],
     [t`Valuation`, safe.capCents == null ? "—" : t`Post-money cap ${usd(safe.capCents)}`],
-    [t`Discount`, safe.discountPercent == null ? "—" : `${safe.discountPercent}%`],
-    [t`MFN`, safe.mfn ? t`Yes` : t`No`],
+    // A native SAFE has neither; they show only for terms that arrived from Mercury.
+    ...(safe.discountPercent == null ? [] : [[t`Discount`, `${safe.discountPercent}%`] as const]),
+    ...(safe.mfn ? [[t`MFN`, t`Yes`] as const] : []),
     [t`Pro rata side letter`, safe.proRata ? t`Yes` : t`No`],
     [t`Governing state`, safe.governingState ?? "—"],
     [t`Date`, day(safe.investmentDate) ?? "—"],
