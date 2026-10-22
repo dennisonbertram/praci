@@ -14,8 +14,8 @@ import type {
 import {
   BOT_DESCRIPTION_MAX_LENGTH,
   BOT_NAME_MAX_LENGTH,
+  BUILTIN_TOOL_NAMES,
   botAudienceEditable,
-  isBuiltinToolName,
 } from "@rakazo/contracts";
 import {
   connectedModelChoices,
@@ -225,7 +225,6 @@ export function BotSettings({
       live = false;
     };
   }, [bot.audience, bot.id]);
-  const [toolNameDraft, setToolNameDraft] = useState("");
   const [credentials, setCredentials] = useState<ModelCredential[]>([]);
   const [catalog, setCatalog] = useState<ModelCatalogEntry[]>([]);
   const [me, setMe] = useState<Me | null>(null);
@@ -233,7 +232,6 @@ export function BotSettings({
   // True for about two seconds after a save succeeds.
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toolError, setToolError] = useState<string | null>(null);
   // Bumped by Advanced choices that save as soon as they change.
   const [saveTick, setSaveTick] = useState(0);
   useEffect(() => {
@@ -426,22 +424,9 @@ export function BotSettings({
   }
   executeSaveRef.current = executeSave;
 
-  function disableBuiltinTools(raw: string) {
-    const names = raw
-      .split(",")
-      .map((entry) => entry.trim().toLowerCase().replace(/\s+/g, "_"))
-      .filter(Boolean);
-    if (!names.length) return;
-    const unknown = names.filter((entry) => !isBuiltinToolName(entry));
-    if (unknown.length) {
-      setToolError(t`Unknown tool: ${unknown.join(", ")}`);
-      return;
-    }
-    setToolNameDraft("");
-    setToolError(null);
-    const added = names.filter((entry) => !disabledBuiltinTools.includes(entry));
-    if (!added.length) return;
-    const next = [...disabledBuiltinTools, ...new Set(added)];
+  function disableBuiltinTool(name: string) {
+    if (!name || disabledBuiltinTools.includes(name)) return;
+    const next = [...disabledBuiltinTools, name];
     setDisabledBuiltinTools(next);
     void enqueueSave({ disabledBuiltinTools: next });
   }
@@ -588,7 +573,8 @@ export function BotSettings({
                 <>
                   <p className="mt-2 text-[12px] text-muted-foreground/70">
                     <Trans>
-                      Talks to people outside your company. Private tools are turned off.
+                      Talks to people outside your company. Anything private it would share waits
+                      for your approval. Private tools are turned off.
                     </Trans>
                   </p>
                   {grantedConnections.length ? (
@@ -820,30 +806,22 @@ export function BotSettings({
             ) : null}
             <label htmlFor={`${ids}-disabled-tools`} className={advancedLabelClass}>
               <Trans>Disabled tools</Trans>
-              <Input
+              <NativeSelect
                 id={`${ids}-disabled-tools`}
-                value={toolNameDraft}
-                placeholder={t`Tool name`}
-                spellCheck={false}
-                autoCapitalize="off"
-                autoCorrect="off"
-                onChange={(event) => {
-                  setToolNameDraft(event.target.value);
-                  setToolError(null);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key !== "Enter") return;
-                  event.preventDefault();
-                  disableBuiltinTools(event.currentTarget.value);
-                }}
-                onBlur={(event) => {
-                  if (event.currentTarget.value.trim())
-                    disableBuiltinTools(event.currentTarget.value);
-                }}
-                className="mt-1.5"
-              />
+                className="mt-1.5 w-full"
+                value=""
+                onChange={(event) => disableBuiltinTool(event.target.value)}
+              >
+                <NativeSelectOption value="">{t`Turn off a tool`}</NativeSelectOption>
+                {BUILTIN_TOOL_NAMES.filter((name) => !disabledBuiltinTools.includes(name)).map(
+                  (name) => (
+                    <NativeSelectOption key={name} value={name}>
+                      {toolLabel(name)}
+                    </NativeSelectOption>
+                  ),
+                )}
+              </NativeSelect>
             </label>
-            {toolError ? <p className="mt-1.5 text-[13px] text-destructive">{toolError}</p> : null}
             {disabledBuiltinTools.map((toolName) => (
               <label
                 key={toolName}

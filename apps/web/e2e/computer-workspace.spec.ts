@@ -24,7 +24,7 @@ async function openComputer(page: Page) {
       body: JSON.stringify({ json: { url: screenUrl } }),
     }),
   );
-  await page.getByTitle("Computer and routines").click();
+  await page.getByTitle(/^(Computer and )?routines$/i).click();
   const preview = page.getByTestId("computer-preview");
   await preview.hover();
   await preview.getByTestId("computer-preview-open").click();

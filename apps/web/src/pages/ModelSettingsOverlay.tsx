@@ -358,6 +358,11 @@ export function ModelSettingsOverlay({
   const selectedProviderName = selected?.providerName ?? selected?.provider ?? "";
   const disconnectName = selectedProviderName;
   const hostCredentialSource = me?.hostCredentialSource ?? "";
+  const defaultModelLabel =
+    catalog.find((entry) => entry.provider === me?.defaultProvider && entry.id === me?.defaultModel)
+      ?.label ??
+    me?.defaultModel ??
+    "";
   const serverCredentialsNote = (
     <p className="text-sm leading-[1.5] text-muted-foreground">
       <Trans>
@@ -1549,7 +1554,9 @@ export function ModelSettingsOverlay({
                     serverCredentialsNote
                   ) : (
                     <p className="text-sm leading-[1.5] text-muted-foreground">
-                      <Trans>Your bots already use {selectedProviderName}.</Trans>
+                      {defaultModelLabel
+                        ? t`Your bots use ${defaultModelLabel}.`
+                        : t`Your bots already have a model.`}
                     </p>
                   )}
                   <details
@@ -1623,12 +1630,7 @@ export function ModelSettingsOverlay({
   );
 
   if (embedded) {
-    const modelLabel =
-      catalog.find(
-        (entry) => entry.provider === me?.defaultProvider && entry.id === me?.defaultModel,
-      )?.label ??
-      me?.defaultModel ??
-      "";
+    const modelLabel = defaultModelLabel;
     // Not while loading: the full panel's own skeleton shows instead of a line that then changes.
     const simple = !ownOpen && !!me && !me.needsModel && credentials.length === 0;
     return (

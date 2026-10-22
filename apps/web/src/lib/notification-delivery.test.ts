@@ -1,10 +1,20 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as approvalToasts from "./approval-toasts";
+
+vi.mock("./approval-toasts", () => ({
+  enqueueApprovalToast: vi.fn(),
+  hasApprovalToast: vi.fn(() => false),
+  retainApprovalToasts: vi.fn(),
+}));
+const toasts = vi.mocked(approvalToasts);
+
 import {
   attentionFromDto,
   deliverNotification,
   openNotificationLink,
   resultShownInOpenChat,
   shouldToast,
+  syncApprovalToasts,
 } from "./notification-delivery";
 
 describe("shouldToast", () => {
@@ -223,5 +233,45 @@ describe("attentionFromDto", () => {
     );
     expect(attentionFromDto({ ...needs, title: "Inbox agent needs a code" }).approval).toBe(false);
     expect(attentionFromDto({ ...base, kind: "done" }).approval).toBeUndefined();
+  });
+});
+
+describe("syncApprovalToasts", () => {
+  const approval = {
+    id: "n9",
+    botId: "mercury",
+    surface: "thread",
+    threadId: "t1",
+    title: "Mercury agent needs approval",
+    body: null,
+    link: "/app/mercury",
+    importance: "attention" as const,
+    kind: "needs_input" as const,
+    createdAt: "2030-01-01T00:00:00.000Z",
+    seenAt: null,
+    shownAt: "2030-01-01T00:00:01.000Z",
+  };
+  const options = { complete: true, onSeen: () => () => undefined };
+  beforeEach(() => {
+    toasts.enqueueApprovalToast.mockClear();
+    toasts.retainApprovalToasts.mockClear();
+    toasts.hasApprovalToast.mockReturnValue(false);
+  });
+  it("shows an unanswered approval again after a reload, keyed by the bot that holds the card", () => {
+    syncApprovalToasts([approval], options);
+    expect(toasts.enqueueApprovalToast).toHaveBeenCalledTimes(1);
+    expect(toasts.enqueueApprovalToast.mock.calls[0]?.[1]).toEqual({ botId: "mercury" });
+    expect(toasts.retainApprovalToasts).toHaveBeenCalledWith(new Set(["n9"]));
+  });
+  it("shows nothing for a seen approval and drops toasts the server no longer lists", () => {
+    syncApprovalToasts([{ ...approval, seenAt: "2030-01-01T00:01:00.000Z" }], options);
+    expect(toasts.enqueueApprovalToast).not.toHaveBeenCalled();
+    expect(toasts.retainApprovalToasts).toHaveBeenCalledWith(new Set());
+  });
+  it("leaves toasts alone when the list was cut short or the toast already shows", () => {
+    toasts.hasApprovalToast.mockReturnValue(true);
+    syncApprovalToasts([approval], { ...options, complete: false });
+    expect(toasts.enqueueApprovalToast).not.toHaveBeenCalled();
+    expect(toasts.retainApprovalToasts).not.toHaveBeenCalled();
   });
 });

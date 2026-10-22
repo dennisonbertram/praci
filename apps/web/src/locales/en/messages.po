@@ -869,6 +869,10 @@ msgstr "Add a run time for this one-shot."
 msgid "Add a schedule, webhook, GitHub, or message trigger"
 msgstr "Add a schedule, webhook, GitHub, or message trigger"
 
+#: src/pages/RoutineEditor.tsx
+msgid "Add a skill"
+msgstr "Add a skill"
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceAccounts.tsx
@@ -1233,6 +1237,10 @@ msgstr "Amount"
 msgid "Amounts"
 msgstr "Amounts"
 
+#: src/components/HideAmountsToggle.tsx
+msgid "Amounts hidden · Show"
+msgstr "Amounts hidden · Show"
+
 #: src/lib/model-connection-preflight.ts
 msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "An API key is stored for this provider, not a subscription sign-in."
@@ -1253,7 +1261,7 @@ msgstr "Answer auditor requests"
 msgid "Answered"
 msgstr "Answered"
 
-#. placeholder {0}: selectedAskActionLabel(answer, actions)
+#. placeholder {0}: choice.label
 #: src/components/AskCard.tsx
 msgid "Answered: {0}"
 msgstr "Answered: {0}"
@@ -2706,10 +2714,6 @@ msgstr "Connect a model"
 #: src/pages/Legal.tsx
 msgid "Connect a model in Settings first."
 msgstr "Connect a model in Settings first."
-
-#: src/pages/ModelBackupsSettings.tsx
-msgid "Connect a provider to add backups."
-msgstr "Connect a provider to add backups."
 
 #: src/pages/Shell.tsx
 msgid "Connect a voice provider to call Elio."
@@ -4641,6 +4645,10 @@ msgstr "Enter the server URL, starting with https://."
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Enter the URL, starting with https://."
 msgstr "Enter the URL, starting with https://."
+
+#: src/pages/Auth.tsx
+msgid "Enter your name"
+msgstr "Enter your name"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Equity"
@@ -6590,6 +6598,7 @@ msgstr "Needs sign-in"
 #: src/lib/roster-status.ts
 #: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Needs takeover"
 msgstr "Needs takeover"
 
@@ -6989,10 +6998,6 @@ msgstr "No team conversations yet."
 #: src/pages/Board.tsx
 msgid "No tickets yet"
 msgstr "No tickets yet"
-
-#: src/components/integrations/AppDetail.tsx
-msgid "No tools available."
-msgstr "No tools available."
 
 #: src/components/finance/ui.tsx
 msgid "No transactions in this period"
@@ -8682,6 +8687,7 @@ msgstr "Routine"
 
 #: src/pages/BotContextMenu.tsx
 #: src/pages/RoutineEditor.tsx
+#: src/pages/Shell.tsx
 msgid "Routines"
 msgstr "Routines"
 
@@ -9256,6 +9262,7 @@ msgstr "Shape"
 
 #: src/components/AskCard.tsx
 #: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/ItemMenu.tsx
 msgid "Share"
 msgstr "Share"
 
@@ -9264,19 +9271,21 @@ msgstr "Share"
 msgid "Share {0}"
 msgstr "Share {0}"
 
-#: src/components/data-room/ItemMenu.tsx
-msgid "Share with investors"
-msgstr "Share with investors"
-
 #: src/components/AskCard.tsx
+#: src/components/data-room/Preview.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Shared"
 msgstr "Shared"
 
 #. placeholder {0}: item.name
 #: src/components/data-room/ItemDialogs.tsx
-msgid "Shared {0}"
-msgstr "Shared {0}"
+msgid "Shared {0} with {count} investors"
+msgstr "Shared {0} with {count} investors"
+
+#. placeholder {0}: item.name
+#: src/components/data-room/ItemDialogs.tsx
+msgid "Shared {0} with {who}"
+msgstr "Shared {0} with {who}"
 
 #: src/pages/KnowledgeSection.tsx
 msgid "Shared by all bots"
@@ -9947,8 +9956,8 @@ msgid "Taking longer than usual"
 msgstr "Taking longer than usual"
 
 #: src/pages/shell/bot-panel.tsx
-msgid "Talks to people outside your company. Private tools are turned off."
-msgstr "Talks to people outside your company. Private tools are turned off."
+msgid "Talks to people outside your company. Anything private it would share waits for your approval. Private tools are turned off."
+msgstr "Talks to people outside your company. Anything private it would share waits for your approval. Private tools are turned off."
 
 #: src/components/ContactDialog.tsx
 #: src/components/fundraising/RoundCard.tsx
@@ -10193,6 +10202,10 @@ msgstr "The web, notes and docs"
 msgid "their portal access"
 msgstr "their portal access"
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Theme"
+msgstr "Theme"
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "These saved settings can't be read. Remove it and add it again."
 msgstr "These saved settings can't be read. Remove it and add it again."
@@ -10436,10 +10449,6 @@ msgstr "Too large to preview ({0})"
 msgid "Too large to search inside"
 msgstr "Too large to search inside"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Tool name"
-msgstr "Tool name"
-
 #: src/lib/run-phase.ts
 msgid "tools"
 msgstr "tools"
@@ -10572,6 +10581,10 @@ msgstr "Try the test again."
 msgid "Turn off"
 msgstr "Turn off"
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Turn off a tool"
+msgstr "Turn off a tool"
+
 #: src/components/MailApprovalCard.tsx
 msgid "Turn off drafts for {botName}?"
 msgstr "Turn off drafts for {botName}?"
@@ -10696,11 +10709,6 @@ msgstr "Unknown bot"
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Unknown source: {unknownSource}"
 msgstr "Unknown source: {unknownSource}"
-
-#. placeholder {0}: unknown.join(", ")
-#: src/pages/shell/bot-panel.tsx
-msgid "Unknown tool: {0}"
-msgstr "Unknown tool: {0}"
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Unlink"
@@ -10972,6 +10980,10 @@ msgstr "Use this sheet"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Use your own key"
 msgstr "Use your own key"
+
+#: src/pages/ModelBackupsSettings.tsx
+msgid "Use your own model to add backups."
+msgstr "Use your own model to add backups."
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationAgentSection.tsx
@@ -11296,6 +11308,14 @@ msgstr "Who are our investors?"
 msgid "Who owns what in the company?"
 msgstr "Who owns what in the company?"
 
+#: src/components/data-room/Preview.tsx
+msgid "With {shareCount} investors"
+msgstr "With {shareCount} investors"
+
+#: src/components/data-room/Preview.tsx
+msgid "With 1 investor"
+msgstr "With 1 investor"
+
 #: src/components/EmailCards.tsx
 msgid "Within 3 days"
 msgstr "Within 3 days"
@@ -11427,8 +11447,8 @@ msgid "Your bots already have a model."
 msgstr "Your bots already have a model."
 
 #: src/pages/ModelSettingsOverlay.tsx
-msgid "Your bots already use {selectedProviderName}."
-msgstr "Your bots already use {selectedProviderName}."
+msgid "Your bots use {defaultModelLabel}."
+msgstr "Your bots use {defaultModelLabel}."
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Your bots use {modelLabel}."

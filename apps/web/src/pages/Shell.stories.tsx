@@ -292,6 +292,40 @@ export const Conversation: Story = {
   beforeEach: loaded,
 };
 
+/** A bot with no computer in use: the button and the panel are titled Routines, with no empty screen. */
+export const ConversationRoutines: Story = {
+  decorators: [at("/app/bot_ada")],
+  beforeEach: () => {
+    loaded();
+    mockRpc({
+      "computer.screenUrl": { url: null },
+      "models.credentials": [],
+      "models.list": [],
+      "voice.voices": [],
+      "scratchpad.list": [],
+      "botSecrets.list": [],
+      "memory.list": [],
+      "agentSkills.forBot": [],
+      "agentSkills.drafts": [],
+      "connections.effectiveAccess": {},
+    });
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole("button", { name: "Routines" }));
+  },
+};
+
+/** The bot settings panel scrolled: its title stays on a solid band with nothing showing above it. */
+export const ConversationBotSettings: Story = {
+  ...ConversationRoutines,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole("button", { name: "Routines" }));
+    await userEvent.click(await canvas.findByRole("button", { name: "Show settings" }));
+  },
+};
+
 /** Two replies arrived since the reader last opened the thread: the divider goes before the first. */
 export const ConversationUnreadDivider: Story = {
   decorators: [at("/app/bot_ada")],
@@ -516,6 +550,12 @@ const emailChatBots = [
   agent("bot_counsel", "Counsel agent", BOT_COLORS[3], {
     position: 2,
     spawnKey: "legal-agent:user_demo",
+    preview: "Which contracts renew soon?",
+  }),
+  // Made when its page was opened, never used: not listed.
+  agent("bot_finance_page", "Finance agent", BOT_COLORS[1], {
+    position: 9,
+    spawnKey: "finance-agent:user_demo",
   }),
   ...[
     "Q3 board deck",
@@ -532,7 +572,7 @@ const emailChatBots = [
   ),
 ];
 
-/** Six Ask-agent chats fold into one "Email chats" row; the lone Legal agent folds into "Page agents". */
+/** Six Ask-agent chats fold into one "Email chats" row; the Legal agent, which has been used, folds into "Page agents"; the unused Finance agent is not listed. */
 export const SidebarEmailChats: Story = {
   // The sidebar only scrolls inside a bounded page, as in the app.
   decorators: [

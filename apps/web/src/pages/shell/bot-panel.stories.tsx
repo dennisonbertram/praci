@@ -140,15 +140,6 @@ export const SaveFailed: Story = {
   },
 };
 
-export const UnknownToolName: Story = {
-  beforeEach: setup,
-  play: async (context) => {
-    await openAdvanced(context);
-    const input = await within(context.canvasElement).findByLabelText("Disabled tools");
-    await userEvent.type(input, "not_a_tool{Enter}");
-  },
-};
-
 /** A bot just made with New bot: only the name until it has replied once. */
 export const NewBotNameOnly: Story = {
   beforeEach: setup,

@@ -43,8 +43,10 @@ vi.mock("../../pages/shell/composer", () => ({
 const get = vi.fn();
 const navigate = vi.fn();
 const send = vi.fn();
+const markSeen = vi.fn(async (_input: unknown) => ({ count: 0 }));
 vi.mock("../../lib/rpc", () => ({
   rpc: {
+    notifications: { markSeen: (input: unknown) => markSeen(input) },
     threads: {
       get: (input: unknown) => get(input),
       send: (input: unknown) => send(input),
@@ -53,6 +55,9 @@ vi.mock("../../lib/rpc", () => ({
     },
   },
 }));
+
+let attended = true;
+vi.mock("../../lib/use-sidebar-glance", () => ({ useAttended: () => attended }));
 
 import { EmailAgentPanel, latestPendingDraft } from "./EmailAgentPanel";
 
@@ -272,4 +277,25 @@ it("has a labelled Back control that closes the panel", async () => {
   await flush();
   act(() => (document.querySelector('[aria-label="Back to email"]') as HTMLElement).click());
   expect(onClose).toHaveBeenCalled();
+});
+
+it("leaves the alert unseen while the tab is in the background", async () => {
+  attended = false;
+  markSeen.mockClear();
+  get.mockResolvedValue(snapshot([message(1, [card("Hi Sam")])]));
+  act(() =>
+    root.render(<EmailAgentPanel bot={bot} onClose={() => {}} onReplyWithDraft={() => {}} />),
+  );
+  await flush();
+  expect(markSeen).not.toHaveBeenCalled();
+  attended = true;
+});
+
+it("marks the email agent's notifications seen once its card is on screen", async () => {
+  get.mockResolvedValue(snapshot([message(1, [card("Hi Sam")])]));
+  act(() =>
+    root.render(<EmailAgentPanel bot={bot} onClose={() => {}} onReplyWithDraft={() => {}} />),
+  );
+  await flush();
+  expect(markSeen).toHaveBeenCalledWith({ botId: "bot-1" });
 });

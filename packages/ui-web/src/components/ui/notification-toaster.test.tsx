@@ -331,7 +331,7 @@ it("reserves the peek of the rear sheets above the front toast", async () => {
 it("sits at the bottom, clear of the page header and its buttons", async () => {
   await mount();
   const classes = viewport()?.className ?? "";
-  expect(classes).toContain("bottom-24");
+  expect(classes).toContain("bottom-[max(6rem,");
   expect(classes).not.toMatch(/(^|\s)(max-sm:)?top-/);
 });
 
@@ -341,4 +341,40 @@ it("runs onClose when a toast is closed", async () => {
   await add(1, { onClose });
   await act(async () => document.querySelector<HTMLElement>("[aria-label=Dismiss]")?.click());
   expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+it("keeps the toast and its Dismiss button in the accessibility tree", async () => {
+  await mount();
+  await add(1);
+  expect(cards()[0]?.getAttribute("aria-hidden")).not.toBe("true");
+  expect(document.querySelector("[aria-label=Dismiss]")?.getAttribute("aria-hidden")).not.toBe(
+    "true",
+  );
+});
+
+it("hides while a dialog, menu or the drawer is open", async () => {
+  await mount();
+  expect(viewport()?.className).toContain("[role=dialog][data-open]");
+  expect(viewport()?.className).toContain("[data-drawer-open]");
+});
+
+it("rises above a composer it would cover", async () => {
+  await mount();
+  const composer = document.createElement("div");
+  composer.setAttribute("data-toast-avoid", "");
+  composer.getBoundingClientRect = () =>
+    ({
+      top: 600,
+      bottom: 760,
+      left: 0,
+      right: window.innerWidth,
+      height: 160,
+      width: window.innerWidth,
+    }) as DOMRect;
+  viewport()!.getBoundingClientRect = () =>
+    ({ top: 500, bottom: 600, left: 100, right: 500, height: 100, width: 400 }) as DOMRect;
+  document.body.append(composer);
+  await add(1);
+  // innerHeight 768 - 600 + 8
+  expect(viewport()?.style.getPropertyValue("--toast-lift")).toBe("176px");
 });

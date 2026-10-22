@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { BookUser, MessageSquare, Search } from "lucide-react";
+import { BookUser, FileText, MessageSquare, Search } from "lucide-react";
 import { screen, userEvent } from "storybook/test";
 import { withPageBehind } from "../../stories/decorators";
 import { detailedBots } from "../../stories/fixtures";
@@ -86,6 +86,16 @@ export const SearchFindsContactsAndChats: Story = {
             id: "/app/contacts?q=Ben%20Sample",
             label: "Ben Sample",
             detail: "ben@halcyon.example",
+          },
+        ],
+      },
+      {
+        heading: "Documents",
+        icon: <FileText size={16} strokeWidth={1.75} />,
+        entries: [
+          {
+            id: "/app/data-room?item=d1",
+            label: "Board materials and diligence index for the Halcyon Logistics investment",
           },
         ],
       },

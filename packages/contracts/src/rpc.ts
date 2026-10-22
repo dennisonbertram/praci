@@ -1320,6 +1320,8 @@ export const appContract = {
           nextCursor: z.string().nullable(),
         }),
       ),
+    /** Unseen "needs approval" notifications whose card is still unanswered on a live run of an existing agent. */
+    pendingApprovals: oc.output(z.object({ notifications: z.array(NotificationSchema) })),
     markSeen: oc
       // `id` or `threadId` narrows it to one notification or one thread on the surface. `botId`
       // alone marks everything from that agent seen, whatever its surface.
