@@ -308,6 +308,11 @@ msgstr ""
 msgid "{0} non-USD not counted"
 msgstr ""
 
+#. placeholder {0}: data.excludedNonUsdCount
+#: src/pages/Finance.tsx
+msgid "{0} not counted"
+msgstr ""
+
 #. placeholder {0}: wallet.safeThreshold
 #. placeholder {1}: wallet.safeOwners.length
 #: src/pages/finance/FinanceCrypto.tsx
@@ -2350,10 +2355,6 @@ msgstr ""
 #: src/components/DesktopUpdates.tsx
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Check for updates"
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Check now"
 msgstr ""
 
 #: src/pages/gtm/GtmPlan.tsx
@@ -4898,7 +4899,7 @@ msgstr "हर घंटे"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
-msgid "Every month"
+msgid "Every month on the 1st"
 msgstr "हर महीने"
 
 #: src/pages/finance/FinanceSpend.tsx
@@ -6167,6 +6168,10 @@ msgstr "गतिविधि लोड हो रही है…"
 msgid "Loading integrations"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Loading integrations…"
+msgstr ""
+
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Loading memory settings…"
 msgstr "मेमोरी सेटिंग्स लोड हो रही हैं…"
@@ -7126,6 +7131,10 @@ msgstr ""
 msgid "No documents here name a party"
 msgstr ""
 
+#: src/components/investors/ActionItems.tsx
+msgid "No draft made, see Ask"
+msgstr ""
+
 #: src/pages/Gtm.tsx
 msgid "No drafts"
 msgstr ""
@@ -7505,7 +7514,7 @@ msgid "Nothing shared yet."
 msgstr ""
 
 #: src/components/inbox/InboxCleanup.tsx
-msgid "Nothing to clean up. People you have written to or saved as contacts are left out."
+msgid "Nothing to clean up. Senders need {CLEANUP_MIN_MESSAGES} or more messages, and people you have written to or saved as contacts are left out."
 msgstr ""
 
 #: src/pages/legal/LegalDeadlines.tsx
@@ -7609,6 +7618,10 @@ msgstr ""
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
 msgid "Open {0} full screen"
+msgstr ""
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Open {agentName}"
 msgstr ""
 
 #. placeholder {0}: oauth.verificationUri.replace(/^https:\/\//, "")
@@ -10064,6 +10077,10 @@ msgstr "छोड़ें या डिप्लॉय कुंजी दे�
 msgid "Skip to content"
 msgstr ""
 
+#: src/components/SkipToContent.tsx
+msgid "Skip to message box"
+msgstr ""
+
 #: src/components/tour/TourPopover.tsx
 msgid "Skip tour"
 msgstr ""
@@ -11761,10 +11778,6 @@ msgstr ""
 msgid "What did we spend last month?"
 msgstr ""
 
-#: src/pages/shell/message-cards.tsx
-msgid "What do you want me on first?"
-msgstr ""
-
 #: src/lib/finance-agent.ts
 msgid "What is our runway?"
 msgstr ""
@@ -11783,6 +11796,10 @@ msgstr "आप कौन-सा परिणाम दिखाकर बता�
 
 #: src/pages/Shell.tsx
 msgid "What should I do first this week?"
+msgstr ""
+
+#: src/pages/shell/message-cards.tsx
+msgid "What should I work on first?"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx

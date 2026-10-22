@@ -115,10 +115,23 @@ export function TourPopover({
   const wide = useWide();
   // Looked up after mount, once the page the anchors live in has been committed.
   const [present, setPresent] = useState<readonly TourStep[] | null>(null);
-  useLayoutEffect(
-    () => setPresent(steps.filter((step) => document.querySelector(step.anchor))),
-    [steps],
-  );
+  useLayoutEffect(() => {
+    const find = () => steps.filter((step) => document.querySelector(step.anchor));
+    const saved = savedStep(userId);
+    // After a reload the sidebar fills in as data arrives. Hold the list back until the saved stop's
+    // anchor exists (at most 3 s), so the tour comes back to the same stop out of the same count.
+    if (!saved || !steps.some((step) => step.id === saved)) return setPresent(find());
+    const started = Date.now();
+    const settle = () => {
+      const found = find();
+      if (!found.some((step) => step.id === saved) && Date.now() - started < 3000) return false;
+      setPresent(found);
+      return true;
+    };
+    if (settle()) return;
+    const timer = setInterval(() => settle() && clearInterval(timer), 100);
+    return () => clearInterval(timer);
+  }, [steps, userId]);
   const [index, setIndexState] = useState(0);
   const restored = useRef(false);
   const setIndex = (next: number) => {

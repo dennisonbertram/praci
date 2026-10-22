@@ -31,7 +31,7 @@ test("create opens a greeted chat; picker lists bots; sidebar collapses", async 
   await expect(page.getByTestId("message-bot-bubble").getByText(/I'm a blank slate/)).toBeVisible();
   // Settings open with the name selected, so the new bot is named first.
   await expect(page.getByRole("textbox", { name: "Name", exact: true })).toBeFocused();
-  await expect(page.getByText("What do you want me on first?", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("What should I work on first?", { exact: true })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "create-chat-name-focused");
 
   await page.getByTestId("minimize-bots-sidebar").click();

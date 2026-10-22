@@ -39,3 +39,6 @@ export const Advanced: Story = {
 export const EveryWeekFriday: Story = {
   args: { value: preset({ freq: "Every week", weekday: 5 }) },
 };
+export const EveryMonth: Story = {
+  args: { value: preset({ freq: "Every month" }) },
+};

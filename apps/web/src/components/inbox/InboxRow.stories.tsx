@@ -273,6 +273,11 @@ export const Picked: Story = {
   args: { row: rows[0] as MailRow, picked: true, anyPicked: true, onPick: noop },
 };
 
+/** On touch the checkbox is always there, so the unread dot sits at its corner instead of under it. */
+export const UnreadWithCheckbox: Story = {
+  args: { row: rows[0] as MailRow, onPick: noop },
+};
+
 /** Once any row is checked, every row shows its checkbox. */
 export const AnyPicked: StoryObj = {
   render: () => (

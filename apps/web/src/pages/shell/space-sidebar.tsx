@@ -546,6 +546,9 @@ export function SpaceSidebar({
   const { t } = useLingui();
   const sidebarPaneRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    if (activityMode) sidebarPaneRef.current?.scrollTo?.({ top: 0 });
+  }, [activityMode]);
+  useEffect(() => {
     if (mobileSidebarOpen) sidebarPaneRef.current?.scrollTo?.({ top: 0 });
   }, [mobileSidebarOpen]);
   const rosterStopId = useRef<string | null>(null);
@@ -743,13 +746,13 @@ export function SpaceSidebar({
       ) : null}
       <div
         ref={sidebarPaneRef}
-        className="flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents"
+        className="rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents short:lg:flex short:lg:overflow-y-auto"
       >
         {bootstrapMe === undefined ? null : (
           // Waiting for the account (undefined) keeps pages the user hid from flashing in.
           // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
           <div
-            className={`flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:max-h-[50vh] lg:overflow-y-auto ${activityMode && !rail ? "max-lg:hidden" : ""}`}
+            className={`flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:max-h-[50vh] lg:overflow-y-auto short:lg:max-h-none short:lg:overflow-visible ${activityMode && !rail ? "max-lg:hidden" : ""}`}
           >
             <SidebarPagesGroup
               title={t`Pages`}
@@ -975,7 +978,7 @@ export function SpaceSidebar({
         )}
         <div
           ref={sidebarScrollRef}
-          className="rk-scroll rk-scroll-fade-y flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:overflow-y-auto [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
+          className="rk-scroll rk-scroll-fade-y flex flex-col gap-0.5 px-2.5 pb-2.5 max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:snap-y lg:snap-proximity lg:overflow-y-auto short:lg:flex-none short:lg:shrink-0 short:lg:overflow-visible [&_[data-roster-row]]:snap-start [&_[data-roster-fold]]:snap-start"
         >
           {activityMode && !rail ? (
             <ActivityList
@@ -1526,7 +1529,7 @@ export function SpaceSidebar({
                                                 item.kind === "bot" ? "" : undefined
                                               }
                                               title={item.chat.name}
-                                              className={`min-w-0 line-clamp-2 break-words text-[14.5px] leading-[18px] font-normal text-foreground ${
+                                              className={`min-w-0 truncate text-[14.5px] leading-[18px] font-normal text-foreground ${
                                                 item.chat.unread ? "font-medium" : ""
                                               }`}
                                             >

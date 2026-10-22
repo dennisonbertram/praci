@@ -232,7 +232,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           {reset?.passwordAuth ? (
             <>
               {mode === "up" ? (
-                <div className="mb-4 w-full">
+                <div className="w-full">
                   <Label htmlFor="name" className="text-muted-foreground">
                     <Trans>Name</Trans>
                   </Label>
@@ -251,11 +251,14 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     aria-describedby={nameError ? "name-error" : undefined}
                     className={fieldClass}
                   />
-                  {nameError ? (
-                    <p id="name-error" role="alert" className="mt-1.5 text-sm text-destructive">
-                      {nameError}
-                    </p>
-                  ) : null}
+                  {/* Always present, so an error moves nothing below it. */}
+                  <p
+                    id="name-error"
+                    role="alert"
+                    className="mb-3 mt-1 min-h-5 text-sm text-destructive"
+                  >
+                    {nameError}
+                  </p>
                 </div>
               ) : null}
               <div className="w-full">
@@ -277,14 +280,17 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                   aria-describedby={emailError ? "email-error" : undefined}
                   className={fieldClass}
                 />
-                {emailError ? (
-                  <p id="email-error" role="alert" className="mt-1.5 text-sm text-destructive">
-                    {emailError}
-                  </p>
-                ) : null}
+                {/* Always present, so an error moves nothing below it. */}
+                <p
+                  id="email-error"
+                  role="alert"
+                  className="mb-3 mt-1 min-h-5 text-sm text-destructive"
+                >
+                  {emailError}
+                </p>
               </div>
               {mode !== "forgot" ? (
-                <div className="mt-4 w-full">
+                <div className="w-full">
                   <Label htmlFor={passwordFieldId} className="text-muted-foreground">
                     <Trans>Password</Trans>
                   </Label>
@@ -332,8 +338,12 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                       <Trans>At least 8 characters.</Trans>
                     </p>
                   ) : null}
-                  {mode === "in" && passwordError ? (
-                    <p id="password-error" role="alert" className="mt-1.5 text-sm text-destructive">
+                  {mode === "in" ? (
+                    <p
+                      id="password-error"
+                      role="alert"
+                      className="mb-3 mt-1 min-h-5 text-sm text-destructive"
+                    >
                       {passwordError}
                     </p>
                   ) : null}

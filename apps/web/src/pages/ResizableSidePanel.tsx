@@ -31,11 +31,14 @@ export function ResizableSidePanel({
   open,
   panel,
   botsSidebarCollapsed = false,
+  onClose,
   children,
 }: {
   open: boolean;
   panel: string;
   botsSidebarCollapsed?: boolean;
+  /** Closes the panel; below xl it lies over the chat, so a scrim and Escape use it. */
+  onClose?: () => void;
   children: ReactNode;
 }) {
   const reservedLeadingPx = botsSidebarCollapsed ? 0 : BOTS_SIDEBAR_WIDTH;
@@ -62,6 +65,16 @@ export function ResizableSidePanel({
     return () => window.removeEventListener("resize", syncMax);
   }, [reservedLeadingPx]);
 
+  useEffect(() => {
+    if (!open || !onClose) return;
+    const overlay = window.matchMedia("(max-width: 1279px)");
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && !event.defaultPrevented && overlay.matches) onClose?.();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
   function stopDrag(event: PointerEvent<HTMLHRElement>) {
     drag.current = null;
     setDragging(false);
@@ -76,59 +89,71 @@ export function ResizableSidePanel({
   // A closed panel leaves nothing in the page, not an empty unnamed landmark.
   if (!open) return null;
   return (
-    <aside
-      data-testid="side-panel"
-      data-toast-panel=""
-      data-panel={panel}
-      style={{ "--panel-width": `${width}px` } as CSSProperties}
-      className={`absolute inset-y-0 end-0 z-20 flex min-h-0 shrink-0 flex-col overflow-hidden bg-background xl:relative ${dragging ? "" : "transition-[width] duration-150 ease-out"} w-full max-w-[384px] border-s border-sidebar-border shadow-xl xl:w-(--panel-width) xl:max-w-none xl:shadow-none`}
-    >
-      <hr
-        tabIndex={0}
-        aria-label={t`Resize panel`}
-        aria-orientation="vertical"
-        aria-valuemin={MIN_WIDTH}
-        aria-valuemax={maxWidth}
-        aria-valuenow={Math.round(width)}
-        className="absolute inset-y-0 start-0 z-30 m-0 hidden h-full w-2 touch-none cursor-col-resize border-0 bg-transparent hover:bg-border focus-visible:bg-ring focus-visible:outline-none xl:block"
-        onPointerDown={(event) => {
-          if (event.button !== 0) return;
-          event.preventDefault();
-          event.currentTarget.setPointerCapture(event.pointerId);
-          drag.current = {
-            x: event.clientX,
-            width,
-            direction: document.documentElement.dir === "rtl" ? -1 : 1,
-          };
-          setDragging(true);
-        }}
-        onPointerMove={(event) => {
-          if (drag.current)
-            setWidthFromUser(
-              drag.current.width + (drag.current.x - event.clientX) * drag.current.direction,
-            );
-        }}
-        onPointerUp={stopDrag}
-        onPointerCancel={stopDrag}
-        onLostPointerCapture={() => {
-          drag.current = null;
-          setDragging(false);
-        }}
-        onKeyDown={(event) => {
-          const direction = document.documentElement.dir === "rtl" ? -1 : 1;
-          if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+    <>
+      {onClose ? (
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-hidden="true"
+          data-testid="side-panel-scrim"
+          className="absolute inset-0 z-10 bg-foreground/30 xl:hidden"
+          onClick={onClose}
+        />
+      ) : null}
+      <aside
+        data-testid="side-panel"
+        data-toast-panel=""
+        data-panel={panel}
+        style={{ "--panel-width": `${width}px` } as CSSProperties}
+        className={`absolute inset-y-0 end-0 z-20 flex min-h-0 shrink-0 flex-col overflow-hidden bg-background xl:relative ${dragging ? "" : "transition-[width] duration-150 ease-out"} w-full max-w-[384px] border-s border-sidebar-border shadow-xl xl:w-(--panel-width) xl:max-w-none xl:shadow-none`}
+      >
+        <hr
+          tabIndex={0}
+          aria-label={t`Resize panel`}
+          aria-orientation="vertical"
+          aria-valuemin={MIN_WIDTH}
+          aria-valuemax={maxWidth}
+          aria-valuenow={Math.round(width)}
+          className="absolute inset-y-0 start-0 z-30 m-0 hidden h-full w-2 touch-none cursor-col-resize border-0 bg-transparent hover:bg-border focus-visible:bg-ring focus-visible:outline-none xl:block"
+          onPointerDown={(event) => {
+            if (event.button !== 0) return;
             event.preventDefault();
-            setWidthFromUser(width + (event.key === "ArrowLeft" ? 32 : -32) * direction);
-          } else if (event.key === "Home") {
-            event.preventDefault();
-            setWidthFromUser(MIN_WIDTH);
-          } else if (event.key === "End") {
-            event.preventDefault();
-            setWidthFromUser(maximumWidth(reservedLeadingPx));
-          }
-        }}
-      />
-      {children}
-    </aside>
+            event.currentTarget.setPointerCapture(event.pointerId);
+            drag.current = {
+              x: event.clientX,
+              width,
+              direction: document.documentElement.dir === "rtl" ? -1 : 1,
+            };
+            setDragging(true);
+          }}
+          onPointerMove={(event) => {
+            if (drag.current)
+              setWidthFromUser(
+                drag.current.width + (drag.current.x - event.clientX) * drag.current.direction,
+              );
+          }}
+          onPointerUp={stopDrag}
+          onPointerCancel={stopDrag}
+          onLostPointerCapture={() => {
+            drag.current = null;
+            setDragging(false);
+          }}
+          onKeyDown={(event) => {
+            const direction = document.documentElement.dir === "rtl" ? -1 : 1;
+            if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+              event.preventDefault();
+              setWidthFromUser(width + (event.key === "ArrowLeft" ? 32 : -32) * direction);
+            } else if (event.key === "Home") {
+              event.preventDefault();
+              setWidthFromUser(MIN_WIDTH);
+            } else if (event.key === "End") {
+              event.preventDefault();
+              setWidthFromUser(maximumWidth(reservedLeadingPx));
+            }
+          }}
+        />
+        {children}
+      </aside>
+    </>
   );
 }

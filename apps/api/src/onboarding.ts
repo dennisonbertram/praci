@@ -154,7 +154,7 @@ export async function promptFocus(
   const blocks: MessageBlock[] = [
     {
       kind: "choice",
-      question: "What do you want me on first?",
+      question: "What should I work on first?",
       options: FOCUS_OPTIONS.map(({ id, letter, label }) => ({ id, letter, label })),
     },
   ];

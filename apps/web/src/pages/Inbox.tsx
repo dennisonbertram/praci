@@ -1080,8 +1080,9 @@ function InboxListPage({
       />
     ) : null;
   // A to-do made from a visible Needs reply row would show the same task twice, so the card drops
-  // it and the open mail offers its completion.
-  const replyRowIds = new Set(replyRows.map((row) => row.id));
+  // it and the open mail offers its completion. Only the first rows count, so "Show more" does not
+  // change the card.
+  const replyRowIds = new Set(groups.needsReply.slice(0, NEEDS_REPLY_SHOWN).map((row) => row.id));
   const repeatsRow = (todo: InboxTodo) =>
     todo.doneAt === null && Boolean(todo.messageId) && replyRowIds.has(todo.messageId as string);
   const todoRowDue = new Map(
@@ -1252,7 +1253,10 @@ function InboxListPage({
 
   const count = status?.kind === "archivedMany" ? status.messageIds.length : 0;
   const toast = status ? (
-    <div className="pointer-events-auto flex max-w-full items-center gap-2 rounded-lg bg-primary py-1 ps-3 pe-1 text-sm text-primary-foreground shadow-lg">
+    <div
+      data-toast-avoid
+      className="pointer-events-auto flex max-w-full items-center gap-2 rounded-lg bg-primary py-1 ps-3 pe-1 text-sm text-primary-foreground shadow-lg"
+    >
       {status.kind === "archivedMany" ? (
         <Trans>Archived {count}</Trans>
       ) : status.kind === "archived" ? (
@@ -1353,13 +1357,6 @@ function InboxListPage({
           </InputGroup>
         </form>
       )}
-      {/* After the search box, which arrives first: the name loads later and must not push it. */}
-      {spaceName ? (
-        // The full name is in the hover title when the row is too short for it.
-        <span title={spaceName} className="mt-1 truncate @lg/ph:mt-0 @lg/ph:max-w-72">
-          {spaceName}
-        </span>
-      ) : null}
     </>
   );
 
@@ -1375,6 +1372,7 @@ function InboxListPage({
           <PageHeader
             compact
             title={<Trans>Inbox</Trans>}
+            spaceName={phone ? undefined : spaceName}
             meta={phone ? undefined : searchMeta}
             actions={
               <>
@@ -1670,7 +1668,7 @@ function InboxListPage({
                 <Trans>Sorting your mail…</Trans>
               </p>
             ) : null}
-            {synced || sortingRows ? null : (
+            {synced || sortingRows || consentPrompt ? null : (
               <p role="status" className="text-sm text-muted-foreground">
                 {slowSync && !everSynced && !data?.syncedAt ? (
                   <Trans>First sync can take a minute</Trans>

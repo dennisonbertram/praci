@@ -319,3 +319,23 @@ it("ends on Escape before the drawer's own Escape handler sees it", async () => 
   expect(onClose).toHaveBeenCalledWith(null, true);
   expect(drawer).not.toHaveBeenCalled();
 });
+
+it("waits for a late sidebar item so a reload keeps its step and stop count", async () => {
+  vi.useFakeTimers();
+  try {
+    sessionStorage.setItem("tour-step:u1", "apps");
+    const late = document.querySelector('[data-tour="sidebar-integrations"]') as HTMLElement;
+    late.remove();
+    await act(async () =>
+      root.render(<FirstRunTour userId="u1" open onClose={vi.fn()} onAsk={vi.fn()} />),
+    );
+    expect(document.body.textContent).not.toContain("/3");
+    document.body.append(late);
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(document.body.textContent).toContain("2/3");
+  } finally {
+    vi.useRealTimers();
+  }
+});

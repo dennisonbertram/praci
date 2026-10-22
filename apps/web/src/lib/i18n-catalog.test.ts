@@ -218,14 +218,14 @@ describe("lingui catalogs", () => {
       "utf8",
     );
 
-    expect(catalog).toContain('msgid "What do you want me on first?"\nmsgstr "你想让我先做什么？"');
+    expect(catalog).toContain('msgid "What should I work on first?"\nmsgstr "你想让我先做什么？"');
     expect(catalog).toContain('msgid "Day-to-day work"\nmsgstr "日常工作"');
     expect(catalog).toContain('msgid "Inbox & email"\nmsgstr "收件箱和邮件"');
     expect(catalog).toContain('msgid "Research & writing"\nmsgstr "调研和写作"');
     expect(catalog).toContain('msgid "A bit of everything"\nmsgstr "什么都做一点"');
 
     i18n.load("zh-CN", {
-      "What do you want me on first?": "你想让我先做什么？",
+      "What should I work on first?": "你想让我先做什么？",
       "Day-to-day work": "日常工作",
       "Inbox & email": "收件箱和邮件",
       "Research & writing": "调研和写作",
@@ -234,8 +234,8 @@ describe("lingui catalogs", () => {
     i18n.activate("zh-CN");
     expect(
       i18n._({
-        id: "What do you want me on first?",
-        message: "What do you want me on first?",
+        id: "What should I work on first?",
+        message: "What should I work on first?",
       }),
     ).toBe("你想让我先做什么？");
     expect(i18n._({ id: "Day-to-day work", message: "Day-to-day work" })).toBe("日常工作");
