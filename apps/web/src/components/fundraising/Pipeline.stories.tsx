@@ -55,3 +55,8 @@ export const JustSaved: Story = {
 
 /** Nothing renders when there are no prospects; the page shows its own empty state. */
 export const Empty: Story = {};
+
+/** Committed rows offer Send SAFE: filled with an open round, outline without one. */
+export const WithSendSafe: Story = {
+  args: { ...Grouped.args, filledSend: true, onSendSafe: () => {} },
+};

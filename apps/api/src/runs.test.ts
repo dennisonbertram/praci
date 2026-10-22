@@ -20,6 +20,24 @@ describe("run activity copy", () => {
     ).toBe("Maya asked: Please check the release workflow.");
   });
 
+  it("strips markdown from an agent message", () => {
+    const snippet = activityPromptSnippet({
+      trigger: "bot_message",
+      prompt: "x",
+      sourceBlocks: [
+        {
+          kind: "bot_message_received",
+          fromBotId: "maya",
+          fromBotName: "Maya",
+          text: "## Summary\n**Northwind** renewed: see [the file](https://example.com/a).",
+          intent: "result",
+        },
+      ],
+    });
+    expect(snippet).toBe("Update from Maya: Summary Northwind renewed: see the file.");
+    expect(snippet).not.toMatch(/[*#]/);
+  });
+
   it("fails closed when an agent message has no valid structured source", () => {
     expect(
       activityPromptSnippet({
