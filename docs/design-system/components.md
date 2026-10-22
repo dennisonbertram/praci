@@ -3,8 +3,8 @@
 
 Rendered React components and native SwiftUI views, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 274 of 274
-- Web and shared components: 724
+- Web and shared component files with stories: 276 of 276
+- Web and shared components: 726
 - Mobile components: 138 in 95 files, mobile — native story pending
 - SwiftUI views: 3 in 2 files, native story pending
 
@@ -313,6 +313,8 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | BotContextMenu | [apps/web/src/pages/BotContextMenu.tsx](../../apps/web/src/pages/BotContextMenu.tsx) | [BotContextMenu.stories.tsx](../../apps/web/src/pages/BotContextMenu.stories.tsx) | web |
 | CompanyPage | [apps/web/src/pages/Company.tsx](../../apps/web/src/pages/Company.tsx) | [Company.stories.tsx](../../apps/web/src/pages/Company.stories.tsx) | web |
 | CompanyFactDetail | [apps/web/src/pages/CompanyFactDetail.tsx](../../apps/web/src/pages/CompanyFactDetail.tsx) | [CompanyFactDetail.stories.tsx](../../apps/web/src/pages/CompanyFactDetail.stories.tsx) | web |
+| CompanyImportPage | [apps/web/src/pages/CompanyImport.tsx](../../apps/web/src/pages/CompanyImport.tsx) | [CompanyImport.stories.tsx](../../apps/web/src/pages/CompanyImport.stories.tsx) | web |
+| CompanyImportScope | [apps/web/src/pages/CompanyImportScope.tsx](../../apps/web/src/pages/CompanyImportScope.tsx) | [CompanyImportScope.stories.tsx](../../apps/web/src/pages/CompanyImportScope.stories.tsx) | web |
 | ConnectedCallbackPage | [apps/web/src/pages/ConnectedCallback.tsx](../../apps/web/src/pages/ConnectedCallback.tsx) | [ConnectedCallback.stories.tsx](../../apps/web/src/pages/ConnectedCallback.stories.tsx) | web |
 | ContactsPage | [apps/web/src/pages/Contacts.tsx](../../apps/web/src/pages/Contacts.tsx) | [Contacts.stories.tsx](../../apps/web/src/pages/Contacts.stories.tsx) | web |
 | FileInputButton, DataRoomPage | [apps/web/src/pages/DataRoom.tsx](../../apps/web/src/pages/DataRoom.tsx) | [DataRoom.stories.tsx](../../apps/web/src/pages/DataRoom.stories.tsx) | web |
