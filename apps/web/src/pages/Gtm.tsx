@@ -32,7 +32,7 @@ export function GtmPage({
   const overview = useFinanceQuery(() => rpc.gtm.overview(), [botId]);
   const [params, setParams] = useSearchParams();
   const calendar = params.get("view") === "calendar";
-  const [page, setPage] = useState<BotPage | null>(null);
+  const [page, setPage] = useState<BotPage | null>();
   const hadContent = useRef(false);
   if (page?.content.trim()) hadContent.current = true;
   const [editing, setEditing] = useState(false);
@@ -246,7 +246,7 @@ export function GtmPage({
                   <GtmBlockContext.Provider value={{ overview: data, onChange: changed }}>
                     <section
                       className={
-                        page && !page.content.trim() && !hadContent.current
+                        page !== undefined && !page?.content.trim() && !hadContent.current
                           ? "hidden"
                           : "rounded-xl border border-border p-4"
                       }

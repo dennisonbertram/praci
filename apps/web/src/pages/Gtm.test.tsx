@@ -37,7 +37,7 @@ vi.mock("../lib/rpc", () => ({
   },
 }));
 vi.mock("./shell/bot-page-panel", () => ({
-  BotPagePanel: ({ onPageChange }: { onPageChange: (page: BotPage) => void }) => {
+  BotPagePanel: ({ onPageChange }: { onPageChange: (page: BotPage | null) => void }) => {
     mocks.panel({ onPageChange });
     useEffect(() => {
       if (mocks.pageContent === undefined) return;
@@ -218,7 +218,7 @@ it("opens the real Calendar and exposes an incomplete provider queue", async () 
 });
 
 it("keeps the page section visible after an existing page is cleared, hides a never-written one", async () => {
-  type P = { onPageChange: (p: { content: string; updatedAt?: string }) => void };
+  type P = { onPageChange: (p: { content: string; updatedAt?: string } | null) => void };
   let report!: P["onPageChange"];
   mocks.panel.mockImplementation((props: unknown) => {
     report = (props as P).onPageChange;
@@ -226,6 +226,12 @@ it("keeps the page section visible after an existing page is cleared, hides a ne
   });
   await render();
   expect(container.querySelector("section.hidden")).toBeNull();
+  await act(async () => report(null));
+  expect(container.querySelector("section.hidden")).not.toBeNull();
+  expect(container.textContent).toContain(overview.goal!.title);
+  expect(container.querySelector("section.hidden")?.textContent).not.toContain(
+    overview.goal!.title,
+  );
   await act(async () => report({ content: "" }));
   expect(container.querySelector("section.hidden")).not.toBeNull();
   await act(async () => report({ content: "Plan" }));

@@ -123,7 +123,7 @@ export function BotPagePanel({
   botId: string;
   /** The latest `page.updated` event for this bot. */
   remote: PageRemoteUpdate | null;
-  onPageChange?: (page: BotPage) => void;
+  onPageChange?: (page: BotPage | null) => void;
 }) {
   const reportPage = useRef(onPageChange);
   reportPage.current = onPageChange;
@@ -134,7 +134,7 @@ export function BotPagePanel({
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const saving = useRef(false);
   const stale = useRef(false);
-  const [loaded, setLoaded] = useState<BotPage | null>(null);
+  const [loaded, setLoaded] = useState<BotPage | null>();
   const [offerReload, setOfferReload] = useState(false);
   const [error, setError] = useState("");
 
@@ -170,6 +170,7 @@ export function BotPagePanel({
       stale.current = false;
       setOfferReload(false);
       setError("");
+      setLoaded(page);
       reportPage.current?.(page);
     },
     [editor],
@@ -180,7 +181,12 @@ export function BotPagePanel({
     if (!editor || editor.isDestroyed) return;
     const before = editor.getMarkdown();
     const page = await rpc.pages.get({ botId });
-    if (!page || editor.isDestroyed) return;
+    if (editor.isDestroyed) return;
+    if (!page) {
+      setLoaded(null);
+      reportPage.current?.(null);
+      return;
+    }
     if (editor.getMarkdown() !== before) {
       stale.current = true;
       setOfferReload(true);
@@ -230,9 +236,12 @@ export function BotPagePanel({
     void rpc.pages
       .get({ botId })
       .then((page) => {
-        if (!live || !page) return;
-        setLoaded(page);
-        show(page);
+        if (!live) return;
+        if (page) show(page);
+        else {
+          setLoaded(null);
+          reportPage.current?.(null);
+        }
       })
       .catch((cause) => live && setError(errorText(cause)));
     const onUpdate = () => {
@@ -251,11 +260,14 @@ export function BotPagePanel({
   }, [editor, botId, show, persist]);
 
   useEffect(() => {
-    if (!remote || !editor) return;
+    if (!remote || !editor || loaded === undefined) return;
     seenRevision.current = Math.max(seenRevision.current, remote.revision);
     // A save in flight decides what to do with newer revisions when it returns.
     if (saving.current) return;
-    if (!isNewerRemote({ loadedRevision: revision.current, remoteRevision: remote.revision }))
+    if (
+      loaded !== null &&
+      !isNewerRemote({ loadedRevision: revision.current, remoteRevision: remote.revision })
+    )
       return;
     if (resolveRemotePage({ dirty: editor.getMarkdown() !== baseline.current }) === "offer") {
       stale.current = true;
