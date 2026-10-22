@@ -295,7 +295,9 @@ export function FinanceRunwayPage() {
   const points = [...(data?.history ?? []), ...ahead];
   const runMonths = runwayText(data?.runway.months);
   const parts = data?.breakdown;
-  const hasCrypto = !!parts && (parts.stablecoinCents > 0 || parts.otherCryptoCents > 0);
+  const hasCrypto =
+    !!parts &&
+    (parts.stablecoinCents > 0 || parts.otherCryptoCents > 0 || !!parts.unpricedTokenCount);
   return (
     <DetailPage
       crumbs={[{ label: t`Finance`, to: financePath.dashboard() }, { label: t`Runway` }]}
