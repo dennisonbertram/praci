@@ -172,9 +172,6 @@ export function GeneralSettingsPanels({
               }}
             />
           </section>
-        </div>
-        <div className="min-w-0 space-y-5 @2xl:col-start-2 @2xl:row-span-2 @2xl:row-start-1">
-          {isDeploymentOwner ? <DefaultRunsOnSection /> : null}
 
           <details
             data-testid="advanced-settings"
@@ -308,6 +305,9 @@ export function GeneralSettingsPanels({
               </div>
             </div>
           </details>
+        </div>
+        <div className="min-w-0 space-y-5 @2xl:col-start-2 @2xl:row-span-2 @2xl:row-start-1">
+          {isDeploymentOwner ? <DefaultRunsOnSection /> : null}
 
           <section className="rounded-xl border border-border px-4 py-4">
             <h3 className="text-[15px] font-medium text-foreground">
