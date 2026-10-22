@@ -368,7 +368,7 @@ describe("skill tools", () => {
     });
     expect(formatSkillsCatalogInstruction(records)).toContain("- Interrogate:");
     expect(formatSkillsCatalogInstruction(records)).toContain("Review only");
-    for (const name of ["investor-update", "carta-audit-response"]) {
+    for (const name of ["investor-update", "audit-response"]) {
       expect(records.find((row) => row.name === name)).toMatchObject({ source: "builtin" });
       expect(formatSkillsCatalogInstruction(records)).toContain(`- ${name}:`);
     }
