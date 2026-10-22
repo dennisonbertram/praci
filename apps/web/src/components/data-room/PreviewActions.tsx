@@ -17,6 +17,7 @@ import {
   canPreviewImage,
   canPreviewPdf,
   dataRoomFileUrl,
+  openDataRoomFileDirect,
   openDataRoomItem,
   saveDataRoomItem,
 } from "../../lib/data-room";
@@ -157,7 +158,9 @@ function PdfPhoneFallback({
         <Button
           size="sm"
           variant="outline"
-          onClick={() => (url ? window.open(url, "_blank", "noopener") : run(openDataRoomItem))}
+          onClick={() =>
+            url ? window.open(url, "_blank", "noopener") : run(openDataRoomFileDirect)
+          }
         >
           <ExternalLink aria-hidden="true" />
           {t`Open`}

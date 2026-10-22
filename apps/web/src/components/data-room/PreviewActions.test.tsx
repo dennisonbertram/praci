@@ -11,6 +11,12 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
+const direct = vi.hoisted(() => vi.fn());
+vi.mock("../../lib/data-room", async (original) => ({
+  ...(await original<typeof import("../../lib/data-room")>()),
+  openDataRoomFileDirect: direct,
+}));
+
 import { FileViewer } from "./PreviewActions";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -67,4 +73,11 @@ it("shows a PDF's Open and Download at once, before the file has loaded", () => 
   expect(view.querySelector('[data-testid="preview-skeleton"]')?.className).toContain(
     "max-sm:hidden",
   );
+});
+
+it("before the file loads, Open goes straight to the file, not the frame helper", () => {
+  direct.mockResolvedValue(undefined);
+  const view = render(item("agreement.pdf", "application/pdf"), "");
+  act(() => view.querySelector("button")?.click());
+  expect(direct).toHaveBeenCalledTimes(1);
 });
