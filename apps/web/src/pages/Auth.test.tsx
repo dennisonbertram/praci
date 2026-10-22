@@ -277,3 +277,14 @@ it("shows an inline red message for an empty name, not the browser's native bubb
   expect(alert?.textContent).toBe("Enter your name");
   expect(alert?.className).toContain("text-destructive");
 });
+
+it("keeps native required and minLength validation on the password-reset form", async () => {
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/reset-password?token=t"]}>
+        <PasswordResetPage />
+      </MemoryRouter>,
+    ),
+  );
+  expect(host.querySelector("form")?.noValidate).toBe(false);
+});
