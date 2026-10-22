@@ -417,11 +417,6 @@ function Overview({
                     render={
                       <Link
                         to={financePath.accounts()}
-                        aria-label={
-                          data.excludedNonUsdCount > 0
-                            ? t`${sourceNames}, ${data.excludedNonUsdCount} non-USD not counted`
-                            : undefined
-                        }
                         className="rk-tap inline-flex min-w-0 items-center gap-1.5 rounded-full px-1.5 py-0.5 hover:text-foreground"
                       />
                     }
@@ -430,18 +425,22 @@ function Overview({
                       aria-hidden="true"
                       className={`size-1.5 shrink-0 rounded-full ${sourceDot}`}
                     />
+                    <span className="truncate">
+                      {/* A phone has room for the time only; Accounts names the sources. */}
+                      <span className={updated || syncing ? "max-sm:hidden" : undefined}>
+                        {sourceNames}
+                        {updated || syncing ? " · " : ""}
+                      </span>
+                      {syncing ? t`syncing…` : updated ? t`synced ${updated}` : null}
+                    </span>
                     {sourceDot !== "bg-success" ? (
                       <span className="sr-only">
                         {sourceDot === "bg-destructive" ? t`Sync failed.` : t`Sign-in needed.`}
                       </span>
                     ) : null}
-                    <span className="truncate">
-                      {syncing
-                        ? t`${sourceNames} · syncing…`
-                        : updated
-                          ? t`${sourceNames} · synced ${updated}`
-                          : sourceNames}
-                    </span>
+                    {data.excludedNonUsdCount > 0 ? (
+                      <span className="sr-only">{t`${data.excludedNonUsdCount} non-USD not counted`}</span>
+                    ) : null}
                   </TooltipTrigger>
                   {data.excludedNonUsdCount > 0 ? (
                     <TooltipContent>{t`${data.excludedNonUsdCount} non-USD not counted`}</TooltipContent>

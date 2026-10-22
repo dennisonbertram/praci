@@ -5,8 +5,10 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
   Popover,
@@ -300,14 +302,10 @@ export function FilterBar({
   return (
     // Search and Sort share the first row; the filter pills wrap on a row of their own below, or,
     // given room, between the two. Sort never moves down among the pills.
-    <div className={`flex flex-wrap items-start gap-1.5 pb-2.5 ${PAGE_GUTTER_X}`}>
-      {statsView ? (
-        // Where the search box is, so Filters stays at the right edge in every view.
-        <div
-          aria-hidden="true"
-          className="order-1 min-w-0 flex-1 basis-48 @min-[640px]/bd:hidden"
-        />
-      ) : (
+    <div
+      className={`flex flex-wrap items-start gap-1.5 pb-1.5 @min-[640px]/bd:pb-2.5 ${PAGE_GUTTER_X}`}
+    >
+      {statsView ? null : (
         <SearchField
           className="order-1 min-w-0 flex-1 basis-48 @min-[800px]/bd:me-1.5 @min-[800px]/bd:w-80 @min-[800px]/bd:flex-none"
           value={query}
@@ -362,6 +360,16 @@ export function FilterBar({
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>
+            {/* Here, not a button of its own: on a phone the toolbar must stay one row. */}
+            {onAutoSort ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onAutoSort}>
+                  <WandSparkles aria-hidden="true" />
+                  <Trans>Auto-sort</Trans>
+                </DropdownMenuItem>
+              </>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
         <Tip label={t`New folder`}>
@@ -369,13 +377,6 @@ export function FilterBar({
             <FolderPlus aria-hidden="true" />
           </Button>
         </Tip>
-        {onAutoSort ? (
-          <Tip label={t`Auto-sort`}>
-            <Button variant="outline" size="icon" aria-label={t`Auto-sort`} onClick={onAutoSort}>
-              <WandSparkles aria-hidden="true" />
-            </Button>
-          </Tip>
-        ) : null}
       </div>
       <div
         id="data-room-filters"

@@ -34,6 +34,7 @@ const run: RoutineRun = {
   startedAt: "2026-01-02T12:00:00Z",
   completedAt: "2026-01-02T12:01:22Z",
   messageId: "reply-1",
+  preview: "Cash is steady.",
 };
 const page = (runs: RoutineRun[]) => ({ runs, nextCursor: null });
 afterEach(() => {
@@ -78,6 +79,7 @@ it("shows loading, then the real run and its exact message link", async () => {
     await act(async () => finish([run]));
     expect(view.container.querySelectorAll("li")).toHaveLength(1);
     expect(view.container.textContent).toContain("1m 22s");
+    expect(view.container.textContent).toContain("Cash is steady.");
     expect(view.container.querySelector("a")?.getAttribute("href")).toBe("/app/bot-1?m=reply-1");
   } finally {
     await view.close();

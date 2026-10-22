@@ -217,6 +217,9 @@ export function RoutineRunHistory({ routineId }: { routineId: string }) {
                   </time>
                   <span className={statusTone(run.status)}>{statusLabel(run.status)}</span>
                 </div>
+                {run.preview ? (
+                  <p className="mt-1 truncate text-foreground">{run.preview}</p>
+                ) : null}
                 <div className="mt-1 flex items-center justify-between gap-2">
                   <span>{duration}</span>
                   {chatTo ? (

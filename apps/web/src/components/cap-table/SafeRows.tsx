@@ -1,7 +1,7 @@
 import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import type { Safe } from "@rakazo/contracts";
-import { atCapPercent, atCapSum } from "@rakazo/core";
+import { atCapPercent, atCapSum, countedSafes } from "@rakazo/core";
 import { Link } from "react-router-dom";
 import { usdFigure } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
@@ -16,9 +16,7 @@ const percent = (value: number | null) => (value == null ? "—" : `${value.toFi
  */
 export function SafeRows({ safes }: { safes: readonly Safe[] }) {
   useHideAmounts();
-  const shown = safes.filter(
-    (s) => s.status === "sent" || s.status === "signed" || s.status === "funded",
-  );
+  const shown = countedSafes(safes);
   if (shown.length === 0) return null;
   return (
     <section
