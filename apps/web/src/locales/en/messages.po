@@ -4804,6 +4804,10 @@ msgid "Enter a Client ID to sign in."
 msgstr "Enter a Client ID to sign in."
 
 #: src/components/data-room/ItemDialogs.tsx
+msgid "Enter a folder name"
+msgstr "Enter a folder name"
+
+#: src/components/data-room/ItemDialogs.tsx
 msgid "Enter a folder name without slashes"
 msgstr "Enter a folder name without slashes"
 
@@ -7437,6 +7441,10 @@ msgstr "Not in runway"
 msgid "Not now"
 msgstr "Not now"
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Not read"
+msgstr "Not read"
+
 #: src/components/data-room/upload-toasts.ts
 msgid "Not retried: the space changed"
 msgstr "Not retried: the space changed"
@@ -7487,6 +7495,10 @@ msgstr "Not tagged"
 #: src/components/data-room/Preview.tsx
 msgid "Not tagged yet."
 msgstr "Not tagged yet."
+
+#: src/components/data-room/Preview.tsx
+msgid "Not tagged. Praci can't read your documents."
+msgstr "Not tagged. Praci can't read your documents."
 
 #: src/components/MailApprovalCard.tsx
 msgid "Not waiting for approval"
@@ -8911,6 +8923,10 @@ msgstr "Replace"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Replace API key"
 msgstr "Replace API key"
+
+#: src/components/data-room/Preview.tsx
+msgid "Replace file"
+msgstr "Replace file"
 
 #: src/components/integrations/FinanceSection.tsx
 #: src/pages/Legal.tsx
@@ -11905,6 +11921,14 @@ msgstr "Within 3 days"
 #: src/components/AskCard.tsx
 msgid "Won't ask again for this kind of action."
 msgstr "Won't ask again for this kind of action."
+
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Won't be searchable"
+msgstr "Won't be searchable"
+
+#: src/components/data-room/Preview.tsx
+msgid "Won't be searchable. Praci can't read this kind of file."
+msgstr "Won't be searchable. Praci can't read this kind of file."
 
 #: src/lib/ticket-status.ts
 msgid "Won't do"

@@ -4804,6 +4804,10 @@ msgid "Enter a Client ID to sign in."
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
+msgid "Enter a folder name"
+msgstr ""
+
+#: src/components/data-room/ItemDialogs.tsx
 msgid "Enter a folder name without slashes"
 msgstr ""
 
@@ -7437,6 +7441,10 @@ msgstr ""
 msgid "Not now"
 msgstr "Agora não"
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Not read"
+msgstr ""
+
 #: src/components/data-room/upload-toasts.ts
 msgid "Not retried: the space changed"
 msgstr ""
@@ -7486,6 +7494,10 @@ msgstr ""
 
 #: src/components/data-room/Preview.tsx
 msgid "Not tagged yet."
+msgstr ""
+
+#: src/components/data-room/Preview.tsx
+msgid "Not tagged. Praci can't read your documents."
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -8911,6 +8923,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Replace API key"
 msgstr "Substituir chave de API"
+
+#: src/components/data-room/Preview.tsx
+msgid "Replace file"
+msgstr ""
 
 #: src/components/integrations/FinanceSection.tsx
 #: src/pages/Legal.tsx
@@ -11904,6 +11920,14 @@ msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Won't ask again for this kind of action."
+msgstr ""
+
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Won't be searchable"
+msgstr ""
+
+#: src/components/data-room/Preview.tsx
+msgid "Won't be searchable. Praci can't read this kind of file."
 msgstr ""
 
 #: src/lib/ticket-status.ts

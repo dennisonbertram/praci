@@ -7,6 +7,7 @@ const meta = {
   component: PreviewActions,
   args: {
     item: { ...readyItem, name: "Sample agreement.pdf", mimeType: "application/pdf" },
+    file: { url: "blob:sample", failed: false },
     hidden: false,
     onError: () => undefined,
     onFullScreen: () => undefined,
@@ -47,6 +48,20 @@ export const PdfLoading: Story = {
   render: (args) => (
     <div className="h-80 w-full max-w-xl">
       <FileViewer item={args.item} file={{ url: "", failed: false }} fill />
+    </div>
+  ),
+};
+
+/** At phone width the PDF shows its own Open and Download, so the header keeps only Full screen. */
+export const PdfOnPhone: Story = {
+  render: (args) => (
+    <div className="flex w-[375px] flex-col gap-2">
+      <div className="flex items-center gap-1">
+        <PreviewActions {...args} />
+      </div>
+      <div className="h-40">
+        <FileViewer item={args.item} file={args.file} fill />
+      </div>
     </div>
   ),
 };
