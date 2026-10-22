@@ -242,7 +242,6 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                       setName(e.target.value);
                       setNameError(null);
                     }}
-                    placeholder={t`Your name`}
                     aria-invalid={nameError ? true : undefined}
                     aria-describedby={nameError ? "name-error" : undefined}
                     className={fieldClass}
@@ -267,7 +266,6 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                     setEmail(e.target.value);
                     setEmailError(null);
                   }}
-                  placeholder={t`Your email address`}
                   type="email"
                   required
                   aria-invalid={error || emailError ? true : undefined}
@@ -296,7 +294,6 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                         setTooShort(false);
                         setPasswordError(null);
                       }}
-                      placeholder={t`Password`}
                       type={showPassword ? "text" : "password"}
                       required
                       aria-invalid={error || tooShort || passwordError ? true : undefined}
@@ -532,7 +529,10 @@ export function AuthFrame({
           <span className="h-5 w-[9px] rounded-full bg-primary" />
           <span className="h-5 w-[9px] rounded-full bg-primary" />
         </div>
-        <h1 aria-live="polite" className="mb-9 mt-7 text-4xl font-medium tracking-tight">
+        <h1
+          aria-live="polite"
+          className="mb-9 mt-7 text-center text-4xl font-medium tracking-tight"
+        >
           {title}
         </h1>
         {children}

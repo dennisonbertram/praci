@@ -220,8 +220,8 @@ it("shows a model slug as its display name under Advanced, so two models are tol
   );
   await render(<AiDataSharingSection />);
   expect([...container.querySelectorAll("li")].map((r) => r.textContent)).toEqual([
-    "GPT-6 Luna",
-    "Muse Spark 1.2",
+    "GPT-6 LunaSend chats and mail text",
+    "Muse Spark 1.2Send chats and mail text",
   ]);
   expect(container.textContent).not.toContain("OpenRouter");
 });

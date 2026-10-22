@@ -338,7 +338,12 @@ export function AiDataSharingSection() {
                     disabled={pending}
                     onCheckedChange={(allowed) => setOne(recipient, allowed)}
                   />
-                  <span className="text-[14px] text-foreground/75">{model}</span>
+                  <span className="flex min-w-0 flex-col">
+                    <span className="text-[14px] text-foreground/75">{model}</span>
+                    <span className="text-[12.5px] text-muted-foreground">
+                      <Trans>Send chats and mail text</Trans>
+                    </span>
+                  </span>
                 </li>
               );
             })}
@@ -350,8 +355,13 @@ export function AiDataSharingSection() {
                   disabled={pending}
                   onCheckedChange={setDocumentsAllowed}
                 />
-                <span className="text-[14px] text-foreground/75">
-                  <Trans>Documents</Trans>
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-[14px] text-foreground/75">
+                    <Trans>Documents</Trans>
+                  </span>
+                  <span className="text-[12.5px] text-muted-foreground">
+                    <Trans>Send files and contracts</Trans>
+                  </span>
                 </span>
               </li>
             ) : null}
