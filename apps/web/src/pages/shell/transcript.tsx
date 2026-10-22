@@ -245,6 +245,19 @@ export const Transcript = memo(function Transcript({
     [messages],
   );
   const reactionView = useMemo(() => projectMessageReactions(messages), [messages]);
+  // One Tab stop for all the messages' More buttons (roving): the newest, or the one last focused.
+  // Up and Down move between them, so Tab reaches the composer in a few presses on a long chat.
+  const [moreId, setMoreId] = useState<string | null>(null);
+  const newestActionId = reactionView.visibleMessages
+    .filter(
+      (m) =>
+        !m.id.startsWith("progress:") &&
+        !isPeerReceiptBlocks(m.blocks) &&
+        messageHasVisibleBlocks(m.blocks, showToolActivity),
+    )
+    .at(-1)?.id;
+  const tabbableMoreId =
+    moreId && reactionView.visibleMessages.some((m) => m.id === moreId) ? moreId : newestActionId;
   const separatorIds = timeSeparatorIds(
     reactionView.visibleMessages.filter((message) =>
       messageHasVisibleBlocks(message.blocks, showToolActivity),
@@ -700,6 +713,7 @@ export const Transcript = memo(function Transcript({
             following.current = false;
           }
         }}
+        data-transcript=""
         className="@container rk-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 pt-5 pb-[calc(1.25rem+var(--toast-reserve,0px))] md:px-[max(1.75rem,calc((100%-900px)/2))] md:pt-6 md:pb-[calc(1.5rem+var(--toast-reserve,0px))]"
       >
         {olderCursor != null ? (
@@ -853,6 +867,8 @@ export const Transcript = memo(function Transcript({
                         onReply={onReply}
                         onReact={onReact}
                         remember={remember}
+                        tabbable={message.id === tabbableMoreId}
+                        onMoreFocus={() => setMoreId(message.id)}
                       />
                     )}
                     {peerReceipt ||
@@ -1106,6 +1122,8 @@ function MessageHoverActions({
   onReact,
   remember,
   below,
+  tabbable = true,
+  onMoreFocus,
 }: {
   message: ThreadMessage;
   side: "start" | "end";
@@ -1114,6 +1132,8 @@ function MessageHoverActions({
   onReply: (message: ThreadMessage) => void;
   onReact: (message: ThreadMessage, reaction: MessageReaction) => Promise<void>;
   remember?: RememberControls;
+  tabbable?: boolean;
+  onMoreFocus?: () => void;
 }) {
   const { t } = useLingui();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -1210,6 +1230,24 @@ function MessageHoverActions({
         <DropdownMenu open={moreOpen} onOpenChange={setMoreOpen}>
           <DropdownMenuTrigger
             aria-label={t`More`}
+            data-message-more=""
+            tabIndex={tabbable ? 0 : -1}
+            onFocus={onMoreFocus}
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+              const all = [
+                ...(event.currentTarget
+                  .closest("[data-transcript]")
+                  ?.querySelectorAll<HTMLElement>("[data-message-more]") ?? []),
+              ];
+              const next =
+                all[all.indexOf(event.currentTarget) + (event.key === "ArrowUp" ? -1 : 1)];
+              if (!next) return;
+              // The menu trigger would otherwise open the menu on Up and Down.
+              event.preventBaseUIHandler();
+              event.preventDefault();
+              next.focus();
+            }}
             className={cn(
               iconButtonClass,
               // On touch this is the only way in to react, reply and bookmark, so it reads stronger.

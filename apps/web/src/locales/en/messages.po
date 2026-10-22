@@ -701,6 +701,10 @@ msgstr "* Month to date"
 msgid "* So far"
 msgstr "* So far"
 
+#: src/pages/Shell.tsx
+msgid "+{hiddenRows} more"
+msgstr "+{hiddenRows} more"
+
 #: src/components/ComposeEmail.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "+{more} more"
