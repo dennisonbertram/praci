@@ -632,9 +632,7 @@ it("hides an unused idle page agent and reveals it when active", async () => {
   try {
     await act(async () => root.render(renderFixture(false)));
 
-    expect(
-      container.querySelector('[data-testid="sidebar-page-agents"]'),
-    ).toBeNull();
+    expect(container.querySelector('[data-testid="sidebar-page-agents"]')).toBeNull();
     expect(container.textContent).not.toContain("Inbox agent");
 
     await act(async () => root.render(renderFixture(true)));
@@ -710,7 +708,7 @@ it("folds email chats separately and reveals the active email chat", async () =>
   }
 });
 
-it("keeps one roster row tabbable and moves focus down with ArrowDown", async () => {
+it("keeps the first and focused roster rows tabbable and moves focus down with ArrowDown", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("matchMedia", () => ({
     matches: false,
@@ -732,9 +730,10 @@ it("keeps one roster row tabbable and moves focus down with ArrowDown", async ()
       );
     });
 
-    expect(tabStops()).toHaveLength(1);
+    expect(tabStops()).toHaveLength(2);
     const [current] = tabStops();
-    if (!current) throw new Error("Expected one tabbable roster row");
+    expect(current).toBe(rows()[0]);
+    if (!current) throw new Error("Expected the first tabbable roster row");
     const next = rows()[rows().indexOf(current) + 1];
     expect(next).toBeDefined();
 
@@ -744,7 +743,7 @@ it("keeps one roster row tabbable and moves focus down with ArrowDown", async ()
     });
 
     expect(document.activeElement).toBe(next);
-    expect(tabStops()).toEqual([next]);
+    expect(tabStops()).toEqual([current, next]);
   } finally {
     await act(async () => root.unmount());
     container.remove();

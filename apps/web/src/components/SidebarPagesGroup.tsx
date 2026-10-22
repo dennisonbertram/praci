@@ -92,6 +92,7 @@ export function SidebarPagesGroup({
                       key={page.key}
                       checked={!hidden.includes(page.key)}
                       onCheckedChange={() => onToggleHidden(page.key)}
+                      className="py-1.5"
                     >
                       {page.label}
                     </DropdownMenuCheckboxItem>

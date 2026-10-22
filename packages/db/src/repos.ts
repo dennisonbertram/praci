@@ -11,11 +11,13 @@ import type { ComputerMode } from "./computers.js";
 import { ensureComputerRecord, parseComputerMode } from "./computers.js";
 import { createThreadMessageInTransaction } from "./messages.js";
 import { isUniqueViolation } from "./prisma-errors.js";
+import { delegatePendingIds } from "./run-pauses.js";
 import { BotSectionNameConflictError, IsolationError } from "./scope.js";
 import { toBotSection } from "./sidebar-folders.js";
 import { lockSpaceForContentCreation } from "./spaces.js";
 import {
   activeRunSelection,
+  isHandOffOnly,
   latestBotRunSelection,
   previewFromBlocks,
   storedRunPhase,
@@ -365,24 +367,14 @@ export function createRepos(prisma: PrismaClient) {
                 includeDelegatedReplyText: false,
               }),
             );
-            // The latest words: a reaction is shown on its message, and a card (a choice, app
-            // connections) has no words, so the preview reads past both. A delegate's answer
-            // (a receipt that returns to a message this agent sent) counts as words, so the row
-            // shows the answer instead of the question that started the hand-off.
+            // The latest words in the thread as the person sees it: a reaction is shown on its
+            // message, and a card (a choice, app connections) or a bare hand-off to another agent
+            // ("Message bot") has no words, so the preview reads past them. A delegate's receipt is
+            // collapsed in the thread, so it is never previewed.
             for (const message of recent) {
               if (messageReaction(message)) continue;
-              if (visible.has(message)) preview = previewFromBlocks(message.blocks);
-              else {
-                const reply = message.blocks.find(
-                  (block) =>
-                    block.kind === "bot_message_received" &&
-                    block.returnToMessageId &&
-                    // Only a result or status is an answer; a request, question or fyi (or no intent,
-                    // which delivers as a request) is another agent's instruction.
-                    (block.intent === "result" || block.intent === "status"),
-                );
-                if (reply) preview = previewFromBlocks([reply]);
-              }
+              if (visible.has(message) && !isHandOffOnly(message.blocks))
+                preview = previewFromBlocks(message.blocks);
               if (preview) break;
             }
             if (preview || messages.length === 0 || !bot.thread || attempt === 4) break;
@@ -395,6 +387,21 @@ export function createRepos(prisma: PrismaClient) {
             });
             if (messages.length === 0) break;
           }
+          // While another agent waits for the owner's approval of this bot's request, the row says
+          // so: the card is in that agent's thread, not here. The label is plain English like the
+          // other server-built previews.
+          if (
+            bot.thread &&
+            (
+              await delegatePendingIds(prisma, {
+                spaceId: actor.spaceId,
+                userId: actor.userId,
+                fromBotId: bot.id,
+                threadId: bot.thread.id,
+              })
+            ).length > 0
+          )
+            preview = "Waiting for approval";
           return mapBot(
             bot,
             preview,

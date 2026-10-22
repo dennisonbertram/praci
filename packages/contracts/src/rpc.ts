@@ -206,6 +206,7 @@ import {
   SafeSaveInputSchema,
   SafeSchema,
 } from "./fundraising.js";
+import { GtmOverviewSchema, GtmQueueInputSchema, GtmQueueOutputSchema } from "./gtm.js";
 import { Id, IsoDate } from "./ids.js";
 import {
   CleanupArchiveInputSchema,
@@ -1347,6 +1348,8 @@ export const appContract = {
         devinNeedsYou: z.number().int(),
         /** The space has a Devin connection; the Devin page shows in the sidebar only then. */
         devinConnected: z.boolean(),
+        /** Parked gated GTM items still waiting for the founder on their active GTM agent. */
+        gtmNeedsYou: z.number().int(),
         dataRoomWaiting: z.number().int(),
         /** A ticket exists in the space; the Task board shows in menus only then. */
         hasTickets: z.boolean(),
@@ -1550,6 +1553,10 @@ export const appContract = {
   gtm: {
     /** Idempotent: creates the GTM agent and hourly work routine. */
     agent: oc.output(BotSchema),
+    /** Read-only actor-scoped GTM plan, channel, and policy overview. */
+    overview: oc.output(GtmOverviewSchema),
+    /** The app-owned Zernio REST queue, using a configured API key only. */
+    queue: oc.input(GtmQueueInputSchema).output(GtmQueueOutputSchema),
     /** Configuration status for app-owned Zernio posting; never validates a live API key. */
     postingCapability: oc.output(ZernioPostingCapabilitySchema),
   },
@@ -1558,6 +1565,8 @@ export const appContract = {
     agent: oc.output(BotSchema),
     overview: oc.output(LegalOverviewSchema),
     graph: oc.output(LegalGraphSchema),
+    /** Deadlines marked done, most recently due first, for the Done list under Deadlines. */
+    doneDeadlines: oc.output(z.array(LegalDeadlineSchema)),
     updateDeadline: oc.input(LegalUpdateDeadlineInputSchema).output(LegalDeadlineSchema),
     /** Queues one scan run in the Legal agent's thread (returns the active run if one is already going). */
     scanNow: oc.output(LegalScanNowOutputSchema),

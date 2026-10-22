@@ -8,7 +8,11 @@ import {
   createThreadMessageInTransaction,
   RunHistoryWriteError,
 } from "./messages.js";
-import { closeApprovalCardsInTransaction } from "./run-pauses.js";
+import {
+  closeApprovalCardsInTransaction,
+  delegatePendingIds,
+  expireDelegatedApprovalsInTransaction,
+} from "./run-pauses.js";
 import { createPendingSteeringRun } from "./steering.js";
 import { withTransactionRetry } from "./transaction-retry.js";
 
@@ -113,14 +117,49 @@ async function finalizeRunOnce(
         runIds: [input.runId],
         answer: "expired",
       });
-      if (expired > 0) {
+      // Work this run handed to another agent must not stay approvable either.
+      const { userId } = await tx.run.findUniqueOrThrow({
+        where: { id: input.runId },
+        select: { userId: true },
+      });
+      const delegateRunIds = await expireDelegatedApprovalsInTransaction(tx, {
+        spaceId: input.spaceId,
+        userId,
+        fromBotId: input.botId,
+        threadId: input.threadId,
+        runId: input.runId,
+      });
+      if (expired > 0 || delegateRunIds.length > 0) {
+        // Name only actions whose approval is confirmed expired, so never run.
         const kinds = await tx.externalEffect.findMany({
-          where: { runId: input.runId, spaceId: input.spaceId, status: "expired" },
+          where: {
+            runId: { in: [input.runId, ...delegateRunIds] },
+            spaceId: input.spaceId,
+            status: "expired",
+          },
           select: { kind: true },
           distinct: ["kind"],
         });
-        failure = `${input.error} The approval for ${kinds.map((e) => e.kind).join(", ")} expired, so that action was not done.`;
-        await tx.run.update({ where: { id: input.runId }, data: { error: failure } });
+        if (kinds.length > 0) {
+          failure = `${input.error} The approval for ${kinds.map((e) => e.kind).join(", ")} expired, so that action was not done.`;
+          await tx.run.update({ where: { id: input.runId }, data: { error: failure } });
+        }
+      }
+      if (delegateRunIds.length > 0) {
+        await appendEventInTransaction(tx, {
+          spaceId: input.spaceId,
+          threadId: input.threadId,
+          botId: input.botId,
+          type: "thread.delegate_pending",
+          payload: {
+            pending: await delegatePendingIds(tx, {
+              spaceId: input.spaceId,
+              userId,
+              fromBotId: input.botId,
+              threadId: input.threadId,
+            }),
+          },
+        });
       }
     }
 

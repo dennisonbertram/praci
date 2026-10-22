@@ -387,6 +387,7 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
     const deadline = overview.deadlines[0]!;
     const done = await legalUpdateDeadline(api, a, { id: deadline.id, status: "done" });
     expect(done.status).toBe("done");
+    expect((await legalOverview(api, a)).counts.doneDeadlines).toBeGreaterThan(0);
     await expect(
       legalUpdateDeadline(api, b, { id: deadline.id, status: "open" }),
     ).rejects.toMatchObject({

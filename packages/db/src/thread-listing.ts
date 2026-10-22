@@ -59,6 +59,14 @@ function humanizedIdRun(text: string): string {
   return `${words}, ${text.slice(run.length)}`.replace(/,\s*$/, "");
 }
 
+/** A message with no words whose only tool calls hand work to another agent: its row text would be "Message bot". */
+export function isHandOffOnly(blocks: unknown): boolean {
+  const rows = Array.isArray(blocks) ? (blocks as MessageBlock[]) : [];
+  if (rows.some((block) => block?.kind === "text" && block.text.trim())) return false;
+  const steps = rows.flatMap((block) => (block?.kind === "steps" ? block.steps : []));
+  return steps.length > 0 && steps.every((step) => toolStepLabel(step.label) === "Message bot");
+}
+
 /** The words of a message, else one line about its tool calls. Live tool activity never counts as words. */
 export function previewFromBlocks(blocks: unknown): string {
   const rows = Array.isArray(blocks) ? blocks : [];

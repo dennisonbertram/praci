@@ -138,7 +138,7 @@ it("shows the row's menu on hover or focus, and always on touch", () => {
 it("puts the status in its own column as a badge, and never in the Type cell", () => {
   const rows = [
     { ...item("junk", null), status: "failed" },
-    { ...item("busy", null), status: "processing" },
+    { ...item("busy", null), status: "processing", updatedAt: new Date().toISOString() },
     item("a-much-longer-file-name", null),
   ].map((i) => ({ item: i as DataRoomApiItem, snippets: [] }));
   act(() => root.render(<ListView rows={rows} o={o()} />));
@@ -520,7 +520,7 @@ it("offers Send to agent in the row's More actions menu too", async () => {
 
 it("names the step a working item is in on its spinner, and leaves ready items plain", () => {
   const rows = ["pending", "classifying", "indexing", "ready"].map((status) => ({
-    item: { ...item(status, null), status } as DataRoomApiItem,
+    item: { ...item(status, null), status, updatedAt: new Date().toISOString() } as DataRoomApiItem,
     snippets: [],
   }));
   act(() => root.render(<ListView rows={rows} o={o()} />));
@@ -677,6 +677,7 @@ it("offers Try again on a file still Reading after 3 minutes", () => {
   expect(container.querySelector('[data-testid="data-room-subline"]')?.textContent).toBe(
     "Taking longer than usual",
   );
+  expect(container.querySelector('[data-testid="data-room-status"]')?.textContent).toBe("Failed");
   const retry = Array.from(container.querySelectorAll("button")).find(
     (b) => b.textContent === "Try again",
   );

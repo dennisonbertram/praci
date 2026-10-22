@@ -214,7 +214,11 @@ import {
   rightPanelStorageKey,
   writeRightPanelState,
 } from "../lib/right-panel-state";
-import { needsAnswerLabel, rosterStatusChanged } from "../lib/roster-status";
+import {
+  needsAnswerLabel,
+  rosterStatusChanged,
+  waitingForApprovalLabel,
+} from "../lib/roster-status";
 import type { MissingBotSeen } from "../lib/route-bot";
 import { resolveRouteBot, shouldClearMissingBot, useGiveUpOnMissingBot } from "../lib/route-bot";
 import { rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
@@ -230,6 +234,7 @@ import {
   useDrawerFocus,
   useSidebarDocked,
 } from "../lib/shell-layout";
+import { rememberThread } from "../lib/thread-cache";
 import {
   activeThreadRuns,
   applyThreadSendReceipt,
@@ -743,6 +748,8 @@ export function ShellPage() {
   // Last-known computer/screen per bot, so switching back to an already-seen
   // bot paints its computer pane instantly instead of blanking it while the
   // thread + screen RPCs round-trip again (see refreshThread / refreshComputerScreen).
+  // Last thread per bot: returning to a chat shows its messages while the fresh copy loads.
+  const threadCacheRef = useRef(new Map<string, ThreadSnapshot>());
   const computerCacheRef = useRef(
     new Map<string, { computer: ComputerStatus | null; screenUrl: string | null }>(),
   );
@@ -768,6 +775,7 @@ export function ShellPage() {
 
   function commitSnapshot(next: ThreadSnapshot | null) {
     snapshotRef.current = next;
+    rememberThread(threadCacheRef.current, next, 8);
     setSnapshot(withLiveStreamingProgress(next, streamResponsesRef.current));
   }
 
@@ -1718,6 +1726,8 @@ export function ShellPage() {
     } else {
       setScreenUrl(null);
     }
+    const cachedThread = threadCacheRef.current.get(active.id);
+    if (cachedThread && snapshotRef.current?.botId !== active.id) commitSnapshot(cachedThread);
     expandedHistoryThread.current = null;
     historyEpoch.current += 1;
     const abort = new AbortController();
@@ -2461,10 +2471,11 @@ export function ShellPage() {
   const currentRuns = activeThreadRuns(activeSnapshot);
   const answerableAskMessageId = latestAnswerableAskMessageId(activeSnapshot);
   const waitingOnApproval = Boolean(
-    answerableAskMessageId &&
-      activeSnapshot?.messages
-        .find((message) => message.id === answerableAskMessageId)
-        ?.blocks.some((block) => block.kind === "ask" && isApprovalAskBlock(block)),
+    activeSnapshot?.delegatePending?.length ||
+      (answerableAskMessageId &&
+        activeSnapshot?.messages
+          .find((message) => message.id === answerableAskMessageId)
+          ?.blocks.some((block) => block.kind === "ask" && isApprovalAskBlock(block))),
   );
   const workingRuns = currentRuns.filter((run) =>
     ["running", "queued", "leased"].includes(run.status),
@@ -4097,7 +4108,13 @@ export function ShellPage() {
               onRemoveDataRoomItem={removeDataRoomItem}
               attachmentNotice={attachmentNotice}
               onDismissAttachmentNotice={() => setAttachmentNotice(null)}
-              placeholder={waitingOnApproval ? needsAnswerLabel() : undefined}
+              placeholder={
+                activeSnapshot?.delegatePending?.length
+                  ? waitingForApprovalLabel()
+                  : waitingOnApproval
+                    ? needsAnswerLabel()
+                    : undefined
+              }
               sendError={sendError}
               runError={displayedRunError}
               runErrorId={displayedRunErrorId}

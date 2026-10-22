@@ -18,6 +18,8 @@ export const ProductEventType = z.enum([
   "thread.computer",
   "thread.subagent",
   "thread.cloud_agent",
+  /** payload: { pending: string[] } messages of this thread whose delegate waits for approval */
+  "thread.delegate_pending",
   "thread.call.ended",
   "run.started",
   "run.checkpointed",

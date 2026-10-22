@@ -37,6 +37,7 @@ import {
   createGroupRepos,
   createRepos,
   createThreadMessageInTransaction,
+  delegatePendingIds,
   expireComputerExecutionLeases,
   IsolationError,
   lockOwnedGroup,
@@ -355,6 +356,19 @@ export async function threadHead(prisma: PrismaClient, target: ThreadTarget) {
   return { threadId: target.threadId, cursor: latest?.seq ?? -1 };
 }
 
+async function delegatePendingField(
+  prisma: PrismaClient,
+  target: Extract<ThreadTarget, { kind: "bot" }>,
+) {
+  const delegatePending = await delegatePendingIds(prisma, {
+    spaceId: target.bot.spaceId,
+    userId: target.bot.userId,
+    fromBotId: target.bot.id,
+    threadId: target.threadId,
+  });
+  return delegatePending.length > 0 ? { delegatePending } : {};
+}
+
 export async function threadSnapshot(
   deps: { prisma: PrismaClient },
   target: ThreadTarget,
@@ -455,6 +469,7 @@ export async function threadSnapshot(
       messages: messagesWithLiveEvents(core.messagePage.messages, core.liveEvents),
       olderCursor: core.messagePage.olderCursor,
       run: core.run ? mapRun(core.run) : null,
+      ...(await delegatePendingField(deps.prisma, target)),
       computer: toComputerStatus(target.botId, target.bot.computer, busyBotName),
     };
   }

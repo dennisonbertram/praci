@@ -43,7 +43,9 @@ export function niceRange(min: number, max: number): { step: number; top: number
 function lineRange(min: number, max: number) {
   // A constant balance gets room on both sides so the line sits mid-chart.
   if (min === max && min > 0) {
-    const step = Math.max(Math.round(min / 10), 100);
+    // A round step (1, 2 or 5 times a power of ten) keeps the three gridline labels evenly spaced; the middle one is the balance.
+    const unit = 10 ** Math.floor(Math.log10(Math.max(min / 10, 100)));
+    const step = [1, 2, 5, 10].map((m) => m * unit).find((s) => s >= min / 10) ?? 10 * unit;
     return { step, floor: min - step, top: min + step };
   }
   if (min > 0 && max - min < max / 2) {
@@ -143,7 +145,7 @@ function Grid({
                 y={y + 3}
                 textAnchor="end"
                 className="fill-muted-foreground"
-                fontSize={11}
+                fontSize={12}
               >
                 {axisMoney(v)}
               </text>
@@ -241,7 +243,7 @@ export function LineChart({
                       y={height - 6}
                       textAnchor={i === values.length - 1 && x(i) > width - 24 ? "end" : "middle"}
                       className="fill-muted-foreground"
-                      fontSize={11}
+                      fontSize={12}
                     >
                       {text}
                     </text>
@@ -275,7 +277,7 @@ export function LineChart({
                   (x(solid) + x(values.length - 1)) / 2 + 8 > width - 70 ? "end" : "start"
                 }
                 className="fill-muted-foreground"
-                fontSize={11}
+                fontSize={12}
               >
                 {projectedLabel}
               </text>
@@ -357,7 +359,7 @@ function monotoneSegments(pts: [number, number][]): string[] {
  * opens its detail. A bucket still running is a hollow dot, not part of the line.
  */
 export function BurnLines({
-  series,
+  series: allSeries,
   granularity = "month",
   height = 230,
   onOpen,
@@ -372,6 +374,9 @@ export function BurnLines({
   useHideAmounts();
   const gradient = useId();
   const [active, setActive] = useState<number | null>(null);
+  // Months before the first one with money in or out are flat zeros that only take width.
+  const firstUsed = allSeries.findIndex((m) => m.outCents || m.revenueCents || m.financingCents);
+  const series = granularity === "month" && firstUsed > 0 ? allSeries.slice(firstUsed) : allSeries;
   // A finger cannot hit 20 px columns, so on touch the whole plot is one target: a tap picks the
   // nearest period (its figures show), a second tap in the same column opens it.
   const touch = window.matchMedia?.("(pointer: coarse)").matches ?? false;
@@ -400,14 +405,15 @@ export function BurnLines({
           series.map((m, i): [number, number] => [cx(i), y(Math.min(pick(m), scale.top))]);
         const out = line((m) => m.outCents);
         const last = series.length - 1;
-        const partial = series[last]?.partial === true && last > 0;
+        const partial = series[last]?.partial === true;
         // A bucket still running is a hollow dot only: a line to it would read as spend falling.
         const drawn = partial ? out.slice(0, -1) : out;
+        const rev = line((m) => m.revenueCents);
+        const revDrawn = partial ? rev.slice(0, -1) : rev;
         const outSegs = monotoneSegments(drawn);
         const start = (p: [number, number] | undefined) =>
           `M${p?.[0].toFixed(1)},${p?.[1].toFixed(1)}`;
         const hasRevenue = series.some((m) => m.revenueCents > 0);
-        const rev = line((m) => m.revenueCents);
         const area = (pts: [number, number][], segs: string[]) =>
           `${start(pts[0])}${segs.join("")}L${pts.at(-1)?.[0].toFixed(1)},${base}L${pts[0]?.[0].toFixed(1)},${base}Z`;
         const shown = active === null ? null : series[active];
@@ -470,15 +476,15 @@ export function BurnLines({
             />
             {series.length > 1 ? (
               <>
-                {hasRevenue ? (
+                {hasRevenue && revDrawn.length > 1 ? (
                   <>
                     <path
                       data-testid="burn-revenue-area"
-                      d={area(rev, monotoneSegments(rev))}
+                      d={area(revDrawn, monotoneSegments(revDrawn))}
                       fill={`url(#${gradient}-rev)`}
                     />
                     <path
-                      d={`${start(rev[0])}${monotoneSegments(rev).join("")}`}
+                      d={`${start(revDrawn[0])}${monotoneSegments(revDrawn).join("")}`}
                       fill="none"
                       className="stroke-muted-foreground"
                       strokeWidth={1.5}
@@ -505,12 +511,41 @@ export function BurnLines({
                 ) : null}
               </>
             ) : null}
+            {hasRevenue && revDrawn.length === 1 ? (
+              <circle
+                data-testid="burn-revenue-point"
+                cx={revDrawn[0]?.[0]}
+                cy={revDrawn[0]?.[1]}
+                r={3}
+                className="fill-muted-foreground"
+              />
+            ) : null}
+            {partial && series[last]?.revenueCents ? (
+              <circle
+                data-testid="burn-revenue-end"
+                cx={(rev.at(-1) as [number, number])[0]}
+                cy={(rev.at(-1) as [number, number])[1]}
+                r={3}
+                className="fill-card stroke-muted-foreground"
+                strokeWidth={1.5}
+              />
+            ) : null}
             {series.map((m, i) =>
-              m.financingCents > 0 ? (
+              m.financingCents > scale.top ? (
+                // Off the scale: an up arrow, so it is not read as the value of the gridline it sits on.
+                <path
+                  key={m.start}
+                  data-testid="financing-arrow"
+                  d={`M${cx(i)},${y(scale.top) - 4}l4,7h-8z`}
+                  className="fill-card stroke-foreground"
+                  strokeWidth={1.25}
+                  strokeLinejoin="round"
+                />
+              ) : m.financingCents > 0 ? (
                 <circle
                   key={m.start}
                   cx={cx(i)}
-                  cy={y(Math.min(m.financingCents, scale.top))}
+                  cy={y(m.financingCents)}
                   r={2.5}
                   className="fill-card stroke-foreground"
                   strokeWidth={1.25}
@@ -581,7 +616,7 @@ export function BurnLines({
                       y={height - 8}
                       textAnchor="middle"
                       className="fill-muted-foreground"
-                      fontSize={11}
+                      fontSize={12}
                       fontWeight={m.partial ? 700 : 400}
                     >
                       {name}
@@ -617,8 +652,8 @@ export function BurnLines({
               if (m.financingCents <= scale.top) return null;
               const when = granularity === "day" ? dayMonth(m.start) : (names[i] ?? "");
               const text = `${t`Financing, ${when}`} ↑ ${money(m.financingCents)}`;
-              // About 6 px a character at 11 px; a centred label that would pass either edge hugs it.
-              const half = (text.length * 6) / 2;
+              // About 6.5 px a character at 12 px; a centred label that would pass either edge hugs it.
+              const half = (text.length * 6.5) / 2;
               const anchor =
                 cx(i) + half > width - 2 ? "end" : cx(i) - half < 2 ? "start" : "middle";
               return (
@@ -629,7 +664,7 @@ export function BurnLines({
                   y={top - 6}
                   textAnchor={anchor}
                   className="fill-foreground"
-                  fontSize={11}
+                  fontSize={12}
                 >
                   {text}
                 </text>
@@ -648,7 +683,7 @@ export function BurnLines({
                 <text
                   x={tipX + 10}
                   y={top + 18}
-                  fontSize={11}
+                  fontSize={12}
                   className="fill-foreground"
                   fontWeight={600}
                 >
@@ -659,7 +694,7 @@ export function BurnLines({
                     <text
                       x={tipX + 10}
                       y={top + 34 + 16 * j}
-                      fontSize={11}
+                      fontSize={12}
                       className="fill-muted-foreground"
                     >
                       {r.name}
@@ -667,7 +702,7 @@ export function BurnLines({
                     <text
                       x={tipX + tipW - 10}
                       y={top + 34 + 16 * j}
-                      fontSize={11}
+                      fontSize={12}
                       textAnchor="end"
                       className="fill-foreground"
                     >
@@ -735,7 +770,7 @@ export function MonthBars({
                       y={y - 4}
                       textAnchor="middle"
                       className="fill-muted-foreground"
-                      fontSize={11}
+                      fontSize={12}
                     >
                       {money(item.cents)}
                     </text>
@@ -745,7 +780,7 @@ export function MonthBars({
                     y={height - 6}
                     textAnchor="middle"
                     className="fill-muted-foreground"
-                    fontSize={11}
+                    fontSize={12}
                   >
                     {item.label}
                   </text>

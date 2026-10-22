@@ -536,6 +536,10 @@ export function SpaceSidebar({
   openSettings,
 }: SpaceSidebarProps) {
   const { t } = useLingui();
+  const sidebarPaneRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (mobileSidebarOpen) sidebarPaneRef.current?.scrollTo?.({ top: 0 });
+  }, [mobileSidebarOpen]);
   const rosterStopId = useRef<string | null>(null);
   useEffect(() => syncRosterTabStops(sidebarRef.current, rosterStopId.current));
   useEffect(() => {
@@ -727,7 +731,10 @@ export function SpaceSidebar({
           <PanelLeftOpen size={16} strokeWidth={1.8} aria-hidden="true" />
         </button>
       ) : null}
-      <div className="flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents">
+      <div
+        ref={sidebarPaneRef}
+        className="flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents"
+      >
         {bootstrapMe === undefined ? null : (
           // Waiting for the account (undefined) keeps pages the user hid from flashing in.
           // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
@@ -803,8 +810,8 @@ export function SpaceSidebar({
                     rail,
                     value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
                     valueLabel: plural(glance.legalDueSoon, {
-                      one: "# due soon",
-                      other: "# due soon",
+                      one: "# overdue or due in the next 7 days",
+                      other: "# overdue or due in the next 7 days",
                     }),
                   })}
                 />
@@ -881,7 +888,11 @@ export function SpaceSidebar({
                   rail={rail}
                   onOpen={() => {
                     setMobileSidebarOpen(false);
-                    navigate("/app/data-room");
+                    navigate(
+                      glance.dataRoomWaiting > 0
+                        ? "/app/data-room?status=failed"
+                        : "/app/data-room",
+                    );
                   }}
                   {...glanceBadge({
                     unseen: unseen["data-room"] ?? 0,
@@ -1004,7 +1015,13 @@ export function SpaceSidebar({
                   ? [
                       ...listedRows.filter((row) => !isPageAgent(row) && !isEmailChat(row)),
                       ...(pageAgentRows.length ? [{ foldHeader: "page" as const }] : []),
-                      ...(showPageAgents ? pageAgentRows : []),
+                      ...(showPageAgents
+                        ? pageAgentsOpen
+                          ? pageAgentRows
+                          : pageAgentRows.filter(
+                              (row) => row.item.kind === "bot" && row.item.chat.id === active?.id,
+                            )
+                        : []),
                       ...(emailChatRows.length ? [{ foldHeader: "email" as const }] : []),
                       ...(showEmailChats ? emailChatRows : []),
                     ]

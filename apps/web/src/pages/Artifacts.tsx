@@ -347,6 +347,7 @@ export function ArtifactsPage({
           />
           <PickFilter
             label={t`Added`}
+            anyLabel={t`Any time`}
             value={dateFilter === "all" ? undefined : dateFilter}
             options={[
               ["today", t`Today`],
