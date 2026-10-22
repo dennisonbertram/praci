@@ -283,7 +283,7 @@ it("returns focus to the element that opened it when it closes", async () => {
   expect(document.activeElement).toBe(opener);
 });
 
-it("Enter opens a contact named exactly as typed, not the mail search, and a long title keeps the match in view", async () => {
+it("Enter opens a contact named exactly as typed, not the mail search, and a long title keeps its start", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   await mount(vi.fn(), async () => [
     {
@@ -304,7 +304,8 @@ it("Enter opens a contact named exactly as typed, not the mail search, and a lon
   ]);
   await search("zed quill");
   await wait(300);
-  expect(listText()).toContain("…");
+  expect(listText()).toContain("Board materials for the annual");
+  expect(listText()).not.toContain("…");
   expect(document.querySelector("[cmdk-item][data-selected=true]")?.textContent).toBe("Zed Quill");
 });
 

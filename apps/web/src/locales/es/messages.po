@@ -539,6 +539,10 @@ msgstr ""
 msgid "{late, plural, one {Overdue by # day} other {Overdue by # days}}"
 msgstr ""
 
+#: src/pages/Fundraising.tsx
+msgid "{legalSafes} SAFEs found in Legal"
+msgstr ""
+
 #: src/lib/relative-time.ts
 msgid "{minutes}m ago"
 msgstr "hace {minutes} min"
@@ -707,6 +711,10 @@ msgstr ""
 
 #: src/components/fundraising/MercuryLine.tsx
 msgid "1 SAFE could not be read"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "1 SAFE found in Legal"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -1996,6 +2004,10 @@ msgstr ""
 
 #: src/components/NotificationSettings.tsx
 msgid "Browser notifications"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Building graph…"
 msgstr ""
 
 #: src/pages/shell/BotSkillsSection.tsx
@@ -7539,6 +7551,7 @@ msgstr ""
 msgid "Only this bot"
 msgstr ""
 
+#: src/components/data-room/PreviewActions.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
@@ -9343,7 +9356,6 @@ msgstr ""
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
-#: src/components/tour/FirstRunTour.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
@@ -9392,6 +9404,10 @@ msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
+msgstr ""
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Search finds any page, chat or email."
 msgstr ""
 
 #: src/components/integrations/ConnectAppsStep.tsx
@@ -9453,6 +9469,10 @@ msgstr ""
 
 #: src/pages/shell/working-label.ts
 msgid "Searching your mail"
+msgstr ""
+
+#: src/pages/shell/command-palette.tsx
+msgid "Searching…"
 msgstr ""
 
 #: src/components/cap-table/CapTableEditor.tsx
@@ -10243,7 +10263,6 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 #: src/pages/gtm/GtmChannels.tsx
-#: src/pages/legal/LegalContracts.tsx
 msgid "Status"
 msgstr ""
 
@@ -11077,10 +11096,6 @@ msgstr ""
 msgid "Type"
 msgstr ""
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Type here to find any page, chat or email."
-msgstr ""
-
 #: src/pages/Investors.tsx
 msgid "Type it in"
 msgstr ""
@@ -11191,6 +11206,10 @@ msgstr "Desfijar"
 
 #: src/pages/Inbox.tsx
 msgid "Unread"
+msgstr ""
+
+#: src/components/data-room/ItemRows.tsx
+msgid "Unreadable"
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
@@ -11386,6 +11405,11 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Uploaded"
+msgstr ""
+
+#. placeholder {0}: state.folder
+#: src/components/data-room/DropZone.tsx
+msgid "Uploaded to {0}"
 msgstr ""
 
 #: src/components/inbox/InboxRow.tsx

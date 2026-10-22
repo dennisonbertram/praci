@@ -539,6 +539,10 @@ msgstr "{items, plural, one {# item} other {# items}}"
 msgid "{late, plural, one {Overdue by # day} other {Overdue by # days}}"
 msgstr "{late, plural, one {Overdue by # day} other {Overdue by # days}}"
 
+#: src/pages/Fundraising.tsx
+msgid "{legalSafes} SAFEs found in Legal"
+msgstr "{legalSafes} SAFEs found in Legal"
+
 #: src/lib/relative-time.ts
 msgid "{minutes}m ago"
 msgstr "{minutes}m ago"
@@ -708,6 +712,10 @@ msgstr "0x… or name.eth"
 #: src/components/fundraising/MercuryLine.tsx
 msgid "1 SAFE could not be read"
 msgstr "1 SAFE could not be read"
+
+#: src/pages/Fundraising.tsx
+msgid "1 SAFE found in Legal"
+msgstr "1 SAFE found in Legal"
 
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -1997,6 +2005,10 @@ msgstr "Browser"
 #: src/components/NotificationSettings.tsx
 msgid "Browser notifications"
 msgstr "Browser notifications"
+
+#: src/pages/Legal.tsx
+msgid "Building graph…"
+msgstr "Building graph…"
 
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
@@ -7539,6 +7551,7 @@ msgstr "Only if the server does not use sign-in"
 msgid "Only this bot"
 msgstr "Only this bot"
 
+#: src/components/data-room/PreviewActions.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
@@ -9343,7 +9356,6 @@ msgstr "Scroll sideways to see the whole graph."
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
-#: src/components/tour/FirstRunTour.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
@@ -9393,6 +9405,10 @@ msgstr "Search documents"
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
 msgstr "Search Drive"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Search finds any page, chat or email."
+msgstr "Search finds any page, chat or email."
 
 #: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -9454,6 +9470,10 @@ msgstr "Searching in {openFolderPath}"
 #: src/pages/shell/working-label.ts
 msgid "Searching your mail"
 msgstr "Searching your mail"
+
+#: src/pages/shell/command-palette.tsx
+msgid "Searching…"
+msgstr "Searching…"
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
@@ -10243,7 +10263,6 @@ msgstr "Stats"
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 #: src/pages/gtm/GtmChannels.tsx
-#: src/pages/legal/LegalContracts.tsx
 msgid "Status"
 msgstr "Status"
 
@@ -11077,10 +11096,6 @@ msgstr "Turn on a model and allow AI access to sort files."
 msgid "Type"
 msgstr "Type"
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Type here to find any page, chat or email."
-msgstr "Type here to find any page, chat or email."
-
 #: src/pages/Investors.tsx
 msgid "Type it in"
 msgstr "Type it in"
@@ -11192,6 +11207,10 @@ msgstr "Unpin"
 #: src/pages/Inbox.tsx
 msgid "Unread"
 msgstr "Unread"
+
+#: src/components/data-room/ItemRows.tsx
+msgid "Unreadable"
+msgstr "Unreadable"
 
 #: src/components/data-room/ItemDialogs.tsx
 msgid "Unshare"
@@ -11387,6 +11406,11 @@ msgstr "Upload to All items"
 #: src/components/data-room/DropZone.tsx
 msgid "Uploaded"
 msgstr "Uploaded"
+
+#. placeholder {0}: state.folder
+#: src/components/data-room/DropZone.tsx
+msgid "Uploaded to {0}"
+msgstr "Uploaded to {0}"
 
 #: src/components/inbox/InboxRow.tsx
 #: src/components/sidebar-glance.tsx

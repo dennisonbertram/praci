@@ -89,7 +89,11 @@ import {
   readInboxListState,
   setInboxListParam,
 } from "../lib/inbox-list-input";
-import { INBOX_CHANGED_EVENT, prefetchInboxMessage } from "../lib/inbox-message-cache";
+import {
+  INBOX_CHANGED_EVENT,
+  prefetchInboxMessage,
+  ROW_MENU_EVENT,
+} from "../lib/inbox-message-cache";
 import { moveInChunks } from "../lib/inbox-move";
 import { syncErrorText } from "../lib/inbox-sync-error";
 import { MAIL_SENT_EVENT } from "../lib/outbox";
@@ -319,6 +323,13 @@ function InboxListPage({
   const [composing, setComposing] = useState(false);
   // The first sort after Allow: rows keep their places until triage finishes, then regroup once.
   const [sorting, setSorting] = useState(false);
+  // Rows keep their groups while a row's More menu is open, so the item under the pointer stays put.
+  const [rowMenuOpen, setRowMenuOpen] = useState(false);
+  useEffect(() => {
+    const onMenu = (event: Event) => setRowMenuOpen((event as CustomEvent<boolean>).detail);
+    window.addEventListener(ROW_MENU_EVENT, onMenu);
+    return () => window.removeEventListener(ROW_MENU_EVENT, onMenu);
+  }, []);
   const sortingRef = useRef(false);
   sortingRef.current = sorting;
   // Triage finished during the first sort, and the to-dos it made are still loading.
@@ -622,7 +633,7 @@ function InboxListPage({
   // classifications from before stay, and rows classified later join the grouping when it finishes.
   const holdWhilePending = useCallback(
     (list: MailRow[]) => {
-      if (!shown?.triagePending || stalled || filtered) {
+      if ((!shown?.triagePending && !rowMenuOpen) || stalled || filtered) {
         heldTriage.current = null;
         return list;
       }
@@ -659,26 +670,29 @@ function InboxListPage({
         return { ...row, ...classes };
       });
     },
-    [shown?.triagePending, stalled, filtered, listKey],
+    [shown?.triagePending, rowMenuOpen, stalled, filtered, listKey],
   );
   const groups = useMemo(
     () =>
       groupInbox(
         sorting
-          ? // Rows sorted so far show nothing new until the whole sort lands.
-            rows.map((row) => ({
-              ...row,
-              needsReply: null,
-              priority: null,
-              reason: null,
-              category: null,
-            }))
+          ? // Rows sorted so far show nothing new until the whole sort lands. An open row menu
+            // holds the blank view, so the rows do not move when the sort finishes.
+            (rowMenuOpen ? holdWhilePending : (list: MailRow[]) => list)(
+              rows.map((row) => ({
+                ...row,
+                needsReply: null,
+                priority: null,
+                reason: null,
+                category: null,
+              })),
+            )
           : resultsView
             ? rows.map((row) => ({ ...row, needsReply: null }))
             : holdWhilePending(rows),
         new Date(),
       ),
-    [rows, resultsView, sorting, holdWhilePending],
+    [rows, resultsView, sorting, rowMenuOpen, holdWhilePending],
   );
   const replyRows = allReplies ? groups.needsReply : groups.needsReply.slice(0, NEEDS_REPLY_SHOWN);
   const hiddenReplies = groups.needsReply.length - replyRows.length;
