@@ -311,7 +311,10 @@ it("notes non-USD transactions only when some are left out", async () => {
   root = createRoot(container);
   await show("/app/finance");
   await flush();
-  expect(container.querySelector('a[aria-label*="3 non-USD not counted"]')).not.toBeNull();
+  // The link's name starts with its visible text and adds the count after it.
+  const sync = [...container.querySelectorAll("a")].find((a) => a.textContent?.includes("non-USD"));
+  expect(sync?.getAttribute("aria-label")).toBeNull();
+  expect(sync?.textContent).toMatch(/3 non-USD not counted$/);
 });
 
 it("sends Reconnect to Integrations instead of connecting", async () => {

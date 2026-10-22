@@ -44,8 +44,8 @@ const FOCUS_OPTIONS: FocusOption[] = [
     id: "day",
     letter: "B",
     label: "Day-to-day work",
-    summary: "Slack, calendar, and email",
-    apps: ["slack", "gmail", "googlecalendar"],
+    summary: "email, Slack, calendar, and docs",
+    apps: ["gmail", "slack", "googlecalendar", "googledocs"],
   },
   {
     id: "research",
@@ -53,13 +53,6 @@ const FOCUS_OPTIONS: FocusOption[] = [
     label: "Research & writing",
     summary: "the web, notes, and docs",
     apps: ["hackernews", "notion", "googledocs"],
-  },
-  {
-    id: "everything",
-    letter: "D",
-    label: "A bit of everything",
-    summary: "email, Slack, and docs",
-    apps: ["gmail", "slack", "googledocs"],
   },
 ];
 
@@ -247,7 +240,9 @@ export async function chooseFocus(
   botId: string,
   optionId: string,
 ): Promise<void> {
-  const option = FOCUS_OPTIONS.find((entry) => entry.id === optionId);
+  // Cards posted before "A bit of everything" was merged into "day" still carry that option.
+  const wanted = optionId === "everything" ? "day" : optionId;
+  const option = FOCUS_OPTIONS.find((entry) => entry.id === wanted);
   if (!option) throw new IsolationError();
   const { bot, thread } = await requireBotThread(deps, actor, botId);
   const target = { spaceId: actor.spaceId, botId: bot.id, threadId: thread.id };

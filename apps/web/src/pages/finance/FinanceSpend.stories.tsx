@@ -5,6 +5,7 @@ import type {
   FinanceVendorOutput,
 } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { FinanceChromeProvider } from "../../components/finance/ui";
 import { mockRpc } from "../../lib/__mocks__/rpc";
 import {
   FinanceCategoryPage,
@@ -173,6 +174,26 @@ export const Recurring: Story = {
 
 export const Vendor: Story = {
   render: () => <FinanceVendorPage keyName="acme-hosting" />,
+  beforeEach: () => mockRpc({ "finance.vendor": vendor }),
+};
+
+/** A phone's vendor header: Back, the title, the company and Ask share one row; the company truncates first. */
+export const VendorWithChrome: Story = {
+  render: () => (
+    <FinanceChromeProvider
+      value={{
+        onAskAgent: () => undefined,
+        spaceId: "s1",
+        spaces: [
+          { id: "s1", name: "Northwind Robotics" },
+          { id: "s2", name: "Northwind Labs" },
+        ],
+        onSwitchSpace: () => undefined,
+      }}
+    >
+      <FinanceVendorPage keyName="acme-hosting" />
+    </FinanceChromeProvider>
+  ),
   beforeEach: () => mockRpc({ "finance.vendor": vendor }),
 };
 

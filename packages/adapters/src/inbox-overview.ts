@@ -51,6 +51,12 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
   const own = { spaceId: scope.spaceId, userId: scope.userId };
   const ids = accounts.map((account) => account.id);
   const now = (deps.now ?? (() => new Date()))();
+  // The Inbox To do card lists mail to-dos and the user's meeting to-dos; the overview counts the same.
+  const openTodoWhere = {
+    ...own,
+    doneAt: null,
+    OR: [{ connectionId: { in: ids } }, { meetingId: { not: null } }],
+  };
   const [cached, todos, openTodos, states, statuses, markRows] = await Promise.all([
     prisma.cachedMailMessage.findMany({
       where: {
@@ -63,14 +69,14 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
       take: MAX_CACHED,
     }),
     prisma.inboxTodo.findMany({
-      where: { ...own, connectionId: { in: ids }, doneAt: null },
+      where: openTodoWhere,
       orderBy: [{ dueOn: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
       take: MAX_TODOS,
       include: {
         message: { select: { providerMessageId: true, fromName: true, fromAddress: true } },
       },
     }),
-    prisma.inboxTodo.count({ where: { ...own, connectionId: { in: ids }, doneAt: null } }),
+    prisma.inboxTodo.count({ where: openTodoWhere }),
     prisma.mailSyncState.findMany({
       where: { connectionId: { in: ids }, connection: own },
       select: { connectionId: true, lastSyncedAt: true },
@@ -116,7 +122,7 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
     );
   const todoRows = todos.map(
     (todo) =>
-      `${clip(todo.text, 140)} | ${todo.dueOn ? `due ${day(todo.dueOn)}` : "no due date"} | acct:${label.get(todo.connectionId ?? "")}${
+      `${clip(todo.text, 140)} | ${todo.dueOn ? `due ${day(todo.dueOn)}` : "no due date"} ${todo.connectionId ? ` | acct:${label.get(todo.connectionId)}` : " | meeting"}${
         todo.message
           ? ` | id:${todo.message.providerMessageId} | from:${clip(todo.message.fromName || todo.message.fromAddress, 50)}`
           : ""

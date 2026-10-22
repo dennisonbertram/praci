@@ -14,6 +14,8 @@ import type { SendTarget } from "./SendToAgent";
 /** What can be done with the ticked files. It shows only while at least one row is ticked. */
 export function SelectionBar({
   count,
+  total,
+  onSelectAll,
   busy = false,
   onDownload,
   onSend,
@@ -22,6 +24,10 @@ export function SelectionBar({
   onSendToAgent,
 }: {
   count: number;
+  /** How many files the room holds in this view, when more than the ticked ones are known. */
+  total?: number;
+  /** Ticks every file of the view, loaded or not; shown only when `total` is larger than `count`. */
+  onSelectAll?: () => void;
   /** A download or a send is reading the files. */
   busy?: boolean;
   onDownload: () => void;
@@ -33,14 +39,27 @@ export function SelectionBar({
   onSendToAgent?: (agent: SendTarget) => void;
 }) {
   if (count === 0) return null;
+  const more = total !== undefined && total > count && onSelectAll;
   return (
+    // Drawn over the foot of the list, so ticking a row never moves the table or hides the ticked row.
     <div
       role="toolbar"
       data-testid="data-room-selection"
-      className="sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-border bg-background px-3 py-1.5 text-sm"
+      className="absolute inset-x-0 bottom-0 z-20 flex flex-wrap items-center gap-2 border-t border-border bg-background px-3 py-1.5 text-sm shadow-sm"
     >
       <span className="me-auto font-medium">
-        <Trans>{count} selected</Trans>
+        {more ? (
+          <Trans>
+            {count} of {total} selected
+          </Trans>
+        ) : (
+          <Trans>{count} selected</Trans>
+        )}
+        {more ? (
+          <Button variant="link" size="xs" className="ms-2 h-auto p-0" onClick={onSelectAll}>
+            <Trans>Select all {total}</Trans>
+          </Button>
+        ) : null}
       </span>
       <Button variant="outline" size="sm" disabled={busy} onClick={onDownload}>
         <Download aria-hidden="true" />
