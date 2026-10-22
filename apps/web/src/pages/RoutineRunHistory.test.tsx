@@ -321,3 +321,22 @@ it("keeps loaded older runs while expanded, and refreshes to the first page on c
     await view.close();
   }
 });
+
+it("says Running at once when a test run was just started and no row exists yet", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  api.history.mockResolvedValue(page([]));
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <RoutineRunHistory routineId="routine-1" running />
+      </MemoryRouter>,
+    ),
+  );
+  expect(container.textContent).toContain("Running…");
+  expect(container.textContent).not.toContain("No runs yet");
+  await act(async () => root.unmount());
+  container.remove();
+});

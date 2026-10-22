@@ -54,7 +54,6 @@ export function LegalDeadlines({
   /** Opens the Legal agent with this deadline as the question; without it no row offers Ask agent. */
   onAsk?: (deadline: LegalDeadline) => void;
 }) {
-  const [closing, setClosing] = useState<string | null>(null);
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState("");
   const [undo, setUndo] = useState<{
@@ -70,21 +69,25 @@ export function LegalDeadlines({
   useEffect(() => () => clearTimeout(undoTimer.current), []);
   const close = async (deadline: LegalDeadline, status: LegalDeadlineStatus, height: number) => {
     const index = deadlines.indexOf(deadline);
-    setClosing(deadline.id);
     setError("");
+    // The row leaves at once with its Undo line; the request settles behind it.
+    setGone((ids) => new Set(ids).add(deadline.id));
+    setUndo({ deadline, status, height, index });
+    clearTimeout(undoTimer.current);
+    undoTimer.current = setTimeout(() => setUndo(null), UNDO_MS);
     try {
       await rpc.legal.updateDeadline({ id: deadline.id, status });
-      setGone((ids) => new Set(ids).add(deadline.id));
-      setUndo({ deadline, status, height, index });
-      clearTimeout(undoTimer.current);
-      undoTimer.current = setTimeout(() => setUndo(null), UNDO_MS);
       onChanged();
       // The sidebar Legal badge counts open deadlines, so it refreshes now, not on the next page change.
       window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
     } catch (cause) {
+      setGone((ids) => {
+        const next = new Set(ids);
+        next.delete(deadline.id);
+        return next;
+      });
+      setUndo(null);
       setError(errorText(cause));
-    } finally {
-      setClosing(null);
     }
   };
   const reopen = async () => {
@@ -258,7 +261,6 @@ export function LegalDeadlines({
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={closing === deadline.id}
                   aria-label={t`Mark ${name} done`}
                   onClick={(event) => void close(deadline, "done", rowHeight(event))}
                 >
@@ -267,7 +269,6 @@ export function LegalDeadlines({
                 <Button
                   size="sm"
                   variant="ghost"
-                  disabled={closing === deadline.id}
                   title={t`Not a real deadline: hide it`}
                   aria-label={t`Dismiss ${name}`}
                   onClick={(event) => void close(deadline, "dismissed", rowHeight(event))}

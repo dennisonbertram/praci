@@ -8739,6 +8739,7 @@ msgid "Running · Stop"
 msgstr "Em execução · Parar"
 
 #: src/pages/RoutineEditor.tsx
+#: src/pages/RoutineRunHistory.tsx
 msgid "Running…"
 msgstr "Executando..."
 

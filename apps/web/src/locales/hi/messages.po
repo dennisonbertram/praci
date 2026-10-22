@@ -8739,6 +8739,7 @@ msgid "Running · Stop"
 msgstr "चल रहा है · रोकें"
 
 #: src/pages/RoutineEditor.tsx
+#: src/pages/RoutineRunHistory.tsx
 msgid "Running…"
 msgstr "चल रहा है…"
 

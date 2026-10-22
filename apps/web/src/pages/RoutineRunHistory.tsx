@@ -8,7 +8,13 @@ import { rpc } from "../lib/rpc";
 import { formatToolActivityDuration } from "../lib/tool-activity-view";
 import { statusLabel, statusTone } from "./ActivityList";
 
-export function RoutineRunHistory({ routineId }: { routineId: string }) {
+export function RoutineRunHistory({
+  routineId,
+  running = false,
+}: {
+  routineId: string;
+  running?: boolean;
+}) {
   const { i18n } = useLingui();
   const [history, setHistory] = useState<RoutineHistory | null>(null);
   const [failed, setFailed] = useState(false);
@@ -90,7 +96,7 @@ export function RoutineRunHistory({ routineId }: { routineId: string }) {
       generation.current += 1;
       if (timer !== undefined) window.clearTimeout(timer);
     };
-  }, [routineId, revision]);
+  }, [routineId, revision, running]);
 
   function toggleExpanded() {
     const next = !expanded;
@@ -183,7 +189,13 @@ export function RoutineRunHistory({ routineId }: { routineId: string }) {
         <p role="status" className="mt-2 text-[13.5px]">
           <Trans>Loading…</Trans>
         </p>
-      ) : runs.length === 0 ? (
+      ) : null}
+      {/* The run row can lag the click by several seconds; say so at once. */}
+      {running && runs && !failed && (!runs[0] || runs[0].completedAt) ? (
+        <p role="status" className="mt-2 text-[13.5px]">
+          <Trans>Running…</Trans>
+        </p>
+      ) : runs?.length === 0 && !failed ? (
         <p className="mt-2 text-[13.5px]">
           <Trans>No runs yet</Trans>
         </p>
