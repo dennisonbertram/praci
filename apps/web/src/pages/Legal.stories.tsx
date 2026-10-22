@@ -1,7 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { LegalPage } from "./Legal";
-import { consentFixture as consent, emptyOverview, graph, overview } from "./legal/fixtures";
+import {
+  consentFixture as consent,
+  deadlines,
+  emptyOverview,
+  graph,
+  overview,
+} from "./legal/fixtures";
 
 const never = () => new Promise(() => {});
 const fails = () => Promise.reject(new Error("Could not load Legal"));
@@ -17,7 +23,12 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   beforeEach: () =>
-    mockRpc({ "legal.overview": overview, "legal.consent": consent, "legal.graph": graph }),
+    mockRpc({
+      "legal.overview": overview,
+      "legal.consent": consent,
+      "legal.graph": graph,
+      "legal.doneDeadlines": deadlines.slice(0, 2).map((d) => ({ ...d, status: "done" })),
+    }),
 };
 
 const withFiles = {

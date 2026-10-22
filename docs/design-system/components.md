@@ -4,7 +4,7 @@
 Rendered React components and native SwiftUI views, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 272 of 272
-- Web and shared components: 723
+- Web and shared components: 725
 - Mobile components: 138 in 95 files, mobile — native story pending
 - SwiftUI views: 3 in 2 files, native story pending
 
@@ -226,7 +226,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | EmailAgentPanel | [apps/web/src/components/inbox/EmailAgentPanel.tsx](../../apps/web/src/components/inbox/EmailAgentPanel.tsx) | [EmailAgentPanel.stories.tsx](../../apps/web/src/components/inbox/EmailAgentPanel.stories.tsx) | web |
 | InboxCleanup, OpenLink | [apps/web/src/components/inbox/InboxCleanup.tsx](../../apps/web/src/components/inbox/InboxCleanup.tsx) | [InboxCleanup.stories.tsx](../../apps/web/src/components/inbox/InboxCleanup.stories.tsx) | web |
 | InboxDigest | [apps/web/src/components/inbox/InboxDigest.tsx](../../apps/web/src/components/inbox/InboxDigest.tsx) | [InboxDigest.stories.tsx](../../apps/web/src/components/inbox/InboxDigest.stories.tsx) | web |
-| InboxMessageDialog, InboxMessage, SentMark, ThreadMessages, ThreadMessage | [apps/web/src/components/inbox/InboxMessageDialog.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.tsx) | [InboxMessageDialog.stories.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.stories.tsx) | web |
+| Addresses, InboxMessageDialog, InboxMessage, SentMark, ThreadMessages, ThreadMessage | [apps/web/src/components/inbox/InboxMessageDialog.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.tsx) | [InboxMessageDialog.stories.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.stories.tsx) | web |
 | InboxPileTabs | [apps/web/src/components/inbox/InboxPileTabs.tsx](../../apps/web/src/components/inbox/InboxPileTabs.tsx) | [InboxPileTabs.stories.tsx](../../apps/web/src/components/inbox/InboxPileTabs.stories.tsx) | web |
 | Marked, InboxGroup, InboxRow | [apps/web/src/components/inbox/InboxRow.tsx](../../apps/web/src/components/inbox/InboxRow.tsx) | [InboxRow.stories.tsx](../../apps/web/src/components/inbox/InboxRow.stories.tsx) | web |
 | InboxSenderGroup | [apps/web/src/components/inbox/InboxSenderGroup.tsx](../../apps/web/src/components/inbox/InboxSenderGroup.tsx) | [InboxSenderGroup.stories.tsx](../../apps/web/src/components/inbox/InboxSenderGroup.stories.tsx) | web |
@@ -333,7 +333,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | Figure, Summary, ConnectCartaDialog, UpdateRow, UpdatesSection, ContactRow, InvestorsPage | [apps/web/src/pages/Investors.tsx](../../apps/web/src/pages/Investors.tsx) | [Investors.stories.tsx](../../apps/web/src/pages/Investors.stories.tsx) | web |
 | UpdateEditor | [apps/web/src/pages/investors/UpdateEditor.tsx](../../apps/web/src/pages/investors/UpdateEditor.tsx) | [UpdateEditor.stories.tsx](../../apps/web/src/pages/investors/UpdateEditor.stories.tsx) | web |
 | KnowledgeSection, SpaceMemorySection, MemoryDocumentList | [apps/web/src/pages/KnowledgeSection.tsx](../../apps/web/src/pages/KnowledgeSection.tsx) | [KnowledgeSection.stories.tsx](../../apps/web/src/pages/KnowledgeSection.stories.tsx) | web |
-| LegalPage, Legal, GraphTab, LegalSkeleton | [apps/web/src/pages/Legal.tsx](../../apps/web/src/pages/Legal.tsx) | [Legal.stories.tsx](../../apps/web/src/pages/Legal.stories.tsx) | web |
+| LegalPage, Legal, DoneDeadlines, GraphTab, LegalSkeleton | [apps/web/src/pages/Legal.tsx](../../apps/web/src/pages/Legal.tsx) | [Legal.stories.tsx](../../apps/web/src/pages/Legal.stories.tsx) | web |
 | NextDeadline, Title, Field, Status, LegalContracts | [apps/web/src/pages/legal/LegalContracts.tsx](../../apps/web/src/pages/legal/LegalContracts.tsx) | [LegalContracts.stories.tsx](../../apps/web/src/pages/legal/LegalContracts.stories.tsx) | web |
 | LegalDeadlines | [apps/web/src/pages/legal/LegalDeadlines.tsx](../../apps/web/src/pages/legal/LegalDeadlines.tsx) | [LegalDeadlines.stories.tsx](../../apps/web/src/pages/legal/LegalDeadlines.stories.tsx) | web |
 | LocalSettingsPage | [apps/web/src/pages/LocalSettings.tsx](../../apps/web/src/pages/LocalSettings.tsx) | [LocalSettings.stories.tsx](../../apps/web/src/pages/LocalSettings.stories.tsx) | web |

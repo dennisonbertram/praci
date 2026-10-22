@@ -209,7 +209,12 @@ export function AskCard({
         </div>
       ) : null}
       {block.detail && block.consent ? (
-        <p className="mt-2 text-[13px] text-muted-foreground">{block.detail}</p>
+        <details className="mt-2 text-[13px] text-muted-foreground">
+          <summary className="w-fit cursor-pointer">
+            <Trans>Details</Trans>
+          </summary>
+          <p className="mt-1">{block.detail}</p>
+        </details>
       ) : block.detail && !secretInput && block.detailFolded ? (
         <details key={block.status} className="mt-3 text-[13px] text-muted-foreground">
           <summary className="w-fit cursor-pointer">

@@ -65,6 +65,17 @@ type Story = StoryObj<typeof meta>;
 
 /** Every proposed change is ticked; unticking one leaves it out of Apply. */
 export const Preview: Story = { beforeEach: () => mockRpc({ "dataRoom.autoSort.plan": messy }) };
+/** Files already in a folder are left out until "Show all"; one added today is listed and ticked. */
+export const NewFilesFirst: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "dataRoom.autoSort.plan": messy,
+      "dataRoom.items.list": {
+        items: [{ id: "i3", createdAt: new Date().toISOString() }],
+        nextCursor: null,
+      },
+    }),
+};
 /** Waiting for the plan. */
 export const Loading: Story = {
   beforeEach: () => mockRpc({ "dataRoom.autoSort.plan": () => new Promise(() => undefined) }),

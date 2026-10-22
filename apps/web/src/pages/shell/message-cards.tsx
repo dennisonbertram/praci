@@ -88,14 +88,12 @@ export function ChoiceCard({
                 type="button"
                 disabled={Boolean(block.answerId) || pending}
                 onClick={() => void choose(option.id)}
-                className={`flex w-full items-start gap-3 rounded-xl px-3.5 py-3.5 text-start text-foreground disabled:opacity-60 ${block.answerId ? "bg-accent" : "bg-muted hover:bg-accent"}`}
+                className={`flex w-full items-start gap-3 rounded-xl px-3.5 py-3.5 text-start text-foreground ${block.answerId ? "bg-accent" : "bg-muted hover:bg-accent disabled:opacity-60"}`}
               >
                 <span className="mt-0.5 grid h-[24px] w-[24px] shrink-0 place-items-center rounded-[7px] bg-background text-[12.5px] font-medium text-foreground/75">
                   {option.letter}
                 </span>
-                <span
-                  className={`flex-1 text-[15px] leading-[1.35] ${block.answerId ? "text-foreground/75" : "text-foreground"}`}
-                >
+                <span className="flex-1 text-[15px] leading-[1.35] text-foreground">
                   <OnboardingFocusOptionLabel
                     id={option.id}
                     label={option.label}
@@ -106,7 +104,7 @@ export function ChoiceCard({
                   )}
                 </span>
                 {block.answerId === option.id ? (
-                  <span className="mt-0.5 text-foreground/75">✓</span>
+                  <span className="mt-0.5 text-foreground">✓</span>
                 ) : null}
               </button>
             ))}
@@ -132,7 +130,7 @@ function OnboardingFocusOptionHint({ id, question }: { id: string; question: str
     id === "company" ? (
       <Trans>Email, calendar and your company pages</Trans>
     ) : id === "day" ? (
-      <Trans>Slack, calendar and email</Trans>
+      <Trans>Slack and your calendar</Trans>
     ) : id === "inbox" ? (
       <Trans>Email and calendar</Trans>
     ) : id === "research" ? (
@@ -242,7 +240,7 @@ export function AppConnectCard({
     <BuiCard
       role="group"
       aria-label={t`${block.name} connection`}
-      className="w-[min(420px,100%)] px-4 py-3.5"
+      className="w-160 max-w-full px-4 py-3.5"
     >
       {/* On a narrow card the button wraps under the name instead of covering it. */}
       <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2">

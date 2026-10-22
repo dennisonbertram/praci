@@ -116,8 +116,17 @@ export function withoutSelf(contract: LegalContract, selfName?: string): LegalCo
 }
 
 /** Active is the normal case and says nothing; only a contract that is not active gets a chip. */
-function Status({ status }: { status: LegalContractStatus }) {
-  if (status === "active") return null;
+function Status({
+  status,
+  inColumn = false,
+}: {
+  status: LegalContractStatus;
+  /** In the Status column an empty cell reads as missing data, so active says so. */
+  inColumn?: boolean;
+}) {
+  if (status === "active") {
+    return inColumn ? <span className="text-muted-foreground">{statusName(status)}</span> : null;
+  }
   return (
     <span className="whitespace-nowrap rounded-full border border-border px-2 py-0.5 text-xs">
       {statusName(status)}
@@ -241,7 +250,7 @@ export function LegalContracts({
               </TableCell>
               {showStatus ? (
                 <TableCell>
-                  <Status status={contract.status} />
+                  <Status status={contract.status} inColumn />
                 </TableCell>
               ) : null}
               <TableCell className="whitespace-normal tabular-nums" title={term(contract)}>

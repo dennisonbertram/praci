@@ -8,10 +8,6 @@ import type { StatusKind } from "../../lib/integrations";
 import { providerLabel } from "../../lib/integrations";
 import { AppLogo } from "./AppLogo";
 
-/** A tile is one row below 640px: the name, then the one action beside it (the app tiles' layout). */
-export const PHONE_ROW =
-  "max-sm:flex-row max-sm:items-center max-sm:p-3 max-sm:[&>:first-child]:flex-1 max-sm:[&>:nth-child(2)]:mt-0 max-sm:[&>:nth-child(2)]:shrink-0 max-sm:[&>:nth-child(2)]:gap-0.5";
-
 /** The tile's one main link, like "Open Inbox" on Gmail. It never wraps; all share one width. */
 export const OPEN_LINK =
   "relative z-10 ms-auto inline-flex h-7 pointer-coarse:h-11 min-w-28 max-sm:min-w-30 shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted";
@@ -35,8 +31,7 @@ const STATUS_STYLE: Record<StatusKind, string> = {
   connecting: "text-muted-foreground",
 };
 
-/** `quiet` drops the chip on a phone: a connected card sits under "Connected" and shows it in one row. */
-export function StatusBadge({ status, quiet }: { status: StatusKind; quiet?: boolean }) {
+export function StatusBadge({ status }: { status: StatusKind }) {
   const { t } = useLingui();
   const label = {
     connected: t`Connected`,
@@ -47,7 +42,7 @@ export function StatusBadge({ status, quiet }: { status: StatusKind; quiet?: boo
   return (
     <span
       data-status={status}
-      className={`inline-flex items-center gap-1.5 rounded-full border border-current px-2 py-0.5 text-[11px] font-semibold ${quiet && status === "connected" ? "max-sm:hidden " : ""}${STATUS_STYLE[status]}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border border-current px-2 py-0.5 text-[11px] font-semibold ${STATUS_STYLE[status]}`}
     >
       <span
         aria-hidden="true"

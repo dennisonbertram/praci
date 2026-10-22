@@ -94,7 +94,7 @@ function ComputerModePicker({
             onPressedChange={(pressed) => {
               if (pressed) onChange(mode);
             }}
-            className={SELECTED_SEGMENT}
+            className={`h-auto min-h-8 whitespace-normal py-1.5 ${SELECTED_SEGMENT}`}
           >
             {mode === "team" ? (
               <Trans>Shared with your other bots</Trans>
@@ -637,7 +637,9 @@ export function BotSettings({
             onToggle={(event) => {
               if (!event.currentTarget.open) return;
               setAdvancedOpened(true);
-              event.currentTarget.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+              event.currentTarget
+                .querySelector("summary")
+                ?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
             }}
           >
             <summary
@@ -762,14 +764,14 @@ export function BotSettings({
             ) : null}
             <label
               htmlFor={`${ids}-auto-speak`}
-              className="mt-5 flex cursor-pointer items-center gap-3 text-[14px] text-foreground/75 pointer-coarse:min-h-11"
+              className="mt-5 flex cursor-pointer items-center justify-between gap-3 text-[14px] text-foreground/75 pointer-coarse:min-h-11"
             >
+              <Trans>Read replies aloud</Trans>
               <Switch
                 id={`${ids}-auto-speak`}
                 checked={autoSpeak}
                 onCheckedChange={(checked) => saveOnChange(() => setAutoSpeak(checked))}
               />
-              <Trans>Read replies aloud</Trans>
             </label>
             {voices.length ? (
               <label htmlFor={`${ids}-voice`} className={advancedLabelClass}>

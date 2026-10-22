@@ -136,7 +136,9 @@ export const AppConnectWaiting: Story = {
   beforeEach: () => mockRpc({ "connections.begin": () => new Promise(() => undefined) }),
   render: () => <AppConnectCard botId="bot_ada" block={appConnect} />,
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole("button", { name: /^Connect$/ }));
+    await userEvent.click(
+      within(canvasElement).getByRole("button", { name: /^Connect Sample Mail$/ }),
+    );
   },
 };
 
@@ -147,7 +149,9 @@ export const AppConnectFailed: Story = {
     }),
   render: () => <AppConnectCard botId="bot_ada" block={appConnect} />,
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole("button", { name: /^Connect$/ }));
+    await userEvent.click(
+      within(canvasElement).getByRole("button", { name: /^Connect Sample Mail$/ }),
+    );
     await expect(
       await within(canvasElement).findByText("Could not authorize this app"),
     ).toBeTruthy();
