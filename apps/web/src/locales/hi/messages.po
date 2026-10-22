@@ -8890,6 +8890,18 @@ msgid "Say yes or no, or answer in a sentence."
 msgstr "हां या ना कहें, या एक वाक्य में उत्तर दें।"
 
 #: src/pages/Legal.tsx
+msgid "Scan cancelled."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scan finished: {contractsChanged, plural, one {# contract} other {# contracts}} and {deadlinesAdded, plural, one {# deadline} other {# deadlines}} added or updated."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scan finished: nothing changed."
+msgstr ""
+
+#: src/pages/Legal.tsx
 msgid "Scan now"
 msgstr ""
 
