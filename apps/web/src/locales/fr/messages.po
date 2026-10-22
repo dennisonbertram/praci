@@ -6582,11 +6582,14 @@ msgstr ""
 msgid "Needs sign-in"
 msgstr ""
 
+#: src/components/PageAgentsRow.tsx
 #: src/pages/ActivityList.tsx
 msgid "Needs takeover"
 msgstr "Nécessite une intervention"
 
+#: src/components/PageAgentsRow.tsx
 #: src/lib/roster-status.ts
+#: src/pages/ActivityList.tsx
 #: src/pages/Devin.tsx
 #: src/pages/devin/DevinSessions.tsx
 #: src/pages/Shell.tsx
@@ -6598,7 +6601,7 @@ msgstr "A besoin de vous"
 #: src/lib/roster-status.ts
 #: src/pages/ActivityList.tsx
 msgid "Needs your answer"
-msgstr ""
+msgstr "Nécessite une saisie"
 
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx

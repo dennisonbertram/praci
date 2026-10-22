@@ -240,7 +240,7 @@ import {
 import {
   compactRosterStatusLabel,
   rosterHasUndismissedRunError,
-  rosterNeedsPerson,
+  rosterHeldFor,
   rosterWorkStatusLabel,
 } from "../lib/roster-status";
 import { formatRosterTime } from "../lib/roster-time";
@@ -4773,6 +4773,14 @@ export function ShellPage() {
                           if ("foldHeader" in displayRow) {
                             const email = displayRow.foldHeader === "email";
                             const rows = email ? emailChatRows : pageAgentRows;
+                            const held = rows.map((row) =>
+                              row.item.kind === "bot" ? rosterHeldFor(row.item.chat.status) : null,
+                            );
+                            const heldFor = held.includes("answer")
+                              ? "answer"
+                              : held.includes("takeover")
+                                ? "takeover"
+                                : null;
                             return (
                               <PageAgentsRow
                                 key={displayRow.foldHeader}
@@ -4780,13 +4788,13 @@ export function ShellPage() {
                                 testId={email ? "sidebar-email-chats" : undefined}
                                 open={email ? showEmailChats : showPageAgents}
                                 count={rows.length}
-                                needsYou={rows.some(
-                                  (row) =>
-                                    row.item.chat.unread ||
-                                    glance.botKinds[row.item.chat.id] ||
-                                    (row.item.kind === "bot" &&
-                                      rosterNeedsPerson(row.item.chat.status)),
-                                )}
+                                needsYou={
+                                  rows.some(
+                                    (row) =>
+                                      row.item.chat.unread || glance.botKinds[row.item.chat.id],
+                                  ) || heldFor !== null
+                                }
+                                heldFor={heldFor}
                                 onToggle={() =>
                                   email
                                     ? setEmailChatsOpen((open) => !open)

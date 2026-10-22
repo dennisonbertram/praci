@@ -11,6 +11,7 @@ export function PageAgentsRow({
   open,
   count,
   needsYou,
+  heldFor,
   onToggle,
 }: {
   /** The row's name; defaults to "Page agents". */
@@ -19,6 +20,8 @@ export function PageAgentsRow({
   open: boolean;
   count: number;
   needsYou: boolean;
+  /** Set when a run is held for the owner; other reasons for the dot keep the plain "Needs you". */
+  heldFor?: "answer" | "takeover" | null;
   onToggle: () => void;
 }) {
   const { t } = useLingui();
@@ -41,7 +44,13 @@ export function PageAgentsRow({
         <span
           data-testid="page-agents-dot"
           role="img"
-          aria-label={t`Needs your answer`}
+          aria-label={
+            heldFor === "answer"
+              ? t`Needs your answer`
+              : heldFor === "takeover"
+                ? t`Needs takeover`
+                : t`Needs you`
+          }
           className="size-2 shrink-0 rounded-full bg-primary"
         />
       ) : null}

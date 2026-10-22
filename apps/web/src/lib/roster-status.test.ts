@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   compactRosterStatusLabel,
   rosterHasUndismissedRunError,
-  rosterNeedsPerson,
+  rosterHeldFor,
   rosterWorkStatusLabel,
 } from "./roster-status";
 
@@ -72,11 +72,10 @@ describe("run phase in the sidebar", () => {
   });
 });
 
-describe("rosterNeedsPerson", () => {
-  it("is true for a held question, approval or sign-in and false for work in progress", () => {
-    expect(rosterNeedsPerson("waiting_input")).toBe(true);
-    expect(rosterNeedsPerson("waiting_takeover")).toBe(true);
-    expect(rosterNeedsPerson("running")).toBe(false);
-    expect(rosterNeedsPerson("idle")).toBe(false);
+describe("rosterHeldFor", () => {
+  it("separates a held question from a computer takeover", () => {
+    expect(rosterHeldFor("waiting_input")).toBe("answer");
+    expect(rosterHeldFor("waiting_takeover")).toBe("takeover");
+    expect(rosterHeldFor("running")).toBeNull();
   });
 });
