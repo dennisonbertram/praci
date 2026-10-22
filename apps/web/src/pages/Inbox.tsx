@@ -1080,8 +1080,9 @@ function InboxListPage({
       />
     ) : null;
   // A to-do made from a visible Needs reply row would show the same task twice, so the card drops
-  // it and the open mail offers its completion.
-  const replyRowIds = new Set(replyRows.map((row) => row.id));
+  // it and the open mail offers its completion. Only the first rows count, so "Show more" does not
+  // change the card.
+  const replyRowIds = new Set(groups.needsReply.slice(0, NEEDS_REPLY_SHOWN).map((row) => row.id));
   const repeatsRow = (todo: InboxTodo) =>
     todo.doneAt === null && Boolean(todo.messageId) && replyRowIds.has(todo.messageId as string);
   const todoRowDue = new Map(
@@ -1356,13 +1357,6 @@ function InboxListPage({
           </InputGroup>
         </form>
       )}
-      {/* After the search box, which arrives first: the name loads later and must not push it. */}
-      {spaceName ? (
-        // The full name is in the hover title when the row is too short for it.
-        <span title={spaceName} className="mt-1 truncate @lg/ph:mt-0 @lg/ph:max-w-72">
-          {spaceName}
-        </span>
-      ) : null}
     </>
   );
 
@@ -1378,6 +1372,7 @@ function InboxListPage({
           <PageHeader
             compact
             title={<Trans>Inbox</Trans>}
+            spaceName={phone ? undefined : spaceName}
             meta={phone ? undefined : searchMeta}
             actions={
               <>

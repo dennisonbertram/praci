@@ -1147,6 +1147,31 @@ it("shows five Needs reply rows and the rest behind 'Show n more'", async () => 
   expect(byText(c, "Show 2 more")).toBeUndefined();
 });
 
+it("keeps the To do card the same when 'Show n more' lists more Needs reply rows", async () => {
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6", "r7"];
+  rpcMock.list.mockResolvedValue(list(ids.map((id) => row(id, { needsReply: true }))));
+  const todo = (id: string, messageId: string, text: string) => ({
+    id,
+    connectionId: "c1",
+    messageId,
+    text,
+    detail: null,
+    from: "Dana",
+    priority: null,
+    dueOn: null,
+    doneAt: null,
+  });
+  rpcMock.todos.mockResolvedValue({
+    todos: [todo("t1", "r1", "Reply about one"), todo("t7", "r7", "Reply about seven")],
+  });
+  const c = await render();
+  expect(c.textContent).not.toContain("Reply about one");
+  expect(c.textContent).toContain("Reply about seven");
+  await click(byText(c, "Show 2 more"));
+  expect(c.textContent).not.toContain("Reply about one");
+  expect(c.textContent).toContain("Reply about seven");
+});
+
 it("holds rows in their groups while triage is still running", async () => {
   // Each answer is pending; the poll after the first load classifies row b as well.
   let calls = 0;

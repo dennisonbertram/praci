@@ -681,13 +681,7 @@ export function DataRoomPage({
           // The space name is in the sidebar; on a phone its own line pushes the first file below 160px.
           className="max-sm:[&_[data-page-header-meta]]:hidden"
           title={<Trans>Data room</Trans>}
-          meta={
-            spaceName ? (
-              <span className="truncate" title={spaceName}>
-                {spaceName}
-              </span>
-            ) : null
-          }
+          spaceName={spaceName}
           actions={
             <>
               {empty ? null : (

@@ -4899,7 +4899,7 @@ msgstr "Toutes les heures"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
-msgid "Every month on the 1st"
+msgid "Every month"
 msgstr "Chaque mois"
 
 #: src/pages/finance/FinanceSpend.tsx
@@ -6166,10 +6166,6 @@ msgstr "Chargement de l'activité…"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Loading integrations"
-msgstr ""
-
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Loading integrations…"
 msgstr ""
 
 #: src/pages/MemorySettingsOverlay.tsx
@@ -11778,10 +11774,6 @@ msgstr ""
 msgid "What did we spend last month?"
 msgstr ""
 
-#: src/pages/shell/message-cards.tsx
-msgid "What do you want me on first?"
-msgstr ""
-
 #: src/lib/finance-agent.ts
 msgid "What is our runway?"
 msgstr ""
@@ -11801,6 +11793,10 @@ msgstr "Quel résultat allez-vous démontrer ?"
 #: src/pages/Shell.tsx
 msgid "What should I do first this week?"
 msgstr ""
+
+#: src/pages/shell/message-cards.tsx
+msgid "What should I work on first?"
+msgstr "Que voulez-vous que je fasse en premier ?"
 
 #: src/pages/RoutineEditor.tsx
 msgid "What should this routine do each time it runs?"

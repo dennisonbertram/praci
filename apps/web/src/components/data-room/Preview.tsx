@@ -286,7 +286,7 @@ export function Preview({
           <Trans>Not tagged yet.</Trans>
         </p>
       ) : null}
-      <dl className="grid grid-cols-[72px_1fr] gap-x-2 gap-y-1.5 text-sm">
+      <dl className="grid grid-cols-[72px_1fr] items-baseline gap-x-2 gap-y-1.5 text-sm">
         {facets.docType ? <Field label={t`Type`}>{typeLabel(facets.docType)}</Field> : null}
         {facets.docDate ? <Field label={t`Date`}>{dateText(facets.docDate)}</Field> : null}
         {facets.parties.length > 0 ? (

@@ -74,8 +74,10 @@ describe("finance formatting", () => {
     expect(changeText(-53.2)).toBe("↓ 53%");
     expect(changeText(12.5)).toBe("↑ 13%");
     expect(changeText(null)).toBeNull();
-    expect(changeText(0.2)).toBe("0%");
-    expect(changeText(-0.4)).toBe("0%");
+    expect(changeText(0.04)).toBe("0%");
+    // Under 10% one decimal, so a 0.5% rise is not shown as 1%.
+    expect(changeText(0.5)).toBe("↑ 0.5%");
+    expect(changeText(-4.3)).toBe("↓ 4.3%");
   });
 
   it("says a flat subscription is flat and a rising one by how much", () => {

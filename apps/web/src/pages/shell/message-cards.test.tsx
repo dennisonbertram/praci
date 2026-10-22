@@ -40,7 +40,7 @@ it("says what each first-run focus covers until one is picked", async () => {
   document.body.append(el);
   const block = {
     kind: "choice" as const,
-    question: "What do you want me on first?",
+    question: "What should I work on first?",
     options: [
       { id: "company", letter: "A", label: "Run my company" },
       { id: "research", letter: "D", label: "Research & writing" },
@@ -51,6 +51,17 @@ it("says what each first-run focus covers until one is picked", async () => {
     root.render(<ChoiceCard botId="bot-1" block={block} onBotChanged={async () => {}} />),
   );
   expect(el.textContent).toContain("Email, calendar and your company pages");
+  expect(el.textContent).toContain("The web, notes and docs");
+  await act(async () =>
+    root.render(
+      <ChoiceCard
+        botId="bot-1"
+        block={{ ...block, question: "What do you want me on first?" }}
+        onBotChanged={async () => {}}
+      />,
+    ),
+  );
+  expect(el.textContent).toContain("What should I work on first?");
   expect(el.textContent).toContain("The web, notes and docs");
   await act(async () =>
     root.render(
@@ -69,7 +80,7 @@ it("tells the two first-run focuses apart and keeps the chosen row at full contr
   document.body.append(el);
   const block = {
     kind: "choice" as const,
-    question: "What do you want me on first?",
+    question: "What should I work on first?",
     options: [
       { id: "company", letter: "A", label: "Run my company" },
       { id: "day", letter: "B", label: "Day-to-day work" },

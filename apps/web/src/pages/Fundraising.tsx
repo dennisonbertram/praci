@@ -60,7 +60,10 @@ const NEW_PROSPECT: Prefill = { name: "", email: null, organization: null, kind:
 export function FundraisingPage({
   onShowAgent,
   agentBusy = false,
+  spaceName,
 }: {
+  /** Shown beside the title when the person has more than one space. */
+  spaceName?: string;
   onShowAgent?: () => void;
   /** Whether the Investors agent is answering in the panel; its contact changes load when it ends. */
   agentBusy?: boolean;
@@ -199,6 +202,7 @@ export function FundraisingPage({
       <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
         <PageHeader
           title={<Trans>Fundraising</Trans>}
+          spaceName={spaceName}
           meta={
             overview ? (
               <MercuryLine

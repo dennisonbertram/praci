@@ -96,7 +96,7 @@ test("message hover shows under-bubble actions; reply links to parent", async ({
 
   // Empty start: no Fresh-start greeting. Answer the focus card so a plain
   // bot text bubble exists for hover layout checks.
-  await expect(page.getByText("What do you want me on first?", { exact: true })).toBeVisible({
+  await expect(page.getByText("What should I work on first?", { exact: true })).toBeVisible({
     timeout: 20_000,
   });
   await page.getByRole("button", { name: /Day-to-day work/ }).click();
@@ -401,7 +401,7 @@ test("hover time shows the date for a message from an earlier day", async ({ pag
   await signup(page, `hover-date-${stamp}@rakazo.test`, "password12", "Hover Date");
   await completeOnboarding(page);
 
-  await expect(page.getByText("What do you want me on first?", { exact: true })).toBeVisible({
+  await expect(page.getByText("What should I work on first?", { exact: true })).toBeVisible({
     timeout: 20_000,
   });
   await page.getByRole("button", { name: /Day-to-day work/ }).click();
@@ -502,7 +502,7 @@ test.describe("touch message actions", () => {
     expect(
       await page.evaluate(() => matchMedia("(hover: hover) and (pointer: fine)").matches),
     ).toBe(false);
-    await expect(page.getByText("What do you want me on first?", { exact: true })).toBeVisible({
+    await expect(page.getByText("What should I work on first?", { exact: true })).toBeVisible({
       timeout: 20_000,
     });
     await page.getByRole("button", { name: /Day-to-day work/ }).click();
