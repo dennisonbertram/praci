@@ -182,17 +182,15 @@ export function CardHead({
   logo,
   sub,
   to,
-  letter,
 }: {
   name: string;
   logo?: string | null;
   sub?: string;
   to?: string;
-  letter?: string;
 }) {
   return (
     <div className="flex min-w-0 items-center gap-3 pe-6">
-      <AppLogo name={name} logo={logo} letter={letter} />
+      <AppLogo name={name} logo={logo} />
       <div className="min-w-0">
         {to ? (
           <Link

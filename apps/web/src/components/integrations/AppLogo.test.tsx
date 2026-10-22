@@ -26,9 +26,9 @@ it("shows the bundled mark of an app with no logo, and the initial for any other
   expect(bundled.container.querySelector("img")?.getAttribute("src")).toBe(
     "/logos/simple/linear.svg",
   );
-  const unknown = await render(null, "Carta");
+  const unknown = await render(null, "Some app");
   expect(unknown.container.querySelector("img")).toBeNull();
-  expect(unknown.container.textContent).toBe("C");
+  expect(unknown.container.textContent).toBe("S");
   const nameless = await render(null, "+");
   expect(nameless.container.querySelector("svg")).not.toBeNull();
   expect(nameless.container.textContent).toBe("");
@@ -57,4 +57,12 @@ it("never requests the Simple Icons CDN, even for marks that are not bundled", a
   const { container } = await render("https://cdn.simpleicons.org/someunknownapp", "Some app");
   expect(container.querySelector("img")).toBeNull();
   expect(container.textContent).toBe("S");
+});
+
+it("gives a known app without a mark a glyph, never an unrelated letter", async () => {
+  for (const name of ["Carta", "Treg", "Devin", "Granola", "Wispr Flow", "iMessage on your Mac"]) {
+    const { container } = await render(null, name);
+    expect(container.querySelector("svg")).not.toBeNull();
+    expect(container.textContent).toBe("");
+  }
 });
