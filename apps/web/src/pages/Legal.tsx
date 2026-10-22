@@ -578,8 +578,30 @@ function GraphTab() {
   const graph = useFinanceQuery(() => rpc.legal.graph(), []);
   if (graph.error) return <ErrorNotice message={graph.error} onRetry={graph.retry} />;
   // bg-border: the default skeleton fill is almost the page colour, so the tab looked blank.
-  if (!graph.data) return <Skeleton aria-busy="true" className="h-64 bg-border" />;
+  if (!graph.data) return <BuildingGraph />;
   return <LegalGraphView graph={graph.data} />;
+}
+
+/** The graph's placeholder; after 2 seconds it says what is happening. */
+function BuildingGraph() {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setSlow(true), 2_000);
+    return () => clearTimeout(timer);
+  }, []);
+  return (
+    <div aria-busy="true" className="relative">
+      <Skeleton className="h-64 bg-border" />
+      {slow ? (
+        <p
+          role="status"
+          className="absolute inset-0 grid place-items-center text-sm text-muted-foreground"
+        >
+          <Trans>Building graph…</Trans>
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 function LegalSkeleton() {

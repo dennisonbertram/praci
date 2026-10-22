@@ -329,7 +329,7 @@ export function AiDataSharingSection() {
       {/* With one model the switch above already is that model. */}
       {recipients && (recipients.length > 1 || documentsNeeded) ? (
         <details className="group mt-3" open={partlyAllowed}>
-          <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-md text-[13px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+          <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-md text-[14px] text-foreground underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <Trans>Per model and documents</Trans>
             <ChevronRight
               aria-hidden="true"

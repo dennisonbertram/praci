@@ -470,13 +470,14 @@ export function IntegrationsHome({
       (category === "all" || category === entry.section || category === entry.category) &&
       entry.name.toLowerCase().includes(query.trim().toLowerCase()),
   );
-  // A chip whose heading would not show is not offered. Finance always has its own tiles.
+  // A chip whose heading would not show is not offered. Finance always has its own tiles. Until the
+  // data arrives only All and Finance show, so the other chips join at the end instead of shifting.
   const chips = CHIPS.filter(
     (id) =>
       id === "all" ||
       id === "finance" ||
-      id === category ||
-      unconnectedFirstParty.some((entry) => entry.section === id),
+      (data.loaded &&
+        (id === category || unconnectedFirstParty.some((entry) => entry.section === id))),
   );
   const [chatMatches, setChatMatches] = useState(0);
   const financeServerIds = data.financeSources.flatMap((source) =>

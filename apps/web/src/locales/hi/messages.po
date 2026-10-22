@@ -2006,6 +2006,10 @@ msgstr ""
 msgid "Browser notifications"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Building graph…"
+msgstr ""
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "अंतर्निहित"
@@ -9458,6 +9462,10 @@ msgstr ""
 
 #: src/pages/shell/working-label.ts
 msgid "Searching your mail"
+msgstr ""
+
+#: src/pages/shell/command-palette.tsx
+msgid "Searching…"
 msgstr ""
 
 #: src/components/cap-table/CapTableEditor.tsx

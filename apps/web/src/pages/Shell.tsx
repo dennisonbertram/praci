@@ -317,6 +317,7 @@ import { FundraisingPage } from "./Fundraising";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
 import { GtmPage } from "./Gtm";
 import { InboxPage } from "./Inbox";
+import { IntegrationsPage } from "./Integrations";
 import { InvestorsPage } from "./Investors";
 import { UpdateEditor } from "./investors/UpdateEditor";
 import { LegalPage } from "./Legal";
@@ -380,9 +381,6 @@ const SettingsOverlay = lazyOverlay(() =>
 );
 const PeerMessagesOverlay = lazyOverlay(() =>
   import("./PeerMessagesOverlay").then((module) => module.PeerMessagesOverlay),
-);
-const IntegrationsPage = lazy(() =>
-  import("./Integrations").then((module) => ({ default: module.IntegrationsPage })),
 );
 
 export type { PendingAttachment };
@@ -5979,13 +5977,11 @@ export function ShellPage() {
           </div>
           {integrationsMode ? (
             <ErrorBoundary fallback={<SectionLoadFailed />}>
-              <Suspense fallback={<RowsSkeleton className="p-6" />}>
-                <IntegrationsPage
-                  activeBotId={activeBotId.current}
-                  onOpenMessaging={() => setMessagingSettingsOpen(true)}
-                  onOpenAiDataSharing={() => openSettings("general")}
-                />
-              </Suspense>
+              <IntegrationsPage
+                activeBotId={activeBotId.current}
+                onOpenMessaging={() => setMessagingSettingsOpen(true)}
+                onOpenAiDataSharing={() => openSettings("general")}
+              />
             </ErrorBoundary>
           ) : dataRoomMode ? (
             <DataRoomPage
@@ -6210,7 +6206,10 @@ export function ShellPage() {
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
             {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
               <div className="sticky top-[-17px] z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between border-b border-border bg-background px-5 pt-[17px] pb-2">
-                <span className="text-[13.5px] text-muted-foreground">
+                <span
+                  className="min-w-0 truncate text-[13.5px] text-muted-foreground"
+                  title={panel === "settings" && active ? t`${active.name} settings` : undefined}
+                >
                   {panel === "settings" ? (
                     active ? (
                       t`${active.name} settings`
@@ -6229,7 +6228,7 @@ export function ShellPage() {
                     <Trans>Group</Trans>
                   )}
                 </span>
-                <div className="flex gap-1">
+                <div className="flex shrink-0 gap-1">
                   {active &&
                   panel === "computer" &&
                   !computerOpen &&

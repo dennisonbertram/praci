@@ -2006,6 +2006,10 @@ msgstr "Browser"
 msgid "Browser notifications"
 msgstr "Browser notifications"
 
+#: src/pages/Legal.tsx
+msgid "Building graph…"
+msgstr "Building graph…"
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "Built-in"
@@ -9459,6 +9463,10 @@ msgstr "Searching in {openFolderPath}"
 #: src/pages/shell/working-label.ts
 msgid "Searching your mail"
 msgstr "Searching your mail"
+
+#: src/pages/shell/command-palette.tsx
+msgid "Searching…"
+msgstr "Searching…"
 
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
