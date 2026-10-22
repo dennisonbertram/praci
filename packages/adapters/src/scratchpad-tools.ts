@@ -12,6 +12,8 @@ type Scope = { spaceId: string; userId: string; botId: string };
 type ScratchpadClient = PrismaClient | Prisma.TransactionClient;
 
 const OPEN_SCRATCHPAD_STATUSES: ScratchpadStatus[] = ["open", "parked"];
+export const APPROVALS_BEFORE_AUTO = 3;
+export const AUTO_DAILY_CAP = 5;
 const GATED_CATEGORIES = new Set<ScratchpadCategory>([
   "public_post",
   "create_account",
@@ -446,6 +448,17 @@ async function updateScratchpadItem(
     );
   }
 
+  if (
+    !founder &&
+    category === "create_account" &&
+    existing.channel === "directory" &&
+    input.status === "open"
+  ) {
+    if (contentWasEdited || data.proof !== undefined || input.reapprove) {
+      return { error: "Directory approval requires an unchanged parked item." };
+    }
+    return approveDirectoryItem(deps, input, existing, false);
+  }
   if (!founder && gated && input.status === "open") {
     return { error: "Agents cannot open gated items." };
   }
@@ -464,6 +477,9 @@ async function updateScratchpadItem(
       data.proof !== undefined
     ) {
       return { error: "Approval requires the current parked, unapproved version." };
+    }
+    if (category === "create_account" && existing.channel === "directory") {
+      return approveDirectoryItem(deps, input, existing, true);
     }
     return applyScratchpadUpdate(
       deps.prisma,
@@ -553,6 +569,73 @@ async function updateScratchpadItem(
     deps.now?.() ?? new Date(),
     founder,
   );
+}
+
+async function approveDirectoryItem(
+  deps: ScratchpadToolDeps & { now?: () => Date },
+  input: FounderScratchpadUpdateInput,
+  observed: ScratchpadRow,
+  founder: boolean,
+) {
+  return deps.prisma.$transaction(async (tx) => {
+    await lockScope(tx, `gtm-channel:${input.spaceId}:${input.userId}:${input.botId}:directory`);
+    const existing = await scopedItem(tx, input);
+    if (!existing || existing.updatedAt.getTime() !== observed.updatedAt.getTime()) {
+      return founder ? { conflict: true as const } : { error: "Scratchpad item changed; retry." };
+    }
+    if (
+      existing.category !== "create_account" ||
+      existing.channel !== "directory" ||
+      existing.status !== "parked" ||
+      existing.approvedAt !== null ||
+      isEffectKey(existing.proof)
+    ) {
+      return { error: "Directory approval requires an unchanged parked item." };
+    }
+    const now =
+      deps.now?.() ??
+      (await tx.$queryRaw<Array<{ now: Date }>>`SELECT clock_timestamp() AS now`)[0]!.now;
+    const scope = { ...scopeOf(input), category: "create_account", channel: "directory" };
+    if (!founder) {
+      const window = {
+        ...scope,
+        approvedAt: { gt: new Date(now.getTime() - 86_400_000), lte: now },
+      };
+      const founders = await tx.scratchpadApproval.findMany({
+        where: { ...window, approvedBy: "user" },
+        distinct: ["itemId"],
+        select: { itemId: true },
+      });
+      if (founders.length < APPROVALS_BEFORE_AUTO) {
+        return {
+          error:
+            "Directory automation needs three distinct founder approvals in the last 24 hours.",
+        };
+      }
+      const grants = await tx.scratchpadApproval.count({
+        where: { ...window, approvedBy: "policy" },
+      });
+      if (grants >= AUTO_DAILY_CAP) {
+        return { error: "Directory automation has reached five openings in the last 24 hours." };
+      }
+    }
+    const approvedBy = founder ? "user" : "policy";
+    const result = await applyScratchpadUpdate(
+      tx,
+      existing,
+      input,
+      { status: "open", approvedAt: now, approvedBy },
+      now,
+      founder,
+      founder ? (renderedVersion(input.updatedAt) ?? undefined) : undefined,
+    );
+    if ("item" in result) {
+      await tx.scratchpadApproval.create({
+        data: { ...scope, itemId: existing.id, approvedAt: now, approvedBy },
+      });
+    }
+    return result;
+  });
 }
 
 export function updateScratchpadItemFromTool(
