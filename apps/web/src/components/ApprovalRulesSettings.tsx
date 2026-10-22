@@ -1,6 +1,6 @@
 import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { ActionApprovalRule, ActionAutoReviewSettings } from "@rakazo/contracts";
+import type { ActionApprovalRule } from "@rakazo/contracts";
 import { Button, Label, Switch } from "@rakazo/ui-web";
 import { useEffect, useId, useState } from "react";
 import { rpc } from "../lib/rpc";
@@ -27,26 +27,18 @@ function describeRule(rule: ActionApprovalRule): string {
 
 export function ApprovalRulesSettings() {
   const { t } = useLingui();
-  const autoReviewId = useId();
   const emailId = useId();
   const purchaseId = useId();
   const [rules, setRules] = useState<ActionApprovalRule[]>([]);
-  const [autoReview, setAutoReview] = useState<ActionAutoReviewSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingPreset, setSavingPreset] = useState<"email" | "purchase" | null>(null);
-  const [savingAutoReview, setSavingAutoReview] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
     setLoading(true);
     setError(null);
     try {
-      const [nextRules, nextAutoReview] = await Promise.all([
-        rpc.approvalRules.list(),
-        rpc.autoReview.get(),
-      ]);
-      setRules(nextRules);
-      setAutoReview(nextAutoReview);
+      setRules(await rpc.approvalRules.list());
     } catch (err) {
       setError(errorText(err, t`Could not load approval rules`));
     } finally {
@@ -102,19 +94,6 @@ export function ApprovalRulesSettings() {
     }
   }
 
-  async function toggleAutoReview(enabled: boolean) {
-    if (loading || savingAutoReview) return;
-    setSavingAutoReview(true);
-    setError(null);
-    try {
-      setAutoReview(await rpc.autoReview.set({ enabled }));
-    } catch (err) {
-      setError(errorText(err, t`Could not save Auto Review`));
-    } finally {
-      setSavingAutoReview(false);
-    }
-  }
-
   // The two switches show their own rules; the list holds the rest.
   const shown = [presetRule("email"), presetRule("purchase")];
   const listedRules = rules.filter((rule) => !shown.includes(rule));
@@ -151,29 +130,6 @@ export function ApprovalRulesSettings() {
             </Label>
           </div>
         ))}
-        <div className="flex items-start gap-3 pointer-coarse:min-h-11 pointer-coarse:items-center">
-          <Switch
-            id={autoReviewId}
-            data-testid="auto-review-toggle"
-            className="mt-0.5"
-            checked={autoReview?.enabled ?? false}
-            disabled={loading || savingAutoReview || !autoReview}
-            onCheckedChange={(checked) => void toggleAutoReview(checked)}
-          />
-          <div>
-            <Label
-              htmlFor={autoReviewId}
-              className="text-[14px] font-normal text-foreground/75 pointer-coarse:py-2"
-            >
-              <Trans>Flag unexpected actions</Trans>
-            </Label>
-            {autoReview?.enabled && !autoReview.checkerAvailable ? (
-              <p className="mt-1 text-[13px] text-muted-foreground">
-                <Trans>Add a model in Settings to use this.</Trans>
-              </p>
-            ) : null}
-          </div>
-        </div>
       </div>
       {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
       {loading ? (

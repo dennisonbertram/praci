@@ -15,6 +15,7 @@ import type { NotificationEvents, PrismaClient, ThreadEvents } from "@rakazo/db"
 import { deleteExpiredMessagingTransport, deleteExpiredNotifications } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { cleanupAccountExports, runAccountExport } from "./account-export.js";
+import { runAuditIntake } from "./audit-intake.js";
 import type { BoxFilesDeps } from "./box-files.js";
 import type { CloudAgentConnection } from "./cloud-agent-factory.js";
 import { pollCloudAgent } from "./cloud-agent-poll.js";
@@ -244,6 +245,11 @@ export function createBackgroundJobHandlers(deps: {
         { prisma: deps.prisma, jobs: deps.jobs, mail, artifacts },
         payload,
       );
+    },
+    "audit.intake": async (payload) => {
+      const { mail, artifacts } = deps;
+      if (!mail || !artifacts) throw new Error("Audit intake is not configured");
+      await runAuditIntake({ prisma: deps.prisma, jobs: deps.jobs, mail, artifacts }, payload);
     },
     "mail.watch.renew": async () => {
       if (!deps.gmailPush) return;

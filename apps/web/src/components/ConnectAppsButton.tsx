@@ -32,7 +32,7 @@ export function ConnectAppsButton({
       data-tour="sidebar-integrations"
       aria-current={active ? "page" : undefined}
       onClick={onClick}
-      className={`mb-1 flex w-full items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-sidebar-accent ${
+      className={`mb-1 flex w-full items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
         active ? "bg-sidebar-accent" : ""
       }`}
     >

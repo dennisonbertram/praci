@@ -129,7 +129,7 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
 
   return (
     <div
-      className="mb-2 flex max-h-[40vh] shrink-0 flex-col border-b border-border pb-2"
+      className="mb-2 flex max-h-[28vh] shrink-0 flex-col border-b border-border pb-2"
       data-testid="activity-list"
     >
       <div className="flex items-center justify-between px-2.5 pb-1">
@@ -148,10 +148,11 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
           <Trans>Filter</Trans>
         </Button>
       </div>
-      {showFilters || filtersOn ? (
-        <ActivityFilters filters={filters} onChange={setFilters} />
-      ) : null}
       <div className="min-h-0 flex-1 overflow-y-auto" data-testid="activity-rows">
+        {/* Inside the scroll area so expanded filters can never squeeze the results to zero height. */}
+        {showFilters || filtersOn ? (
+          <ActivityFilters filters={filters} onChange={setFilters} />
+        ) : null}
         {error ? (
           <div className="px-2.5 pb-2" role="alert">
             <ActivityError error={error} onRetry={() => reloadRef.current?.()} compact />

@@ -352,7 +352,7 @@ export async function fileMailAttachment(
   /** The message, when the caller already read it. */
   loaded?: Awaited<ReturnType<MailProvider["getMessage"]>>,
 ): Promise<
-  | { kind: "filed"; item: { name: string } | null; created: boolean; fileName: string }
+  | { kind: "filed"; item: { id: string; name: string } | null; created: boolean; fileName: string }
   | { kind: "no_message" | "no_attachment" | "not_a_document" | "too_large" }
 > {
   const maxBytes = deps.maxBytes ?? MAIL_ATTACHMENT_MAX_BYTES;

@@ -13,7 +13,7 @@ import {
   TabsTrigger,
   Textarea,
 } from "@rakazo/ui-web";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Where an agent's secret request is answered. The value lives only in this component's state:
@@ -39,6 +39,7 @@ export function SecretRequestDialog({
   const [multiline, setMultiline] = useState(false);
   const [value, setValue] = useState("");
   const [username, setUsername] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (open) return;
@@ -52,8 +53,12 @@ export function SecretRequestDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      {/* Focus starts in the first field (the username of a login), so the user can type at once. */}
+      <DialogContent
+        initialFocus={() => formRef.current?.querySelector<HTMLElement>("input, textarea") ?? true}
+      >
         <form
+          ref={formRef}
           className="flex flex-col gap-4"
           onSubmit={(event) => {
             event.preventDefault();
