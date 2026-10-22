@@ -1231,7 +1231,7 @@ describePostgres("integration agents (PostgreSQL)", () => {
       expect(cards[0]).toMatchObject({
         approvalEffectId: effect.id,
         status: "pending",
-        detail: expect.stringContaining("requestSendMoney"),
+        detail: expect.stringContaining("Amount: $12.50"),
       });
       expect(cards[0]!.actions!.map((action) => action.id)).toEqual(["allow", "deny"]);
       expect(mercury.sendMoneyRequests).toHaveLength(0);
