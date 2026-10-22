@@ -5119,6 +5119,10 @@ msgstr "Gmail didn't respond. Try again."
 msgid "Gmail filter limit reached"
 msgstr "Gmail filter limit reached"
 
+#: src/pages/Inbox.tsx
+msgid "Gmail Important"
+msgstr "Gmail Important"
+
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail is limiting requests right now."
 msgstr "Gmail is limiting requests right now."
@@ -5460,7 +5464,6 @@ msgstr "Import from Google Drive"
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/components/inbox/InboxRow.tsx
-#: src/pages/Inbox.tsx
 msgid "Important"
 msgstr "Important"
 

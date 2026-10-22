@@ -161,7 +161,8 @@ type InboxViewCategory = (typeof InboxViewCategorySchema.options)[number];
 const filterLabels = (): Record<InboxFilter, string> => ({
   unread: t`Unread`,
   starred: t`Starred`,
-  important: t`Important`,
+  // The Important tab above is a different list, so the Gmail label says which one it is.
+  important: t`Gmail Important`,
   attachment: t`Has attachment`,
   primary: t`Primary`,
   promotions: t`Promotions`,
@@ -1064,16 +1065,11 @@ function InboxListPage({
         shownElsewhere={failed && !failedEmpty ? failed : undefined}
       />
     ) : null;
-  // An undated "Reply to ..." to-do made from a visible Needs reply row would show the same action
-  // twice: the row stays and says "To do", the card drops it. Other tasks from that mail stay.
-  // ponytail: matches English reply wording only; a "needs reply" flag on the to-do would be exact.
+  // A to-do made from a visible Needs reply row would show the same task twice, so the card drops
+  // it and the open mail offers its completion.
   const replyRowIds = new Set(replyRows.map((row) => row.id));
   const repeatsRow = (todo: InboxTodo) =>
-    todo.doneAt === null &&
-    !todo.dueOn &&
-    Boolean(todo.messageId) &&
-    replyRowIds.has(todo.messageId as string) &&
-    /^(reply|respond|answer)\b/i.test(todo.text);
+    todo.doneAt === null && Boolean(todo.messageId) && replyRowIds.has(todo.messageId as string);
   const todoRowIds = new Set(
     (todos ?? []).filter(repeatsRow).map((todo) => todo.messageId as string),
   );
@@ -1669,9 +1665,15 @@ function InboxListPage({
                 )}
               </p>
             )}
-            {[0, 1, 2, 3, 4].map((n) => (
-              <Skeleton key={n} className="h-9 w-full" />
-            ))}
+            {/* Real rows are 57px apart with no gap, so the list does not jump when they arrive. */}
+            <div>
+              {[0, 1, 2, 3, 4].map((n) => (
+                <Skeleton
+                  key={n}
+                  className="h-[57px] w-full rounded-none border-b border-background"
+                />
+              ))}
+            </div>
           </div>
         ) : shown && rows.length === 0 ? (
           <>

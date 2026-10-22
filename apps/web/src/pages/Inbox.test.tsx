@@ -458,14 +458,14 @@ it("drops only the undated reply to-do whose mail is listed under Needs reply, m
     ],
   });
   const c = await render();
-  // Only the undated reply to-do is not repeated on the card; other tasks from that mail stay.
+  // No to-do from a visible Needs reply thread is repeated on the card, dated or not.
   expect(c.textContent).not.toContain("Reply to Morgan about section 9");
-  expect(c.textContent).toContain("File the trademark form");
-  expect(c.textContent).toContain("Reply to Morgan by Friday");
+  expect(c.textContent).not.toContain("File the trademark form");
+  expect(c.textContent).not.toContain("Reply to Morgan by Friday");
   expect(c.textContent).toContain("Pay the invoice");
   // Those rows say "To do" instead.
   const marked = [...c.querySelectorAll("[data-todo]")].map((el) => el.getAttribute("data-row-id"));
-  expect(marked).toEqual(["a"]);
+  expect(marked).toEqual(["a", "b"]);
 });
 
 it("completes a hidden reply to-do from the open mail", async () => {
