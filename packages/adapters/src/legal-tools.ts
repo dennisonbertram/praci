@@ -80,6 +80,14 @@ export interface LegalToolDeps {
 
 // ---- Row mapping (shared with the API's Legal pages) ----
 
+/** A day as people read it ("Dec 10, 2026"), like the Legal page's due dates. */
+const longDay = (date: Date) =>
+  date.toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 const day = (date: Date | null) => date?.toISOString().slice(0, 10) ?? null;
 
 export const toLegalContract = (
@@ -409,7 +417,7 @@ async function deriveDeadlines(deps: LegalToolDeps, contract: LegalContractRecor
         kind: "notice",
         dueDate: addDays(contract.expirationDate, -contract.renewalNoticeDays),
         notes: folded
-          ? `${NOTICE_NOTE} Renews automatically on ${contract.expirationDate.toISOString().slice(0, 10)}.`
+          ? `${NOTICE_NOTE} Renews automatically on ${longDay(contract.expirationDate)}.`
           : undefined,
       });
     }

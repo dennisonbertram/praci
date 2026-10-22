@@ -608,14 +608,6 @@ msgid "{sourceName} spend"
 msgstr ""
 
 #: src/pages/Finance.tsx
-msgid "{sourceNames} · synced {updated}"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "{sourceNames} · syncing…"
-msgstr ""
-
-#: src/pages/Finance.tsx
 msgid "{stablecoins} stablecoins in runway"
 msgstr ""
 
@@ -1710,6 +1702,10 @@ msgstr ""
 #: src/pages/investors/UpdateEditor.tsx
 #: src/pages/Shell.tsx
 msgid "Back to Investors"
+msgstr ""
+
+#: src/pages/DataRoom.tsx
+msgid "Back to Legal"
 msgstr ""
 
 #: src/pages/Auth.tsx
@@ -7181,6 +7177,10 @@ msgstr ""
 msgid "Nothing to clean up. People you have written to or saved as contacts are left out."
 msgstr ""
 
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Notice deadlines are derived from the expiration date and the notice period."
+msgstr ""
+
 #: src/components/NotificationSettings.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -8914,6 +8914,10 @@ msgid "Scan finished: nothing changed."
 msgstr ""
 
 #: src/pages/Legal.tsx
+msgid "Scan is still running. Check back shortly."
+msgstr ""
+
+#: src/pages/Legal.tsx
 msgid "Scan now"
 msgstr ""
 
@@ -9938,9 +9942,17 @@ msgstr ""
 msgid "Sync failed."
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "synced {updated}"
+msgstr ""
+
 #: src/components/inbox/TodoCard.tsx
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Syncing"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "syncing…"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
