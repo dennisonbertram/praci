@@ -59,7 +59,7 @@ export async function loadMessagePage(
       const messages = includePeerRuns ? rows : await withoutPeerRunMessages(prisma, rows);
       return {
         threadId,
-        messages: messages.map(toThreadMessage),
+        messages: await withRoutineNames(prisma, messages),
         olderCursor: hasOlder ? (first?.seq ?? null) : null,
         coveredThroughSeq,
       };
@@ -88,7 +88,7 @@ export async function loadMessagePage(
     if (hasSubstantive || includePeerReceipts || !hasOlder || includePeerRuns) {
       return {
         threadId,
-        messages: visibleRows.map(toThreadMessage),
+        messages: await withRoutineNames(prisma, visibleRows),
         olderCursor: hasOlder ? (pageRows[0]?.seq ?? null) : null,
       };
     }
@@ -111,6 +111,26 @@ export async function loadAllMessages(
     before = page.olderCursor ?? undefined;
   } while (before !== undefined);
   return pages.reverse().flat();
+}
+
+/** Messages a routine run produced carry the routine's name, so results do not read like replies. */
+async function withRoutineNames<T extends Parameters<typeof toThreadMessage>[0]>(
+  prisma: MessageDb,
+  rows: T[],
+): Promise<ThreadMessage[]> {
+  const runIds = [...new Set(rows.flatMap((row) => (row.runId ? [row.runId] : [])))];
+  const runs = runIds.length
+    ? await prisma.run.findMany({
+        where: { id: { in: runIds }, routineId: { not: null } },
+        select: { id: true, routine: { select: { name: true } } },
+      })
+    : [];
+  const names = new Map(runs.flatMap((run) => (run.routine ? [[run.id, run.routine.name]] : [])));
+  return rows.map((row) => {
+    const routineName = row.runId ? names.get(row.runId) : undefined;
+    const message = toThreadMessage(row);
+    return routineName && message.role === "bot" ? { ...message, routineName } : message;
+  });
 }
 
 async function withoutPeerRunMessages<

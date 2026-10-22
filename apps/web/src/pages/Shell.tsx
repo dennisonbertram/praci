@@ -259,6 +259,7 @@ import {
   needsAnswerLabel,
   rosterHasUndismissedRunError,
   rosterHeldFor,
+  rosterPreviewText,
   rosterStatusChanged,
   rosterWorkStatusLabel,
   waitingForApprovalLabel,
@@ -5297,9 +5298,9 @@ export function ShellPage() {
                               ? compactStatusLabel
                               : (workStatusLabel ??
                                 (item.kind === "bot"
-                                  ? maskCurrencyWhenHidden(item.chat.preview) ||
+                                  ? maskCurrencyWhenHidden(rosterPreviewText(item.chat.preview)) ||
                                     (item.chat.status !== "idle" ? item.chat.status : "")
-                                  : maskCurrencyWhenHidden(item.chat.preview) ||
+                                  : maskCurrencyWhenHidden(rosterPreviewText(item.chat.preview)) ||
                                     item.chat.members.map((member) => member.name).join(", ")));
                             const rowDragEnabled =
                               dragEnabled && item.chat.spaceId === bootstrapMe?.spaceId;
@@ -6507,11 +6508,19 @@ export function ShellPage() {
                         </button>
                       ) : null}
                     </div>
-                    <p className="mt-2 truncate text-[13.5px] text-muted-foreground" dir="auto">
-                      {/s$/i.test(active.name.trim())
-                        ? t`${active.name}' computer`
-                        : t`${active.name}'s computer`}
-                    </p>
+                    {showsComputerCaption({
+                      kind: computer?.kind,
+                      state: computer?.state,
+                      hasScreen: Boolean(embeddedScreenUrl),
+                      hasError: Boolean(computerScreenError),
+                      open: computerOpen,
+                    }) ? (
+                      <p className="mt-2 truncate text-[13.5px] text-muted-foreground" dir="auto">
+                        {/s$/i.test(active.name.trim())
+                          ? t`${active.name}' computer`
+                          : t`${active.name}'s computer`}
+                      </p>
+                    ) : null}
                   </>
                 )}
               </div>
@@ -7595,6 +7604,23 @@ export function isRoutinesOnlyPanel(input: {
     !input.hasError &&
     !input.open &&
     !input.showRecoveryHint
+  );
+}
+
+/** The "<bot>'s computer" caption names a live screen; under a placeholder or hint it labels nothing. */
+export function showsComputerCaption(input: {
+  kind: ComputerStatus["kind"] | undefined;
+  state?: ComputerStatus["state"];
+  hasScreen: boolean;
+  hasError: boolean;
+  open: boolean;
+}) {
+  return (
+    input.kind !== "desktop" &&
+    input.state === "running" &&
+    input.hasScreen &&
+    !input.hasError &&
+    !input.open
   );
 }
 
