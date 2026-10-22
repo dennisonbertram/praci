@@ -20,6 +20,7 @@ const update = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/rpc", () => ({ rpc: { preferences: { update } } }));
 
 import { FirstRunTour } from "./FirstRunTour";
+import { clearTourStep, tourInProgress } from "./TourPopover";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -102,20 +103,44 @@ it("keeps Back and the primary button in the same slots on every stop", async ()
 });
 
 it("restores the same step after a reload and forgets it when the tour ends", async () => {
-  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
+  await act(async () =>
+    root.render(<FirstRunTour userId="u1" open onClose={vi.fn()} onAsk={vi.fn()} />),
+  );
   await click("Next");
   expect(document.body.textContent).toContain("2/3");
   await act(async () =>
-    root.render(<FirstRunTour open={false} onClose={vi.fn()} onAsk={vi.fn()} />),
+    root.render(<FirstRunTour userId="u1" open={false} onClose={vi.fn()} onAsk={vi.fn()} />),
   );
-  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
+  await act(async () =>
+    root.render(<FirstRunTour userId="u1" open onClose={vi.fn()} onAsk={vi.fn()} />),
+  );
   expect(document.body.textContent).toContain("2/3");
   await click("Skip tour");
   await act(async () =>
-    root.render(<FirstRunTour open={false} onClose={vi.fn()} onAsk={vi.fn()} />),
+    root.render(<FirstRunTour userId="u1" open={false} onClose={vi.fn()} onAsk={vi.fn()} />),
   );
-  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
+  await act(async () =>
+    root.render(<FirstRunTour userId="u1" open onClose={vi.fn()} onAsk={vi.fn()} />),
+  );
   expect(document.body.textContent).toContain("1/3");
+});
+
+it("keeps the saved step per user, reports it as in progress, and clears it on sign-out", async () => {
+  await act(async () =>
+    root.render(<FirstRunTour userId="u1" open onClose={vi.fn()} onAsk={vi.fn()} />),
+  );
+  await click("Next");
+  expect(tourInProgress("u1")).toBe(true);
+  expect(tourInProgress("u2")).toBe(false);
+  await act(async () =>
+    root.render(<FirstRunTour userId="u1" open={false} onClose={vi.fn()} onAsk={vi.fn()} />),
+  );
+  await act(async () =>
+    root.render(<FirstRunTour userId="u2" open onClose={vi.fn()} onAsk={vi.fn()} />),
+  );
+  expect(document.body.textContent).toContain("1/3");
+  clearTourStep("u1");
+  expect(tourInProgress("u1")).toBe(false);
 });
 
 it("records Skip tour", async () => {

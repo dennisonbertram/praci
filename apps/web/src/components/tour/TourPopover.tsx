@@ -26,21 +26,29 @@ function useWide() {
   return wide;
 }
 
-const STEP_KEY = "tour-step";
 // A reload during the tour comes back to the same step. Storage can be blocked, so it is optional.
-const savedStep = () => {
+// The key carries the user id, so a second account in the same tab never inherits the step.
+const stepKey = (userId: string | null | undefined) => (userId ? `tour-step:${userId}` : null);
+const savedStep = (userId: string | null | undefined) => {
   try {
-    return sessionStorage.getItem(STEP_KEY);
+    const key = stepKey(userId);
+    return key ? sessionStorage.getItem(key) : null;
   } catch {
     return null;
   }
 };
-const saveStep = (id: string | null) => {
+const saveStep = (userId: string | null | undefined, id: string | null) => {
   try {
-    if (id) sessionStorage.setItem(STEP_KEY, id);
-    else sessionStorage.removeItem(STEP_KEY);
+    const key = stepKey(userId);
+    if (!key) return;
+    if (id) sessionStorage.setItem(key, id);
+    else sessionStorage.removeItem(key);
   } catch {}
 };
+/** True when this user left the tour part-way, so the shell can reopen it after a reload. */
+export const tourInProgress = (userId: string | null | undefined) => savedStep(userId) !== null;
+/** Call on sign-out. */
+export const clearTourStep = (userId: string | null | undefined) => saveStep(userId, null);
 
 /** Portaled to the body: the sidebar is transformed, which would otherwise move fixed children. */
 function Ring({ rect, bounds }: { rect: DOMRect; bounds: DOMRect | null }) {
@@ -93,7 +101,10 @@ export function TourPopover({
   steps,
   onFinish,
   lastAction,
+  userId,
 }: {
+  /** Scopes the saved step; without it nothing is saved. */
+  userId?: string | null;
   steps: readonly TourStep[];
   /** A secondary button on the last step, next to Done: ends the tour, then runs. */
   lastAction?: { label: string; run: () => void };
@@ -112,12 +123,12 @@ export function TourPopover({
   const restored = useRef(false);
   const setIndex = (next: number) => {
     setIndexState(next);
-    saveStep(present?.[next]?.id ?? null);
+    saveStep(userId, present?.[next]?.id ?? null);
   };
   useLayoutEffect(() => {
     if (!present || restored.current) return;
     restored.current = true;
-    const at = present.findIndex((item) => item.id === savedStep());
+    const at = present.findIndex((item) => item.id === savedStep(userId));
     if (at > 0) setIndexState(at);
   }, [present]);
   const step = present?.[index];
@@ -127,7 +138,7 @@ export function TourPopover({
   const rect = useRect(element, layoutKey);
   // Ending the tour clears the saved step; the next run starts at the first stop.
   const finish: typeof onFinish = (result, byEscape) => {
-    if (result !== "empty") saveStep(null);
+    if (result !== "empty") saveStep(userId, null);
     onFinish(result, byEscape);
   };
   // Sidebar targets get a card, not a popover: on desktop it stays inside the sidebar column so it
@@ -147,13 +158,13 @@ export function TourPopover({
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.stopPropagation();
-      saveStep(null);
+      saveStep(userId, null);
       onFinish("skip", true);
     };
     // On window, so it runs before any drawer listener on the document.
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [card, onFinish]);
+  }, [card, onFinish, userId]);
   // Phone: the card sits at the foot at every stop. The drawer gets room for it, so the footer rows
   // (Integrations, Account) rise above the card, and the pointed-at row is scrolled into view.
   const cardRef = useRef<HTMLDivElement>(null);
