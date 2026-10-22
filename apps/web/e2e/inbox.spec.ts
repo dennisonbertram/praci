@@ -904,3 +904,75 @@ test("Inbox rows show one triage label and keep the header and rows on their lin
     );
   }
 });
+
+test.describe("phone Inbox with touch", () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 375, height: 812 } });
+
+  test("a scrolled list never draws or hit-tests row checkboxes over the title, tabs or menu button", async ({
+    page,
+  }) => {
+    await signup(page, `inbox-touch-${Date.now()}@rakazo.test`, "password12", "Inbox Touch");
+    await completeOnboarding(page);
+
+    // Real: the Gmail emulator and inbox.list. Stubbed: triage on, and enough rows to scroll.
+    await page.route("**/rpc/inbox/list", async (route) => {
+      const response = await route.fetch();
+      const body = (await response.json()) as {
+        json: { rows: Array<{ id: string; subject: string }> };
+      };
+      const first = body.json.rows[0];
+      const extra = first
+        ? Array.from({ length: 20 }, (_, index) => ({ ...first, id: `stub-${index}` }))
+        : [];
+      const rows = [...body.json.rows, ...extra].map((row) => ({
+        ...row,
+        needsReply: true,
+        priority: "important",
+        category: "reply",
+        reason: null,
+        feedback: null,
+      }));
+      await route.fulfill({
+        response,
+        json: {
+          json: { ...body.json, rows, enabled: true, triageBlocked: null, triagePending: false },
+        },
+      });
+    });
+
+    await page.getByTestId("sidebar-inbox").click();
+    await connectMailFromInbox(page);
+    await page.getByTestId("sidebar-inbox").click();
+
+    const main = page.getByRole("main");
+    await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
+    const tabs = main.getByRole("tablist");
+    await expect(tabs).toBeVisible();
+
+    // At rest the first row is on screen, and the sticky title and tabs take under 120 px.
+    const header = main.locator("[data-inbox-page] > div > div").first();
+    const restBox = await header.boundingBox();
+    expect(restBox).not.toBeNull();
+    expect(restBox!.height).toBeLessThan(120);
+
+    await main.locator("[data-inbox-page]").evaluate((el) => el.scrollBy(0, 400));
+    await expect(tabs).toBeInViewport();
+
+    // Touch hit-test: the point over each header control lands on that control, not a row checkbox.
+    const hits = await page.evaluate(() => {
+      const ok = (selector: string) => {
+        const el = document.querySelector(selector);
+        if (!el) return false;
+        const r = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        return el === hit || el.contains(hit);
+      };
+      return {
+        tab: ok('[role="tablist"] [role="tab"]'),
+        menu: ok('[aria-label="Open navigation"]'),
+        title: ok("[data-page-header] h1"),
+      };
+    });
+    expect(hits).toEqual({ tab: true, menu: true, title: true });
+  });
+});

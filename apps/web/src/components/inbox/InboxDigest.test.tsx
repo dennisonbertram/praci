@@ -88,6 +88,9 @@ it("shows one card per sender with the newest subject, summary, date and message
   );
   expect(first).toContain("2 messages");
   expect(cards[0]?.querySelector("[data-unread-dot]")).not.toBeNull();
+  // Every card has a count, and they add up to what Archive all names.
+  expect(cards[1]?.textContent).toContain("1 message");
+  expect(button("Archive all 3 messages from 2 senders")).toBeDefined();
   // Without a summary the snippet stands in.
   expect(cards[1]?.textContent).toContain("Snippet b");
   expect(cards[1]?.querySelector("[data-unread-dot]")).toBeNull();
@@ -103,7 +106,7 @@ it("opens the issue from its Open button", async () => {
 it("archives everything shown with Archive all", async () => {
   const onArchiveAll = vi.fn();
   await show({ rows: [row("a")], onArchiveAll });
-  await act(async () => button("Archive all 1")?.click());
+  await act(async () => button("Archive 1 message from 1 sender")?.click());
   expect(onArchiveAll).toHaveBeenCalledTimes(1);
 });
 
@@ -111,7 +114,7 @@ it("says there are no newsletters in the last 7 days and offers the pile", async
   const onShowPile = vi.fn();
   await show({ onShowPile });
   expect(document.body.textContent).toContain("No newsletters in the last 7 days");
-  expect(button("Archive all 0")).toBeUndefined();
+  expect(document.body.textContent).not.toContain("Archive");
   await act(async () => button("Show the pile")?.click());
   expect(onShowPile).toHaveBeenCalledTimes(1);
 });

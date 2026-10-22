@@ -84,6 +84,11 @@ msgstr "{0, plural, one {# file failed} other {# files failed}}"
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
 msgstr "{0, plural, one {# finance lookup} other {# finance lookups}}"
 
+#. placeholder {0}: group.count
+#: src/components/inbox/InboxDigest.tsx
+msgid "{0, plural, one {# message} other {# messages}}"
+msgstr "{0, plural, one {# message} other {# messages}}"
+
 #. placeholder {0}: group.entries.length
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "{0, plural, one {# model} other {# models}}"
@@ -123,6 +128,15 @@ msgstr "{0, plural, one {Added # file} other {Added # files}}"
 #: src/components/data-room/AutoSortDialog.tsx
 msgid "{0, plural, one {Apply # change} other {Apply # changes}}"
 msgstr "{0, plural, one {Apply # change} other {Apply # changes}}"
+
+#. placeholder {0}: rows.length
+#. placeholder {1}: rows.length
+#. placeholder {2}: groups.length
+#. placeholder {3}: rows.length
+#. placeholder {4}: groups.length
+#: src/components/inbox/InboxDigest.tsx
+msgid "{0, plural, one {Archive {1} message from {2} sender} other {Archive all {3} messages from {4} senders}}"
+msgstr "{0, plural, one {Archive {1} message from {2} sender} other {Archive all {3} messages from {4} senders}}"
 
 #. placeholder {0}: picks.size
 #: src/components/data-room/ImportFromEmail.tsx
@@ -260,11 +274,6 @@ msgstr "{0} files were not added. Attachments can be up to {MAX_COMPOSE_ATTACHME
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} handling"
 msgstr "{0} handling"
-
-#. placeholder {0}: group.count
-#: src/components/inbox/InboxDigest.tsx
-msgid "{0} messages"
-msgstr "{0} messages"
 
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
@@ -1300,6 +1309,10 @@ msgid "API key"
 msgstr "API key"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
+msgid "API key configured (not verified)."
+msgstr "API key configured (not verified)."
+
+#: src/components/integrations/CustomConnectionDialog.tsx
 msgid "API key header"
 msgstr "API key header"
 
@@ -1361,11 +1374,6 @@ msgstr "Archive"
 #: src/components/inbox/CleanupActionBar.tsx
 msgid "Archive {0}"
 msgstr "Archive {0}"
-
-#. placeholder {0}: rows.length
-#: src/components/inbox/InboxDigest.tsx
-msgid "Archive all {0}"
-msgstr "Archive all {0}"
 
 #: src/components/inbox/CleanupHistory.tsx
 msgid "Archive future mail"
@@ -2633,6 +2641,10 @@ msgstr "Computers are available. Reload or open a bot to continue."
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
 msgstr "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Configure API key"
+msgstr "Configure API key"
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "Confirm delete"
@@ -2790,6 +2802,10 @@ msgstr "Connect Treg"
 #: src/components/integrations/ConnectAppsStep.tsx
 msgid "Connect your apps"
 msgstr "Connect your apps"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Connect Zernio to enable reads."
+msgstr "Connect Zernio to enable reads."
 
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppsStep.tsx
@@ -7194,6 +7210,10 @@ msgstr "OAuth authorization was cancelled."
 msgid "OAuth connection failed"
 msgstr "OAuth connection failed"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "OAuth connects reads only. Posting requires an API key."
+msgstr "OAuth connects reads only. Posting requires an API key."
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Obligation"
 msgstr "Obligation"
@@ -7773,6 +7793,14 @@ msgstr "Posted · {0} notified"
 msgid "Posted {0}"
 msgstr "Posted {0}"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting needs an API key."
+msgstr "Posting needs an API key."
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting readiness unavailable."
+msgstr "Posting readiness unavailable."
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
 msgstr "Praci doesn't tag new files."
@@ -7780,6 +7808,12 @@ msgstr "Praci doesn't tag new files."
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Praci keeps your meetings and to-dos."
 msgstr "Praci keeps your meetings and to-dos."
+
+#. placeholder {0}: usd(safe.capCents)
+#: src/components/fundraising/SafeDialog.tsx
+#: src/components/fundraising/SafeList.tsx
+msgid "Pre-money cap {0}"
+msgstr "Pre-money cap {0}"
 
 #: src/components/ComposeEmail.tsx
 msgid "Preparing draft…"
@@ -10872,6 +10906,10 @@ msgstr "Use a Google Sheet"
 msgid "Use an API key instead"
 msgstr "Use an API key instead"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use API key"
+msgstr "Use API key"
+
 #: src/lib/model-connection-preflight.ts
 msgid "Use Connect to verify the key."
 msgstr "Use Connect to verify the key."
@@ -10879,6 +10917,10 @@ msgstr "Use Connect to verify the key."
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Use default guidance"
 msgstr "Use default guidance"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use OAuth"
+msgstr "Use OAuth"
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Use Protected input for passwords."

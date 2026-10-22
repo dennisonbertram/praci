@@ -354,7 +354,12 @@ it("offers a way out of an empty search and an empty filter", async () => {
   await cleanups.pop()?.();
   c = await render(["/app/inbox?category=billing"]);
   expect(c.textContent).toContain("No mail matches this filter");
-  await click(byText(c, "Clear"));
+  // One Clear control: the X in the search box, which drops the filter too.
+  const clears = [...c.querySelectorAll("button")].filter(
+    (b) => b.textContent === "Clear" || b.getAttribute("aria-label") === "Clear",
+  );
+  expect(clears).toHaveLength(1);
+  await click(clears[0]);
   expect(location.search).toBe("");
 });
 
@@ -560,7 +565,12 @@ it("shows one result count with a Clear that drops the search and filter togethe
   const c = await render(["/app/inbox?q=zebra&filter=unread"]);
   expect(c.textContent).toContain("3 results");
   expect(c.textContent).not.toContain("Needs reply");
-  await click(byText(c, "Clear"));
+  // One Clear control: the X in the search box, which drops the filter too.
+  const clears = [...c.querySelectorAll("button")].filter(
+    (b) => b.textContent === "Clear" || b.getAttribute("aria-label") === "Clear",
+  );
+  expect(clears).toHaveLength(1);
+  await click(clears[0]);
   expect(location.search).toBe("");
 });
 
@@ -582,7 +592,12 @@ it("keeps a Clear when the search text is deleted but the search is still applie
     setter?.call(input, "");
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  await click(byText(c, "Clear"));
+  // One Clear control: the X in the search box, which drops the filter too.
+  const clears = [...c.querySelectorAll("button")].filter(
+    (b) => b.textContent === "Clear" || b.getAttribute("aria-label") === "Clear",
+  );
+  expect(clears).toHaveLength(1);
+  await click(clears[0]);
   expect(location.search).toBe("");
 });
 
