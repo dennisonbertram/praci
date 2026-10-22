@@ -53,6 +53,8 @@ export const RunActivityRowSchema = z.object({
   trigger: RunTriggerSchema,
   notificationsEnabled: z.boolean(),
   promptSnippet: z.string(),
+  /** The held card is an approval (an action to allow), not a question. */
+  needsApproval: z.boolean().optional(),
   updatedAt: z.string(),
 });
 export type RunActivityRow = z.infer<typeof RunActivityRowSchema>;
