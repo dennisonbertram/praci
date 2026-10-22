@@ -18,6 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
+  DropdownMenuItem,
   Input,
   Skeleton,
 } from "@rakazo/ui-web";
@@ -59,6 +60,7 @@ import {
   OPEN_LINK,
   SectionTitle,
   StatusBadge,
+  TileMenu,
 } from "./parts";
 import type { IntegrationsData } from "./useIntegrations";
 import { agentsFor } from "./useIntegrations";
@@ -169,8 +171,12 @@ function McpCard({
   // One line for Granola: the key route's status when it has one, else the sign-in badge.
   const keyStatus = data.meetings;
   const keyLine = granola && keyStatus ? granolaLine(keyStatus) : null;
+  const managePath = granola ? GRANOLA_PATH : `/app/integrations/mcp/${server.id}`;
   return (
     <Card>
+      {status === "connected" ? (
+        <TileMenu label={t`More ${server.name} actions`} manageTo={managePath} />
+      ) : null}
       <CardHead
         name={server.name}
         logo={known?.logo}
@@ -180,13 +186,13 @@ function McpCard({
           server.command ||
           undefined
         }
-        to={granola ? GRANOLA_PATH : `/app/integrations/mcp/${server.id}`}
+        to={managePath}
       />
       <div className="mt-auto flex min-h-7 items-center gap-2">
         {keyLine && keyStatus ? (
           <GranolaStatusLine status={keyStatus} />
         ) : (
-          <StatusBadge status={status} />
+          <StatusBadge status={status} quiet />
         )}
         {page && status === "connected" ? (
           <OpenPageLink to={page.to}>{page.label}</OpenPageLink>
@@ -223,8 +229,10 @@ function GranolaKeyCard({
   status: NonNullable<IntegrationsData["meetings"]>;
   description?: string;
 }) {
+  const { t } = useLingui();
   return (
     <Card>
+      <TileMenu label={t`More Granola actions`} manageTo={GRANOLA_PATH} />
       <CardHead name="Granola" sub={description} to={GRANOLA_PATH} />
       <div className="mt-auto flex min-h-7 items-center gap-2">
         <GranolaStatusLine status={status} />
@@ -254,16 +262,21 @@ function AppCard({
   const description = data.catalog.find(
     (item) => item.connectorId === app.connectorId && item.slug === app.provider,
   )?.description;
+  const { t } = useLingui();
+  const to = appPath({ connectorId: app.connectorId, slug: app.provider });
   return (
     <Card>
+      {app.status === "connected" ? (
+        <TileMenu label={t`More ${app.name} actions`} manageTo={to} />
+      ) : null}
       <CardHead
         name={app.name}
         logo={app.logo}
         sub={accounts || description || undefined}
-        to={appPath({ connectorId: app.connectorId, slug: app.provider })}
+        to={to}
       />
       <div className="mt-auto flex min-h-7 items-center gap-2">
-        <StatusBadge status={app.status} />
+        <StatusBadge status={app.status} quiet />
         {app.status === "connected" && app.provider.toUpperCase() === "GMAIL" ? (
           <OpenPageLink to="/app/inbox">
             <Trans>Open Inbox</Trans>
@@ -314,22 +327,15 @@ function SourceCard({
   const { t } = useLingui();
   return (
     <Card>
+      <TileMenu label={t`More ${source.name} actions`}>
+        <DropdownMenuItem onClick={() => onRemove(source)}>
+          <Trans>Remove</Trans>
+        </DropdownMenuItem>
+      </TileMenu>
       <CardHead
         name={source.name}
         sub={`${source.kind.toUpperCase()} · ${hostOf(source.source)}`}
       />
-      <div className="flex items-center gap-2">
-        <StatusBadge status="connected" />
-        <Button
-          size="sm"
-          variant="outline"
-          className="ms-auto"
-          aria-label={t`Remove ${source.name}`}
-          onClick={() => onRemove(source)}
-        >
-          <Trans>Remove</Trans>
-        </Button>
-      </div>
     </Card>
   );
 }

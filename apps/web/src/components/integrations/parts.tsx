@@ -1,9 +1,20 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Bot } from "@rakazo/contracts";
 import { isMailThreadAgentSpawnKey } from "@rakazo/contracts";
-import { Badge, BotAvatar, cn, Switch } from "@rakazo/ui-web";
+import {
+  Badge,
+  BotAvatar,
+  Button,
+  cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Switch,
+} from "@rakazo/ui-web";
+import { MoreHorizontal } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type { StatusKind } from "../../lib/integrations";
 import { providerLabel } from "../../lib/integrations";
 import { AppLogo } from "./AppLogo";
@@ -31,8 +42,10 @@ const STATUS_STYLE: Record<StatusKind, string> = {
   connecting: "text-muted-foreground",
 };
 
-export function StatusBadge({ status }: { status: StatusKind }) {
+/** Under the Connected heading "Connected" says nothing new, so cards pass `quiet` and show only other states. */
+export function StatusBadge({ status, quiet }: { status: StatusKind; quiet?: boolean }) {
   const { t } = useLingui();
+  if (quiet && status === "connected") return null;
   const label = {
     connected: t`Connected`,
     reconnect: t`Needs reconnect`,
@@ -50,6 +63,43 @@ export function StatusBadge({ status }: { status: StatusKind }) {
       />
       {label}
     </span>
+  );
+}
+
+/** A connected tile's one overflow menu, in its top corner so every card's bottom row lines up. Children add actions; `manageTo` adds the card's page. */
+export function TileMenu({
+  label,
+  manageTo,
+  children,
+}: {
+  label: string;
+  manageTo?: string;
+  children?: ReactNode;
+}) {
+  const navigate = useNavigate();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className="absolute end-2 top-2 z-10 pointer-coarse:size-11"
+            aria-label={label}
+          />
+        }
+      >
+        <MoreHorizontal aria-hidden="true" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {children}
+        {manageTo ? (
+          <DropdownMenuItem onClick={() => navigate(manageTo)}>
+            <Trans>Manage</Trans>
+          </DropdownMenuItem>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -141,11 +191,14 @@ export function CardHead({
   letter?: string;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-3">
+    <div className="flex min-w-0 items-center gap-3 pe-6">
       <AppLogo name={name} logo={logo} letter={letter} />
       <div className="min-w-0">
         {to ? (
-          <Link to={to} className="block truncate font-semibold after:absolute after:inset-0">
+          <Link
+            to={to}
+            className="block truncate font-semibold after:absolute after:inset-0 pointer-coarse:-my-2.5 pointer-coarse:py-2.5"
+          >
             {name}
           </Link>
         ) : (

@@ -2411,6 +2411,10 @@ msgstr ""
 msgid "Choose a new password"
 msgstr "设置新密码"
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Choose a tool"
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Choose file"
 msgstr "选择文件"
@@ -6287,6 +6291,7 @@ msgstr ""
 msgid "Make sure nothing is still running on this computer."
 msgstr "请确认这台电脑上没有仍在运行的任务。"
 
+#: src/components/integrations/parts.tsx
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Manage"
 msgstr ""
@@ -6713,9 +6718,16 @@ msgstr ""
 msgid "More"
 msgstr ""
 
+#. placeholder {0}: app.name
 #. placeholder {0}: exchange.name
+#. placeholder {0}: server.name
 #: src/components/integrations/FinanceSection.tsx
+#: src/components/integrations/IntegrationsHome.tsx
 msgid "More {0} actions"
+msgstr ""
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "More {name} actions"
 msgstr ""
 
 #. placeholder {0}: attachment.filename
@@ -6741,6 +6753,10 @@ msgstr ""
 
 #: src/pages/ActivityList.tsx
 msgid "More filters"
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "More Granola actions"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -8741,7 +8757,6 @@ msgstr "移除"
 #: src/components/compose/RecipientField.tsx
 #: src/components/ComposeEmail.tsx
 #: src/components/integrations/AppDetail.tsx
-#: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
 #: src/pages/shell/composer.tsx
 msgid "Remove {0}"
@@ -11116,10 +11131,6 @@ msgstr "请重试测试。"
 
 #: src/components/MailApprovalCard.tsx
 msgid "Turn off"
-msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Turn off a tool"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
