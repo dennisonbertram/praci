@@ -146,6 +146,7 @@ function isValidActorProof(
 ): boolean {
   if (category === "public_post") return isZernioProof(proof) || isHttpUrl(proof);
   if (category === "create_account") return isHttpUrl(proof);
+  if (founder && category === "draft") return isHttpUrl(proof);
   if (founder && category === "outbound_email" && isEmailProof(proof, itemId)) return true;
   return false;
 }

@@ -19,7 +19,6 @@ import { shortDay, usdFigure } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { SAVED_ROW_CLASS } from "../../lib/use-contact-notices";
 import { contactStageNames } from "../ContactDialog";
-import { ProspectRowPlaceholder } from "./Placeholders";
 
 function ProspectRow({
   prospect,
@@ -180,22 +179,10 @@ export function Pipeline({
     />
   );
   if (prospects.length === 0)
-    // Nothing yet: the stages a first prospect lands in, with static skeleton rows.
     return (
-      <div className="flex flex-col gap-4">
-        {(["meeting", "intro"] as const).map((stage, i) => (
-          <section key={stage} aria-label={stageNames[stage]}>
-            <h3 className="mb-0.5 flex gap-2 text-xs font-semibold text-muted-foreground">
-              {stageNames[stage]}
-            </h3>
-            <ul>
-              {Array.from({ length: i === 0 ? 2 : 1 }, (_, n) => (
-                <ProspectRowPlaceholder key={n} />
-              ))}
-            </ul>
-          </section>
-        ))}
-      </div>
+      <p className="text-sm text-muted-foreground">
+        <Trans>No prospects yet</Trans>
+      </p>
     );
   return (
     <div className="flex flex-col gap-4">

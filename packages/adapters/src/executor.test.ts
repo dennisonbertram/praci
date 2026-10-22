@@ -1350,6 +1350,18 @@ describe("directoryDescription", () => {
     expect(integration).not.toContain("instead of messaging it");
   });
 
+  it("sends a bot-delegated payment to the agent's own chat, not Integrations", () => {
+    const line = directoryDescription({
+      id: "bot-9",
+      name: "Mercury",
+      description: "Works with the user's Mercury account.",
+      spawnKey: "integration-agent:server-1",
+    });
+    expect(line).toContain(
+      "approve it in the Mercury chat and end with [Open Mercury](/app/bot-9)",
+    );
+  });
+
   it("tells peers to message the Carta agent and assembles one consistent directory entry", () => {
     const description = `${directoryDescription({
       description: "Reads the cap table.",

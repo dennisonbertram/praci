@@ -1,6 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Button, Popover, PopoverContent } from "@rakazo/ui-web";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 export type TourStep = {
@@ -11,9 +11,6 @@ export type TourStep = {
   /** The item the step explains. The card stays in one spot, so its first word names the target. */
   name: string;
 };
-
-/** About as tall as a card; keeps a card placed under a target inside the window. */
-const CARD_HEIGHT = 140;
 
 /** Below the `lg` breakpoint the sidebar is a drawer (the shell opens it for the tour). */
 const WIDE = "(min-width: 1024px)";
@@ -47,7 +44,7 @@ function Ring({ rect }: { rect: DOMRect }) {
 }
 
 /** Follows the anchor's box so the ring stays on it while the layout settles or scrolls. */
-function useRect(element: Element | null) {
+function useRect(element: Element | null, layoutKey = 0) {
   const [rect, setRect] = useState<DOMRect | null>(null);
   useLayoutEffect(() => {
     if (!element) return setRect(null);
@@ -62,7 +59,7 @@ function useRect(element: Element | null) {
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
-  }, [element]);
+  }, [element, layoutKey]);
   return rect;
 }
 
@@ -92,7 +89,9 @@ export function TourPopover({
   const [index, setIndex] = useState(0);
   const step = present?.[index];
   const element = step ? document.querySelector(step.anchor) : null;
-  const rect = useRect(element);
+  // Bumped when the phone drawer is padded for the card, so the ring is measured again on its row.
+  const [layoutKey, setLayoutKey] = useState(0);
+  const rect = useRect(element, layoutKey);
   // Sidebar targets get a card, not a popover: on desktop it stays inside the sidebar column so it
   // never covers the page title, chat or composer; on a phone it spans the screen.
   const sidebar = element?.closest("aside") ?? null;
@@ -116,6 +115,22 @@ export function TourPopover({
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   }, [card, onFinish]);
+  // Phone: the card sits at the foot at every stop. The drawer gets room for it, so the footer rows
+  // (Integrations, Account) rise above the card, and the pointed-at row is scrolled into view.
+  const cardRef = useRef<HTMLDivElement>(null);
+  const onPhone = card && !wide;
+  useLayoutEffect(() => {
+    const drawer = element?.closest("aside");
+    const cardBox = cardRef.current;
+    if (!onPhone || !drawer || !cardBox) return;
+    const height = cardBox.offsetHeight + 24;
+    drawer.style.paddingBottom = `${height}px`;
+    setLayoutKey((key) => key + 1);
+    element?.scrollIntoView({ block: "nearest" });
+    return () => {
+      drawer.style.paddingBottom = "";
+    };
+  }, [onPhone, element, step]);
   if (!step) return null;
 
   const last = index === (present?.length ?? 0) - 1;
@@ -175,17 +190,12 @@ export function TourPopover({
     const column = wide && sidebar ? sidebar.getBoundingClientRect() : null;
     // One fixed spot at every stop, so Next stays put and no row below the target is hidden.
     // Desktop: inside the sidebar column, just above its footer links (the chat stays clear).
-    // Phone: the top of the drawer, which leaves the footer rows (Integrations, Account) visible.
-    // Only a target under that spot (the first stops) moves the card to the bottom.
+    // Phone: the foot of the screen, with the drawer padded above it.
     const footerTop = document
       .querySelector('[data-tour="sidebar-integrations"]')
       ?.getBoundingClientRect().top;
     const floor = column && footerTop ? footerTop - 8 : window.innerHeight - 16;
-    const place = column
-      ? { bottom: window.innerHeight - floor }
-      : ring && rect.top < 16 + CARD_HEIGHT && rect.bottom > 16
-        ? { bottom: 16 }
-        : { top: 16 };
+    const place = { bottom: column ? window.innerHeight - floor : 16 };
     const span = column
       ? { left: column.left + 14, width: Math.min(288, column.width - 28) }
       : undefined;
@@ -196,6 +206,7 @@ export function TourPopover({
           <div
             role="dialog"
             aria-label={t`Tour`}
+            ref={cardRef}
             data-testid="tour-card"
             style={{ ...place, ...span }}
             className={`fixed z-50 flex flex-col gap-2.5 rounded-lg bg-popover p-3 text-popover-foreground shadow-md ring-1 ring-foreground/10 ${span ? "" : "inset-x-4"}`}

@@ -126,7 +126,7 @@ export const WithAskAgent: Story = {
   beforeEach: () => mockRpc({ "inbox.get": message }),
 };
 
-/** The agent opens beside the email (from 1568px) or over its right side, and the email text never moves. */
+/** The agent opens beside the email (from 1280px) or over its right side, and the email text starts where it did. */
 export const AskAgentPanelOpen: Story = {
   args: {
     messageId: "msg_ask_panel",
