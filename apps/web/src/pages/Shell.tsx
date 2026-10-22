@@ -25,6 +25,7 @@ import type {
 import {
   ATTACHMENT_MAX_BYTES,
   ATTACHMENT_MAX_COUNT,
+  DATA_ROOM_METADATA_ORDINAL,
   DEFAULT_AVATAR_STYLE,
   FIRST_BOT_SPAWN_KEY,
   isIntegrationAgentSpawnKey,
@@ -492,10 +493,14 @@ async function findDocumentsAndArtifacts(query: string) {
           }
           return names.join(" / ");
         };
-        return result.results.map(({ item }) => ({
+        return result.results.map(({ item, ordinal, snippet }) => ({
           id: item.id,
           label: item.name,
-          detail: folderPath(item.folderId) || undefined,
+          // A match inside the file shows the matching text; a name match shows the folder.
+          detail:
+            ordinal === DATA_ROOM_METADATA_ORDINAL
+              ? folderPath(item.folderId) || undefined
+              : snippet.replaceAll("\u0001", "").replaceAll("\u0002", "").trim() || undefined,
         }));
       })
       .catch((): SearchLink[] => []),
@@ -506,7 +511,14 @@ async function findDocumentsAndArtifacts(query: string) {
         result.items
           .filter((item) => matchesArtifactQuery(item, query))
           .slice(0, 5)
-          .map((item) => ({ id: item.id, label: artifactDisplayName(item.name) })),
+          .map((item) => ({
+            id: item.id,
+            label: artifactDisplayName(item.name),
+            // A description hit shows why the artifact matched.
+            detail: item.name.toLowerCase().includes(query.toLowerCase())
+              ? undefined
+              : (item.description ?? undefined),
+          })),
       )
       .catch((): SearchLink[] => []),
   ]);
@@ -2295,14 +2307,6 @@ export function ShellPage() {
       ]);
       return [
         {
-          heading: t`Mail`,
-          first: true,
-          icon: <Search size={16} strokeWidth={1.75} />,
-          entries: [
-            { id: `/app/inbox?q=${encodeURIComponent(q)}`, label: t`Search mail for “${q}”` },
-          ],
-        },
-        {
           heading: t`Contacts`,
           icon: <BookUser size={16} strokeWidth={1.75} />,
           entries: contacts.map((c) => ({
@@ -2327,7 +2331,16 @@ export function ShellPage() {
           entries: found.artifacts.map((item) => ({
             id: `/app/artifacts/${encodeURIComponent(item.id)}`,
             label: item.label,
+            detail: item.detail,
           })),
+        },
+        {
+          heading: t`Mail`,
+          fallback: true,
+          icon: <Search size={16} strokeWidth={1.75} />,
+          entries: [
+            { id: `/app/inbox?q=${encodeURIComponent(q)}`, label: t`Search mail for “${q}”` },
+          ],
         },
       ];
     },
@@ -4335,16 +4348,15 @@ export function ShellPage() {
                 {/* One search surface: the box opens the Cmd+K palette. */}
                 <InputGroupInput
                   readOnly
+                  data-drawer-focus
                   value=""
-                  onClick={(e) => {
-                    // The drawer's box would keep the keyboard; the palette's own input takes it.
-                    e.currentTarget.blur();
+                  onClick={() => {
+                    // The box keeps focus until the palette takes it, so closing returns here.
                     setCommandPaletteOpen(true);
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      e.currentTarget.blur();
                       setCommandPaletteOpen(true);
                     }
                   }}
@@ -5682,7 +5694,7 @@ export function ShellPage() {
                   type="button"
                   data-testid="bot-settings-trigger"
                   onClick={() => setPanel(inGroup ? "group-settings" : "settings")}
-                  className="app-no-drag flex min-w-0 items-center gap-3"
+                  className="app-no-drag flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   {inGroup ? (
                     <GroupAvatar
@@ -5734,7 +5746,7 @@ export function ShellPage() {
                   aria-label={t`Page`}
                   onClick={() => setPanel(panel === "page" ? null : "page")}
                   data-active={panel === "page" ? "" : undefined}
-                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 >
                   <FileText size={18} strokeWidth={1.6} className="text-foreground/75" />
                 </button>
@@ -5746,7 +5758,7 @@ export function ShellPage() {
                   aria-label={t`List`}
                   onClick={() => setPanel(panel === "list" ? null : "list")}
                   data-active={panel === "list" ? "" : undefined}
-                  className={`app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent ${panel === null ? "xl:hidden" : ""}`}
+                  className={`app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${panel === null ? "xl:hidden" : ""}`}
                 >
                   <ListTodo size={18} strokeWidth={1.6} className="text-foreground/75" />
                 </button>
@@ -5766,7 +5778,7 @@ export function ShellPage() {
                     }
                   }}
                   data-active={panel === "computer" ? "" : undefined}
-                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 >
                   <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
                 </button>

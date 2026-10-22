@@ -2720,6 +2720,10 @@ msgstr "Connect a model"
 msgid "Connect a model in Settings first."
 msgstr "Connect a model in Settings first."
 
+#: src/pages/ModelBackupsSettings.tsx
+msgid "Connect a provider to add backups."
+msgstr "Connect a provider to add backups."
+
 #: src/pages/Shell.tsx
 msgid "Connect a voice provider to call Elio."
 msgstr "Connect a voice provider to call Elio."
@@ -5476,6 +5480,10 @@ msgstr "In review"
 msgid "In runway"
 msgstr "In runway"
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "In use"
+msgstr "In use"
+
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Inactive"
 msgstr "Inactive"
@@ -6883,6 +6891,10 @@ msgstr "No mail matches this filter"
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
 msgstr "No matches"
+
+#: src/pages/shell/command-palette.tsx
+msgid "No matches in pages, documents, contacts"
+msgstr "No matches in pages, documents, contacts"
 
 #: src/pages/shell/composer.tsx
 msgid "No matches. Press Escape to send as typed."
@@ -10973,10 +10985,6 @@ msgstr "Use this sheet"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Use your own key"
 msgstr "Use your own key"
-
-#: src/pages/ModelBackupsSettings.tsx
-msgid "Use your own model to add backups."
-msgstr "Use your own model to add backups."
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationAgentSection.tsx

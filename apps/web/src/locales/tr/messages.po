@@ -2720,6 +2720,10 @@ msgstr "Model bağla"
 msgid "Connect a model in Settings first."
 msgstr ""
 
+#: src/pages/ModelBackupsSettings.tsx
+msgid "Connect a provider to add backups."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Connect a voice provider to call Elio."
 msgstr ""
@@ -5476,6 +5480,10 @@ msgstr ""
 msgid "In runway"
 msgstr ""
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "In use"
+msgstr ""
+
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Inactive"
 msgstr ""
@@ -6882,6 +6890,10 @@ msgstr ""
 #: src/pages/Investors.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
+msgstr ""
+
+#: src/pages/shell/command-palette.tsx
+msgid "No matches in pages, documents, contacts"
 msgstr ""
 
 #: src/pages/shell/composer.tsx
@@ -10973,10 +10985,6 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Use your own key"
 msgstr "Kendi anahtarınızı kullanın"
-
-#: src/pages/ModelBackupsSettings.tsx
-msgid "Use your own model to add backups."
-msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationAgentSection.tsx
