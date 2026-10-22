@@ -983,7 +983,7 @@ export function DataRoomPage({
       {notice ? (
         <p
           role="status"
-          className="fixed end-4 top-16 z-100 rounded-lg border border-border bg-card p-3 text-sm shadow-md"
+          className="fixed end-4 bottom-24 z-100 rounded-lg border border-border bg-card p-3 text-sm shadow-md sm:bottom-6"
         >
           {notice}
         </p>

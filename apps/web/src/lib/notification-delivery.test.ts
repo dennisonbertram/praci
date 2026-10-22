@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  attentionFromDto,
   deliverNotification,
   openNotificationLink,
   resultShownInOpenChat,
@@ -193,5 +194,25 @@ describe("opening a notification link", () => {
     t.show.mock.calls[0]?.[2]();
     expect(focus).toHaveBeenCalledTimes(1);
     expect(open).not.toHaveBeenCalled();
+  });
+});
+
+describe("attentionFromDto", () => {
+  const base = {
+    id: "n1",
+    botId: "b1",
+    surface: "chat",
+    threadId: null,
+    title: "Inbox agent needs approval",
+    body: null,
+    link: "/app/b1",
+    importance: "attention" as const,
+    createdAt: "2030-01-01T00:00:00.000Z",
+    seenAt: null,
+    shownAt: null,
+  };
+  it("keeps an approval toast until it is opened or dismissed", () => {
+    expect(attentionFromDto({ ...base, kind: "needs_input" }).timeout).toBe(0);
+    expect(attentionFromDto({ ...base, kind: "done" }).timeout).toBeUndefined();
   });
 });

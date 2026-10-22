@@ -86,3 +86,20 @@ export const ZipStages: StoryObj = {
     </div>
   ),
 };
+
+function FailedToasts() {
+  useEffect(() => {
+    showToastForStory("notes.txt", { kind: "error", reason: "network" });
+    showToastForStory("lease.pdf", { kind: "error", reason: "failed" });
+  }, []);
+  return null;
+}
+/** Failed uploads say why; they clear by themselves after 8 seconds. */
+export const Failed: StoryObj = {
+  render: () => (
+    <div className="p-4 text-sm">
+      <DataRoomDropZone userId="usr_sample" />
+      <FailedToasts />
+    </div>
+  ),
+};

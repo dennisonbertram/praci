@@ -65,6 +65,7 @@ function Picker() {
           onCreateSpace={() => undefined}
           onShowGroupInfo={() => undefined}
           onShowSpaceInfo={() => undefined}
+          canCreateSpace
         />
       </PopoverContent>
     </Popover>

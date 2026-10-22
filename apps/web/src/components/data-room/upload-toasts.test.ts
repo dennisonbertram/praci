@@ -80,7 +80,9 @@ it("dismisses a failed upload by itself after a while", async () => {
   uploadFilesToDataRoom([file("big.bin")]);
   await flush();
   expect(names()).toEqual(["big.bin"]);
-  await vi.advanceTimersByTimeAsync(20_000);
+  await vi.advanceTimersByTimeAsync(7_000);
+  expect(names()).toEqual(["big.bin"]);
+  await vi.advanceTimersByTimeAsync(1_500);
   expect(names()).toEqual([]);
 });
 

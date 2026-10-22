@@ -11,12 +11,15 @@ import {
   DropdownMenuTrigger,
   Input,
   NativeSelect,
+  Skeleton,
   Textarea,
 } from "@rakazo/ui-web";
 import { MoreHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { MASK, percentFigure, totalPercent } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
+import { OwnershipPlaceholder } from "../investors/Placeholders";
 import { OwnershipBar } from "./OwnershipBar";
 
 /** One typed row. Numbers stay text while they are typed; blank means unknown. */
@@ -99,6 +102,7 @@ export function CapTableEditor({
   contactIdFor,
   onAddContact,
   onOpenContact,
+  statusSlot = null,
 }: {
   snapshot: CapTableSnapshot;
   onSave: (table: CapTableSnapshotInput, loadedAt: string) => Promise<SaveResult>;
@@ -106,6 +110,8 @@ export function CapTableEditor({
   contactIdFor: (name: string) => string | null;
   onAddContact: (name: string) => void;
   onOpenContact: (contactId: string) => void;
+  /** Where "Saved" and "Not saved" show, e.g. the card header; inline above the table when absent. */
+  statusSlot?: HTMLElement | null;
 }) {
   const hidden = useHideAmounts();
   const [rows, setRows] = useState<Draft[]>(() => draftsOf(snapshot));
@@ -263,31 +269,44 @@ export function CapTableEditor({
 
   const field = "h-8 text-sm pointer-coarse:h-11";
   const label = "text-xs text-muted-foreground @lg:sr-only";
+  // Nothing typed yet: the bar and the rows beneath the Add holder row are static skeletons.
+  const empty = parsed.length === 0 && poolShares == null;
   const columns = "@lg:grid-cols-[minmax(0,1fr)_9rem_7rem_7rem_4.5rem_2rem]";
+  const statusLine = (
+    <>
+      {status === "failed" ? (
+        <>
+          <span className="text-destructive">
+            <Trans>Not saved</Trans>
+          </span>
+          <Button size="sm" variant="outline" onClick={() => void save(true)}>
+            <Trans>Retry</Trans>
+          </Button>
+        </>
+      ) : status === "saved" ? (
+        <span className="text-muted-foreground">
+          <Trans>Saved</Trans>
+        </span>
+      ) : null}
+      {changedElsewhere ? (
+        <span className="text-destructive">
+          <Trans>Changed elsewhere</Trans>
+        </span>
+      ) : null}
+    </>
+  );
   return (
     <div>
-      <div className="flex min-h-8 items-center justify-end gap-2 text-xs">
-        {status === "failed" ? (
-          <>
-            <span className="text-destructive">
-              <Trans>Not saved</Trans>
-            </span>
-            <Button size="sm" variant="outline" onClick={() => void save(true)}>
-              <Trans>Retry</Trans>
-            </Button>
-          </>
-        ) : status === "saved" ? (
-          <span className="text-muted-foreground">
-            <Trans>Saved</Trans>
-          </span>
-        ) : null}
-        {changedElsewhere ? (
-          <span className="text-destructive">
-            <Trans>Changed elsewhere</Trans>
-          </span>
-        ) : null}
-      </div>
-      <OwnershipBar className="mb-3" classes={math.classes} pool={math.pool?.percent ?? null} />
+      {statusSlot ? (
+        createPortal(statusLine, statusSlot)
+      ) : (
+        <div className="flex min-h-8 items-center justify-end gap-2 text-xs">{statusLine}</div>
+      )}
+      {empty ? (
+        <OwnershipPlaceholder className="mb-3" />
+      ) : (
+        <OwnershipBar className="mb-3" classes={math.classes} pool={math.pool?.percent ?? null} />
+      )}
       <div
         className={`hidden gap-2 px-1 pb-1 text-xs font-medium text-muted-foreground @lg:grid ${columns}`}
         aria-hidden="true"
@@ -432,11 +451,35 @@ export function CapTableEditor({
             </li>
           );
         })}
+        {empty
+          ? [0, 1].map((n) => (
+              <li
+                key={`placeholder-${n}`}
+                aria-hidden="true"
+                className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 py-2 ${columns}`}
+              >
+                <Skeleton static className="h-2.5 w-2/5 @lg:col-start-1" />
+                <Skeleton static className="hidden h-2.5 w-14 @lg:col-start-2 @lg:block" />
+                <Skeleton
+                  static
+                  className="hidden h-2.5 w-3/4 justify-self-end @lg:col-start-3 @lg:block"
+                />
+                <Skeleton
+                  static
+                  className="hidden h-2.5 w-3/5 justify-self-end @lg:col-start-4 @lg:block"
+                />
+                <Skeleton static className="h-2.5 w-11 justify-self-end @lg:col-start-5" />
+              </li>
+            ))
+          : null}
         <li
           className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 ${columns}`}
         >
           <span className="text-sm text-muted-foreground @lg:col-start-1">
             <Trans>Unallocated pool</Trans>
+          </span>
+          <span className="hidden text-sm text-muted-foreground @lg:col-start-2 @lg:row-start-1 @lg:block">
+            <Trans>Pool</Trans>
           </span>
           <div className="col-span-2 min-w-0 @lg:col-span-1 @lg:col-start-3 @lg:row-start-1">
             <label className={label} htmlFor="pool-shares">
@@ -447,6 +490,7 @@ export function CapTableEditor({
               inputMode="numeric"
               className={`${field} text-end tabular-nums`}
               value={pool}
+              placeholder="—"
               aria-invalid={(checked && parseShares(pool) === undefined) || undefined}
               onChange={(e) => {
                 pending.current = true;
@@ -455,23 +499,33 @@ export function CapTableEditor({
               onBlur={() => void save()}
             />
           </div>
-          <span className="row-start-1 self-center text-end text-sm tabular-nums text-muted-foreground @lg:col-start-5">
-            {percentFigure(math.pool?.percent ?? null, 1)}
-          </span>
+          {empty ? (
+            <Skeleton
+              static
+              aria-hidden="true"
+              className="row-start-1 h-2.5 w-11 justify-self-end @lg:col-start-5"
+            />
+          ) : (
+            <span className="row-start-1 self-center text-end text-sm tabular-nums text-muted-foreground @lg:col-start-5">
+              {percentFigure(math.pool?.percent ?? null, 1)}
+            </span>
+          )}
         </li>
-        <li
-          className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 text-sm font-medium ${columns}`}
-        >
-          <span className="@lg:col-start-1">
-            <Trans>Total</Trans>
-          </span>
-          <span className="text-end tabular-nums @lg:col-start-5">
-            {percentFigure(
-              totalPercent([math.pool?.percent, ...math.holders.map((h) => h.percent)]),
-              1,
-            )}
-          </span>
-        </li>
+        {empty ? null : (
+          <li
+            className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 text-sm font-medium ${columns}`}
+          >
+            <span className="@lg:col-start-1">
+              <Trans>Total</Trans>
+            </span>
+            <span className="text-end tabular-nums @lg:col-start-5">
+              {percentFigure(
+                totalPercent([math.pool?.percent, ...math.holders.map((h) => h.percent)]),
+                1,
+              )}
+            </span>
+          </li>
+        )}
       </ul>
     </div>
   );
