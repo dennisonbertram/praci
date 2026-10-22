@@ -380,6 +380,7 @@ describe("inbound wake prompt", () => {
     expect(resultPrompt).toContain("Relay it to the user now");
     expect(resultPrompt).toContain("include the actual substance");
     expect(resultPrompt).not.toContain("staying silent is fine");
+    expect(resultPrompt).toContain("do not say one is");
   });
 
   it("keeps silence available only for an explicit FYI", () => {

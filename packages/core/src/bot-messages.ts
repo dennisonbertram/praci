@@ -181,7 +181,7 @@ export function buildBotMessageWakePrompt(args: {
   const intent = args.intent ?? "request";
   const action =
     intent === "result" || intent === "status"
-      ? `This is a ${intent} for work you delegated. Relay it to the user now, and include the actual substance — the real names, dates, numbers, and details ${safeName} sent — not just a note that a ${intent} arrived. A reply like "the summary came through" or "it's done" without repeating what it says is not acceptable. Do not stay silent and do not merely acknowledge it.`
+      ? `This is a ${intent} for work you delegated. Relay it to the user now, and include the actual substance — the real names, dates, numbers, and details ${safeName} sent — not just a note that a ${intent} arrived. A reply like "the summary came through" or "it's done" without repeating what it says is not acceptable. Do not stay silent and do not merely acknowledge it. Report the state the text gives. If it does not say an approval is still waiting, do not say one is: the owner has already answered any approval card for this request, and a denial stands until the owner asks again.`
       : intent === "question"
         ? `This is a question about delegated work. Answer it if you can, then continue the coordination and keep the user informed.`
         : intent === "fyi"
