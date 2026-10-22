@@ -198,10 +198,7 @@ beforeEach(() => {
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
-  rpcMock.list.mockResolvedValue([
-    contact("c1", "Ada", "investor"),
-    contact("c2", "Bo", "auditor"),
-  ]);
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "investor"), contact("c2", "Bo", "board")]);
   rpcMock.updatesList.mockResolvedValue([]);
   rpcMock.reminder.mockResolvedValue({ cadence: "monthly" });
   rpcMock.servers.mockResolvedValue([cartaServer]);
@@ -271,13 +268,13 @@ const state = (snapshot: object | null, syncing = false) => ({ snapshot, syncing
 
 // ---- contacts ----
 
-it("lists investors and auditors in tabs", async () => {
+it("lists investors and board members in tabs", async () => {
   await show();
   expect(container.querySelectorAll("h1")).toHaveLength(1);
   expect(container.querySelector("h1")?.closest("[data-page-header]")).not.toBeNull();
   expect(container.textContent).toContain("Ada");
   expect(container.textContent).not.toContain("bo@example.test");
-  await click(button("Auditors"));
+  await click(button("Board"));
   expect(container.textContent).not.toContain("Ada");
   expect(container.textContent).toContain("bo@example.test");
   // Customers, vendors and the other kinds stay on the Contacts page.
@@ -296,14 +293,12 @@ it("keeps contacts of other kinds off this page", async () => {
 
 it("adds a contact of the open tab's kind and shows a server error", async () => {
   rpcMock.save.mockRejectedValueOnce(new Error("Email already used"));
-  await show("/app/investors?kind=auditor");
+  await show("/app/investors?kind=board");
   await click(button("Add contact"));
-  expect((document.getElementById("contact-kind") as HTMLSelectElement).value).toBe("auditor");
+  expect((document.getElementById("contact-kind") as HTMLSelectElement).value).toBe("board");
   await typeInto("contact-name", "Cy");
   await click(button("Save"));
-  expect(rpcMock.save).toHaveBeenCalledWith(
-    expect.objectContaining({ name: "Cy", kind: "auditor" }),
-  );
+  expect(rpcMock.save).toHaveBeenCalledWith(expect.objectContaining({ name: "Cy", kind: "board" }));
   expect(document.body.textContent).toContain("Email already used");
   rpcMock.save.mockResolvedValue({});
   await click(button("Save"));
@@ -358,8 +353,8 @@ it("shows each investor's portal state: none, invited, opened, revoked, unblocke
   expect(portalCell("c6")).toBe("Invited Oct 15");
 });
 
-it("has no Portal column for the board and auditors", async () => {
-  await show("/app/investors?kind=auditor");
+it("has no Portal column for the board", async () => {
+  await show("/app/investors?kind=board");
   expect(container.querySelector("[data-portal-state]")).toBeNull();
   await click(rowActions("Bo"));
   expect(menuItem("Resend link")).toBeUndefined();
@@ -503,7 +498,7 @@ it("offers to open the contact that already has the email when adding a duplicat
 it("deletes a contact with an Undo that restores it", async () => {
   rpcMock.remove.mockResolvedValue({ ok: true });
   rpcMock.save.mockResolvedValue({});
-  await show("/app/investors?kind=auditor");
+  await show("/app/investors?kind=board");
   await click(openRow("c2"));
   await click(button("Delete"));
   expect(rpcMock.remove).toHaveBeenCalledWith({ id: "c2" });
@@ -513,17 +508,17 @@ it("deletes a contact with an Undo that restores it", async () => {
     name: "Bo",
     email: "bo@example.test",
     organization: null,
-    kind: "auditor",
+    kind: "board",
     notes: null,
   });
   expect(document.body.textContent).not.toContain("Deleted Bo");
 });
 
 it("drops a deleted row and focuses the restored name after Undo, like Contacts", async () => {
-  const bo = contact("c2", "Bo", "auditor");
+  const bo = contact("c2", "Bo", "board");
   rpcMock.remove.mockResolvedValue({ ok: true });
   rpcMock.save.mockResolvedValue({ ...bo, id: "c9" });
-  await show("/app/investors?kind=auditor");
+  await show("/app/investors?kind=board");
   await click(openRow("c2"));
   rpcMock.list.mockResolvedValue([contact("c1", "Ada", "investor")]);
   await click(button("Delete"));
@@ -538,7 +533,7 @@ it("drops a deleted row and focuses the restored name after Undo, like Contacts"
 it("keeps the contact restorable when Undo fails, and restores it on Try again", async () => {
   rpcMock.remove.mockResolvedValue({ ok: true });
   rpcMock.save.mockRejectedValueOnce(new Error("offline")).mockResolvedValue({});
-  await show("/app/investors?kind=auditor");
+  await show("/app/investors?kind=board");
   await click(openRow("c2"));
   await click(button("Delete"));
   await click(button("Undo"));
@@ -568,11 +563,11 @@ it("confirms a save with a toast and highlights the saved row", async () => {
 
 it("reads the tab from the URL and names the kind when it is empty", async () => {
   rpcMock.list.mockResolvedValue([contact("c1", "Ada", "investor")]);
-  await show("/app/investors?kind=auditor");
-  expect(button("Auditors")?.getAttribute("aria-selected")).toBe("true");
-  expect(container.textContent).toContain("No auditors yet");
-  await click(button("Add auditor"));
-  expect((document.getElementById("contact-kind") as HTMLSelectElement).value).toBe("auditor");
+  await show("/app/investors?kind=board");
+  expect(button("Board")?.getAttribute("aria-selected")).toBe("true");
+  expect(container.textContent).toContain("No board members yet");
+  await click(button("Add board member"));
+  expect((document.getElementById("contact-kind") as HTMLSelectElement).value).toBe("board");
 });
 
 // ---- empty view and Carta ----
@@ -737,6 +732,27 @@ it("shows the figures, source line and holdings of a Carta table; SAFEs sit outs
   expect(safe).toContain("$250,000");
   expect(safe).toContain("—");
   expect(safe).not.toContain("%");
+  // The total row shows the percentages adding up to 100%.
+  expect(rows.find((r) => r.startsWith("Total")) ?? "").toContain("100.0%");
+});
+
+it("has only the SAFEs and funds and Board tabs, and opens a holder's contact from its name", async () => {
+  rpcMock.capTable.mockResolvedValue(state(carta));
+  rpcMock.list.mockResolvedValue([
+    { ...contact("c1", "Ada", "investor"), name: "Ada Example", email: "ada@example.test" },
+  ]);
+  await show("/app/investors?kind=auditor");
+  const tabs = [...container.querySelectorAll("[role=tab]")].map((tab) => tab.textContent);
+  expect(tabs).toEqual(["SAFEs and funds", "Board"]);
+  expect(button("SAFEs and funds")?.getAttribute("aria-selected")).toBe("true");
+  // A holder that is not a contact is plain text: clicking never opens a form.
+  const founder = [...container.querySelectorAll("table tbody td span")].find(
+    (el) => el.textContent === "Founder Example",
+  ) as HTMLElement;
+  await click(founder);
+  expect(document.getElementById("contact-name")).toBeNull();
+  await click(container.querySelector("table tbody button[title='Ada Example']") as HTMLElement);
+  expect((document.getElementById("contact-name") as HTMLInputElement).value).toBe("Ada Example");
 });
 
 it("shows a dash for Equity raised when only SAFEs have amounts", async () => {
@@ -1205,6 +1221,7 @@ it("starts an investors update with New update", async () => {
 
 it("starts a board update from the Board tab once a board contact exists", async () => {
   rpcMock.updatesSave.mockResolvedValue(update({ id: "b1", audience: "board" }));
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "investor")]);
   await show("/app/investors?kind=board");
   expect(button("Message the board")).toBeUndefined();
   rpcMock.list.mockResolvedValue([contact("c9", "Bea", "board")]);

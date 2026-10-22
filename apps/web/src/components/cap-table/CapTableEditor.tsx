@@ -459,6 +459,19 @@ export function CapTableEditor({
             {percentFigure(math.pool?.percent ?? null, 1)}
           </span>
         </li>
+        <li
+          className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 text-sm font-medium ${columns}`}
+        >
+          <span className="@lg:col-start-1">
+            <Trans>Total</Trans>
+          </span>
+          <span className="text-end tabular-nums @lg:col-start-5">
+            {percentFigure(
+              math.holders.reduce((sum, h) => sum + (h.percent ?? 0), math.pool?.percent ?? 0),
+              1,
+            )}
+          </span>
+        </li>
       </ul>
     </div>
   );

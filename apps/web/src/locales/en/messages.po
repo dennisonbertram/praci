@@ -1540,10 +1540,6 @@ msgstr "Audience"
 msgid "Auditor"
 msgstr "Auditor"
 
-#: src/pages/Investors.tsx
-msgid "Auditors"
-msgstr "Auditors"
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Auth header"
 msgstr "Auth header"
@@ -6508,10 +6504,6 @@ msgstr "No artifacts match these filters."
 msgid "No artifacts yet"
 msgstr "No artifacts yet"
 
-#: src/pages/Investors.tsx
-msgid "No auditors yet"
-msgstr "No auditors yet"
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "No authentication"
 msgstr "No authentication"
@@ -8454,6 +8446,10 @@ msgstr "safe, round, raise"
 msgid "SAFEs"
 msgstr "SAFEs"
 
+#: src/pages/Investors.tsx
+msgid "SAFEs and funds"
+msgstr "SAFEs and funds"
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Sales & CRM"
 msgstr "Sales & CRM"
@@ -10077,6 +10073,8 @@ msgstr "Tools from an Executor server you run"
 msgid "Top parties"
 msgstr "Top parties"
 
+#: src/components/cap-table/CapTableEditor.tsx
+#: src/components/cap-table/HoldingsTable.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Total"
 msgstr "Total"
