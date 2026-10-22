@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import type { Router as ORPCRouter } from "@orpc/server";
 import { implement, ORPCError } from "@orpc/server";
 import type {
   AdapterContext,
@@ -1265,15 +1266,17 @@ async function resolveSpaceBoard(
   return found;
 }
 
-export function createRouter(deps: RouterDeps) {
-  const os = implement(appContract).$context<{
-    actor: Actor | null;
-    /** The signed-in session, so a push token ends with the session that registered it. */
-    sessionId?: string;
-    signal?: AbortSignal;
-    /** Re-runs the request's auth so a long-lived stream notices sign-out and revocation. */
-    stillAuthorized?: () => Promise<boolean>;
-  }>();
+type RouterContext = {
+  actor: Actor | null;
+  /** The signed-in session, so a push token ends with the session that registered it. */
+  sessionId?: string;
+  signal?: AbortSignal;
+  /** Re-runs the request's auth so a long-lived stream notices sign-out and revocation. */
+  stillAuthorized?: () => Promise<boolean>;
+};
+
+export function createRouter(deps: RouterDeps): ORPCRouter<typeof appContract, RouterContext> {
+  const os = implement(appContract).$context<RouterContext>();
   const repos = createRepos(deps.prisma);
   /**
    * Moves a bot to another computer (or onto the same one under a different provider) while it is
