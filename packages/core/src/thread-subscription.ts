@@ -25,6 +25,8 @@ export async function runThreadSubscription(options: {
   };
   let initial = await options.loadInitial().catch(() => null);
   if (signal.aborted) return;
+  // Only the server's own snapshot counts as loaded; a cached one may be stale.
+  const fromServer = initial !== null;
   let headRetryMs = 250;
   while (!initial && !signal.aborted) {
     initial = await options.loadHead().catch(() => null);
@@ -34,18 +36,24 @@ export async function runThreadSubscription(options: {
   }
   if (!initial || signal.aborted) return;
   const head = initial;
-  let cursor = head.cursor;
-  let snapshotReady = options.currentSnapshot()?.threadId === head.threadId;
+  const cached = options.currentSnapshot();
+  const cachedMatches = cached?.threadId === head.threadId;
+  // Without a server snapshot, replay from the cached cursor so no event is skipped.
+  let cursor = fromServer || !cachedMatches ? head.cursor : Math.min(head.cursor, cached.cursor);
+  let snapshotReady = fromServer && cachedMatches;
   const pendingSnapshotEvents: ProductEvent[] = [];
   if (!snapshotReady) {
     void (async () => {
       let snapshotRetryMs = 250;
       while (!snapshotReady && !signal.aborted) {
         if (!(await wait(snapshotRetryMs))) return;
-        await options.refresh().catch(() => null);
+        const refreshed = await options.refresh().then(
+          () => true,
+          () => false,
+        );
         if (signal.aborted) return;
         const committed = options.currentSnapshot();
-        if (committed?.threadId === head.threadId) {
+        if (refreshed && committed?.threadId === head.threadId) {
           snapshotReady = true;
           for (const event of pendingSnapshotEvents.splice(0)) {
             if (event.seq > committed.cursor) options.applyEvent(event);

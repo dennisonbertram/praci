@@ -133,3 +133,86 @@ it("draws a flat balance line mid-chart, not on the x axis", async () => {
   // The plot runs from y=10 to y=170; mid-chart is 90.
   expect(ys?.every((y) => Math.abs(y - 90) < 1)).toBe(true);
 });
+
+const month = (m: number, outCents: number, revenueCents: number, partial = false) => ({
+  start: `2026-${String(m).padStart(2, "0")}-01`,
+  end: `2026-${String(m).padStart(2, "0")}-01`,
+  outCents,
+  revenueCents,
+  financingCents: 0,
+  partial,
+});
+
+it("starts the monthly chart at the first month with money and ends both lines on the last full month", async () => {
+  const series = [
+    month(1, 0, 0),
+    month(2, 0, 0),
+    month(3, 100_000, 50_000),
+    month(4, 120_000, 60_000),
+    month(5, 130_000, 70_000),
+    month(6, 20_000, 10_000, true),
+  ];
+  const { el, done } = await mount(
+    600,
+    <BurnLines label="Burn" height={200} series={series} onOpen={() => {}} />,
+  );
+  const labels = [...el.querySelectorAll("text")].map((t) => t.textContent);
+  expect(labels).not.toContain("Jan");
+  expect(labels).not.toContain("Feb");
+  const endX = (testId: string) =>
+    Number(el.querySelector(`[data-testid=${testId}]`)?.getAttribute("cx"));
+  // The revenue dot sits on the same month as the Out dot, and neither line reaches it.
+  expect(endX("burn-revenue-end")).toBe(endX("burn-out-end"));
+  const lastX = (d: string | null | undefined) =>
+    Number(
+      d
+        ?.split(/[ ,CL]+/)
+        .filter(Boolean)
+        .at(-2),
+    );
+  const outEnd = lastX(el.querySelector("[data-testid=burn-out-line]")?.getAttribute("d"));
+  expect(outEnd).toBeLessThan(endX("burn-out-end"));
+  done();
+});
+
+it("labels a flat balance's gridlines evenly, with the balance on the middle one", async () => {
+  const { el, done } = await mount(
+    600,
+    <LineChart
+      values={[115_000_000, 115_000_000, 115_000_000, 115_000_000]}
+      labels={["a", "b", "c", "d"]}
+      height={200}
+      label="Balance"
+    />,
+  );
+  const labels = [...el.querySelectorAll("text")]
+    .map((t) => t.textContent ?? "")
+    .filter((t) => t.startsWith("$"));
+  done();
+  expect(labels).toEqual(["$950k", "$1.15M", "$1.35M"]);
+});
+
+it("shows revenue when trimming leaves one month, or one full month plus the current one", async () => {
+  const one = await mount(
+    600,
+    <BurnLines
+      label="Burn"
+      height={200}
+      series={[month(10, 20_000, 10_000, true)]}
+      onOpen={() => {}}
+    />,
+  );
+  expect(one.el.querySelector("[data-testid=burn-revenue-end]")).not.toBeNull();
+  one.done();
+  const two = await mount(
+    600,
+    <BurnLines
+      label="Burn"
+      height={200}
+      series={[month(9, 100_000, 50_000), month(10, 20_000, 0, true)]}
+      onOpen={() => {}}
+    />,
+  );
+  expect(two.el.querySelector("[data-testid=burn-revenue-point]")).not.toBeNull();
+  two.done();
+});
