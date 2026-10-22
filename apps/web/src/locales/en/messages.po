@@ -1677,6 +1677,10 @@ msgstr "Back"
 msgid "Back to artifacts"
 msgstr "Back to artifacts"
 
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Back to email"
+msgstr "Back to email"
+
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Back to Inbox"
 msgstr "Back to Inbox"
@@ -3386,6 +3390,10 @@ msgstr "Could not reach {0}. Check the address and try again."
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Could not reach Granola"
 msgstr "Could not reach Granola"
+
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Could not reach Praci. Try again."
+msgstr "Could not reach Praci. Try again."
 
 #: src/lib/model-connection-preflight.ts
 msgid "Could not reach the model server."

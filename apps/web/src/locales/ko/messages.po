@@ -1677,6 +1677,10 @@ msgstr "뒤로"
 msgid "Back to artifacts"
 msgstr ""
 
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Back to email"
+msgstr ""
+
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Back to Inbox"
 msgstr ""
@@ -3385,6 +3389,10 @@ msgstr ""
 
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Could not reach Granola"
+msgstr ""
+
+#: src/components/inbox/EmailAgentPanel.tsx
+msgid "Could not reach Praci. Try again."
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
