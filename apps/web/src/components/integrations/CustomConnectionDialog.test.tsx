@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { McpServer } from "@rakazo/contracts";
-import { CARTA_MCP_ENDPOINT, DEVIN_MCP_ENDPOINT } from "@rakazo/contracts";
+import { CARTA_MCP_ENDPOINT, DEVIN_MCP_ENDPOINT, ZERNIO_MCP_ENDPOINT } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -14,9 +14,17 @@ const api = vi.hoisted(() => ({
   begin: vi.fn(),
   open: vi.fn(),
   wait: vi.fn(),
+  update: vi.fn(),
+  postingCapability: vi.fn(),
 }));
 vi.mock("../../lib/rpc", () => ({
-  rpc: { mcp: { servers: { create: api.create, remove: api.remove }, assignments: {} } },
+  rpc: {
+    mcp: {
+      servers: { create: api.create, remove: api.remove, update: api.update },
+      assignments: {},
+    },
+    gtm: { postingCapability: api.postingCapability },
+  },
 }));
 vi.mock("../../lib/mcp-connect", () => ({
   beginMcpOauth: api.begin,
@@ -50,6 +58,7 @@ async function mount(
     oauthScope?: string;
     service?: string;
     initialUrl?: string;
+    existingServer?: McpServer;
   } = {},
 ) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -88,6 +97,7 @@ const click = (label: string) =>
 beforeEach(() => {
   api.create.mockResolvedValue(server);
   api.remove.mockResolvedValue({ ok: true });
+  api.postingCapability.mockResolvedValue("api_key_required");
 });
 afterEach(() => {
   document.body.innerHTML = "";
@@ -107,6 +117,60 @@ it("skips the bot step when the API already made the server's agent", async () =
   await click("Connect");
   expect(document.body.textContent).toContain("connected");
   expect(document.body.textContent).not.toContain("Continue");
+});
+
+it("signs Zernio in over OAuth and reports that reads do not configure posting", async () => {
+  api.create.mockResolvedValue({ ...server, endpoint: ZERNIO_MCP_ENDPOINT, agentBotId: "gtm-1" });
+  api.begin.mockResolvedValue({
+    status: "authorization_required",
+    authorizationUrl: "https://a/x",
+  });
+  api.open.mockReturnValue({ close: vi.fn(), closed: false });
+  api.wait.mockResolvedValue("connected");
+  await mount({ initialUrl: ZERNIO_MCP_ENDPOINT, service: "Zernio" });
+  await click("Sign in with Zernio");
+  expect(api.begin).toHaveBeenCalledWith("srv-1", expect.anything());
+  expect(api.wait).toHaveBeenCalled();
+  expect(api.remove).not.toHaveBeenCalled();
+  expect(document.body.textContent).toContain("Posting needs an API key.");
+});
+
+it("retains the linked Zernio server when OAuth cannot start", async () => {
+  api.create.mockResolvedValue({ ...server, endpoint: ZERNIO_MCP_ENDPOINT, agentBotId: "gtm-1" });
+  api.begin.mockRejectedValue(new Error("Synthetic sign-in unavailable"));
+  await mount({ initialUrl: ZERNIO_MCP_ENDPOINT, service: "Zernio" });
+  await click("Sign in with Zernio");
+  expect(api.begin).toHaveBeenCalled();
+  expect(api.remove).not.toHaveBeenCalled();
+  expect(document.body.textContent).toContain("Synthetic sign-in unavailable");
+});
+
+it("configures a Zernio API key through the generic credential path without OAuth", async () => {
+  api.create.mockResolvedValue({ ...server, endpoint: ZERNIO_MCP_ENDPOINT, agentBotId: "gtm-1" });
+  api.postingCapability.mockResolvedValue("ready");
+  await mount({ initialUrl: ZERNIO_MCP_ENDPOINT, service: "Zernio" });
+  await click("Use API key");
+  await type("API key", "synthetic-zernio-key");
+  await click("Connect");
+  expect(api.create).toHaveBeenCalledWith(
+    expect.objectContaining({ secret: "synthetic-zernio-key" }),
+  );
+  expect(api.begin).not.toHaveBeenCalled();
+  expect(document.body.textContent).toContain("API key configured (not verified).");
+});
+
+it("adds the API key to an existing OAuth connection rather than duplicating it", async () => {
+  const existing = { ...server, endpoint: ZERNIO_MCP_ENDPOINT, agentBotId: "gtm-1" };
+  api.update.mockResolvedValue(existing);
+  api.postingCapability.mockResolvedValue("ready");
+  await mount({ existingServer: existing, service: "Zernio", oauthClient: true });
+  await click("Use API key");
+  expect(document.body.textContent).not.toContain("Enter a Client ID to sign in.");
+  await type("API key", "synthetic-zernio-key");
+  await click("Connect");
+  expect(api.create).not.toHaveBeenCalled();
+  expect(api.update).toHaveBeenCalledWith({ id: existing.id, secret: "synthetic-zernio-key" });
+  expect(api.begin).not.toHaveBeenCalled();
 });
 
 it("skips the bot step after sign-in when the API already made the agent", async () => {
