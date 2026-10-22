@@ -130,7 +130,7 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
 
   return (
     <div
-      className="mb-2 flex max-h-[28vh] shrink-0 snap-start lg:max-h-[max(14vh,7.5rem)] flex-col border-b border-border pb-2"
+      className="mb-2 flex max-h-[28vh] shrink-0 snap-start flex-col lg:max-h-none border-b border-border pb-2"
       data-testid="activity-list"
     >
       <div className="flex items-center justify-between px-2.5 pb-1">
@@ -170,14 +170,14 @@ export function ActivityList({ onOpenRun }: ActivityListProps) {
           </p>
         ) : null}
 
-        <ActivitySection id="activity-needs-heading" title={<Trans>Needs you</Trans>}>
+        <ActivitySection id="activity-needs-heading" title={needsAnswerLabel()}>
           {needsYou.map((run) => (
             <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
           ))}
         </ActivitySection>
         <ActivitySection id="activity-now-heading" title={<Trans>Working</Trans>}>
           {working.map((run) => (
-            <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} />
+            <ActivityRow key={run.runId} run={run} onOpen={() => onOpenRun(run)} compact />
           ))}
         </ActivitySection>
         {needsYou.length === 0 && working.length === 0 && !filtersOn ? (
@@ -430,7 +430,16 @@ function FilterChip({ label, onClear }: { label: string; onClear: () => void }) 
   );
 }
 
-function ActivityRow({ run, onOpen }: { run: RunActivityRow; onOpen: () => void }) {
+/** `compact` is one line: the chat list already shows what a working bot is doing. */
+function ActivityRow({
+  run,
+  onOpen,
+  compact = false,
+}: {
+  run: RunActivityRow;
+  onOpen: () => void;
+  compact?: boolean;
+}) {
   const { t } = useLingui();
   const title = run.groupName ? `${run.botName} · ${run.groupName}` : run.botName;
   const label = statusLabel(run.status);
@@ -441,7 +450,7 @@ function ActivityRow({ run, onOpen }: { run: RunActivityRow; onOpen: () => void 
       type="button"
       aria-label={activityLabel}
       onClick={onOpen}
-      className="flex w-full gap-3 rounded-xl px-2.5 py-[9px] text-left hover:bg-accent"
+      className={`flex w-full gap-3 rounded-xl px-2.5 text-left hover:bg-accent ${compact ? "py-1.5" : "py-[9px]"}`}
     >
       <span
         className={`mt-1.5 size-2 shrink-0 rounded-full bg-current ${tone}`}
@@ -450,11 +459,15 @@ function ActivityRow({ run, onOpen }: { run: RunActivityRow; onOpen: () => void 
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
           <span className="truncate text-sm font-medium text-foreground">{title}</span>
-          <span className="shrink-0 text-xs text-muted-foreground/80">
-            {formatRosterTime(run.updatedAt)}
-          </span>
+          {compact ? (
+            <span className={`shrink-0 text-xs ${tone}`}>{label}</span>
+          ) : (
+            <span className="shrink-0 text-xs text-muted-foreground/80">
+              {formatRosterTime(run.updatedAt)}
+            </span>
+          )}
         </div>
-        <div className="mt-0.5 flex items-baseline gap-2">
+        <div hidden={compact} className="mt-0.5 flex items-baseline gap-2">
           {run.promptSnippet ? (
             <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">
               {run.promptSnippet}

@@ -71,6 +71,8 @@ it("leads with what needs the founder and folds finished runs until asked", asyn
   await act(async () => createRoot(container).render(view()));
 
   expect(container.textContent).toContain("Needs your answer");
+  // The heading uses the same phrase as the row, not a second name for the state.
+  expect(container.querySelector("#activity-needs-heading")?.textContent).toBe("Needs your answer");
   expect(container.textContent).not.toContain("Finished");
   const toggle = container.querySelector<HTMLButtonElement>(
     '[data-testid="activity-show-finished"]',

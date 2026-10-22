@@ -87,6 +87,7 @@ import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-p
 import { copyableMessageText } from "../../lib/message-text";
 import { messageProviderLabel } from "../../lib/messaging";
 import { quoteDraftForSelection } from "../../lib/quote-selection";
+import { needsAnswerLabel } from "../../lib/roster-status";
 import { runPhaseLine, runPhaseWaitingOn } from "../../lib/run-phase";
 import {
   isToolOnlyNarration,
@@ -1833,7 +1834,8 @@ const MessageView = memo(function MessageView({
                       : "rounded-full bg-success/15 px-[11px] py-1 text-[13px] text-success"
                   }
                 >
-                  {block.state}
+                  {/* The stored state is "Needs you"; show the one phrase used everywhere else. */}
+                  {block.state === "Needs you" ? needsAnswerLabel() : block.state}
                 </span>
               </div>
               <div className="my-2.5 text-[14.5px] leading-[1.5] text-foreground/75">

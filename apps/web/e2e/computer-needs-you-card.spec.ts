@@ -42,7 +42,7 @@ test("needs-you computer card opens the computer", async ({ page }, testInfo) =>
   }
   await expect(card).toBeVisible({ timeout: 15_000 });
   await expect(card.getByText("Computer", { exact: true })).toBeVisible();
-  await expect(card.getByText("Needs you", { exact: true })).toBeVisible();
+  await expect(card.getByText("Needs your answer", { exact: true })).toBeVisible();
   const open = card.getByTestId("computer-card-open");
   await expect(open).toBeVisible();
   await expect(open).toHaveText("Open");
@@ -75,7 +75,7 @@ test("needs-you computer card opens a group member bot computer", async ({ page 
   const card = page.getByTestId("computer-card");
   await expect(card).toBeVisible();
   await expect(card.getByText("Computer", { exact: true })).toBeVisible();
-  await expect(card.getByText("Needs you", { exact: true })).toBeVisible();
+  await expect(card.getByText("Needs your answer", { exact: true })).toBeVisible();
   const open = card.getByTestId("computer-card-open");
   await expect(open).toBeVisible();
   await expect(open).toHaveText("Open");

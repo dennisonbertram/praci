@@ -230,6 +230,27 @@ it("lists the mail action first, marks rows with the group icon, and Enter still
   expect(onSelectPage).toHaveBeenCalledWith("finance");
 });
 
+it("Enter opens a contact named exactly as typed, not the mail search, and a long title keeps the match in view", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  await mount(vi.fn(), async () => [
+    { heading: "Mail", first: true, entries: [{ id: "/m", label: "Search mail for “zed quill”" }] },
+    {
+      heading: "Contacts",
+      entries: [{ id: "/c", label: "Zed Quill" }],
+    },
+    {
+      heading: "Documents",
+      entries: [
+        { id: "/d", label: "Board materials for the annual general meeting with Zed Quill" },
+      ],
+    },
+  ]);
+  await search("zed quill");
+  await wait(300);
+  expect(listText()).toContain("…");
+  expect(document.querySelector("[cmdk-item][data-selected=true]")?.textContent).toBe("Zed Quill");
+});
+
 it("strips markdown from a chat snippet", () => {
   expect(plainSnippet("**Halcyon** closes `Friday`")).toBe("Halcyon closes Friday");
 });
