@@ -540,7 +540,10 @@ describePostgres("Data room agent tools (PostgreSQL, Gmail and Drive emulators)"
     const walked: string[] = [];
     let cursor: string | undefined;
     do {
-      const page = (await call("search_data_room", { limit: 1, ...(cursor ? { cursor } : {}) })) as {
+      const page = (await call("search_data_room", {
+        limit: 1,
+        ...(cursor ? { cursor } : {}),
+      })) as {
         results: { id: string }[];
         nextCursor?: string;
       };
