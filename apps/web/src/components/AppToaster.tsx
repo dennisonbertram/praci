@@ -2,7 +2,6 @@ import type { NotificationDto } from "@rakazo/contracts";
 import { NotificationToaster } from "@rakazo/ui-web";
 import { useEffect, useRef } from "react";
 import { useMatch, useNavigate } from "react-router-dom";
-import { dismissApprovalToastsForBot } from "../lib/approval-toasts";
 import { lookupAgentApp } from "../lib/agent-app";
 import { authClient } from "../lib/auth";
 import { i18n } from "../lib/i18n";
@@ -62,8 +61,6 @@ export function AppToaster() {
   const openBotId = useMatch("/app/:botId")?.params.botId;
   const openBotIdRef = useRef(openBotId);
   openBotIdRef.current = openBotId;
-  // An approval in the chat that is open is already on screen.
-  useEffect(() => dismissApprovalToastsForBot(openBotId), [openBotId]);
   useEffect(() => {
     const controller = new AbortController();
     // The browser switch, loaded once and reloaded when the settings change.

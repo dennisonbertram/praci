@@ -9,6 +9,10 @@ import { maskCurrencyWhenHidden } from "./hide-amounts-preference";
 /** Dispatched on `window` after the channel switches change, so the app root reloads them. */
 export const NOTIFICATION_SETTINGS_CHANGED = "rakazo:notification-settings-changed";
 
+/** Approval requests are titled "<agent> needs approval"; other needs_input kinds (questions, codes, Devin) are not. */
+export const isApprovalRequest = (n: Pick<NotificationDto, "kind" | "title">) =>
+  n.kind === "needs_input" && n.title.endsWith(" needs approval");
+
 /** The toast and OS text for a stored notification; amounts stay hidden while Hide money is on. */
 export function attentionFromDto(n: NotificationDto): AttentionNotification {
   return {
@@ -18,7 +22,7 @@ export function attentionFromDto(n: NotificationDto): AttentionNotification {
     href: n.link ?? undefined,
     createdAt: n.createdAt,
     // An approval waits for the person, so its toast stays until it is opened or dismissed.
-    ...(n.kind === "needs_input" ? { timeout: 0, approvalBotId: n.botId } : {}),
+    ...(n.kind === "needs_input" ? { timeout: 0, approval: isApprovalRequest(n) } : {}),
   };
 }
 
@@ -55,7 +59,7 @@ export function openNotificationLink(navigate: (href: string) => void | Promise<
 /** An `attention` notification; `info` only puts a dot on the sidebar and never reaches here. */
 export type AttentionNotification = NotificationToastInput & {
   /** Set on an approval request: its toast joins the approvals toast and goes when its chat is opened. */
-  approvalBotId?: string | null;
+  approval?: boolean;
 };
 
 /** Present (visible tab with focus) -> in-app toast; otherwise -> OS notification. */
@@ -88,10 +92,8 @@ export type DeliveryDeps = {
 export const AWAY_DELAY_MS = 1500;
 
 const defaultDeps = (): DeliveryDeps => ({
-  toast: ({ approvalBotId, ...toast }) =>
-    approvalBotId === undefined
-      ? enqueueNotificationToast(toast)
-      : enqueueApprovalToast(toast, approvalBotId),
+  toast: ({ approval, ...toast }) =>
+    approval ? enqueueApprovalToast(toast) : enqueueNotificationToast(toast),
   requestPermission: () => requestBrowserNotificationPermission(),
   show: (title, options, onClick) => {
     const shown = new Notification(title, options);

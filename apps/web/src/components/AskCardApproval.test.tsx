@@ -14,6 +14,7 @@ vi.mock("@rakazo/chat-ui/web", () => ({
   ChatMarkdown: ({ children }: { children: ReactNode }) => children,
 }));
 
+import { setHideAmounts } from "../lib/hide-amounts-preference";
 import type { AskBlock } from "./AskCard";
 import { AskCard } from "./AskCard";
 
@@ -148,4 +149,25 @@ it("labels a payment's main button with its amount and drops blank lines from De
   expect(button(container, "Send $300.00")).toBeDefined();
   expect(button(container, "Allow once")).toBeUndefined();
   expect(container.querySelector("pre")?.textContent).toBe("Amount: $300.00");
+});
+
+it("masks the amount on a payment button while Hide amounts is on", () => {
+  setHideAmounts(true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const payment: AskBlock = {
+    ...pending,
+    actions: [
+      { id: "allow", label: "Send $300.00" },
+      { id: "deny", label: "Deny" },
+    ],
+  };
+  act(() =>
+    createRoot(container).render(
+      <AskCard block={payment} canAnswer onAnswer={async () => undefined} />,
+    ),
+  );
+  expect(container.textContent).not.toContain("300");
+  expect(container.textContent).toContain("Send ");
+  setHideAmounts(false);
 });

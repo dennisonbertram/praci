@@ -7,6 +7,7 @@ import { isApprovalAskBlock, isSecretAskBlock, selectedAskActionLabel } from "@r
 import { Button, Input } from "@rakazo/ui-web";
 import { Check, KeyRound, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { errorText } from "../lib/user-error";
 import { SecretRequestDialog } from "./SecretRequestDialog";
 
@@ -63,7 +64,8 @@ function approvalActionLabel(
   if (outcome === "created") return t`Create space`;
   if (outcome === "cancelled") return t`Cancel`;
   // A payment's label already carries the amount ("Send $300.00"): keep it.
-  if (id === "allow") return fallback.startsWith("Send ") ? fallback : t`Allow once`;
+  if (id === "allow")
+    return fallback.startsWith("Send ") ? maskCurrencyWhenHidden(fallback) : t`Allow once`;
   if (id === "always") return t`Always allow this`;
   if (id === "deny") return t`Deny`;
   return fallback;
@@ -85,6 +87,8 @@ export function AskCard({
   onAnswer: (text: string, username?: string) => Promise<void>;
 }) {
   const { t } = useLingui();
+  // Re-render when Hide amounts changes: a payment button carries its amount.
+  useHideAmounts();
   const [editing, setEditing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [answer, setAnswer] = useState("");
