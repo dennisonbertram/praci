@@ -897,7 +897,6 @@ msgstr "Add connected models to use them as backups."
 
 #: src/components/ContactDialog.tsx
 #: src/pages/Contacts.tsx
-#: src/pages/Investors.tsx
 msgid "Add contact"
 msgstr "Add contact"
 
@@ -1298,6 +1297,10 @@ msgstr "API is back, but the update did not finish. Check the host logs."
 #: src/pages/Onboarding.tsx
 msgid "API key"
 msgstr "API key"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "API key configured (not verified)."
+msgstr "API key configured (not verified)."
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "API key header"
@@ -2633,6 +2636,10 @@ msgstr "Computers are available. Reload or open a bot to continue."
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
 msgstr "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Configure API key"
+msgstr "Configure API key"
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "Confirm delete"
@@ -2791,6 +2798,10 @@ msgstr "Connect Treg"
 msgid "Connect your apps"
 msgstr "Connect your apps"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Connect Zernio to enable reads."
+msgstr "Connect Zernio to enable reads."
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/IMessageSection.tsx
@@ -2937,8 +2948,8 @@ msgid "Copy .env example"
 msgstr "Copy .env example"
 
 #: src/pages/Investors.tsx
-msgid "Copy link"
-msgstr "Copy link"
+msgid "Copy update link"
+msgstr "Copy update link"
 
 #: src/pages/ScratchpadSection.tsx
 msgid "Could not add"
@@ -3388,6 +3399,7 @@ msgstr "Could not reach the model server."
 #: src/lib/user-error.ts
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Auth.tsx
+#: src/pages/Investors.tsx
 msgid "Could not reach the server"
 msgstr "Could not reach the server"
 
@@ -4404,6 +4416,7 @@ msgstr "Draft with agent"
 msgid "Drafted {0}"
 msgstr "Drafted {0}"
 
+#: src/components/investors/ActionItems.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Drafting…"
 msgstr "Drafting…"
@@ -4685,6 +4698,10 @@ msgstr "Every week"
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Exchange"
 msgstr "Exchange"
+
+#: src/pages/Investors.tsx
+msgid "Excludes SAFEs"
+msgstr "Excludes SAFEs"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Expand"
@@ -6963,8 +6980,8 @@ msgid "No rush"
 msgstr "No rush"
 
 #: src/pages/Fundraising.tsx
-msgid "No SAFEs yet"
-msgstr "No SAFEs yet"
+msgid "No SAFEs yet. This list shows SAFEs sent from Praci and SAFEs found in Mercury."
+msgstr "No SAFEs yet. This list shows SAFEs sent from Praci and SAFEs found in Mercury."
 
 #: src/pages/Finance.tsx
 msgid "No spend in this period"
@@ -7193,6 +7210,10 @@ msgstr "OAuth authorization was cancelled."
 #: src/pages/McpOAuthCallback.tsx
 msgid "OAuth connection failed"
 msgstr "OAuth connection failed"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "OAuth connects reads only. Posting requires an API key."
+msgstr "OAuth connects reads only. Posting requires an API key."
 
 #: src/components/legal/LegalGraph.tsx
 msgid "Obligation"
@@ -7773,6 +7794,14 @@ msgstr "Posted · {0} notified"
 msgid "Posted {0}"
 msgstr "Posted {0}"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting needs an API key."
+msgstr "Posting needs an API key."
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting readiness unavailable."
+msgstr "Posting readiness unavailable."
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
 msgstr "Praci doesn't tag new files."
@@ -7780,6 +7809,12 @@ msgstr "Praci doesn't tag new files."
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Praci keeps your meetings and to-dos."
 msgstr "Praci keeps your meetings and to-dos."
+
+#. placeholder {0}: usd(safe.capCents)
+#: src/components/fundraising/SafeDialog.tsx
+#: src/components/fundraising/SafeList.tsx
+msgid "Pre-money cap {0}"
+msgstr "Pre-money cap {0}"
 
 #: src/components/ComposeEmail.tsx
 msgid "Preparing draft…"
@@ -8491,8 +8526,8 @@ msgid "Research & writing"
 msgstr "Research & writing"
 
 #: src/pages/Investors.tsx
-msgid "Resend link"
-msgstr "Resend link"
+msgid "Resend update link"
+msgstr "Resend update link"
 
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
@@ -8724,6 +8759,11 @@ msgstr "Safe"
 #: src/components/fundraising/SafeDialog.tsx
 msgid "SAFE"
 msgstr "SAFE"
+
+#. placeholder {0}: usd(safeUsd)
+#: src/pages/Investors.tsx
+msgid "SAFE {0}"
+msgstr "SAFE {0}"
 
 #: src/pages/Shell.tsx
 msgid "safe, round, raise"
@@ -9682,6 +9722,7 @@ msgid "Start {trialDays}-day free trial"
 msgstr "Start {trialDays}-day free trial"
 
 #: src/components/fundraising/RoundCard.tsx
+#: src/pages/Fundraising.tsx
 msgid "Start a round"
 msgstr "Start a round"
 
@@ -10746,6 +10787,10 @@ msgid "Update finished with errors"
 msgstr "Update finished with errors"
 
 #: src/pages/Investors.tsx
+msgid "Update link"
+msgstr "Update link"
+
+#: src/pages/Investors.tsx
 msgid "Update options"
 msgstr "Update options"
 
@@ -10872,6 +10917,10 @@ msgstr "Use a Google Sheet"
 msgid "Use an API key instead"
 msgstr "Use an API key instead"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use API key"
+msgstr "Use API key"
+
 #: src/lib/model-connection-preflight.ts
 msgid "Use Connect to verify the key."
 msgstr "Use Connect to verify the key."
@@ -10879,6 +10928,10 @@ msgstr "Use Connect to verify the key."
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Use default guidance"
 msgstr "Use default guidance"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use OAuth"
+msgstr "Use OAuth"
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Use Protected input for passwords."
@@ -11188,6 +11241,10 @@ msgstr "When to use"
 #: src/lib/finance-agent.ts
 msgid "Where did spend go up this month?"
 msgstr "Where did spend go up this month?"
+
+#: src/pages/Investors.tsx
+msgid "Where is your cap table?"
+msgstr "Where is your cap table?"
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Where it went"

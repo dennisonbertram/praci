@@ -108,6 +108,8 @@ export function FundraisingPage({
 
   const round = overview?.round ?? null;
   const open = round && !round.closedAt ? round : null;
+  // Nothing yet: one Start a round state instead of three empty boxes.
+  const fresh = overview !== null && !round && !overview.prospects.length && !overview.safes.length;
 
   const run = (call: () => Promise<unknown>, failure: string) =>
     call()
@@ -237,87 +239,103 @@ export function FundraisingPage({
               onMark={(safe, step) => setMarking({ safe, step })}
             />
 
-            <RoundCard
-              round={round}
-              pendingCents={overview.pendingCents}
-              signedCents={overview.signedCents}
-              fundedCents={overview.fundedCents}
-              onStart={() => setRoundDialog("start")}
-              onEdit={() => setRoundDialog("edit")}
-              onClose={closeRound}
-              onReopen={() =>
-                round &&
-                void run(
-                  () => rpc.fundraising.round.reopen({ id: round.id }),
-                  t`Could not reopen the round`,
-                )
-              }
-            />
-
-            <section className="max-w-5xl" aria-label={t`Pipeline`}>
-              <h2 className="mb-2 text-sm font-semibold">
-                <Trans>Pipeline</Trans>
-              </h2>
-              {overview.prospects.length === 0 ? (
-                <div className="flex flex-col items-center gap-3 py-10 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    <Trans>No prospects yet</Trans>
-                  </p>
-                  <Button variant="outline" size="sm" onClick={() => setEditing(NEW_PROSPECT)}>
-                    <Plus aria-hidden="true" />
-                    <Trans>Add prospect</Trans>
-                  </Button>
-                </div>
-              ) : (
-                <Pipeline
-                  prospects={overview.prospects}
-                  savedId={savedId}
-                  filledSend={Boolean(open)}
-                  onSendSafe={sendSafe}
-                  onOpenMercury={openMercury}
-                  onNotSent={(prospect) =>
-                    void run(
-                      () => rpc.fundraising.prospects.notSent({ id: prospect.id }),
-                      t`Could not undo Send SAFE`,
-                    )
-                  }
-                  onEdit={setEditing}
-                  onMove={(prospect, stage) => void move(prospect, stage)}
-                />
-              )}
-            </section>
-
-            <Card className="max-w-5xl gap-2 px-3.5 py-3">
-              <h2 className="text-sm font-semibold">
-                <Trans>SAFEs</Trans>
-              </h2>
-              {overview.safes.length === 0 ? (
+            {fresh ? (
+              <div className="flex flex-col items-center gap-3 py-16 text-center">
                 <p className="text-sm text-muted-foreground">
-                  <Trans>No SAFEs yet</Trans>
+                  <Trans>No prospects yet</Trans>
                 </p>
-              ) : (
-                <SafeList
-                  safes={overview.safes}
+                <Button onClick={() => setRoundDialog("start")}>
+                  <Trans>Start a round</Trans>
+                </Button>
+              </div>
+            ) : (
+              <>
+                <RoundCard
                   round={round}
-                  onOpen={openSafe}
-                  onAssign={setAssigning}
-                  onUnassign={(safe) =>
+                  pendingCents={overview.pendingCents}
+                  signedCents={overview.signedCents}
+                  fundedCents={overview.fundedCents}
+                  onStart={() => setRoundDialog("start")}
+                  onEdit={() => setRoundDialog("edit")}
+                  onClose={closeRound}
+                  onReopen={() =>
+                    round &&
                     void run(
-                      () => rpc.fundraising.safes.unassign({ id: safe.id }),
-                      t`Could not unassign`,
+                      () => rpc.fundraising.round.reopen({ id: round.id }),
+                      t`Could not reopen the round`,
                     )
                   }
-                  onMark={(safe, step) => setMarking({ safe, step })}
-                  onCancel={(safe) =>
-                    void run(
-                      () => mark(safe, "cancel", isoFromDay(todayDay())),
-                      t`Could not cancel`,
-                    )
-                  }
-                  onDelete={(safe) => setConfirm({ kind: "delete", safe })}
                 />
-              )}
-            </Card>
+
+                <section className="max-w-5xl" aria-label={t`Pipeline`}>
+                  <h2 className="mb-2 text-sm font-semibold">
+                    <Trans>Pipeline</Trans>
+                  </h2>
+                  {overview.prospects.length === 0 ? (
+                    <div className="flex flex-col items-center gap-3 py-10 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        <Trans>No prospects yet</Trans>
+                      </p>
+                      <Button variant="outline" size="sm" onClick={() => setEditing(NEW_PROSPECT)}>
+                        <Plus aria-hidden="true" />
+                        <Trans>Add prospect</Trans>
+                      </Button>
+                    </div>
+                  ) : (
+                    <Pipeline
+                      prospects={overview.prospects}
+                      savedId={savedId}
+                      filledSend={Boolean(open)}
+                      onSendSafe={sendSafe}
+                      onOpenMercury={openMercury}
+                      onNotSent={(prospect) =>
+                        void run(
+                          () => rpc.fundraising.prospects.notSent({ id: prospect.id }),
+                          t`Could not undo Send SAFE`,
+                        )
+                      }
+                      onEdit={setEditing}
+                      onMove={(prospect, stage) => void move(prospect, stage)}
+                    />
+                  )}
+                </section>
+
+                <Card className="max-w-5xl gap-2 px-3.5 py-3">
+                  <h2 className="text-sm font-semibold">
+                    <Trans>SAFEs</Trans>
+                  </h2>
+                  {overview.safes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      <Trans>
+                        No SAFEs yet. This list shows SAFEs sent from Praci and SAFEs found in
+                        Mercury.
+                      </Trans>
+                    </p>
+                  ) : (
+                    <SafeList
+                      safes={overview.safes}
+                      round={round}
+                      onOpen={openSafe}
+                      onAssign={setAssigning}
+                      onUnassign={(safe) =>
+                        void run(
+                          () => rpc.fundraising.safes.unassign({ id: safe.id }),
+                          t`Could not unassign`,
+                        )
+                      }
+                      onMark={(safe, step) => setMarking({ safe, step })}
+                      onCancel={(safe) =>
+                        void run(
+                          () => mark(safe, "cancel", isoFromDay(todayDay())),
+                          t`Could not cancel`,
+                        )
+                      }
+                      onDelete={(safe) => setConfirm({ kind: "delete", safe })}
+                    />
+                  )}
+                </Card>
+              </>
+            )}
           </div>
         )}
 

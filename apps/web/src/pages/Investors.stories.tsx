@@ -244,7 +244,13 @@ export const CartaNotConnected: Story = {
 
 /** No table yet: pick where it comes from. */
 export const Empty: Story = {
-  beforeEach: () => mockRpc({ "contacts.list": [], "mcp.servers.list": [cartaServer] }),
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": [],
+      "mcp.servers.list": [],
+      "investors.capTable": { snapshot: null, syncing: false },
+      ...noUpdates,
+    }),
 };
 
 export const Loading: Story = {
@@ -263,8 +269,9 @@ export const LoadError: Story = {
 export const WithSnapshot: Story = {
   beforeEach: () =>
     mockRpc({
-      "contacts.list": contacts,
+      "contacts.list": [...contacts, contact("c4", "Dee Newcomer", "investor", "Newcomer Fund")],
       "mcp.servers.list": [cartaServer],
+      ...noUpdates,
       "investors.capTable": { snapshot, syncing: false },
     }),
 };
@@ -302,6 +309,21 @@ export const ConnectionCheckFailed: Story = {
         throw new Error("Could not reach the server");
       },
     }),
+};
+
+/** The server is down: one error and one Try again for the whole page. */
+export const Offline: Story = {
+  beforeEach: () => {
+    const down = () => {
+      throw new Error("Could not reach the server");
+    };
+    return mockRpc({
+      "contacts.list": down,
+      "mcp.servers.list": down,
+      "investors.capTable": down,
+      "investors.updates.list": down,
+    });
+  },
 };
 
 /** Connected, but the Carta agent has not read anything yet. */

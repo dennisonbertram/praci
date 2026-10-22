@@ -897,7 +897,6 @@ msgstr "백업으로 사용할 연결된 모델을 추가하세요."
 
 #: src/components/ContactDialog.tsx
 #: src/pages/Contacts.tsx
-#: src/pages/Investors.tsx
 msgid "Add contact"
 msgstr ""
 
@@ -1298,6 +1297,10 @@ msgstr "API가 다시 작동하지만 업데이트가 완료되지 않았습니�
 #: src/pages/Onboarding.tsx
 msgid "API key"
 msgstr "API 키"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "API key configured (not verified)."
+msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "API key header"
@@ -2633,6 +2636,10 @@ msgstr ""
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
 msgstr "컴퓨터가 꺼져 있습니다. SANDBOX_PROVIDER=docker와 SANDBOX_SUPERVISOR_TOKEN을 설정하거나, SANDBOX_PROVIDER를 e2b, daytona, box 중 하나로 두고 해당 API 키를 넣으세요. .env 변경 후 스택을 다시 만드세요."
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Configure API key"
+msgstr ""
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "삭제 확인"
@@ -2791,6 +2798,10 @@ msgstr "Treg 연결"
 msgid "Connect your apps"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Connect Zernio to enable reads."
+msgstr ""
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/IMessageSection.tsx
@@ -2937,7 +2948,7 @@ msgid "Copy .env example"
 msgstr ""
 
 #: src/pages/Investors.tsx
-msgid "Copy link"
+msgid "Copy update link"
 msgstr ""
 
 #: src/pages/ScratchpadSection.tsx
@@ -3388,6 +3399,7 @@ msgstr "모델 서버에 연결하지 못했습니다."
 #: src/lib/user-error.ts
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Auth.tsx
+#: src/pages/Investors.tsx
 msgid "Could not reach the server"
 msgstr "서버에 연결할 수 없습니다"
 
@@ -4404,6 +4416,7 @@ msgstr ""
 msgid "Drafted {0}"
 msgstr ""
 
+#: src/components/investors/ActionItems.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Drafting…"
 msgstr ""
@@ -4684,6 +4697,10 @@ msgstr "매주"
 #: src/components/finance/WalletDialog.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Exchange"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Excludes SAFEs"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -6963,7 +6980,7 @@ msgid "No rush"
 msgstr ""
 
 #: src/pages/Fundraising.tsx
-msgid "No SAFEs yet"
+msgid "No SAFEs yet. This list shows SAFEs sent from Praci and SAFEs found in Mercury."
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -7193,6 +7210,10 @@ msgstr "OAuth 인증이 취소되었습니다."
 #: src/pages/McpOAuthCallback.tsx
 msgid "OAuth connection failed"
 msgstr "OAuth 연결 실패"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "OAuth connects reads only. Posting requires an API key."
+msgstr ""
 
 #: src/components/legal/LegalGraph.tsx
 msgid "Obligation"
@@ -7773,12 +7794,26 @@ msgstr ""
 msgid "Posted {0}"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting needs an API key."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Posting readiness unavailable."
+msgstr ""
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
 msgstr ""
 
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Praci keeps your meetings and to-dos."
+msgstr ""
+
+#. placeholder {0}: usd(safe.capCents)
+#: src/components/fundraising/SafeDialog.tsx
+#: src/components/fundraising/SafeList.tsx
+msgid "Pre-money cap {0}"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -8491,7 +8526,7 @@ msgid "Research & writing"
 msgstr ""
 
 #: src/pages/Investors.tsx
-msgid "Resend link"
+msgid "Resend update link"
 msgstr ""
 
 #: src/components/ComputerMaintenanceActions.tsx
@@ -8723,6 +8758,11 @@ msgstr ""
 
 #: src/components/fundraising/SafeDialog.tsx
 msgid "SAFE"
+msgstr ""
+
+#. placeholder {0}: usd(safeUsd)
+#: src/pages/Investors.tsx
+msgid "SAFE {0}"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -9682,6 +9722,7 @@ msgid "Start {trialDays}-day free trial"
 msgstr ""
 
 #: src/components/fundraising/RoundCard.tsx
+#: src/pages/Fundraising.tsx
 msgid "Start a round"
 msgstr ""
 
@@ -10746,6 +10787,10 @@ msgid "Update finished with errors"
 msgstr "오류와 함께 업데이트가 완료되었습니다"
 
 #: src/pages/Investors.tsx
+msgid "Update link"
+msgstr ""
+
+#: src/pages/Investors.tsx
 msgid "Update options"
 msgstr ""
 
@@ -10872,12 +10917,20 @@ msgstr ""
 msgid "Use an API key instead"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use API key"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Use Connect to verify the key."
 msgstr "키를 확인하려면 연결을 사용하세요."
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Use default guidance"
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Use OAuth"
 msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx
@@ -11187,6 +11240,10 @@ msgstr "언제 사용할지"
 
 #: src/lib/finance-agent.ts
 msgid "Where did spend go up this month?"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Where is your cap table?"
 msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx

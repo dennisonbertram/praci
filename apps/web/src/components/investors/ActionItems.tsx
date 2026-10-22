@@ -9,6 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Spinner,
 } from "@rakazo/ui-web";
 import { MoreHorizontal } from "lucide-react";
 import { shortDay } from "../../lib/finance-format";
@@ -72,7 +73,14 @@ function AuditRow({
           disabled={audit.drafting}
           onClick={() => onDraft(audit)}
         >
-          <Trans>Draft reply</Trans>
+          {audit.drafting ? (
+            <>
+              <Spinner aria-hidden="true" />
+              <Trans>Drafting…</Trans>
+            </>
+          ) : (
+            <Trans>Draft reply</Trans>
+          )}
         </Button>
       ) : null}
       {done ? null : (
@@ -117,10 +125,7 @@ export function ActionItems({
 }) {
   if (drafts.length === 0 && audits.length === 0) return null;
   return (
-    <section
-      aria-label={t`Action items`}
-      className="mb-5 max-w-5xl rounded-xl border border-border"
-    >
+    <section aria-label={t`Action items`} className="mb-5 rounded-xl border border-border">
       <h2 className="px-3.5 pt-3 text-sm font-semibold">
         <Trans>Action items</Trans>
       </h2>

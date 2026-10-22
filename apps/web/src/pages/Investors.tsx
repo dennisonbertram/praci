@@ -123,7 +123,7 @@ function Figure({ title, value, hint }: { title: string; value: string; hint?: s
 }
 
 /** Fully diluted shares (with the 409A when known) and Equity raised, which never counts SAFE money. */
-function Summary({ snapshot }: { snapshot: Snapshot }) {
+function Summary({ snapshot, hasSafes }: { snapshot: Snapshot; hasSafes: boolean }) {
   useHideAmounts();
   const math = capTableMath(snapshot);
   const a = snapshot.latest409a;
@@ -142,7 +142,11 @@ function Summary({ snapshot }: { snapshot: Snapshot }) {
             : undefined
         }
       />
-      <Figure title={t`Equity raised`} value={raised} />
+      <Figure
+        title={t`Equity raised`}
+        value={raised}
+        hint={hasSafes ? t`Excludes SAFEs` : undefined}
+      />
     </div>
   );
 }
@@ -307,7 +311,7 @@ function UpdatesSection({
   doneToggle: { shown: boolean; onToggle: () => void } | null;
 }) {
   return (
-    <section className="mb-5 max-w-5xl" aria-label={t`Updates`}>
+    <section className="mb-5" aria-label={t`Updates`}>
       <div className="mb-1 flex items-center gap-2">
         <h2 className="me-auto text-sm font-semibold">
           <Trans>Updates</Trans>
@@ -402,6 +406,7 @@ function ContactRow({
   contact,
   saved,
   portal,
+  safeUsd,
   onEdit,
   onDelete,
   onResend,
@@ -413,6 +418,8 @@ function ContactRow({
   saved: boolean;
   /** The Investors tab only: board and auditor contacts have no portal access. */
   portal: boolean;
+  /** The contact's SAFE amount from the cap table, when it lists one. */
+  safeUsd?: number;
   onEdit: () => void;
   onDelete: () => void;
   onResend: () => void;
@@ -437,13 +444,15 @@ function ContactRow({
           {contact.name}
         </span>
         <span className="block truncate text-xs text-muted-foreground">
-          {[contact.organization, contact.email].filter(Boolean).join(" · ")}
+          {[contact.organization, contact.email, safeUsd ? t`SAFE ${usd(safeUsd)}` : null]
+            .filter(Boolean)
+            .join(" · ")}
         </span>
       </button>
       {portal ? (
         <span
           data-portal-state
-          className={`shrink-0 text-xs ${blocked ? "text-destructive" : "text-muted-foreground"}`}
+          className={`w-28 shrink-0 text-end text-xs ${blocked ? "text-destructive" : "text-muted-foreground"}`}
         >
           {portalLabel(contact)}
         </span>
@@ -461,11 +470,11 @@ function ContactRow({
             <>
               {contact.email ? (
                 <DropdownMenuItem onClick={onResend}>
-                  <Trans>Resend link</Trans>
+                  <Trans>Resend update link</Trans>
                 </DropdownMenuItem>
               ) : null}
               <DropdownMenuItem onClick={onCopyLink}>
-                <Trans>Copy link</Trans>
+                <Trans>Copy update link</Trans>
               </DropdownMenuItem>
               {hasAccess ? (
                 <DropdownMenuItem onClick={onRevoke}>
@@ -856,15 +865,22 @@ export function InvestorsPage({
   const holdingRows: HoldingRow[] =
     snapshot && math
       ? [
-          ...snapshot.holders.map((holder, i) => ({
-            key: `h${i}`,
-            name: holder.name,
-            security: holder.security,
-            shares: holder.shares,
-            amountUsd: holder.amountUsd,
-            percent: math.holders[i]?.percent ?? null,
-            contact: contactFor(allContacts, holder),
-          })),
+          // SAFEs belong to Fundraising: the table is shares and options.
+          ...snapshot.holders.flatMap((holder, i) =>
+            isSafeSecurity(holder.security)
+              ? []
+              : [
+                  {
+                    key: `h${i}`,
+                    name: holder.name,
+                    security: holder.security,
+                    shares: holder.shares,
+                    amountUsd: holder.amountUsd,
+                    percent: math.holders[i]?.percent ?? null,
+                    contact: contactFor(allContacts, holder),
+                  },
+                ],
+          ),
           ...(math.pool
             ? [
                 {
@@ -882,6 +898,15 @@ export function InvestorsPage({
         ]
       : [];
 
+  // A SAFE holder is listed once, in the contacts below, with the amount from the cap table.
+  const safeUsdByContact = new Map<string, number>();
+  for (const holder of snapshot?.holders ?? []) {
+    const id = isSafeSecurity(holder.security) ? contactFor(allContacts, holder)?.id : undefined;
+    if (id && holder.amountUsd != null)
+      safeUsdByContact.set(id, (safeUsdByContact.get(id) ?? 0) + holder.amountUsd);
+  }
+  const hasSafes =
+    safes.length > 0 || (snapshot?.holders ?? []).some((h) => isSafeSecurity(h.security));
   const needle = query.trim().toLowerCase();
   const shown = allContacts
     .filter(
@@ -943,6 +968,21 @@ export function InvestorsPage({
     }
   };
 
+  // The server itself is unreachable: one error and one Try again, not one per section.
+  const offline = serversFailed && capFailed;
+  const retryAll = () => {
+    setServersSeq((n) => n + 1);
+    load();
+    loadUpdates();
+    loadAudits();
+  };
+  // A fresh account sees only the cap table prompt; Updates and contacts appear once there is something.
+  const showRest =
+    Boolean(snapshot) ||
+    reading ||
+    sheetPending ||
+    (contacts?.length ?? 0) > 0 ||
+    (updates?.length ?? 0) > 0;
   const source = snapshot?.source;
   const names = sourceNames();
   const sourceLabel =
@@ -1033,21 +1073,24 @@ export function InvestorsPage({
             ) : null
           }
           actions={
-            <>
-              <Button variant="outline" size="sm" onClick={addContact}>
-                <Plus aria-hidden="true" />
-                <Trans>Add contact</Trans>
-              </Button>
-              {onShowAgent ? (
-                <AskBotButton botName="Investors agent" onClick={onShowAgent} />
-              ) : null}
-            </>
+            onShowAgent ? <AskBotButton botName="Investors agent" onClick={onShowAgent} /> : null
           }
         />
       </div>
 
       <div ref={container} className={`rk-scroll flex-1 overflow-y-auto ${PAGE_GUTTER_X} pb-6`}>
-        {serversFailed ? (
+        {offline ? (
+          <div role="alert" className="mb-5 flex flex-wrap items-center gap-3 text-sm">
+            <span className="text-destructive">
+              <Trans>Could not reach the server</Trans>
+            </span>
+            <Button variant="outline" size="sm" onClick={retryAll}>
+              <Trans>Try again</Trans>
+            </Button>
+          </div>
+        ) : null}
+
+        {serversFailed && !offline ? (
           <div role="alert" className="mb-5 flex flex-wrap items-center gap-3 text-sm">
             <span className="text-destructive">
               <Trans>Could not check whether Carta is connected.</Trans>
@@ -1058,7 +1101,7 @@ export function InvestorsPage({
           </div>
         ) : null}
 
-        {capFailed ? (
+        {capFailed && !offline ? (
           <div role="alert" className="mb-4 flex flex-wrap items-center gap-3 text-sm">
             <span className="text-destructive">
               <Trans>Could not load the cap table, so holdings are missing.</Trans>
@@ -1110,7 +1153,7 @@ export function InvestorsPage({
           }
         />
 
-        {!serversChecked || (cap === null && !capFailed) ? (
+        {offline ? null : !serversChecked || (cap === null && !capFailed) ? (
           <div className="flex flex-col gap-2" aria-busy="true">
             {[0, 1, 2].map((n) => (
               <Skeleton key={n} className="h-9 w-full" />
@@ -1120,10 +1163,8 @@ export function InvestorsPage({
           <>
             {snapshot && math ? (
               <div className="mb-5 flex flex-col gap-3">
-                <div className="max-w-3xl">
-                  <Summary snapshot={snapshot} />
-                </div>
-                <Card className="max-w-5xl gap-3 px-3.5 py-3">
+                <Summary snapshot={snapshot} hasSafes={hasSafes} />
+                <Card className="gap-3 px-3.5 py-3">
                   <h2 className="text-sm font-semibold">
                     <Trans>Cap table</Trans>
                   </h2>
@@ -1183,6 +1224,9 @@ export function InvestorsPage({
             ) : (
               // No table yet: pick where it comes from. Neither choice is filled; the page cannot know which fits.
               <div className="mb-5 flex flex-wrap items-center gap-2">
+                <h2 className="w-full text-sm font-semibold">
+                  <Trans>Where is your cap table?</Trans>
+                </h2>
                 {neverRead ? (
                   // Connected but unread: reading starts with a model; Type it in stays available.
                   needsModel && onOpenModelSettings ? (
@@ -1208,125 +1252,147 @@ export function InvestorsPage({
               </div>
             )}
 
-            <UpdatesSection
-              updates={updates}
-              cadence={cadence}
-              failed={updatesFailed}
-              onNew={() => void startUpdate("investors")}
-              onOpen={(update) => navigate(`/app/investors/updates/${update.id}`)}
-              onRetry={retryUpdate}
-              onMarkDelivered={(update) =>
-                void updateAction(
-                  () => rpc.investors.updates.markDelivered({ id: update.id }),
-                  t`Could not mark delivered`,
-                )
-              }
-              onDuplicate={(update) =>
-                void rpc.investors.updates
-                  .duplicate({ id: update.id })
-                  .then((copy) => navigate(`/app/investors/updates/${copy.id}`))
-                  .catch((cause) => notify(errorText(cause, t`Could not duplicate`)))
-              }
-              onDelete={setDeletingUpdate}
-              onReminder={changeReminder}
-              onReload={loadUpdates}
-              doneToggle={
-                audits.some((a) => a.status === "done")
-                  ? { shown: showDone, onToggle: () => setShowDone((v) => !v) }
-                  : null
-              }
-            />
-
-            <section className="mb-5 max-w-5xl" aria-label={t`Contacts`}>
-              <Tabs
-                value={tab}
-                onValueChange={(next) =>
-                  setParam("kind", next === "investor" ? undefined : String(next))
-                }
-                className="mb-3"
-              >
-                <TabsList className="rounded-2xl" aria-label={t`Kind`}>
-                  {CONTACT_TABS.map((value) => (
-                    <TabsTrigger
-                      key={value}
-                      value={value}
-                      className="h-7 flex-none rounded-full px-3"
-                    >
-                      {tabNames[value]}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
-              {tab === "board" && hasBoard ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mb-2 me-2"
-                  onClick={() => void startUpdate("board")}
-                >
-                  <Trans>Message the board</Trans>
-                </Button>
-              ) : null}
-              {allContacts.length > 0 && !error ? (
-                <SearchField
-                  className="mb-2 w-full @md/bd:w-72"
-                  value={query}
-                  onChange={(next) => setParam("q", next || undefined)}
-                  placeholder={t`Search`}
-                  label={t`Search`}
-                  name="contact-search"
+            {showRest ? (
+              <>
+                <UpdatesSection
+                  updates={updates}
+                  cadence={cadence}
+                  failed={updatesFailed}
+                  onNew={() => void startUpdate("investors")}
+                  onOpen={(update) => navigate(`/app/investors/updates/${update.id}`)}
+                  onRetry={retryUpdate}
+                  onMarkDelivered={(update) =>
+                    void updateAction(
+                      () => rpc.investors.updates.markDelivered({ id: update.id }),
+                      t`Could not mark delivered`,
+                    )
+                  }
+                  onDuplicate={(update) =>
+                    void rpc.investors.updates
+                      .duplicate({ id: update.id })
+                      .then((copy) => navigate(`/app/investors/updates/${copy.id}`))
+                      .catch((cause) => notify(errorText(cause, t`Could not duplicate`)))
+                  }
+                  onDelete={setDeletingUpdate}
+                  onReminder={changeReminder}
+                  onReload={loadUpdates}
+                  doneToggle={
+                    audits.some((a) => a.status === "done")
+                      ? { shown: showDone, onToggle: () => setShowDone((v) => !v) }
+                      : null
+                  }
                 />
-              ) : null}
-              {error ? (
-                <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
-                  <span className="text-destructive">{error}</span>
-                  <Button variant="outline" size="sm" onClick={load}>
-                    <Trans>Try again</Trans>
-                  </Button>
-                </div>
-              ) : contacts === null ? (
-                <div className="flex flex-col gap-2" aria-busy="true">
-                  {[0, 1].map((n) => (
-                    <Skeleton key={n} className="h-9 w-full" />
-                  ))}
-                </div>
-              ) : shown.length === 0 ? (
-                <div className="flex flex-col items-center gap-3 py-10 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    {needle ? t`No matches` : emptyText[tab]}
-                  </p>
-                  {needle ? (
-                    <Button variant="outline" size="sm" onClick={() => setParam("q", undefined)}>
-                      <Trans>Clear filters</Trans>
-                    </Button>
-                  ) : (
-                    <Button variant="outline" size="sm" onClick={addContact}>
-                      <Plus aria-hidden="true" />
-                      {addKindLabel[tab]}
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <ul>
-                  {shown.map((contact) => (
-                    <ContactRow
-                      key={contact.id}
-                      contact={contact}
-                      saved={contact.id === savedId}
-                      portal={tab === "investor"}
-                      onEdit={() => setEditing(contact)}
-                      onDelete={() => void deleteContact(contact)}
-                      onResend={() => void sendLink(contact, false)}
-                      onCopyLink={() => void sendLink(contact, true)}
-                      onRevoke={() => void changePortal(contact, "revoke")}
-                      onUnblock={() => void changePortal(contact, "unblock")}
-                    />
-                  ))}
-                </ul>
-              )}
-            </section>
 
-            <FolderDocuments folderPath={CAP_TABLE_FOLDER} />
+                <section className="mb-5" aria-label={t`Contacts`}>
+                  <Tabs
+                    value={tab}
+                    onValueChange={(next) =>
+                      setParam("kind", next === "investor" ? undefined : String(next))
+                    }
+                    className="mb-3"
+                  >
+                    <TabsList className="rounded-2xl" aria-label={t`Kind`}>
+                      {CONTACT_TABS.map((value) => (
+                        <TabsTrigger
+                          key={value}
+                          value={value}
+                          className="h-7 flex-none rounded-full px-3"
+                        >
+                          {tabNames[value]}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                  {tab === "board" && hasBoard ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mb-2 me-2"
+                      onClick={() => void startUpdate("board")}
+                    >
+                      <Trans>Message the board</Trans>
+                    </Button>
+                  ) : null}
+                  {allContacts.length > 0 && !error ? (
+                    <SearchField
+                      className="mb-2 w-full @md/bd:w-72"
+                      value={query}
+                      onChange={(next) => setParam("q", next || undefined)}
+                      placeholder={t`Search`}
+                      label={t`Search`}
+                      name="contact-search"
+                    />
+                  ) : null}
+                  {error ? (
+                    <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
+                      <span className="text-destructive">{error}</span>
+                      <Button variant="outline" size="sm" onClick={load}>
+                        <Trans>Try again</Trans>
+                      </Button>
+                    </div>
+                  ) : contacts === null ? (
+                    <div className="flex flex-col gap-2" aria-busy="true">
+                      {[0, 1].map((n) => (
+                        <Skeleton key={n} className="h-9 w-full" />
+                      ))}
+                    </div>
+                  ) : shown.length === 0 ? (
+                    <div className="flex flex-col items-center gap-3 py-10 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        {needle ? t`No matches` : emptyText[tab]}
+                      </p>
+                      {needle ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setParam("q", undefined)}
+                        >
+                          <Trans>Clear filters</Trans>
+                        </Button>
+                      ) : (
+                        <Button variant="outline" size="sm" onClick={addContact}>
+                          <Plus aria-hidden="true" />
+                          {addKindLabel[tab]}
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      {tab === "investor" ? (
+                        <div
+                          className="flex gap-2 px-2 pb-1 text-xs text-muted-foreground"
+                          aria-hidden="true"
+                        >
+                          <span className="ms-auto w-28 text-end">
+                            <Trans>Update link</Trans>
+                          </span>
+                          <span className="w-8" />
+                        </div>
+                      ) : null}
+                      <ul>
+                        {shown.map((contact) => (
+                          <ContactRow
+                            key={contact.id}
+                            contact={contact}
+                            saved={contact.id === savedId}
+                            portal={tab === "investor"}
+                            safeUsd={safeUsdByContact.get(contact.id)}
+                            onEdit={() => setEditing(contact)}
+                            onDelete={() => void deleteContact(contact)}
+                            onResend={() => void sendLink(contact, false)}
+                            onCopyLink={() => void sendLink(contact, true)}
+                            onRevoke={() => void changePortal(contact, "revoke")}
+                            onUnblock={() => void changePortal(contact, "unblock")}
+                          />
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </section>
+
+                <FolderDocuments folderPath={CAP_TABLE_FOLDER} />
+              </>
+            ) : null}
           </>
         )}
 

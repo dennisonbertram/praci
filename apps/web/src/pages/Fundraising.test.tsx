@@ -227,13 +227,16 @@ it("collapses Passed behind a button that expands in place", async () => {
   expect(container.textContent).toContain("Old Fund");
 });
 
-it("shows Pipeline and SAFEs with no round, where the card only offers Start a round", async () => {
+it("shows one Start a round state with nothing yet: no Pipeline, SAFEs card or second Add prospect", async () => {
   rpcMock.overview.mockResolvedValue(overview(null, []));
   await show();
   expect(button("Start a round")).toBeDefined();
   expect(container.textContent).toContain("No prospects yet");
-  expect(container.textContent).toContain("Pipeline");
-  expect(container.textContent).toContain("SAFEs");
+  expect(container.textContent).not.toContain("Pipeline");
+  expect(container.textContent).not.toContain("SAFEs");
+  expect(
+    [...container.querySelectorAll("button")].filter((b) => b.textContent === "Add prospect"),
+  ).toHaveLength(1);
   expect(button("Round actions")).toBeUndefined();
   expect(container.querySelector('[aria-label="Round actions"]')).toBeNull();
 });

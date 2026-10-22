@@ -17,6 +17,7 @@ export function ConsentCard({
   onAllow,
   onDismiss,
   sends,
+  shownElsewhere,
   className,
 }: {
   /** Prefix for the heading's id, unique on the page. */
@@ -29,6 +30,8 @@ export function ConsentCard({
   onDismiss?: () => void;
   /** What is sent, when the area sends something narrower than "the text". */
   sends?: ReactNode;
+  /** An error the page already shows: the card does not repeat it. */
+  shownElsewhere?: string;
   className?: string;
 }) {
   const [pending, setPending] = useState(false);
@@ -65,7 +68,7 @@ export function ConsentCard({
           </Button>
         ) : null}
       </div>
-      {error ? (
+      {error && error !== shownElsewhere ? (
         <p role="alert" className="basis-full text-sm text-destructive">
           {error}
         </p>
@@ -79,9 +82,11 @@ export function InboxConsentPrompt({
   recipient,
   onAllowed,
   onDismiss,
+  shownElsewhere,
 }: {
   recipient: { key: string; name: string };
   onAllowed: () => void;
+  shownElsewhere?: string;
   /** Not now: hides the prompt for this visit; it shows again next time. */
   onDismiss?: () => void;
 }) {
@@ -98,6 +103,7 @@ export function InboxConsentPrompt({
       }
       onAllow={() => allowRecipient(recipient.key).then(onAllowed)}
       onDismiss={onDismiss}
+      shownElsewhere={shownElsewhere}
     />
   );
 }
