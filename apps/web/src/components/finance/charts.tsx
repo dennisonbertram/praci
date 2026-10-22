@@ -406,7 +406,15 @@ export function BurnLines({
   const named = series.some(
     (m) => m.financingCents > 0 && (granularity === "quarter" || granularity === "year"),
   );
-  const top = clipped || named ? 28 : 10;
+  // Neighbouring labels that collide go on a second row, so two or more labels get the extra room.
+  const labelled = series.filter(
+    (m) =>
+      m.financingCents > scale.top ||
+      (m.financingCents > 0 && (granularity === "quarter" || granularity === "year")),
+  ).length;
+  // Where the last label on each row ends (lower row first); filled in as the labels are drawn.
+  const rowEnd = [Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY];
+  const top = labelled > 1 ? 42 : clipped || named ? 28 : 10;
   // Each month is a control and must be 44 px wide on touch: a narrow phone scrolls the chart.
   const minWidth =
     touch && granularity === "month" ? left + right + Math.max(series.length, minSlots) * 44 : 0;
@@ -724,12 +732,17 @@ export function BurnLines({
               const half = (text.length * 6.5) / 2;
               const anchor =
                 cx(i) + half > width - 8 ? "end" : cx(i) - half < 8 ? "start" : "middle";
+              const x = anchor === "end" ? width - 8 : anchor === "start" ? 8 : cx(i);
+              const from = anchor === "end" ? x - 2 * half : anchor === "start" ? x : x - half;
+              // Drop to the second row when an earlier label on the first row reaches this one.
+              const row = from < (rowEnd[0] ?? 0) ? 1 : 0;
+              rowEnd[row] = from + 2 * half;
               return (
                 <text
                   key={m.start}
                   data-testid="financing-clipped"
-                  x={anchor === "end" ? width - 8 : anchor === "start" ? 8 : cx(i)}
-                  y={top - 12}
+                  x={x}
+                  y={top - 12 - 14 * row}
                   textAnchor={anchor}
                   className="fill-foreground"
                   fontSize={12}
