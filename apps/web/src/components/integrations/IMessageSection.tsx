@@ -309,11 +309,13 @@ export function IMessageSection({
       id: "photon" as const,
       name: t`iMessage`,
       sub: t`Through a Photon project`,
+      letter: "P",
     },
     {
       id: "bluebubbles" as const,
       name: t`iMessage on your Mac`,
       sub: t`Through BlueBubbles on your Mac`,
+      letter: "M",
     },
   ].filter((tile) => tile.name.toLowerCase().includes(query.trim().toLowerCase()));
   const shown = state?.canConfigure ? tiles.length : 0;
@@ -340,7 +342,7 @@ export function IMessageSection({
           if (!provider) return null;
           return (
             <IntegrationTile key={tile.id}>
-              <CardHead name={tile.name} logo={null} sub={tile.sub} />
+              <CardHead name={tile.name} logo={null} sub={tile.sub} letter={tile.letter} />
               <div className="mt-auto flex items-center gap-2">
                 {provider.active ? (
                   <span className="text-xs font-semibold text-success">

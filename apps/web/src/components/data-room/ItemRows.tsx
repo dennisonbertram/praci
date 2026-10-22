@@ -176,6 +176,8 @@ const typeText = (item: DataRoomApiItem) =>
   typeLabel(item.facets.docType) ||
   (isSettled(item.status, !!item.previewText) ? t`Not tagged` : "");
 const empty = <span className="text-muted-foreground">{DASH}</span>;
+/** A failed file has nothing to show in a data column; its reason is under the name. */
+const blank = (item: DataRoomApiItem) => (item.status === "failed" ? null : empty);
 /** Hidden until the list pane is wide enough, then shown as a table cell. */
 const MID_COL = "hidden @min-[640px]/list:table-cell";
 const PARTIES_COL = "hidden @min-[800px]/list:table-cell";
@@ -198,14 +200,14 @@ const datedLine = (item: DataRoomApiItem, field: SortField | undefined) => {
 };
 
 /** Fixed widths, so columns never shift and a wide pane gives its extra width to the Name only. */
-function Columns({ showStatus }: { showStatus: boolean }) {
+function Columns() {
   return (
     <colgroup>
       <col />
       <col className={cn(MID_COLUMN, "w-36")} />
       <col className={cn(MID_COLUMN, "w-24")} />
       <col className={cn(PARTIES_COLUMN, "w-48 @min-[1100px]/list:w-64")} />
-      {showStatus ? <col className={cn(MID_COLUMN, "w-20")} /> : null}
+      <col className={cn(MID_COLUMN, "w-20")} />
       <col className="w-7" />
     </colgroup>
   );
@@ -215,12 +217,10 @@ function ListHead({
   sortField,
   rows,
   o,
-  showStatus,
 }: {
   sortField: SortField | undefined;
   rows: Row[];
   o: RowInteraction;
-  showStatus: boolean;
 }) {
   const allChecked = rows.length > 0 && rows.every(({ item }) => o.checked?.has(item.id));
   return (
@@ -255,11 +255,9 @@ function ListHead({
         <TableHead className={PARTIES_COL}>
           <Trans>Parties</Trans>
         </TableHead>
-        {showStatus ? (
-          <TableHead className={MID_COL}>
-            <Trans>Status</Trans>
-          </TableHead>
-        ) : null}
+        <TableHead className={MID_COL}>
+          <Trans>Status</Trans>
+        </TableHead>
         <TableHead />
       </TableHeadRow>
     </TableHeader>
@@ -295,7 +293,6 @@ function ItemRow({
   o,
   sortField,
   first,
-  showStatus,
 }: {
   item: DataRoomApiItem;
   /** Search only: the text that matched, under the name. */
@@ -303,7 +300,6 @@ function ItemRow({
   o: RowInteraction;
   sortField: SortField | undefined;
   first: boolean;
-  showStatus: boolean;
 }) {
   const label = statusLabel(item.status, !!item.previewText);
   const stuck = isStuck(item);
@@ -409,7 +405,7 @@ function ItemRow({
         className={cn(MID_COL, "truncate text-muted-foreground")}
         title={type || undefined}
       >
-        {type || empty}
+        {type || blank(item)}
       </TableCell>
       <TableCell className={cn(MID_COL, "truncate text-muted-foreground tabular-nums")}>
         {date || empty}
@@ -419,19 +415,17 @@ function ItemRow({
         className={cn(PARTIES_COL, "truncate text-muted-foreground")}
         title={parties || undefined}
       >
-        {parties || empty}
+        {parties || blank(item)}
       </TableCell>
-      {showStatus ? (
-        <TableCell
-          data-testid="data-room-status"
-          className={MID_COL}
-          title={item.status === "failed" ? (item.error ?? undefined) : undefined}
-        >
-          {label ? (
-            <Badge variant={item.status === "failed" ? "destructive" : "secondary"}>{label}</Badge>
-          ) : null}
-        </TableCell>
-      ) : null}
+      <TableCell
+        data-testid="data-room-status"
+        className={MID_COL}
+        title={item.status === "failed" ? (item.error ?? undefined) : undefined}
+      >
+        {label ? (
+          <Badge variant={item.status === "failed" ? "destructive" : "secondary"}>{label}</Badge>
+        ) : null}
+      </TableCell>
       <TableCell className="pe-0">
         <ItemMenu
           item={item}
@@ -464,7 +458,6 @@ export function SubfolderList({
   onAction,
   contents,
   tiles = false,
-  showStatus = true,
 }: {
   folders: DataRoomApiFolder[];
   onOpen: (id: string) => void;
@@ -472,8 +465,6 @@ export function SubfolderList({
   /** What a folder holds ("3 items"), so a parent never looks emptier than it is. */
   contents: (folder: DataRoomApiFolder) => string;
   tiles?: boolean;
-  /** Whether the file table has a Status column; the empty cells span the columns that exist. */
-  showStatus?: boolean;
 }) {
   if (!folders.length) return null;
   if (tiles) {
@@ -520,7 +511,7 @@ export function SubfolderList({
               <span className="shrink-0 text-xs text-muted-foreground">{contents(folder)}</span>
             </Button>
           </TableCell>
-          <TableCell colSpan={showStatus ? 3 : 2} className={MID_COL} />
+          <TableCell colSpan={3} className={MID_COL} />
           <TableCell className={PARTIES_COL} />
           <TableCell className="pe-0">
             <ItemMenu item={folder} onAction={onAction} className={ROW_ACTIONS} />
@@ -543,18 +534,16 @@ export function ListView({
 }: {
   rows: Row[];
   o: RowInteraction;
-  lead?: (showStatus: boolean) => ReactNode;
+  lead?: () => ReactNode;
   /** The field the list is sorted by; the Date column shows it. Without one: when added. */
   sortField?: SortField;
 }) {
-  // A column that is empty on every row is left out.
-  const showStatus = rows.some(({ item }) => statusLabel(item.status, !!item.previewText));
   return (
     <div className={LIST_PAD}>
-      <Table>
-        <Columns showStatus={showStatus} />
-        <ListHead sortField={sortField} rows={rows} o={o} showStatus={showStatus} />
-        {lead?.(showStatus)}
+      <Table className="max-w-4xl">
+        <Columns />
+        <ListHead sortField={sortField} rows={rows} o={o} />
+        {lead?.()}
         <TableBody aria-label={t`Items`} data-rows>
           {rows.map(({ item, snippets }, index) => (
             <ItemRow
@@ -564,7 +553,6 @@ export function ListView({
               o={o}
               sortField={sortField}
               first={index === 0}
-              showStatus={showStatus}
             />
           ))}
         </TableBody>

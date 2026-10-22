@@ -598,10 +598,9 @@ export function DataRoomPage({
       hasDates: facetValues.hasDates || shown.hasDates,
     };
   }, [rows, facetValues]);
-  const subfolderList = (showStatus?: boolean) => (
+  const subfolderList = () => (
     <SubfolderList
       tiles={view === "grid"}
-      showStatus={showStatus}
       contents={(folder) => folderContents(folder, folders)}
       folders={subfolders}
       onOpen={(folderId) => setFilters({ ...filters, folderId })}

@@ -113,14 +113,8 @@ function CryptoTile({
       <div className={`${hasKey || hasServer ? "" : "mt-auto "}flex items-center gap-2`}>
         {hasKey === null ? null : (
           <>
-            {hasKey || hasServer ? (
-              <StatusBadge status="connected" quiet />
-            ) : (
-              // Nothing to connect: the first wallet added starts it. Not "Not connected".
-              <span className="text-xs text-muted-foreground max-sm:hidden">
-                <Trans>Ready</Trans>
-              </span>
-            )}
+            {/* Nothing to connect without a key: the first wallet added starts it. Not "Not connected". */}
+            {hasKey || hasServer ? <StatusBadge status="connected" quiet /> : null}
             {/* One main action like the other tiles; the optional key and agents sit in the menu. */}
             <Link to={financePath.crypto()} className={OPEN_LINK}>
               {hasKey || hasServer ? <Trans>Open Finance</Trans> : <Trans>Add wallet</Trans>}

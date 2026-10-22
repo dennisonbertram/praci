@@ -168,7 +168,7 @@ export function ContactsPage({
               </div>
             ) : (
               <div>
-                <Table compact className="table-fixed">
+                <Table compact className="max-w-4xl table-fixed">
                   <TableHeader>
                     <TableHeadRow>
                       <TableHead className="ps-2">

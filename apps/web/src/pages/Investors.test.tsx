@@ -592,11 +592,16 @@ it("shows the empty Cap table, Updates and Contacts as static skeletons, with no
   rpcMock.servers.mockResolvedValue([]);
   rpcMock.list.mockResolvedValue([]);
   await show();
-  for (const label of ["Cap table", "Updates", "Contacts"]) {
+  for (const label of ["Cap table", "Contacts"]) {
     expect(staticSkeletons(label).length).toBeGreaterThan(0);
   }
+  // An empty Updates card says so in a sentence, not with grey bars.
+  expect(staticSkeletons("Updates")).toHaveLength(0);
+  expect(container.querySelector('section[aria-label="Updates"]')?.textContent).toContain(
+    "No updates yet",
+  );
   expect(container.querySelector("[data-slot=skeleton]:not([data-static])")).toBeNull();
-  expect(container.textContent).not.toMatch(/No (updates|investors|board members) yet/);
+  expect(container.textContent).not.toMatch(/No (investors|board members) yet/);
   // The Cap table card holds the three source choices.
   const card = container.querySelector('section[aria-label="Cap table"]');
   expect([...(card?.querySelectorAll("button") ?? [])].map((b) => b.textContent)).toEqual([
@@ -812,7 +817,7 @@ it("has only the SAFEs and funds and Board tabs, and opens a holder's contact fr
   expect((document.getElementById("contact-name") as HTMLInputElement).value).toBe("Ada Example");
 });
 
-it("counts the SAFE list in Equity raised, with the same count and total as Fundraising", async () => {
+it("counts only Funded SAFEs in Equity raised and shows Sent and Signed ones as committed", async () => {
   rpcMock.capTable.mockResolvedValue(
     state({ ...carta, holders: carta.holders.map((h) => ({ ...h, amountUsd: null })) }),
   );
@@ -822,8 +827,8 @@ it("counts the SAFE list in Equity raised, with the same count and total as Fund
     safeRow("s3", "Draft Fund", "draft"),
   ]);
   await show();
-  expect(container.textContent).toContain("Equity raised$75,000");
-  expect(container.textContent).toContain("2 SAFEs");
+  expect(container.textContent).toContain("Equity raised$25,000");
+  expect(container.textContent).toContain("$50,000 committed");
   expect(container.textContent).not.toContain("Dee Newcomer");
 });
 
@@ -841,6 +846,15 @@ it("shows a dash for Equity raised when the SAFE list fails to load", async () =
   rpcMock.safesList.mockRejectedValue(new Error("down"));
   await show();
   expect(container.textContent).toContain("Equity raised—");
+});
+
+it("retries the SAFE list once before showing a dash", async () => {
+  rpcMock.capTable.mockResolvedValue(state(carta));
+  rpcMock.safesList
+    .mockRejectedValueOnce(new Error("blip"))
+    .mockResolvedValue([safeRow("s2", "Funded Fund", "funded", { amountCents: 2_500_000 })]);
+  await show();
+  expect(container.textContent).toContain("Equity raised$525,000");
 });
 
 it("shows a dash for Equity raised when only SAFEs have amounts", async () => {
@@ -1305,6 +1319,18 @@ it("starts an investors update with New update", async () => {
   await show();
   await click(button("New update"));
   expect(rpcMock.updatesSave).toHaveBeenCalledWith({ audience: "investors" });
+});
+
+it("creates one draft however many times New update is clicked", async () => {
+  let finish: (value: unknown) => void = () => {};
+  rpcMock.updatesSave.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+  await show();
+  const add = button("New update");
+  await click(add);
+  await click(add);
+  await click(add);
+  expect(rpcMock.updatesSave).toHaveBeenCalledTimes(1);
+  await act(async () => finish(update({ id: "new1" })));
 });
 
 it("starts a board update from the Board tab once a board contact exists", async () => {

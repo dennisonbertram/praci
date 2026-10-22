@@ -51,6 +51,18 @@ export const Line: Story = {
   ),
 };
 
+/** A balance that never changes sits mid-chart instead of on the x axis. */
+export const LineFlat: Story = {
+  render: () => (
+    <LineChart
+      height={200}
+      label="Cash balance"
+      values={[115_000_000, 115_000_000, 115_000_000, 115_000_000, 115_000_000, 115_000_000]}
+      labels={["Jan", "Feb", "Mar", "Apr", "May", "Jun"]}
+    />
+  ),
+};
+
 export const LineProjectionToZero: Story = {
   render: () => (
     <LineChart
