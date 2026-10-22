@@ -35,6 +35,7 @@ async function runChat(
   effectStatus: string | null = null,
   trigger = "user",
   sourceBlocks: unknown[] | null = null,
+  delegate = false,
 ) {
   const switchModel = { provider: "openrouter", modelId: "openai/gpt-4o" };
   const backupReadFails = false;
@@ -55,6 +56,9 @@ async function runChat(
   let request: AgentRunRequest | undefined;
   const runtimeRun = vi.fn(async function* (next: AgentRunRequest) {
     request = next;
+    if (delegate) {
+      await next.executeTool?.("message_bot", { bot_id: "bot-2", message: "hi" }, "call-1");
+    }
     yield { type: "done" as const, text: "Done" };
   });
   const prisma = {
@@ -86,8 +90,16 @@ async function runChat(
         memoryScope: null,
         computer: { id: "computer-1", scope: "dedicated" },
       })),
-      findMany: vi.fn(async () => []),
-      findFirst: vi.fn(async () => ({ id: "bot-2", name: "Ana", userId: "user-1" })),
+      findMany: vi.fn(async () => [{ id: "bot-2", name: "Ana", spawnKey: null }]),
+      // The delegation target runs on a different model than the chat bot.
+      findFirst: vi.fn(async (args: { where?: { id?: string } }) => ({
+        id: "bot-2",
+        name: "Ana",
+        userId: "user-1",
+        modelProvider: args.where?.id === "bot-2" ? "openrouter" : null,
+        modelId: args.where?.id === "bot-2" ? "openai/gpt-4o" : null,
+        thinkingLevel: null,
+      })),
     },
     attempt: {
       create: vi.fn(async () => ({ id: "attempt-1" })),
@@ -165,6 +177,7 @@ async function runChat(
     botSkillSetting: { findMany: vi.fn(async () => []) },
     scratchpadItem: { findMany: vi.fn(async () => []) },
     externalEffect: {
+      update: vi.fn(async () => ({})),
       findMany: vi.fn(async () => []),
       findUnique: vi.fn(async () =>
         effectStatus
@@ -287,4 +300,16 @@ describe("Chat runs need AI consent for the model they use", () => {
     const { runtimeRun } = await runChat(false, null, "bot_message", delegated(false));
     expect(runtimeRun).toHaveBeenCalled();
   });
+
+  it.each(["user", "follow_up"])(
+    "asks on a card before a %s message is delegated to an unallowed model",
+    async (trigger) => {
+      const { pauseRunForInput } = await runChat(["openai/gpt-6-luna"], null, trigger, null, true);
+      expect(pauseRunForInput).toHaveBeenCalledWith(
+        expect.objectContaining({
+          blocks: [expect.objectContaining({ kind: "ask", consent: expect.any(Object) })],
+        }),
+      );
+    },
+  );
 });

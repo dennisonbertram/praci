@@ -4242,7 +4242,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           };
           let delegatesToInbox = false;
           let delegatesToModel = false;
-          if (name === "message_bot" && run.trigger === "user") {
+          if (name === "message_bot" && (run.trigger === "user" || run.trigger === "follow_up")) {
             const owned = await deps.prisma.bot.findMany({
               where: { spaceId: run.spaceId, userId: run.userId, archivedAt: null },
               select: { id: true, name: true, spawnKey: true },
