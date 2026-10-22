@@ -292,6 +292,40 @@ export const Conversation: Story = {
   beforeEach: loaded,
 };
 
+/** A bot with no computer in use: the button and the panel are titled Routines, with no empty screen. */
+export const ConversationRoutines: Story = {
+  decorators: [at("/app/bot_ada")],
+  beforeEach: () => {
+    loaded();
+    mockRpc({
+      "computer.screenUrl": { url: null },
+      "models.credentials": [],
+      "models.list": [],
+      "voice.voices": [],
+      "scratchpad.list": [],
+      "botSecrets.list": [],
+      "memory.list": [],
+      "agentSkills.forBot": [],
+      "agentSkills.drafts": [],
+      "connections.effectiveAccess": {},
+    });
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole("button", { name: "Routines" }));
+  },
+};
+
+/** The bot settings panel scrolled: its title stays on a solid band with nothing showing above it. */
+export const ConversationBotSettings: Story = {
+  ...ConversationRoutines,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole("button", { name: "Routines" }));
+    await userEvent.click(await canvas.findByRole("button", { name: "Show settings" }));
+  },
+};
+
 /** Two replies arrived since the reader last opened the thread: the divider goes before the first. */
 export const ConversationUnreadDivider: Story = {
   decorators: [at("/app/bot_ada")],

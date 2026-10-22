@@ -445,21 +445,36 @@ export async function pauseRunForInput(
     });
     if (attempt.count !== 1) throw new Error("Active run attempt was not available to pause");
 
-    const message = await createThreadMessageInTransaction(tx, {
-      threadId: input.threadId,
-      role: "bot",
-      blocks: input.blocks,
-      botId: input.botId,
-      runId: input.runId,
-    });
-    await appendEventInTransaction(tx, {
-      spaceId: input.spaceId,
-      threadId: input.threadId,
-      botId: input.botId,
-      type: "thread.message.created",
-      runId: input.runId,
-      payload: { messageId: message.id, role: "bot", blocks: input.blocks },
-    });
+    // A resumed run that asks again for the same approval keeps its one unanswered card, so a
+    // payment request never has two live cards.
+    const approvalEffectIds = input.blocks.flatMap((block) =>
+      block.kind === "ask" && block.approvalEffectId ? [block.approvalEffectId] : [],
+    );
+    const existingCard =
+      approvalEffectIds.length > 0 &&
+      (await findPendingAsk(tx, input).then(
+        (found) =>
+          found !== null &&
+          approvalEffectIds.includes(found.pendingAsk.approvalEffectId ?? "") &&
+          isApprovalAskBlock(found.pendingAsk),
+      ));
+    if (!existingCard) {
+      const message = await createThreadMessageInTransaction(tx, {
+        threadId: input.threadId,
+        role: "bot",
+        blocks: input.blocks,
+        botId: input.botId,
+        runId: input.runId,
+      });
+      await appendEventInTransaction(tx, {
+        spaceId: input.spaceId,
+        threadId: input.threadId,
+        botId: input.botId,
+        type: "thread.message.created",
+        runId: input.runId,
+        payload: { messageId: message.id, role: "bot", blocks: input.blocks },
+      });
+    }
     const waitingEvent = await appendEventInTransaction(tx, {
       spaceId: input.spaceId,
       threadId: input.threadId,

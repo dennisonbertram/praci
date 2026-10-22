@@ -5,7 +5,7 @@ import type { DataRoomApiItem } from "@rakazo/contracts";
 import { Badge, Button, DialogTitle } from "@rakazo/ui-web";
 import { FileText, RotateCw, Trash2, X } from "lucide-react";
 import type { KeyboardEvent, PointerEvent, ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { canPreviewImage } from "../../lib/data-room";
 import { MASK } from "../../lib/finance-format";
@@ -14,10 +14,19 @@ import {
   maskCurrencyWhenHidden,
   useHideAmounts,
 } from "../../lib/hide-amounts-preference";
+import { rpc } from "../../lib/rpc";
 import { canPreviewSpreadsheet } from "../../lib/spreadsheet";
 import { SheetPreview } from "../SheetPreview";
 import { sourceLabel } from "./FilterBar";
-import { dateText, isSettled, isStuck, isUnreadable, sizeText, typeLabel } from "./format";
+import {
+  dateText,
+  isSettled,
+  isStuck,
+  isUnreadable,
+  SHARES_CHANGED,
+  sizeText,
+  typeLabel,
+} from "./format";
 import type { ItemAction } from "./ItemMenu";
 import { ItemMenu } from "./ItemMenu";
 import {
@@ -125,6 +134,28 @@ function usePaneWidth() {
   return { width, handle };
 }
 
+/** How many investors have the file; null until known (or when it cannot be shared). */
+function useShareCount(item: DataRoomApiItem) {
+  const [shared, setShared] = useState<{ id: string; count: number | null } | null>(null);
+  const canShare = item.status !== "failed";
+  useEffect(() => {
+    if (!canShare) return;
+    let live = true;
+    const load = () =>
+      rpc.investors
+        .shares({ itemId: item.id })
+        .then((ids) => live && setShared({ id: item.id, count: ids.length }))
+        .catch(() => live && setShared(null));
+    void load();
+    window.addEventListener(SHARES_CHANGED, load);
+    return () => {
+      live = false;
+      window.removeEventListener(SHARES_CHANGED, load);
+    };
+  }, [item.id, canShare]);
+  return canShare && shared?.id === item.id ? shared.count : null;
+}
+
 /** The summary, facets and source of one item, with Download and the item menu. */
 export function Preview({
   item,
@@ -145,6 +176,7 @@ export function Preview({
   onSendToAgent?: (item: DataRoomApiItem, agent: SendTarget) => void;
 }) {
   const [error, setError] = useState("");
+  const shareCount = useShareCount(item);
   const { facets } = item;
   // Only a picture can't be masked; text and PDF previews stay readable.
   const hidden = useHideAmounts() && canPreviewImage(item);
@@ -227,18 +259,18 @@ export function Preview({
             </Button>
           )}
         </div>
-      ) : !isSettled(item.status) ? (
+      ) : !isSettled(item.status, !!item.previewText) ? (
         <p className="text-sm text-muted-foreground">
           <Trans>Reading this file. You can keep working while it finishes.</Trans>
         </p>
       ) : facets.summary ? (
         <p className="text-sm">{maskCurrencyWhenHidden(facets.summary)}</p>
       ) : null}
-      {isSettled(item.status) && item.notIndexed ? (
+      {isSettled(item.status, !!item.previewText) && item.notIndexed ? (
         <p className="text-xs text-muted-foreground">{t`Too large to search inside`}</p>
-      ) : isSettled(item.status) && item.error ? (
+      ) : isSettled(item.status, !!item.previewText) && item.error ? (
         <p className="text-xs text-muted-foreground">{t`Couldn't classify`}</p>
-      ) : isSettled(item.status) && !facets.docType ? (
+      ) : isSettled(item.status, !!item.previewText) && !facets.docType ? (
         <p className="text-xs text-muted-foreground">
           <Trans>Not tagged yet.</Trans>
         </p>
@@ -285,6 +317,11 @@ export function Preview({
           )}
         </Field>
         <Field label={t`Size`}>{sizeText(item.size)}</Field>
+        {shareCount ? (
+          <Field label={t`Shared`}>
+            {shareCount === 1 ? t`With 1 investor` : t`With ${shareCount} investors`}
+          </Field>
+        ) : null}
       </dl>
       {/* Delete for a file that can't be read; Try again is under the heading, Open and Download in the header. */}
       <div className="flex flex-col gap-1.5">

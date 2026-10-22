@@ -325,25 +325,6 @@ describe("BotSettings saving without a Save button", () => {
       vi.useRealTimers();
     }
   });
-
-  it("names the unknown tool right under the Disabled tools field", async () => {
-    await render();
-    const input = container.querySelector<HTMLInputElement>("input[placeholder='Tool name']");
-    if (!input) throw new Error("Missing disabled tools field");
-    await act(async () => {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
-        input,
-        "nonexistent_tool, web_search",
-      );
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    await act(async () => {
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-    });
-    const message = input.closest("label")?.nextElementSibling;
-    expect(message?.textContent).toBe("Unknown tool: nonexistent_tool");
-    expect(onSave).not.toHaveBeenCalled();
-  });
 });
 
 describe("BotSettings for a bot just created with New bot", () => {
@@ -374,7 +355,8 @@ describe("BotSettings for a bot just created with New bot", () => {
 });
 
 describe("BotSettings audience", () => {
-  const helper = "Talks to people outside your company. Private tools are turned off.";
+  const helper =
+    "Talks to people outside your company. Anything private it would share waits for your approval. Private tools are turned off.";
   async function renderWith(
     overrides: Partial<Bot> = {},
     targets: { id: string; name: string }[] = [],

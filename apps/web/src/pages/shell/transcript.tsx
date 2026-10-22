@@ -645,7 +645,7 @@ export const Transcript = memo(function Transcript({
   );
 
   return (
-    <div className="@container relative flex min-h-0 flex-1">
+    <div className="@container relative flex min-h-0 flex-1 flex-col">
       {/* Announces the working phase once per change; the elapsed timer stays out of it. */}
       <div role="status" aria-live="polite" className="sr-only">
         {running ? workingLabel : ""}
@@ -970,43 +970,51 @@ export const Transcript = memo(function Transcript({
         />
       ) : null}
       <div
-        // A labeled, opaque pill: an unlabeled see-through circle read as part of the text under it.
-        // In a narrow panel it shrinks to a round button at the right edge, so it covers less text.
-        className={`absolute bottom-4 left-1/2 z-20 flex h-8 -translate-x-1/2 items-center rounded-full border border-border bg-popover text-[13px] font-medium text-foreground shadow-md transition-[opacity,transform,background-color] duration-200 ease-[cubic-bezier(.22,1,.36,1)] hover:bg-accent in-data-bot-accent:border-transparent in-data-bot-accent:bg-bot-accent in-data-bot-accent:text-bot-accent-foreground in-data-bot-accent:ring-2 in-data-bot-accent:ring-background in-data-bot-accent:hover:bg-bot-accent/90 motion-reduce:transition-none @max-md:left-auto @max-md:right-3 @max-md:translate-x-0 ${
-          atEnd ? "pointer-events-none translate-y-2 opacity-0" : "translate-y-0 opacity-100"
+        // The pill has its own row between the messages and the composer, so it covers no text.
+        // The row collapses to nothing at the end of the chat.
+        className={`flex shrink-0 items-center justify-center overflow-hidden transition-[height] duration-200 motion-reduce:transition-none @max-md:justify-end @max-md:pe-3 ${
+          atEnd ? "h-0" : "h-11"
         }`}
       >
-        <button
-          ref={jumpButtonRef}
-          type="button"
-          aria-hidden={atEnd}
-          tabIndex={atEnd ? -1 : 0}
-          onClick={jumpToLatest}
-          className={`flex h-8 items-center justify-center gap-1.5 rounded-full ps-3 ${
-            showNewCount ? "pe-1.5" : "pe-3"
-          } ${showNewCount ? "" : "@max-md:w-8 @max-md:px-0"}`}
+        <div
+          // A labeled, opaque pill: an unlabeled see-through circle read as part of the text under it.
+          // In a narrow panel it shrinks to a round button at the right edge, so it covers less text.
+          className={`flex h-8 items-center rounded-full border border-border bg-popover text-[13px] font-medium text-foreground shadow-md transition-[opacity,transform,background-color] duration-200 ease-[cubic-bezier(.22,1,.36,1)] hover:bg-accent in-data-bot-accent:border-transparent in-data-bot-accent:bg-bot-accent in-data-bot-accent:text-bot-accent-foreground in-data-bot-accent:ring-2 in-data-bot-accent:ring-background in-data-bot-accent:hover:bg-bot-accent/90 motion-reduce:transition-none ${
+            atEnd ? "pointer-events-none translate-y-2 opacity-0" : "translate-y-0 opacity-100"
+          }`}
         >
-          <ArrowDown size={15} strokeWidth={1.8} aria-hidden="true" />
-          {showNewCount ? (
-            <span data-testid="new-messages-count">
-              {plural(newCount, { one: "# new message", other: "# new messages" })}
-            </span>
-          ) : (
-            <span className="@max-md:sr-only">
-              <Trans>Jump to latest</Trans>
-            </span>
-          )}
-        </button>
-        {showNewCount && !atEnd ? (
           <button
+            ref={jumpButtonRef}
             type="button"
-            aria-label={t`Dismiss`}
-            onClick={() => setDismissedCount(newCount)}
-            className="me-1 grid size-6 place-items-center rounded-full hover:bg-current/10"
+            aria-hidden={atEnd}
+            tabIndex={atEnd ? -1 : 0}
+            onClick={jumpToLatest}
+            className={`flex h-8 items-center justify-center gap-1.5 rounded-full ps-3 ${
+              showNewCount ? "pe-1.5" : "pe-3"
+            } ${showNewCount ? "" : "@max-md:w-8 @max-md:px-0"}`}
           >
-            <X size={13} strokeWidth={1.8} aria-hidden="true" />
+            <ArrowDown size={15} strokeWidth={1.8} aria-hidden="true" />
+            {showNewCount ? (
+              <span data-testid="new-messages-count">
+                {plural(newCount, { one: "# new message", other: "# new messages" })}
+              </span>
+            ) : (
+              <span className="@max-md:sr-only">
+                <Trans>Jump to latest</Trans>
+              </span>
+            )}
           </button>
-        ) : null}
+          {showNewCount && !atEnd ? (
+            <button
+              type="button"
+              aria-label={t`Dismiss`}
+              onClick={() => setDismissedCount(newCount)}
+              className="me-1 grid size-6 place-items-center rounded-full hover:bg-current/10"
+            >
+              <X size={13} strokeWidth={1.8} aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -1117,7 +1125,7 @@ function MessageHoverActions({
   }
 
   const iconButtonClass =
-    "grid h-7 w-7 place-items-center rounded-lg text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring";
+    "grid h-7 w-7 place-items-center rounded-lg text-muted-foreground transition-colors hover:text-foreground focus-visible:transition-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring";
   const canRemember =
     Boolean(remember) && message.role === "bot" && canReactToThreadMessage(message);
   const remembered = remember?.ids.has(message.id) ?? false;
@@ -1137,7 +1145,7 @@ function MessageHoverActions({
               aria-label={t`React`}
               className={cn(
                 iconButtonClass,
-                "h-11 w-11 [@media(hover:hover)_and_(pointer:fine)]:h-7 [@media(hover:hover)_and_(pointer:fine)]:w-7",
+                "h-11 w-11 [@media(hover:hover)_and_(pointer:fine)]:h-7 [@media(hover:hover)_and_(pointer:fine)]:w-7 [@media(hover:none)]:hidden",
               )}
             >
               <Smile size={15} strokeWidth={1.7} />
@@ -1170,7 +1178,7 @@ function MessageHoverActions({
           onClick={() => onReply(message)}
           className={cn(
             iconButtonClass,
-            "h-11 w-11 [@media(hover:hover)_and_(pointer:fine)]:h-7 [@media(hover:hover)_and_(pointer:fine)]:w-7",
+            "h-11 w-11 [@media(hover:hover)_and_(pointer:fine)]:h-7 [@media(hover:hover)_and_(pointer:fine)]:w-7 [@media(hover:none)]:hidden",
           )}
         >
           <Reply size={15} strokeWidth={1.7} />
@@ -1185,7 +1193,7 @@ function MessageHoverActions({
             onClick={() => remember?.onRemember(message.id)}
             className={cn(
               iconButtonClass,
-              "h-11 w-11 [@media(hover:hover)_and_(pointer:fine)]:h-7 [@media(hover:hover)_and_(pointer:fine)]:w-7",
+              "h-11 w-11 [@media(hover:hover)_and_(pointer:fine)]:h-7 [@media(hover:hover)_and_(pointer:fine)]:w-7 [@media(hover:none)]:hidden",
               remembered && "text-foreground",
             )}
           >
@@ -1203,6 +1211,21 @@ function MessageHoverActions({
             <MoreHorizontal size={15} strokeWidth={1.7} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align={side === "end" ? "start" : "end"}>
+            {canReactToThreadMessage(message) ? (
+              // On a phone the React button is folded into this menu.
+              <div className="grid w-33 grid-cols-3 pb-1 [@media(hover:hover)_and_(pointer:fine)]:hidden">
+                {MESSAGE_REACTIONS.map((emoji) => (
+                  <DropdownMenuItem
+                    key={emoji}
+                    aria-label={emoji}
+                    className="size-11 justify-center p-0 text-2xl"
+                    onClick={() => void onReact(message, emoji)}
+                  >
+                    {emoji}
+                  </DropdownMenuItem>
+                ))}
+              </div>
+            ) : null}
             <DropdownMenuItem
               onClick={() => {
                 setMoreOpen(false);

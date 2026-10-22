@@ -290,7 +290,7 @@ function ItemRow({
   first: boolean;
   showStatus: boolean;
 }) {
-  const label = statusLabel(item.status);
+  const label = statusLabel(item.status, !!item.previewText);
   const stuck = isStuck(item);
   const age =
     label && item.status !== "failed"
@@ -340,7 +340,9 @@ function ItemRow({
             <span
               className={cn(
                 "line-clamp-2 font-medium break-words",
-                !isSettled(item.status) && item.status !== "failed" && "text-muted-foreground",
+                !isSettled(item.status, !!item.previewText) &&
+                  item.status !== "failed" &&
+                  "text-muted-foreground",
               )}
               title={item.name}
             >
@@ -527,7 +529,7 @@ export function ListView({
   sortField?: SortField;
 }) {
   // A column that is empty on every row is left out.
-  const showStatus = rows.some(({ item }) => statusLabel(item.status));
+  const showStatus = rows.some(({ item }) => statusLabel(item.status, !!item.previewText));
   return (
     <div className={LIST_PAD}>
       <Table>
@@ -702,7 +704,7 @@ export function GridView({
           >
             {item.status === "failed" ? (
               <>
-                <span>{statusLabel(item.status)}</span>
+                <span>{statusLabel(item.status, !!item.previewText)}</span>
                 {/* Why, as on the list row; the reason may run to two lines. */}
                 <span
                   data-testid="data-room-failed-reason"
@@ -711,11 +713,11 @@ export function GridView({
                   {item.error ?? t`Could not read this file`}
                 </span>
               </>
-            ) : statusLabel(item.status) ? (
+            ) : statusLabel(item.status, !!item.previewText) ? (
               <span>
                 {isStuck(item)
                   ? t`Taking longer than usual`
-                  : readingAge(item.updatedAt) || statusLabel(item.status)}
+                  : readingAge(item.updatedAt) || statusLabel(item.status, !!item.previewText)}
               </span>
             ) : (
               <>
@@ -741,7 +743,13 @@ function TypeAndDate({
 }) {
   const type = typeLabel(item.facets.docType);
   const date = dateOf(item, sortField);
-  return <>{[type || (isSettled(item.status) ? DASH : ""), date].filter(Boolean).join(" · ")}</>;
+  return (
+    <>
+      {[type || (isSettled(item.status, !!item.previewText) ? DASH : ""), date]
+        .filter(Boolean)
+        .join(" · ")}
+    </>
+  );
 }
 
 /** A search snippet as text and <mark> elements. The snippet is never parsed as HTML. */

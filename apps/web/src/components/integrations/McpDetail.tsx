@@ -263,7 +263,7 @@ export function McpDetail({
               >
                 <MoreHorizontal aria-hidden="true" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
+              <DropdownMenuContent align="start" className="w-max whitespace-nowrap">
                 {server.transport !== "stdio" ? (
                   <DropdownMenuItem onClick={() => void reconnect.run()}>
                     <Trans>Reconnect</Trans>
