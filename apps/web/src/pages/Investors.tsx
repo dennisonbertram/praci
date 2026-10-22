@@ -1141,7 +1141,9 @@ export function InvestorsPage({
               >
                 {snapshot && math ? (
                   <>
-                    {snapshot.holders.length === 0 ? (
+                    {snapshot.holders.length === 0 &&
+                    !snapshot.fullyDilutedShares &&
+                    !snapshot.latest409a ? (
                       <FiguresPlaceholder />
                     ) : (
                       <Summary snapshot={snapshot} />
