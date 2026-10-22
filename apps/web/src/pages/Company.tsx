@@ -16,7 +16,6 @@ import {
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useFinanceQuery } from "../components/finance/ui";
-import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { companyDate, companyDateEnd } from "../lib/company-format";
 import { money } from "../lib/finance-format";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
@@ -28,7 +27,7 @@ export function CompanyPage() {
   useHideAmounts();
   const page = useFinanceQuery(() => rpc.company.page(), []);
   const finance = useFinanceQuery(() => rpc.finance.overview(), []);
-  const carta = useFinanceQuery(() => rpc.carta.capTable(), []);
+  const carta = useFinanceQuery(() => rpc.investors.capTable(), []);
   const [params, setParams] = useSearchParams();
   const view = params.get("view") ?? "overview";
   const [fact, setFact] = useState<CompanyFact | null>(null);
@@ -113,7 +112,6 @@ export function CompanyPage() {
             <Trans>Reconstructed</Trans>
           </p>
         </div>
-        <HideAmountsButton />
       </header>
       <Tabs value={view} onValueChange={(next) => setParams({ view: String(next) })}>
         <TabsList>
