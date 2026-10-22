@@ -747,6 +747,7 @@ export async function findWorkableOpenItem(
   return (
     rows.find(
       (row) =>
+        row.category !== "goal" &&
         !(
           row.category === "public_post" &&
           typeof row.proof === "string" &&
