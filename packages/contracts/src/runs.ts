@@ -29,6 +29,8 @@ export const RoutineRunSchema = z.object({
   startedAt: IsoDate.nullable(),
   completedAt: IsoDate.nullable(),
   messageId: Id.nullable(),
+  /** First line of the run's reply, when it has text. */
+  preview: z.string().nullable().optional(),
 });
 export type RoutineRun = z.infer<typeof RoutineRunSchema>;
 
@@ -51,6 +53,8 @@ export const RunActivityRowSchema = z.object({
   trigger: RunTriggerSchema,
   notificationsEnabled: z.boolean(),
   promptSnippet: z.string(),
+  /** The held card is an approval (an action to allow), not a question. */
+  needsApproval: z.boolean().optional(),
   updatedAt: z.string(),
 });
 export type RunActivityRow = z.infer<typeof RunActivityRowSchema>;

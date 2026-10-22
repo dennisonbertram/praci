@@ -378,3 +378,38 @@ it("rises above a composer it would cover", async () => {
   // innerHeight 768 - 600 + 8
   expect(viewport()?.style.getPropertyValue("--toast-lift")).toBe("176px");
 });
+
+it("sits left of an open side panel and drops the composer offset when there is no composer", async () => {
+  await mount();
+  const panel = document.createElement("aside");
+  panel.setAttribute("data-toast-panel", "");
+  panel.getBoundingClientRect = () =>
+    ({ top: 0, bottom: 768, left: 640, right: 1024, height: 768, width: 384 }) as DOMRect;
+  document.body.append(panel);
+  // jsdom has no layout; the toast is 448px wide on a desktop viewport.
+  Object.defineProperty(viewport()!, "offsetWidth", { configurable: true, value: 448 });
+  await add(1);
+  // innerWidth 1024 - 640
+  expect(viewport()?.style.getPropertyValue("--toast-shift")).toBe("384px");
+  expect(viewport()?.className).toContain("var(--toast-shift,0px)");
+  expect(viewport()?.className).toContain(
+    "max-sm:bottom-[max(calc(env(safe-area-inset-bottom)+1rem)",
+  );
+  panel.remove();
+});
+
+it("does not shift beside a side panel when the toast would be pushed off the left edge", async () => {
+  await mount();
+  const panel = document.createElement("aside");
+  panel.setAttribute("data-toast-panel", "");
+  // Tablet: 768px wide viewport, 384px panel leaves 384px, less than the 448px toast plus gutters.
+  window.innerWidth = 768;
+  panel.getBoundingClientRect = () =>
+    ({ top: 0, bottom: 768, left: 384, right: 768, height: 768, width: 384 }) as DOMRect;
+  document.body.append(panel);
+  Object.defineProperty(viewport()!, "offsetWidth", { configurable: true, value: 448 });
+  await add(1);
+  expect(viewport()?.style.getPropertyValue("--toast-shift")).toBe("0px");
+  panel.remove();
+  window.innerWidth = 1024;
+});
