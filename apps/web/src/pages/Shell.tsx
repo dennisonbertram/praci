@@ -82,6 +82,7 @@ import {
   ChartColumn,
   ChevronDown,
   CircleAlert,
+  Clock,
   CodeXml,
   Compass,
   Files,
@@ -5773,7 +5774,11 @@ export function ShellPage() {
                   data-active={panel === "computer" ? "" : undefined}
                   className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 >
-                  <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
+                  {noComputerScreen ? (
+                    <Clock size={18} strokeWidth={1.6} className="text-foreground/75" />
+                  ) : (
+                    <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
+                  )}
                 </button>
               ) : null}
             </div>

@@ -29,6 +29,8 @@ export const RoutineRunSchema = z.object({
   startedAt: IsoDate.nullable(),
   completedAt: IsoDate.nullable(),
   messageId: Id.nullable(),
+  /** First line of the run's reply, when it has text. */
+  preview: z.string().nullable().optional(),
 });
 export type RoutineRun = z.infer<typeof RoutineRunSchema>;
 

@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import type { Actor, RoutineHistory, RoutineRun, RoutineRunCursor } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
-import { Prisma } from "@rakazo/db";
+import { historyMessageText, Prisma } from "@rakazo/db";
 
 export async function listRoutineRuns(
   prisma: PrismaClient,
@@ -54,8 +54,10 @@ export async function listRoutineRuns(
     rows.length > 20 && last ? { id: last.id, createdAt: last.createdAt.toISOString() } : null;
   // Routine runs can finish silently. A chat link is offered only when a message exists.
   const messages = runs.length
-    ? await prisma.$queryRaw<Array<{ id: string; runId: string; threadId: string }>>(Prisma.sql`
-        SELECT DISTINCT ON (m."runId") m.id, m."runId", m."threadId"
+    ? await prisma.$queryRaw<
+        Array<{ id: string; runId: string; threadId: string; blocks: Prisma.JsonValue }>
+      >(Prisma.sql`
+        SELECT DISTINCT ON (m."runId") m.id, m."runId", m."threadId", m.blocks
         FROM messages m
         INNER JOIN runs r ON r.id = m."runId" AND r."threadId" = m."threadId"
         INNER JOIN threads t ON t.id = m."threadId"
@@ -66,7 +68,7 @@ export async function listRoutineRuns(
         ORDER BY m."runId", m."createdAt" DESC, m.id DESC
       `)
     : [];
-  const replyByRun = new Map(messages.map((message) => [message.runId, message.id]));
+  const replyByRun = new Map(messages.map((message) => [message.runId, message]));
   return {
     nextCursor,
     runs: runs.map((run) => ({
@@ -77,7 +79,16 @@ export async function listRoutineRuns(
       createdAt: run.createdAt.toISOString(),
       startedAt: run.startedAt?.toISOString() ?? null,
       completedAt: run.completedAt?.toISOString() ?? null,
-      messageId: replyByRun.get(run.id) ?? null,
+      messageId: replyByRun.get(run.id)?.id ?? null,
+      preview: firstLine(replyByRun.get(run.id)?.blocks),
     })),
   };
+}
+
+function firstLine(blocks: Prisma.JsonValue | undefined): string | null {
+  const line = historyMessageText(blocks ?? null)
+    .split("\n")
+    .map((text) => text.trim())
+    .find(Boolean);
+  return line ? line.slice(0, 200) : null;
 }
