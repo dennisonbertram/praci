@@ -46,17 +46,22 @@ export function needsAttention(safe: SafeFacts, now = new Date()): "deposit" | "
   return null;
 }
 
-const atCapRatio = (safe: Pick<SafeFacts, "amountCents" | "capCents">) =>
-  safe.capCents ? safe.amountCents / safe.capCents : null;
+type CapFacts = Pick<SafeFacts, "amountCents" | "capCents"> & { valuationType?: string };
+
+/** Only a post-money cap converts to an ownership share; a pre-money or no-valuation SAFE has none. */
+const atCapRatio = (safe: CapFacts) =>
+  safe.capCents && (safe.valuationType ?? "post_money_cap") === "post_money_cap"
+    ? safe.amountCents / safe.capCents
+    : null;
 
 /** Post-money ownership if converted at the cap: amount over cap, one decimal. Null without a cap. */
-export function atCapPercent(safe: Pick<SafeFacts, "amountCents" | "capCents">): number | null {
+export function atCapPercent(safe: CapFacts): number | null {
   const ratio = atCapRatio(safe);
   return ratio == null ? null : Math.round(ratio * 1000) / 10;
 }
 
 /** Combined at-cap dilution: the SAFEs' ratios summed, then rounded once; a SAFE without a cap adds nothing. */
-export function atCapSum(safes: readonly Pick<SafeFacts, "amountCents" | "capCents">[]): number {
+export function atCapSum(safes: readonly CapFacts[]): number {
   return Math.round(safes.reduce((sum, safe) => sum + (atCapRatio(safe) ?? 0), 0) * 1000) / 10;
 }
 

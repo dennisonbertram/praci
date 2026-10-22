@@ -225,7 +225,9 @@ function SafeRow({
   // Cap and source appear only when they differ from the round and the page's native default.
   const notes = [
     safe.capCents != null && safe.capCents !== round?.capCents
-      ? t`Post-money cap ${usd(safe.capCents)}`
+      ? safe.valuationType === "pre_money_cap"
+        ? t`Pre-money cap ${usd(safe.capCents)}`
+        : t`Post-money cap ${usd(safe.capCents)}`
       : null,
     native ? null : t`from Mercury`,
   ].filter(Boolean);

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "./client.js";
 import { createDb } from "./client.js";
-import { saveContact } from "./contacts.js";
+import { deleteContact, saveContact } from "./contacts.js";
 import {
   closeRound,
   getFundraisingOverview,
@@ -307,6 +307,14 @@ describePostgres("safes (PostgreSQL)", () => {
       await expect(assignSafe(prisma, mine, loose!.id, p.id)).rejects.toBeInstanceOf(
         SafeStateError,
       );
+    });
+
+    it("counts a Mercury SAFE in no round once its contact is deleted", async () => {
+      const p = await person("gone@example.test", "prospect", { checkSizeCents: 1_000_000 });
+      await sync(mercury("m-gone", { investorEmail: "gone@example.test" }));
+      expect((await safeOf("m-gone")).roundId).not.toBeNull();
+      await deleteContact(prisma, mine, p.id);
+      expect(await safeOf("m-gone")).toMatchObject({ contactId: null, roundId: null });
     });
 
     it("keeps one row per owner for the same Mercury id and one row per id across syncs", async () => {
