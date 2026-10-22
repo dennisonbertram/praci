@@ -5,6 +5,44 @@ import { Id, IsoDate } from "./ids.js";
 /** Money is integer cents. */
 const Cents = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 
+export const SafeStatusSchema = z.enum([
+  "draft",
+  "sent",
+  "signed",
+  "funded",
+  "expired",
+  "canceled",
+]);
+export type SafeStatus = z.infer<typeof SafeStatusSchema>;
+
+export const SafeSchema = z.object({
+  id: Id,
+  source: z.enum(["native", "mercury"]),
+  contactId: Id.nullable(),
+  roundId: Id.nullable(),
+  investorName: z.string(),
+  investorEmail: z.string().nullable(),
+  amountCents: z.number().int(),
+  valuationType: z.string(),
+  capCents: z.number().int().nullable(),
+  discountPercent: z.number().nullable(),
+  mfn: z.boolean(),
+  proRata: z.boolean(),
+  governingState: z.string().nullable(),
+  investmentDate: IsoDate.nullable(),
+  expiresAt: IsoDate.nullable(),
+  canceledAt: IsoDate.nullable(),
+  sentAt: IsoDate.nullable(),
+  signedByOwnerAt: IsoDate.nullable(),
+  signedByInvestorAt: IsoDate.nullable(),
+  paidAt: IsoDate.nullable(),
+  documentUrl: z.string().nullable(),
+  /** Derived from the dates, never stored. */
+  status: SafeStatusSchema,
+  createdAt: IsoDate,
+});
+export type Safe = z.infer<typeof SafeSchema>;
+
 export const FundraiseRoundSchema = z.object({
   id: Id,
   name: z.string(),
@@ -21,8 +59,14 @@ export type FundraiseRound = z.infer<typeof FundraiseRoundSchema>;
  */
 export const FundraisingOverviewSchema = z.object({
   round: FundraiseRoundSchema.nullable(),
+  /** The round's Committed prospects without a SAFE (check size) plus its Sent and Draft SAFEs. */
   pendingCents: z.number().int(),
+  /** SAFE money of the shown round that is signed, and that is paid. */
+  signedCents: z.number().int(),
+  fundedCents: z.number().int(),
+  /** Prospects still in the pipeline: those with an active SAFE have left it. */
   prospects: z.array(ContactSchema),
+  safes: z.array(SafeSchema),
 });
 export type FundraisingOverview = z.infer<typeof FundraisingOverviewSchema>;
 
@@ -43,3 +87,31 @@ export const ProspectSaveInputSchema = z.object({
   nextStep: z.string().trim().max(500).nullish(),
 });
 export type ProspectSaveInput = z.infer<typeof ProspectSaveInputSchema>;
+
+/**
+ * Adds a native SAFE as a Draft: always the YC post-money valuation-cap form (no discount, no
+ * MFN). `capCents` defaults to the open round's cap. With `contactId` the SAFE belongs to that
+ * contact and takes its name and email.
+ */
+export const SafeSaveInputSchema = z.object({
+  contactId: Id.optional(),
+  investorName: z.string().trim().min(1).max(200),
+  investorEmail: z.string().trim().toLowerCase().email().nullish(),
+  amountCents: Cents.min(1),
+  capCents: Cents.min(1).optional(),
+  proRata: z.boolean().default(false),
+  governingState: z.string().trim().max(100).nullish(),
+  investmentDate: IsoDate.nullish(),
+});
+export type SafeSaveInput = z.infer<typeof SafeSaveInputSchema>;
+
+/**
+ * Records a step on a native SAFE with its date; `at: null` clears it (Undo). Signed sets both
+ * signatures. Cancel is refused once the SAFE is Funded.
+ */
+export const SafeMarkInputSchema = z.object({
+  id: Id,
+  action: z.enum(["sent", "signed", "funded", "cancel"]),
+  at: IsoDate.nullable(),
+});
+export type SafeMarkInput = z.infer<typeof SafeMarkInputSchema>;

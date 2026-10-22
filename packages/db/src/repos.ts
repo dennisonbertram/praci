@@ -377,9 +377,9 @@ export function createRepos(prisma: PrismaClient) {
                   (block) =>
                     block.kind === "bot_message_received" &&
                     block.returnToMessageId &&
-                    // A request or question is an instruction, not an answer.
-                    block.intent !== "request" &&
-                    block.intent !== "question",
+                    // Only a result or status is an answer; a request, question or fyi (or no intent,
+                    // which delivers as a request) is another agent's instruction.
+                    (block.intent === "result" || block.intent === "status"),
                 );
                 if (reply) preview = previewFromBlocks([reply]);
               }

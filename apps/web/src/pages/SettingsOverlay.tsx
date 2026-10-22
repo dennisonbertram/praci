@@ -1,4 +1,4 @@
-import { useLingui } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { AvatarStyle, SpaceMemoryConfig } from "@rakazo/contracts";
 import {
   Button,
@@ -11,6 +11,7 @@ import {
 } from "@rakazo/ui-web";
 import {
   Brain,
+  ChevronRight,
   Cpu,
   CreditCard,
   Monitor,
@@ -166,14 +167,17 @@ export function SettingsOverlay({
     { id: "general", label: t`General`, icon: Settings },
     { id: "privacy", label: t`Privacy and approvals`, icon: ShieldCheck },
     { id: "models", label: t`Models`, icon: Cpu },
-    { id: "memory", label: t`Memory`, icon: Brain },
     { id: "voice", label: t`Voice`, icon: Volume2 },
     ...(showComputer ? [{ id: "computer" as const, label: t`Computer`, icon: Monitor }] : []),
     ...(billingEnabled ? [{ id: "billing" as const, label: t`Billing`, icon: CreditCard }] : []),
   ];
 
+  const memoryItem: NavItem = { id: "memory", label: t`Memory`, icon: Brain };
+  // The phone select lists every page, Memory included.
+  const selectItems = [...navItems.slice(0, 3), memoryItem, ...navItems.slice(3)];
+
   const sectionTitle =
-    navItems.find((item) => item.id === section)?.label ??
+    selectItems.find((item) => item.id === section)?.label ??
     (section === "general" ? t`General` : t`Settings`);
 
   const closeLabel =
@@ -184,6 +188,29 @@ export function SettingsOverlay({
         : section === "voice"
           ? t`Close voice settings`
           : t`Close user settings`;
+
+  const navButton = (item: NavItem) => {
+    const Icon = item.icon;
+    const active = item.id === section;
+    return (
+      <button
+        key={item.id}
+        type="button"
+        data-testid={`settings-nav-${item.id}`}
+        aria-current={active ? "page" : undefined}
+        disabled={panelBusy}
+        onClick={() => setSection(item.id)}
+        className={`flex shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 pointer-coarse:min-h-11 text-start text-[13.5px] transition-colors disabled:pointer-events-none disabled:opacity-50 ${
+          active
+            ? "bg-foreground/10 font-medium text-foreground"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+        }`}
+      >
+        <Icon className="size-4 shrink-0" strokeWidth={1.75} />
+        <span className="whitespace-nowrap">{item.label}</span>
+      </button>
+    );
+  };
 
   async function refreshVoiceStatus() {
     await onVoiceStatusMaybeChanged?.();
@@ -232,7 +259,7 @@ export function SettingsOverlay({
               disabled={panelBusy}
               onChange={(event) => setSection(event.target.value as SettingsSection)}
             >
-              {navItems.map((item) => (
+              {selectItems.map((item) => (
                 <NativeSelectOption key={item.id} value={item.id}>
                   {item.label}
                 </NativeSelectOption>
@@ -251,28 +278,19 @@ export function SettingsOverlay({
             aria-label={t`Settings`}
             className="hidden shrink-0 gap-1 border-border md:flex md:w-[208px] md:flex-col md:overflow-y-auto md:border-e md:px-3 md:py-4"
           >
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = item.id === section;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  data-testid={`settings-nav-${item.id}`}
-                  aria-current={active ? "page" : undefined}
-                  disabled={panelBusy}
-                  onClick={() => setSection(item.id)}
-                  className={`flex shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 pointer-coarse:min-h-11 text-start text-[13.5px] transition-colors disabled:pointer-events-none disabled:opacity-50 ${
-                    active
-                      ? "bg-foreground/10 font-medium text-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                  }`}
-                >
-                  <Icon className="size-4 shrink-0" strokeWidth={1.75} />
-                  <span className="whitespace-nowrap">{item.label}</span>
-                </button>
-              );
-            })}
+            {navItems.map(navButton)}
+            {/* Memory is rarely needed; it opens from here and stays open while it is the page. */}
+            <details className="group" open={section === "memory"}>
+              <summary className="flex cursor-pointer list-none items-center gap-2.5 rounded-lg px-2.5 py-2 pointer-coarse:min-h-11 text-[13.5px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+                <ChevronRight
+                  aria-hidden="true"
+                  className="size-4 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+                  strokeWidth={1.75}
+                />
+                <Trans>Advanced</Trans>
+              </summary>
+              {navButton(memoryItem)}
+            </details>
           </nav>
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -301,7 +319,7 @@ export function SettingsOverlay({
               className={`min-h-0 flex-1 ${
                 section === "models" || section === "voice" || section === "memory"
                   ? "flex flex-col overflow-hidden"
-                  : "rk-scroll overflow-y-auto overscroll-contain px-6 pb-6 pt-5 sm:px-8 sm:pb-8"
+                  : "rk-scroll rk-scroll-fade-bottom rk-fade-popover overflow-y-auto overscroll-contain px-6 pb-6 pt-5 sm:px-8 sm:pb-8"
               }`}
             >
               {section === "general" ? (

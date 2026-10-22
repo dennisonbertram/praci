@@ -4698,11 +4698,11 @@ export function ShellPage() {
                           <Button
                             variant="ghost"
                             size="icon-sm"
-                            className={
+                            className={`focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
                               group.title
                                 ? "col-start-1 row-start-1 justify-self-end self-center"
-                                : undefined
-                            }
+                                : ""
+                            }`}
                             data-roster-actions=""
                             aria-label={t`Actions for ${group.spaceName}`}
                             onClick={(event) => {
@@ -5106,7 +5106,7 @@ export function ShellPage() {
                                           position: { x: rect.left, y: rect.bottom },
                                         });
                                       }}
-                                      className={`absolute end-2 top-1.5 size-7 rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:hidden ${
+                                      className={`absolute end-2 top-1.5 size-7 rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring group-hover/row:opacity-100 pointer-coarse:hidden ${
                                         botMenu?.id === item.chat.id ? "opacity-100" : ""
                                       }`}
                                     >
@@ -5136,7 +5136,7 @@ export function ShellPage() {
                 type="button"
                 aria-expanded={archivedOpen}
                 onClick={() => setArchivedOpen((open) => !open)}
-                className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-[13.5px] text-muted-foreground hover:bg-sidebar-accent"
+                className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-[13.5px] text-muted-foreground hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
               >
                 <span>
                   <Trans>Archived</Trans>
@@ -5246,7 +5246,7 @@ export function ShellPage() {
             data-testid="user-menu-trigger"
             data-tour="user-menu"
             aria-label={rail ? userName : undefined}
-            className={`flex items-center gap-[11px] rounded-lg py-3.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+            className={`flex items-center gap-[11px] rounded-lg py-3.5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
               rail ? "justify-center px-0" : "px-[18px]"
             }`}
           >
@@ -5472,7 +5472,8 @@ export function ShellPage() {
                       size={26}
                     />
                   ) : active ? (
-                    <BotAvatar
+                    <AgentAvatar
+                      app={agentAppFor(active.id, active.spaceId)}
                       color={active.color}
                       identity={active.id}
                       size={26}
@@ -5706,7 +5707,8 @@ export function ShellPage() {
                     onClick={() => openBot(active.id)}
                     className="-mx-1.5 flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
                   >
-                    <BotAvatar
+                    <AgentAvatar
+                      app={agentAppFor(active.id, active.spaceId)}
                       color={active.color}
                       identity={active.id}
                       size={22}

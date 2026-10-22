@@ -10,6 +10,7 @@ export {
   normalizeMailEdits,
 } from "./approval-ask.js";
 export * from "./artifacts.js";
+export * from "./audit-intake.js";
 export * from "./auto-review.js";
 export * from "./auto-review-factory.js";
 export * from "./background-job-handlers.js";

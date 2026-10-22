@@ -26,7 +26,11 @@ function historyMessages() {
   ];
 }
 
-async function runInvestors(trigger = "user", spawnKey: string | null = "investors-agent:user-1") {
+async function runInvestors(
+  trigger = "user",
+  spawnKey: string | null = "investors-agent:user-1",
+  prompt = "Look again",
+) {
   const scripted = false;
   const run = {
     id: "run-1",
@@ -99,7 +103,7 @@ async function runInvestors(trigger = "user", spawnKey: string | null = "investo
     task: {
       findUniqueOrThrow: vi.fn(async () => ({
         id: run.taskId,
-        prompt: "Look again",
+        prompt,
       })),
     },
     computer: { updateMany: vi.fn(async () => ({ count: 1 })) },
@@ -213,6 +217,17 @@ describe("Investors agent runs", () => {
     expect(names(routine)).toContain("cap_table_update");
   });
 
+  it("does not offer cap_table_update on an audit drafting run, which reads untrusted email", async () => {
+    const audit = await runInvestors(
+      "routine",
+      "investors-agent:user-1",
+      "Answer audit request ar1 with the audit-response skill.",
+    );
+    const names = (audit.request?.tools ?? []).map((tool) => tool.name);
+    expect(names).not.toContain("cap_table_update");
+    expect(names).toContain("audit_request_upsert");
+  });
+
   it("offers investor_update_draft to the Investors agent and to no other bot", async () => {
     const investors = await runInvestors();
     expect((investors.request?.tools ?? []).map((tool) => tool.name)).toContain(
@@ -222,6 +237,19 @@ describe("Investors agent runs", () => {
       const other = await runInvestors("user", spawnKey);
       expect((other.request?.tools ?? []).map((tool) => tool.name)).not.toContain(
         "investor_update_draft",
+      );
+    }
+  });
+
+  it("offers audit_request_upsert to the Investors agent and to no other bot", async () => {
+    const investors = await runInvestors();
+    expect((investors.request?.tools ?? []).map((tool) => tool.name)).toContain(
+      "audit_request_upsert",
+    );
+    for (const spawnKey of ["carta-agent:user-1", "legal-agent:user-1", null]) {
+      const other = await runInvestors("user", spawnKey);
+      expect((other.request?.tools ?? []).map((tool) => tool.name)).not.toContain(
+        "audit_request_upsert",
       );
     }
   });
