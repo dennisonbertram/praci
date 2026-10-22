@@ -51,6 +51,8 @@ vi.mock("@rakazo/ui-web", () => {
           {children}
         </button>
       ),
+    NativeSelect: (props: ComponentProps<"select">) => <select {...props} />,
+    NativeSelectOption: (props: ComponentProps<"option">) => <option {...props} />,
     Input: (props: ComponentProps<"input">) => <input {...props} />,
     Textarea: (props: ComponentProps<"textarea">) => <textarea {...props} />,
   };
@@ -131,6 +133,45 @@ it("starts expanded while pending, with the status and first recipient in the he
   expect(text).not.toContain("Cc");
   expect(text).not.toContain("Bcc");
   expect(toggle()).toBeNull();
+});
+
+const accounts = [
+  { connectionId: "c1", label: "Work", address: "work@example.test" },
+  { connectionId: "c2", label: "Home", address: "home@example.test" },
+];
+const select = () => host.querySelector('select[aria-label="From"]') as HTMLSelectElement | null;
+const choose = (el: HTMLSelectElement, value: string) =>
+  act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set?.call(el, value);
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
+it("holds Send until a sender is chosen when no account was named and several are connected", async () => {
+  const { account: _account, ...unnamed } = mail;
+  const { onAnswer } = await render({ mail: unnamed, accounts });
+  expect(button("Send")?.disabled).toBe(true);
+  await choose(select()!, "c2");
+  expect(button("Send")?.disabled).toBe(false);
+  await click(button("Send"));
+  expect(onAnswer).toHaveBeenCalledWith("allow", undefined, { account: "c2" });
+});
+
+it("holds Send while accounts load or failed, and offers a retry on failure", async () => {
+  const { account: _account, ...unnamed } = mail;
+  await render({ mail: unnamed, accountsStatus: "loading" });
+  expect(button("Send")?.disabled).toBe(true);
+  const onRetryAccounts = vi.fn();
+  await render({ mail: unnamed, accountsStatus: "error", onRetryAccounts });
+  expect(button("Send")?.disabled).toBe(true);
+  await click(button("Retry"));
+  expect(onRetryAccounts).toHaveBeenCalled();
+});
+
+it("shows a plain From line with a single account and sends the agent's call unchanged", async () => {
+  const { onAnswer } = await render({ accounts: accounts.slice(0, 1) });
+  expect(select()).toBeNull();
+  await click(button("Send"));
+  expect(onAnswer).toHaveBeenCalledWith("allow", undefined, undefined);
 });
 
 it("offers Save draft for a draft", async () => {

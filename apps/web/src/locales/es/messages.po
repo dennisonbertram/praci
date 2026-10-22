@@ -2412,6 +2412,10 @@ msgstr "Elige una contraseña nueva"
 msgid "Choose a tool"
 msgstr ""
 
+#: src/components/MailApprovalCard.tsx
+msgid "Choose an account"
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Choose file"
 msgstr "Elegir archivo"
@@ -7590,6 +7594,10 @@ msgstr "Con un horario"
 msgid "On: creates a {service} agent that can read and, after you approve, make changes."
 msgstr ""
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "On: other agents can read {service}. Changes still go through this agent and ask first."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."
 msgstr ""
@@ -9048,6 +9056,7 @@ msgstr ""
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/DropZone.tsx
+#: src/components/MailApprovalCard.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Investors.tsx

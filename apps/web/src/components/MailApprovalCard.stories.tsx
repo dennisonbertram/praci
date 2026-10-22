@@ -28,6 +28,16 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Pending: Story = {};
+/** Two mailboxes and no sender named: Send waits until the person picks one. */
+export const ChooseSender: Story = {
+  args: {
+    mail: { ...mail, account: undefined },
+    accounts: [
+      { connectionId: "c1", label: "Work", address: "work@example.test" },
+      { connectionId: "c2", label: "Home", address: "home@example.test" },
+    ],
+  },
+};
 export const WithCc: Story = {
   args: { mail: { ...mail, cc: ["lee@example.test"], bcc: ["pat@example.test"] } },
 };

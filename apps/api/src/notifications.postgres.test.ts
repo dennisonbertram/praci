@@ -49,7 +49,7 @@ describePostgres("notifications RPC (PostgreSQL)", () => {
   const events = createNotificationEvents(fanout);
   const clientFor = (actor: Actor) =>
     createRouterClient(
-      createRouter({ prisma, notificationEvents: events } as unknown as RouterDeps),
+      createRouter({ prisma, notificationEvents: events, env: {} } as unknown as RouterDeps),
       { context: { actor } },
     );
 
@@ -116,6 +116,13 @@ describePostgres("notifications RPC (PostgreSQL)", () => {
     expect((await clientFor(aliceElsewhere).notifications.unseenCounts()).counts).toEqual({
       legal: 1,
     });
+  });
+
+  it("dismiss marks only the caller's own notification in the caller's space", async () => {
+    const id = (await clientFor(alice).notifications.list({})).notifications[0]!.id;
+    expect(await clientFor(bob).notifications.dismiss({ id })).toEqual({ ok: false });
+    expect(await clientFor(aliceElsewhere).notifications.dismiss({ id })).toEqual({ ok: false });
+    expect(await clientFor(alice).notifications.dismiss({ id })).toEqual({ ok: true });
   });
 
   it("rejects a malformed cursor", async () => {

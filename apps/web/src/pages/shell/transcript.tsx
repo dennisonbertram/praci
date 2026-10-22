@@ -101,6 +101,7 @@ import {
   transcriptShouldSnap,
   transcriptUserJustSent,
 } from "../../lib/transcript-scroll";
+import { useMailAccounts } from "../../lib/use-mail-accounts";
 import type { RememberControls } from "../../lib/use-remembered-messages";
 import { useAttended } from "../../lib/use-sidebar-glance";
 import type { WorkingActivity } from "../../lib/working-activity";
@@ -1381,6 +1382,18 @@ const MessageView = memo(function MessageView({
   useHideAmounts();
   const { t } = useLingui();
   const botToolControls = useContext(BotToolControlsContext);
+  // A pending mail approval that names no sender: the card lists the accounts so the person can pick.
+  const mailAccounts = useMailAccounts(
+    canAnswer &&
+      message.blocks.some(
+        (block) =>
+          block.kind === "ask" &&
+          block.status !== "answered" &&
+          block.mail !== undefined &&
+          !block.mail.account &&
+          isApprovalAskBlock(block),
+      ),
+  );
   const isNarration =
     message.role === "bot" &&
     message.blocks.length > 0 &&
@@ -1762,6 +1775,9 @@ const MessageView = memo(function MessageView({
               <div key={i} className={gap}>
                 <MailApprovalCard
                   mail={block.mail}
+                  accounts={mailAccounts.accounts}
+                  accountsStatus={mailAccounts.status}
+                  onRetryAccounts={mailAccounts.retry}
                   status={block.status === "answered" ? "answered" : "pending"}
                   answer={block.answer}
                   canAnswer={canAnswer}

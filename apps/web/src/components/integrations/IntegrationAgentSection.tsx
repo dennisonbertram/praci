@@ -119,7 +119,14 @@ export function IntegrationAgentSection({
               <Trans>Let other agents use {service} directly</Trans>
             </Label>
             <p id={`${idPrefix}-shared-hint`} className="col-start-2 text-sm text-muted-foreground">
-              <Trans>Off: other agents reach {service} only through this agent.</Trans>
+              {shared ? (
+                <Trans>
+                  On: other agents can read {service}. Changes still go through this agent and ask
+                  first.
+                </Trans>
+              ) : (
+                <Trans>Off: other agents reach {service} only through this agent.</Trans>
+              )}
             </p>
           </div>
         ) : null}
