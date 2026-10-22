@@ -179,7 +179,6 @@ import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
 import { FirstRunTour } from "../components/tour/FirstRunTour";
-import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
 import { artifactDisplayName } from "../lib/artifact-name";
 import type { ArtifactTarget } from "../lib/artifact-open";
@@ -241,6 +240,7 @@ import {
 import {
   compactRosterStatusLabel,
   rosterHasUndismissedRunError,
+  rosterNeedsPerson,
   rosterWorkStatusLabel,
 } from "../lib/roster-status";
 import { formatRosterTime } from "../lib/roster-time";
@@ -896,16 +896,11 @@ export function ShellPage() {
     return () => desktop.removeEventListener("change", closeMobileSidebar);
   }, []);
   // Phones open the drawer on the chat list; Activity there is one tap away.
-  const [activityMode, setActivityMode] = useState(
-    () => readActivityMode() && window.matchMedia(SIDEBAR_DOCKED_QUERY).matches,
-  );
-  const toggleActivityMode = useCallback(() => {
-    setActivityMode((on) => {
-      const next = !on;
-      writeActivityMode(next);
-      return next;
-    });
-  }, []);
+  // Activity is a quick look, not a place: it closes when you go somewhere and a reload starts closed.
+  const [activityMode, setActivityMode] = useState(false);
+  const toggleActivityMode = useCallback(() => setActivityMode((on) => !on), []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: close on every navigation
+  useEffect(() => setActivityMode(false), [pathname]);
   const [botMenu, setBotMenu] = useState<{
     kind: "bot" | "group";
     id: string;
@@ -4344,7 +4339,9 @@ export function ShellPage() {
         {bootstrapMe === undefined ? null : (
           // Waiting for the account (undefined) keeps pages the user hid from flashing in.
           // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
-          <div className="flex max-h-[50vh] shrink-0 flex-col overflow-y-auto border-b border-border px-2.5 pb-1">
+          <div
+            className={`flex shrink-0 flex-col overflow-y-auto border-b border-border px-2.5 pb-1 ${activityMode ? "max-h-[16vh]" : "max-h-[50vh]"}`}
+          >
             <SidebarPagesGroup
               title={t`Pages`}
               collapsed={collapsedSidebarSections.has("pages")}
@@ -4785,7 +4782,10 @@ export function ShellPage() {
                                 count={rows.length}
                                 needsYou={rows.some(
                                   (row) =>
-                                    row.item.chat.unread || glance.botKinds[row.item.chat.id],
+                                    row.item.chat.unread ||
+                                    glance.botKinds[row.item.chat.id] ||
+                                    (row.item.kind === "bot" &&
+                                      rosterNeedsPerson(row.item.chat.status)),
                                 )}
                                 onToggle={() =>
                                   email

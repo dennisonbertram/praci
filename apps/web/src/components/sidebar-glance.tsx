@@ -52,7 +52,7 @@ export function glanceBadge({
 
 const KIND_LABEL: Record<NotificationKind, () => React.ReactNode> = {
   urgent: () => <Trans> (urgent)</Trans>,
-  needs_input: () => <Trans> (needs input)</Trans>,
+  needs_input: () => <Trans> (needs your answer)</Trans>,
   failed: () => <Trans> (failed)</Trans>,
   done: () => <Trans> (done)</Trans>,
   new: () => <Trans> (new)</Trans>,
@@ -60,7 +60,7 @@ const KIND_LABEL: Record<NotificationKind, () => React.ReactNode> = {
 
 const KIND_TITLE: Record<NotificationKind, () => string> = {
   urgent: () => t`Urgent`,
-  needs_input: () => t`Needs input`,
+  needs_input: () => t`Needs your answer`,
   failed: () => t`Failed`,
   done: () => t`Done`,
   new: () => t`New`,

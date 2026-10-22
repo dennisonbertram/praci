@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activityNotificationsEnabled, activityPromptSnippet } from "./runs.js";
+import { activityNotificationsEnabled, activityPromptSnippet, pendingAskSnippet } from "./runs.js";
 
 describe("run activity copy", () => {
   it("presents structured agent messages instead of their internal wake prompt", () => {
@@ -63,4 +63,15 @@ describe("run activity notification preference", () => {
     expect(activityNotificationsEnabled(null, false)).toBe(false);
     expect(activityNotificationsEnabled("group-1", false)).toBe(true);
   });
+});
+
+it("previews the pending question on a held run and skips answered cards", () => {
+  const ask = (text: string, status?: "pending" | "answered") => ({
+    blocks: [{ kind: "ask", text, status }],
+  });
+  expect(pendingAskSnippet([ask("Old one", "answered"), ask("Send $1,200 to Acme?")])).toBe(
+    "Send $1,200 to Acme?",
+  );
+  expect(pendingAskSnippet([ask("Done", "answered")])).toBeUndefined();
+  expect(pendingAskSnippet([{ blocks: [{ kind: "text", text: "hi" }] }])).toBeUndefined();
 });

@@ -29,6 +29,11 @@ export function rosterWorkStatusLabel(status: string, phase?: RunPhase | null): 
   }
 }
 
+/** The run is held for the person: a question, an approval card, or a computer sign-in. */
+export function rosterNeedsPerson(status: string): boolean {
+  return status === "waiting_input" || status === "waiting_takeover";
+}
+
 /** Compact rows keep actionable status visible in place of the message preview. */
 export function compactRosterStatusLabel(status: string, phase?: RunPhase | null): string | null {
   const workStatus = rosterWorkStatusLabel(status, phase);

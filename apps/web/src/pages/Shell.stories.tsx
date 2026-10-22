@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { userEvent, within } from "storybook/test";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { makeBot, mockBots, mockSections } from "../stories/fixtures";
 import { ShellPage } from "./Shell";
@@ -344,9 +345,6 @@ export const SidebarPageAgents: Story = {
   decorators: [at("/app/bot_chief")],
   beforeEach: () => {
     loadedWith(rootAgents[0] as ReturnType<typeof makeBot>)();
-    try {
-      localStorage.setItem("rakazo.activity-mode", "1");
-    } catch {}
     mockRpc({
       "spaces.list": {
         ...navigation,
@@ -392,6 +390,13 @@ export const SidebarPageAgents: Story = {
         botKinds: { bot_counsel: "needs_input" },
       },
     });
+  },
+  // Activity starts closed on every load.
+  play: async ({ canvasElement }) => {
+    const toggle = await within(canvasElement).findByRole("button", {
+      name: "Activity",
+    });
+    await userEvent.click(toggle);
   },
 };
 

@@ -41,7 +41,7 @@ export function PageAgentsRow({
         <span
           data-testid="page-agents-dot"
           role="img"
-          aria-label={t`Needs you`}
+          aria-label={t`Needs your answer`}
           className="size-2 shrink-0 rounded-full bg-primary"
         />
       ) : null}
