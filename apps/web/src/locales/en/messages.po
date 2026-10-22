@@ -3523,6 +3523,10 @@ msgstr "Could not save bot access"
 msgid "Could not save group"
 msgstr "Could not save group"
 
+#: src/components/HideAmountsToggle.tsx
+msgid "Could not save Hide amounts"
+msgstr "Could not save Hide amounts"
+
 #: src/pages/Onboarding.tsx
 msgid "Could not save model"
 msgstr "Could not save model"

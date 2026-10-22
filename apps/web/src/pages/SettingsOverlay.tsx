@@ -366,6 +366,7 @@ export function SettingsOverlay({
                     onClose={requestClose}
                     focusProvider={modelProvider}
                     view={section === "voice" ? "voice" : "model"}
+                    switchDisabled={voiceBusy}
                     onViewChange={(view) => setSection(view === "voice" ? "voice" : "models")}
                     voice={
                       <VoiceSettingsOverlay

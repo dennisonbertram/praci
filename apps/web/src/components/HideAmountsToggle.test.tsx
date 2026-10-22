@@ -14,6 +14,12 @@ vi.mock("@lingui/core/macro", () => ({ t: text }));
 const update = vi.hoisted(() => vi.fn());
 vi.mock("../lib/rpc", () => ({ rpc: { preferences: { update } } }));
 
+const toast = vi.hoisted(() => vi.fn());
+vi.mock("@rakazo/ui-web", async (orig) => ({
+  ...(await orig<object>()),
+  enqueueNotificationToast: toast,
+}));
+
 import {
   getHideAmounts,
   resetHideAmountsMemory,
@@ -47,7 +53,7 @@ it("keeps one label and lets the checked state say whether amounts are hidden", 
   act(() => root.unmount());
 });
 
-it("saves the choice on the user, and undoes it if saving fails", async () => {
+it("saves the choice on the user, and keeps it with an error toast if saving fails", async () => {
   update.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error("offline"));
   const host = document.createElement("div");
   document.body.append(host);
@@ -59,6 +65,10 @@ it("saves the choice on the user, and undoes it if saving fails", async () => {
   expect(getHideAmounts()).toBe(true);
   await act(async () => row.click());
   expect(update).toHaveBeenLastCalledWith({ hideAmounts: false });
-  expect(getHideAmounts()).toBe(true);
+  // The local choice stays (now shown) and the failure is reported.
+  expect(getHideAmounts()).toBe(false);
+  expect(toast).toHaveBeenCalledWith(
+    expect.objectContaining({ title: "Could not save Hide amounts" }),
+  );
   act(() => root.unmount());
 });

@@ -1,5 +1,5 @@
 import { t } from "@lingui/core/macro";
-import { Button } from "@rakazo/ui-web";
+import { Button, enqueueNotificationToast } from "@rakazo/ui-web";
 import { Check, Eye, EyeOff } from "lucide-react";
 import { setHideAmounts, useHideAmounts } from "../lib/hide-amounts-preference";
 import { rpc } from "../lib/rpc";
@@ -18,7 +18,13 @@ export function HideAmountsMenuItem({ onDone }: { onDone?: () => void }) {
         const next = !hidden;
         setHideAmounts(next);
         // Saved on the user, so it follows them to other browsers and never to the next person.
-        void rpc.preferences.update({ hideAmounts: next }).catch(() => setHideAmounts(hidden));
+        // If saving fails the choice stays on this browser (cached per user) and the person is told.
+        void rpc.preferences.update({ hideAmounts: next }).catch(() =>
+          enqueueNotificationToast({
+            id: "hide-amounts-save-failed",
+            title: t`Could not save Hide amounts`,
+          }),
+        );
         onDone?.();
       }}
     >

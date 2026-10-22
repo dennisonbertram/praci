@@ -221,6 +221,7 @@ import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent"
 import {
   maskCurrencyWhenHidden,
   setHideAmounts,
+  setHideAmountsUser,
   useHideAmounts,
 } from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
@@ -614,6 +615,9 @@ export function ShellPage() {
   const [collapsedSidebarSections, setCollapsedSidebarSections] = useState(() => new Set<string>());
   const [collapsedRosterParents, setCollapsedRosterParents] = useState(() => new Set<string>());
 
+  useEffect(() => {
+    setHideAmountsUser(userId ?? null);
+  }, [userId]);
   useEffect(() => {
     setCollapsedSidebarSections(readCollapsedSidebarSections(userId));
     setCollapsedRosterParents(readCollapsedRosterParents(userId));

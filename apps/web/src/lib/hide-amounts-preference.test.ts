@@ -11,6 +11,7 @@ import {
   getHideAmounts,
   resetHideAmountsMemory,
   setHideAmounts,
+  setHideAmountsUser,
   subscribeHideAmounts,
 } from "./hide-amounts-preference";
 
@@ -73,4 +74,17 @@ it("keeps runway, share counts and ownership visible, since they are not money",
   expect(shareCount(4_000_000, "en")).toBe("4,000,000");
   expect(percentFigure(40)).toBe("40.00%");
   expect(money(41_200_000)).toBe("$•••");
+});
+
+describe("hide amounts cache", () => {
+  it("restores each user's own choice from this browser before the server answers", () => {
+    stubStorage(new Map());
+    setHideAmountsUser("user-a");
+    setHideAmounts(true);
+    setHideAmountsUser("user-b");
+    expect(getHideAmounts()).toBe(false);
+    setHideAmountsUser("user-a");
+    expect(getHideAmounts()).toBe(true);
+    setHideAmountsUser(null);
+  });
 });

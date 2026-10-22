@@ -575,3 +575,28 @@ it("shows one line and one action on the system model, and opens the providers o
     await view.unmount();
   }
 });
+
+it("disables the Model and Voice switch while a voice change is pending", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(
+      <ModelSettingsOverlay
+        embedded
+        onClose={() => undefined}
+        focusProvider=""
+        voice={<div />}
+        view="voice"
+        onViewChange={() => undefined}
+        switchDisabled
+      />,
+    );
+  });
+  const pills = [...container.querySelectorAll("button[aria-pressed]")] as HTMLButtonElement[];
+  expect(pills).toHaveLength(2);
+  expect(pills.every((b) => b.disabled)).toBe(true);
+  await act(async () => root.unmount());
+  container.remove();
+});

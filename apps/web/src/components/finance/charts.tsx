@@ -553,18 +553,19 @@ export function BurnLines({
                 // biome-ignore lint/a11y/useSemanticElements: an SVG group cannot be an <a> that the router can drive
                 <g
                   key={m.start}
+                  // Pointer events go to the touch target below; keyboard access to every period stays.
+                  role="link"
+                  tabIndex={0}
+                  aria-label={`${granularity === "day" ? dayMonth(m.start) : name}: ${money(m.outCents)}`}
+                  onKeyDown={keyActivate(open)}
+                  onFocus={() => setActive(i)}
+                  onBlur={() => setActive(null)}
                   {...(touch
                     ? {}
                     : {
-                        role: "link",
-                        tabIndex: 0,
-                        "aria-label": `${granularity === "day" ? dayMonth(m.start) : name}: ${money(m.outCents)}`,
                         onClick: open,
-                        onKeyDown: keyActivate(open),
                         onMouseEnter: () => setActive(i),
                         onMouseLeave: () => setActive(null),
-                        onFocus: () => setActive(i),
-                        onBlur: () => setActive(null),
                       })}
                   className="cursor-pointer outline-none"
                 >
@@ -592,11 +593,9 @@ export function BurnLines({
               );
             })}
             {touch ? (
-              // biome-ignore lint/a11y/useSemanticElements: an SVG rect cannot be a <button> that spans the plot
+              // Pointer only: each period above is the keyboard and screen reader control.
+              // biome-ignore lint/a11y/noStaticElementInteractions: a tap overlay; the periods are the accessible controls
               <rect
-                role="button"
-                tabIndex={0}
-                aria-label={label}
                 data-testid="burn-touch-target"
                 x={left}
                 y={top}
@@ -613,11 +612,6 @@ export function BurnLines({
                   if (i === active) onOpen(point);
                   else setActive(i);
                 }}
-                onKeyDown={keyActivate(() => {
-                  const point = series[active ?? last];
-                  if (point) onOpen(point);
-                })}
-                onBlur={() => setActive(null)}
               />
             ) : null}
             {series.map((m, i) => {

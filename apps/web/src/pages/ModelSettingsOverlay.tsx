@@ -94,6 +94,7 @@ export function ModelSettingsOverlay({
   voice,
   view = "model",
   onViewChange,
+  switchDisabled = false,
 }: {
   onClose: () => void;
   /** Render panel body only for the shared Settings shell. */
@@ -108,6 +109,8 @@ export function ModelSettingsOverlay({
   voice?: ReactNode;
   view?: "model" | "voice";
   onViewChange?: (view: "model" | "voice") => void;
+  /** Keeps the Model/Voice switch still while a voice change is saving. */
+  switchDisabled?: boolean;
 }) {
   const { t } = useLingui();
   // A person on the system model sees one line; providers, backups, search model and Voice open on request.
@@ -1643,6 +1646,7 @@ export function ModelSettingsOverlay({
                     variant={view === next ? "default" : "outline"}
                     className="rounded-full"
                     aria-pressed={view === next}
+                    disabled={switchDisabled}
                     onClick={() => onViewChange?.(next)}
                   >
                     {next === "model" ? <Trans>Model</Trans> : <Trans>Voice</Trans>}
