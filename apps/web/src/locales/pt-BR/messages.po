@@ -89,9 +89,9 @@ msgstr ""
 msgid "{0, plural, one {# model} other {# models}}"
 msgstr "{0, plural, one {# modelo} other {# modelos}}"
 
-#. placeholder {0}: data.counts.needs_you
 #. placeholder {0}: glance.devinNeedsYou
 #. placeholder {0}: glance.gtmNeedsYou
+#. placeholder {0}: needsYou.length
 #: src/pages/Gtm.tsx
 #: src/pages/Shell.tsx
 msgid "{0, plural, one {# needs you} other {# need you}}"
@@ -549,6 +549,10 @@ msgstr "{minutes}m atrás"
 
 #: src/pages/Finance.tsx
 msgid "{monthlyTotal}/mo"
+msgstr ""
+
+#: src/components/gtm/GtmBlock.tsx
+msgid "{n} of {goal}"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -1383,6 +1387,10 @@ msgstr "Cabeçalho da chave API"
 
 #: src/components/integrations/ExchangeConnectDialog.tsx
 msgid "API key name"
+msgstr ""
+
+#: src/pages/Gtm.tsx
+msgid "API key required"
 msgstr ""
 
 #: src/components/gtm/GtmCalendar.tsx
@@ -4191,6 +4199,10 @@ msgid "Delete account"
 msgstr "Excluir conta"
 
 #: src/pages/shell/bot-page-panel.tsx
+msgid "Delete block"
+msgstr ""
+
+#: src/pages/shell/bot-page-panel.tsx
 msgid "Delete chart"
 msgstr ""
 
@@ -4472,6 +4484,7 @@ msgstr ""
 
 #: src/components/CopyLinkDialog.tsx
 #: src/components/finance/AddAccountDialog.tsx
+#: src/components/gtm/GtmBlock.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
@@ -4607,6 +4620,7 @@ msgstr ""
 msgid "Drafts are off for {botName}. Turn them back on in its tools."
 msgstr ""
 
+#: src/components/gtm/GtmBlock.tsx
 #: src/pages/Gtm.tsx
 msgid "Drafts for you"
 msgstr ""
@@ -5684,6 +5698,7 @@ msgstr ""
 msgid "In Data room"
 msgstr ""
 
+#: src/components/gtm/GtmBlock.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/Gtm.tsx
 msgid "In progress"
@@ -6753,6 +6768,10 @@ msgstr "Mover {full} para baixo"
 msgid "Move {full} up"
 msgstr "Mover {full} para cima"
 
+#: src/pages/shell/bot-page-panel.tsx
+msgid "Move down"
+msgstr ""
+
 #: src/components/sidebar-folders/SidebarDnd.tsx
 msgid "Move of {item} cancelled."
 msgstr ""
@@ -6772,6 +6791,10 @@ msgstr "Mover para"
 
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Move to Inbox"
+msgstr ""
+
+#: src/pages/shell/bot-page-panel.tsx
+msgid "Move up"
 msgstr ""
 
 #. placeholder {0}: maskCurrencyWhenHidden(status.subject)

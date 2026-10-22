@@ -4,8 +4,14 @@ import { BUILTIN_TOOL_NAMES } from "./builtin-tools.js";
 import {
   GTM_AGENT_BUILTIN_TOOLS,
   GTM_CHANNELS,
+  GTM_PAGE_FENCES,
+  GTM_PAGE_MAX_BLOCKS,
   GTM_POST_TOOL,
   GTM_WORK_ROUTINE_NAME,
+  GtmChannelsBlockSchema,
+  GtmMetricBlockSchema,
+  GtmPageBlockSchema,
+  GtmPlanBlockSchema,
   GtmPostInputSchema,
   GtmQueueInputSchema,
   GtmQueueOutputSchema,
@@ -137,6 +143,46 @@ describe("GTM contracts", () => {
       approval: "directory_policy",
     });
     expect(GTM_CHANNELS.x.platform).toBe("twitter");
+  });
+});
+
+describe("GTM page block contracts", () => {
+  it("exports the fixed fences and block limit", () => {
+    expect(GTM_PAGE_FENCES).toEqual(["gtm-plan", "gtm-channels", "gtm-metric"]);
+    expect(GTM_PAGE_MAX_BLOCKS).toBe(12);
+  });
+
+  it("accepts strict plan, channels, and metric queries", () => {
+    expect(
+      GtmPlanBlockSchema.parse({
+        group: "in_progress",
+        channel: ["x"],
+        category: ["draft"],
+        limit: 10,
+      }),
+    ).toEqual({ group: "in_progress", channel: ["x"], category: ["draft"], limit: 10 });
+    expect(GtmChannelsBlockSchema.parse({})).toEqual({});
+    expect(GtmMetricBlockSchema.parse({ label: "Launches", count: "done", goal: 3 })).toEqual({
+      label: "Launches",
+      count: "done",
+      goal: 3,
+    });
+  });
+
+  it("rejects unknown keys, needs-you plan groups, and overlong metric labels", () => {
+    expect(GtmPlanBlockSchema.safeParse({ group: "done", extra: true }).success).toBe(false);
+    expect(GtmChannelsBlockSchema.safeParse({ channel: ["x"] }).success).toBe(false);
+    expect(GtmPlanBlockSchema.safeParse({ group: "needs_you" }).success).toBe(false);
+    expect(GtmMetricBlockSchema.safeParse({ label: "x".repeat(41), count: "done" }).success).toBe(
+      false,
+    );
+    expect(
+      GtmPageBlockSchema.safeParse({
+        type: "gtm-plan",
+        query: { group: "done" },
+        extra: true,
+      }).success,
+    ).toBe(false);
   });
 });
 

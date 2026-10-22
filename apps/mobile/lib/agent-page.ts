@@ -11,10 +11,11 @@ export type PageBlock =
  */
 export function pageBlocks(content: string, chartSvgs: string[] = []): PageBlock[] {
   let chartIndex = 0;
-  return splitPage(content).map((segment): PageBlock => {
-    if (segment.kind === "markdown") return segment;
-    if (segment.kind === "invalid_chart") return { kind: "chart_error" };
+  return splitPage(content).flatMap((segment): PageBlock[] => {
+    if (segment.kind === "markdown") return [segment];
+    if (segment.kind === "invalid_chart") return [{ kind: "chart_error" }];
+    if (segment.kind === "gtm" || segment.kind === "invalid_gtm") return [];
     const svg = chartSvgs[chartIndex++];
-    return svg ? { kind: "chart", name: segment.chart.name, svg } : { kind: "chart_error" };
+    return [svg ? { kind: "chart", name: segment.chart.name, svg } : { kind: "chart_error" }];
   });
 }
