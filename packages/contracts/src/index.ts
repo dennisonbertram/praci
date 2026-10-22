@@ -19,6 +19,7 @@ export * from "./domain.js";
 export * from "./events.js";
 export * from "./finance.js";
 export * from "./finance-statements.js";
+export * from "./fundraising.js";
 export * from "./granola.js";
 export * from "./gtm.js";
 export * from "./history.js";

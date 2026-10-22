@@ -27,6 +27,7 @@ model User {
   contacts                    Contact[]
   capTableSnapshots           CapTableSnapshot[]
   investorUpdates             InvestorUpdate[]
+  fundraiseRounds             FundraiseRound[]
   sidebarPages                SidebarPage[]
   notifications               Notification[]
   notificationEndpoints       NotificationEndpoint[]
@@ -270,6 +271,7 @@ model Space {
   contacts                    Contact[]
   capTableSnapshots           CapTableSnapshot[]
   investorUpdates             InvestorUpdate[]
+  fundraiseRounds             FundraiseRound[]
   sidebarPages                SidebarPage[]
   agentHomes                  AgentHome[]
   browserProfiles             BrowserProfile[]
@@ -2448,27 +2450,35 @@ model FinanceExchangeSnapshot {
 }
 
 model Contact {
-  id           String   @id @default(cuid())
-  spaceId      String
-  space        Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name         String
-  email        String?
+  id             String          @id @default(cuid())
+  spaceId        String
+  space          Space           @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  email          String?
   /// For example the investor's fund.
-  organization String?
-  /// A ContactKind: "investor", "auditor", "customer", "vendor", "partner", "advisor", "legal" or "other"
-  kind         String   @default("investor")
-  notes        String?
+  organization   String?
+  /// A ContactKind: "investor", "auditor", "customer", "vendor", "partner", "advisor", "legal", "prospect" or "other"
+  kind           String          @default("investor")
+  notes          String?
+  /// Prospect pipeline stage: target, intro, meeting, diligence, committed or passed; null for other contacts.
+  stage          String?
+  checkSizeCents BigInt?
+  nextStep       String?
+  /// The round open when the prospect's stage was last saved as committed; null otherwise.
+  roundId        String?
+  round          FundraiseRound? @relation(fields: [roundId], references: [id], onDelete: SetNull)
   /// The agent that added the contact, set by the server; null for a contact added by hand or after the agent was deleted.
-  botId        String?
-  bot          Bot?     @relation(fields: [botId], references: [id], onDelete: SetNull)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  botId          String?
+  bot            Bot?            @relation(fields: [botId], references: [id], onDelete: SetNull)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   @@unique([spaceId, userId, email])
   @@index([spaceId, userId])
   @@index([botId])
+  @@index([roundId])
   @@map("contacts")
 }
 
@@ -2499,6 +2509,26 @@ model InvestorUpdate {
 
   @@index([spaceId, userId, createdAt])
   @@map("investor_updates")
+}
+
+/// A fundraising round. Open while closedAt is null; at most one open round per space and user
+/// (fundraise_rounds_open_key is raw SQL, a partial unique index).
+model FundraiseRound {
+  id          String    @id @default(cuid())
+  spaceId     String
+  space       Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  targetCents BigInt
+  capCents    BigInt
+  closedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  contacts    Contact[]
+
+  @@index([spaceId, userId])
+  @@map("fundraise_rounds")
 }
 
 /// The Carta agent's latest read of the company's cap table. One row per user, replaced on each sync.

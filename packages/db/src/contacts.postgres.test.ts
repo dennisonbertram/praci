@@ -260,4 +260,22 @@ describePostgres("contacts (PostgreSQL)", () => {
     await expect(deleteContact(prisma, mine, ada!.id)).rejects.toBeInstanceOf(IsolationError);
     expect(await listContacts(prisma, sameSpace)).toHaveLength(1);
   });
+
+  it("keeps a restored commitment in its own round and refuses another user's round", async () => {
+    const base = { name: "Round Keeper", kind: "prospect" as const, stage: "committed" as const };
+    const mk = (u: typeof mine, name: string, closed: boolean) =>
+      prisma.fundraiseRound.create({
+        data: { ...u, name, targetCents: 1n, capCents: 1n, closedAt: closed ? new Date() : null },
+      });
+    const closedRound = await mk(mine, "A", true);
+    const openRound = await mk(mine, "B", false);
+    const foreign = await mk(sameSpace, "C", false);
+    const restored = await saveContact(prisma, mine, { ...base, roundId: closedRound.id });
+    expect(restored.roundId).toBe(closedRound.id);
+    const fresh = await saveContact(prisma, mine, { ...base, name: "Fresh" });
+    expect(fresh.roundId).toBe(openRound.id);
+    await expect(
+      saveContact(prisma, mine, { ...base, name: "Thief", roundId: foreign.id }),
+    ).rejects.toBeInstanceOf(IsolationError);
+  });
 });

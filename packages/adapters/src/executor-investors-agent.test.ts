@@ -197,6 +197,7 @@ describe("Investors agent runs", () => {
     expect(names).toEqual(
       expect.arrayContaining(["cap_table_read", "contacts_list", "search_data_room"]),
     );
+    expect(names).toContain("fundraising_read");
     for (const banned of ["mail_send", "mcp__carta__list", "COMPOSIO_SEARCH"]) {
       expect(names).not.toContain(banned);
     }
@@ -223,5 +224,10 @@ describe("Investors agent runs", () => {
         "investor_update_draft",
       );
     }
+  });
+
+  it("is not offered fundraising_read on a run another bot started", async () => {
+    const { request } = await runInvestors("bot_message");
+    expect((request?.tools ?? []).map((tool) => tool.name)).not.toContain("fundraising_read");
   });
 });
