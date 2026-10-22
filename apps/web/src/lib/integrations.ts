@@ -99,8 +99,14 @@ export const FINANCE_PROVIDERS = [
     name: "Mercury",
     // No Simple Icons mark exists for Mercury: its own icon, vendored from mercury.com.
     logo: "/logos/mercury.svg",
+    endpoint: "https://mcp.mercury.com/mcp",
   },
-  { provider: "brex", name: "Brex", logo: "https://cdn.simpleicons.org/brex" },
+  {
+    provider: "brex",
+    name: "Brex",
+    logo: "https://cdn.simpleicons.org/brex",
+    endpoint: "https://api.brex.com/mcp",
+  },
 ] as const;
 
 /** First-party hosted MCP servers: the tile opens the custom connection dialog prefilled with `endpoint`. */

@@ -228,7 +228,7 @@ import {
   useHideAmounts,
 } from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
-import { appPath, FINANCE_PROVIDERS } from "../lib/integrations";
+import { appPath } from "../lib/integrations";
 import { findInvestorsAgent, investorsAgentSuggestions } from "../lib/investors-agent";
 import { findLegalAgent } from "../lib/legal-agent";
 import { accountTimezone, markTimezoneReported, timezoneToReport } from "../lib/local-timezone";
@@ -3444,13 +3444,13 @@ export function ShellPage() {
 
   const cartaSuggestions = [t`Who are our investors?`];
   // A bank's own chat starts with two read questions, like the other page agents.
-  const bankAgentName = active ? agentAppFor(active.id, active.spaceId)?.name : undefined;
+  const bankAgent = active ? agentAppFor(active.id, active.spaceId)?.bank : undefined;
   const bankAgentPage =
     !pageMode &&
     !inGroup &&
     active !== undefined &&
     isIntegrationAgentSpawnKey(active.spawnKey) &&
-    FINANCE_PROVIDERS.some((entry) => entry.name === bankAgentName);
+    bankAgent === true;
   const bankSuggestions = [
     t`What are our account balances?`,
     t`What were the biggest payments this month?`,
