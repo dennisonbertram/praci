@@ -580,6 +580,37 @@ describe("scratchpad tools store", () => {
     ).resolves.toMatchObject({ error: expect.any(String) });
   });
 
+  it.each([
+    [true, null, "https://community.example/post/123", true],
+    [false, null, "https://community.example/post/123", false],
+    [true, null, "javascript:alert(1)", false],
+    [true, null, "https://user:password@community.example/post/123", false],
+    [true, "https://community.example/post/123", "https://community.example/post/456", false],
+  ] as const)(
+    "draft proof: founder=%s, previous=%s, proof=%s, allowed=%s",
+    async (founder, previous, proof, allowed) => {
+      const existing = row({ category: "draft", channel: "hn", proof: previous });
+      const updateMany = vi.fn(async () => ({ count: 1 }));
+      const prisma = prismaWith({ findFirst: vi.fn(async () => existing), updateMany });
+      const update = founder ? updateScratchpadItemFromUser : updateScratchpadItemFromTool;
+      const result = await update(
+        { prisma: prisma as never },
+        { ...scope, itemId: existing.id, status: "done", proof },
+      );
+      if (allowed) {
+        expect(result).toMatchObject({ item: { status: "done", proof } });
+        expect(updateMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({ ...scope, id: existing.id, proof: null }),
+          }),
+        );
+      } else {
+        expect(result).toMatchObject({ error: expect.any(String) });
+        expect(updateMany).not.toHaveBeenCalled();
+      }
+    },
+  );
+
   it("allows public-post proof to progress from null or effect stamp through Zernio to URL", async () => {
     for (const [oldProof, proof] of [
       [undefined, "zernio:post-1"],

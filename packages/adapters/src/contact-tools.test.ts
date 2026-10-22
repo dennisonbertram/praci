@@ -172,7 +172,13 @@ describe("contact tools", () => {
     const prisma = { capTableSnapshot: { findUnique }, safe: { findMany } } as never;
     const read = await contactToolFromTool("cap_table_read", { prisma, scope }, {});
     expect(read).toEqual({
-      capTable: expect.objectContaining({ companyName: "Example Co", fullyDilutedShares: 1000 }),
+      capTable: expect.objectContaining({
+        companyName: "Example Co",
+        fullyDilutedShares: 1000,
+        // The page's figure (no Funded SAFE here), not an amount stored by the source.
+        amountRaisedUsd: 0,
+        amountRaisedSource: expect.stringContaining("Funded SAFEs"),
+      }),
       // A Draft is not on the Cap Table page, so the agent does not see it here either.
       safes: [
         {
