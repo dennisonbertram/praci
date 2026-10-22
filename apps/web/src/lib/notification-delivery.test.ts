@@ -215,4 +215,13 @@ describe("attentionFromDto", () => {
     expect(attentionFromDto({ ...base, kind: "needs_input" }).timeout).toBe(0);
     expect(attentionFromDto({ ...base, kind: "done" }).timeout).toBeUndefined();
   });
+  it("groups only approvals; questions and codes stay their own toasts", () => {
+    const needs = { ...base, kind: "needs_input" as const };
+    expect(attentionFromDto(needs).approval).toBe(true);
+    expect(attentionFromDto({ ...needs, title: "Inbox agent needs an answer" }).approval).toBe(
+      false,
+    );
+    expect(attentionFromDto({ ...needs, title: "Inbox agent needs a code" }).approval).toBe(false);
+    expect(attentionFromDto({ ...base, kind: "done" }).approval).toBeUndefined();
+  });
 });

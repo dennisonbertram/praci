@@ -4109,7 +4109,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               if (current?.status === "waiting_input") return pauseForApproval();
             }
             return pauseForAsk(
-              buildConsentAskBlock(recorded.effect.id, recipient),
+              buildConsentAskBlock(recorded.effect.id),
               "Allow access to your mail",
             );
           };
