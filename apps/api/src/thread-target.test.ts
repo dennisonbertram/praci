@@ -1699,8 +1699,20 @@ describe("sendThreadMessage", () => {
     );
 
     expect(tx.message.create).not.toHaveBeenCalled();
+    // The newest user message is found even when bot messages (an approval card) follow it.
+    expect(tx.message.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { threadId: "thread-1", role: "user" } }),
+    );
+    // The retry's nonce is stored so a repeated request replays this send.
+    expect(tx.message.update).toHaveBeenCalledWith({
+      where: { id: "msg-failed" },
+      data: { clientNonce: "nonce-retry" },
+    });
     expect(tx.run.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ sourceMessageId: "msg-failed", clientNonce: undefined }),
+      data: expect.objectContaining({
+        sourceMessageId: "msg-failed",
+        clientNonce: "send:msg-failed",
+      }),
     });
     expect(tx.event.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ type: "thread.message.updated" }),

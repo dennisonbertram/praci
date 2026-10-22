@@ -54,7 +54,7 @@ describePostgres("approval card lifecycle (PostgreSQL)", () => {
   });
 
   /** A delegated run that has recorded a payment approval and is about to pause on it. */
-  async function runningDelegate() {
+  async function runningDelegate(request: object = { amount: 75 }) {
     const seq = n++;
     const task = await prisma.task.create({
       data: {
@@ -89,7 +89,7 @@ describePostgres("approval card lifecycle (PostgreSQL)", () => {
         kind: "requestSendMoney",
         idempotencyKey: `life-${suffix}-${seq}`,
         status: "intended",
-        request: { amount: 75 },
+        request,
       },
     });
     const block = {
@@ -163,6 +163,18 @@ describePostgres("approval card lifecycle (PostgreSQL)", () => {
     expect(await older.effectStatus()).toBe("superseded");
   });
 
+  it("a different payment in the same thread does not supersede an older card", async () => {
+    const first = await runningDelegate({ amount: 10, recipient: "a" });
+    expect(await first.pause()).toBe(true);
+    const second = await runningDelegate({ amount: 20, recipient: "b" });
+    expect(await second.pause()).toBe(true);
+    expect(await first.card()).toMatchObject({ status: "pending" });
+    expect(await first.effectStatus()).toBe("intended");
+    expect(await second.card()).toMatchObject({ status: "pending" });
+    await first.answer("deny");
+    await second.answer("deny");
+  });
+
   it("a run that fails after asking for approval expires the card and says nothing was sent", async () => {
     const delegate = await runningDelegate();
     // The card was posted, then the run failed before anyone answered.
@@ -181,7 +193,9 @@ describePostgres("approval card lifecycle (PostgreSQL)", () => {
     expect(await delegate.card()).toMatchObject({ status: "answered", answer: "expired" });
     expect(await delegate.effectStatus()).toBe("expired");
     const run = await prisma.run.findUniqueOrThrow({ where: { id: delegate.run.id } });
-    expect(run.error).toBe("This agent could not finish. Try again. Nothing was sent.");
+    expect(run.error).toBe(
+      "This agent could not finish. Try again. The approval for requestSendMoney expired, so that action was not done.",
+    );
     expect(await delegate.answer("allow")).toBe(false);
   });
 });

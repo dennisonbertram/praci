@@ -124,7 +124,7 @@ export async function closeApprovalCardsInTransaction(
 }
 
 /**
- * A newer approval for the same kind of action replaces older delegated ones waiting in this
+ * A newer approval for the identical request (same tool and arguments) replaces older delegated ones waiting in this
  * thread (the sender asked twice for one job). The older cards are closed and their runs cancelled
  * without an outcome message, so the thread shows one live card and one outcome.
  */
@@ -135,7 +135,7 @@ async function supersedeOlderApprovals(
 ) {
   const effect = await tx.externalEffect.findUnique({
     where: { id: approvalEffectId },
-    select: { kind: true },
+    select: { kind: true, request: true },
   });
   // A mail-consent card belongs to its own run; only an action's approval is replaced.
   if (!effect || effect.kind === AI_CONSENT_EFFECT_KIND) return;
@@ -147,7 +147,14 @@ async function supersedeOlderApprovals(
       id: { not: input.runId },
       trigger: "bot_message",
       status: "waiting_input",
-      effects: { some: { status: "intended", kind: effect.kind } },
+      // Only the same request replaces it: another payment in this thread has different arguments.
+      effects: {
+        some: {
+          status: "intended",
+          kind: effect.kind,
+          request: { equals: effect.request as never },
+        },
+      },
     },
     select: { id: true, taskId: true },
   });

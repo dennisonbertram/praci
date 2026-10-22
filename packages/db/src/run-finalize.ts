@@ -12,8 +12,6 @@ import { closeApprovalCardsInTransaction } from "./run-pauses.js";
 import { createPendingSteeringRun } from "./steering.js";
 import { withTransactionRetry } from "./transaction-retry.js";
 
-const NOTHING_SENT = "Nothing was sent.";
-
 export async function finalizeRun(
   prisma: PrismaClient,
   input: FinalizeRunInput,
@@ -105,7 +103,7 @@ async function finalizeRunOnce(
     if (task.count !== 1) throw new Error("Run task was not available to finalize");
 
     // A run that fails after asking for approval leaves a card nobody can act on; close it, and
-    // say so, so the person knows nothing was sent.
+    // say which action was not done. Earlier steps of the run may have completed.
     let failure = input.outcome === "failed" ? input.error : null;
     if (input.outcome === "failed") {
       const expired = await closeApprovalCardsInTransaction(tx, {
@@ -116,7 +114,12 @@ async function finalizeRunOnce(
         answer: "expired",
       });
       if (expired > 0) {
-        failure = `${input.error} ${NOTHING_SENT}`;
+        const kinds = await tx.externalEffect.findMany({
+          where: { runId: input.runId, spaceId: input.spaceId, status: "expired" },
+          select: { kind: true },
+          distinct: ["kind"],
+        });
+        failure = `${input.error} The approval for ${kinds.map((e) => e.kind).join(", ")} expired, so that action was not done.`;
         await tx.run.update({ where: { id: input.runId }, data: { error: failure } });
       }
     }

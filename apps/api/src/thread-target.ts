@@ -176,7 +176,8 @@ async function replayExistingSend(
   const receiptEvent = await deps.prisma.event.findFirst({
     where: {
       threadId,
-      type: "thread.message.created",
+      // A retry reports its new run in a message.updated event.
+      type: { in: ["thread.message.created", "thread.message.updated"] },
       payload: { path: ["messageId"], equals: message.id },
     },
     orderBy: { seq: "desc" },
@@ -648,7 +649,7 @@ export async function dataRoomReferenceLines(
 /**
  * The person's own text sent again right after its run failed is a retry. It runs the message
  * already in the thread instead of adding a second identical bubble. Only plain text qualifies,
- * and only while that message is still the newest in the thread.
+ * and only while that is the person's newest message and its latest run failed.
  */
 async function findRetriedUserMessage(
   tx: Prisma.TransactionClient,
@@ -661,12 +662,13 @@ async function findRetriedUserMessage(
       : null;
   const sent = plainText(blocks);
   if (!sent?.trim()) return null;
+  // Bot messages (an approval card) may follow the person's message, so look at their latest one.
   const last = await tx.message.findFirst({
-    where: { threadId },
+    where: { threadId, role: "user" },
     orderBy: { seq: "desc" },
     include: { sourceRuns: { orderBy: { createdAt: "desc" }, take: 1 } },
   });
-  if (last?.role !== "user" || last.sourceRuns[0]?.status !== "failed") return null;
+  if (last?.sourceRuns?.[0]?.status !== "failed") return null;
   const parsed = MessageBlockSchema.array().safeParse(last.blocks);
   return parsed.success && plainText(parsed.data) === sent ? last : null;
 }
@@ -773,6 +775,13 @@ export async function sendThreadMessage(
         const retried = replyToMessageId
           ? null
           : await findRetriedUserMessage(tx, target.threadId, blocks);
+        // The retry's nonce replaces the old one so a repeated request finds this send.
+        if (retried && input.clientNonce && retried.clientNonce !== input.clientNonce) {
+          await tx.message.update({
+            where: { id: retried.id },
+            data: { clientNonce: input.clientNonce },
+          });
+        }
         const message =
           retried ??
           (await createThreadMessageInTransaction(tx, {
@@ -904,8 +913,11 @@ export async function sendThreadMessage(
             userId: actor.userId,
             status: "queued",
             trigger: "user",
-            // The retried message's first run already holds this key.
-            clientNonce: retried ? undefined : sendRunClientNonce(input.clientNonce, message.id),
+            // The run key derives from the message, so a message that was sent with a nonce already
+            // has a run holding it.
+            clientNonce: retried?.clientNonce
+              ? undefined
+              : sendRunClientNonce(input.clientNonce, message.id),
             sourceMessageId: message.id,
           },
         });
