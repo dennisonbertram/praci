@@ -211,7 +211,12 @@ export function GtmPage({
             ) : (
               <>
                 {botId ? (
-                  <section className="rounded-xl border border-border p-4">
+                  // Hidden until the agent has written something, but mounted so it can load the page.
+                  <section
+                    className={
+                      page?.content.trim() ? "rounded-xl border border-border p-4" : "hidden"
+                    }
+                  >
                     <div className="mb-3 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
                       <span>
                         <Trans>Written by GTM agent</Trans>
