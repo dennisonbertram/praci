@@ -574,3 +574,9 @@ it("hides the account name when it only repeats the app name", async () => {
   await show(APP_PAGE, data({ catalog: [notion], connections: [appConnection()] }));
   expect(container.querySelector("b")?.textContent).toBe("Sample workspace");
 });
+
+it("gives the back link a phone tap size and writes the connected date in words", async () => {
+  await show(APP_PAGE, data({ connections: [appConnection()] }));
+  expect(container.querySelector('a[href="/app/integrations"]')?.className).toContain("rk-tap");
+  expect(container.textContent).toMatch(/Connected (Dec 31, 2025|Jan 1, 2026)/);
+});

@@ -1237,7 +1237,7 @@ export function ShellPage() {
     if (!legalMode) setLegalAgentOpen(false);
   }, [legalMode]);
   useEffect(() => {
-    setGtmAgentOpen(gtmMode && window.matchMedia("(min-width: 768px)").matches);
+    if (!gtmMode) setGtmAgentOpen(false);
   }, [gtmMode]);
   useEffect(() => {
     if (!devinMode) setDevinAgentOpen(false);

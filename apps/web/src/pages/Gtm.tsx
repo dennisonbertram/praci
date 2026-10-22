@@ -250,7 +250,7 @@ export function GtmPage({
                   <GtmBlockContext.Provider value={{ overview: data, onChange: changed }}>
                     <section
                       className={
-                        page !== undefined && !page?.content.trim() && !hadContent.current
+                        !page?.content.trim() && !hadContent.current
                           ? "hidden"
                           : "rounded-xl border border-border p-4"
                       }

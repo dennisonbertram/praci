@@ -2989,7 +2989,7 @@ msgstr "Verbunden"
 msgid "Connected · {0}"
 msgstr "Verbunden · {0}"
 
-#. placeholder {0}: new Date(row.createdAt).toLocaleDateString()
+#. placeholder {0}: new Date(row.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" })
 #: src/components/integrations/AppDetail.tsx
 msgid "Connected {0}"
 msgstr ""
@@ -4025,6 +4025,10 @@ msgstr ""
 #. placeholder {0}: folder.name
 #: src/pages/DataRoom.tsx
 msgid "Created {0}"
+msgstr ""
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Creates a {service} agent that asks you before each change."
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
@@ -6742,9 +6746,8 @@ msgstr ""
 msgid "More"
 msgstr ""
 
-#. placeholder {0}: app.name
 #. placeholder {0}: exchange.name
-#. placeholder {0}: server.name
+#. placeholder {0}: source.name
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "More {0} actions"
@@ -6777,10 +6780,6 @@ msgstr ""
 
 #: src/pages/ActivityList.tsx
 msgid "More filters"
-msgstr ""
-
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "More Granola actions"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -7601,14 +7600,6 @@ msgstr ""
 msgid "Off in Settings"
 msgstr ""
 
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Off: other agents reach {service} only through this agent."
-msgstr ""
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Off: the agent only reads. On: it can also make changes, and asks you before each one."
-msgstr ""
-
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "On a call with {0}"
@@ -7616,14 +7607,6 @@ msgstr "Im Gespräch mit {0}"
 
 #: src/pages/RoutineEditor.tsx
 msgid "On a schedule"
-msgstr ""
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "On: creates a {service} agent that can read and, after you approve, make changes."
-msgstr ""
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "On: other agents can read {service}. Changes still go through this agent and ask first."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -7878,6 +7861,10 @@ msgstr "Originalnachricht nicht verfügbar"
 #: src/lib/devin-format.ts
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Other"
+msgstr ""
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Other agents can read {service}; changes still go through this agent."
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -10644,6 +10631,10 @@ msgstr ""
 
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "the {month} statement"
+msgstr ""
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "The agent asks you before each change."
 msgstr ""
 
 #: src/pages/investors/UpdateEditor.tsx
