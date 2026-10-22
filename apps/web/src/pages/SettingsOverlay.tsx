@@ -296,14 +296,8 @@ export function SettingsOverlay({
           </nav>
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            {/* Scrolling sections get a divider so cards never look tucked under the title. */}
-            <div
-              className={`flex items-start justify-between gap-4 px-6 pt-6 max-md:p-0 sm:px-8 sm:pt-7 ${
-                section === "models" || section === "voice" || section === "memory"
-                  ? ""
-                  : "border-b border-border pb-4 max-md:border-b-0 max-md:pb-0"
-              }`}
-            >
+            {/* A divider on every section, so cards never look tucked under the title and every first card starts at the same height. */}
+            <div className="flex items-start justify-between gap-4 border-b border-border px-6 pt-6 pb-4 max-md:border-b-0 max-md:p-0 sm:px-8 sm:pt-7">
               {/* On a phone the select above already names the section; the title stays for screen readers. */}
               <DialogTitle className="text-2xl font-medium text-foreground max-md:sr-only">
                 {sectionTitle}

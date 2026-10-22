@@ -308,7 +308,7 @@ function AttachmentPreviewDialog({
         initialFocus={downloadRef}
         className={cn(
           "flex h-dvh max-h-none w-full max-w-none flex-col gap-2 rounded-none sm:max-w-none md:w-[min(960px,94vw)] md:rounded-xl",
-          compact ? "md:h-auto md:max-h-[85vh] md:min-h-[40vh]" : "md:h-[85vh]",
+          compact ? "md:h-auto md:max-h-[85vh]" : "md:h-[85vh]",
         )}
       >
         <div className="flex items-center gap-1 pe-8">

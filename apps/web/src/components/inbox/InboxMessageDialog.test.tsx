@@ -761,12 +761,15 @@ it("shows the row's subject and preview with a body skeleton while loading, then
   expect(document.body.textContent).toContain("body");
 });
 
-it("shows Try again, not the skeleton, after a failed load", async () => {
+it("shows Try again, Reply and Archive, not the skeleton, after a failed load", async () => {
   get.mockRejectedValueOnce(new Error("offline"));
-  act(() => root.render(<InboxMessageDialog messageId="l2" onClose={() => {}} />));
+  act(() =>
+    root.render(<InboxMessageDialog messageId="l2" onArchive={() => {}} onClose={() => {}} />),
+  );
   await flush();
   expect(document.querySelector('[aria-busy="true"]')).toBeNull();
-  expect(document.body.textContent).toContain("Try again");
+  const labels = [...document.querySelectorAll("button")].map((b) => b.textContent);
+  expect(labels).toEqual(expect.arrayContaining(["Try again", "Reply", "Archive"]));
 });
 
 it("shows the loading state, not the previous message, after switching", async () => {
