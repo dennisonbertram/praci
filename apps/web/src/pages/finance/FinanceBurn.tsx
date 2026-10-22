@@ -11,7 +11,7 @@ import {
 } from "@rakazo/ui-web";
 import { useNavigate } from "react-router-dom";
 import { CountCryptoButton } from "../../components/finance/CountCryptoButton";
-import { BurnLines, LineChart, StackBar } from "../../components/finance/charts";
+import { BurnLines, LineChart } from "../../components/finance/charts";
 import {
   BreakdownRows,
   BurnLegend,
@@ -124,16 +124,7 @@ export function FinanceBurnPage() {
                 ) : null
               }
             >
-              <StackBar
-                segments={data.whereItWent}
-                label={t`Burn by category`}
-                onOpen={(key) => navigate(financePath.category(key))}
-              />
-              <BreakdownRows
-                rows={data.whereItWent}
-                swatches
-                to={(row) => financePath.category(row.key)}
-              />
+              <BreakdownRows rows={data.whereItWent} to={(row) => financePath.category(row.key)} />
             </Section>
             <Section title={<Trans>By account</Trans>}>
               <Table compact>
@@ -270,7 +261,6 @@ export function FinanceMonthPage({ month }: { month: string }) {
           <Section title={<Trans>Categories</Trans>}>
             <BreakdownRows
               rows={data.categories}
-              swatches
               to={(row) => financePath.category(row.key, { month })}
             />
           </Section>
@@ -344,6 +334,7 @@ export function FinanceRunwayPage() {
                   : data.runwayCrypto === "stablecoins"
                     ? t`Stablecoins count as cash in this runway; other crypto does not.`
                     : t`Crypto is left out of cash and this runway.`}
+                {parts?.unpricedTokenCount ? ` ${t`${parts.unpricedTokenCount} unpriced.`}` : null}
               </span>
             </div>
           ) : null}

@@ -379,7 +379,7 @@ function Overview({
       : period === "year"
         ? t`${year} so far`
         : period === "month"
-          ? t`Out so far this month`
+          ? t`Out so far this month, not over`
           : null;
   const previousRange = range({ start: totals.previousStart, end: totals.previousEnd });
   const bars = data.cashSeries[period];
@@ -399,6 +399,10 @@ function Overview({
     : connected.some((source) => source.status === "needs_reconnect")
       ? "bg-warning"
       : "bg-success";
+  const nonUsdNote =
+    data.excludedNonUsdCount === 1
+      ? t`1 non-USD transaction not counted`
+      : t`${data.excludedNonUsdCount} non-USD transactions not counted`;
   const showSkeleton = syncing && data.lastSyncedAt === null;
   const updated = data.lastSyncedAt ? formatRelativeTime(data.lastSyncedAt) : "";
 
@@ -412,40 +416,29 @@ function Overview({
           meta={
             <>
               <CompanyMenu>
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Link
-                        to={financePath.accounts()}
-                        className="rk-tap inline-flex min-w-0 items-center gap-1.5 rounded-full px-1.5 py-0.5 hover:text-foreground"
-                      />
-                    }
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={`size-1.5 shrink-0 rounded-full ${sourceDot}`}
-                    />
-                    <span className="truncate">
-                      {/* A phone has room for the time only; Accounts names the sources. */}
-                      <span className={updated || syncing ? "max-sm:hidden" : undefined}>
-                        {sourceNames}
-                        {updated || syncing ? " · " : ""}
-                      </span>
-                      {syncing ? t`syncing…` : updated ? t`synced ${updated}` : null}
+                <Link
+                  to={financePath.accounts()}
+                  className="rk-tap inline-flex min-w-0 items-center gap-1.5 rounded-full px-1.5 py-0.5 hover:text-foreground"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`size-1.5 shrink-0 rounded-full ${sourceDot}`}
+                  />
+                  <span className="truncate">
+                    {/* A phone has room for the time only; Accounts names the sources. */}
+                    <span className={updated || syncing ? "max-sm:hidden" : undefined}>
+                      {sourceNames}
+                      {updated || syncing ? " · " : ""}
                     </span>
-                    {sourceDot !== "bg-success" ? (
-                      <span className="sr-only">
-                        {sourceDot === "bg-destructive" ? t`Sync failed.` : t`Sign-in needed.`}
-                      </span>
-                    ) : null}
-                    {data.excludedNonUsdCount > 0 ? (
-                      <span className="sr-only">{t`${data.excludedNonUsdCount} non-USD not counted`}</span>
-                    ) : null}
-                  </TooltipTrigger>
-                  {data.excludedNonUsdCount > 0 ? (
-                    <TooltipContent>{t`${data.excludedNonUsdCount} non-USD not counted`}</TooltipContent>
+                    {syncing ? t`syncing…` : updated ? t`synced ${updated}` : null}
+                  </span>
+                  {sourceDot !== "bg-success" ? (
+                    <span className="sr-only">
+                      {sourceDot === "bg-destructive" ? t`Sync failed.` : t`Sign-in needed.`}
+                    </span>
                   ) : null}
-                </Tooltip>
+                  {data.excludedNonUsdCount > 0 ? <span> · {nonUsdNote}</span> : null}
+                </Link>
                 <Tooltip>
                   <TooltipTrigger
                     render={
@@ -539,10 +532,10 @@ function Overview({
               <Kpi
                 title={t`Cash`}
                 value={money(data.cash.cashCents)}
-                sub={`${cashSubtitle(
+                sub={cashSubtitle(
                   data.cash.cashAccountCount,
                   otherCounted > 0 ? "all" : stablecoins > 0 ? "stablecoins" : "none",
-                )}${data.excludedNonUsdCount > 0 ? ` · ${t`${data.excludedNonUsdCount} not counted`}` : ""}`}
+                )}
                 to={financePath.accounts()}
                 hover={
                   data.crypto ? (

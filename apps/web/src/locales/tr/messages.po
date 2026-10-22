@@ -305,12 +305,7 @@ msgstr ""
 #. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
-msgid "{0} non-USD not counted"
-msgstr ""
-
-#. placeholder {0}: data.excludedNonUsdCount
-#: src/pages/Finance.tsx
-msgid "{0} not counted"
+msgid "{0} non-USD transactions not counted"
 msgstr ""
 
 #. placeholder {0}: wallet.safeThreshold
@@ -351,6 +346,11 @@ msgstr ""
 #. placeholder {0}: card.count
 #: src/components/FinanceCards.tsx
 msgid "{0} transactions · {period}"
+msgstr ""
+
+#. placeholder {0}: parts.unpricedTokenCount
+#: src/pages/finance/FinanceBurn.tsx
+msgid "{0} unpriced."
 msgstr ""
 
 #. placeholder {0}: monthShort(data.monthly.at(-1)?.month ?? "")
@@ -716,6 +716,11 @@ msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
 msgid "0x… or name.eth"
+msgstr ""
+
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
+msgid "1 non-USD transaction not counted"
 msgstr ""
 
 #: src/components/fundraising/MercuryLine.tsx
@@ -2044,10 +2049,6 @@ msgstr ""
 #: src/pages/finance/FinanceBurn.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Burn"
-msgstr ""
-
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Burn by category"
 msgstr ""
 
 #: src/components/integrations/GranolaMeetingsCard.tsx
@@ -7826,7 +7827,6 @@ msgstr "Orijinal mesaj kullanılamıyor"
 
 #: src/components/cap-table/OwnershipBar.tsx
 #: src/components/ContactDialog.tsx
-#: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
 #: src/lib/devin-format.ts
@@ -7863,7 +7863,7 @@ msgid "Out"
 msgstr ""
 
 #: src/pages/Finance.tsx
-msgid "Out so far this month"
+msgid "Out so far this month, not over"
 msgstr ""
 
 #: src/pages/MemorySettingsOverlay.tsx
