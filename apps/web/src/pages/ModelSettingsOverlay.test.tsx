@@ -384,8 +384,8 @@ it("treats the provider this space already uses as connected, with a key optiona
     expect(text).toContain("Your bots use DeepSeek Chat.");
     expect(text).not.toContain("Connect this provider");
     expect(text).toContain("Use your own key");
-    // A founder should learn they need to do nothing here before reading a list of providers.
-    expect(text).toContain("They already have one, so change this only");
+    // The provider the bots already use is marked, so a founder sees there is nothing to do here.
+    expect(text).toContain("In use");
   } finally {
     await view.unmount();
   }
@@ -532,7 +532,7 @@ it("shows a stored OpenAI-compatible key and stays empty when none is saved", as
   }
 });
 
-it("lists the server's own provider under Connected, ahead of the A-Z list", async () => {
+it("lists the server's own provider as In use, not Connected, ahead of the A-Z list", async () => {
   vi.mocked(rpc.me).mockResolvedValue({
     ...account("openrouter", "or-model"),
     hostCredentialProvider: "openrouter",
@@ -548,7 +548,9 @@ it("lists the server's own provider under Connected, ahead of the A-Z list", asy
       buttons(view.container, "More")[0]?.click();
     });
     const text = view.container.textContent ?? "";
-    expect(text).toContain("Connected");
+    // No key is stored, so nothing is "Connected".
+    expect(text).toContain("In use");
+    expect(text).not.toContain("Connected");
     expect(text.indexOf("OpenRouter")).toBeLessThan(text.indexOf("Amazon Bedrock"));
   } finally {
     await view.unmount();

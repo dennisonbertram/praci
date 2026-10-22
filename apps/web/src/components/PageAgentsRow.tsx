@@ -30,6 +30,7 @@ export function PageAgentsRow({
     <button
       type="button"
       data-testid={testId}
+      data-roster-fold=""
       aria-expanded={open}
       onClick={onToggle}
       className="mb-1 flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-start text-[13px] font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"

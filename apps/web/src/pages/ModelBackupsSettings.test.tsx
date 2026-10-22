@@ -207,7 +207,7 @@ describe("ModelBackupsSettings", () => {
     });
     await flush();
 
-    expect(container.textContent).toContain("Use your own model to add backups.");
+    expect(container.textContent).toContain("Connect a provider to add backups.");
     expect(container.querySelector('[role="combobox"]')).toBeNull();
     expect(container.textContent).not.toContain("Save backups");
   });

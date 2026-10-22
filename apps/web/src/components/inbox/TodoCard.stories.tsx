@@ -67,6 +67,9 @@ export const OpensEmail: Story = {
   },
 };
 
+/** On a phone one open to-do shows, with the count of the rest, so the first mail starts higher. */
+export const Compact: Story = { args: { todos, compact: true } };
+
 export const SingleTodo: Story = { args: { todos: todos.slice(1, 2) } };
 
 export const LongText: Story = {

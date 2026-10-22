@@ -82,14 +82,18 @@ export function buildApprovalAskBlock(
       redactSecrets(
         toolName === "create_space" || isSendMoney(toolName)
           ? `${summary}?`
-          : `Review before ${summary}`,
+          : options?.schedule
+            ? summary
+            : `Review before ${summary}`,
         secrets,
       ),
       MAX_APPROVAL_SUMMARY_LENGTH,
     ),
     // Raw tool arguments sit behind a Details disclosure; a card the person reads to decide stays open.
     detailFolded:
-      (options?.integrationWriteTool !== undefined || isSendMoney(toolName)) && !fullDetailOpen
+      (options?.integrationWriteTool !== undefined || isSendMoney(toolName) || options?.schedule) &&
+      !options?.fullMail &&
+      !options?.imessage
         ? true
         : undefined,
     // A full mail send shows every recipient and the whole body, never a cut-off one.
@@ -280,7 +284,7 @@ function fullMailDetail(args: Record<string, unknown>, reviewReason?: string): s
 }
 
 /** A bank's request to send money, whichever server slug the tool sits under. */
-const isSendMoney = (toolName: string) => /(^|__)requestSendMoney$/.test(toolName);
+export const isSendMoney = (toolName: string) => /(^|__)requestSendMoney$/.test(toolName);
 
 export type MoneyNames = { recipient?: string; account?: string };
 

@@ -1205,7 +1205,8 @@ function MessageHoverActions({
             aria-label={t`More`}
             className={cn(
               iconButtonClass,
-              "h-11 w-11 [@media(hover:hover)_and_(pointer:fine)]:h-7 [@media(hover:hover)_and_(pointer:fine)]:w-7",
+              // On touch this is the only way in to react, reply and bookmark, so it reads stronger.
+              "h-11 w-11 [@media(hover:hover)_and_(pointer:fine)]:h-7 [@media(hover:hover)_and_(pointer:fine)]:w-7 [@media(hover:none)]:text-foreground/75",
             )}
           >
             <MoreHorizontal size={15} strokeWidth={1.7} />
@@ -1799,6 +1800,7 @@ const MessageView = memo(function MessageView({
             <div key={i} className={gap}>
               <AskCard
                 block={block}
+                requestedAt={message.createdAt}
                 // A held message is answered without a waiting run, so it stays answerable.
                 canAnswer={canAnswer || block.share === true}
                 onAnswer={(text, username) => onAnswer(message, text, username)}

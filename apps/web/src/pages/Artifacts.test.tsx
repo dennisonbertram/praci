@@ -108,13 +108,6 @@ it("keeps loading later pages when search hides the current snapshot", async () 
   const page = await renderArtifacts();
   try {
     expect(page.container.textContent).toContain("Alpha notes");
-    const filters = [...page.container.querySelectorAll("button")].find((button) =>
-      button.textContent?.includes("Filters"),
-    );
-    expect(filters).toBeTruthy();
-    await act(async () => {
-      filters?.click();
-    });
     await act(async () => {
       typeSearch(page.container, "Beta");
     });
@@ -149,12 +142,6 @@ it("still offers Load more when filters match nothing on the loaded page", async
   });
   const page = await renderArtifacts();
   try {
-    const filters = [...page.container.querySelectorAll("button")].find((button) =>
-      button.textContent?.includes("Filters"),
-    );
-    await act(async () => {
-      filters?.click();
-    });
     await act(async () => {
       typeSearch(page.container, "Beta");
     });
@@ -187,8 +174,33 @@ it("explains what artifacts are when the space has none", async () => {
     expect(page.container.textContent).toContain("No artifacts yet");
     // Nothing to filter or switch yet, and Ask in the header already opens the chat.
     expect(page.container.textContent).not.toContain("Open chat");
-    expect(page.container.querySelector('[data-testid="artifacts-filters"]')).toBeNull();
+    expect(page.container.querySelector("input[name='artifacts-search']")).toBeNull();
     expect(page.container.querySelector('[aria-label="Grid view"]')).toBeNull();
+  } finally {
+    await page.cleanup();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("scrolls to the open artifact when a later page brings its row in", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const scrolled = vi.fn();
+  Element.prototype.scrollIntoView = function (this: Element) {
+    if (this.getAttribute("aria-current") === "page") scrolled();
+  };
+  api.listSpace.mockImplementation(async (input: { cursor?: string }) =>
+    input.cursor
+      ? { items: [artifact("Beta report", "artifact-2")], nextCursor: null }
+      : { items: [artifact("Alpha notes", "artifact-1")], nextCursor: "artifact-1" },
+  );
+  const page = await renderArtifacts("/app/artifacts/artifact-2");
+  try {
+    expect(scrolled).not.toHaveBeenCalled();
+    const more = [...page.container.querySelectorAll("button")].find((b) =>
+      /load more/i.test(b.textContent ?? ""),
+    );
+    await act(async () => more?.click());
+    await vi.waitFor(() => expect(scrolled).toHaveBeenCalled());
   } finally {
     await page.cleanup();
     vi.unstubAllGlobals();
@@ -209,7 +221,7 @@ it("gives an open artifact a way back to the list", async () => {
   }
 });
 
-it("keeps Filters to the list: phones hide it beside an open document, and maximizing removes it", async () => {
+it("keeps the search and filters to the list: phones hide them beside an open document, and maximizing removes them", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   api.listSpace.mockResolvedValue({ items: [artifact("Update", "artifact-1")], nextCursor: null });
   api.listVersions.mockRejectedValueOnce(new Error("no versions"));
@@ -219,8 +231,8 @@ it("keeps Filters to the list: phones hide it beside an open document, and maxim
   );
   const page = await renderArtifacts("/app/artifacts/artifact-1");
   try {
-    const filters = () => page.container.querySelector("[data-testid='artifacts-filters']");
-    expect(filters()?.className).toContain("hidden md:flex");
+    const filters = () => page.container.querySelector("input[name='artifacts-search']");
+    expect(filters()?.closest(".flex-wrap")?.className).toContain("hidden md:flex");
     const maximize = page.container.querySelector<HTMLButtonElement>(
       "button[aria-label='Maximize']",
     );
@@ -279,18 +291,12 @@ it("keeps a filtered-out list recoverable", async () => {
   });
   const page = await renderArtifacts("/app/artifacts/artifact-1");
   try {
-    const filters = button(page.container, "Filters");
-    expect(filters?.getAttribute("data-active")).toBeNull();
-    await act(async () => filters?.click());
     await act(async () => typeSearch(page.container, "zzzz"));
-    await act(async () => filters?.click());
     expect(page.container.textContent).toContain("No artifacts match these filters.");
-    expect(button(page.container, "Filters")?.getAttribute("data-active")).toBe("true");
     // The selected artifact is filtered out, so its preview is closed.
     expect(page.container.textContent).not.toContain("Back to artifacts");
     await act(async () => button(page.container, "Clear filters")?.click());
     expect(page.container.textContent).toContain("Alpha notes");
-    expect(button(page.container, "Filters")?.getAttribute("data-active")).toBeNull();
   } finally {
     await page.cleanup();
     vi.unstubAllGlobals();
@@ -334,15 +340,9 @@ it("offers only bots that own artifacts and shows the title without its extensio
   });
   const page = await renderArtifacts();
   try {
-    await act(async () => {
-      [...page.container.querySelectorAll("button")]
-        .find((b) => b.textContent?.includes("Filters"))
-        ?.click();
-    });
-    const options = [
-      ...(page.container.querySelectorAll("select[aria-label='Filter by bot'] option") ?? []),
-    ];
-    expect(options.map((o) => o.textContent)).toEqual(["All bots", "Chief", "Scribe"]);
+    await act(async () => button(page.container, "Bot")?.click());
+    const options = [...document.querySelectorAll("[role=menuitemradio]")];
+    expect(options.map((o) => o.textContent)).toEqual(["Chief", "Scribe"]);
     expect(page.container.textContent).toContain("Board Deck");
     expect(page.container.textContent).not.toContain("Board Deck.md");
   } finally {

@@ -25,7 +25,7 @@ import { AlchemyConnectDialog } from "./AlchemyConnectDialog";
 import { AppLogo } from "./AppLogo";
 import { BlockscoutConnectDialog } from "./BlockscoutConnectDialog";
 import { ExchangeConnectDialog } from "./ExchangeConnectDialog";
-import { IntegrationTile, MenuSlot, OPEN_LINK, PHONE_ROW, StatusBadge } from "./parts";
+import { IntegrationTile, OPEN_LINK, PHONE_ROW, StatusBadge } from "./parts";
 
 /** False once the tile has unmounted, so a slow request does not set state afterwards. */
 function useMounted() {
@@ -195,7 +195,6 @@ function AlchemyTile({ state, reload }: { state: AlchemyState | null; reload: ()
             >
               <Trans>Connect</Trans>
             </Button>
-            <MenuSlot />
           </>
         )}
       </div>
@@ -262,7 +261,6 @@ function ExchangeTile({
             >
               <Trans>Connect</Trans>
             </Button>
-            <MenuSlot />
           </>
         )}
       </div>
@@ -451,7 +449,6 @@ export function FinanceSection({
                     <Link to="/app/finance" className={OPEN_LINK}>
                       <Trans>Open Finance</Trans>
                     </Link>
-                    <MenuSlot />
                   </>
                 ) : (
                   <Button
@@ -477,7 +474,6 @@ export function FinanceSection({
                     )}
                   </Button>
                 )}
-                {connected ? null : <MenuSlot />}
               </div>
               {error ? (
                 <p role="alert" className="text-xs text-destructive">

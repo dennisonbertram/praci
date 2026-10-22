@@ -138,7 +138,8 @@ function Marker({ item }: { item: DataRoomApiItem }) {
       <Icon role="img" aria-label={t`Failed`} className="size-3.5 shrink-0 text-destructive" />
     );
   }
-  if (item.status !== "ready") {
+  // Stored text means the file is searchable already: the pipeline's later steps are not its reader's wait.
+  if (item.status !== "ready" && !item.previewText) {
     return (
       <span title={stageLabel(item.status)} className="inline-flex shrink-0">
         <Spinner
@@ -182,6 +183,12 @@ const LIST_PAD = "px-4 md:px-7 @min-[800px]/bd:px-2";
 const dateOf = (item: DataRoomApiItem, field: SortField | undefined) =>
   field === "date" ? dateText(item.facets.docDate) : dateText(item.createdAt, true);
 
+/** The date where no column header names it: "Added Mar 4, 2026" unless the list is sorted by document date. */
+const datedLine = (item: DataRoomApiItem, field: SortField | undefined) => {
+  const date = dateOf(item, field);
+  return date && field !== "date" ? `${t`Added`} ${date}` : date;
+};
+
 /** Fixed widths, so a one-row list leaves no stretched empty area and columns never shift. */
 function Columns({ showStatus }: { showStatus: boolean }) {
   return (
@@ -189,7 +196,7 @@ function Columns({ showStatus }: { showStatus: boolean }) {
       <col />
       <col className={cn(MID_COLUMN, "w-36")} />
       <col className={cn(MID_COLUMN, "w-24")} />
-      <col className={cn(PARTIES_COLUMN, "w-36 @min-[1100px]/list:w-auto")} />
+      <col className={cn(PARTIES_COLUMN, "w-48 @min-[1100px]/list:w-auto")} />
       {showStatus ? <col className={cn(MID_COLUMN, "w-20")} /> : null}
       <col className="w-7" />
     </colgroup>
@@ -685,7 +692,7 @@ export function GridView({
             agents={o.agents}
             onSendToAgent={o.onSendToAgent}
             triggerTabIndex={-1}
-            className="absolute top-3 right-3 bg-card/80"
+            className="absolute top-3 right-3 rounded-full bg-card/80"
           />
           {/* Three lines kept for every name, so tiles are one height and long names still differ. */}
           <span
@@ -722,7 +729,7 @@ export function GridView({
             ) : (
               <>
                 <span>{typeLabel(item.facets.docType) || DASH}</span>
-                <span>{dateOf(item, sortField)}</span>
+                <span>{datedLine(item, sortField)}</span>
               </>
             )}
           </span>
@@ -742,7 +749,7 @@ function TypeAndDate({
   sortField: SortField | undefined;
 }) {
   const type = typeLabel(item.facets.docType);
-  const date = dateOf(item, sortField);
+  const date = datedLine(item, sortField);
   return (
     <>
       {[type || (isSettled(item.status, !!item.previewText) ? DASH : ""), date]

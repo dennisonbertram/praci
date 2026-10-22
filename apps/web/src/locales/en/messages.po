@@ -311,6 +311,12 @@ msgstr "{0} rollup hours"
 msgid "{0} settings"
 msgstr "{0} settings"
 
+#. placeholder {0}: monthShort(running.month)
+#. placeholder {1}: money(running.cents)
+#: src/pages/finance/FinanceSpend.tsx
+msgid "{0} so far: {1}"
+msgstr "{0} so far: {1}"
+
 #. placeholder {0}: statement.transactionCount
 #: src/components/finance/StatementReviewCard.tsx
 msgid "{0} transactions"
@@ -918,6 +924,10 @@ msgstr "Add connected models to use them as backups."
 msgid "Add contact"
 msgstr "Add contact"
 
+#: src/pages/Legal.tsx
+msgid "Add contracts to your Data room and Legal reads them."
+msgstr "Add contracts to your Data room and Legal reads them."
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Add credential"
 msgstr "Add credential"
@@ -929,6 +939,7 @@ msgstr "Add custom connection"
 #: src/components/data-room/DataRoomImportMenu.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/DataRoom.tsx
+#: src/pages/Legal.tsx
 msgid "Add files"
 msgstr "Add files"
 
@@ -1056,10 +1067,6 @@ msgstr "AI data sharing off"
 msgid "All"
 msgstr "All"
 
-#: src/pages/Artifacts.tsx
-msgid "All bots"
-msgstr "All bots"
-
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "All bots can use {0}."
@@ -1105,10 +1112,6 @@ msgstr "All providers"
 #: src/pages/ActivityList.tsx
 msgid "All statuses"
 msgstr "All statuses"
-
-#: src/pages/Artifacts.tsx
-msgid "All time"
-msgstr "All time"
 
 #: src/components/AiDataSharing.tsx
 #: src/components/AskCard.tsx
@@ -1359,6 +1362,10 @@ msgstr "Approve this server to let your bot use its tools."
 msgid "Approved"
 msgstr "Approved"
 
+#: src/components/AskCard.tsx
+msgid "Approved here. Waiting for {waitsFor}"
+msgstr "Approved here. Waiting for {waitsFor}"
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Apps with their own server"
 msgstr "Apps with their own server"
@@ -1504,7 +1511,6 @@ msgid "Ask before sending external email"
 msgstr "Ask before sending external email"
 
 #: src/components/tour/FirstRunTour.tsx
-#: src/pages/Shell.tsx
 msgid "Ask Chief"
 msgstr "Ask Chief"
 
@@ -1987,6 +1993,7 @@ msgstr "Can't reach the server."
 #: src/components/ContactDeleteConfirm.tsx
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/AutoSortDialog.tsx
+#: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/ExchangeGroup.tsx
@@ -2094,10 +2101,6 @@ msgstr "Cash out and cash in by month"
 #: src/pages/Finance.tsx
 msgid "Cash out and cash in over time"
 msgstr "Cash out and cash in over time"
-
-#: src/pages/shell/message-cards.tsx
-msgid "Cash, cap table, investors and email"
-msgstr "Cash, cap table, investors and email"
 
 #: src/components/FinanceCards.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -2586,7 +2589,6 @@ msgid "Compose"
 msgstr "Compose"
 
 #: src/pages/SettingsOverlay.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/transcript.tsx
 msgid "Computer"
 msgstr "Computer"
@@ -2614,14 +2616,6 @@ msgstr "Computer is asleep"
 #: src/pages/Shell.tsx
 msgid "Computer is asleep. Open it to wake."
 msgstr "Computer is asleep. Open it to wake."
-
-#: src/pages/Shell.tsx
-msgid "Computer is off"
-msgstr "Computer is off"
-
-#: src/pages/Shell.tsx
-msgid "Computer is on"
-msgstr "Computer is on"
 
 #: src/pages/Shell.tsx
 msgid "Computer is starting"
@@ -2714,6 +2708,10 @@ msgstr "Connect a model"
 #: src/pages/Legal.tsx
 msgid "Connect a model in Settings first."
 msgstr "Connect a model in Settings first."
+
+#: src/pages/ModelBackupsSettings.tsx
+msgid "Connect a provider to add backups."
+msgstr "Connect a provider to add backups."
 
 #: src/pages/Shell.tsx
 msgid "Connect a voice provider to call Elio."
@@ -4292,6 +4290,7 @@ msgstr "Docker is configured but computers are not responding. Confirm the sandb
 msgid "Document date"
 msgstr "Document date"
 
+#: src/components/AiDataSharing.tsx
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/FolderDocuments.tsx
 #: src/pages/portal/PortalHome.tsx
@@ -4561,6 +4560,10 @@ msgid "Email verification required"
 msgstr "Email verification required"
 
 #: src/pages/shell/message-cards.tsx
+msgid "Email, calendar and your company pages"
+msgstr "Email, calendar and your company pages"
+
+#: src/pages/shell/message-cards.tsx
 msgid "Email, Slack and docs"
 msgstr "Email, Slack and docs"
 
@@ -4825,20 +4828,11 @@ msgstr "Filter"
 msgid "Filter by {label}"
 msgstr "Filter by {label}"
 
-#: src/pages/Artifacts.tsx
-msgid "Filter by bot"
-msgstr "Filter by bot"
-
-#: src/pages/Artifacts.tsx
-msgid "Filter by date"
-msgstr "Filter by date"
-
 #: src/pages/KnowledgeSection.tsx
 msgid "Filter memory"
 msgstr "Filter memory"
 
 #: src/components/data-room/FilterBar.tsx
-#: src/pages/Artifacts.tsx
 msgid "Filters"
 msgstr "Filters"
 
@@ -5207,10 +5201,6 @@ msgstr "Hang up, then enter the code on screen."
 msgid "Has attachment"
 msgstr "Has attachment"
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Has its own computer."
-msgstr "Has its own computer."
-
 #: src/pages/RoutineEditor.tsx
 msgid "header"
 msgstr "header"
@@ -5473,6 +5463,10 @@ msgstr "In review"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "In runway"
 msgstr "In runway"
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "In use"
+msgstr "In use"
 
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Inactive"
@@ -5805,12 +5799,11 @@ msgstr "Legal relationships"
 msgid "Let other agents use {service} directly"
 msgstr "Let other agents use {service} directly"
 
-#: src/components/data-room/ConsentPrompt.tsx
+#: src/components/AiDataSharing.tsx
 msgid "Let Praci read documents"
 msgstr "Let Praci read documents"
 
-#: src/components/data-room/ConsentPrompt.tsx
-#: src/components/legal/ConsentPrompt.tsx
+#: src/components/AiDataSharing.tsx
 msgid "Let Praci read your documents"
 msgstr "Let Praci read your documents"
 
@@ -5906,6 +5899,10 @@ msgstr "Loading"
 #: src/pages/ActivityList.tsx
 msgid "Loading activity…"
 msgstr "Loading activity…"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Loading integrations"
+msgstr "Loading integrations"
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Loading memory settings…"
@@ -6096,6 +6093,10 @@ msgstr "Mark noise: all mail from {0}"
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark read"
 msgstr "Mark read"
+
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Mark reply done"
+msgstr "Mark reply done"
 
 #: src/components/fundraising/SafeDialog.tsx
 #: src/components/fundraising/SafeList.tsx
@@ -6762,10 +6763,6 @@ msgstr "No accounts yet"
 msgid "No agent connections yet."
 msgstr "No agent connections yet."
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "No apps match."
-msgstr "No apps match."
-
 #: src/pages/Artifacts.tsx
 msgid "No artifacts match these filters."
 msgstr "No artifacts match these filters."
@@ -6857,6 +6854,10 @@ msgstr "No follow-ups from meetings yet"
 msgid "No group chats yet."
 msgstr "No group chats yet."
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "No integrations match."
+msgstr "No integrations match."
+
 #: src/components/data-room/ItemDialogs.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "No investors yet"
@@ -6884,6 +6885,10 @@ msgstr "No mail matches this filter"
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
 msgstr "No matches"
+
+#: src/pages/shell/command-palette.tsx
+msgid "No matches in pages, documents, contacts"
+msgstr "No matches in pages, documents, contacts"
 
 #: src/pages/shell/composer.tsx
 msgid "No matches. Press Escape to send as typed."
@@ -7095,6 +7100,10 @@ msgstr "Not in runway"
 msgid "Not now"
 msgstr "Not now"
 
+#: src/components/data-room/upload-toasts.ts
+msgid "Not retried: the space changed"
+msgstr "Not retried: the space changed"
+
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/pages/investors/UpdateEditor.tsx
 msgid "Not saved"
@@ -7239,6 +7248,10 @@ msgstr "Only empty spaces can be deleted. Delete its bots and groups first."
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Only if the server does not use sign-in"
 msgstr "Only if the server does not use sign-in"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Only this bot"
+msgstr "Only this bot"
 
 #: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxDigest.tsx
@@ -7608,8 +7621,8 @@ msgid "Paste a replacement key"
 msgstr "Paste a replacement key"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
-msgid "Paste the MCP server URL from the app's documentation."
-msgstr "Paste the MCP server URL from the app's documentation."
+msgid "Paste the app's connection URL from its documentation."
+msgstr "Paste the app's connection URL from its documentation."
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Paste the OpenAI-compatible address from your server. Praci adds /v1 if needed."
@@ -7798,6 +7811,10 @@ msgstr "Posting readiness unavailable."
 msgid "Praci can now read your documents."
 msgstr "Praci can now read your documents."
 
+#: src/components/legal/ConsentPrompt.tsx
+msgid "Praci doesn't read your documents."
+msgstr "Praci doesn't read your documents."
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
 msgstr "Praci doesn't tag new files."
@@ -7876,10 +7893,6 @@ msgstr "Priority"
 #: src/pages/SettingsOverlay.tsx
 msgid "Privacy and approvals"
 msgstr "Privacy and approvals"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Private"
-msgstr "Private"
 
 #: src/components/integrations/ExchangeConnectDialog.tsx
 msgid "Private key"
@@ -8607,6 +8620,7 @@ msgstr "Restoring your workspace"
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/DataRoomStats.tsx
+#: src/components/data-room/DropZone.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Investors.tsx
@@ -8894,6 +8908,18 @@ msgid "Say yes or no, or answer in a sentence."
 msgstr "Say yes or no, or answer in a sentence."
 
 #: src/pages/Legal.tsx
+msgid "Scan cancelled."
+msgstr "Scan cancelled."
+
+#: src/pages/Legal.tsx
+msgid "Scan finished: {contractsChanged, plural, one {# contract} other {# contracts}} and {deadlinesAdded, plural, one {# deadline} other {# deadlines}} added or updated."
+msgstr "Scan finished: {contractsChanged, plural, one {# contract} other {# contracts}} and {deadlinesAdded, plural, one {# deadline} other {# deadlines}} added or updated."
+
+#: src/pages/Legal.tsx
+msgid "Scan finished: nothing changed."
+msgstr "Scan finished: nothing changed."
+
+#: src/pages/Legal.tsx
 msgid "Scan now"
 msgstr "Scan now"
 
@@ -8921,6 +8947,7 @@ msgstr "Scroll sideways to see the whole graph."
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -8946,8 +8973,8 @@ msgid "Search and read files and folders"
 msgstr "Search and read files and folders"
 
 #: src/pages/Artifacts.tsx
-msgid "Search artifacts…"
-msgstr "Search artifacts…"
+msgid "Search artifacts"
+msgstr "Search artifacts"
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Box"
@@ -9295,14 +9322,14 @@ msgstr "Shared by all bots"
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr "Shared chat with 2-6 bots. They all reply in the same thread."
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Shared with your other bots"
+msgstr "Shared with your other bots"
+
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
 msgid "Shares"
 msgstr "Shares"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Shares one computer with your other bots."
-msgstr "Shares one computer with your other bots."
 
 #: src/pages/Artifacts.tsx
 #: src/pages/Investors.tsx
@@ -9951,6 +9978,7 @@ msgid "Take the tour"
 msgstr "Take the tour"
 
 #: src/components/ai/primitives.tsx
+#: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ItemRows.tsx
 msgid "Taking longer than usual"
 msgstr "Taking longer than usual"
@@ -9984,10 +10012,6 @@ msgstr "Teach a task"
 #: src/pages/Shell.tsx
 msgid "Teaching in progress. Stop teaching before sending a new message."
 msgstr "Teaching in progress. Stop teaching before sending a new message."
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Team"
-msgstr "Team"
 
 #: src/pages/Shell.tsx
 msgid "Team Computer"
@@ -10981,10 +11005,6 @@ msgstr "Use this sheet"
 msgid "Use your own key"
 msgstr "Use your own key"
 
-#: src/pages/ModelBackupsSettings.tsx
-msgid "Use your own model to add backups."
-msgstr "Use your own model to add backups."
-
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationAgentSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -11347,6 +11367,10 @@ msgstr "Working…"
 #: src/lib/sidebar-page-copy.ts
 msgid "Workload and key people, from your connected tools"
 msgstr "Workload and key people, from your connected tools"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Workspace"
+msgstr "Workspace"
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Write"

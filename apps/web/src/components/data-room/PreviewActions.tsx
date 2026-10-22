@@ -66,7 +66,7 @@ export function FileViewer({
   item,
   file,
   fill = false,
-  height = "h-[60vh]",
+  height = "h-[40vh]",
 }: {
   item: DataRoomApiItem;
   file: FileUrl;

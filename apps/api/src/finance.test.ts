@@ -1194,6 +1194,19 @@ describe("finance pages with the real calculations", () => {
     expect(vendor.changeFromMonth).toBe("2026-07");
   });
 
+  it("totals the month under way with the monthly rules, netting refunds and skipping non-USD", async () => {
+    const { deps } = setup({
+      financeAccount: [account(a)],
+      financeTransaction: [
+        monthlyCharge("10"),
+        monthlyCharge("10", { id: "refund", externalId: "refund", amountCents: 100_000n }),
+        monthlyCharge("10", { id: "usd", externalId: "usd", currency: "EUR" }),
+      ],
+    });
+    const vendor = await financeVendor(deps, a, { key: "cloudnine-hosting" });
+    expect(vendor.currentMonth).toEqual({ month: "2026-10", cents: 381_200 });
+  });
+
   it("counts Brex spend in By account, so the shares add up to all spend", async () => {
     const { deps } = setup({
       financeAccount: [account(a)],

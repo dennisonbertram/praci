@@ -526,7 +526,7 @@ function Overview({
             // leaves one alone, before they fit one row of five.
             className={`grid grid-cols-2 gap-3 ${
               kpiCount >= 5
-                ? "@max-md:[&>:last-child]:col-span-2 @md:grid-cols-6 @md:[&>*]:col-span-2 @md:[&>:nth-last-child(-n+2)]:col-span-3 @5xl:grid-cols-5 @5xl:[&>*]:col-span-1 @5xl:[&>:nth-last-child(-n+2)]:col-span-1"
+                ? "@max-md:[&>:first-child]:col-span-2 @md:grid-cols-6 @md:[&>*]:col-span-2 @md:[&>:nth-last-child(-n+2)]:col-span-3 @5xl:grid-cols-5 @5xl:[&>*]:col-span-1 @5xl:[&>:nth-last-child(-n+2)]:col-span-1"
                 : `[&>:last-child:nth-child(odd)]:col-span-2 @3xl:[&>:last-child:nth-child(odd)]:col-span-1 ${
                     kpiCount === 4
                       ? "@3xl:grid-cols-4"
@@ -680,8 +680,7 @@ function Overview({
             ) : null}
           </Section>
 
-          {/* Each card keeps its own height: an expanded Upcoming does not stretch Breakdown. */}
-          <div className="grid items-start gap-3 @3xl:grid-cols-2">
+          <div className="grid gap-3 @3xl:grid-cols-2">
             <BackHere
               value={{
                 label: t`Breakdown`,
@@ -776,7 +775,8 @@ function Overview({
                   <Trans>None yet. A vendor shows here after three similar monthly charges.</Trans>
                 </div>
               ) : (
-                <>
+                // Capped so a vendor and its amount stay within reach of each other on a wide screen.
+                <div className="max-w-2xl">
                   <SubscriptionsTable
                     subs={subs}
                     rows={allSubs ? subs.items : subs.items.slice(0, MAX_ROWS)}
@@ -796,7 +796,7 @@ function Overview({
                       onToggle={() => setAllSubs((v) => !v)}
                     />
                   </div>
-                </>
+                </div>
               )}
             </Section>
           </BackHere>
@@ -992,11 +992,11 @@ function SubscriptionsTable({
                   {sub.name}
                 </HereLink>
                 {trendText(sub.trendCents) ? (
-                  <div
-                    className={`text-[11px] font-normal tabular-nums text-muted-foreground ${showTrend ? "@md:hidden" : ""}`}
+                  <span
+                    className={`ms-1.5 text-[11px] font-normal tabular-nums text-muted-foreground ${showTrend ? "@md:hidden" : ""}`}
                   >
                     {trendText(sub.trendCents)}
-                  </div>
+                  </span>
                 ) : null}
                 {similar ? (
                   <span

@@ -87,6 +87,18 @@ it("offers Ask Chief beside Done on the last step only, and it ends the tour fir
   expect(onAsk).toHaveBeenCalledTimes(1);
 });
 
+it("keeps Back and the primary button in the same slots on every stop", async () => {
+  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
+  await click("Next");
+  const middle = [button("Back").className, button("Next").className];
+  await click("Next");
+  // Last stop: Ask Chief replaces Skip tour on the left; Skip tour stays in place but hidden.
+  expect(button("Back").className).toBe(middle[0]);
+  expect(button("Done").className).toContain("min-w-16");
+  expect(button("Next")).toBeUndefined();
+  expect(button("Skip tour")?.className ?? "invisible").toContain("invisible");
+});
+
 it("records Skip tour", async () => {
   await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
   await click("Skip tour");
@@ -112,7 +124,7 @@ it("tells the shell about Skip tour, so Ask Chief stays one tap away, but not ab
   expect(onSkip).toHaveBeenCalledTimes(1);
 });
 
-it("on a phone the card sits on the half of the screen away from its target", async () => {
+it("on a phone the card sits right beside its target, below a high one and above a low one", async () => {
   window.matchMedia = ((query: string) => ({
     matches: false,
     media: query,
@@ -129,13 +141,14 @@ it("on a phone the card sits on the half of the screen away from its target", as
   at("user-menu", 700);
   await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
   const card = () => document.querySelector("[data-testid='tour-card']") as HTMLElement;
-  // Upper-half target: the card is at the bottom, so the rows around the target stay visible.
-  expect(card().style.bottom).toBe("16px");
+  // Upper-half target (bottom at 140): the card starts 8px under it.
+  expect(card().style.top).toBe("148px");
+  expect(card().style.bottom).toBe("");
+  await click("Next");
+  await click("Next");
+  // Lower-half target (top at 700): the card ends 8px above it.
+  expect(card().style.bottom).toBe(`${window.innerHeight - 700 + 8}px`);
   expect(card().style.top).toBe("");
-  await click("Next");
-  await click("Next");
-  // Lower-half target: the card is at the top.
-  expect(card().style.top).toBe("16px");
 });
 
 it("on desktop the card sits beside the sidebar, level with its target", async () => {

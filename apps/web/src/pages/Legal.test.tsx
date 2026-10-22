@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { ReactNode } from "react";
-import { act } from "react";
+import { act, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -30,6 +30,7 @@ const rpcMock = vi.hoisted(() => ({
 }));
 vi.mock("../lib/rpc", () => ({ rpc: { legal: rpcMock } }));
 
+import { LEGAL_CONSENT_REQUIRED_MESSAGE } from "@rakazo/contracts";
 import { LegalGraphView, labelLines, MAX_GRAPH_NODES } from "../components/legal/LegalGraph";
 import { setHideAmounts } from "../lib/hide-amounts-preference";
 import { LegalPage } from "./Legal";
@@ -92,8 +93,47 @@ it("shows counts and contracts, with the value formatted from the decimal string
   expect(button("Allow")).toBeUndefined();
 });
 
-it("shows the empty state, loading skeleton and load error", async () => {
+/** A Data room with files Legal has not read yet. */
+const emptyWithFiles = {
+  ...emptyOverview,
+  counts: { ...emptyOverview.counts, unreviewedDocuments: 2 },
+};
+
+it("shows one sentence and Add files, not a consent card, when the Data room is empty", async () => {
   rpcMock.overview.mockResolvedValue(emptyOverview);
+  rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
+  await render(<LegalPage />);
+  expect(container.textContent).toContain("Add contracts to your Data room and Legal reads them.");
+  expect(container.querySelector('a[href="/app/data-room"]')?.textContent).toBe("Add files");
+  expect(container.textContent).not.toContain("Let Praci read your documents");
+  expect(tab("Contracts")).toBeUndefined();
+  expect(button("Scan now")).toBeUndefined();
+});
+
+it("hides a consent-failed scan banner once consent exists, and so while Allow is offered", async () => {
+  const failed = {
+    ...overview,
+    agent: {
+      ...overview.agent,
+      lastScanRun: { id: id(8), status: "failed", error: LEGAL_CONSENT_REQUIRED_MESSAGE },
+    },
+  };
+  rpcMock.overview.mockResolvedValue(failed);
+  rpcMock.consent.mockResolvedValue(consentFixture);
+  await render(<LegalPage />);
+  expect(container.querySelector('[data-testid="scan-failed"]')).toBeNull();
+  expect(button("Scan now")?.disabled).toBe(false);
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
+  await render(<LegalPage />);
+  expect(container.querySelector('[data-testid="scan-failed"]')).toBeNull();
+  expect(button("Allow")).toBeDefined();
+  expect(button("Scan now")).toBeUndefined();
+});
+
+it("shows the empty state, loading skeleton and load error", async () => {
+  rpcMock.overview.mockResolvedValue(emptyWithFiles);
   await render(<LegalPage />);
   expect(container.textContent).toContain("Press Scan now to read your Data room");
   expect(container.textContent).toContain("Not scanned yet");
@@ -147,8 +187,22 @@ it("asks for consent when it is not allowed, and grants the shown key", async ()
   expect(rpcMock.scanNow).toHaveBeenCalledTimes(1);
 });
 
+it("offers Not now like the Data room, which leaves one line with a way back", async () => {
+  localStorage.clear();
+  rpcMock.overview.mockResolvedValue(overview);
+  rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
+  await render(<LegalPage />);
+  await click(button("Not now"));
+  expect(rpcMock.consentGrant).not.toHaveBeenCalled();
+  expect(container.textContent).toContain("Praci doesn't read your documents.");
+  expect(button("Allow")).toBeUndefined();
+  await click(button("Let Praci read documents"));
+  expect(button("Allow")).toBeDefined();
+  localStorage.clear();
+});
+
 it("does not repeat the card's sentence on an empty page waiting for consent", async () => {
-  rpcMock.overview.mockResolvedValue(emptyOverview);
+  rpcMock.overview.mockResolvedValue(emptyWithFiles);
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
   await render(<LegalPage />);
   expect(container.textContent).toContain("Let Praci read your documents");
@@ -157,7 +211,7 @@ it("does not repeat the card's sentence on an empty page waiting for consent", a
 });
 
 it("shows the empty Contracts and Deadlines tabs under the consent card", async () => {
-  rpcMock.overview.mockResolvedValue(emptyOverview);
+  rpcMock.overview.mockResolvedValue(emptyWithFiles);
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
   await render(<LegalPage />);
   expect(tab("Contracts")).toBeDefined();
@@ -241,6 +295,36 @@ it("marks overdue deadlines and closes one with Done", async () => {
   // The sidebar Legal badge refreshes at once.
   expect(sidebarRefresh).toHaveBeenCalled();
   window.removeEventListener("rakazo:notifications-changed", sidebarRefresh);
+});
+
+it("keeps the Undo line when the page reloads without the closed row, and Undo restores it", async () => {
+  rpcMock.updateDeadline.mockResolvedValue({});
+  const Parent = () => {
+    const [rows, setRows] = useState(deadlines);
+    return (
+      <LegalDeadlines
+        deadlines={rows}
+        // The server lists open deadlines only, so a reload drops what was closed and returns what was reopened.
+        onChanged={() =>
+          setRows((now) =>
+            now.length === deadlines.length
+              ? now.filter((d) => d.id !== deadlines[0]?.id)
+              : deadlines,
+          )
+        }
+        today="2026-10-16"
+      />
+    );
+  };
+  await render(<Parent />);
+  await click(button(`Mark ${named(deadlines[0])} done`));
+  const items = container.querySelectorAll("li");
+  expect(items).toHaveLength(deadlines.length);
+  expect(items[0]?.textContent).toContain("Undo");
+  await click(button("Undo"));
+  expect(rpcMock.updateDeadline).toHaveBeenLastCalledWith({ id: deadlines[0]?.id, status: "open" });
+  expect(button("Undo")).toBeUndefined();
+  expect(container.textContent).toContain(deadlines[0]?.title);
 });
 
 it("keeps the deadline and shows the error when the update fails", async () => {
@@ -379,6 +463,80 @@ it("says why Scan now is disabled, and what a missing consent hides", async () =
   expect(container.textContent).toContain("Connect a model in Settings first.");
 });
 
+it("says how many rows a scan added or changed, and when none did", async () => {
+  vi.useFakeTimers();
+  try {
+    const withRun = (base: typeof overview, status: "running" | "completed", run = 7) => ({
+      ...base,
+      agent: { ...base.agent, lastScanRun: { id: id(run), status, error: null } },
+    });
+    rpcMock.overview
+      .mockResolvedValueOnce(overview)
+      .mockResolvedValue(withRun(overview, "running"));
+    rpcMock.scanNow.mockResolvedValue({ runId: id(7), botId: id(2) });
+    await render(<LegalPage />);
+    await click(button("Scan now"));
+    // Same rows and dates: nothing changed.
+    rpcMock.overview.mockResolvedValue(withRun(overview, "completed"));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    expect(container.textContent).toContain("Scan finished: nothing changed.");
+    // A second scan that re-reads one contract and adds nothing else.
+    const reread = {
+      ...overview,
+      contracts: overview.contracts.map((c, i) =>
+        i === 0 ? { ...c, analyzedAt: "2026-10-17T09:00:00.000Z" } : c,
+      ),
+    };
+    rpcMock.scanNow.mockResolvedValue({ runId: id(8), botId: id(2) });
+    rpcMock.overview.mockResolvedValue(withRun(overview, "running", 8));
+    await click(button("Scan now"));
+    expect(container.textContent).not.toContain("Scan finished");
+    rpcMock.overview.mockResolvedValue(withRun(reread, "completed", 8));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    expect(container.textContent).toContain(
+      "Scan finished: 1 contract and 0 deadlines added or updated.",
+    );
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("reports a changed deadline date and a cancelled scan", async () => {
+  vi.useFakeTimers();
+  try {
+    const withRun = (
+      base: typeof overview,
+      status: "running" | "completed" | "cancelled",
+      run: number,
+    ) => ({
+      ...base,
+      agent: { ...base.agent, lastScanRun: { id: id(run), status, error: null } },
+    });
+    const moved = {
+      ...overview,
+      deadlines: overview.deadlines.map((d, i) => (i === 0 ? { ...d, dueDate: "2031-01-01" } : d)),
+    };
+    rpcMock.overview
+      .mockResolvedValueOnce(overview)
+      .mockResolvedValue(withRun(overview, "running", 7));
+    rpcMock.scanNow.mockResolvedValue({ runId: id(7), botId: id(2) });
+    await render(<LegalPage />);
+    await click(button("Scan now"));
+    rpcMock.overview.mockResolvedValue(withRun(moved, "completed", 7));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    expect(container.textContent).toContain("0 contracts and 1 deadline added or updated.");
+    rpcMock.scanNow.mockResolvedValue({ runId: id(8), botId: id(2) });
+    rpcMock.overview.mockResolvedValue(withRun(moved, "running", 8));
+    await click(button("Scan now"));
+    rpcMock.overview.mockResolvedValue(withRun(moved, "cancelled", 8));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    expect(container.textContent).toContain("Scan cancelled.");
+    expect(container.textContent).not.toContain("Scan finished");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 it("keeps Scanning until the run ends, then shows the new time", async () => {
   vi.useFakeTimers();
   try {
@@ -452,7 +610,7 @@ it("offers the OpenRouter key field when the last scan's key was rejected", asyn
 });
 
 it("has one Scan now button on an empty page", async () => {
-  rpcMock.overview.mockResolvedValue(emptyOverview);
+  rpcMock.overview.mockResolvedValue(emptyWithFiles);
   await render(<LegalPage />);
   expect(
     [...container.querySelectorAll("button")].filter((b) => b.textContent === "Scan now"),

@@ -8,7 +8,7 @@ import { errorText } from "../lib/user-error";
 export function AutoFileEmailSetting() {
   const { t } = useLingui();
   const id = useId();
-  const [enabled, setEnabled] = useState(true);
+  const [enabled, setEnabled] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
 

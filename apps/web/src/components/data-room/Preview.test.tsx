@@ -4,6 +4,7 @@ import type { DataRoomApiItem } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 vi.mock("@lingui/core/macro", () => ({ t: (parts: TemplateStringsArray) => parts.join("") }));
@@ -391,4 +392,17 @@ it("does not show the previous file's sharing count while the next file loads", 
     );
   });
   expect(container.textContent).not.toContain("Shared");
+});
+
+it("makes the From email link a 44 px target on touch screens", async () => {
+  const mail = { ...receipt, source: "gmail", sourceUrl: "/app/inbox/t1" } as DataRoomApiItem;
+  await act(async () => {
+    root.render(
+      <MemoryRouter>
+        <Preview item={mail} folderPath="" onAction={() => undefined} onClose={() => undefined} />
+      </MemoryRouter>,
+    );
+  });
+  const link = [...container.querySelectorAll("a")].find((a) => a.textContent === "From email");
+  expect(link?.className).toContain("pointer-coarse:min-h-11");
 });

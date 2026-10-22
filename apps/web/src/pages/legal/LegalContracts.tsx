@@ -66,14 +66,14 @@ function Title({ contract, inline = false }: { contract: LegalContract; inline?:
     <>
       <Link
         to={`${DATA_ROOM_PATH}?item=${contract.dataRoomItemId}`}
-        className="rk-tap font-medium hover:underline"
+        className={cn("rk-tap font-medium hover:underline", inline && "line-clamp-2")}
       >
         {contract.title}
       </Link>
-      {/* The wide table keeps a row to one line, so the type sits beside the title. */}
-      <span className={cn("text-xs text-muted-foreground", inline ? "ms-2" : "block")}>
-        {contract.contractType}
-      </span>
+      {/* The table has no room for the type: its rows are one fixed height, so the type is in the tooltip. */}
+      {inline ? null : (
+        <span className="block text-xs text-muted-foreground">{contract.contractType}</span>
+      )}
     </>
   );
 }
@@ -98,6 +98,12 @@ function Field({
   );
 }
 
+function withoutSelf(contract: LegalContract, selfName?: string): LegalContract {
+  const self = selfName?.trim().toLowerCase();
+  const others = contract.counterparties.filter((party) => party.trim().toLowerCase() !== self);
+  return self && others.length > 0 ? { ...contract, counterparties: others } : contract;
+}
+
 /** Active is the normal case and says nothing; only a contract that is not active gets a chip. */
 function Status({ status }: { status: LegalContractStatus }) {
   if (status === "active") return null;
@@ -113,7 +119,15 @@ function Status({ status }: { status: LegalContractStatus }) {
  * table with fixed column widths (so hiding amounts does not move the columns); narrow, one card
  * per contract, so nothing is cut off at the side.
  */
-export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
+export function LegalContracts({
+  contracts: all,
+  selfName,
+}: {
+  contracts: LegalContract[];
+  /** The company itself: every contract is with it, so it is left out of Parties. */
+  selfName?: string;
+}) {
+  const contracts = all.map((contract) => withoutSelf(contract, selfName));
   useHideAmounts();
   // Active is the normal case, so the column appears only when some contract is not.
   const showStatus = contracts.some((contract) => contract.status !== "active");
@@ -146,13 +160,13 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
           <Trans>Contracts</Trans>
         </caption>
         <colgroup>
-          <col className={showStatus ? "w-[21%]" : "w-[24%]"} />
-          <col className={showStatus ? "w-[19%]" : "w-[21%]"} />
+          <col className={showStatus ? "w-[22%]" : "w-[25%]"} />
+          <col className={showStatus ? "w-[14%]" : "w-[16%]"} />
           {showStatus ? <col className="w-[7%]" /> : null}
-          <col className={showStatus ? "w-[17%]" : "w-[18%]"} />
+          <col className={showStatus ? "w-[19%]" : "w-[20%]"} />
           <col className={showStatus ? "w-[17%]" : "w-[17%]"} />
-          <col className={showStatus ? "w-[8%]" : "w-[9%]"} />
-          <col className={showStatus ? "w-[11%]" : "w-[11%]"} />
+          <col className="w-[8%]" />
+          <col className="w-[13%]" />
         </colgroup>
         <TableHeader>
           <TableHeadRow>
@@ -183,12 +197,15 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
         </TableHeader>
         <TableBody>
           {contracts.map((contract) => (
-            <TableRow key={contract.id}>
-              <TableCell className="truncate" title={contract.title}>
+            <TableRow key={contract.id} className="group-data-[compact]/table:h-14">
+              <TableCell
+                className="whitespace-normal"
+                title={`${contract.title} (${contract.contractType})`}
+              >
                 <Title contract={contract} inline />
               </TableCell>
-              <TableCell className="truncate" title={contract.counterparties.join(", ")}>
-                {contract.counterparties.join(", ") || dash}
+              <TableCell className="whitespace-normal" title={contract.counterparties.join(", ")}>
+                <span className="line-clamp-2">{contract.counterparties.join(", ") || dash}</span>
               </TableCell>
               {showStatus ? (
                 <TableCell>

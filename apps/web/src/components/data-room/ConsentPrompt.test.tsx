@@ -138,3 +138,12 @@ it("remembers Not now across visits, and asks again for a new version", async ()
   await render();
   expect(container.textContent).toContain("Let Praci read your documents");
 });
+
+it("drops the card when consent was granted elsewhere and the window regains focus", async () => {
+  rpc.consent.mockResolvedValue(status());
+  await render();
+  expect(container.textContent).toContain("Let Praci read your documents");
+  rpc.consent.mockResolvedValue(status({ allowed: true }));
+  await act(async () => void window.dispatchEvent(new Event("focus")));
+  expect(container.textContent).toBe("");
+});

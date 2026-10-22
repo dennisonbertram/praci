@@ -6,7 +6,7 @@ import type {
   MailProvider,
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
-import { MAIL_GREP_BUDGET } from "@rakazo/core";
+import { MAIL_GREP_BUDGET, TRIAGE_VERSION } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -42,13 +42,15 @@ type Overview = {
   accounts: Array<{
     account: string;
     unread: number;
-    needsReply: number;
+    needsReply: number | null;
     lastSyncedAt: string | null;
     sync: string;
   }>;
   needsReply: string[];
   needsReplyListed: string;
   incomplete?: string;
+  sorting?: string;
+  openTodos: number | null;
   todos: string[];
   recent: string[];
 };
@@ -178,7 +180,7 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
     ) =>
       prisma.cachedMailMessage.updateMany({
         where: { spaceId: scope.spaceId, providerMessageId },
-        data: { triagedAt: new Date(), triageVersion: 1, ...data },
+        data: { triagedAt: new Date(), triageVersion: TRIAGE_VERSION, ...data },
       });
     return { scope, gmail, deps, accounts, overview, listCalls, enqueued, triage };
   }
@@ -213,6 +215,7 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
     });
     await t.triage("low-new", { needsReply: true, priority: "low", reason: "Casual hello" });
     await t.triage("answered", { needsReply: true, priority: "critical", alreadyHandled: true });
+    await t.triage("b-plain", { needsReply: false, priority: "low" });
     await t.triage("newsletter", { needsReply: false, priority: "low", reason: "Newsletter" });
     const critical = await prisma.cachedMailMessage.findFirstOrThrow({
       where: { spaceId: t.scope.spaceId, providerMessageId: "crit-old" },
@@ -470,5 +473,29 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
     expect(result.accounts[0]).toMatchObject({ sync: "syncing", lastSyncedAt: null });
     expect(result.recent).toEqual([]);
     expect(t.listCalls()).toBe(0);
+  });
+
+  it("gives no counts while the first sort is running, then counts that match the Inbox", async () => {
+    const t = await harness({ a: [message("m1", 1, { subject: "Question" })] });
+    const sorting = await t.overview();
+    expect(sorting.sorting).toMatch(/still sorting/);
+    expect(sorting.accounts[0]?.needsReply).toBeNull();
+    expect(sorting.needsReply).toEqual([]);
+    expect(sorting.openTodos).toBeNull();
+    await t.triage("m1", { needsReply: true, priority: "normal" });
+    const done = await t.overview();
+    expect(done.sorting).toBeUndefined();
+    expect(done.accounts[0]?.needsReply).toBe(1);
+    expect(done.needsReply).toHaveLength(1);
+  });
+
+  it("does not wait on a message the triage model skipped", async () => {
+    const t = await harness({ a: [message("m1", 1), message("m2", 2)] });
+    await t.overview();
+    await t.triage("m1", { needsReply: true, priority: "normal" });
+    await t.triage("m2", {});
+    const done = await t.overview();
+    expect(done.sorting).toBeUndefined();
+    expect(done.needsReply).toHaveLength(1);
   });
 });

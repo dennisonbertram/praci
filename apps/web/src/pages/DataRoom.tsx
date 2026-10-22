@@ -708,7 +708,8 @@ export function DataRoomPage({
       ) : (
         <>
           <div className={`${PAGE_GUTTER_X} pb-2.5 empty:hidden`}>
-            {showStats ? null : <DataRoomConsentPrompt onAllowed={reload} />}
+            {/* Also in Stats, so switching views never moves the folder tree. */}
+            <DataRoomConsentPrompt onAllowed={reload} />
           </div>
           <FilterBar
             query={queryInput}

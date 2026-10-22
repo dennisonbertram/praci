@@ -341,7 +341,7 @@ describe("BotSettings saving without a Save button", () => {
   it("saves Advanced choices as soon as they change", async () => {
     await render();
     const privateMode = [...container.querySelectorAll("button")].find(
-      (b) => b.textContent === "Private",
+      (b) => b.textContent === "Only this bot",
     );
     await act(async () => privateMode?.click());
     expect(onSave).toHaveBeenCalledTimes(1);

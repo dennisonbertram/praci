@@ -50,7 +50,7 @@ it("says what each first-run focus covers until one is picked", async () => {
   await act(async () =>
     root.render(<ChoiceCard botId="bot-1" block={block} onBotChanged={async () => {}} />),
   );
-  expect(el.textContent).toContain("Cash, cap table, investors and email");
+  expect(el.textContent).toContain("Email, calendar and your company pages");
   expect(el.textContent).toContain("The web, notes and docs");
   await act(async () =>
     root.render(
@@ -61,5 +61,5 @@ it("says what each first-run focus covers until one is picked", async () => {
       />,
     ),
   );
-  expect(el.textContent).not.toContain("Cash, cap table");
+  expect(el.textContent).not.toContain("Email, calendar and your company pages");
 });
