@@ -23,6 +23,17 @@ const chart = {
 };
 const fence = `\`\`\`chart\n${JSON.stringify(chart)}\n\`\`\``;
 
+it("round-trips atomic GTM blocks without exposing editable query text", () => {
+  const content =
+    '# Focus\n\n```gtm-plan\n{"group":"drafts","channel":["x"],"limit":3}\n```\n\n```gtm-metric\n{"label":"Completed","count":"done","goal":50}\n```';
+  const editor = new Editor({ extensions: PAGE_EXTENSIONS, content, contentType: "markdown" });
+  expect(editor.getJSON().content?.filter((node) => node.type === "pageGtm")).toHaveLength(2);
+  expect(editor.schema.nodes.pageGtm?.isAtom).toBe(true);
+  expect(editor.schema.nodes.pageGtm?.spec.draggable).toBe(true);
+  expect(editor.getMarkdown()).toBe(content);
+  editor.destroy();
+});
+
 it("keeps headings, lists and chart fences through load and save", () => {
   const page = `# Weekly\n\nIntro text.\n\n- one\n- two\n\n${fence}\n\nAfter.`;
   expect(roundTrip(page)).toBe(page);
