@@ -341,3 +341,44 @@ it.each([300, 375])("keeps all 12 months reachable and 44 px wide at %i px on to
   done();
   window.matchMedia = saved;
 });
+
+it("names the Financing ring on a quarter view", async () => {
+  const q = (start: string, outCents: number, financingCents = 0) => ({
+    start,
+    end: start,
+    outCents,
+    revenueCents: 0,
+    financingCents,
+    partial: false,
+  });
+  const { el, done } = await mount(
+    600,
+    <BurnLines
+      label="Burn"
+      height={200}
+      granularity="quarter"
+      series={[q("2025-07-01", 900_000), q("2025-10-01", 1_200_000, 250_000)]}
+      onOpen={() => {}}
+    />,
+  );
+  expect(el.querySelector("[data-testid=financing-clipped]")?.textContent).toMatch(
+    /^Financing, .*\$2,500$/,
+  );
+  done();
+});
+
+it("keeps a Financing label inside the chart when financing equals the scale top", async () => {
+  const { el, done } = await mount(
+    600,
+    <BurnLines
+      label="Burn"
+      height={200}
+      granularity="quarter"
+      series={[{ ...day(1, 1_000_000), outCents: 1_000_000 }]}
+      onOpen={() => {}}
+    />,
+  );
+  const text = el.querySelector("[data-testid=financing-clipped]") as SVGTextElement;
+  expect(Number(text.getAttribute("y"))).toBeGreaterThanOrEqual(12);
+  done();
+});

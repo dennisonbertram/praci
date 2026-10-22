@@ -7155,10 +7155,6 @@ msgstr ""
 msgid "No draft made, see Ask"
 msgstr ""
 
-#: src/pages/Gtm.tsx
-msgid "No drafts"
-msgstr ""
-
 #: src/pages/investors/UpdateEditor.tsx
 msgid "no email"
 msgstr ""
@@ -7524,10 +7520,6 @@ msgstr ""
 msgid "Nothing remembered yet"
 msgstr "Aún no hay recuerdos"
 
-#: src/pages/Gtm.tsx
-msgid "Nothing running"
-msgstr ""
-
 #: src/pages/portal/PortalHome.tsx
 msgid "Nothing shared yet."
 msgstr ""
@@ -7575,6 +7567,10 @@ msgstr ""
 
 #: src/pages/Investors.tsx
 msgid "Off"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Off in Settings"
 msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
@@ -7882,10 +7878,6 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Out so far this month, not over"
 msgstr ""
 
 #: src/pages/MemorySettingsOverlay.tsx
@@ -10256,6 +10248,10 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Spent {spentRange}"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Spent so far this month"
 msgstr ""
 
 #: src/components/FinanceCards.tsx

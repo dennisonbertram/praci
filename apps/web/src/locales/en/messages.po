@@ -7155,10 +7155,6 @@ msgstr "No documents here name a party"
 msgid "No draft made, see Ask"
 msgstr "No draft made, see Ask"
 
-#: src/pages/Gtm.tsx
-msgid "No drafts"
-msgstr "No drafts"
-
 #: src/pages/investors/UpdateEditor.tsx
 msgid "no email"
 msgstr "no email"
@@ -7524,10 +7520,6 @@ msgstr "Nothing needs you right now."
 msgid "Nothing remembered yet"
 msgstr "Nothing remembered yet"
 
-#: src/pages/Gtm.tsx
-msgid "Nothing running"
-msgstr "Nothing running"
-
 #: src/pages/portal/PortalHome.tsx
 msgid "Nothing shared yet."
 msgstr "Nothing shared yet."
@@ -7576,6 +7568,10 @@ msgstr "Obligation"
 #: src/pages/Investors.tsx
 msgid "Off"
 msgstr "Off"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Off in Settings"
+msgstr "Off in Settings"
 
 #: src/components/integrations/IntegrationAgentSection.tsx
 msgid "Off: other agents reach {service} only through this agent."
@@ -7883,10 +7879,6 @@ msgstr "Other ways to connect"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
 msgstr "Out"
-
-#: src/pages/Finance.tsx
-msgid "Out so far this month, not over"
-msgstr "Out so far this month, not over"
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Outside memory service"
@@ -10257,6 +10249,10 @@ msgstr "Spend, changes, and new or upcoming charges."
 #: src/pages/Finance.tsx
 msgid "Spent {spentRange}"
 msgstr "Spent {spentRange}"
+
+#: src/pages/Finance.tsx
+msgid "Spent so far this month"
+msgstr "Spent so far this month"
 
 #: src/components/FinanceCards.tsx
 msgid "Spent this month"

@@ -119,8 +119,13 @@ export function BotSettings({
   focusName = false,
   hostComputer,
   messageTargets = [],
+  notificationsOff = false,
+  onOpenNotificationSettings,
 }: {
   bot: Bot;
+  /** The account delivers no notifications anywhere, so this bot's switch cannot reach the person. */
+  notificationsOff?: boolean;
+  onOpenNotificationSettings?: () => void;
   /** Internal bots an external bot can be allowed to message. */
   messageTargets?: Pick<Bot, "id" | "name">[];
   /** Set only where the bot may run on the host computer; carries the deployment default. */
@@ -528,7 +533,20 @@ export function BotSettings({
                 <Trans>Notifications</Trans>
               </div>
               <div id={`${ids}-notify-finish-desc`} className="text-[12px] text-muted-foreground">
-                <Trans>Get notified when this bot finishes or needs input</Trans>
+                {notificationsOff && onOpenNotificationSettings ? (
+                  <button
+                    type="button"
+                    className="underline underline-offset-2"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      onOpenNotificationSettings();
+                    }}
+                  >
+                    <Trans>Off in Settings</Trans>
+                  </button>
+                ) : (
+                  <Trans>Get notified when this bot finishes or needs input</Trans>
+                )}
               </div>
             </div>
             <Switch

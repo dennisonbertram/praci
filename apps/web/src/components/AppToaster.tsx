@@ -2,7 +2,7 @@ import type { NotificationDto } from "@rakazo/contracts";
 import { NotificationToaster } from "@rakazo/ui-web";
 import { useEffect, useRef } from "react";
 import { useLocation, useMatch, useNavigate } from "react-router-dom";
-import { lookupAgentApp } from "../lib/agent-app";
+import { lookupBotApp } from "../lib/agent-app";
 import { hasApprovalToasts } from "../lib/approval-toasts";
 import { authClient } from "../lib/auth";
 import { openChatBotId } from "../lib/docked-agent";
@@ -64,9 +64,9 @@ async function followUnansweredApprovals(
 async function avatarFor(n: NotificationDto, userId: string | undefined) {
   if (!n.botId || !userId) return undefined;
   try {
-    const bot = (await rpc.bots.list()).find((b) => b.id === n.botId);
-    if (!bot) return undefined;
-    const app = await lookupAgentApp(userId, bot);
+    const found = await lookupBotApp(userId, n.botId);
+    if (!found) return undefined;
+    const { bot, app } = found;
     return <AgentAvatar app={app} color={bot.color} identity={bot.id} size={32} />;
   } catch {
     return undefined;
