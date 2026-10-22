@@ -13,7 +13,7 @@ import {
   SpaceName,
   useFinanceQuery,
 } from "../components/finance/ui";
-import { LegalConsentPrompt } from "../components/legal/ConsentPrompt";
+import { LEGAL_CONSENT_GRANTED, LegalConsentPrompt } from "../components/legal/ConsentPrompt";
 import { LegalGraphView } from "../components/legal/LegalGraph";
 import { PageHeader } from "../components/PageHeader";
 import { DATA_ROOM_PATH } from "../lib/data-room";
@@ -180,6 +180,17 @@ function Legal({
     }
   };
 
+  // Allow in the agent panel: re-read, then scan like the page's own card does.
+  const scanRef = useRef(scan);
+  scanRef.current = scan;
+  useEffect(() => {
+    const granted = () => {
+      reload.current.consent();
+      void scanRef.current();
+    };
+    window.addEventListener(LEGAL_CONSENT_GRANTED, granted);
+    return () => window.removeEventListener(LEGAL_CONSENT_GRANTED, granted);
+  }, []);
   // A failed first load has nothing to show; a failed re-read keeps the page and says so.
   if (overview.error && !data) {
     return (

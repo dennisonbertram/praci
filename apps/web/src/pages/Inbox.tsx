@@ -918,6 +918,7 @@ function InboxListPage({
           setReload((n) => n + 1);
         }}
         onDismiss={() => setConsentDismissed(true)}
+        shownElsewhere={failed && !failedEmpty ? failed : undefined}
       />
     ) : null;
   const todoCard = todos ? (

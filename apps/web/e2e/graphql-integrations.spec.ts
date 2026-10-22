@@ -9,7 +9,7 @@ test("a GraphQL endpoint is added from the custom connection dialog's Advanced s
   await completeOnboarding(page);
 
   await openIntegrations(page);
-  await expect(page.getByPlaceholder("Search apps")).toBeVisible();
+  await expect(page.getByPlaceholder("Search integrations")).toBeVisible();
   await expect(page.getByRole("button", { name: "GraphQL", exact: true })).toBeHidden();
 
   await page.getByRole("button", { name: "Add custom connection", exact: true }).click();

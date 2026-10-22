@@ -16,6 +16,8 @@ export function attentionFromDto(n: NotificationDto): AttentionNotification {
     body: n.body ? maskCurrencyWhenHidden(n.body) : undefined,
     href: n.link ?? undefined,
     createdAt: n.createdAt,
+    // An approval waits for the person, so its toast stays until it is opened or dismissed.
+    ...(n.kind === "needs_input" ? { timeout: 0 } : {}),
   };
 }
 

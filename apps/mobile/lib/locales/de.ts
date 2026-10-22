@@ -660,7 +660,6 @@ export const DE_MESSAGES: Record<string, string> = {
   "Loading preview…": "Vorschau wird geladen…",
   "Share {name}": "{name} teilen",
   // lib/activity.ts
-  "Needs input": "Eingabe erforderlich",
   "Needs takeover": "Übernahme erforderlich",
   Queued: "In Warteschlange",
   Quote: "Zitieren",
@@ -881,7 +880,7 @@ export const DE_MESSAGES: Record<string, string> = {
   "Thinking…": "Denkt nach…",
   "Writing…": "Schreibt…",
   "Waiting in line…": "In der Warteschlange…",
-  "Needs an answer": "Braucht eine Antwort",
+  "Needs your answer": "Braucht eine Antwort",
   "Needs you": "Braucht dich",
   Error: "Fehler",
   "Last run failed: {error}": "Letzte Ausführung fehlgeschlagen: {error}",

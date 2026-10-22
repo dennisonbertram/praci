@@ -54,3 +54,15 @@ export const WithRunPhase: Story = {
     />
   ),
 };
+
+export const SlowRun: Story = {
+  render: () => (
+    <ActiveBotGlyph
+      label="Thinking"
+      startedAt={Date.now() - 185_000}
+      onStop={() => {}}
+      onRetry={() => {}}
+      bots={[{ botId: "bot_scout", name: "Scout", color: "#7c6cf0" }]}
+    />
+  ),
+};

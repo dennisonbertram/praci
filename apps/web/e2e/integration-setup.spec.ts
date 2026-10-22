@@ -236,7 +236,9 @@ test("remote members skip server setup and keep direct MCP connections", async (
   ]) {
     await expect(page.getByRole("button", { name, exact: true })).toBeHidden();
   }
-  await expect(page.getByRole("textbox", { name: "Search apps", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Search integrations", exact: true }),
+  ).toBeVisible();
   await captureScreenshot(page, testInfo, "remote-member-mcp");
   await page.goto("/integrations/setup");
   await page.waitForURL(/\/app/);

@@ -36,4 +36,31 @@ describe("collaboration transcript markers", () => {
     expect(html).toContain('data-working="true"');
     expect(html).toContain('data-mood="working"');
   });
+
+  it("offers Stop and Try again once a run is over two minutes old", () => {
+    const bots = [{ botId: "research", color: "#14B8A6", status: "running" as const }];
+    const slow = renderToString(
+      <ActiveBotGlyph
+        bots={bots}
+        label="Thinking"
+        startedAt={Date.now() - 130_000}
+        onStop={() => undefined}
+        onRetry={() => undefined}
+      />,
+    );
+    expect(slow).toContain("Taking longer than usual");
+    expect(slow).toContain("Stop");
+    expect(slow).toContain("Try again");
+    expect(slow).toMatch(/2m 1\ds/);
+
+    const fresh = renderToString(
+      <ActiveBotGlyph
+        bots={bots}
+        label="Thinking"
+        startedAt={Date.now() - 30_000}
+        onStop={() => undefined}
+      />,
+    );
+    expect(fresh).not.toContain("Taking longer than usual");
+  });
 });

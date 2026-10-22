@@ -61,6 +61,19 @@ body,
     100% 32px no-repeat scroll;
 }
 
+/* Both edges, for a list that scrolls under a header and above a footer. */
+.rk-scroll-fade-y {
+  background:
+    linear-gradient(var(--rk-fade, var(--sidebar)), var(--rk-fade, var(--sidebar))) top / 100% 32px
+    no-repeat local,
+    linear-gradient(var(--rk-fade, var(--sidebar)), var(--rk-fade, var(--sidebar))) bottom / 100%
+    32px no-repeat local,
+    linear-gradient(color-mix(in oklab, var(--foreground) 16%, transparent), transparent) top / 100%
+    32px no-repeat scroll,
+    linear-gradient(transparent, color-mix(in oklab, var(--foreground) 16%, transparent)) bottom /
+    100% 32px no-repeat scroll;
+}
+
 /* Sets the colour .rk-scroll-fade-bottom fades into when the scroller sits on a dialog. */
 .rk-fade-popover {
   --rk-fade: var(--popover);
@@ -91,4 +104,12 @@ body,
     min-height: 44px;
     min-width: 44px;
   }
+}
+
+/* One ink focus ring for every sidebar control, whatever classes the row carries. */
+[data-sidebar] :is(a, button, summary, [role="button"]):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+  /* A light inner gap keeps the ring visible on the ink-filled active row. */
+  box-shadow: inset 0 0 0 4px var(--background);
 }

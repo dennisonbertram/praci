@@ -76,7 +76,7 @@ test("settings shell is two-pane and deep-links Models Memory Voice Usage", asyn
   await expect(settings.getByTestId("memory-settings")).toBeVisible();
   const memory = settings.getByTestId("memory-settings");
   // An outside memory service is an advanced choice, folded away until asked for.
-  await memory.getByText("Advanced: connect an outside memory service").click();
+  await memory.getByText("Outside memory service").click();
   await expect(memory.getByLabel("Provider")).toBeVisible();
   await memory.getByLabel("Provider").selectOption("serenity");
   await expect(memory.getByLabel("MCP endpoint")).toBeVisible();
