@@ -181,6 +181,7 @@ export function LineChart({
   axes = true,
   solidUntil,
   endMarker,
+  projectedLabel,
 }: {
   values: number[];
   labels: string[];
@@ -189,6 +190,8 @@ export function LineChart({
   axes?: boolean;
   solidUntil?: number;
   endMarker?: boolean;
+  /** Names the dashed part of the line. */
+  projectedLabel?: string;
 }) {
   return (
     <Chart height={height} label={label}>
@@ -258,6 +261,17 @@ export function LineChart({
                 strokeDasharray="5 4"
                 strokeLinecap="round"
               />
+            ) : null}
+            {projectedLabel && solid < values.length - 1 ? (
+              <text
+                x={(x(solid) + x(values.length - 1)) / 2 + 8}
+                y={y(((values[solid] ?? 0) + (values.at(-1) ?? 0)) / 2) - 8}
+                textAnchor="start"
+                className="fill-muted-foreground"
+                fontSize={11}
+              >
+                {projectedLabel}
+              </text>
             ) : null}
             <circle cx={x(solid)} cy={y(values[solid] ?? 0)} r={3} className="fill-foreground" />
             {endMarker ? (
@@ -571,18 +585,22 @@ export function BurnLines({
             {series.map((m, i) => {
               if (m.financingCents <= scale.top) return null;
               const when = granularity === "day" ? dayMonth(m.start) : (names[i] ?? "");
+              const text = `${t`Financing, ${when}`} ↑ ${money(m.financingCents)}`;
+              // About 6 px a character at 11 px; a centred label that would pass either edge hugs it.
+              const half = (text.length * 6) / 2;
+              const anchor =
+                cx(i) + half > width - 2 ? "end" : cx(i) - half < 2 ? "start" : "middle";
               return (
                 <text
                   key={m.start}
                   data-testid="financing-clipped"
-                  // A label centred on the last point would run past the right edge.
-                  x={cx(i) > width - 32 ? width - 2 : cx(i)}
+                  x={anchor === "end" ? width - 2 : anchor === "start" ? 2 : cx(i)}
                   y={top - 6}
-                  textAnchor={cx(i) > width - 32 ? "end" : "middle"}
+                  textAnchor={anchor}
                   className="fill-foreground"
                   fontSize={11}
                 >
-                  {`${t`Financing, ${when}`} ↑ ${money(m.financingCents)}`}
+                  {text}
                 </text>
               );
             })}
@@ -710,6 +728,8 @@ export function MonthBars({
   );
 }
 
+const MAX_SEGMENTS = 6;
+
 /** One stacked bar split into segments; each opens its target. */
 export function StackBar({
   segments,
@@ -726,24 +746,43 @@ export function StackBar({
         const total = segments.reduce((sum, s) => sum + s.cents, 0);
         if (total <= 0) return null;
         let x = 0;
-        return segments.map((segment, i) => {
+        // Six grey shades are all the eye can tell apart: the rest fold into one "Other" segment.
+        const rest = segments.slice(MAX_SEGMENTS - 1);
+        const drawn =
+          segments.length > MAX_SEGMENTS
+            ? [
+                ...segments.slice(0, MAX_SEGMENTS - 1),
+                { key: "", label: t`Other`, cents: rest.reduce((sum, s) => sum + s.cents, 0) },
+              ]
+            : segments;
+        return drawn.map((segment, i) => {
           const w = (segment.cents / total) * width;
           const at = x;
           x += w;
+          const shape = {
+            x: at,
+            y: 0,
+            width: Math.max(w - 1, 0),
+            height: 26,
+            rx: 2,
+            style: { fill: shade(i) },
+          };
+          // "Other" has no page of its own: it is named on hover and to screen readers, and opens nothing.
+          if (segment.key === "")
+            return (
+              <rect key="other" {...shape}>
+                <title>{segment.label}</title>
+              </rect>
+            );
           return (
             // biome-ignore lint/a11y/useSemanticElements: an SVG shape cannot be an <a> that the router can drive
             <rect
               key={segment.key}
+              {...shape}
               role="link"
-              tabIndex={0}
               aria-label={segment.label}
-              x={at}
-              y={0}
-              width={Math.max(w - 1, 0)}
-              height={26}
-              rx={2}
+              tabIndex={0}
               className="cursor-pointer outline-none focus-visible:stroke-foreground"
-              style={{ fill: shade(i) }}
               onClick={() => onOpen(segment.key)}
               onKeyDown={keyActivate(() => onOpen(segment.key))}
             >

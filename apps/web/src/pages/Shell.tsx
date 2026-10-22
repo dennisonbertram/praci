@@ -3956,6 +3956,7 @@ export function ShellPage() {
                 onOpenComputer={onOpenComputer}
                 lastReadSeq={activeSnapshot?.lastReadSeq}
                 onRead={readThreadUpTo}
+                anchorToUnread={!pageMode}
               />
             )}
           </BotToolControlsContext.Provider>

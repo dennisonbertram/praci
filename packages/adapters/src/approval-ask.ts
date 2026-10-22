@@ -277,7 +277,7 @@ export type MoneyNames = { recipient?: string; account?: string };
 
 /**
  * The names behind a send-money request's recipientId and accountId, read with the provider's own
- * read tools through `read`. A failed or empty lookup leaves that name out, so the card says "a recipient" or "an account"; Details still shows the ids. The caller caches lookups for the same id.
+ * read tools through `read`. A failed or empty lookup leaves that name out, so the headline shows that id instead. The caller caches lookups for the same id.
  */
 export async function resolveMoneyNames(
   toolName: string,
@@ -312,7 +312,9 @@ export function describeApprovalAction(
 ): string {
   if (isSendMoney(toolName)) {
     const amount = args.amount == null ? "money" : formatAmount(args.amount, args.currency);
-    return `Send ${amount} to ${moneyNames?.recipient ?? "a recipient"} from ${moneyNames?.account ?? "an account"}`;
+    // A failed lookup shows the id, never a vague "a recipient".
+    const idOf = (id: unknown, fallback: string) => (typeof id === "string" && id ? id : fallback);
+    return `Send ${amount} to ${moneyNames?.recipient ?? idOf(args.recipientId, "a recipient")} from ${moneyNames?.account ?? idOf(args.accountId, "an account")}`;
   }
   if (toolName === "mail_send" || toolName === "mail_draft") {
     const [first, ...rest] = strings(args.to);
