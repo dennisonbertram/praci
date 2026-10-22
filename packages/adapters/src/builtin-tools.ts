@@ -1381,11 +1381,14 @@ export const builtinAgentTools: ConnectorTool[] = [
   {
     name: "search_data_room",
     description:
-      "Search the user's Data room, their private store of documents. Returns id, name, doc type, date and a short snippet for each match. Use read_data_room_item for the full text.",
+      "Search the user's Data room, their private store of documents. Returns id, name, doc type, date and a short snippet for each match. Leave query out to list the room instead (newest first, with each file's folder), the way to check whether a document exists. Use read_data_room_item for the full text.",
     inputSchema: {
       type: "object",
       properties: {
-        query: { type: "string", description: "Words to find in names and content." },
+        query: {
+          type: "string",
+          description: "Words to find in names and content. Omit to list files.",
+        },
         filters: {
           type: "object",
           description: "Optional narrowing.",
@@ -1403,9 +1406,8 @@ export const builtinAgentTools: ConnectorTool[] = [
             source: { type: "string", description: "upload, gmail, drive, box, chat or finance." },
           },
         },
-        limit: { type: "number", description: "Default 10, max 20." },
+        limit: { type: "number", description: "Default 10, max 20 (a list: 100)." },
       },
-      required: ["query"],
     },
     readOnly: true,
   },
@@ -1873,7 +1875,7 @@ export const builtinAgentTools: ConnectorTool[] = [
   {
     name: "schedule_create",
     description:
-      'Create a reminder or recurring job for this bot. Use for "remind me in 10 minutes" or "every morning send a joke". One-shot (runAt, delayMinutes, or delaySeconds) is free and runs without asking. Repeating (cron or every/unit, min 1 minute) pauses for the user to approve a card that shows the schedule and the full prompt, so write the prompt as the exact instructions to run each time. The prompt is only the work to do (\"draft the investor note and post it here\"), never the timing (\"every Monday at 9\"), which goes in cron or every/unit. Times are in the user\'s time zone unless you pass timezone.',
+      'Create a reminder or recurring job for this bot. Use for "remind me in 10 minutes" or "every morning send a joke". One-shot (runAt, delayMinutes, or delaySeconds) is free and runs without asking. Repeating (cron or every/unit, min 1 minute) pauses for the user to approve a card that shows the schedule and the full prompt, so write the prompt as the exact instructions to run each time. The prompt is only the work to do ("draft the investor note and post it here"), never the timing ("every Monday at 9"), which goes in cron or every/unit. Times are in the user\'s time zone unless you pass timezone.',
     inputSchema: scheduleCreateInputSchema,
   },
   {

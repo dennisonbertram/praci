@@ -145,7 +145,7 @@ export const DataRoomApiSearchInputSchema = z.object({
 });
 /** The ordinal of the chunk that holds an item's name, folder and facets; text chunks start at 0. */
 /** A file still being read after this long (no pipeline write) is stuck and offers Try again. */
-export const DATA_ROOM_STUCK_MS = 3 * 60_000;
+export const DATA_ROOM_STUCK_MS = 60_000;
 
 export const DATA_ROOM_METADATA_ORDINAL = -1;
 

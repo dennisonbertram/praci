@@ -525,6 +525,13 @@ describePostgres("Data room agent tools (PostgreSQL, Gmail and Drive emulators)"
     expect(found.results[0]?.snippet).not.toContain("\u0001");
     expect(found.results[0]).toMatchObject({ link: `/app/data-room?item=${mine.id}` });
 
+    // With no query the tool lists the room with each file's folder, so a present document is
+    // never reported missing just because a keyword search missed it.
+    const listed = (await call("search_data_room", {})) as {
+      results: { id: string; name: string }[];
+    };
+    expect(listed.results.map((r) => r.id)).toEqual([mine.id]);
+
     const read = (await call("read_data_room_item", { item_id: mine.id })) as Record<
       string,
       unknown

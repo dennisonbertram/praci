@@ -504,6 +504,10 @@ msgstr "{folders, plural, one {# folder} other {# folders}}"
 msgid "{from} handed off to {to}"
 msgstr "{from} handed off to {to}"
 
+#: src/pages/DataRoom.tsx
+msgid "{heldCount, plural, one {# new file} other {# new files}}"
+msgstr "{heldCount, plural, one {# new file} other {# new files}}"
+
 #: src/components/ToolActivityDisclosure.tsx
 msgid "{hidden, plural, one {+# earlier step} other {+# earlier steps}}"
 msgstr "{hidden, plural, one {+# earlier step} other {+# earlier steps}}"
@@ -1744,6 +1748,7 @@ msgstr "Auto-renews"
 msgid "Auto-renews, {notice} days notice"
 msgstr "Auto-renews, {notice} days notice"
 
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 msgid "Auto-sort"
@@ -7509,10 +7514,6 @@ msgid "Not tagged"
 msgstr "Not tagged"
 
 #: src/components/data-room/Preview.tsx
-msgid "Not tagged yet."
-msgstr "Not tagged yet."
-
-#: src/components/data-room/Preview.tsx
 msgid "Not tagged. Praci can't read your documents."
 msgstr "Not tagged. Praci can't read your documents."
 
@@ -8241,6 +8242,10 @@ msgstr "Praci doesn't tag new files."
 msgid "Praci keeps your meetings and to-dos."
 msgstr "Praci keeps your meetings and to-dos."
 
+#: src/components/data-room/Preview.tsx
+msgid "Praci read this file but couldn't tell what kind of document it is."
+msgstr "Praci read this file but couldn't tell what kind of document it is."
+
 #. placeholder {0}: usd(safe.capCents)
 #: src/components/fundraising/SafeDialog.tsx
 #: src/components/fundraising/SafeList.tsx
@@ -8510,18 +8515,6 @@ msgstr "Reading a connected app"
 #: src/pages/Investors.tsx
 msgid "Reading Carta…"
 msgstr "Reading Carta…"
-
-#: src/components/data-room/format.ts
-msgid "Reading for {days} d"
-msgstr "Reading for {days} d"
-
-#: src/components/data-room/format.ts
-msgid "Reading for {hours} h"
-msgstr "Reading for {hours} h"
-
-#: src/components/data-room/format.ts
-msgid "Reading for {minutes} min"
-msgstr "Reading for {minutes} min"
 
 #: src/pages/Investors.tsx
 msgid "Reading sheet…"
@@ -8940,6 +8933,7 @@ msgstr "Replace"
 msgid "Replace API key"
 msgstr "Replace API key"
 
+#: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/Preview.tsx
 msgid "Replace file"
 msgstr "Replace file"
@@ -10197,10 +10191,6 @@ msgid "Sort descending"
 msgstr "Sort descending"
 
 #: src/components/data-room/AutoSortDialog.tsx
-msgid "Sort files"
-msgstr "Sort files"
-
-#: src/components/data-room/AutoSortDialog.tsx
 msgid "Sort new files"
 msgstr "Sort new files"
 
@@ -10544,6 +10534,7 @@ msgstr "Take the tour"
 #: src/components/ai/primitives.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ItemRows.tsx
+#: src/components/data-room/ProcessingStrip.tsx
 msgid "Taking longer than usual"
 msgstr "Taking longer than usual"
 
@@ -11143,6 +11134,7 @@ msgstr "Try {name} again"
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
+#: src/components/data-room/ProcessingStrip.tsx
 #: src/components/finance/ui.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -11707,6 +11699,10 @@ msgstr "Waiting for approval"
 #: src/components/fundraising/Pipeline.tsx
 msgid "Waiting for Mercury · {waiting}"
 msgstr "Waiting for Mercury · {waiting}"
+
+#: src/components/data-room/ProcessingStrip.tsx
+msgid "Waiting for permission to read"
+msgstr "Waiting for permission to read"
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/SignInStep.tsx

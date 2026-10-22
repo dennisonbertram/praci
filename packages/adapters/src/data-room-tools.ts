@@ -55,6 +55,7 @@ const MAIL_ATTACHMENT_MAX_BYTES = 50 * 1024 * 1024;
 export const DATA_ROOM_MIN_IMAGE_BYTES = 20 * 1024;
 const DEFAULT_RESULTS = 10;
 const MAX_RESULTS = 20;
+const MAX_LIST = 100;
 const SNIPPET_CHARS = 300;
 /** Same cap as drive_read. */
 const MAX_TEXT_CHARS = 100_000;
@@ -125,7 +126,6 @@ const HIGHLIGHT_MARKS = /[\u0001\u0002]/g;
 
 async function search(deps: DataRoomToolDeps, actor: Actor, args: Record<string, unknown>) {
   const query = text(args.query);
-  if (!query) return { error: "query is required" };
   const parsed = DataRoomApiFiltersSchema.safeParse(args.filters ?? {});
   if (!parsed.success) return { error: "filters are not valid" };
   const { docDateFrom, docDateTo, ...rest } = parsed.data;
@@ -136,6 +136,7 @@ async function search(deps: DataRoomToolDeps, actor: Actor, args: Record<string,
     ...(docDateTo ? { docDateTo: new Date(docDateTo) } : {}),
   };
   const repo = createDataRoomRepos(deps.prisma);
+  if (!query) return await listRoom(repo, actor, filters, args.limit);
   const page = await repo.searchPage(actor, {
     query,
     filters,
@@ -165,6 +166,47 @@ async function search(deps: DataRoomToolDeps, actor: Actor, args: Record<string,
       docDate: item.docDate?.toISOString().slice(0, 10) ?? null,
       snippet: snippet.replace(HIGHLIGHT_MARKS, "").slice(0, SNIPPET_CHARS),
     })),
+  };
+}
+
+/**
+ * Without a query the tool lists the room (newest first) with each file's folder path. Absence
+ * must be judged from this list, since a keyword search misses files whose text lacks the words.
+ */
+async function listRoom(
+  repo: ReturnType<typeof createDataRoomRepos>,
+  actor: Actor,
+  filters: Parameters<ReturnType<typeof createDataRoomRepos>["listItemsPage"]>[1],
+  limit: unknown,
+) {
+  const [page, folderRows] = await Promise.all([
+    repo.listItemsPage(actor, filters, { limit: clampInt(limit, 1, MAX_LIST, MAX_LIST) }),
+    repo.listFolders(actor),
+  ]);
+  const folders = new Map(folderRows.map((folder) => [folder.id, folder]));
+  const pathOf = (folderId: string | null) => {
+    const path: string[] = [];
+    for (
+      let folder = folderId ? folders.get(folderId) : undefined;
+      folder && path.length < folders.size;
+      folder = folder.parentId ? folders.get(folder.parentId) : undefined
+    ) {
+      path.unshift(folder.name);
+    }
+    return path.length ? path.join("/") : null;
+  };
+  return {
+    results: page.items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      link: dataRoomItemLink(item.id),
+      folder: pathOf(item.folderId),
+      docType: item.docType,
+      docDate: item.docDate?.toISOString().slice(0, 10) ?? null,
+    })),
+    ...(page.nextCursor
+      ? { note: `More files exist than the ${MAX_LIST} listed; narrow with filters.` }
+      : {}),
   };
 }
 

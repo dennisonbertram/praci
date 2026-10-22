@@ -33,6 +33,16 @@ describe("ensureDataRoomAgent", () => {
     );
   });
 
+  it("tells the agent to judge a missing document from the room list, not from a search miss", async () => {
+    const createBot = vi.fn(async () => ({ id: "bot-1" }) as Bot);
+    await ensureDataRoomAgent({ repos: { createBot } }, actor);
+    const instructions = (
+      createBot.mock.calls[0] as unknown as [Actor, { instructions: string }]
+    )[1].instructions;
+    expect(instructions).toContain("search_data_room with no query to list the room");
+    expect(instructions).toContain("never proves a document is absent");
+  });
+
   it("offers no delete, move or connector tool", () => {
     expect(DATA_ROOM_AGENT_BUILTIN_TOOLS).toEqual(
       expect.arrayContaining(["search_data_room", "read_data_room_item", "add_to_data_room"]),

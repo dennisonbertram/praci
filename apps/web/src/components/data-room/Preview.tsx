@@ -161,6 +161,17 @@ function useShareCount(item: DataRoomApiItem) {
 }
 
 /** Uploads another file into the same folder, then deletes the unreadable one it replaces. */
+export function replaceDataRoomFile(item: DataRoomApiItem, files: File[]) {
+  uploadFilesToDataRoom(files, item.folderId ?? undefined, (id) => {
+    // An identical re-upload resolves to this same item; deleting it would lose the file.
+    if (id === item.id) return;
+    void rpc.dataRoom
+      .itemDelete({ id: item.id })
+      .then(() => window.dispatchEvent(new Event(DATA_ROOM_CHANGED)))
+      .catch(() => undefined);
+  });
+}
+
 function ReplaceFile({ item }: { item: DataRoomApiItem }) {
   const input = useRef<HTMLInputElement>(null);
   return (
@@ -170,18 +181,7 @@ function ReplaceFile({ item }: { item: DataRoomApiItem }) {
         type="file"
         hidden
         onChange={(event) => {
-          uploadFilesToDataRoom(
-            Array.from(event.target.files ?? []),
-            item.folderId ?? undefined,
-            (id) => {
-              // An identical re-upload resolves to this same item; deleting it would lose the file.
-              if (id === item.id) return;
-              void rpc.dataRoom
-                .itemDelete({ id: item.id })
-                .then(() => window.dispatchEvent(new Event(DATA_ROOM_CHANGED)))
-                .catch(() => undefined);
-            },
-          );
+          replaceDataRoomFile(item, Array.from(event.target.files ?? []));
           event.target.value = "";
         }}
       />
@@ -233,7 +233,7 @@ function UntaggedNote({ item }: { item: DataRoomApiItem }) {
     );
   return (
     <p className={note}>
-      <Trans>Not tagged yet.</Trans>
+      <Trans>Praci read this file but couldn't tell what kind of document it is.</Trans>
     </p>
   );
 }
