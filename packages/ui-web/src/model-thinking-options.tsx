@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import { useId } from "react";
 import { Checkbox } from "./components/ui/checkbox.js";
 import { Input } from "./components/ui/input.js";
@@ -59,8 +60,15 @@ export function ModelThinkingOptions({
   const imagesId = useId();
   const maxImagesId = useId();
   return (
-    <details className="mt-4 text-sm text-muted-foreground">
-      <summary className="cursor-pointer">{advancedLabel}</summary>
+    <details className="group mt-4 text-sm text-muted-foreground">
+      <summary className="flex w-fit cursor-pointer list-none select-none items-center gap-1">
+        <ChevronRight
+          aria-hidden="true"
+          className="size-4 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+          strokeWidth={1.75}
+        />
+        {advancedLabel}
+      </summary>
       {showThinking && onReasoningChange && thinkingLabel ? (
         <label htmlFor={id} className="mt-3 flex items-center gap-2">
           <Checkbox

@@ -800,6 +800,13 @@ export function ModelSettingsOverlay({
             <Trans>Connected</Trans>
           </span>
         ) : null}
+        {group.id === provider ? (
+          <Check
+            aria-hidden="true"
+            className="size-4 shrink-0 text-foreground"
+            strokeWidth={1.75}
+          />
+        ) : null}
       </button>
     );
   }

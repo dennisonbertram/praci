@@ -668,10 +668,6 @@ msgstr ""
 msgid "{title}, {label}"
 msgstr "{title}，{label}"
 
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "{tokens, plural, one {# token of AI text} other {# tokens of AI text}}"
-msgstr ""
-
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "{unpriced} unpriced"
 msgstr ""
@@ -7206,7 +7202,6 @@ msgstr ""
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 #: src/pages/KnowledgeSection.tsx
-#: src/pages/shell/command-palette.tsx
 msgid "No matches"
 msgstr ""
 
