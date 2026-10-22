@@ -2,8 +2,8 @@ import { moreBarHeight, scrollingList } from "./rows-below";
 
 /**
  * Ends the scrolling sidebar list on a row boundary, with the "+N more" bar in the margin below
- * it, so no row or space heading is ever cut in half at rest. A space heading counts only when
- * the row under it fits too. Run after layout changes; it measures from the list's natural
+ * it, so no row or space heading is ever cut in half at rest. An expanded space heading counts only
+ * when the row under it fits too. Run after layout changes; it measures from the list's natural
  * height (height plus its own margin), so repeated calls settle on the same value.
  */
 export function endOnWholeRow(
@@ -18,7 +18,8 @@ export function endOnWholeRow(
   const natural = list.clientHeight + margin;
   const top = list.getBoundingClientRect().top - list.scrollTop;
   const rows = [...list.querySelectorAll<HTMLElement>(rowSelector)].map((row) => ({
-    head: row.hasAttribute("data-roster-head"),
+    // Only an expanded heading is followed by its own first row; a collapsed one is not.
+    head: row.hasAttribute("data-roster-head") && row.getAttribute("aria-expanded") === "true",
     bottom: row.getBoundingClientRect().bottom - top,
   }));
   const limit = natural - bar + 0.5;
