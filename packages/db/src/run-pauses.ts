@@ -6,13 +6,16 @@ import {
   LoginSecretValue,
   MessageBlock as MessageBlockSchema,
 } from "@rakazo/contracts";
+import type { ClosedApprovalAnswer } from "@rakazo/core";
 import {
   callIdFromClientNonce,
+  closeApprovalAsks,
   isApprovalAskBlock,
   isConversationalRun,
   isSecretAskBlock,
   resolveAskChoice,
 } from "@rakazo/core";
+import { cancelRunsInTransaction } from "./cancel-runs.js";
 import type { Prisma, PrismaClient } from "./client.js";
 import type {
   AnswerRunInput,
@@ -70,6 +73,104 @@ function resumePrompt(
   return [run.task?.prompt.trim(), `${question.trim()}\nAnswer: ${answer}`]
     .filter(Boolean)
     .join("\n\n");
+}
+
+/**
+ * Close every unanswered approval card of these runs and its pending effect, so the stored card
+ * can never be approved later. Returns how many cards were closed.
+ */
+export async function closeApprovalCardsInTransaction(
+  tx: Prisma.TransactionClient,
+  input: {
+    spaceId: string;
+    threadId: string;
+    botId: string;
+    runIds: string[];
+    answer: ClosedApprovalAnswer;
+  },
+): Promise<number> {
+  if (input.runIds.length === 0) return 0;
+  const messages = await tx.message.findMany({
+    where: { threadId: input.threadId, runId: { in: input.runIds }, role: "bot" },
+    select: { id: true, runId: true, blocks: true },
+  });
+  let closed = 0;
+  for (const message of messages) {
+    const parsed = MessageBlockSchema.array().safeParse(message.blocks);
+    if (!parsed.success) continue;
+    const effectIds = parsed.data.flatMap((block) =>
+      block.kind === "ask" && block.status !== "answered" && block.approvalEffectId
+        ? [block.approvalEffectId]
+        : [],
+    );
+    if (effectIds.length === 0) continue;
+    const blocks = closeApprovalAsks(parsed.data, input.answer);
+    await tx.externalEffect.updateMany({
+      where: { id: { in: effectIds }, spaceId: input.spaceId, status: "intended" },
+      data: { status: input.answer },
+    });
+    await tx.message.update({ where: { id: message.id }, data: { blocks } });
+    await appendEventInTransaction(tx, {
+      spaceId: input.spaceId,
+      threadId: input.threadId,
+      botId: input.botId,
+      type: "thread.message.updated",
+      runId: message.runId ?? undefined,
+      payload: { messageId: message.id, role: "bot", blocks },
+    });
+    closed += effectIds.length;
+  }
+  return closed;
+}
+
+/**
+ * A newer approval for the same kind of action replaces older delegated ones waiting in this
+ * thread (the sender asked twice for one job). The older cards are closed and their runs cancelled
+ * without an outcome message, so the thread shows one live card and one outcome.
+ */
+async function supersedeOlderApprovals(
+  tx: Prisma.TransactionClient,
+  input: { spaceId: string; threadId: string; botId: string; runId: string },
+  approvalEffectId: string,
+) {
+  const effect = await tx.externalEffect.findUnique({
+    where: { id: approvalEffectId },
+    select: { kind: true },
+  });
+  // A mail-consent card belongs to its own run; only an action's approval is replaced.
+  if (!effect || effect.kind === AI_CONSENT_EFFECT_KIND) return;
+  const older = await tx.run.findMany({
+    where: {
+      spaceId: input.spaceId,
+      threadId: input.threadId,
+      botId: input.botId,
+      id: { not: input.runId },
+      trigger: "bot_message",
+      status: "waiting_input",
+      effects: { some: { status: "intended", kind: effect.kind } },
+    },
+    select: { id: true, taskId: true },
+  });
+  if (older.length === 0) return;
+  const runIds = older.map((run) => run.id);
+  await closeApprovalCardsInTransaction(tx, { ...input, runIds, answer: "superseded" });
+  const now = new Date();
+  await cancelRunsInTransaction(tx, older, now);
+  await tx.attempt.updateMany({
+    where: { runId: { in: runIds }, status: "waiting_input" },
+    data: { status: "cancelled", finishedAt: now },
+  });
+  await tx.run.updateMany({ where: { id: { in: runIds } }, data: { botOutcomeReturnedAt: now } });
+  for (const id of runIds) {
+    await appendEventInTransaction(tx, {
+      spaceId: input.spaceId,
+      threadId: input.threadId,
+      botId: input.botId,
+      type: "run.cancelled",
+      runId: id,
+      payload: {},
+    });
+  }
 }
 
 async function findPendingAsk(
@@ -474,6 +575,9 @@ export async function pauseRunForInput(
         runId: input.runId,
         payload: { messageId: message.id, role: "bot", blocks: input.blocks },
       });
+      if (approvalEffectIds.length > 0) {
+        await supersedeOlderApprovals(tx, input, approvalEffectIds[0]!);
+      }
     }
     const waitingEvent = await appendEventInTransaction(tx, {
       spaceId: input.spaceId,

@@ -1233,6 +1233,7 @@ describe("sendThreadMessage", () => {
     const enqueue = vi.fn().mockResolvedValue(undefined);
     const prisma = {
       message: {
+        findFirst: vi.fn().mockResolvedValue(null),
         count: vi.fn().mockResolvedValue(2),
         findUnique: vi.fn().mockResolvedValue({
           id: "msg-1",
@@ -1420,6 +1421,7 @@ describe("sendThreadMessage", () => {
         update: vi.fn().mockResolvedValue({ nextMessageSeq: 2 }),
       },
       message: {
+        findFirst: vi.fn().mockResolvedValue(null),
         count: vi.fn().mockResolvedValue(2),
         create: vi.fn().mockResolvedValue({
           id: "msg-1",
@@ -1501,6 +1503,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        findFirst: vi.fn().mockResolvedValue(null),
         count: vi.fn().mockResolvedValue(2),
         create: vi.fn().mockResolvedValue({
           id: "msg-1",
@@ -1581,6 +1584,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        findFirst: vi.fn().mockResolvedValue(null),
         count: vi.fn().mockResolvedValue(1),
         findMany: vi
           .fn()
@@ -1647,6 +1651,62 @@ describe("sendThreadMessage", () => {
     });
   });
 
+  it("runs the failed message again instead of adding a second identical bubble", async () => {
+    const tx = {
+      thread: { update: vi.fn().mockResolvedValue({ nextEventSeq: 5 }) },
+      message: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "msg-failed",
+          threadId: "thread-1",
+          seq: 4,
+          role: "user",
+          blocks: [{ kind: "text", text: "Pay $20" }],
+          sourceRuns: [{ id: "run-failed", status: "failed" }],
+        }),
+        count: vi.fn().mockResolvedValue(2),
+        create: vi.fn(),
+        update: vi.fn(),
+      },
+      run: {
+        findMany: vi.fn().mockResolvedValue([]),
+        create: vi.fn().mockResolvedValue({ id: "run-2", taskId: "task-2" }),
+        findUnique: vi.fn().mockResolvedValue({ status: "queued", startedAt: null }),
+        updateMany: vi.fn(),
+      },
+      task: { create: vi.fn().mockResolvedValue({ id: "task-2" }), updateMany: vi.fn() },
+      event: { create: vi.fn().mockResolvedValue({ seq: 5, threadId: "thread-1" }) },
+    };
+    const prisma = {
+      message: { findUnique: vi.fn().mockResolvedValue(null) },
+      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+    } as unknown as PrismaClient;
+    const target = {
+      kind: "bot",
+      botId: "bot-1",
+      threadId: "thread-1",
+      bot: { computer: null },
+    } as ThreadTarget;
+
+    await sendThreadMessage(
+      {
+        prisma,
+        events: { notify: vi.fn().mockResolvedValue(undefined) } as never,
+        jobs: { enqueue: vi.fn().mockResolvedValue(undefined) } as never,
+      },
+      { spaceId: "workspace-1", userId: "user-1" } as Actor,
+      target,
+      { text: "Pay $20", clientNonce: "nonce-retry" },
+    );
+
+    expect(tx.message.create).not.toHaveBeenCalled();
+    expect(tx.run.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ sourceMessageId: "msg-failed", clientNonce: undefined }),
+    });
+    expect(tx.event.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ type: "thread.message.updated" }),
+    });
+  });
+
   it("steers a waiting-takeover run instead of refusing the message", async () => {
     const tx = {
       thread: {
@@ -1656,6 +1716,7 @@ describe("sendThreadMessage", () => {
           .mockResolvedValueOnce({ nextEventSeq: 3 }),
       },
       message: {
+        findFirst: vi.fn().mockResolvedValue(null),
         count: vi.fn().mockResolvedValue(2),
         create: vi.fn().mockResolvedValue({
           id: "msg-1",
@@ -1737,6 +1798,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        findFirst: vi.fn().mockResolvedValue(null),
         count: vi.fn().mockResolvedValue(2),
         create: vi.fn().mockResolvedValue({
           id: "msg-1",
@@ -1821,6 +1883,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        findFirst: vi.fn().mockResolvedValue(null),
         count: vi.fn().mockResolvedValue(2),
         create: vi.fn().mockResolvedValue({
           id: "msg-1",
@@ -2110,6 +2173,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        findFirst: vi.fn().mockResolvedValue(null),
         count: vi.fn().mockResolvedValue(2),
         create: vi.fn().mockResolvedValue({
           id: "msg-1",
@@ -2199,6 +2263,7 @@ describe("sendThreadMessage", () => {
         ),
       },
       message: {
+        findFirst: vi.fn().mockResolvedValue(null),
         count: vi.fn().mockResolvedValue(2),
         create: vi.fn().mockResolvedValue({
           id: "msg-1",

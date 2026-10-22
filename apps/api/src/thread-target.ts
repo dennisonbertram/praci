@@ -645,6 +645,32 @@ export async function dataRoomReferenceLines(
   return lines;
 }
 
+/**
+ * The person's own text sent again right after its run failed is a retry. It runs the message
+ * already in the thread instead of adding a second identical bubble. Only plain text qualifies,
+ * and only while that message is still the newest in the thread.
+ */
+async function findRetriedUserMessage(
+  tx: Prisma.TransactionClient,
+  threadId: string,
+  blocks: readonly MessageBlock[],
+) {
+  const plainText = (list: readonly MessageBlock[]) =>
+    list.length > 0 && list.every((block) => block.kind === "text")
+      ? list.map((block) => (block.kind === "text" ? block.text : "")).join("\n")
+      : null;
+  const sent = plainText(blocks);
+  if (!sent?.trim()) return null;
+  const last = await tx.message.findFirst({
+    where: { threadId },
+    orderBy: { seq: "desc" },
+    include: { sourceRuns: { orderBy: { createdAt: "desc" }, take: 1 } },
+  });
+  if (last?.role !== "user" || last.sourceRuns[0]?.status !== "failed") return null;
+  const parsed = MessageBlockSchema.array().safeParse(last.blocks);
+  return parsed.success && plainText(parsed.data) === sent ? last : null;
+}
+
 export async function sendThreadMessage(
   deps: {
     prisma: PrismaClient;
@@ -744,14 +770,19 @@ export async function sendThreadMessage(
           mentionTargets.connectorMentionIds,
         );
         const blocks = buildUserMessageBlocks(sendText, attachmentBlocks);
-        const message = await createThreadMessageInTransaction(tx, {
-          threadId: target.threadId,
-          role: "user",
-          blocks,
-          replyToMessageId,
-          replyQuote,
-          clientNonce: input.clientNonce,
-        });
+        const retried = replyToMessageId
+          ? null
+          : await findRetriedUserMessage(tx, target.threadId, blocks);
+        const message =
+          retried ??
+          (await createThreadMessageInTransaction(tx, {
+            threadId: target.threadId,
+            role: "user",
+            blocks,
+            replyToMessageId,
+            replyQuote,
+            clientNonce: input.clientNonce,
+          }));
         // The focus card is only posted before the first user message, so only that message can
         // answer it by typing. Close the card instead of leaving it open.
         if (
@@ -873,7 +904,8 @@ export async function sendThreadMessage(
             userId: actor.userId,
             status: "queued",
             trigger: "user",
-            clientNonce: sendRunClientNonce(input.clientNonce, message.id),
+            // The retried message's first run already holds this key.
+            clientNonce: retried ? undefined : sendRunClientNonce(input.clientNonce, message.id),
             sourceMessageId: message.id,
           },
         });
@@ -887,7 +919,8 @@ export async function sendThreadMessage(
           spaceId: actor.spaceId,
           threadId: target.threadId,
           botId: target.botId,
-          type: "thread.message.created",
+          // A retry reuses the bubble already on screen, so clients only refresh it.
+          type: retried ? "thread.message.updated" : "thread.message.created",
           runId: run.id,
           payload: {
             messageId: message.id,

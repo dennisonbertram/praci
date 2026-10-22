@@ -191,6 +191,30 @@ export const ApprovalDenied: Story = {
   },
 };
 
+/** A newer request replaced this one; the server closed it, so it has no buttons. */
+export const ApprovalSuperseded: Story = {
+  args: {
+    block: ask({
+      approvalEffectId: "effect_demo",
+      actions: approvalActions,
+      status: "answered",
+      answer: "superseded",
+    }),
+  },
+};
+
+/** The run failed before the card was answered; nothing was sent. */
+export const ApprovalExpired: Story = {
+  args: {
+    block: ask({
+      approvalEffectId: "effect_demo",
+      actions: approvalActions,
+      status: "answered",
+      answer: "expired",
+    }),
+  },
+};
+
 export const ApprovalAnsweredConfirm: Story = {
   args: {
     block: ask({
