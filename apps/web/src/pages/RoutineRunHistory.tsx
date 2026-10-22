@@ -96,7 +96,31 @@ export function RoutineRunHistory({
       generation.current += 1;
       if (timer !== undefined) window.clearTimeout(timer);
     };
-  }, [routineId, revision, running]);
+  }, [routineId, revision]);
+
+  // A run starting or finishing refreshes the first page in place; it must not drop loaded older runs.
+  const lastRunning = useRef(running);
+  useEffect(() => {
+    if (lastRunning.current === running) return;
+    lastRunning.current = running;
+    if (expandedRef.current) return;
+    const request = generation.current;
+    const sequence = ++firstPageRequest.current;
+    void rpc.routines
+      .history({ routineId })
+      .then((page) => {
+        if (
+          request !== generation.current ||
+          expandedRef.current ||
+          sequence < acceptedFirstPage.current
+        )
+          return;
+        acceptedFirstPage.current = sequence;
+        hasLoadedOlder.current = false;
+        setHistory(page);
+      })
+      .catch(() => {});
+  }, [running, routineId]);
 
   function toggleExpanded() {
     const next = !expanded;

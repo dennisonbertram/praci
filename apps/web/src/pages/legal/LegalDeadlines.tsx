@@ -66,8 +66,15 @@ export function LegalDeadlines({
   } | null>(null);
   useHideAmounts();
   const undoTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  /** The latest close request, so Undo waits for it instead of racing it. */
+  const closing = useRef<Promise<boolean>>(Promise.resolve(true));
   useEffect(() => () => clearTimeout(undoTimer.current), []);
-  const close = async (deadline: LegalDeadline, status: LegalDeadlineStatus, height: number) => {
+  const close = (deadline: LegalDeadline, status: LegalDeadlineStatus, height: number) => {
+    const request = send(deadline, status, height);
+    closing.current = request;
+    return request;
+  };
+  const send = async (deadline: LegalDeadline, status: LegalDeadlineStatus, height: number) => {
     const index = deadlines.indexOf(deadline);
     setError("");
     // The row leaves at once with its Undo line; the request settles behind it.
@@ -80,19 +87,24 @@ export function LegalDeadlines({
       onChanged();
       // The sidebar Legal badge counts open deadlines, so it refreshes now, not on the next page change.
       window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
+      return true;
     } catch (cause) {
       setGone((ids) => {
         const next = new Set(ids);
         next.delete(deadline.id);
         return next;
       });
-      setUndo(null);
+      // Only this row's Undo; another row may have closed since.
+      setUndo((current) => (current?.deadline.id === deadline.id ? null : current));
       setError(errorText(cause));
+      return false;
     }
   };
   const reopen = async () => {
     if (!undo) return;
     setError("");
+    // A failed close already put the row back and reported the error.
+    if (!(await closing.current)) return;
     try {
       await rpc.legal.updateDeadline({ id: undo.deadline.id, status: "open" });
       setGone((ids) => {

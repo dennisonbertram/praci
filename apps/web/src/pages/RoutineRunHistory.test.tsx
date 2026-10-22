@@ -340,3 +340,33 @@ it("says Running at once when a test run was just started and no row exists yet"
   await act(async () => root.unmount());
   container.remove();
 });
+
+it("keeps loaded older runs when a run finishes while they are open", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const older = { ...run, id: "older", messageId: "older-reply" };
+  const cursor = { id: "run-1", createdAt: run.createdAt };
+  api.history.mockImplementation(async (input: { before?: unknown }) =>
+    input.before ? page([{ ...older, id: "oldest" }]) : { runs: [run, older], nextCursor: cursor },
+  );
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const render = (running: boolean) =>
+    act(async () =>
+      root.render(
+        <MemoryRouter>
+          <RoutineRunHistory routineId="routine-1" running={running} />
+        </MemoryRouter>,
+      ),
+    );
+  await render(true);
+  const button = (name: string) =>
+    [...container.querySelectorAll("button")].find((b) => b.textContent === name)!;
+  await act(async () => button("Run history").click());
+  await act(async () => button("Load older runs").click());
+  expect(container.querySelectorAll("li")).toHaveLength(3);
+  await render(false);
+  expect(container.querySelectorAll("li")).toHaveLength(3);
+  await act(async () => root.unmount());
+  container.remove();
+});
