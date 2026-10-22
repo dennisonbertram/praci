@@ -29,6 +29,7 @@ import {
   Compass,
   Files,
   FolderOpen,
+  HandCoins,
   History,
   LayoutGrid,
   Lock,
@@ -344,6 +345,7 @@ export type SpaceSidebarProps = {
   legalMode: boolean;
   devinMode: boolean;
   investorsMode: boolean;
+  fundraisingMode: boolean;
   contactsMode: boolean;
   dataRoomMode: boolean;
   artifactsMode: boolean;
@@ -449,6 +451,7 @@ export function SpaceSidebar({
   legalMode,
   devinMode,
   investorsMode,
+  fundraisingMode,
   contactsMode,
   dataRoomMode,
   artifactsMode,
@@ -700,6 +703,7 @@ export function SpaceSidebar({
               { key: "legal", label: t`Legal` },
               ...(glance.devinConnected ? [{ key: "devin", label: t`Devin` }] : []),
               { key: "investors", label: t`Investors` },
+              { key: "fundraising", label: t`Fundraising` },
               { key: "contacts", label: t`Contacts` },
               { key: "data-room", label: t`Data room` },
               { key: "artifacts", label: t`Artifacts` },
@@ -798,6 +802,19 @@ export function SpaceSidebar({
                   navigate("/app/investors");
                 }}
                 {...glanceBadge({ unseen: unseen.investors ?? 0, rail })}
+              />
+            )}
+            {hiddenPages.includes("fundraising") ? null : (
+              <SidebarPageLink
+                testId="sidebar-fundraising"
+                current={fundraisingMode}
+                icon={<HandCoins size={15} strokeWidth={1.8} aria-hidden="true" />}
+                label={t`Fundraising`}
+                rail={rail}
+                onOpen={() => {
+                  setMobileSidebarOpen(false);
+                  navigate("/app/fundraising");
+                }}
               />
             )}
             {hiddenPages.includes("contacts") ? null : (

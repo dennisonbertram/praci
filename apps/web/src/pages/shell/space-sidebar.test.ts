@@ -371,6 +371,49 @@ it("marks Investors as current and opens its page", async () => {
   }
 });
 
+it("marks Fundraising as current and opens its page", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  stubSidebarObservers();
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => {
+      root.render(
+        createElement(
+          MemoryRouter,
+          null,
+          createElement(
+            "div",
+            null,
+            createElement(SidebarFixture, { mode: "expanded", fundraisingMode: true }),
+            createElement(CurrentPath),
+          ),
+        ),
+      );
+    });
+
+    const link = container.querySelector<HTMLButtonElement>('[data-testid="sidebar-fundraising"]');
+    expect(link?.getAttribute("aria-current")).toBe("page");
+
+    await act(async () => link?.click());
+    expect(container.querySelector('[data-testid="current-path"]')?.textContent).toBe(
+      "/app/fundraising",
+    );
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
 it("navigates to Integrations from the account menu", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("matchMedia", () => ({

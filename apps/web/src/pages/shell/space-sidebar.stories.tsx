@@ -101,6 +101,7 @@ export function SidebarFixture({
   devinConnected = false,
   devinNeedsYou = 0,
   investorsMode = false,
+  fundraisingMode = false,
   pageAgents = false,
   singlePageAgent = false,
   emailChats = false,
@@ -112,6 +113,7 @@ export function SidebarFixture({
   devinConnected?: boolean;
   devinNeedsYou?: number;
   investorsMode?: boolean;
+  fundraisingMode?: boolean;
   pageAgents?: boolean;
   singlePageAgent?: boolean;
   emailChats?: boolean;
@@ -206,6 +208,7 @@ export function SidebarFixture({
     legalMode: false,
     devinMode,
     investorsMode,
+    fundraisingMode,
     contactsMode: false,
     dataRoomMode: false,
     artifactsMode: false,
@@ -304,4 +307,8 @@ export const FolderAndRoster: Story = {
 
 export const DevinNeedsYou: Story = {
   render: () => <SidebarFixture mode="expanded" devinMode devinConnected devinNeedsYou={2} />,
+};
+
+export const Fundraising: Story = {
+  render: () => <SidebarFixture mode="expanded" fundraisingMode />,
 };
