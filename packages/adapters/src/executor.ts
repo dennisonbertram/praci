@@ -4706,7 +4706,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
               await pageToolFromTool(
                 name,
                 { prisma: deps.prisma, events: deps.events },
-                { spaceId: run.spaceId, botId: bot.id, userId: bot.userId, runId },
+                {
+                  spaceId: run.spaceId,
+                  botId: bot.id,
+                  userId: bot.userId,
+                  runId,
+                  gtmPage: isGtmAgentSpawnKey(bot.spawnKey),
+                },
                 args,
               ),
             );
