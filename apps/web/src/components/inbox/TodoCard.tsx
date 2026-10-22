@@ -1,4 +1,6 @@
-import { Trans, useLingui } from "@lingui/react/macro";
+import { i18n } from "@lingui/core";
+import { t } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 import type { InboxTodo } from "@rakazo/contracts";
 import { dueTone, localDaysUntil } from "@rakazo/core";
 import { Button, Card, Checkbox } from "@rakazo/ui-web";
@@ -10,6 +12,20 @@ import { Shimmer } from "../ai/primitives";
 const COLLAPSED_OPEN = 2;
 /** A phone shows one open to-do first, so the first mail starts higher up the screen. */
 const COLLAPSED_OPEN_COMPACT = 1;
+
+/** "Today", "Tomorrow", a short weekday within the week, otherwise a short date; shared by the card, mail rows and the open mail. */
+export function dueLabel(dueOn: string, now: Date) {
+  const days = localDaysUntil(dueOn, now);
+  if (days === 0) return t`Today`;
+  if (days === 1) return t`Tomorrow`;
+  const [year = 0, month = 1, day = 1] = dueOn.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(
+    i18n.locale || "en",
+    days > 0 && days <= 6
+      ? { weekday: "short", month: "short", day: "numeric" }
+      : { month: "short", day: "numeric" },
+  );
+}
 
 /** The open to-dos triage keeps; the page loads them with the list. Hidden when there are none. */
 export function TodoCard({
@@ -27,7 +43,6 @@ export function TodoCard({
   /** The user's meeting source, from the list reply; adds the Syncing and empty lines. */
   meetings?: { source: boolean; syncing: boolean; ready: boolean };
 }) {
-  const { t, i18n: lingui } = useLingui();
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState(false);
   // Done to-dos sort last by their state when first shown, so ticking one leaves it in place.
@@ -51,18 +66,6 @@ export function TodoCard({
   const hiddenCount = ordered.filter(
     (todo, index) => todo.doneAt === null && index >= shownOpen,
   ).length;
-  const dueLabel = (dueOn: string, days: number) => {
-    if (days === 0) return t`Today`;
-    if (days === 1) return t`Tomorrow`;
-    const [year = 0, month = 1, day = 1] = dueOn.split("-").map(Number);
-    const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString(
-      lingui.locale || "en",
-      days > 0 && days <= 6
-        ? { weekday: "short", month: "short", day: "numeric" }
-        : { month: "short", day: "numeric" },
-    );
-  };
   const setDone = (todo: InboxTodo, done: boolean) => {
     setError("");
     rpc.inbox.todos
@@ -133,7 +136,7 @@ export function TodoCard({
                   <span
                     className={`whitespace-nowrap text-xs ${tone === "crit" && days < 0 ? "text-destructive" : tone !== "none" ? "text-warning" : "text-muted-foreground"}`}
                   >
-                    {dueLabel(todo.dueOn, days)}
+                    {dueLabel(todo.dueOn, now)}
                   </span>
                 ) : null}
               </div>

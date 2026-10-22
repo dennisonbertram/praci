@@ -154,7 +154,7 @@ test("memory and skills are readable and editable in the app", async ({ page }, 
     contentType: "image/png",
     path: listedShot,
   });
-  const composer = page.getByRole("combobox", { name: /^Message/ });
+  const composer = page.getByRole("textbox", { name: /^Message/ });
   await composer.fill("/");
   await expect(
     page.getByRole("option", { name: "Skill greet-politely", exact: true }),

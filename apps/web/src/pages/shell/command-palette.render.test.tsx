@@ -237,7 +237,7 @@ it("says nothing matched in pages, documents and contacts, and keeps the mail se
   ]);
   await search("zzzqq");
   await wait(300);
-  expect(listText()).toContain("No matches in pages, documents, contacts");
+  expect(listText()).toContain("No matches");
   expect(listText()).toContain("Search mail for “zzzqq”");
   expect(document.querySelector("[cmdk-item][data-selected=true]")?.textContent).toContain(
     "Search mail for",
