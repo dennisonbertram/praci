@@ -9,6 +9,7 @@ import {
   BOX_OAUTH_SCOPE,
   DEVIN_MCP_ENDPOINT,
   GRANOLA_MCP_ENDPOINT,
+  isZernioEndpoint,
   WISPR_FLOW_MCP_ENDPOINT,
 } from "@rakazo/contracts";
 import type { StatusKind } from "@rakazo/core";
@@ -54,6 +55,8 @@ export { appStatus };
 export function mcpStatus(server: McpServer): StatusKind {
   if (server.oauthStatus === "reconnect") return "reconnect";
   if (server.oauthStatus === "none" && server.oauthAttempted) return "reconnect";
+  if (isZernioEndpoint(server.endpoint) && server.oauthStatus !== "connected" && !server.hasSecret)
+    return "reconnect";
   return "connected";
 }
 
