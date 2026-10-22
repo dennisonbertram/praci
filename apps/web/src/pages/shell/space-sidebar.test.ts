@@ -17,6 +17,44 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
   useLingui: () => ({ t: (parts: TemplateStringsArray) => parts[0] ?? "" }),
 }));
+vi.mock("../../components/tour/FirstRunTour", () => ({
+  FirstRunTour: ({
+    open,
+    onSkip,
+    onClose,
+  }: {
+    open: boolean;
+    onSkip?: () => void;
+    onClose: (me: null, byEscape: boolean) => void;
+  }) =>
+    open
+      ? createElement(
+          "div",
+          null,
+          createElement(
+            "button",
+            {
+              type: "button",
+              "data-testid": "tour-skip",
+              onClick: () => {
+                onSkip?.();
+                onClose(null, false);
+              },
+            },
+            "Skip",
+          ),
+          createElement(
+            "button",
+            {
+              type: "button",
+              "data-testid": "tour-close",
+              onClick: () => onClose(null, false),
+            },
+            "Close",
+          ),
+        )
+      : null,
+}));
 
 import {
   activeSpaceFirst,
@@ -407,6 +445,92 @@ it("marks Fundraising as current and opens its page", async () => {
     expect(container.querySelector('[data-testid="current-path"]')?.textContent).toBe(
       "/app/fundraising",
     );
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("forwards tour skip and close callbacks", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  stubSidebarObservers();
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const onTourSkip = vi.fn();
+  const onTourEnd = vi.fn();
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => {
+      root.render(
+        createElement(
+          MemoryRouter,
+          null,
+          createElement(SidebarFixture, {
+            mode: "expanded",
+            tourOpen: true,
+            onTourSkip,
+            onTourEnd,
+          }),
+        ),
+      );
+    });
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="tour-skip"]')?.click();
+    });
+    expect(onTourSkip).toHaveBeenCalledOnce();
+    expect(onTourEnd).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="tour-close"]')?.click();
+    });
+    expect(onTourEnd).toHaveBeenCalledTimes(2);
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("closes the mobile sidebar when opening Settings", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("matchMedia", () => ({
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+  stubSidebarObservers();
+  Element.prototype.scrollIntoView ??= () => undefined;
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => {
+      root.render(
+        createElement(MemoryRouter, null, createElement(SidebarFixture, { mode: "expanded" })),
+      );
+    });
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="user-menu-trigger"]')?.click();
+    });
+    await act(async () => {
+      document.body.querySelector<HTMLButtonElement>('[aria-label="Settings"]')?.click();
+    });
+
+    expect(container.querySelector('[data-testid="bots-sidebar"]')?.className).toContain(
+      "-translate-x-full",
+    );
+    expect(container.textContent).toContain("Open navigation");
   } finally {
     await act(async () => root.unmount());
     container.remove();

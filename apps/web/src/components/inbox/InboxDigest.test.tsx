@@ -41,7 +41,15 @@ let root: ReturnType<typeof createRoot>;
 type Props = Parameters<typeof InboxDigest>[0];
 const show = (extra: Partial<Props> = {}) =>
   act(async () =>
-    root.render(<InboxDigest rows={[]} onOpen={() => {}} onArchiveAll={() => {}} {...extra} />),
+    root.render(
+      <InboxDigest
+        rows={[]}
+        onOpen={() => {}}
+        onArchiveAll={() => {}}
+        onShowPile={() => {}}
+        {...extra}
+      />,
+    ),
   );
 const button = (name: string) =>
   [...document.querySelectorAll("button")].find(
@@ -99,10 +107,13 @@ it("archives everything shown with Archive all", async () => {
   expect(onArchiveAll).toHaveBeenCalledTimes(1);
 });
 
-it("shows No mail and no Archive all when there is nothing to show", async () => {
-  await show();
-  expect(document.body.textContent).toContain("No mail");
+it("says there are no newsletters in the last 7 days and offers the pile", async () => {
+  const onShowPile = vi.fn();
+  await show({ onShowPile });
+  expect(document.body.textContent).toContain("No newsletters in the last 7 days");
   expect(button("Archive all 0")).toBeUndefined();
+  await act(async () => button("Show the pile")?.click());
+  expect(onShowPile).toHaveBeenCalledTimes(1);
 });
 
 it("shows placeholders while loading", async () => {

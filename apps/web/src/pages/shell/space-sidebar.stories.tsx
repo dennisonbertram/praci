@@ -102,6 +102,9 @@ export function SidebarFixture({
   devinNeedsYou = 0,
   investorsMode = false,
   fundraisingMode = false,
+  tourOpen = false,
+  onTourSkip = () => undefined,
+  onTourEnd = () => undefined,
   pageAgents = false,
   singlePageAgent = false,
   emailChats = false,
@@ -114,6 +117,9 @@ export function SidebarFixture({
   devinNeedsYou?: number;
   investorsMode?: boolean;
   fundraisingMode?: boolean;
+  tourOpen?: boolean;
+  onTourSkip?: () => void;
+  onTourEnd?: () => void;
   pageAgents?: boolean;
   singlePageAgent?: boolean;
   emailChats?: boolean;
@@ -221,8 +227,10 @@ export function SidebarFixture({
     bootstrapMe: null,
     setBootstrapMe: () => undefined,
     chiefId: fixtureBots[0]?.id,
-    tourOpen: false,
+    tourOpen,
     onTourAsk: () => undefined,
+    onTourSkip,
+    onTourEnd,
     setTourRestart: () => undefined,
     hiddenPages: [],
     addedPages: [],

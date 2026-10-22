@@ -198,6 +198,18 @@ msgstr ""
 msgid "{0} (overdue)"
 msgstr ""
 
+#. placeholder {0}: owner(investorName)
+#. placeholder {1}: usd(amountCents)
+#: src/pages/Fundraising.tsx
+msgid "{0} {1} SAFE is signed and unpaid."
+msgstr ""
+
+#. placeholder {0}: owner(investorName)
+#. placeholder {1}: usd(amountCents)
+#: src/pages/Fundraising.tsx
+msgid "{0} {1} SAFE will be removed."
+msgstr ""
+
 #. placeholder {0}: selected.name
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "{0} API key"
@@ -381,6 +393,10 @@ msgstr ""
 
 #: src/lib/billing.ts
 msgid "{count} months"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "{count} SAFEs are signed and unpaid."
 msgstr ""
 
 #: src/components/data-room/SelectionBar.tsx
@@ -761,6 +777,11 @@ msgstr ""
 msgid "Actions for {0}"
 msgstr "{0} 的操作"
 
+#. placeholder {0}: safe.investorName
+#: src/components/fundraising/SafeList.tsx
+msgid "Actions for {0} SAFE"
+msgstr ""
+
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/sidebar-folders/FolderHeader.tsx
 #: src/pages/finance/FinanceCrypto.tsx
@@ -813,10 +834,6 @@ msgstr ""
 #: src/pages/Investors.tsx
 msgid "Add a model"
 msgstr ""
-
-#: src/components/ApprovalRulesSettings.tsx
-msgid "Add a model in Settings to use this."
-msgstr "请在设置中添加模型后再使用。"
 
 #: src/components/ComposeEmail.tsx
 #: src/components/MailApprovalCard.tsx
@@ -979,6 +996,7 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
+#: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Advanced"
 msgstr "高级"
@@ -1093,10 +1111,6 @@ msgstr "允许 {0} 连接器，无需询问"
 msgid "Allow {0} without asking"
 msgstr "允许 {0}，无需询问"
 
-#: src/pages/Legal.tsx
-msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
-msgstr ""
-
 #: src/pages/Shell.tsx
 msgid "Allow access on the page to ask"
 msgstr ""
@@ -1193,6 +1207,7 @@ msgstr "始终允许"
 
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
+#: src/components/fundraising/SafeDialog.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Amount"
@@ -1466,6 +1481,7 @@ msgid "Ask before sending external email"
 msgstr "发送外部邮件前询问"
 
 #: src/components/tour/FirstRunTour.tsx
+#: src/pages/Shell.tsx
 msgid "Ask Chief"
 msgstr ""
 
@@ -1531,6 +1547,10 @@ msgstr ""
 #. placeholder {0}: email.attachments
 #: src/components/EmailCards.tsx
 msgid "Attachments: {0}"
+msgstr ""
+
+#: src/components/fundraising/SafeList.tsx
+msgid "Attention"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -1631,6 +1651,11 @@ msgstr "头像工作室"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Avatars"
 msgstr "头像"
+
+#. placeholder {0}: usd(safe.amountCents)
+#: src/components/fundraising/SafeList.tsx
+msgid "Awaiting deposit · {0}"
+msgstr ""
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/ImportFromDrive.tsx
@@ -1865,8 +1890,11 @@ msgid "Brex does not share it"
 msgstr ""
 
 #: src/components/computer/ComputerWorkspace.tsx
-#: src/components/NotificationSettings.tsx
 msgid "Browser"
+msgstr ""
+
+#: src/components/NotificationSettings.tsx
+msgid "Browser notifications"
 msgstr ""
 
 #: src/pages/shell/BotSkillsSection.tsx
@@ -1942,6 +1970,8 @@ msgstr "无法连接服务器。"
 #: src/components/finance/StatementImport.tsx
 #: src/components/finance/WalletDialog.tsx
 #: src/components/fundraising/RoundCard.tsx
+#: src/components/fundraising/SafeDialog.tsx
+#: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
@@ -1956,6 +1986,7 @@ msgstr "无法连接服务器。"
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/finance/FinanceCrypto.tsx
+#: src/pages/Fundraising.tsx
 #: src/pages/Investors.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1974,7 +2005,13 @@ msgstr "取消新建群组"
 msgid "Cancel reply"
 msgstr "取消回复"
 
+#: src/components/fundraising/SafeList.tsx
+msgid "Cancel SAFE"
+msgstr ""
+
+#: src/components/fundraising/SafeList.tsx
 #: src/pages/BillingSettingsPanel.tsx
+#: src/pages/Fundraising.tsx
 msgid "Canceled"
 msgstr ""
 
@@ -2324,6 +2361,7 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 #: src/components/ErrorBoundary.tsx
+#: src/components/fundraising/SafeDialog.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/SignInStep.tsx
@@ -2395,7 +2433,12 @@ msgid "Close preview"
 msgstr "关闭预览"
 
 #: src/components/fundraising/RoundCard.tsx
+#: src/pages/Fundraising.tsx
 msgid "Close round"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "Close round?"
 msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
@@ -2895,6 +2938,10 @@ msgstr "无法批准此服务器"
 msgid "Could not authorize this app"
 msgstr "无法授权此应用"
 
+#: src/pages/Fundraising.tsx
+msgid "Could not cancel"
+msgstr ""
+
 #. placeholder {0}: contact.name
 #: src/pages/Investors.tsx
 msgid "Could not change access for {0}"
@@ -3059,6 +3106,10 @@ msgstr "无法删除技能"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not delete space"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "Could not delete the SAFE"
 msgstr ""
 
 #: src/pages/Investors.tsx
@@ -3259,6 +3310,10 @@ msgstr "无法加载语音设置"
 msgid "Could not mark delivered"
 msgstr ""
 
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Could not mark sent"
+msgstr ""
+
 #. placeholder {0}: prospect.name
 #: src/pages/Fundraising.tsx
 msgid "Could not move {0}"
@@ -3393,16 +3448,13 @@ msgstr ""
 msgid "Could not run routine"
 msgstr "无法运行例行任务"
 
+#: src/components/fundraising/SafeList.tsx
 #: src/components/RunsOnPicker.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Could not save"
 msgstr "无法保存"
-
-#: src/components/ApprovalRulesSettings.tsx
-msgid "Could not save Auto Review"
-msgstr "无法保存自动审核"
 
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Could not save backup models"
@@ -3455,6 +3507,10 @@ msgstr ""
 
 #: src/components/fundraising/RoundCard.tsx
 msgid "Could not save the round"
+msgstr ""
+
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Could not save the SAFE"
 msgstr ""
 
 #: src/components/AutoFileEmailSetting.tsx
@@ -3519,6 +3575,7 @@ msgstr "无法提交此回答"
 msgid "Could not take control"
 msgstr "无法接管"
 
+#: src/pages/Fundraising.tsx
 #: src/pages/Investors.tsx
 msgid "Could not undo"
 msgstr ""
@@ -3815,6 +3872,8 @@ msgstr ""
 
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
+#: src/components/fundraising/SafeDialog.tsx
+#: src/components/fundraising/SafeList.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Date"
@@ -3868,9 +3927,11 @@ msgstr "默认（{0}）"
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
+#: src/components/fundraising/SafeList.tsx
 #: src/components/integrations/StoredMeetingsList.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
+#: src/pages/Fundraising.tsx
 #: src/pages/Investors.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
@@ -3886,10 +3947,9 @@ msgstr "删除"
 msgid "Delete \"{0}\"?"
 msgstr ""
 
-#. placeholder {0}: artifact.name
 #. placeholder {0}: bot.name
 #. placeholder {0}: group.name
-#: src/pages/Artifacts.tsx
+#. placeholder {0}: item.text
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-pins.tsx
 msgid "Delete {0}"
@@ -3903,6 +3963,10 @@ msgstr "删除 {0}"
 #: src/pages/shell/dialogs.tsx
 msgid "Delete {0}?"
 msgstr "删除 {0}？"
+
+#: src/pages/Artifacts.tsx
+msgid "Delete {title}"
+msgstr "删除 {title}"
 
 #: src/components/AccountAccess.tsx
 msgid "Delete account"
@@ -3927,6 +3991,10 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 msgid "Delete memories too"
 msgstr "同时删除记忆"
+
+#: src/pages/Fundraising.tsx
+msgid "Delete SAFE?"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Delete space"
@@ -4028,6 +4096,10 @@ msgstr ""
 msgid "Didn't open?"
 msgstr ""
 
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Different terms"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Digest"
 msgstr ""
@@ -4093,6 +4165,10 @@ msgstr ""
 msgid "Disconnecting…"
 msgstr "正在断开…"
 
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Discount"
+msgstr ""
+
 #: src/components/ComputerUpdateProgress.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ImportActivity.tsx
@@ -4120,7 +4196,7 @@ msgstr ""
 msgid "Dismiss error"
 msgstr "关闭错误"
 
-#. placeholder {0}: maskCurrencyWhenHidden(undo.deadline.title)
+#. placeholder {0}: fullTitle(undo.deadline)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Dismissed {0}."
 msgstr ""
@@ -4228,6 +4304,7 @@ msgstr ""
 msgid "Downloading…"
 msgstr ""
 
+#: src/components/fundraising/SafeList.tsx
 #: src/components/investors/ActionItems.tsx
 #: src/pages/Investors.tsx
 #: src/pages/investors/UpdateEditor.tsx
@@ -4456,6 +4533,10 @@ msgstr ""
 msgid "Enter a password"
 msgstr "请输入密码"
 
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Enter a post-money cap"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Enter a username and password"
 msgstr ""
@@ -4482,6 +4563,7 @@ msgstr "请输入 1 到 1000 之间的整数作为图像限制。"
 
 #: src/components/ContactDialog.tsx
 #: src/components/fundraising/RoundCard.tsx
+#: src/components/fundraising/SafeDialog.tsx
 msgid "Enter an amount"
 msgstr ""
 
@@ -4578,6 +4660,7 @@ msgstr ""
 msgid "Expected"
 msgstr ""
 
+#: src/components/fundraising/SafeList.tsx
 #: src/pages/legal/LegalContracts.tsx
 msgid "Expired"
 msgstr ""
@@ -4719,6 +4802,10 @@ msgstr ""
 msgid "Find and summarize files in Box. Changes ask first."
 msgstr ""
 
+#: src/components/fundraising/SafeList.tsx
+msgid "Find in Finance"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Find models"
@@ -4779,10 +4866,6 @@ msgstr ""
 #: src/components/ComposeEmail.tsx
 msgid "Fix or remove the highlighted addresses."
 msgstr ""
-
-#: src/components/ApprovalRulesSettings.tsx
-msgid "Flag unexpected actions"
-msgstr "标记异常操作"
 
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/Preview.tsx
@@ -4858,6 +4941,10 @@ msgstr ""
 msgid "From Google Drive"
 msgstr ""
 
+#: src/components/fundraising/SafeList.tsx
+msgid "from Mercury"
+msgstr ""
+
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "From URL"
 msgstr ""
@@ -4877,6 +4964,7 @@ msgid "Fully diluted"
 msgstr ""
 
 #: src/components/fundraising/RoundCard.tsx
+#: src/components/fundraising/SafeList.tsx
 msgid "Funded"
 msgstr ""
 
@@ -4983,6 +5071,10 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 msgid "Google Drive"
+msgstr ""
+
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Governing state"
 msgstr ""
 
 #: src/components/integrations/GranolaPage.tsx
@@ -5413,6 +5505,7 @@ msgid "Invested"
 msgstr ""
 
 #: src/components/ContactDialog.tsx
+#: src/components/fundraising/SafeDialog.tsx
 msgid "Investor"
 msgstr ""
 
@@ -5897,6 +5990,10 @@ msgstr ""
 msgid "Mark done"
 msgstr ""
 
+#: src/components/fundraising/SafeList.tsx
+msgid "Mark funded"
+msgstr ""
+
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark important"
 msgstr ""
@@ -5920,6 +6017,15 @@ msgstr ""
 msgid "Mark read"
 msgstr ""
 
+#: src/components/fundraising/SafeDialog.tsx
+#: src/components/fundraising/SafeList.tsx
+msgid "Mark sent"
+msgstr ""
+
+#: src/components/fundraising/SafeList.tsx
+msgid "Mark signed"
+msgstr ""
+
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
 msgid "Mark unread"
@@ -5937,7 +6043,7 @@ msgstr ""
 msgid "Marked {0} as spam"
 msgstr ""
 
-#. placeholder {0}: maskCurrencyWhenHidden(undo.deadline.title)
+#. placeholder {0}: fullTitle(undo.deadline)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Marked {0} done."
 msgstr ""
@@ -5950,8 +6056,20 @@ msgstr ""
 msgid "Marked {n} as spam"
 msgstr ""
 
+#: src/pages/Fundraising.tsx
+msgid "Marked funded"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Marked read"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "Marked sent"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "Marked signed"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -6106,6 +6224,10 @@ msgstr "消息"
 
 #: src/pages/shell/working-label.ts
 msgid "Messaging you"
+msgstr ""
+
+#: src/components/fundraising/SafeDialog.tsx
+msgid "MFN"
 msgstr ""
 
 #: src/lib/call-session.ts
@@ -6540,6 +6662,10 @@ msgstr ""
 msgid "Next step"
 msgstr ""
 
+#: src/components/fundraising/SafeDialog.tsx
+msgid "No"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "No {sourceName} cash accounts."
 msgstr ""
@@ -6610,6 +6736,11 @@ msgstr ""
 msgid "No contacts yet"
 msgstr ""
 
+#. placeholder {0}: fullDay(data.agent.lastScanAt)
+#: src/pages/Legal.tsx
+msgid "No contracts or deadlines found on {0}."
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
 msgstr ""
@@ -6657,7 +6788,6 @@ msgstr ""
 msgid "No longer active"
 msgstr "已停用"
 
-#: src/components/inbox/InboxDigest.tsx
 #: src/pages/Inbox.tsx
 msgid "No mail"
 msgstr ""
@@ -6715,6 +6845,10 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "No net spend in the last 3 full months"
+msgstr ""
+
+#: src/components/inbox/InboxDigest.tsx
+msgid "No newsletters in the last 7 days"
 msgstr ""
 
 #: src/pages/legal/LegalDeadlines.tsx
@@ -6934,10 +7068,6 @@ msgstr ""
 msgid "Not supported here"
 msgstr ""
 
-#: src/components/data-room/ItemRows.tsx
-msgid "Not tagged"
-msgstr ""
-
 #: src/components/data-room/Preview.tsx
 msgid "Not tagged yet."
 msgstr ""
@@ -7040,6 +7170,7 @@ msgstr ""
 msgid "Only if the server does not use sign-in"
 msgstr ""
 
+#: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -7266,6 +7397,7 @@ msgstr "原消息不可用"
 
 #: src/components/cap-table/OwnershipBar.tsx
 #: src/components/ContactDialog.tsx
+#: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
 #: src/lib/devin-format.ts
@@ -7551,11 +7683,15 @@ msgid "Post to portal"
 msgstr ""
 
 #: src/components/fundraising/RoundCard.tsx
+#: src/components/fundraising/SafeDialog.tsx
 msgid "Post-money cap"
 msgstr ""
 
 #. placeholder {0}: usd(round.capCents)
+#. placeholder {0}: usd(safe.capCents)
 #: src/components/fundraising/RoundCard.tsx
+#: src/components/fundraising/SafeDialog.tsx
+#: src/components/fundraising/SafeList.tsx
 msgid "Post-money cap {0}"
 msgstr ""
 
@@ -7637,6 +7773,10 @@ msgstr ""
 msgid "Primary"
 msgstr ""
 
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Print"
+msgstr ""
+
 #: src/pages/Board.tsx
 msgid "Priority"
 msgstr ""
@@ -7657,6 +7797,10 @@ msgstr ""
 msgid "Private workspace with its own bots and groups."
 msgstr ""
 
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Pro rata side letter"
+msgstr ""
+
 #: src/components/data-room/ProcessingStrip.tsx
 msgid "Processing"
 msgstr ""
@@ -7668,6 +7812,10 @@ msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
 msgid "Project secret"
+msgstr ""
+
+#: src/pages/finance/FinanceBurn.tsx
+msgid "Projected"
 msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
@@ -7740,6 +7888,10 @@ msgstr "表情回应"
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Read"
+msgstr ""
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Read and searchable"
 msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
@@ -7839,6 +7991,10 @@ msgstr ""
 
 #: src/pages/shell/working-label.ts
 msgid "Reading your contacts"
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Reading your Data room…"
 msgstr ""
 
 #: src/pages/shell/working-label.ts
@@ -8502,12 +8658,20 @@ msgstr ""
 msgid "Safe"
 msgstr ""
 
+#: src/components/fundraising/SafeDialog.tsx
+msgid "SAFE"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "safe, round, raise"
 msgstr ""
 
 #: src/pages/Fundraising.tsx
 msgid "SAFEs"
+msgstr ""
+
+#: src/components/cap-table/SafeRows.tsx
+msgid "SAFEs, if converted at cap"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -8754,10 +8918,6 @@ msgstr ""
 msgid "Search: {0}"
 msgstr ""
 
-#: src/components/data-room/DataRoomStats.tsx
-msgid "Searchable"
-msgstr ""
-
 #: src/pages/DataRoom.tsx
 msgid "Searching in {openFolderPath}"
 msgstr ""
@@ -8862,6 +9022,11 @@ msgstr "发送"
 msgid "Send reset link"
 msgstr "发送重置链接"
 
+#: src/components/fundraising/Pipeline.tsx
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Send SAFE"
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Send saved draft"
 msgstr ""
@@ -8898,6 +9063,7 @@ msgstr "正在发送…"
 msgid "Sends your meeting notes and transcripts to your AI model."
 msgstr ""
 
+#: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
@@ -8909,6 +9075,11 @@ msgstr ""
 #. placeholder {0}: day(update.sentAt)
 #: src/pages/Investors.tsx
 msgid "Sent {0}"
+msgstr ""
+
+#. placeholder {0}: day(safe.sentAt ?? safe.createdAt)
+#: src/components/fundraising/SafeList.tsx
+msgid "Sent {0}, not signed"
 msgstr ""
 
 #: src/pages/Investors.tsx
@@ -9026,10 +9197,6 @@ msgstr "Shell"
 msgid "Show all {total}"
 msgstr ""
 
-#: src/components/HideAmountsToggle.tsx
-msgid "Show amounts"
-msgstr ""
-
 #: src/pages/Investors.tsx
 msgid "Show done"
 msgstr ""
@@ -9072,6 +9239,10 @@ msgstr "显示设置"
 
 #: src/pages/Shell.tsx
 msgid "Show sidebar"
+msgstr ""
+
+#: src/components/inbox/InboxDigest.tsx
+msgid "Show the pile"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -9167,6 +9338,10 @@ msgstr ""
 msgid "Sign-in failed"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Sign-in needed."
+msgstr ""
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/useMcpReconnect.ts
@@ -9178,6 +9353,7 @@ msgid "Sign-in was denied or failed."
 msgstr ""
 
 #: src/components/fundraising/RoundCard.tsx
+#: src/components/fundraising/SafeList.tsx
 msgid "Signed"
 msgstr ""
 
@@ -9498,6 +9674,10 @@ msgstr ""
 msgid "Still has access to: {0}"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Still looking. This can take a minute."
+msgstr ""
+
 #: src/components/ShellSkeleton.tsx
 msgid "Still opening…"
 msgstr ""
@@ -9599,6 +9779,10 @@ msgstr ""
 msgid "Switching…"
 msgstr "正在切换…"
 
+#: src/pages/Finance.tsx
+msgid "Sync failed."
+msgstr ""
+
 #: src/components/inbox/TodoCard.tsx
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Syncing"
@@ -9627,6 +9811,10 @@ msgstr "接管控制权"
 
 #: src/pages/Shell.tsx
 msgid "Take the tour"
+msgstr ""
+
+#: src/components/data-room/ItemRows.tsx
+msgid "Taking longer than usual"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -10265,6 +10453,7 @@ msgstr ""
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/WalletDialog.tsx
+#: src/pages/Artifacts.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Type"
 msgstr ""
@@ -10338,6 +10527,7 @@ msgstr ""
 #: src/components/MailOutbox.tsx
 #: src/components/sidebar-folders/SidebarUndoNotice.tsx
 #: src/lib/use-contact-notices.ts
+#: src/pages/Fundraising.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Investors.tsx
 #: src/pages/legal/LegalDeadlines.tsx
@@ -10649,6 +10839,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Usual charge"
+msgstr ""
+
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Valuation"
 msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
@@ -11002,6 +11196,10 @@ msgstr ""
 msgid "Wrote {path}"
 msgstr ""
 
+#: src/components/fundraising/SafeDialog.tsx
+msgid "YC documents ›"
+msgstr ""
+
 #: src/lib/billing.ts
 msgid "year"
 msgstr ""
@@ -11012,6 +11210,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Yearly"
+msgstr ""
+
+#: src/components/fundraising/SafeDialog.tsx
+msgid "Yes"
 msgstr ""
 
 #: src/lib/roster-time.ts

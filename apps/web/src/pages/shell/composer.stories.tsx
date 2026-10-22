@@ -121,6 +121,11 @@ export const ComposerVoiceAgent: Story = {
   render: () => composer({ onVoice: () => undefined }),
   beforeEach: loaded,
 };
+/** After Skip tour: one suggested question, one tap. */
+export const ComposerQuickAsk: Story = {
+  render: () => composer({ quickAsk: { label: "Ask Chief", onAsk: () => undefined } }),
+  beforeEach: loaded,
+};
 export const ComposerRunning: Story = {
   render: () => composer({ running: true }),
   beforeEach: loaded,

@@ -17,7 +17,7 @@ import {
 import { canPreviewSpreadsheet } from "../../lib/spreadsheet";
 import { SheetPreview } from "../SheetPreview";
 import { sourceLabel } from "./FilterBar";
-import { dateText, isSettled, sizeText, typeLabel } from "./format";
+import { dateText, isSettled, isStuck, sizeText, typeLabel } from "./format";
 import type { ItemAction } from "./ItemMenu";
 import { ItemMenu } from "./ItemMenu";
 import {
@@ -174,7 +174,7 @@ export function Preview({
         />
       )}
       {/* In a dialog, leave room for its close button. */}
-      <div className={inDialog ? "flex items-center gap-1 pe-8" : "flex items-center gap-1"}>
+      <div className={inDialog ? "-mt-2 flex items-center gap-1 pe-8" : "flex items-center gap-1"}>
         <FileText aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
         {inDialog ? (
           <DialogTitle className="min-w-0 flex-1 truncate text-sm font-medium">
@@ -194,7 +194,7 @@ export function Preview({
         <ItemMenu
           item={item}
           onAction={onAction}
-          canRetry={item.status === "failed"}
+          canRetry={item.status === "failed" || isStuck(item)}
           agents={agents}
           onSendToAgent={onSendToAgent}
         />

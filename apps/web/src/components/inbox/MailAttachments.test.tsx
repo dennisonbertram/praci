@@ -150,6 +150,23 @@ it("steps between attachments with the arrow keys", async () => {
   void title;
 });
 
+it("shows previous and next arrows for several attachments but not for one", async () => {
+  await show();
+  await open("report.pdf");
+  expect(document.querySelector('[aria-label="Next attachment"]')).not.toBeNull();
+  await act(async () => root.unmount());
+  document.body.innerHTML = "";
+  root = createRoot(document.body.appendChild(document.createElement("div")));
+  await act(async () =>
+    root.render(<MailAttachments messageId="m1" attachments={attachments.slice(0, 1)} />),
+  );
+  await flush();
+  await open("report.pdf");
+  expect(document.querySelector("[role=dialog]")).not.toBeNull();
+  expect(document.querySelector('[aria-label="Next attachment"]')).toBeNull();
+  expect(document.querySelector('[aria-label="Previous attachment"]')).toBeNull();
+});
+
 it("adds to the Data room once, however often it is clicked", async () => {
   await show();
   await open("report.pdf");

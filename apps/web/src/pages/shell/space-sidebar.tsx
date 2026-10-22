@@ -360,6 +360,8 @@ export type SpaceSidebarProps = {
   chiefId: string | undefined;
   tourOpen: boolean;
   onTourAsk: () => void;
+  onTourSkip: () => void;
+  onTourEnd: () => void;
   setTourRestart: Dispatch<SetStateAction<boolean>>;
   hiddenPages: string[];
   addedPages: { key: string; label: string }[];
@@ -466,6 +468,8 @@ export function SpaceSidebar({
   chiefId,
   tourOpen,
   onTourAsk,
+  onTourSkip,
+  onTourEnd,
   setTourRestart,
   hiddenPages,
   addedPages,
@@ -1077,11 +1081,9 @@ export function SpaceSidebar({
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        className={
-                          group.title
-                            ? "col-start-1 row-start-1 justify-self-end self-center"
-                            : undefined
-                        }
+                        className={`focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
+                          group.title ? "col-start-1 row-start-1 justify-self-end self-center" : ""
+                        }`}
                         data-roster-actions=""
                         aria-label={t`Actions for ${group.spaceName}`}
                         onClick={(event) => {
@@ -1149,6 +1151,10 @@ export function SpaceSidebar({
                               rosterWorkStatusLabel(item.chat.status, item.chat.runPhase),
                             )
                           : null;
+                      const workTone =
+                        item.kind === "bot" && item.chat.status === "waiting_input"
+                          ? "text-warning"
+                          : "text-foreground";
                       const rowError =
                         item.kind === "bot" &&
                         (rosterHasUndismissedRunError(item.chat.runErrorId, dismissedRunErrorIds) ||
@@ -1426,7 +1432,7 @@ export function SpaceSidebar({
                                               rowError
                                                 ? "font-medium text-destructive"
                                                 : workStatusLabel
-                                                  ? "font-semibold text-status-working"
+                                                  ? `font-semibold ${workTone}`
                                                   : "font-medium text-foreground/75"
                                             }`}
                                           >
@@ -1444,7 +1450,7 @@ export function SpaceSidebar({
                                           }
                                           className={`truncate text-[12px] leading-[18px] ${
                                             workStatusLabel
-                                              ? "font-semibold text-status-working"
+                                              ? `font-semibold ${workTone}`
                                               : item.chat.unread
                                                 ? "font-medium text-foreground/75"
                                                 : "text-muted-foreground"
@@ -1476,7 +1482,7 @@ export function SpaceSidebar({
                                       position: { x: rect.left, y: rect.bottom },
                                     });
                                   }}
-                                  className={`absolute end-2 top-1.5 size-7 rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:hidden ${
+                                  className={`absolute end-2 top-1.5 size-7 rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring group-hover/row:opacity-100 pointer-coarse:hidden ${
                                     botMenu?.id === item.chat.id ? "opacity-100" : ""
                                   }`}
                                 >
@@ -1501,7 +1507,7 @@ export function SpaceSidebar({
               type="button"
               aria-expanded={archivedOpen}
               onClick={() => setArchivedOpen((open) => !open)}
-              className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-[13.5px] text-muted-foreground hover:bg-sidebar-accent"
+              className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-[13.5px] text-muted-foreground hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
             >
               <span>
                 <Trans>Archived</Trans>
@@ -1587,8 +1593,10 @@ export function SpaceSidebar({
       <FirstRunTour
         open={tourOpen}
         onAsk={onTourAsk}
+        onSkip={onTourSkip}
         onClose={(me, byEscape) => {
           setTourRestart(false);
+          onTourEnd();
           if (!byEscape) setMobileSidebarOpen(false);
           setBootstrapMe((current) => me ?? (current && { ...current, tourSeen: true }));
         }}
@@ -1598,7 +1606,7 @@ export function SpaceSidebar({
           data-testid="user-menu-trigger"
           data-tour="user-menu"
           aria-label={rail ? userName : undefined}
-          className={`flex items-center gap-[11px] rounded-lg py-3.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+          className={`flex items-center gap-[11px] rounded-lg py-3.5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
             rail ? "justify-center px-0" : "px-[18px]"
           }`}
         >
@@ -1636,6 +1644,7 @@ export function SpaceSidebar({
             aria-label={t`Settings`}
             onClick={() => {
               setMenuOpen(false);
+              setMobileSidebarOpen(false);
               openSettings("general");
             }}
           >

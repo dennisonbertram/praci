@@ -80,6 +80,7 @@ import {
   Mail,
   Maximize2,
   Menu,
+  MessageSquare,
   Monitor,
   PanelLeftOpen,
   PanelRightClose,
@@ -87,6 +88,7 @@ import {
   PieChart,
   Plus,
   Scale,
+  Search,
   Settings,
   SquareKanban,
   Trash2,
@@ -879,6 +881,10 @@ export function ShellPage() {
   const [bootstrapMe, setBootstrapMe] = useState<Me | null>();
   const [tourRestart, setTourRestart] = useState(false);
   const tourQuestion = useRef(false);
+  // Once the tour ends, a late profile response that still says unseen cannot restart it.
+  const [tourEnded, setTourEnded] = useState(false);
+  // After Skip tour the first question stays one tap away in Chief's composer.
+  const [askChiefChip, setAskChiefChip] = useState(false);
   // The tour waits for the first-run focus question, so its popovers never cover the choices.
   const firstQuestionOpen = Boolean(
     snapshot?.messages.some((message) =>
@@ -891,7 +897,8 @@ export function ShellPage() {
     ),
   );
   const tourOpen =
-    tourRestart || (bootstrapMe?.tourSeen === false && bots.length > 0 && !firstQuestionOpen);
+    tourRestart ||
+    (bootstrapMe?.tourSeen === false && !tourEnded && bots.length > 0 && !firstQuestionOpen);
   // On a phone the tour points into the sidebar drawer, so open it while the tour runs.
   useEffect(() => {
     if (tourOpen && !window.matchMedia("(min-width: 1024px)").matches) setMobileSidebarOpen(true);
@@ -2168,7 +2175,16 @@ export function ShellPage() {
       ]);
       return [
         {
+          heading: t`Mail`,
+          first: true,
+          icon: <Search size={16} strokeWidth={1.75} />,
+          entries: [
+            { id: `/app/inbox?q=${encodeURIComponent(q)}`, label: t`Search mail for “${q}”` },
+          ],
+        },
+        {
           heading: t`Contacts`,
+          icon: <BookUser size={16} strokeWidth={1.75} />,
           entries: contacts.map((c) => ({
             id: `/app/contacts?q=${encodeURIComponent(c.id)}`,
             label: c.label,
@@ -2177,25 +2193,21 @@ export function ShellPage() {
         },
         {
           heading: t`Documents`,
+          icon: <FileText size={16} strokeWidth={1.75} />,
           entries: found.documents.map((doc) => ({
             id: `/app/data-room?item=${encodeURIComponent(doc.id)}`,
             label: doc.label,
             detail: doc.detail,
           })),
         },
-        { heading: t`Chats`, entries: chats },
+        { heading: t`Chats`, icon: <MessageSquare size={16} strokeWidth={1.75} />, entries: chats },
         {
           heading: t`Artifacts`,
+          icon: <Files size={16} strokeWidth={1.75} />,
           entries: found.artifacts.map((item) => ({
             id: `/app/artifacts/${encodeURIComponent(item.id)}`,
             label: item.label,
           })),
-        },
-        {
-          heading: t`Mail`,
-          entries: [
-            { id: `/app/inbox?q=${encodeURIComponent(q)}`, label: t`Search mail for “${q}”` },
-          ],
         },
       ];
     },
@@ -3797,7 +3809,7 @@ export function ShellPage() {
       {!inGroup && !pageMode && botPins ? <PinsStrip pins={botPins} onPins={setBotPins} /> : null}
       <div className="flex min-h-0 flex-1">
         <div
-          className="flex min-h-0 min-w-0 flex-1 flex-col"
+          className={`flex min-h-0 min-w-0 flex-1 flex-col${pageMode ? " rk-docked-chat" : ""}`}
           data-bot-accent={threadAccent ? "" : undefined}
           style={threadAccent ? botAccentStyle(threadAccent) : undefined}
         >
@@ -3884,6 +3896,7 @@ export function ShellPage() {
                 onOpenComputer={onOpenComputer}
                 lastReadSeq={activeSnapshot?.lastReadSeq}
                 onRead={readThreadUpTo}
+                anchorToUnread={!pageMode}
               />
             )}
           </BotToolControlsContext.Provider>
@@ -3973,6 +3986,17 @@ export function ShellPage() {
               onAttachmentPick={onAttachmentPick}
               onRemoveAttachment={removeAttachment}
               onSend={sendMessage}
+              quickAsk={
+                askChiefChip && active?.id === chiefId
+                  ? {
+                      label: t`Ask Chief`,
+                      onAsk: () => {
+                        setAskChiefChip(false);
+                        void sendMessage(t`What should I do first this week?`, [], newClientId());
+                      },
+                    }
+                  : undefined
+              }
               onStop={stopRun}
               onVoice={!inGroup && active ? () => void startElioCall() : undefined}
               artifactTarget={transcriptArtifactTarget}
@@ -4174,6 +4198,11 @@ export function ShellPage() {
           setFocusComposerBotId(chiefId);
           openBot(chiefId);
         }}
+        onTourSkip={() => {
+          setAskChiefChip(true);
+          if (chiefId) openBot(chiefId);
+        }}
+        onTourEnd={() => setTourEnded(true)}
         setTourRestart={setTourRestart}
         setBootstrapMe={setBootstrapMe}
       />
@@ -4312,7 +4341,8 @@ export function ShellPage() {
                       size={26}
                     />
                   ) : active ? (
-                    <BotAvatar
+                    <AgentAvatar
+                      app={agentAppFor(active.id, active.spaceId)}
                       color={active.color}
                       identity={active.id}
                       size={26}
@@ -4546,7 +4576,8 @@ export function ShellPage() {
                     onClick={() => openBot(active.id)}
                     className="-mx-1.5 flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
                   >
-                    <BotAvatar
+                    <AgentAvatar
+                      app={agentAppFor(active.id, active.spaceId)}
                       color={active.color}
                       identity={active.id}
                       size={22}

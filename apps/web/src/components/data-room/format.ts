@@ -1,5 +1,6 @@
 import { i18n } from "@lingui/core";
 import { plural, t } from "@lingui/core/macro";
+import { DATA_ROOM_STUCK_MS } from "@rakazo/contracts";
 
 /** A document's date is a calendar day (UTC); when something happened (`local`) is the viewer's day. */
 export const dateText = (iso: string | null, local = false) =>
@@ -95,12 +96,20 @@ export const isNoiseImage = (file: { filename: string; mimeType: string; size: n
  */
 export const isUnreadable = (error: string | null) => !!error && /^This (PDF|file)\b/.test(error);
 
-/** "Reading for 5 min" (or hours, days) once a file has been in the pipeline over 2 minutes; empty before that. */
-export function readingAge(createdAt: string, now = Date.now()) {
-  const minutes = Math.floor((now - new Date(createdAt).getTime()) / 60_000);
+/**
+ * "Reading for 5 min" (or hours, days) once a file has been in the pipeline over 2 minutes; empty before that.
+ * Counts from the last pipeline write (`updatedAt`), so a retried file starts again at zero.
+ */
+export function readingAge(updatedAt: string, now = Date.now()) {
+  const minutes = Math.floor((now - new Date(updatedAt).getTime()) / 60_000);
   if (minutes < 2) return "";
   if (minutes < 60) return t`Reading for ${minutes} min`;
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
   return days < 1 ? t`Reading for ${hours} h` : t`Reading for ${days} d`;
 }
+
+/** A file still being read with no pipeline write for 10 minutes: it offers Try again. */
+export const isStuck = (item: { status: string; updatedAt: string }, now = Date.now()) =>
+  !["ready", "failed"].includes(item.status) &&
+  now - new Date(item.updatedAt).getTime() > DATA_ROOM_STUCK_MS;

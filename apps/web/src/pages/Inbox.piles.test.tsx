@@ -46,6 +46,7 @@ vi.mock("../lib/rpc", () => ({
       markRead: async () => ({ ok: true }),
       todos: { list: async () => ({ todos: [] }), setDone: vi.fn() },
     },
+    connections: { list: async () => [{ provider: "gmail", status: "connected" }] },
   },
 }));
 vi.mock("../lib/inbox-message-cache", () => ({

@@ -132,6 +132,7 @@ it("asks for consent when it is not allowed, and grants the shown key", async ()
   rpcMock.overview.mockResolvedValue(overview);
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
   rpcMock.consentGrant.mockResolvedValue(consentFixture);
+  rpcMock.scanNow.mockResolvedValue({ runId: id(1), botId: id(2) });
   await render(<LegalPage />);
   expect(container.textContent).toContain("Let Praci read your contracts");
   // The card says what is sent, not just that an AI model is involved.
@@ -142,6 +143,27 @@ it("asks for consent when it is not allowed, and grants the shown key", async ()
   await click(button("Allow"));
   expect(rpcMock.consentGrant).toHaveBeenCalledWith({ key: "k1", version: "v1" });
   expect(container.textContent).not.toContain("Let Praci read your contracts");
+  // Allow is the one click: the first scan starts without a second.
+  expect(rpcMock.scanNow).toHaveBeenCalledTimes(1);
+});
+
+it("does not repeat the card's sentence on an empty page waiting for consent", async () => {
+  rpcMock.overview.mockResolvedValue(emptyOverview);
+  rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
+  await render(<LegalPage />);
+  expect(container.textContent).toContain("Let Praci read your contracts");
+  expect(container.textContent).not.toContain("Allow access above");
+  expect(container.textContent).not.toContain("Press Scan now");
+});
+
+it("says No deadlines found with the date after a scan of an empty Data room", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...emptyOverview,
+    agent: { ...emptyOverview.agent, lastScanAt: "2026-10-20T10:00:00.000Z" },
+  });
+  await render(<LegalPage />);
+  expect(container.textContent).toContain("No contracts or deadlines found on Oct 20, 2026.");
+  expect(container.textContent).not.toContain("Press Scan now");
 });
 
 it("refetches the prompt when the consent key is stale", async () => {
@@ -706,4 +728,22 @@ it("puts the contract name in the deadline title", async () => {
   await render(<LegalDeadlines deadlines={deadlines} onChanged={() => {}} today="2026-10-16" />);
   const first = [...container.querySelectorAll("li .font-medium")].map((el) => el.textContent);
   expect(first).toContain(`${deadlines[0]?.title}: ${deadlines[0]?.contractTitle}`);
+});
+
+it("names the contract in the Undo line and keeps it for 30 seconds", async () => {
+  vi.useFakeTimers();
+  try {
+    rpcMock.updateDeadline.mockResolvedValue({});
+    await render(<LegalDeadlines deadlines={deadlines} onChanged={() => {}} today="2026-10-16" />);
+    await click(button(`Mark ${named(deadlines[0])} done`));
+    expect(container.querySelector("li[role=status]")?.textContent).toContain(
+      `Marked ${named(deadlines[0])} done.`,
+    );
+    await act(async () => void (await vi.advanceTimersByTimeAsync(29_000)));
+    expect(button("Undo")).toBeDefined();
+    await act(async () => void (await vi.advanceTimersByTimeAsync(2_000)));
+    expect(button("Undo")).toBeUndefined();
+  } finally {
+    vi.useRealTimers();
+  }
 });
