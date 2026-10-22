@@ -8197,10 +8197,6 @@ msgstr ""
 msgid "Retrying"
 msgstr ""
 
-#: src/lib/run-phase.ts
-msgid "Retrying: {name}"
-msgstr ""
-
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "Return to Praci"
