@@ -4885,7 +4885,7 @@ msgstr "Каждый час"
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Every month on the 1st"
-msgstr ""
+msgstr "Каждый месяц"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Every two weeks"

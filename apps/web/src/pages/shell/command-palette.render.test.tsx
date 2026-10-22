@@ -429,3 +429,20 @@ it("puts a group with an exact title ahead of a group with a partial title match
   });
   expect(headings()).toEqual(["Artifacts", "Documents"]);
 });
+
+it("hides a chat only when its bot is shown under Bots", async () => {
+  await mount(undefined, async () => [
+    {
+      heading: "Chats",
+      entries: [
+        { id: "/app/b3", label: "Finance agent chat" },
+        { id: "/app/b1", label: "Chief chat" },
+      ],
+    },
+  ]);
+  // Finance agent matches by name; Chief matches only by words in its description.
+  await search("fin");
+  await wait(300);
+  expect(listText()).not.toContain("Finance agent chat");
+  expect(listText()).toContain("Chief chat");
+});

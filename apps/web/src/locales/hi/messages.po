@@ -4885,7 +4885,7 @@ msgstr "हर घंटे"
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Every month on the 1st"
-msgstr ""
+msgstr "हर महीने"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Every two weeks"

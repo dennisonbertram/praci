@@ -4885,7 +4885,7 @@ msgstr "Her saat"
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Every month on the 1st"
-msgstr ""
+msgstr "Her ay"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Every two weeks"

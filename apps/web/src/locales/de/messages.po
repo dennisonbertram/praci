@@ -4885,7 +4885,7 @@ msgstr "Jede Stunde"
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Every month on the 1st"
-msgstr ""
+msgstr "Jeden Monat"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Every two weeks"

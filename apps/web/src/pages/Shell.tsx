@@ -2363,8 +2363,7 @@ export function ShellPage() {
         {
           heading: t`Chats`,
           icon: <MessageSquare size={16} strokeWidth={1.75} />,
-          // A bot that matched by name is already under Bots; list only chats with a message hit.
-          entries: chats.filter((chat) => !bots.some((bot) => chat.id === `/app/${bot.id}`)),
+          entries: chats,
         },
         {
           heading: t`Artifacts`,
@@ -2385,7 +2384,7 @@ export function ShellPage() {
         },
       ];
     },
-    [t, bots],
+    [t],
   );
 
   function openSearchResult(path: string) {
