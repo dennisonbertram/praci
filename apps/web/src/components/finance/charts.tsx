@@ -56,7 +56,7 @@ function lineRange(min: number, max: number) {
   return niceRange(min, Math.max(max, 0));
 }
 
-/** Monochrome fills for stacked segments and their legend swatches; index 0 is darkest. */
+/** Monochrome fills for the series in a UI artifact chart; index 0 is darkest. */
 export const shade = (index: number) =>
   `color-mix(in srgb, var(--foreground) ${[100, 78, 60, 46, 34, 24, 16][index % 7]}%, var(--card))`;
 
@@ -426,9 +426,9 @@ export function BurnLines({
         // One period cannot make a line: it is a bar (hollow while it is still running).
         const single = series.length === 1 && (granularity === "year" || granularity === "quarter");
         const rev = line((m) => m.revenueCents);
-        // The partial period is one mark: a second dot closer than 8 px would read as an "8".
+        // The partial period is one mark: a second dot closer than 12 px (two 3 px rings plus a gap) would read as an "8".
         const apart = (a?: [number, number], b?: [number, number]) =>
-          !a || !b || Math.hypot(a[0] - b[0], a[1] - b[1]) >= 8;
+          !a || !b || Math.hypot(a[0] - b[0], a[1] - b[1]) >= 12;
         const revDrawn = partial ? rev.slice(0, -1) : rev;
         const revEnd = partial && series[last]?.revenueCents && apart(rev.at(-1), out.at(-1));
         const outSegs = monotoneSegments(drawn);
@@ -859,74 +859,6 @@ export function MonthBars({
             })}
           </>
         );
-      }}
-    </Chart>
-  );
-}
-
-export const MAX_SEGMENTS = 6;
-
-/** One stacked bar split into segments; each opens its target. */
-export function StackBar({
-  segments,
-  onOpen,
-  label,
-}: {
-  segments: { key: string; label: string; cents: number }[];
-  onOpen: (key: string) => void;
-  label: string;
-}) {
-  return (
-    <Chart height={26} label={label}>
-      {(width) => {
-        const total = segments.reduce((sum, s) => sum + s.cents, 0);
-        if (total <= 0) return null;
-        let x = 0;
-        // Six grey shades are all the eye can tell apart: the rest fold into one "Other" segment.
-        const rest = segments.slice(MAX_SEGMENTS - 1);
-        const drawn =
-          segments.length > MAX_SEGMENTS
-            ? [
-                ...segments.slice(0, MAX_SEGMENTS - 1),
-                { key: "", label: t`Other`, cents: rest.reduce((sum, s) => sum + s.cents, 0) },
-              ]
-            : segments;
-        return drawn.map((segment, i) => {
-          const w = (segment.cents / total) * width;
-          const at = x;
-          x += w;
-          const shape = {
-            x: at,
-            y: 0,
-            width: Math.max(w - 1, 0),
-            height: 26,
-            rx: 2,
-            style: { fill: shade(i) },
-          };
-          // "Other" has no page of its own: it is named on hover and to screen readers, and opens nothing.
-          if (segment.key === "")
-            return (
-              // biome-ignore lint/a11y/noInteractiveElementToNoninteractiveRole: focusable so keyboard users can reach its name
-              <rect key="other" {...shape} role="img" aria-label={segment.label} tabIndex={0}>
-                <title>{segment.label}</title>
-              </rect>
-            );
-          return (
-            // biome-ignore lint/a11y/useSemanticElements: an SVG shape cannot be an <a> that the router can drive
-            <rect
-              key={segment.key}
-              {...shape}
-              role="link"
-              aria-label={segment.label}
-              tabIndex={0}
-              className="cursor-pointer outline-none focus-visible:stroke-foreground"
-              onClick={() => onOpen(segment.key)}
-              onKeyDown={keyActivate(() => onOpen(segment.key))}
-            >
-              <title>{segment.label}</title>
-            </rect>
-          );
-        });
       }}
     </Chart>
   );

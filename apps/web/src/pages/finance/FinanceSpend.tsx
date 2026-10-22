@@ -190,7 +190,9 @@ export function FinanceCategoryPage({ slug, window }: { slug: string; window?: C
             <div className="text-lg font-semibold tabular-nums">{money(data.last90Cents)}</div>
             {data.excludedNonUsdCount ? (
               <p className="text-xs text-muted-foreground">
-                {t`${data.excludedNonUsdCount} non-USD not counted`}
+                {data.excludedNonUsdCount === 1
+                  ? t`1 non-USD transaction not counted`
+                  : t`${data.excludedNonUsdCount} non-USD transactions not counted`}
               </p>
             ) : null}
           </Section>

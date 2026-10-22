@@ -305,13 +305,8 @@ msgstr "{0} needs you to sign in again. Its figures stop updating until you do."
 #. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
-msgid "{0} non-USD not counted"
-msgstr "{0} non-USD not counted"
-
-#. placeholder {0}: data.excludedNonUsdCount
-#: src/pages/Finance.tsx
-msgid "{0} not counted"
-msgstr "{0} not counted"
+msgid "{0} non-USD transactions not counted"
+msgstr "{0} non-USD transactions not counted"
 
 #. placeholder {0}: wallet.safeThreshold
 #. placeholder {1}: wallet.safeOwners.length
@@ -352,6 +347,11 @@ msgstr "{0} transactions"
 #: src/components/FinanceCards.tsx
 msgid "{0} transactions · {period}"
 msgstr "{0} transactions · {period}"
+
+#. placeholder {0}: parts.unpricedTokenCount
+#: src/pages/finance/FinanceBurn.tsx
+msgid "{0} unpriced."
+msgstr "{0} unpriced."
 
 #. placeholder {0}: monthShort(data.monthly.at(-1)?.month ?? "")
 #. placeholder {1}: monthShort(data.changeFromMonth)
@@ -717,6 +717,11 @@ msgstr "+{unnamed} more"
 #: src/components/finance/WalletDialog.tsx
 msgid "0x… or name.eth"
 msgstr "0x… or name.eth"
+
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
+msgid "1 non-USD transaction not counted"
+msgstr "1 non-USD transaction not counted"
 
 #: src/components/fundraising/MercuryLine.tsx
 msgid "1 SAFE could not be read"
@@ -2045,10 +2050,6 @@ msgstr "Bulleted list"
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Burn"
 msgstr "Burn"
-
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Burn by category"
-msgstr "Burn by category"
 
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Business plan"
@@ -7841,7 +7842,6 @@ msgstr "Original message unavailable"
 
 #: src/components/cap-table/OwnershipBar.tsx
 #: src/components/ContactDialog.tsx
-#: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
 #: src/lib/devin-format.ts
@@ -7878,8 +7878,8 @@ msgid "Out"
 msgstr "Out"
 
 #: src/pages/Finance.tsx
-msgid "Out so far this month"
-msgstr "Out so far this month"
+msgid "Out so far this month, not over"
+msgstr "Out so far this month, not over"
 
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Outside memory service"

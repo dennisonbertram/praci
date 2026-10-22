@@ -4,7 +4,7 @@
 Rendered React components and native SwiftUI views, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 278 of 278
-- Web and shared components: 731
+- Web and shared components: 730
 - Mobile components: 138 in 95 files, mobile — native story pending
 - SwiftUI views: 3 in 2 files, native story pending
 
@@ -194,7 +194,7 @@ Rendered React components and native SwiftUI views, grouped by area. A web or sh
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
 | Option, AddAccountDialog | [apps/web/src/components/finance/AddAccountDialog.tsx](../../apps/web/src/components/finance/AddAccountDialog.tsx) | [AddAccountDialog.stories.tsx](../../apps/web/src/components/finance/AddAccountDialog.stories.tsx) | web |
-| Chart, Grid, LineChart, BurnLines, MonthBars, StackBar | [apps/web/src/components/finance/charts.tsx](../../apps/web/src/components/finance/charts.tsx) | [charts.stories.tsx](../../apps/web/src/components/finance/charts.stories.tsx) | web |
+| Chart, Grid, LineChart, BurnLines, MonthBars | [apps/web/src/components/finance/charts.tsx](../../apps/web/src/components/finance/charts.tsx) | [charts.stories.tsx](../../apps/web/src/components/finance/charts.stories.tsx) | web |
 | CountCryptoButton | [apps/web/src/components/finance/CountCryptoButton.tsx](../../apps/web/src/components/finance/CountCryptoButton.tsx) | [CountCryptoButton.stories.tsx](../../apps/web/src/components/finance/CountCryptoButton.stories.tsx) | web |
 | ExchangeGroup | [apps/web/src/components/finance/ExchangeGroup.tsx](../../apps/web/src/components/finance/ExchangeGroup.tsx) | [ExchangeGroup.stories.tsx](../../apps/web/src/components/finance/ExchangeGroup.stories.tsx) | web |
 | RenameAccountDialog | [apps/web/src/components/finance/RenameAccountDialog.tsx](../../apps/web/src/components/finance/RenameAccountDialog.tsx) | [RenameAccountDialog.stories.tsx](../../apps/web/src/components/finance/RenameAccountDialog.stories.tsx) | web |
