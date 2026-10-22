@@ -47,6 +47,14 @@ it("gives a PDF Open and Download below sm, where the frame would be blank", () 
   expect(labels).toEqual(["Open", "Download"]);
 });
 
+it("opens the PDF on a phone by going straight to the file, not a frame in a new tab", () => {
+  const open = vi.spyOn(window, "open").mockReturnValue(null);
+  const view = render(item("agreement.pdf", "application/pdf"));
+  act(() => view.querySelector("button")?.click());
+  expect(open).toHaveBeenCalledWith("blob:file", "_blank", "noopener");
+  open.mockRestore();
+});
+
 it("leaves an image URL unchanged", () => {
   const image = render(item("receipt.png", "image/png")).querySelector("img");
   expect(image?.getAttribute("src")).toBe("blob:file");

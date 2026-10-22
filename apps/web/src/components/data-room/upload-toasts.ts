@@ -241,29 +241,33 @@ async function uploadOne(file: File, folderId: string | undefined) {
       return await followImport(id, uploaded.importId, current);
     }
     const { item, duplicate } = uploaded;
-    // Where the file is: without it the user goes looking (and "Already there" says nothing useful).
-    const folder = item.folderId
-      ? await rpc.dataRoom
-          .folders()
-          .then((all) => folderNodes(all).find((node) => node.folder.id === item.folderId)?.path)
-          .catch(() => undefined)
-      : undefined;
+    const publish = (folder?: string) =>
+      update(id, {
+        kind: "uploaded",
+        itemId: item.id,
+        ...(!duplicate && folder ? { folder } : {}),
+        ...(duplicate
+          ? {
+              existing: {
+                ...(item.name !== file.name ? { name: item.name } : {}),
+                ...(folder ? { folder } : {}),
+              },
+            }
+          : {}),
+      });
     if (!current()) return;
-    update(id, {
-      kind: "uploaded",
-      itemId: item.id,
-      ...(!duplicate && folder ? { folder } : {}),
-      ...(duplicate
-        ? {
-            existing: {
-              ...(item.name !== file.name ? { name: item.name } : {}),
-              ...(folder ? { folder } : {}),
-            },
-          }
-        : {}),
-    });
+    publish();
     window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
     dismissLater(id, DONE_TOAST_MS);
+    // Where the file is: without it the user goes looking (and "Already there" says nothing
+    // useful). Looked up after the toast shows, so a slow request never holds the upload open.
+    if (item.folderId) {
+      const path = await rpc.dataRoom
+        .folders()
+        .then((all) => folderNodes(all).find((node) => node.folder.id === item.folderId)?.path)
+        .catch(() => undefined);
+      if (path && current()) publish(path);
+    }
   } catch (error) {
     clearTimeout(timer);
     // Cancelled or retried from the card: it has already gone.

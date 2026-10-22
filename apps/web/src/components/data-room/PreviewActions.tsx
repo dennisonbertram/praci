@@ -104,7 +104,7 @@ export function FileViewer({
     );
   return item.mimeType === "application/pdf" ? (
     <>
-      <PdfPhoneFallback item={item} fill={fill} />
+      <PdfPhoneFallback item={item} url={file.url} fill={fill} />
       <iframe
         // Hide the browser viewer's own Download and Print: the pane has Open and Download. Full
         // screen on a phone keeps the toolbar, whose zoom is the only way to read small print.
@@ -127,7 +127,15 @@ export function FileViewer({
 }
 
 /** Phone browsers draw a PDF in a frame as an empty box, so below sm the file gets Open and Download instead. */
-function PdfPhoneFallback({ item, fill }: { item: DataRoomApiItem; fill: boolean }) {
+function PdfPhoneFallback({
+  item,
+  url,
+  fill,
+}: {
+  item: DataRoomApiItem;
+  url: string;
+  fill: boolean;
+}) {
   const [error, setError] = useState("");
   const run = (action: (item: DataRoomApiItem) => Promise<void>) => {
     setError("");
@@ -139,7 +147,7 @@ function PdfPhoneFallback({ item, fill }: { item: DataRoomApiItem; fill: boolean
     >
       <FileText aria-hidden="true" className="size-8 text-muted-foreground" />
       <div className="flex gap-2">
-        <Button size="sm" variant="outline" onClick={() => run(openDataRoomItem)}>
+        <Button size="sm" variant="outline" onClick={() => window.open(url, "_blank", "noopener")}>
           <ExternalLink aria-hidden="true" />
           {t`Open`}
         </Button>
