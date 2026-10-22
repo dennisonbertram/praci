@@ -67,7 +67,7 @@ export function NotificationSettingsSection() {
           <Switch
             id={`${id}-browser`}
             aria-label={t`Browser notifications`}
-            checked={permission === "granted" && channels.browser !== false}
+            checked={!!prefs && permission === "granted" && channels.browser !== false}
             disabled={!prefs || pending || browserBlocked}
             onCheckedChange={(on) => void setBrowser(on)}
           />

@@ -2187,7 +2187,7 @@ msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Chat display"
-msgstr ""
+msgstr "Sohbet görünümü"
 
 #: src/pages/shell/composer.tsx
 msgid "Chat settings"
@@ -8971,7 +8971,7 @@ msgstr ""
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Search integrations"
-msgstr ""
+msgstr "Entegrasyon ara"
 
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Inbox.tsx

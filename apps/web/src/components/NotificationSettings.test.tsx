@@ -158,3 +158,12 @@ it("keeps the Notifications card in place while preferences load", async () => {
   expect(container.textContent).toContain("Notifications");
   expect(row("Browser notifications")?.hasAttribute("disabled")).toBe(true);
 });
+
+it("does not show Browser as on before the saved preference has loaded", async () => {
+  setPermission("granted");
+  api.preferences.mockReturnValue(new Promise(() => {}));
+  await render();
+  const el = row("Browser notifications") as HTMLButtonElement;
+  expect(el.getAttribute("aria-checked")).toBe("false");
+  expect(el.disabled).toBe(true);
+});

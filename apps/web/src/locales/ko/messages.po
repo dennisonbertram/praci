@@ -2187,7 +2187,7 @@ msgstr "채팅 앱, 그룹 채널 및 Agent 연결을 관리합니다."
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Chat display"
-msgstr ""
+msgstr "채팅 표시"
 
 #: src/pages/shell/composer.tsx
 msgid "Chat settings"
@@ -8971,7 +8971,7 @@ msgstr ""
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Search integrations"
-msgstr ""
+msgstr "연동 검색"
 
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Inbox.tsx

@@ -2187,7 +2187,7 @@ msgstr "Apps de chat, canales de grupo y conexiones de agentes."
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Chat display"
-msgstr ""
+msgstr "Visualización del chat"
 
 #: src/pages/shell/composer.tsx
 msgid "Chat settings"
@@ -8971,7 +8971,7 @@ msgstr ""
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Search integrations"
-msgstr ""
+msgstr "Buscar integraciones"
 
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Inbox.tsx
