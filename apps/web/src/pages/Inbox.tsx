@@ -552,8 +552,6 @@ function InboxListPage({
     // The to-dos reload when triage finishes; sorting ends when they arrive, so the page changes once.
     else if (!shown?.triagePending && !sortEnding.current) setSorting(false);
   }, [firstSort, shown?.triagePending]);
-  // Until the user allows sorting, mail is not sorted into piles yet, so the pile tabs wait.
-  const pileTabs = shown?.triageBlocked?.reason !== "needs_consent";
   const narrowed = triage && Boolean(category);
   // A search or narrowed list is one date-ordered list under a result count, not Needs reply / Today / Earlier.
   const resultsView = filtered || narrowed;
@@ -969,12 +967,13 @@ function InboxListPage({
       todos={todos}
       meetings={meetings ?? undefined}
       onOpen={openMessage}
-      onChange={(next) =>
-        setTodosByTab((all) => ({
-          ...all,
-          [tabKey]: (all[tabKey] ?? []).map((item) => (item.id === next.id ? next : item)),
-        }))
-      }
+      onChange={(next) => {
+        const swap = (items: InboxTodo[]) =>
+          items.map((item) => (item.id === next.id ? next : item));
+        // A held answer must not bring the old state back when it is applied.
+        if (heldTodos.current) heldTodos.current.todos = swap(heldTodos.current.todos);
+        setTodosByTab((all) => ({ ...all, [tabKey]: swap(all[tabKey] ?? []) }));
+      }}
     />
   ) : null;
   const closeMessage = () => {
@@ -1327,15 +1326,13 @@ function InboxListPage({
                             <Trans>Gmail tabs</Trans>
                           </DropdownMenuSubTrigger>
                           <DropdownMenuSubContent>
-                            {/* With the pile tabs showing, the Updates tab is the Updates list, so Gmail's tab of that name is left out. */}
-                            {(pileTabs
-                              ? (["primary", "promotions", "social"] as const)
-                              : (["primary", "promotions", "social", "updates"] as const)
-                            ).map((name) => (
-                              <DropdownMenuRadioItem key={name} value={name} closeOnClick>
-                                {filterLabels()[name]}
-                              </DropdownMenuRadioItem>
-                            ))}
+                            {(["primary", "promotions", "social", "updates"] as const).map(
+                              (name) => (
+                                <DropdownMenuRadioItem key={name} value={name} closeOnClick>
+                                  {filterLabels()[name]}
+                                </DropdownMenuRadioItem>
+                              ),
+                            )}
                           </DropdownMenuSubContent>
                         </DropdownMenuSub>
                         {triage ? (
@@ -1420,10 +1417,9 @@ function InboxListPage({
               </>
             }
           />
-          {tools && !query && (pileTabs || (pileCounts?.spam ?? 0) > 0 || pile === "spam") ? (
+          {tools && !query ? (
             <div className="flex flex-wrap items-center gap-2">
               <InboxPileTabs
-                sorted={pileTabs}
                 value={pile}
                 counts={pileCounts}
                 onChange={(next) => setParam("pile", next === "important" ? "" : next)}

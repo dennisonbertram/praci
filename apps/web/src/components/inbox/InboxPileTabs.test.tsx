@@ -76,8 +76,3 @@ it("gives every tab a 44px height on touch screens", async () => {
   await show();
   for (const tab of tabs()) expect(tab.className).toContain("pointer-coarse:h-11");
 });
-
-it("shows only Spam beside Important before sorting is allowed", async () => {
-  await show({ sorted: false, counts: { important: 4, updates: 0, newsletters: 0, spam: 2 } });
-  expect(tabs().map((el) => el.textContent)).toEqual(["Important", "Spam2"]);
-});

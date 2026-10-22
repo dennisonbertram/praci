@@ -74,13 +74,11 @@ it("shows a compact label dot in the narrow pane that names the label", async ()
   expect(dot?.className).toContain("@md:hidden");
 });
 
-it("keeps the row actions and checkbox out of the Tab order and reaches them with the arrow keys", async () => {
+it("keeps the row actions out of the Tab order and reaches them with the arrow keys", async () => {
   await show();
   const rowButton = document.querySelector<HTMLElement>("button[data-row-id]");
   const archive = document.querySelector<HTMLElement>('button[aria-label="Archive"]');
   expect(archive?.tabIndex).toBe(-1);
-  for (const el of document.querySelectorAll<HTMLElement>("[role=checkbox], input[type=checkbox]"))
-    expect(el.tabIndex).toBe(-1);
   await act(async () => rowButton?.focus());
   await act(async () => {
     rowButton?.dispatchEvent(

@@ -23,6 +23,3 @@ export const SpamActive: Story = {
 
 /** A Gmail filter, search or category is open, so no pile is selected. */
 export const NoPileSelected: Story = { args: { value: undefined } };
-
-/** Sorting is not allowed yet, so only Important and Spam can show. */
-export const BeforeSorting: Story = { args: { sorted: false, counts: { ...counts, spam: 3 } } };

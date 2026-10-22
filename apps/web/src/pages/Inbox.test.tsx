@@ -1438,7 +1438,7 @@ describe("selecting rows", () => {
 });
 
 describe("a list that holds still", () => {
-  it("shows no pile tabs until sorting is allowed", async () => {
+  it("keeps the pile tabs before sorting is allowed, so locally sorted mail stays reachable", async () => {
     rpcMock.list.mockResolvedValue(
       list([row("a")], {
         enabled: false,
@@ -1447,7 +1447,8 @@ describe("a list that holds still", () => {
     );
     const c = await render();
     expect(c.textContent).toContain("Subject a");
-    expect(c.querySelector('[role="tab"]')).toBeNull();
+    expect(c.textContent).toContain("Updates");
+    expect(c.textContent).toContain("Newsletters");
   });
 
   it("keeps a to-do that arrives after the rows show out of the list until the list changes", async () => {
@@ -1475,6 +1476,38 @@ describe("a list that holds still", () => {
     await act(async () => go("/app/inbox?filter=unread"));
     await act(async () => go("/app/inbox"));
     expect(c.textContent).toContain("Send the deck");
+  });
+
+  it("keeps a completed to-do completed when a held answer is applied later", async () => {
+    rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true })]));
+    const make = (id: string) => ({
+      id,
+      connectionId: "c1",
+      messageId: "a",
+      text: `Task ${id}`,
+      detail: null,
+      from: "Dana",
+      priority: null,
+      dueOn: null,
+      doneAt: null,
+    });
+    rpcMock.todos.mockResolvedValue({ todos: [make("A")] });
+    const c = await render();
+    expect(c.textContent).toContain("Task A");
+    rpcMock.todos.mockResolvedValue({ todos: [make("A"), make("B")] });
+    rpcMock.list.mockResolvedValue(
+      list([row("a", { needsReply: true })], { syncedAt: "2026-10-12T00:05:00.000Z" }),
+    );
+    await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+    expect(c.textContent).not.toContain("Task B");
+    rpcMock.setDone.mockResolvedValue({ ...make("A"), doneAt: new Date().toISOString() });
+    await click(c.querySelector('[role="checkbox"][aria-label="Task A"]'));
+    await act(async () => go("/app/inbox?filter=unread"));
+    await act(async () => go("/app/inbox"));
+    expect(c.textContent).toContain("Task B");
+    expect(
+      c.querySelector('[role="checkbox"][aria-label="Task A"]')?.getAttribute("aria-checked"),
+    ).toBe("true");
   });
 
   it("names each filter once and keeps the filter menu short", async () => {

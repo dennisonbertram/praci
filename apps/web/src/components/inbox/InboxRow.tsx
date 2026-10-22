@@ -362,8 +362,6 @@ export function InboxRow({
             aria-label={t`Select ${row.from}`}
             checked={picked}
             onClick={(event) => onPick({ shift: event.shiftKey })}
-            // The x key checks the focused row, so the box is not a second Tab stop.
-            tabIndex={-1}
             className={`absolute start-2 top-1/2 z-10 -translate-y-1/2 @md:start-3 pointer-coarse:after:-start-3.25 pointer-coarse:after:-end-4.25 ${showPick ? "" : "opacity-0 focus-visible:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100"}`}
           />
         ) : null}
