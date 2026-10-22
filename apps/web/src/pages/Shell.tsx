@@ -154,7 +154,6 @@ import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/Err
 import { HideAmountsMenuItem } from "../components/HideAmountsToggle";
 import { AgentAvatar } from "../components/integrations/AgentAvatar";
 import { DevinConnectDialog } from "../components/integrations/DevinConnectDialog";
-import { LegalPanelConsent } from "../components/legal/ConsentPrompt";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
 import { PageAgentsRow } from "../components/PageAgentsRow";
 import { PageNavContext } from "../components/PageHeader";
@@ -182,6 +181,7 @@ import { TeachRecordingChrome, TeachStopButton } from "../components/teach/Teach
 import { connectCardsOpen } from "../components/tour/connect-cards";
 import { FirstRunTour } from "../components/tour/FirstRunTour";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
+import { dismissApprovalToasts } from "../lib/approval-toasts";
 import { artifactDisplayName } from "../lib/artifact-name";
 import type { ArtifactTarget } from "../lib/artifact-open";
 import { authClient } from "../lib/auth";
@@ -218,7 +218,12 @@ import { fetchDataRoomBlob } from "../lib/data-room";
 import { dataRoomAgentSuggestions, findDataRoomAgent } from "../lib/data-room-agent";
 import { desktopBridge } from "../lib/desktop";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
-import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
+import {
+  maskCurrencyWhenHidden,
+  setHideAmounts,
+  setHideAmountsUser,
+  useHideAmounts,
+} from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
 import { appPath } from "../lib/integrations";
 import { findInvestorsAgent, investorsAgentSuggestions } from "../lib/investors-agent";
@@ -610,6 +615,9 @@ export function ShellPage() {
   const [collapsedSidebarSections, setCollapsedSidebarSections] = useState(() => new Set<string>());
   const [collapsedRosterParents, setCollapsedRosterParents] = useState(() => new Set<string>());
 
+  useEffect(() => {
+    setHideAmountsUser(userId ?? null);
+  }, [userId]);
   useEffect(() => {
     setCollapsedSidebarSections(readCollapsedSidebarSections(userId));
     setCollapsedRosterParents(readCollapsedRosterParents(userId));
@@ -1200,6 +1208,12 @@ export function ShellPage() {
   computerOpenRef.current = computerOpen;
   computerBotIdRef.current = computerBotId ?? active?.id;
   const activeGroup = groups.find((group) => group.id === groupId);
+  // An approval in the chat that is open (a bot, a page agent or a group) is already on screen.
+  const openChatHref =
+    inGroup && groupId ? `/app/g/${groupId}` : active ? `/app/${active.id}` : undefined;
+  useEffect(() => {
+    if (openChatHref) dismissApprovalToasts(openChatHref);
+  }, [openChatHref]);
   const opening = chatIsOpening({
     hasChat: Boolean(active || activeGroup),
     botsLoaded: initialBotsLoaded,
@@ -1552,6 +1566,8 @@ export function ShellPage() {
         if (cancelled) return;
         const groupList = bootstrap.groups;
         setBootstrapMe(bootstrap.me);
+        // The saved choice belongs to the signed-in user; it replaces the last person's.
+        setHideAmounts(bootstrap.me.hideAmounts ?? false);
         // Agents and new schedules use the user's zone; follow the browser without asking.
         const zone = timezoneToReport(bootstrap.me);
         if (zone) {
@@ -2687,9 +2703,13 @@ export function ShellPage() {
       bots.length > 0 &&
       !firstQuestionOpen &&
       !connectCardsWaiting);
-  // On a phone the tour points into the sidebar drawer, so open it while the tour runs.
+  // On a phone the tour points into the sidebar drawer, so open it while the tour runs. On a
+  // docked sidebar the tour card is as wide as the sidebar, so a collapsed rail is expanded
+  // (for this session only; the saved preference is unchanged).
   useEffect(() => {
-    if (tourOpen && !window.matchMedia("(min-width: 1024px)").matches) setMobileSidebarOpen(true);
+    if (!tourOpen) return;
+    if (window.matchMedia("(min-width: 1024px)").matches) setBotsSidebarCollapsed(false);
+    else setMobileSidebarOpen(true);
   }, [tourOpen]);
   const askChief = chiefId ? () => openBot(chiefId) : undefined;
 
@@ -2771,6 +2791,7 @@ export function ShellPage() {
         ...(username ? { username } : {}),
         ...(mail ? { mail } : {}),
       });
+      dismissApprovalToasts(groupId ? `/app/g/${groupId}` : `/app/${botId}`);
       if (groupId && activeGroupId.current === groupId) {
         await refreshGroupThreadRef.current(groupId);
       } else if (botId && activeBotId.current === botId) {
@@ -3797,10 +3818,11 @@ export function ShellPage() {
   }
 
   const embeddedScreenUrl = embeddableScreenUrl(screenUrl);
-  // A computer that is on but has no screen would show a heading over an empty box.
+  // A computer that is on without a screen, or has never run, would show a heading over an
+  // empty box; the panel is then just the bot's routines.
   const noComputerScreen =
-    computer?.state === "running" &&
-    computer.kind !== "desktop" &&
+    (computer?.state === "running" || computer?.state === "stopped" || !computer) &&
+    computer?.kind !== "desktop" &&
     !embeddedScreenUrl &&
     !computerError &&
     !computerOpen &&
@@ -4079,7 +4101,6 @@ export function ShellPage() {
               <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
             </div>
           ) : null}
-          {legalWaitsForConsent ? <LegalPanelConsent /> : null}
           {active || activeGroup ? (
             <Composer
               key={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
@@ -5142,7 +5163,7 @@ export function ShellPage() {
                                                   </span>
                                                 ) : null}
                                               </div>
-                                              <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0">
+                                              <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0 pointer-coarse:me-9">
                                                 {item.kind === "bot" &&
                                                 glance.botKinds[item.chat.id] ? (
                                                   <StatusMark
@@ -5228,7 +5249,7 @@ export function ShellPage() {
                                             position: { x: rect.left, y: rect.bottom },
                                           });
                                         }}
-                                        className={`absolute end-2 top-1.5 size-7 rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring group-hover/row:opacity-100 pointer-coarse:hidden ${
+                                        className={`absolute end-2 top-1.5 size-7 rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring group-hover/row:opacity-100 pointer-coarse:top-0 pointer-coarse:size-11 pointer-coarse:opacity-100 ${
                                           botMenu?.id === item.chat.id ? "opacity-100" : ""
                                         }`}
                                       >
@@ -5904,7 +5925,7 @@ export function ShellPage() {
         ) : panel && (active || activeGroup) ? (
           <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
             {panel !== "routine" && panel !== "create-group" && panel !== "group-settings" ? (
-              <div className="mb-4 flex items-center justify-between">
+              <div className="sticky top-0 z-10 -mx-5 -mt-[17px] mb-4 flex items-center justify-between bg-background px-5 pt-[17px] pb-2">
                 <span className="text-[13.5px] text-muted-foreground">
                   {panel === "settings" ? (
                     active ? (

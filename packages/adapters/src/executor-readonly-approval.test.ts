@@ -1499,7 +1499,7 @@ describe("Inbox agent mail without AI data sharing consent", () => {
         expect.objectContaining({
           kind: "ask",
           approvalEffectId: effect!.id,
-          text: "Share your chats and mail with D?",
+          text: "Share your chats and mail with the AI model that runs your bots?",
           detail: expect.stringContaining("stays on until you turn it off"),
           consent: { version: AI_DISCLOSURE_VERSION },
           actions: [

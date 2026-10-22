@@ -14,6 +14,10 @@ const loaded = (extra: Record<string, unknown> = {}) =>
     ...extra,
   });
 
+/** A person on the system model sees one line; this opens the providers, backups and search model. */
+const useOwnModel = async () =>
+  userEvent.click(await screen.findByRole("button", { name: "Use my own model" }));
+
 const meta = {
   title: "Settings/Model settings",
   component: ModelSettingsOverlay,
@@ -36,6 +40,17 @@ type Story = StoryObj<typeof meta>;
 
 export const ConnectedProvider: Story = {};
 
+export const SystemModel: Story = {
+  name: "On the system model (one line)",
+  beforeEach: () => loaded({ "models.credentials": [] }),
+};
+
+export const OwnModelOpened: Story = {
+  name: "After Use my own model",
+  beforeEach: () => loaded({ "models.credentials": [] }),
+  play: useOwnModel,
+};
+
 export const WithModelPickerOpen: Story = {
   name: "Model picker open (ModelPicker, ModelOption)",
   play: async () => {
@@ -52,6 +67,7 @@ export const ModelPickerNoMatch: Story = {
 };
 
 export const ProviderNotConnected: Story = {
+  play: useOwnModel,
   beforeEach: () =>
     loaded({
       "models.credentials": [],
@@ -60,6 +76,7 @@ export const ProviderNotConnected: Story = {
 };
 
 export const ServerCredentials: Story = {
+  play: useOwnModel,
   name: "Server's own credentials",
   beforeEach: () =>
     loaded({
@@ -73,6 +90,7 @@ export const ServerCredentials: Story = {
 };
 
 export const SubscriptionSignIn: Story = {
+  play: useOwnModel,
   beforeEach: () =>
     loaded({
       "models.credentials": [],
@@ -118,6 +136,7 @@ export const LoadFailed: Story = {
 };
 
 export const EmptyCatalog: Story = {
+  play: useOwnModel,
   beforeEach: () => loaded({ "models.list": [], "models.credentials": [] }),
 };
 

@@ -30,7 +30,6 @@ const rpcMock = vi.hoisted(() => ({
 }));
 vi.mock("../lib/rpc", () => ({ rpc: { legal: rpcMock } }));
 
-import { LEGAL_CONSENT_GRANTED } from "../components/legal/ConsentPrompt";
 import { LegalGraphView, labelLines, MAX_GRAPH_NODES } from "../components/legal/LegalGraph";
 import { setHideAmounts } from "../lib/hide-amounts-preference";
 import { LegalPage } from "./Legal";
@@ -155,6 +154,28 @@ it("does not repeat the card's sentence on an empty page waiting for consent", a
   expect(container.textContent).toContain("Let Praci read your documents");
   expect(container.textContent).not.toContain("Allow access above");
   expect(container.textContent).not.toContain("Press Scan now");
+});
+
+it("shows the empty Contracts and Deadlines tabs under the consent card", async () => {
+  rpcMock.overview.mockResolvedValue(emptyOverview);
+  rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
+  await render(<LegalPage />);
+  expect(tab("Contracts")).toBeDefined();
+  expect(tab("Deadlines")).toBeDefined();
+});
+
+it("does not say Not scanned yet while the first scan runs", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...emptyOverview,
+    agent: {
+      ...emptyOverview.agent,
+      lastScanAt: null,
+      lastScanRun: { id: id(7), status: "running" as const, error: null },
+    },
+  });
+  await render(<LegalPage />);
+  expect(container.textContent).toContain("Scanning…");
+  expect(container.textContent).not.toContain("Not scanned yet");
 });
 
 it("says No deadlines found with the date after a scan of an empty Data room", async () => {
@@ -445,15 +466,6 @@ it("re-reads the overview and consent when the window gets focus again", async (
   await act(async () => void window.dispatchEvent(new Event("focus")));
   expect(rpcMock.overview.mock.calls.length).toBe(before + 1);
   expect(rpcMock.consent.mock.calls.length).toBeGreaterThan(1);
-});
-
-it("scans and shows the error when Allow is clicked in the agent panel", async () => {
-  rpcMock.overview.mockResolvedValue(overview);
-  rpcMock.scanNow.mockRejectedValue(new Error("scan down"));
-  await render(<LegalPage />);
-  await act(async () => void window.dispatchEvent(new Event(LEGAL_CONSENT_GRANTED)));
-  expect(rpcMock.scanNow).toHaveBeenCalledTimes(1);
-  expect(container.textContent).toContain("scan down");
 });
 
 it("offers Undo after Done and reopens the deadline", async () => {

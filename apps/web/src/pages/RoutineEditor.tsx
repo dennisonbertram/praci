@@ -139,7 +139,6 @@ export function routineTriggerSummary(routine: Routine): string {
 }
 
 export function RoutineListHeader({ onCreate }: { onCreate: () => void }) {
-  const { t } = useLingui();
   return (
     <div className="mt-[30px] mb-3 flex items-center justify-between gap-3">
       <div className="min-w-0">
@@ -150,15 +149,9 @@ export function RoutineListHeader({ onCreate }: { onCreate: () => void }) {
           <Trans>Work this bot repeats for you, like a cash check every Monday.</Trans>
         </p>
       </div>
-      <Button
-        variant="secondary"
-        size="icon-sm"
-        data-testid="routine-create-button"
-        aria-label={t`Create Routine`}
-        title={t`Create Routine`}
-        onClick={onCreate}
-      >
+      <Button variant="secondary" size="sm" data-testid="routine-create-button" onClick={onCreate}>
         <Plus strokeWidth={1.9} />
+        <Trans>Create a routine</Trans>
       </Button>
     </div>
   );

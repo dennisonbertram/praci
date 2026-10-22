@@ -53,7 +53,10 @@ export function InboxDigest({
   const groups = groupBySender(rows);
   return (
     <section className="mb-5 flex flex-col gap-3">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[13px] text-muted-foreground">
+          <Trans>Last 7 days</Trans>
+        </span>
         <Button variant="ghost" size="sm" onClick={onArchiveAll}>
           <Archive aria-hidden="true" />
           {plural(rows.length, {

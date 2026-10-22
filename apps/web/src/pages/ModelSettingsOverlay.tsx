@@ -46,8 +46,8 @@ import {
   NativeSelectOption,
   Skeleton,
 } from "@rakazo/ui-web";
-import { Check, ChevronDown, Copy, X } from "lucide-react";
-import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from "react";
+import { Check, ChevronDown, ChevronRight, Copy, X } from "lucide-react";
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode, RefObject } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   ModelPreflightFeedback,
@@ -71,6 +71,19 @@ import { useOpenRouterSignIn } from "../lib/use-openrouter-signin";
 import { errorText } from "../lib/user-error";
 import { ModelBackupsSettings } from "./ModelBackupsSettings";
 
+/** Every disclosure on Settings shows the same chevron, not the browser's filled triangle. */
+const DISCLOSURE_SUMMARY = "flex w-fit cursor-pointer list-none select-none items-center gap-1";
+
+function DisclosureChevron() {
+  return (
+    <ChevronRight
+      aria-hidden="true"
+      className="size-4 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+      strokeWidth={1.75}
+    />
+  );
+}
+
 const COMMON_PROVIDERS = ["anthropic", "openai", "google", "openrouter", "xai", "mistral"];
 
 export function ModelSettingsOverlay({
@@ -78,6 +91,10 @@ export function ModelSettingsOverlay({
   embedded = false,
   localOwner = false,
   focusProvider,
+  voice,
+  view = "model",
+  onViewChange,
+  switchDisabled = false,
 }: {
   onClose: () => void;
   /** Render panel body only for the shared Settings shell. */
@@ -88,10 +105,22 @@ export function ModelSettingsOverlay({
    * space's default provider (a rejected key whose provider the caller does not know).
    */
   focusProvider?: string;
+  /** Embedded only: the Voice panel, offered beside the model once "Use my own model" is open. */
+  voice?: ReactNode;
+  view?: "model" | "voice";
+  onViewChange?: (view: "model" | "voice") => void;
+  /** Keeps the Model/Voice switch still while a voice change is saving. */
+  switchDisabled?: boolean;
 }) {
   const { t } = useLingui();
+  // A person on the system model sees one line; providers, backups, search model and Voice open on request.
+  const [ownOpen, setOwnOpen] = useState(focusProvider !== undefined || view === "voice");
   const [catalog, setCatalog] = useState<ModelCatalogEntry[]>([]);
   const [credentials, setCredentials] = useState<ModelCredential[]>([]);
+  // A connected key keeps the full panel open, even after the last one is disconnected.
+  useEffect(() => {
+    if (credentials.length > 0) setOwnOpen(true);
+  }, [credentials]);
   const [me, setMe] = useState<Me | null>(null);
   const [provider, setProvider] = useState(focusProvider ?? "");
   // The provider whose optional personal-key form is open.
@@ -1133,8 +1162,9 @@ export function ModelSettingsOverlay({
   // OpenAI-compatible connections keep an optional key behind a disclosure.
   const compatKeyBlock = isOpenAiCompatible ? (
     <div className="mt-5">
-      <details className="text-[13.5px] text-muted-foreground">
-        <summary className="w-fit cursor-pointer select-none">
+      <details className="group text-[13.5px] text-muted-foreground">
+        <summary className={DISCLOSURE_SUMMARY}>
+          <DisclosureChevron />
           <Trans>API key</Trans>
         </summary>
         <Input
@@ -1212,7 +1242,7 @@ export function ModelSettingsOverlay({
           </DialogClose>
         </DialogHeader>
       ) : (
-        <p className="px-6 pt-1 text-[13.5px] text-muted-foreground/70 sm:px-8">{description}</p>
+        <p className="px-6 text-[13.5px] text-muted-foreground/70 sm:px-8">{description}</p>
       )}
 
       {/* The active model shows in the picker and the provider list; only the empty case needs a line. */}
@@ -1313,8 +1343,9 @@ export function ModelSettingsOverlay({
                       className="mt-2 h-10 text-foreground"
                     />
                   </label>
-                  <details className="mt-2 text-[13px] leading-[1.5] text-muted-foreground">
-                    <summary className="w-fit cursor-pointer select-none">
+                  <details className="group mt-2 text-[13px] leading-[1.5] text-muted-foreground">
+                    <summary className={DISCLOSURE_SUMMARY}>
+                      <DisclosureChevron />
                       <Trans>Setup help</Trans>
                     </summary>
                     <p className="mt-1">
@@ -1490,13 +1521,14 @@ export function ModelSettingsOverlay({
                   {saveButton}
                   {/* Sign-in and the key field open only on request; the model above is what people change. */}
                   <details
-                    className="mt-6 border-t border-border pt-4 text-sm text-muted-foreground"
+                    className="group mt-6 border-t border-border pt-4 text-sm text-muted-foreground"
                     open={ownKeyProvider === provider}
                     onToggle={(event) =>
                       setOwnKeyProvider(event.currentTarget.open ? provider : null)
                     }
                   >
-                    <summary className="w-fit cursor-pointer select-none">
+                    <summary className={DISCLOSURE_SUMMARY}>
+                      <DisclosureChevron />
                       <Trans>Replace key</Trans>
                     </summary>
                     <div className="mt-5">{connectionControls}</div>
@@ -1514,13 +1546,14 @@ export function ModelSettingsOverlay({
                     </p>
                   )}
                   <details
-                    className="mt-5 text-sm text-muted-foreground"
+                    className="group mt-5 text-sm text-muted-foreground"
                     open={ownKeyProvider === provider}
                     onToggle={(event) =>
                       setOwnKeyProvider(event.currentTarget.open ? provider : null)
                     }
                   >
-                    <summary className="w-fit cursor-pointer select-none">
+                    <summary className={DISCLOSURE_SUMMARY}>
+                      <DisclosureChevron />
                       <Trans>Use your own key</Trans>
                     </summary>
                     <div className="mt-5">{connectionControls}</div>
@@ -1583,9 +1616,47 @@ export function ModelSettingsOverlay({
   );
 
   if (embedded) {
+    const modelLabel =
+      catalog.find(
+        (entry) => entry.provider === me?.defaultProvider && entry.id === me?.defaultModel,
+      )?.label ??
+      me?.defaultModel ??
+      "";
+    // Not while loading: the full panel's own skeleton shows instead of a line that then changes.
+    const simple = !ownOpen && !!me && !me.needsModel && credentials.length === 0;
     return (
       <div data-testid="model-settings" className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {body}
+        {simple ? (
+          <div className="flex flex-col items-start gap-3 px-6 sm:px-8">
+            <p className="text-[13.5px] text-muted-foreground">
+              {modelLabel ? t`Your bots use ${modelLabel}.` : t`Your bots already have a model.`}
+            </p>
+            <Button variant="outline" onClick={() => setOwnOpen(true)}>
+              <Trans>Use my own model</Trans>
+            </Button>
+          </div>
+        ) : (
+          <>
+            {voice ? (
+              <div className="flex gap-1 px-6 sm:px-8">
+                {(["model", "voice"] as const).map((next) => (
+                  <Button
+                    key={next}
+                    size="xs"
+                    variant={view === next ? "default" : "outline"}
+                    className="rounded-full"
+                    aria-pressed={view === next}
+                    disabled={switchDisabled}
+                    onClick={() => onViewChange?.(next)}
+                  >
+                    {next === "model" ? <Trans>Model</Trans> : <Trans>Voice</Trans>}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+            {view === "voice" && voice ? voice : body}
+          </>
+        )}
       </div>
     );
   }
@@ -1642,8 +1713,9 @@ function EmbeddingModelField() {
 
   // Rarely changed, so it sits behind a disclosure instead of as an empty row under the active model.
   return (
-    <details className="mx-6 mt-3 text-[13px] text-muted-foreground sm:mx-8">
-      <summary className="cursor-pointer">
+    <details className="group mx-6 mt-3 text-[13px] text-muted-foreground sm:mx-8">
+      <summary className={DISCLOSURE_SUMMARY}>
+        <DisclosureChevron />
         <Trans>Data room search model</Trans>
       </summary>
       <div className="mt-2 flex items-baseline gap-3">
