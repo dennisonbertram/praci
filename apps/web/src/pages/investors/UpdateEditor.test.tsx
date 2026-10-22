@@ -22,6 +22,7 @@ const rpcMock = vi.hoisted(() => ({
   get: vi.fn(),
   save: vi.fn(),
   send: vi.fn(),
+  post: vi.fn(),
   retry: vi.fn(),
   markDelivered: vi.fn(),
   accounts: vi.fn(),
@@ -38,6 +39,7 @@ vi.mock("../../lib/rpc", () => ({
         get: rpcMock.get,
         save: rpcMock.save,
         send: rpcMock.send,
+        post: rpcMock.post,
         retry: rpcMock.retry,
         markDelivered: rpcMock.markDelivered,
         accounts: rpcMock.accounts,
@@ -168,14 +170,87 @@ it("greys a recipient without an email and leaves it unticked", async () => {
   expect((document.getElementById("to-c1") as HTMLInputElement).checked).toBe(true);
 });
 
-it("hides the To list without Gmail and offers only Connect Gmail to send, for either audience", async () => {
-  for (const audience of ["investors", "board"] as const) {
-    await show(update({ audience }), []);
-    expect(document.body.textContent).not.toContain("To");
-    expect(button("Connect Gmail to send")).toBeDefined();
-    expect(button("Send")).toBeUndefined();
-    expect(button("Post to portal")).toBeUndefined();
-  }
+it("without Gmail an investor update is posted to the portal, with Connect Gmail as the other action", async () => {
+  await show(update(), []);
+  expect(document.body.textContent).not.toContain("To");
+  expect(document.getElementById("to-c1")).toBeNull();
+  expect(button("Post to portal")).toBeDefined();
+  expect(button("Connect Gmail")).toBeDefined();
+  expect(button("Send")).toBeUndefined();
+  expect(button("Connect Gmail to send")).toBeUndefined();
+});
+
+it("without Gmail a board update has only Connect Gmail to send: board updates never reach the portal", async () => {
+  await show(update({ audience: "board" }), []);
+  expect(button("Connect Gmail to send")).toBeDefined();
+  expect(button("Post to portal")).toBeUndefined();
+  expect(button("Send")).toBeUndefined();
+});
+
+it("Post to portal posts the draft and says how many were notified", async () => {
+  rpcMock.post.mockResolvedValue({ update: update({ status: "posted" }), notified: 2 });
+  await show(update(), []);
+  await click(button("Post to portal"));
+  expect(rpcMock.post).toHaveBeenCalledWith({ id: "u1" });
+  expect(document.body.textContent).toContain("Posted · 2 notified");
+});
+
+it("asks once about leftover TBD before posting, like Send", async () => {
+  rpcMock.post.mockResolvedValue({ update: update({ status: "posted" }), notified: 0 });
+  await show(update({ body: "Revenue was TBD." }), []);
+  await click(button("Post to portal"));
+  expect(rpcMock.post).not.toHaveBeenCalled();
+  expect(document.body.textContent).toContain("1 TBD left. Send anyway?");
+  await click(button("Send anyway"));
+  expect(rpcMock.post).toHaveBeenCalledOnce();
+});
+
+it("shows a posted update read-only with no footer button", async () => {
+  await show(update({ status: "posted", sentAt: "2026-10-02T09:00:00.000Z" }), []);
+  expect((document.getElementById("update-subject") as HTMLInputElement).disabled).toBe(true);
+  expect(button("Post to portal")).toBeUndefined();
+  expect(document.body.textContent).toContain("Posted");
+});
+
+it("greys a revoked recipient, unticks it and never sends to it", async () => {
+  rpcMock.contacts.mockResolvedValue([
+    { ...contact("c1", "Ada", "ada@example.test"), portalBlockedAt: "2026-10-10T00:00:00.000Z" },
+    contact("c2", "Bo", "bo@example.test"),
+  ]);
+  rpcMock.send.mockResolvedValue(update({ status: "sending" }));
+  await show(update());
+  const ada = document.getElementById("to-c1") as HTMLInputElement;
+  expect(ada.checked).toBe(false);
+  expect(ada.disabled).toBe(true);
+  expect(document.querySelector("label[for=to-c1]")?.textContent).toContain("revoked");
+  expect((document.getElementById("to-c2") as HTMLInputElement).checked).toBe(true);
+  await click(button("Send"));
+  expect(rpcMock.save).toHaveBeenLastCalledWith(
+    expect.objectContaining({ recipientContactIds: ["c2"] }),
+  );
+});
+
+it("says unticked investors still see the update when one with portal access is unticked", async () => {
+  rpcMock.contacts.mockResolvedValue([
+    { ...contact("c1", "Ada", "ada@example.test"), portalLinkSentAt: "2026-09-01T00:00:00.000Z" },
+    contact("c2", "Bo", "bo@example.test"),
+  ]);
+  await show(update());
+  expect(document.body.textContent).not.toContain("Unticked investors");
+  await click(document.getElementById("to-c1") as HTMLElement);
+  expect(document.body.textContent).toContain("Unticked investors still see this on the portal.");
+  // Bo has no portal access, so unticking Bo alone adds nothing.
+  await click(document.getElementById("to-c1") as HTMLElement);
+  await click(document.getElementById("to-c2") as HTMLElement);
+  expect(document.body.textContent).not.toContain("Unticked investors");
+});
+
+it("never shows the unticked-investors line on a board update", async () => {
+  rpcMock.contacts.mockResolvedValue([
+    { ...contact("c1", "Ada", "ada@example.test"), portalLinkSentAt: "2026-09-01T00:00:00.000Z" },
+  ]);
+  await show(update({ audience: "board", recipientContactIds: [] }));
+  expect(document.body.textContent).not.toContain("Unticked investors");
 });
 
 it("retries a failed recipient directly", async () => {

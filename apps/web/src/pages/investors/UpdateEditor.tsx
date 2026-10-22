@@ -39,6 +39,7 @@ const statusNames = () => ({
   sending: t`Sending`,
   sent: t`Sent`,
   partly_sent: t`Partly sent`,
+  posted: t`Posted`,
 });
 
 const stateNames = (): Record<InvestorDeliveryState, string> => ({
@@ -105,6 +106,12 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
   );
   const wasSending = useRef(false);
 
+  // A revoked contact is never emailed: it is left out of the recipients whatever was saved.
+  const recipients = useMemo(() => {
+    const revoked = new Set(contacts.filter((c) => c.portalBlockedAt).map((c) => c.id));
+    return ticked.filter((id) => !revoked.has(id));
+  }, [contacts, ticked]);
+
   const draft = update?.status === "draft";
   const gmail = (accounts?.length ?? 0) > 0;
 
@@ -137,7 +144,9 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
       if (!live || !next) return;
       void rpc.contacts
         .list({ kind: next.audience === "board" ? "board" : "investor" })
-        .then((list) => live && setContacts(list))
+        .then((list) => {
+          if (live) setContacts(list);
+        })
         .catch(() => undefined);
     });
     void rpc.investors.updates
@@ -174,10 +183,10 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
 
   // Autosave when a field differs from what the server holds.
   useEffect(() => {
-    const key = fieldsKey(subject, body, ticked, from);
+    const key = fieldsKey(subject, body, recipients, from);
     if (!draft || loadedId.current !== updateId || key === saved.current) return;
     setSaveState("saving");
-    pending.current = { subject, body, ticked, from, key };
+    pending.current = { subject, body, ticked: recipients, from, key };
     const timer = setTimeout(() => {
       // One save at a time, in order, so an older request cannot land after a newer one.
       saving.current = saving.current
@@ -186,7 +195,7 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
             id: updateId,
             subject,
             body,
-            recipientContactIds: ticked,
+            recipientContactIds: recipients,
             fromConnectionId: from,
           }),
         )
@@ -198,7 +207,7 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
         .catch(() => setSaveState("failed"));
     }, SAVE_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [subject, body, ticked, from, draft, updateId]);
+  }, [subject, body, recipients, from, draft, updateId]);
 
   // While a send runs, read it again until it ends.
   const sending = update?.status === "sending";
@@ -241,7 +250,7 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
       id: updateId,
       subject,
       body,
-      recipientContactIds: ticked,
+      recipientContactIds: recipients,
       fromConnectionId: from,
     });
   };
@@ -255,6 +264,19 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
     });
   };
   const trySend = () => (tbd > 0 ? setAsking("tbd") : send());
+
+  /** Post to portal, for a founder with no Gmail: no email goes out from here, only portal notices. */
+  const post = () => {
+    setAsking(null);
+    void run(async () => {
+      await flushSave();
+      const result = await rpc.investors.updates.post({ id: updateId });
+      toast(t`Posted · ${result.notified} notified`);
+      navigate("/app/investors");
+      return result.update;
+    });
+  };
+  const tryPost = () => (tbd > 0 ? setAsking("tbd") : post());
 
   const retry = (contactIds: string[], resendUnknown = false) => {
     setResend(null);
@@ -323,6 +345,12 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
   const delivered = update.deliveries.filter((d) => d.state === "sent").length;
   const hasUnknown = update.deliveries.some((d) => d.state === "unknown");
   const bodyEmpty = !body.trim();
+  // An unticked investor with portal access still sees an update that goes out to others.
+  const hasPortalAccess = (c: Contact) =>
+    Boolean(c.portalLinkSentAt || c.portalLastSeenAt) && !c.portalBlockedAt;
+  const untickedWithAccess =
+    update.audience === "investors" &&
+    contacts.some((c) => hasPortalAccess(c) && (!c.email || !ticked.includes(c.id)));
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -389,16 +417,17 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
               ) : null}
               {contacts.map((contact) => {
                 const noEmail = !contact.email;
-                const checked = !noEmail && ticked.includes(contact.id);
+                const revoked = Boolean(contact.portalBlockedAt);
+                const checked = !noEmail && !revoked && ticked.includes(contact.id);
                 return (
                   <div
                     key={contact.id}
-                    className={`flex min-h-9 items-center gap-2 text-sm pointer-coarse:min-h-11 ${noEmail ? "text-muted-foreground" : ""}`}
+                    className={`flex min-h-9 items-center gap-2 text-sm pointer-coarse:min-h-11 ${noEmail || revoked ? "text-muted-foreground" : ""}`}
                   >
                     <Checkbox
                       id={`to-${contact.id}`}
                       checked={checked}
-                      disabled={noEmail}
+                      disabled={noEmail || revoked}
                       onCheckedChange={(next) =>
                         setTicked((current) =>
                           next
@@ -413,12 +442,23 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
                     >
                       <span className="min-w-0 truncate">{contact.name}</span>
                       <span className="min-w-0 truncate text-xs text-muted-foreground">
-                        {noEmail ? <Trans>no email</Trans> : contact.email}
+                        {noEmail ? (
+                          <Trans>no email</Trans>
+                        ) : revoked ? (
+                          <Trans>revoked</Trans>
+                        ) : (
+                          contact.email
+                        )}
                       </span>
                     </label>
                   </div>
                 );
               })}
+              {untickedWithAccess ? (
+                <p className="text-sm text-muted-foreground">
+                  <Trans>Unticked investors still see this on the portal.</Trans>
+                </p>
+              ) : null}
             </fieldset>
           ) : null}
 
@@ -559,7 +599,7 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
             <Button disabled>
               <Trans>Sending</Trans>
             </Button>
-          ) : !gmail ? (
+          ) : !gmail && update.audience === "board" ? (
             <Button render={<Link to="/app/integrations" />}>
               <Trans>Connect Gmail to send</Trans>
             </Button>
@@ -571,13 +611,22 @@ export function UpdateEditor({ updateId }: { updateId: string }) {
               <Button variant="outline" onClick={() => setAsking(null)}>
                 <Trans>Keep editing</Trans>
               </Button>
-              <Button disabled={busy} onClick={send}>
+              <Button disabled={busy} onClick={gmail ? send : post}>
                 <Trans>Send anyway</Trans>
+              </Button>
+            </>
+          ) : !gmail ? (
+            <>
+              <Button variant="outline" render={<Link to="/app/integrations" />}>
+                <Trans>Connect Gmail</Trans>
+              </Button>
+              <Button disabled={busy || drafting || bodyEmpty} onClick={tryPost}>
+                <Trans>Post to portal</Trans>
               </Button>
             </>
           ) : (
             <Button
-              disabled={busy || drafting || ticked.length === 0 || bodyEmpty}
+              disabled={busy || drafting || recipients.length === 0 || bodyEmpty}
               onClick={trySend}
             >
               <Trans>Send</Trans>

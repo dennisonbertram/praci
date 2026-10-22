@@ -473,7 +473,7 @@ it("sends a grid tile to an agent from its right-click menu", async () => {
   expect(pick).toHaveBeenCalledWith(file, expect.objectContaining({ id: "bot_ben" }));
 });
 
-it("offers the same four actions in the right-click menu as in the row's More actions menu", async () => {
+it("offers the same actions in the right-click menu as in the row's More actions menu", async () => {
   const names = () =>
     Array.from(document.body.querySelectorAll('[role="menuitem"]')).map((e) =>
       e.textContent?.trim(),
@@ -489,7 +489,7 @@ it("offers the same four actions in the right-click menu as in the row's More ac
       ?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
   });
   await flush();
-  expect(names()).toEqual(["Send to agent", "Move", "Rename", "Delete"]);
+  expect(names()).toEqual(["Send to agent", "Share with investors", "Move", "Rename", "Delete"]);
 });
 
 it("keeps Move, Rename and Delete in the right-click menu when there is no agent to send to", async () => {

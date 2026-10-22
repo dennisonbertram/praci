@@ -4,7 +4,7 @@ import type { DataRoomApiItem } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const text = vi.hoisted(
   () =>
@@ -27,7 +27,9 @@ const rpc = vi.hoisted(() => ({
   itemDelete: vi.fn(),
 }));
 const legal = vi.hoisted(() => ({ itemLinks: vi.fn() }));
-vi.mock("../../lib/rpc", () => ({ rpc: { dataRoom: rpc, legal } }));
+const investors = vi.hoisted(() => ({ shares: vi.fn(), share: vi.fn(), unshare: vi.fn() }));
+const contacts = vi.hoisted(() => ({ list: vi.fn() }));
+vi.mock("../../lib/rpc", () => ({ rpc: { dataRoom: rpc, legal, investors, contacts } }));
 
 import { resetHideAmountsMemory, setHideAmounts } from "../../lib/hide-amounts-preference";
 import { folderNodes } from "./folders";
@@ -327,3 +329,98 @@ it.each([
     }
   },
 );
+
+describe("Share with investors", () => {
+  const investor = (id: string, name: string, extra: Record<string, unknown> = {}) => ({
+    id,
+    name,
+    email: `${name.toLowerCase()}@example.test`,
+    kind: "investor",
+    ...extra,
+  });
+  const dialog = () => document.querySelector('[role="dialog"]');
+  const named = (label: string) =>
+    [...(dialog()?.querySelectorAll("button") ?? [])].find((b) => b.textContent === label);
+  const open = async () => {
+    await act(async () =>
+      root.render(
+        <ItemDialog
+          action="share"
+          item={item}
+          folders={folderNodes([])}
+          onClose={onClose}
+          onDone={() => {}}
+        />,
+      ),
+    );
+    await act(async () => {});
+  };
+  const onClose = vi.fn();
+
+  beforeEach(() => {
+    contacts.list.mockResolvedValue([
+      investor("c1", "Ada"),
+      investor("c2", "Bo"),
+      investor("c3", "Cy", { portalBlockedAt: "2026-10-01T00:00:00.000Z" }),
+    ]);
+    investors.shares.mockResolvedValue(["c1"]);
+  });
+
+  it("lists investors: Unshare for those who have the file, a checkbox for the others", async () => {
+    await open();
+    expect(contacts.list).toHaveBeenCalledWith({ kind: "investor" });
+    expect(investors.shares).toHaveBeenCalledWith({ itemId: "i1" });
+    expect(dialog()?.textContent).toContain("Share Lease.pdf");
+    expect(named("Unshare")).toBeDefined();
+    expect(dialog()?.textContent).toContain("Ada");
+    expect(document.getElementById("share-c2")).not.toBeNull();
+    expect(document.getElementById("share-c1")).toBeNull();
+    // A revoked investor cannot be given a file.
+    expect(document.getElementById("share-c3")).toBeNull();
+    expect(named("Share")?.hasAttribute("disabled")).toBe(true);
+  });
+
+  it("Share gives the ticked investors the file and emails them a link by default", async () => {
+    investors.share.mockResolvedValue({ links: [] });
+    await open();
+    await act(async () => document.getElementById("share-c2")?.click());
+    expect(named("Share")?.hasAttribute("disabled")).toBe(false);
+    expect(dialog()?.textContent).toContain("Email them a link");
+    await act(async () => named("Share")?.click());
+    expect(investors.share).toHaveBeenCalledWith({
+      itemId: "i1",
+      contactIds: ["c2"],
+      emailLink: true,
+    });
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("shows the links when they could not be emailed", async () => {
+    investors.share.mockResolvedValue({
+      links: [{ contactId: "c2", name: "Bo", link: "https://app.example.test/portal/open#t" }],
+    });
+    await open();
+    await act(async () => document.getElementById("share-c2")?.click());
+    await act(async () => named("Share")?.click());
+    expect(onClose).not.toHaveBeenCalled();
+    expect(document.querySelector<HTMLInputElement>("input[readonly]")?.value).toBe(
+      "https://app.example.test/portal/open#t",
+    );
+  });
+
+  it("Unshare takes the file away from that investor and offers the checkbox again", async () => {
+    investors.unshare.mockResolvedValue({ ok: true });
+    await open();
+    await act(async () => named("Unshare")?.click());
+    expect(investors.unshare).toHaveBeenCalledWith({ itemId: "i1", contactId: "c1" });
+    expect(document.getElementById("share-c1")).not.toBeNull();
+    expect(named("Unshare")).toBeUndefined();
+  });
+
+  it("says so when there are no investors", async () => {
+    contacts.list.mockResolvedValue([]);
+    investors.shares.mockResolvedValue([]);
+    await open();
+    expect(dialog()?.textContent).toContain("No investors yet");
+  });
+});
