@@ -7876,10 +7876,6 @@ msgstr "Other ways to connect"
 msgid "Out"
 msgstr "Out"
 
-#: src/pages/Finance.tsx
-msgid "Out so far this month, not over"
-msgstr "Out so far this month, not over"
-
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Outside memory service"
 msgstr "Outside memory service"
@@ -10249,6 +10245,10 @@ msgstr "Spend, changes, and new or upcoming charges."
 #: src/pages/Finance.tsx
 msgid "Spent {spentRange}"
 msgstr "Spent {spentRange}"
+
+#: src/pages/Finance.tsx
+msgid "Spent so far this month"
+msgstr "Spent so far this month"
 
 #: src/components/FinanceCards.tsx
 msgid "Spent this month"
