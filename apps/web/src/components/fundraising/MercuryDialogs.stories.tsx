@@ -1,5 +1,6 @@
 import type { Contact } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { withPageBehind } from "../../stories/decorators";
 import { AssignSafeDialog, InvestorEmailDialog } from "./MercuryDialogs";
 
 const contact = (id: string, name: string, kind: Contact["kind"]): Contact => ({
@@ -21,6 +22,7 @@ const contact = (id: string, name: string, kind: Contact["kind"]): Contact => ({
 const meta = {
   title: "Fundraising/MercuryDialogs",
   component: AssignSafeDialog,
+  decorators: [withPageBehind()],
   args: {
     contacts: [
       contact("c1", "Example Ventures", "prospect"),

@@ -2687,9 +2687,13 @@ export function ShellPage() {
       bots.length > 0 &&
       !firstQuestionOpen &&
       !connectCardsWaiting);
-  // On a phone the tour points into the sidebar drawer, so open it while the tour runs.
+  // On a phone the tour points into the sidebar drawer, so open it while the tour runs. On a
+  // docked sidebar the tour card is as wide as the sidebar, so a collapsed rail is expanded
+  // (for this session only; the saved preference is unchanged).
   useEffect(() => {
-    if (tourOpen && !window.matchMedia("(min-width: 1024px)").matches) setMobileSidebarOpen(true);
+    if (!tourOpen) return;
+    if (window.matchMedia("(min-width: 1024px)").matches) setBotsSidebarCollapsed(false);
+    else setMobileSidebarOpen(true);
   }, [tourOpen]);
   const askChief = chiefId ? () => openBot(chiefId) : undefined;
 

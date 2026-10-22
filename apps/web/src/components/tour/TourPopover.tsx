@@ -10,7 +10,7 @@ export type TourStep = {
   text: string;
 };
 
-/** Below the `lg` breakpoint the sidebar is a drawer (the shell opens it for the tour); the card sits on the screen half away from the ring. */
+/** Below the `lg` breakpoint the sidebar is a drawer (the shell opens it for the tour). */
 const WIDE = "(min-width: 1024px)";
 
 function useWide() {
@@ -88,6 +88,10 @@ export function TourPopover({
   const step = present?.[index];
   const element = step ? document.querySelector(step.anchor) : null;
   const rect = useRect(element);
+  // Sidebar targets get a card, not a popover: on desktop it stays inside the sidebar column so it
+  // never covers the page title, chat or composer; on a phone it spans the screen.
+  const sidebar = element?.closest("aside") ?? null;
+  const card = !wide || sidebar !== null;
 
   // Nothing to point at: close without recording, so the tour can still run once the page has loaded.
   const empty = present?.length === 0;
@@ -96,7 +100,7 @@ export function TourPopover({
   }, [empty, onFinish]);
   // On a phone the card is not a popover, so Escape needs its own handler.
   useEffect(() => {
-    if (wide) return;
+    if (!card) return;
     // Capture phase: the tour ends first, so the sidebar drawer behind it stays open for one more press.
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -106,7 +110,7 @@ export function TourPopover({
     // On window, so it runs before any drawer listener on the document.
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [wide, onFinish]);
+  }, [card, onFinish]);
   if (!step) return null;
 
   const last = index === (present?.length ?? 0) - 1;
@@ -150,10 +154,16 @@ export function TourPopover({
   );
 
   const ring = rect && rect.width > 0 && rect.right > 0 && rect.left < window.innerWidth;
-  if (!wide) {
-    // On the half of the screen away from the ring: the drawer's rows beside the target stay visible.
+  if (card) {
+    // On the half of the screen away from the ring: the rows beside the target stay visible.
     const targetAbove = ring && rect.top + rect.height / 2 < window.innerHeight / 2;
-    const place = targetAbove || !ring ? { bottom: 16 } : { top: 16 };
+    const column = wide && sidebar ? sidebar.getBoundingClientRect() : null;
+    const edge = column ?? { top: 0, bottom: window.innerHeight };
+    const place =
+      targetAbove || !ring
+        ? { bottom: window.innerHeight - edge.bottom + 16 }
+        : { top: edge.top + 16 };
+    const span = column ? { left: column.left + 8, width: column.width - 16 } : undefined;
     return (
       <>
         {ring ? <Ring rect={rect} /> : null}
@@ -162,8 +172,8 @@ export function TourPopover({
             role="dialog"
             aria-label={t`Tour`}
             data-testid="tour-card"
-            style={place}
-            className="fixed inset-x-4 z-50 flex flex-col gap-2.5 rounded-lg bg-popover p-3 text-popover-foreground shadow-md ring-1 ring-foreground/10"
+            style={{ ...place, ...span }}
+            className={`fixed z-50 flex flex-col gap-2.5 rounded-lg bg-popover p-3 text-popover-foreground shadow-md ring-1 ring-foreground/10 ${span ? "" : "inset-x-4"}`}
           >
             {body}
           </div>,
@@ -172,18 +182,6 @@ export function TourPopover({
       </>
     );
   }
-  // Beside the sidebar, at one x, so the card never covers a row other than its own target.
-  const sidebar = element?.closest("aside");
-  const anchor =
-    element && sidebar
-      ? {
-          getBoundingClientRect: () => {
-            const row = element.getBoundingClientRect();
-            const edge = sidebar.getBoundingClientRect().right;
-            return new DOMRect(edge, row.top, 0, row.height);
-          },
-        }
-      : element;
   return (
     <>
       {ring ? <Ring rect={rect} /> : null}
@@ -195,9 +193,9 @@ export function TourPopover({
         }}
       >
         <PopoverContent
-          anchor={anchor}
-          side={sidebar ? "right" : "bottom"}
-          align={sidebar ? "center" : "start"}
+          anchor={element}
+          side="bottom"
+          align="start"
           sideOffset={10}
           data-testid="tour-popover"
           className="w-72"
