@@ -5,6 +5,7 @@ import { BotAvatar, Button } from "@rakazo/ui-web";
 import { ArrowLeft, PanelRightClose } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { dismissApprovalToastsForBot } from "../../lib/approval-toasts";
 import { rpc } from "../../lib/rpc";
 import { Composer } from "../../pages/shell/composer";
 import { Transcript } from "../../pages/shell/transcript";
@@ -215,6 +216,7 @@ export function EmailAgentPanel({
                 ...(username ? { username } : {}),
                 ...(mail ? { mail } : {}),
               });
+              dismissApprovalToastsForBot(bot.id);
               await load();
             }}
             onReply={noop}

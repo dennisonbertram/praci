@@ -62,7 +62,8 @@ function approvalActionLabel(
   if (consent && id === "deny") return t`Not now`;
   if (outcome === "created") return t`Create space`;
   if (outcome === "cancelled") return t`Cancel`;
-  if (id === "allow") return t`Allow once`;
+  // A payment's label already carries the amount ("Send $300.00"): keep it.
+  if (id === "allow") return fallback.startsWith("Send ") ? fallback : t`Allow once`;
   if (id === "always") return t`Always allow this`;
   if (id === "deny") return t`Deny`;
   return fallback;
@@ -177,12 +178,12 @@ export function AskCard({
             <Trans>Details</Trans>
           </summary>
           <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-muted px-3.5 py-3 font-mono text-[12.5px] leading-[1.7]">
-            {block.detail}
+            {block.detail.trim()}
           </pre>
         </details>
       ) : block.detail && !secretInput ? (
         <p className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words text-[13.5px] leading-[1.5] text-muted-foreground">
-          {block.detail}
+          {block.detail.trim()}
         </p>
       ) : null}
       {block.status === "answered" ? (

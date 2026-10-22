@@ -154,7 +154,6 @@ import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/Err
 import { HideAmountsMenuItem } from "../components/HideAmountsToggle";
 import { AgentAvatar } from "../components/integrations/AgentAvatar";
 import { DevinConnectDialog } from "../components/integrations/DevinConnectDialog";
-import { LegalPanelConsent } from "../components/legal/ConsentPrompt";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
 import { PageAgentsRow } from "../components/PageAgentsRow";
 import { PageNavContext } from "../components/PageHeader";
@@ -182,6 +181,7 @@ import { TeachRecordingChrome, TeachStopButton } from "../components/teach/Teach
 import { connectCardsOpen } from "../components/tour/connect-cards";
 import { FirstRunTour } from "../components/tour/FirstRunTour";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
+import { dismissApprovalToastsForBot } from "../lib/approval-toasts";
 import { artifactDisplayName } from "../lib/artifact-name";
 import type { ArtifactTarget } from "../lib/artifact-open";
 import { authClient } from "../lib/auth";
@@ -2771,6 +2771,7 @@ export function ShellPage() {
         ...(username ? { username } : {}),
         ...(mail ? { mail } : {}),
       });
+      dismissApprovalToastsForBot(botId);
       if (groupId && activeGroupId.current === groupId) {
         await refreshGroupThreadRef.current(groupId);
       } else if (botId && activeBotId.current === botId) {
@@ -4079,7 +4080,6 @@ export function ShellPage() {
               <Trans>Teaching in progress. Stop teaching before sending a new message.</Trans>
             </div>
           ) : null}
-          {legalWaitsForConsent ? <LegalPanelConsent /> : null}
           {active || activeGroup ? (
             <Composer
               key={inGroup ? `group:${groupId}` : `bot:${active?.id}`}

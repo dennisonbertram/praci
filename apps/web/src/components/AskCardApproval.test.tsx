@@ -124,3 +124,28 @@ it("shows the approval detail in the body font", () => {
   );
   expect(detail?.className).not.toContain("font-mono");
 });
+
+it("labels a payment's main button with its amount and drops blank lines from Details", () => {
+  const container = document.createElement("div");
+  document.body.append(container);
+  act(() =>
+    createRoot(container).render(
+      <AskCard
+        block={{
+          ...pending,
+          detail: "\n\nAmount: $300.00",
+          detailFolded: true,
+          actions: [
+            { id: "allow", label: "Send $300.00" },
+            { id: "deny", label: "Deny" },
+          ],
+        }}
+        canAnswer
+        onAnswer={async () => undefined}
+      />,
+    ),
+  );
+  expect(button(container, "Send $300.00")).toBeDefined();
+  expect(button(container, "Allow once")).toBeUndefined();
+  expect(container.querySelector("pre")?.textContent).toBe("Amount: $300.00");
+});

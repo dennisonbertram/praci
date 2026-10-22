@@ -279,6 +279,11 @@ msgstr "Gestion de {0}"
 msgid "{0} mo"
 msgstr ""
 
+#. placeholder {0}: entries.length
+#: src/lib/approval-toasts.ts
+msgid "{0} need approval"
+msgstr ""
+
 #. placeholder {0}: providerName(source.provider)
 #: src/pages/Finance.tsx
 msgid "{0} needs you to sign in again. Its figures stop updating until you do."

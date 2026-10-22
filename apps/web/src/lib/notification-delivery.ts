@@ -2,6 +2,7 @@ import type { NotificationDto } from "@rakazo/contracts";
 import { isDevinSessionUrl } from "@rakazo/contracts";
 import type { NotificationToastInput } from "@rakazo/ui-web";
 import { enqueueNotificationToast } from "@rakazo/ui-web";
+import { enqueueApprovalToast } from "./approval-toasts";
 import { requestBrowserNotificationPermission } from "./browser-notifications";
 import { maskCurrencyWhenHidden } from "./hide-amounts-preference";
 
@@ -17,7 +18,7 @@ export function attentionFromDto(n: NotificationDto): AttentionNotification {
     href: n.link ?? undefined,
     createdAt: n.createdAt,
     // An approval waits for the person, so its toast stays until it is opened or dismissed.
-    ...(n.kind === "needs_input" ? { timeout: 0 } : {}),
+    ...(n.kind === "needs_input" ? { timeout: 0, approvalBotId: n.botId } : {}),
   };
 }
 
@@ -52,7 +53,10 @@ export function openNotificationLink(navigate: (href: string) => void | Promise<
 }
 
 /** An `attention` notification; `info` only puts a dot on the sidebar and never reaches here. */
-export type AttentionNotification = NotificationToastInput;
+export type AttentionNotification = NotificationToastInput & {
+  /** Set on an approval request: its toast joins the approvals toast and goes when its chat is opened. */
+  approvalBotId?: string | null;
+};
 
 /** Present (visible tab with focus) -> in-app toast; otherwise -> OS notification. */
 export function shouldToast(state: { visible: boolean; focused: boolean }): boolean {
@@ -84,7 +88,10 @@ export type DeliveryDeps = {
 export const AWAY_DELAY_MS = 1500;
 
 const defaultDeps = (): DeliveryDeps => ({
-  toast: enqueueNotificationToast,
+  toast: ({ approvalBotId, ...toast }) =>
+    approvalBotId === undefined
+      ? enqueueNotificationToast(toast)
+      : enqueueApprovalToast(toast, approvalBotId),
   requestPermission: () => requestBrowserNotificationPermission(),
   show: (title, options, onClick) => {
     const shown = new Notification(title, options);
