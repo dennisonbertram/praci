@@ -4,6 +4,7 @@ import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table
 import { Markdown } from "@tiptap/markdown";
 import { StarterKit } from "@tiptap/starter-kit";
 import { PageChartNode } from "./page-chart-extension";
+import { PageGtmNode } from "./page-gtm-extension";
 
 /** Everything a stored page may contain, so loading never drops content. */
 export const PAGE_EXTENSIONS = [
@@ -17,4 +18,5 @@ export const PAGE_EXTENSIONS = [
   TaskItem.configure({ nested: true }),
   Image,
   PageChartNode,
+  PageGtmNode,
 ];

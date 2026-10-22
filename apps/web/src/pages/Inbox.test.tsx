@@ -653,6 +653,8 @@ it("offers Undo after an archive, which restores the thread and reloads the list
   const toast = c.querySelector('[role="status"]');
   // It names the email, so the person knows which one Undo brings back.
   expect(toast?.textContent).toContain('Archived "Subject b"');
+  // The shared toasts rise above it, so a pending approval never hides Undo.
+  expect(toast?.querySelector("[data-toast-avoid]")).not.toBeNull();
   const lists = rpcMock.list.mock.calls.length;
   await click(byText(toast as HTMLElement, "Undo"));
   expect(rpcMock.unarchive).toHaveBeenCalledWith({ messageId: "b" });
@@ -1037,7 +1039,7 @@ it("says it is reading the mail during the first sync and asks the server a few 
   }
 });
 
-it("says a first sync can take a minute after 5 s, and shows the consent prompt while it runs", async () => {
+it("shows the consent prompt without loading text while the first sync runs", async () => {
   vi.useFakeTimers();
   try {
     rpcMock.list.mockResolvedValue(
@@ -1052,13 +1054,13 @@ it("says a first sync can take a minute after 5 s, and shows the consent prompt 
     );
     rpcMock.refresh.mockImplementation(async () => ({ syncing: true }));
     const c = await render();
-    expect(c.textContent).toContain("Reading your mail…");
-    expect(c.textContent).not.toContain("First sync can take a minute");
+    // The choice is the one thing to read before consent: no sync status beside it.
+    expect(c.textContent).not.toContain("Reading your mail");
     expect(c.querySelector("[data-consent-prompt]")).not.toBeNull();
     await act(async () => {
       await vi.advanceTimersByTimeAsync(5_000);
     });
-    expect(c.textContent).toContain("First sync can take a minute");
+    expect(c.textContent).not.toContain("First sync can take a minute");
   } finally {
     vi.useRealTimers();
   }

@@ -1,5 +1,6 @@
 import * as z from "zod";
 import {
+  ScratchpadCategorySchema,
   ScratchpadChannelSchema,
   ScratchpadDateTimeSchema,
   ScratchpadItemSchema,
@@ -68,6 +69,32 @@ export const GTM_CHANNELS = {
   directory: { label: "Directories", category: "create_account", approval: "directory_policy" },
   email: { label: "Email", category: "outbound_email", approval: "every_item" },
 } as const;
+
+export const GTM_PAGE_FENCES = ["gtm-plan", "gtm-channels", "gtm-metric"] as const;
+export const GTM_PAGE_MAX_BLOCKS = 12;
+
+export const GtmPlanBlockSchema = z.strictObject({
+  group: z.enum(["in_progress", "drafts", "done"]),
+  channel: z.array(ScratchpadChannelSchema).optional(),
+  category: z.array(ScratchpadCategorySchema).optional(),
+  limit: z.number().int().min(1).max(50).optional(),
+});
+
+export const GtmChannelsBlockSchema = z.strictObject({});
+
+export const GtmMetricBlockSchema = z.strictObject({
+  label: z.string().min(1).max(40),
+  count: z.enum(["done", "in_progress", "drafts", "needs_you"]),
+  channel: ScratchpadChannelSchema.optional(),
+  goal: z.number().finite().nonnegative().optional(),
+});
+
+export const GtmPageBlockSchema = z.discriminatedUnion("type", [
+  z.strictObject({ type: z.literal("gtm-plan"), query: GtmPlanBlockSchema }),
+  z.strictObject({ type: z.literal("gtm-channels"), query: GtmChannelsBlockSchema }),
+  z.strictObject({ type: z.literal("gtm-metric"), query: GtmMetricBlockSchema }),
+]);
+export type GtmPageBlock = z.infer<typeof GtmPageBlockSchema>;
 
 /** App-owned REST adapter tool, never a remote MCP tool. */
 export const GTM_POST_TOOL = "gtm_post";
