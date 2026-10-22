@@ -2411,6 +2411,10 @@ msgstr ""
 msgid "Choose a new password"
 msgstr "Wähle ein neues Passwort"
 
+#: src/components/MailApprovalCard.tsx
+msgid "Choose an account"
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Choose file"
 msgstr "Datei wählen"
@@ -7577,6 +7581,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
 msgid "On: creates a {service} agent that can read and, after you approve, make changes."
+msgstr ""
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "On: other agents can read {service}. Changes still go through this agent and ask first."
 msgstr ""
 
 #: src/pages/Shell.tsx

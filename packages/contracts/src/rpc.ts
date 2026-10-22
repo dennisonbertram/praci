@@ -1321,7 +1321,7 @@ export const appContract = {
           nextCursor: z.string().nullable(),
         }),
       ),
-    /** Unseen "needs approval" notifications whose card is still unanswered on a live run of an existing agent. */
+    /** "Needs approval" notifications, seen or not and not dismissed with X, whose card is still unanswered on a live run of an existing agent. */
     pendingApprovals: oc.output(z.object({ notifications: z.array(NotificationSchema) })),
     markSeen: oc
       // `id` or `threadId` narrows it to one notification or one thread on the surface. `botId`
@@ -1337,6 +1337,8 @@ export const appContract = {
           .refine((v) => v.surface || v.botId, "surface or botId is required"),
       )
       .output(z.object({ count: z.number() })),
+    /** The person closed this approval's toast with X: it is no longer listed by `pendingApprovals`. */
+    dismiss: oc.input(z.object({ id: z.string().min(1) })).output(z.object({ ok: z.boolean() })),
     markShown: oc.input(z.object({ id: z.string().min(1) })).output(z.object({ ok: z.boolean() })),
     unseenCounts: oc.output(z.object({ counts: z.record(z.string(), z.number()) })),
     /** What each sidebar row shows beside its name; null when not available. One call for the space. */

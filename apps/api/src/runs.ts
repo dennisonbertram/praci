@@ -178,6 +178,7 @@ export async function listPendingApprovalNotifications(prisma: PrismaClient, act
       importance: "attention",
       kind: "needs_input",
       title: { endsWith: " needs approval" },
+      dismissedAt: null,
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });

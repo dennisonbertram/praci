@@ -241,7 +241,7 @@ describePostgres("integration agents (PostgreSQL)", () => {
     const first = await client(a).integrationAgents.create({ serverId: server.id });
     const again = await client(a).integrationAgents.create({ serverId: server.id });
     expect(again.botId).toBe(first.botId);
-    expect(first.server).toMatchObject({ agentBotId: first.botId, agentExclusive: false });
+    expect(first.server).toMatchObject({ agentBotId: first.botId, agentExclusive: true });
     const bot = await prisma.bot.findUniqueOrThrow({ where: { id: first.botId } });
     expect(bot).toMatchObject({
       name: "Mercury agent",
@@ -444,7 +444,7 @@ describePostgres("integration agents (PostgreSQL)", () => {
     ).rejects.toMatchObject({ code: "CONFLICT" });
     expect(await prisma.mcpServer.findUniqueOrThrow({ where: { id: s.id } })).toMatchObject({
       endpoint: ZERNIO_MCP_ENDPOINT,
-      agentExclusive: false,
+      agentExclusive: true,
     });
   });
 

@@ -38,6 +38,10 @@ const markOpened = (n: NotificationDto) =>
     )
     .then(announceChange, () => undefined);
 
+/** X on an approval toast: it stays closed, also after a reload, until the person asks again. */
+const dismissApproval = (n: NotificationDto) => () =>
+  void rpc.notifications.dismiss({ id: n.id }).catch(() => undefined);
+
 const APPROVAL_POLL_MS = 2000;
 
 /** Lets the toasts follow the approvals still waiting for an answer, however long ago they were sent. */
@@ -46,6 +50,7 @@ async function followUnansweredApprovals(openBotId: () => string | undefined) {
   syncApprovalToasts(notifications, {
     complete: true,
     onSeen: (n) => () => void markOpened(n),
+    onDismiss: dismissApproval,
     skip: (n) => Boolean(n.botId) && n.botId === openBotId(),
   });
 }
@@ -108,6 +113,7 @@ export function AppToaster() {
                   ...attentionFromDto(n),
                   avatar: await avatarFor(n, userIdRef.current),
                   onSeen: () => void markOpened(n),
+                  onDismiss: dismissApproval(n),
                 },
                 {
                   open: openLink,

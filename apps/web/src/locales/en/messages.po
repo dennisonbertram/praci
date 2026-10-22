@@ -2411,6 +2411,10 @@ msgstr "Choose a Google Sheet"
 msgid "Choose a new password"
 msgstr "Choose a new password"
 
+#: src/components/MailApprovalCard.tsx
+msgid "Choose an account"
+msgstr "Choose an account"
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Choose file"
 msgstr "Choose file"
@@ -7578,6 +7582,10 @@ msgstr "On a schedule"
 #: src/components/integrations/IntegrationAgentSection.tsx
 msgid "On: creates a {service} agent that can read and, after you approve, make changes."
 msgstr "On: creates a {service} agent that can read and, after you approve, make changes."
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "On: other agents can read {service}. Changes still go through this agent and ask first."
+msgstr "On: other agents can read {service}. Changes still go through this agent and ask first."
 
 #: src/pages/Shell.tsx
 msgid "Only empty spaces can be deleted. Delete its bots and groups first."

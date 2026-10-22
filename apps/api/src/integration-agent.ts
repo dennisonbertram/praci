@@ -472,7 +472,7 @@ export async function ensureIntegrationAgent(
       // The endpoint may have been edited to Carta since the first read.
       const current = await tx.mcpServer.findFirst({
         where: scope(actor, server.id),
-        select: { endpoint: true },
+        select: { endpoint: true, agentBotId: true },
       });
       if (!current) throw new ORPCError("NOT_FOUND", { message: "Integration not found" });
       if (isCartaEndpoint(current.endpoint))
@@ -495,7 +495,8 @@ export async function ensureIntegrationAgent(
       // Pinned to the endpoint just checked: an edit landing now either fails this or releases the link.
       const linkedRows = await tx.mcpServer.updateMany({
         where: { ...scope(actor, server.id), endpoint: current.endpoint },
-        data: { agentBotId: bot.id },
+        // A new agent starts as the only one that uses the server; sharing is the person's choice.
+        data: { agentBotId: bot.id, ...(current.agentBotId ? {} : { agentExclusive: true }) },
       });
       if (!linkedRows.count)
         throw new ORPCError("CONFLICT", { message: "The integration changed; retry" });

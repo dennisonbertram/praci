@@ -176,6 +176,8 @@ export type MailApproval = z.infer<typeof MailApprovalSchema>;
 /** What a person may change on a mail approval card. Recipients are comma-separated text. */
 export const MailEditsSchema = z
   .object({
+    /** The connected account to send from, by address; the server finds it among the caller's own. */
+    account: z.string().max(320),
     to: z.string().max(4_000),
     cc: z.string().max(4_000),
     bcc: z.string().max(4_000),

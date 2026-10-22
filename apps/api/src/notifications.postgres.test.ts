@@ -118,6 +118,13 @@ describePostgres("notifications RPC (PostgreSQL)", () => {
     });
   });
 
+  it("dismiss marks only the caller's own notification in the caller's space", async () => {
+    const id = (await clientFor(alice).notifications.list({})).notifications[0]!.id;
+    expect(await clientFor(bob).notifications.dismiss({ id })).toEqual({ ok: false });
+    expect(await clientFor(aliceElsewhere).notifications.dismiss({ id })).toEqual({ ok: false });
+    expect(await clientFor(alice).notifications.dismiss({ id })).toEqual({ ok: true });
+  });
+
   it("rejects a malformed cursor", async () => {
     await expect(clientFor(alice).notifications.list({ cursor: "nonsense" })).rejects.toMatchObject(
       { code: "BAD_REQUEST" },
