@@ -21,8 +21,10 @@ import {
   createRunWorkspaceCheckpoint,
   directoryDescription,
   dockerComputerToolInstruction,
+  financeConnectionLineFor,
   isTerminalModelSetupError,
   loadCurrentTurnImages,
+  loadFinanceConnectionLine,
   MEMORY_GUIDANCE,
   missingTurnImagesInstruction,
   NOT_CONNECTED_GUIDANCE,
@@ -1358,6 +1360,62 @@ describe("directoryDescription", () => {
     expect(directoryDescription({ description: "Drafts contracts.", spawnKey: null })).toBe(
       "Drafts contracts.",
     );
+  });
+});
+
+describe("financeConnectionLineFor", () => {
+  const mercury = "https://mcp.mercury.com/mcp";
+  it("says no bank is connected when none is", () => {
+    expect(
+      financeConnectionLineFor([
+        { endpoint: "https://example.com/mcp", agentBotId: "b", login: "connected" },
+      ]),
+    ).toContain("no bank (Mercury or Brex) is connected");
+  });
+  it("points a connected bank without an agent to Allow changes", () => {
+    const line = financeConnectionLineFor([
+      { endpoint: mercury, agentBotId: null, login: "connected" },
+    ]);
+    expect(line).toContain("Mercury (no agent yet");
+    expect(line).toContain("Allow changes");
+    expect(line).toContain("never say no bank is connected");
+  });
+  it("hands a connected bank with an agent to that agent", () => {
+    const line = financeConnectionLineFor([
+      { endpoint: mercury, agentBotId: "bot", login: "connected" },
+    ]);
+    expect(line).toContain("Mercury (has an agent: message it with message_bot");
+    expect(line).not.toContain("Allow changes");
+  });
+});
+
+describe("financeConnectionLineFor sign-in state", () => {
+  const mercury = "https://mcp.mercury.com/mcp";
+  it("does not count a failed or cancelled sign-in as connected", () => {
+    const line = financeConnectionLineFor([{ endpoint: mercury, agentBotId: null, login: "none" }]);
+    expect(line).toContain("no bank (Mercury or Brex) is connected");
+  });
+  it("asks for a reconnect when the sign-in expired", () => {
+    const line = financeConnectionLineFor([
+      { endpoint: mercury, agentBotId: null, login: "reconnect" },
+    ]);
+    expect(line).toContain("reconnect it under Integrations");
+    expect(line).not.toContain("Allow changes");
+  });
+});
+
+describe("loadFinanceConnectionLine", () => {
+  const prisma = {
+    mcpServer: {
+      findMany: async () => [
+        { id: "s", endpoint: "https://mcp.mercury.com/mcp", secretId: null, agentBotId: null },
+      ],
+    },
+  } as never;
+  const actor = { spaceId: "sp", userId: "u" };
+  it("reads the sign-in state, so a stored but unauthenticated row is not connected", async () => {
+    const line = await loadFinanceConnectionLine(prisma, { statusFor: async () => "none" }, actor);
+    expect(line).toContain("no bank (Mercury or Brex) is connected");
   });
 });
 

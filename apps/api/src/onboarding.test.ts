@@ -1,6 +1,11 @@
 import type * as db from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
-import { chooseFocus, markAppConnected, seedBlankBotGreeting } from "./onboarding.js";
+import {
+  chooseFocus,
+  dismissPendingChoiceInTransaction,
+  markAppConnected,
+  seedBlankBotGreeting,
+} from "./onboarding.js";
 
 const posted = vi.hoisted(() => [] as Array<{ blocks: unknown[] }>);
 vi.mock("@rakazo/db", async (original) => ({
@@ -169,5 +174,23 @@ describe("focus choices", () => {
       kind: "text",
       text: "Got it. Email, calendar, and your company pages.",
     });
+  });
+});
+
+describe("answering the focus card by typing", () => {
+  const target = { spaceId: "space", botId: "bot", threadId: "thread" };
+  it("closes the open card once", async () => {
+    const { tx } = fixture([]);
+    const closed = await dismissPendingChoiceInTransaction(tx as never, target);
+    expect(closed?.blocks).toEqual([{ kind: "choice", answerId: "_dismissed" }]);
+    expect(tx.message.update).toHaveBeenCalledTimes(1);
+  });
+  it("does nothing when no card is open", async () => {
+    const { tx } = fixture([]);
+    tx.message.findMany.mockResolvedValueOnce([
+      { id: "choice", blocks: [{ kind: "choice", answerId: "day" }] },
+    ]);
+    expect(await dismissPendingChoiceInTransaction(tx as never, target)).toBeNull();
+    expect(tx.message.update).not.toHaveBeenCalled();
   });
 });
