@@ -12,10 +12,11 @@ const card = (status: "pending" | "connected"): MessageBlock => ({
 });
 const text: MessageBlock = { kind: "text", text: "hi" };
 
-it("waits only while cards exist and none is connected", () => {
+it("waits while any card is still waiting to be connected", () => {
   expect(connectCardsOpen([{ blocks: [text] }])).toBe(false);
   expect(connectCardsOpen([{ blocks: [text, card("pending"), card("pending")] }])).toBe(true);
-  expect(connectCardsOpen([{ blocks: [card("pending"), card("connected")] }])).toBe(false);
+  expect(connectCardsOpen([{ blocks: [card("pending"), card("connected")] }])).toBe(true);
+  expect(connectCardsOpen([{ blocks: [card("connected"), card("connected")] }])).toBe(false);
 });
 
 it("holds the tour only while the first question is unanswered and not dismissed", () => {

@@ -184,8 +184,14 @@ export function threadRunError(
 ): string | null {
   const run = snapshot?.run;
   if (!snapshot || run?.status !== "failed" || dismissedRunIds?.has(run.id)) return null;
-  if (run.error === MISSING_TOOL_FINAL_RESPONSE_ERROR && repliedAfter(snapshot, run.createdAt))
+  // The error may carry a suffix ("Nothing was sent.") when the run left an approval behind.
+  if (
+    run.error?.startsWith(MISSING_TOOL_FINAL_RESPONSE_ERROR) &&
+    repliedAfter(snapshot, run.createdAt)
+  )
     return null;
+  // A run waiting on an approval is not failed: the failure belongs to an earlier run.
+  if (snapshot.activeRuns?.some((active) => active.status === "waiting_input")) return null;
   return run.error ? describe(run.error) : null;
 }
 

@@ -42,13 +42,18 @@ function useMounted() {
 /** Same hover as the other integration tiles; `relative` anchors the stretched name link. */
 const TILE = "relative transition-colors hover:bg-muted/40";
 
-/** The tile's one overflow menu: the optional key and other secondary actions live here. */
+/** The tile's one overflow menu, in its top corner so the bottom row lines up with the other tiles. */
 function TileMenu({ label, children }: { label: string; children: ReactNode }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="ghost" size="icon-xs" className="relative z-10" aria-label={label} />
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className="absolute end-2 top-2 z-10"
+            aria-label={label}
+          />
         }
       >
         <MoreHorizontal aria-hidden="true" />
@@ -96,7 +101,7 @@ function CryptoTile({
 
   return (
     <IntegrationTile data-testid="finance-tile-crypto" className={`${TILE} ${PHONE_ROW}`}>
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3 pe-6">
         <AppLogo name="Blockscout" logo="/logos/blockscout.svg" />
         <div className="min-w-0">
           <TileName name="Blockscout" to={manageTo} />
@@ -108,14 +113,8 @@ function CryptoTile({
       <div className={`${hasKey || hasServer ? "" : "mt-auto "}flex items-center gap-2`}>
         {hasKey === null ? null : (
           <>
-            {hasKey || hasServer ? (
-              <StatusBadge status="connected" quiet />
-            ) : (
-              // Nothing to connect: the first wallet added starts it. Not "Not connected".
-              <span className="text-xs text-muted-foreground max-sm:hidden">
-                <Trans>Ready</Trans>
-              </span>
-            )}
+            {/* Nothing to connect without a key: the first wallet added starts it. Not "Not connected". */}
+            {hasKey || hasServer ? <StatusBadge status="connected" quiet /> : null}
             {/* One main action like the other tiles; the optional key and agents sit in the menu. */}
             <Link to={financePath.crypto()} className={OPEN_LINK}>
               {hasKey || hasServer ? <Trans>Open Finance</Trans> : <Trans>Add wallet</Trans>}
@@ -152,7 +151,7 @@ function AlchemyTile({ state, reload }: { state: AlchemyState | null; reload: ()
       data-testid="finance-tile-alchemy"
       className={`${TILE} ${state?.lastError ? "" : PHONE_ROW}`}
     >
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3 pe-6">
         <AppLogo name="Alchemy" logo="/logos/alchemy.svg" />
         <div className="min-w-0">
           <div className="truncate font-semibold">Alchemy</div>
@@ -227,7 +226,7 @@ function ExchangeTile({
   const connected = found?.connected === true;
   return (
     <IntegrationTile data-testid={`finance-tile-${provider}`} className={`${TILE} ${PHONE_ROW}`}>
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3 pe-6">
         <AppLogo name={exchange.name} logo={exchange.logo} />
         <div className="min-w-0">
           <div className="truncate font-semibold">{exchange.name}</div>

@@ -163,9 +163,14 @@ describe("company focus", () => {
 });
 
 describe("focus choices", () => {
-  it("offers four choices, with no second choice for the same apps as Day-to-day work", async () => {
+  it("has one choice for day-to-day work, not a second one for nearly the same apps", async () => {
     const { deps, actor } = fixture([]);
-    await expect(chooseFocus(deps, actor, "bot", "inbox")).rejects.toThrow();
+    // A card posted before the merge still offers "everything"; it counts as "day".
+    await chooseFocus(deps, actor, "bot", "everything");
+    expect(posted[0]?.blocks[0]).toEqual({
+      kind: "text",
+      text: "Got it. Email, Slack, calendar, and docs.",
+    });
   });
   it("summarizes the company choice by what it connects", async () => {
     const { deps, actor } = fixture([]);

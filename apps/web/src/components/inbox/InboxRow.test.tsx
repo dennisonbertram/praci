@@ -299,3 +299,25 @@ it("labels the group number as unread mail, not a row count", async () => {
   );
   expect(document.querySelector("h2")?.textContent).toBe("Earlier1 unread");
 });
+
+it("keeps the group's unread count when only the first rows are listed", async () => {
+  await act(async () =>
+    root.render(
+      <InboxGroup
+        title="Needs reply"
+        rows={[row]}
+        unreadTotal={7}
+        onOpen={() => {}}
+        onMark={undefined}
+      />,
+    ),
+  );
+  expect(document.querySelector("h2")?.textContent).toBe("Needs reply7 unread");
+});
+
+it("shows a paperclip by the time only when the message has an attachment", async () => {
+  await show();
+  expect(document.querySelector('[aria-label="Has attachment"]')).toBeNull();
+  await show({ row: { ...row, hasAttachment: true } });
+  expect(document.querySelector('[aria-label="Has attachment"]')).not.toBeNull();
+});

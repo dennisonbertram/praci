@@ -503,6 +503,8 @@ function BrowsingPane({
       />
     );
   }
+  // Ten cards that all say "6m ago" tell nothing; the time shows once the cards differ.
+  const cardsDiffer = new Set(items.map((item) => formatRelativeTime(item.createdAt))).size > 1;
   return (
     <div className="@container/list rk-scroll min-h-0 flex-1 overflow-y-auto">
       {viewMode === "grid" ? (
@@ -514,6 +516,7 @@ function BrowsingPane({
               key={item.id}
               artifact={item}
               bot={item.botId ? botsById.get(item.botId) : undefined}
+              showTime={cardsDiffer || items.length < 2}
               onRequestDelete={onRequestDelete}
             />
           ))}
@@ -816,10 +819,12 @@ function IndexPane({
 function ArtifactCard({
   artifact,
   bot,
+  showTime,
   onRequestDelete,
 }: {
   artifact: ArtifactSummary;
   bot: Bot | undefined;
+  showTime: boolean;
   onRequestDelete: (artifact: ArtifactSummary) => void;
 }) {
   const { t } = useLingui();
@@ -864,9 +869,11 @@ function ArtifactCard({
           ) : (
             <span className="flex-1 max-md:hidden" />
           )}
-          <span className="shrink-0 md:group-focus-within:invisible md:group-hover:invisible">
-            {formatRelativeTime(artifact.createdAt)}
-          </span>
+          {showTime ? (
+            <span className="shrink-0 md:group-focus-within:invisible md:group-hover:invisible">
+              {formatRelativeTime(artifact.createdAt)}
+            </span>
+          ) : null}
         </div>
       </Link>
       <button

@@ -379,7 +379,7 @@ function Overview({
       : period === "year"
         ? t`${year} so far`
         : period === "month"
-          ? t`Spent so far this month`
+          ? t`Out so far this month`
           : null;
   const previousRange = range({ start: totals.previousStart, end: totals.previousEnd });
   const bars = data.cashSeries[period];
@@ -643,7 +643,7 @@ function Overview({
             title={
               <Link
                 to={financePath.burn()}
-                className="rk-tap inline-flex items-center hover:underline"
+                className="rk-tap inline-flex items-center py-1 hover:underline"
               >
                 <Trans>Burn</Trans>
                 <ChevronRight aria-hidden="true" className="size-3" />
@@ -679,7 +679,7 @@ function Overview({
             ) : null}
           </Section>
 
-          <div className="grid gap-3 @3xl:grid-cols-2">
+          <div className="grid items-start gap-3 @3xl:grid-cols-2">
             <BackHere
               value={{
                 label: t`Breakdown`,
@@ -731,74 +731,78 @@ function Overview({
               </Section>
             </BackHere>
 
-            <BackHere value={{ label: t`Upcoming`, to: `${financePath.dashboard()}#upcoming` }}>
-              <Section
-                id="upcoming"
-                title={<Trans>Upcoming · 30 days</Trans>}
-                action={
-                  data.upcoming.totalCents > 0 ? (
-                    <span className="text-xs font-semibold tabular-nums">
-                      ~{money(data.upcoming.totalCents)}
-                    </span>
-                  ) : null
-                }
-              >
-                <div className="-mx-2">
-                  {(allUpcoming ? upcomingRows : upcomingRows.slice(0, MAX_ROWS)).map((item) => (
-                    <UpcomingRow key={`${item.kind}:${item.key}`} item={item} />
-                  ))}
-                </div>
-                {upcomingRows.length === 0 ? (
-                  <div className="py-2 text-muted-foreground">
-                    <Trans>Nothing due in the next 30 days</Trans>
+            {/* Subscriptions sit under Upcoming, which is short, so the right column has no dead area. */}
+            <div className="flex flex-col gap-3">
+              <BackHere value={{ label: t`Upcoming`, to: `${financePath.dashboard()}#upcoming` }}>
+                <Section
+                  id="upcoming"
+                  title={<Trans>Upcoming · 30 days</Trans>}
+                  action={
+                    data.upcoming.totalCents > 0 ? (
+                      <span className="text-xs font-semibold tabular-nums">
+                        ~{money(data.upcoming.totalCents)}
+                      </span>
+                    ) : null
+                  }
+                >
+                  <div className="-mx-2">
+                    {(allUpcoming ? upcomingRows : upcomingRows.slice(0, MAX_ROWS)).map((item) => (
+                      <UpcomingRow key={`${item.kind}:${item.key}`} item={item} />
+                    ))}
                   </div>
-                ) : null}
-                <div className="mt-auto flex justify-end text-[11px] text-muted-foreground">
-                  <ShowAll
-                    total={upcomingRows.length}
-                    cap={MAX_ROWS}
-                    expanded={allUpcoming}
-                    onToggle={() => setAllUpcoming((v) => !v)}
-                  />
-                </div>
-              </Section>
-            </BackHere>
-          </div>
-
-          <BackHere
-            value={{ label: t`Subscriptions`, to: `${financePath.dashboard()}#subscriptions` }}
-          >
-            <Section id="subscriptions" title={<Trans>Subscriptions</Trans>}>
-              {subs.items.length === 0 ? (
-                <div className="py-2 text-muted-foreground">
-                  <Trans>None yet. A vendor shows here after three similar monthly charges.</Trans>
-                </div>
-              ) : (
-                // Capped so a vendor and its amount stay within reach of each other on a wide screen.
-                <div className="max-w-2xl">
-                  <SubscriptionsTable
-                    subs={subs}
-                    rows={allSubs ? subs.items : subs.items.slice(0, MAX_ROWS)}
-                  />
-                  <div className="flex items-center justify-between border-t border-border pt-2 text-xs text-muted-foreground">
-                    <span>
-                      {plural(subs.items.length, {
-                        one: "# subscription",
-                        other: "# subscriptions",
-                      })}{" "}
-                      · {t`${monthlyTotal}/mo`}
-                    </span>
+                  {upcomingRows.length === 0 ? (
+                    <div className="py-2 text-muted-foreground">
+                      <Trans>Nothing due in the next 30 days</Trans>
+                    </div>
+                  ) : null}
+                  <div className="mt-auto flex justify-end text-[11px] text-muted-foreground">
                     <ShowAll
-                      total={subs.items.length}
+                      total={upcomingRows.length}
                       cap={MAX_ROWS}
-                      expanded={allSubs}
-                      onToggle={() => setAllSubs((v) => !v)}
+                      expanded={allUpcoming}
+                      onToggle={() => setAllUpcoming((v) => !v)}
                     />
                   </div>
-                </div>
-              )}
-            </Section>
-          </BackHere>
+                </Section>
+              </BackHere>
+
+              <BackHere
+                value={{ label: t`Subscriptions`, to: `${financePath.dashboard()}#subscriptions` }}
+              >
+                <Section id="subscriptions" title={<Trans>Subscriptions</Trans>}>
+                  {subs.items.length === 0 ? (
+                    <div className="py-2 text-muted-foreground">
+                      <Trans>
+                        None yet. A vendor shows here after three similar monthly charges.
+                      </Trans>
+                    </div>
+                  ) : (
+                    <div>
+                      <SubscriptionsTable
+                        subs={subs}
+                        rows={allSubs ? subs.items : subs.items.slice(0, MAX_ROWS)}
+                      />
+                      <div className="flex items-center justify-between border-t border-border pt-2 text-xs text-muted-foreground">
+                        <span>
+                          {plural(subs.items.length, {
+                            one: "# subscription",
+                            other: "# subscriptions",
+                          })}{" "}
+                          · {t`${monthlyTotal}/mo`}
+                        </span>
+                        <ShowAll
+                          total={subs.items.length}
+                          cap={MAX_ROWS}
+                          expanded={allSubs}
+                          onToggle={() => setAllSubs((v) => !v)}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </Section>
+              </BackHere>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -834,7 +838,11 @@ function ShowAll({
 }) {
   if (total <= cap) return null;
   return (
-    <button type="button" className="hover:text-foreground hover:underline" onClick={onToggle}>
+    <button
+      type="button"
+      className="-my-1.5 py-1.5 hover:text-foreground hover:underline"
+      onClick={onToggle}
+    >
       {expanded ? <Trans>Show less</Trans> : <Trans>Show all {total}</Trans>}
     </button>
   );
@@ -883,9 +891,11 @@ export function UpcomingRow({ item }: { item: UpcomingItem }) {
         <span className="min-w-0 max-w-full truncate">{item.name}</span>
         <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span className="@md:hidden">{dates}</span>
-          <span className="shrink-0 rounded-full border border-border px-1.5 text-[11px]">
-            {upcomingTag(item)}
-          </span>
+          {item.kind === "recurring" && !item.cardBill ? null : (
+            <span className="shrink-0 rounded-full border border-border px-1.5 text-[11px]">
+              {upcomingTag(item)}
+            </span>
+          )}
         </span>
       </span>
       <span className="text-end tabular-nums">

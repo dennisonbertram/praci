@@ -275,6 +275,31 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
     );
   });
 
+  it("counts the meeting to-dos the Inbox To do card lists", async () => {
+    const t = await harness({ a: [message("m1", 1)], b: [] });
+    await t.overview();
+    await t.triage("m1", { needsReply: false, priority: "low" });
+    const { spaceId, userId } = t.scope;
+    const meeting = await prisma.meeting.create({
+      data: {
+        spaceId,
+        userId,
+        provider: "granola",
+        externalId: `m-${randomUUID()}`,
+        title: "Planning",
+        startedAt: new Date(),
+        sourceUpdatedAt: new Date(),
+      },
+    });
+    await prisma.inboxTodo.create({
+      data: { spaceId, userId, meetingId: meeting.id, text: "Send notes" },
+    });
+    const result = await t.overview();
+    expect(result.openTodos).toBe(1);
+    expect(result.todos).toHaveLength(1);
+    expect(result.todos[0]).toContain("Send notes");
+  });
+
   it("lists every message that needs a reply, as many as the Inbox page shows", async () => {
     const ids = Array.from({ length: 12 }, (_, i) => `ask-${i}`);
     const t = await harness({ a: ids.map((id, i) => message(id, 0.1 + i * 0.1)) });

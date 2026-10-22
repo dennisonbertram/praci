@@ -493,7 +493,7 @@ function ActivityRow({
 }) {
   const { t } = useLingui();
   const title = run.groupName ? `${run.botName} · ${run.groupName}` : run.botName;
-  const label = statusLabel(run.status, run.needsApproval);
+  const label = statusLabel(run.status);
   const activityLabel = t`${title}, ${label}`;
   const tone = statusTone(run.status, run.updatedAt);
   return (
@@ -532,7 +532,7 @@ function ActivityRow({
   );
 }
 
-export function statusLabel(status: RunActivityRow["status"], needsApproval = false): string {
+export function statusLabel(status: RunActivityRow["status"]): string {
   switch (status) {
     case "queued":
       return t`Queued`;
@@ -541,7 +541,7 @@ export function statusLabel(status: RunActivityRow["status"], needsApproval = fa
     case "running":
       return t`Running`;
     case "waiting_input":
-      return needsApproval ? t`Needs approval` : needsAnswerLabel();
+      return needsAnswerLabel();
     case "waiting_takeover":
       return t`Needs takeover`;
     case "completed":

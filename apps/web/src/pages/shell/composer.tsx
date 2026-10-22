@@ -524,6 +524,9 @@ export const Composer = memo(function Composer({
     });
   }
 
+  // A textarea clips its placeholder without an ellipsis, so cut a long name here.
+  const placeholderName =
+    activeName && activeName.length > 32 ? `${activeName.slice(0, 31).trimEnd()}…` : activeName;
   const showComposerPlaceholder =
     draft.length === 0 && selectedSkill === null && selectedMentions.length === 0;
   const expanded = composerExpanded || selectedSkill !== null || selectedMentions.length > 0;
@@ -1099,7 +1102,7 @@ export const Composer = memo(function Composer({
                   : (placeholderText ??
                     // On a phone the header already names the agent, and a long name wraps.
                     (activeName && !window.matchMedia?.("(max-width: 480px)").matches
-                      ? t`Message ${activeName}`
+                      ? t`Message ${placeholderName}`
                       : t`Message…`))
                 : undefined
             }

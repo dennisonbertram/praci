@@ -1,5 +1,6 @@
 import type { AdapterContext } from "@rakazo/adapter-kit";
 import type { RunPhase } from "@rakazo/contracts";
+import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import type * as BotMessagesModule from "./bot-messages.js";
 import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
@@ -123,6 +124,8 @@ async function continueRun(storedPhase: RunPhase | null = null, trigger = "user"
       }),
     },
 
+    aiDataConsent: { findUnique: vi.fn(async () => ({ version: AI_DISCLOSURE_VERSION })) },
+    user: { findUnique: vi.fn(async () => ({ timezone: null })) },
     deploymentSettings: {
       findUnique: vi.fn(async () => ({
         defaultModelProvider: "openrouter",

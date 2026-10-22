@@ -194,7 +194,7 @@ async function fillNewSkill(view: { container: HTMLElement }) {
 
 it("creates a new skill from Name, description and instructions fields, with no front matter to type", async () => {
   const view = await mount();
-  await act(async () => view.button("New skill").click());
+  await act(async () => view.button("Add skill").click());
   expect(view.container.querySelector("textarea")?.placeholder).not.toContain("---");
   expect((view.button("Save") as HTMLButtonElement).disabled).toBe(true);
   await typeInto(field(view, "Name"), "my-skill");
@@ -209,7 +209,7 @@ it("creates a new skill from Name, description and instructions fields, with no 
 it("creates a skill from New skill and shows it in the list", async () => {
   api.create.mockResolvedValue({});
   const view = await mount();
-  await act(async () => view.button("New skill").click());
+  await act(async () => view.button("Add skill").click());
   await fillNewSkill(view);
   await act(async () => view.button("Save").click());
   expect(api.create).toHaveBeenCalledWith({ content: SKILL_MD });
@@ -222,7 +222,7 @@ it("creates a skill from New skill and shows it in the list", async () => {
 
 it("shows the server's reason when a skill cannot be saved, and clears it on retry and Cancel", async () => {
   const view = await mount();
-  await act(async () => view.button("New skill").click());
+  await act(async () => view.button("Add skill").click());
   await fillNewSkill(view);
   api.create.mockRejectedValueOnce(new Error("Skill front matter needs a name."));
   await act(async () => view.button("Save").click());
@@ -265,6 +265,7 @@ it("uploads a SKILL.md file as the skill content", async () => {
 it("imports a skill from a URL", async () => {
   api.importFromUrl.mockResolvedValue({});
   const view = await mount();
+  await act(async () => view.button("Add skill").click());
   await act(async () => view.button("From URL").click());
   const input = view.container.querySelector<HTMLInputElement>("[aria-label='From URL']");
   const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;

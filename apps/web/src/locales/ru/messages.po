@@ -238,6 +238,11 @@ msgstr ""
 msgid "{0} can use {appName}"
 msgstr ""
 
+#. placeholder {0}: usd(committedUsd)
+#: src/pages/Investors.tsx
+msgid "{0} committed"
+msgstr ""
+
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "{0} connected"
@@ -417,6 +422,10 @@ msgstr ""
 
 #: src/lib/billing.ts
 msgid "{count} months"
+msgstr ""
+
+#: src/components/data-room/SelectionBar.tsx
+msgid "{count} of {total} selected"
 msgstr ""
 
 #: src/pages/Fundraising.tsx
@@ -744,6 +753,7 @@ msgstr "О пространствах"
 msgid "Access token"
 msgstr "Токен доступа"
 
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Inbox.tsx
 msgid "Account"
@@ -1571,6 +1581,10 @@ msgid "Attachments"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+msgid "Attachments are not kept."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
 msgid "Attachments can't be over {MAX_COMPOSE_ATTACHMENT_MB} MB."
 msgstr ""
 
@@ -1909,10 +1923,6 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Brex bill, not paid yet"
-msgstr ""
-
-#: src/pages/finance/FinanceAccounts.tsx
-msgid "Brex does not share it"
 msgstr ""
 
 #: src/components/computer/ComputerWorkspace.tsx
@@ -2261,6 +2271,10 @@ msgstr "Проверка…"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Checkout has local changes. Clean it before updating."
 msgstr "В checkout есть локальные изменения. Очистите его перед обновлением."
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Chief"
+msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Choose a bot shape, color, or upload an image"
@@ -2778,10 +2792,6 @@ msgstr "Подключите MCP-сервер «{name}»"
 
 #: src/components/fundraising/MercuryLine.tsx
 msgid "Connect Mercury"
-msgstr ""
-
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -3762,6 +3772,7 @@ msgid "Counterparty"
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/dialogs.tsx
@@ -3846,6 +3857,10 @@ msgid "Created {0}"
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
+msgid "Created when you allow changes"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
 msgid "Creating agent"
 msgstr ""
 
@@ -3918,6 +3933,7 @@ msgstr ""
 msgid "Dark"
 msgstr "Тёмная"
 
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Shell.tsx
 msgid "Data room"
@@ -4725,6 +4741,7 @@ msgstr ""
 msgid "Expected"
 msgstr ""
 
+#: src/components/AskCard.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/pages/legal/LegalContracts.tsx
 msgid "Expired"
@@ -4834,6 +4851,7 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/components/FinanceCards.tsx
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -5191,6 +5209,7 @@ msgstr "Сначала повесьте трубку, затем введите 
 msgid "Hang up, then enter the code on screen."
 msgstr "Повесьте трубку, затем введите код на экране."
 
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Inbox.tsx
 msgid "Has attachment"
 msgstr ""
@@ -5466,6 +5485,7 @@ msgstr ""
 msgid "Inactive"
 msgstr ""
 
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Inbox"
@@ -5473,6 +5493,10 @@ msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Inbox & email"
+msgstr ""
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Included"
 msgstr ""
 
 #: src/components/data-room/ProcessingStrip.tsx
@@ -5530,6 +5554,7 @@ msgstr ""
 #: src/components/integrations/GranolaPage.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Shell.tsx
 msgid "Integrations"
 msgstr ""
@@ -5776,6 +5801,7 @@ msgstr "Выйти"
 
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/FilterBar.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/Legal.tsx
 #: src/pages/Shell.tsx
 msgid "Legal"
@@ -6266,8 +6292,8 @@ msgid "Message {0}"
 msgstr ""
 
 #: src/pages/shell/composer.tsx
-msgid "Message {activeName}"
-msgstr "Сообщение {activeName}"
+msgid "Message {placeholderName}"
+msgstr ""
 
 #: src/pages/shell/composer.tsx
 msgid "Message composer"
@@ -6564,7 +6590,6 @@ msgid "Needs a server restart"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
-#: src/pages/ActivityList.tsx
 msgid "Needs approval"
 msgstr ""
 
@@ -6580,6 +6605,7 @@ msgstr "Требуется ввод данных"
 msgid "Needs reconnect"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Inbox.tsx
 msgid "Needs reply"
 msgstr ""
@@ -6682,10 +6708,6 @@ msgstr "Новая задача"
 #: src/pages/Auth.tsx
 msgid "New password"
 msgstr "Новый пароль"
-
-#: src/pages/shell/BotSkillsSection.tsx
-msgid "New skill"
-msgstr "Новый навык"
 
 #: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/dialogs.tsx
@@ -6810,6 +6832,10 @@ msgstr ""
 msgid "No contracts or deadlines found on {0}."
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "No contracts yet"
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
 msgstr ""
@@ -6836,6 +6862,7 @@ msgid "No files found"
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
+#: src/pages/BotContextMenu.tsx
 msgid "No folder"
 msgstr ""
 
@@ -7006,6 +7033,10 @@ msgstr ""
 msgid "No trigger"
 msgstr "Нет триггера"
 
+#: src/pages/Investors.tsx
+msgid "No updates yet"
+msgstr ""
+
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "No wallets yet. Add a wallet address to see its balances here."
 msgstr ""
@@ -7131,6 +7162,10 @@ msgstr ""
 
 #: src/components/NotificationSettings.tsx
 msgid "Not supported here"
+msgstr ""
+
+#: src/components/data-room/ItemRows.tsx
+msgid "Not tagged"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
@@ -7507,6 +7542,10 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Out so far this month"
 msgstr ""
 
 #: src/pages/MemorySettingsOverlay.tsx
@@ -8112,8 +8151,11 @@ msgstr ""
 msgid "Reading…"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
+msgid "Reads document text"
+msgstr ""
+
 #: src/components/data-room/DataRoomStats.tsx
-#: src/components/integrations/FinanceSection.tsx
 msgid "Ready"
 msgstr ""
 
@@ -8736,6 +8778,7 @@ msgid "Running · Stop"
 msgstr "Выполняется · Остановить"
 
 #: src/pages/RoutineEditor.tsx
+#: src/pages/RoutineRunHistory.tsx
 msgid "Running…"
 msgstr "Выполняется…"
 
@@ -8944,6 +8987,7 @@ msgstr ""
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/components/tour/FirstRunTour.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
@@ -9103,6 +9147,10 @@ msgstr "Выберите подключённую модель"
 msgid "Select all"
 msgstr ""
 
+#: src/components/data-room/SelectionBar.tsx
+msgid "Select all {total}"
+msgstr ""
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Select an item to see its relations."
 msgstr ""
@@ -9143,9 +9191,21 @@ msgstr "Отправить ответ"
 msgid "Send anyway"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
+msgid "Send chats and mail text"
+msgstr ""
+
+#: src/components/AiDataSharing.tsx
+msgid "Send chats, mail and document text"
+msgstr ""
+
 #: src/components/AccountAccess.tsx
 msgid "Send deletion code"
 msgstr "Отправить код удаления"
+
+#: src/components/AiDataSharing.tsx
+msgid "Send files and contracts"
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Send it"
@@ -9338,6 +9398,10 @@ msgstr ""
 #: src/components/computer/TerminalApp.tsx
 msgid "Shell"
 msgstr "Оболочка"
+
+#: src/pages/Inbox.tsx
+msgid "Show {hiddenReplies} more"
+msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Show all {total}"
@@ -9723,10 +9787,6 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Spent {spentRange}"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Spent so far this month"
 msgstr ""
 
 #: src/components/FinanceCards.tsx
@@ -10668,10 +10728,6 @@ msgstr ""
 msgid "Unassign"
 msgstr ""
 
-#: src/pages/BotContextMenu.tsx
-msgid "Unassigned"
-msgstr "Без раздела"
-
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Unavailable"
 msgstr "Недоступно"
@@ -10905,16 +10961,16 @@ msgstr ""
 msgid "Upload a PDF, CSV, OFX or QFX file"
 msgstr ""
 
-#: src/pages/shell/BotSkillsSection.tsx
-msgid "Upload a skill file"
-msgstr ""
-
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed. Check your connection and try again."
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed. The server could not save this file."
+msgstr ""
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload file"
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
@@ -11499,17 +11555,9 @@ msgstr ""
 msgid "Your data in {name} is not deleted."
 msgstr ""
 
-#: src/pages/Auth.tsx
-msgid "Your email address"
-msgstr "Ваш адрес электронной почты"
-
 #: src/pages/Inbox.tsx
 msgid "Your mail didn't load"
 msgstr ""
-
-#: src/pages/Auth.tsx
-msgid "Your name"
-msgstr "Ваше имя"
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Your own Google sign-in for Gmail, Calendar and Drive"

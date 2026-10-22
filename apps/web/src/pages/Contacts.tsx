@@ -167,17 +167,17 @@ export function ContactsPage({
                 </Button>
               </div>
             ) : (
-              <div className="max-w-4xl">
-                <Table compact className="table-fixed">
+              <div>
+                <Table compact className="max-w-4xl table-fixed">
                   <TableHeader>
                     <TableHeadRow>
                       <TableHead className="ps-2">
                         <Trans>Name</Trans>
                       </TableHead>
-                      <TableHead className="hidden w-[30%] @md:table-cell">
+                      <TableHead className="hidden w-[34%] @md:table-cell">
                         <Trans>Email</Trans>
                       </TableHead>
-                      <TableHead className="hidden w-[24%] @lg:table-cell">
+                      <TableHead className="hidden w-[26%] @lg:table-cell">
                         <Trans>Organization</Trans>
                       </TableHead>
                       <TableHead className="w-28">
@@ -198,12 +198,15 @@ export function ContactsPage({
                             type="button"
                             title={contact.name}
                             data-row-open
-                            className="block max-w-full truncate rounded-sm text-start font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                            className="block max-w-full truncate rounded-sm text-start font-medium outline-none hover:underline"
                           >
                             {contact.name}
                           </button>
                           {/* Without room for the Email column, the email (else the organization) shows here. */}
-                          <div className="truncate text-xs text-muted-foreground @md:hidden">
+                          <div
+                            className="truncate text-xs text-muted-foreground @md:hidden"
+                            title={contact.email ?? contact.organization ?? undefined}
+                          >
                             {contact.email ?? contact.organization}
                           </div>
                         </TableCell>

@@ -62,6 +62,7 @@ function routineFakes(timezone: string | null = "America/New_York") {
       ),
     },
     user: { findUnique: vi.fn(async () => ({ timezone })) },
+    bot: { updateMany: vi.fn(async () => ({ count: 0 })) },
   };
   const jobs = { enqueue: vi.fn(async () => undefined), cancel: vi.fn(async () => undefined) };
   return { rows, prisma, jobs };
@@ -129,6 +130,21 @@ describe("investor update routine", () => {
 });
 
 describe("ensureInvestorsAgent", () => {
+  it("rewrites the old default description only, scoped to the actor", async () => {
+    const { prisma, jobs } = routineFakes();
+    const createBot = vi.fn(async () => ({ id: "bot-1" }) as Bot);
+    await ensureInvestorsAgent({ prisma, jobs, repos: { createBot } } as never, actor);
+    expect(prisma.bot.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "bot-1",
+        spaceId: "space-1",
+        userId: "user-1",
+        description: "Answers questions about your cap table, investors and finances.",
+      },
+      data: { description: "Answers questions about your investors, SAFEs and finances." },
+    });
+  });
+
   it("creates the bot only through createBot, keyed by the user's spawn key, and returns the same bot again", async () => {
     const bot = { id: "bot-1" } as Bot;
     const createBot = vi.fn(async () => bot);

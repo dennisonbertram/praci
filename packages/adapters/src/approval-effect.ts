@@ -364,6 +364,9 @@ export type ExternalEffectStore = {
 export const DENIED_ACTION_MESSAGE =
   "The user denied this action. Do not retry it, rephrase it, or try a near-identical variant in this run; any repeat is refused automatically. Tell the user it was not done and ask what they want instead. Try again only if the user asks again in a new message.";
 
+export const CLOSED_APPROVAL_MESSAGE =
+  "This approval is no longer active, so nothing was sent. Do not repeat it unless the user asks again in a new message.";
+
 function normalizeRequest(value: unknown): unknown {
   if (typeof value === "string") return value.trim().replace(/\s+/g, " ").toLowerCase();
   if (Array.isArray(value)) return value.map(normalizeRequest);
@@ -414,6 +417,9 @@ export function resolveDuplicateEffectGate(
         error: DENIED_ACTION_MESSAGE,
       },
     };
+  }
+  if (effect.status === "superseded" || effect.status === "expired") {
+    return { action: "return", result: { error: CLOSED_APPROVAL_MESSAGE } };
   }
   if (effect.status === "executing") {
     return { action: "uncertain", toolName };

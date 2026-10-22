@@ -304,10 +304,15 @@ export function ModelSettingsOverlay({
   );
   const inUseProviderIds = useMemo(
     () =>
-      new Set([
-        ...(me?.hostCredentialProvider ? [me.hostCredentialProvider] : []),
-        ...(me?.defaultProvider && !me.needsModel ? [me.defaultProvider] : []),
-      ]),
+      // One provider: the one the bots use. The server's own credentials count only when no
+      // default model names a provider.
+      new Set(
+        me?.defaultProvider && !me.needsModel
+          ? [me.defaultProvider]
+          : me?.hostCredentialProvider
+            ? [me.hostCredentialProvider]
+            : [],
+      ),
     [me?.hostCredentialProvider, me?.defaultProvider, me?.needsModel],
   );
   const searching = providerQuery.trim() !== "";
@@ -788,7 +793,7 @@ export function ModelSettingsOverlay({
         </span>
         {inUseProviderIds.has(group.id) ? (
           <span className="text-[12px] text-muted-foreground">
-            <Trans>In use</Trans>
+            {connectedProviderIds.has(group.id) ? <Trans>In use</Trans> : <Trans>Included</Trans>}
           </span>
         ) : !connectedSection && rowCredential ? (
           <span className="text-[12px] text-success">
@@ -1268,6 +1273,13 @@ export function ModelSettingsOverlay({
         >
           <Trans>Pick a provider below and connect it.</Trans>
         </p>
+      ) : defaultModelLabel ? (
+        // Side by side the active model shows beside the list; stacked it would sit below six rows.
+        <p
+          className={`mx-6 text-[13px] text-muted-foreground sm:mx-8 min-[1040px]:hidden ${embedded ? "mt-4" : "mt-5"}`}
+        >
+          <Trans>Your bots use {defaultModelLabel}.</Trans>
+        </p>
       ) : null}
 
       <div className="rk-scroll flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-6 sm:px-8 min-[1040px]:flex-row min-[1040px]:overflow-hidden">
@@ -1555,7 +1567,7 @@ export function ModelSettingsOverlay({
                   {provider === me?.hostCredentialProvider ? (
                     serverCredentialsNote
                   ) : (
-                    <p className="text-sm leading-[1.5] text-muted-foreground">
+                    <p className="hidden text-sm leading-[1.5] text-muted-foreground min-[1040px]:block">
                       {defaultModelLabel
                         ? t`Your bots use ${defaultModelLabel}.`
                         : t`Your bots already have a model.`}
@@ -1638,12 +1650,20 @@ export function ModelSettingsOverlay({
     const simple = !ownOpen && !!me && !me.needsModel && credentials.length === 0;
     return (
       <div data-testid="model-settings" className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {simple ? (
+        {!me && loading ? (
+          <Skeleton data-testid="provider-skeleton" className="mx-6 h-10 sm:mx-8" />
+        ) : simple ? (
           <div className="flex flex-col items-start gap-3 px-6 sm:px-8">
             <p className="text-[13.5px] text-muted-foreground">
               {modelLabel ? t`Your bots use ${modelLabel}.` : t`Your bots already have a model.`}
             </p>
-            <Button variant="outline" onClick={() => setOwnOpen(true)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setOwnOpen(true);
+                setOwnKeyProvider(provider);
+              }}
+            >
               <Trans>Use my own model</Trans>
             </Button>
           </div>

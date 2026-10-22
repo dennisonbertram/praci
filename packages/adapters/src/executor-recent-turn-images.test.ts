@@ -1,6 +1,8 @@
 import type { AgentRunRequest } from "@rakazo/adapter-kit";
 import type { MessageBlock } from "@rakazo/contracts";
+import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
+import { aiRecipient } from "./ai-consent.js";
 import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
 import { createRunExecutor } from "./executor.js";
 
@@ -55,6 +57,7 @@ async function runWithModel(
   switchModel?: { provider: string; modelId: string },
   backupReadFails = false,
   scripted = false,
+  backupConsented = true,
 ) {
   const run = {
     id: "run-1",
@@ -71,7 +74,7 @@ async function runWithModel(
   let request: AgentRunRequest | undefined;
   const runtimeRun = vi.fn(async function* (next: AgentRunRequest) {
     request = next;
-    if (switchModel) {
+    if (switchModel && next.fallbackModels?.length) {
       const onModelChange = (
         next as AgentRunRequest & {
           onModelChange?: (provider: string, modelId: string) => Promise<void>;
@@ -138,7 +141,19 @@ async function runWithModel(
       ),
     },
     secret: { findFirst: vi.fn(async () => null) },
-    userModelCredential: { findFirst: vi.fn(async () => null) },
+    // A connected provider, so a backup passes the chat-consent gate's credential lookup. Its
+    // secret row is absent, which keeps the deployment key and the missing-secret case intact.
+    userModelCredential: {
+      findFirst: vi.fn(async () => ({
+        id: "connected-credential",
+        userId: "user-1",
+        provider: "openrouter",
+        label: "Connected",
+        secretId: "connected-secret",
+        createdAt: new Date(0),
+        updatedAt: new Date(0),
+      })),
+    },
     spaceBackupModel: {
       findMany: vi.fn(async () => {
         if (backupReadFails) throw new Error("Backup list unavailable");
@@ -148,6 +163,18 @@ async function runWithModel(
       }),
     },
 
+    aiDataConsent: {
+      findUnique: vi.fn(
+        async (args: { where: { userId_spaceId_recipientKey: { recipientKey: string } } }) =>
+          !backupConsented &&
+          switchModel &&
+          args.where.userId_spaceId_recipientKey.recipientKey ===
+            aiRecipient({ ...switchModel, use: "model" })?.key
+            ? null
+            : { version: AI_DISCLOSURE_VERSION },
+      ),
+    },
+    user: { findUnique: vi.fn(async () => ({ timezone: null })) },
     deploymentSettings: {
       findUnique: vi.fn(async () => ({
         defaultModelProvider: "openrouter",
@@ -192,6 +219,8 @@ async function runWithModel(
   expect(runtimeRun).toHaveBeenCalled();
   expect(finalizeRun).not.toHaveBeenCalledWith(expect.objectContaining({ outcome: "failed" }));
   if (!request) throw new Error("runtime was not called");
+  // The run's own setup read the secret row; the tests count only the reads they trigger.
+  prisma.secret.findFirst.mockClear();
   return { request, get, prisma, run };
 }
 
@@ -277,6 +306,16 @@ describe("recent turn images follow model vision", () => {
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+
+  it("keeps a non-catalog backup only when its recipient has consent", async () => {
+    const backup = { provider: "openrouter", modelId: "custom/not-in-catalog" };
+    const allowed = await runWithModel(TEXT_ONLY_MODEL, backup);
+    expect(allowed.request.fallbackModels).toEqual([
+      { provider: backup.provider, id: backup.modelId },
+    ]);
+    const refused = await runWithModel(TEXT_ONLY_MODEL, backup, false, false, false);
+    expect(refused.request.fallbackModels ?? []).toEqual([]);
   });
 
   it("persists the switched model against the current run lease", async () => {

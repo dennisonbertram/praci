@@ -637,7 +637,7 @@ export function SpaceSidebar({
                 onClick={toggleActivityMode}
                 className={`app-no-drag flex h-8 w-8 items-center justify-center rounded-full ${
                   activityMode
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-sidebar-accent text-foreground"
                     : "text-muted-foreground/70 hover:text-foreground/75"
                 }`}
               >

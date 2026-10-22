@@ -164,3 +164,30 @@ it("puts the filter pills behind one Filters button that shows how many are set"
   );
   expect(toggle()?.textContent).toBe("Filters2");
 });
+
+it("keeps the Filters button in the Stats view, where the pills are otherwise out of reach on a phone", () => {
+  act(() =>
+    root.render(
+      <FilterBar
+        query=""
+        onQuery={() => undefined}
+        searching={false}
+        statsView
+        filters={{}}
+        onFilters={() => undefined}
+        sort={null}
+        onSort={() => undefined}
+        types={[]}
+        parties={[]}
+        sources={[]}
+        hasDates={false}
+        folders={[]}
+        folderId={undefined}
+        onFolder={() => undefined}
+        onNewFolder={onNewFolder}
+      />,
+    ),
+  );
+  const toggle = container.querySelector<HTMLButtonElement>("button[aria-controls]");
+  expect(toggle?.classList.contains("hidden")).toBe(false);
+});

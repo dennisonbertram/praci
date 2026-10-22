@@ -1,5 +1,5 @@
 import type { AgentRunRequest } from "@rakazo/adapter-kit";
-import { INVESTORS_AGENT_BUILTIN_TOOLS } from "@rakazo/contracts";
+import { AI_DISCLOSURE_VERSION, INVESTORS_AGENT_BUILTIN_TOOLS } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
 import { createRunExecutor } from "./executor.js";
@@ -124,6 +124,7 @@ async function runInvestors(
       })),
     },
     aiDataConsent: {
+      findUnique: vi.fn(async () => ({ version: AI_DISCLOSURE_VERSION })),
       findFirst: vi.fn(async () => ({ userId: "user-1" })),
     },
     user: { findUnique: vi.fn(async () => null) },

@@ -120,6 +120,20 @@ function fakes(servers: FakeServer[]) {
 }
 
 describe("ensureCartaAgent", () => {
+  it("rewrites the old default description only, scoped to the actor", async () => {
+    const { botUpdateMany, deps } = fakes([]);
+    await ensureCartaAgent(deps, actor);
+    expect(botUpdateMany).toHaveBeenCalledWith({
+      where: {
+        id: "bot-1",
+        spaceId: "space-1",
+        userId: "user-1",
+        description: "Keeps your cap table and investor contacts.",
+      },
+      data: { description: "Reads Carta to keep your cap table and contacts current." },
+    });
+  });
+
   it("creates the bot by spawn key and names the contact tools and skills", async () => {
     const { createBot, deps } = fakes([]);
     await ensureCartaAgent(deps, actor);

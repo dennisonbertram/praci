@@ -51,6 +51,8 @@ it.each([
   ["always", "text-foreground", "lucide-check"],
   ["deny", "text-destructive", "lucide-x"],
   ["confirm-payment", "text-muted-foreground", null],
+  ["superseded", "text-muted-foreground", null],
+  ["expired", "text-muted-foreground", null],
 ])("shows the %s outcome without success green", (answer, colour, icon) => {
   const line = render(answer);
   expect(line.className).toContain(colour);
@@ -63,6 +65,8 @@ it.each([
   ["allow", "Approved"],
   ["always", "Always allowed"],
   ["deny", "Denied"],
+  ["superseded", "No longer active"],
+  ["expired", "Expired"],
 ])("words the %s answer as %s", (answer, words) => {
   expect(render(answer).textContent).toBe(words);
 });

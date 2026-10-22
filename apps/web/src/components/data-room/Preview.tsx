@@ -189,9 +189,20 @@ export function Preview({
   const canFullScreen =
     item.status !== "failed" && (sheet || (showFile && isShowable(item) && !file.failed));
   return (
+    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Escape closes the pane from any control inside it
     <aside
       aria-label={t`Preview`}
       data-testid="data-room-preview"
+      onKeyDown={(event) => {
+        // Not for keys from a menu or the full-screen dialog, which render in portals but bubble here.
+        if (
+          !inDialog &&
+          event.key === "Escape" &&
+          !event.defaultPrevented &&
+          event.currentTarget.contains(event.target as Node)
+        )
+          onClose();
+      }}
       className={
         inDialog
           ? "flex flex-col gap-3 p-4"

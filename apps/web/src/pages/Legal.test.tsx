@@ -463,6 +463,34 @@ it("says why Scan now is disabled, and what a missing consent hides", async () =
   expect(container.textContent).toContain("Connect a model in Settings first.");
 });
 
+it("shows a titled empty state when there are no contracts", async () => {
+  rpcMock.overview.mockResolvedValue(emptyOverview);
+  await render(<LegalPage />);
+  expect(container.querySelector("h2")?.textContent).toBe("No contracts yet");
+});
+
+it("shows the scan result below the tabs, so they never move", async () => {
+  vi.useFakeTimers();
+  try {
+    const withRun = (status: "running" | "completed") => ({
+      ...overview,
+      agent: { ...overview.agent, lastScanRun: { id: id(7), status, error: null } },
+    });
+    rpcMock.overview.mockResolvedValueOnce(overview).mockResolvedValue(withRun("running"));
+    rpcMock.scanNow.mockResolvedValue({ runId: id(7), botId: id(2) });
+    await render(<LegalPage />);
+    await click(button("Scan now"));
+    rpcMock.overview.mockResolvedValue(withRun("completed"));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    const result = container.querySelector("[role=status]");
+    const tabs = container.querySelector("[role=tablist]");
+    expect(result?.textContent).toContain("Scan finished");
+    expect(tabs?.compareDocumentPosition(result as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 it("says how many rows a scan added or changed, and when none did", async () => {
   vi.useFakeTimers();
   try {
@@ -902,6 +930,32 @@ it("opens no two deadline rows with the same words and leaves out an all-active 
   });
   await render(<LegalPage />);
   expect(container.textContent).not.toContain("Status");
+});
+
+it("shows the Status column only for two or more non-active contracts, else a chip by the title", async () => {
+  const [first, second] = contracts;
+  if (!first || !second) throw new Error("fixtures");
+  const one = [first, { ...second, status: "expired" as const }].map((c, i) =>
+    i === 0 ? { ...c, status: "active" as const } : c,
+  );
+  await render(<LegalContracts contracts={one} />);
+  expect([...container.querySelectorAll("thead th")].map((th) => th.textContent)).not.toContain(
+    "Status",
+  );
+  expect(container.querySelector("tbody")?.textContent).toContain("Expired");
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await render(
+    <LegalContracts
+      contracts={[
+        { ...first, status: "expired" as const },
+        { ...second, status: "draft" as const },
+      ]}
+    />,
+  );
+  expect([...container.querySelectorAll("thead th")].map((th) => th.textContent)).toContain(
+    "Status",
+  );
 });
 
 it("puts the contract name in the deadline title", async () => {

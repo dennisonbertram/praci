@@ -40,6 +40,7 @@ import {
   DEFAULT_BOT_COLOR,
   inferAttachmentMimeType,
   isActive,
+  isApprovalAskBlock,
   isRunTerminalEvent,
   latestAnswerableAskMessageId,
   matchesArtifactQuery,
@@ -213,7 +214,7 @@ import {
   rightPanelStorageKey,
   writeRightPanelState,
 } from "../lib/right-panel-state";
-import { rosterStatusChanged } from "../lib/roster-status";
+import { needsAnswerLabel, rosterStatusChanged } from "../lib/roster-status";
 import type { MissingBotSeen } from "../lib/route-bot";
 import { resolveRouteBot, shouldClearMissingBot, useGiveUpOnMissingBot } from "../lib/route-bot";
 import { rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
@@ -2459,6 +2460,12 @@ export function ShellPage() {
   }, []);
   const currentRuns = activeThreadRuns(activeSnapshot);
   const answerableAskMessageId = latestAnswerableAskMessageId(activeSnapshot);
+  const waitingOnApproval = Boolean(
+    answerableAskMessageId &&
+      activeSnapshot?.messages
+        .find((message) => message.id === answerableAskMessageId)
+        ?.blocks.some((block) => block.kind === "ask" && isApprovalAskBlock(block)),
+  );
   const workingRuns = currentRuns.filter((run) =>
     ["running", "queued", "leased"].includes(run.status),
   );
@@ -3793,15 +3800,15 @@ export function ShellPage() {
   }
 
   const embeddedScreenUrl = embeddableScreenUrl(screenUrl);
-  // A computer that is on without a screen, or has never run, would show a heading over an
-  // empty box; the panel is then just the bot's routines.
-  const noComputerScreen =
-    (computer?.state === "running" || computer?.state === "stopped" || !computer) &&
-    computer?.kind !== "desktop" &&
-    !embeddedScreenUrl &&
-    !computerError &&
-    !computerOpen &&
-    !showComputerRecoveryHint;
+  // Without a screen to show (whatever the computer's state), the panel is just the bot's
+  // routines: no heading over an empty box.
+  const noComputerScreen = isRoutinesOnlyPanel({
+    kind: computer?.kind,
+    hasScreen: Boolean(embeddedScreenUrl),
+    hasError: Boolean(computerError),
+    open: computerOpen,
+    showRecoveryHint: showComputerRecoveryHint,
+  });
   const hasControl = userHoldsComputerControl(computer, computerBot?.id);
   const hideScreenLoadError = computerErrorFromScreen && Boolean(embeddedScreenUrl);
   const computerScreenError =
@@ -4090,6 +4097,7 @@ export function ShellPage() {
               onRemoveDataRoomItem={removeDataRoomItem}
               attachmentNotice={attachmentNotice}
               onDismissAttachmentNotice={() => setAttachmentNotice(null)}
+              placeholder={waitingOnApproval ? needsAnswerLabel() : undefined}
               sendError={sendError}
               runError={displayedRunError}
               runErrorId={displayedRunErrorId}
@@ -4785,7 +4793,7 @@ export function ShellPage() {
                   ) : panel === "list" ? (
                     <Trans>List</Trans>
                   ) : active ? (
-                    computerScreenError ? null : (
+                    computerScreenError || noComputerScreen ? null : (
                       computerStateLabel(computer?.state)
                     )
                   ) : (
@@ -5047,7 +5055,15 @@ export function ShellPage() {
                 messageProviders={messagingProviders}
                 skills={agentSkills}
                 saving={savingRoutine}
-                running={runningRoutine}
+                // Stays on until the run itself finishes, not just until the request returns.
+                running={
+                  runningRoutine ||
+                  Boolean(
+                    editingRoutine &&
+                      snapshot?.run?.routineId === editingRoutine.id &&
+                      isActive(snapshot.run.status),
+                  )
+                }
                 error={routineError}
                 onBack={() => setPanel("computer")}
                 onClose={() => setPanel(null)}
@@ -5313,14 +5329,14 @@ export function ShellPage() {
                 navigate(contextBot ? `/app/${chat.id}` : `/app/g/${chat.id}`);
               });
             }}
-            onClear={() => {
-              setClearTarget(
-                contextBot
-                  ? { kind: "bot", chat: contextBot }
-                  : { kind: "group", chat: contextGroup! },
-              );
-              setBotMenu(null);
-            }}
+            onClear={
+              contextBot
+                ? undefined
+                : () => {
+                    setClearTarget({ kind: "group", chat: contextGroup! });
+                    setBotMenu(null);
+                  }
+            }
             onArchive={() => {
               setBotMenu(null);
               const request = contextBot
@@ -5987,6 +6003,23 @@ function computerPlaceholder(
   if (state === "suspended") return t`Computer is asleep. Open it to wake.`;
   if (state === "error") return t`Computer failed to boot`;
   return t`Computer is stopped`;
+}
+
+/** True when the panel has no computer screen to show, in any computer state: just routines. */
+export function isRoutinesOnlyPanel(input: {
+  kind: ComputerStatus["kind"] | undefined;
+  hasScreen: boolean;
+  hasError: boolean;
+  open: boolean;
+  showRecoveryHint: boolean;
+}) {
+  return (
+    input.kind !== "desktop" &&
+    !input.hasScreen &&
+    !input.hasError &&
+    !input.open &&
+    !input.showRecoveryHint
+  );
 }
 
 /** Panel heading for the bot computer, in words rather than the raw state slug. */

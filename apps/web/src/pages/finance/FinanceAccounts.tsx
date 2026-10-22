@@ -43,7 +43,6 @@ import {
   accountParts,
   dayAxisLabels,
   money,
-  moneyExact,
   monthAxisLabels,
   monthLabel,
   percentFigure,
@@ -213,13 +212,6 @@ export function FinanceAccountsPage({
   const fromSource = (rows: AccountRow[]) =>
     source ? rows.filter((a) => a.provider === source) : rows;
   const shownCash = data ? fromSource(data.cash) : [];
-  // Brex shares no card balance owed, so with Brex and no card row the figure is unknown, not zero.
-  // A Mercury-only view says nothing about cards.
-  const brexOwedUnknown =
-    data !== null &&
-    (source === null || source === "brex") &&
-    data.cardOwedCents === null &&
-    data.cash.some((a) => a.provider === "brex");
   // With no account and no crypto yet, a year-long $0 line says nothing.
   const anyBalance =
     (data?.cash.length ?? 0) + (data?.cards.length ?? 0) > 0 ||
@@ -316,8 +308,6 @@ export function FinanceAccountsPage({
                 sub={t`Not counted in cash`}
                 to={data.cards[0] ? financePath.account(data.cards[0].id) : undefined}
               />
-            ) : brexOwedUnknown ? (
-              <Kpi title={t`Card balance owed`} value="—" sub={t`Brex does not share it`} />
             ) : null}
             {source && sourceName && sourceSpend ? (
               <Kpi
@@ -482,14 +472,12 @@ export function FinanceAccountPage({ id }: { id: string }) {
                     <TableRow key={`${row.accountExternalId}:${row.month}`}>
                       <TableCell>{monthLabel(row.month)}</TableCell>
                       <TableCell className="text-end tabular-nums">
-                        {moneyExact(row.dividendsCents)}
+                        {money(row.dividendsCents)}
                       </TableCell>
                       <TableCell className="text-end tabular-nums text-muted-foreground">
-                        {moneyExact(row.feeCents)}
+                        {money(row.feeCents)}
                       </TableCell>
-                      <TableCell className="text-end tabular-nums">
-                        {moneyExact(row.netCents)}
-                      </TableCell>
+                      <TableCell className="text-end tabular-nums">{money(row.netCents)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
