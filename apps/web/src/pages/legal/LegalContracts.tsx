@@ -98,6 +98,12 @@ function Field({
   );
 }
 
+function withoutSelf(contract: LegalContract, selfName?: string): LegalContract {
+  const self = selfName?.trim().toLowerCase();
+  const others = contract.counterparties.filter((party) => party.trim().toLowerCase() !== self);
+  return self && others.length > 0 ? { ...contract, counterparties: others } : contract;
+}
+
 /** Active is the normal case and says nothing; only a contract that is not active gets a chip. */
 function Status({ status }: { status: LegalContractStatus }) {
   if (status === "active") return null;
@@ -113,7 +119,15 @@ function Status({ status }: { status: LegalContractStatus }) {
  * table with fixed column widths (so hiding amounts does not move the columns); narrow, one card
  * per contract, so nothing is cut off at the side.
  */
-export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
+export function LegalContracts({
+  contracts: all,
+  selfName,
+}: {
+  contracts: LegalContract[];
+  /** The company itself: every contract is with it, so it is left out of Parties. */
+  selfName?: string;
+}) {
+  const contracts = all.map((contract) => withoutSelf(contract, selfName));
   useHideAmounts();
   // Active is the normal case, so the column appears only when some contract is not.
   const showStatus = contracts.some((contract) => contract.status !== "active");
@@ -146,13 +160,13 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
           <Trans>Contracts</Trans>
         </caption>
         <colgroup>
-          <col className={showStatus ? "w-[21%]" : "w-[24%]"} />
+          <col className={showStatus ? "w-[21%]" : "w-[23%]"} />
           <col className={showStatus ? "w-[19%]" : "w-[21%]"} />
           {showStatus ? <col className="w-[7%]" /> : null}
-          <col className={showStatus ? "w-[17%]" : "w-[18%]"} />
-          <col className={showStatus ? "w-[17%]" : "w-[17%]"} />
-          <col className={showStatus ? "w-[8%]" : "w-[9%]"} />
-          <col className={showStatus ? "w-[11%]" : "w-[11%]"} />
+          <col className={showStatus ? "w-[16%]" : "w-[18%]"} />
+          <col className={showStatus ? "w-[14%]" : "w-[16%]"} />
+          <col className="w-[9%]" />
+          <col className="w-[13%]" />
         </colgroup>
         <TableHeader>
           <TableHeadRow>
@@ -187,7 +201,7 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
               <TableCell className="truncate" title={contract.title}>
                 <Title contract={contract} inline />
               </TableCell>
-              <TableCell className="truncate" title={contract.counterparties.join(", ")}>
+              <TableCell className="whitespace-normal" title={contract.counterparties.join(", ")}>
                 {contract.counterparties.join(", ") || dash}
               </TableCell>
               {showStatus ? (
@@ -195,10 +209,10 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
                   <Status status={contract.status} />
                 </TableCell>
               ) : null}
-              <TableCell className="truncate tabular-nums" title={term(contract)}>
+              <TableCell className="whitespace-normal tabular-nums" title={term(contract)}>
                 {term(contract)}
               </TableCell>
-              <TableCell className="truncate" title={renewal(contract)}>
+              <TableCell className="whitespace-normal" title={renewal(contract)}>
                 {renewal(contract)}
               </TableCell>
               <TableCell className="text-end tabular-nums">{value(contract)}</TableCell>

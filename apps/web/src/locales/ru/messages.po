@@ -914,6 +914,10 @@ msgstr "Добавьте подключённые модели, чтобы ис�
 msgid "Add contact"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Add contracts to your Data room and Legal reads them."
+msgstr ""
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Add credential"
 msgstr ""
@@ -925,6 +929,7 @@ msgstr ""
 #: src/components/data-room/DataRoomImportMenu.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/DataRoom.tsx
+#: src/pages/Legal.tsx
 msgid "Add files"
 msgstr ""
 

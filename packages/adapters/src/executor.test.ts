@@ -1323,6 +1323,14 @@ describe("directoryDescription", () => {
     expect(line).not.toContain("instead of messaging it");
   });
 
+  it("links a consent failure to the Settings switch, never to Integrations", () => {
+    for (const spawnKey of [financeAgentSpawnKey("u1"), "integration-agent:server-1"]) {
+      const line = directoryDescription({ description: "Works with the account.", spawnKey });
+      expect(line).toContain("[Open Settings](/app?settings=privacy)");
+      expect(line).toContain("never with an Integrations link");
+    }
+  });
+
   it("tells peers to message an integration agent too", () => {
     const integration = directoryDescription({
       description: "Works with the user's Mercury account.",

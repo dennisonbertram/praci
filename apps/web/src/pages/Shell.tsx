@@ -2416,6 +2416,15 @@ export function ShellPage() {
     setPanelState((current) => (current === "routine" ? null : current));
   }, [active?.id]);
 
+  // A link to /app?settings=privacy (agent replies use it for a missing AI consent) opens that switch.
+  useEffect(() => {
+    if (searchParams.get("settings") !== "privacy") return;
+    openSettings("privacy");
+    const next = new URLSearchParams(searchParams);
+    next.delete("settings");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   useEffect(() => {
     const messageId = searchParams.get("m");
     const routineId = searchParams.get("routine");
