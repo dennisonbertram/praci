@@ -523,7 +523,7 @@ export function BurnLines({
                   className="fill-card stroke-foreground"
                   strokeWidth={1.5}
                 />
-              ) : series.length === 1 || i === active ? (
+              ) : drawn.length === 1 || i === active ? (
                 <circle key={series[i]?.start} cx={px} cy={py} r={3} className="fill-foreground" />
               ) : null,
             )}

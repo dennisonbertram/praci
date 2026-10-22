@@ -329,6 +329,8 @@ it("stops the line before the running bucket, and keeps few buckets at the left 
     ]);
     expect(el.querySelector("[data-testid=burn-out-line]")).toBeNull();
     expect(el.querySelector("[data-testid=burn-out-end]")).not.toBeNull();
+    // The finished bucket is a filled dot without hover, so it does not vanish.
+    expect(el.querySelectorAll("circle.fill-foreground")).toHaveLength(1);
     act(() => root.unmount());
   });
 });

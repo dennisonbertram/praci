@@ -191,6 +191,7 @@ it("says what the month under way has cost, since the chart and the change stop 
       month: `2026-${m}`,
       cents: 200_000,
     })),
+    currentMonth: { month: "2026-10", cents: 240_000 },
     charges: [charge("a", "2026-10-16", -240_000), charge("b", "2026-09-16", -200_000)],
   } as unknown as FinanceVendorOutput);
   await act(async () =>

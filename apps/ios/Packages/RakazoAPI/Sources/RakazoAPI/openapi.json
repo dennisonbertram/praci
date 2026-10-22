@@ -25093,6 +25093,9 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "spaceId": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -25226,6 +25229,12 @@
                       },
                       "version": {
                         "type": "string"
+                      },
+                      "spaceId": {
+                        "type": "string"
+                      },
+                      "documentsOnly": {
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -25286,6 +25295,9 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "spaceId": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -42507,21 +42519,11 @@
                         "monthly": {
                           "type": "array",
                           "items": {
-                            "type": "object",
-                            "properties": {
-                              "month": {
-                                "$ref": "#/components/schemas/RpcFinanceVendorOutputSchema1"
-                              },
-                              "cents": {
-                                "$ref": "#/components/schemas/RpcFinanceVendorOutputSchema0"
-                              }
-                            },
-                            "required": [
-                              "month",
-                              "cents"
-                            ],
-                            "additionalProperties": false
+                            "$ref": "#/components/schemas/RpcFinanceVendorOutputSchema4"
                           }
+                        },
+                        "currentMonth": {
+                          "$ref": "#/components/schemas/RpcFinanceVendorOutputSchema4"
                         },
                         "charges": {
                           "type": "array",
@@ -66187,6 +66189,9 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "spaceId": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -66320,6 +66325,12 @@
                       },
                       "version": {
                         "type": "string"
+                      },
+                      "spaceId": {
+                        "type": "string"
+                      },
+                      "documentsOnly": {
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -66380,6 +66391,9 @@
                             ],
                             "additionalProperties": false
                           }
+                        },
+                        "spaceId": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -106809,6 +106823,22 @@
           "brex",
           "statement"
         ]
+      },
+      "RpcFinanceVendorOutputSchema4": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "$ref": "#/components/schemas/RpcFinanceVendorOutputSchema1"
+          },
+          "cents": {
+            "$ref": "#/components/schemas/RpcFinanceVendorOutputSchema0"
+          }
+        },
+        "required": [
+          "month",
+          "cents"
+        ],
+        "additionalProperties": false
       },
       "RpcFinanceWalletAddOutputSchema0": {
         "type": "string",
