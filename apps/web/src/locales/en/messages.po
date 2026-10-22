@@ -7151,10 +7151,6 @@ msgstr "No documents here name a party"
 msgid "No draft made, see Ask"
 msgstr "No draft made, see Ask"
 
-#: src/pages/Gtm.tsx
-msgid "No drafts"
-msgstr "No drafts"
-
 #: src/pages/investors/UpdateEditor.tsx
 msgid "no email"
 msgstr "no email"
@@ -7520,10 +7516,6 @@ msgstr "Nothing needs you right now."
 msgid "Nothing remembered yet"
 msgstr "Nothing remembered yet"
 
-#: src/pages/Gtm.tsx
-msgid "Nothing running"
-msgstr "Nothing running"
-
 #: src/pages/portal/PortalHome.tsx
 msgid "Nothing shared yet."
 msgstr "Nothing shared yet."
@@ -7572,6 +7564,10 @@ msgstr "Obligation"
 #: src/pages/Investors.tsx
 msgid "Off"
 msgstr "Off"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Off in Settings"
+msgstr "Off in Settings"
 
 #: src/components/integrations/IntegrationAgentSection.tsx
 msgid "Off: other agents reach {service} only through this agent."
