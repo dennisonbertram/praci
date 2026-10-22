@@ -27,6 +27,7 @@ const rpcMock = vi.hoisted(() => ({
   overview: vi.fn(),
   contacts: vi.fn(),
   contactSave: vi.fn(),
+  legalSafeCount: vi.fn(),
   contactDelete: vi.fn(),
   roundSave: vi.fn(),
   roundClose: vi.fn(),
@@ -45,6 +46,7 @@ const rpcMock = vi.hoisted(() => ({
 vi.mock("../lib/finance-connect", () => ({ connectFinanceProvider: rpcMock.connect }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
+    legal: { safeCount: rpcMock.legalSafeCount },
     contacts: { list: rpcMock.contacts, save: rpcMock.contactSave, delete: rpcMock.contactDelete },
     fundraising: {
       overview: rpcMock.overview,
@@ -185,6 +187,7 @@ beforeEach(() => {
   document.body.append(container);
   root = createRoot(container);
   rpcMock.contacts.mockResolvedValue([]);
+  rpcMock.legalSafeCount.mockResolvedValue({ count: 0 });
 });
 afterEach(() => {
   act(() => notificationToastManager.close());
@@ -372,6 +375,14 @@ it("shows an error with Try again when the page cannot load", async () => {
   rpcMock.overview.mockResolvedValue(overview(null, []));
   await click(button("Try again"));
   expect(container.querySelector('section[aria-label="Pipeline"]')).not.toBeNull();
+});
+
+it("hints at a SAFE found in Legal under No SAFEs yet, without counting it", async () => {
+  rpcMock.overview.mockResolvedValue(overview(null, []));
+  rpcMock.legalSafeCount.mockResolvedValue({ count: 1 });
+  await show();
+  const link = container.querySelector('a[href="/app/legal"]');
+  expect(link?.textContent).toBe("1 SAFE found in Legal");
 });
 
 it("shows quiet empty lines, not skeleton bars, once an empty overview arrived", async () => {

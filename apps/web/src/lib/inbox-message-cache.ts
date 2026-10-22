@@ -5,6 +5,8 @@ export type InboxMessageOutput = Awaited<ReturnType<typeof rpc.inbox.get>>;
 
 /** Fired on `window` after mail is archived or marked outside the Inbox page, so its list reloads. */
 export const INBOX_CHANGED_EVENT = "rakazo:inbox-changed";
+/** Sent with `detail` true or false as a row's More menu opens and closes, so the list can keep still under it. */
+export const ROW_MENU_EVENT = "rakazo:inbox-row-menu";
 
 const MAX_ENTRIES = 40;
 // Keyed by message id (globally unique). Holds the in-flight promise until it settles, then the value.

@@ -216,3 +216,76 @@ it("shows revenue when trimming leaves one month, or one full month plus the cur
   expect(two.el.querySelector("[data-testid=burn-revenue-point]")).not.toBeNull();
   two.done();
 });
+
+const markers = (el: Element) =>
+  [...el.querySelectorAll("circle")].map((c): [number, number] => [
+    Number(c.getAttribute("cx")),
+    Number(c.getAttribute("cy")),
+  ]);
+
+it("draws the partial month as one mark, with no two markers within 8 px", async () => {
+  const series = [
+    month(7, 100_000, 50_000),
+    month(8, 120_000, 60_000),
+    month(9, 130_000, 70_000),
+    // Barely started: spend and revenue are both near zero, so their dots would touch.
+    { ...month(10, 1_000, 500, true), financingCents: 1_500 },
+  ];
+  const { el, done } = await mount(
+    600,
+    <BurnLines label="Burn" height={200} series={series} onOpen={() => {}} />,
+  );
+  const pts = markers(el);
+  for (const [i, a] of pts.entries())
+    for (const b of pts.slice(i + 1))
+      expect(Math.hypot(a[0] - b[0], a[1] - b[1])).toBeGreaterThanOrEqual(8);
+  done();
+});
+
+it("keeps the partial month's financing marker 8 px from the revenue marker", async () => {
+  const series = [
+    month(8, 130_000, 70_000),
+    { ...month(9, 100_000, 10_000, true), financingCents: 15_000 },
+  ];
+  const { el, done } = await mount(
+    600,
+    <BurnLines label="Burn" height={200} series={series} onOpen={() => {}} />,
+  );
+  const pts = markers(el);
+  for (const [i, a] of pts.entries())
+    for (const b of pts.slice(i + 1))
+      expect(Math.hypot(a[0] - b[0], a[1] - b[1])).toBeGreaterThanOrEqual(8);
+  done();
+});
+
+it("starts quarters at the first one with data and fills the plot width", async () => {
+  const q = (start: string, outCents: number) => ({
+    start,
+    end: start,
+    outCents,
+    revenueCents: 0,
+    financingCents: 0,
+    partial: false,
+  });
+  const { el, done } = await mount(
+    600,
+    <BurnLines
+      label="Burn"
+      height={200}
+      granularity="quarter"
+      series={[
+        q("2025-01-01", 0),
+        q("2025-04-01", 0),
+        q("2025-07-01", 90_000),
+        q("2025-10-01", 120_000),
+      ]}
+      onOpen={() => {}}
+    />,
+  );
+  const labels = [...el.querySelectorAll("text")].map((t) => t.textContent);
+  expect(labels).not.toContain("Q1 '25");
+  expect(el.querySelectorAll("g[role=link]").length).toBe(2);
+  const rect = el.querySelector("g[role=link] rect") as SVGRectElement;
+  expect(Number(rect.getAttribute("width"))).toBeGreaterThan(200);
+  done();
+});

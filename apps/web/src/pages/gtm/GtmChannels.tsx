@@ -21,7 +21,7 @@ export function GtmChannels({ overview }: { overview: GtmOverview }) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>
+            <TableHead className="ps-4">
               <Trans>Channel</Trans>
             </TableHead>
             <TableHead>
@@ -59,7 +59,7 @@ export function GtmChannels({ overview }: { overview: GtmOverview }) {
                   : t`Approve every post`;
             return (
               <TableRow key={row.channel}>
-                <TableCell className="font-medium">{channel.label}</TableCell>
+                <TableCell className="ps-4 font-medium">{channel.label}</TableCell>
                 <TableCell className="max-w-48 whitespace-normal break-words text-muted-foreground">
                   {destination}
                   <span className="mt-1 block text-xs sm:hidden">{rule}</span>

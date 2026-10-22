@@ -23,6 +23,7 @@ import {
   legalConsentGrant,
   legalItemLinks,
   legalOverview,
+  legalSafeCount,
   legalScanNow,
   legalUpdateDeadline,
 } from "../../../apps/api/src/legal.ts";
@@ -652,6 +653,30 @@ describe.skipIf(!databaseAvailable)("legal tools (PostgreSQL)", () => {
       ["2029-05-01", "done"],
       ["2031-05-01", "open"],
     ]);
+  });
+
+  it("counts SAFEs read-only, without creating the Legal agent or its routine", async () => {
+    const c = await makeActor("safe");
+    extra.push(c);
+    const item = await addItem(c, "SAFE.pdf", "Simple Agreement for Future Equity");
+    const mk = (title: string, contractType: string) =>
+      prisma.legalContract.create({
+        data: {
+          spaceId: c.spaceId,
+          userId: c.userId,
+          dataRoomItemId: item.id,
+          title,
+          contractType,
+          status: "active",
+          analyzedRevision: 1,
+          analyzedAt: new Date(),
+        },
+      });
+    await mk("Ada SAFE", "SAFE");
+    await mk("Safety policy", "Safety policy");
+    expect(await legalSafeCount({ prisma }, c)).toEqual({ count: 1 });
+    expect(await prisma.bot.count({ where: { spaceId: c.spaceId } })).toBe(0);
+    expect(await prisma.routine.count({ where: { spaceId: c.spaceId } })).toBe(0);
   });
 
   it("lists recently done deadlines so a recurring one can get its next occurrence", async () => {

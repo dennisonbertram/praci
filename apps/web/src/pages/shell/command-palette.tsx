@@ -370,7 +370,7 @@ export function CommandPalette({
             ) : null}
             <span className="min-w-0 flex-1">
               <span className="block truncate font-medium text-foreground" dir="auto">
-                <Highlight text={maskCurrencyWhenHidden(entry.label)} needle={needle} clip />
+                <Highlight text={maskCurrencyWhenHidden(entry.label)} needle={needle} />
               </span>
               {detail ? (
                 <span className="block truncate text-[13px] text-muted-foreground" dir="auto">
@@ -474,8 +474,12 @@ export function CommandPalette({
           !shownGroups.length &&
           !shownActions.length &&
           !filteredBots.length ? (
-            <div className="flex justify-center py-4">
+            <div
+              role="status"
+              className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground"
+            >
               <Spinner aria-hidden="true" />
+              <Trans>Searching…</Trans>
             </div>
           ) : null}
           {searching ? null : (

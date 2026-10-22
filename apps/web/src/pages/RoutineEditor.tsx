@@ -31,6 +31,9 @@ import {
   PopoverContent,
   PopoverTrigger,
   Textarea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@rakazo/ui-web";
 import {
   ChevronLeft,
@@ -426,9 +429,30 @@ export function RoutineEditor({
               <Trans>Delete</Trans>
             </Button>
           ) : null}
-          <Button variant="secondary" disabled={!canTest} onClick={onTestRun}>
-            {running ? t`Running…` : t`Test run`}
-          </Button>
+          {editing ? (
+            <Button variant="secondary" disabled={!canTest} onClick={onTestRun}>
+              {running ? t`Running…` : t`Test run`}
+            </Button>
+          ) : (
+            // aria-disabled, not disabled, so hover and keyboard focus can still show the reason.
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="secondary"
+                    aria-disabled
+                    className="opacity-50"
+                    onClick={(event) => event.preventDefault()}
+                  />
+                }
+              >
+                <Trans>Test run</Trans>
+              </TooltipTrigger>
+              <TooltipContent>
+                <Trans>Save the routine first</Trans>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </div>
 
