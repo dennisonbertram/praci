@@ -1,4 +1,21 @@
 import type { Bot } from "@rakazo/contracts";
+import { useEffect } from "react";
+
+/** A route bot that stays unknown this long is treated as gone, so the link shows "not found". */
+export const ROUTE_BOT_GIVE_UP_MS = 3000;
+
+export function useGiveUpOnMissingBot(
+  waiting: boolean,
+  key: string | undefined,
+  giveUp: () => void,
+) {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: restart only when the wait or the route changes
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = setTimeout(giveUp, ROUTE_BOT_GIVE_UP_MS);
+    return () => clearTimeout(timer);
+  }, [waiting, key]);
+}
 
 /** The route's bot id was first missing from the list; refreshes numbered above `epoch` started after that. */
 export type MissingBotSeen = { id: string; epoch: number };

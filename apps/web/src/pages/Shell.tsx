@@ -243,11 +243,12 @@ import {
   compactRosterStatusLabel,
   rosterHasUndismissedRunError,
   rosterHeldFor,
+  rosterStatusChanged,
   rosterWorkStatusLabel,
 } from "../lib/roster-status";
 import { formatRosterTime } from "../lib/roster-time";
 import type { MissingBotSeen } from "../lib/route-bot";
-import { resolveRouteBot } from "../lib/route-bot";
+import { resolveRouteBot, useGiveUpOnMissingBot } from "../lib/route-bot";
 import { clearSpaceSelection, rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { readSeenRunErrorIds, rememberSeenRunErrorId } from "../lib/run-error-storage";
 import type { DataRoomRef } from "../lib/send-to-agent";
@@ -919,6 +920,10 @@ export function ShellPage() {
   // Activity is a quick look, not a place: it closes when you go somewhere and a reload starts closed.
   const [activityMode, setActivityMode] = useState(false);
   const toggleActivityMode = useCallback(() => setActivityMode((on) => !on), []);
+  // Activity sits above the chats: show it from its top, not from the row the list had settled on.
+  useEffect(() => {
+    if (activityMode) sidebarScrollRef.current?.scrollTo({ top: 0 });
+  }, [activityMode]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: close on every navigation
   useEffect(() => setActivityMode(false), [pathname]);
   const [botMenu, setBotMenu] = useState<{
@@ -1360,6 +1365,7 @@ export function ShellPage() {
     routeBotStart.current = { id: botId, epoch: botsRefreshEpoch.current };
   }, [botId]);
 
+  useGiveUpOnMissingBot(routeBot.waiting, botId, () => markMissing(window.location.pathname));
   // A route bot the list does not know yet (created on another page) gets one refresh before the
   // chat falls back to the first bot; the chat area keeps its loading state meanwhile.
   useEffect(() => {
@@ -1797,9 +1803,7 @@ export function ShellPage() {
         } else if (
           event.type === "bot.spawned" ||
           event.type === "bot.deleted" ||
-          event.type === "bot.updated" ||
-          event.type === "run.started" ||
-          isRunTerminalEvent(event) ||
+          rosterStatusChanged(event) ||
           event.type === "thread.cleared"
         ) {
           void refreshBots().catch(() => undefined);
@@ -1875,11 +1879,7 @@ export function ShellPage() {
           computerRef,
         ),
       onEvent: (event, _initial) => {
-        if (
-          event.type === "run.started" ||
-          event.type === "bot.updated" ||
-          isRunTerminalEvent(event)
-        ) {
+        if (rosterStatusChanged(event)) {
           void refreshBots().catch(() => undefined);
         }
         if (isRunTerminalEvent(event) || event.type === "run.waiting_input") {
@@ -1920,7 +1920,7 @@ export function ShellPage() {
               },
             ]
           : [];
-    return sidebarGroupsForSpaces(sidebarSpaces, "", bootstrapMe?.spaceId, t`Personal`);
+    return sidebarGroupsForSpaces(sidebarSpaces, "", bootstrapMe?.spaceId, null);
   }, [bootstrapMe, botSections, listedBots, groups, spaces, t]);
   // What the list shows now, so a drop can be turned into a move.
   const sidebarLayout = useMemo<SidebarLayout>(() => {
@@ -4277,10 +4277,15 @@ export function ShellPage() {
                 <InputGroupInput
                   readOnly
                   value=""
-                  onClick={() => setCommandPaletteOpen(true)}
+                  onClick={(e) => {
+                    // The drawer's box would keep the keyboard; the palette's own input takes it.
+                    e.currentTarget.blur();
+                    setCommandPaletteOpen(true);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
+                      e.currentTarget.blur();
                       setCommandPaletteOpen(true);
                     }
                   }}
@@ -4321,17 +4326,6 @@ export function ShellPage() {
                 >
                   <PanelLeftClose size={15} strokeWidth={1.8} aria-hidden="true" />
                 </button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="app-no-drag lg:hidden"
-                  aria-label={t`Close menu`}
-                  title={t`Close menu`}
-                  data-testid="close-mobile-sidebar"
-                  onClick={() => setMobileSidebarOpen(false)}
-                >
-                  <X size={16} strokeWidth={1.8} aria-hidden="true" />
-                </Button>
                 <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
                   <PopoverTrigger
                     className="app-no-drag flex h-8 w-8 items-center justify-center text-[21px] text-muted-foreground/70 hover:text-foreground/75"
@@ -4378,17 +4372,42 @@ export function ShellPage() {
                     />
                   </PopoverContent>
                 </Popover>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="app-no-drag lg:hidden"
+                  aria-label={t`Close menu`}
+                  title={t`Close menu`}
+                  data-testid="close-mobile-sidebar"
+                  onClick={() => setMobileSidebarOpen(false)}
+                >
+                  <X size={16} strokeWidth={1.8} aria-hidden="true" />
+                </Button>
               </div>
             )
           }
         />
+        {/* A page has no top band in the rail (the desktop app keeps one for its window controls), so the way back to the full sidebar sits here. */}
+        {rail && pageMode && !desktopBridge() ? (
+          <button
+            type="button"
+            data-testid="restore-bots-sidebar"
+            aria-label={t`Show sidebar`}
+            title={t`Show sidebar`}
+            onClick={() => setBotsSidebarCollapsedPref(false)}
+            className="app-no-drag mx-auto mt-1 grid size-9 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+          >
+            <PanelLeftOpen size={16} strokeWidth={1.8} aria-hidden="true" />
+          </button>
+        ) : null}
         {/* On a phone the pages and the chats scroll together; from lg up each keeps its own scroll. */}
         <div className="flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:contents">
           {bootstrapMe === undefined ? null : (
             // Waiting for the account (undefined) keeps pages the user hid from flashing in.
             // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
+            // On a phone Activity takes its place until it is closed, so the chats stay in view.
             <div
-              className={`flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:overflow-y-auto ${activityMode ? "lg:max-h-[16vh]" : "lg:max-h-[50vh]"}`}
+              className={`flex shrink-0 flex-col border-b border-border px-2.5 pb-1 lg:max-h-[50vh] lg:overflow-y-auto ${activityMode && !rail ? "max-lg:hidden" : ""}`}
             >
               <SidebarPagesGroup
                 title={t`Pages`}
@@ -5560,7 +5579,7 @@ export function ShellPage() {
           <div
             className={`app-drag flex items-center justify-between px-3 lg:px-[22px] ${
               pageMode
-                ? `${TOP_BAR_HEIGHT}${botsSidebarCollapsed ? "" : " lg:hidden"}${headerMenus > 0 ? " max-lg:hidden" : ""}`
+                ? `${TOP_BAR_HEIGHT}${botsSidebarCollapsed && desktopBridge() ? "" : " lg:hidden"}${headerMenus > 0 ? " max-lg:hidden" : ""}`
                 : `border-b border-sidebar-border ${TOP_BAR_HEIGHT}`
             }`}
           >
@@ -5577,7 +5596,7 @@ export function ShellPage() {
               >
                 <Menu size={19} strokeWidth={1.7} />
               </button>
-              {botsSidebarCollapsed ? (
+              {botsSidebarCollapsed && (!pageMode || desktopBridge()) ? (
                 <button
                   type="button"
                   data-testid="restore-bots-sidebar"
@@ -6880,7 +6899,7 @@ export function ShellPage() {
                 {!recordingSkill && hasControl ? (
                   computer?.takeoverRequested ? (
                     <span className="rounded-full bg-warning/15 px-[11px] py-1 text-[13px] text-warning">
-                      <Trans>Needs you</Trans>
+                      <Trans>Needs takeover</Trans>
                     </span>
                   ) : (
                     <span className="rounded-full bg-success/15 px-[11px] py-1 text-[13px] text-success">

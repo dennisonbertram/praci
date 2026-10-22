@@ -1,5 +1,6 @@
 import { useLingui } from "@lingui/react/macro";
 import { ChevronDown } from "lucide-react";
+import { needsAnswerLabel } from "../lib/roster-status";
 
 /**
  * One folded row in the chat list: every page and integration agent, or every email chat. Each page already opens
@@ -20,7 +21,7 @@ export function PageAgentsRow({
   open: boolean;
   count: number;
   needsYou: boolean;
-  /** Set when a run is held for the owner; other reasons for the dot keep the plain "Needs you". */
+  /** Set when a run is held for the owner; other reasons for the dot read "New". */
   heldFor?: "answer" | "takeover" | null;
   onToggle: () => void;
 }) {
@@ -46,10 +47,10 @@ export function PageAgentsRow({
           role="img"
           aria-label={
             heldFor === "answer"
-              ? t`Needs your answer`
+              ? needsAnswerLabel()
               : heldFor === "takeover"
                 ? t`Needs takeover`
-                : t`Needs you`
+                : t`New`
           }
           className="size-2 shrink-0 rounded-full bg-primary"
         />

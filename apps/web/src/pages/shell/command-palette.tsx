@@ -399,7 +399,7 @@ export function CommandPalette({
           ref={setListEl}
           onScroll={measureList}
           // The last results stay, dimmed, until the new ones arrive.
-          className={`max-h-[min(24rem,60vh)] transition-opacity ${searching ? "opacity-60" : ""}`}
+          className={`max-h-[min(27rem,60vh)] transition-opacity ${searching ? "opacity-60" : ""}`}
           aria-busy={searching}
           data-testid="command-palette-list"
         >

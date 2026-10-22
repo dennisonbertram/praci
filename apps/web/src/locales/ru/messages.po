@@ -6592,23 +6592,18 @@ msgid "Needs sign-in"
 msgstr ""
 
 #: src/components/PageAgentsRow.tsx
+#: src/lib/roster-status.ts
 #: src/pages/ActivityList.tsx
+#: src/pages/Shell.tsx
 msgid "Needs takeover"
 msgstr "Требуется передача управления"
 
-#: src/components/PageAgentsRow.tsx
-#: src/lib/roster-status.ts
-#: src/pages/ActivityList.tsx
 #: src/pages/Devin.tsx
 #: src/pages/devin/DevinSessions.tsx
-#: src/pages/Shell.tsx
 msgid "Needs you"
 msgstr "Требуется ваше участие"
 
-#: src/components/PageAgentsRow.tsx
-#: src/components/sidebar-glance.tsx
 #: src/lib/roster-status.ts
-#: src/pages/ActivityList.tsx
 msgid "Needs your answer"
 msgstr "Требуется ввод данных"
 
@@ -6631,6 +6626,7 @@ msgid "new"
 msgstr ""
 
 #: src/components/investors/ActionItems.tsx
+#: src/components/PageAgentsRow.tsx
 #: src/components/sidebar-glance.tsx
 #: src/pages/shell/transcript.tsx
 msgid "New"

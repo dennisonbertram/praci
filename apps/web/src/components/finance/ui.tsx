@@ -101,13 +101,8 @@ export function SpaceName() {
     current.name,
     spaces.map((space) => space.name),
   );
-  if (!onSwitchSpace || spaces.length < 2) {
-    return (
-      <span title={current.name} className="min-w-0 truncate ps-2 text-xs text-muted-foreground">
-        {label}
-      </span>
-    );
-  }
+  // The only company needs no name beside the title.
+  if (!onSwitchSpace || spaces.length < 2) return null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
