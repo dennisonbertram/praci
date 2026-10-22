@@ -608,14 +608,6 @@ msgid "{sourceName} spend"
 msgstr "{sourceName} spend"
 
 #: src/pages/Finance.tsx
-msgid "{sourceNames} · synced {updated}"
-msgstr "{sourceNames} · synced {updated}"
-
-#: src/pages/Finance.tsx
-msgid "{sourceNames} · syncing…"
-msgstr "{sourceNames} · syncing…"
-
-#: src/pages/Finance.tsx
 msgid "{stablecoins} stablecoins in runway"
 msgstr "{stablecoins} stablecoins in runway"
 
@@ -1711,6 +1703,10 @@ msgstr "Back to Inbox"
 #: src/pages/Shell.tsx
 msgid "Back to Investors"
 msgstr "Back to Investors"
+
+#: src/pages/DataRoom.tsx
+msgid "Back to Legal"
+msgstr "Back to Legal"
 
 #: src/pages/Auth.tsx
 msgid "Back to sign in"
@@ -7181,6 +7177,10 @@ msgstr "Nothing shared yet."
 msgid "Nothing to clean up. People you have written to or saved as contacts are left out."
 msgstr "Nothing to clean up. People you have written to or saved as contacts are left out."
 
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Notice deadlines are derived from the expiration date and the notice period."
+msgstr "Notice deadlines are derived from the expiration date and the notice period."
+
 #: src/components/NotificationSettings.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -8914,6 +8914,10 @@ msgid "Scan finished: nothing changed."
 msgstr "Scan finished: nothing changed."
 
 #: src/pages/Legal.tsx
+msgid "Scan is still running. Check back shortly."
+msgstr "Scan is still running. Check back shortly."
+
+#: src/pages/Legal.tsx
 msgid "Scan now"
 msgstr "Scan now"
 
@@ -9938,10 +9942,18 @@ msgstr "Sync failed"
 msgid "Sync failed."
 msgstr "Sync failed."
 
+#: src/pages/Finance.tsx
+msgid "synced {updated}"
+msgstr "synced {updated}"
+
 #: src/components/inbox/TodoCard.tsx
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Syncing"
 msgstr "Syncing"
+
+#: src/pages/Finance.tsx
+msgid "syncing…"
+msgstr "syncing…"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
