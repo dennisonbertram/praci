@@ -311,6 +311,12 @@ msgstr ""
 msgid "{0} settings"
 msgstr ""
 
+#. placeholder {0}: monthShort(running.month)
+#. placeholder {1}: money(running.cents)
+#: src/pages/finance/FinanceSpend.tsx
+msgid "{0} so far: {1}"
+msgstr ""
+
 #. placeholder {0}: statement.transactionCount
 #: src/components/finance/StatementReviewCard.tsx
 msgid "{0} transactions"
@@ -1061,10 +1067,6 @@ msgstr ""
 msgid "All"
 msgstr ""
 
-#: src/pages/Artifacts.tsx
-msgid "All bots"
-msgstr ""
-
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "All bots can use {0}."
@@ -1109,10 +1111,6 @@ msgstr ""
 
 #: src/pages/ActivityList.tsx
 msgid "All statuses"
-msgstr ""
-
-#: src/pages/Artifacts.tsx
-msgid "All time"
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
@@ -1362,6 +1360,10 @@ msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Approved"
+msgstr ""
+
+#: src/components/AskCard.tsx
+msgid "Approved here. Waiting for {waitsFor}"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -2591,7 +2593,6 @@ msgid "Compose"
 msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/transcript.tsx
 msgid "Computer"
 msgstr "कंप्यूटर"
@@ -2618,14 +2619,6 @@ msgstr "कंप्यूटर निष्क्रिय है"
 
 #: src/pages/Shell.tsx
 msgid "Computer is asleep. Open it to wake."
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Computer is off"
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Computer is on"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -2718,6 +2711,10 @@ msgstr "एक मॉडल कनेक्ट करें"
 
 #: src/pages/Legal.tsx
 msgid "Connect a model in Settings first."
+msgstr ""
+
+#: src/pages/ModelBackupsSettings.tsx
+msgid "Connect a provider to add backups."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -4827,20 +4824,11 @@ msgstr ""
 msgid "Filter by {label}"
 msgstr ""
 
-#: src/pages/Artifacts.tsx
-msgid "Filter by bot"
-msgstr ""
-
-#: src/pages/Artifacts.tsx
-msgid "Filter by date"
-msgstr ""
-
 #: src/pages/KnowledgeSection.tsx
 msgid "Filter memory"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
-#: src/pages/Artifacts.tsx
 msgid "Filters"
 msgstr ""
 
@@ -5209,10 +5197,6 @@ msgstr ""
 msgid "Has attachment"
 msgstr ""
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Has its own computer."
-msgstr ""
-
 #: src/pages/RoutineEditor.tsx
 msgid "header"
 msgstr ""
@@ -5474,6 +5458,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "In runway"
+msgstr ""
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "In use"
 msgstr ""
 
 #: src/pages/BillingSettingsPanel.tsx
@@ -6887,6 +6875,10 @@ msgstr ""
 msgid "No matches"
 msgstr ""
 
+#: src/pages/shell/command-palette.tsx
+msgid "No matches in pages, documents, contacts"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "No matches. Press Escape to send as typed."
 msgstr ""
@@ -7237,6 +7229,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Only if the server does not use sign-in"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Only this bot"
 msgstr ""
 
 #: src/components/fundraising/SafeList.tsx
@@ -7879,10 +7875,6 @@ msgstr ""
 #: src/pages/SettingsOverlay.tsx
 msgid "Privacy and approvals"
 msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Private"
-msgstr "निजी"
 
 #: src/components/integrations/ExchangeConnectDialog.tsx
 msgid "Private key"
@@ -8897,6 +8889,18 @@ msgid "Say yes or no, or answer in a sentence."
 msgstr "हां या ना कहें, या एक वाक्य में उत्तर दें।"
 
 #: src/pages/Legal.tsx
+msgid "Scan cancelled."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scan finished: {contractsChanged, plural, one {# contract} other {# contracts}} and {deadlinesAdded, plural, one {# deadline} other {# deadlines}} added or updated."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Scan finished: nothing changed."
+msgstr ""
+
+#: src/pages/Legal.tsx
 msgid "Scan now"
 msgstr ""
 
@@ -8924,6 +8928,7 @@ msgstr ""
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/Artifacts.tsx
 #: src/pages/Contacts.tsx
 #: src/pages/Investors.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -8949,7 +8954,7 @@ msgid "Search and read files and folders"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
-msgid "Search artifacts…"
+msgid "Search artifacts"
 msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
@@ -9295,13 +9300,13 @@ msgstr ""
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Shared with your other bots"
+msgstr ""
+
 #: src/components/cap-table/CapTableEditor.tsx
 #: src/components/cap-table/HoldingsTable.tsx
 msgid "Shares"
-msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Shares one computer with your other bots."
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -9984,10 +9989,6 @@ msgstr "कोई कार्य सिखाएं"
 #: src/pages/Shell.tsx
 msgid "Teaching in progress. Stop teaching before sending a new message."
 msgstr "सिखाना जारी है। नया संदेश भेजने से पहले सिखाना रोकें।"
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Team"
-msgstr "टीम"
 
 #: src/pages/Shell.tsx
 msgid "Team Computer"
@@ -10981,10 +10982,6 @@ msgstr ""
 msgid "Use your own key"
 msgstr "अपनी कुंजी इस्तेमाल करें"
 
-#: src/pages/ModelBackupsSettings.tsx
-msgid "Use your own model to add backups."
-msgstr ""
-
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationAgentSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -11346,6 +11343,10 @@ msgstr "काम चल रहा है…"
 
 #: src/lib/sidebar-page-copy.ts
 msgid "Workload and key people, from your connected tools"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Workspace"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx

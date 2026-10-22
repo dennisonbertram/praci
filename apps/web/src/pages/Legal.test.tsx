@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { ReactNode } from "react";
-import { act } from "react";
+import { act, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -297,6 +297,36 @@ it("marks overdue deadlines and closes one with Done", async () => {
   window.removeEventListener("rakazo:notifications-changed", sidebarRefresh);
 });
 
+it("keeps the Undo line when the page reloads without the closed row, and Undo restores it", async () => {
+  rpcMock.updateDeadline.mockResolvedValue({});
+  const Parent = () => {
+    const [rows, setRows] = useState(deadlines);
+    return (
+      <LegalDeadlines
+        deadlines={rows}
+        // The server lists open deadlines only, so a reload drops what was closed and returns what was reopened.
+        onChanged={() =>
+          setRows((now) =>
+            now.length === deadlines.length
+              ? now.filter((d) => d.id !== deadlines[0]?.id)
+              : deadlines,
+          )
+        }
+        today="2026-10-16"
+      />
+    );
+  };
+  await render(<Parent />);
+  await click(button(`Mark ${named(deadlines[0])} done`));
+  const items = container.querySelectorAll("li");
+  expect(items).toHaveLength(deadlines.length);
+  expect(items[0]?.textContent).toContain("Undo");
+  await click(button("Undo"));
+  expect(rpcMock.updateDeadline).toHaveBeenLastCalledWith({ id: deadlines[0]?.id, status: "open" });
+  expect(button("Undo")).toBeUndefined();
+  expect(container.textContent).toContain(deadlines[0]?.title);
+});
+
 it("keeps the deadline and shows the error when the update fails", async () => {
   rpcMock.updateDeadline.mockRejectedValue(new Error("nope"));
   await render(<LegalDeadlines deadlines={deadlines} onChanged={() => {}} today="2026-10-16" />);
@@ -431,6 +461,80 @@ it("says why Scan now is disabled, and what a missing consent hides", async () =
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false, recipients: [] });
   await render(<LegalPage />);
   expect(container.textContent).toContain("Connect a model in Settings first.");
+});
+
+it("says how many rows a scan added or changed, and when none did", async () => {
+  vi.useFakeTimers();
+  try {
+    const withRun = (base: typeof overview, status: "running" | "completed", run = 7) => ({
+      ...base,
+      agent: { ...base.agent, lastScanRun: { id: id(run), status, error: null } },
+    });
+    rpcMock.overview
+      .mockResolvedValueOnce(overview)
+      .mockResolvedValue(withRun(overview, "running"));
+    rpcMock.scanNow.mockResolvedValue({ runId: id(7), botId: id(2) });
+    await render(<LegalPage />);
+    await click(button("Scan now"));
+    // Same rows and dates: nothing changed.
+    rpcMock.overview.mockResolvedValue(withRun(overview, "completed"));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    expect(container.textContent).toContain("Scan finished: nothing changed.");
+    // A second scan that re-reads one contract and adds nothing else.
+    const reread = {
+      ...overview,
+      contracts: overview.contracts.map((c, i) =>
+        i === 0 ? { ...c, analyzedAt: "2026-10-17T09:00:00.000Z" } : c,
+      ),
+    };
+    rpcMock.scanNow.mockResolvedValue({ runId: id(8), botId: id(2) });
+    rpcMock.overview.mockResolvedValue(withRun(overview, "running", 8));
+    await click(button("Scan now"));
+    expect(container.textContent).not.toContain("Scan finished");
+    rpcMock.overview.mockResolvedValue(withRun(reread, "completed", 8));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    expect(container.textContent).toContain(
+      "Scan finished: 1 contract and 0 deadlines added or updated.",
+    );
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("reports a changed deadline date and a cancelled scan", async () => {
+  vi.useFakeTimers();
+  try {
+    const withRun = (
+      base: typeof overview,
+      status: "running" | "completed" | "cancelled",
+      run: number,
+    ) => ({
+      ...base,
+      agent: { ...base.agent, lastScanRun: { id: id(run), status, error: null } },
+    });
+    const moved = {
+      ...overview,
+      deadlines: overview.deadlines.map((d, i) => (i === 0 ? { ...d, dueDate: "2031-01-01" } : d)),
+    };
+    rpcMock.overview
+      .mockResolvedValueOnce(overview)
+      .mockResolvedValue(withRun(overview, "running", 7));
+    rpcMock.scanNow.mockResolvedValue({ runId: id(7), botId: id(2) });
+    await render(<LegalPage />);
+    await click(button("Scan now"));
+    rpcMock.overview.mockResolvedValue(withRun(moved, "completed", 7));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    expect(container.textContent).toContain("0 contracts and 1 deadline added or updated.");
+    rpcMock.scanNow.mockResolvedValue({ runId: id(8), botId: id(2) });
+    rpcMock.overview.mockResolvedValue(withRun(moved, "running", 8));
+    await click(button("Scan now"));
+    rpcMock.overview.mockResolvedValue(withRun(moved, "cancelled", 8));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    expect(container.textContent).toContain("Scan cancelled.");
+    expect(container.textContent).not.toContain("Scan finished");
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 it("keeps Scanning until the run ends, then shows the new time", async () => {
