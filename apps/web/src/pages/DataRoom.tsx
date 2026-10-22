@@ -404,6 +404,12 @@ export function DataRoomPage({
         setDialogOpen(narrow);
       }
     },
+    onClosePreview: narrow
+      ? undefined
+      : () => {
+          setPinned(null);
+          setPreviewOpen(false);
+        },
     onAction: (kind, item) => (kind === "retry" ? retry(item) : setAction({ kind, item })),
     // Tick boxes are for the list; the grid has its tiles' own menus.
     ...(view === "list" || searching
@@ -592,10 +598,9 @@ export function DataRoomPage({
       hasDates: facetValues.hasDates || shown.hasDates,
     };
   }, [rows, facetValues]);
-  const subfolderList = (showStatus?: boolean) => (
+  const subfolderList = () => (
     <SubfolderList
       tiles={view === "grid"}
-      showStatus={showStatus}
       contents={(folder) => folderContents(folder, folders)}
       folders={subfolders}
       onOpen={(folderId) => setFilters({ ...filters, folderId })}

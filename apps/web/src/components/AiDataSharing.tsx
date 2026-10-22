@@ -201,13 +201,21 @@ export function AiDataSharingSection() {
   const [documents, setDocuments] = useState<DataRoomConsentStatus | null>(null);
   // The scope and version shown, so a grant is refused if they changed since.
   const [shown, setShown] = useState<{ scope: string; version: string } | null>(null);
+  // Keys of the models that take part in chats (the status without the embedding model).
+  const [chatKeys, setChatKeys] = useState<Set<string>>(new Set());
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const loadChatKeys = () =>
+    aiConsentStatus(["model"]).then(
+      (status) => setChatKeys(new Set(status.recipients.map((r) => r.key))),
+      () => undefined,
+    );
   const show = (status: AiConsentStatus) => {
     setShown({ scope: status.scope, version: status.version });
     setRecipients(status.recipients.filter((recipient) => recipient.use === "model"));
   };
   const load = () => {
+    loadChatKeys();
     aiConsentStatus()
       .then(show)
       .catch(() => setRecipients([]));
@@ -220,6 +228,7 @@ export function AiDataSharingSection() {
   };
   useEffect(() => {
     let live = true;
+    loadChatKeys();
     aiConsentStatus()
       .then((status) => live && show(status))
       .catch(() => live && setRecipients([]));
@@ -338,7 +347,20 @@ export function AiDataSharingSection() {
                     disabled={pending}
                     onCheckedChange={(allowed) => setOne(recipient, allowed)}
                   />
-                  <span className="text-[14px] text-foreground/75">{model}</span>
+                  <span className="flex min-w-0 flex-col">
+                    <span className="text-[14px] text-foreground/75">{model}</span>
+                    <span className="text-[12.5px] text-muted-foreground">
+                      {documents?.recipients.some((r) => r.detail === recipient.detail) ? (
+                        chatKeys.has(recipient.key) ? (
+                          <Trans>Send chats, mail and document text</Trans>
+                        ) : (
+                          <Trans>Reads document text</Trans>
+                        )
+                      ) : (
+                        <Trans>Send chats and mail text</Trans>
+                      )}
+                    </span>
+                  </span>
                 </li>
               );
             })}
@@ -350,8 +372,13 @@ export function AiDataSharingSection() {
                   disabled={pending}
                   onCheckedChange={setDocumentsAllowed}
                 />
-                <span className="text-[14px] text-foreground/75">
-                  <Trans>Documents</Trans>
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-[14px] text-foreground/75">
+                    <Trans>Documents</Trans>
+                  </span>
+                  <span className="text-[12.5px] text-muted-foreground">
+                    <Trans>Send files and contracts</Trans>
+                  </span>
                 </span>
               </li>
             ) : null}

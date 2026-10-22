@@ -37,7 +37,10 @@ vi.mock("@rakazo/ui-web", () => ({
 vi.mock("../lib/auth-capabilities", () => ({ fetchAuthCapabilities: vi.fn() }));
 vi.mock("../lib/auth", () => ({
   authClient: {
-    signIn: { social: vi.fn(async () => ({})) },
+    signIn: {
+      social: vi.fn(async () => ({})),
+      email: vi.fn(async () => ({ error: { code: "INVALID_EMAIL_OR_PASSWORD", message: "no" } })),
+    },
     requestPasswordReset: vi.fn(async () => ({})),
     resetPassword: vi.fn(async () => ({})),
   },
@@ -243,6 +246,26 @@ it("names the sign-in button Sign in and keeps room for an error line", async ()
   expect(host.querySelector('button[type="submit"]')?.textContent).toBe("Sign in");
   // The alert line exists before any error, so showing one moves no field.
   expect(host.querySelector('[role="alert"]')?.textContent).toBe("");
+});
+
+it("puts focus back on the email field after a failed sign-in", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({
+    ...capabilities,
+    sso: null,
+    passwordAuth: true,
+  });
+  await render("in");
+  await act(async () => {
+    setValue(host.querySelector<HTMLInputElement>('input[name="email"]')!, "maya@example.com");
+    setValue(host.querySelector<HTMLInputElement>('input[type="password"]')!, "wrong-password");
+  });
+  (host.querySelector('button[type="submit"]') as HTMLButtonElement).focus();
+  await act(async () => {
+    host
+      .querySelector("form")
+      ?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  expect(document.activeElement).toBe(host.querySelector('input[name="email"]'));
 });
 
 it("shows the 8-character rule in red on the page, not as a native bubble", async () => {

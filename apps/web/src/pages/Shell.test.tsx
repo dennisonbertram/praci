@@ -49,6 +49,7 @@ import {
   Composer,
   chatIsOpening,
   findDocumentsAndArtifacts,
+  isRoutinesOnlyPanel,
   retryAfterStop,
   Transcript,
 } from "./Shell";
@@ -1218,5 +1219,15 @@ describe("search result details", () => {
     const { documents, artifacts } = await findDocumentsAndArtifacts("a");
     expect(documents[0]?.detail).not.toContain("1,250");
     expect(artifacts[0]?.detail).not.toContain("9,900");
+  });
+});
+
+describe("isRoutinesOnlyPanel", () => {
+  it("hides the computer block without a screen, whatever the computer state", () => {
+    const base = { hasScreen: false, hasError: false, open: false, showRecoveryHint: false };
+    expect(isRoutinesOnlyPanel({ ...base, kind: undefined })).toBe(true);
+    expect(isRoutinesOnlyPanel({ ...base, kind: "desktop" })).toBe(false);
+    expect(isRoutinesOnlyPanel({ ...base, kind: undefined, hasScreen: true })).toBe(false);
+    expect(isRoutinesOnlyPanel({ ...base, kind: undefined, hasError: true })).toBe(false);
   });
 });
