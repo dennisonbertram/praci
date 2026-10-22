@@ -201,6 +201,10 @@ import {
   FundraiseRoundSchema,
   FundraisingOverviewSchema,
   ProspectSaveInputSchema,
+  SafeAssignInputSchema,
+  SafeMarkInputSchema,
+  SafeSaveInputSchema,
+  SafeSchema,
 } from "./fundraising.js";
 import { Id, IsoDate } from "./ids.js";
 import {
@@ -241,6 +245,9 @@ import {
   IntegrationSetupStateSchema,
 } from "./integration-settings.js";
 import {
+  AuditRequestListInputSchema,
+  AuditRequestSchema,
+  AuditRequestUpdateInputSchema,
   InvestorPostResultSchema,
   InvestorReminderCadenceSchema,
   InvestorShareInputSchema,
@@ -299,6 +306,7 @@ import {
   SidebarSnapshotSchema,
 } from "./sidebar-folders.js";
 import { SidebarPageInputSchema, SidebarPagesStateSchema } from "./sidebar-pages.js";
+import { ZernioPostingCapabilitySchema } from "./zernio.js";
 
 const botId = z.object({ botId: Id });
 const groupId = z.object({ groupId: Id });
@@ -1536,6 +1544,12 @@ export const appContract = {
     replaceKey: oc.input(DevinKeyInputSchema).output(z.object({ ok: z.literal(true) })),
     disconnect: oc.output(z.object({ ok: z.literal(true) })),
   },
+  gtm: {
+    /** Idempotent: creates the GTM agent and hourly work routine. */
+    agent: oc.output(BotSchema),
+    /** Configuration status for app-owned Zernio posting; never validates a live API key. */
+    postingCapability: oc.output(ZernioPostingCapabilitySchema),
+  },
   legal: {
     /** Idempotent: creates the Legal agent and its daily scan routine; returns the bot to open in the side panel. */
     agent: oc.output(BotSchema),
@@ -1593,6 +1607,14 @@ export const appContract = {
     portalResend: oc.input(PortalResendInputSchema).output(PortalResendResultSchema),
     portalRevoke: oc.input(z.object({ contactId: Id })).output(ContactSchema),
     portalUnblock: oc.input(z.object({ contactId: Id })).output(ContactSchema),
+    audits: {
+      /** Open and drafted requests; with `includeDone`, closed ones too (history). */
+      list: oc.input(AuditRequestListInputSchema).output(z.array(AuditRequestSchema)),
+      /** Mark done or Dismiss; a closed request is never reopened. */
+      update: oc.input(AuditRequestUpdateInputSchema).output(AuditRequestSchema),
+      /** Starts the Investors agent's drafting run for a request still waiting for one. */
+      draft: oc.input(z.object({ id: Id })).output(AuditRequestSchema),
+    },
     /** Reads the update reminder; with `cadence` it changes the monthly routine first. */
     reminder: oc
       .input(z.object({ cadence: InvestorReminderCadenceSchema.optional() }))
@@ -1600,6 +1622,8 @@ export const appContract = {
   },
   fundraising: {
     overview: oc.output(FundraisingOverviewSchema),
+    /** Reads Mercury's SAFEs now, past the 15-minute throttle. */
+    refresh: oc.output(z.object({ ok: z.literal(true) })),
     round: {
       /** Starts the round, or edits the open one when `id` is given; CONFLICT when a round is already open. */
       save: oc.input(FundraiseRoundSaveInputSchema).output(FundraiseRoundSchema),
@@ -1609,6 +1633,22 @@ export const appContract = {
     },
     prospects: {
       save: oc.input(ProspectSaveInputSchema).output(ContactSchema),
+      /** Send SAFE with Mercury: marks the prospect Waiting for Mercury; CONFLICT with an active SAFE, BAD_REQUEST without an email. */
+      markWaiting: oc.input(z.object({ id: Id })).output(ContactSchema),
+      /** Clears Waiting for Mercury. */
+      notSent: oc.input(z.object({ id: Id })).output(ContactSchema),
+    },
+    safes: {
+      list: oc.output(z.array(SafeSchema)),
+      /** Adds a native Draft; CONFLICT when the contact already has a SAFE, BAD_REQUEST without a cap. */
+      save: oc.input(SafeSaveInputSchema).output(SafeSchema),
+      /** Native SAFEs only; CONFLICT for a Mercury SAFE or canceling a Funded one. */
+      mark: oc.input(SafeMarkInputSchema).output(SafeSchema),
+      delete: oc.input(z.object({ id: Id })).output(z.object({ ok: z.literal(true) })),
+      /** A Mercury SAFE with no contact gets one; CONFLICT when it already has one or is native. */
+      assign: oc.input(SafeAssignInputSchema).output(SafeSchema),
+      /** Detaches a Mercury SAFE from its contact. */
+      unassign: oc.input(z.object({ id: Id })).output(SafeSchema),
     },
   },
   carta: {

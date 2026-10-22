@@ -15,6 +15,7 @@ import {
   paidWithLabel,
   shareText,
   shortDay,
+  totalPercent,
   transactionAmount,
   trendText,
   txnDay,
@@ -170,5 +171,15 @@ describe("figures the Finance pages derive from amounts", () => {
     expect(changeText(0)).not.toMatch(/\d/);
     expect(axisMoney(-250_000)).not.toMatch(/\d/);
     expect(txnDay({ purchasedAt: null, postedAt: "2026-10-01T00:00:00Z" })).toBe("2026-10-01");
+  });
+});
+
+describe("totalPercent", () => {
+  it("is null when no ownership is known", () => {
+    expect(totalPercent([])).toBeNull();
+    expect(totalPercent([null, undefined])).toBeNull();
+  });
+  it("sums the known values", () => {
+    expect(totalPercent([60, null, 40])).toBe(100);
   });
 });

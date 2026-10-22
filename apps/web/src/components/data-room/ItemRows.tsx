@@ -26,6 +26,7 @@ import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-p
 import {
   dateText,
   isSettled,
+  isStuck,
   isUnreadable,
   readingAge,
   stageLabel,
@@ -79,7 +80,7 @@ function FileContext({
           menu="context"
           item={item}
           onAction={o.onAction}
-          canRetry={item.status === "failed"}
+          canRetry={item.status === "failed" || isStuck(item)}
           agents={o.agents}
           onSendToAgent={o.onSendToAgent}
         />
@@ -168,10 +169,10 @@ const DASH = "—";
 const empty = <span className="text-muted-foreground">{DASH}</span>;
 /** Hidden until the list pane is wide enough, then shown as a table cell. */
 const MID_COL = "hidden @min-[640px]/list:table-cell";
-const PARTIES_COL = "hidden @min-[900px]/list:table-cell";
+const PARTIES_COL = "hidden @min-[800px]/list:table-cell";
 // A <col> must show as table-column: table-cell on it breaks the fixed column sizing.
 const MID_COLUMN = "hidden @min-[640px]/list:table-column";
-const PARTIES_COLUMN = "hidden @min-[900px]/list:table-column";
+const PARTIES_COLUMN = "hidden @min-[800px]/list:table-column";
 /** The "⋯" shows on hover or focus, while its menu is open, and always on touch screens. */
 const ROW_ACTIONS =
   "opacity-0 group-hover/row:opacity-100 group-focus-visible/row:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100 pointer-coarse:opacity-100";
@@ -189,7 +190,7 @@ function Columns({ showStatus }: { showStatus: boolean }) {
       <col className={cn(MID_COLUMN, "w-36")} />
       <col className={cn(MID_COLUMN, "w-24")} />
       <col className={cn(PARTIES_COLUMN, "w-36 @min-[1100px]/list:w-auto")} />
-      <col className={cn(showStatus ? MID_COLUMN : "hidden", "w-20")} />
+      <col className={cn(MID_COLUMN, "w-20")} />
       <col className="w-7" />
     </colgroup>
   );
@@ -239,11 +240,8 @@ function ListHead({
         <TableHead className={PARTIES_COL}>
           <Trans>Parties</Trans>
         </TableHead>
-        {showStatus ? (
-          <TableHead className={MID_COL}>
-            <Trans>Status</Trans>
-          </TableHead>
-        ) : null}
+        {/* Always there, so the columns do not shift between a folder with a file being read and one without. */}
+        <TableHead className={MID_COL}>{showStatus ? <Trans>Status</Trans> : null}</TableHead>
         <TableHead />
       </TableHeadRow>
     </TableHeader>
@@ -256,7 +254,7 @@ function ListHead({
  * opens the preview.
  */
 function RetryButton({ item, o }: { item: DataRoomApiItem; o: RowInteraction }) {
-  const unreadable = isUnreadable(item.error);
+  const unreadable = item.status === "failed" && isUnreadable(item.error);
   return (
     <Button
       variant="outline"
@@ -290,8 +288,13 @@ function ItemRow({
   showStatus: boolean;
 }) {
   const label = statusLabel(item.status);
-  // ponytail: age since the file was added, so a retried file shows its full age; an item field would be exact.
-  const age = label && item.status !== "failed" ? readingAge(item.createdAt) : "";
+  const stuck = isStuck(item);
+  const age =
+    label && item.status !== "failed"
+      ? stuck
+        ? t`Taking longer than usual`
+        : readingAge(item.updatedAt)
+      : "";
   const folder = item.folderId === (o.openFolderId ?? null) ? "" : o.folderPath(item.folderId);
   const parties = item.facets.parties.join(", ");
   const type = typeLabel(item.facets.docType);
@@ -366,7 +369,7 @@ function ItemRow({
                 {item.error}
               </span>
             ) : null}
-            {item.status === "failed" ? (
+            {item.status === "failed" || stuck ? (
               <span>
                 <RetryButton item={item} o={o} />
               </span>
@@ -382,7 +385,7 @@ function ItemRow({
         className={cn(MID_COL, "truncate text-muted-foreground")}
         title={type || undefined}
       >
-        {type || (isSettled(item.status) ? <NotTagged /> : empty)}
+        {type || empty}
       </TableCell>
       <TableCell className={cn(MID_COL, "truncate text-muted-foreground tabular-nums")}>
         {date || empty}
@@ -394,22 +397,22 @@ function ItemRow({
       >
         {parties || empty}
       </TableCell>
-      {showStatus ? (
-        <TableCell
-          data-testid="data-room-status"
-          className={MID_COL}
-          title={item.status === "failed" ? (item.error ?? undefined) : undefined}
-        >
-          {label ? (
-            <Badge variant={item.status === "failed" ? "destructive" : "secondary"}>{label}</Badge>
-          ) : null}
-        </TableCell>
-      ) : null}
+      <TableCell
+        data-testid="data-room-status"
+        className={MID_COL}
+        title={item.status === "failed" ? (item.error ?? undefined) : undefined}
+      >
+        {label ? (
+          <Badge variant={item.status === "failed" ? "destructive" : "secondary"}>{label}</Badge>
+        ) : showStatus ? (
+          empty
+        ) : null}
+      </TableCell>
       <TableCell className="pe-0">
         <ItemMenu
           item={item}
           onAction={o.onAction}
-          canRetry={item.status === "failed"}
+          canRetry={item.status === "failed" || isStuck(item)}
           agents={o.agents}
           onSendToAgent={o.onSendToAgent}
           triggerTabIndex={-1}
@@ -493,7 +496,7 @@ export function SubfolderList({
               <span className="shrink-0 text-xs text-muted-foreground">{contents(folder)}</span>
             </Button>
           </TableCell>
-          <TableCell colSpan={showStatus ? 3 : 2} className={MID_COL} />
+          <TableCell colSpan={3} className={MID_COL} />
           <TableCell className={PARTIES_COL} />
           <TableCell className="pe-0">
             <ItemMenu item={folder} onAction={onAction} className={ROW_ACTIONS} />
@@ -673,7 +676,7 @@ export function GridView({
           <ItemMenu
             item={item}
             onAction={o.onAction}
-            canRetry={item.status === "failed"}
+            canRetry={item.status === "failed" || isStuck(item)}
             agents={o.agents}
             onSendToAgent={o.onSendToAgent}
             triggerTabIndex={-1}
@@ -703,27 +706,22 @@ export function GridView({
                 </span>
               </>
             ) : statusLabel(item.status) ? (
-              <span>{readingAge(item.createdAt) || statusLabel(item.status)}</span>
+              <span>
+                {isStuck(item)
+                  ? t`Taking longer than usual`
+                  : readingAge(item.updatedAt) || statusLabel(item.status)}
+              </span>
             ) : (
               <>
-                <span>{typeLabel(item.facets.docType) || <NotTagged />}</span>
+                <span>{typeLabel(item.facets.docType) || DASH}</span>
                 <span>{dateOf(item, sortField)}</span>
               </>
             )}
           </span>
-          {item.status === "failed" ? <RetryButton item={item} o={o} /> : null}
+          {item.status === "failed" || isStuck(item) ? <RetryButton item={item} o={o} /> : null}
         </FileContext>
       ))}
     </ul>
-  );
-}
-
-/** Read, but not tagged: AI reading was off (or "Not now") when it arrived. */
-function NotTagged() {
-  return (
-    <span className="text-muted-foreground/70">
-      <Trans>Not tagged</Trans>
-    </span>
   );
 }
 
@@ -737,15 +735,7 @@ function TypeAndDate({
 }) {
   const type = typeLabel(item.facets.docType);
   const date = dateOf(item, sortField);
-  if (!type && isSettled(item.status)) {
-    return (
-      <>
-        <NotTagged />
-        {date ? ` · ${date}` : null}
-      </>
-    );
-  }
-  return <>{[type, date].filter(Boolean).join(" · ")}</>;
+  return <>{[type || (isSettled(item.status) ? DASH : ""), date].filter(Boolean).join(" · ")}</>;
 }
 
 /** A search snippet as text and <mark> elements. The snippet is never parsed as HTML. */

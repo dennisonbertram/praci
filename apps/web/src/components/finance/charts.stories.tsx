@@ -105,6 +105,25 @@ export const BurnDays: Story = {
   ),
 };
 
+/** A raise two days before the right edge: its label hugs the edge instead of running past it. */
+export const BurnFinancingNearEdge: Story = {
+  render: () => (
+    <BurnLines
+      granularity="day"
+      label="Cash out by day"
+      onOpen={() => undefined}
+      series={dayCents.map((outCents, i) => ({
+        start: `2026-10-${String(i + 1).padStart(2, "0")}`,
+        end: `2026-10-${String(i + 1).padStart(2, "0")}`,
+        outCents,
+        revenueCents: 0,
+        financingCents: i === dayCents.length - 3 ? 25_000_000 : 0,
+        partial: false,
+      }))}
+    />
+  ),
+};
+
 const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 /** Invented buckets: `count` of `months` months (0 for weeks) ending with the one holding 2026-10-14. */
 const buckets = (count: number, months: number) =>

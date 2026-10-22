@@ -57,6 +57,7 @@ import {
   AgentStack,
   CardHead,
   IntegrationTile,
+  MenuSlot,
   OPEN_LINK,
   PHONE_ROW,
   SectionTitle,
@@ -91,9 +92,12 @@ function Card({ children, row }: { children: ReactNode; row?: boolean }) {
 /** Opens the app page an integration feeds (Inbox, Investors), like Mercury's "Open Finance". */
 function OpenPageLink({ to, children }: { to: string; children: ReactNode }) {
   return (
-    <Link to={to} className={OPEN_LINK}>
-      {children}
-    </Link>
+    <>
+      <Link to={to} className={OPEN_LINK}>
+        {children}
+      </Link>
+      <MenuSlot />
+    </>
   );
 }
 

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { BookUser, MessageSquare, Search } from "lucide-react";
 import { screen, userEvent } from "storybook/test";
 import { withPageBehind } from "../../stories/decorators";
 import { detailedBots } from "../../stories/fixtures";
@@ -45,6 +46,14 @@ export const NoSearchMatch: Story = {
   },
 };
 
+/** The search is still running: the list stays empty, with no "No results". */
+export const SearchPending: Story = {
+  args: { searchLinks: () => new Promise(() => undefined) },
+  play: async () => {
+    await userEvent.type(await screen.findByTestId("command-palette-search"), "zzzz");
+  },
+};
+
 export const Closed: Story = { args: { open: false } };
 
 export const SearchFindsPage: Story = {
@@ -59,7 +68,14 @@ export const SearchFindsContactsAndChats: Story = {
   args: {
     searchLinks: async () => [
       {
+        heading: "Mail",
+        first: true,
+        icon: <Search size={16} strokeWidth={1.75} />,
+        entries: [{ id: "/app/inbox?q=halcyon", label: "Search mail for “halcyon”" }],
+      },
+      {
         heading: "Contacts",
+        icon: <BookUser size={16} strokeWidth={1.75} />,
         entries: [
           {
             id: "/app/contacts?q=Ada%20Example",
@@ -75,6 +91,7 @@ export const SearchFindsContactsAndChats: Story = {
       },
       {
         heading: "Chats",
+        icon: <MessageSquare size={16} strokeWidth={1.75} />,
         entries: [
           {
             id: "/app/g/g1?m=m1",
@@ -83,10 +100,6 @@ export const SearchFindsContactsAndChats: Story = {
             date: "Oct 3",
           },
         ],
-      },
-      {
-        heading: "Mail",
-        entries: [{ id: "/app/inbox?q=halcyon", label: "Search mail for “halcyon”" }],
       },
     ],
   },

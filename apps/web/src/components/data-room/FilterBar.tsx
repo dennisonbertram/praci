@@ -287,6 +287,16 @@ export function FilterBar({
     filters.legalUnchecked,
     filters.source,
   ].filter(Boolean).length;
+  const sortControl = (
+    <SortControl
+      fields={fields.map((name) => [name, labels[name]])}
+      field={field}
+      fieldLabel={labels[field]}
+      direction={sort ? direction : undefined}
+      onField={(next) => onSort(next === "relevance" ? null : naturalSort(next as SortField))}
+      onDirection={(next) => sort && onSort({ ...sort, direction: next })}
+    />
+  );
   return (
     // Search and Sort share the first row; the filter pills wrap on a row of their own below, or,
     // given room, between the two. Sort never moves down among the pills.
@@ -422,23 +432,21 @@ export function FilterBar({
             onChange={(source) => onFilters({ ...filters, source })}
           />
         ) : null}
+        {/* On a phone Sort ends the filter row; alone it took a row of its own above the chips. */}
+        {pillsOpen && !statsView ? (
+          <div className="ms-auto flex items-center gap-0.5 @min-[640px]/bd:hidden">
+            {sortControl}
+          </div>
+        ) : null}
       </div>
       {trailing ? (
-        <div className="order-3 ms-auto flex items-center @min-[640px]/bd:hidden">{trailing}</div>
+        <div className="order-3 ms-auto flex h-8 items-center @min-[640px]/bd:hidden">
+          {trailing}
+        </div>
       ) : null}
       {statsView ? null : (
-        <div
-          className={`order-3 ms-auto flex h-8 shrink-0 items-center gap-0.5 ${pillsOpen ? "" : "@max-[639px]/bd:hidden"} @min-[960px]/bd:order-4`}
-        >
-          {/* Relevance has no direction, so the arrow only shows for a field sort. */}
-          <SortControl
-            fields={fields.map((name) => [name, labels[name]])}
-            field={field}
-            fieldLabel={labels[field]}
-            direction={sort ? direction : undefined}
-            onField={(next) => onSort(next === "relevance" ? null : naturalSort(next as SortField))}
-            onDirection={(next) => sort && onSort({ ...sort, direction: next })}
-          />
+        <div className="order-3 ms-auto flex h-8 shrink-0 items-center gap-0.5 @max-[639px]/bd:hidden @min-[960px]/bd:order-4">
+          {sortControl}
         </div>
       )}
     </div>

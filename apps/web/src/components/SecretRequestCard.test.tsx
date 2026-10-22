@@ -91,3 +91,15 @@ it("asks a login for a username as well", async () => {
   await act(async () => (byText("Submit") as HTMLButtonElement).click());
   expect(onAnswer).toHaveBeenCalledWith("example-pass", "ada");
 });
+
+it("opens with focus in the field to type into, not on the line toggle", async () => {
+  await setup(block({ type: "bearer" }));
+  await act(async () => byText("Provide secret")?.click());
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 100)));
+  expect(document.activeElement).toBe(document.querySelector('input[type="password"]'));
+  document.body.innerHTML = "";
+  await setup(block({ type: "login" }));
+  await act(async () => byText("Provide secret")?.click());
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 100)));
+  expect(document.activeElement).toBe(document.querySelector("input"));
+});

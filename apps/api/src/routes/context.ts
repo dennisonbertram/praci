@@ -27,6 +27,7 @@ import type {
   MessagingSettings,
   PiOAuthLogins,
   RemoteConnectorDependencies,
+  SafeSyncDeps,
   TicketChangeNotifier,
   TriageReadinessDeps,
 } from "@rakazo/adapters";
@@ -83,6 +84,8 @@ export interface RouterDeps {
   boxFetch?: typeof fetch;
   /** Builds the read-tool caller for finance servers (refresh, receipts); unset where finance sync is off. */
   financeCallToolFor?: FinanceSyncDeps["callToolFor"];
+  /** Builds the Mercury SAFE read-tool caller for Fundraising; unset where MCP is off. */
+  safeCallToolFor?: SafeSyncDeps["callToolFor"];
   /** Reruns a pin's saved read-only tool call on refresh; unset where MCP is off. */
   mcp?: Pick<McpConnector, "callServerTool" | "listServerTools">;
   /** Replaces the read-only Devin caller built from `mcp`; tests pass a fake. */

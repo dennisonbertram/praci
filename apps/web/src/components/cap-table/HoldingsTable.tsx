@@ -81,12 +81,23 @@ export function HoldingsTable({
               className="group-data-[compact]/table:h-11 [&>td]:py-0.5 [&>td:first-child]:ps-2"
             >
               <TableCell>
-                <span
-                  className={`block truncate font-medium ${row.pool ? "text-muted-foreground" : ""}`}
-                  title={row.name}
-                >
-                  {row.name}
-                </span>
+                {row.contact ? (
+                  <button
+                    type="button"
+                    className="block max-w-full truncate text-start font-medium underline-offset-2 hover:underline"
+                    title={row.name}
+                    onClick={() => onOpenContact((row.contact as { id: string }).id)}
+                  >
+                    {row.name}
+                  </button>
+                ) : (
+                  <span
+                    className={`block truncate font-medium ${row.pool ? "text-muted-foreground" : ""}`}
+                    title={row.name}
+                  >
+                    {row.name}
+                  </span>
+                )}
                 <div className="truncate text-xs text-muted-foreground @lg:hidden">
                   {[row.security, shares, row.amountUsd != null ? invested : null]
                     .filter((part) => part !== DASH && part != null)
@@ -139,6 +150,23 @@ export function HoldingsTable({
             </TableRow>
           );
         })}
+        {rows.some((row) => row.percent != null) ? (
+          <TableRow className="group-data-[compact]/table:h-11 [&>td:first-child]:ps-2">
+            <TableCell className="font-medium">
+              <Trans>Total</Trans>
+            </TableCell>
+            <TableCell className="hidden @lg:table-cell" />
+            <TableCell className="hidden @lg:table-cell" />
+            <TableCell className="hidden @lg:table-cell" />
+            <TableCell className="pe-0 text-end font-medium tabular-nums">
+              {percentFigure(
+                rows.reduce((sum, row) => sum + (row.percent ?? 0), 0),
+                1,
+              )}
+            </TableCell>
+            <TableCell />
+          </TableRow>
+        ) : null}
       </TableBody>
     </Table>
   );

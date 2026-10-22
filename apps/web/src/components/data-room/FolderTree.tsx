@@ -118,7 +118,7 @@ export function FolderTree({
         )}
       </div>
       {onNewFolder || onAutoSort ? (
-        <div className="flex flex-col pe-2 pb-2">
+        <div className="flex flex-col border-t border-border py-2 pe-2">
           {onNewFolder ? (
             <Button
               variant="ghost"

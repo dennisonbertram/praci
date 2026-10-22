@@ -325,10 +325,11 @@ const MAIL: Mail[] = [
     subject: "SAFE countersigned",
     text: "Maya, the countersigned SAFE for $250,000 is filed. Wire should arrive within two business days.\n\nPriya",
   },
-  // For the Carta agent's audit-response skill: an auditor's confirmation request and its DocuSign.
+  // For the audit-response skill: an auditor's confirmation request and its DocuSign. Recent enough
+  // (under two days) for the mail sync to file the request on arrival.
   {
     thread: "audit-confirmation",
-    agoMs: 2.5 * DAY_MS,
+    agoMs: 1.5 * DAY_MS,
     from: "Quinn Auditwell <quinn@auditwell.example.test>",
     subject: "Audit confirmation: Quill Capital Fund I holdings as of Sep 30",
     text: "Hi Maya,\n\nAs part of the annual audit of Quill Capital Fund I (Mock), please confirm the fund's holdings in Northwind Robotics as of Sep 30, 2026:\n\n- SAFE, purchase amount $250,000, unconverted\n- No other securities\n\nA DocuSign envelope with this confirmation follows. Please reply with any differences by Oct 24.\n\nQuinn Auditwell\nAuditwell LLP (Mock)",
@@ -336,7 +337,7 @@ const MAIL: Mail[] = [
   },
   {
     thread: "audit-docusign",
-    agoMs: 2.4 * DAY_MS,
+    agoMs: 1.4 * DAY_MS,
     from: "DocuSign via Auditwell LLP <dse@docusign.example.test>",
     subject: "Please DocuSign: Investment confirmation for Quill Capital Fund I",
     text: "Quinn Auditwell sent you a document to review and sign: Investment confirmation for Quill Capital Fund I (Mock), as of Sep 30, 2026.\n\nREVIEW DOCUMENT (mock link, does nothing)\n\nDue Oct 24.",
@@ -915,6 +916,59 @@ export function demoStatementCsv(now = new Date()): { fileName: string; body: st
 }
 
 /**
+ * Mercury's SAFE requests, shaped like its documented response; every name, email and amount is
+ * invented. The first is paid a day before the canned $250,000 wire, so deposit matching finds it;
+ * the second is sent and unsigned, for attaching to a prospect with the same email.
+ */
+function demoSafeRequests(now: Date, wireAt: Date) {
+  const request = (id: string, name: string, email: string, amount: number, over: object) => ({
+    id,
+    documentUrl: `https://docs.example.test/safes/${id}.pdf`,
+    expiresAt: new Date(now.getTime() + 60 * DAY_MS).toISOString(),
+    includesMostFavoredNationClause: false,
+    includesProRataRightsLetter: false,
+    investmentAmount: amount,
+    investmentDate: new Date(now.getTime() - 20 * DAY_MS).toISOString().slice(0, 10),
+    valuationType: "PostMoney",
+    investor: {
+      signatoryName: "Placeholder Signatory",
+      signatoryEmail: email,
+      legalEntityName: name,
+      investorType: "SafeRequestInvestorTypeVentureFund",
+    },
+    organization: {
+      legalEntityName: DEMO_COMPANY,
+      signatoryName: "Maya Chen (Mock)",
+      signatoryTitle: "CEO",
+      signatoryEmail: DEMO_EMAIL,
+    },
+    canceledAt: null,
+    discountRate: null,
+    governingState: "DE",
+    paidAt: null,
+    signedByInvestorAt: null,
+    signedByOwnerAt: null,
+    valuationCap: 12_000_000,
+    ...over,
+  });
+  const signedAt = new Date(wireAt.getTime() - 3 * DAY_MS).toISOString();
+  return [
+    request(
+      "mock-safe-quill",
+      "Quill Capital (Mock)",
+      "priya@quill-capital.example.test",
+      250_000,
+      {
+        signedByInvestorAt: signedAt,
+        signedByOwnerAt: signedAt,
+        paidAt: new Date(wireAt.getTime() - DAY_MS).toISOString(),
+      },
+    ),
+    request("mock-safe-harbor", "Harbor Angels (Mock)", "harbor@angel.example.test", 50_000, {}),
+  ];
+}
+
+/**
  * Canned Mercury and Brex tool callers holding about three months of invented history, built on the
  * repo's finance fakes. Pass `callToolFor` to `createApp` and to `syncFinanceForUser`.
  */
@@ -1128,11 +1182,13 @@ export function demoFinance(now = new Date()) {
     },
   ];
   const brex = fakeBrex({ expenses, bills });
+  const mercuryCallTool: typeof mercury.callTool = async (name, args) =>
+    name === "getSafeRequests" ? demoSafeRequests(now, safeAt) : mercury.callTool(name, args);
   const brexCallTool: typeof brex.callTool = async (name, args) =>
     name === "list_business_accounts" ? brexAccounts : brex.callTool(name, args);
   return {
     callToolFor: async (server: { provider: string }) =>
-      server.provider === "mercury" ? mercury.callTool : brexCallTool,
+      server.provider === "mercury" ? mercuryCallTool : brexCallTool,
   };
 }
 
@@ -1151,6 +1207,7 @@ const DEMO_FINANCE_TOOLS = {
     // Read by the approval card to name the payee and account behind a send-money request.
     getRecipient: obj({ recipientId: str }, ["recipientId"]),
     getAccount: obj({ accountId: str }, ["accountId"]),
+    getSafeRequests: obj({}),
     listTransactions: obj(
       {
         accountId: { type: "array", items: str },

@@ -33,20 +33,24 @@ export function localLogoUrl(logo: string): string | null {
   return BUNDLED.has(slug) ? `/logos/simple/${slug}.svg` : null;
 }
 
-/** App logo on a neutral tile; a missing or broken image falls back to one neutral glyph, so a gallery never mixes letters with logos. */
+/** App logo on a neutral tile. With no usable logo, an app named after a bundled mark gets that mark, any other named app its initial, so no two apps look alike. */
 export function AppLogo({
+  name,
   logo,
   size = "md",
 }: {
-  /** Kept for callers; the fallback glyph is the same for every app. */
   name?: string;
   logo?: string | null;
   size?: keyof typeof SIZES;
 }) {
   const [failed, setFailed] = useState(false);
-  const src = logo ? localLogoUrl(logo) : null;
+  const named = (name ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const simple = logo ? null : BUNDLED.has(named) ? `${SIMPLE_ICONS}${named}` : null;
+  const mark = logo ?? simple;
+  const src = mark ? localLogoUrl(mark) : null;
   const showImage = Boolean(src) && !failed;
-  const mono = Boolean(logo?.startsWith(SIMPLE_ICONS));
+  const mono = Boolean(mark?.startsWith(SIMPLE_ICONS));
+  const initial = /^[\p{L}\p{N}]/u.test(name ?? "") ? (name ?? "").charAt(0).toUpperCase() : null;
   return (
     <span
       data-testid="app-logo"
@@ -64,6 +68,8 @@ export function AppLogo({
           className={`size-[55%] object-contain ${mono ? "dark:invert" : ""}`}
           onError={() => setFailed(true)}
         />
+      ) : initial ? (
+        <span aria-hidden="true">{initial}</span>
       ) : (
         <Blocks aria-hidden="true" className="size-[55%]" />
       )}

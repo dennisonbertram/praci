@@ -10,6 +10,7 @@ export {
   normalizeMailEdits,
 } from "./approval-ask.js";
 export * from "./artifacts.js";
+export * from "./audit-intake.js";
 export * from "./auto-review.js";
 export * from "./auto-review-factory.js";
 export * from "./background-job-handlers.js";
@@ -179,6 +180,7 @@ export * from "./rpc-crypto-source.js";
 export * from "./rpc-crypto-sync.js";
 export * from "./run-secret.js";
 export * from "./s3-artifacts.js";
+export * from "./safe-sync.js";
 export * from "./sandbox-factory.js";
 export * from "./sandbox-provider-env.js";
 export * from "./schedule-tools.js";

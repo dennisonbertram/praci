@@ -5,13 +5,15 @@ import type {
   FundraisingOverview,
   ProspectSaveInput,
 } from "@rakazo/contracts";
+import { isActiveSafe } from "@rakazo/core";
 import type { Prisma, PrismaClient } from "./client.js";
 import { roundIdForStage, toContact } from "./contacts.js";
 import { isUniqueViolation } from "./prisma-errors.js";
+import { SafeActiveError, toSafe } from "./safes.js";
 import { IsolationError } from "./scope.js";
 
 type Scope = { spaceId: string; userId: string };
-type Db = Pick<PrismaClient, "contact" | "fundraiseRound">;
+type Db = Pick<PrismaClient, "contact" | "fundraiseRound" | "safe">;
 /** Only space and user: callers may pass a whole actor, which must not reach a Prisma query. */
 const ownerOf = ({ spaceId, userId }: Scope): Scope => ({ spaceId, userId });
 
@@ -34,7 +36,7 @@ const toRound = (row: Prisma.FundraiseRoundGetPayload<object>): FundraiseRound =
 export async function getFundraisingOverview(
   prisma: Db,
   actor: Scope,
-): Promise<FundraisingOverview> {
+): Promise<Omit<FundraisingOverview, "mercury">> {
   const scope = ownerOf(actor);
   const row =
     (await prisma.fundraiseRound.findFirst({ where: { ...scope, closedAt: null } })) ??
@@ -42,21 +44,41 @@ export async function getFundraisingOverview(
       where: scope,
       orderBy: [{ closedAt: "desc" }, { id: "desc" }],
     }));
-  const prospects = await prisma.contact.findMany({
-    where: { ...scope, kind: "prospect" },
-    include: { bot: { select: { id: true, name: true } } },
-    orderBy: [{ name: "asc" }, { id: "asc" }],
-  });
+  const [contacts, safeRows] = await Promise.all([
+    prisma.contact.findMany({
+      where: { ...scope, kind: "prospect" },
+      include: { bot: { select: { id: true, name: true } } },
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+    }),
+    prisma.safe.findMany({ where: scope, orderBy: [{ createdAt: "desc" }, { id: "desc" }] }),
+  ]);
+  const safes = safeRows.map((safe) => toSafe(safe));
+  // A prospect with an active SAFE has left the pipeline; it returns once every SAFE is canceled or deleted.
+  const withSafe = new Set(
+    safes.filter((s) => s.contactId && isActiveSafe(s.status)).map((s) => s.contactId),
+  );
+  const prospects = contacts.filter((p) => !withSafe.has(p.id));
   // A prospect made without a stage (for example by an agent) starts at Target.
   const withStage = prospects.map((p) => ({ ...p, stage: p.stage ?? "target" }));
   const open = row && !row.closedAt ? row : null;
-  // A Committed prospect counts only in the round that was open when its stage was saved.
+  const inRound = safes.filter((s) => row && s.roundId === row.id);
+  const sumOf = (...statuses: string[]) =>
+    inRound.filter((s) => statuses.includes(s.status)).reduce((sum, s) => sum + s.amountCents, 0);
+  // A Committed prospect counts only in the round that was open when its stage was saved;
+  // a Sent or Draft SAFE of the open round counts at its amount instead of the check size.
   const pendingCents = open
     ? prospects
         .filter((p) => p.stage === "committed" && p.roundId === open.id)
-        .reduce((sum, p) => sum + Number(p.checkSizeCents ?? 0), 0)
+        .reduce((sum, p) => sum + Number(p.checkSizeCents ?? 0), 0) + sumOf("sent", "draft")
     : 0;
-  return { round: row ? toRound(row) : null, pendingCents, prospects: withStage.map(toContact) };
+  return {
+    round: row ? toRound(row) : null,
+    pendingCents,
+    signedCents: sumOf("signed"),
+    fundedCents: sumOf("funded"),
+    prospects: withStage.map(toContact),
+    safes,
+  };
 }
 
 /** Starts a round, or edits the open round when `id` is given. */
@@ -96,6 +118,46 @@ async function setClosedAt(
   });
   if (count === 0) throw new IsolationError("Round not found");
   return toRound(await prisma.fundraiseRound.findUniqueOrThrow({ where: { id } }));
+}
+
+/** Send SAFE through Mercury needs the prospect's email: it is how the next sync attaches the SAFE. */
+export class ProspectEmailRequiredError extends Error {
+  constructor() {
+    super("Add the investor's email first.");
+    this.name = "ProspectEmailRequiredError";
+  }
+}
+
+async function prospectOf(prisma: Db, scope: Scope, id: string) {
+  const row = await prisma.contact.findFirst({
+    where: { id, ...scope, kind: "prospect" },
+    include: { bot: { select: { id: true, name: true } } },
+  });
+  if (!row) throw new IsolationError("Contact not found");
+  return row;
+}
+
+/**
+ * Send SAFE with Mercury: the prospect is Waiting for Mercury until a SAFE attaches or Not sent.
+ * Throws IsolationError for any other contact, ProspectEmailRequiredError without an email and
+ * SafeActiveError while the prospect has an active SAFE (Canceled and Expired ones do not block).
+ */
+export async function markWaiting(prisma: Db, actor: Scope, id: string): Promise<Contact> {
+  const scope = ownerOf(actor);
+  const prospect = await prospectOf(prisma, scope, id);
+  if (!prospect.email?.trim()) throw new ProspectEmailRequiredError();
+  const safes = await prisma.safe.findMany({ where: { ...scope, contactId: id } });
+  if (safes.some((safe) => isActiveSafe(toSafe(safe).status))) throw new SafeActiveError();
+  await prisma.contact.updateMany({ where: { id, ...scope }, data: { mercurySentAt: new Date() } });
+  return toContact(await prospectOf(prisma, scope, id));
+}
+
+/** Not sent: restores the normal prospect row. */
+export async function notSent(prisma: Db, actor: Scope, id: string): Promise<Contact> {
+  const scope = ownerOf(actor);
+  await prospectOf(prisma, scope, id);
+  await prisma.contact.updateMany({ where: { id, ...scope }, data: { mercurySentAt: null } });
+  return toContact(await prospectOf(prisma, scope, id));
 }
 
 export const closeRound = (prisma: Db, actor: Scope, id: string) =>
