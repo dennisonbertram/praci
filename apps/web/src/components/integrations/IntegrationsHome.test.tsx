@@ -43,7 +43,6 @@ const google = (slug: string): ConnectionCatalogItem => ({
 
 const data = (canConfigure: boolean, managed: boolean): IntegrationsData => ({
   loaded: true,
-  fresh: true,
   error: null,
   catalog: [google("gmail"), google("googlecalendar"), google("googledrive")],
   connections: [],

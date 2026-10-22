@@ -184,7 +184,8 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
 
   useEffect(() => {
     // Once per navigation, so moving between app pages re-arms it.
-    if (search.get("connect") !== "1" || !data.fresh || handledKey.current === location.key) return;
+    if (search.get("connect") !== "1" || !data.loaded || handledKey.current === location.key)
+      return;
     handledKey.current = location.key;
     if (connectedCount > 0) {
       if (next) navigate(next, { replace: true });
@@ -194,7 +195,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
       setConfirmFirst(!(location.state as { connectNow?: boolean } | null)?.connectNow);
       setAdding(true);
     }
-  }, [data.fresh, connectedCount, item, next, navigate, search, location.key]);
+  }, [data.loaded, connectedCount, item, next, navigate, search, location.key]);
 
   // `?reconnect=<connection>&permission=mail_rules` opens the sign-in that replaces that connection,
   // asking for permission to make Gmail filters. It waits for a click, like `?connect=1`.
@@ -203,7 +204,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
     if (
       !reconnectId ||
       search.get("permission") !== "mail_rules" ||
-      !data.fresh ||
+      !data.loaded ||
       !item ||
       handledKey.current === location.key
     )
@@ -215,7 +216,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
     setPermission("mail_rules");
     setConfirmFirst(true);
     setAdding(true);
-  }, [data.fresh, item, connected, reconnectId, search, location.key]);
+  }, [data.loaded, item, connected, reconnectId, search, location.key]);
 
   useEffect(() => {
     if (connectedCount === 0) {

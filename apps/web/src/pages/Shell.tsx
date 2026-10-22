@@ -159,7 +159,6 @@ import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/Err
 import { HideAmountsMenuItem } from "../components/HideAmountsToggle";
 import { AgentAvatar } from "../components/integrations/AgentAvatar";
 import { DevinConnectDialog } from "../components/integrations/DevinConnectDialog";
-import { clearIntegrationsCache } from "../components/integrations/useIntegrations";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
 import { PageAgentsRow } from "../components/PageAgentsRow";
 import { PageNavContext } from "../components/PageHeader";
@@ -5711,7 +5710,6 @@ export function ShellPage() {
               onClick={() =>
                 void authClient.signOut().then(() => {
                   clearAgentAppCache();
-                  clearIntegrationsCache();
                   clearSpaceSelection();
                   navigate("/");
                 })

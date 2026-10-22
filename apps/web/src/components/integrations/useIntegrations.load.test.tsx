@@ -22,13 +22,14 @@ const rpcMock = vi.hoisted(() => ({
   finance: { overview: vi.fn(async () => null) },
   meetings: { status: vi.fn() },
 }));
-vi.mock("../../lib/rpc", () => ({
-  rpc: rpcMock,
-  selectedSpaceId: () => window.localStorage.getItem("rakazo:space-id"),
+vi.mock("../../lib/rpc", () => ({ rpc: rpcMock, selectedSpaceId: () => null }));
+const session = vi.hoisted(() => ({ id: "user-1" }));
+vi.mock("../../lib/auth", () => ({
+  authClient: { useSession: () => ({ data: { user: { id: session.id } } }) },
 }));
 
 import type { IntegrationsData } from "./useIntegrations";
-import { bindIntegrationsCache, clearIntegrationsCache, useIntegrations } from "./useIntegrations";
+import { useIntegrations } from "./useIntegrations";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -99,80 +100,26 @@ it("polls meetings.status every 5 seconds while Syncing and stops once Synced", 
   }
 });
 
-it("shows the last list in the first frame on a revisit, then refreshes it", async () => {
-  clearIntegrationsCache();
-  rpcMock.connections.list.mockResolvedValue([conn("a")]);
+it("drops a response for the previous account and loads again for the new one", async () => {
+  session.id = "user-1";
+  let release: (rows: unknown[]) => void = () => {};
+  rpcMock.connections.list.mockReset();
+  rpcMock.connections.list.mockImplementationOnce(() => new Promise((r) => (release = r)));
   rpcMock.connections.effectiveAccess.mockResolvedValue({});
-  const frames: boolean[] = [];
+  let data: IntegrationsData | undefined;
   function Probe() {
-    frames.push(useIntegrations().loaded);
+    data = useIntegrations();
     return null;
   }
-  const first = createRoot(document.createElement("div"));
-  await act(async () => first.render(<Probe />));
-  await act(async () => {});
-  await act(async () => first.unmount());
-  frames.length = 0;
-  const second = createRoot(document.createElement("div"));
-  await act(async () => second.render(<Probe />));
-  expect(frames[0]).toBe(true);
-  await act(async () => second.unmount());
-  clearIntegrationsCache();
-});
-
-it("does not show one account's cached list to another account or Space", async () => {
-  rpcMock.connections.list.mockResolvedValue([conn("a")]);
-  rpcMock.connections.effectiveAccess.mockResolvedValue({});
-  const seen: string[][] = [];
-  function Probe() {
-    seen.push(useIntegrations().connections.map((c) => c.id));
-    return null;
-  }
-  const mount = async () => {
-    const root = createRoot(document.createElement("div"));
-    await act(async () => root.render(<Probe />));
-    await act(async () => {});
-    await act(async () => root.unmount());
-  };
-  bindIntegrationsCache("user-1");
-  await mount();
+  const root = createRoot(document.createElement("div"));
+  await act(async () => root.render(<Probe />));
+  // The person switches account while user-1's request is still outstanding.
   rpcMock.connections.list.mockResolvedValue([conn("b")]);
-  // Another Space: first frame must be empty, not user-1's cache.
-  window.localStorage.setItem("rakazo:space-id", "space-2");
-  seen.length = 0;
-  await mount();
-  expect(seen[0]).toEqual([]);
-  window.localStorage.removeItem("rakazo:space-id");
-  // Another account: same.
-  bindIntegrationsCache("user-2");
-  seen.length = 0;
-  await mount();
-  expect(seen[0]).toEqual([]);
-  bindIntegrationsCache(null);
-});
-
-it("is not fresh from the cache, so a connection revoked elsewhere is not acted on", async () => {
-  rpcMock.connections.list.mockResolvedValue([conn("a")]);
-  rpcMock.connections.effectiveAccess.mockResolvedValue({});
-  bindIntegrationsCache("user-1");
-  const frames: { fresh: boolean; n: number }[] = [];
-  function Probe() {
-    const d = useIntegrations();
-    frames.push({ fresh: d.fresh, n: d.connections.length });
-    return null;
-  }
-  const first = createRoot(document.createElement("div"));
-  await act(async () => first.render(<Probe />));
+  session.id = "user-2";
+  await act(async () => root.render(<Probe />));
   await act(async () => {});
-  await act(async () => first.unmount());
-  // Revoked in another tab.
-  rpcMock.connections.list.mockResolvedValue([]);
-  frames.length = 0;
-  const second = createRoot(document.createElement("div"));
-  await act(async () => second.render(<Probe />));
-  expect(frames[0]).toEqual({ fresh: false, n: 1 });
-  await act(async () => {});
-  expect(frames.at(-1)).toEqual({ fresh: true, n: 0 });
-  await act(async () => second.unmount());
-  bindIntegrationsCache(null);
+  expect(data?.connections.map((c) => c.id)).toEqual(["b"]);
+  await act(async () => release([conn("a")]));
+  expect(data?.connections.map((c) => c.id)).toEqual(["b"]);
+  await act(async () => root.unmount());
 });

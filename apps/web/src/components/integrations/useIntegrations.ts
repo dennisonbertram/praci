@@ -13,6 +13,7 @@ import type {
 import { preferNativeGoogle } from "@rakazo/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { INTEGRATIONS_CHANGED_EVENT } from "../../lib/agent-app";
+import { authClient } from "../../lib/auth";
 import { desktopBridge, nativeGoogleAvailable } from "../../lib/desktop";
 import { optionalCatalogFeedProbe } from "../../lib/optional-catalog-feed";
 import { rpc, selectedSpaceId } from "../../lib/rpc";
@@ -27,8 +28,6 @@ export type ConnectionAccessState = ConnectionAccess & {
 
 export type IntegrationsData = {
   loaded: boolean;
-  /** This data came from a request made now, not from the revisit cache. Navigation waits for it. */
-  fresh: boolean;
   error: string | null;
   catalog: ConnectionCatalogItem[];
   connections: Connection[];
@@ -49,27 +48,21 @@ export type IntegrationsData = {
   refresh: () => Promise<void>;
 };
 
-type LoadedData = Omit<IntegrationsData, "refresh">;
-
-/** The last successful load, so a revisit paints the list at once while it refreshes. */
-let lastLoaded: { owner: string; data: LoadedData } | null = null;
-let cacheUser: string | null = null;
-
-/** The cache belongs to one person in one Space; anything else is a miss. */
-function cacheOwner(): string {
-  return `${cacheUser ?? ""}:${selectedSpaceId() ?? ""}`;
-}
-
-/** Forget the last load on every sign-in, sign-out and session expiry. */
-export function clearIntegrationsCache() {
-  lastLoaded = null;
-}
-
-/** Tell the cache who is signed in; a different person (or none) empties it. */
-export function bindIntegrationsCache(userId: string | null) {
-  if (userId !== cacheUser) lastLoaded = null;
-  cacheUser = userId;
-}
+const EMPTY: Omit<IntegrationsData, "refresh"> = {
+  loaded: false,
+  error: null,
+  catalog: [],
+  connections: [],
+  servers: [],
+  bots: [],
+  mcpAssignments: [],
+  access: {},
+  sources: [],
+  financeSources: [],
+  setup: null,
+  feedEnabled: false,
+  catalogFailed: false,
+};
 
 /** Everything the Integrations pages show, loaded together and refreshed after any change. */
 export function useIntegrations(): IntegrationsData {
@@ -77,25 +70,17 @@ export function useIntegrations(): IntegrationsData {
   // useLingui returns a fresh t each render; keep refresh stable so its effect runs once.
   const loadFailed = useRef(t`Could not load integrations`);
   loadFailed.current = t`Could not load integrations`;
-  const [data, setData] = useState<LoadedData>(
-    () =>
-      (lastLoaded?.owner === cacheOwner() ? { ...lastLoaded.data, fresh: false } : null) ?? {
-        loaded: false,
-        fresh: false,
-        error: null,
-        catalog: [],
-        connections: [],
-        servers: [],
-        bots: [],
-        mcpAssignments: [],
-        access: {},
-        sources: [],
-        financeSources: [],
-        setup: null,
-        feedEnabled: false,
-        catalogFailed: false,
-      },
-  );
+  const [data, setData] = useState<Omit<IntegrationsData, "refresh">>(EMPTY);
+  // Who and which Space this data belongs to. A response for anyone else is dropped.
+  const userId = authClient.useSession().data?.user?.id ?? null;
+  const owner = `${userId}:${selectedSpaceId()}`;
+  const ownerRef = useRef(owner);
+  ownerRef.current = owner;
+  const [dataOwner, setDataOwner] = useState(owner);
+  if (dataOwner !== owner) {
+    setDataOwner(owner);
+    setData(EMPTY);
+  }
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -105,7 +90,7 @@ export function useIntegrations(): IntegrationsData {
   }, []);
 
   const refresh = useCallback(async () => {
-    const owner = cacheOwner();
+    const requestedFor = ownerRef.current;
     try {
       // A server without a managed catalog fails or returns nothing: custom connections still work.
       const [
@@ -156,10 +141,9 @@ export function useIntegrations(): IntegrationsData {
         ),
       );
       window.dispatchEvent(new Event(INTEGRATIONS_CHANGED_EVENT));
-      if (!mounted.current) return;
-      const next: LoadedData = {
+      if (!mounted.current || ownerRef.current !== requestedFor) return;
+      setData({
         loaded: true,
-        fresh: true,
         error: null,
         catalogFailed: catalog === null,
         catalog: preferNativeGoogle(catalog ?? [], {
@@ -178,23 +162,21 @@ export function useIntegrations(): IntegrationsData {
         setup,
         meetings,
         feedEnabled: feed.enabled,
-      };
-      if (owner === cacheOwner()) lastLoaded = { owner, data: next };
-      setData(next);
+      });
     } catch (err) {
-      if (mounted.current)
+      if (mounted.current && ownerRef.current === requestedFor)
         setData((prev) => ({
           ...prev,
           loaded: true,
-          fresh: !prev.loaded,
           error: errorText(err, loadFailed.current),
         }));
     }
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new person or Space loads again
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+  }, [refresh, owner]);
 
   // While the first Granola sync runs the page shows "Syncing"; look again every few seconds, only
   // while the page is visible, and stop once it has finished.

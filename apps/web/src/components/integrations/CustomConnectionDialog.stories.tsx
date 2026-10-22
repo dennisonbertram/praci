@@ -8,7 +8,6 @@ import type { IntegrationsData } from "./useIntegrations";
 
 const data = {
   loaded: true,
-  fresh: true,
   error: null,
   catalog: [],
   connections: [],
