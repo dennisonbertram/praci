@@ -530,6 +530,38 @@ it("says how many rows a scan added or changed, and when none did", async () => 
   }
 });
 
+it("masks amounts in the scan summary, including after the switch flips", async () => {
+  vi.useFakeTimers();
+  try {
+    const withRun = (base: typeof overview, status: "running" | "completed") => ({
+      ...base,
+      agent: { ...base.agent, lastScanRun: { id: id(7), status, error: null } },
+    });
+    const changed = {
+      ...overview,
+      contracts: overview.contracts.map((c, i) =>
+        i === 0 ? { ...c, title: "Deposit $12,500", analyzedAt: "2026-10-17T09:00:00.000Z" } : c,
+      ),
+    };
+    rpcMock.overview
+      .mockResolvedValueOnce(overview)
+      .mockResolvedValue(withRun(overview, "running"));
+    rpcMock.scanNow.mockResolvedValue({ runId: id(7), botId: id(2) });
+    await render(<LegalPage />);
+    await click(button("Scan now"));
+    rpcMock.overview.mockResolvedValue(withRun(changed, "completed"));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(4_100)));
+    expect(container.querySelector("[role=status]")?.textContent).toContain("$12,500");
+    await act(async () => setHideAmounts(true));
+    const text = container.querySelector("[role=status]")?.textContent ?? "";
+    expect(text).toContain("Scan finished");
+    expect(text).not.toContain("12,500");
+  } finally {
+    setHideAmounts(false);
+    vi.useRealTimers();
+  }
+});
+
 it("reports a changed deadline date and a cancelled scan", async () => {
   vi.useFakeTimers();
   try {

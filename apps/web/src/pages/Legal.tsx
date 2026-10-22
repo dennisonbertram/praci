@@ -20,7 +20,7 @@ import { PageEmptyState } from "../components/PageEmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { DATA_ROOM_PATH } from "../lib/data-room";
 import { fullDay } from "../lib/finance-format";
-import { maskCurrencyWhenHidden } from "../lib/hide-amounts-preference";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { daysBetween, todayIso } from "../lib/legal-format";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
@@ -126,6 +126,7 @@ function Legal({
     contracts: Map<string, string>;
     deadlines: Map<string, string>;
   } | null>(null);
+  useHideAmounts(); // re-render the masked scan summary when the switch flips
   const [scanResult, setScanResult] = useState("");
   // How many documents were unchecked when Scan now was pressed; the count falling is the progress.
   // Deadlines the user closed (done or dismissed), listed on request under Deadlines.
@@ -318,7 +319,7 @@ function Legal({
       </p>
     ) : scanResult ? (
       <p role="status" className="mb-3 text-sm text-muted-foreground">
-        {scanResult}
+        {maskCurrencyWhenHidden(scanResult)}
       </p>
     ) : null;
   // A row, not a fifth tile. It sits below the tabs, so it going away after a scan never moves them.
