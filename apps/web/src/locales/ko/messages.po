@@ -539,6 +539,10 @@ msgstr ""
 msgid "{late, plural, one {Overdue by # day} other {Overdue by # days}}"
 msgstr ""
 
+#: src/pages/Fundraising.tsx
+msgid "{legalSafes} SAFEs found in Legal"
+msgstr ""
+
 #: src/lib/relative-time.ts
 msgid "{minutes}m ago"
 msgstr "{minutes}분 전"
@@ -707,6 +711,10 @@ msgstr ""
 
 #: src/components/fundraising/MercuryLine.tsx
 msgid "1 SAFE could not be read"
+msgstr ""
+
+#: src/pages/Fundraising.tsx
+msgid "1 SAFE found in Legal"
 msgstr ""
 
 #: src/pages/Finance.tsx
@@ -7543,6 +7551,7 @@ msgstr ""
 msgid "Only this bot"
 msgstr ""
 
+#: src/components/data-room/PreviewActions.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
@@ -10247,7 +10256,6 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 #: src/pages/gtm/GtmChannels.tsx
-#: src/pages/legal/LegalContracts.tsx
 msgid "Status"
 msgstr ""
 
@@ -11197,6 +11205,10 @@ msgstr "고정 해제"
 msgid "Unread"
 msgstr ""
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Unreadable"
+msgstr ""
+
 #: src/components/data-room/ItemDialogs.tsx
 msgid "Unshare"
 msgstr ""
@@ -11390,6 +11402,11 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Uploaded"
+msgstr ""
+
+#. placeholder {0}: state.folder
+#: src/components/data-room/DropZone.tsx
+msgid "Uploaded to {0}"
 msgstr ""
 
 #: src/components/inbox/InboxRow.tsx

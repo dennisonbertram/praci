@@ -28,6 +28,7 @@ import {
   DATA_ROOM_METADATA_ORDINAL,
   DEFAULT_AVATAR_STYLE,
   FIRST_BOT_SPAWN_KEY,
+  isGtmAgentSpawnKey,
   isIntegrationAgentSpawnKey,
   isMailThreadAgentSpawnKey,
   LEGAL_CONSENT_REQUIRED_MESSAGE,
@@ -861,12 +862,12 @@ export function ShellPage() {
     missingPathRef.current = path;
     setMissingPath(path);
   }, []);
-  // A link inside Settings (for example Server integrations) opens a page; the dialog closes.
-  // A replace (the Chief thread route settling on its bot or thread) is a redirect, not a visit.
+  // Only Back/Forward closes Settings. Nothing inside the dialog links to a page, and a route that
+  // is still loading pushes or replaces its own path, which must not close a dialog just opened.
   const navigationType = useNavigationType();
   // biome-ignore lint/correctness/useExhaustiveDependencies: only a new pathname closes Settings
   useEffect(() => {
-    if (navigationType !== "REPLACE") setSettingsOpen(false);
+    if (navigationType === "POP") setSettingsOpen(false);
   }, [pathname]);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
   const [settingsModelProvider, setSettingsModelProvider] = useState<string | undefined>();
@@ -2282,6 +2283,7 @@ export function ShellPage() {
         keywords: t`contracts, NDA, deadlines`,
         icon: <Scale {...icon} />,
       },
+      { id: "gtm", label: t`GTM`, icon: <Megaphone {...icon} /> },
       // Only once Devin is connected; before that its Integrations card is the way in.
       ...(glance.devinConnected
         ? [{ id: "devin", label: t`Devin`, icon: <CodeXml {...icon} /> }]
@@ -4606,6 +4608,7 @@ export function ShellPage() {
                   { key: "inbox", label: t`Inbox` },
                   { key: "finance", label: t`Finance` },
                   { key: "legal", label: t`Legal` },
+                  { key: "gtm", label: t`GTM` },
                   ...(glance.devinConnected ? [{ key: "devin", label: t`Devin` }] : []),
                   { key: "investors", label: t`Investors` },
                   { key: "fundraising", label: t`Fundraising` },
@@ -4678,6 +4681,7 @@ export function ShellPage() {
                 {hiddenPages.includes("gtm") ? null : (
                   <SidebarPageLink
                     testId="sidebar-gtm"
+                    href="/app/gtm"
                     current={gtmMode}
                     icon={<Megaphone size={15} strokeWidth={1.8} aria-hidden="true" />}
                     label={t`GTM`}
@@ -4883,6 +4887,7 @@ export function ShellPage() {
                   const isPageAgent = (row: (typeof nestedRows)[number]) =>
                     row.item.kind === "bot" &&
                     (pageAgentKind(rowKey(row)) !== null ||
+                      isGtmAgentSpawnKey(rowKey(row)) ||
                       isIntegrationAgentSpawnKey(rowKey(row)));
                   const foldable = !rail && !folder && group.kind !== "pinned";
                   // A page makes its agent when opened; it is listed once it has a message or a run.
@@ -5413,7 +5418,9 @@ export function ShellPage() {
                                                 ) : null}
                                               </div>
                                               <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0 pointer-coarse:me-9">
-                                                {item.kind === "bot" &&
+                                                {/* Roomy rows show the status mark on the preview line, so a Working row keeps its height. */}
+                                                {compact &&
+                                                item.kind === "bot" &&
                                                 glance.botKinds[item.chat.id] ? (
                                                   <StatusMark
                                                     kind={glance.botKinds[item.chat.id]!}
@@ -5464,7 +5471,7 @@ export function ShellPage() {
                                                 data-roster-preview={
                                                   !workStatusLabel ? "true" : undefined
                                                 }
-                                                className={`truncate text-[12px] leading-[18px] ${
+                                                className={`flex items-center gap-1.5 text-[12px] leading-[18px] ${
                                                   workStatusLabel
                                                     ? `font-semibold ${workTone}`
                                                     : item.chat.unread
@@ -5472,7 +5479,16 @@ export function ShellPage() {
                                                       : "text-muted-foreground"
                                                 }`}
                                               >
-                                                {rosterLine}
+                                                {item.kind === "bot" &&
+                                                glance.botKinds[item.chat.id] ? (
+                                                  <StatusMark
+                                                    kind={glance.botKinds[item.chat.id]!}
+                                                    botId={item.chat.id}
+                                                  />
+                                                ) : null}
+                                                <span className="min-w-0 truncate">
+                                                  {rosterLine}
+                                                </span>
                                               </div>
                                             )}
                                           </div>

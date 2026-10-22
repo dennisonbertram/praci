@@ -374,16 +374,20 @@ export function BurnLines({
   useHideAmounts();
   const gradient = useId();
   const [active, setActive] = useState<number | null>(null);
-  // Months before the first one with money in or out are flat zeros that only take width.
+  // Periods before the first one with money in or out are flat zeros that only take width.
   const firstUsed = allSeries.findIndex((m) => m.outCents || m.revenueCents || m.financingCents);
-  const series = granularity === "month" && firstUsed > 0 ? allSeries.slice(firstUsed) : allSeries;
+  const trim =
+    (granularity === "month" || granularity === "quarter" || granularity === "year") &&
+    firstUsed > 0;
+  const series = trim ? allSeries.slice(firstUsed) : allSeries;
+  // A few quarters or years fill the plot; days, weeks and months keep a minimum so they start at the left edge.
+  const minSlots = granularity === "quarter" || granularity === "year" ? 1 : MIN_SLOTS;
   // A finger cannot hit 20 px columns, so on touch the whole plot is one target: a tap picks the
   // nearest period (its figures show), a second tap in the same column opens it.
   const touch = window.matchMedia?.("(pointer: coarse)").matches ?? false;
   return (
     <Chart height={height} label={label}>
       {(width) => {
-        const left = 40;
         const right = 8;
         const bottom = 24;
         // The scale follows spend and revenue; a raise many times larger would flatten every other
@@ -392,9 +396,11 @@ export function BurnLines({
         const scale = niceScale(
           max > 0 ? max : Math.max(...series.map((m) => m.financingCents), 0),
         );
+        // Room for the widest axis label (about 7 px a character at 12 px) so none is cut off.
+        const left = Math.max(40, axisMoney(scale.top).length * 7 + 10);
         const clipped = series.some((m) => m.financingCents > scale.top);
         const top = clipped ? 22 : 10;
-        const slot = (width - left - right) / Math.max(series.length, MIN_SLOTS);
+        const slot = (width - left - right) / Math.max(series.length, minSlots);
         // Skip labels that would collide, counting back from the newest point.
         const labelEvery = Math.max(1, Math.ceil(36 / slot));
         const names = barLabels(series, granularity);
@@ -409,7 +415,11 @@ export function BurnLines({
         // A bucket still running is a hollow dot only: a line to it would read as spend falling.
         const drawn = partial ? out.slice(0, -1) : out;
         const rev = line((m) => m.revenueCents);
+        // The partial period is one mark: a second dot closer than 8 px would read as an "8".
+        const apart = (a?: [number, number], b?: [number, number]) =>
+          !a || !b || Math.hypot(a[0] - b[0], a[1] - b[1]) >= 8;
         const revDrawn = partial ? rev.slice(0, -1) : rev;
+        const revEnd = partial && series[last]?.revenueCents && apart(rev.at(-1), out.at(-1));
         const outSegs = monotoneSegments(drawn);
         const start = (p: [number, number] | undefined) =>
           `M${p?.[0].toFixed(1)},${p?.[1].toFixed(1)}`;
@@ -520,7 +530,7 @@ export function BurnLines({
                 className="fill-muted-foreground"
               />
             ) : null}
-            {partial && series[last]?.revenueCents ? (
+            {revEnd ? (
               <circle
                 data-testid="burn-revenue-end"
                 cx={(rev.at(-1) as [number, number])[0]}
@@ -541,7 +551,15 @@ export function BurnLines({
                   strokeWidth={1.25}
                   strokeLinejoin="round"
                 />
-              ) : m.financingCents > 0 ? (
+              ) : m.financingCents > 0 &&
+                !(
+                  i === last &&
+                  partial &&
+                  !(
+                    apart([cx(i), y(m.financingCents)], out.at(-1)) &&
+                    (!revEnd || apart([cx(i), y(m.financingCents)], rev.at(-1)))
+                  )
+                ) ? (
                 <circle
                   key={m.start}
                   cx={cx(i)}
@@ -639,7 +657,7 @@ export function BurnLines({
                 onClick={(event) => {
                   const box = event.currentTarget.getBoundingClientRect();
                   const i = Math.floor(
-                    ((event.clientX - box.left) / box.width) * Math.max(series.length, MIN_SLOTS),
+                    ((event.clientX - box.left) / box.width) * Math.max(series.length, minSlots),
                   );
                   const point = series[i];
                   if (!point) return;
@@ -655,12 +673,12 @@ export function BurnLines({
               // About 6.5 px a character at 12 px; a centred label that would pass either edge hugs it.
               const half = (text.length * 6.5) / 2;
               const anchor =
-                cx(i) + half > width - 2 ? "end" : cx(i) - half < 2 ? "start" : "middle";
+                cx(i) + half > width - 8 ? "end" : cx(i) - half < 8 ? "start" : "middle";
               return (
                 <text
                   key={m.start}
                   data-testid="financing-clipped"
-                  x={anchor === "end" ? width - 2 : anchor === "start" ? 2 : cx(i)}
+                  x={anchor === "end" ? width - 8 : anchor === "start" ? 8 : cx(i)}
                   y={top - 6}
                   textAnchor={anchor}
                   className="fill-foreground"
