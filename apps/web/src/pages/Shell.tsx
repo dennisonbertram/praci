@@ -475,7 +475,7 @@ function readCollapsedRosterParents(userId: string | null | undefined): Set<stri
 type SearchLink = { id: string; label: string; detail?: string };
 
 /** Data room files (by name and content) and artifacts matching a search; a failure only hides that group. */
-async function findDocumentsAndArtifacts(query: string) {
+export async function findDocumentsAndArtifacts(query: string) {
   const [documents, artifacts] = await Promise.all([
     Promise.all([
       rpc.dataRoom.search({ query, limit: 5 }),
@@ -500,7 +500,9 @@ async function findDocumentsAndArtifacts(query: string) {
           detail:
             ordinal === DATA_ROOM_METADATA_ORDINAL
               ? folderPath(item.folderId) || undefined
-              : snippet.replaceAll("\u0001", "").replaceAll("\u0002", "").trim() || undefined,
+              : (maskOptional(
+                  snippet.replaceAll("\u0001", "").replaceAll("\u0002", "").trim() || null,
+                ) ?? undefined),
         }));
       })
       .catch((): SearchLink[] => []),
@@ -517,7 +519,7 @@ async function findDocumentsAndArtifacts(query: string) {
             // A description hit shows why the artifact matched.
             detail: item.name.toLowerCase().includes(query.toLowerCase())
               ? undefined
-              : (item.description ?? undefined),
+              : (maskOptional(item.description ?? null) ?? undefined),
           })),
       )
       .catch((): SearchLink[] => []),
