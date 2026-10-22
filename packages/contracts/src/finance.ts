@@ -688,6 +688,8 @@ export const FinanceRunwayOutputSchema = z.object({
     bankCents: Cents,
     stablecoinCents: Cents,
     otherCryptoCents: Cents,
+    /** Tokens held but not valued, so the crypto figures leave them out. */
+    unpricedTokenCount: z.number().int().nonnegative().optional(),
   }),
   monthlyBurnCents: Cents,
   runway: RunwaySchema,

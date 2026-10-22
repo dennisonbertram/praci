@@ -51,6 +51,7 @@ import {
   Sheet,
   Type,
 } from "lucide-react";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
@@ -123,7 +124,7 @@ function contactFor(
   );
 }
 
-function Figure({ title, value, hint }: { title: string; value: string; hint?: string }) {
+function Figure({ title, value, hint }: { title: string; value: ReactNode; hint?: ReactNode }) {
   return (
     <Card size="sm" className="px-3.5 py-2 @md/bd:py-3">
       <h2 className="text-xs font-semibold text-muted-foreground">{title}</h2>
@@ -140,11 +141,15 @@ function Figure({ title, value, hint }: { title: string; value: string; hint?: s
 function Summary({
   snapshot,
   safes,
+  safesLoaded,
   safesFailed,
+  onRetry,
 }: {
   snapshot: Snapshot;
   safes: readonly Safe[];
+  safesLoaded: boolean;
   safesFailed: boolean;
+  onRetry: () => void;
 }) {
   useHideAmounts();
   const a = snapshot.latest409a;
@@ -160,6 +165,8 @@ function Summary({
   // A failed SAFE request would make the total look complete when it is not.
   const raisedUsd = equityRaisedUsd(snapshot.holders, safes);
   const raised = !safesFailed && raisedUsd != null ? usd(raisedUsd) : DASH;
+  // Until the first SAFE list answers, a dash would read as "nothing raised".
+  const loading = !safesLoaded && !safesFailed;
   return (
     <div className="mb-4 grid grid-cols-2 gap-2 @md/bd:gap-3">
       <Figure
@@ -173,13 +180,17 @@ function Summary({
       />
       <Figure
         title={t`Equity raised`}
-        value={raised}
+        value={loading ? <Skeleton className="h-6 w-24" aria-busy="true" /> : raised}
         hint={
-          committedUsd > 0
-            ? t`${usd(committedUsd)} committed`
-            : counted.length > 0
-              ? plural(counted.length, { one: "# SAFE", other: "# SAFEs" })
-              : undefined
+          safesFailed ? (
+            <Button variant="link" size="xs" className="h-auto p-0" onClick={onRetry}>
+              <Trans>Try again</Trans>
+            </Button>
+          ) : committedUsd > 0 ? (
+            t`${usd(committedUsd)} committed`
+          ) : counted.length > 0 ? (
+            plural(counted.length, { one: "# SAFE", other: "# SAFEs" })
+          ) : undefined
         }
       />
     </div>
@@ -758,6 +769,7 @@ export function InvestorsPage({
   const [capFailed, setCapFailed] = useState(false);
   const [safes, setSafes] = useState<Safe[]>([]);
   const [safesFailed, setSafesFailed] = useState(false);
+  const [safesLoaded, setSafesLoaded] = useState(false);
   const latestCap = useRef(0);
   const loadCap = useCallback(() => {
     const request = ++latestCap.current;
@@ -769,6 +781,7 @@ export function InvestorsPage({
       .then((rows) => {
         if (request !== latestCap.current) return;
         setSafes(rows ?? []);
+        setSafesLoaded(true);
         setSafesFailed(false);
       })
       .catch(() => {
@@ -1238,7 +1251,13 @@ export function InvestorsPage({
                     !snapshot.fullyDilutedShares &&
                     !snapshot.latest409a &&
                     countedSafes(safes).length === 0 ? null : (
-                      <Summary snapshot={snapshot} safes={safes} safesFailed={safesFailed} />
+                      <Summary
+                        snapshot={snapshot}
+                        safes={safes}
+                        safesLoaded={safesLoaded}
+                        safesFailed={safesFailed}
+                        onRetry={() => void loadCap()}
+                      />
                     )}
                     {snapshot.source === "native" ? (
                       <CapTableEditor

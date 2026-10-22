@@ -305,12 +305,7 @@ msgstr ""
 #. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
-msgid "{0} non-USD not counted"
-msgstr ""
-
-#. placeholder {0}: data.excludedNonUsdCount
-#: src/pages/Finance.tsx
-msgid "{0} not counted"
+msgid "{0} non-USD transactions not counted"
 msgstr ""
 
 #. placeholder {0}: wallet.safeThreshold
@@ -351,6 +346,11 @@ msgstr ""
 #. placeholder {0}: card.count
 #: src/components/FinanceCards.tsx
 msgid "{0} transactions · {period}"
+msgstr ""
+
+#. placeholder {0}: parts.unpricedTokenCount
+#: src/pages/finance/FinanceBurn.tsx
+msgid "{0} unpriced."
 msgstr ""
 
 #. placeholder {0}: monthShort(data.monthly.at(-1)?.month ?? "")
@@ -716,6 +716,11 @@ msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
 msgid "0x… or name.eth"
+msgstr ""
+
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
+msgid "1 non-USD transaction not counted"
 msgstr ""
 
 #: src/components/fundraising/MercuryLine.tsx
@@ -2046,10 +2051,6 @@ msgstr ""
 msgid "Burn"
 msgstr ""
 
-#: src/pages/finance/FinanceBurn.tsx
-msgid "Burn by category"
-msgstr ""
-
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Business plan"
 msgstr ""
@@ -2410,6 +2411,10 @@ msgstr ""
 #: src/pages/Auth.tsx
 msgid "Choose a new password"
 msgstr "Escolha uma nova senha"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Choose a tool"
+msgstr ""
 
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Choose file"
@@ -4148,7 +4153,6 @@ msgstr "Padrão ({0})"
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
-#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/fundraising/SafeList.tsx
 #: src/components/integrations/StoredMeetingsList.tsx
@@ -6287,6 +6291,7 @@ msgstr ""
 msgid "Make sure nothing is still running on this computer."
 msgstr "Confirme que nada ainda está em execução neste computador."
 
+#: src/components/integrations/parts.tsx
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Manage"
 msgstr ""
@@ -6713,9 +6718,16 @@ msgstr ""
 msgid "More"
 msgstr ""
 
+#. placeholder {0}: app.name
 #. placeholder {0}: exchange.name
+#. placeholder {0}: server.name
 #: src/components/integrations/FinanceSection.tsx
+#: src/components/integrations/IntegrationsHome.tsx
 msgid "More {0} actions"
+msgstr ""
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "More {name} actions"
 msgstr ""
 
 #. placeholder {0}: attachment.filename
@@ -6741,6 +6753,10 @@ msgstr ""
 
 #: src/pages/ActivityList.tsx
 msgid "More filters"
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "More Granola actions"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -7826,7 +7842,6 @@ msgstr "Mensagem original indisponível"
 
 #: src/components/cap-table/OwnershipBar.tsx
 #: src/components/ContactDialog.tsx
-#: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
 #: src/lib/devin-format.ts
@@ -7863,7 +7878,7 @@ msgid "Out"
 msgstr ""
 
 #: src/pages/Finance.tsx
-msgid "Out so far this month"
+msgid "Out so far this month, not over"
 msgstr ""
 
 #: src/pages/MemorySettingsOverlay.tsx
@@ -8741,7 +8756,6 @@ msgstr "Remover"
 #: src/components/compose/RecipientField.tsx
 #: src/components/ComposeEmail.tsx
 #: src/components/integrations/AppDetail.tsx
-#: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
 #: src/pages/shell/composer.tsx
 msgid "Remove {0}"
@@ -11122,10 +11136,6 @@ msgstr "Tente o teste novamente."
 msgid "Turn off"
 msgstr ""
 
-#: src/pages/shell/bot-panel.tsx
-msgid "Turn off a tool"
-msgstr ""
-
 #: src/components/MailApprovalCard.tsx
 msgid "Turn off drafts for {botName}?"
 msgstr ""
@@ -11258,10 +11268,6 @@ msgstr "Desafixar"
 
 #: src/pages/Inbox.tsx
 msgid "Unread"
-msgstr ""
-
-#: src/components/data-room/ItemRows.tsx
-msgid "Unreadable"
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx

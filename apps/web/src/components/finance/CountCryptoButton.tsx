@@ -46,7 +46,8 @@ export function CountCryptoButton({
   const on = scope !== "bank";
   return (
     <div className="flex flex-col items-start gap-1">
-      <div className="flex items-center gap-2">
+      {/* min-h-6 (min-h-11 on touch) is the menu button's height, so turning the switch on moves nothing. */}
+      <div className="flex min-h-6 pointer-coarse:min-h-11 items-center gap-2">
         {/* A switch shows the state itself; the sentence beside it says what that state means. */}
         <div className="flex items-center gap-2 text-sm">
           <Switch
