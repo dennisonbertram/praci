@@ -334,7 +334,8 @@ export async function chooseFocus(
   await post(deps, target, [
     {
       kind: "text",
-      text: `${got} Connect ${named} here and I’ll use what you already have.${option.note ? ` ${option.note}` : ""}`,
+      // One sentence above the cards; the sidebar already links Finance, Investors and the Data room.
+      text: `Connect ${named} here and I’ll use what you already have.`,
     },
   ]);
   await post(deps, target, cards);

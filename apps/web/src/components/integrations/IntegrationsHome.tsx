@@ -24,7 +24,7 @@ import {
 import { Search } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import type { ConnectedApp } from "../../lib/integrations";
 import {
   appPath,
@@ -405,6 +405,7 @@ export function IntegrationsHome({
   // ...&returnTo=/app/investors sends the founder back there when that dialog closes.
   const returnTo = useRef(appReturnPath(params.get("returnTo")));
   const navigate = useNavigate();
+  const location = useLocation();
   const [visible, setVisible] = useState(CONNECTION_CATALOG_PAGE_SIZE);
   /** On a phone the Popular list starts at three apps, so the whole page is not one long scroll. */
   const [phoneAll, setPhoneAll] = useState(false);
@@ -577,7 +578,10 @@ export function IntegrationsHome({
     if (entry) return connectFirstParty(entry);
     // A catalog app (?connect=gmail from the Inbox) opens its own page's connect flow.
     const app = data.catalog.find((item) => item.slug.toLowerCase() === wanted.toLowerCase());
-    if (app) navigate(appPath(app, { connect, next: returnTo.current ?? undefined }));
+    if (app)
+      navigate(appPath(app, { connect, next: returnTo.current ?? undefined }), {
+        state: location.state,
+      });
     else setQuery(wanted);
     returnTo.current = null;
   }, [data.loaded, data.catalog, firstPartyMcp, navigate]);

@@ -487,7 +487,7 @@ it("offers the same actions in the right-click menu as in the row's More actions
       ?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
   });
   await flush();
-  expect(names()).toEqual(["Send to agent", "Share with investors", "Move", "Rename", "Delete"]);
+  expect(names()).toEqual(["Send to agent", "Share", "Move", "Rename", "Delete"]);
 });
 
 it("keeps Move, Rename and Delete in the right-click menu when there is no agent to send to", async () => {
@@ -638,7 +638,7 @@ it("keeps Try again for a failure that is not about the file's bytes", () => {
 });
 
 it("shows how long a file has been Reading once that passes two minutes", () => {
-  const long = new Date(Date.now() - 5 * 60_000).toISOString();
+  const long = new Date(Date.now() - 150_000).toISOString();
   const short = new Date(Date.now() - 30_000).toISOString();
   const rows = asRows(
     { ...item("old", null), status: "extracting", updatedAt: long },
@@ -663,12 +663,12 @@ it("counts the Reading age from the last pipeline write, not from when the file 
   expect(container.querySelector('[data-testid="data-room-subline"]')?.textContent).toBe("Reading");
 });
 
-it("offers Try again on a file still Reading after 10 minutes", () => {
+it("offers Try again on a file still Reading after 3 minutes", () => {
   const onAction = vi.fn();
   const rows = asRows({
     ...item("stuck", null),
     status: "extracting",
-    updatedAt: new Date(Date.now() - 11 * 60_000).toISOString(),
+    updatedAt: new Date(Date.now() - 4 * 60_000).toISOString(),
   });
   act(() => root.render(<ListView rows={rows} o={{ ...o(), onAction }} />));
   expect(container.querySelector('[data-testid="data-room-subline"]')?.textContent).toBe(
@@ -679,6 +679,12 @@ it("offers Try again on a file still Reading after 10 minutes", () => {
   );
   act(() => retry?.click());
   expect(onAction).toHaveBeenCalledWith("retry", expect.objectContaining({ id: "stuck" }));
+});
+
+it("shows no Reading on a file whose text is already stored", () => {
+  const rows = asRows({ ...item("texted", null), status: "classifying", previewText: "Minutes" });
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  expect(container.textContent).not.toContain("Reading");
 });
 
 it("leaves the Status column out when no row has a status", () => {

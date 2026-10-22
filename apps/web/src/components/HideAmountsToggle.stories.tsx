@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { setHideAmounts } from "../lib/hide-amounts-preference";
-import { HideAmountsMenuItem } from "./HideAmountsToggle";
+import { HideAmountsMenuItem, ShowAmountsButton } from "./HideAmountsToggle";
 
 const meta = {
   title: "Finance/Hide amounts",
@@ -28,4 +28,12 @@ export const AccountMenuRowHidden: Story = {
       <HideAmountsMenuItem />
     </div>
   ),
+};
+
+export const FinanceHeaderShow: Story = {
+  beforeEach: () => {
+    setHideAmounts(true);
+    return () => setHideAmounts(false);
+  },
+  render: () => <ShowAmountsButton />,
 };

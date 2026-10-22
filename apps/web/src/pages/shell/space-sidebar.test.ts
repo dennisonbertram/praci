@@ -605,7 +605,7 @@ it("navigates to Integrations from the account menu", async () => {
   }
 });
 
-it("folds a lone page agent and reveals it when active", async () => {
+it("hides an unused idle page agent and reveals it when active", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("matchMedia", () => ({
     matches: false,
@@ -632,19 +632,10 @@ it("folds a lone page agent and reveals it when active", async () => {
   try {
     await act(async () => root.render(renderFixture(false)));
 
-    const toggle = container.querySelector<HTMLButtonElement>(
-      '[data-testid="sidebar-page-agents"]',
-    );
-    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
-    expect(toggle?.textContent).toContain("1");
+    expect(
+      container.querySelector('[data-testid="sidebar-page-agents"]'),
+    ).toBeNull();
     expect(container.textContent).not.toContain("Inbox agent");
-
-    await act(async () => toggle?.click());
-    expect(toggle?.getAttribute("aria-expanded")).toBe("true");
-    expect(container.textContent).toContain("Inbox agent");
-
-    await act(async () => toggle?.click());
-    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
 
     await act(async () => root.render(renderFixture(true)));
     const activeToggle = container.querySelector<HTMLButtonElement>(
@@ -692,7 +683,7 @@ it("folds email chats separately and reveals the active email chat", async () =>
     const emailChats = container.querySelector<HTMLButtonElement>(
       '[data-testid="sidebar-email-chats"]',
     );
-    expect(pageAgents?.getAttribute("aria-expanded")).toBe("false");
+    expect(pageAgents).toBeNull();
     expect(emailChats?.textContent).toContain("Email chats");
     expect(emailChats?.getAttribute("aria-expanded")).toBe("false");
     expect(container.textContent).not.toContain("Client email");
@@ -700,7 +691,7 @@ it("folds email chats separately and reveals the active email chat", async () =>
     await act(async () => emailChats?.click());
     expect(emailChats?.getAttribute("aria-expanded")).toBe("true");
     expect(container.textContent).toContain("Client email");
-    expect(pageAgents?.getAttribute("aria-expanded")).toBe("false");
+    expect(container.querySelector('[data-testid="sidebar-page-agents"]')).toBeNull();
 
     await act(async () => emailChats?.click());
     expect(emailChats?.getAttribute("aria-expanded")).toBe("false");

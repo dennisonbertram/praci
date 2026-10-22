@@ -563,6 +563,7 @@ export function SpaceSidebar({
     <aside
       ref={sidebarRef}
       data-sidebar=""
+      data-drawer-open={mobileSidebarOpen ? "" : undefined}
       aria-label={t`Sidebar`}
       onKeyDown={(event) => moveRosterFocus(sidebarRef.current, event)}
       onFocus={(event) => {
@@ -981,8 +982,17 @@ export function SpaceSidebar({
                 );
               };
               const foldable = !rail && !folder && group.kind !== "pinned";
-              const pageAgentRows = foldable ? nestedRows.filter(isPageAgent) : [];
-              const emailChatRows = foldable ? nestedRows.filter(isEmailChat) : [];
+              const unusedPageAgent = (row: (typeof nestedRows)[number]) =>
+                row.item.kind === "bot" &&
+                isPageAgent(row) &&
+                !row.item.chat.preview &&
+                row.item.chat.status === "idle" &&
+                row.item.chat.id !== active?.id;
+              const listedRows = foldable
+                ? nestedRows.filter((row) => !unusedPageAgent(row))
+                : nestedRows;
+              const pageAgentRows = foldable ? listedRows.filter(isPageAgent) : [];
+              const emailChatRows = foldable ? listedRows.filter(isEmailChat) : [];
               const holdsActive = (rows: typeof nestedRows) =>
                 rows.some((row) => row.item.kind === "bot" && row.item.chat.id === active?.id);
               const showPageAgents = pageAgentsOpen || holdsActive(pageAgentRows);
@@ -993,13 +1003,13 @@ export function SpaceSidebar({
               )[] =
                 pageAgentRows.length || emailChatRows.length
                   ? [
-                      ...nestedRows.filter((row) => !isPageAgent(row) && !isEmailChat(row)),
+                      ...listedRows.filter((row) => !isPageAgent(row) && !isEmailChat(row)),
                       ...(pageAgentRows.length ? [{ foldHeader: "page" as const }] : []),
                       ...(showPageAgents ? pageAgentRows : []),
                       ...(emailChatRows.length ? [{ foldHeader: "email" as const }] : []),
                       ...(showEmailChats ? emailChatRows : []),
                     ]
-                  : nestedRows;
+                  : listedRows;
               const treeActive = nestedRows.some((row) => row.depth > 0 || row.hasChildren);
               // Reorder among visible siblings so keyboard and drag moves match the tree.
               const siblingBotIds = (parentId: string | null) =>

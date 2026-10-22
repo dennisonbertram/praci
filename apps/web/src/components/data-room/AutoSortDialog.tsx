@@ -235,7 +235,8 @@ export function AutoSortDialog({
           {/* Nothing to apply (a failed or empty plan): the button would only read "Apply 0 changes". */}
           {plan && plan.operations.length === 0 ? null : error && !plan ? null : (
             <>
-              {plan && chosen.length === 0 ? (
+              {/* With several changes the checkbox at the top is the one Select all. */}
+              {plan && plan.operations.length === 1 && chosen.length === 0 ? (
                 <Button
                   type="button"
                   variant="outline"
