@@ -49,3 +49,74 @@ test("A founder without Carta types the cap table in and it is saved", async ({
   await expect(main.getByLabel("Holder").first()).toHaveValue("Ada Founder");
   await expect(main.getByLabel("Shares").first()).toHaveValue("6,000,000");
 });
+
+test("Audit requests wait in Action items, are closed from the row menu and reach Show done", async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1500, height: 1000 });
+  const audit = (over: Record<string, unknown>) => ({
+    id: "a1",
+    fund: "Example Audit LLP",
+    asOf: "2026-09-30",
+    asOfMatched: true,
+    dueDate: "2026-11-15",
+    status: "open",
+    mailThreadId: "t1",
+    connectionId: "k1",
+    draftRef: null,
+    senderKnown: false,
+    notes: "",
+    dataRoomItemId: null,
+    drafting: false,
+    newMail: false,
+    createdAt: "2026-10-20T10:00:00.000Z",
+    ...over,
+  });
+  const rows = [
+    audit({}),
+    audit({
+      id: "a2",
+      fund: "Sample Ventures Fund II",
+      dueDate: "2026-11-30",
+      status: "drafted",
+      senderKnown: true,
+      asOfMatched: false,
+    }),
+  ];
+  const closed: unknown[] = [];
+  await page.route("**/rpc/investors/audits/list", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ json: rows, meta: [] }),
+    }),
+  );
+  await page.route("**/rpc/investors/audits/update", (route) => {
+    const input = (route.request().postDataJSON() as { json: { id: string; status: string } }).json;
+    closed.push(input);
+    const row = rows.find((r) => r.id === input.id);
+    if (row) row.status = input.status;
+    return route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ json: row, meta: [] }),
+    });
+  });
+  await signup(page, `audits-${Date.now()}@rakazo.test`, "password12", "Audits User");
+  await completeOnboarding(page);
+
+  await page.getByTestId("sidebar-investors").click();
+  const main = page.getByRole("main");
+  const items = main.getByRole("region", { name: "Action items" });
+  await expect(items.getByText("Audit request · Example Audit LLP")).toBeVisible();
+  await expect(items.getByText("Sender not in Auditors")).toBeVisible();
+  await expect(items.getByText("Holdings as of today, not Sep 30")).toBeVisible();
+  await expect(items.getByText("Draft ready")).toBeVisible();
+  await expect(items.getByRole("button", { name: "Draft reply" })).toHaveCount(1);
+  await captureScreenshot(page, testInfo, "investors-audits");
+
+  await items.getByRole("button", { name: "Actions for Example Audit LLP" }).click();
+  await page.getByRole("menuitem", { name: "Mark done" }).click();
+  await expect.poll(() => closed).toEqual([{ id: "a1", status: "done" }]);
+  await expect(items.getByText("Audit request · Example Audit LLP")).toHaveCount(0);
+  await main.getByRole("button", { name: "Show done" }).click();
+  await expect(items.getByText("Audit request · Example Audit LLP")).toBeVisible();
+});

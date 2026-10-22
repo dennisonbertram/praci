@@ -668,8 +668,8 @@ function ArtifactTable({
                 <TableCell className="pe-0">
                   <button
                     type="button"
-                    aria-label={t`Delete ${artifact.name}`}
-                    title={t`Delete ${artifact.name}`}
+                    aria-label={t`Delete ${displayName(artifact.name)}`}
+                    title={t`Delete ${displayName(artifact.name)}`}
                     onClick={(event) => {
                       event.stopPropagation();
                       onRequestDelete(artifact);
@@ -876,8 +876,8 @@ function ArtifactCard({
       </Link>
       <button
         type="button"
-        aria-label={t`Delete ${artifact.name}`}
-        title={t`Delete ${artifact.name}`}
+        aria-label={t`Delete ${displayName(artifact.name)}`}
+        title={t`Delete ${displayName(artifact.name)}`}
         onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -937,8 +937,8 @@ function ArtifactRow({
       </Link>
       <button
         type="button"
-        aria-label={t`Delete ${artifact.name}`}
-        title={t`Delete ${artifact.name}`}
+        aria-label={t`Delete ${displayName(artifact.name)}`}
+        title={t`Delete ${displayName(artifact.name)}`}
         onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();

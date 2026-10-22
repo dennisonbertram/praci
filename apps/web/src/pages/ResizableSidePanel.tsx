@@ -73,60 +73,60 @@ export function ResizableSidePanel({
     setPreferredWidth(Math.max(MIN_WIDTH, Math.min(maximumWidth(reservedLeadingPx), next)));
   }
 
+  // A closed panel leaves nothing in the page, not an empty unnamed landmark.
+  if (!open) return null;
   return (
     <aside
       data-testid="side-panel"
       data-panel={panel}
       style={{ "--panel-width": `${width}px` } as CSSProperties}
-      className={`absolute inset-y-0 end-0 z-20 flex min-h-0 shrink-0 flex-col overflow-hidden bg-background xl:relative ${dragging ? "" : "transition-[width] duration-150 ease-out"} ${open ? "w-full max-w-[384px] border-s border-sidebar-border shadow-xl xl:w-(--panel-width) xl:max-w-none xl:shadow-none" : "pointer-events-none w-0"}`}
+      className={`absolute inset-y-0 end-0 z-20 flex min-h-0 shrink-0 flex-col overflow-hidden bg-background xl:relative ${dragging ? "" : "transition-[width] duration-150 ease-out"} w-full max-w-[384px] border-s border-sidebar-border shadow-xl xl:w-(--panel-width) xl:max-w-none xl:shadow-none`}
     >
-      {open ? (
-        <hr
-          tabIndex={0}
-          aria-label={t`Resize panel`}
-          aria-orientation="vertical"
-          aria-valuemin={MIN_WIDTH}
-          aria-valuemax={maxWidth}
-          aria-valuenow={Math.round(width)}
-          className="absolute inset-y-0 start-0 z-30 m-0 hidden h-full w-2 touch-none cursor-col-resize border-0 bg-transparent hover:bg-border focus-visible:bg-border focus-visible:outline-none xl:block"
-          onPointerDown={(event) => {
-            if (event.button !== 0) return;
+      <hr
+        tabIndex={0}
+        aria-label={t`Resize panel`}
+        aria-orientation="vertical"
+        aria-valuemin={MIN_WIDTH}
+        aria-valuemax={maxWidth}
+        aria-valuenow={Math.round(width)}
+        className="absolute inset-y-0 start-0 z-30 m-0 hidden h-full w-2 touch-none cursor-col-resize border-0 bg-transparent hover:bg-border focus-visible:bg-border focus-visible:outline-none xl:block"
+        onPointerDown={(event) => {
+          if (event.button !== 0) return;
+          event.preventDefault();
+          event.currentTarget.setPointerCapture(event.pointerId);
+          drag.current = {
+            x: event.clientX,
+            width,
+            direction: document.documentElement.dir === "rtl" ? -1 : 1,
+          };
+          setDragging(true);
+        }}
+        onPointerMove={(event) => {
+          if (drag.current)
+            setWidthFromUser(
+              drag.current.width + (drag.current.x - event.clientX) * drag.current.direction,
+            );
+        }}
+        onPointerUp={stopDrag}
+        onPointerCancel={stopDrag}
+        onLostPointerCapture={() => {
+          drag.current = null;
+          setDragging(false);
+        }}
+        onKeyDown={(event) => {
+          const direction = document.documentElement.dir === "rtl" ? -1 : 1;
+          if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
             event.preventDefault();
-            event.currentTarget.setPointerCapture(event.pointerId);
-            drag.current = {
-              x: event.clientX,
-              width,
-              direction: document.documentElement.dir === "rtl" ? -1 : 1,
-            };
-            setDragging(true);
-          }}
-          onPointerMove={(event) => {
-            if (drag.current)
-              setWidthFromUser(
-                drag.current.width + (drag.current.x - event.clientX) * drag.current.direction,
-              );
-          }}
-          onPointerUp={stopDrag}
-          onPointerCancel={stopDrag}
-          onLostPointerCapture={() => {
-            drag.current = null;
-            setDragging(false);
-          }}
-          onKeyDown={(event) => {
-            const direction = document.documentElement.dir === "rtl" ? -1 : 1;
-            if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-              event.preventDefault();
-              setWidthFromUser(width + (event.key === "ArrowLeft" ? 32 : -32) * direction);
-            } else if (event.key === "Home") {
-              event.preventDefault();
-              setWidthFromUser(MIN_WIDTH);
-            } else if (event.key === "End") {
-              event.preventDefault();
-              setWidthFromUser(maximumWidth(reservedLeadingPx));
-            }
-          }}
-        />
-      ) : null}
+            setWidthFromUser(width + (event.key === "ArrowLeft" ? 32 : -32) * direction);
+          } else if (event.key === "Home") {
+            event.preventDefault();
+            setWidthFromUser(MIN_WIDTH);
+          } else if (event.key === "End") {
+            event.preventDefault();
+            setWidthFromUser(maximumWidth(reservedLeadingPx));
+          }
+        }}
+      />
       {children}
     </aside>
   );

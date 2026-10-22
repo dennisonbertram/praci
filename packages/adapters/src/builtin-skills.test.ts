@@ -32,3 +32,25 @@ it("the investor-update skill reads past updates, takes an audience, saves a dra
   for (const banned of ["mail_draft", "mail_send", "Bcc", "Carta"])
     expect(text).not.toContain(banned);
 });
+
+const audit = BUILTIN_AGENT_SKILLS.find((s) => s.name === "audit-response");
+
+it("the audit-response skill drafts in the thread, saves the row, notifies once and never files, sends or closes", () => {
+  const text = audit?.content ?? "";
+  expect(BUILTIN_AGENT_SKILLS.some((s) => s.name === "carta-audit-response")).toBe(false);
+  for (const used of [
+    "audit_request_upsert",
+    "cap_table_read",
+    "search_data_room",
+    "mail_draft",
+    "asOfMatched false",
+    "drafted true",
+    "Audit request from <fund>",
+    "under 200 characters",
+    "Make one draft",
+  ])
+    expect(text).toContain(used);
+  for (const banned of ["mail_send", "Carta", "drive_search"]) expect(text).not.toContain(banned);
+  expect(text).toContain("Do not call add_to_data_room");
+  expect(text).toContain("never close a request");
+});

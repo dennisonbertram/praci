@@ -71,6 +71,7 @@ export * from "./record.js";
 export * from "./remote-images.js";
 export * from "./response-bytes.js";
 export * from "./run-state.js";
+export * from "./safes.js";
 export * from "./sandbox-command.js";
 export * from "./screen-lease.js";
 export * from "./search.js";

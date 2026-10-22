@@ -47,10 +47,10 @@ export function slashSkillLabel(
           title: t`Draft investor update`,
           description: t`Written from Finance and your past updates.`,
         };
-      case "carta-audit-response":
+      case "audit-response":
         return {
           title: t`Answer auditor requests`,
-          description: t`Uses Carta figures and asks before sending.`,
+          description: t`Drafts a reply from your cap table.`,
         };
       case "finance-categorize":
         return {

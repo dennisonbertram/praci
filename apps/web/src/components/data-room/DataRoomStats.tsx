@@ -244,7 +244,7 @@ export function DataRoomStats({
           value={new Intl.NumberFormat(i18n.locale || undefined).format(stats.documents)}
         />
         <Card label={t`Size`} value={sizeText(stats.bytes)} />
-        <Card label={t`Searchable`} value={`${searchable}%`} />
+        <Card label={t`Read and searchable`} value={`${searchable}%`} />
         <Card label={t`Failed`} value={String(stats.status.failed)} />
       </div>
       {stats.dates.buckets.length > 0 ? (

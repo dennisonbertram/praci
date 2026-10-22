@@ -35,7 +35,7 @@ export function folderCrumbs(nodes: FolderNode[], folderId: string): Crumb[] {
   return [{ id: undefined, name: t`All items` }, ...chain];
 }
 
-/** The open folder's path, each folder above it a link. Nothing at the top level. */
+/** The open folder's path, each folder above it a link; "All items" alone at the top level. */
 export function PathBar({
   nodes,
   folderId,
@@ -45,8 +45,8 @@ export function PathBar({
   folderId: string | undefined;
   onSelect: (id: string | undefined) => void;
 }) {
-  if (!folderId) return null;
-  const crumbs = folderCrumbs(nodes, folderId);
+  // Also at the top level, so entering a folder does not push the list down by a row.
+  const crumbs = folderId ? folderCrumbs(nodes, folderId) : [{ id: undefined, name: t`All items` }];
   const collapse = crumbs.length > MAX_SHOWN;
   const hidden = collapse ? crumbs.slice(1, -2) : [];
   const shown = collapse ? [...crumbs.slice(0, 1), ...crumbs.slice(-2)] : crumbs;

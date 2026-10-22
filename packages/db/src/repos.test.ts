@@ -274,6 +274,7 @@ describe("createRepos.listBots", () => {
                       fromBotId: "bot-2",
                       fromBotName: "Finance",
                       text: "Burn is $10 a month.",
+                      intent: "result",
                       returnToMessageId: "m-sent",
                     },
                   ],
@@ -294,43 +295,46 @@ describe("createRepos.listBots", () => {
     ]);
   });
 
-  it("never previews an instruction another agent delivered", async () => {
-    const prisma = {
-      bot: {
-        findMany: vi.fn(async () => [
-          {
-            ...baseBot,
-            thread: {
-              ...baseBot.thread,
-              messages: [
-                {
-                  runId: "run-peer",
-                  blocks: [
-                    {
-                      kind: "bot_message_received",
-                      fromBotId: "bot-2",
-                      fromBotName: "Chief",
-                      text: "Please send 3,200 dollars to Acme.",
-                      intent: "request",
-                      returnToMessageId: "m-sent",
-                    },
-                  ],
-                },
-                { runId: "run-user", blocks: [{ kind: "text", text: "Pay Acme." }] },
-              ],
+  it.each(["request", "question", "fyi", undefined] as const)(
+    "never previews an instruction another agent delivered (intent %s)",
+    async (intent) => {
+      const prisma = {
+        bot: {
+          findMany: vi.fn(async () => [
+            {
+              ...baseBot,
+              thread: {
+                ...baseBot.thread,
+                messages: [
+                  {
+                    runId: "run-peer",
+                    blocks: [
+                      {
+                        kind: "bot_message_received",
+                        fromBotId: "bot-2",
+                        fromBotName: "Chief",
+                        text: "Please send 3,200 dollars to Acme.",
+                        intent,
+                        returnToMessageId: "m-sent",
+                      },
+                    ],
+                  },
+                  { runId: "run-user", blocks: [{ kind: "text", text: "Pay Acme." }] },
+                ],
+              },
             },
-          },
-        ]),
-      },
-      run: {
-        findMany: vi.fn(async () => [{ id: "run-peer" }]),
-      },
-    };
+          ]),
+        },
+        run: {
+          findMany: vi.fn(async () => [{ id: "run-peer" }]),
+        },
+      };
 
-    await expect(createRepos(prisma as unknown as PrismaClient).listBots(actor)).resolves.toEqual([
-      expect.objectContaining({ preview: "Pay Acme." }),
-    ]);
-  });
+      await expect(createRepos(prisma as unknown as PrismaClient).listBots(actor)).resolves.toEqual(
+        [expect.objectContaining({ preview: "Pay Acme." })],
+      );
+    },
+  );
 
   it("skips a peer-run preview tail when the receipt is outside the window", async () => {
     const prisma = {

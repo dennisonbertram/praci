@@ -32,6 +32,7 @@ const item = (id: string, folderId: string | null) =>
     mimeType: "application/pdf",
     source: "upload",
     createdAt: "2026-03-04T12:00:00.000Z",
+    updatedAt: "2026-03-04T12:00:00.000Z",
     facets: { docType: null, docDate: null, parties: [] },
   }) as unknown as DataRoomApiItem;
 
@@ -72,12 +73,9 @@ it("names each row's folder in All items, and not inside that folder", () => {
     snippets: [],
   }));
   act(() => root.render(<ListView rows={rows} o={o()} />));
-  expect(names()).toEqual([
-    "lease.pdfLegalNot tagged · Mar 4, 2026",
-    "loose.pdfNot tagged · Mar 4, 2026",
-  ]);
+  expect(names()).toEqual(["lease.pdfLegal— · Mar 4, 2026", "loose.pdf— · Mar 4, 2026"]);
   act(() => root.render(<ListView rows={rows.slice(0, 1)} o={o("f-legal")} />));
-  expect(names()).toEqual(["lease.pdfNot tagged · Mar 4, 2026"]);
+  expect(names()).toEqual(["lease.pdf— · Mar 4, 2026"]);
 });
 
 it("renders a native table in the Cap table style, with the header hidden on a phone", () => {
@@ -142,7 +140,7 @@ it("puts the status in its own column as a badge, and never in the Type cell", (
   ].map((i) => ({ item: i as DataRoomApiItem, snippets: [] }));
   act(() => root.render(<ListView rows={rows} o={o()} />));
   const cells = Array.from(container.querySelectorAll('[data-testid="data-room-status"]'));
-  expect(cells.map((cell) => cell.textContent)).toEqual(["Failed", "Reading", ""]);
+  expect(cells.map((cell) => cell.textContent)).toEqual(["Failed", "Reading", "—"]);
   expect(cells[0]?.querySelector("[data-slot=badge]")).not.toBeNull();
   // The Type cell (second) never holds a status word.
   for (const row of container.querySelectorAll("[data-row]")) {
@@ -257,7 +255,7 @@ it("puts the type and date under the name for a phone, and says when a file is n
     (line) => line.textContent,
   );
   expect(lines[0]).toMatch(/^Presentation · Dec 21, 2025$/);
-  expect(lines[1]).toBe("Not tagged");
+  expect(lines[1]).toBe("—");
 });
 
 it("highlights the shown row and bolds only its name cell's text via the name style", () => {
@@ -280,15 +278,15 @@ it("gives a tile's type and date a line each, and marks an untagged tile", () =>
       (s) => s.textContent,
     );
   expect(lines(tiles[0] as Element)).toEqual(["Presentation", "Dec 21, 2025"]);
-  expect(tiles[1]?.textContent).toContain("Not tagged");
+  expect(tiles[1]?.textContent).toContain("—");
 });
 
 it("sizes the columns with table-column <col>s, not table-cell", () => {
   act(() => root.render(<ListView rows={[{ item: item("a", null), snippets: [] }]} o={o()} />));
   const cols = Array.from(container.querySelectorAll("col")).map((c) => c.className);
   expect(cols.some((c) => c.includes("table-cell"))).toBe(false);
-  // Status has no column while no row has a status.
-  expect(cols.filter((c) => c.includes("table-column"))).toHaveLength(3);
+  // Status keeps its column even with no status, so the others do not move between folders.
+  expect(cols.filter((c) => c.includes("table-column"))).toHaveLength(4);
 });
 
 it("opens the file when its search snippet is clicked", () => {
@@ -322,7 +320,7 @@ it("shows the added date under the name of an untagged file on a phone", () => {
   const rows = [{ item: item("loose", null), snippets: [] }];
   act(() => root.render(<ListView rows={rows} o={o()} />));
   expect(container.querySelector('[data-testid="data-room-subline"]')?.textContent).toBe(
-    "Not tagged · Mar 4, 2026",
+    "— · Mar 4, 2026",
   );
 });
 
@@ -643,8 +641,8 @@ it("shows how long a file has been Reading once that passes two minutes", () => 
   const long = new Date(Date.now() - 5 * 60_000).toISOString();
   const short = new Date(Date.now() - 30_000).toISOString();
   const rows = asRows(
-    { ...item("old", null), status: "extracting", createdAt: long },
-    { ...item("new", null), status: "extracting", createdAt: short },
+    { ...item("old", null), status: "extracting", updatedAt: long },
+    { ...item("new", null), status: "extracting", updatedAt: short },
   );
   act(() => root.render(<ListView rows={rows} o={o()} />));
   const lines = Array.from(container.querySelectorAll('[data-testid="data-room-subline"]')).map(
@@ -654,12 +652,41 @@ it("shows how long a file has been Reading once that passes two minutes", () => 
   expect(lines[1]).toBe("Reading");
 });
 
-it("leaves out the Status column when no row has a status", () => {
+it("counts the Reading age from the last pipeline write, not from when the file was added", () => {
+  const rows = asRows({
+    ...item("again", null),
+    status: "pending",
+    createdAt: new Date(Date.now() - 34 * 60_000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  expect(container.querySelector('[data-testid="data-room-subline"]')?.textContent).toBe("Reading");
+});
+
+it("offers Try again on a file still Reading after 10 minutes", () => {
+  const onAction = vi.fn();
+  const rows = asRows({
+    ...item("stuck", null),
+    status: "extracting",
+    updatedAt: new Date(Date.now() - 11 * 60_000).toISOString(),
+  });
+  act(() => root.render(<ListView rows={rows} o={{ ...o(), onAction }} />));
+  expect(container.querySelector('[data-testid="data-room-subline"]')?.textContent).toBe(
+    "Taking longer than usual",
+  );
+  const retry = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "Try again",
+  );
+  act(() => retry?.click());
+  expect(onAction).toHaveBeenCalledWith("retry", expect.objectContaining({ id: "stuck" }));
+});
+
+it("keeps the Status column's space but leaves it blank when no row has a status", () => {
   act(() => root.render(<ListView rows={asRows(item("a", null), item("b", null))} o={o()} />));
   expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).not.toContain(
     "Status",
   );
-  expect(container.querySelector('[data-testid="data-room-status"]')).toBeNull();
+  expect(container.querySelector('[data-testid="data-room-status"]')?.textContent).toBe("");
   act(() =>
     root.render(
       <ListView rows={asRows(item("a", null), { ...item("b", null), status: "failed" })} o={o()} />,
