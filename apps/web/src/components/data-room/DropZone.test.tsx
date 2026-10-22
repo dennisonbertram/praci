@@ -107,6 +107,7 @@ it("says which folder a duplicate is already in, and confirms a delete", () => {
     },
     { id: 3, name: "notes.txt", state: { kind: "uploaded", itemId: "i2", existing: {} } },
     { id: 4, name: "old.txt", state: { kind: "deleted" } },
+    { id: 5, name: "new.pdf", state: { kind: "uploaded", itemId: "i3", folder: "Product" } },
   );
   act(() =>
     root.render(
@@ -121,6 +122,7 @@ it("says which folder a duplicate is already in, and confirms a delete", () => {
   expect(text).toContain("notes.txtAlready in your Data roomView");
   // The outcome first, then the name.
   expect(text).toContain("Deletedold.txt");
+  expect(text).toContain("Uploaded to ProductView");
 });
 
 const row = {

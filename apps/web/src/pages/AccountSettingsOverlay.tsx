@@ -665,12 +665,22 @@ function TimezonePicker({
     <div className="mt-3">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
-          render={<Button variant="outline" className="h-9 w-full justify-between font-normal" />}
+          render={
+            <Button
+              variant="outline"
+              className="h-9 w-full justify-between px-3 text-sm font-normal"
+            />
+          }
           aria-label={t`Time zone`}
           disabled={pending !== null}
         >
-          {timezoneLabel(pending ?? value)}
-          <ChevronDown aria-hidden="true" />
+          <span className="min-w-0 truncate">{timezoneLabel(pending ?? value)}</span>
+          <ChevronDown
+            aria-hidden="true"
+            size={16}
+            strokeWidth={1.8}
+            className="ml-3 shrink-0 text-muted-foreground"
+          />
         </PopoverTrigger>
         <PopoverContent align="start" className="w-(--anchor-width) min-w-64 p-0">
           <Command>
