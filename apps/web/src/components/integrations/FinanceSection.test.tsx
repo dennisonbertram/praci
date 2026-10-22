@@ -83,7 +83,7 @@ it("connects through the Finance API and shows Open Finance once connected", asy
   connect.mockResolvedValue("connected");
   const onChanged = await show([source("mercury", "not_connected"), source("brex", "ok")]);
   expect(tile("mercury")?.textContent).not.toContain("Connected");
-  expect(tile("brex")?.textContent).toContain("Connected");
+  expect(tile("brex")?.textContent).toContain("Open Finance");
   expect(tile("brex")?.querySelector('a[href="/app/finance"]')).not.toBeNull();
   expect(tile("brex")?.querySelector("img")?.getAttribute("src")).toContain("brex");
   expect(tile("mercury")?.querySelector("img")?.getAttribute("src")).toBe("/logos/mercury.svg");
@@ -157,7 +157,7 @@ const press2 = (root: ParentNode, label: string) =>
 it("shows a keyless Blockscout server as Connected and offers the optional key", async () => {
   cryptoRpc.crypto.mockResolvedValue({ connected: true, hasApiKey: false });
   await show([source("mercury", "ok"), source("brex", "ok")]);
-  expect(crypto().querySelector('[data-status="connected"]')).not.toBeNull();
+  expect(crypto().textContent).toContain("Open Finance");
   expect(crypto().textContent).not.toContain("Not connected");
   // Connected without a key is complete, and the tile stays plain.
   expect(crypto().textContent).toContain("Wallet balances and history");
@@ -197,7 +197,7 @@ it("offers a wallet without a key, opens the key modal from the menu, then shows
   expect(cryptoRpc.cryptoConnect).toHaveBeenCalledWith({ apiKey: "k-123" });
   expect(onChanged).toHaveBeenCalled(); // page data refreshes: the connect may create an MCP server
   expect(document.body.querySelector('[role="dialog"]')).toBeNull();
-  expect(crypto().textContent).toContain("Connected");
+  expect(crypto().textContent).toContain("Open Finance");
   await openCryptoMenu();
   expect(menuItems()).toEqual(["Replace API key"]);
 });
@@ -234,7 +234,7 @@ it("shows an exchange as Connected only after its first sync", async () => {
   cryptoRpc.exchanges.mockResolvedValue([exchange("coinbase", false), exchange("kraken", true)]);
   await show([source("mercury", "ok"), source("brex", "ok")]);
   expect(tile("coinbase")?.textContent).not.toContain("Connected");
-  expect(tile("kraken")?.textContent).toContain("Connected");
+  expect(tile("kraken")?.textContent).toContain("Open Finance");
   // Replace key sits in the tile's one overflow menu, not beside the main link.
   expect(tile("kraken")?.querySelector('[aria-label="More Kraken actions"]')).not.toBeNull();
   expect(tile("kraken")?.textContent).not.toContain("Replace key");
@@ -269,7 +269,7 @@ it("connects Kraken from a dialog with the key help link, then shows Connected",
     key: "kk",
     secret: "ss",
   });
-  expect(tile("kraken")?.textContent).toContain("Connected");
+  expect(tile("kraken")?.textContent).toContain("Open Finance");
 });
 
 it("shows the exchange's error inside the dialog and stays not connected", async () => {
@@ -316,7 +316,7 @@ it("connects Alchemy only after the server accepts the key, and shows its error 
     provider: "alchemy",
     apiKey: "good",
   });
-  expect(alchemy().textContent).toContain("Connected");
+  expect(alchemy().textContent).toContain("Open");
 });
 
 it("gives every finance tile the shared hover and a visible focus ring on the name link", async () => {

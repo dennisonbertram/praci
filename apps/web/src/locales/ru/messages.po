@@ -2411,6 +2411,10 @@ msgstr ""
 msgid "Choose a new password"
 msgstr "Выберите новый пароль"
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Choose a tool"
+msgstr ""
+
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Choose file"
 msgstr "Выбрать файл"
@@ -6286,6 +6290,7 @@ msgstr ""
 msgid "Make sure nothing is still running on this computer."
 msgstr ""
 
+#: src/components/integrations/parts.tsx
 #: src/pages/BillingSettingsPanel.tsx
 msgid "Manage"
 msgstr ""
@@ -6712,9 +6717,16 @@ msgstr ""
 msgid "More"
 msgstr "Ещё"
 
+#. placeholder {0}: app.name
 #. placeholder {0}: exchange.name
+#. placeholder {0}: server.name
 #: src/components/integrations/FinanceSection.tsx
+#: src/components/integrations/IntegrationsHome.tsx
 msgid "More {0} actions"
+msgstr ""
+
+#: src/components/integrations/FinanceSection.tsx
+msgid "More {name} actions"
 msgstr ""
 
 #. placeholder {0}: attachment.filename
@@ -6740,6 +6752,10 @@ msgstr "Больше действий с компьютером"
 
 #: src/pages/ActivityList.tsx
 msgid "More filters"
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "More Granola actions"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -8740,7 +8756,6 @@ msgstr "Удалить"
 #: src/components/compose/RecipientField.tsx
 #: src/components/ComposeEmail.tsx
 #: src/components/integrations/AppDetail.tsx
-#: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
 #: src/pages/shell/composer.tsx
 msgid "Remove {0}"
@@ -11115,10 +11130,6 @@ msgstr "Повторите тест."
 
 #: src/components/MailApprovalCard.tsx
 msgid "Turn off"
-msgstr ""
-
-#: src/pages/shell/bot-panel.tsx
-msgid "Turn off a tool"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx

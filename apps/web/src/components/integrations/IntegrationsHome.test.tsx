@@ -367,6 +367,10 @@ it("shows a connected Mercury once, under Connected, with its actions", async ()
   expect(container.querySelector('[data-testid="finance-tile-mercury"]')?.textContent).toContain(
     "Open Finance",
   );
+  // Every connected card has the same actions menu, and none repeats "Connected" under its heading.
+  const mercury = container.querySelector('[data-testid="finance-tile-mercury"]');
+  expect(mercury?.querySelector('button[aria-label="More Mercury actions"]')).not.toBeNull();
+  expect(mercury?.querySelector('[data-status="connected"]')).toBeNull();
   expect(container.querySelector('[data-testid="finance-tile-brex"]')).not.toBeNull();
   expect(inConnected("finance-tile-brex")).toBe(false);
 });
@@ -439,7 +443,7 @@ it("shows one Blockscout tile, asking for the key, when its MCP server has none"
   expect(container.textContent).not.toContain("mcp.blockscout.com");
   const tile = container.querySelector('[data-testid="finance-tile-crypto"]');
   // Keyless Blockscout still reads balances, so it shows as connected and offers the optional key.
-  expect(tile?.textContent).toContain("Connected");
+  expect(tile?.textContent).toContain("Open Finance");
   expect((await cryptoMenu()).map((item) => item.textContent)).toEqual([
     "Add API key",
     "Manage agents",

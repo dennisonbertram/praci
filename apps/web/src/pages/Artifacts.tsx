@@ -543,7 +543,7 @@ function ArtifactTable({
   const navigate = useNavigate();
   const showBot = botsById.size > 0;
   return (
-    <div className={PAGE_GUTTER_X}>
+    <div className={`${PAGE_GUTTER_X} max-w-[1100px]`}>
       <Table>
         <colgroup>
           <col />
@@ -903,36 +903,23 @@ function ArtifactRow({
       <Link
         to={`/app/artifacts/${artifact.id}`}
         aria-current={active ? "page" : undefined}
-        className="flex flex-col gap-1 px-4 py-3 pe-10"
+        title={[bot?.name, artifact.description].filter(Boolean).join(" · ") || undefined}
+        className="flex h-10 items-center gap-2 px-4 pe-10"
       >
-        <div className="flex items-center gap-2">
-          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-[7px] bg-accent text-accent-foreground">
-            <ArtifactMimeIcon mimeType={artifact.mimeType} small />
+        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-[7px] bg-accent text-accent-foreground">
+          <ArtifactMimeIcon mimeType={artifact.mimeType} small />
+        </span>
+        <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">
+          {displayName(artifact.name)}
+        </span>
+        {artifact.versionCount > 1 ? (
+          <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10.5px] font-semibold text-muted-foreground">
+            {`v${artifact.version}`}
           </span>
-          <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">
-            {displayName(artifact.name)}
-          </span>
-          {artifact.versionCount > 1 ? (
-            <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10.5px] font-semibold text-muted-foreground">
-              {`v${artifact.version}`}
-            </span>
-          ) : null}
-        </div>
-        {artifact.description ? (
-          <div className="ps-8 text-[12.5px] leading-snug text-muted-foreground">
-            {artifact.description}
-          </div>
         ) : null}
-        <div className="flex items-center gap-1.5 ps-8 text-[11.5px] text-muted-foreground">
-          {bot ? (
-            <>
-              <BotAvatar color={bot.color} identity={bot.id} size={14} status={bot.status} />
-              <span className="max-w-[140px] truncate">{bot.name}</span>
-              <span aria-hidden="true">·</span>
-            </>
-          ) : null}
-          <span>{formatRelativeTime(artifact.createdAt)}</span>
-        </div>
+        <span className="shrink-0 text-[11.5px] text-muted-foreground">
+          {formatRelativeTime(artifact.createdAt)}
+        </span>
       </Link>
       <button
         type="button"
