@@ -374,3 +374,21 @@ it("says how many investors have the file, and nothing when none do", async () =
   await render();
   expect(container.textContent).toContain("SharedWith");
 });
+
+it("does not show the previous file's sharing count while the next file loads", async () => {
+  shares.mockResolvedValue(["c1", "c2"]);
+  await render();
+  expect(container.textContent).toContain("SharedWith");
+  shares.mockReturnValue(new Promise(() => undefined));
+  await act(async () => {
+    root.render(
+      <Preview
+        item={{ ...receipt, id: "other" }}
+        folderPath=""
+        onAction={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+  });
+  expect(container.textContent).not.toContain("Shared");
+});

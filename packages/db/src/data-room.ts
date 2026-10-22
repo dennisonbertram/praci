@@ -1134,7 +1134,13 @@ export function createDataRoomRepos(prisma: PrismaClient) {
             },
           ],
         },
-        data: { status: "pending", error: null, failures: 0, revision: { increment: 1 } },
+        data: {
+          status: "pending",
+          error: null,
+          failures: 0,
+          leaseUntil: null,
+          revision: { increment: 1 },
+        },
       });
       return count === 1;
     },

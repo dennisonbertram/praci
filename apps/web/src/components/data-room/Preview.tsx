@@ -136,7 +136,7 @@ function usePaneWidth() {
 
 /** How many investors have the file; null until known (or when it cannot be shared). */
 function useShareCount(item: DataRoomApiItem) {
-  const [count, setCount] = useState<number | null>(null);
+  const [shared, setShared] = useState<{ id: string; count: number | null } | null>(null);
   const canShare = item.status !== "failed";
   useEffect(() => {
     if (!canShare) return;
@@ -144,8 +144,8 @@ function useShareCount(item: DataRoomApiItem) {
     const load = () =>
       rpc.investors
         .shares({ itemId: item.id })
-        .then((ids) => live && setCount(ids.length))
-        .catch(() => live && setCount(null));
+        .then((ids) => live && setShared({ id: item.id, count: ids.length }))
+        .catch(() => live && setShared(null));
     void load();
     window.addEventListener(SHARES_CHANGED, load);
     return () => {
@@ -153,7 +153,7 @@ function useShareCount(item: DataRoomApiItem) {
       window.removeEventListener(SHARES_CHANGED, load);
     };
   }, [item.id, canShare]);
-  return canShare ? count : null;
+  return canShare && shared?.id === item.id ? shared.count : null;
 }
 
 /** The summary, facets and source of one item, with Download and the item menu. */
