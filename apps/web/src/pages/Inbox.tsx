@@ -121,8 +121,32 @@ const SYNC_POLL_MAX_MS = 10_000;
 const SYNC_POLL_MAX = 60;
 const couldNotArchive = (count: number) => t`Couldn't archive ${count}`;
 // ponytail: bounded polling while triage runs; add a user-level event if it often takes longer than 30 seconds.
+const CONSENT_DISMISSED_KEY = "rakazo.inboxConsentDismissed";
+/** The dismissal belongs to one user in one space; without that scope it lasts only until the page closes. */
+const consentDismissedKey = (scope?: string) =>
+  scope ? `${CONSENT_DISMISSED_KEY}:${scope}` : null;
+function readConsentDismissed(scope?: string): string | null {
+  const key = consentDismissedKey(scope);
+  try {
+    return key ? localStorage.getItem(key) : null;
+  } catch {
+    return null;
+  }
+}
+function saveConsentDismissed(scope: string | undefined, value: string | null) {
+  const key = consentDismissedKey(scope);
+  try {
+    if (!key) return;
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  } catch {
+    // Storage blocked: "Not now" lasts until the page closes.
+  }
+}
 const TRIAGE_POLL_MS = 5_000;
 const TRIAGE_MAX_POLLS = 6;
+// A first sort that runs this long shows the unsorted rows, dimmed, instead of grey bars.
+const SORT_ROWS_AFTER_MS = 15_000;
 /** Needs reply lists this many rows first, then "Show N more". */
 const NEEDS_REPLY_SHOWN = 5;
 /** The heading a dated row sits under on the sender piles, the same split Important uses. */
@@ -225,6 +249,8 @@ type InboxPageProps = {
   onAllowMailRules?: (connectionId: string) => void;
   /** The space's name, when the user has more than one, so they know whose mail this is. */
   spaceName?: string;
+  /** The signed-in user and space, which scope a remembered "Not now" on the sorting prompt. */
+  consentScope?: string;
   /** Called after a sync so the sidebar can refresh its unread count. */
   onRefreshed: () => void;
   /** Set while the Inbox agent panel is collapsed; shows the button that reopens it. */
@@ -243,6 +269,7 @@ function InboxListPage({
   onOpenAgent,
   paused,
   spaceName,
+  consentScope,
 }: InboxPageProps) {
   const [params, setParams] = useSearchParams();
   const location = useLocation();
@@ -332,8 +359,8 @@ function InboxListPage({
   sortingRef.current = sorting;
   // Triage finished during the first sort, and the to-dos it made are still loading.
   const sortEnding = useRef(false);
-  // "Not now" on the sorting prompt hides it for this visit only.
-  const [consentDismissed, setConsentDismissed] = useState(false);
+  // "Not now" on the sorting prompt is remembered per user and space until the model that would sort changes.
+  const [dismissedFor, setDismissedFor] = useState(() => readConsentDismissed(consentScope));
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const [filterTipOpen, setFilterTipOpen] = useState(false);
   const filterClosedAt = useRef(0);
@@ -767,9 +794,16 @@ function InboxListPage({
   // Meeting follow-ups show whenever the user has any or a meeting source, with or without mail triage.
   const meetingTodos = Boolean(meetings?.source) || (todos ?? []).some((todo) => todo.meetingId);
   const showTodos = (triage || meetingTodos) && !sorting && pile === "important";
-  // The first sort shows no rows at all, however long it takes: they would regroup and the To do
-  // card would push them down. Only a stalled sort shows the unsorted rows, under its notice.
-  const sortingRows = (sorting || firstSort) && !stalled;
+  // The first sort shows grey bars for its first seconds, since rows would regroup and the To do
+  // card would push them down. After SORT_ROWS_AFTER_MS the unsorted rows show, dimmed.
+  const sortActive = sorting || firstSort;
+  const [unsortedShown, setUnsortedShown] = useState(false);
+  useEffect(() => {
+    if (!sortActive) return setUnsortedShown(false);
+    const timer = setTimeout(() => setUnsortedShown(true), SORT_ROWS_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [sortActive]);
+  const sortingRows = sortActive && !stalled && !unsortedShown;
   const loading =
     !shown ||
     sortingRows ||
@@ -1054,12 +1088,15 @@ function InboxListPage({
   };
   // Allowing syncs again, which is what queues triage now that it may run. It shows while the
   // first sync still loads the list, so the choice is not hidden behind the skeleton.
+  const blockedBy = shown?.triageBlocked;
+  const recipientKey =
+    blockedBy?.reason === "needs_consent" ? (blockedBy.recipient?.key ?? null) : null;
+  const consentAsked = pile === "important" && blockedBy?.reason === "needs_consent";
+  const consentDismissed = consentAsked && recipientKey !== null && dismissedFor === recipientKey;
   const consentPrompt =
-    pile === "important" &&
-    shown?.triageBlocked?.reason === "needs_consent" &&
-    !consentDismissed ? (
+    blockedBy?.reason === "needs_consent" && consentAsked && dismissedFor !== recipientKey ? (
       <InboxConsentPrompt
-        recipient={shown.triageBlocked.recipient}
+        recipient={blockedBy.recipient}
         onAllowed={() => {
           restartSortWatch();
           setJustAllowed(true);
@@ -1068,7 +1105,10 @@ function InboxListPage({
           setAttempt((n) => n + 1);
           setReload((n) => n + 1);
         }}
-        onDismiss={() => setConsentDismissed(true)}
+        onDismiss={() => {
+          setDismissedFor(recipientKey);
+          if (recipientKey) saveConsentDismissed(consentScope, recipientKey);
+        }}
         shownElsewhere={failed && !failedEmpty ? failed : undefined}
       />
     ) : null;
@@ -1717,6 +1757,21 @@ function InboxListPage({
           <>
             {consentPrompt ? (
               consentPrompt
+            ) : consentDismissed ? (
+              <div className="mb-3 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                <Trans>Praci isn't sorting your mail.</Trans>
+                <Button
+                  variant="link"
+                  size="xs"
+                  className="h-auto p-0"
+                  onClick={() => {
+                    saveConsentDismissed(consentScope, null);
+                    setDismissedFor(null);
+                  }}
+                >
+                  <Trans>Let Praci sort your mail</Trans>
+                </Button>
+              </div>
             ) : sorting && stalled ? (
               <div
                 role="status"
@@ -1727,6 +1782,14 @@ function InboxListPage({
                   <Trans>Try sorting again</Trans>
                 </Button>
               </div>
+            ) : sorting && unsortedShown ? (
+              <p
+                role="status"
+                className="mb-4 flex min-h-9 items-center gap-2 text-sm text-muted-foreground"
+              >
+                <Spinner aria-hidden="true" />
+                <Trans>Sorting your mail…</Trans>
+              </p>
             ) : showTodos ? (
               todoCard
             ) : null}
@@ -1780,7 +1843,7 @@ function InboxListPage({
                 </Button>
               </div>
             ) : null}
-            <div>
+            <div className={cn(sorting && "opacity-60")}>
               {digestOn ? (
                 <InboxDigest
                   rows={digestList}

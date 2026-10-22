@@ -62,10 +62,19 @@ vi.mock("../lib/inbox-message-cache", () => ({
 }));
 const realDialog = vi.hoisted(() => ({ on: false }));
 vi.mock("../components/AiDataSharing", () => ({
-  InboxConsentPrompt: ({ onAllowed }: { onAllowed: () => void }) => (
+  InboxConsentPrompt: ({
+    onAllowed,
+    onDismiss,
+  }: {
+    onAllowed: () => void;
+    onDismiss?: () => void;
+  }) => (
     <div data-consent-prompt>
       <button type="button" onClick={onAllowed}>
         Allow sorting
+      </button>
+      <button type="button" onClick={onDismiss}>
+        Not now
       </button>
     </div>
   ),
@@ -926,14 +935,17 @@ it("stops spinning when sorting stalls and offers to try again", async () => {
   expect(c.textContent).toContain("Sorting your mail…");
 });
 
-it("keeps the grey bars, not the unsorted rows, however long the first sort runs", async () => {
+it("shows grey bars at first, then the unsorted rows dimmed after about 15 s of the first sort", async () => {
   rpcMock.list.mockImplementation(async () => list([row("a"), row("b")], { triagePending: true }));
   const c = await render();
-  expect(c.querySelector("[aria-busy=true]")).not.toBeNull();
-  await dwell(16_000);
+  await dwell(10_000);
   expect(c.querySelector("[aria-busy=true]")).not.toBeNull();
   expect(c.textContent).not.toContain("noise a");
+  await dwell(6_000);
+  expect(c.querySelector("[aria-busy=true]")).toBeNull();
+  expect(c.textContent).toContain("noise a");
   expect(c.textContent).toContain("Sorting your mail…");
+  expect(c.querySelector(".opacity-60")?.textContent).toContain("noise a");
 });
 
 it("says sorting at once after Allow and keeps the rows back until the sort lands", async () => {
@@ -950,10 +962,32 @@ it("says sorting at once after Allow and keeps the rows back until the sort land
   await click(byText(c, "Allow sorting"));
   expect(c.textContent).toContain("Sorting your mail…");
   expect(c.querySelector("[aria-busy=true]")).not.toBeNull();
-  await dwell(16_000);
-  expect(c.querySelector("[aria-busy=true]")).not.toBeNull();
   expect(c.textContent).not.toContain("noise a");
+  await dwell(16_000);
+  expect(c.textContent).toContain("noise a");
   expect(c.textContent).toContain("Sorting your mail…");
+});
+
+it("remembers Not now per user and space, and offers a way to bring the prompt back", async () => {
+  const blocked = {
+    enabled: false,
+    triageBlocked: { reason: "needs_consent", recipient: { key: "k", name: "Model" } } as never,
+  };
+  rpcMock.list.mockResolvedValue(list([row("a")], blocked));
+  const first = await render(undefined, undefined, { consentScope: "u1:s1" });
+  await click(byText(first, "Not now"));
+  expect(first.querySelector("[data-consent-prompt]")).toBeNull();
+  const again = await render(undefined, undefined, { consentScope: "u1:s1" });
+  expect(again.querySelector("[data-consent-prompt]")).toBeNull();
+  const other = await render(undefined, undefined, { consentScope: "u2:s1" });
+  expect(other.querySelector("[data-consent-prompt]")).not.toBeNull();
+  const otherSpace = await render(undefined, undefined, { consentScope: "u1:s2" });
+  expect(otherSpace.querySelector("[data-consent-prompt]")).not.toBeNull();
+  await click(byText(again, "Let Praci sort your mail"));
+  expect(again.querySelector("[data-consent-prompt]")).not.toBeNull();
+  const afterRecovery = await render(undefined, undefined, { consentScope: "u1:s1" });
+  expect(afterRecovery.querySelector("[data-consent-prompt]")).not.toBeNull();
+  localStorage.clear();
 });
 
 it("keeps rows still while a row menu is open and the first sort finishes", async () => {
@@ -1887,13 +1921,13 @@ describe("a list that holds still", () => {
   });
 });
 
-it("shows no rows during a slow first sort, so none can move, until the stall notice", async () => {
+it("shows no rows in the first seconds of a slow first sort, and the stall notice later", async () => {
   vi.useFakeTimers();
   try {
     rpcMock.list.mockImplementation(async () => list([row("a")], { triagePending: true }));
     const c = await render();
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(16_000);
+      await vi.advanceTimersByTimeAsync(10_000);
     });
     expect(c.querySelector("[aria-busy=true]")).not.toBeNull();
     expect(c.textContent).not.toContain("noise a");

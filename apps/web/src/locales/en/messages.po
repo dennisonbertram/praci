@@ -6131,6 +6131,7 @@ msgid "Let Praci read your documents"
 msgstr "Let Praci read your documents"
 
 #: src/components/AiDataSharing.tsx
+#: src/pages/Inbox.tsx
 msgid "Let Praci sort your mail"
 msgstr "Let Praci sort your mail"
 
@@ -8260,6 +8261,10 @@ msgstr "Praci doesn't read your documents."
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
 msgstr "Praci doesn't tag new files."
+
+#: src/pages/Inbox.tsx
+msgid "Praci isn't sorting your mail."
+msgstr "Praci isn't sorting your mail."
 
 #: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Praci keeps your meetings and to-dos."
