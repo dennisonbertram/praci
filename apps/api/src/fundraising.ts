@@ -3,7 +3,7 @@ import { syncSafesForUser } from "@rakazo/adapters";
 import type { Actor, FundraisingOverview, MercurySafeState } from "@rakazo/contracts";
 import { actorScope, financeProviderForEndpoint } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
-import { getFundraisingOverview } from "@rakazo/db";
+import { getFundraisingOverview, listSafes } from "@rakazo/db";
 
 export interface FundraisingDeps {
   prisma: PrismaClient;
@@ -66,6 +66,12 @@ export async function fundraisingOverview(
   await syncQuietly(deps, actor, false, undefined, PAGE_SYNC_MS);
   const overview = await getFundraisingOverview(deps.prisma, actorScope(actor));
   return { ...overview, mercury: await mercuryState(deps, actor) };
+}
+
+/** The SAFE rows after the same throttled sync, so Investors is right on a first visit. */
+export async function safesList(deps: FundraisingDeps, actor: Actor) {
+  await syncQuietly(deps, actor, false, undefined, PAGE_SYNC_MS);
+  return listSafes(deps.prisma, actorScope(actor));
 }
 
 /** Syncs now; the 15-minute throttle does not apply, the in-flight claim still does. */
